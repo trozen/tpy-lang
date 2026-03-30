@@ -1,7 +1,7 @@
 # tpy: macro_module
 """Test macro module with a concat call-site macro."""
 from tpyc.macro_api import call_macro, CallMacroContext, MacroArg
-from tpyc.parse import TpyExpr, TpyCall, TpyBinOp, TpyStrLiteral
+from tpyc.parse import TpyExpr, TpyCall, TpyName, TpyBinOp, TpyStrLiteral
 
 
 def _to_str(arg: MacroArg, quote_str: bool) -> TpyExpr:
@@ -14,7 +14,7 @@ def _to_str(arg: MacroArg, quote_str: bool) -> TpyExpr:
                 right=TpyBinOp(left=arg.expr, op="+", right=TpyStrLiteral(value="'")),
             )
         return arg.expr
-    return TpyCall(func="str", args=[arg.expr])
+    return TpyCall(func=TpyName("str"), args=[arg.expr])
 
 
 @call_macro

@@ -788,8 +788,8 @@ class TypeCompatibility:
             return False
         # Check if this function name maps to tpy.copy or tpy.copy_iter
         # (handles aliases like "from tpy import copy as c")
-        if expr.func in self.ctx.imported_names:
-            module_name, func_name = self.ctx.imported_names[expr.func]
+        if expr.func_name in self.ctx.imported_names:
+            module_name, func_name = self.ctx.imported_names[expr.func_name]
             return module_name == "tpy" and func_name in ("copy", "copy_iter")
         return False
 
@@ -1027,13 +1027,13 @@ class TypeCompatibility:
                 return True
 
             # Record constructor
-            if expr.func in self.ctx.registry.records:
+            if expr.func_name in self.ctx.registry.records:
                 return True
 
             # Function returning Own[T] creates a temporary (by-value return).
             # Only check user-defined functions (builtins don't appear in
             # registry.functions).
-            if self.ctx.registry.get_function(expr.func) is not None:
+            if self.ctx.registry.get_function(expr.func_name) is not None:
                 fi = expr.resolved_function_info
                 if fi and isinstance(fi.return_type, OwnType):
                     return True
@@ -1132,7 +1132,7 @@ class TypeCompatibility:
             inner = expr.expr if isinstance(expr, TpyCoerce) else expr
             # StrView(x) constructor: check the wrapped argument
             if (isinstance(inner, TpyCall) and inner.args
-                    and (inner.func == "StrView"
+                    and (inner.func_name == "StrView"
                          or isinstance(getattr(inner, 'call_type', None), StrViewType))):
                 if self.is_dangling_return(inner.args[0]):
                     raise self.ctx.error(

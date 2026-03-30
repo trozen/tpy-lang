@@ -2794,7 +2794,7 @@ class Parser:
                     kwargs[kw.arg] = self._parse_expr(kw.value)
 
             if isinstance(node.func, ast.Name):
-                return TpyCall(node.func.id, args, kwargs=kwargs, loc=loc)
+                return TpyCall(TpyName(node.func.id, loc=loc), args, kwargs=kwargs, loc=loc)
             elif isinstance(node.func, ast.Attribute):
                 # ClassName[TypeArgs].method(args) -- static call with explicit class type args
                 if (isinstance(node.func.value, ast.Subscript)
@@ -2831,7 +2831,7 @@ class Parser:
                             # call_type parsing failed - if type_args also failed, sema will report
                             # the type_args_parse_error; otherwise it's a function call
                             pass
-                    return TpyCall(name, args, call_type=call_type, type_args=type_args,
+                    return TpyCall(TpyName(name, loc=loc), args, call_type=call_type, type_args=type_args,
                                    type_args_parse_error=type_args_parse_error, kwargs=kwargs, loc=loc)
                 elif isinstance(node.func.value, ast.Attribute):
                     # module.func[T](args) -- method call with explicit type args
@@ -3044,7 +3044,7 @@ class Parser:
             if isinstance(expr.operand, (TpyIntLiteral, TpyFloatLiteral)):
                 return
         # Int32(5) etc. -- a fixed-int constructor wrapping a literal
-        if isinstance(expr, TpyCall) and expr.func in _FIXED_INT_MAP:
+        if isinstance(expr, TpyCall) and expr.func_name in _FIXED_INT_MAP:
             if not expr.args:
                 return  # Int32() -> 0
             if len(expr.args) == 1:
@@ -3082,8 +3082,8 @@ class Parser:
                 expr = self._parse_expr(ast_defaults[default_idx])
                 # Detect T() where T is a type parameter
                 if (isinstance(expr, TpyCall) and not expr.args and not expr.kwargs
-                        and type_param_scope and expr.func in type_param_scope):
-                    expr = TpyTypeParamConstruct(expr.func, loc=expr.loc)
+                        and type_param_scope and expr.func_name in type_param_scope):
+                    expr = TpyTypeParamConstruct(expr.func_name, loc=expr.loc)
                 self._validate_const_default(expr, ast_defaults[default_idx])
                 defaults.append(expr)
             else:

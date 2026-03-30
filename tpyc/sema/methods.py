@@ -464,7 +464,7 @@ class MethodAnalyzer:
     def analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a method call."""
         # super().method() calls
-        if isinstance(expr.obj, TpyCall) and expr.obj.func == "super":
+        if isinstance(expr.obj, TpyCall) and expr.obj.func_name == "super":
             return self._analyze_super_method_call(expr)
 
         if isinstance(expr.obj, TpyName):
@@ -803,7 +803,7 @@ class MethodAnalyzer:
             cpp_template=method.cpp_template,
             native_name=method.native_name,
         )
-        temp_call = TpyCall(func=expr.method, args=expr.args,
+        temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc), args=expr.args,
                             kwargs=expr.kwargs,
                             type_args=expr.type_args,
                             type_args_parse_error=expr.type_args_parse_error,
@@ -841,7 +841,7 @@ class MethodAnalyzer:
                                or overloads[0].cpp_template is not None)
             if is_builtin_func:
                 expr.builtin_module_call = module_name
-                temp_call = TpyCall(func=expr.method, args=expr.args,
+                temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc), args=expr.args,
                                     kwargs=expr.kwargs,
                                     type_args=expr.type_args,
                                     type_args_parse_error=expr.type_args_parse_error,
@@ -857,7 +857,7 @@ class MethodAnalyzer:
                 return result
             else:
                 expr.user_module_call = module_name
-                temp_call = TpyCall(func=expr.method, args=expr.args,
+                temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc), args=expr.args,
                                     kwargs=expr.kwargs,
                                     type_args=expr.type_args,
                                     type_args_parse_error=expr.type_args_parse_error,
@@ -873,7 +873,7 @@ class MethodAnalyzer:
         if record_info := self.ctx.registry.get_builtin_record(qname):
             if record_info.get_method_overloads("__init__") and not record_info.type_params:
                 expr.builtin_module_call = module_name
-                temp_call = TpyCall(func=expr.method, args=expr.args, kwargs=expr.kwargs, loc=expr.loc)
+                temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc), args=expr.args, kwargs=expr.kwargs, loc=expr.loc)
                 result = self.calls._analyze_record_constructor(temp_call, record_info)
                 expr.args = temp_call.args
                 expr.kwargs = temp_call.kwargs
@@ -1354,7 +1354,7 @@ class MethodAnalyzer:
         substituted for generic parent classes.
         """
         # Analyze super() to get the SuperType
-        assert isinstance(expr.obj, TpyCall) and expr.obj.func == "super"
+        assert isinstance(expr.obj, TpyCall) and expr.obj.func_name == "super"
         super_type = self._analyze_super_call_static(self.ctx, expr.obj)
         assert isinstance(super_type, SuperType)
 

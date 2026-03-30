@@ -244,7 +244,7 @@ def is_lvalue_iterable(
     if isinstance(expr, (TpyMethodCall, TpyCall)):
         if isinstance(expr, TpyCall) and expr.call_type is not None:
             return False
-        if isinstance(expr, TpyCall) and get_record(expr.func):
+        if isinstance(expr, TpyCall) and get_record(expr.func_name):
             return False
         ret_type = get_type(expr)
         # Protocol return types (e.g. Iterator[T] from generators) are
@@ -968,16 +968,16 @@ class CodeGenContext:
         # Function calls
         if isinstance(expr, TpyCall):
             # Record constructors -> rvalue
-            if self.analyzer.registry.get_record(expr.func):
+            if self.analyzer.registry.get_record(expr.func_name):
                 return True
             # Generic type constructors -> rvalue
             if expr.call_type is not None:
                 return True
-            if self.analyzer.registry.get_function(expr.func) is not None:
+            if self.analyzer.registry.get_function(expr.func_name) is not None:
                 return not self._call_returns_cpp_ref(expr.resolved_function_info)
             # copy() -> rvalue
-            if expr.func in self.analyzer.imported_names:
-                module_name, func_name = self.analyzer.imported_names[expr.func]
+            if expr.func_name in self.analyzer.imported_names:
+                module_name, func_name = self.analyzer.imported_names[expr.func_name]
                 if module_name == "tpy" and func_name == "copy":
                     return True
             return True  # Default: treat unknown calls as rvalue
@@ -1028,8 +1028,8 @@ class CodeGenContext:
             inner = self.unwrap_copy(expr.expr)
             return inner if inner is not expr.expr else expr
         if isinstance(expr, TpyCall) and len(expr.args) == 1:
-            if expr.func in self.analyzer.imported_names:
-                mod, fn = self.analyzer.imported_names[expr.func]
+            if expr.func_name in self.analyzer.imported_names:
+                mod, fn = self.analyzer.imported_names[expr.func_name]
                 if mod == "tpy" and fn == "copy":
                     return expr.args[0]
         return expr

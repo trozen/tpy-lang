@@ -334,7 +334,7 @@ class CallAnalyzer:
         if not expr.kwargs:
             return
         expr.args = resolve_kwargs(
-            expr.args, expr.kwargs, func.params, expr.func,
+            expr.args, expr.kwargs, func.params, expr.func_name,
             lambda msg: self.ctx.error(msg, expr),
             call_loc=expr.loc,
         )
@@ -397,20 +397,20 @@ class CallAnalyzer:
     def analyze_call(self, expr: TpyCall) -> TpyType:
         """Analyze a function or constructor call."""
         # Handle super() call
-        if expr.func == "super":
+        if expr.func_name == "super":
             from .methods import MethodAnalyzer
             return MethodAnalyzer._analyze_super_call_static(self.ctx, expr)
 
         # Type aliases: builtin type aliases (e.g. Float64 = float) resolve
         # to the underlying type's constructor. Other aliases are not callable.
         if expr.call_type is None:
-            alias_type = self.ctx.registry.get_type_alias(expr.func)
+            alias_type = self.ctx.registry.get_type_alias(expr.func_name)
             if alias_type is not None:
                 record = self.ctx.registry.get_record_for_type(alias_type)
                 if record and record.builtin_type_key and record.get_method_overloads("__init__"):
                     return self._analyze_record_constructor(expr, record)
                 raise self.ctx.error(
-                    f"Type alias '{expr.func}' is not callable. "
+                    f"Type alias '{expr.func_name}' is not callable. "
                     f"Use {alias_type} directly, or let the type be inferred from an annotation",
                     expr
                 )
@@ -420,14 +420,14 @@ class CallAnalyzer:
         # call_type may be set but we should use type_args instead
         if expr.call_type is not None:
             # Check if this is a user-defined generic function
-            is_known_function = self.ctx.registry.get_function(expr.func) is not None
+            is_known_function = self.ctx.registry.get_function(expr.func_name) is not None
             if not is_known_function:
                 # Check if it's a user-defined record - use _analyze_record_constructor for bound validation
-                record = self.ctx.registry.get_record(expr.func)
+                record = self.ctx.registry.get_record(expr.func_name)
                 if record:
                     return self._analyze_record_constructor(expr, record)
                 # It's a builtin type instantiation -- validate constructor args
-                self._reject_kwargs_for_builtin(expr, expr.func)
+                self._reject_kwargs_for_builtin(expr, expr.func_name)
                 # Derive per-arg hints from __init__ param types when possible.
                 # e.g. dict[str, str|Int32]([("a","b"), ("c",1)]) -> hint list[tuple[str, str|Int32]]
                 arg_hints = self._derive_ctor_arg_hints(expr)
@@ -438,7 +438,7 @@ class CallAnalyzer:
                 if isinstance(expr.call_type, PtrType) and expr.args:
                     self._validate_ptr_constructor(expr)
                     # Set resolved constructor for codegen (the &{0} template)
-                    lookup = builtin_modules.lookup_generic_type(expr.func)
+                    lookup = builtin_modules.lookup_generic_type(expr.func_name)
                     if lookup:
                         rec = self.ctx.registry.get_builtin_record(lookup.qualified_name)
                         if rec:
@@ -466,10 +466,10 @@ class CallAnalyzer:
 
         # Use namespace for unified lookup - handles shadowing automatically
         if self.ctx.current_ns:
-            binding = self.ctx.current_ns.lookup(expr.func)
+            binding = self.ctx.current_ns.lookup(expr.func_name)
             if binding:
                 if binding.kind == BindingKind.VARIABLE:
-                    var_type = self.ctx.narrowed_types.get(expr.func, binding.type)
+                    var_type = self.ctx.narrowed_types.get(expr.func_name, binding.type)
                     # Strip Own[T] -- Own is a storage property, not a type distinction
                     if isinstance(var_type, OwnType):
                         var_type = var_type.wrapped
@@ -482,7 +482,7 @@ class CallAnalyzer:
                         record = self.ctx.registry.get_record_for_type(var_type)
                         if record and self.ctx.registry.get_method_overloads_with_parents(record, "__call__"):
                             return self._analyze_dunder_call(expr)
-                    raise self.ctx.error(f"'{expr.func}' is not callable", expr)
+                    raise self.ctx.error(f"'{expr.func_name}' is not callable", expr)
                 elif binding.kind == BindingKind.FUNCTION:
                     # Builtin-supplemented functions route through builtin path
                     # (richer diagnostics for unsafe_ptr, unsafe_cast etc.)
@@ -536,7 +536,7 @@ class CallAnalyzer:
                         )
                         return VOID
                     # Check for user module function (registered via _register_user_module_import)
-                    if func_infos := self.ctx.registry.get_function(expr.func):
+                    if func_infos := self.ctx.registry.get_function(expr.func_name):
                         # Builtin-supplemented functions route through builtin path
                         if func_infos[0].is_builtin_function:
                             if func_infos[0].special_handling:
@@ -544,7 +544,7 @@ class CallAnalyzer:
                             return self._analyze_builtin_function_overloads(expr, func_infos)
                         return self._analyze_user_function_call(expr, func_infos)
                     # Check for user module record (registered via _register_user_module_import)
-                    if record_info := self.ctx.registry.get_record(expr.func):
+                    if record_info := self.ctx.registry.get_record(expr.func_name):
                         return self._analyze_record_constructor(expr, record_info)
                     # Check for module function (e.g., math.sqrt)
                     from .registration import TypeRegistrar
@@ -566,41 +566,41 @@ class CallAnalyzer:
                     else:
                         raise SemanticError(f"Unknown function '{func_name}' in module '{module_name}'", expr.loc)
                 elif binding.kind == BindingKind.MODULE:
-                    raise SemanticError(f"Cannot call module '{expr.func}' directly; use module.function()", expr.loc)
+                    raise SemanticError(f"Cannot call module '{expr.func_name}' directly; use module.function()", expr.loc)
                 elif binding.kind == BindingKind.ENUM:
                     return self._analyze_enum_from_value(expr, binding.enum_type)
                 elif binding.kind == BindingKind.BUILTIN:
-                    raise SemanticError(f"'{expr.func}' is not callable", expr.loc)
+                    raise SemanticError(f"'{expr.func_name}' is not callable", expr.loc)
 
         # Check if it's a tpy type that requires explicit import
         # Only check if we didn't find it in namespace (i.e., not imported)
         # Python builtins (int, str, list) are in builtins_ns and would be found above
         if imported_generic_name is None:
-            tpy_qname = f"tpy.{expr.func}"
+            tpy_qname = f"tpy.{expr.func_name}"
             if record_info := self.ctx.registry.get_builtin_record(tpy_qname):
                 if record_info.get_method_overloads("__init__") and not record_info.type_params:
                     raise self.ctx.error(
-                        f"'{expr.func}' requires: from tpy import {expr.func}",
+                        f"'{expr.func_name}' requires: from tpy import {expr.func_name}",
                         expr
                     )
             # Also check generic tpy types (Array, Span)
-            if lookup := builtin_modules.lookup_generic_type(expr.func):
+            if lookup := builtin_modules.lookup_generic_type(expr.func_name):
                 if lookup.qualified_name.startswith("tpy."):
                     raise self.ctx.error(
-                        f"'{expr.func}' requires: from tpy import {expr.func}",
+                        f"'{expr.func_name}' requires: from tpy import {expr.func_name}",
                         expr
                     )
 
         # Fallback: Check if it's a record constructor
-        record = self.ctx.registry.get_record(expr.func)
+        record = self.ctx.registry.get_record(expr.func_name)
         if record:
             # Analyze arguments
             for arg in expr.args:
                 self.expr.analyze_expr(arg)
-            return NamedType(expr.func)
+            return NamedType(expr.func_name)
 
         # Fallback: Check if it's a function call
-        func_infos = self.ctx.registry.get_function(expr.func)
+        func_infos = self.ctx.registry.get_function(expr.func_name)
         if func_infos:
             return self._analyze_legacy_function_call(expr, func_infos[0])
 
@@ -611,7 +611,7 @@ class CallAnalyzer:
         ):
             record_info = self.ctx.registry.get_builtin_record(lookup.qualified_name)
             if not record_info:
-                raise self.ctx.error(f"Unknown type '{expr.func}'", expr)
+                raise self.ctx.error(f"Unknown type '{expr.func_name}'", expr)
             params = ", ".join(record_info.type_params)
 
             # Check for constructors that can infer type from arguments
@@ -663,17 +663,17 @@ class CallAnalyzer:
                         and not isinstance(arg_types[0], PendingListType)
                         and arg_types[0].get_element_type() is not None):
                     raise self.ctx.error(
-                        f"{expr.func}() cannot be constructed from {arg_types[0]}",
+                        f"{expr.func_name}() cannot be constructed from {arg_types[0]}",
                         expr
                     )
                 raise self.ctx.error(
-                    f"Cannot infer element type for {expr.func}() from these arguments; "
-                    f"use {expr.func}[{params}]() or provide a type annotation",
+                    f"Cannot infer element type for {expr.func_name}() from these arguments; "
+                    f"use {expr.func_name}[{params}]() or provide a type annotation",
                     expr
                 )
             # list() with no args and no context hint -- create empty list with
             # unknown element type (same as []) if in function scope.
-            if (expr.func == "list"
+            if (expr.func_name == "list"
                     and isinstance(self.ctx.current_function, TpyFunction)
                     and record_info.type_factory):
                 literal_id = self.ctx.literal_counter
@@ -691,7 +691,7 @@ class CallAnalyzer:
                 expr.call_type = result_type
                 return result_type
             # dict() with no args -- create empty dict with unknown key/value types.
-            if (expr.func == "dict"
+            if (expr.func_name == "dict"
                     and isinstance(self.ctx.current_function, TpyFunction)
                     and record_info.type_factory):
                 literal_id = self.ctx.literal_counter
@@ -708,7 +708,7 @@ class CallAnalyzer:
                 expr.call_type = result_type
                 return result_type
             # set() with no args -- create empty set with unknown element type.
-            if (expr.func == "set"
+            if (expr.func_name == "set"
                     and isinstance(self.ctx.current_function, TpyFunction)
                     and record_info.type_factory):
                 literal_id = self.ctx.literal_counter
@@ -724,18 +724,18 @@ class CallAnalyzer:
                 expr.call_type = result_type
                 return result_type
             raise self.ctx.error(
-                f"Cannot infer element type for {expr.func}(); "
-                f"use {expr.func}[{params}](), provide a type annotation, or pass an iterable",
+                f"Cannot infer element type for {expr.func_name}(); "
+                f"use {expr.func_name}[{params}](), provide a type annotation, or pass an iterable",
                 expr
             )
 
-        if self.ctx.in_nested_def and expr.func == self.ctx.nested_def_name:
+        if self.ctx.in_nested_def and expr.func_name == self.ctx.nested_def_name:
             raise self.ctx.error(
                 f"Recursive nested functions are not supported. "
-                f"'{expr.func}' cannot call itself",
+                f"'{expr.func_name}' cannot call itself",
                 expr,
             )
-        raise self.ctx.error(f"Unknown function or type: '{expr.func}'", expr)
+        raise self.ctx.error(f"Unknown function or type: '{expr.func_name}'", expr)
 
     def _analyze_special_builtin(
         self, expr: TpyCall, overloads: list[FunctionInfo],
@@ -1226,7 +1226,7 @@ class CallAnalyzer:
         if not expr.call_type or not expr.args:
             return fallback
 
-        lookup = builtin_modules.lookup_generic_type(expr.func)
+        lookup = builtin_modules.lookup_generic_type(expr.func_name)
         if lookup is None:
             qname = expr.call_type.qualified_name()
             if qname:
@@ -1289,7 +1289,7 @@ class CallAnalyzer:
         checked (arg must be a container with matching element type) even though
         T itself is unresolved.
         """
-        lookup = builtin_modules.lookup_generic_type(expr.func)
+        lookup = builtin_modules.lookup_generic_type(expr.func_name)
         if lookup is None:
             # Try looking up via call_type's qualified name (for types from submodules)
             qname = expr.call_type.qualified_name() if expr.call_type else None
@@ -1359,7 +1359,7 @@ class CallAnalyzer:
         # No constructor matched -- emit error for single-arg case
         if len(arg_types) == 1:
             raise self.ctx.error(
-                f"{expr.func}() cannot be constructed from {arg_types[0]}",
+                f"{expr.func_name}() cannot be constructed from {arg_types[0]}",
                 expr
             )
 
@@ -1374,7 +1374,7 @@ class CallAnalyzer:
         for param, arg_type, arg_expr in zip(ctor.params, arg_types, expr.args):
             param_type = self.type_ops.substitute_type_params(param.type, inferred)
             self.compat.check_type_compatible(
-                arg_type, param_type, f"{expr.func}() argument", source_expr=arg_expr,
+                arg_type, param_type, f"{expr.func_name}() argument", source_expr=arg_expr,
             )
 
     def _validate_lvalue_params(self, expr: TpyCall) -> None:
@@ -1560,7 +1560,7 @@ class CallAnalyzer:
         protocol-aware resolution. Handles special fallbacks for bool(__len__)
         and str(container).
         """
-        self._reject_kwargs_for_builtin(expr, expr.func)
+        self._reject_kwargs_for_builtin(expr, expr.func_name)
         arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
 
         # Resolve the concrete type (e.g. Float32Type). __init__ returns None
@@ -1629,7 +1629,7 @@ class CallAnalyzer:
                 return STR
 
         # No matching overload found
-        type_name = expr.func
+        type_name = expr.func_name
         if not init_overloads:
             raise self.ctx.error(f"{type_name}() is not callable", expr)
         elif len(arg_types) == 0:
@@ -1685,7 +1685,7 @@ class CallAnalyzer:
             raise self.ctx.error(expr.type_args_parse_error, expr)
         if len(expr.type_args) > max_type_params:
             raise self.ctx.error(
-                f"Function '{expr.func}' expects {max_type_params} type argument(s), "
+                f"Function '{expr.func_name}' expects {max_type_params} type argument(s), "
                 f"got {len(expr.type_args)}",
                 expr
             )
@@ -1851,7 +1851,7 @@ class CallAnalyzer:
             return matched.return_type
 
         # repr(container) fallback: containers have runtime to_str helpers
-        if expr.func == "repr" and len(arg_types) == 1:
+        if expr.func_name == "repr" and len(arg_types) == 1:
             tmpl = container_to_str_template(unwrap_readonly(arg_types[0]))
             if tmpl is not None:
                 expr.resolved_function_info = FunctionInfo(
@@ -1890,7 +1890,7 @@ class CallAnalyzer:
             if conflict_param:
                 tp_name, first_t, second_t, param_name = conflict_param
                 raise self.ctx.error(
-                    f"No matching overload for {expr.func}({arg_type_strs}): "
+                    f"No matching overload for {expr.func_name}({arg_type_strs}): "
                     f"type parameter {tp_name} inferred as {first_t} and {second_t}",
                     expr
                 )
@@ -1904,7 +1904,7 @@ class CallAnalyzer:
                 )
                 if all_need_ptr_at_i:
                     raise self.ctx.error(
-                        f"{expr.func}() requires a mutable pointer, got {arg_t}", expr
+                        f"{expr.func_name}() requires a mutable pointer, got {arg_t}", expr
                     )
 
         # Check for bound violations on generic overloads (give specific error)
@@ -1927,11 +1927,11 @@ class CallAnalyzer:
                     if not protocol_checker(type_arg, bound):
                         raise self.ctx.error(
                             f"Type '{type_arg}' does not satisfy '{bound}' "
-                            f"required by '{expr.func}'",
+                            f"required by '{expr.func_name}'",
                             expr,
                         )
 
-        raise self.ctx.error(f"No matching overload for {expr.func}({arg_type_strs})", expr)
+        raise self.ctx.error(f"No matching overload for {expr.func_name}({arg_type_strs})", expr)
 
     def _analyze_user_function_call(
         self, expr: TpyCall, func_infos: list[FunctionInfo],
@@ -1997,7 +1997,7 @@ class CallAnalyzer:
                         continue
             arg_type_strs = ", ".join(str(unwrap_own(t)) for t in arg_types)
             raise self.ctx.error(
-                f"No matching @overload for {expr.func}({arg_type_strs})", expr)
+                f"No matching @overload for {expr.func_name}({arg_type_strs})", expr)
         return self._analyze_single_function_call(expr, func_infos[0])
 
     def _unsafe_cast_diagnostics(self, expr: TpyCall, arg_type: TpyType) -> None:
@@ -2030,7 +2030,7 @@ class CallAnalyzer:
         # Reject type args on non-generic functions
         if expr.type_args or expr.type_args_parse_error:
             raise self.ctx.error(
-                f"Function '{expr.func}' is not generic and does not accept type arguments",
+                f"Function '{expr.func_name}' is not generic and does not accept type arguments",
                 expr,
             )
 
@@ -2040,7 +2040,7 @@ class CallAnalyzer:
         expr.resolved_function_info = func
         if len(expr.args) < func.min_args or len(expr.args) > func.max_args:
             raise self.ctx.error(
-                arity_error_msg(expr.func, func.min_args, func.max_args, len(expr.args)), expr)
+                arity_error_msg(expr.func_name, func.min_args, func.max_args, len(expr.args)), expr)
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
             # Handle list() constructor - infer type from parameter
             arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
@@ -2131,7 +2131,7 @@ class CallAnalyzer:
         # Check argument count first
         if len(expr.args) < func.min_args or len(expr.args) > func.max_args:
             raise self.ctx.error(
-                arity_error_msg(expr.func, func.min_args, func.max_args, len(expr.args)),
+                arity_error_msg(expr.func_name, func.min_args, func.max_args, len(expr.args)),
                 expr
             )
 
@@ -2423,7 +2423,7 @@ class CallAnalyzer:
                                 )
                     type_args = tuple(inferred[p] for p in record.type_params)
                     # Use expr.func (local name) not record.name (original) for alias support
-                    inferred_type = NamedType(expr.func, type_args)
+                    inferred_type = NamedType(expr.func_name, type_args)
                     expr.call_type = inferred_type
                     # Coerce arguments with substitution
                     type_subst = inferred
@@ -2465,7 +2465,7 @@ class CallAnalyzer:
                                         expr
                                     )
                         type_args = tuple(inferred[p] for p in record.type_params)
-                        inferred_type = NamedType(expr.func, type_args)
+                        inferred_type = NamedType(expr.func_name, type_args)
                         expr.call_type = inferred_type
                         self._set_record_constructor_info(expr, record, inferred_type, inferred)
                         for arg in expr.args:
@@ -2499,7 +2499,7 @@ class CallAnalyzer:
             for arg in expr.args:
                 self.expr.analyze_expr(arg)
         # Use expr.func (local name) not record.name (original) for alias support
-        result_type = NamedType(expr.func)
+        result_type = NamedType(expr.func_name)
         self._set_record_constructor_info(expr, record, result_type)
         return result_type
 
@@ -2555,15 +2555,15 @@ class CallAnalyzer:
 
         info = PendingGenericInstanceInfo(
             instance_id=instance_id,
-            variable_name=expr.func,
+            variable_name=expr.func_name,
             record_info=record,
-            record_name=expr.func,
+            record_name=expr.func_name,
             type_params=list(record.type_params),
             inferred=inferred,
             expr=expr,
         )
         self.ctx.pending_generic_instances[instance_id] = info
-        return PendingGenericInstanceType(record_name=expr.func, instance_id=instance_id)
+        return PendingGenericInstanceType(record_name=expr.func_name, instance_id=instance_id)
 
     def _analyze_legacy_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
         """Analyze a legacy function call (fallback path)."""
@@ -2573,7 +2573,7 @@ class CallAnalyzer:
         expr.resolved_function_info = func
         if len(expr.args) < func.min_args or len(expr.args) > func.max_args:
             raise self.ctx.error(
-                arity_error_msg(expr.func, func.min_args, func.max_args, len(expr.args)), expr)
+                arity_error_msg(expr.func_name, func.min_args, func.max_args, len(expr.args)), expr)
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
             # Handle list() constructor - infer type from parameter
             arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
@@ -2618,7 +2618,7 @@ class CallAnalyzer:
         Creates a synthetic TpyMethodCall and delegates to method analysis.
         """
         synthetic = TpyMethodCall(
-            obj=TpyName(expr.func, loc=expr.loc),
+            obj=expr.func,
             method="__call__",
             args=expr.args,
             kwargs=expr.kwargs,
@@ -2664,7 +2664,7 @@ class CallAnalyzer:
                         expr
                     )
         expr.resolved_function_info = FunctionInfo(
-            name=expr.func,
+            name=expr.func_name,
             params=[ParamInfo(f"__a{i}", t) for i, t in enumerate(param_types)],
             return_type=return_type,
             is_readonly=True,

@@ -354,7 +354,7 @@ class ExpressionGenerator:
                 return f"::tpy::to_value_variant<{val_cpp}>({arg.name})"
         arg_expr = self.gen_expr_deref(arg)
         # Record constructors are prvalues — already an rvalue, no copy needed
-        if isinstance(arg, TpyCall) and self.ctx.analyzer.registry.get_record(arg.func):
+        if isinstance(arg, TpyCall) and self.ctx.analyzer.registry.get_record(arg.func_name):
             return arg_expr
         return f"{arg_type.to_cpp()}({arg_expr})"
 
@@ -1554,17 +1554,17 @@ class ExpressionGenerator:
                 return self.builtins.gen_call_from_fi(
                     fi, None, gen_args, result_type=result_type)
         # print() maps to std::printf
-        if expr.func == "print":
+        if expr.func_name == "print":
             return self.builtins.gen_print(expr.args, expr.kwargs)
         # Check for imported function (builtins or from X import Y -> Y())
         # Builtins (len, pow, etc.) are registered in imported_names by the analyzer.
-        if expr.func in self.ctx.analyzer.imported_names:
-            is_shadowed = (expr.func in self.ctx.declared_vars or
-                           expr.func in self.ctx.global_names or
-                           self.ctx.analyzer.registry.get_function(expr.func) is not None or
-                           self.ctx.analyzer.registry.get_record(expr.func) is not None)
+        if expr.func_name in self.ctx.analyzer.imported_names:
+            is_shadowed = (expr.func_name in self.ctx.declared_vars or
+                           expr.func_name in self.ctx.global_names or
+                           self.ctx.analyzer.registry.get_function(expr.func_name) is not None or
+                           self.ctx.analyzer.registry.get_record(expr.func_name) is not None)
             if not is_shadowed:
-                module_name, func_name = self.ctx.analyzer.imported_names[expr.func]
+                module_name, func_name = self.ctx.analyzer.imported_names[expr.func_name]
                 # copy(x) from tpy - produce an explicit copy (rvalue) of x
                 if module_name == "tpy" and func_name == "copy":
                     return self._gen_copy_expr(expr.args[0])
@@ -1581,7 +1581,7 @@ class ExpressionGenerator:
                         expr.args, module_info.functions[func_name],
                         fi=expr.resolved_function_info, type_args=expr.inferred_type_args)
         # Nested def local: call the lambda variable directly
-        if expr.func in self.ctx.nested_def_locals:
+        if expr.func_name in self.ctx.nested_def_locals:
             fi = expr.resolved_function_info
             gen_args = []
             if fi:
@@ -1590,10 +1590,10 @@ class ExpressionGenerator:
             else:
                 for arg in expr.args:
                     gen_args.append(self.gen_expr(arg))
-            return f"{escape_cpp_name(expr.func)}({', '.join(gen_args)})"
+            return f"{escape_cpp_name(expr.func_name)}({', '.join(gen_args)})"
 
         # Check if this is a function call that needs argument conversion
-        func_infos = self.ctx.analyzer.registry.get_function(expr.func)
+        func_infos = self.ctx.analyzer.registry.get_function(expr.func_name)
         if func_infos:
             # For overload groups, use the sema-resolved stub (not [0] which
             # is arbitrary). For single functions, [0] is the only entry.
@@ -1660,15 +1660,15 @@ class ExpressionGenerator:
                     gen_args.append(self.gen_call_arg(arg, resolved_ptype))
 
             # Determine function name
-            func_cpp_name = escape_cpp_name(expr.func)
+            func_cpp_name = escape_cpp_name(expr.func_name)
             if func_info.is_native_import or func_info.is_extern_c:
                 # @native/@native_c/@extern_c: use the C/C++ symbol name directly.
                 # For @native_c, the calling module's header has a local re-declaration
                 # so no namespace qualification is needed (works for same-module,
                 # cross-module, and package re-export cases).
                 func_cpp_name = qualify_native_name(func_info.native_name or func_info.name)
-            elif expr.func in self.ctx.user_imported_functions:
-                source_module, original_name = self.ctx.user_imported_functions[expr.func]
+            elif expr.func_name in self.ctx.user_imported_functions:
+                source_module, original_name = self.ctx.user_imported_functions[expr.func_name]
                 func_cpp_name = qualified_cpp_name(source_module, original_name)
 
             # For generic TPy functions, emit explicit type args to avoid C++ deduction
@@ -1747,7 +1747,7 @@ class ExpressionGenerator:
             type_cpp = self.types.type_to_cpp(expr.call_type)
             return f"{type_cpp}({args})"
         # Check for user-defined record constructor (e.g., Point(1, 2))
-        if record_info := self.ctx.analyzer.registry.get_record(expr.func):
+        if record_info := self.ctx.analyzer.registry.get_record(expr.func_name):
             init_info = record_info.get_method("__init__")
             init_params = init_info.params if init_info else []
             gen_args = []
@@ -1778,17 +1778,17 @@ class ExpressionGenerator:
             args = ", ".join(gen_args)
             # Native records: use native C++ name
             if record_info.is_native:
-                cpp_name = record_info.native_name or expr.func
+                cpp_name = record_info.native_name or expr.func_name
                 # @native_c: aggregate init (POD struct)
                 if record_info.is_native_c:
                     return f"{cpp_name}{{{args}}}"
                 # @native: constructor call (C++ class)
                 return f"{cpp_name}({args})"
             # Qualify imported records (use original name for aliases)
-            if expr.func in self.ctx.user_imported_records:
-                source_module, original_name = self.ctx.user_imported_records[expr.func]
+            if expr.func_name in self.ctx.user_imported_records:
+                source_module, original_name = self.ctx.user_imported_records[expr.func_name]
                 return f"{qualified_cpp_name(source_module, original_name)}({args})"
-            return f"{expr.func}({args})"
+            return f"{expr.func_name}({args})"
         # Callable variable call (possibly narrowed from Optional[Callable])
         fi = expr.resolved_function_info
         if fi and (fi.cpp_template or fi.native_function):
@@ -1802,10 +1802,10 @@ class ExpressionGenerator:
             args = ", ".join(gen_args)
         else:
             args = ", ".join(self.gen_expr(a) for a in expr.args)
-        func_name = escape_cpp_name(expr.func)
+        func_name = escape_cpp_name(expr.func_name)
         # Check if the declared type is Optional[Callable] -- needs .value() unwrap
-        declared = (self.ctx.current_func_params.get(expr.func)
-                    or self.ctx.var_types.get(expr.func))
+        declared = (self.ctx.current_func_params.get(expr.func_name)
+                    or self.ctx.var_types.get(expr.func_name))
         if (declared is not None
                 and isinstance(declared, OptionalType)
                 and isinstance(declared.inner, CallableType)):
@@ -2461,7 +2461,7 @@ class ExpressionGenerator:
             buf.write(f"[&]() {{\n")
             buf.write(f"{ind1}std::array<{cpp_elem}, {size}> __result;\n")
 
-            is_range = isinstance(gen.iterable, TpyCall) and gen.iterable.func == "range"
+            is_range = isinstance(gen.iterable, TpyCall) and gen.iterable.func_name == "range"
             nargs = len(gen.iterable.args) if is_range else 0
             cpp_var = escape_cpp_name(gen.var)
 
@@ -2575,7 +2575,7 @@ class ExpressionGenerator:
 
             buf = io.StringIO()
 
-            is_range = isinstance(gen.iterable, TpyCall) and gen.iterable.func == "range"
+            is_range = isinstance(gen.iterable, TpyCall) and gen.iterable.func_name == "range"
 
             # Range: counter state fits in lambda init-captures
             if is_range:
@@ -2756,7 +2756,7 @@ class ExpressionGenerator:
         if sema_elem is None:
             sema_elem = self.ctx.analyzer.ctx.default_int_type  # fallback; sema should reject non-iterables
 
-        if isinstance(gen.iterable, TpyCall) and gen.iterable.func == "range":
+        if isinstance(gen.iterable, TpyCall) and gen.iterable.func_name == "range":
             self._gen_comp_range_loop(buf, gen, sema_elem, ind1, ind2, cpp_var,
                                       iterable_code, skip_reserve=skip_reserve)
         else:

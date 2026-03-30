@@ -110,7 +110,7 @@ def _process_field_defaults(cls: ClassInfo) -> None:
                     "default_factory must be a type name (e.g., list, dict, MyRecord)",
                     loc=fld.loc,
                 )
-            factory_call = TpyCall(func=spec.default_factory.name, args=[])
+            factory_call = TpyCall(func=TpyName(spec.default_factory.name), args=[])
             factory_call.loc = fld.loc
             fld.set_default(factory_call, is_factory=True)
 
@@ -295,7 +295,7 @@ def _build_asdict(ctx: CallMacroContext, expr: TpyExpr, type_info: TypeInfo) -> 
     if len(unique) > 1:
         value_type = UnionType(tuple(value_tpy_types))
         return TpyCall(
-            func="dict",
+            func=TpyName("dict"),
             args=[dict_literal],
             call_type=DictType(StrType(), value_type),
         )

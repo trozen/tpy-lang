@@ -574,9 +574,9 @@ class SemanticAnalyzer:
                 # Validate factory name matches field type
                 expr = fld.default_expr
                 if isinstance(expr, TpyCall) and isinstance(fld.type, NamedType):
-                    if expr.func != fld.type.name:
+                    if expr.func_name != fld.type.name:
                         raise SemanticError(
-                            f"default_factory '{expr.func}' does not match "
+                            f"default_factory '{expr.func_name}' does not match "
                             f"field type '{fld.type}'",
                             fld.loc or record.loc,
                         )

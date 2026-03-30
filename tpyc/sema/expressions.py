@@ -290,7 +290,7 @@ class ExpressionAnalyzer:
                 return typ
 
         # Check for generic type constructor (list(), Container[T](), etc.)
-        _generic_lookup = (builtin_modules.lookup_generic_type(expr.func)
+        _generic_lookup = (builtin_modules.lookup_generic_type(expr.func_name)
                            if isinstance(expr, TpyCall) else None)
         is_generic_constructor = (isinstance(expr, TpyCall) and
                                   not expr.args and
@@ -309,7 +309,7 @@ class ExpressionAnalyzer:
             # Check if type_hint matches the constructor's generic type
             hint_matches = False
             if is_generic_constructor:
-                lookup = builtin_modules.lookup_generic_type(expr.func)  # type: ignore
+                lookup = builtin_modules.lookup_generic_type(expr.func_name)  # type: ignore
                 hint_matches = (lookup is not None and
                                 inner_hint.qualified_name() == lookup.qualified_name)
             else:
@@ -2026,7 +2026,7 @@ class ExpressionAnalyzer:
             return None
 
         # range(N) or range(start, stop) with literal args
-        if isinstance(gen.iterable, TpyCall) and gen.iterable.func == "range":
+        if isinstance(gen.iterable, TpyCall) and gen.iterable.func_name == "range":
             return self._range_literal_size(gen.iterable)
 
         # Array[T, N] source -- size is known from the type

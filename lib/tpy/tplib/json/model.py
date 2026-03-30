@@ -105,7 +105,7 @@ def _method_call(obj: TpyExpr, method: str, args: list[TpyExpr] | None = None) -
 
 
 def _call(func: str, args: list[TpyExpr] | None = None) -> TpyExpr:
-    return TpyCall(func=func, args=args or [])
+    return TpyCall(func=TpyName(func), args=args or [])
 
 
 def _name(n: str) -> TpyName:
@@ -205,7 +205,7 @@ def _try_build_read_stmts(fld_type: TypeInfo, reader: TpyExpr, var_name: str) ->
             raw = _fresh_tmp("raw")
             return [
                 TpyVarDecl(name=raw, type=None, init=_method_call(reader, "read_float")),
-                TpyVarDecl(name=var_name, type=None, init=TpyCall(func="Float32", args=[_name(raw)])),
+                TpyVarDecl(name=var_name, type=None, init=TpyCall(func=TpyName("Float32"), args=[_name(raw)])),
             ]
         return [TpyVarDecl(name=var_name, type=None, init=_method_call(reader, "read_float"))]
     if _is_int_type(fld_type):
@@ -214,7 +214,7 @@ def _try_build_read_stmts(fld_type: TypeInfo, reader: TpyExpr, var_name: str) ->
             raw = _fresh_tmp("raw")
             return [
                 TpyVarDecl(name=raw, type=None, init=_method_call(reader, "read_int")),
-                TpyVarDecl(name=var_name, type=None, init=TpyCall(func=type_name, args=[_name(raw)])),
+                TpyVarDecl(name=var_name, type=None, init=TpyCall(func=TpyName(type_name), args=[_name(raw)])),
             ]
         return [TpyVarDecl(name=var_name, type=None, init=_method_call(reader, "read_int"))]
     if _is_bigint_type(fld_type):
@@ -438,7 +438,7 @@ def _build_from_reader(cls: ClassInfo, all_fields: list[FieldInfo]) -> TpyFuncti
 
     # return ClassName(field1, field2, ...)
     body.append(TpyReturn(
-        value=TpyCall(func=cls.name, args=[_name(f.name) for f in all_fields]),
+        value=TpyCall(func=TpyName(cls.name), args=[_name(f.name) for f in all_fields]),
     ))
 
     cls_type = NamedType(cls.name)
@@ -494,7 +494,7 @@ def _build_from_json(cls: ClassInfo) -> TpyFunction:
     body: list[TpyStmt] = [
         TpyVarDecl(
             name="__reader", type=NamedType("JsonReader"),
-            init=TpyCall(func="JsonReader", args=[_name("__s")]),
+            init=TpyCall(func=TpyName("JsonReader"), args=[_name("__s")]),
         ),
         TpyVarDecl(name=result_var, type=OptionalType(inner),
                    init=TpyNoneLiteral()),
@@ -543,7 +543,7 @@ def _build_try_from_json(cls: ClassInfo) -> TpyFunction:
     body: list[TpyStmt] = [
         TpyVarDecl(
             name="__reader", type=NamedType("JsonReader"),
-            init=TpyCall(func="JsonReader", args=[_name("__s")]),
+            init=TpyCall(func=TpyName("JsonReader"), args=[_name("__s")]),
         ),
         TpyReturn(
             value=_method_call(_name(cls.name), "_from_reader", [_name("__reader")]),
@@ -708,7 +708,7 @@ def _build_to_json(cls: ClassInfo) -> TpyFunction:
     body: list[TpyStmt] = [
         TpyVarDecl(
             name="__writer", type=writer_type,
-            init=TpyCall(func="JsonWriter", args=[]),
+            init=TpyCall(func=TpyName("JsonWriter"), args=[]),
         ),
         _expr_stmt(_method_call(_name("self"), "_to_writer", [_name("__writer")])),
         TpyReturn(value=_method_call(_name("__writer"), "finish")),

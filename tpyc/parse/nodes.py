@@ -184,7 +184,7 @@ class TpyCall(TpyExpr):
     - type_args stores the explicit type arguments (e.g., (Int32,))
     - inferred_type_args is set by sema for codegen (resolved from inference or explicit)
     """
-    func: str
+    func: 'TpyName'
     args: list[TpyExpr]
     call_type: Optional[TpyType] = None  # For generic instantiation like MyContainer[T, N]()
     type_args: tuple[TpyType, ...] = ()  # Explicit type args for generic function calls: func[T](args)
@@ -201,10 +201,14 @@ class TpyCall(TpyExpr):
     macro_expansion: 'TpyExpr | None' = None  # Set by sema: replacement expr from @call_macro
     dunder_call: 'TpyMethodCall | None' = None  # Set by sema: obj(args) -> obj.__call__(args)
 
+    @property
+    def func_name(self) -> str:
+        return self.func.name
+
     def children(self) -> list[TpyExpr]:
         if self.macro_expansion is not None:
             return [self.macro_expansion]
-        return list(self.args) + list(self.kwargs.values())
+        return [self.func] + list(self.args) + list(self.kwargs.values())
 
 
 @dataclass
@@ -1095,9 +1099,8 @@ def is_super_del_call(stmt: TpyStmt) -> bool:
 def collect_name_refs(expr: TpyExpr) -> set[str]:
     """Collect all name references in an expression tree.
 
-    Uses TpyExpr.children() for generic traversal. Also collects
-    TpyCall.func (a str, not a child TpyExpr) since callable variables
-    must be captured in lambda closures.
+    Uses TpyExpr.children() for generic traversal. TpyCall.func is a
+    TpyName child, so callable variable names are captured automatically.
     """
     names: set[str] = set()
     stack: list[TpyExpr] = [expr]
@@ -1105,9 +1108,6 @@ def collect_name_refs(expr: TpyExpr) -> set[str]:
         node = stack.pop()
         if isinstance(node, TpyName):
             names.add(node.name)
-        elif isinstance(node, TpyCall):
-            names.add(node.func)
-            stack.extend(node.children())
         else:
             stack.extend(node.children())
     return names

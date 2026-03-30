@@ -261,7 +261,7 @@ class GeneratorCodegen:
         self.ctx.indent_level = 2 + extra
 
         # Determine iteration strategy
-        is_range = isinstance(for_stmt.iterable, TpyCall) and for_stmt.iterable.func == "range"
+        is_range = isinstance(for_stmt.iterable, TpyCall) and for_stmt.iterable.func_name == "range"
         iter_elem = for_stmt.elem_type
         if iter_elem and isinstance(iter_elem, IntLiteralType):
             iter_elem = self.ctx.analyzer.ctx.default_int_type
@@ -475,7 +475,7 @@ class GeneratorCodegen:
         elem_cpp = self.types.type_to_cpp(elem_type) if elem_type else "int32_t"
 
         # Range counter optimization
-        if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func == "range":
+        if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func_name == "range":
             fields: list[tuple[str, str]] = [
                 (f"__for_i_{uid}", elem_cpp),
                 (f"__for_stop_{uid}", elem_cpp),

@@ -2374,7 +2374,7 @@ class StatementGenerator:
         cpp_var = escape_cpp_name(stmt.var)
 
         range_call = stmt.iterable
-        assert isinstance(range_call, TpyCall) and range_call.func == "range"
+        assert isinstance(range_call, TpyCall) and range_call.func_name == "range"
         gen_args = self.builtins.gen_range_args(range_call)
         nargs = len(gen_args)
 
@@ -3245,7 +3245,7 @@ class StatementGenerator:
             return -expr.operand.value
         # Int32(3), UInt8(10), etc. — constructor call with a single literal arg
         if (isinstance(expr, TpyCall) and len(expr.args) == 1
-                and expr.func in StatementGenerator._FIXED_INT_NAMES):
+                and expr.func_name in StatementGenerator._FIXED_INT_NAMES):
             inner = StatementGenerator._unwrap_coerce(expr.args[0])
             if isinstance(inner, TpyIntLiteral):
                 return inner.value
@@ -3260,7 +3260,7 @@ class StatementGenerator:
         Returns True if the optimization was applied, False if the caller
         should fall back to the generic while-loop codegen.
         """
-        assert isinstance(stmt.iterable, TpyCall) and stmt.iterable.func == "range"
+        assert isinstance(stmt.iterable, TpyCall) and stmt.iterable.func_name == "range"
         range_call = stmt.iterable
         nargs = len(range_call.args)
 
@@ -3528,7 +3528,7 @@ class StatementGenerator:
             return
 
         # Optimize range() calls to C-style counter loops
-        if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func == "range":
+        if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func_name == "range":
             elem_type = sema_elem
             if elem_type and self._gen_range_counter_loop(out, stmt, indent, elem_type):
                 return

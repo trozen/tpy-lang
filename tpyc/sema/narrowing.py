@@ -485,7 +485,7 @@ class NarrowingTracker:
 
     def _extract_len_of(self, expr: TpyExpr) -> str | None:
         """Extract container name from len(container) call."""
-        if (isinstance(expr, TpyCall) and expr.func == "len"
+        if (isinstance(expr, TpyCall) and expr.func_name == "len"
                 and len(expr.args) == 1 and isinstance(expr.args[0], TpyName)):
             return expr.args[0].name
         return None

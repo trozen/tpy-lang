@@ -1034,14 +1034,14 @@ class StatementAnalyzer:
         """
         from .value_range import ValueRange
         iterable = stmt.iterable
-        if not isinstance(iterable, TpyCall) or iterable.func != "range":
+        if not isinstance(iterable, TpyCall) or iterable.func_name != "range":
             return
 
         args = iterable.args
         if len(args) == 1:
             arg = args[0]
             # range(len(arr)) -- symbolic bound
-            if (isinstance(arg, TpyCall) and arg.func == "len"
+            if (isinstance(arg, TpyCall) and arg.func_name == "len"
                     and len(arg.args) == 1 and isinstance(arg.args[0], TpyName)):
                 self.ctx.value_ranges[stmt.var] = ValueRange.for_range_index(
                     stop_len_of=arg.args[0].name,
@@ -1189,7 +1189,7 @@ class StatementAnalyzer:
         name = stmt.exception_type
         if stmt.args or stmt.is_call_form:
             # raise func() or raise func(args) -- convert to call expression
-            call_expr = TpyCall(func=name, args=stmt.args, loc=stmt.loc)
+            call_expr = TpyCall(func=TpyName(name, loc=stmt.loc), args=stmt.args, loc=stmt.loc)
             stmt.raise_expr = call_expr
             stmt.exception_type = None
             stmt.args = []
@@ -2084,7 +2084,7 @@ class StatementAnalyzer:
 
         # Detect native global import: x: T = native_c_global("name") / native_global("name")
         if isinstance(stmt.init, TpyCall) and self.ctx.current_ns:
-            binding = self.ctx.current_ns.lookup(stmt.init.func)
+            binding = self.ctx.current_ns.lookup(stmt.init.func_name)
             if (binding and binding.kind == BindingKind.IMPORTED_NAME
                     and binding.import_source
                     and binding.import_source[0] == "tpy.extern"
@@ -2167,7 +2167,7 @@ class StatementAnalyzer:
             # Note: [] * N is collapsed to [] in the parser
             is_empty_literal = isinstance(stmt.init, TpyArrayLiteral) and not stmt.init.elements
             is_empty_dict_literal = isinstance(stmt.init, TpyDictLiteral) and not stmt.init.keys
-            _generic_lookup = (builtin_modules.lookup_generic_type(stmt.init.func)
+            _generic_lookup = (builtin_modules.lookup_generic_type(stmt.init.func_name)
                                if isinstance(stmt.init, TpyCall) else None)
             is_generic_constructor = (isinstance(stmt.init, TpyCall) and
                                       not stmt.init.args and
@@ -2189,7 +2189,7 @@ class StatementAnalyzer:
                 # Check if annotation matches the constructor's generic type
                 annotation_matches = False
                 if is_generic_constructor:
-                    lookup = builtin_modules.lookup_generic_type(stmt.init.func)
+                    lookup = builtin_modules.lookup_generic_type(stmt.init.func_name)
                     annotation_matches = (lookup is not None and
                                           stmt.type.qualified_name() == lookup.qualified_name)
                 else:
@@ -2231,7 +2231,7 @@ class StatementAnalyzer:
                     # Cache expr_type since we bypassed _analyze_expr
                     self.ctx.set_expr_type(stmt.init, init_type)
                 else:
-                    func_name = stmt.init.func if is_generic_constructor else "[]"
+                    func_name = stmt.init.func_name if is_generic_constructor else "[]"
                     raise self.ctx.error(
                         f"{func_name} requires matching type annotation, got {stmt.type}", stmt
                     )
