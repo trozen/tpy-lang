@@ -18,7 +18,7 @@ void main();
 
 // # Multiple except handlers with type matching
 // class MyError(Exception):
-struct MyError : Exception {
+struct MyError : ::tpy::Exception {
 
 };
 

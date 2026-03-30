@@ -1,0 +1,1 @@
+main.py:11: error: cannot raise expression of type 'Point'; it must inherit from Exception

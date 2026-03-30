@@ -17,7 +17,7 @@ std::expected<int32_t, NotFound> lookup(std::string_view key);
 void main();
 
 // class NotFound(Exception, ControlFlow):
-struct NotFound : Exception {
+struct NotFound : ::tpy::Exception {
 
 };
 
@@ -28,7 +28,7 @@ inline std::ostream& operator<<(std::ostream& os, const NotFound& obj) {
 }
 
 // class BadKey(Exception):
-struct BadKey : Exception {
+struct BadKey : ::tpy::Exception {
     // key: str
     std::string key;
 

@@ -18,7 +18,7 @@ std::expected<int32_t, NotFound> lookup(const std::vector<int32_t>& items, int32
 void main();
 
 // class ParseError(Exception, ControlFlow):
-struct ParseError : Exception {
+struct ParseError : ::tpy::Exception {
 
 };
 
@@ -29,7 +29,7 @@ inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {
 }
 
 // class NotFound(Exception, ControlFlow):
-struct NotFound : Exception {
+struct NotFound : ::tpy::Exception {
 
 };
 

@@ -9,9 +9,15 @@
 namespace tpyapp::main {
 
 struct AppError;
+struct OtherError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+AppError make_error(int32_t code);
+void test_raise_variable();
+void test_raise_reassigned();
+void test_raise_different_types();
+void test_raise_function_result();
 void main();
 
 // class AppError(Exception):
@@ -27,6 +33,23 @@ struct AppError : ::tpy::Exception {
 inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
     os << "AppError("
        << "code=" << obj.code
+       << ")";
+    return os;
+}
+
+// class OtherError(Exception):
+struct OtherError : ::tpy::Exception {
+    // tag: str
+    std::string tag;
+
+    // def __init__(self, tag: str) -> None:
+    OtherError() = default;
+    explicit OtherError(std::string_view tag) : tag(tag) {}
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OtherError& obj) {
+    os << "OtherError("
+       << "tag=" << "'" << obj.tag << "'"
        << ")";
     return os;
 }

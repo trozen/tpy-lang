@@ -4629,7 +4629,8 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - Built-in exceptions (`StopIteration`, `Exception`, `BaseException`) emit as `::tpy::X` in C++ to avoid clashes with user-defined classes of the same name
   - See `docs/ERROR_RETURN_DESIGN.md` and `docs/EXCEPTION_DESIGN.md` for full design
 - **Working**: General C++ exceptions (`throw`/`catch`) for non-ControlFlow exception types
-  - `raise E` or `raise E(args)` in non-`@error_return` functions compiles to C++ `throw`
+  - `raise E`, `raise E(args)`, or `raise <expr>` in non-`@error_return` functions compiles to C++ `throw`
+  - `raise <expr>`: raise pre-constructed exception variables (`e = MyError(42); raise e`) or function/method results
   - `try`/`except E`/`else`/`finally` with C++ `try`/`catch` for throw-tier exceptions
   - Multiple `except` handlers with type matching (first match wins)
   - Bare `except:` catches any exception (maps to `catch(...)`)

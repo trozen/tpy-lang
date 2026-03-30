@@ -22,7 +22,6 @@
 | `except ControlFlow as e` | Bind catch-all value -- needs type-erased wrapper or variant; distant future |
 | `@noalloc` interaction | `@noalloc` functions can use `@error_return` (zero-cost) but cannot throw C++ exceptions |
 | Custom base exception classes | User-defined exception hierarchies with `except BaseClass` catching subclasses |
-| `raise <expr>` | `e = MyError(1, "msg"); raise e` -- raise a pre-constructed exception variable |
 | `raise` inside `finally` | Currently rejected. Needs catch-all + goto codegen strategy instead of FinallyGuard RAII (destructors can't throw during unwinding). `return` inside try would need goto transformation. |
 | Mixed-tier `try`/`except` | Currently ControlFlow and non-ControlFlow handlers cannot be in the same `try` block. Wrap goto dispatch inside C++ `try`: return-tier gotos inside `try {}`, throw-tier in `catch` handlers. Would eliminate the nested-try workaround for functions that can both return errors and throw. |
 
@@ -236,6 +235,17 @@ int32_t parse_int(std::string_view s) {
     return static_cast<int32_t>(std::stoi(std::string(s)));
 }
 ```
+
+`raise <expr>` raises a pre-constructed exception variable or function result:
+
+```python
+e = ValueError("bad input")
+raise e                    # raise variable
+raise make_error(42)       # raise function result
+raise factory.create()     # raise method result
+```
+
+This compiles to `throw <expr>;` in C++. Only throw-tier (non-ControlFlow) exceptions are supported -- return-tier exceptions must use the direct `raise E(args)` form.
 
 ### `try`/`except`/`else`/`finally`
 

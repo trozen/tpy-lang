@@ -1882,7 +1882,7 @@ class StatementGenerator:
     def _gen_raise(self, stmt: TpyRaise, indent: str) -> str:
         """Generate a raise statement (return-tier, throw-tier, or bare re-raise)."""
         # Bare raise (re-raise)
-        if stmt.exception_type is None:
+        if stmt.exception_type is None and stmt.raise_expr is None:
             if self.ctx.in_except_tier == "return":
                 assert self.ctx.try_except_err_opt is not None
                 return (f"{indent}return ::tpy::make_unexpected("
@@ -1890,6 +1890,11 @@ class StatementGenerator:
             else:
                 # Throw-tier re-raise
                 return f"{indent}throw;\n"
+
+        # Expression raise (throw-tier only)
+        if stmt.raise_expr is not None:
+            expr = self.expressions.gen_expr_deref(stmt.raise_expr)
+            return f"{indent}throw {expr};\n"
 
         cpp_type = error_return_to_cpp(stmt.exception_type, self.ctx.module_name, self.ctx.analyzer.registry)
         is_cf = is_control_flow_exception(stmt.exception_type)

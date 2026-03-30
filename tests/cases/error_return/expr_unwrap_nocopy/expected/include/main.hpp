@@ -18,7 +18,7 @@ std::expected<::tpy::BigInt, E> get_value(const ::tpy::BigInt& v);
 void main();
 
 // class E(Exception, ControlFlow):
-struct E : Exception {
+struct E : ::tpy::Exception {
 
 };
 

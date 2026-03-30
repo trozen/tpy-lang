@@ -3501,13 +3501,24 @@ class TypeRegistry:
         return self._qname_index.get(qname)
 
     def get_native_builtin_records(self) -> list[RecordInfo]:
-        """Return native @builtin_type records without a type_factory.
+        """Return native records that need C++ name registration.
 
         Used by codegen to register C++ name mappings for types that don't
-        have dedicated type classes (e.g. TextIO -> tpy::TextFile).
+        have dedicated type classes (e.g. TextIO -> tpy::TextFile,
+        ValueError -> tpy::ValueError).
         """
-        return [r for r in self._qname_index.values()
-                if r.is_native and r.native_name and not r.type_factory]
+        seen: set[str] = set()
+        result: list[RecordInfo] = []
+        for r in self._qname_index.values():
+            if r.is_native and r.native_name and not r.type_factory:
+                result.append(r)
+                seen.add(r.name)
+        for mod in self.modules.values():
+            for r in mod.records.values():
+                if r.name not in seen and r.is_native and r.native_name and not r.type_factory:
+                    result.append(r)
+                    seen.add(r.name)
+        return result
 
     def is_subclass_of(self, child: 'TpyType', parent: 'TpyType') -> bool:
         """Check if child is a subclass of parent (walking the inheritance chain).

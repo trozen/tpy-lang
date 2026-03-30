@@ -18,7 +18,7 @@ std::expected<int32_t, ParseError> parse_two_digits(std::string_view a, std::str
 void main();
 
 // class ParseError(Exception, ControlFlow):
-struct ParseError : Exception {
+struct ParseError : ::tpy::Exception {
 
 };
 

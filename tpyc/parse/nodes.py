@@ -658,9 +658,11 @@ class TpyNonlocal(TpyStmt):
 
 @dataclass
 class TpyRaise(TpyStmt):
-    """raise E, raise E(args), or bare raise (re-raise in except block)."""
-    exception_type: str | None = None  # None for bare raise (re-raise)
+    """raise E, raise E(args), raise <expr>, or bare raise (re-raise in except block)."""
+    exception_type: str | None = None  # type-constructor form (set by parser, qualified by sema)
     args: list[TpyExpr] = field(default_factory=list)  # constructor arguments
+    raise_expr: TpyExpr | None = None  # expression form: raise <expr> (throw-tier only)
+    is_call_form: bool = False  # raise Name() vs raise Name (set by parser)
 
 
 @dataclass

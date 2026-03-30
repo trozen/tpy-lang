@@ -18,7 +18,7 @@ std::expected<::tpy::val_or_ref<Point>, E> modify(Point& p);
 void main();
 
 // class E(Exception, ControlFlow):
-struct E : Exception {
+struct E : ::tpy::Exception {
 
 };
 

@@ -16,7 +16,7 @@ std::expected<int32_t, StopIteration> first_negative(const std::vector<int32_t>&
 void main();
 
 // class StopIteration(Exception, ControlFlow):
-struct StopIteration : Exception {
+struct StopIteration : ::tpy::Exception {
 
 };
 

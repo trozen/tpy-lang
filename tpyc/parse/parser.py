@@ -2584,8 +2584,9 @@ class Parser:
             if exc.keywords:
                 raise ParseError(f"'raise {name}' does not accept keyword arguments", node)
             args = [self._parse_expr(a) for a in exc.args]
-            return TpyRaise(exception_type=name, args=args, loc=loc)
-        raise ParseError("'raise' requires a simple name (e.g. 'raise MyError')", node)
+            return TpyRaise(exception_type=name, args=args, is_call_form=True, loc=loc)
+        # raise <expr> -- general expression (e.g. raise obj.make_err(), raise errors[i])
+        return TpyRaise(raise_expr=self._parse_expr(exc), loc=loc)
 
     def _parse_try(self, node: ast.Try, loc: SourceLocation | None) -> TpyStmt:
         """Parse a try/except/else/finally statement."""

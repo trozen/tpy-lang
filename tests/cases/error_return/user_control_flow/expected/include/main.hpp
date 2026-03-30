@@ -16,7 +16,7 @@ std::expected<int32_t, ParseError> parse_digit(std::string_view s);
 void main();
 
 // class ParseError(Exception, ControlFlow):
-struct ParseError : Exception {
+struct ParseError : ::tpy::Exception {
 
 };
 

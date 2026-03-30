@@ -1076,7 +1076,7 @@ class StatementAnalyzer:
                 "'raise' inside 'finally' is not yet supported",
                 stmt)
         # Bare raise (re-raise)
-        if stmt.exception_type is None:
+        if stmt.exception_type is None and stmt.raise_expr is None:
             if self.ctx.in_except_tier is None:
                 raise self.ctx.error(
                     "bare 'raise' is only valid inside an 'except' block", stmt)
@@ -1088,6 +1088,11 @@ class StatementAnalyzer:
             self.init.mark_terminated()
             return
 
+        # Expression raise (general expression, e.g. raise <expr>)
+        if stmt.raise_expr is not None:
+            self._analyze_raise_expr(stmt)
+            return
+
         func = self.ctx.current_function
         if not isinstance(func, TpyFunction):
             raise self.ctx.error(
@@ -1096,8 +1101,9 @@ class StatementAnalyzer:
         bare_exc = stmt.exception_type.rsplit(".", 1)[-1] if "." in stmt.exception_type else stmt.exception_type
         record = self.ctx.registry.find_record(bare_exc)
         if not record:
-            raise self.ctx.error(
-                f"Unknown exception type '{stmt.exception_type}'", stmt)
+            # Not a type -- check if it's a variable of exception type
+            self._analyze_raise_name_as_expr(stmt)
+            return
 
         qualified_exc = qualify_exception_name(
             stmt.exception_type, self.ctx.registry)
@@ -1152,6 +1158,58 @@ class StatementAnalyzer:
         # Propagate qualified name to AST
         stmt.exception_type = qualified_exc
         self.init.mark_terminated()
+
+    def _analyze_raise_expr(self, stmt: TpyRaise) -> None:
+        """Analyze 'raise <expr>' where expr is a general expression."""
+        func = self.ctx.current_function
+        if not isinstance(func, TpyFunction):
+            raise self.ctx.error(
+                "'raise' can only be used inside a function", stmt)
+        expr_type = self.expr.analyze_expr(stmt.raise_expr)
+        type_name = self._raise_expr_type_name(expr_type, stmt)
+        if is_control_flow_exception(
+                qualify_exception_name(type_name, self.ctx.registry)):
+            raise self.ctx.error(
+                f"'raise <expr>' cannot be used with ControlFlow type "
+                f"'{type_name}'; use direct 'raise {type_name}' inside "
+                f"an @error_return function instead",
+                stmt)
+        if not is_exception_type(type_name, self.ctx.registry):
+            raise self.ctx.error(
+                f"cannot raise expression of type '{type_name}'; "
+                f"it must inherit from Exception",
+                stmt)
+        self.init.mark_terminated()
+
+    def _analyze_raise_name_as_expr(self, stmt: TpyRaise) -> None:
+        """Handle 'raise Name' or 'raise Name(args)' where Name is not a type.
+
+        Converts to expression raise if Name is a variable/call of exception type.
+        """
+        name = stmt.exception_type
+        if stmt.args or stmt.is_call_form:
+            # raise func() or raise func(args) -- convert to call expression
+            call_expr = TpyCall(func=name, args=stmt.args, loc=stmt.loc)
+            stmt.raise_expr = call_expr
+            stmt.exception_type = None
+            stmt.args = []
+            self._analyze_raise_expr(stmt)
+            return
+        # raise name -- convert to variable reference
+        name_expr = TpyName(name=name, loc=stmt.loc)
+        stmt.raise_expr = name_expr
+        stmt.exception_type = None
+        self._analyze_raise_expr(stmt)
+
+    def _raise_expr_type_name(self, expr_type: TpyType, stmt: TpyRaise) -> str:
+        """Extract the type name from a raise expression's type for validation."""
+        t = unwrap_qualifiers(expr_type)
+        if isinstance(t, NamedType) and not t.is_protocol:
+            return t.name
+        raise self.ctx.error(
+            f"cannot raise expression of type '{expr_type}'; "
+            f"expected an exception type",
+            stmt)
 
     def _classify_try_tier(self, stmt: TpyTry) -> str:
         """Classify a try statement as 'return', 'throw', or 'finally_only'."""

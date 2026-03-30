@@ -8,8 +8,8 @@
 
 namespace tpyapp::main {
 
-extern UninitArrayStorage<int32_t, 2>* a;
-extern UninitHeapStorage<int32_t>* h;
+extern ::tpy::UninitArrayStorage<int32_t, 2>* a;
+extern ::tpy::UninitHeapStorage<int32_t>* h;
 inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();

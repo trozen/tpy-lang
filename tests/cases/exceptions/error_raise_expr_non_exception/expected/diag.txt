@@ -1,0 +1,1 @@
+main.py:4: error: cannot raise expression of type 'Int32'; expected an exception type

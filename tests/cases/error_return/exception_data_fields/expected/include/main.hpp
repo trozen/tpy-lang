@@ -16,7 +16,7 @@ std::expected<int32_t, ParseError> parse(std::string_view s);
 void main();
 
 // class ParseError(Exception, ControlFlow):
-struct ParseError : Exception {
+struct ParseError : ::tpy::Exception {
     // line: Int32
     int32_t line;
     // column: Int32

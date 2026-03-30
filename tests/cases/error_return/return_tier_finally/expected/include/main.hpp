@@ -16,7 +16,7 @@ std::expected<int32_t, NotFound> lookup(std::string_view key);
 void main();
 
 // class NotFound(Exception, ControlFlow):
-struct NotFound : Exception {
+struct NotFound : ::tpy::Exception {
 
 };
 

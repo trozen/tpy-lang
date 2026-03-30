@@ -16,7 +16,7 @@ void validate(int32_t x);
 void main();
 
 // class AppError(Exception):
-struct AppError : Exception {
+struct AppError : ::tpy::Exception {
     // code: Int32
     int32_t code;
     // detail: str

@@ -16,7 +16,7 @@ std::expected<int32_t, NotFound> find(const std::vector<int32_t>& items, int32_t
 void main();
 
 // class NotFound(Exception, ControlFlow):
-struct NotFound : Exception {
+struct NotFound : ::tpy::Exception {
 
 };
 

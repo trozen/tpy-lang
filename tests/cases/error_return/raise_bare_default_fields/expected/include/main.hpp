@@ -16,7 +16,7 @@ std::expected<int32_t, MyError> fail();
 void main();
 
 // class MyError(Exception, ControlFlow):
-struct MyError : Exception {
+struct MyError : ::tpy::Exception {
     // code: Int32
     int32_t code;
 

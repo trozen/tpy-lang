@@ -24,7 +24,7 @@ std::expected<Point, E> modify(const ::tpy::BigInt& x, const ::tpy::BigInt& y);
 void main();
 
 // class E(Exception, ControlFlow):
-struct E : Exception {
+struct E : ::tpy::Exception {
 
 };
 

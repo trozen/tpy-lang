@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "errors_impl";
 std::expected<::tpy::BigInt, ParseError> parse_int(std::string_view s);
 
 // class ParseError(Exception, ControlFlow):
-struct ParseError : Exception {
+struct ParseError : ::tpy::Exception {
 
 };
 
