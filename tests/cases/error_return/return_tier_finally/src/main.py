@@ -1,4 +1,4 @@
-# Return-tier try/except with finally block (goto-based + FinallyGuard)
+# Return-tier try/except with finally block (goto-based + catch-all)
 from tpy import Int32, error_return, ReturnException
 
 class NotFound(Exception, ReturnException):

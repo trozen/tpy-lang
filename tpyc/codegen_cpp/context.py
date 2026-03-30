@@ -389,6 +389,23 @@ class LocalScopeSnap:
 
 
 @dataclass
+class FinallyContext:
+    """Tracks an active try/finally block for goto-based finally codegen.
+
+    Non-void return uses the shared __retval variable + goto finally_label.
+    Void return, break, and continue use dedicated labels with their own
+    finally body copies (needs_*_copy set during try body codegen).
+    """
+    finally_label: str                    # normal-path label (__finally_N)
+    return_label: str = ""                # void-return path (__finally_return_N)
+    break_label: str = ""                 # break path (__finally_break_N)
+    continue_label: str = ""              # continue path (__finally_continue_N)
+    needs_return_copy: bool = False       # set when void return generated in try body
+    needs_break_copy: bool = False        # set when break generated in try body
+    needs_continue_copy: bool = False     # set when continue generated in try body
+
+
+@dataclass
 class CodeGenContext:
     """Shared state for C++ code generation."""
 
@@ -485,6 +502,16 @@ class CodeGenContext:
     try_except_err_opt: str | None = None
     in_except_tier: Literal["return", "throw"] | None = None
 
+    # --- finally (catch-all + goto pattern) ---
+    # Stack of active try/finally blocks for goto-based control flow transformation.
+    # When non-empty, return/break/continue must goto the innermost finally label
+    # instead of emitting direct C++ return/break/continue.
+    finally_stack: list[FinallyContext] = field(default_factory=list)
+    # Shared return value variable for the outermost try/finally level.
+    # Set once when the first finally context is pushed in a function.
+    finally_retval_var: str | None = None
+    finally_retval_declared: bool = False
+
     # --- with statement ---
     with_counter: int = 0
     # Variables pre-declared by _emit_branch_decls for for-loop hoisting
@@ -577,6 +604,9 @@ class CodeGenContext:
         self.unpack_counter = 0
         self.loop_else_labels = []
         self.loop_hoisted_vars = set()
+        self.finally_stack = []
+        self.finally_retval_var = None
+        self.finally_retval_declared = False
 
     def indent(self) -> str:
         """Get current indentation string."""

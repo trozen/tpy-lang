@@ -18,42 +18,57 @@ void main() {
     // # Success path: finally runs after try body
     // try:
     {
-        auto __finally_1 = ::tpy::FinallyGuard([&]() {
+        try {
+            try {
+                // fail(False)
+                fail(false);
+            } catch (const ::tpy::ValueError&) {
+                // print("caught")
+                std::cout << "caught" << "\n";
+            }
+        } catch (...) {
             // print("finally 1")
             std::cout << "finally 1" << "\n";
-        });
-        try {
-            // fail(False)
-            fail(false);
-        } catch (const ::tpy::ValueError&) {
-            // print("caught")
-            std::cout << "caught" << "\n";
+            throw;
         }
+        __finally_1:;
+        // print("finally 1")
+        std::cout << "finally 1" << "\n";
     }
     // # Error path: finally runs after except body
     // try:
     {
-        auto __finally_2 = ::tpy::FinallyGuard([&]() {
+        try {
+            try {
+                // fail(True)
+                fail(true);
+            } catch (const ::tpy::ValueError&) {
+                // print("caught")
+                std::cout << "caught" << "\n";
+            }
+        } catch (...) {
             // print("finally 2")
             std::cout << "finally 2" << "\n";
-        });
-        try {
-            // fail(True)
-            fail(true);
-        } catch (const ::tpy::ValueError&) {
-            // print("caught")
-            std::cout << "caught" << "\n";
+            throw;
         }
+        __finally_2:;
+        // print("finally 2")
+        std::cout << "finally 2" << "\n";
     }
     // # try/finally only (no except)
     // try:
     {
-        auto __finally_3 = ::tpy::FinallyGuard([&]() {
+        try {
+            // print("try body")
+            std::cout << "try body" << "\n";
+        } catch (...) {
             // print("finally 3")
             std::cout << "finally 3" << "\n";
-        });
-        // print("try body")
-        std::cout << "try body" << "\n";
+            throw;
+        }
+        __finally_3:;
+        // print("finally 3")
+        std::cout << "finally 3" << "\n";
     }
 }
 

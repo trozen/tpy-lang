@@ -30,19 +30,6 @@ struct Exception : BaseException { using BaseException::BaseException; };
 struct ValueError : Exception { using Exception::Exception; };
 struct StopIteration : Exception {};
 
-// RAII guard for finally blocks -- destructor runs the cleanup function
-// on all exit paths (normal, exception, goto).
-template<typename F>
-struct FinallyGuard {
-    F fn;
-    explicit FinallyGuard(F f) : fn(std::move(f)) {}
-    ~FinallyGuard() { fn(); }
-    FinallyGuard(const FinallyGuard&) = delete;
-    FinallyGuard(FinallyGuard&&) = delete;
-    FinallyGuard& operator=(const FinallyGuard&) = delete;
-    FinallyGuard& operator=(FinallyGuard&&) = delete;
-};
-
 // Portable replacement for std::unexpected(). Some libc++ versions (e.g. zig's
 // bundled clang) expose both the deprecated std::unexpected() function and the
 // C++23 std::unexpected<E> class template, making the name ambiguous. This wrapper

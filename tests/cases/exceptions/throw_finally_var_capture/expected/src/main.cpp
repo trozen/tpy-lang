@@ -28,34 +28,49 @@ void main() {
     // try:
     int32_t x;
     {
-        auto __finally_1 = ::tpy::FinallyGuard([&]() {
+        try {
+            // x = get_int()
+            x = get_int();
+        } catch (...) {
             // print(x)
             std::cout << x << "\n";
-        });
-        // x = get_int()
-        x = get_int();
+            throw;
+        }
+        __finally_1:;
+        // print(x)
+        std::cout << x << "\n";
     }
     // # str (std::string)
     // try:
     std::string s;
     {
-        auto __finally_2 = ::tpy::FinallyGuard([&]() {
+        try {
+            // s = get_str()
+            s = get_str();
+        } catch (...) {
             // print(s)
             std::cout << s << "\n";
-        });
-        // s = get_str()
-        s = get_str();
+            throw;
+        }
+        __finally_2:;
+        // print(s)
+        std::cout << s << "\n";
     }
     // # list (std::vector, non-value type)
     // try:
     std::optional<std::vector<int32_t>> items;
     {
-        auto __finally_3 = ::tpy::FinallyGuard([&]() {
+        try {
+            // items = get_list()
+            items = get_list();
+        } catch (...) {
             // print(len(items))
             std::cout << ::tpy::__len__((*items)) << "\n";
-        });
-        // items = get_list()
-        items = get_list();
+            throw;
+        }
+        __finally_3:;
+        // print(len(items))
+        std::cout << ::tpy::__len__((*items)) << "\n";
     }
 }
 

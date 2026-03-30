@@ -32,7 +32,7 @@ from ..namespace import Namespace
 from ..sema.context import PENDING_CONTAINER_TYPES
 from ..sema.diagnostics import SemanticError
 
-from .context import INDENT, CodeGenError, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable
+from .context import INDENT, CodeGenError, FinallyContext, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable
 from .type_resolution import resolve_stmt_binding_type
 from ..prescan import match_is_none
 from .match import MatchGenerator
@@ -321,30 +321,30 @@ class StatementGenerator:
                     if not ret_type.uses_pointer_repr():
                         # Value-type Optional: return std::nullopt or plain value
                         if isinstance(ret_value, TpyNoneLiteral):
-                            return f"{indent}return std::nullopt;\n"
+                            return self._make_return(indent, "std::nullopt")
                         ret_expr = self.expressions.gen_expr_deref(ret_value, ret_type)
-                        return f"{indent}return {ret_expr};\n"
+                        return self._make_return(indent, ret_expr)
                     # Non-value Optional: return pointer (not dereferenced)
                     if isinstance(ret_value, TpyNoneLiteral):
-                        return f"{indent}return nullptr;\n"
+                        return self._make_return(indent, "nullptr")
                     ret_expr = self.expressions.gen_expr(ret_value, ret_type)
                     if self.ctx.is_indirect_name(ret_value):
                         # Already a pointer -- return as-is
-                        return f"{indent}return {ret_expr};\n"
+                        return self._make_return(indent, ret_expr)
                     if isinstance(ret_value, TpyIfExpr):
                         # Ternary already produces T* via _ptr_optional_branch
-                        return f"{indent}return {ret_expr};\n"
+                        return self._make_return(indent, ret_expr)
                     # Field access with non-value Optional produces std::optional<T>, convert to T*
                     if isinstance(ret_value, TpyFieldAccess):
                         val_type = self.ctx.get_expr_type(ret_value)
                         if isinstance(val_type, OptionalType) and val_type.uses_pointer_repr():
-                            return f"{indent}return ::tpy::optional_to_ptr({ret_expr});\n"
+                            return self._make_return(indent, f"::tpy::optional_to_ptr({ret_expr})")
                     # Take address of lvalue
-                    return f"{indent}return &({ret_expr});\n"
+                    return self._make_return(indent, f"&({ret_expr})")
                 # Pointer-variant union return: return variant<T*...>
                 if isinstance(ret_type, UnionType) and ret_type.uses_pointer_repr():
                     if isinstance(ret_value, TpyNoneLiteral):
-                        return f"{indent}return std::monostate{{}};\n"
+                        return self._make_return(indent, "std::monostate{}")
                     # Check if source is a ptr-variant AND not currently narrowed.
                     # Narrowed ptr-variant vars resolve to Dog& (via std::get), so
                     # they need &() to produce Dog* for the return variant.
@@ -352,17 +352,17 @@ class StatementGenerator:
                                    and ret_value.name in self.ctx.narrowed_vars)
                     if self._is_ptr_variant_source(ret_value) and not is_narrowed:
                         ret_expr = self.expressions.gen_expr(ret_value, ret_type)
-                        return f"{indent}return {ret_expr};\n"
+                        return self._make_return(indent, ret_expr)
                     # Narrowed variable or concrete lvalue: take address for implicit
                     # variant<T*...> construction
                     ret_expr = self.expressions.gen_expr(ret_value, ret_type)
-                    return f"{indent}return &({ret_expr});\n"
+                    return self._make_return(indent, f"&({ret_expr})")
                 # When returning an error_return call from a matching
                 # @error_return function, pass the std::expected through
                 # directly -- no unwrap+rewrap needed.
                 if self.ctx.current_error_return and self._get_error_return_fi(ret_value):
                     ret_expr = self._gen_error_return_call(ret_value)
-                    return f"{indent}return {ret_expr};\n"
+                    return self._make_return(indent, ret_expr)
                 ret_expr = self.expressions.gen_expr(
                     ret_value, ret_type)
                 # Dereference pointer-locals/pointer-globals on return (T* -> T&)
@@ -400,16 +400,24 @@ class StatementGenerator:
                         and isinstance(ret_value.obj, TpyName)
                         and ret_value.obj.name == "self"):
                     ret_expr = f"std::move({ret_expr})"
-                return f"{indent}return {ret_expr};\n"
+                return self._make_return(indent, ret_expr)
             if self.ctx.current_error_return:
-                return f"{indent}return {{}};\n"
-            return f"{indent}return;\n"
+                return self._make_return(indent, "{}")
+            return self._make_return(indent)
         elif isinstance(stmt, TpyBreak):
+            if self.ctx.finally_stack:
+                fctx = self.ctx.finally_stack[-1]
+                fctx.needs_break_copy = True
+                return f"{indent}goto {fctx.break_label};\n"
             if self.ctx.loop_else_labels and self.ctx.loop_else_labels[-1]:
                 label = self.ctx.loop_else_labels[-1]
                 return f"{indent}goto {label};\n"
             return f"{indent}break;\n"
         elif isinstance(stmt, TpyContinue):
+            if self.ctx.finally_stack:
+                fctx = self.ctx.finally_stack[-1]
+                fctx.needs_continue_copy = True
+                return f"{indent}goto {fctx.continue_label};\n"
             return f"{indent}continue;\n"
         elif isinstance(stmt, TpyPassStmt):
             return ""  # No-op - emit nothing
@@ -1902,8 +1910,9 @@ class StatementGenerator:
         if stmt.exception_type is None and stmt.raise_expr is None:
             if self.ctx.in_except_tier == "return":
                 assert self.ctx.try_except_err_opt is not None
-                return (f"{indent}return ::tpy::make_unexpected("
-                        f"std::move(*{self.ctx.try_except_err_opt}));\n")
+                expr = (f"::tpy::make_unexpected("
+                        f"std::move(*{self.ctx.try_except_err_opt}))")
+                return self._make_return(indent, expr)
             else:
                 # Throw-tier re-raise
                 return f"{indent}throw;\n"
@@ -1920,8 +1929,8 @@ class StatementGenerator:
             # Return-tier: return std::unexpected
             if stmt.args:
                 args = ", ".join(self.expressions.gen_expr(a) for a in stmt.args)
-                return f"{indent}return ::tpy::make_unexpected({cpp_type}({args}));\n"
-            return f"{indent}return ::tpy::make_unexpected({cpp_type}{{}});\n"
+                return self._make_return(indent, f"::tpy::make_unexpected({cpp_type}({args}))")
+            return self._make_return(indent, f"::tpy::make_unexpected({cpp_type}{{}})")
         else:
             # Throw-tier: C++ throw
             if stmt.args:
@@ -1939,45 +1948,217 @@ class StatementGenerator:
         else:
             self._gen_try_throw(out, stmt, indent)
 
-    def _gen_finally_guard(self, out: TextIO, stmt: TpyTry, indent: str) -> None:
-        """Emit FinallyGuard RAII if the statement has a finally body."""
-        if not stmt.finally_body:
-            return
+    def _push_finally_context(self, out: TextIO, indent: str) -> FinallyContext:
+        """Push a finally context and declare __retval if needed."""
         self.ctx.try_except_counter += 1
         n = self.ctx.try_except_counter
-        guard_var = f"__finally_{n}"
-        out.write(f"{indent}auto {guard_var} = ::tpy::FinallyGuard([&]() {{\n")
-        self.ctx.indent_level += 1
+        fctx = FinallyContext(
+            finally_label=f"__finally_{n}",
+            return_label=f"__finally_return_{n}",
+            break_label=f"__finally_break_{n}",
+            continue_label=f"__finally_continue_{n}",
+        )
+        # Declare shared retval at the outermost finally level
+        if not self.ctx.finally_retval_declared:
+            ret_type = self.ctx.current_return_type
+            is_void = not ret_type or isinstance(ret_type, (VoidType, NoneType))
+            needs_retval = not is_void or self.ctx.current_error_return
+            if needs_retval:
+                self.ctx.try_except_counter += 1
+                rn = self.ctx.try_except_counter
+                var = f"__retval_{rn}"
+                if ret_type and not is_void:
+                    cpp_ret = ret_type.to_cpp_return()
+                else:
+                    cpp_ret = "void"
+                if self.ctx.current_error_return:
+                    cpp_ret = f"std::expected<{cpp_ret}, {self.ctx.current_error_return}>"
+                out.write(f"{indent}std::optional<{cpp_ret}> {var};\n")
+                self.ctx.finally_retval_var = var
+                self.ctx.finally_retval_declared = True
+        self.ctx.finally_stack.append(fctx)
+        return fctx
+
+    def _gen_finally_catch_body(self, out: TextIO, stmt: TpyTry, indent: str) -> None:
+        """Emit the finally body inside a catch(...) handler, followed by throw;.
+
+        This is the exception-path copy. The finally body runs, then the
+        original exception is re-thrown with zero-cost throw; (no allocation).
+        The finally_stack is popped before emitting so that raise/return/break
+        inside the finally body don't redirect through this finally level.
+        """
+        self.ctx.finally_stack.pop()
         for s in stmt.finally_body:
             self.gen_stmt(out, s)
-        self.ctx.indent_level -= 1
-        out.write(f"{indent}}});\n")
+        # Skip throw; when the last top-level statement unconditionally exits
+        last = stmt.finally_body[-1] if stmt.finally_body else None
+        if not isinstance(last, (TpyRaise, TpyReturn)):
+            out.write(f"{indent}throw;\n")
+
+    def _gen_finally_body_and_epilogue(self, out: TextIO, stmt: TpyTry,
+                                       fctx: FinallyContext, indent: str) -> None:
+        """Emit the finally label, body, and action-specific copies (normal path).
+
+        The finally_stack must already be popped (done by _gen_finally_catch_body).
+        """
+        saved_retval = self.ctx.finally_retval_var
+        outer = self.ctx.finally_stack[-1] if self.ctx.finally_stack else None
+        has_action_copies = (fctx.needs_return_copy or fctx.needs_break_copy
+                             or fctx.needs_continue_copy)
+
+        # --- Normal-path finally ---
+        out.write(f"{indent}{fctx.finally_label}:;\n")
+        for s in stmt.finally_body:
+            self.gen_stmt(out, s)
+
+        # Return check for non-void (retval-based, no __pending needed)
+        if saved_retval:
+            if outer:
+                out.write(f"{indent}if ({saved_retval}) goto {outer.finally_label};\n")
+            else:
+                out.write(f"{indent}if ({saved_retval}) return (*{saved_retval});\n")
+
+        # Skip past action copies on normal path
+        if has_action_copies:
+            self.ctx.try_except_counter += 1
+            after_label = f"__after_finally_{self.ctx.try_except_counter}"
+            out.write(f"{indent}goto {after_label};\n")
+
+        # --- Action-specific copies (each has its own finally body + action) ---
+        if fctx.needs_return_copy:
+            out.write(f"{indent}{fctx.return_label}:;\n")
+            for s in stmt.finally_body:
+                self.gen_stmt(out, s)
+            if outer:
+                outer.needs_return_copy = True
+                out.write(f"{indent}goto {outer.return_label};\n")
+            else:
+                out.write(f"{indent}return;\n")
+
+        if fctx.needs_break_copy:
+            out.write(f"{indent}{fctx.break_label}:;\n")
+            for s in stmt.finally_body:
+                self.gen_stmt(out, s)
+            if outer:
+                outer.needs_break_copy = True
+                out.write(f"{indent}goto {outer.break_label};\n")
+            else:
+                # Break with loop-else needs goto instead of break
+                else_label = (self.ctx.loop_else_labels[-1]
+                              if self.ctx.loop_else_labels else None)
+                if else_label:
+                    out.write(f"{indent}goto {else_label};\n")
+                else:
+                    out.write(f"{indent}break;\n")
+
+        if fctx.needs_continue_copy:
+            out.write(f"{indent}{fctx.continue_label}:;\n")
+            for s in stmt.finally_body:
+                self.gen_stmt(out, s)
+            if outer:
+                outer.needs_continue_copy = True
+                out.write(f"{indent}goto {outer.continue_label};\n")
+            else:
+                out.write(f"{indent}continue;\n")
+
+        if has_action_copies:
+            out.write(f"{indent}{after_label}:;\n")
+
+        # Clean up retval tracking when outermost
+        if not self.ctx.finally_stack:
+            self.ctx.finally_retval_var = None
+            self.ctx.finally_retval_declared = False
+
+    def _make_return(self, indent: str, expr: str | None = None) -> str:
+        """Generate a return statement, or redirect through finally if inside try-with-finally.
+
+        Non-void: stores value in __retval and gotos finally_label (epilogue checks __retval).
+        Void: gotos a separate return_label with its own finally body copy.
+        """
+        if not self.ctx.finally_stack:
+            if expr is None:
+                return f"{indent}return;\n"
+            return f"{indent}return {expr};\n"
+        fctx = self.ctx.finally_stack[-1]
+        retval = self.ctx.finally_retval_var
+        if retval:
+            # Non-void (or error_return): store in __retval, goto normal finally
+            result = ""
+            if expr is not None:
+                # std::nullopt and {} are ambiguous when __retval wraps optional/expected;
+                # use emplace() to default-construct the inner type instead
+                if expr in ("std::nullopt", "{}"):
+                    result += f"{indent}{retval}.emplace();\n"
+                else:
+                    result += f"{indent}{retval} = {expr};\n"
+            else:
+                # Non-void function bare return (error_return success)
+                result += f"{indent}{retval}.emplace();\n"
+            result += f"{indent}goto {fctx.finally_label};\n"
+            return result
+        # Void function: use dedicated return label
+        fctx.needs_return_copy = True
+        return f"{indent}goto {fctx.return_label};\n"
 
     def _gen_try_finally_only(self, out: TextIO, stmt: TpyTry, indent: str) -> None:
-        """Generate try/finally with no except handlers."""
+        """Generate try/finally with no except handlers.
+
+        Pattern:
+            {
+                try {
+                    <try body>
+                } catch (...) {
+                    <finally body>    // exception-path copy
+                    throw;            // re-throw (zero-cost)
+                }
+                __finally_N:;
+                <finally body>        // normal-path copy
+                if (__retval) return *__retval;  // only for non-void
+            }
+        """
         out.write(f"{indent}{{\n")
         self.ctx.indent_level += 1
         inner = self.ctx.indent()
-        self._gen_finally_guard(out, stmt, inner)
+
+        fctx = self._push_finally_context(out, inner)
+
+        out.write(f"{inner}try {{\n")
+        self.ctx.indent_level += 1
         for s in stmt.try_body:
             self.gen_stmt(out, s)
+        self.ctx.indent_level -= 1
+        out.write(f"{inner}}} catch (...) {{\n")
+        self.ctx.indent_level += 1
+        catch_indent = self.ctx.indent()
+        self._gen_finally_catch_body(out, stmt, catch_indent)
+        self.ctx.indent_level -= 1
+        out.write(f"{inner}}}\n")
+
+        self._gen_finally_body_and_epilogue(out, stmt, fctx, inner)
+
         self.ctx.indent_level -= 1
         out.write(f"{indent}}}\n")
 
     def _gen_try_return(self, out: TextIO, stmt: TpyTry, indent: str) -> None:
-        """Generate return-tier try/except (goto-based error dispatch)."""
+        """Generate return-tier try/except (goto-based error dispatch).
+
+        When finally is present, wraps the goto-based code in try/catch(...)
+        to capture throw-tier exceptions that might occur in the try body.
+        """
         handler = stmt.handlers[0]
         self.ctx.try_except_counter += 1
         n = self.ctx.try_except_counter
         except_label = f"__except_{n}"
         after_label = f"__after_try_{n}"
+        has_finally = bool(stmt.finally_body)
 
         out.write(f"{indent}{{\n")
         self.ctx.indent_level += 1
         inner = self.ctx.indent()
 
-        # FinallyGuard before any gotos
-        self._gen_finally_guard(out, stmt, inner)
+        fctx: FinallyContext | None = None
+        if has_finally:
+            fctx = self._push_finally_context(out, inner)
 
         # Emit std::optional<E> for except binding
         err_opt_var: str | None = None
@@ -1991,6 +2172,12 @@ class StatementGenerator:
                 self.ctx.analyzer.registry)
             out.write(f"{inner}std::optional<{cpp_err_type}> {err_opt_var};\n")
             self.ctx.try_except_err_opt = err_opt_var
+
+        # Wrap in try/catch when finally present (catch throw-tier exceptions)
+        if has_finally:
+            out.write(f"{inner}try {{\n")
+            self.ctx.indent_level += 1
+            inner = self.ctx.indent()
 
         br_snap = self.ctx.snapshot_local_scope()
         prev_label = self.ctx.try_except_label
@@ -2033,17 +2220,41 @@ class StatementGenerator:
         self.ctx.try_except_err_opt = prev_err_opt
 
         out.write(f"{inner}{after_label}:;\n")
+
+        # Close try/catch wrapper for finally
+        if has_finally and fctx:
+            self.ctx.indent_level -= 1
+            inner = self.ctx.indent()
+            out.write(f"{inner}}} catch (...) {{\n")
+            self.ctx.indent_level += 1
+            catch_indent = self.ctx.indent()
+            self._gen_finally_catch_body(out, stmt, catch_indent)
+            self.ctx.indent_level -= 1
+            out.write(f"{inner}}}\n")
+            self._gen_finally_body_and_epilogue(out, stmt, fctx, inner)
+
         self.ctx.indent_level -= 1
         out.write(f"{indent}}}\n")
 
     def _gen_try_throw(self, out: TextIO, stmt: TpyTry, indent: str) -> None:
-        """Generate throw-tier try/except (C++ try/catch)."""
+        """Generate throw-tier try/except (C++ try/catch).
+
+        When finally is present, uses double try/catch: outer catches anything
+        escaping inner try/catch + handlers (including re-raises).
+        """
+        has_finally = bool(stmt.finally_body)
+
         out.write(f"{indent}{{\n")
         self.ctx.indent_level += 1
         inner = self.ctx.indent()
 
-        # FinallyGuard before try
-        self._gen_finally_guard(out, stmt, inner)
+        fctx: FinallyContext | None = None
+        if has_finally:
+            fctx = self._push_finally_context(out, inner)
+            # Outer try/catch to capture exceptions escaping inner handlers
+            out.write(f"{inner}try {{\n")
+            self.ctx.indent_level += 1
+            inner = self.ctx.indent()
 
         has_else = bool(stmt.else_body)
         if has_else:
@@ -2086,6 +2297,18 @@ class StatementGenerator:
             for s in stmt.else_body:
                 self.gen_stmt(out, s)
             out.write(f"{inner}{after_else_label}:;\n")
+
+        # Close outer try/catch for finally
+        if has_finally and fctx:
+            self.ctx.indent_level -= 1
+            inner = self.ctx.indent()
+            out.write(f"{inner}}} catch (...) {{\n")
+            self.ctx.indent_level += 1
+            catch_indent = self.ctx.indent()
+            self._gen_finally_catch_body(out, stmt, catch_indent)
+            self.ctx.indent_level -= 1
+            out.write(f"{inner}}}\n")
+            self._gen_finally_body_and_epilogue(out, stmt, fctx, inner)
 
         self.ctx.indent_level -= 1
         out.write(f"{indent}}}\n")

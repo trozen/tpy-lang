@@ -1,0 +1,3 @@
+caught replacement
+try body ok
+caught from finally

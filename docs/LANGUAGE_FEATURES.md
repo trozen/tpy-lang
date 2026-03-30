@@ -4637,7 +4637,10 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - Multiple `except` handlers with type matching (first match wins)
   - Bare `except:` catches any exception (maps to `catch(...)`)
   - `except E as e` binds the caught exception for field access
-  - `finally` block via RAII `FinallyGuard` (runs on all exit paths)
+  - `finally` block via catch-all + explicit execution (runs on all exit paths)
+  - `raise` inside `finally` (replaces pending exception, Python semantics)
+  - `return`/`break`/`continue` inside try-with-finally (goto transformation)
+  - Nested `try`/`finally` (pending actions propagate through all levels)
   - `try`/`finally` without `except` (pure cleanup)
   - Re-raise: bare `raise` inside `except` block re-throws (`throw;` in C++)
   - Throw-tier raises allowed inside `@error_return` functions (orthogonal to return-tier)

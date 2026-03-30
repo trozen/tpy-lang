@@ -1,0 +1,22 @@
+0
+cleanup 0
+1
+cleanup 1
+cleanup 2
+---
+0
+cleanup 0
+1
+cleanup 1
+cleanup 2
+3
+cleanup 3
+4
+cleanup 4
+---
+0
+cleanup 0
+1
+cleanup 1
+cleanup 2
+after loop

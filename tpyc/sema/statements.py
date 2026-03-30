@@ -1071,10 +1071,6 @@ class StatementAnalyzer:
 
     def _analyze_raise(self, stmt: TpyRaise) -> None:
         """Analyze a raise statement (return-tier, throw-tier, or bare re-raise)."""
-        if self.ctx.in_finally:
-            raise self.ctx.error(
-                "'raise' inside 'finally' is not yet supported",
-                stmt)
         # Bare raise (re-raise)
         if stmt.exception_type is None and stmt.raise_expr is None:
             if self.ctx.in_except_tier is None:
@@ -1274,7 +1270,7 @@ class StatementAnalyzer:
         for s in stmt.finally_body:
             self.analyze_stmt(s)
         self.ctx.in_finally = prev_in_finally
-        # Hoist try-body variables so FinallyGuard lambda can capture them.
+        # Hoist try-body variables so they're accessible in the finally body.
         # Mark as hoisted so non-value types use pointer indirection.
         branch_new = set(try_bindings.keys()) - scope_before
         predecl = branch_new - self.ctx.global_declarations
@@ -1499,7 +1495,7 @@ class StatementAnalyzer:
 
         # Throw-tier uses C++ try/catch with proper scoping -- no goto hoisting
         # needed in general. BUT try-body variables must be hoisted when:
-        # - finally body exists: FinallyGuard lambda must capture them
+        # - finally body exists: finally code runs after the try/catch block
         # - else body exists: else code is emitted after the try/catch block
         # - code continues after try/except and try-body vars are in scope
         #   (all handlers terminate, so post-try code uses try-body vars)

@@ -22,49 +22,59 @@ void main() {
     // try:
     int32_t v;
     {
-        auto __finally_2 = ::tpy::FinallyGuard([&]() {
+        try {
+            // v = lookup("x")
+            {
+                auto __try_tmp_3 = lookup("x");
+                if (!__try_tmp_3.has_value()) goto __except_1;
+                v = ::tpy::unwrap_ref(*__try_tmp_3);
+            }
+            // else:
+            // print(v)
+            std::cout << v << "\n";
+            goto __after_try_1;
+            // except NotFound:
+            __except_1:;
+            // print("not found")
+            std::cout << "not found" << "\n";
+            __after_try_1:;
+        } catch (...) {
             // print("finally 1")
             std::cout << "finally 1" << "\n";
-        });
-        // v = lookup("x")
-        {
-            auto __try_tmp_3 = lookup("x");
-            if (!__try_tmp_3.has_value()) goto __except_1;
-            v = ::tpy::unwrap_ref(*__try_tmp_3);
+            throw;
         }
-        // else:
-        // print(v)
-        std::cout << v << "\n";
-        goto __after_try_1;
-        // except NotFound:
-        __except_1:;
-        // print("not found")
-        std::cout << "not found" << "\n";
-        __after_try_1:;
+        __finally_2:;
+        // print("finally 1")
+        std::cout << "finally 1" << "\n";
     }
     // # Error path: finally runs after except
     // try:
     int32_t v2;
     {
-        auto __finally_5 = ::tpy::FinallyGuard([&]() {
+        try {
+            // v2 = lookup("y")
+            {
+                auto __try_tmp_6 = lookup("y");
+                if (!__try_tmp_6.has_value()) goto __except_4;
+                v2 = ::tpy::unwrap_ref(*__try_tmp_6);
+            }
+            // else:
+            // print(v2)
+            std::cout << v2 << "\n";
+            goto __after_try_4;
+            // except NotFound:
+            __except_4:;
+            // print("not found")
+            std::cout << "not found" << "\n";
+            __after_try_4:;
+        } catch (...) {
             // print("finally 2")
             std::cout << "finally 2" << "\n";
-        });
-        // v2 = lookup("y")
-        {
-            auto __try_tmp_6 = lookup("y");
-            if (!__try_tmp_6.has_value()) goto __except_4;
-            v2 = ::tpy::unwrap_ref(*__try_tmp_6);
+            throw;
         }
-        // else:
-        // print(v2)
-        std::cout << v2 << "\n";
-        goto __after_try_4;
-        // except NotFound:
-        __except_4:;
-        // print("not found")
-        std::cout << "not found" << "\n";
-        __after_try_4:;
+        __finally_5:;
+        // print("finally 2")
+        std::cout << "finally 2" << "\n";
     }
 }
 

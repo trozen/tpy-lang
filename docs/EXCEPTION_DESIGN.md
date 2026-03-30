@@ -22,7 +22,7 @@
 | `except ReturnException as e` | Bind catch-all value -- needs type-erased wrapper or variant; distant future |
 | `@noalloc` interaction | `@noalloc` functions can use `@error_return` (zero-cost) but cannot throw C++ exceptions |
 | Custom base exception classes | User-defined exception hierarchies with `except BaseClass` catching subclasses |
-| `raise` inside `finally` | Currently rejected. Needs catch-all + goto codegen strategy instead of FinallyGuard RAII (destructors can't throw during unwinding). `return` inside try would need goto transformation. |
+| `raise` inside `finally` | Done. Uses catch-all + goto codegen strategy (replaced FinallyGuard RAII). `return`/`break`/`continue` in try-with-finally use goto transformation. Nested try/finally supported. |
 | Mixed-tier `try`/`except` | Currently ReturnException and non-ReturnException handlers cannot be in the same `try` block. Wrap goto dispatch inside C++ `try`: return-tier gotos inside `try {}`, throw-tier in `catch` handlers. Would eliminate the nested-try workaround for functions that can both return errors and throw. |
 
 ---
@@ -268,18 +268,24 @@ def process(path: str) -> None:
 
 ```cpp
 void process(std::string_view path) {
-    // finally -> RAII guard ensures cleanup() runs on all exits
-    auto __finally_0 = tpy::FinallyGuard([&]() { cleanup(); });
     try {
-        auto data = read_file(path);
-        auto result = parse(data);
-        // else body (only on success)
-        save(result);
-    } catch (const tpy::FileNotFoundError&) {
-        tpy::print("file not found");
-    } catch (const tpy::ValueError& __e) {
-        tpy::print(__e.message);
+        try {
+            auto data = read_file(path);
+            auto result = parse(data);
+            // else body (only on success)
+            save(result);
+        } catch (const tpy::FileNotFoundError&) {
+            tpy::print("file not found");
+        } catch (const tpy::ValueError& __e) {
+            tpy::print(__e.message);
+        }
+    } catch (...) {
+        cleanup();  // finally (exception path)
+        throw;
     }
+    __finally:;
+    cleanup();      // finally (normal path)
+    // (return/break/continue checks if needed)
 }
 ```
 
@@ -299,18 +305,25 @@ void process(std::string_view path) {
 
 ### `finally` Codegen
 
-`finally` maps to an RAII guard constructed before the `try` block:
+`finally` uses a duplication pattern: the finally body is emitted twice -- once inside `catch(...)` (exception path, followed by `throw;` for zero-cost re-throw), once at a goto label (normal path). No `std::exception_ptr` allocation, no `__pending` variable:
 
 ```cpp
-// FinallyGuard in runtime
-template<typename F>
-struct FinallyGuard {
-    F fn;
-    ~FinallyGuard() { fn(); }
-};
+try {
+    // try body
+    // "return X" becomes: __retval = X; goto __finally;
+    // "break" becomes: goto __finally_break;  (separate label with own copy)
+} catch (...) {
+    cleanup();  // finally body (exception-path copy)
+    throw;      // re-throw original exception (zero-cost)
+}
+__finally:;
+cleanup();      // finally body (normal-path copy)
+if (__retval) return (*__retval);  // non-void only
 ```
 
-This ensures the finally body runs on normal exit, exception, and early return.
+For throw-tier try/except/finally, an outer try/catch wraps the inner try/catch + handlers to capture exceptions escaping handlers (including re-raises).
+
+Nested try/finally blocks propagate via shared `__retval` (for return) or chained goto labels (for break/continue). Inner `throw;` naturally feeds the outer catch.
 
 ### Base Class Catching
 
@@ -422,7 +435,7 @@ For throw exceptions, `e` is the caught reference. For return exceptions, `e` is
 
 ### `with` Statement
 
-`finally`-style cleanup already has RAII support via `with`/`WithGuard`. The `finally` block in `try`/`except`/`finally` uses the same RAII pattern.
+`finally`-style cleanup already has RAII support via `with`/`WithGuard`. The `finally` block in `try`/`except`/`finally` uses a catch-all + goto codegen pattern (not RAII).
 
 ### For-Loops
 

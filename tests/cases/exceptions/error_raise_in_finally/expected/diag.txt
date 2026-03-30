@@ -1,1 +1,0 @@
-main.py:6: error: 'raise' inside 'finally' is not yet supported

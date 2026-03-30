@@ -1,0 +1,12 @@
+finally 1
+42
+finally 2
+99
+finally 3
+yes
+finally 3
+loop
+finally 4
+7
+finally 4
+none
