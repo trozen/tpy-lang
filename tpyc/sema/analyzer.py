@@ -287,6 +287,7 @@ class SemanticAnalyzer:
                                     "zip", "isinstance", "iter",
                                     "all", "any", "sum", "sorted",
                                     "bin", "hex", "oct", "reversed",
+                                    "map", "filter",
                                     "open"]
         for name in python_builtin_functions:
             self.ctx.builtins_ns.bind_imported_name(name, "builtins", name)

@@ -369,6 +369,8 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `dynamic.hpp` | `Adapter<Base, T>` and `RefAdapter<Base, T>` for `@dynamic` protocols |
 | `iterable_ops.hpp` | Non-range overloads for container operations (`list_extend`, `str_join`, etc.) |
 | `generator.hpp` | `generator_wrapper` and `make_generator` for generator expressions |
+| `itertools.hpp` | `enumerate()`, `zip()`, `reversed()`, `map()`, `filter()` iterator builtins |
+| `next_iter.hpp` | `next_iter_mixin` CRTP adapter: adds `begin()`/`end()` to any `__next__()`-based iterator |
 | `span_iter.hpp` | `tpy::SpanIter<T>` lightweight iterator over contiguous span |
 | `variant_ref.hpp` | `to_ptr_variant`, `to_const_ptr_variant`, `to_value_variant` for non-value union two-layer repr |
 | `with_guard.hpp` | `tpy::WithGuard<T>` RAII guard for `with` statement context managers |

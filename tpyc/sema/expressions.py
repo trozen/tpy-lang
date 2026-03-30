@@ -20,7 +20,7 @@ from ..typesys import (
     PendingDictType, PendingSetType, DictLiteralInfo,
     resolve_int_literals, FnType, CallableType,
     INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, SLICE, BYTES, BYTESVIEW, UINT8,
-    is_protocol_type, container_to_str_template,
+    is_protocol_type, container_to_str_template, contains_type_param,
     PendingGenericInstanceType, SliceType,
 )
 from ..parse import (
@@ -2484,6 +2484,17 @@ class ExpressionAnalyzer:
             expr.captures_by_value = True
 
         # Check return type compatibility (allow implicit coercions like int literal -> Int32)
+        if isinstance(fn_type.return_type, TypeParamRef):
+            # Hint has unresolved type param (e.g. from generic builtin map[T,U]):
+            # use the body's inferred type and return a concrete FnType.
+            # Resolve IntLiteralType so overload resolution sees a concrete int type.
+            if isinstance(body_type, IntLiteralType):
+                body_type = self.ctx.default_int_for_literal(body_type)
+            expr.inferred_return_type = body_type
+            concrete_params = tuple(fn_type.param_types)
+            if isinstance(fn_type, CallableType):
+                return CallableType(concrete_params, body_type)
+            return FnType(concrete_params, body_type)
         if body_type != fn_type.return_type:
             try:
                 self.compat.check_type_compatible(
@@ -2506,8 +2517,8 @@ class ExpressionAnalyzer:
     ) -> FnType | CallableType | None:
         """Try to resolve a name as a function reference matching an Fn/Callable hint.
 
-        Returns the hint type if a matching function is found, None to fall through
-        to normal name analysis.
+        Returns a concrete Fn/Callable type if a matching function is found,
+        None to fall through to normal name analysis.
         """
         # Look up in namespace -- variables shadow functions
         if self.ctx.current_ns:
@@ -2524,7 +2535,7 @@ class ExpressionAnalyzer:
                         if (isinstance(hint, CallableType)
                                 and expr.name in self.ctx.nested_def_names):
                             self.ctx.nested_def_escapes.add(expr.name)
-                        return hint
+                        return self._concrete_fn_type(matched, expr, hint)
 
         # Check registry (covers imported functions not yet in namespace)
         func_infos = self.ctx.registry.get_function(expr.name)
@@ -2533,9 +2544,34 @@ class ExpressionAnalyzer:
             if matched is not None:
                 expr.is_function_ref = True
                 expr.function_ref_info = matched
-                return hint
+                return self._concrete_fn_type(matched, expr, hint)
 
         return None
+
+    def _concrete_fn_type(
+        self, fi: FunctionInfo, expr: TpyName, hint: FnType | CallableType,
+    ) -> FnType | CallableType:
+        """Build a concrete Fn/Callable type from a matched function's signature.
+
+        When the hint has TypeParamRef (e.g. from a generic builtin like map[T,U]),
+        returns the concrete type from the function's actual signature so that
+        overload resolution can infer the outer type params.
+        """
+        if not contains_type_param(hint):
+            return hint
+        # Build concrete param/return types from the matched function info.
+        # For generic functions with inferred type args, substitute them.
+        param_types = tuple(ptype for _, ptype in fi.params)
+        return_type = fi.return_type
+        if fi.is_generic() and expr.function_ref_type_args:
+            subst = dict(zip(fi.type_params, expr.function_ref_type_args))
+            param_types = tuple(
+                self.type_ops.substitute_type_params(p, subst) for p in param_types
+            )
+            return_type = self.type_ops.substitute_type_params(return_type, subst)
+        if isinstance(hint, CallableType):
+            return CallableType(param_types, return_type)
+        return FnType(param_types, return_type)
 
     def _match_function_to_hint(
         self, func_infos: list[FunctionInfo], hint: FnType | CallableType, expr: TpyName,
@@ -2564,6 +2600,8 @@ class ExpressionAnalyzer:
                 continue
             match = True
             for (_, ptype), htype in zip(fi.params, hint_params):
+                if isinstance(htype, TypeParamRef):
+                    continue  # unresolved type param in hint -- wildcard match
                 if ptype != htype:
                     try:
                         self.compat.check_type_compatible(htype, ptype, "param")
@@ -2573,9 +2611,9 @@ class ExpressionAnalyzer:
             if not match:
                 continue
             if fi.return_type != hint_return:
-                if isinstance(hint_return, VoidType):
-                    # Python semantics: any return type satisfies a void hint
-                    # (callers discard the return value)
+                if isinstance(hint_return, (VoidType, TypeParamRef)):
+                    # VoidType: Python semantics (callers discard the return value)
+                    # TypeParamRef: unresolved type param in hint -- wildcard match
                     pass
                 else:
                     try:

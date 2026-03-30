@@ -4,7 +4,7 @@ from tpy._builtins import (
     BaseException, Exception, ValueError, StopIteration,
     Range, range,
     len, repr, hash, chr, ord, abs, min, max, pow, divmod, next, iter, round, print, isinstance,
-    all, any, sum, sorted, bin, hex, oct, enumerate, reversed, zip,
+    all, any, sum, sorted, bin, hex, oct, enumerate, reversed, zip, map, filter,
     bytes, bytearray,
     bool, int, float, str,
     list, dict, dict_keys, dict_values, dict_items,
@@ -23,6 +23,7 @@ __all__ = [
     "len", "repr", "hash", "chr", "ord", "abs", "min", "max", "pow", "divmod", "next", "iter", "round",
     "print", "isinstance",
     "all", "any", "sum", "sorted", "bin", "hex", "oct", "enumerate", "reversed", "zip",
+    "map", "filter",
     "StopIteration",
     "TextIO", "open",
 ]

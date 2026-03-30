@@ -12,7 +12,7 @@ from ..typesys import (
     ArrayType, SpanType, ListType, PendingListType, GenExprType, CopyIterType, OwnIterType, SelfType, OptionalType, UnionType,
     TupleType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
-    NoneType, VoidType,
+    NoneType, VoidType, FnType, CallableType,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
     public_module_name,
 )
@@ -559,6 +559,18 @@ class TypeOperations:
             return self.match_type_with_inference(
                 param_type.inner, inner_arg, inferred
             )
+
+        # FnType/CallableType with TypeParamRef in param/return (e.g. Fn[[T], U])
+        if isinstance(param_type, (FnType, CallableType)):
+            if not isinstance(arg_type, (FnType, CallableType)):
+                return False
+            if len(param_type.param_types) != len(arg_type.param_types):
+                return False
+            for pp, ap in zip(param_type.param_types, arg_type.param_types):
+                if not self.match_type_with_inference(pp, ap, inferred):
+                    return False
+            return self.match_type_with_inference(
+                param_type.return_type, arg_type.return_type, inferred)
 
         # Own[T] wrapper -- unwrap and match T against arg (any type can be owned).
         # Also strip readonly: readonly[T] passed to Own[T] is an implicit copy.

@@ -29,6 +29,8 @@ This unifies the current ad-hoc mechanisms into one concept. Codegen becomes typ
 
 Can be done incrementally: start where `val_or_ref<T>` already exists (iterator `__next__`, enumerate/zip tuples), extend to error_return, then to params/returns in general.
 
+Motivating example: `map(identity, pts)` where `identity(p: Point) -> Point` returns `Point&` in C++. The `map_iter::__next__()` stores the result in `std::expected<Point, StopIteration>`, copying it. With `Ref[T]`, the return type would be `Ref[Point]` -> `val_or_ref<Point>` -> pointer preserved. Meanwhile `map(lambda p: Point(p.x+1, p.y), pts)` returns `Own[Point]` -> stored by value. The `Own` vs bare distinction already exists in sema but is lost at the C++ template level -- `Ref[T]` would carry it through.
+
 ## Bugs
 - Generic generators with multiple yield points (struct-based codegen path) are not yet supported -- the out-of-line `__next__()` in .cpp won't link for template structs. Currently guarded with a sema error. Fix: emit struct + `__next__()` body into the header when the function has type params.
 - Non-native functions in builtin modules can't be called from user code: codegen emits unqualified names (e.g. bare `enumerate(...)` instead of `tpystd::builtins::enumerate(...)`). The `imported_names` path considers any registered function as "shadowing" the import. Blocks defining pure TPy generator builtins. Workaround: use `@cpp_template`/`@native` with C++ implementation instead.
@@ -82,7 +84,8 @@ Can be done incrementally: start where `val_or_ref<T>` already exists (iterator 
 
 ## Builtins
 - `sorted(key=)`, `min(key=)`, `max(key=)`: accept an optional `key` parameter (`Fn` or `Callable`). `sorted(items, key=lambda x: x.score)` is extremely common. The lambda/Fn infrastructure is already there -- just needs builtin signatures and codegen for comparison-via-key.
-- `map()` / `filter()` as builtins: return lazy iterators. `map(fn, iterable)` -> `Iterator[U]`, `filter(pred, iterable)` -> `Iterator[T]`. Comprehensions are a workaround but these are still widely used, especially when passing existing named functions. Generator infrastructure exists -- these are thin wrappers.
+- `map()` / `filter()` follow-ups: multi-iterable `map(fn, a, b)`, `filter(None, iterable)` for falsy filtering.
+- `Callable` -> `Fn` implicit coercion: allow passing a `Callable[[T], U]` value where an `Fn[[T], U]` parameter is expected. In C++ this works trivially (`std::function` satisfies template `requires` clauses), but sema has no compatibility rule for this conversion. Adding it in `compatibility.py` would make all `Fn`-taking functions (including `map`/`filter`) automatically accept `Callable` args.
 - `open()` binary mode: needs string literal overload dispatch so `open(path, "rb")` returns `BinaryIO` while `open(path, "r")` returns `TextIO`. Requires compiler support for overload resolution based on literal argument values.
 - type(); (in future `T = type(x); z = T()`)
 - tpy.ctypes.CInt32

@@ -14,7 +14,7 @@ from ..typesys import (
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
     UNKNOWN_ELEMENT, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
-    UnionType, EnumType, VOID, BIGINT, BOOL, STR, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own,
+    UnionType, EnumType, VOID, BIGINT, BOOL, STR, INT32, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own,
     is_any_str_type, container_to_str_template, error_return_matches,
     is_protocol_union, protocol_union_protocols,
     StrViewType, STRVIEW, MutationCallEdge,
@@ -197,6 +197,13 @@ def _has_type_param_ref_in_params(func: "FunctionInfo") -> bool:
     if any(_has_type_param_ref(p.type) for p in func.params):
         return True
     return _has_type_param_ref(func.return_type)
+
+
+def _partial_substitute(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
+    """Substitute known type params, preserve unknown TypeParamRefs as-is."""
+    if isinstance(typ, TypeParamRef):
+        return subst.get(typ.name, typ)
+    return typ.map_inner_types(lambda t: _partial_substitute(t, subst))
 
 
 _NUMERIC_TYPES = (FixedIntType, BigIntType, FloatType, Float32Type, IntLiteralType)
@@ -1700,6 +1707,60 @@ class CallAnalyzer:
             )
             self.type_ops.validate_type(type_arg, allow_type_param_ref=in_generic, loc=expr.loc, allow_forward_ref=False)
 
+    def _infer_arg_types(self, expr: TpyCall, func: FunctionInfo) -> list[TpyType]:
+        """Analyze args for type param inference, with two-phase for Fn/Callable params.
+
+        When a generic function has Fn/Callable params (e.g. map[T,U](fn: Fn[[T],U], ...)),
+        function refs and lambdas can't be analyzed without concrete type hints. We:
+        1. Analyze non-Fn args first to get types for partial type param inference.
+        2. Substitute inferred params into the Fn type to build concrete hints.
+        3. Analyze the Fn args with those hints.
+        """
+        # Quick check: if no Fn/Callable params, analyze all args directly
+        fn_positions: set[int] = set()
+        for i, (_, ptype) in enumerate(func.params):
+            if isinstance(ptype, (FnType, CallableType)):
+                fn_positions.add(i)
+        if not fn_positions:
+            return [self.expr.analyze_expr(arg) for arg in expr.args]
+
+        # Phase 1: analyze non-Fn args
+        arg_types: list[TpyType | None] = [None] * len(expr.args)
+        for i, arg in enumerate(expr.args):
+            if i not in fn_positions:
+                arg_types[i] = self.expr.analyze_expr(arg)
+
+        # Phase 2: partial inference from known args, then resolve Fn args
+        partial_inferred: dict[str, TpyType] = {}
+        for (_, ptype), arg_type in zip(func.params, arg_types):
+            if arg_type is not None:
+                self.type_ops.match_type_with_inference(ptype, arg_type, partial_inferred)
+        # Resolve IntLiteralType to concrete int for the Fn hint
+        for k, v in partial_inferred.items():
+            if isinstance(v, IntLiteralType):
+                partial_inferred[k] = self.ctx.default_int_type or INT32
+
+        if partial_inferred:
+            for i in fn_positions:
+                if i >= len(func.params) or i >= len(expr.args):
+                    continue
+                ptype = func.params[i].type
+                concrete_hint = _partial_substitute(ptype, partial_inferred)
+                if isinstance(concrete_hint, (FnType, CallableType)):
+                    has_unresolved = any(
+                        _has_type_param_ref(p) for p in concrete_hint.param_types
+                    )
+                    if not has_unresolved:
+                        arg_types[i] = self.expr.analyze_expr_with_hint(
+                            expr.args[i], concrete_hint)
+
+        # Fallback: analyze any remaining unresolved args without hints
+        for i in range(len(arg_types)):
+            if arg_types[i] is None:
+                arg_types[i] = self.expr.analyze_expr(expr.args[i])
+
+        return arg_types  # type: ignore[return-value]
+
     def _analyze_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> TpyType:
         """Type-check a call to a builtin function using unified FunctionInfo overloads.
 
@@ -1707,13 +1768,22 @@ class CallAnalyzer:
         For generic overloads (with type_params), uses type inference.
         """
         self._reject_kwargs_for_builtin(expr, overloads[0].name)
-        arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
         protocol_checker = self.protocols.type_conforms_to_protocol
 
         # Build unified candidate pool: resolve generics to concrete candidates
         # so they compete with non-generic ones in the same scoring pool.
         non_generic = [o for o in overloads if not _has_type_param_ref_in_params(o)]
         generic = [o for o in overloads if _has_type_param_ref_in_params(o)]
+
+        # For generic overloads with Fn/Callable params, use two-phase arg analysis
+        # so function refs and lambdas can be resolved with concrete type hints.
+        fn_generic = next((o for o in generic
+                           if any(isinstance(p.type, (FnType, CallableType)) for p in o.params)),
+                          None)
+        if fn_generic is not None:
+            arg_types = self._infer_arg_types(expr, fn_generic)
+        else:
+            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
 
         # Validate explicit type args before generic inference
         if expr.type_args_parse_error:
@@ -1872,7 +1942,15 @@ class CallAnalyzer:
             # so they compete with non-generic ones in the same scoring pool.
             # This ensures IntLiteralType preference (default_int) works across
             # generic and non-generic overloads.
-            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+            # For generic overloads with Fn/Callable params, use two-phase analysis.
+            fn_generic = next((f for f in func_infos
+                               if f.is_generic()
+                               and any(isinstance(p.type, (FnType, CallableType)) for p in f.params)),
+                              None)
+            if fn_generic is not None:
+                arg_types = self._infer_arg_types(expr, fn_generic)
+            else:
+                arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
 
             # Build candidate pool: non-generic originals + resolved generics
             candidates = []
@@ -2066,7 +2144,7 @@ class CallAnalyzer:
                 type_subst = dict(zip(func.type_params, expr.type_args))
             else:
                 # Partial explicit -- infer remaining from args + context
-                arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+                arg_types = self._infer_arg_types(expr, func)
                 type_subst = self.type_ops.infer_type_params_for_function(
                     func, arg_types, self.protocols.type_conforms_to_protocol,
                     expected_return_type=self.ctx.expr_type_hint,
@@ -2085,7 +2163,7 @@ class CallAnalyzer:
             )
         else:
             # Infer from arguments
-            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+            arg_types = self._infer_arg_types(expr, func)
             type_subst = self.type_ops.infer_type_params_for_function(
                 func, arg_types, self.protocols.type_conforms_to_protocol,
                 expected_return_type=self.ctx.expr_type_hint,

@@ -1,7 +1,7 @@
 /**
  * TurboPython Runtime - Iterator Builtins
  *
- * enumerate(), zip(), and reversed() implementations.
+ * enumerate(), zip(), reversed(), map(), and filter() implementations.
  * Depends on: next_iter.hpp, dunder.hpp (for __iter__, __len__, __getitem__)
  */
 
@@ -384,6 +384,233 @@ template<typename T, typename Seq>
     requires (!std::is_lvalue_reference_v<Seq&&>)
 auto builtin_reversed(Seq&& seq) {
     return owning_reversed_iter<T, std::remove_cvref_t<Seq>>(std::move(seq));
+}
+
+
+// -- map --
+
+template<typename U, typename Iter, typename Fn>
+class map_iter : public next_iter_mixin<map_iter<U, Iter, Fn>, U> {
+    Iter iter_;
+    Fn fn_;
+public:
+    map_iter(Iter&& iter, Fn fn)
+        : iter_(std::move(iter)), fn_(std::move(fn)) {}
+
+    std::expected<U, StopIteration> __next__() {
+        auto r = iter_.__next__();
+        if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
+        return fn_(unwrap_ref(*r));
+    }
+
+    map_iter& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const map_iter&) {
+        return os << "<map>";
+    }
+};
+
+// Owning variant: moves the container in so rvalue arguments don't dangle.
+template<typename U, typename Container, typename Fn>
+class owning_map_iter
+    : public next_iter_mixin<owning_map_iter<U, Container, Fn>, U> {
+    using Iter = decltype(tpy::__iter__(std::declval<Container&>()));
+    Container owned_;
+    Iter iter_;
+    Fn fn_;
+public:
+    owning_map_iter(Fn fn, Container&& c)
+        : owned_(std::move(c)), iter_(tpy::__iter__(owned_)), fn_(std::move(fn)) {}
+
+    owning_map_iter(owning_map_iter&&) = delete;
+    owning_map_iter& operator=(owning_map_iter&&) = delete;
+
+    std::expected<U, StopIteration> __next__() {
+        auto r = iter_.__next__();
+        if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
+        return fn_(unwrap_ref(*r));
+    }
+
+    owning_map_iter& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const owning_map_iter&) {
+        return os << "<map>";
+    }
+};
+
+// lvalue: iterate via __iter__/__next__() protocol.
+// T is the input element type -- unused in the body but required by the codegen
+// template syntax (::tpy::builtin_map<{T}, {U}>).
+template<typename T, typename U, typename Fn, typename Iterable>
+auto builtin_map(Fn&& fn, Iterable& iterable) {
+    auto iter = tpy::__iter__(iterable);
+    return map_iter<U, decltype(iter), std::decay_t<Fn>>(
+        std::move(iter), std::forward<Fn>(fn));
+}
+
+// rvalue: own the container to prevent dangling iterators
+template<typename T, typename U, typename Fn, typename Iterable>
+    requires (!std::is_lvalue_reference_v<Iterable&&>)
+auto builtin_map(Fn&& fn, Iterable&& iterable) {
+    return owning_map_iter<U, std::remove_cvref_t<Iterable>, std::decay_t<Fn>>(
+        std::forward<Fn>(fn), std::move(iterable));
+}
+
+
+// -- filter --
+
+template<typename T, typename Iter, typename Fn>
+class filter_iter : public next_iter_mixin<filter_iter<T, Iter, Fn>, T> {
+    Iter iter_;
+    Fn fn_;
+public:
+    filter_iter(Iter&& iter, Fn fn)
+        : iter_(std::move(iter)), fn_(std::move(fn)) {}
+
+    std::expected<T, StopIteration> __next__() {
+        while (true) {
+            auto r = iter_.__next__();
+            if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
+            auto&& elem = unwrap_ref(*r);
+            if (fn_(elem)) {
+                return elem;
+            }
+        }
+    }
+
+    filter_iter& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const filter_iter&) {
+        return os << "<filter>";
+    }
+};
+
+// Owning variant for rvalue iterables (protocol path).
+template<typename T, typename Container, typename Fn>
+class owning_filter_iter
+    : public next_iter_mixin<owning_filter_iter<T, Container, Fn>, T> {
+    using Iter = decltype(tpy::__iter__(std::declval<Container&>()));
+    Container owned_;
+    Iter iter_;
+    Fn fn_;
+public:
+    owning_filter_iter(Fn fn, Container&& c)
+        : owned_(std::move(c)), iter_(tpy::__iter__(owned_)), fn_(std::move(fn)) {}
+
+    owning_filter_iter(owning_filter_iter&&) = delete;
+    owning_filter_iter& operator=(owning_filter_iter&&) = delete;
+
+    std::expected<T, StopIteration> __next__() {
+        while (true) {
+            auto r = iter_.__next__();
+            if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
+            auto&& elem = unwrap_ref(*r);
+            if (fn_(elem)) {
+                return elem;
+            }
+        }
+    }
+
+    owning_filter_iter& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const owning_filter_iter&) {
+        return os << "<filter>";
+    }
+};
+
+// Direct-iteration variant: uses C++ begin/end for reference-preserving filter.
+// Returns val_or_ref<T> so non-value types yield references into the container.
+template<typename T, typename Container, typename Fn>
+class filter_direct_iter
+    : public next_iter_mixin<filter_direct_iter<T, Container, Fn>, val_or_ref<T>> {
+    using CppIter = decltype(std::declval<Container&>().begin());
+    CppIter it_;
+    CppIter end_;
+    Fn fn_;
+public:
+    filter_direct_iter(Fn fn, Container& c)
+        : it_(c.begin()), end_(c.end()), fn_(std::move(fn)) {}
+
+    std::expected<val_or_ref<T>, StopIteration> __next__() {
+        while (it_ != end_) {
+            auto& elem = *it_;
+            ++it_;
+            if (fn_(elem)) {
+                return val_or_ref<T>(elem);
+            }
+        }
+        return tpy::make_unexpected(StopIteration{});
+    }
+
+    filter_direct_iter& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const filter_direct_iter&) {
+        return os << "<filter>";
+    }
+};
+
+// Owning direct-iteration variant for rvalue containers.
+template<typename T, typename Container, typename Fn>
+class owning_filter_direct_iter
+    : public next_iter_mixin<owning_filter_direct_iter<T, Container, Fn>, val_or_ref<T>> {
+    using CppIter = decltype(std::declval<Container&>().begin());
+    Container owned_;
+    CppIter it_;
+    CppIter end_;
+    Fn fn_;
+public:
+    owning_filter_direct_iter(Fn fn, Container&& c)
+        : owned_(std::move(c)), it_(owned_.begin()), end_(owned_.end()),
+          fn_(std::move(fn)) {}
+
+    owning_filter_direct_iter(owning_filter_direct_iter&&) = delete;
+    owning_filter_direct_iter& operator=(owning_filter_direct_iter&&) = delete;
+
+    std::expected<val_or_ref<T>, StopIteration> __next__() {
+        while (it_ != end_) {
+            auto& elem = *it_;
+            ++it_;
+            if (fn_(elem)) {
+                return val_or_ref<T>(elem);
+            }
+        }
+        return tpy::make_unexpected(StopIteration{});
+    }
+
+    owning_filter_direct_iter& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const owning_filter_direct_iter&) {
+        return os << "<filter>";
+    }
+};
+
+// lvalue: direct iteration for containers (preserves references),
+// __iter__/__next__() fallback for TPy iterators
+template<typename T, typename Fn, typename Iterable>
+auto builtin_filter(Fn&& fn, Iterable& iterable) {
+    if constexpr (detail::has_begin_end<Iterable>) {
+        return filter_direct_iter<T, Iterable, std::decay_t<Fn>>(
+            std::forward<Fn>(fn), iterable);
+    } else {
+        auto iter = tpy::__iter__(iterable);
+        return filter_iter<T, decltype(iter), std::decay_t<Fn>>(
+            std::move(iter), std::forward<Fn>(fn));
+    }
+}
+
+// rvalue: own the container to prevent dangling iterators
+template<typename T, typename Fn, typename Iterable>
+    requires (!std::is_lvalue_reference_v<Iterable&&>)
+auto builtin_filter(Fn&& fn, Iterable&& iterable) {
+    if constexpr (detail::has_begin_end<Iterable>) {
+        return owning_filter_direct_iter<T, std::remove_cvref_t<Iterable>,
+                                         std::decay_t<Fn>>(
+            std::forward<Fn>(fn), std::move(iterable));
+    } else {
+        return owning_filter_iter<T, std::remove_cvref_t<Iterable>,
+                                  std::decay_t<Fn>>(
+            std::forward<Fn>(fn), std::move(iterable));
+    }
 }
 
 } // namespace tpy

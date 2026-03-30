@@ -1,6 +1,6 @@
 # tpy: cpp_namespace("tpystd::builtins")
 from .._typing import overload, Sized, Sequence, Iterator, Iterable
-from .._bootstrap._decorators import readonly, pure, error_return, Own
+from .._bootstrap._decorators import readonly, pure, error_return, Own, Fn
 from .._core._types import (
     Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64,
     Char, String, StrView, Float32, AnyFixedInt,
@@ -571,6 +571,20 @@ def zip[T1, T2, T3, T4](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterabl
 @readonly
 @cpp_template("::tpy::builtin_zip<{T1}, {T2}, {T3}, {T4}, {T5}>({0}, {1}, {2}, {3}, {4})")
 def zip[T1, T2, T3, T4, T5](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4], iter5: Iterable[T5]) -> Iterator[tuple[T1, T2, T3, T4, T5]]: ...
+
+
+# -- map --
+
+@readonly
+@cpp_template("::tpy::builtin_map<{T}, {U}>({0}, {1})")
+def map[T, U](fn: Fn[[T], U], iterable: Iterable[T]) -> Iterator[U]: ...
+
+
+# -- filter --
+
+@readonly
+@cpp_template("::tpy::builtin_filter<{T}>({0}, {1})")
+def filter[T](fn: Fn[[T], bool], iterable: Iterable[T]) -> Iterator[T]: ...
 
 
 # -- Special-handling builtins (custom sema/codegen, signatures are illustrative) --
