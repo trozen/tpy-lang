@@ -417,6 +417,37 @@ log(f"x={x}")
 # -> log("x={}", x)  # format string + args passed separately
 ```
 
+### Bytes
+
+- **Working**: `bytes` type -- immutable byte sequence -> `std::vector<uint8_t>`
+- **Working**: `bytearray` type -- mutable byte sequence -> `std::vector<uint8_t>`
+- **Working**: `BytesView` (`tpy.BytesView`) -- non-owning read-only view -> `std::span<const uint8_t>`
+- **Working**: Byte literals (`b"hello"`, `b"\x00\xff"`)
+- **Working**: `bytes(n)` zero-fill constructor, `bytes(b)` / `bytearray(b)` copy constructors
+- **Working**: Subscript (`b[i]` -> `UInt8`), `len()`, `in` operator
+- **Working**: Concatenation (`+`), repetition (`*`), equality (`==`)
+- **Working**: `decode()` -> `str`, `hex()` -> `str`
+- **Working**: Search methods: `find`, `rfind`, `count`, `startswith`, `endswith`
+- **Working**: Transform methods: `replace`, `split`, `join`, `strip`/`lstrip`/`rstrip`
+- **Working**: `bytearray` mutation: `append`, `extend`, `pop`, `clear`, `insert`, `remove`, `__setitem__`
+- **Working**: `hash(b)` for `bytes` and `BytesView` -- enables use as dict keys and set elements
+- **Working**: Iteration over bytes (`for b in data`)
+- **Working**: View deduction: `list[bytes]` subscript infers `BytesView` when safe, falls back to owned `bytes` when the source is mutated
+
+#### Bytes Type Semantics (Working)
+
+`bytes` and `bytearray` both map to `std::vector<uint8_t>` in C++. The difference is at the type-system level: `bytes` is immutable (no mutation methods), `bytearray` is mutable.
+
+`BytesView` (`std::span<const uint8_t>`) is a non-owning view, analogous to `StrView` for strings. Local variables inferred from `list[bytes]` subscripts use `BytesView` when the source is not mutated, and fall back to owned `bytes` when it is:
+
+```python
+items: list[bytes] = [b"alice", b"bob"]
+x = items[0]           # BytesView (no mutation follows)
+items.append(b"carol")  # source mutated -> x becomes owned bytes
+```
+
+`bytes` and `BytesView` are hashable and can be used with `hash()`. `bytes` can be used as dict keys and set elements. `bytearray` is not hashable (mutable type).
+
 ### Containers
 - **Working**: `list[T]` - dynamic list → `std::vector<T>` (with context-dependent inference; type parameter is invariant: `list[Child]` is not compatible with `list[Base]`)
 - **Working**: `list[T] + list[T]` concatenation → new list, `list[T] += list[T]` extend in-place, `del lst[i]` element removal
@@ -1539,9 +1570,9 @@ h = hash(3.14)        # UInt64
 h = hash(True)        # UInt64
 ```
 
-All primitive types (str, int, fixed-width ints, float, bool, Char) and Enum types are hashable. Dict key validation uses the `Hashable` protocol -- only hashable types can be used as dict keys.
+All primitive types (str, int, fixed-width ints, float, bool, Char), `bytes`, `BytesView`, and Enum types are hashable. `bytearray` is not hashable (mutable). Dict key validation uses the `Hashable` protocol -- only hashable types can be used as dict keys or set elements.
 
-Generated C++ uses `tpy::__hash__()` free function dispatch with overloads for built-in types (`std::integral`, `double`, strings, `BigInt`, enums) and a default template forwarding to user-defined `__hash__()` methods.
+Generated C++ uses `tpy::__hash__()` free function dispatch with overloads for built-in types (`std::integral`, `double`, strings, bytes, `BigInt`, enums) and a default template forwarding to user-defined `__hash__()` methods.
 
 #### Working: User-Defined Protocols
 

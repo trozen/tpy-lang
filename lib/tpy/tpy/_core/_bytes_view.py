@@ -1,7 +1,7 @@
 # tpy: cpp_namespace("tpystd::tpy")
 from .._typing import overload, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure
-from ._types import UInt8, Int32, NativeIterable
+from ._types import UInt8, UInt64, Int32, NativeIterable
 from .._bootstrap._extern import native, cpp_template, builtin_type
 
 
@@ -36,6 +36,11 @@ class BytesView(NativeIterable[UInt8], Iterable[UInt8]):
     @readonly
     @pure
     def __eq__(self, other: BytesView) -> bool: ...
+
+    @cpp_template("::tpy::__hash__({self})")
+    @readonly
+    @pure
+    def __hash__(self) -> UInt64: ...
 
     @native("tpy::bytes_decode", function=True)
     @readonly

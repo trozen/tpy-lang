@@ -390,6 +390,16 @@ inline uint64_t __hash__(const char* x) {
     return static_cast<uint64_t>(std::hash<std::string_view>{}(std::string_view(x)));
 }
 
+// Bytes (std::vector<uint8_t>) and BytesView (std::span<const uint8_t>)
+inline uint64_t __hash__(const std::vector<uint8_t>& x) {
+    return static_cast<uint64_t>(std::hash<std::string_view>{}(
+        std::string_view(reinterpret_cast<const char*>(x.data()), x.size())));
+}
+inline uint64_t __hash__(std::span<const uint8_t> x) {
+    return static_cast<uint64_t>(std::hash<std::string_view>{}(
+        std::string_view(reinterpret_cast<const char*>(x.data()), x.size())));
+}
+
 // Enum types
 template<typename T>
     requires std::is_enum_v<T>
@@ -536,3 +546,12 @@ decltype(auto) __iter__(const T& x) {
 }
 
 } // namespace tpy
+
+// std::hash specialization for bytes (needed by std::unordered_map/set)
+template<>
+struct std::hash<std::vector<uint8_t>> {
+    size_t operator()(const std::vector<uint8_t>& v) const noexcept {
+        return std::hash<std::string_view>{}(
+            std::string_view(reinterpret_cast<const char*>(v.data()), v.size()));
+    }
+};

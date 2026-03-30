@@ -1,0 +1,7 @@
+True
+True
+A
+B
+2
+2
+True

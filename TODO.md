@@ -44,10 +44,8 @@ Motivating example: `map(identity, pts)` where `identity(p: Point) -> Point` ret
 - json: handle user types
 
 
-## Bytes type follow-ups
-- `mark_bytes_borrowers_mutated` missing: `BytesVarInfo.source_mutated` is never set. If a bytearray is mutated after a BytesView borrows from it, the view won't be promoted to owned. Add mutation tracking at bytearray mutation sites (append, __setitem__, extend, pop, clear, insert, remove) mirroring `mark_str_borrowers_mutated`.
-- `bytes.__hash__` not implemented -- bytes can't be used as dict keys or in sets
-- Update `docs/LANGUAGE_FEATURES.md` with bytes/bytearray/BytesView documentation
+## Bytes
+- `BytesView` as dict key / set element: `__hash__` works but `std::span<const uint8_t>` has no `operator==`, so `ordered_map`/`ordered_set` fail to compile. Needs an `__eq__` overload or `std::equal_to` specialization.
 
 ## Ownership & Consuming Iteration
 - Consuming `items()` for dict: consuming `__iter__` works for keys, but consuming `items()` can't use `@overload` with `Own[Self]` because the return type changes (`dict_items` -> `Iterator[tuple]`), breaking non-iteration callers like `len(d.items())`. Needs a mechanism that only selects consuming dispatch when used as a for-loop iterable.
