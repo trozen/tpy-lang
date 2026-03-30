@@ -1,33 +1,32 @@
 # tpy: macro_module
 """Test macro module with a concat call-site macro."""
-from tpyc.macro_api import call_macro, CallMacroContext, MacroArg
-from tpyc.parse import TpyExpr, TpyCall, TpyName, TpyBinOp, TpyStrLiteral
+from tpyc.macro_api import call_macro, CallMacroContext, MacroArg, ast, Expr
 
 
-def _to_str(arg: MacroArg, quote_str: bool) -> TpyExpr:
+def _to_str(arg: MacroArg, quote_str: bool) -> Expr:
     """Wrap arg in str() unless it's already a string type."""
     if arg.type.is_str:
         if quote_str:
-            return TpyBinOp(
-                left=TpyStrLiteral(value="'"),
-                op="+",
-                right=TpyBinOp(left=arg.expr, op="+", right=TpyStrLiteral(value="'")),
+            return ast.binop(
+                ast.str_lit("'"),
+                "+",
+                ast.binop(arg.expr, "+", ast.str_lit("'")),
             )
         return arg.expr
-    return TpyCall(func=TpyName("str"), args=[arg.expr])
+    return ast.call("str", [arg.expr])
 
 
 @call_macro
 def concat(
     ctx: CallMacroContext, *args: MacroArg,
     sep: str = " ", quote_str: bool = False,
-) -> TpyExpr:
+) -> Expr:
     """Concatenate string representations of arguments with separator."""
     if not args:
-        return TpyStrLiteral(value="")
-    sep_expr = TpyStrLiteral(value=sep)
+        return ast.str_lit("")
+    sep_expr = ast.str_lit(sep)
     parts = [_to_str(a, quote_str) for a in args]
     result = parts[0]
     for p in parts[1:]:
-        result = TpyBinOp(left=result, op="+", right=TpyBinOp(left=sep_expr, op="+", right=p))
+        result = ast.binop(result, "+", ast.binop(sep_expr, "+", p))
     return result

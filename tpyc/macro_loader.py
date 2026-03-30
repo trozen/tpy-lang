@@ -16,7 +16,59 @@ import typing
 from pathlib import Path
 from typing import Any, Callable
 
+import builtins as _builtins_module
+
 from . import macro_api as _macro_api
+
+
+# ---------------------------------------------------------------------------
+# Macro module import/builtin restrictions
+# ---------------------------------------------------------------------------
+# Soft restrictions to keep macro modules on the stable tpyc.macro_api surface.
+# NOT a security sandbox -- Python cannot be fully sandboxed via __builtins__.
+# The goal is forward compatibility: when the compiler is self-hosted, macro
+# code will run in a VM where only the macro_api surface is available.
+
+# Modules that macro code is allowed to import.
+_ALLOWED_IMPORTS: frozenset[str] = frozenset({
+    "tpyc.macro_api",
+})
+
+# Builtins that are NOT available in macro modules.
+_BLOCKED_BUILTINS: frozenset[str] = frozenset({
+    "open", "exec", "eval", "compile",
+    "input", "breakpoint", "exit", "quit",
+    "memoryview",
+})
+
+_original_import = _builtins_module.__import__
+
+
+def _make_restricted_import(module_name: str) -> Callable:
+    """Create a restricted __import__ for a macro module."""
+    def _restricted_import(name: str, *args: Any, **kwargs: Any) -> Any:
+        if not name:
+            raise ImportError(
+                f"Macro module '{module_name}' cannot use relative imports"
+            )
+        for allowed in _ALLOWED_IMPORTS:
+            if name == allowed or name.startswith(allowed + "."):
+                return _original_import(name, *args, **kwargs)
+        raise ImportError(
+            f"Macro module '{module_name}' cannot import '{name}' "
+            f"-- only tpyc.macro_api is allowed"
+        )
+    return _restricted_import
+
+
+def _make_restricted_builtins(module_name: str) -> dict[str, Any]:
+    """Create a restricted __builtins__ dict for a macro module."""
+    restricted = {
+        k: v for k, v in _builtins_module.__dict__.items()
+        if k not in _BLOCKED_BUILTINS
+    }
+    restricted["__import__"] = _make_restricted_import(module_name)
+    return restricted
 
 
 _MACRO_MODULE_RE = re.compile(r'^\s*#\s*tpy:\s+macro_module\s*$')
@@ -306,6 +358,7 @@ class MacroRegistry:
             )
 
         mod = importlib.util.module_from_spec(spec)
+        mod.__builtins__ = _make_restricted_builtins(module_name)
         try:
             spec.loader.exec_module(mod)
         except Exception as e:
