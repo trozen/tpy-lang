@@ -2079,7 +2079,7 @@ class StatementAnalyzer:
                 )
 
         # Detect native global import: x: T = native_c_global("name") / native_global("name")
-        if isinstance(stmt.init, TpyCall) and self.ctx.current_ns:
+        if isinstance(stmt.init, TpyCall) and isinstance(stmt.init.func, TpyName) and self.ctx.current_ns:
             binding = self.ctx.current_ns.lookup(stmt.init.func_name)
             if (binding and binding.kind == BindingKind.IMPORTED_NAME
                     and binding.import_source
@@ -2164,7 +2164,7 @@ class StatementAnalyzer:
             is_empty_literal = isinstance(stmt.init, TpyArrayLiteral) and not stmt.init.elements
             is_empty_dict_literal = isinstance(stmt.init, TpyDictLiteral) and not stmt.init.keys
             _generic_lookup = (builtin_modules.lookup_generic_type(stmt.init.func_name)
-                               if isinstance(stmt.init, TpyCall) else None)
+                               if isinstance(stmt.init, TpyCall) and isinstance(stmt.init.func, TpyName) else None)
             is_generic_constructor = (isinstance(stmt.init, TpyCall) and
                                       not stmt.init.args and
                                       stmt.init.call_type is None and

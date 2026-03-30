@@ -354,7 +354,7 @@ class ExpressionGenerator:
                 return f"::tpy::to_value_variant<{val_cpp}>({arg.name})"
         arg_expr = self.gen_expr_deref(arg)
         # Record constructors are prvalues — already an rvalue, no copy needed
-        if isinstance(arg, TpyCall) and self.ctx.analyzer.registry.get_record(arg.func_name):
+        if isinstance(arg, TpyCall) and isinstance(arg.func, TpyName) and self.ctx.analyzer.registry.get_record(arg.func_name):
             return arg_expr
         return f"{arg_type.to_cpp()}({arg_expr})"
 
@@ -1489,6 +1489,9 @@ class ExpressionGenerator:
         # __call__ dispatch: delegate to method call codegen
         if expr.dunder_call is not None:
             return self._gen_method_call(expr.dunder_call)
+        # Expression callees: callbacks[0](x), get_handler()(x), etc.
+        if not isinstance(expr.func, TpyName):
+            return self._gen_expr_callee(expr)
         # isinstance(x, Protocol) -> Concept<T_x>  (compile-time)
         if expr.isinstance_var is not None and expr.isinstance_is_protocol and expr.isinstance_type is not None:
             var_name = expr.isinstance_var
@@ -1811,6 +1814,19 @@ class ExpressionGenerator:
                 and isinstance(declared.inner, CallableType)):
             return f"{func_name}.value()({args})"
         return f"{func_name}({args})"
+
+    def _gen_expr_callee(self, expr: TpyCall) -> str:
+        """Generate code for expression callees: callbacks[0](x), get_fn()(x), etc."""
+        callee_cpp = self.gen_expr(expr.func)
+        fi = expr.resolved_function_info
+        if fi:
+            gen_args = []
+            for arg, (_, ptype) in zip(expr.args, fi.params):
+                gen_args.append(self.gen_call_arg(arg, ptype))
+            args = ", ".join(gen_args)
+        else:
+            args = ", ".join(self.gen_expr(a) for a in expr.args)
+        return f"({callee_cpp})({args})"
 
     def _gen_method_call(self, expr: TpyMethodCall) -> str:
         """Generate method call code."""

@@ -224,7 +224,7 @@ class FunctionGenerator:
             if expr.args:
                 return FunctionGenerator.default_to_cpp(expr.args[0], ptype)
             # Zero-arg call: Int32() -> 0, list()/dict()/Record() -> {}
-            if expr.func_name in _FIXED_INT_NAMES:
+            if isinstance(expr.func, TpyName) and expr.func_name in _FIXED_INT_NAMES:
                 return "0"
             return factory_default_to_cpp(ptype)
         return "0"

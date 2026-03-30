@@ -396,6 +396,10 @@ class CallAnalyzer:
 
     def analyze_call(self, expr: TpyCall) -> TpyType:
         """Analyze a function or constructor call."""
+        # Expression callees: callbacks[0](x), get_handler()(x), etc.
+        if not isinstance(expr.func, TpyName):
+            return self._analyze_expr_callee(expr)
+
         # Handle super() call
         if expr.func_name == "super":
             from .methods import MethodAnalyzer
@@ -482,6 +486,11 @@ class CallAnalyzer:
                         record = self.ctx.registry.get_record_for_type(var_type)
                         if record and self.ctx.registry.get_method_overloads_with_parents(record, "__call__"):
                             return self._analyze_dunder_call(expr)
+                    # Subscript callee fallback: fns[0](args) was parsed as
+                    # fns(args) with type_args_parse_error. Rewrite as a
+                    # subscript expression callee and re-analyze.
+                    if expr.subscript_callee is not None:
+                        return self._rewrite_subscript_callee(expr)
                     raise self.ctx.error(f"'{expr.func_name}' is not callable", expr)
                 elif binding.kind == BindingKind.FUNCTION:
                     # Builtin-supplemented functions route through builtin path
@@ -2613,6 +2622,39 @@ class CallAnalyzer:
         self._record_mutation_call_edges(expr)
         return func.return_type
 
+    def _rewrite_subscript_callee(self, expr: TpyCall) -> TpyType:
+        """Rewrite fns[0](args) from generic-call form to expression callee.
+
+        The parser parsed fns[0](args) as TpyCall("fns", args, type_args_parse_error=...)
+        because fns[0] looks like a generic call. But sema found fns is a variable,
+        not a function. Use the pre-parsed subscript_callee to re-analyze.
+        """
+        assert expr.subscript_callee is not None
+        expr.func = expr.subscript_callee
+        expr.type_args = ()
+        expr.type_args_parse_error = None
+        expr.subscript_callee = None
+        return self._analyze_expr_callee(expr)
+
+    def _analyze_expr_callee(self, expr: TpyCall) -> TpyType:
+        """Analyze a call where the callee is an expression (not a simple name).
+
+        Handles callbacks[0](x), get_handler()(x), obj.field(x) etc.
+        """
+        callee_type = self.expr.analyze_expr(expr.func)
+        if isinstance(callee_type, OwnType):
+            callee_type = callee_type.wrapped
+        if isinstance(callee_type, FnType):
+            return self._analyze_fn_type_call(expr, callee_type)
+        if isinstance(callee_type, CallableType):
+            return self._analyze_callable_type_call(expr, callee_type)
+        if isinstance(callee_type, NamedType):
+            record = self.ctx.registry.get_record_for_type(callee_type)
+            if record and self.ctx.registry.get_method_overloads_with_parents(record, "__call__"):
+                return self._analyze_dunder_call(expr)
+        raise self.ctx.error(
+            f"Expression is not callable (type '{callee_type}')", expr)
+
     def _analyze_dunder_call(self, expr: TpyCall) -> TpyType:
         """Analyze obj(args) where obj has a __call__ method.
 
@@ -2664,8 +2706,9 @@ class CallAnalyzer:
                         f"Argument {i + 1}: expected '{expected_type}', got '{arg_type}'",
                         expr
                     )
+        func_label = expr.func_name if isinstance(expr.func, TpyName) else "<expr>"
         expr.resolved_function_info = FunctionInfo(
-            name=expr.func_name,
+            name=func_label,
             params=[ParamInfo(f"__a{i}", t) for i, t in enumerate(param_types)],
             return_type=return_type,
             is_readonly=True,

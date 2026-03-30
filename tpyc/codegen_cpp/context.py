@@ -244,7 +244,7 @@ def is_lvalue_iterable(
     if isinstance(expr, (TpyMethodCall, TpyCall)):
         if isinstance(expr, TpyCall) and expr.call_type is not None:
             return False
-        if isinstance(expr, TpyCall) and get_record(expr.func_name):
+        if isinstance(expr, TpyCall) and isinstance(expr.func, TpyName) and get_record(expr.func_name):
             return False
         ret_type = get_type(expr)
         # Protocol return types (e.g. Iterator[T] from generators) are
@@ -997,6 +997,9 @@ class CodeGenContext:
             return self.is_rvalue_source(expr.expr)
         # Function calls
         if isinstance(expr, TpyCall):
+            # Expression callees -> rvalue
+            if not isinstance(expr.func, TpyName):
+                return True
             # Record constructors -> rvalue
             if self.analyzer.registry.get_record(expr.func_name):
                 return True
@@ -1057,7 +1060,7 @@ class CodeGenContext:
         if isinstance(expr, TpyCoerce):
             inner = self.unwrap_copy(expr.expr)
             return inner if inner is not expr.expr else expr
-        if isinstance(expr, TpyCall) and len(expr.args) == 1:
+        if isinstance(expr, TpyCall) and len(expr.args) == 1 and isinstance(expr.func, TpyName):
             if expr.func_name in self.analyzer.imported_names:
                 mod, fn = self.analyzer.imported_names[expr.func_name]
                 if mod == "tpy" and fn == "copy":

@@ -791,6 +791,8 @@ class TypeCompatibility:
             return False
         # Check if this function name maps to tpy.copy or tpy.copy_iter
         # (handles aliases like "from tpy import copy as c")
+        if not isinstance(expr.func, TpyName):
+            return False
         if expr.func_name in self.ctx.imported_names:
             module_name, func_name = self.ctx.imported_names[expr.func_name]
             return module_name == "tpy" and func_name in ("copy", "copy_iter")
@@ -1029,6 +1031,10 @@ class TypeCompatibility:
             if expr.call_type is not None:
                 return True
 
+            # Expression callees return temporaries (not dangling)
+            if not isinstance(expr.func, TpyName):
+                return True
+
             # Record constructor
             if expr.func_name in self.ctx.registry.records:
                 return True
@@ -1134,7 +1140,7 @@ class TypeCompatibility:
         if isinstance(return_type, StrViewType):
             inner = expr.expr if isinstance(expr, TpyCoerce) else expr
             # StrView(x) constructor: check the wrapped argument
-            if (isinstance(inner, TpyCall) and inner.args
+            if (isinstance(inner, TpyCall) and inner.args and isinstance(inner.func, TpyName)
                     and (inner.func_name == "StrView"
                          or isinstance(getattr(inner, 'call_type', None), StrViewType))):
                 if self.is_dangling_return(inner.args[0]):

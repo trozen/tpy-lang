@@ -184,12 +184,13 @@ class TpyCall(TpyExpr):
     - type_args stores the explicit type arguments (e.g., (Int32,))
     - inferred_type_args is set by sema for codegen (resolved from inference or explicit)
     """
-    func: 'TpyName'
+    func: TpyExpr  # TpyName for simple calls; arbitrary TpyExpr for expression callees
     args: list[TpyExpr]
     call_type: Optional[TpyType] = None  # For generic instantiation like MyContainer[T, N]()
     type_args: tuple[TpyType, ...] = ()  # Explicit type args for generic function calls: func[T](args)
     inferred_type_args: tuple[TpyType, ...] | None = None  # Set by sema for generic function calls
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
+    subscript_callee: 'TpyExpr | None' = None  # Set by parser: fns[0](args) -> stores TpySubscript(fns, 0) for sema fallback
     kwargs: dict[str, TpyExpr] = field(default_factory=dict)  # Keyword arguments (limited support)
     resolved_import: tuple[str, str] | None = None  # Set by parser: (module, name) for resolved imports
     resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved function overloads
@@ -203,12 +204,15 @@ class TpyCall(TpyExpr):
 
     @property
     def func_name(self) -> str:
+        """Name of the callee. Only valid when func is a TpyName (simple call)."""
+        assert isinstance(self.func, TpyName), f"func_name on non-Name callee: {type(self.func).__name__}"
         return self.func.name
 
     def children(self) -> list[TpyExpr]:
         if self.macro_expansion is not None:
             return [self.macro_expansion]
-        return [self.func] + list(self.args) + list(self.kwargs.values())
+        extra = [self.subscript_callee] if self.subscript_callee is not None else []
+        return [self.func] + list(self.args) + list(self.kwargs.values()) + extra
 
 
 @dataclass

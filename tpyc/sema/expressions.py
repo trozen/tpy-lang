@@ -291,7 +291,7 @@ class ExpressionAnalyzer:
 
         # Check for generic type constructor (list(), Container[T](), etc.)
         _generic_lookup = (builtin_modules.lookup_generic_type(expr.func_name)
-                           if isinstance(expr, TpyCall) else None)
+                           if isinstance(expr, TpyCall) and isinstance(expr.func, TpyName) else None)
         is_generic_constructor = (isinstance(expr, TpyCall) and
                                   not expr.args and
                                   expr.call_type is None and

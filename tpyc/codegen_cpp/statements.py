@@ -3468,7 +3468,7 @@ class StatementGenerator:
             return -expr.operand.value
         # Int32(3), UInt8(10), etc. — constructor call with a single literal arg
         if (isinstance(expr, TpyCall) and len(expr.args) == 1
-                and expr.func_name in StatementGenerator._FIXED_INT_NAMES):
+                and isinstance(expr.func, TpyName) and expr.func_name in StatementGenerator._FIXED_INT_NAMES):
             inner = StatementGenerator._unwrap_coerce(expr.args[0])
             if isinstance(inner, TpyIntLiteral):
                 return inner.value

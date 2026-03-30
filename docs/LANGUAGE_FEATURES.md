@@ -4779,6 +4779,14 @@ Send/Sync rules for built-in types:
   print(a(5))         # 15 -- direct call
   print(apply(a, 5))  # 15 -- passed to Fn param
   ```
+- **Working**: Expression callees -- call results of arbitrary expressions, not just named functions. Supports chained calls (`make_adder(10)(5)`), subscript calls (`callbacks[0](x)`), and any expression evaluating to `Callable`, `Fn`, or a type with `__call__`. Generates `(callee_expr)(args)` in C++.
+  ```python
+  from typing import Callable
+  from tpy import Int32
+  fns: list[Callable[[Int32], Int32]] = [make_adder(1), make_negator()]
+  print(fns[0](100))       # subscript call: 101
+  print(make_adder(10)(5))  # chained call: 15
+  ```
 - **Working**: Generator functions (`yield`) -- manual state machine or lambda wrapper (see Generators section above)
 - See `docs/CLOSURES_CALLABLE_DESIGN.md` for full design and phasing.
 

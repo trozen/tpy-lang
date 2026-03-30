@@ -2831,8 +2831,14 @@ class Parser:
                             # call_type parsing failed - if type_args also failed, sema will report
                             # the type_args_parse_error; otherwise it's a function call
                             pass
+                    # When type args fail, also parse the subscript as an expression
+                    # so sema can fall back to expression callee (e.g., fns[0](args))
+                    subscript_callee = None
+                    if type_args_parse_error and not type_args and call_type is None:
+                        subscript_callee = self._parse_expr(node.func)
                     return TpyCall(TpyName(name, loc=loc), args, call_type=call_type, type_args=type_args,
-                                   type_args_parse_error=type_args_parse_error, kwargs=kwargs, loc=loc)
+                                   type_args_parse_error=type_args_parse_error,
+                                   subscript_callee=subscript_callee, kwargs=kwargs, loc=loc)
                 elif isinstance(node.func.value, ast.Attribute):
                     # module.func[T](args) -- method call with explicit type args
                     obj = self._parse_expr(node.func.value.value)
@@ -2841,9 +2847,13 @@ class Parser:
                     return TpyMethodCall(obj, method, args, kwargs=kwargs,
                                          type_args=type_args,
                                          type_args_parse_error=type_args_parse_error, loc=loc)
-                raise ParseError("Unsupported generic call target", node)
+                # Expression callee with subscript: expr[i](args)
+                expr_func = self._parse_expr(node.func)
+                return TpyCall(expr_func, args, kwargs=kwargs, loc=loc)
             else:
-                raise ParseError("Unsupported call target", node)
+                # Expression callee: f()(x), (lambda: fn)()(), etc.
+                expr_func = self._parse_expr(node.func)
+                return TpyCall(expr_func, args, kwargs=kwargs, loc=loc)
 
         elif isinstance(node, ast.Attribute):
             obj = self._parse_expr(node.value)

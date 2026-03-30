@@ -971,7 +971,7 @@ def expr_to_cpp_default(expr: TpyExpr) -> str | None:
         inner = expr_to_cpp_default(expr.operand)
         if inner is not None:
             return f"-{inner}"
-    if isinstance(expr, TpyCall) and expr.func_name in _FIXED_INT_NAMES:
+    if isinstance(expr, TpyCall) and isinstance(expr.func, TpyName) and expr.func_name in _FIXED_INT_NAMES:
         if not expr.args:
             return "0"
         if len(expr.args) == 1:
