@@ -33,6 +33,7 @@ from .nodes import (
 from .imports import (
     is_parser_keyword, _IMPLICIT_MODULES,
     get_builtins_exports, get_typing_exports, get_tpy_exports,
+    scan_star_exports, NonLiteralAllError,
     ImportProcessor,
 )
 
@@ -65,6 +66,7 @@ __all__ = [
     # imports
     "is_parser_keyword", "_IMPLICIT_MODULES",
     "get_builtins_exports", "get_typing_exports", "get_tpy_exports",
+    "scan_star_exports", "NonLiteralAllError",
     "ImportProcessor",
     # parser
     "Parser",

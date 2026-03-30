@@ -4054,7 +4054,10 @@ s = repr([1, 2, 3])          # → "[1, 2, 3]" (same as str for containers)
 - **Working**: `tplib.FixStr[N]` -- fixed-capacity string with stack-allocated storage (char-level operations, `__str__` for zero-copy printing)
 - **Working**: `tplib.json` -- JSON parsing/serialization library: `JsonReader` (pull parser), `JsonWriter` (serializer), `@model` class macro for pydantic-style typed JSON with `from_json`/`to_json`. Supports `str`, `bool`, `int`/`Int32`/`Int64`/`BigInt`, `float`/`Float32`, enums, `Optional[T]`, `list[T]`, `dict[str, V]`, `tuple[T, ...]`, and nested `@model` records.
 - **Working**: `bisect` module -- array bisection algorithms (via `from bisect import bisect_left`)
-- **Open**: `from typing import *` (not supported)
+- **Working**: `from module import *` -- star imports from user modules, `tpy`, `builtins`, and `typing`
+  - Respects `__all__` if defined (must be a compile-time literal)
+  - Without `__all__`, exports all public top-level names (functions, classes, assignments, imports) not starting with `_`
+  - Relative star imports: `from .sibling import *`
 
 ### User-Defined Modules (Working)
 
@@ -4090,6 +4093,7 @@ print(MAX)  # 100
 
 **Supported import styles:**
 - `from mod import func, Record, Protocol` - import specific items
+- `from mod import *` - star import (respects `__all__` if defined)
 - `import mod` then `mod.func()` - module-qualified access
 - `from mod import X as Y` - import with alias
 

@@ -322,12 +322,28 @@ class SemanticAnalyzer:
                     continue  # already fully registered above
                 # "from X import Y" or "from X import Y as Z"
                 # Stored as (original_name, local_name) tuples to support aliases
+                is_star = import_module_name in module.star_imports
                 for original_name, local_name in names:
+                    if is_star and import_module_name in module.user_module_imports:
+                        # Star imports: register first, skip binding if the
+                        # name isn't in the module's actual exports (it may be
+                        # a re-imported name visible in source but not in ModuleInfo).
+                        if not self._register_user_module_import(
+                                import_module_name, original_name, local_name,
+                                from_star_import=True):
+                            # Name not in this module's exports -- try to
+                            # re-resolve it from other known modules so that
+                            # re-imported names (e.g. Int32 via utils) still
+                            # work when there is no explicit tpy import.
+                            if local_name not in self.ctx.imported_names:
+                                self._bind_star_reexport(original_name, local_name)
+                            continue
+
                     self.ctx.imported_names[local_name] = (import_module_name, original_name)
                     self.ctx.global_ns.bind_imported_name(local_name, import_module_name, original_name)
 
-                    # For user module imports, also register the items for type checking
-                    if import_module_name in module.user_module_imports:
+                    # For explicit user module imports, register after binding
+                    if not is_star and import_module_name in module.user_module_imports:
                         self._register_user_module_import(import_module_name, original_name, local_name)
                     # Register tpy type aliases from .py stubs (no-op for non-alias names)
                     elif import_module_name == "tpy":
@@ -1536,20 +1552,46 @@ class SemanticAnalyzer:
             self.ctx.registry.register_type_alias(name, alias_type)
             self.ctx.user_imported_type_aliases[name] = ("tpy", name)
 
-    def _register_user_module_import(self, module_name: str, original_name: str, local_name: str) -> None:
+    def _bind_star_reexport(self, original_name: str, local_name: str) -> None:
+        """Try to bind a star-imported re-export from a known module.
+
+        When 'from utils import *' brings in a name like Int32 that utils
+        imported from tpy, we need to find the original source and bind it
+        correctly so the name is usable.
+        """
+        for mod_name, mod_info in self.ctx.registry.modules.items():
+            if mod_info.is_builtin:
+                continue
+            if mod_info.has_export(original_name):
+                self.ctx.imported_names[local_name] = (mod_name, original_name)
+                self.ctx.global_ns.bind_imported_name(local_name, mod_name, original_name)
+                self._register_user_module_import(mod_name, original_name, local_name)
+                return
+        # Fallback: tpy type aliases (e.g. Int32, Float64)
+        self._register_tpy_type_alias(original_name, local_name)
+
+    def _register_user_module_import(self, module_name: str, original_name: str, local_name: str,
+                                     from_star_import: bool = False) -> bool:
         """Register an imported item from a user module.
 
         Looks up the item in the unified registry (user modules are registered
         as ModuleInfo before analysis) and registers it in the appropriate
         namespace (function, record, or protocol).
+
+        Returns True if the name was found and registered, False if not found
+        (only possible when from_star_import is True).
+
+        When from_star_import is True, names not found in the module's exports
+        are silently skipped (they may be re-imported names visible in the
+        source but not in the compiled module's ModuleInfo).
         """
         module_info = self.ctx.registry.get_module(module_name)
         if module_info is None:
             # Module not in registry - could be builtin without user file, skip
-            return
+            return True
         if module_info.is_builtin:
             # Builtin module (no user file shadowing it), skip to let builtin handling work
-            return
+            return True
 
         # Check for function (list of overloads in ModuleInfo)
         if module_info.functions and original_name in module_info.functions:
@@ -1561,7 +1603,7 @@ class SemanticAnalyzer:
             # Still record the import so re-export works.
             if func_infos and func_infos[0].special_handling:
                 self.ctx.user_imported_functions[local_name] = (module_name, original_name)
-                return
+                return True
             self.ctx.registry.register_function_group(local_name, func_infos)
             if len(func_infos) > 1:
                 self.ctx.global_ns.bind(NameBinding(
@@ -1570,7 +1612,7 @@ class SemanticAnalyzer:
                     func_infos=func_infos,
                 ))
             self.ctx.user_imported_functions[local_name] = (module_name, original_name)
-            return
+            return True
 
         # Check for record
         if module_info.records and original_name in module_info.records:
@@ -1580,7 +1622,7 @@ class SemanticAnalyzer:
             if local_name != original_name:
                 self.ctx.registry.register_record(record_info, original_name)
             self.ctx.user_imported_records[local_name] = (module_name, original_name)
-            return
+            return True
 
         # Check for protocol
         if module_info.protocols and original_name in module_info.protocols:
@@ -1590,7 +1632,7 @@ class SemanticAnalyzer:
             # Also bind in namespace so it can be resolved as a type
             self.ctx.global_ns.bind_imported_name(local_name, module_name, original_name)
             self.ctx.user_imported_protocols[local_name] = (module_name, original_name)
-            return
+            return True
 
         # Check for type alias
         if module_info.type_aliases and original_name in module_info.type_aliases:
@@ -1605,7 +1647,7 @@ class SemanticAnalyzer:
                             rec = module_info.records[member.name]
                             self.ctx.registry.register_record(rec, member.name)
                             self.ctx.user_imported_records[member.name] = (module_name, member.name)
-            return
+            return True
 
         # Check for enum
         if module_info.enums and original_name in module_info.enums:
@@ -1618,7 +1660,7 @@ class SemanticAnalyzer:
                 self.ctx.registry.register_enum(enum_type, original_name)
             self.ctx.global_ns.bind_enum(enum_type, name=local_name)
             self.ctx.user_imported_enums[local_name] = (module_name, original_name)
-            return
+            return True
 
         # Check for variable
         if module_info.variables and original_name in module_info.variables:
@@ -1626,16 +1668,23 @@ class SemanticAnalyzer:
             self.ctx.global_scope.define(local_name, var_info.type)
             self.ctx.global_ns.bind_variable(local_name, var_info.type)
             self.ctx.user_imported_variables[local_name] = (module_name, original_name)
-            return
+            return True
 
         # @builtin_type/@builtin_decorator stubs and parser keywords are handled
         # at parse time, not exported by .py files -- silently skip them here.
         from ..parse import is_parser_keyword
         if is_parser_keyword(module_name, original_name):
-            return
+            return True
         if (self.ctx.registry.get_builtin_type_key(original_name) or
                 self.ctx.registry.get_builtin_decorator_key(original_name)):
-            return
+            return True
+
+        # Star imports include all public names from the source (matching
+        # CPython), but not all of them have entries in ModuleInfo (e.g.
+        # re-imported names like Int32 from tpy). Skip those so the caller
+        # doesn't bind them as coming from this module.
+        if from_star_import:
+            return False
 
         raise self._error(f"'{original_name}' not found in module '{module_name}'")
 

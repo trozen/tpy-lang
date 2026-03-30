@@ -2,7 +2,7 @@
 
 import pytest
 from .parse import RelativeImportKey, Parser, ParseError
-from .parse.imports import get_tpy_exports
+from .parse.imports import get_tpy_exports, scan_star_exports, NonLiteralAllError
 
 
 class TestRelativeImportKey:
@@ -114,3 +114,96 @@ class TestParserStateIsolation:
         # Second parse has no typing import -- Optional must fail
         with pytest.raises(ParseError):
             p.parse("from tpy import Int32\ndef f(x: Optional[Int32]) -> Int32:\n    return Int32(0)\n")
+
+
+class TestScanStarExports:
+    """Tests for scan_star_exports()."""
+
+    def test_with_all(self):
+        source = '__all__ = ["foo", "bar"]\ndef foo(): pass\ndef bar(): pass\ndef baz(): pass\n'
+        assert scan_star_exports(source) == frozenset({"foo", "bar"})
+
+    def test_without_all_functions(self):
+        source = "def foo(): pass\ndef bar(): pass\n"
+        assert scan_star_exports(source) == frozenset({"foo", "bar"})
+
+    def test_without_all_classes(self):
+        source = "class Foo: pass\nclass Bar: pass\n"
+        assert scan_star_exports(source) == frozenset({"Foo", "Bar"})
+
+    def test_without_all_assignments(self):
+        source = "X = 1\nY = 2\n"
+        assert scan_star_exports(source) == frozenset({"X", "Y"})
+
+    def test_without_all_annotated_assignments(self):
+        source = "x: int = 1\n"
+        assert scan_star_exports(source) == frozenset({"x"})
+
+    def test_underscore_filtered(self):
+        source = "def _private(): pass\ndef public(): pass\nclass _Internal: pass\n_x = 1\n"
+        assert scan_star_exports(source) == frozenset({"public"})
+
+    def test_imports_included_without_all(self):
+        source = "from foo import bar\ndef baz(): pass\n"
+        assert scan_star_exports(source) == frozenset({"bar", "baz"})
+
+    def test_all_overrides_definitions(self):
+        source = '__all__ = ["x"]\ndef x(): pass\ndef y(): pass\n'
+        assert scan_star_exports(source) == frozenset({"x"})
+
+    def test_empty_module(self):
+        assert scan_star_exports("") == frozenset()
+
+    def test_mixed_definitions(self):
+        source = "def add(): pass\nclass Point: pass\nShape = None\n"
+        assert scan_star_exports(source) == frozenset({"add", "Point", "Shape"})
+
+    def test_non_literal_all_raises(self):
+        source = '__all__ = _base + ["extra"]\ndef foo(): pass\ndef bar(): pass\n'
+        with pytest.raises(NonLiteralAllError):
+            scan_star_exports(source)
+
+    def test_annotated_all(self):
+        source = '__all__: list[str] = ["foo"]\ndef foo(): pass\ndef bar(): pass\n'
+        assert scan_star_exports(source) == frozenset({"foo"})
+
+    def test_last_all_wins(self):
+        source = '__all__ = ["a"]\n__all__ = ["b"]\ndef a(): pass\ndef b(): pass\n'
+        assert scan_star_exports(source) == frozenset({"b"})
+
+    def test_underscore_import_filtered(self):
+        source = "from foo import _private, public\n"
+        assert scan_star_exports(source) == frozenset({"public"})
+
+
+class TestUserModuleStarImport:
+    """Tests for star import from user modules via resolver callback."""
+
+    def test_star_import_with_resolver(self):
+        source = "def add(): pass\nclass Point: pass\n"
+        resolver = lambda name: scan_star_exports(source) if name == "mymod" else None
+        p = Parser(star_import_resolver=resolver)
+        module = p.parse("from mymod import *\ndef f() -> None:\n    pass\n")
+        assert "mymod" in module.star_imports
+        names = module.imports.get("mymod")
+        assert names is not None
+        exported = {local for _, local in names}
+        assert "add" in exported
+        assert "Point" in exported
+
+    def test_star_import_unknown_module_errors(self):
+        resolver = lambda name: None
+        p = Parser(star_import_resolver=resolver)
+        with pytest.raises(ParseError, match="could not resolve"):
+            p.parse("from unknown import *\n")
+
+    def test_star_import_no_resolver_non_stdlib_errors(self):
+        p = Parser()
+        with pytest.raises(ParseError, match="could not resolve"):
+            p.parse("from mymod import *\n")
+
+    def test_tpy_star_import_still_tracked(self):
+        p = Parser()
+        module = p.parse("from tpy import *\ndef f(x: Int32) -> Int32:\n    return x\n")
+        assert module.tpy_star_import is True
+        assert "tpy" in module.star_imports

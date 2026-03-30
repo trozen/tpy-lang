@@ -17,7 +17,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .parse import Parser, ParseError, TpyModule, TpyImport, RelativeImportKey, SourceLocation
+from .parse import Parser, ParseError, TpyModule, TpyImport, RelativeImportKey, SourceLocation, scan_star_exports
+from .parse.imports import StarImportResolver, NonLiteralAllError
 from .sema import SemanticAnalyzer, SemanticError, DiagnosticLevel
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names, get_type_factory as _get_type_factory
@@ -642,7 +643,9 @@ class Compiler:
                 # are available when parsing the entry module.
                 self._discover_implicit_stdlib()
 
-            parser = Parser(decorator_schemas=self._decorator_schemas)
+            resolver_fn = self._make_star_import_resolver() if self.resolver else None
+            parser = Parser(decorator_schemas=self._decorator_schemas,
+                            star_import_resolver=resolver_fn)
             ast = parser.parse(source, module_name=entry_name)
             self._decorator_schemas.update(parser._decorator_schemas)
             self.modules[entry_name] = CompiledModule(
@@ -724,6 +727,29 @@ class Compiler:
         except ValueError:
             return False
 
+    def _make_star_import_resolver(self) -> StarImportResolver:
+        """Create a callback for resolving star import exports via ModuleResolver."""
+        cache: dict[str, frozenset[str]] = {}
+
+        def resolver(module_name: str) -> frozenset[str] | None:
+            if not self.resolver:
+                return None
+            resolved = self.resolver.resolve(module_name)
+            if resolved is None:
+                return None
+            key = str(resolved.path)
+            if key not in cache:
+                source = resolved.path.read_text()
+                try:
+                    cache[key] = scan_star_exports(source)
+                except NonLiteralAllError:
+                    raise ParseError(
+                        f"'from {module_name} import *': __all__ in '{module_name}' "
+                        f"is not a compile-time literal")
+            return cache[key]
+
+        return resolver
+
     def _discover_implicit_stdlib(self) -> None:
         """Discover implicit stdlib modules that builtins depend on."""
         if not self.resolver:
@@ -794,7 +820,8 @@ class Compiler:
             return
 
         # Parse the module
-        parser = Parser(decorator_schemas=self._decorator_schemas)
+        parser = Parser(decorator_schemas=self._decorator_schemas,
+                        star_import_resolver=self._make_star_import_resolver())
         try:
             ast = parser.parse(source, module_name=module_name,
                                is_package_init=is_package_init)
@@ -911,6 +938,9 @@ class Compiler:
         if imported_name in ast.imports:
             ast.imports[resolved_name] = ast.imports.pop(imported_name)
         ast.user_module_imports[resolved_name] = ast.user_module_imports.pop(imported_name)
+        if imported_name in ast.star_imports:
+            ast.star_imports.discard(imported_name)
+            ast.star_imports.add(resolved_name)
 
         return resolved_name
 

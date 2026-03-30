@@ -6,12 +6,17 @@ Constants and logic for handling import statements during parsing.
 
 from __future__ import annotations
 import ast
+from typing import Callable
 
 from .nodes import (
     ParseError, SourceLocation, RelativeImportKey,
     TpyImport, ParseWarning,
 )
 from ..typesys import public_module_name
+
+# Callback type for resolving star import exports.
+# Takes a module name, returns the set of exported names, or None if not found.
+StarImportResolver = Callable[[str], 'frozenset[str] | None']
 
 
 # Implicit stdlib modules -- always compiled by the compiler, so imports from
@@ -26,20 +31,74 @@ _PRIVATE_MODULE_PUBLIC_NAMES: dict[str, str] = {
     "tpy._typing": "typing",
 }
 
+
+class NonLiteralAllError(Exception):
+    """Raised when __all__ is defined but not evaluable at compile time."""
+    pass
+
+
+def scan_star_exports(source: str) -> frozenset[str]:
+    """Determine which names a module exports for 'from X import *'.
+
+    If ``__all__`` is defined as a literal, returns exactly those names.
+    If ``__all__`` is defined but not a compile-time literal, raises
+    ``NonLiteralAllError``.
+    Otherwise returns all public top-level names (functions, classes,
+    assignments, annotated assignments, and imported names) whose name
+    does not start with ``_`` -- matching CPython semantics.
+    """
+    tree = ast.parse(source)
+    # Check for __all__ first (last assignment wins, matching CPython)
+    all_value = None
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == "__all__":
+                    all_value = node.value
+        elif (isinstance(node, ast.AnnAssign)
+              and isinstance(node.target, ast.Name)
+              and node.target.id == "__all__" and node.value):
+            all_value = node.value
+    if all_value is not None:
+        try:
+            return frozenset(ast.literal_eval(all_value))
+        except (ValueError, TypeError):
+            raise NonLiteralAllError(
+                "__all__ is not a compile-time literal")
+
+    # No __all__ -- collect all public top-level names (matching CPython)
+    names: set[str] = set()
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if not node.name.startswith("_"):
+                names.add(node.name)
+        elif isinstance(node, ast.ClassDef):
+            if not node.name.startswith("_"):
+                names.add(node.name)
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and not target.id.startswith("_"):
+                    names.add(target.id)
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            if not node.target.id.startswith("_"):
+                names.add(node.target.id)
+        elif isinstance(node, ast.ImportFrom) and node.names:
+            if node.names[0].name != "*":
+                for alias in node.names:
+                    local = alias.asname or alias.name
+                    if not local.startswith("_"):
+                        names.add(local)
+    return frozenset(names)
+
+
 def _read_module_all(module_path: str) -> frozenset[str]:
-    """Read __all__ from a .py module file under lib/tpy/."""
+    """Read star exports from a stdlib .py module under lib/tpy/."""
     # Deferred: tpyc.__init__ imports tpyc.parse, so top-level would be circular.
     from tpyc import get_lib_dir
     path = get_lib_dir() / "tpy" / module_path
     if not path.exists():
         return frozenset()
-    tree = ast.parse(path.read_text())
-    for node in ast.iter_child_nodes(tree):
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == "__all__":
-                    return frozenset(ast.literal_eval(node.value))
-    return frozenset()
+    return scan_star_exports(path.read_text())
 
 
 _module_all_cache: dict[str, frozenset[str]] = {}
@@ -88,12 +147,16 @@ class ImportProcessor:
     """
 
     def __init__(self, warn_fn, module_name: str | None = None,
-                 is_package_init: bool = False):
+                 is_package_init: bool = False,
+                 star_import_resolver: StarImportResolver | None = None):
         self._warn = warn_fn
         self._module_name = module_name
         self._is_package_init = is_package_init
+        self._star_import_resolver = star_import_resolver
         self.tpy_import_aliases: dict[str, str] = {}
         self.tpy_star_import: bool = False
+        # Set of module names that had 'from X import *'
+        self.star_imports: set[str] = set()
         # Reference to the module's imports dict, set during process_import_from.
         # Used by the parser for type resolution of imported builtin submodule types.
         self.imports: dict[str, set[tuple[str, str]] | None] | None = None
@@ -145,6 +208,60 @@ class ImportProcessor:
         else:
             self._name_index[local] = (module_name, original)
 
+    def _index_star_import(self, module_name: str, name: str) -> None:
+        """Index a star-imported name, attributing stdlib re-exports correctly.
+
+        If the name is a known tpy/builtins/typing export, bind it from the
+        original stdlib module so the parser resolves types correctly (e.g.
+        Int32 should always resolve as a tpy type, even when re-exported
+        through a user module).
+        """
+        if name in get_tpy_exports():
+            self._name_index[name] = ("tpy", name)
+        elif name in get_builtins_exports():
+            self._name_index[name] = ("builtins", name)
+        elif name in get_typing_exports():
+            self._name_index[name] = ("typing", name)
+        else:
+            self._index_import(module_name, name, name)
+
+    def _resolve_star_import(self, module_name: str) -> frozenset[str] | None:
+        """Resolve star import exports for a module.
+
+        Tries the compiler-provided callback first, then falls back to
+        hardcoded stdlib paths for standalone parser usage (tests, REPL).
+        """
+        if self._star_import_resolver:
+            result = self._star_import_resolver(module_name)
+            if result is not None:
+                return result
+        # Fallback for standalone parser (no compiler context)
+        if module_name == "tpy":
+            return get_tpy_exports()
+        if module_name == "builtins":
+            return get_builtins_exports()
+        if module_name == "typing":
+            return get_typing_exports()
+        return None
+
+    def _resolve_relative_to_absolute(self, level: int, partial: str | None) -> str | None:
+        """Resolve a relative import to an absolute module name.
+
+        Pure path computation without public_module_name mapping,
+        so the result can be passed to the star import resolver.
+        """
+        if not self._module_name:
+            return None
+        parts = self._module_name.split(".")
+        package_parts = parts if self._is_package_init else parts[:-1]
+        levels_up = level - 1
+        if levels_up > len(package_parts):
+            return None
+        base_parts = package_parts[:len(package_parts) - levels_up]
+        if partial:
+            return ".".join(base_parts + [partial])
+        return ".".join(base_parts)
+
     def process_import(self, node: ast.Import, imports: dict, user_module_imports: dict,
                        top_level_stmts: list, module_aliases: dict,
                        bare_module_imports: set) -> None:
@@ -181,7 +298,23 @@ class ImportProcessor:
             imports[placeholder] = set()
             for alias in node.names:
                 if alias.name == "*":
-                    raise ParseError("'from ... import *' not supported for relative imports", node)
+                    # Resolve relative -> absolute, then resolve exports
+                    absolute_name = self._resolve_relative_to_absolute(level, module_name)
+                    if absolute_name:
+                        star_exports = self._resolve_star_import(absolute_name)
+                        if star_exports is not None:
+                            imports[placeholder] = {(name, name) for name in star_exports}
+                            for name in star_exports:
+                                if name not in self._name_index:
+                                    self._index_star_import(placeholder, name)
+                            self.star_imports.add(placeholder)
+                            top_level_stmts.append(TpyImport(
+                                module_name=placeholder, level=level,
+                                relative_name=module_name,
+                                loc=SourceLocation(node.lineno, node.col_offset)))
+                            return
+                    raise ParseError(
+                        "'from ... import *': could not resolve module exports", node)
                 local_name = alias.asname or alias.name
                 imports[placeholder].add((alias.name, local_name))
                 self._index_import(placeholder, alias.name, local_name)
@@ -205,11 +338,14 @@ class ImportProcessor:
         # tpy has special star-import and alias tracking
         if module_name == "tpy":
             if any(alias.name == "*" for alias in node.names):
-                exports = get_tpy_exports()
+                exports = self._resolve_star_import("tpy")
+                if not exports:
+                    exports = frozenset()
                 imports["tpy"] = {(name, name) for name in exports}
                 for name in exports:
                     self._name_index[name] = ("tpy", name)
                 self.tpy_star_import = True
+                self.star_imports.add("tpy")
                 return
             if "tpy" not in imports:
                 imports["tpy"] = set()
@@ -223,6 +359,23 @@ class ImportProcessor:
                     self.tpy_import_aliases[local_name] = original_name
             return
 
+        # Handle star imports for non-tpy modules
+        if any(alias.name == "*" for alias in node.names):
+            star_exports = self._resolve_star_import(module_name)
+            if star_exports is None:
+                raise ParseError(
+                    f"'from {module_name} import *': could not resolve module exports", node)
+            imports[module_name] = {(name, name) for name in star_exports}
+            for name in star_exports:
+                if name not in self._name_index:
+                    self._index_star_import(module_name, name)
+            self.star_imports.add(module_name)
+            user_module_imports[module_name] = node.lineno
+            if module_name not in _IMPLICIT_MODULES:
+                if not any(isinstance(s, TpyImport) and s.module_name == module_name for s in top_level_stmts):
+                    top_level_stmts.append(TpyImport(module_name=module_name, loc=SourceLocation(node.lineno, node.col_offset)))
+            return
+
         # Track all imported names in the imports dict
         if module_name not in imports:
             imports[module_name] = set()
@@ -230,8 +383,6 @@ class ImportProcessor:
         has_non_keyword = False
         if current is not None:
             for alias in node.names:
-                if alias.name == "*":
-                    raise ParseError(f"'from {module_name} import *' not supported", node)
                 local_name = alias.asname if alias.asname else alias.name
                 current.add((alias.name, local_name))
                 self._index_import(module_name, alias.name, local_name)

@@ -42,7 +42,7 @@ from .nodes import (
     ModuleDirectives,
 )
 from .imports import (
-    ImportProcessor, _PRIVATE_MODULE_PUBLIC_NAMES, _IMPLICIT_MODULES,
+    ImportProcessor, StarImportResolver, _PRIVATE_MODULE_PUBLIC_NAMES, _IMPLICIT_MODULES,
     get_builtins_exports, get_typing_exports, get_tpy_exports,
 )
 from .. import qnames
@@ -386,7 +386,8 @@ class Parser:
         "with", "async", "await",
     }
 
-    def __init__(self, decorator_schemas: dict[str, '_DecoratorArgSchema'] | None = None):
+    def __init__(self, decorator_schemas: dict[str, '_DecoratorArgSchema'] | None = None,
+                 star_import_resolver: StarImportResolver | None = None):
         self.registry = TypeRegistry()
         self.source_lines: list[str] = []
         self._type_param_scope: dict[str, TypeParamKind] | None = None
@@ -399,6 +400,7 @@ class Parser:
         # Schemas derived from @builtin_decorator stubs (populated by compiler
         # from previously-parsed modules, or from same-file definitions)
         self._decorator_schemas: dict[str, _DecoratorArgSchema] = dict(decorator_schemas) if decorator_schemas else {}
+        self._star_import_resolver = star_import_resolver
 
     def _loc(self, node: ast.AST) -> SourceLocation | None:
         """Create a SourceLocation from an AST node."""
@@ -573,7 +575,8 @@ class Parser:
         self.source_lines = source.splitlines()
         self._warnings = []
         self._imports = ImportProcessor(self._warn, module_name=module_name,
-                                        is_package_init=is_package_init)
+                                        is_package_init=is_package_init,
+                                        star_import_resolver=self._star_import_resolver)
         self._module_aliases = {}
         self._bare_module_imports = set()
         self._reverse_module_aliases = {}
@@ -744,7 +747,7 @@ class Parser:
                 # All other statements go through _parse_stmt (same as function bodies)
                 top_level_stmts.append(self._parse_stmt(node))
 
-        return TpyModule(records=records, functions=functions, protocols=protocols, enums=enums, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, tpy_star_import=self._imports.tpy_star_import, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings)
+        return TpyModule(records=records, functions=functions, protocols=protocols, enums=enums, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, tpy_star_import=self._imports.tpy_star_import, star_imports=self._imports.star_imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings)
 
     def _is_protocol_base(self, base: ast.expr) -> bool:
         """Check if a base class expression refers to typing.Protocol."""

@@ -3364,6 +3364,12 @@ class ModuleInfo:
     type_aliases: dict[str, 'TpyType'] = field(default_factory=dict)  # alias_name -> resolved type
     enums: dict[str, 'EnumType'] = field(default_factory=dict)  # enum_name -> EnumType
 
+    def has_export(self, name: str) -> bool:
+        """Check if a name is exported by this module."""
+        return (name in self.functions or name in self.records or
+                name in self.protocols or name in self.enums or
+                name in self.type_aliases or name in self.variables)
+
 
 class TypeRegistry:
     """Registry of all known types and symbols."""
