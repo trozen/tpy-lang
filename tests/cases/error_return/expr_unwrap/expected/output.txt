@@ -9,3 +9,6 @@ caught str
 caught neg
 99
 caught direct
+30
+2
+1

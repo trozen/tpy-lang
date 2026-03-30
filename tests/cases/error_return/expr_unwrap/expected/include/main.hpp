@@ -9,6 +9,7 @@
 namespace tpyapp::main {
 
 struct E;
+struct ParseErr;
 struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -22,6 +23,9 @@ std::expected<std::string, E> greet(std::string_view s);
 std::expected<Point, E> positive(const ::tpy::BigInt& x, const ::tpy::BigInt& y);
 std::expected<Point, E> modify(const ::tpy::BigInt& x, const ::tpy::BigInt& y);
 void main();
+std::expected<::tpy::BigInt, ParseErr> checked_parse(std::string_view s);
+std::expected<::tpy::BigInt, ParseErr> checked_add(std::string_view a, std::string_view b);
+void test_as_binding();
 
 // class E(Exception, ReturnException):
 struct E : ::tpy::Exception {
@@ -30,6 +34,23 @@ struct E : ::tpy::Exception {
 
 inline std::ostream& operator<<(std::ostream& os, const E& obj) {
     os << "E("
+       << ")";
+    return os;
+}
+
+// class ParseErr(Exception, ReturnException):
+struct ParseErr : ::tpy::Exception {
+    // code: int
+    ::tpy::BigInt code;
+
+    // def __init__(self, code: int) -> None:
+    ParseErr() = default;
+    explicit ParseErr(const ::tpy::BigInt& code) : code(code) {}
+};
+
+inline std::ostream& operator<<(std::ostream& os, const ParseErr& obj) {
+    os << "ParseErr("
+       << "code=" << obj.code
        << ")";
     return os;
 }

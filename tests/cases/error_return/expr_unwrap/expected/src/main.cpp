@@ -251,6 +251,100 @@ void main() {
         std::cout << "caught direct" << "\n";
         __after_try_27:;
     }
+    // # except ... as e with expression-level unwrap
+    // test_as_binding()
+    test_as_binding();
+}
+
+// @error_return(ParseErr)
+// def checked_parse(s: str) -> int:
+std::expected<::tpy::BigInt, ParseErr> checked_parse(std::string_view s) {
+    // if s == "":
+    if ((s == "")) {
+        // raise ParseErr(1)
+        return ::tpy::make_unexpected(ParseErr(1));
+    }
+    // if s == "?":
+    if ((s == "?")) {
+        // raise ParseErr(2)
+        return ::tpy::make_unexpected(ParseErr(2));
+    }
+    // return int(s)
+    return ::tpy::BigInt::from_str(s);
+}
+
+// @error_return(ParseErr)
+// def checked_add(a: str, b: str) -> int:
+std::expected<::tpy::BigInt, ParseErr> checked_add(std::string_view a, std::string_view b) {
+    // return checked_parse(a) + checked_parse(b)
+    return ((({ auto __er_29 = checked_parse(a); if (!__er_29.has_value()) return ::tpy::make_unexpected(__er_29.error()); ::tpy::unwrap_ref_move(*__er_29); })) + (({ auto __er_30 = checked_parse(b); if (!__er_30.has_value()) return ::tpy::make_unexpected(__er_30.error()); ::tpy::unwrap_ref_move(*__er_30); })));
+}
+
+// def test_as_binding() -> None:
+void test_as_binding() {
+    // try:
+    ::tpy::BigInt v;
+    {
+        std::optional<ParseErr> __err_opt_31;
+        // v = checked_add("10", "20")
+        {
+            auto __try_tmp_32 = checked_add("10", "20");
+            if (!__try_tmp_32.has_value()) { __err_opt_31 = std::move(__try_tmp_32.error()); goto __except_31; }
+            v = ::tpy::unwrap_ref(*__try_tmp_32);
+        }
+        // else:
+        // print(v)
+        std::cout << v << "\n";
+        goto __after_try_31;
+        // except ParseErr:
+        __except_31:;
+        {
+            auto& e = *__err_opt_31;
+            // print(e.code)
+            std::cout << e.code << "\n";
+        }
+        __after_try_31:;
+    }
+    // try:
+    ::tpy::BigInt v2;
+    {
+        std::optional<ParseErr> __err_opt_33;
+        // v2 = checked_add("10", "?")
+        {
+            auto __try_tmp_34 = checked_add("10", "?");
+            if (!__try_tmp_34.has_value()) { __err_opt_33 = std::move(__try_tmp_34.error()); goto __except_33; }
+            v2 = ::tpy::unwrap_ref(*__try_tmp_34);
+        }
+        goto __after_try_33;
+        // except ParseErr:
+        __except_33:;
+        {
+            auto& e = *__err_opt_33;
+            // print(e.code)
+            std::cout << e.code << "\n";
+        }
+        __after_try_33:;
+    }
+    // try:
+    ::tpy::BigInt v3;
+    {
+        std::optional<ParseErr> __err_opt_35;
+        // v3 = checked_add("", "5")
+        {
+            auto __try_tmp_36 = checked_add("", "5");
+            if (!__try_tmp_36.has_value()) { __err_opt_35 = std::move(__try_tmp_36.error()); goto __except_35; }
+            v3 = ::tpy::unwrap_ref(*__try_tmp_36);
+        }
+        goto __after_try_35;
+        // except ParseErr:
+        __except_35:;
+        {
+            auto& e = *__err_opt_35;
+            // print(e.code)
+            std::cout << e.code << "\n";
+        }
+        __after_try_35:;
+    }
 }
 
 void __tpy_init() {

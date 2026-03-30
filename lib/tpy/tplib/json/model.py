@@ -9,6 +9,7 @@ from tpyc.macro_api import (
     ClassInfo, FieldInfo, TypeInfo, MacroError,
     class_macro, macro_deps,
     build_init, build_eq,
+    ast, types, Expr, Stmt, Function, Type,
 )
 
 macro_deps(
@@ -16,287 +17,166 @@ macro_deps(
     "tplib.json.writer",
     ("tpy", "try_parse"),
 )
-from tpyc.parse import (
-    TpyFunction, TpyExpr, TpyStmt,
-    TpyAssign, TpyFieldAccess, TpyName, TpyBinOp,
-    TpyReturn, TpyMethodCall, TpyCall, TpyExprStmt,
-    TpyStrLiteral, TpyBoolLiteral, TpyNoneLiteral,
-    TpyIntLiteral, TpyFloatLiteral,
-    TpyVarDecl, TpyTupleUnpack, TpyIf, TpyWhile, TpyAssert,
-    TpySubscript, TpyTupleLiteral, TpyForEach,
-    TpyArrayLiteral, TpyDictLiteral, TpyUnaryOp, TpyRaise, TpyExceptHandler, TpyTry,
-    TpyMatch, TpyMatchCase, TpyLiteralPattern, TpyWildcardPattern,
-)
-from tpyc.typesys import (
-    NamedType, OwnType, VoidType, BoolType, StrType, StrViewType,
-    FloatType, Float32Type,
-    FixedIntType, OptionalType, ListType, DictType, TupleType,
-    EnumType, BigIntType,
-    INT64, UINT64,
-)
-
-
-# ---------------------------------------------------------------------------
-# Type classification helpers
-# ---------------------------------------------------------------------------
-
-_tmp_counter = 0
-
-def _fresh_tmp(hint: str = "v") -> str:
-    global _tmp_counter
-    _tmp_counter += 1
-    return f"__{hint}_{_tmp_counter}"
-
-
-def _is_int_type(ti: TypeInfo) -> bool:
-    return isinstance(ti._tpy_type, FixedIntType)
-
-
-def _is_bigint_type(ti: TypeInfo) -> bool:
-    return isinstance(ti._tpy_type, BigIntType)
-
-
-def _is_float_type(ti: TypeInfo) -> bool:
-    return isinstance(ti._tpy_type, (FloatType, Float32Type))
-
-
-def _is_str_type(ti: TypeInfo) -> bool:
-    return ti.is_str
-
-
-def _is_bool_type(ti: TypeInfo) -> bool:
-    return isinstance(ti._tpy_type, BoolType)
-
-
-def _is_list_type(ti: TypeInfo) -> bool:
-    return isinstance(ti._tpy_type, ListType)
-
-
-def _is_dict_type(ti: TypeInfo) -> bool:
-    return isinstance(ti._tpy_type, DictType)
-
-
-def _is_tuple_type(ti: TypeInfo) -> bool:
-    return isinstance(ti._tpy_type, TupleType)
-
-
-def _is_model_record(ti: TypeInfo) -> bool:
-    """Check if a type is a user record (potential nested @model)."""
-    return ti.is_record
-
-
-def _is_enum_type(ti: TypeInfo) -> bool:
-    return isinstance(ti._tpy_type, EnumType)
-
-
-def _unwrap_optional(ti: TypeInfo) -> TypeInfo | None:
-    """If ti is Optional[T], return T. Otherwise return None."""
-    if ti.is_optional and isinstance(ti._tpy_type, OptionalType):
-        return TypeInfo.from_tpy_type(ti._tpy_type.inner)
-    return None
-
-
-# ---------------------------------------------------------------------------
-# AST construction helpers
-# ---------------------------------------------------------------------------
-
-def _method_call(obj: TpyExpr, method: str, args: list[TpyExpr] | None = None) -> TpyExpr:
-    return TpyMethodCall(obj=obj, method=method, args=args or [])
-
-
-def _call(func: str, args: list[TpyExpr] | None = None) -> TpyExpr:
-    return TpyCall(func=TpyName(func), args=args or [])
-
-
-def _name(n: str) -> TpyName:
-    return TpyName(n)
-
-
-def _str_lit(s: str) -> TpyStrLiteral:
-    return TpyStrLiteral(value=s)
-
-
-def _eq(left: TpyExpr, right: TpyExpr) -> TpyBinOp:
-    return TpyBinOp(left=left, op="==", right=right)
-
-
-def _expr_stmt(expr: TpyExpr) -> TpyExprStmt:
-    return TpyExprStmt(expr=expr)
 
 
 _JSON_ERROR = "tplib.json.parser.JsonError"
 
 
-def _raise_if(condition: TpyExpr) -> TpyIf:
+def _raise_if(condition: Expr) -> Stmt:
     """Build: if condition: raise JsonError"""
-    return TpyIf(
-        condition=condition,
-        then_body=[TpyRaise(exception_type=_JSON_ERROR)],
-        else_body=[],
-    )
-
-
-def _reader_name() -> TpyName:
-    return _name("__reader")
-
-
-def _writer_name() -> TpyName:
-    return _name("__writer")
+    return ast.if_(condition, [ast.raise_(_JSON_ERROR)])
 
 
 # ---------------------------------------------------------------------------
 # from_json / _from_reader body generation
 # ---------------------------------------------------------------------------
 
-def _build_read_into(fld_type: TypeInfo, reader: TpyExpr, hint: str = "v") -> tuple[list[TpyStmt], str]:
+def _build_read_into(fld_type: TypeInfo, reader: Expr, hint: str = "v") -> tuple[list[Stmt], str]:
     """Read any JSON value into a fresh temp variable.
 
     Returns (statements, var_name). Works for all supported types
     including containers and enums.
     """
     # Simple types: reader call as standalone statement
-    tmp = _fresh_tmp(hint)
+    tmp = ast.fresh_tmp(hint)
     stmts = _try_build_read_stmts(fld_type, reader, tmp)
     if stmts is not None:
         return (stmts, tmp)
 
     # Model record: _from_reader call as standalone VarDecl
-    if _is_model_record(fld_type):
-        return ([TpyVarDecl(name=tmp, type=None,
-                            init=_method_call(_name(fld_type.name), "_from_reader", [reader]))], tmp)
+    if fld_type.is_record:
+        return ([ast.var_decl(tmp, init=ast.method_call(
+            ast.name(fld_type.name), "_from_reader", [reader]))], tmp)
 
     # Enum: read_str first (auto-propagates), then try_parse + raise
-    if _is_enum_type(fld_type):
-        raw_str = _fresh_tmp("estr")
-        parsed = _fresh_tmp("parsed")
-        enum_name = fld_type._tpy_type.name
+    if fld_type.is_enum:
+        raw_str = ast.fresh_tmp("estr")
+        parsed = ast.fresh_tmp("parsed")
+        enum_name = fld_type.enum_name
         return ([
-            TpyVarDecl(name=raw_str, type=None, init=_method_call(reader, "read_str")),
-            TpyVarDecl(name=parsed, type=None,
-                       init=_call("try_parse", [_name(enum_name), _name(raw_str)])),
-            _raise_if(
-                TpyBinOp(left=_name(parsed), op="is",
-                         right=TpyNoneLiteral()),
-            ),
-            TpyVarDecl(name=tmp, type=fld_type._tpy_type, init=_name(parsed)),
+            ast.var_decl(raw_str, init=ast.method_call(reader, "read_str")),
+            ast.var_decl(parsed, init=ast.call("try_parse",
+                         [ast.name(enum_name), ast.name(raw_str)])),
+            _raise_if(ast.binop(ast.name(parsed), "is", ast.none_lit())),
+            ast.var_decl(tmp, type=fld_type.raw_type, init=ast.name(parsed)),
         ], tmp)
 
     # Container types: declare with default, read in-place
-    tmp = _fresh_tmp(hint)
+    tmp = ast.fresh_tmp(hint)
     default = _default_for_type(fld_type)
-    stmts: list[TpyStmt] = [TpyVarDecl(name=tmp, type=fld_type._tpy_type, init=default)]
+    stmts: list[Stmt] = [ast.var_decl(tmp, type=fld_type.raw_type, init=default)]
     stmts.extend(_build_read_value_stmts(tmp, fld_type, reader))
     return (stmts, tmp)
 
 
-def _try_build_read_stmts(fld_type: TypeInfo, reader: TpyExpr, var_name: str) -> list[TpyStmt] | None:
+def _try_build_read_stmts(fld_type: TypeInfo, reader: Expr, var_name: str) -> list[Stmt] | None:
     """Try to build statements that read a value into var_name.
 
     Returns None for types that need container/tuple/enum handling.
     Reader calls are always standalone statements so @error_return
     auto-propagation works correctly.
     """
-    if _is_str_type(fld_type):
-        return [TpyVarDecl(name=var_name, type=None, init=_method_call(reader, "read_str"))]
-    if _is_bool_type(fld_type):
-        return [TpyVarDecl(name=var_name, type=None, init=_method_call(reader, "read_bool"))]
-    if _is_float_type(fld_type):
-        if isinstance(fld_type._tpy_type, Float32Type):
-            raw = _fresh_tmp("raw")
+    if fld_type.is_str:
+        return [ast.var_decl(var_name, init=ast.method_call(reader, "read_str"))]
+    if fld_type.is_bool:
+        return [ast.var_decl(var_name, init=ast.method_call(reader, "read_bool"))]
+    if fld_type.is_float:
+        if fld_type.is_float32:
+            raw = ast.fresh_tmp("raw")
             return [
-                TpyVarDecl(name=raw, type=None, init=_method_call(reader, "read_float")),
-                TpyVarDecl(name=var_name, type=None, init=TpyCall(func=TpyName("Float32"), args=[_name(raw)])),
+                ast.var_decl(raw, init=ast.method_call(reader, "read_float")),
+                ast.var_decl(var_name, init=ast.call("Float32", [ast.name(raw)])),
             ]
-        return [TpyVarDecl(name=var_name, type=None, init=_method_call(reader, "read_float"))]
-    if _is_int_type(fld_type):
-        type_name = str(fld_type._tpy_type)
+        return [ast.var_decl(var_name, init=ast.method_call(reader, "read_float"))]
+    if fld_type.is_int:
+        type_name = fld_type.int_type_name
         if type_name != "Int64":
-            raw = _fresh_tmp("raw")
+            raw = ast.fresh_tmp("raw")
             return [
-                TpyVarDecl(name=raw, type=None, init=_method_call(reader, "read_int")),
-                TpyVarDecl(name=var_name, type=None, init=TpyCall(func=TpyName(type_name), args=[_name(raw)])),
+                ast.var_decl(raw, init=ast.method_call(reader, "read_int")),
+                ast.var_decl(var_name, init=ast.call(type_name, [ast.name(raw)])),
             ]
-        return [TpyVarDecl(name=var_name, type=None, init=_method_call(reader, "read_int"))]
-    if _is_bigint_type(fld_type):
-        raw = _fresh_tmp("raw")
+        return [ast.var_decl(var_name, init=ast.method_call(reader, "read_int"))]
+    if fld_type.is_bigint:
+        raw = ast.fresh_tmp("raw")
         return [
-            TpyVarDecl(name=raw, type=None, init=_method_call(reader, "read_str")),
-            TpyVarDecl(name=var_name, type=None, init=_call("int", [_name(raw)])),
+            ast.var_decl(raw, init=ast.method_call(reader, "read_str")),
+            ast.var_decl(var_name, init=ast.call("int", [ast.name(raw)])),
         ]
     # Model records and other unhandled types: handled by _build_read_into.
     return None
 
 
-def _default_for_type(ti: TypeInfo) -> TpyExpr:
+def _default_for_type(ti: TypeInfo) -> Expr:
     """Build a default initializer expression for a type."""
-    if _is_str_type(ti):
-        return _str_lit("")
-    if _is_bool_type(ti):
-        return TpyBoolLiteral(value=False)
-    if _is_int_type(ti) or _is_bigint_type(ti):
-        return TpyIntLiteral(value=0)
-    if _is_float_type(ti):
-        return TpyFloatLiteral(value=0.0)
-    if _is_list_type(ti):
-        return TpyArrayLiteral(elements=[])
-    if _is_dict_type(ti):
-        return TpyDictLiteral(keys=[], values=[])
-    if _unwrap_optional(ti) is not None:
-        return TpyNoneLiteral()
+    if ti.is_str:
+        return ast.str_lit("")
+    if ti.is_bool:
+        return ast.bool_lit(False)
+    if ti.is_int or ti.is_bigint:
+        return ast.int_lit(0)
+    if ti.is_float:
+        return ast.float_lit(0.0)
+    if ti.is_list:
+        return ast.list_lit()
+    if ti.is_dict:
+        return ast.dict_lit()
+    if ti.unwrap_optional() is not None:
+        return ast.none_lit()
     raise MacroError(f"@model: no default for type '{ti.name}'")
 
 
 def _build_read_value_stmts(
-    fld_name: str, fld_type: TypeInfo, reader: TpyExpr,
-) -> list[TpyStmt]:
+    fld_name: str, fld_type: TypeInfo, reader: Expr,
+) -> list[Stmt]:
     """Build statements to read a field value and assign to local var.
 
     Handles all types: Optional, list, dict, tuple, enum, primitives, models.
     """
-    target = _name(fld_name)
+    target = ast.name(fld_name)
 
     # Optional[T]: check for null, then read inner
-    inner = _unwrap_optional(fld_type)
+    inner = fld_type.unwrap_optional()
     if inner is not None:
-        peek = _method_call(reader, "peek")
-        none_token = TpyFieldAccess(obj=_name("JsonToken"), field="NONE")
-        read_null = _expr_stmt(_method_call(reader, "read_null"))
+        peek = ast.method_call(reader, "peek")
+        none_token = ast.field_access(ast.name("JsonToken"), "NONE")
+        read_null = ast.expr_stmt(ast.method_call(reader, "read_null"))
         else_body = _read_and_assign(fld_name, inner, reader)
-        return [TpyIf(
-            condition=_eq(peek, none_token),
+        return [ast.if_(
+            ast.binop(peek, "==", none_token),
             then_body=[read_null],
             else_body=else_body,
         )]
 
     # list[T]: read array, append each element
-    if _is_list_type(fld_type) and fld_type.type_args:
+    if fld_type.is_list and fld_type.type_args:
         elem_type = fld_type.type_args[0]
         loop_body = _read_and_append(target, elem_type, reader)
         return [
-            _expr_stmt(_method_call(reader, "read_array_start")),
-            TpyWhile(condition=_method_call(reader, "has_next"), body=loop_body),
-            _expr_stmt(_method_call(reader, "read_array_end")),
+            ast.expr_stmt(ast.method_call(reader, "read_array_start")),
+            ast.while_(ast.method_call(reader, "has_next"), loop_body),
+            ast.expr_stmt(ast.method_call(reader, "read_array_end")),
         ]
 
     # dict[str, V]: read object, set each key-value
-    if _is_dict_type(fld_type) and fld_type.type_args and len(fld_type.type_args) == 2:
+    if fld_type.is_dict and fld_type.type_args and len(fld_type.type_args) == 2:
         val_type = fld_type.type_args[1]
-        dk_var = _fresh_tmp("dk")
-        loop_body: list[TpyStmt] = [
-            TpyVarDecl(name=dk_var, type=StrType(),
-                       init=_method_call(reader, "read_key")),
+        dk_var = ast.fresh_tmp("dk")
+        loop_body: list[Stmt] = [
+            ast.var_decl(dk_var, type=types.str,
+                         init=ast.method_call(reader, "read_key")),
         ]
         loop_body.extend(_read_and_assign_subscript(target, dk_var, val_type, reader))
         return [
-            _expr_stmt(_method_call(reader, "read_object_start")),
-            TpyWhile(condition=_method_call(reader, "has_next"), body=loop_body),
-            _expr_stmt(_method_call(reader, "read_object_end")),
+            ast.expr_stmt(ast.method_call(reader, "read_object_start")),
+            ast.while_(ast.method_call(reader, "has_next"), loop_body),
+            ast.expr_stmt(ast.method_call(reader, "read_object_end")),
         ]
 
     # tuple[T1, T2, ...]: read as JSON array, positional
-    if _is_tuple_type(fld_type):
-        elem_types = [TypeInfo.from_tpy_type(et) for et in fld_type._tpy_type.element_types]
-        stmts: list[TpyStmt] = [_expr_stmt(_method_call(reader, "read_array_start"))]
+    if fld_type.is_tuple:
+        elem_types = fld_type.tuple_element_types
+        stmts: list[Stmt] = [ast.expr_stmt(ast.method_call(reader, "read_array_start"))]
         elem_vars: list[str] = []
         for i, et in enumerate(elem_types):
             es, ev = _build_read_into(et, reader, f"t{i}")
@@ -304,13 +184,12 @@ def _build_read_value_stmts(
             elem_vars.append(ev)
             if i < len(elem_types) - 1:
                 stmts.append(_raise_if(
-                    _eq(_method_call(reader, "has_next"),
-                        TpyBoolLiteral(value=False)),
+                    ast.binop(ast.method_call(reader, "has_next"),
+                              "==", ast.bool_lit(False)),
                 ))
-        stmts.append(_expr_stmt(_method_call(reader, "read_array_end")))
-        stmts.append(TpyAssign(
-            target=target,
-            value=TpyTupleLiteral(elements=[_name(v) for v in elem_vars]),
+        stmts.append(ast.expr_stmt(ast.method_call(reader, "read_array_end")))
+        stmts.append(ast.assign(
+            target, ast.tuple_lit([ast.name(v) for v in elem_vars]),
         ))
         return stmts
 
@@ -318,40 +197,40 @@ def _build_read_value_stmts(
     return _read_and_assign(fld_name, fld_type, reader)
 
 
-def _read_and_assign(fld_name: str, fld_type: TypeInfo, reader: TpyExpr) -> list[TpyStmt]:
+def _read_and_assign(fld_name: str, fld_type: TypeInfo, reader: Expr) -> list[Stmt]:
     """Read a value and assign to fld_name."""
     # Model records: assign directly from _from_reader() call (rvalue)
     # to avoid copy warning when target is Optional[Own[T]].
-    if _is_model_record(fld_type):
-        return [TpyAssign(
-            target=_name(fld_name),
-            value=_method_call(_name(fld_type.name), "_from_reader", [reader]),
+    if fld_type.is_record:
+        return [ast.assign(
+            ast.name(fld_name),
+            ast.method_call(ast.name(fld_type.name), "_from_reader", [reader]),
         )]
     stmts, var = _build_read_into(fld_type, reader, fld_name)
-    stmts.append(TpyAssign(target=_name(fld_name), value=_name(var)))
+    stmts.append(ast.assign(ast.name(fld_name), ast.name(var)))
     return stmts
 
 
-def _read_and_append(target: TpyExpr, elem_type: TypeInfo, reader: TpyExpr) -> list[TpyStmt]:
+def _read_and_append(target: Expr, elem_type: TypeInfo, reader: Expr) -> list[Stmt]:
     """Read one element and append to target via temp variable."""
     stmts, var = _build_read_into(elem_type, reader, "elem")
-    stmts.append(_expr_stmt(_method_call(target, "append", [_name(var)])))
+    stmts.append(ast.expr_stmt(ast.method_call(target, "append", [ast.name(var)])))
     return stmts
 
 
 def _read_and_assign_subscript(
-    target: TpyExpr, key_var: str, val_type: TypeInfo, reader: TpyExpr,
-) -> list[TpyStmt]:
+    target: Expr, key_var: str, val_type: TypeInfo, reader: Expr,
+) -> list[Stmt]:
     """Read one value and assign to target[key_var] via temp variable."""
     stmts, var = _build_read_into(val_type, reader, "dv")
-    stmts.append(TpyAssign(
-        target=TpySubscript(obj=target, index=_name(key_var)),
-        value=_name(var),
+    stmts.append(ast.assign(
+        ast.subscript(target, ast.name(key_var)),
+        ast.name(var),
     ))
     return stmts
 
 
-def _build_field_default(fld: FieldInfo) -> TpyExpr | None:
+def _build_field_default(fld: FieldInfo) -> Expr | None:
     """Build the default initializer for a local variable before parsing.
 
     Returns None for types that have no sensible zero value (model records,
@@ -360,7 +239,7 @@ def _build_field_default(fld: FieldInfo) -> TpyExpr | None:
     if fld.has_default and fld.default_expr is not None:
         return fld.default_expr
     ti = fld.type
-    if _is_model_record(ti) or _is_enum_type(ti) or _is_tuple_type(ti):
+    if ti.is_record or ti.is_enum or ti.is_tuple:
         return None
     try:
         return _default_for_type(ti)
@@ -368,18 +247,16 @@ def _build_field_default(fld: FieldInfo) -> TpyExpr | None:
         return None
 
 
-def _build_from_reader(cls: ClassInfo, all_fields: list[FieldInfo]) -> TpyFunction:
+def _build_from_reader(cls: ClassInfo, all_fields: list[FieldInfo]) -> Function:
     """Build _from_reader(reader: JsonReader) -> Self static method."""
-    reader = _reader_name()
-    reader_type = NamedType("JsonReader")
-    body: list[TpyStmt] = []
+    reader = ast.name("__reader")
+    reader_type = types.named("JsonReader")
+    body: list[Stmt] = []
 
     # __reader.read_object_start()
-    body.append(_expr_stmt(_method_call(reader, "read_object_start")))
+    body.append(ast.expr_stmt(ast.method_call(reader, "read_object_start")))
 
     # Declare local vars for each field with defaults.
-    # For required model-type fields (no default, not a primitive), declare as
-    # Optional and assert non-None after parsing -- narrowing makes the type safe.
     # Fields with no zero value (models, enums, tuples) are declared as
     # Optional and asserted non-None after parsing.
     required_fields: list[str] = []
@@ -388,22 +265,19 @@ def _build_from_reader(cls: ClassInfo, all_fields: list[FieldInfo]) -> TpyFuncti
         if default is not None:
             # For Optional[NonValueType] fields, use Optional[Own[T]] so the
             # C++ repr is std::optional<T> (value) rather than T* (pointer).
-            fld_cpp_type = fld.type._tpy_type
-            if isinstance(fld_cpp_type, OptionalType) and not fld_cpp_type.inner.is_value_type():
-                fld_cpp_type = OptionalType(OwnType(fld_cpp_type.inner))
-            body.append(TpyVarDecl(
-                name=fld.name, type=fld_cpp_type, init=default,
-            ))
-        elif _is_model_record(fld.type) or _is_enum_type(fld.type) or _is_tuple_type(fld.type):
+            fld_raw = fld.type.raw_type
+            inner_opt = fld.type.unwrap_optional()
+            if inner_opt is not None and not inner_opt.is_value_type:
+                fld_raw = types.optional(types.own(inner_opt.raw_type))
+            body.append(ast.var_decl(fld.name, type=fld_raw, init=default))
+        elif fld.type.is_record or fld.type.is_enum or fld.type.is_tuple:
             # Use Optional[Own[T]] for non-value types so the C++ repr is
             # std::optional<T> (value semantics) rather than T* (pointer repr).
-            # This ensures error_return auto-propagation assigns correctly.
-            inner = fld.type._tpy_type
-            if not inner.is_value_type():
-                inner = OwnType(inner)
-            body.append(TpyVarDecl(
-                name=fld.name, type=OptionalType(inner),
-                init=TpyNoneLiteral(),
+            inner = fld.type.raw_type
+            if not fld.type.is_value_type:
+                inner = types.own(inner)
+            body.append(ast.var_decl(
+                fld.name, type=types.optional(inner), init=ast.none_lit(),
             ))
             required_fields.append(fld.name)
         else:
@@ -417,146 +291,116 @@ def _build_from_reader(cls: ClassInfo, all_fields: list[FieldInfo]) -> TpyFuncti
     key_var = "__key"
     if all_fields:
         dispatch = _build_field_dispatch(all_fields, reader)
-        loop_body: list[TpyStmt] = [
-            TpyVarDecl(name=key_var, type=StrViewType(),
-                       init=_method_call(reader, "read_key_raw")),
+        loop_body: list[Stmt] = [
+            ast.var_decl(key_var, type=types.str_view,
+                         init=ast.method_call(reader, "read_key_raw")),
             dispatch,
         ]
-        body.append(TpyWhile(
-            condition=_method_call(reader, "has_next"),
-            body=loop_body,
+        body.append(ast.while_(
+            ast.method_call(reader, "has_next"), loop_body,
         ))
 
     # __reader.read_object_end()
-    body.append(_expr_stmt(_method_call(reader, "read_object_end")))
+    body.append(ast.expr_stmt(ast.method_call(reader, "read_object_end")))
 
     # Raise if required fields were not seen (triggers narrowing for constructor)
     for req_name in required_fields:
         body.append(_raise_if(
-            TpyBinOp(left=_name(req_name), op="is", right=TpyNoneLiteral()),
+            ast.binop(ast.name(req_name), "is", ast.none_lit()),
         ))
 
     # return ClassName(field1, field2, ...)
-    body.append(TpyReturn(
-        value=TpyCall(func=TpyName(cls.name), args=[_name(f.name) for f in all_fields]),
+    body.append(ast.return_(
+        ast.call(cls.name, [ast.name(f.name) for f in all_fields]),
     ))
 
-    cls_type = NamedType(cls.name)
-    ret_type = cls_type if cls_type.is_value_type() else OwnType(cls_type)
-    return TpyFunction(
-        name="_from_reader",
-        params=[("__reader", reader_type)],
-        return_type=ret_type,
-        body=body,
-        is_method=True,
-        is_staticmethod=True,
-        error_return=_JSON_ERROR,
+    cls_type = types.named(cls.name)
+    ret_type = cls_type if cls_type.is_value_type() else types.own(cls_type)
+    return ast.function(
+        "_from_reader", [("__reader", reader_type)], ret_type, body,
+        is_method=True, is_staticmethod=True, error_return=_JSON_ERROR,
     )
 
 
-def _build_field_dispatch(fields: list[FieldInfo], reader: TpyExpr) -> TpyMatch:
+def _build_field_dispatch(fields: list[FieldInfo], reader: Expr) -> Stmt:
     """Build match/case dispatch for field name matching."""
-    key = _name("__key")
-    cases: list[TpyMatchCase] = []
+    key = ast.name("__key")
+    cases = []
 
     for fld in fields:
         body = list(_build_read_value_stmts(fld.name, fld.type, reader))
-        cases.append(TpyMatchCase(
-            pattern=TpyLiteralPattern(value=fld.name),
-            guard=None,
-            body=body,
-        ))
+        cases.append(ast.match_case(ast.literal_pattern(fld.name), body))
 
     # Default case: skip unknown fields
-    cases.append(TpyMatchCase(
-        pattern=TpyWildcardPattern(),
-        guard=None,
-        body=[_expr_stmt(_method_call(reader, "skip_value"))],
+    cases.append(ast.match_case(
+        ast.wildcard_pattern(),
+        [ast.expr_stmt(ast.method_call(reader, "skip_value"))],
     ))
 
-    return TpyMatch(subject=key, cases=cases)
+    return ast.match(key, cases)
 
 
-def _build_from_json(cls: ClassInfo) -> TpyFunction:
+def _build_from_json(cls: ClassInfo) -> Function:
     """Build from_json(s: str) -> Self static method (panics on error).
 
     Wraps _from_reader in try/except and panics on parse errors.
     For error-handling version, use try_from_json.
     """
-    cls_type = NamedType(cls.name)
-    ret_type = cls_type if cls_type.is_value_type() else OwnType(cls_type)
+    cls_type = types.named(cls.name)
+    ret_type = cls_type if cls_type.is_value_type() else types.own(cls_type)
     # Use Optional[Own[T]] for the result variable to avoid pointer-repr
     # issues and ensure the value is definitely available after try/except.
     inner = cls_type
     if not cls_type.is_value_type():
-        inner = OwnType(cls_type)
+        inner = types.own(cls_type)
     result_var = "__result"
-    body: list[TpyStmt] = [
-        TpyVarDecl(
-            name="__reader", type=NamedType("JsonReader"),
-            init=TpyCall(func=TpyName("JsonReader"), args=[_name("__s")]),
-        ),
-        TpyVarDecl(name=result_var, type=OptionalType(inner),
-                   init=TpyNoneLiteral()),
-        TpyTry(
+    body: list[Stmt] = [
+        ast.var_decl("__reader", type=types.named("JsonReader"),
+                      init=ast.call("JsonReader", [ast.name("__s")])),
+        ast.var_decl(result_var, type=types.optional(inner),
+                      init=ast.none_lit()),
+        ast.try_(
             try_body=[
-                TpyAssign(target=_name(result_var),
-                          value=_method_call(_name(cls.name), "_from_reader",
-                                            [_name("__reader")])),
+                ast.assign(ast.name(result_var),
+                           ast.method_call(ast.name(cls.name), "_from_reader",
+                                           [ast.name("__reader")])),
             ],
-            handlers=[TpyExceptHandler(
-                exception_type=_JSON_ERROR,
-                binding=None,
-                body=[
-                    TpyAssert(condition=TpyBoolLiteral(value=False),
-                              message=_str_lit("json: parse error")),
+            handlers=[ast.except_handler(
+                _JSON_ERROR, body=[
+                    ast.assert_(ast.bool_lit(False), ast.str_lit("json: parse error")),
                 ],
             )],
-            else_body=[],
-            finally_body=[],
         ),
-        TpyAssert(
-            condition=TpyBinOp(left=_name(result_var), op="is not",
-                               right=TpyNoneLiteral()),
-            message=_str_lit("json: unreachable"),
+        ast.assert_(
+            ast.binop(ast.name(result_var), "is not", ast.none_lit()),
+            ast.str_lit("json: unreachable"),
         ),
-        TpyReturn(value=_name(result_var)),
+        ast.return_(ast.name(result_var)),
     ]
-    return TpyFunction(
-        name="from_json",
-        params=[("__s", StrType())],
-        return_type=ret_type,
-        body=body,
-        is_method=True,
-        is_staticmethod=True,
+    return ast.function(
+        "from_json", [("__s", types.str)], ret_type, body,
+        is_method=True, is_staticmethod=True,
     )
 
 
-def _build_try_from_json(cls: ClassInfo) -> TpyFunction:
+def _build_try_from_json(cls: ClassInfo) -> Function:
     """Build try_from_json(s: str) -> Self with @error_return(JsonError).
 
     Calls _from_reader with auto-propagation. Callers handle with
     try/except JsonError.
     """
-    cls_type = NamedType(cls.name)
-    ret_type = cls_type if cls_type.is_value_type() else OwnType(cls_type)
-    body: list[TpyStmt] = [
-        TpyVarDecl(
-            name="__reader", type=NamedType("JsonReader"),
-            init=TpyCall(func=TpyName("JsonReader"), args=[_name("__s")]),
-        ),
-        TpyReturn(
-            value=_method_call(_name(cls.name), "_from_reader", [_name("__reader")]),
+    cls_type = types.named(cls.name)
+    ret_type = cls_type if cls_type.is_value_type() else types.own(cls_type)
+    body: list[Stmt] = [
+        ast.var_decl("__reader", type=types.named("JsonReader"),
+                      init=ast.call("JsonReader", [ast.name("__s")])),
+        ast.return_(
+            ast.method_call(ast.name(cls.name), "_from_reader", [ast.name("__reader")]),
         ),
     ]
-    return TpyFunction(
-        name="try_from_json",
-        params=[("__s", StrType())],
-        return_type=ret_type,
-        body=body,
-        is_method=True,
-        is_staticmethod=True,
-        error_return=_JSON_ERROR,
+    return ast.function(
+        "try_from_json", [("__s", types.str)], ret_type, body,
+        is_method=True, is_staticmethod=True, error_return=_JSON_ERROR,
     )
 
 
@@ -565,161 +409,141 @@ def _build_try_from_json(cls: ClassInfo) -> TpyFunction:
 # ---------------------------------------------------------------------------
 
 def _build_write_value_stmts(
-    access: TpyExpr, fld_type: TypeInfo, writer: TpyExpr,
-) -> list[TpyStmt]:
+    access: Expr, fld_type: TypeInfo, writer: Expr,
+) -> list[Stmt]:
     """Build statements to write a single value to the writer."""
-    inner = _unwrap_optional(fld_type)
+    inner = fld_type.unwrap_optional()
     if inner is not None:
         # Assign to a local var, check "is not None", then assign the
         # narrowed value to a typed local to work around a narrowing
         # limitation with method call arguments.
-        if isinstance(access, TpyFieldAccess):
-            opt_var = f"__opt_{access.field}"
-            val_var = f"__val_{access.field}"
+        field_name = ast.get_field_name(access)
+        if field_name is not None:
+            opt_var = f"__opt_{field_name}"
+            val_var = f"__val_{field_name}"
         else:
             opt_var = "__opt_val"
             val_var = "__unwrap_val"
-        inner_type = inner._tpy_type
-        then_body: list[TpyStmt] = [
-            TpyVarDecl(name=val_var, type=inner_type, init=_name(opt_var)),
+        inner_raw = inner.raw_type
+        then_body: list[Stmt] = [
+            ast.var_decl(val_var, type=inner_raw, init=ast.name(opt_var)),
         ]
-        then_body.extend(_build_write_value_stmts(_name(val_var), inner, writer))
+        then_body.extend(_build_write_value_stmts(ast.name(val_var), inner, writer))
         return [
-            TpyVarDecl(name=opt_var, type=None, init=access),
-            TpyIf(
-                condition=TpyBinOp(left=_name(opt_var), op="is not", right=TpyNoneLiteral()),
+            ast.var_decl(opt_var, init=access),
+            ast.if_(
+                ast.binop(ast.name(opt_var), "is not", ast.none_lit()),
                 then_body=then_body,
-                else_body=[_expr_stmt(_method_call(writer, "write_null"))],
+                else_body=[ast.expr_stmt(ast.method_call(writer, "write_null"))],
             ),
         ]
 
-    if _is_list_type(fld_type) and fld_type.type_args:
+    if fld_type.is_list and fld_type.type_args:
         elem_type = fld_type.type_args[0]
-
         return [
-            _expr_stmt(_method_call(writer, "array_start")),
-            TpyForEach(
-                var="__item", iterable=access,
-                body=_build_write_value_stmts(_name("__item"), elem_type, writer),
-            ),
-            _expr_stmt(_method_call(writer, "array_end")),
+            ast.expr_stmt(ast.method_call(writer, "array_start")),
+            ast.for_each("__item", access,
+                         _build_write_value_stmts(ast.name("__item"), elem_type, writer)),
+            ast.expr_stmt(ast.method_call(writer, "array_end")),
         ]
 
     # dict[str, V] -- iterate items() to avoid double lookup
-    if _is_dict_type(fld_type) and fld_type.type_args and len(fld_type.type_args) == 2:
+    if fld_type.is_dict and fld_type.type_args and len(fld_type.type_args) == 2:
         val_type = fld_type.type_args[1]
-        synth_var = _fresh_tmp("kv")
-        loop_body: list[TpyStmt] = [
-            TpyTupleUnpack(targets=["__dk", "__dv"], value=_name(synth_var)),
-            _expr_stmt(_method_call(writer, "key", [_name("__dk")])),
+        synth_var = ast.fresh_tmp("kv")
+        loop_body: list[Stmt] = [
+            ast.tuple_unpack(["__dk", "__dv"], ast.name(synth_var)),
+            ast.expr_stmt(ast.method_call(writer, "key", [ast.name("__dk")])),
         ]
-        loop_body.extend(_build_write_value_stmts(_name("__dv"), val_type, writer))
+        loop_body.extend(_build_write_value_stmts(ast.name("__dv"), val_type, writer))
         return [
-            _expr_stmt(_method_call(writer, "object_start")),
-            TpyForEach(
-                var=synth_var,
-                iterable=_method_call(access, "items"),
-                body=loop_body,
-                is_tuple_unpack=True,
-            ),
-            _expr_stmt(_method_call(writer, "object_end")),
+            ast.expr_stmt(ast.method_call(writer, "object_start")),
+            ast.for_each(synth_var, ast.method_call(access, "items"),
+                         loop_body, is_tuple_unpack=True),
+            ast.expr_stmt(ast.method_call(writer, "object_end")),
         ]
 
     # tuple[T1, T2, ...]: write as JSON array
-    if _is_tuple_type(fld_type):
-
-        elem_types = [TypeInfo.from_tpy_type(et) for et in fld_type._tpy_type.element_types]
-        stmts: list[TpyStmt] = [_expr_stmt(_method_call(writer, "array_start"))]
+    if fld_type.is_tuple:
+        elem_types = fld_type.tuple_element_types
+        stmts: list[Stmt] = [ast.expr_stmt(ast.method_call(writer, "array_start"))]
         for i, et in enumerate(elem_types):
-            elem_access = TpySubscript(obj=access, index=TpyIntLiteral(value=i))
+            elem_access = ast.subscript(access, ast.int_lit(i))
             stmts.extend(_build_write_value_stmts(elem_access, et, writer))
-        stmts.append(_expr_stmt(_method_call(writer, "array_end")))
+        stmts.append(ast.expr_stmt(ast.method_call(writer, "array_end")))
         return stmts
 
-    if _is_enum_type(fld_type):
-        return [_expr_stmt(_method_call(
+    if fld_type.is_enum:
+        return [ast.expr_stmt(ast.method_call(
             writer, "write_str",
-            [TpyFieldAccess(obj=access, field="name")],
+            [ast.field_access(access, "name")],
         ))]
 
-    if _is_model_record(fld_type):
-        return [_expr_stmt(_method_call(access, "_to_writer", [writer]))]
+    if fld_type.is_record:
+        return [ast.expr_stmt(ast.method_call(access, "_to_writer", [writer]))]
 
-    if _is_bigint_type(fld_type):
+    if fld_type.is_bigint:
         # Write BigInt as JSON string to preserve precision
-        return [_expr_stmt(_method_call(writer, "write_str", [_call("str", [access])]))]
+        return [ast.expr_stmt(ast.method_call(
+            writer, "write_str", [ast.call("str", [access])]))]
 
     # Primitive write
     write_method = _get_write_method(fld_type)
-    return [_expr_stmt(_method_call(writer, write_method, [access]))]
+    return [ast.expr_stmt(ast.method_call(writer, write_method, [access]))]
 
 
 def _get_write_method(fld_type: TypeInfo) -> str:
-    if _is_str_type(fld_type):
+    if fld_type.is_str:
         return "write_str"
-    if _is_bool_type(fld_type):
+    if fld_type.is_bool:
         return "write_bool"
-    if isinstance(fld_type._tpy_type, Float32Type):
+    if fld_type.is_float32:
         return "write_float32"
-    if _is_float_type(fld_type):
+    if fld_type.is_float:
         return "write_float"
-    if isinstance(fld_type._tpy_type, FixedIntType) and fld_type._tpy_type.bits == 32 and fld_type._tpy_type.signed:
+    if fld_type.is_int32:
         return "write_int32"
-    if _is_int_type(fld_type):
+    if fld_type.is_int:
         return "write_int"
     raise MacroError(f"@model: unsupported field type for serialization '{fld_type.name}'")
 
 
-def _build_to_writer(cls: ClassInfo, all_fields: list[FieldInfo]) -> TpyFunction:
+def _build_to_writer(cls: ClassInfo, all_fields: list[FieldInfo]) -> Function:
     """Build _to_writer(self, writer: JsonWriter) -> None method."""
-    writer = _writer_name()
-    writer_type = NamedType("JsonWriter")
-    body: list[TpyStmt] = []
+    writer = ast.name("__writer")
+    writer_type = types.named("JsonWriter")
+    body: list[Stmt] = []
 
     # __writer.object_start()
-    body.append(_expr_stmt(_method_call(writer, "object_start")))
+    body.append(ast.expr_stmt(ast.method_call(writer, "object_start")))
 
     for fld in all_fields:
         # __writer.key("field_name")
-        body.append(_expr_stmt(_method_call(writer, "key", [_str_lit(fld.name)])))
-        access = TpyFieldAccess(obj=_name("self"), field=fld.name)
+        body.append(ast.expr_stmt(ast.method_call(writer, "key", [ast.str_lit(fld.name)])))
+        access = ast.field_access(ast.name("self"), fld.name)
         body.extend(_build_write_value_stmts(access, fld.type, writer))
 
     # __writer.object_end()
-    body.append(_expr_stmt(_method_call(writer, "object_end")))
+    body.append(ast.expr_stmt(ast.method_call(writer, "object_end")))
 
-    return TpyFunction(
-        name="_to_writer",
-        params=[("__writer", writer_type)],
-        return_type=VoidType(),
-        body=body,
-        is_method=True,
-        readonly_opt_out=True,
+    return ast.function(
+        "_to_writer", [("__writer", writer_type)], types.void, body,
+        is_method=True, readonly_opt_out=True,
     )
 
 
-def _build_to_json(cls: ClassInfo) -> TpyFunction:
+def _build_to_json(cls: ClassInfo) -> Function:
     """Build to_json(self) -> str method (public entry point)."""
-    # def to_json(self) -> str:
-    #     __writer = JsonWriter()
-    #     self._to_writer(__writer)
-    #     return __writer.finish()
-    writer_type = NamedType("JsonWriter")
-    body: list[TpyStmt] = [
-        TpyVarDecl(
-            name="__writer", type=writer_type,
-            init=TpyCall(func=TpyName("JsonWriter"), args=[]),
-        ),
-        _expr_stmt(_method_call(_name("self"), "_to_writer", [_name("__writer")])),
-        TpyReturn(value=_method_call(_name("__writer"), "finish")),
+    writer_type = types.named("JsonWriter")
+    body: list[Stmt] = [
+        ast.var_decl("__writer", type=writer_type,
+                      init=ast.call("JsonWriter")),
+        ast.expr_stmt(ast.method_call(ast.name("self"), "_to_writer", [ast.name("__writer")])),
+        ast.return_(ast.method_call(ast.name("__writer"), "finish")),
     ]
-    return TpyFunction(
-        name="to_json",
-        params=[],
-        return_type=StrType(),
-        body=body,
-        is_method=True,
-        readonly_opt_out=True,
+    return ast.function(
+        "to_json", [], types.str, body,
+        is_method=True, readonly_opt_out=True,
     )
 
 
@@ -765,16 +589,14 @@ def model(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> None:
 
     # Generate __repr__ stub
     if not cls.has_method("__repr__"):
-        cls.add_method_stub("__repr__", [], StrType(), is_readonly=True)
+        cls.add_method_stub("__repr__", [], types.str, is_readonly=True)
 
     if frozen and not cls.has_method("__hash__"):
-        cls.add_method_stub("__hash__", [], UINT64, is_readonly=True)
+        cls.add_method_stub("__hash__", [], types.uint64, is_readonly=True)
 
     cls.set_dataclass_fields(all_fields)
 
-    # Discover enum types among fields so builders can detect them
-    global _tmp_counter
-    _tmp_counter = 0
+    ast.reset_tmp_counter()
 
     # Generate JSON methods
     cls.add_method(_build_from_reader(cls, all_fields))

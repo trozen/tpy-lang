@@ -14,9 +14,16 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, NoReturn, TYPE_CHECKING
 
 from .typesys import (
-    TpyType, NamedType, OwnType, VoidType, BoolType, StrType, FunctionInfo,
-    FieldInfo as InternalFieldInfo,
-    UINT64, ALL_FIXED_INTS,
+    TpyType, NamedType, OwnType, VoidType, BoolType, StrType, StrViewType,
+    FloatType, Float32Type, FixedIntType, OptionalType, ListType, DictType,
+    TupleType, EnumType, BigIntType, UnionType,
+    FunctionInfo, FieldInfo as InternalFieldInfo,
+    INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64,
+    ALL_FIXED_INTS,
+)
+from .typesys import (
+    VOID as _VOID, STR as _STR, STRVIEW as _STRVIEW, BOOL as _BOOL,
+    FLOAT as _FLOAT, FLOAT32 as _FLOAT32, BIGINT as _BIGINT,
 )
 from .parse import (
     TpyRecord, TpyFunction, TpyExpr, TpyStmt,
@@ -24,7 +31,23 @@ from .parse import (
     TpyMethodCall, TpyCall, TpyExprStmt,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
     TpyNoneLiteral, TpyUnaryOp,
+    TpyVarDecl, TpyTupleUnpack, TpyIf, TpyWhile, TpyForEach,
+    TpyRaise, TpyAssert, TpyExceptHandler, TpyTry,
+    TpyMatch, TpyMatchCase, TpyLiteralPattern, TpyWildcardPattern,
+    TpySubscript, TpyTupleLiteral, TpyArrayLiteral, TpyDictLiteral,
+    TpyListComprehension, TpyComprehensionGenerator, TpyDictComprehension,
+    TpyPattern,
 )
+
+# Public type aliases for macro module type annotations
+Expr = TpyExpr
+Stmt = TpyStmt
+Function = TpyFunction
+Type = TpyType
+MatchCase = TpyMatchCase
+ExceptHandler = TpyExceptHandler
+Pattern = TpyPattern
+ComprehensionGenerator = TpyComprehensionGenerator
 
 if TYPE_CHECKING:
     from .sema.context import SemanticContext
@@ -189,24 +212,85 @@ class TypeInfo:
 
 
     @property
+    def raw_type(self) -> TpyType:
+        """Access the underlying compiler type object (escape hatch)."""
+        assert self._tpy_type is not None, "raw_type on TypeInfo with no underlying type"
+        return self._tpy_type
+
+    @property
     def is_str(self) -> bool:
         """True if this is any string type (str, String, StrView)."""
         from .typesys import is_any_str_type
         return self._tpy_type is not None and is_any_str_type(self._tpy_type)
 
     @property
+    def is_int(self) -> bool:
+        return isinstance(self._tpy_type, FixedIntType)
+
+    @property
+    def is_int32(self) -> bool:
+        return (isinstance(self._tpy_type, FixedIntType)
+                and self._tpy_type.bits == 32 and self._tpy_type.signed)
+
+    @property
+    def is_float(self) -> bool:
+        return isinstance(self._tpy_type, (FloatType, Float32Type))
+
+    @property
+    def is_float32(self) -> bool:
+        return isinstance(self._tpy_type, Float32Type)
+
+    @property
+    def is_bool(self) -> bool:
+        return isinstance(self._tpy_type, BoolType)
+
+    @property
+    def is_bigint(self) -> bool:
+        return isinstance(self._tpy_type, BigIntType)
+
+    @property
+    def is_enum(self) -> bool:
+        return isinstance(self._tpy_type, EnumType)
+
+    @property
+    def is_list(self) -> bool:
+        return isinstance(self._tpy_type, ListType)
+
+    @property
     def is_dict(self) -> bool:
-        from .typesys import DictType
         return isinstance(self._tpy_type, DictType)
 
     @property
     def is_tuple(self) -> bool:
-        from .typesys import TupleType
         return isinstance(self._tpy_type, TupleType)
+
+    @property
+    def enum_name(self) -> str:
+        """Get the enum class name (only valid when is_enum is True)."""
+        assert isinstance(self._tpy_type, EnumType)
+        return self._tpy_type.name
+
+    @property
+    def int_type_name(self) -> str:
+        """Get the fixed-int type name e.g. 'Int32' (only valid when is_int)."""
+        assert isinstance(self._tpy_type, FixedIntType)
+        return str(self._tpy_type)
+
+    def unwrap_optional(self) -> TypeInfo | None:
+        """If this is Optional[T], return TypeInfo for T. Otherwise None."""
+        if self.is_optional and isinstance(self._tpy_type, OptionalType):
+            return TypeInfo.from_tpy_type(self._tpy_type.inner)
+        return None
+
+    @property
+    def tuple_element_types(self) -> list[TypeInfo]:
+        """Get element types of a tuple (only valid when is_tuple)."""
+        assert isinstance(self._tpy_type, TupleType)
+        return [TypeInfo.from_tpy_type(et) for et in self._tpy_type.element_types]
 
     @staticmethod
     def from_tpy_type(typ: TpyType) -> TypeInfo:
-        from .typesys import OptionalType, ListType, DictType, SetType, ArrayType, TupleType
+        from .typesys import SetType, ArrayType
         type_args: list[TypeInfo] = []
         if isinstance(typ, TupleType):
             type_args = [TypeInfo.from_tpy_type(et) for et in typ.element_types]
@@ -442,6 +526,19 @@ class ClassInfo:
         """Set the all_dc_fields list (parent + own) for codegen."""
         self._dataclass_fields = [f.to_internal() for f in fields]
 
+    def is_parent_frozen(self) -> tuple[bool, str] | None:
+        """Check if the parent @dataclass is frozen.
+
+        Returns (is_frozen, parent_name) or None if no dataclass parent.
+        """
+        for base in self._record.bases:
+            if not isinstance(base, NamedType):
+                continue
+            parent_info = self._ctx.registry.get_record(base.name)
+            if parent_info is not None and parent_info.is_dataclass:
+                return (parent_info.is_frozen, base.name)
+        return None
+
     def get_method_loc(self, name: str) -> Any:
         """Get the source location of a method by name."""
         for m in self._record.methods:
@@ -565,6 +662,308 @@ def build_eq(cls: ClassInfo, all_fields: list[FieldInfo]) -> TpyFunction:
         is_method=True,
     )
 
+
+# ---------------------------------------------------------------------------
+# AstBuilder -- AST node construction for macro modules
+# ---------------------------------------------------------------------------
+
+class AstBuilder:
+    """Builder for AST nodes. Macro modules use this instead of importing
+    compiler-internal node types directly.
+
+    Usage: ``from tpyc.macro_api import ast`` then ``ast.name("x")``.
+    """
+
+    def __init__(self) -> None:
+        self._tmp_counter = 0
+
+    def reset_tmp_counter(self) -> None:
+        """Reset the fresh-name counter (call at start of each macro expansion)."""
+        self._tmp_counter = 0
+
+    def fresh_tmp(self, hint: str = "v") -> str:
+        """Generate a unique temporary variable name."""
+        self._tmp_counter += 1
+        return f"__{hint}_{self._tmp_counter}"
+
+    # -- Expressions --
+
+    def name(self, n: str) -> Expr:
+        return TpyName(n)
+
+    def call(self, func: str, args: list[Expr] | None = None,
+             call_type: TpyType | None = None) -> Expr:
+        return TpyCall(func=TpyName(func), args=args or [], call_type=call_type)
+
+    def method_call(self, obj: Expr, method: str, args: list[Expr] | None = None) -> Expr:
+        return TpyMethodCall(obj=obj, method=method, args=args or [])
+
+    def field_access(self, obj: Expr, field: str) -> Expr:
+        return TpyFieldAccess(obj=obj, field=field)
+
+    def binop(self, left: Expr, op: str, right: Expr) -> Expr:
+        return TpyBinOp(left=left, op=op, right=right)
+
+    def subscript(self, obj: Expr, index: Expr) -> Expr:
+        return TpySubscript(obj=obj, index=index)
+
+    def unary(self, op: str, operand: Expr) -> Expr:
+        return TpyUnaryOp(op=op, operand=operand)
+
+    def str_lit(self, s: str) -> Expr:
+        return TpyStrLiteral(value=s)
+
+    def int_lit(self, n: int) -> Expr:
+        return TpyIntLiteral(value=n)
+
+    def float_lit(self, f: float) -> Expr:
+        return TpyFloatLiteral(value=f)
+
+    def bool_lit(self, b: bool) -> Expr:
+        return TpyBoolLiteral(value=b)
+
+    def none_lit(self) -> Expr:
+        return TpyNoneLiteral()
+
+    def list_lit(self, elements: list[Expr] | None = None) -> Expr:
+        return TpyArrayLiteral(elements=elements or [])
+
+    def dict_lit(self, keys: list[Expr] | None = None, values: list[Expr] | None = None) -> Expr:
+        return TpyDictLiteral(keys=keys or [], values=values or [])
+
+    def tuple_lit(self, elements: list[Expr]) -> Expr:
+        return TpyTupleLiteral(elements=elements)
+
+    def list_comprehension(self, element_expr: Expr,
+                           generator: TpyComprehensionGenerator) -> Expr:
+        return TpyListComprehension(element_expr=element_expr, generator=generator)
+
+    def dict_comprehension(self, key_expr: Expr, value_expr: Expr,
+                           generator: TpyComprehensionGenerator) -> Expr:
+        return TpyDictComprehension(key_expr=key_expr, value_expr=value_expr,
+                                    generator=generator)
+
+    def comprehension_generator(self, var: str, iterable: Expr,
+                                conditions: list[Expr] | None = None,
+                                unpack_vars: list[str | None] | None = None) -> TpyComprehensionGenerator:
+        return TpyComprehensionGenerator(var=var, iterable=iterable,
+                                         conditions=conditions or [],
+                                         unpack_vars=unpack_vars)
+
+    # -- Statements --
+
+    def var_decl(self, name: str, type: TpyType | None = None,
+                 init: Expr | None = None) -> Stmt:
+        return TpyVarDecl(name=name, type=type, init=init)
+
+    def assign(self, target: Expr, value: Expr) -> Stmt:
+        return TpyAssign(target=target, value=value)
+
+    def expr_stmt(self, expr: Expr) -> Stmt:
+        return TpyExprStmt(expr=expr)
+
+    def return_(self, value: Expr | None = None) -> Stmt:
+        return TpyReturn(value=value)
+
+    def if_(self, condition: Expr, then_body: list[Stmt],
+            else_body: list[Stmt] | None = None) -> Stmt:
+        return TpyIf(condition=condition, then_body=then_body,
+                      else_body=else_body or [])
+
+    def while_(self, condition: Expr, body: list[Stmt]) -> Stmt:
+        return TpyWhile(condition=condition, body=body)
+
+    def for_each(self, var: str, iterable: Expr, body: list[Stmt],
+                 is_tuple_unpack: bool = False) -> Stmt:
+        return TpyForEach(var=var, iterable=iterable, body=body,
+                          is_tuple_unpack=is_tuple_unpack)
+
+    def raise_(self, exception_type: str) -> Stmt:
+        return TpyRaise(exception_type=exception_type)
+
+    def assert_(self, condition: Expr, message: Expr | None = None) -> Stmt:
+        return TpyAssert(condition=condition, message=message)
+
+    def try_(self, try_body: list[Stmt], handlers: list | None = None,
+             else_body: list[Stmt] | None = None,
+             finally_body: list[Stmt] | None = None) -> Stmt:
+        return TpyTry(try_body=try_body, handlers=handlers or [],
+                       else_body=else_body or [], finally_body=finally_body or [])
+
+    def except_handler(self, exception_type: str | None = None,
+                       binding: str | None = None,
+                       body: list[Stmt] | None = None) -> TpyExceptHandler:
+        return TpyExceptHandler(exception_type=exception_type,
+                                binding=binding, body=body or [])
+
+    def match(self, subject: Expr, cases: list) -> Stmt:
+        return TpyMatch(subject=subject, cases=cases)
+
+    def match_case(self, pattern: Any, body: list[Stmt],
+                   guard: Expr | None = None) -> TpyMatchCase:
+        return TpyMatchCase(pattern=pattern, guard=guard, body=body)
+
+    def literal_pattern(self, value: int | float | str | bool | None) -> TpyLiteralPattern:
+        return TpyLiteralPattern(value=value)
+
+    def wildcard_pattern(self) -> TpyWildcardPattern:
+        return TpyWildcardPattern()
+
+    def tuple_unpack(self, targets: list[str | None], value: Expr) -> Stmt:
+        return TpyTupleUnpack(targets=targets, value=value)
+
+    # -- Introspection --
+
+    def get_field_name(self, expr: Expr) -> str | None:
+        """If expr is a field access node, return the field name. Otherwise None."""
+        if isinstance(expr, TpyFieldAccess):
+            return expr.field
+        return None
+
+    def get_name(self, expr: Expr) -> str | None:
+        """If expr is a simple name node, return the name. Otherwise None."""
+        if isinstance(expr, TpyName):
+            return expr.name
+        return None
+
+    # -- Functions --
+
+    def function(self, name: str, params: list[tuple[str, TpyType]],
+                 return_type: TpyType, body: list[Stmt], *,
+                 is_method: bool = False, is_staticmethod: bool = False,
+                 is_readonly: bool = False, readonly_opt_out: bool = False,
+                 error_return: str | None = None,
+                 defaults: list[Expr | None] | None = None) -> Function:
+        return TpyFunction(
+            name=name, params=params, return_type=return_type, body=body,
+            is_method=is_method, is_staticmethod=is_staticmethod,
+            is_readonly=is_readonly, readonly_opt_out=readonly_opt_out,
+            error_return=error_return, defaults=defaults or [],
+        )
+
+
+# Module-level singleton
+ast = AstBuilder()
+
+
+# ---------------------------------------------------------------------------
+# TypeBuilder -- type construction for macro modules
+# ---------------------------------------------------------------------------
+
+class TypeBuilder:
+    """Builder for TpyType objects. Macro modules use this instead of importing
+    compiler-internal type classes directly.
+
+    Usage: ``from tpyc.macro_api import types`` then ``types.named("Foo")``.
+    """
+
+    # -- Constructors --
+
+    def named(self, name: str) -> TpyType:
+        return NamedType(name)
+
+    def own(self, inner: TpyType) -> TpyType:
+        return OwnType(inner)
+
+    def optional(self, inner: TpyType) -> TpyType:
+        return OptionalType(inner)
+
+    def list(self, element_type: TpyType) -> TpyType:
+        return ListType(element_type)
+
+    def dict(self, key_type: TpyType, value_type: TpyType) -> TpyType:
+        return DictType(key_type, value_type)
+
+    def tuple(self, element_types: tuple[TpyType, ...] | list[TpyType]) -> TpyType:
+        if isinstance(element_types, list):
+            element_types = tuple(element_types)
+        return TupleType(element_types)
+
+    def union(self, member_types: tuple[TpyType, ...] | list[TpyType]) -> TpyType:
+        if isinstance(member_types, list):
+            member_types = tuple(member_types)
+        return UnionType(member_types)
+
+    # -- Singleton types --
+
+    @property
+    def void(self) -> TpyType:
+        return _VOID
+
+    @property
+    def str(self) -> TpyType:
+        return _STR
+
+    @property
+    def str_view(self) -> TpyType:
+        return _STRVIEW
+
+    @property
+    def bool(self) -> TpyType:
+        return _BOOL
+
+    # -- Fixed-width integers --
+
+    @property
+    def int8(self) -> TpyType:
+        return INT8
+
+    @property
+    def int16(self) -> TpyType:
+        return INT16
+
+    @property
+    def int32(self) -> TpyType:
+        return INT32
+
+    @property
+    def int64(self) -> TpyType:
+        return INT64
+
+    @property
+    def uint8(self) -> TpyType:
+        return UINT8
+
+    @property
+    def uint16(self) -> TpyType:
+        return UINT16
+
+    @property
+    def uint32(self) -> TpyType:
+        return UINT32
+
+    @property
+    def uint64(self) -> TpyType:
+        return UINT64
+
+    # -- Floating point --
+
+    @property
+    def float(self) -> TpyType:
+        return _FLOAT
+
+    @property
+    def float64(self) -> TpyType:
+        return _FLOAT
+
+    @property
+    def float32(self) -> TpyType:
+        return _FLOAT32
+
+    # -- Arbitrary precision --
+
+    @property
+    def bigint(self) -> TpyType:
+        return _BIGINT
+
+
+# Module-level singleton
+types = TypeBuilder()
+
+
+# ---------------------------------------------------------------------------
+# AST builder helpers for common macro patterns
+# ---------------------------------------------------------------------------
 
 def expr_to_cpp_default(expr: TpyExpr) -> str | None:
     """Convert a TpyExpr to a C++ default value literal string, or None."""

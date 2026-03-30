@@ -10,6 +10,11 @@ from dataclasses import dataclass
 class E(Exception, ReturnException):
     pass
 
+class ParseErr(Exception, ReturnException):
+    code: int
+    def __init__(self, code: int) -> None:
+        self.code = code
+
 @error_return(E)
 def parse(s: str) -> int:
     if s == "":
@@ -126,5 +131,38 @@ def main() -> None:
         print(add("3", ""))
     except E:
         print("caught direct")
+
+    # except ... as e with expression-level unwrap
+    test_as_binding()
+
+@error_return(ParseErr)
+def checked_parse(s: str) -> int:
+    if s == "":
+        raise ParseErr(1)
+    if s == "?":
+        raise ParseErr(2)
+    return int(s)
+
+@error_return(ParseErr)
+def checked_add(a: str, b: str) -> int:
+    return checked_parse(a) + checked_parse(b)
+
+def test_as_binding() -> None:
+    try:
+        v = checked_add("10", "20")
+    except ParseErr as e:
+        print(e.code)
+    else:
+        print(v)
+
+    try:
+        v2 = checked_add("10", "?")
+    except ParseErr as e:
+        print(e.code)
+
+    try:
+        v3 = checked_add("", "5")
+    except ParseErr as e:
+        print(e.code)
 
 main()
