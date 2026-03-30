@@ -1,0 +1,5 @@
+1
+negative value
+2
+too large
+ok

@@ -1,0 +1,1 @@
+main.py:6: error: 'NotAnException' is not an exception type; it must inherit from Exception

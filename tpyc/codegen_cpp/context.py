@@ -7,7 +7,7 @@ Shared state and utilities for C++ code generation.
 from __future__ import annotations
 import re
 from dataclasses import dataclass, field
-from typing import Callable, TextIO, TYPE_CHECKING
+from typing import Callable, Literal, TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NamedType, SelfType,
@@ -472,6 +472,7 @@ class CodeGenContext:
     try_except_label: str | None = None
     # When set (except E as e), error_return calls should move error into this var before goto
     try_except_err_opt: str | None = None
+    in_except_tier: Literal["return", "throw"] | None = None
 
     # --- with statement ---
     with_counter: int = 0

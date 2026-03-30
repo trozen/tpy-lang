@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Literal, Optional, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, FieldInfo, FunctionInfo,
@@ -658,22 +658,35 @@ class TpyNonlocal(TpyStmt):
 
 @dataclass
 class TpyRaise(TpyStmt):
-    """raise E or raise E(args) -- returns error from @error_return function."""
-    exception_type: str  # e.g. "NotFound"
+    """raise E, raise E(args), or bare raise (re-raise in except block)."""
+    exception_type: str | None = None  # None for bare raise (re-raise)
     args: list[TpyExpr] = field(default_factory=list)  # constructor arguments
 
 
 @dataclass
-class TpyTryExcept(TpyStmt):
-    """try/except for @error_return functions."""
+class TpyExceptHandler:
+    """A single except clause in a try statement."""
+    exception_type: str | None  # None for bare except:
+    binding: str | None         # from "as e"
+    body: list[TpyStmt]
+    loc: SourceLocation | None = None
+
+
+@dataclass
+class TpyTry(TpyStmt):
+    """try/except/else/finally statement (both return-tier and throw-tier)."""
     try_body: list[TpyStmt]
-    exception_type: str           # e.g. "StopIteration"
-    except_body: list[TpyStmt]
-    else_body: list[TpyStmt]     # may be empty
-    except_binding: str | None = None  # "as e" variable name
+    handlers: list[TpyExceptHandler]  # 0+ except clauses
+    else_body: list[TpyStmt]         # may be empty
+    finally_body: list[TpyStmt]      # may be empty
+    # Set by sema: "return" for ControlFlow goto-based, "throw" for C++ try/catch
+    tier: Literal["return", "throw", "finally_only"] | None = None
 
     def sub_bodies(self) -> list[list[TpyStmt]]:
-        return [self.try_body, self.except_body, self.else_body]
+        bodies = [self.try_body, self.else_body, self.finally_body]
+        for h in self.handlers:
+            bodies.append(h.body)
+        return bodies
 
 
 @dataclass

@@ -4624,7 +4624,19 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - Built-in exceptions (`StopIteration`, `Exception`, `BaseException`) emit as `::tpy::X` in C++ to avoid clashes with user-defined classes of the same name
   - Current limitation: `@error_return` does not support non-value return types (`std::expected<T&, E>` is invalid C++)
   - See `docs/ERROR_RETURN_DESIGN.md` and `docs/EXCEPTION_DESIGN.md` for full design
-- **Open**: General `try`/`except` for C++ exceptions (separate from `@error_return`)
+- **Working**: General C++ exceptions (`throw`/`catch`) for non-ControlFlow exception types
+  - `raise E` or `raise E(args)` in non-`@error_return` functions compiles to C++ `throw`
+  - `try`/`except E`/`else`/`finally` with C++ `try`/`catch` for throw-tier exceptions
+  - Multiple `except` handlers with type matching (first match wins)
+  - Bare `except:` catches any exception (maps to `catch(...)`)
+  - `except E as e` binds the caught exception for field access
+  - `finally` block via RAII `FinallyGuard` (runs on all exit paths)
+  - `try`/`finally` without `except` (pure cleanup)
+  - Re-raise: bare `raise` inside `except` block re-throws (`throw;` in C++)
+  - Throw-tier raises allowed inside `@error_return` functions (orthogonal to return-tier)
+  - Built-in exceptions: `ValueError(message)` with `message: str` field
+  - User-defined throw exceptions: `class MyError(Exception)` with optional `__init__` + data fields
+  - Tier separation enforced: ControlFlow and non-ControlFlow types cannot be mixed in same `try`/`except`
 - **Open**: Warning when exceptions are used for control flow (e.g., `try: Color(99) except ValueError` to test validity) -- prefer safe alternatives like `try_parse()`
 
 ---

@@ -1,0 +1,5 @@
+finally 1
+caught
+finally 2
+try body
+finally 3

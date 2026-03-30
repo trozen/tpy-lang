@@ -17,7 +17,7 @@ from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarD
 from .registration import build_record_self_type
 from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
-    TpyMethodCall, TpyExprStmt, TpyRaise, TpyTryExcept, TpyMatch, TpyNestedDef,
+    TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef,
 )
 from .expressions import _collect_body_name_refs
 
@@ -114,10 +114,14 @@ def _body_has_raise(stmts: list[TpyStmt], exception_type: str) -> bool:
         elif isinstance(stmt, (TpyWhile, TpyForEach)):
             if _body_has_raise(stmt.body, exception_type) or _body_has_raise(stmt.orelse, exception_type):
                 return True
-        elif isinstance(stmt, TpyTryExcept):
-            if (_body_has_raise(stmt.try_body, exception_type) or _body_has_raise(stmt.except_body, exception_type)
-                    or _body_has_raise(stmt.else_body, exception_type)):
+        elif isinstance(stmt, TpyTry):
+            if (_body_has_raise(stmt.try_body, exception_type)
+                    or _body_has_raise(stmt.else_body, exception_type)
+                    or _body_has_raise(stmt.finally_body, exception_type)):
                 return True
+            for handler in stmt.handlers:
+                if _body_has_raise(handler.body, exception_type):
+                    return True
         elif isinstance(stmt, TpyMatch):
             for case in stmt.cases:
                 if _body_has_raise(case.body, exception_type):
@@ -1308,6 +1312,9 @@ class SemanticAnalyzer:
         """
         record_info = self.ctx.registry.get_record(record.name)
         if record_info is None:
+            return
+        # Native types manage their own construction in C++
+        if record_info.is_native:
             return
         # Own fields for split-point and missing-field checks
         own_fields: dict[str, FieldInfo] = {f.name: f for f in record_info.fields}

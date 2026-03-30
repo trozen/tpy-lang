@@ -510,7 +510,7 @@ class TypeRegistrar:
                              if not method.native_function else None),
                 type_params=list(method.type_params),
                 type_param_bounds=method_type_param_bounds,
-                error_return_type=(qualify_exception_name(method.error_return, self.ctx.registry, self.ctx.module_name)
+                error_return_type=(qualify_exception_name(method.error_return, self.ctx.registry)
                                    if method.error_return else None),
             )
             # Propagate qualified name back to AST so codegen can use it directly.
@@ -1347,7 +1347,7 @@ class TypeRegistrar:
             type_param_defaults=func.type_param_defaults,
             is_builtin_function=bool(func.builtin_function_key),
             special_handling=bool(func.builtin_function_key),
-            error_return_type=(qualify_exception_name(func.error_return, self.ctx.registry, self.ctx.module_name)
+            error_return_type=(qualify_exception_name(func.error_return, self.ctx.registry)
                                if func.error_return else None),
             qualified_name=(func.builtin_function_key
                             if func.builtin_function_key

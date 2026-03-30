@@ -15,12 +15,12 @@ from ..typesys import (
     INT32, BIGINT, FLOAT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
     local_var_is_movable, resolve_int_literals,
-    error_return_to_cpp, qualify_exception_name,
+    error_return_to_cpp, qualify_exception_name, is_control_flow_exception,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn, TpyYield,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt,
-    TpyRaise, TpyTryExcept, TpyWith,
+    TpyRaise, TpyExceptHandler, TpyTry, TpyWith,
     TpyGlobal, TpyNonlocal, TpyNestedDef,
     TpyImport, TpySubscript, TpySlice, TpyStrLiteral, TpyNoneLiteral, TpyName, TpyExpr, TpyFunction,
     TpyAssert, TpyBoolLiteral, TpyArrayLiteral,
@@ -159,7 +159,7 @@ class StatementGenerator:
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type
         raw_error_return = getattr(func, 'error_return', None)
-        self.ctx.current_error_return = error_return_to_cpp(raw_error_return, self.ctx.module_name) if raw_error_return else None
+        self.ctx.current_error_return = error_return_to_cpp(raw_error_return, self.ctx.module_name, self.ctx.analyzer.registry) if raw_error_return else None
         self.ctx.current_func_params = {pname: ptype for pname, ptype in params}
         self.ctx.current_type_param_bounds = dict(record_type_param_bounds) if record_type_param_bounds else {}
         if func.type_param_bounds:
@@ -220,10 +220,10 @@ class StatementGenerator:
         elif isinstance(stmt, TpyMatch):
             self.ctx.emit_source_comment(out, stmt.loc, indent)
             self.match.gen_match(out, stmt, indent)
-        elif isinstance(stmt, TpyTryExcept):
+        elif isinstance(stmt, TpyTry):
             self.ctx.emit_source_comment(out, stmt.loc, indent)
             self._emit_branch_decls(out, stmt, indent)
-            self._gen_try_except(out, stmt, indent)
+            self._gen_try(out, stmt, indent)
         elif isinstance(stmt, TpyWith):
             self.ctx.emit_source_comment(out, stmt.loc, indent)
             self._emit_branch_decls(out, stmt, indent)
@@ -418,11 +418,7 @@ class StatementGenerator:
         elif isinstance(stmt, TpyNonlocal):
             return ""  # No C++ output -- capture mode handles it
         elif isinstance(stmt, TpyRaise):
-            assert self.ctx.current_error_return is not None
-            if stmt.args:
-                args = ", ".join(self.expressions.gen_expr(a) for a in stmt.args)
-                return f"{indent}return ::tpy::make_unexpected({self.ctx.current_error_return}({args}));\n"
-            return f"{indent}return ::tpy::make_unexpected({self.ctx.current_error_return}{{}});\n"
+            return self._gen_raise(stmt, indent)
         elif isinstance(stmt, TpyImport):
             # Only emit __tpy_init() for user modules that have runtime init.
             # Skip builtins (no .cpp) and native_module (binding-only, no .cpp).
@@ -1883,19 +1879,72 @@ class StatementGenerator:
 
         out.write(f"{indent}}};\n")
 
-    def _gen_try_except(self, out: TextIO, stmt: TpyTryExcept, indent: str) -> None:
-        """Generate a try/except block using goto-based error dispatch.
+    def _gen_raise(self, stmt: TpyRaise, indent: str) -> str:
+        """Generate a raise statement (return-tier, throw-tier, or bare re-raise)."""
+        # Bare raise (re-raise)
+        if stmt.exception_type is None:
+            if self.ctx.in_except_tier == "return":
+                assert self.ctx.try_except_err_opt is not None
+                return (f"{indent}return ::tpy::make_unexpected("
+                        f"std::move(*{self.ctx.try_except_err_opt}));\n")
+            else:
+                # Throw-tier re-raise
+                return f"{indent}throw;\n"
 
-        Each call to an @error_return function inside the try body emits:
-            auto __tmp = call();
-            if (!__tmp.has_value()) goto __except_N;
-            var = *__tmp;
+        cpp_type = error_return_to_cpp(stmt.exception_type, self.ctx.module_name, self.ctx.analyzer.registry)
+        is_cf = is_control_flow_exception(stmt.exception_type)
 
-        The except body is emitted after the try body with the label.
+        if is_cf:
+            # Return-tier: return std::unexpected
+            if stmt.args:
+                args = ", ".join(self.expressions.gen_expr(a) for a in stmt.args)
+                return f"{indent}return ::tpy::make_unexpected({cpp_type}({args}));\n"
+            return f"{indent}return ::tpy::make_unexpected({cpp_type}{{}});\n"
+        else:
+            # Throw-tier: C++ throw
+            if stmt.args:
+                args = ", ".join(self.expressions.gen_expr(a) for a in stmt.args)
+                return f"{indent}throw {cpp_type}({args});\n"
+            return f"{indent}throw {cpp_type}{{}};\n"
 
-        When `except E as e` is used, an std::optional<E> captures the error
-        value before each goto (zero happy-path cost), and e aliases into it.
-        """
+    def _gen_try(self, out: TextIO, stmt: TpyTry, indent: str) -> None:
+        """Generate a try/except/else/finally statement."""
+        tier = stmt.tier
+        if tier == "finally_only":
+            self._gen_try_finally_only(out, stmt, indent)
+        elif tier == "return":
+            self._gen_try_return(out, stmt, indent)
+        else:
+            self._gen_try_throw(out, stmt, indent)
+
+    def _gen_finally_guard(self, out: TextIO, stmt: TpyTry, indent: str) -> None:
+        """Emit FinallyGuard RAII if the statement has a finally body."""
+        if not stmt.finally_body:
+            return
+        self.ctx.try_except_counter += 1
+        n = self.ctx.try_except_counter
+        guard_var = f"__finally_{n}"
+        out.write(f"{indent}auto {guard_var} = ::tpy::FinallyGuard([&]() {{\n")
+        self.ctx.indent_level += 1
+        for s in stmt.finally_body:
+            self.gen_stmt(out, s)
+        self.ctx.indent_level -= 1
+        out.write(f"{indent}}});\n")
+
+    def _gen_try_finally_only(self, out: TextIO, stmt: TpyTry, indent: str) -> None:
+        """Generate try/finally with no except handlers."""
+        out.write(f"{indent}{{\n")
+        self.ctx.indent_level += 1
+        inner = self.ctx.indent()
+        self._gen_finally_guard(out, stmt, inner)
+        for s in stmt.try_body:
+            self.gen_stmt(out, s)
+        self.ctx.indent_level -= 1
+        out.write(f"{indent}}}\n")
+
+    def _gen_try_return(self, out: TextIO, stmt: TpyTry, indent: str) -> None:
+        """Generate return-tier try/except (goto-based error dispatch)."""
+        handler = stmt.handlers[0]
         self.ctx.try_except_counter += 1
         n = self.ctx.try_except_counter
         except_label = f"__except_{n}"
@@ -1905,65 +1954,117 @@ class StatementGenerator:
         self.ctx.indent_level += 1
         inner = self.ctx.indent()
 
+        # FinallyGuard before any gotos
+        self._gen_finally_guard(out, stmt, inner)
+
         # Emit std::optional<E> for except binding
         err_opt_var: str | None = None
         prev_err_opt = self.ctx.try_except_err_opt
-        if stmt.except_binding:
+        if handler.binding:
             err_opt_var = f"__err_opt_{n}"
-            # Use qualified name for cross-module exception types
-            if stmt.exception_type in self.ctx.user_imported_records:
-                src_mod, orig_name = self.ctx.user_imported_records[stmt.exception_type]
-                cpp_err_type = qualified_cpp_name(src_mod, orig_name)
-            else:
-                cpp_err_type = error_return_to_cpp(
-                    qualify_exception_name(stmt.exception_type,
-                                           self.ctx.analyzer.registry))
+            cpp_err_type = error_return_to_cpp(
+                qualify_exception_name(handler.exception_type,
+                                       self.ctx.analyzer.registry),
+                self.ctx.module_name,
+                self.ctx.analyzer.registry)
             out.write(f"{inner}std::optional<{cpp_err_type}> {err_opt_var};\n")
             self.ctx.try_except_err_opt = err_opt_var
 
-        # Snapshot codegen scope so try body declarations don't bleed into except
         br_snap = self.ctx.snapshot_local_scope()
-
-        # Set try context so VarDecl codegen can detect error_return calls
         prev_label = self.ctx.try_except_label
         self.ctx.try_except_label = except_label
 
-        # Emit try body -- error_return calls will emit goto __except_N
         for s in stmt.try_body:
             self.gen_stmt(out, s)
 
         self.ctx.try_except_label = prev_label
-        self.ctx.try_except_err_opt = prev_err_opt
 
-        # Emit else body (runs only if no error)
         if stmt.else_body:
             out.write(f"{inner}// else:\n")
             for s in stmt.else_body:
                 self.gen_stmt(out, s)
 
         out.write(f"{inner}goto {after_label};\n")
-        out.write(f"{inner}// except {stmt.exception_type}:\n")
+
+        exc_display = handler.exception_type or "..."
+        out.write(f"{inner}// except {exc_display}:\n")
         out.write(f"{inner}{except_label}:;\n")
 
-        # Restore scope for except body (same scope as before try)
         self.ctx.restore_local_scope(br_snap)
 
-        # Emit except body (wrapped in block when binding to avoid goto-crosses-init)
-        if stmt.except_binding and err_opt_var:
-            binding = escape_cpp_name(stmt.except_binding)
+        prev_except_tier = self.ctx.in_except_tier
+        self.ctx.in_except_tier = "return"
+        if handler.binding and err_opt_var:
+            binding = escape_cpp_name(handler.binding)
             out.write(f"{inner}{{\n")
             self.ctx.indent_level += 1
             inner2 = self.ctx.indent()
             out.write(f"{inner2}auto& {binding} = *{err_opt_var};\n")
-            for s in stmt.except_body:
+            for s in handler.body:
                 self.gen_stmt(out, s)
             self.ctx.indent_level -= 1
             out.write(f"{inner}}}\n")
         else:
-            for s in stmt.except_body:
+            for s in handler.body:
                 self.gen_stmt(out, s)
+        self.ctx.in_except_tier = prev_except_tier
+        self.ctx.try_except_err_opt = prev_err_opt
 
         out.write(f"{inner}{after_label}:;\n")
+        self.ctx.indent_level -= 1
+        out.write(f"{indent}}}\n")
+
+    def _gen_try_throw(self, out: TextIO, stmt: TpyTry, indent: str) -> None:
+        """Generate throw-tier try/except (C++ try/catch)."""
+        out.write(f"{indent}{{\n")
+        self.ctx.indent_level += 1
+        inner = self.ctx.indent()
+
+        # FinallyGuard before try
+        self._gen_finally_guard(out, stmt, inner)
+
+        has_else = bool(stmt.else_body)
+        if has_else:
+            self.ctx.try_except_counter += 1
+            after_else_label = f"__after_else_{self.ctx.try_except_counter}"
+
+        out.write(f"{inner}try {{\n")
+        self.ctx.indent_level += 1
+        for s in stmt.try_body:
+            self.gen_stmt(out, s)
+        self.ctx.indent_level -= 1
+        out.write(f"{inner}}}")
+
+        # Emit catch clauses (each gotos past else body when else exists)
+        prev_except_tier = self.ctx.in_except_tier
+        for h in stmt.handlers:
+            if h.exception_type is None:
+                out.write(f" catch (...) {{\n")
+            elif h.binding:
+                cpp_type = error_return_to_cpp(h.exception_type, self.ctx.module_name, self.ctx.analyzer.registry)
+                binding = escape_cpp_name(h.binding)
+                out.write(f" catch (const {cpp_type}& {binding}) {{\n")
+            else:
+                cpp_type = error_return_to_cpp(h.exception_type, self.ctx.module_name, self.ctx.analyzer.registry)
+                out.write(f" catch (const {cpp_type}&) {{\n")
+            self.ctx.indent_level += 1
+            self.ctx.in_except_tier = "throw"
+            for s in h.body:
+                self.gen_stmt(out, s)
+            if has_else:
+                out.write(f"{self.ctx.indent()}goto {after_else_label};\n")
+            self.ctx.in_except_tier = prev_except_tier
+            self.ctx.indent_level -= 1
+            out.write(f"{inner}}}")
+
+        out.write("\n")
+
+        if has_else:
+            out.write(f"{inner}// else:\n")
+            for s in stmt.else_body:
+                self.gen_stmt(out, s)
+            out.write(f"{inner}{after_else_label}:;\n")
+
         self.ctx.indent_level -= 1
         out.write(f"{indent}}}\n")
 

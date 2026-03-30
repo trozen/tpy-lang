@@ -1,1 +1,0 @@
-main.py:11: error: 'raise NotFound' requires @error_return(NotFound) on the enclosing function

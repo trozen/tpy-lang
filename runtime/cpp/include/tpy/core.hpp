@@ -19,11 +19,29 @@
 
 namespace tpy {
 
-// Python exception hierarchy -- inherits from std::exception so future
-// try/except/raise can use C++ exception machinery.
-struct BaseException : std::exception {};
-struct Exception : BaseException {};
+// Python exception hierarchy -- inherits from std::exception for C++ throw/catch.
+struct BaseException : std::exception {
+    std::string message;
+    BaseException() = default;
+    explicit BaseException(std::string msg) : message(std::move(msg)) {}
+    const char* what() const noexcept override { return message.c_str(); }
+};
+struct Exception : BaseException { using BaseException::BaseException; };
+struct ValueError : Exception { using Exception::Exception; };
 struct StopIteration : Exception {};
+
+// RAII guard for finally blocks -- destructor runs the cleanup function
+// on all exit paths (normal, exception, goto).
+template<typename F>
+struct FinallyGuard {
+    F fn;
+    explicit FinallyGuard(F f) : fn(std::move(f)) {}
+    ~FinallyGuard() { fn(); }
+    FinallyGuard(const FinallyGuard&) = delete;
+    FinallyGuard(FinallyGuard&&) = delete;
+    FinallyGuard& operator=(const FinallyGuard&) = delete;
+    FinallyGuard& operator=(FinallyGuard&&) = delete;
+};
 
 // Portable replacement for std::unexpected(). Some libc++ versions (e.g. zig's
 // bundled clang) expose both the deprecated std::unexpected() function and the

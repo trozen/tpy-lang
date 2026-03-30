@@ -8,7 +8,7 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, field, fields as dc_fields
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..macro_loader import MacroRegistry
@@ -504,6 +504,11 @@ class SemanticContext:
     sc_and_walrus: set[str] = field(default_factory=set)
     sc_or_walrus: set[str] = field(default_factory=set)
     try_except_error_type: str | None = None
+    in_except_tier: Literal["return", "throw"] | None = None
+    # Whether the current except handler has an 'as e' binding (needed for return-tier re-raise)
+    in_except_has_binding: bool = False
+    # True when analyzing a finally body (raise is not allowed there)
+    in_finally: bool = False
     is_top_level: bool = False
     # REPL mode: allow @error_return calls at top level (unwrap with panic)
     allow_top_level_error_unwrap: bool = False

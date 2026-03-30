@@ -33,7 +33,7 @@ from .nodes import (
     TpyIfExpr, TpyNamedExpr, TpyLambda,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn, TpyYield,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
-    TpyPassStmt, TpyGlobal, TpyNonlocal, TpyRaise, TpyTryExcept, TpyWithItem, TpyWith,
+    TpyPassStmt, TpyGlobal, TpyNonlocal, TpyRaise, TpyExceptHandler, TpyTry, TpyWithItem, TpyWith,
     TpyNestedDef,
     TpyPattern, TpyWildcardPattern, TpyCapturePattern, TpyClassPattern,
     TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
@@ -342,8 +342,11 @@ def _stmt_child_bodies(stmt: TpyStmt) -> list[list[TpyStmt]]:
         return bodies
     elif isinstance(stmt, TpyWith):
         return [stmt.body]
-    elif isinstance(stmt, TpyTryExcept):
-        return [stmt.try_body, stmt.except_body]
+    elif isinstance(stmt, TpyTry):
+        bodies = [stmt.try_body, stmt.else_body, stmt.finally_body]
+        for h in stmt.handlers:
+            bodies.append(h.body)
+        return bodies
     elif isinstance(stmt, TpyMatch):
         return [case.body for case in stmt.cases]
     return []
@@ -2563,10 +2566,11 @@ class Parser:
             raise ParseError(f"Unsupported statement: {type(node).__name__}", node)
 
     def _parse_raise(self, node: ast.Raise, loc: SourceLocation | None) -> TpyStmt:
-        """Parse a raise statement."""
+        """Parse a raise statement: raise E, raise E(args), or bare raise."""
         exc = node.exc
         if exc is None:
-            raise ParseError("'raise' requires an exception type", node)
+            # Bare raise (re-raise) -- validated by sema to be inside except block
+            return TpyRaise(loc=loc)
         # raise Name
         if isinstance(exc, ast.Name):
             name = exc.id
@@ -2581,26 +2585,31 @@ class Parser:
         raise ParseError("'raise' requires a simple name (e.g. 'raise MyError')", node)
 
     def _parse_try(self, node: ast.Try, loc: SourceLocation | None) -> TpyStmt:
-        """Parse a try/except statement (limited to @error_return functions)."""
-        if node.finalbody:
-            raise ParseError("'finally' is not yet supported", node)
-        if len(node.handlers) != 1:
-            raise ParseError("only a single 'except' clause is supported", node)
-        handler = node.handlers[0]
-        if handler.type is None:
-            raise ParseError("bare 'except:' is not supported; specify an error type", node)
-        if not isinstance(handler.type, ast.Name):
-            raise ParseError("'except' requires a simple name (e.g. 'except MyError')", node)
-        exception_type = handler.type.id
+        """Parse a try/except/else/finally statement."""
+        if not node.handlers and not node.finalbody:
+            raise ParseError("'try' requires at least one 'except' or 'finally' clause", node)
+        handlers: list[TpyExceptHandler] = []
+        for h in node.handlers:
+            h_loc = self._loc(h) if hasattr(h, 'lineno') else loc
+            if h.type is None:
+                # Bare except: -- must be last handler (Python enforces this)
+                handlers.append(TpyExceptHandler(
+                    exception_type=None, binding=h.name,
+                    body=[self._parse_stmt(s) for s in h.body], loc=h_loc))
+            elif isinstance(h.type, ast.Name):
+                handlers.append(TpyExceptHandler(
+                    exception_type=h.type.id, binding=h.name,
+                    body=[self._parse_stmt(s) for s in h.body], loc=h_loc))
+            else:
+                raise ParseError("'except' requires a simple name (e.g. 'except MyError')", node)
         try_body = [self._parse_stmt(s) for s in node.body]
-        except_body = [self._parse_stmt(s) for s in handler.body]
         else_body = [self._parse_stmt(s) for s in node.orelse]
-        return TpyTryExcept(
+        finally_body = [self._parse_stmt(s) for s in node.finalbody]
+        return TpyTry(
             try_body=try_body,
-            exception_type=exception_type,
-            except_body=except_body,
+            handlers=handlers,
             else_body=else_body,
-            except_binding=handler.name,
+            finally_body=finally_body,
             loc=loc,
         )
 

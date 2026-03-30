@@ -3,6 +3,7 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
+- Hoisting + `Own[T]` non-value types: `_emit_branch_decls` hoists variables across if/else, match, try/except, finally, and for-loops via the shared `if_branch_decls` mechanism. For non-value types (e.g. `list`), hoisted vars should use pointer/slot semantics. Currently `Own[list[T]]` scope types have `is_value_type()=True` (from `sema: preserve Own[T] in variable scope types`), so `_needs_indirection` returns False and the var is emitted as a value. Affects all hoisting paths, not just finally. Should use the same pointer/slot pattern as reassigned non-value variables.
 - `@error_return` with non-value return types: `std::expected<T&, E>` is invalid C++ (`std::expected` can't hold references). Functions like `@error_return(E) def positive(p: Point) -> Point` fail to compile because the return type maps to `Point&`. Need to store the value inside the expected (e.g. `std::expected<T, E>` by value), which changes the semantics for non-value types -- `return p` would copy `p` into the expected instead of returning a reference. This also means `positive(p).updated()` would mutate a copy, diverging from CPython where it mutates the original.
 - add Ref[T] type that would denote references, automatically added to function args/return in parser, so user doesn't need to see it; would it help in managig the pipeline?
 - star import from user modules, __all__ in user modules

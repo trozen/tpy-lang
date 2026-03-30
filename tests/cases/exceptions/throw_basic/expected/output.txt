@@ -1,0 +1,3 @@
+caught MyError
+42
+caught bare ValueError

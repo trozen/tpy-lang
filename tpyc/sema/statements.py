@@ -17,14 +17,14 @@ from ..typesys import (
     ViewTypeFamily, VIEW_TYPE_FAMILIES, STR_FAMILY, BYTES_FAMILY,
     PendingGenericInstanceType, FnType, contains_fn_type,
     INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, is_protocol_type, is_protocol_union,
-    qualify_exception_name,
+    qualify_exception_name, is_control_flow_exception, is_exception_type,
     FunctionInfo, ParamInfo,
 )
 from ..parse import (
     TpyExpr,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn, TpyYield,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
-    TpyRaise, TpyTryExcept, TpyWith,
+    TpyRaise, TpyExceptHandler, TpyTry, TpyWith,
     TpyGlobal, TpyNonlocal, TpyNestedDef,
     TpyCall, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyDictLiteral, TpyCoerce,
     TpySubscript, TpySlice, TpyStrLiteral, TpyName, TpyTupleLiteral,
@@ -1006,8 +1006,8 @@ class StatementAnalyzer:
             self._analyze_global_stmt(stmt)
         elif isinstance(stmt, TpyRaise):
             self._analyze_raise(stmt)
-        elif isinstance(stmt, TpyTryExcept):
-            self._analyze_try_except(stmt)
+        elif isinstance(stmt, TpyTry):
+            self._analyze_try(stmt)
         elif isinstance(stmt, TpyMatch):
             self.match.analyze_match(stmt)
         elif isinstance(stmt, TpyWith):
@@ -1070,25 +1070,58 @@ class StatementAnalyzer:
         }
 
     def _analyze_raise(self, stmt: TpyRaise) -> None:
-        """Analyze a general raise statement (for @error_return functions)."""
+        """Analyze a raise statement (return-tier, throw-tier, or bare re-raise)."""
+        if self.ctx.in_finally:
+            raise self.ctx.error(
+                "'raise' inside 'finally' is not yet supported",
+                stmt)
+        # Bare raise (re-raise)
+        if stmt.exception_type is None:
+            if self.ctx.in_except_tier is None:
+                raise self.ctx.error(
+                    "bare 'raise' is only valid inside an 'except' block", stmt)
+            if self.ctx.in_except_tier == "return" and not self.ctx.in_except_has_binding:
+                raise self.ctx.error(
+                    "bare 'raise' in return-tier except requires 'as' binding "
+                    "(e.g. 'except E as e') to capture the error value",
+                    stmt)
+            self.init.mark_terminated()
+            return
+
         func = self.ctx.current_function
         if not isinstance(func, TpyFunction):
             raise self.ctx.error(
                 f"'raise {stmt.exception_type}' can only be used inside a function", stmt)
-        if func.error_return is None:
-            raise self.ctx.error(
-                f"'raise {stmt.exception_type}' requires "
-                f"@error_return({stmt.exception_type}) on the enclosing function", stmt)
-        qualified_exc = qualify_exception_name(stmt.exception_type, self.ctx.registry, self.ctx.module_name)
-        if func.error_return != qualified_exc:
-            raise self.ctx.error(
-                f"'raise {stmt.exception_type}' does not match "
-                f"@error_return({stmt.exception_type})", stmt)
+
         bare_exc = stmt.exception_type.rsplit(".", 1)[-1] if "." in stmt.exception_type else stmt.exception_type
         record = self.ctx.registry.find_record(bare_exc)
         if not record:
             raise self.ctx.error(
-                f"Unknown error type '{stmt.exception_type}'", stmt)
+                f"Unknown exception type '{stmt.exception_type}'", stmt)
+
+        qualified_exc = qualify_exception_name(
+            stmt.exception_type, self.ctx.registry)
+        is_cf = is_control_flow_exception(qualified_exc)
+
+        if is_cf:
+            # Return-tier: must be inside @error_return(E) function with matching E
+            if func.error_return is None:
+                raise self.ctx.error(
+                    f"'raise {stmt.exception_type}' requires "
+                    f"@error_return({stmt.exception_type}) on the enclosing function",
+                    stmt)
+            if func.error_return != qualified_exc:
+                raise self.ctx.error(
+                    f"'raise {stmt.exception_type}' does not match "
+                    f"@error_return({stmt.exception_type})", stmt)
+        else:
+            # Throw-tier: must inherit from Exception
+            if not is_exception_type(stmt.exception_type, self.ctx.registry):
+                raise self.ctx.error(
+                    f"'{stmt.exception_type}' is not an exception type; "
+                    f"it must inherit from Exception",
+                    stmt)
+
         # Type-check constructor arguments against __init__ params
         if stmt.args:
             if record.has_init:
@@ -1116,58 +1149,129 @@ class StatementAnalyzer:
                 raise self.ctx.error(
                     f"'raise {stmt.exception_type}()' does not accept arguments",
                     stmt)
-        # Propagate qualified name to AST for consistency with TpyFunction.error_return
+        # Propagate qualified name to AST
         stmt.exception_type = qualified_exc
         self.init.mark_terminated()
 
-    def _analyze_try_except(self, stmt: TpyTryExcept) -> None:
-        """Analyze a try/except statement with branch-aware flow analysis.
+    def _classify_try_tier(self, stmt: TpyTry) -> str:
+        """Classify a try statement as 'return', 'throw', or 'finally_only'."""
+        if not stmt.handlers:
+            return "finally_only"
 
-        Models try/except as a two-branch construct:
-        - "success" path: try body + else body
-        - "error" path: except body
-        An error_return call in the try body can jump to the except path
-        at any point, so the except body sees the pre-try state.
+        has_cf = False
+        has_throw = False
+        has_bare = False
+        for h in stmt.handlers:
+            if h.exception_type is None:
+                has_bare = True
+                continue
+            proto = self.ctx.registry.get_protocol(h.exception_type)
+            is_cf_catch_all = (
+                proto is not None
+                and f"{proto.module}.{proto.name}" == qnames.CONTROL_FLOW
+            )
+            if is_cf_catch_all or is_control_flow_exception(
+                    qualify_exception_name(
+                        h.exception_type, self.ctx.registry)):
+                has_cf = True
+            else:
+                has_throw = True
+
+        if has_cf and has_throw:
+            raise self.ctx.error(
+                "cannot mix ControlFlow and non-ControlFlow exception types "
+                "in the same try/except block", stmt)
+        if has_cf and has_bare:
+            raise self.ctx.error(
+                "bare 'except:' cannot be mixed with ControlFlow handlers", stmt)
+
+        return "return" if has_cf else "throw"
+
+    def _analyze_try(self, stmt: TpyTry) -> None:
+        """Analyze a try/except/else/finally statement.
+
+        Classifies the try block into tiers:
+        - 'return': ControlFlow handlers -> goto-based dispatch (existing)
+        - 'throw': non-ControlFlow handlers -> C++ try/catch
+        - 'finally_only': no handlers, just finally cleanup
         """
+        tier = self._classify_try_tier(stmt)
+        stmt.tier = tier
+
+        if tier == "finally_only":
+            self._analyze_try_finally_only(stmt)
+        elif tier == "return":
+            self._analyze_try_return(stmt)
+        else:
+            self._analyze_try_throw(stmt)
+
+    def _analyze_try_finally_only(self, stmt: TpyTry) -> None:
+        """Analyze try/finally with no except handlers."""
+        scope_before = set(self.ctx.current_scope.bindings.keys())
+        for s in stmt.try_body:
+            self.analyze_stmt(s)
+        try_bindings = dict(self.ctx.current_scope.bindings)
+        prev_in_finally = self.ctx.in_finally
+        self.ctx.in_finally = True
+        for s in stmt.finally_body:
+            self.analyze_stmt(s)
+        self.ctx.in_finally = prev_in_finally
+        # Hoist try-body variables so FinallyGuard lambda can capture them.
+        # Mark as hoisted so non-value types use pointer indirection.
+        branch_new = set(try_bindings.keys()) - scope_before
+        predecl = branch_new - self.ctx.global_declarations
+        if predecl:
+            self.ctx.if_branch_decls[id(stmt)] = {
+                name: try_bindings[name]
+                for name in sorted(predecl)
+                if name in try_bindings
+            }
+            self.ctx.hoisted_vars |= predecl
+
+    def _analyze_try_return(self, stmt: TpyTry) -> None:
+        """Analyze return-tier try/except (ControlFlow, goto-based)."""
+        # Return tier supports single handler or ControlFlow catch-all
+        if len(stmt.handlers) != 1:
+            raise self.ctx.error(
+                "return-tier (ControlFlow) try/except supports only a single handler", stmt)
+        handler = stmt.handlers[0]
+
         scope_before = set(self.ctx.current_scope.bindings.keys())
         before = self.init.save()
         consumed_before = self.ctx.current_consumed_own_params.copy()
         bindings_before = dict(self.ctx.current_scope.bindings)
         ns_types_before = self._save_ns_var_types()
 
-        # except ControlFlow: catch-all for any @error_return call
-        proto = self.ctx.registry.get_protocol(stmt.exception_type)
+        # Detect except ControlFlow catch-all
+        proto = self.ctx.registry.get_protocol(handler.exception_type)
         is_control_flow_catch_all = (
             proto is not None
             and f"{proto.module}.{proto.name}" == qnames.CONTROL_FLOW
         )
 
-        if is_control_flow_catch_all and stmt.except_binding:
+        if is_control_flow_catch_all and handler.binding:
             raise self.ctx.error(
                 "'except ControlFlow as' binding is not supported", stmt)
 
         if not is_control_flow_catch_all:
-            bare_exc = stmt.exception_type.rsplit(".", 1)[-1] if "." in stmt.exception_type else stmt.exception_type
+            bare_exc = handler.exception_type.rsplit(".", 1)[-1] if "." in handler.exception_type else handler.exception_type
             if not self.ctx.registry.find_record(bare_exc):
                 raise self.ctx.error(
-                    f"Unknown error type '{stmt.exception_type}'", stmt)
+                    f"Unknown error type '{handler.exception_type}'", stmt)
 
-        # Set try context so call analysis can allow error_return calls.
-        # "*" is a sentinel that matches any ControlFlow error type.
+        # Set try context so call analysis can allow error_return calls
         prev_try_error = self.ctx.try_except_error_type
         if is_control_flow_catch_all:
             self.ctx.try_except_error_type = "*"
         else:
             self.ctx.try_except_error_type = qualify_exception_name(
-                stmt.exception_type, self.ctx.registry, self.ctx.module_name)
+                handler.exception_type, self.ctx.registry)
 
-        # Analyze try body (success path)
         for s in stmt.try_body:
             self.analyze_stmt(s)
 
         self.ctx.try_except_error_type = prev_try_error
 
-        # Analyze else body (only reached on success)
         for s in stmt.else_body:
             self.analyze_stmt(s)
         then_state = self.init.save()
@@ -1181,48 +1285,48 @@ class StatementAnalyzer:
         self.init.restore(before)
         self.ctx.current_consumed_own_params = consumed_before.copy()
 
-        # Register except binding (e.g. "except E as e")
-        if stmt.except_binding:
-            exc_record = self.ctx.registry.find_record(stmt.exception_type)
+        # Register except binding
+        if handler.binding:
+            exc_record = self.ctx.registry.find_record(handler.exception_type)
             if exc_record:
-                exc_type = NamedType(stmt.exception_type)
-                self.ctx.current_scope.bindings[stmt.except_binding] = exc_type
-                self.init.mark_assigned(stmt.except_binding)
+                exc_type = NamedType(handler.exception_type)
+                self.ctx.current_scope.bindings[handler.binding] = exc_type
+                self.init.mark_assigned(handler.binding)
 
-        # Analyze except body (error path)
-        for s in stmt.except_body:
+        # Set in_except_tier for bare raise validation
+        prev_except_tier = self.ctx.in_except_tier
+        prev_has_binding = self.ctx.in_except_has_binding
+        self.ctx.in_except_tier = "return"
+        self.ctx.in_except_has_binding = handler.binding is not None
+        for s in handler.body:
             self.analyze_stmt(s)
-        # Python scopes except-binding to the except block only
-        if stmt.except_binding and stmt.except_binding in self.ctx.current_scope.bindings:
-            del self.ctx.current_scope.bindings[stmt.except_binding]
+        self.ctx.in_except_tier = prev_except_tier
+        self.ctx.in_except_has_binding = prev_has_binding
+
+        if handler.binding and handler.binding in self.ctx.current_scope.bindings:
+            del self.ctx.current_scope.bindings[handler.binding]
         else_state = self.init.save()
         consumed_after_else = self.ctx.current_consumed_own_params.copy()
         else_terminated = self.ctx.init_terminated
 
-        # Merge branches
         self.init.merge_branches(then_state, else_state)
+        self._merge_consumed_own(
+            then_terminated, else_terminated,
+            consumed_after_then, consumed_after_else)
 
-        # Merge consumed Own[T] params
-        if then_terminated and else_terminated:
-            self.ctx.current_consumed_own_params = consumed_after_then | consumed_after_else
-        elif then_terminated:
-            self.ctx.current_consumed_own_params = consumed_after_else
-        elif else_terminated:
-            self.ctx.current_consumed_own_params = consumed_after_then
-        else:
-            self.ctx.current_consumed_own_params = consumed_after_then & consumed_after_else
+        # Analyze finally body (runs on all paths, doesn't affect branch merging)
+        prev_in_finally = self.ctx.in_finally
+        self.ctx.in_finally = True
+        for s in stmt.finally_body:
+            self.analyze_stmt(s)
+        self.ctx.in_finally = prev_in_finally
 
-        # Pre-declare ALL variables first declared inside try or except bodies.
-        # Unlike if/else where we only hoist variables assigned on both branches,
-        # try/except uses goto-based dispatch so ALL declarations in either body
-        # must be hoisted to avoid "goto crosses initialization" errors.
-        # Merge bindings from both branches so variables declared in either are visible.
+        # Hoist all declarations for goto-based dispatch
         all_bindings = dict(try_bindings)
         all_bindings.update(self.ctx.current_scope.bindings)
         branch_new = set(all_bindings.keys()) - scope_before
-        # Exclude except binding -- codegen creates it directly from the optional
-        if stmt.except_binding:
-            branch_new.discard(stmt.except_binding)
+        if handler.binding:
+            branch_new.discard(handler.binding)
         predecl = branch_new - self.ctx.global_declarations
         if predecl:
             self.ctx.if_branch_decls[id(stmt)] = {
@@ -1230,6 +1334,141 @@ class StatementAnalyzer:
                 for name in sorted(predecl)
                 if name in all_bindings
             }
+
+    def _analyze_try_throw(self, stmt: TpyTry) -> None:
+        """Analyze throw-tier try/except (C++ try/catch)."""
+        scope_before = set(self.ctx.current_scope.bindings.keys())
+        before = self.init.save()
+        consumed_before = self.ctx.current_consumed_own_params.copy()
+        bindings_before = dict(self.ctx.current_scope.bindings)
+        ns_types_before = self._save_ns_var_types()
+
+        # Validate all handlers and save bare names for binding
+        handler_bare_names: list[str | None] = []
+        for h in stmt.handlers:
+            if h.exception_type is not None:
+                record = self.ctx.registry.find_record(h.exception_type)
+                if not record:
+                    raise self.ctx.error(
+                        f"Unknown exception type '{h.exception_type}'", stmt)
+                if not is_exception_type(h.exception_type, self.ctx.registry):
+                    raise self.ctx.error(
+                        f"'{h.exception_type}' is not an exception type; "
+                        f"it must inherit from Exception", stmt)
+                handler_bare_names.append(h.exception_type)
+                # Qualify the name for codegen
+                h.exception_type = qualify_exception_name(
+                    h.exception_type, self.ctx.registry)
+            else:
+                handler_bare_names.append(None)
+
+        # Analyze try body
+        for s in stmt.try_body:
+            self.analyze_stmt(s)
+        # Capture try-body bindings BEFORE else (else vars are scoped to the
+        # if(__ok) block in C++ and must not leak into post-try scope)
+        try_bindings = dict(self.ctx.current_scope.bindings)
+
+        # Analyze else body
+        for s in stmt.else_body:
+            self.analyze_stmt(s)
+        then_state = self.init.save()
+        consumed_after_then = self.ctx.current_consumed_own_params.copy()
+        then_terminated = self.ctx.init_terminated
+
+        # Analyze each except handler as a separate branch from pre-try state
+        handler_states: list[tuple] = []
+        for i, h in enumerate(stmt.handlers):
+            self.ctx.current_scope.bindings = dict(bindings_before)
+            self._restore_ns_var_types(ns_types_before)
+            self.init.restore(before)
+            self.ctx.current_consumed_own_params = consumed_before.copy()
+
+            bare_name = handler_bare_names[i]
+            if h.binding and bare_name:
+                exc_type = NamedType(bare_name)
+                self.ctx.current_scope.bindings[h.binding] = exc_type
+                self.init.mark_assigned(h.binding)
+
+            prev_except_tier = self.ctx.in_except_tier
+            self.ctx.in_except_tier = "throw"
+            for s in h.body:
+                self.analyze_stmt(s)
+            self.ctx.in_except_tier = prev_except_tier
+
+            if h.binding and h.binding in self.ctx.current_scope.bindings:
+                del self.ctx.current_scope.bindings[h.binding]
+
+            handler_states.append((
+                self.init.save(),
+                self.ctx.current_consumed_own_params.copy(),
+                self.ctx.init_terminated,
+            ))
+
+        # Merge all branches: success path + all handler paths
+        all_states = [then_state] + [s for s, _, _ in handler_states]
+        all_terminated = [then_terminated] + [t for _, _, t in handler_states]
+        all_consumed = [consumed_after_then] + [c for _, c, _ in handler_states]
+
+        # Multi-branch merge: start from first, merge pairwise
+        merged = all_states[0]
+        for s in all_states[1:]:
+            self.init.merge_branches(merged, s)
+            merged = self.init.save()
+
+        # Merge consumed Own[T] params
+        if all(all_terminated):
+            result_consumed: set[str] = set()
+            for c in all_consumed:
+                result_consumed |= c
+        elif any(all_terminated):
+            result_consumed = set()
+            for t, c in zip(all_terminated, all_consumed):
+                if not t:
+                    result_consumed = result_consumed & c if result_consumed else c.copy()
+        else:
+            result_consumed = all_consumed[0].copy()
+            for c in all_consumed[1:]:
+                result_consumed &= c
+        self.ctx.current_consumed_own_params = result_consumed
+
+        # Analyze finally body
+        prev_in_finally = self.ctx.in_finally
+        self.ctx.in_finally = True
+        for s in stmt.finally_body:
+            self.analyze_stmt(s)
+        self.ctx.in_finally = prev_in_finally
+
+        # Throw-tier uses C++ try/catch with proper scoping -- no goto hoisting
+        # needed in general. BUT try-body variables must be hoisted when:
+        # - finally body exists: FinallyGuard lambda must capture them
+        # - else body exists: else code is emitted after the try/catch block
+        self.ctx.current_scope.bindings = dict(try_bindings)
+        if stmt.finally_body or stmt.else_body:
+            branch_new = set(try_bindings.keys()) - scope_before
+            for h in stmt.handlers:
+                if h.binding:
+                    branch_new.discard(h.binding)
+            predecl = branch_new - self.ctx.global_declarations
+            if predecl:
+                self.ctx.if_branch_decls[id(stmt)] = {
+                    name: try_bindings[name]
+                    for name in sorted(predecl)
+                    if name in try_bindings
+                }
+                self.ctx.hoisted_vars |= predecl
+
+    def _merge_consumed_own(self, then_terminated: bool, else_terminated: bool,
+                            consumed_then: set[str], consumed_else: set[str]) -> None:
+        """Merge consumed Own[T] params from two branches."""
+        if then_terminated and else_terminated:
+            self.ctx.current_consumed_own_params = consumed_then | consumed_else
+        elif then_terminated:
+            self.ctx.current_consumed_own_params = consumed_else
+        elif else_terminated:
+            self.ctx.current_consumed_own_params = consumed_then
+        else:
+            self.ctx.current_consumed_own_params = consumed_then & consumed_else
 
     def _analyze_with(self, stmt: TpyWith) -> None:
         """Analyze a with statement (context managers).

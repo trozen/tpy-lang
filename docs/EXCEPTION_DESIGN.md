@@ -10,8 +10,8 @@
 | E4 | Auto-propagation: `@error_return(E)` functions auto-forward matching errors from callees without `try/except` | Done |
 | E5 | `except ControlFlow` catch-all for return exceptions | Done |
 | E6 | Exception types with data fields, `except E as e` binding | Done |
-| E7 | General C++ exceptions: `try`/`except`/`finally`/`raise` with stack unwinding for non-control-flow errors | Todo |
-| E8 | Multiple `except` handlers, bare `except:`, re-raise (`raise` with no argument) | Todo |
+| E7 | General C++ exceptions: `try`/`except`/`finally`/`raise` with stack unwinding for non-control-flow errors | Done |
+| E8 | Multiple `except` handlers, bare `except:`, re-raise (`raise` with no argument) | Done |
 
 ### Future Extensions
 
@@ -23,6 +23,8 @@
 | `@noalloc` interaction | `@noalloc` functions can use `@error_return` (zero-cost) but cannot throw C++ exceptions |
 | Custom base exception classes | User-defined exception hierarchies with `except BaseClass` catching subclasses |
 | `raise <expr>` | `e = MyError(1, "msg"); raise e` -- raise a pre-constructed exception variable |
+| `raise` inside `finally` | Currently rejected. Needs catch-all + goto codegen strategy instead of FinallyGuard RAII (destructors can't throw during unwinding). `return` inside try would need goto transformation. |
+| Mixed-tier `try`/`except` | Currently ControlFlow and non-ControlFlow handlers cannot be in the same `try` block. Wrap goto dispatch inside C++ `try`: return-tier gotos inside `try {}`, throw-tier in `catch` handlers. Would eliminate the nested-try workaround for functions that can both return errors and throw. |
 
 ---
 

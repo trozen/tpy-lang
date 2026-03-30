@@ -24,7 +24,7 @@ from tpyc.parse import (
     TpyIntLiteral, TpyFloatLiteral,
     TpyVarDecl, TpyTupleUnpack, TpyIf, TpyWhile, TpyAssert,
     TpySubscript, TpyTupleLiteral, TpyForEach,
-    TpyArrayLiteral, TpyDictLiteral, TpyUnaryOp, TpyRaise, TpyTryExcept,
+    TpyArrayLiteral, TpyDictLiteral, TpyUnaryOp, TpyRaise, TpyExceptHandler, TpyTry,
     TpyMatch, TpyMatchCase, TpyLiteralPattern, TpyWildcardPattern,
 )
 from tpyc.typesys import (
@@ -496,18 +496,22 @@ def _build_from_json(cls: ClassInfo) -> TpyFunction:
         ),
         TpyVarDecl(name=result_var, type=OptionalType(inner),
                    init=TpyNoneLiteral()),
-        TpyTryExcept(
+        TpyTry(
             try_body=[
                 TpyAssign(target=_name(result_var),
                           value=_method_call(_name(cls.name), "_from_reader",
                                             [_name("__reader")])),
             ],
-            exception_type=_JSON_ERROR,
-            except_body=[
-                TpyAssert(condition=TpyBoolLiteral(value=False),
-                          message=_str_lit("json: parse error")),
-            ],
+            handlers=[TpyExceptHandler(
+                exception_type=_JSON_ERROR,
+                binding=None,
+                body=[
+                    TpyAssert(condition=TpyBoolLiteral(value=False),
+                              message=_str_lit("json: parse error")),
+                ],
+            )],
             else_body=[],
+            finally_body=[],
         ),
         TpyAssert(
             condition=TpyBinOp(left=_name(result_var), op="is not",

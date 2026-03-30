@@ -22,58 +22,48 @@ class TypeParamKind(Enum):
     INT = "int"    # An integer literal like N
 
 
-# Built-in exception types available without import.
-# Used to qualify bare names (e.g. "StopIteration" -> "builtins.StopIteration")
-# so user-defined classes with the same name don't clash.
-BUILTIN_EXCEPTION_NAMES = frozenset({"BaseException", "Exception", "StopIteration"})
-
-
-def qualify_exception_name(name: str, registry: 'TypeRegistry',
-                           current_module: str | None = None) -> str:
+def qualify_exception_name(name: str, registry: 'TypeRegistry') -> str:
     """Qualify a bare exception name with its defining module.
 
-    Returns 'module.Name' for all exception types so that error_return_to_cpp
-    can deterministically map to the correct C++ namespace.
-
-    - Built-in exceptions: 'builtins.StopIteration'
-    - User exceptions: 'mymodule.MyError' or 'tplib.json.parser.JsonError'
+    Returns 'module.Name' for cross-module error_return matching.
+    Prefers the builtins module (the public namespace) over internal
+    submodules that happen to be compiled first.
     """
-    # Already qualified -- only from macro-injected AST nodes, not user source
-    # (the parser only produces bare names for @error_return annotations).
     if '.' in name:
         return name
-    if name in BUILTIN_EXCEPTION_NAMES:
-        # Check if user shadowed the builtin by defining their own class
-        builtins_mod = registry.get_module("builtins")
-        if builtins_mod and name in builtins_mod.records:
-            record = registry.get_record(name)
-            if record is not None and record is not builtins_mod.records[name]:
-                return name  # user-defined shadow -- local bare name
-        # Builtin (or builtins not yet loaded) -- always qualify
-        return f"builtins.{name}"
-    # Find the defining module for deterministic qualification.
-    # Skip modules whose record is shadowed by a local definition.
+    # Prefer builtins -- it's the public namespace for built-in exceptions.
+    # Without this, iteration order would find them in tpy._builtins._exceptions
+    # (compiled first) instead of the public builtins module.
+    builtins_mod = registry.get_module("builtins")
+    if builtins_mod and name in builtins_mod.records:
+        local_record = registry.get_record(name)
+        if local_record is None or local_record is builtins_mod.records[name]:
+            return f"builtins.{name}"
+        # User shadowed the builtin -- fall through to local resolution
+    # Find the defining module. Skip modules whose record is shadowed
+    # by a local definition.
     local_record = registry.get_record(name)
     for mod_name, mod_info in registry.modules.items():
         if name in mod_info.records:
             if local_record is not None and local_record is not mod_info.records[name]:
-                continue  # local record shadows this module's version
+                continue
             return f"{mod_name}.{name}"
-    # Not in any registered module -- local to the currently-compiling module.
-    # Return bare name (no prefix) since the codegen emits it in the local
-    # C++ namespace and the sema/codegen module names may differ for __main__.
     return name
 
 
-def error_return_to_cpp(name: str, current_module: str | None = None) -> str:
-    """Map a module-qualified exception name to C++.
+def error_return_to_cpp(name: str, current_module: str | None,
+                        registry: 'TypeRegistry') -> str:
+    """Map a qualified exception name to its C++ type name.
 
-    'builtins.X' -> '::tpy::X' (runtime-defined exceptions).
-    'module.X' -> '::cpp_namespace::X' (cross-module user exceptions).
-    'current_module.X' -> 'X' (local, bare name).
+    Uses the same resolution as any other type:
+    - @native types: record.native_name (works for builtins AND user native types)
+    - User types in current module: bare name
+    - User types in other modules: qualified_cpp_name(module, name)
     """
-    if name.startswith("builtins."):
-        return f"::tpy::{name[len('builtins.'):]}"
+    bare = name.rsplit(".", 1)[-1] if "." in name else name
+    record = registry.find_record(bare)
+    if record and record.native_name:
+        return record.native_name
     if "." in name:
         module_path, bare_name = name.rsplit(".", 1)
         if module_path == current_module:
@@ -170,6 +160,19 @@ def is_control_flow_exception(name: str) -> bool:
     """
     bare = name.rsplit(".", 1)[-1] if "." in name else name
     return bare in _control_flow_record_names
+
+
+def is_exception_type(name: str, registry: 'TypeRegistry') -> bool:
+    """Check if a record type inherits from Exception or BaseException."""
+    from tpyc import qnames
+    child = registry.find_record(name)
+    if child is None:
+        return False
+    for qname in (qnames.EXCEPTION, qnames.BASE_EXCEPTION):
+        base = registry.find_record_by_qname(qname)
+        if base is not None and (child is base or registry.is_subclass_of_record(child, base)):
+            return True
+    return False
 
 
 def public_module_name(module_name: str, cpp_namespace: str | None = None) -> str:
@@ -3468,6 +3471,25 @@ class TypeRegistry:
                 return mod.records[name]
         return None
 
+    def find_module_record(self, module_name: str, name: str) -> Optional[RecordInfo]:
+        """Find a record in a specific module."""
+        mod = self.modules.get(module_name)
+        if mod and name in mod.records:
+            return mod.records[name]
+        return None
+
+    def find_record_by_qname(self, qname: str) -> Optional[RecordInfo]:
+        """Find a record by qualified name (e.g. 'builtins.Exception')."""
+        # Check @builtin_type index first
+        result = self._qname_index.get(qname)
+        if result is not None:
+            return result
+        # Fall back to module lookup
+        if "." in qname:
+            module_name, bare_name = qname.rsplit(".", 1)
+            return self.find_module_record(module_name, bare_name)
+        return self.find_record(qname)
+
     def get_builtin_record(self, qname: str) -> Optional[RecordInfo]:
         """Get a builtin record by qualified name."""
         return self._qname_index.get(qname)
@@ -3501,6 +3523,20 @@ class TypeRegistry:
                 current_info = self.records.get(p.name)
             else:
                 break
+        return False
+
+    def is_subclass_of_record(self, child: RecordInfo, parent: RecordInfo) -> bool:
+        """Check if child record inherits from parent (by record identity)."""
+        current = child
+        visited: set[str] = set()
+        while current and current.parent and isinstance(current.parent, NamedType):
+            pname = current.parent.name
+            if pname in visited:
+                break
+            visited.add(pname)
+            current = self.find_record(pname)
+            if current is parent:
+                return True
         return False
 
     def get_method_overloads_with_parents(
