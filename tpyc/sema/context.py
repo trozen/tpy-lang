@@ -559,24 +559,26 @@ class SemanticContext:
         declared = self.current_scope.lookup(name)
         return declared is not None and isinstance(declared, ReadonlyType)
 
-    def error(self, message: str, node: TpyExpr | TpyStmt | None = None) -> SemanticError:
-        """Create a SemanticError with location from a node."""
-        loc = getattr(node, 'loc', None) if node else None
-        return SemanticError(message, loc)
-
-    def emit_error(self, message: str, node: TpyExpr | TpyStmt | None = None) -> None:
-        """Record an error diagnostic without raising (allows continued analysis)."""
-        loc = getattr(node, 'loc', None) if node else None
-        self.diagnostics.append(Diagnostic(DiagnosticLevel.ERROR, message, loc))
-
-    def warning(self, message: str, node: TpyExpr | TpyStmt | TpyRecord | None = None) -> None:
-        """Record a warning diagnostic (doesn't stop compilation)."""
+    def _resolve_loc(self, node: TpyExpr | TpyStmt | TpyRecord | None) -> SourceLocation | None:
+        """Resolve source location from a node, with fallback to current function/record."""
         loc = getattr(node, 'loc', None) if node else None
         if loc is None and isinstance(self.current_function, TpyFunction):
             loc = self.current_function.loc
         if loc is None and self.record_ctx.record is not None:
             loc = self.record_ctx.record.loc
-        self.diagnostics.append(Diagnostic(DiagnosticLevel.WARNING, message, loc))
+        return loc
+
+    def error(self, message: str, node: TpyExpr | TpyStmt | None = None) -> SemanticError:
+        """Create a SemanticError with location from a node."""
+        return SemanticError(message, self._resolve_loc(node))
+
+    def emit_error(self, message: str, node: TpyExpr | TpyStmt | None = None) -> None:
+        """Record an error diagnostic without raising (allows continued analysis)."""
+        self.diagnostics.append(Diagnostic(DiagnosticLevel.ERROR, message, self._resolve_loc(node)))
+
+    def warning(self, message: str, node: TpyExpr | TpyStmt | TpyRecord | None = None) -> None:
+        """Record a warning diagnostic (doesn't stop compilation)."""
+        self.diagnostics.append(Diagnostic(DiagnosticLevel.WARNING, message, self._resolve_loc(node)))
 
     def warning_from_loc(self, message: str, loc: 'SourceLocation | None') -> None:
         """Record a warning diagnostic from a SourceLocation."""
