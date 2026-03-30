@@ -12,7 +12,7 @@ void greet(Pet& pet) {
 
 // def main() -> None:
 void main() {
-  std::optional<::tpy::Adapter<Pet, Cat>> __slot_2;
+    std::optional<::tpy::Adapter<Pet, Cat>> __slot_2;
     // p1: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* p1 = &__slot_1;

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def nested_loop_escape() -> None:
 void nested_loop_escape() {
-  std::optional<Point> __slot_2;
+    std::optional<Point> __slot_2;
     // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
         // outer: Point = Point(i, 0)

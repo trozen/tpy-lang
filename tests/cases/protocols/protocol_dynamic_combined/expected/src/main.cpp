@@ -18,8 +18,8 @@ void show_noise(Noise& n) {
 
 // def main() -> None:
 void main() {
-  std::optional<Cat> __slot_2;
-  std::optional<Dog> __slot_4;
+    std::optional<Cat> __slot_2;
+    std::optional<Dog> __slot_4;
     // d: Describable = Dog()
     Dog __slot_1{Dog()};
     Describable* d = &__slot_1;

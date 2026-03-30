@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-  static std::optional<Cat> __global_slot_1;
+    static std::optional<Cat> __global_slot_1;
     // global_pet: Pet = Cat()
     __global_slot_1.emplace(Cat());
     global_pet = &*__global_slot_1;

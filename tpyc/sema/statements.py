@@ -1501,8 +1501,13 @@ class StatementAnalyzer:
         # needed in general. BUT try-body variables must be hoisted when:
         # - finally body exists: FinallyGuard lambda must capture them
         # - else body exists: else code is emitted after the try/catch block
+        # - code continues after try/except and try-body vars are in scope
+        #   (all handlers terminate, so post-try code uses try-body vars)
+        all_handlers_terminate = all(t for _, _, t in handler_states)
+        needs_hoist = (stmt.finally_body or stmt.else_body
+                       or (all_handlers_terminate and not self.ctx.init_terminated))
         self.ctx.current_scope.bindings = dict(try_bindings)
-        if stmt.finally_body or stmt.else_body:
+        if needs_hoist:
             branch_new = set(try_bindings.keys()) - scope_before
             for h in stmt.handlers:
                 if h.binding:

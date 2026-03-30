@@ -93,9 +93,9 @@ class StatementGenerator:
             self.gen_stmt(body_buf, stmt)
         if track_stmt_line:
             self.ctx.current_stmt_line = 0
-        hoist_prefix = INDENT * (self.ctx.indent_level - 1)
+        hoist_indent = INDENT * self.ctx.indent_level
         for decl in self.ctx.pending_hoist_decls:
-            out.write(f"{hoist_prefix}{decl}")
+            out.write(f"{hoist_indent}{decl}")
         out.write(body_buf.getvalue())
 
     def gen_body(self, out: TextIO, body: list[TpyStmt],
@@ -610,7 +610,7 @@ class StatementGenerator:
         # Global scope (__tpy_init) needs 'static' so slots outlive the function.
         static_kw = "static " if self.ctx.slots.global_scope else ""
         self.ctx.pending_hoist_decls.append(
-            f"  {static_kw}std::optional<{slot_type}> {rebind_slot};\n"
+            f"{static_kw}std::optional<{slot_type}> {rebind_slot};\n"
         )
         return (f"{indent}{rebind_slot}.emplace({init_expr});\n"
                 f"{indent}{name} = &*{rebind_slot};\n")
@@ -759,11 +759,11 @@ class StatementGenerator:
                 init_slot = self.ctx.slots.next_slot()
                 is_hoisted = name in self.ctx.hoisted_vars or name in self.ctx.branch_hoisted_vars
                 if is_hoisted:
-                    self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {init_slot};\n")
+                    self.ctx.pending_hoist_decls.append(f"{hoist_static_kw}{slot_opt_cpp} {init_slot};\n")
                     if name in self.ctx.rvalue_reassigned_vars:
                         rebind_slot = self.ctx.slots.next_slot()
                         self.ctx.rebind_slots[name] = rebind_slot
-                        self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {rebind_slot};\n")
+                        self.ctx.pending_hoist_decls.append(f"{hoist_static_kw}{slot_opt_cpp} {rebind_slot};\n")
                     else:
                         self.ctx.rebind_slots[name] = init_slot
                     return f"{indent}{const_pfx}{cpp_type}* {name} = &({init_slot}.emplace({init_expr}));\n"
@@ -785,7 +785,7 @@ class StatementGenerator:
                 slot = self.ctx.slots.next_slot()
                 self.ctx.rebind_slots[name] = slot
                 if name in self.ctx.hoisted_vars:
-                    self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {slot};\n")
+                    self.ctx.pending_hoist_decls.append(f"{hoist_static_kw}{slot_opt_cpp} {slot};\n")
                 else:
                     rebind_decl = f"{indent}{static_kw}{slot_opt_cpp} {slot};\n"
             return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = nullptr;\n"
@@ -819,11 +819,11 @@ class StatementGenerator:
             init_slot = self.ctx.slots.next_slot()
             slot_type = self._slot_decl_type(cpp_type, is_opt_field)
             if is_hoisted:
-                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {init_slot};\n")
+                self.ctx.pending_hoist_decls.append(f"{hoist_static_kw}{slot_opt_cpp} {init_slot};\n")
                 if name in self.ctx.rvalue_reassigned_vars:
                     rebind_slot = self.ctx.slots.next_slot()
                     self.ctx.rebind_slots[name] = rebind_slot
-                    self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {rebind_slot};\n")
+                    self.ctx.pending_hoist_decls.append(f"{hoist_static_kw}{slot_opt_cpp} {rebind_slot};\n")
                 else:
                     self.ctx.rebind_slots[name] = init_slot
                 deref = self._ptr_from_rvalue_slot(init_slot, init_expr, is_opt_field,
@@ -848,7 +848,7 @@ class StatementGenerator:
             slot = self.ctx.slots.next_slot()
             self.ctx.rebind_slots[name] = slot
             if is_hoisted:
-                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {slot};\n")
+                self.ctx.pending_hoist_decls.append(f"{hoist_static_kw}{slot_opt_cpp} {slot};\n")
             else:
                 rebind_decl = f"{indent}{static_kw}{slot_opt_cpp} {slot};\n"
 
@@ -940,7 +940,7 @@ class StatementGenerator:
             self.ctx.rebind_slots[name] = slot
             slot_type = self._slot_decl_type(cpp_type, is_opt_field)
             if is_hoisted:
-                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {slot};\n")
+                self.ctx.pending_hoist_decls.append(f"{hoist_static_kw}{slot_opt_cpp} {slot};\n")
                 deref = self._ptr_from_rvalue_slot(slot, init_expr, is_opt_field,
                                                    slot not in self.ctx.plain_rebind_slots)
                 return f"{indent}{cpp_name} = {deref};\n"
@@ -1737,7 +1737,7 @@ class StatementGenerator:
                             hoist_kw = "static " if self.ctx.slots.global_scope else ""
                             slot_opt = f"std::optional<{cpp_type}>"
                             self.ctx.pending_hoist_decls.append(
-                                f"  {hoist_kw}{slot_opt} {slot};\n")
+                                f"{hoist_kw}{slot_opt} {slot};\n")
                             deref = self._ptr_from_rvalue_slot(
                                 slot, get_expr, False, True)
                             out.write(f"{indent}{cpp_name} = {deref};\n")

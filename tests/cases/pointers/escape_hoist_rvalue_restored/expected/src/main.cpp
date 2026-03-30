@@ -8,8 +8,8 @@ namespace tpyapp::main {
 // # re-enables hoisting because p now owns its storage again.
 // def rvalue_restored() -> None:
 void rvalue_restored() {
-  std::optional<Point> __slot_2;
-  std::optional<Point> __slot_3;
+    std::optional<Point> __slot_2;
+    std::optional<Point> __slot_3;
     // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;

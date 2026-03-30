@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-  std::optional<Cat> __slot_2;
+    std::optional<Cat> __slot_2;
     // pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;

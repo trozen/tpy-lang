@@ -13,7 +13,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-  static std::optional<Point> __global_slot_2;
+    static std::optional<Point> __global_slot_2;
     // # Top-level (module scope) escape: same detection should work
     // # outside of function bodies.
     // saved: Point = Point(0, 0)

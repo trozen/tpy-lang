@@ -45,7 +45,7 @@ void test_own_list_both_branches(bool flag) {
 
 // def test_list_reassigned_mixed(flag: bool) -> None:
 void test_list_reassigned_mixed(bool flag) {
-  std::optional<std::vector<int32_t>> __slot_1;
+    std::optional<std::vector<int32_t>> __slot_1;
     // base: list[Int32] = [10, 20]
     std::vector<int32_t> base = {10, 20};
     // if flag:
@@ -99,7 +99,7 @@ void test_record_both_branches(bool flag) {
 
 // def test_optional_record_one_branch(flag: bool) -> None:
 void test_optional_record_one_branch(bool flag) {
-  std::optional<Point> __slot_1;
+    std::optional<Point> __slot_1;
     // if flag:
     Point* p;
     if (flag) {

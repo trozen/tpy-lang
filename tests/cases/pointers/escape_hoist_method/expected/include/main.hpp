@@ -45,7 +45,7 @@ struct Finder {
 
     // def find_last(self, n: Int32) -> None:
     void find_last(int32_t n) {
-      std::optional<Point> __slot_2;
+        std::optional<Point> __slot_2;
         // saved: Point = Point(0, 0)
         Point __slot_1 = Point(0, 0);
         Point* saved = &__slot_1;

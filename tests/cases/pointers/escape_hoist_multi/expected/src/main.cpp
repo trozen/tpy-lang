@@ -8,8 +8,8 @@ namespace tpyapp::main {
 // # Both slots must be hoisted to function scope.
 // def multi_hoist() -> None:
 void multi_hoist() {
-  std::optional<Point> __slot_3;
-  std::optional<Point> __slot_4;
+    std::optional<Point> __slot_3;
+    std::optional<Point> __slot_4;
     // saved_a: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved_a = &__slot_1;

@@ -9,8 +9,8 @@ namespace tpyapp::main {
 // # and reassigned_vars.
 // def hoist_and_reassign() -> None:
 void hoist_and_reassign() {
-  std::optional<Point> __slot_2;
-  std::optional<Point> __slot_3;
+    std::optional<Point> __slot_2;
+    std::optional<Point> __slot_3;
     // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;

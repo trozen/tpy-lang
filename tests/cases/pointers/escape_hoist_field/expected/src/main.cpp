@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // # object, so o.inner has the same depth as o (loop-scoped).
 // def field_access_escape() -> None:
 void field_access_escape() {
-  std::optional<Outer> __slot_2;
+    std::optional<Outer> __slot_2;
     // saved: Inner = Inner(0)
     Inner __slot_1 = Inner(0);
     Inner* saved = &__slot_1;

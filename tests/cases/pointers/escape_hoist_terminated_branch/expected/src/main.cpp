@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // # reaches the escape point. Hoisting is safe.
 // def terminated_branch() -> None:
 void terminated_branch() {
-  std::optional<Point> __slot_2;
+    std::optional<Point> __slot_2;
     // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;

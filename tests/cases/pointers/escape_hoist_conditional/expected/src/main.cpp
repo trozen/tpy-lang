@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // # The hoisted slot must still be at function scope.
 // def conditional_hoist() -> None:
 void conditional_hoist() {
-  std::optional<Point> __slot_2;
+    std::optional<Point> __slot_2;
     // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
