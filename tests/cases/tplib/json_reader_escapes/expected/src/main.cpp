@@ -21,7 +21,7 @@ std::expected<void, ::tpystd::tplib::json::JsonError> test_reader_standard() {
         {
             auto __try_tmp_2 = reader.read_str();
             if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
-            s = *__try_tmp_2;
+            s = ::tpy::unwrap_ref(*__try_tmp_2);
         }
         // print(len(s))
         std::cout << ::tpy::__len__(s) << "\n";
@@ -53,7 +53,7 @@ std::expected<void, ::tpystd::tplib::json::JsonError> test_reader_bf() {
         {
             auto __try_tmp_5 = reader.read_str();
             if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
-            s = *__try_tmp_5;
+            s = ::tpy::unwrap_ref(*__try_tmp_5);
         }
         // print(len(s))
         std::cout << ::tpy::__len__(s) << "\n";
@@ -85,7 +85,7 @@ std::expected<void, ::tpystd::tplib::json::JsonError> test_reader_unicode() {
         {
             auto __try_tmp_8 = reader.read_str();
             if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(__try_tmp_8.error());
-            s = *__try_tmp_8;
+            s = ::tpy::unwrap_ref(*__try_tmp_8);
         }
         // print(s)
         std::cout << s << "\n";
@@ -149,7 +149,7 @@ std::expected<void, ::tpystd::tplib::json::JsonError> test_roundtrip() {
         {
             auto __try_tmp_11 = reader.read_str();
             if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
-            s = *__try_tmp_11;
+            s = ::tpy::unwrap_ref(*__try_tmp_11);
         }
         // print(s)
         std::cout << s << "\n";

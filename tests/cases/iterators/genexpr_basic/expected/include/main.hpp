@@ -25,7 +25,7 @@ int32_t sum_items(T_items& items) {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::next_deref(*__r_1);
+        int32_t x = ::tpy::unwrap_ref(*__r_1);
         // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }

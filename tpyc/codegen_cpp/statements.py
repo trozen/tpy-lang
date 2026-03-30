@@ -1644,7 +1644,7 @@ class StatementGenerator:
             out.write(self._gen_error_goto(f"{indent}{INDENT}", try_tmp, label))
             out.write(f"{indent}}}\n")
             # Use unwrapped value for the rest of tuple unpacking
-            unwrapped_tmp = f"(*{try_tmp})"
+            unwrapped_tmp = f"(::tpy::unwrap_ref(*{try_tmp}))"
         else:
             unwrapped_tmp = None
 
@@ -2109,7 +2109,7 @@ class StatementGenerator:
         out += f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += self._gen_error_goto(f"{indent}{INDENT}", tmp, label)
-        out += f"{indent}{INDENT}{cpp_name} = *{tmp};\n"
+        out += f"{indent}{INDENT}{cpp_name} = ::tpy::unwrap_ref(*{tmp});\n"
         out += f"{indent}}}\n"
 
         return out
@@ -2134,7 +2134,7 @@ class StatementGenerator:
         out = f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += self._gen_error_goto(f"{indent}{INDENT}", tmp, label)
-        out += f"{indent}{INDENT}{target_cpp} = *{tmp};\n"
+        out += f"{indent}{INDENT}{target_cpp} = ::tpy::unwrap_ref(*{tmp});\n"
         out += f"{indent}}}\n"
 
         return out
@@ -2168,7 +2168,7 @@ class StatementGenerator:
         out += f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += f"{indent}{INDENT}if (!{tmp}.has_value()) return ::tpy::make_unexpected({tmp}.error());\n"
-        out += f"{indent}{INDENT}{cpp_name} = *{tmp};\n"
+        out += f"{indent}{INDENT}{cpp_name} = ::tpy::unwrap_ref(*{tmp});\n"
         out += f"{indent}}}\n"
 
         return out
@@ -2186,7 +2186,7 @@ class StatementGenerator:
         out = f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += f"{indent}{INDENT}if (!{tmp}.has_value()) return ::tpy::make_unexpected({tmp}.error());\n"
-        out += f"{indent}{INDENT}{target_cpp} = *{tmp};\n"
+        out += f"{indent}{INDENT}{target_cpp} = ::tpy::unwrap_ref(*{tmp});\n"
         out += f"{indent}}}\n"
 
         return out
@@ -2215,7 +2215,7 @@ class StatementGenerator:
         out += f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += f"{indent}{INDENT}if (!{tmp}.has_value()) ::tpy::tpy_panic(\"unhandled error return\");\n"
-        out += f"{indent}{INDENT}{cpp_name} = *{tmp};\n"
+        out += f"{indent}{INDENT}{cpp_name} = ::tpy::unwrap_ref(*{tmp});\n"
         out += f"{indent}}}\n"
 
         return out
@@ -2231,7 +2231,7 @@ class StatementGenerator:
         out = f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += f"{indent}{INDENT}if (!{tmp}.has_value()) ::tpy::tpy_panic(\"unhandled error return\");\n"
-        out += f"{indent}{INDENT}{target_cpp} = *{tmp};\n"
+        out += f"{indent}{INDENT}{target_cpp} = ::tpy::unwrap_ref(*{tmp});\n"
         out += f"{indent}}}\n"
 
         return out
@@ -2260,7 +2260,7 @@ class StatementGenerator:
         out += f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += f"{indent}{INDENT}if (!{tmp}.has_value()) ::tpy::tpy_panic(\"unhandled error return\");\n"
-        out += f"{indent}{INDENT}{cpp_name} = *{tmp};\n"
+        out += f"{indent}{INDENT}{cpp_name} = ::tpy::unwrap_ref(*{tmp});\n"
         out += f"{indent}}}\n"
 
         return out
@@ -2276,7 +2276,7 @@ class StatementGenerator:
         out = f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += f"{indent}{INDENT}if (!{tmp}.has_value()) ::tpy::tpy_panic(\"unhandled error return\");\n"
-        out += f"{indent}{INDENT}{target_cpp} = *{tmp};\n"
+        out += f"{indent}{INDENT}{target_cpp} = ::tpy::unwrap_ref(*{tmp});\n"
         out += f"{indent}}}\n"
 
         return out
@@ -2464,7 +2464,7 @@ class StatementGenerator:
         inner = indent + INDENT
         out.write(f"{inner}{r_raw} = {src_name}.__next__();\n")
         out.write(f"{inner}if (!({r}).has_value()) break;\n")
-        out.write(f"{inner}{cpp_var} = ::tpy::next_deref(*({r}));\n")
+        out.write(f"{inner}{cpp_var} = ::tpy::unwrap_ref(*({r}));\n")
 
         self._gen_generator_loop_body(out, stmt, indent)
 
@@ -2487,7 +2487,7 @@ class StatementGenerator:
         inner = indent + INDENT
         out.write(f"{inner}{r_raw} = ({itr}).__next__();\n")
         out.write(f"{inner}if (!({r}).has_value()) break;\n")
-        out.write(f"{inner}{cpp_var} = ::tpy::next_deref(*({r}));\n")
+        out.write(f"{inner}{cpp_var} = ::tpy::unwrap_ref(*({r}));\n")
 
         self._gen_generator_loop_body(out, stmt, indent)
 
@@ -3073,8 +3073,8 @@ class StatementGenerator:
         When iter_name is provided, the iterator variable is already allocated
         by the caller and no capture line is emitted.
 
-        Uses ::tpy::next_deref() to unwrap val_or_ref from native_iterator
-        __next__(). For user-defined iterators returning plain T, next_deref
+        Uses ::tpy::unwrap_ref() to unwrap val_or_ref from native_iterator
+        __next__(). For user-defined iterators returning plain T, unwrap
         is a transparent pass-through.
 
         Produces:
@@ -3082,7 +3082,7 @@ class StatementGenerator:
             for (;;) {
                 auto __r_N = <call>;
                 if (!__r_N.has_value()) break;
-                T x = ::tpy::next_deref(*__r_N);
+                T x = ::tpy::unwrap_ref(*__r_N);
                 // body
             }
         """
@@ -3106,7 +3106,7 @@ class StatementGenerator:
         out.write(f"{inner_indent}auto {r_name} = {iter_name}{call};\n")
         out.write(f"{inner_indent}if (!{r_name}.has_value()) break;\n")
 
-        deref = f"::tpy::next_deref(*{r_name})"
+        deref = f"::tpy::unwrap_ref(*{r_name})"
         hoisted = self._is_loop_var_hoisted(stmt)
         if hoisted:
             binding = f"{cpp_var} = {deref};"

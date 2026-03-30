@@ -32,28 +32,28 @@ std::expected<std::string, E> get_name(std::string_view s) {
 // def add(a: str, b: str) -> int:
 std::expected<::tpy::BigInt, E> add(std::string_view a, std::string_view b) {
     // return parse(a) + parse(b)
-    return ((({ auto __er_1 = parse(a); if (!__er_1.has_value()) return ::tpy::make_unexpected(__er_1.error()); std::move(*__er_1); })) + (({ auto __er_2 = parse(b); if (!__er_2.has_value()) return ::tpy::make_unexpected(__er_2.error()); std::move(*__er_2); })));
+    return ((({ auto __er_1 = parse(a); if (!__er_1.has_value()) return ::tpy::make_unexpected(__er_1.error()); ::tpy::unwrap_ref_move(*__er_1); })) + (({ auto __er_2 = parse(b); if (!__er_2.has_value()) return ::tpy::make_unexpected(__er_2.error()); ::tpy::unwrap_ref_move(*__er_2); })));
 }
 
 // @error_return(E)
 // def mul3(a: str, b: str, c: str) -> int:
 std::expected<::tpy::BigInt, E> mul3(std::string_view a, std::string_view b, std::string_view c) {
     // return parse(a) + parse(b) * parse(c)
-    return ((({ auto __er_3 = parse(a); if (!__er_3.has_value()) return ::tpy::make_unexpected(__er_3.error()); std::move(*__er_3); })) + (((({ auto __er_4 = parse(b); if (!__er_4.has_value()) return ::tpy::make_unexpected(__er_4.error()); std::move(*__er_4); })) * (({ auto __er_5 = parse(c); if (!__er_5.has_value()) return ::tpy::make_unexpected(__er_5.error()); std::move(*__er_5); })))));
+    return ((({ auto __er_3 = parse(a); if (!__er_3.has_value()) return ::tpy::make_unexpected(__er_3.error()); ::tpy::unwrap_ref_move(*__er_3); })) + (((({ auto __er_4 = parse(b); if (!__er_4.has_value()) return ::tpy::make_unexpected(__er_4.error()); ::tpy::unwrap_ref_move(*__er_4); })) * (({ auto __er_5 = parse(c); if (!__er_5.has_value()) return ::tpy::make_unexpected(__er_5.error()); ::tpy::unwrap_ref_move(*__er_5); })))));
 }
 
 // @error_return(E)
 // def as_arg(s: str) -> int:
 std::expected<::tpy::BigInt, E> as_arg(std::string_view s) {
     // return abs(parse(s))
-    return ::tpy::BigInt::abs(({ auto __er_6 = parse(s); if (!__er_6.has_value()) return ::tpy::make_unexpected(__er_6.error()); std::move(*__er_6); }));
+    return ::tpy::BigInt::abs(({ auto __er_6 = parse(s); if (!__er_6.has_value()) return ::tpy::make_unexpected(__er_6.error()); ::tpy::unwrap_ref_move(*__er_6); }));
 }
 
 // @error_return(E)
 // def greet(s: str) -> str:
 std::expected<std::string, E> greet(std::string_view s) {
     // return get_name(s) + " world"
-    return (::tpy::str_concat(({ auto __er_7 = get_name(s); if (!__er_7.has_value()) return ::tpy::make_unexpected(__er_7.error()); std::move(*__er_7); }), " world"));
+    return (::tpy::str_concat(({ auto __er_7 = get_name(s); if (!__er_7.has_value()) return ::tpy::make_unexpected(__er_7.error()); ::tpy::unwrap_ref_move(*__er_7); }), " world"));
 }
 
 // @error_return(E)
@@ -72,7 +72,7 @@ std::expected<Point, E> positive(const ::tpy::BigInt& x, const ::tpy::BigInt& y)
 // def modify(x: int, y: int) -> Own[Point]:
 std::expected<Point, E> modify(const ::tpy::BigInt& x, const ::tpy::BigInt& y) {
     // return positive(x, y).updated()
-    return ({ auto __er_8 = positive(x, y); if (!__er_8.has_value()) return ::tpy::make_unexpected(__er_8.error()); std::move(*__er_8); }).updated();
+    return ({ auto __er_8 = positive(x, y); if (!__er_8.has_value()) return ::tpy::make_unexpected(__er_8.error()); ::tpy::unwrap_ref_move(*__er_8); }).updated();
 }
 
 // def main() -> None:
@@ -85,7 +85,7 @@ void main() {
         {
             auto __try_tmp_10 = add("10", "20");
             if (!__try_tmp_10.has_value()) goto __except_9;
-            v = *__try_tmp_10;
+            v = ::tpy::unwrap_ref(*__try_tmp_10);
         }
         // else:
         // print(v)
@@ -105,7 +105,7 @@ void main() {
         {
             auto __try_tmp_12 = add("10", "");
             if (!__try_tmp_12.has_value()) goto __except_11;
-            v2 = *__try_tmp_12;
+            v2 = ::tpy::unwrap_ref(*__try_tmp_12);
         }
         goto __after_try_11;
         // except E:
@@ -122,7 +122,7 @@ void main() {
         {
             auto __try_tmp_14 = mul3("2", "3", "4");
             if (!__try_tmp_14.has_value()) goto __except_13;
-            v3 = *__try_tmp_14;
+            v3 = ::tpy::unwrap_ref(*__try_tmp_14);
         }
         // else:
         // print(v3)
@@ -142,7 +142,7 @@ void main() {
         {
             auto __try_tmp_16 = as_arg("-5");
             if (!__try_tmp_16.has_value()) goto __except_15;
-            v4 = *__try_tmp_16;
+            v4 = ::tpy::unwrap_ref(*__try_tmp_16);
         }
         // else:
         // print(v4)
@@ -162,7 +162,7 @@ void main() {
         {
             auto __try_tmp_18 = greet("hello");
             if (!__try_tmp_18.has_value()) goto __except_17;
-            v5 = *__try_tmp_18;
+            v5 = ::tpy::unwrap_ref(*__try_tmp_18);
         }
         // else:
         // print(v5)
@@ -181,7 +181,7 @@ void main() {
         {
             auto __try_tmp_20 = greet("");
             if (!__try_tmp_20.has_value()) goto __except_19;
-            v6 = *__try_tmp_20;
+            v6 = ::tpy::unwrap_ref(*__try_tmp_20);
         }
         goto __after_try_19;
         // except E:
@@ -198,7 +198,7 @@ void main() {
         {
             auto __try_tmp_22 = modify(::tpy::BigInt(1), ::tpy::BigInt(2));
             if (!__try_tmp_22.has_value()) goto __except_21;
-            v7 = *__try_tmp_22;
+            v7 = ::tpy::unwrap_ref(*__try_tmp_22);
         }
         // else:
         // print(v7.x)
@@ -219,7 +219,7 @@ void main() {
         {
             auto __try_tmp_24 = modify(::tpy::BigInt(-1), ::tpy::BigInt(2));
             if (!__try_tmp_24.has_value()) goto __except_23;
-            v8 = *__try_tmp_24;
+            v8 = ::tpy::unwrap_ref(*__try_tmp_24);
         }
         goto __after_try_23;
         // except E:
@@ -232,7 +232,7 @@ void main() {
     // try:
     {
         // print(parse("99"))
-        std::cout << ({ auto __er_26 = parse("99"); if (!__er_26.has_value()) goto __except_25; std::move(*__er_26); }) << "\n";
+        std::cout << ({ auto __er_26 = parse("99"); if (!__er_26.has_value()) goto __except_25; ::tpy::unwrap_ref_move(*__er_26); }) << "\n";
         goto __after_try_25;
         // except E:
         __except_25:;
@@ -243,7 +243,7 @@ void main() {
     // try:
     {
         // print(add("3", ""))
-        std::cout << ({ auto __er_28 = add("3", ""); if (!__er_28.has_value()) goto __except_27; std::move(*__er_28); }) << "\n";
+        std::cout << ({ auto __er_28 = add("3", ""); if (!__er_28.has_value()) goto __except_27; ::tpy::unwrap_ref_move(*__er_28); }) << "\n";
         goto __after_try_27;
         // except E:
         __except_27:;

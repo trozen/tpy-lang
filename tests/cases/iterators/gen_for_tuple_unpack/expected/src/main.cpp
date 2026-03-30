@@ -110,7 +110,7 @@ void main() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        int32_t v = ::tpy::next_deref(*__r_0);
+        int32_t v = ::tpy::unwrap_ref(*__r_0);
         // print(v)
         std::cout << v << "\n";
     }
@@ -122,7 +122,7 @@ void main() {
     for (;;) {
         auto __r_1 = __iter_1.__next__();
         if (!__r_1.has_value()) break;
-        int32_t v = ::tpy::next_deref(*__r_1);
+        int32_t v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
     }
@@ -135,7 +135,7 @@ void main() {
     for (;;) {
         auto __r_2 = __iter_2.__next__();
         if (!__r_2.has_value()) break;
-        int32_t v = ::tpy::next_deref(*__r_2);
+        int32_t v = ::tpy::unwrap_ref(*__r_2);
         // print(v)
         std::cout << v << "\n";
     }

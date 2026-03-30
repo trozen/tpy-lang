@@ -23,11 +23,11 @@ struct CopyIter {
     Inner inner;
 
     // Iterator protocol: copy each element from the inner iterator.
-    // Uses next_deref() to unwrap val_or_ref from native_iterator.
+    // Uses unwrap() to unwrap val_or_ref from native_iterator.
     std::expected<T, StopIteration> __next__() {
         auto r = inner.__next__();
         if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
-        return T(next_deref(*r));
+        return T(unwrap_ref(*r));
     }
 
     CopyIter& __iter__() { return *this; }

@@ -71,7 +71,7 @@ struct Address {
             {
                 auto __try_tmp_2 = __reader.read_key_raw();
                 if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
-                __key = *__try_tmp_2;
+                __key = ::tpy::unwrap_ref(*__try_tmp_2);
             }
             auto& __match_subject = __key;
             if (__match_subject == "street") {
@@ -79,7 +79,7 @@ struct Address {
                 {
                     auto __try_tmp_3 = __reader.read_str();
                     if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
-                    __street_1 = *__try_tmp_3;
+                    __street_1 = ::tpy::unwrap_ref(*__try_tmp_3);
                 }
                 street = __street_1;
             } else if (__match_subject == "city") {
@@ -87,7 +87,7 @@ struct Address {
                 {
                     auto __try_tmp_4 = __reader.read_str();
                     if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
-                    __city_2 = *__try_tmp_4;
+                    __city_2 = ::tpy::unwrap_ref(*__try_tmp_4);
                 }
                 city = __city_2;
             } else {
@@ -111,7 +111,7 @@ struct Address {
             {
                 auto __try_tmp_8 = Address::_from_reader(__reader);
                 if (!__try_tmp_8.has_value()) goto __except_7;
-                __result = *__try_tmp_8;
+                __result = ::tpy::unwrap_ref(*__try_tmp_8);
             }
             goto __after_try_7;
             // except tplib.json.parser.JsonError:
@@ -238,7 +238,7 @@ struct Profile {
             {
                 auto __try_tmp_10 = __reader.read_key_raw();
                 if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
-                __key = *__try_tmp_10;
+                __key = ::tpy::unwrap_ref(*__try_tmp_10);
             }
             auto& __match_subject = __key;
             if (__match_subject.size() >= 2) {
@@ -249,7 +249,7 @@ struct Profile {
                         {
                             auto __try_tmp_11 = __reader.read_str();
                             if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
-                            __name_1 = *__try_tmp_11;
+                            __name_1 = ::tpy::unwrap_ref(*__try_tmp_11);
                         }
                         name = __name_1;
                         goto __match_end_1;
@@ -264,7 +264,7 @@ struct Profile {
                             {
                                 auto __try_tmp_13 = __reader.read_str();
                                 if (!__try_tmp_13.has_value()) return ::tpy::make_unexpected(__try_tmp_13.error());
-                                __elem_14 = *__try_tmp_13;
+                                __elem_14 = ::tpy::unwrap_ref(*__try_tmp_13);
                             }
                             std::string __tmp_1{__elem_14};
                             tags.push_back(std::move(__tmp_1));
@@ -286,7 +286,7 @@ struct Profile {
                             {
                                 auto __try_tmp_16 = __reader.read_str();
                                 if (!__try_tmp_16.has_value()) return ::tpy::make_unexpected(__try_tmp_16.error());
-                                __estr_35 = *__try_tmp_16;
+                                __estr_35 = ::tpy::unwrap_ref(*__try_tmp_16);
                             }
                             std::optional<Role> __parsed_36 = ::tpy::EnumUtil<Role>::try_parse(__estr_35);
                             if ((!__parsed_36.has_value())) {
@@ -305,7 +305,7 @@ struct Profile {
                         {
                             auto __try_tmp_17 = __reader.read_float();
                             if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
-                            __score_4 = *__try_tmp_17;
+                            __score_4 = ::tpy::unwrap_ref(*__try_tmp_17);
                         }
                         score = __score_4;
                         goto __match_end_1;
@@ -315,7 +315,7 @@ struct Profile {
                         {
                             auto __try_tmp_18 = __reader.read_bool();
                             if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
-                            __active_7 = *__try_tmp_18;
+                            __active_7 = ::tpy::unwrap_ref(*__try_tmp_18);
                         }
                         active = __active_7;
                         goto __match_end_1;
@@ -330,7 +330,7 @@ struct Profile {
                             {
                                 auto __try_tmp_20 = __reader.read_int();
                                 if (!__try_tmp_20.has_value()) return ::tpy::make_unexpected(__try_tmp_20.error());
-                                __raw_16 = *__try_tmp_20;
+                                __raw_16 = ::tpy::unwrap_ref(*__try_tmp_20);
                             }
                             int32_t __elem_15 = ::tpy::int_cast_check<int32_t>(__raw_16);
                             scores.push_back(__elem_15);
@@ -349,7 +349,7 @@ struct Profile {
                         {
                             auto __try_tmp_22 = Address::_from_reader(__reader);
                             if (!__try_tmp_22.has_value()) return ::tpy::make_unexpected(__try_tmp_22.error());
-                            __address_13 = *__try_tmp_22;
+                            __address_13 = ::tpy::unwrap_ref(*__try_tmp_22);
                         }
                         address = __address_13;
                         goto __match_end_1;
@@ -367,13 +367,13 @@ struct Profile {
                             {
                                 auto __try_tmp_24 = __reader.read_key();
                                 if (!__try_tmp_24.has_value()) return ::tpy::make_unexpected(__try_tmp_24.error());
-                                __dk_21 = *__try_tmp_24;
+                                __dk_21 = ::tpy::unwrap_ref(*__try_tmp_24);
                             }
                             int64_t __raw_23;
                             {
                                 auto __try_tmp_25 = __reader.read_int();
                                 if (!__try_tmp_25.has_value()) return ::tpy::make_unexpected(__try_tmp_25.error());
-                                __raw_23 = *__try_tmp_25;
+                                __raw_23 = ::tpy::unwrap_ref(*__try_tmp_25);
                             }
                             int32_t __dv_22 = ::tpy::int_cast_check<int32_t>(__raw_23);
                             ::tpy::__setitem__(metadata, __dk_21, __dv_22);
@@ -394,7 +394,7 @@ struct Profile {
                             {
                                 auto __try_tmp_28 = __reader.read_key();
                                 if (!__try_tmp_28.has_value()) return ::tpy::make_unexpected(__try_tmp_28.error());
-                                __dk_24 = *__try_tmp_28;
+                                __dk_24 = ::tpy::unwrap_ref(*__try_tmp_28);
                             }
                             std::vector<int32_t> __dv_26 = std::vector<int32_t>{};
                             {
@@ -406,7 +406,7 @@ struct Profile {
                                 {
                                     auto __try_tmp_30 = __reader.read_int();
                                     if (!__try_tmp_30.has_value()) return ::tpy::make_unexpected(__try_tmp_30.error());
-                                    __raw_28 = *__try_tmp_30;
+                                    __raw_28 = ::tpy::unwrap_ref(*__try_tmp_30);
                                 }
                                 int32_t __elem_27 = ::tpy::int_cast_check<int32_t>(__raw_28);
                                 __dv_26.push_back(__elem_27);
@@ -431,7 +431,7 @@ struct Profile {
                         {
                             auto __try_tmp_33 = __reader.read_int();
                             if (!__try_tmp_33.has_value()) return ::tpy::make_unexpected(__try_tmp_33.error());
-                            __raw_3 = *__try_tmp_33;
+                            __raw_3 = ::tpy::unwrap_ref(*__try_tmp_33);
                         }
                         int32_t __age_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
                         age = __age_2;
@@ -445,7 +445,7 @@ struct Profile {
                         {
                             auto __try_tmp_34 = __reader.read_str();
                             if (!__try_tmp_34.has_value()) return ::tpy::make_unexpected(__try_tmp_34.error());
-                            __raw_9 = *__try_tmp_34;
+                            __raw_9 = ::tpy::unwrap_ref(*__try_tmp_34);
                         }
                         ::tpy::BigInt __big_id_8 = ::tpy::BigInt::from_str(__raw_9);
                         big_id = __big_id_8;
@@ -465,7 +465,7 @@ struct Profile {
                             {
                                 auto __try_tmp_36 = Address::_from_reader(__reader);
                                 if (!__try_tmp_36.has_value()) return ::tpy::make_unexpected(__try_tmp_36.error());
-                                __alt_address_37 = *__try_tmp_36;
+                                __alt_address_37 = ::tpy::unwrap_ref(*__try_tmp_36);
                             }
                             alt_address = __alt_address_37;
                         }
@@ -485,7 +485,7 @@ struct Profile {
                             {
                                 auto __try_tmp_38 = __reader.read_str();
                                 if (!__try_tmp_38.has_value()) return ::tpy::make_unexpected(__try_tmp_38.error());
-                                __email_38 = *__try_tmp_38;
+                                __email_38 = ::tpy::unwrap_ref(*__try_tmp_38);
                             }
                             email = __email_38;
                         }
@@ -499,7 +499,7 @@ struct Profile {
                         {
                             auto __try_tmp_39 = __reader.read_str();
                             if (!__try_tmp_39.has_value()) return ::tpy::make_unexpected(__try_tmp_39.error());
-                            __estr_11 = *__try_tmp_39;
+                            __estr_11 = ::tpy::unwrap_ref(*__try_tmp_39);
                         }
                         std::optional<Role> __parsed_12 = ::tpy::EnumUtil<Role>::try_parse(__estr_11);
                         if ((!__parsed_12.has_value())) {
@@ -519,7 +519,7 @@ struct Profile {
                             {
                                 auto __try_tmp_41 = __reader.read_str();
                                 if (!__try_tmp_41.has_value()) return ::tpy::make_unexpected(__try_tmp_41.error());
-                                __estr_19 = *__try_tmp_41;
+                                __estr_19 = ::tpy::unwrap_ref(*__try_tmp_41);
                             }
                             std::optional<Role> __parsed_20 = ::tpy::EnumUtil<Role>::try_parse(__estr_19);
                             if ((!__parsed_20.has_value())) {
@@ -543,7 +543,7 @@ struct Profile {
                         {
                             auto __try_tmp_44 = __reader.read_int();
                             if (!__try_tmp_44.has_value()) return ::tpy::make_unexpected(__try_tmp_44.error());
-                            __raw_30 = *__try_tmp_44;
+                            __raw_30 = ::tpy::unwrap_ref(*__try_tmp_44);
                         }
                         int32_t __t0_29 = ::tpy::int_cast_check<int32_t>(__raw_30);
                         if ((__reader.has_next() == false)) {
@@ -553,7 +553,7 @@ struct Profile {
                         {
                             auto __try_tmp_45 = __reader.read_int();
                             if (!__try_tmp_45.has_value()) return ::tpy::make_unexpected(__try_tmp_45.error());
-                            __raw_32 = *__try_tmp_45;
+                            __raw_32 = ::tpy::unwrap_ref(*__try_tmp_45);
                         }
                         int32_t __t1_31 = ::tpy::int_cast_check<int32_t>(__raw_32);
                         if ((__reader.has_next() == false)) {
@@ -563,7 +563,7 @@ struct Profile {
                         {
                             auto __try_tmp_46 = __reader.read_str();
                             if (!__try_tmp_46.has_value()) return ::tpy::make_unexpected(__try_tmp_46.error());
-                            __t2_33 = *__try_tmp_46;
+                            __t2_33 = ::tpy::unwrap_ref(*__try_tmp_46);
                         }
                         {
                             auto __try_tmp_47 = __reader.read_array_end();
@@ -580,7 +580,7 @@ struct Profile {
                         {
                             auto __try_tmp_48 = __reader.read_float();
                             if (!__try_tmp_48.has_value()) return ::tpy::make_unexpected(__try_tmp_48.error());
-                            __raw_6 = *__try_tmp_48;
+                            __raw_6 = ::tpy::unwrap_ref(*__try_tmp_48);
                         }
                         float __precision_5 = static_cast<float>(__raw_6);
                         precision = __precision_5;
@@ -596,7 +596,7 @@ struct Profile {
                             {
                                 auto __try_tmp_50 = Address::_from_reader(__reader);
                                 if (!__try_tmp_50.has_value()) return ::tpy::make_unexpected(__try_tmp_50.error());
-                                __elem_17 = *__try_tmp_50;
+                                __elem_17 = ::tpy::unwrap_ref(*__try_tmp_50);
                             }
                             friends.push_back(__elem_17);
                         }
@@ -643,7 +643,7 @@ struct Profile {
             {
                 auto __try_tmp_55 = Profile::_from_reader(__reader);
                 if (!__try_tmp_55.has_value()) goto __except_54;
-                __result = *__try_tmp_55;
+                __result = ::tpy::unwrap_ref(*__try_tmp_55);
             }
             goto __after_try_54;
             // except tplib.json.parser.JsonError:

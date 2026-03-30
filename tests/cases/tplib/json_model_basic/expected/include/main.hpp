@@ -57,7 +57,7 @@ struct User {
             {
                 auto __try_tmp_2 = __reader.read_key_raw();
                 if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
-                __key = *__try_tmp_2;
+                __key = ::tpy::unwrap_ref(*__try_tmp_2);
             }
             auto& __match_subject = __key;
             if (__match_subject == "name") {
@@ -65,7 +65,7 @@ struct User {
                 {
                     auto __try_tmp_3 = __reader.read_str();
                     if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
-                    __name_1 = *__try_tmp_3;
+                    __name_1 = ::tpy::unwrap_ref(*__try_tmp_3);
                 }
                 name = __name_1;
             } else if (__match_subject == "age") {
@@ -73,7 +73,7 @@ struct User {
                 {
                     auto __try_tmp_4 = __reader.read_int();
                     if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
-                    __raw_3 = *__try_tmp_4;
+                    __raw_3 = ::tpy::unwrap_ref(*__try_tmp_4);
                 }
                 int32_t __age_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
                 age = __age_2;
@@ -82,7 +82,7 @@ struct User {
                 {
                     auto __try_tmp_5 = __reader.read_bool();
                     if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
-                    __active_4 = *__try_tmp_5;
+                    __active_4 = ::tpy::unwrap_ref(*__try_tmp_5);
                 }
                 active = __active_4;
             } else if (__match_subject == "email") {
@@ -96,7 +96,7 @@ struct User {
                     {
                         auto __try_tmp_7 = __reader.read_str();
                         if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(__try_tmp_7.error());
-                        __email_5 = *__try_tmp_7;
+                        __email_5 = ::tpy::unwrap_ref(*__try_tmp_7);
                     }
                     email = __email_5;
                 }
@@ -121,7 +121,7 @@ struct User {
             {
                 auto __try_tmp_11 = User::_from_reader(__reader);
                 if (!__try_tmp_11.has_value()) goto __except_10;
-                __result = *__try_tmp_11;
+                __result = ::tpy::unwrap_ref(*__try_tmp_11);
             }
             goto __after_try_10;
             // except tplib.json.parser.JsonError:

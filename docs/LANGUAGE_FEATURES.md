@@ -4624,9 +4624,9 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - `except E as e` uses `std::optional<E>` for zero happy-path cost error capture
   - Branch-aware flow analysis (narrowing, init tracking, variable hoisting)
   - Expression-level unwrap: `@error_return` calls work in sub-expression position (function arguments, binary operators, method chaining) -- uses GCC/Clang statement expressions (`({ ... })`) for inline unwrap with early return. This is a non-standard C++ extension supported by GCC, Clang, and all LLVM-based compilers but not MSVC.
+  - Non-value return types use `val_or_ref<T>` inside `std::expected` to preserve reference semantics (pointer-based storage, same approach as iterator `__next__()`)
   - `__next__` methods auto-apply `@error_return(StopIteration)` -- for-loops use direct `std::expected` check
   - Built-in exceptions (`StopIteration`, `Exception`, `BaseException`) emit as `::tpy::X` in C++ to avoid clashes with user-defined classes of the same name
-  - Current limitation: `@error_return` does not support non-value return types (`std::expected<T&, E>` is invalid C++)
   - See `docs/ERROR_RETURN_DESIGN.md` and `docs/EXCEPTION_DESIGN.md` for full design
 - **Working**: General C++ exceptions (`throw`/`catch`) for non-ControlFlow exception types
   - `raise E` or `raise E(args)` in non-`@error_return` functions compiles to C++ `throw`

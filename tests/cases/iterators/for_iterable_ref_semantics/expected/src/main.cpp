@@ -33,7 +33,7 @@ void main() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        const ::tpy::BigInt& v = ::tpy::next_deref(*__r_0);
+        const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_0);
         // print(v)
         std::cout << v << "\n";
     }

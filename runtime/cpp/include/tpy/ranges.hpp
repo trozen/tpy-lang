@@ -150,7 +150,7 @@ Container collect(Iter&& iter) {
     for (;;) {
         auto __r = iter.__next__();
         if (!__r.has_value()) break;
-        result.push_back(next_deref(*__r));
+        result.push_back(unwrap_ref(*__r));
     }
     return result;
 }

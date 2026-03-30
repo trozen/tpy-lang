@@ -30,7 +30,7 @@ void main() {
         {
             auto __try_tmp_3 = lookup("x");
             if (!__try_tmp_3.has_value()) goto __except_1;
-            v = *__try_tmp_3;
+            v = ::tpy::unwrap_ref(*__try_tmp_3);
         }
         // else:
         // print(v)
@@ -54,7 +54,7 @@ void main() {
         {
             auto __try_tmp_6 = lookup("y");
             if (!__try_tmp_6.has_value()) goto __except_4;
-            v2 = *__try_tmp_6;
+            v2 = ::tpy::unwrap_ref(*__try_tmp_6);
         }
         // else:
         // print(v2)

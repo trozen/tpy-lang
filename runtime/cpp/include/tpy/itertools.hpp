@@ -30,7 +30,7 @@ public:
     std::expected<std::tuple<int32_t, T>, StopIteration> __next__() {
         auto r = iter_.__next__();
         if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
-        return std::tuple<int32_t, T>{index_++, next_deref(*r)};
+        return std::tuple<int32_t, T>{index_++, unwrap_ref(*r)};
     }
 
     enumerate_iter& __iter__() { return *this; }
@@ -60,7 +60,7 @@ public:
     std::expected<std::tuple<int32_t, T>, StopIteration> __next__() {
         auto r = iter_.__next__();
         if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
-        return std::tuple<int32_t, T>{index_++, next_deref(*r)};
+        return std::tuple<int32_t, T>{index_++, unwrap_ref(*r)};
     }
 
     owning_enumerate_iter& __iter__() { return *this; }
@@ -184,7 +184,7 @@ template<typename... Ts> struct zip_types {};
 namespace detail {
 
 // Advance all iterators into optionals; returns false if any is exhausted.
-// Uses next_deref() to unwrap val_or_ref from native_iterator __next__().
+// Uses unwrap() to unwrap val_or_ref from native_iterator __next__().
 template<typename Tuple, typename... Opts, std::size_t... Is>
 bool zip_advance(Tuple& iters, std::tuple<Opts...>& opts, std::index_sequence<Is...>) {
     bool ok = true;
@@ -193,7 +193,7 @@ bool zip_advance(Tuple& iters, std::tuple<Opts...>& opts, std::index_sequence<Is
     ((ok = ok && [&]{
         auto r = std::get<Is>(iters).__next__();
         if (!r.has_value()) return false;
-        std::get<Is>(opts).emplace(tpy::next_deref(*r));
+        std::get<Is>(opts).emplace(tpy::unwrap_ref(*r));
         return true;
     }()), ...);
     return ok;

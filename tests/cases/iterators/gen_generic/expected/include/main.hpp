@@ -39,7 +39,7 @@ inline auto enumerate(T_iterable& iterable) {
             auto __r = (*__iter).__next__();
             if (!__r.has_value()) return std::nullopt;
             {
-                auto&& item = ::tpy::next_deref(*__r);
+                auto&& item = ::tpy::unwrap_ref(*__r);
                 auto __val = std::tuple<int32_t, T&>{i, item};
                 // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);

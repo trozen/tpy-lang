@@ -17,7 +17,7 @@ void test_last_use() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        const auto& x = ::tpy::next_deref(*__r_0);
+        const auto& x = ::tpy::unwrap_ref(*__r_0);
         // total += x.val
         total = ::tpy::add_check<int32_t>(total, x.val);
     }
@@ -38,7 +38,7 @@ void test_borrowing_not_last_use() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        const auto& x = ::tpy::next_deref(*__r_0);
+        const auto& x = ::tpy::unwrap_ref(*__r_0);
         // total += x.val
         total = ::tpy::add_check<int32_t>(total, x.val);
     }

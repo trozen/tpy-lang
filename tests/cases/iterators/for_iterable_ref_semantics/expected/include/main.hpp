@@ -48,7 +48,7 @@ void mutate_via_iterable(T_items& items) {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        auto&& p = ::tpy::next_deref(*__r_1);
+        auto&& p = ::tpy::unwrap_ref(*__r_1);
         // p.x += 100
         p.x = (p.x) + (::tpy::BigInt(100));
     }
@@ -61,7 +61,7 @@ void mutate_via_iterator(T_it& it) {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        auto&& p = ::tpy::next_deref(*__r_0);
+        auto&& p = ::tpy::unwrap_ref(*__r_0);
         // p.y += 200
         p.y = (p.y) + (::tpy::BigInt(200));
     }
@@ -74,7 +74,7 @@ inline auto gen_double_x(T_items& items) {
             auto __r = (*__iter).__next__();
             if (!__r.has_value()) return std::nullopt;
             {
-                auto&& p = ::tpy::next_deref(*__r);
+                auto&& p = ::tpy::unwrap_ref(*__r);
                 // p.x *= 2
                 p.x = (p.x) * (::tpy::BigInt(2));
                 auto __val = p.x;

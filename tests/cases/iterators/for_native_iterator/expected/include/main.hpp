@@ -71,7 +71,7 @@ int32_t sum_iter(T_it& it) {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        int32_t x = ::tpy::next_deref(*__r_0);
+        int32_t x = ::tpy::unwrap_ref(*__r_0);
         // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
@@ -88,7 +88,7 @@ int32_t count_iter(T_it& it) {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        int32_t x = ::tpy::next_deref(*__r_0);
+        int32_t x = ::tpy::unwrap_ref(*__r_0);
         // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
     }
@@ -103,7 +103,7 @@ int32_t first_or_fallback(T_it& it, int32_t fallback) {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        int32_t x = ::tpy::next_deref(*__r_0);
+        int32_t x = ::tpy::unwrap_ref(*__r_0);
         // return x
         return x;
     }

@@ -45,7 +45,7 @@ ordered_map<K, V> dict_collect_pairs(Iter&& iter) {
     for (;;) {
         auto __r = iter.__next__();
         if (!__r.has_value()) break;
-        auto&& __item = next_deref(*__r);
+        auto&& __item = unwrap_ref(*__r);
         result.insert_or_assign(std::get<0>(__item), std::get<1>(__item));
     }
     return result;

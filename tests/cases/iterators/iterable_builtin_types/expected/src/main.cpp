@@ -70,7 +70,7 @@ void test_manual_iter() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        int32_t x = ::tpy::next_deref(*__r_0);
+        int32_t x = ::tpy::unwrap_ref(*__r_0);
         // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
@@ -86,7 +86,7 @@ void test_manual_iter() {
     for (;;) {
         auto __r_1 = __iter_1.__next__();
         if (!__r_1.has_value()) break;
-        char c = ::tpy::next_deref(*__r_1);
+        char c = ::tpy::unwrap_ref(*__r_1);
         // print(c)
         std::cout << c << "\n";
     }
@@ -100,7 +100,7 @@ void test_manual_iter() {
     for (;;) {
         auto __r_2 = __iter_2.__next__();
         if (!__r_2.has_value()) break;
-        int32_t v = ::tpy::next_deref(*__r_2);
+        int32_t v = ::tpy::unwrap_ref(*__r_2);
         // print(v)
         std::cout << v << "\n";
     }
@@ -114,7 +114,7 @@ void test_manual_iter() {
     for (;;) {
         auto __r_3 = __iter_3.__next__();
         if (!__r_3.has_value()) break;
-        std::string_view k = ::tpy::next_deref(*__r_3);
+        std::string_view k = ::tpy::unwrap_ref(*__r_3);
         // print(k)
         std::cout << k << "\n";
     }
@@ -134,7 +134,7 @@ void test_iter_builtin() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        int32_t x = ::tpy::next_deref(*__r_0);
+        int32_t x = ::tpy::unwrap_ref(*__r_0);
         // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
@@ -150,7 +150,7 @@ void test_iter_builtin() {
     for (;;) {
         auto __r_1 = __iter_1.__next__();
         if (!__r_1.has_value()) break;
-        std::string_view k = ::tpy::next_deref(*__r_1);
+        std::string_view k = ::tpy::unwrap_ref(*__r_1);
         // print(k)
         std::cout << k << "\n";
     }

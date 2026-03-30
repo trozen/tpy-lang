@@ -18,7 +18,7 @@ void main() {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::next_deref(*__r_1);
+        int32_t x = ::tpy::unwrap_ref(*__r_1);
         // nl.add(3)  # tpyc: warning(/Mutation of 'nl' while iterating/)
         nl.add(3);
         // nl.set_label("updated")  # tpyc: ok

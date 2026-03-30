@@ -33,7 +33,7 @@ void main() {
             {
                 auto __try_tmp_2 = find(items, 20);
                 if (!__try_tmp_2.has_value()) goto __except_1;
-                idx = *__try_tmp_2;
+                idx = ::tpy::unwrap_ref(*__try_tmp_2);
             }
         // else:
         } else {
@@ -41,7 +41,7 @@ void main() {
             {
                 auto __try_tmp_3 = find(items, 10);
                 if (!__try_tmp_3.has_value()) goto __except_1;
-                idx = *__try_tmp_3;
+                idx = ::tpy::unwrap_ref(*__try_tmp_3);
             }
         }
         // else:

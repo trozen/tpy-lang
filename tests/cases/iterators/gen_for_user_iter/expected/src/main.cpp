@@ -20,7 +20,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled_range::__next__() {
     for (;;) {
         __for_r_0 = (*__for_itr_0).__next__();
         if (!(*__for_r_0).has_value()) break;
-        x = ::tpy::next_deref(*(*__for_r_0));
+        x = ::tpy::unwrap_ref(*(*__for_r_0));
         // yield x * 2
         __state = 2;
         return (::tpy::mul_check<int32_t>(x, 2));
@@ -44,7 +44,7 @@ void main() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        int32_t x = ::tpy::next_deref(*__r_0);
+        int32_t x = ::tpy::unwrap_ref(*__r_0);
         // print(x)
         std::cout << x << "\n";
     }

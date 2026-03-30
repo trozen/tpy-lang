@@ -25,7 +25,7 @@ void main() {
         {
             auto __try_tmp_2 = parse_positive("two");
             if (!__try_tmp_2.has_value()) goto __except_1;
-            v = *__try_tmp_2;
+            v = ::tpy::unwrap_ref(*__try_tmp_2);
         }
         // else:
         // print(v)
@@ -44,7 +44,7 @@ void main() {
         {
             auto __try_tmp_4 = parse_positive("three");
             if (!__try_tmp_4.has_value()) goto __except_3;
-            v2 = *__try_tmp_4;
+            v2 = ::tpy::unwrap_ref(*__try_tmp_4);
         }
         // else:
         // print(v2)

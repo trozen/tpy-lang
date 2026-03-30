@@ -1475,7 +1475,14 @@ class ExpressionGenerator:
         else:
             check = f'if (!{tmp}.has_value()) ::tpy::tpy_panic("unhandled error return");'
 
-        return f"({{ auto {tmp} = {call_cpp}; {check} std::move(*{tmp}); }})"
+        # Non-value types: return pointer from statement expression, deref
+        # outside. The pointer survives the scope (points to original object
+        # via val_or_ref). Dereferencing gives an lvalue for method chains.
+        # Value types: move out directly.
+        ret_type = fi.return_type
+        if ret_type and not ret_type.is_value_type() and not isinstance(ret_type, VoidType):
+            return f"(*({{ auto {tmp} = {call_cpp}; {check} &::tpy::unwrap_ref(*{tmp}); }}))"
+        return f"({{ auto {tmp} = {call_cpp}; {check} ::tpy::unwrap_ref_move(*{tmp}); }})"
 
     def _gen_call(self, expr: TpyCall) -> str:
         """Generate function call code."""

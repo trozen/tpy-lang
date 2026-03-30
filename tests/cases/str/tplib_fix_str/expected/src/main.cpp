@@ -53,7 +53,7 @@ void main() {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        char c = ::tpy::next_deref(*__r_1);
+        char c = ::tpy::unwrap_ref(*__r_1);
         // print(c)                # h e y
         std::cout << c << "\n";
     }
@@ -64,7 +64,7 @@ void main() {
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
-        char c = ::tpy::next_deref(*__r_3);
+        char c = ::tpy::unwrap_ref(*__r_3);
         // print(c)                # h e y
         std::cout << c << "\n";
     }

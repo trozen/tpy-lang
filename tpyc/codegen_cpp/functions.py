@@ -437,7 +437,11 @@ class FunctionGenerator:
                 else:
                     ret = f"{base}&"
                 if cpp_error:
-                    return f"std::expected<{ret}, {cpp_error}>"
+                    if const or isinstance(return_type, ReadonlyType):
+                        inner = f"::tpy::val_or_ref<const {base}>"
+                    else:
+                        inner = f"::tpy::val_or_ref<{base}>"
+                    return f"std::expected<{inner}, {cpp_error}>"
                 return ret
             # Non-dynamic protocol return (e.g. Iterator[T] from __iter__):
             # use auto, C++ deduces the type from the return expression.
@@ -447,7 +451,12 @@ class FunctionGenerator:
         else:
             ret = return_type.to_cpp_return()
         if cpp_error:
-            return f"std::expected<{ret}, {cpp_error}>"
+            # std::expected can't hold references. For non-value types
+            # (where ret is T&), use val_or_ref<T> which stores by pointer.
+            inner = return_type.to_cpp()
+            if not return_type.is_value_type() and not isinstance(return_type, VoidType):
+                inner = f"::tpy::val_or_ref<{inner}>"
+            return f"std::expected<{inner}, {cpp_error}>"
         return ret
 
     def _build_const_ref_params(

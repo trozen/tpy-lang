@@ -15,7 +15,7 @@ void main() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        const auto& __for_tup_0 = ::tpy::next_deref(*__r_0);
+        const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_0);
         // for i, name in zip(range(3), names):
         const auto& __tup_1 = __for_tup_0;
         int32_t i = std::get<0>(__tup_1);
@@ -29,7 +29,7 @@ void main() {
     for (;;) {
         auto __r_1 = __iter_1.__next__();
         if (!__r_1.has_value()) break;
-        auto&& __for_tup_1 = ::tpy::next_deref(*__r_1);
+        auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
         // # two ranges
         // for a, b in zip(range(4), range(10, 14)):
         const auto& __tup_2 = __for_tup_1;

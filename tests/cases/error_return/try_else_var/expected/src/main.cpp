@@ -32,7 +32,7 @@ void main() {
         {
             auto __try_tmp_2 = find(items, 20);
             if (!__try_tmp_2.has_value()) goto __except_1;
-            idx = *__try_tmp_2;
+            idx = ::tpy::unwrap_ref(*__try_tmp_2);
         }
         // doubled = idx * 2
         doubled = (::tpy::mul_check<int32_t>(idx, 2));
