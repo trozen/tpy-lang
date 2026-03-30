@@ -572,6 +572,10 @@ class SemanticContext:
     def warning(self, message: str, node: TpyExpr | TpyStmt | TpyRecord | None = None) -> None:
         """Record a warning diagnostic (doesn't stop compilation)."""
         loc = getattr(node, 'loc', None) if node else None
+        if loc is None and isinstance(self.current_function, TpyFunction):
+            loc = self.current_function.loc
+        if loc is None and self.record_ctx.record is not None:
+            loc = self.record_ctx.record.loc
         self.diagnostics.append(Diagnostic(DiagnosticLevel.WARNING, message, loc))
 
     def warning_from_loc(self, message: str, loc: 'SourceLocation | None') -> None:

@@ -223,12 +223,7 @@ def _try_build_read_stmts(fld_type: TypeInfo, reader: TpyExpr, var_name: str) ->
             TpyVarDecl(name=raw, type=None, init=_method_call(reader, "read_str")),
             TpyVarDecl(name=var_name, type=None, init=_call("int", [_name(raw)])),
         ]
-    if _is_model_record(fld_type):
-        # Model records use pointer-repr for Optional fields, so the
-        # _from_reader result must be assigned directly to the field
-        # (not via temp) to ensure the compiler manages slot storage.
-        # Return None to let the caller handle assignment.
-        return None
+    # Model records and other unhandled types: handled by _build_read_into.
     return None
 
 
@@ -324,7 +319,14 @@ def _build_read_value_stmts(
 
 
 def _read_and_assign(fld_name: str, fld_type: TypeInfo, reader: TpyExpr) -> list[TpyStmt]:
-    """Read a value and assign to fld_name via temp variable."""
+    """Read a value and assign to fld_name."""
+    # Model records: assign directly from _from_reader() call (rvalue)
+    # to avoid copy warning when target is Optional[Own[T]].
+    if _is_model_record(fld_type):
+        return [TpyAssign(
+            target=_name(fld_name),
+            value=_method_call(_name(fld_type.name), "_from_reader", [reader]),
+        )]
     stmts, var = _build_read_into(fld_type, reader, fld_name)
     stmts.append(TpyAssign(target=_name(fld_name), value=_name(var)))
     return stmts

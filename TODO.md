@@ -18,7 +18,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Deduplicate PendingStrType / PendingBytesType infrastructure: `_resolve_pending_str_types` and `_resolve_pending_bytes_types` are identical algorithms with different type names. Same for `mark_*_augassign`, `mark_*_param_context`, `mark_*_reassigned_from_owned`, `track_*_reassign_source`, and the `_infer_new_local_type` branches in statements.py. Refactor into a generic `ViewTypeFamily` parameterized by owned/view/pending types, with one shared implementation.
 
 ## Ref[T] -- explicit reference semantics in the type system
-Currently the value/reference split for non-value types is implicit and scattered across codegen: `to_cpp()` vs `to_cpp_return()` vs `to_cpp_param_type()`, `val_or_ref_t<T>`, `val_or_ref<T>` wrapper, `loop_var_binding` decision tree, `next_deref`. Every context that wraps non-value types in a value container (`std::expected`, `std::tuple`, `std::optional`) independently solves "how to not lose the reference".
+Currently the value/reference split for non-value types is implicit and scattered across codegen: `to_cpp()` vs `to_cpp_return()` vs `to_cpp_param_type()`, `val_or_ref_t<T>`, `val_or_ref<T>` wrapper, `loop_var_binding` decision tree, `unwrap_ref`. Every context that wraps non-value types in a value container (`std::expected`, `std::tuple`, `std::optional`) independently solves "how to not lose the reference".
 
 Proposal: add `Ref[T]` as an internal type (auto-inserted by parser, user never writes it) that maps to `val_or_ref<T>` in C++. The type system carries reference intent explicitly:
 - `def foo(x: Point)` -> internally `x: Ref[Point]` -> C++ `val_or_ref<Point>` (holds `Point*`)
@@ -40,8 +40,6 @@ Can be done incrementally: start where `val_or_ref<T>` already exists (iterator 
 - limit imports from macro_modules (macro_api only?)
 - macros should work in cpython as well
 - all macro code (at least for json model) generated in headers
-- Macro-generated AST nodes missing source locations: `_build_from_reader` and other macro builders in `model.py` create `TpyCall`, `TpyVarDecl`, etc. without setting `loc`. Warnings emitted during analysis of these nodes (e.g. "copies X into owned storage") have no file:line, making them hard to diagnose. Fix: propagate the `@model` decorator's source location to generated nodes, or at minimum to the top-level statements in each generated method body.
-- `@model` copy warning for nested model fields: `Snapshot._from_reader` generates `return Snapshot(data)` where `data: SnapshotData` is a non-value local. This triggers "copies SnapshotData into owned storage" but the user can't suppress it since it's in generated code. The generated code should use `copy(data)` or the return should auto-move the last-use local.
 - json: pretty printing
 - json: to/from file
 - json: better error message: show position
