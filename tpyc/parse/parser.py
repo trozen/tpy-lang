@@ -2831,11 +2831,19 @@ class Parser:
                             # call_type parsing failed - if type_args also failed, sema will report
                             # the type_args_parse_error; otherwise it's a function call
                             pass
-                    # When type args fail, also parse the subscript as an expression
-                    # so sema can fall back to expression callee (e.g., fns[0](args))
+                    # Try to parse the subscript as an expression so sema can
+                    # fall back to expression callee when the name turns out to
+                    # be a variable, not a function/type (e.g., fns[0](args),
+                    # Handlers[MyType](args)). May fail for known generic types
+                    # (list[T], Array[T,N], etc. can't be used as values).
+                    # Skip slices -- they can't produce a callable value and
+                    # would swallow the "slice step not supported" diagnostic.
                     subscript_callee = None
-                    if type_args_parse_error and not type_args and call_type is None:
-                        subscript_callee = self._parse_expr(node.func)
+                    if not isinstance(node.func.slice, ast.Slice):
+                        try:
+                            subscript_callee = self._parse_expr(node.func)
+                        except ParseError:
+                            pass
                     return TpyCall(TpyName(name, loc=loc), args, call_type=call_type, type_args=type_args,
                                    type_args_parse_error=type_args_parse_error,
                                    subscript_callee=subscript_callee, kwargs=kwargs, loc=loc)

@@ -44,6 +44,11 @@ void main() {
     std::cout << (::tpy::__getitem__(fns, 1))(100) << "\n";
     // print(fns[2](100))
     std::cout << (::tpy::__getitem__(fns, 2))(100) << "\n";
+    // # Uppercase variable name -- must not be confused with generic type call
+    // Handlers: list[Callable[[Int32], Int32]] = [make_adder(100)]
+    std::vector<std::function<int32_t(int32_t)>> Handlers = {make_adder(100)};
+    // print(Handlers[0](5))
+    std::cout << (::tpy::__getitem__(Handlers, 0))(5) << "\n";
 }
 
 void __tpy_init() {

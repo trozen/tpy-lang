@@ -430,6 +430,14 @@ class CallAnalyzer:
                 record = self.ctx.registry.get_record(expr.func_name)
                 if record:
                     return self._analyze_record_constructor(expr, record)
+                # Subscript callee fallback: Handlers[0](args) was parsed as
+                # Handlers[0]() generic type instantiation because the parser
+                # treats unknown uppercase names as forward-ref types. If the
+                # name isn't a known type/function and we have a subscript
+                # callee, rewrite as expression callee.
+                if expr.subscript_callee is not None:
+                    if not self.ctx.registry.is_known_type(expr.func_name):
+                        return self._rewrite_subscript_callee(expr)
                 # It's a builtin type instantiation -- validate constructor args
                 self._reject_kwargs_for_builtin(expr, expr.func_name)
                 # Derive per-arg hints from __init__ param types when possible.
@@ -486,9 +494,8 @@ class CallAnalyzer:
                         record = self.ctx.registry.get_record_for_type(var_type)
                         if record and self.ctx.registry.get_method_overloads_with_parents(record, "__call__"):
                             return self._analyze_dunder_call(expr)
-                    # Subscript callee fallback: fns[0](args) was parsed as
-                    # fns(args) with type_args_parse_error. Rewrite as a
-                    # subscript expression callee and re-analyze.
+                    # Subscript callee fallback: fns[0](args) or fns[T](args)
+                    # was parsed as a generic call but fns is a variable.
                     if expr.subscript_callee is not None:
                         return self._rewrite_subscript_callee(expr)
                     raise self.ctx.error(f"'{expr.func_name}' is not callable", expr)
@@ -744,6 +751,10 @@ class CallAnalyzer:
                 f"'{expr.func_name}' cannot call itself",
                 expr,
             )
+        # Subscript callee fallback: name[expr](args) where name is unknown
+        # as a function/type -- try as subscript expression callee
+        if expr.subscript_callee is not None:
+            return self._rewrite_subscript_callee(expr)
         raise self.ctx.error(f"Unknown function or type: '{expr.func_name}'", expr)
 
     def _analyze_special_builtin(

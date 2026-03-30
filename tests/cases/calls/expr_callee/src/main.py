@@ -26,4 +26,8 @@ def main() -> None:
     print(fns[1](100))
     print(fns[2](100))
 
+    # Uppercase variable name -- must not be confused with generic type call
+    Handlers: list[Callable[[Int32], Int32]] = [make_adder(100)]
+    print(Handlers[0](5))
+
 main()

@@ -1,1 +1,1 @@
-main.py:5: error: Cannot call method 'init' on type UninitArrayStorage[Int32, 4]
+main.py:4: error: Undefined variable: 'UninitArrayStorage'
