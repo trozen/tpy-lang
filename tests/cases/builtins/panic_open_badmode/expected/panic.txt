@@ -1,1 +1,1 @@
-TurboPython panic: open(): unsupported mode 'rb'
+TurboPython panic: open(): unsupported mode 'z'

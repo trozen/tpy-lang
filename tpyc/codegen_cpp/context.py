@@ -12,7 +12,7 @@ from typing import Callable, Literal, TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NamedType, SelfType,
     BigIntType, BoolType, IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo,
-    is_protocol_type, unwrap_readonly, ensure_qualified,
+    is_protocol_type, unwrap_readonly, ensure_qualified, unwrap_ref_type,
 )
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -299,6 +299,7 @@ class TempState:
 
     def create(self, param_type: TpyType, init_expr: str) -> str:
         """Create a temp variable and return its name for use in the call."""
+        param_type = unwrap_ref_type(param_type)
         self._counter += 1
         temp_name = f"__tmp_{self._counter}"
         is_protocol = is_protocol_type(param_type)
@@ -481,6 +482,8 @@ class CodeGenContext:
     narrowed_vars: dict[str, str] = field(default_factory=dict)
     # Assignment narrowing: var -> narrowed concrete type (for inline std::get at access points)
     assign_narrowed_types: dict[str, 'TpyType'] = field(default_factory=dict)
+    # Literal type narrowing: var -> single-value LiteralType for dead branch elimination
+    literal_facts: dict[str, 'TpyType'] = field(default_factory=dict)
 
     # --- @overload specialization ---
     # When generating code for a specific @overload stub, maps parameter names
@@ -596,6 +599,7 @@ class CodeGenContext:
         self.in_method = False
         self.narrowed_vars = {}
         self.assign_narrowed_types = {}
+        self.literal_facts = {}
         self.walrus_pre_declared = set()
         # Note: overload_param_types is NOT reset here -- it's managed by
         # _gen_overload_specialized_function/method which set it before gen_body
@@ -649,6 +653,14 @@ class CodeGenContext:
                 self.narrowed_vars[var_name] = prev
             else:
                 self.narrowed_vars.pop(var_name, None)
+
+    def save_literal_facts(self) -> dict[str, 'TpyType']:
+        """Snapshot literal_facts before entering a branch."""
+        return dict(self.literal_facts)
+
+    def restore_literal_facts(self, saved: dict[str, 'TpyType']) -> None:
+        """Restore literal_facts after a branch block."""
+        self.literal_facts = saved
 
     def any_ancestor_has_del(self, record_name: str) -> bool:
         """Check if any ancestor of the named record has __del__."""
@@ -942,7 +954,7 @@ class CodeGenContext:
                 rec = self.analyzer.registry.get_record(obj.name)
             if rec is not None and rec.is_native:
                 return False
-        rt = fi.return_type
+        rt = unwrap_ref_type(fi.return_type)
         return (rt is not None
                 and not rt.is_value_type()
                 and not isinstance(rt, (TypeParamRef, OwnType, OptionalType, UnionType))

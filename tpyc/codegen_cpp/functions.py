@@ -11,9 +11,9 @@ from ..typesys import (
     TpyType, NamedType, OwnType, ReadonlyType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
     UnionType, VoidType, FnType,
     BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
-    Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, is_any_str_type, SpanType,
+    Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, LiteralType, is_any_str_type, SpanType,
     resolve_int_literals, CONST_PARAMS_METHODS,
-    error_return_to_cpp,
+    error_return_to_cpp, unwrap_ref_type,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import (
@@ -271,7 +271,7 @@ class FunctionGenerator:
                     part += f" = {self.default_to_cpp(defaults[i], ptype)}"
                 parts.append(part)
                 continue
-            own = unwrap_readonly(ptype)
+            own = unwrap_readonly(unwrap_ref_type(ptype))
             if (reassigned_params and pname in reassigned_params
                     and ptype.param_needs_copy_for_reassign()):
                 # Rename param so the body can declare a mutable local with the original name
@@ -289,7 +289,7 @@ class FunctionGenerator:
             elif (mutated_params is not None and i not in mutated_params
                     and (ptype.is_ref_param()
                          or (isinstance(own, UnionType) and own.uses_pointer_repr()))
-                    and not isinstance(ptype, TypeParamRef)
+                    and not isinstance(unwrap_ref_type(ptype), TypeParamRef)
                     and not (reassigned_params and pname in reassigned_params)):
                 # Param is provably not mutated and not rebound -- safe to use const.
                 # For ref params: T& -> const T&.
@@ -365,7 +365,7 @@ class FunctionGenerator:
                     part += f" = {self.default_to_cpp(defaults[i], ptype)}"
                 result.append(part)
                 continue
-            unwrapped = unwrap_readonly(ptype)
+            unwrapped = unwrap_readonly(unwrap_ref_type(ptype))
             if self.protocols.is_static_protocol_param(ptype):
                 # Unified static protocol handling (single, optional, or union)
                 info = self._find_protocol_param_info(pname, ptype)
@@ -429,7 +429,7 @@ class FunctionGenerator:
         If error_return is set, wraps the return type in std::expected<T, E>.
         """
         cpp_error = error_return_to_cpp(error_return, self.ctx.module_name, self.ctx.analyzer.registry) if error_return else None
-        unwrapped = unwrap_readonly(return_type)
+        unwrapped = unwrap_readonly(unwrap_ref_type(return_type))
         # Unwrap Own[Protocol] so consuming __iter__ returning Own[Iterator[T]]
         # is recognized as a protocol return and gets `auto` in C++.
         if isinstance(unwrapped, OwnType) and is_protocol_type(unwrapped.wrapped):
@@ -438,12 +438,12 @@ class FunctionGenerator:
             pi = self.ctx.analyzer.registry.get_protocol(unwrapped.name)
             if pi and pi.is_dynamic:
                 base = self.protocols.get_dynamic_base_name(unwrapped.name)
-                if const or isinstance(return_type, ReadonlyType):
+                if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
                     ret = f"const {base}&"
                 else:
                     ret = f"{base}&"
                 if cpp_error:
-                    if const or isinstance(return_type, ReadonlyType):
+                    if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
                         inner = f"::tpy::val_or_ref<const {base}>"
                     else:
                         inner = f"::tpy::val_or_ref<{base}>"
@@ -459,7 +459,7 @@ class FunctionGenerator:
         if cpp_error:
             # std::expected can't hold references. For non-value types
             # (where ret is T&), use val_or_ref<T> which stores by pointer.
-            inner = return_type.to_cpp()
+            inner = unwrap_ref_type(return_type).to_cpp()
             if not return_type.is_value_type() and not isinstance(return_type, VoidType):
                 inner = f"::tpy::val_or_ref<{inner}>"
             return f"std::expected<{inner}, {cpp_error}>"
@@ -483,7 +483,7 @@ class FunctionGenerator:
             for i, (pname, ptype) in enumerate(params):
                 if mutated_params is not None and i in mutated_params:
                     continue
-                unwrapped = unwrap_readonly(ptype)
+                unwrapped = unwrap_readonly(unwrap_ref_type(ptype))
                 if ((unwrapped.is_ref_param()
                      or (isinstance(unwrapped, UnionType) and unwrapped.uses_pointer_repr()))
                         and not isinstance(unwrapped, TypeParamRef)):
@@ -492,10 +492,11 @@ class FunctionGenerator:
         if mutated_params is None:
             return result
         for i, (pname, ptype) in enumerate(params):
+            inner = unwrap_ref_type(ptype)
             if (i not in mutated_params
-                    and (ptype.is_ref_param()
-                         or (isinstance(ptype, UnionType) and ptype.uses_pointer_repr()))
-                    and not isinstance(ptype, TypeParamRef)
+                    and (inner.is_ref_param()
+                         or (isinstance(inner, UnionType) and inner.uses_pointer_repr()))
+                    and not isinstance(inner, TypeParamRef)
                     and not (reassigned_params and pname in reassigned_params)):
                 result.add(pname)
         return result
@@ -558,7 +559,7 @@ class FunctionGenerator:
     def _has_dynamic_protocol_params(self, params: list[tuple[str, TpyType]]) -> bool:
         """Check if any params are @dynamic protocol types (need Base& codegen)."""
         for _, ptype in params:
-            unwrapped = unwrap_readonly(ptype)
+            unwrapped = unwrap_readonly(unwrap_ref_type(ptype))
             if isinstance(unwrapped, OptionalType):
                 unwrapped = unwrapped.inner
             resolved = self.protocols.resolve_type_for_codegen(unwrapped)
@@ -593,8 +594,12 @@ class FunctionGenerator:
         # @overload implementation: emit forward decls for each stub instead
         overload_stubs = self.ctx.analyzer.overload_groups.get(id(func))
         if overload_stubs:
-            for stub in overload_stubs:
-                self._gen_function_forward_decl_single(out, stub)
+            if self._overload_stubs_are_literal_only(overload_stubs, func):
+                # Literal-only stubs: single forward decl for the implementation
+                self._gen_function_forward_decl_single(out, func)
+            else:
+                for stub in overload_stubs:
+                    self._gen_function_forward_decl_single(out, stub)
             return True
         if func.is_stub and not func.is_overload_stub:
             return False
@@ -660,13 +665,14 @@ class FunctionGenerator:
         # @overload implementation with template params: emit specialized defs in header
         overload_stubs = self.ctx.analyzer.overload_groups.get(id(func))
         if overload_stubs:
-            is_generic = bool(func.type_params)
-            has_proto_params = bool(self.protocols.get_all_protocol_params(func.params))
-            if is_generic or has_proto_params:
-                for stub in overload_stubs:
-                    self._gen_overload_specialized_function(out, func, stub)
-                    out.write("\n")
-                return True
+            if not self._overload_stubs_are_literal_only(overload_stubs, func):
+                is_generic = bool(func.type_params)
+                has_proto_params = bool(self.protocols.get_all_protocol_params(func.params))
+                if is_generic or has_proto_params:
+                    for stub in overload_stubs:
+                        self._gen_overload_specialized_function(out, func, stub)
+                        out.write("\n")
+                    return True
             return False
 
         # @native_c and @extern_c both use extern "C" linkage
@@ -744,10 +750,16 @@ class FunctionGenerator:
         # @overload implementation: emit per-stub specialized functions
         overload_stubs = self.ctx.analyzer.overload_groups.get(id(func))
         if overload_stubs:
-            for stub in overload_stubs:
-                self._gen_overload_specialized_function(out, func, stub)
-                out.write("\n")
-            return
+            # Skip per-stub specialization when stubs only differ by Literal
+            # annotations (same C++ parameter types). Emit the implementation
+            # as a single function -- Literal dispatch is compile-time only.
+            if self._overload_stubs_are_literal_only(overload_stubs, func):
+                pass  # fall through to normal function emission
+            else:
+                for stub in overload_stubs:
+                    self._gen_overload_specialized_function(out, func, stub)
+                    out.write("\n")
+                return
 
         self.ctx.emit_preceding_comments(out, func.loc)
         self.ctx.emit_source_comment(out, func.loc)
@@ -806,6 +818,28 @@ class FunctionGenerator:
                                  const_ref_params=crp)
 
         out.write("}\n")
+
+    def _overload_stubs_are_literal_only(
+        self, stubs: list[TpyFunction], impl: TpyFunction,
+    ) -> bool:
+        """Check if overload stubs differ from the impl only by Literal annotations.
+
+        When all stubs have the same C++ parameter types as the implementation
+        (because they only differ by LiteralType vs base type), per-stub
+        specialization would produce duplicate C++ definitions. In that case,
+        emit just the implementation function.
+        """
+        for stub in stubs:
+            for (_, impl_ptype), (_, stub_ptype) in zip(impl.params, stub.params):
+                if isinstance(stub_ptype, LiteralType):
+                    continue
+                if stub_ptype != impl_ptype:
+                    return False
+        return any(
+            isinstance(ptype, LiteralType)
+            for stub in stubs
+            for _, ptype in stub.params
+        )
 
     def _gen_overload_specialized_function(
         self, out: TextIO, impl: TpyFunction, stub: TpyFunction,

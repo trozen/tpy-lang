@@ -13,9 +13,10 @@ from ..typesys import (
     ArrayType, ListType, PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
     NoneType, NamedType, StrType, StringType, StrViewType, BytesType, BytesViewType, STR, BYTES, TupleType, VoidType,
     INT32, BIGINT, FLOAT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
-    ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
+    ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType,
     local_var_is_movable, resolve_int_literals,
     error_return_to_cpp, qualify_exception_name, is_return_exception,
+    unwrap_ref_type,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn, TpyYield,
@@ -112,7 +113,7 @@ class StatementGenerator:
         self.ctx.reset_scope()
         self.ctx.const_ref_params = const_ref_params if const_ref_params is not None else set()
         self.ctx.declared_vars = {pname for pname, _ in params}
-        self.ctx.var_types = {pname: ptype for pname, ptype in params}
+        self.ctx.var_types = {pname: unwrap_ref_type(ptype) for pname, ptype in params}
         self.ctx.local_scope_names = {pname for pname, _ in params}
         self.ctx.global_declared_vars = self.ctx.analyzer.function_global_decls.get(id(func), set())
         scan = self.ctx.analyzer.function_scan_results.get(id(func))
@@ -247,6 +248,7 @@ class StatementGenerator:
             if isinstance(stmt, TpyVarDecl):
                 # Clear stale narrowing on any write to this variable
                 self.ctx.assign_narrowed_types.pop(stmt.name, None)
+                self.ctx.literal_facts.pop(stmt.name, None)
                 if stmt.then_type_facts:
                     for var_name, narrowed_type in stmt.then_type_facts.items():
                         self.ctx.assign_narrowed_types[var_name] = narrowed_type
@@ -1208,7 +1210,7 @@ class StatementGenerator:
                 and stmt.name not in self.ctx.hoisted_vars
                 and stmt.name not in self.ctx.move_through_vars):
             fi = stmt.init.resolved_function_info
-            if fi is not None and fi.cpp_template is None and isinstance(fi.return_type, TypeParamRef):
+            if fi is not None and fi.cpp_template is None and isinstance(unwrap_ref_type(fi.return_type), TypeParamRef):
                 init_expr = self.expressions.gen_expr(stmt.init, target_type)
                 trait = "::tpy::val_or_cref_t" if fi.is_readonly else "::tpy::val_or_ref_t"
                 return f"{indent}{trait}<{cpp_type}> {cpp_name} = {init_expr};\n"
@@ -1315,6 +1317,7 @@ class StatementGenerator:
         # Clear stale assignment narrowing on reassignment
         if isinstance(stmt.target, TpyName):
             self.ctx.assign_narrowed_types.pop(stmt.target.name, None)
+            self.ctx.literal_facts.pop(stmt.target.name, None)
         # Slice assignment: a[x:y] = rhs -> list_set_slice
         if isinstance(stmt.target, TpySubscript) and isinstance(stmt.target.index, TpySlice):
             return self._gen_slice_assign(stmt, indent)
@@ -1417,6 +1420,8 @@ class StatementGenerator:
 
     def _gen_aug_assign_code(self, stmt: TpyAugAssign, indent: str) -> str:
         """Generate code for an augmented assignment. Returns code to write."""
+        if isinstance(stmt.target, TpyName):
+            self.ctx.literal_facts.pop(stmt.target.name, None)
         # Special handling for subscript targets - use set_value() pattern
         if isinstance(stmt.target, TpySubscript):
             return self._gen_aug_assign_subscript_code(stmt, indent)
@@ -1622,6 +1627,11 @@ class StatementGenerator:
         inner_indent = INDENT * (self.ctx.indent_level + indent_extra)
         for var_name, narrowed_type in type_facts.items():
             if isinstance(narrowed_type, (UnionType, NoneType)):
+                continue
+            # LiteralType narrowing: track for dead branch elimination,
+            # no std::get extraction needed.
+            if isinstance(narrowed_type, LiteralType):
+                self.ctx.literal_facts[var_name] = narrowed_type
                 continue
             # Protocol isinstance narrows the concept constraint, not the value;
             # no std::get extraction needed (the variable is already a T& ref).
@@ -2374,7 +2384,7 @@ class StatementGenerator:
         # Declare variable before the goto to avoid "crosses initialization" error
         is_new_var = stmt.name not in self.ctx.declared_vars
         if is_new_var and var_type:
-            cpp_type = var_type.to_cpp()
+            cpp_type = unwrap_ref_type(var_type).to_cpp()
             out = f"{indent}{cpp_type} {cpp_name};\n"
             self.ctx.declared_vars.add(stmt.name)
         else:
@@ -2433,7 +2443,7 @@ class StatementGenerator:
 
         is_new_var = stmt.name not in self.ctx.declared_vars
         if is_new_var and var_type:
-            cpp_type = var_type.to_cpp()
+            cpp_type = unwrap_ref_type(var_type).to_cpp()
             out = f"{indent}{cpp_type} {cpp_name};\n"
             self.ctx.declared_vars.add(stmt.name)
         else:
@@ -2480,52 +2490,7 @@ class StatementGenerator:
 
         is_new_var = stmt.name not in self.ctx.declared_vars
         if is_new_var and var_type:
-            cpp_type = var_type.to_cpp()
-            out = f"{indent}{cpp_type} {cpp_name};\n"
-            self.ctx.declared_vars.add(stmt.name)
-        else:
-            out = ""
-
-        out += f"{indent}{{\n"
-        out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
-        out += f"{indent}{INDENT}if (!{tmp}.has_value()) ::tpy::tpy_panic(\"unhandled error return\");\n"
-        out += f"{indent}{INDENT}{cpp_name} = ::tpy::unwrap_ref(*{tmp});\n"
-        out += f"{indent}}}\n"
-
-        return out
-
-    def _gen_error_return_unwrap_assign(self, stmt: TpyAssign, indent: str) -> str:
-        """Generate an assignment with panic-on-error unwrap (top-level)."""
-        self.ctx.try_except_counter += 1
-        tmp = f"__try_tmp_{self.ctx.try_except_counter}"
-
-        call_cpp = self._gen_error_return_call(stmt.value)
-        target_cpp = self.expressions.gen_expr(stmt.target)
-
-        out = f"{indent}{{\n"
-        out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
-        out += f"{indent}{INDENT}if (!{tmp}.has_value()) ::tpy::tpy_panic(\"unhandled error return\");\n"
-        out += f"{indent}{INDENT}{target_cpp} = ::tpy::unwrap_ref(*{tmp});\n"
-        out += f"{indent}}}\n"
-
-        return out
-
-    def _gen_error_return_unwrap_var_decl(self, stmt: TpyVarDecl, indent: str) -> str:
-        """Generate a variable declaration with panic-on-error unwrap (top-level)."""
-        assert stmt.init is not None
-
-        self.ctx.try_except_counter += 1
-        tmp = f"__try_tmp_{self.ctx.try_except_counter}"
-
-        call_cpp = self._gen_error_return_call(stmt.init)
-        cpp_name = escape_cpp_name(stmt.name)
-
-        fi = self._get_error_return_fi(stmt.init)
-        var_type = fi.return_type if fi else stmt.type
-
-        is_new_var = stmt.name not in self.ctx.declared_vars
-        if is_new_var and var_type:
-            cpp_type = var_type.to_cpp()
+            cpp_type = unwrap_ref_type(var_type).to_cpp()
             out = f"{indent}{cpp_type} {cpp_name};\n"
             self.ctx.declared_vars.add(stmt.name)
         else:
@@ -2686,7 +2651,7 @@ class StatementGenerator:
         end = f"*{end_raw}"
         cpp_var = escape_cpp_name(stmt.var)
 
-        elem_type = stmt.elem_type
+        elem_type = unwrap_ref_type(stmt.elem_type) if stmt.elem_type else None
         if elem_type:
             from ..typesys import IntLiteralType
             if isinstance(elem_type, IntLiteralType):
@@ -2796,12 +2761,12 @@ class StatementGenerator:
         self.ctx.declared_vars.add(stmt.var)
         self.ctx.local_scope_names.add(stmt.var)
         if stmt.elem_type:
-            self.ctx.var_types[stmt.var] = stmt.elem_type
+            self.ctx.var_types[stmt.var] = unwrap_ref_type(stmt.elem_type)
 
         old_ns = self.ctx.current_ns
         if self.ctx.current_ns and stmt.elem_type:
             inner_ns = Namespace(parent=self.ctx.current_ns)
-            inner_ns.bind_variable(stmt.var, stmt.elem_type)
+            inner_ns.bind_variable(stmt.var, unwrap_ref_type(stmt.elem_type))
             self.ctx.current_ns = inner_ns
 
         body = stmt.body
@@ -2955,6 +2920,7 @@ class StatementGenerator:
                     out.write(f"{indent}}}\n")
                     return
 
+            lit_snap = self.ctx.save_literal_facts()
             then_saved = self._emit_isinstance_extractions(out, node.then_type_facts)
 
             self.ctx.indent_level += 1
@@ -2964,6 +2930,7 @@ class StatementGenerator:
             self.ctx.indent_level -= 1
 
             self.ctx.restore_narrowed_vars(then_saved)
+            self.ctx.restore_literal_facts(lit_snap)
             self.ctx.restore_local_scope(br_snap)
 
         # Final else branch (from the last node in the chain)
@@ -2978,6 +2945,7 @@ class StatementGenerator:
                 and isinstance(last.else_body[0], TpyIf)
                 and self._is_elif(last, last.else_body[0])
             )
+            else_lit_snap = self.ctx.save_literal_facts()
             if is_elif_continuation:
                 else_saved: dict[str, str | None] = {}
             else:
@@ -2990,6 +2958,7 @@ class StatementGenerator:
             self.ctx.indent_level -= 1
 
             self.ctx.restore_narrowed_vars(else_saved)
+            self.ctx.restore_literal_facts(else_lit_snap)
             self.ctx.restore_local_scope(br_snap)
 
         out.write(f"{indent}}}\n")
@@ -3129,7 +3098,7 @@ class StatementGenerator:
     def _has_concrete_isinstance_facts(self, type_facts: dict[str, TpyType]) -> bool:
         """Check if type_facts contain any concrete types that would emit extractions."""
         return any(
-            not isinstance(ty, (UnionType, NoneType)) and not is_protocol_type(ty)
+            not isinstance(ty, (UnionType, NoneType, LiteralType)) and not is_protocol_type(ty)
             for ty in type_facts.values()
         )
 
@@ -3223,6 +3192,7 @@ class StatementGenerator:
         self.ctx.temps.flush(out, indent)
         out.write(f"{indent}while ({cond}) {{\n")
 
+        lit_snap = self.ctx.save_literal_facts()
         saved = self._emit_isinstance_extractions(out, stmt.then_type_facts)
 
         self.ctx.indent_level += 1
@@ -3232,6 +3202,7 @@ class StatementGenerator:
         self.ctx.indent_level -= 1
 
         self.ctx.restore_narrowed_vars(saved)
+        self.ctx.restore_literal_facts(lit_snap)
         out.write(f"{indent}}}\n")
         self.ctx.loop_else_labels.pop()
 
@@ -3707,8 +3678,10 @@ class StatementGenerator:
                                    get_error_return_next_element_type)
         iterable_type = self.types.get_resolved_type(stmt.iterable)
 
-        # Resolve sema-stored elem_type (handles PendingViewType -> concrete)
-        sema_elem = self.types.resolve_type(stmt.elem_type) if stmt.elem_type else None
+        # Resolve sema-stored elem_type (handles PendingViewType -> concrete).
+        # Strip Ref -- codegen loop binding handles reference semantics via
+        # is_value_type() / loop_var_binding(), not through Ref.
+        sema_elem = unwrap_ref_type(self.types.resolve_type(stmt.elem_type)) if stmt.elem_type else None
 
         # OwnIterType / CopyIterType: explicit own_iter() / copy_iter() call.
         # These have begin/end, so use standard begin/end loop.

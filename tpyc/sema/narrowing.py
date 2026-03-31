@@ -11,12 +11,12 @@ from ..typesys import (
     TpyType, OptionalType, NoneType, VoidType, PtrType, OwnType, NamedType,
     TypeParamRef, FixedIntType, BigIntType, IntLiteralType,
     ReadonlyType, UnionType, unwrap_readonly, make_union, union_none_narrow,
-    is_protocol_type,
+    is_protocol_type, LiteralType, LiteralValue,
 )
 from ..parse import (
     TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyFieldAccess,
     TpySubscript, TpyNoneLiteral, TpyCall, TpyMethodCall,
-    TpyIntLiteral, TpyCoerce, TpyNamedExpr,
+    TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyCoerce, TpyNamedExpr,
 )
 from .value_range import ValueRange
 from ..prescan import match_is_none, _expr_to_narrowing_key
@@ -273,6 +273,12 @@ class NarrowingTracker:
                     inner_type = self._optional_inner_type(effective)
                     return {key: inner_type}, {}
 
+        # Equality narrowing on Literal types: `if mode == "rb":`
+        if isinstance(expr, TpyBinOp) and expr.op in ("==", "!="):
+            facts = self._literal_equality_facts(expr)
+            if facts is not None:
+                return facts
+
         if isinstance(expr, TpyUnaryOp) and expr.op == "!":
             true_facts, false_facts = self._isinstance_facts(expr.operand)
             return false_facts, true_facts
@@ -281,19 +287,116 @@ class NarrowingTracker:
             if expr.op == "&&":
                 left_true, left_false = self._isinstance_facts(expr.left)
                 right_true, right_false = self._isinstance_facts(expr.right)
-                merged_true = {**left_true, **right_true}
+                merged_true = self._merge_facts_both_hold(left_true, right_true)
                 merged_false = {k: v for k, v in left_false.items()
                                 if k in right_false and right_false[k] == v}
                 return merged_true, merged_false
             if expr.op == "||":
                 left_true, left_false = self._isinstance_facts(expr.left)
                 right_true, right_false = self._isinstance_facts(expr.right)
-                merged_true = {k: v for k, v in left_true.items()
-                               if k in right_true and right_true[k] == v}
-                merged_false = {**left_false, **right_false}
+                merged_true = self._merge_facts_either_holds(left_true, right_true)
+                merged_false = self._merge_facts_both_hold(left_false, right_false)
                 return merged_true, merged_false
 
         return {}, {}
+
+    @staticmethod
+    def _merge_facts_either_holds(
+        left: dict[str, TpyType], right: dict[str, TpyType],
+    ) -> dict[str, TpyType]:
+        """Merge facts where at least one holds (||-true, &&-false).
+
+        For same key with LiteralType on both sides, union the value sets.
+        For same key with non-Literal types, keep only if they agree exactly.
+        Keys present in only one side are dropped (can't assume which held).
+        """
+        merged = {}
+        for k, lv in left.items():
+            if k not in right:
+                continue
+            rv = right[k]
+            if (isinstance(lv, LiteralType) and isinstance(rv, LiteralType)
+                    and lv.base_type == rv.base_type):
+                seen = set(lv.values)
+                combined = list(lv.values) + [v for v in rv.values if v not in seen]
+                merged[k] = LiteralType(base_type=lv.base_type, values=tuple(combined))
+            elif lv == rv:
+                merged[k] = lv
+        return merged
+
+    @staticmethod
+    def _merge_facts_both_hold(
+        left: dict[str, TpyType], right: dict[str, TpyType],
+    ) -> dict[str, TpyType]:
+        """Merge facts where both must hold (&&-true, ||-false).
+
+        For distinct keys, include both. For same key with LiteralType on
+        both sides, intersect the value sets. For non-Literal same-key
+        conflicts, right overrides left (preserves pre-existing behavior
+        where isinstance narrows further after is-not-None).
+        """
+        merged = dict(left)
+        for k, rv in right.items():
+            if k not in merged:
+                merged[k] = rv
+                continue
+            lv = merged[k]
+            if (isinstance(lv, LiteralType) and isinstance(rv, LiteralType)
+                    and lv.base_type == rv.base_type):
+                common = tuple(v for v in lv.values if v in rv.values)
+                if common:
+                    merged[k] = LiteralType(base_type=lv.base_type, values=common)
+                else:
+                    merged[k] = lv.base_type
+            else:
+                merged[k] = rv
+        return merged
+
+    def _literal_equality_facts(
+        self, expr: TpyBinOp,
+    ) -> tuple[dict[str, TpyType], dict[str, TpyType]] | None:
+        """Extract narrowing facts for `x == lit` / `lit == x` on LiteralType vars."""
+        key: str | None = None
+        lit_val: LiteralValue | None = None
+        # Try both directions: `x == "rb"` and `"rb" == x`
+        for var_side, lit_side in [(expr.left, expr.right), (expr.right, expr.left)]:
+            k = _expr_to_narrowing_key(var_side)
+            if k is None:
+                continue
+            lv = self._extract_literal_value(lit_side)
+            if lv is not None:
+                key, lit_val = k, lv
+                break
+        if key is None or lit_val is None:
+            return None
+        effective = self._effective_type_for_key(key)
+        if not isinstance(effective, LiteralType):
+            return None
+        if lit_val not in effective.values:
+            return None
+        true_type = LiteralType(base_type=effective.base_type, values=(lit_val,))
+        remaining = tuple(v for v in effective.values if v != lit_val)
+        false_type = (LiteralType(base_type=effective.base_type, values=remaining)
+                      if remaining else effective.base_type)
+        if expr.op == "==":
+            return {key: true_type}, {key: false_type}
+        else:
+            return {key: false_type}, {key: true_type}
+
+    @staticmethod
+    def _extract_literal_value(expr: TpyExpr) -> LiteralValue | None:
+        """Extract a LiteralValue from a literal expression node."""
+        if isinstance(expr, TpyStrLiteral):
+            return LiteralValue("str", expr.value)
+        if isinstance(expr, TpyBoolLiteral):
+            return LiteralValue("bool", expr.value)
+        if isinstance(expr, TpyIntLiteral):
+            return LiteralValue("int", expr.value)
+        # Negative int: -1 is TpyUnaryOp("-", TpyIntLiteral(1))
+        if (isinstance(expr, TpyUnaryOp) and expr.op == "-"
+                and isinstance(expr.operand, TpyIntLiteral)):
+            return LiteralValue("int", -expr.operand.value)
+        return None
 
     def condition_type_facts(
         self, condition: TpyExpr,

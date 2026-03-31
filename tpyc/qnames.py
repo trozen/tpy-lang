@@ -72,6 +72,7 @@ FINAL = "typing.Final"
 CALLABLE = "typing.Callable"
 OVERLOAD = "typing.overload"
 OVERRIDE = "typing.override"
+LITERAL = "typing.Literal"
 
 # -- typing protocols --
 ITERATOR = "typing.Iterator"

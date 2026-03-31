@@ -9,14 +9,14 @@ from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING, Optional
 
 from ..typesys import (
-    TpyType, IntLiteralType, FloatLiteralType, BigIntType, Int32Type, ArrayType, ListType, ListRepeatType, DictType, SetType,
+    TpyType, IntLiteralType, FloatLiteralType, FixedIntType, BigIntType, Int32Type, ArrayType, ListType, ListRepeatType, DictType, SetType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, UnknownElementType,
-    SpanType, StrType, StringType, StrViewType, BytesType, ByteArrayType, BytesViewType, FloatType, Float32Type,
+    SpanType, StrType, StringType, StrViewType, LiteralType, BytesType, ByteArrayType, BytesViewType, FloatType, Float32Type,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
     is_protocol_type, unwrap_readonly, unwrap_optional_own, local_var_is_movable,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
-    FnType, CallableType,
+    FnType, CallableType, RefType, unwrap_ref_type,
 )
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
@@ -146,6 +146,20 @@ class TypeCompatibility:
         """
         if actual == expected:
             return None
+        # FnType/CallableType: inner param/return types may carry Own/Ref
+        # qualifiers from FI that don't affect callable contract compatibility.
+        if (isinstance(actual, (FnType, CallableType))
+                and isinstance(expected, (FnType, CallableType))
+                and len(actual.param_types) == len(expected.param_types)):
+            from ..typesys import unwrap_own
+            stripped_actual = type(actual)(
+                tuple(unwrap_ref_type(unwrap_own(p)) for p in actual.param_types),
+                unwrap_ref_type(unwrap_own(actual.return_type)))
+            stripped_expected = type(expected)(
+                tuple(unwrap_ref_type(unwrap_own(p)) for p in expected.param_types),
+                unwrap_ref_type(unwrap_own(expected.return_type)))
+            if stripped_actual == stripped_expected:
+                return None
         # None literal (NoneType) is compatible with None annotation (VoidType)
         if isinstance(actual, NoneType) and isinstance(expected, VoidType):
             return None
@@ -166,6 +180,19 @@ class TypeCompatibility:
                 f"arguments; call a constraining method first or add explicit type arguments",
                 loc,
             )
+
+        # Ref[T] in expected: strip Ref and check inner type.
+        # Ref is a codegen annotation (reference semantics); for type
+        # compatibility, T is compatible with Ref[T].
+        if isinstance(expected, RefType):
+            return self._check_compat(
+                unwrap_ref_type(actual), expected.wrapped, context, loc,
+                source_expr, is_return, coercion_ctx)
+        # Strip Ref from actual too (Ref[T] is compatible with T)
+        if isinstance(actual, RefType):
+            return self._check_compat(
+                actual.wrapped, expected, context, loc,
+                source_expr, is_return, coercion_ctx)
 
         # readonly[T] -> readonly[T]: unwrap and check inner types
         # T -> readonly[T]: always OK (adding const is safe)
@@ -588,8 +615,28 @@ class TypeCompatibility:
         if isinstance(actual, PendingStrType):
             if isinstance(expected, (StrType, StringType, StrViewType, PendingStrType)):
                 return None
+            if isinstance(expected, LiteralType) and expected.is_str_base():
+                return None
         if isinstance(expected, PendingStrType):
             if isinstance(actual, (StrType, StringType, StrViewType)):
+                return None
+        # LiteralType is compatible with its base type family
+        if isinstance(actual, LiteralType) and isinstance(expected, LiteralType):
+            if all(v in expected.values for v in actual.values):
+                return None
+        if isinstance(expected, LiteralType):
+            if expected.is_str_base() and isinstance(actual, (StrType, StringType, StrViewType)):
+                return None
+            if expected.base_type == actual:
+                return None
+            if expected.is_int_base() and isinstance(actual, IntLiteralType):
+                return None
+        if isinstance(actual, LiteralType):
+            if actual.is_str_base() and isinstance(expected, (StrType, StringType, StrViewType)):
+                return None
+            if actual.base_type == expected:
+                return None
+            if actual.is_int_base() and isinstance(expected, (FixedIntType, BigIntType)):
                 return None
         # Allow PendingBytesType compatibility during first phase (before resolution)
         if isinstance(actual, PendingBytesType):

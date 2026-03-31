@@ -10,14 +10,14 @@ import re
 from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, StrViewType, BytesType, BytesViewType, CharType,
+    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, StrViewType, LiteralType, LiteralValue, BytesType, BytesViewType, CharType,
     NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, DictType, SetType,
     DictKeysViewType, DictValuesViewType, DictItemsViewType,
     PendingListType, ListRepeatType,
     SpanType, SpanIterType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     EnumType, IntEnumType, TupleType, FnType, CallableType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, is_any_bytes_type, container_to_str_template,
-    ResolvedBinop, get_covariant_params,
+    ResolvedBinop, get_covariant_params, unwrap_ref_type,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -483,7 +483,7 @@ class ExpressionGenerator:
         if ptype is not None:
             # Auto-consuming iteration: Iterable[Own[T]] param with last-use arg
             # that has consuming __iter__. Generate consuming call instead of copy.
-            ptype_inner = unwrap_readonly(ptype)
+            ptype_inner = unwrap_readonly(unwrap_ref_type(ptype))
             if (is_protocol_type(ptype_inner) and isinstance(ptype_inner, NamedType)
                     and ptype_inner.name == "Iterable"
                     and ptype_inner.type_args
@@ -491,7 +491,7 @@ class ExpressionGenerator:
                 consuming = self._gen_consuming_iter(arg, gen_arg)
                 if consuming is not None:
                     return consuming
-            own = unwrap_optional_own(unwrap_readonly(ptype))
+            own = unwrap_optional_own(unwrap_readonly(unwrap_ref_type(ptype)))
             if own is not None:
                 moved = self._maybe_move(arg, gen_arg)
                 if moved is gen_arg and _is_simple_lvalue(arg):
@@ -533,6 +533,8 @@ class ExpressionGenerator:
             expr: The expression to generate
             target_type: Optional expected type (for implicit promotion)
         """
+        if target_type is not None:
+            target_type = unwrap_ref_type(target_type)
         if isinstance(expr, TpyIntLiteral):
             return self._gen_int_literal_value(expr.value, target_type)
 
@@ -793,7 +795,9 @@ class ExpressionGenerator:
         Nested and/or/ternary chains are handled recursively.
         """
         if isinstance(expr, TpyName):
-            return (isinstance(self.ctx.current_func_params.get(expr.name), StrType)
+            param_type = self.ctx.current_func_params.get(expr.name)
+            return (isinstance(param_type, StrType)
+                    or (isinstance(param_type, LiteralType) and param_type.is_str_base())
                     or isinstance(self.types.get_resolved_type(expr), StrViewType))
         if isinstance(expr, TpyStrLiteral):
             return True
@@ -1061,6 +1065,11 @@ class ExpressionGenerator:
 
         # Comparison operators - generate C++ directly.
         if expr.op in ("==", "!=", "<", ">", "<=", ">="):
+            # Dead branch elimination: fold comparisons on single-value LiteralType
+            if expr.op in ("==", "!="):
+                folded = self._try_fold_literal_comparison(expr)
+                if folded is not None:
+                    return folded
             left_target, right_target = self._comparison_targets(expr)
             left = self.gen_expr_deref(expr.left, left_target)
             right = self.gen_expr_deref(expr.right, right_target)
@@ -1246,6 +1255,36 @@ class ExpressionGenerator:
         for part in parts[1:]:
             result = f"({result} && {part})"
         return result
+
+    def _try_fold_literal_comparison(self, expr: TpyBinOp) -> str | None:
+        """Fold == / != to true/false when one side is a single-value LiteralType variable."""
+        for var_side, lit_side in [(expr.left, expr.right), (expr.right, expr.left)]:
+            if not isinstance(var_side, TpyName):
+                continue
+            lit_type = self.ctx.literal_facts.get(var_side.name)
+            if not isinstance(lit_type, LiteralType) or len(lit_type.values) != 1:
+                continue
+            lit_val = self._extract_literal_value(lit_side)
+            if lit_val is None:
+                continue
+            matches = (lit_val == lit_type.values[0])
+            result = matches if expr.op == "==" else not matches
+            return "true" if result else "false"
+        return None
+
+    @staticmethod
+    def _extract_literal_value(expr: TpyExpr) -> LiteralValue | None:
+        """Extract a LiteralValue from a literal AST node."""
+        if isinstance(expr, TpyStrLiteral):
+            return LiteralValue("str", expr.value)
+        if isinstance(expr, TpyBoolLiteral):
+            return LiteralValue("bool", expr.value)
+        if isinstance(expr, TpyIntLiteral):
+            return LiteralValue("int", expr.value)
+        if (isinstance(expr, TpyUnaryOp) and expr.op == "-"
+                and isinstance(expr.operand, TpyIntLiteral)):
+            return LiteralValue("int", -expr.operand.value)
+        return None
 
     def _comparison_targets(self, pair: TpyBinOp) -> tuple[TpyType | None, TpyType | None]:
         """Determine target types for a comparison pair's operands.
@@ -1619,6 +1658,9 @@ class ExpressionGenerator:
 
             gen_args = []
             for arg, (pname, ptype) in zip(expr.args, func_info.params):
+                # Strip Ref wrapper -- Ref is a sema annotation; codegen handles
+                # reference semantics through is_value_type() / type traits.
+                ptype = unwrap_ref_type(ptype)
                 # Resolve TypeParamRef for generic functions
                 resolved_ptype = self.types.substitute_type_params(ptype, type_subst) if type_subst else ptype
 
@@ -1649,8 +1691,10 @@ class ExpressionGenerator:
                 if opt_arg is not None:
                     gen_args.append(opt_arg)
                 # Temporaries passed to mutable reference params need a temp variable
-                # because C++ can't bind rvalue to non-const lvalue reference
-                # TypeParamRef generates param_val_or_ref_t<T> which is T& for object types
+                # because C++ can't bind rvalue to non-const lvalue reference.
+                # TypeParamRef generates param_val_or_ref_t<T> which is T& for
+                # object types and const T& for value types -- both need a temp
+                # when the callee captures by reference (e.g. generators).
                 elif (resolved_ptype.is_ref_param() or isinstance(ptype, TypeParamRef)) and self.ctx.is_temporary_expr(arg):
                     init_expr = self.gen_expr(arg, resolved_ptype)
                     temp_name = self.ctx.temps.create(resolved_ptype, init_expr)
@@ -1679,7 +1723,7 @@ class ExpressionGenerator:
             # functions -- their C++ signatures use natural parameter types so
             # template argument deduction works correctly.
             if func_info.is_generic() and expr.inferred_type_args and not func_info.is_native_import:
-                type_args_str = ", ".join(self.types.type_to_cpp(t) for t in expr.inferred_type_args)
+                type_args_str = ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in expr.inferred_type_args)
                 return f"{func_cpp_name}<{type_args_str}>({', '.join(gen_args)})"
             return f"{func_cpp_name}({', '.join(gen_args)})"
         # Generic type instantiation (e.g., Container[T, N]())
@@ -1918,7 +1962,7 @@ class ExpressionGenerator:
                 return f"{qualified_cpp_name(expr.user_module_call, func_name)}({args})"
             # Emit explicit template args for generic user-module calls
             if fi and fi.is_generic() and expr.inferred_type_args:
-                type_args_str = ", ".join(self.types.type_to_cpp(t) for t in expr.inferred_type_args)
+                type_args_str = ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in expr.inferred_type_args)
                 return f"{qualified_cpp_name(expr.user_module_call, expr.method)}<{type_args_str}>({args})"
             return f"{qualified_cpp_name(expr.user_module_call, expr.method)}({args})"
 
@@ -1985,7 +2029,7 @@ class ExpressionGenerator:
         # Build explicit template args for generic method calls
         method_targs = ""
         if expr.inferred_type_args and not expr.user_module_call and not expr.is_static_call:
-            method_targs = "<" + ", ".join(self.types.type_to_cpp(t) for t in expr.inferred_type_args) + ">"
+            method_targs = "<" + ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in expr.inferred_type_args) + ">"
 
         # Handle self.method() -> just method() (inside method, implicit this)
         if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
@@ -2019,10 +2063,10 @@ class ExpressionGenerator:
                 class_args = expr.inferred_type_args[:n_class]
                 method_args = expr.inferred_type_args[n_class:]
                 if class_args:
-                    type_args_str = ", ".join(self.types.type_to_cpp(t) for t in class_args)
+                    type_args_str = ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in class_args)
                     class_name = f"{class_name}<{type_args_str}>"
                 if method_args:
-                    static_method_targs = "<" + ", ".join(self.types.type_to_cpp(t) for t in method_args) + ">"
+                    static_method_targs = "<" + ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in method_args) + ">"
             return f"{class_name}::{expr.method}{static_method_targs}({args})"
         # Handle module.function() (import X -> X.func())
         # Only if the name isn't shadowed by a variable, user-defined function, or record
@@ -2100,9 +2144,10 @@ class ExpressionGenerator:
                     gen_args = []
                     resolved_params = expr.resolved_function_info.params if expr.resolved_function_info else []
                     for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, method_info.params)):
-                        if isinstance(ptype, TypeParamRef) and self.ctx.is_temporary_expr(arg):
+                        ptype_bare = unwrap_ref_type(ptype)
+                        if isinstance(ptype_bare, TypeParamRef) and self.ctx.is_temporary_expr(arg):
                             # Resolve TypeParamRef to actual type
-                            resolved_type = type_subst.get(ptype.name, ptype)
+                            resolved_type = type_subst.get(ptype_bare.name, ptype_bare)
                             # Only need temp for object types (T&), not value types (const T&)
                             if not resolved_type.is_value_type():
                                 init_expr = self.gen_expr(arg, resolved_type)
@@ -3484,7 +3529,7 @@ class ExpressionGenerator:
         # Build template args suffix for generic function refs
         targs = ""
         if expr.function_ref_type_args:
-            targs = "<" + ", ".join(self.types.type_to_cpp(t) for t in expr.function_ref_type_args) + ">"
+            targs = "<" + ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in expr.function_ref_type_args) + ">"
         # Cross-module: use qualified name
         if expr.name in self.ctx.user_imported_functions:
             source_module, original_name = self.ctx.user_imported_functions[expr.name]

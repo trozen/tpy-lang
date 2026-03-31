@@ -12,7 +12,7 @@ from ..typesys import (
     DictType, SetType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
-    PendingGenericInstanceType, IntLiteralType, CallableType,
+    PendingGenericInstanceType, IntLiteralType, CallableType, unwrap_ref_type,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
@@ -26,6 +26,7 @@ from .overloads import resolve_overload
 from .calls import (
     arity_error_msg, resolve_kwargs, validate_generic_defaults,
     validate_type_param_bounds, prefer_strview_for_literals,
+    _enrich_literal_types,
 )
 
 if TYPE_CHECKING:
@@ -224,7 +225,7 @@ class MethodAnalyzer:
             # inference from those would need protocol-level element type extraction.
             for i in inferring_indices:
                 arg_type = pre_analyzed[i]
-                param_type = overload.params[i].type
+                param_type = unwrap_ref_type(overload.params[i].type)
                 if isinstance(param_type, OwnType) and isinstance(param_type.wrapped, TypeParamRef):
                     infer_fn(expr.obj, arg_type)
                 elif isinstance(param_type, TypeParamRef):
@@ -316,8 +317,9 @@ class MethodAnalyzer:
                 self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
                 for m in overloads
             ]
+            enriched_types = _enrich_literal_types(arg_types, expr.args, resolved_overloads)
             resolved = resolve_overload(
-                resolved_overloads, arg_types,
+                resolved_overloads, enriched_types,
                 protocol_checker=self.protocols.type_conforms_to_protocol,
                 deref_checker=self.type_ops.get_deref_coercion_target,
                 default_int_type=self.ctx.default_int_type,
@@ -515,9 +517,10 @@ class MethodAnalyzer:
         if isinstance(obj_type, PendingGenericInstanceType):
             return self._analyze_pending_generic_method_call(expr, obj_type)
 
-        # Unwrap ReadonlyType, remembering the flag for enforcement.
+        # Unwrap RefType, ReadonlyType, remembering the flag for enforcement.
         # Also check declared scope type: isinstance narrowing may strip ReadonlyType
         # from the expr type while the scope binding preserves it.
+        obj_type = unwrap_ref_type(obj_type)
         is_readonly_receiver = isinstance(obj_type, ReadonlyType)
         if not is_readonly_receiver and isinstance(expr.obj, TpyName):
             is_readonly_receiver = self.ctx.is_readonly_name(expr.obj.name)
@@ -1051,13 +1054,13 @@ class MethodAnalyzer:
         if info is None:
             return None
 
-        # Unwrap Own/Optional/Readonly to find the inner NamedType
+        # Unwrap Own/Optional/Readonly/Ref to find the inner NamedType
         target = expected
         if isinstance(target, OwnType):
             target = target.wrapped
         if isinstance(target, OptionalType):
             target = target.inner
-        target = unwrap_readonly(target)
+        target = unwrap_readonly(unwrap_ref_type(target))
 
         if not isinstance(target, NamedType) or target.name != info.record_name:
             return None

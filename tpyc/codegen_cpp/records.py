@@ -370,12 +370,16 @@ class RecordGenerator:
             overload_stubs = self.ctx.analyzer.overload_groups.get(id(method))
             if overload_stubs:
                 overload_dispatched.add(method.name)
-                for stub in overload_stubs:
-                    self.functions._gen_overload_specialized_method(
-                        out, method, stub, record.name,
-                        record_type_param_bounds=record.type_param_bounds or None,
-                        dynamic_overrides=dynamic_overrides,
-                    )
+                if self.functions._overload_stubs_are_literal_only(overload_stubs, method):
+                    self.functions.gen_method_def(out, method, record.name, dynamic_overrides,
+                                                  record_type_param_bounds=record.type_param_bounds or None)
+                else:
+                    for stub in overload_stubs:
+                        self.functions._gen_overload_specialized_method(
+                            out, method, stub, record.name,
+                            record_type_param_bounds=record.type_param_bounds or None,
+                            dynamic_overrides=dynamic_overrides,
+                        )
             elif method.name in overload_dispatched:
                 # Const clone of a @auto_readonly @overload impl -- already emitted above.
                 pass

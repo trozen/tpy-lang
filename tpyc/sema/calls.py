@@ -11,7 +11,7 @@ from typing import Callable, TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingViewType, CopyIterType, OwnIterType,
     IntLiteralType, FloatType, Float32Type, BoolType, resolve_int_literals,
-    StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
+    StrType, LiteralType, LiteralValue, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
     UNKNOWN_ELEMENT, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
     UnionType, EnumType, VOID, BIGINT, BOOL, STR, INT32, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own,
@@ -19,7 +19,7 @@ from ..typesys import (
     is_protocol_union, protocol_union_protocols,
     StrViewType, STRVIEW, MutationCallEdge,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
-    FnType, CallableType,
+    FnType, CallableType, unwrap_ref_type,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
@@ -85,7 +85,8 @@ def prefer_strview_for_literals(
         all_literals = True
         any_match = False
         for (pname, ptype), arg in zip(func.params, args):
-            if isinstance(ptype, TypeParamRef) and ptype.name == tp:
+            ptype_bare = unwrap_ref_type(ptype)
+            if isinstance(ptype_bare, TypeParamRef) and ptype_bare.name == tp:
                 any_match = True
                 if not isinstance(arg, TpyStrLiteral):
                     all_literals = False
@@ -96,6 +97,42 @@ def prefer_strview_for_literals(
                 if not type_conforms_to_protocol(STRVIEW, func.type_param_bounds[tp]):
                     continue
             type_subst[tp] = STRVIEW
+
+
+def _enrich_literal_types(
+    arg_types: list[TpyType], args: list[TpyExpr],
+    candidates: list[FunctionInfo],
+) -> list[TpyType]:
+    """Create enriched arg types where literal args become single-value LiteralType.
+
+    Returns a new list where literal arguments (str, int, bool) get
+    LiteralType(base, (LiteralValue(...),)) instead of their plain type.
+    Used only for overload resolution; the original arg_types are used
+    for everything else.
+
+    Only enriches when at least one candidate has a LiteralType param,
+    to avoid breaking protocol-based matching (e.g. hash(Hashable)).
+    Also passes through args that already carry LiteralType (e.g. forwarded
+    Literal-annotated parameters).
+    """
+    has_literal_param = any(
+        isinstance(p.type, LiteralType) for c in candidates for p in c.params
+    )
+    if not has_literal_param:
+        return arg_types
+    enriched = []
+    for arg_t, arg in zip(arg_types, args):
+        if isinstance(arg_t, StrType) and isinstance(arg, TpyStrLiteral):
+            enriched.append(LiteralType(STR, (LiteralValue("str", arg.value),)))
+        elif isinstance(arg_t, IntLiteralType) and arg_t.value is not None:
+            enriched.append(LiteralType(INT32, (LiteralValue("int", arg_t.value),)))
+        elif isinstance(arg_t, BoolType) and isinstance(arg, TpyBoolLiteral):
+            enriched.append(LiteralType(BOOL, (LiteralValue("bool", arg.value),)))
+        elif isinstance(arg_t, LiteralType):
+            enriched.append(arg_t)
+        else:
+            enriched.append(arg_t)
+    return enriched
 
 
 def arity_error_msg(name: str, min_args: int, max_args: int, got: int) -> str:
@@ -245,7 +282,7 @@ def validate_generic_defaults(
         param = func.params[i]
         if not param.has_default:
             continue
-        resolved_type = type_ops.substitute_type_params(param.type, type_subst)
+        resolved_type = unwrap_ref_type(type_ops.substitute_type_params(param.type, type_subst))
         if isinstance(resolved_type, TypeParamRef):
             continue
         if not _default_compatible_with_type(param.default_expr, resolved_type):
@@ -1290,6 +1327,7 @@ class CallAnalyzer:
         so protocol params like Iterable[Own[tuple[K,V]]] must be converted
         to ListType(tuple[K,V]) for element-level hints to propagate.
         """
+        param_type = unwrap_ref_type(param_type)
         if not is_protocol_type(param_type):
             return None
         elem = param_type.get_iteration_element_type()
@@ -1331,16 +1369,17 @@ class CallAnalyzer:
             rejected = False
             fully_checked = True
             for p, at in zip(ctor.params, arg_types):
-                if is_protocol_type(p.type):
-                    if not self.protocols.type_extends_any_protocol(at, p.type.name):
+                p_type = unwrap_ref_type(p.type)
+                if is_protocol_type(p_type):
+                    if not self.protocols.type_extends_any_protocol(at, p_type.name):
                         rejected = True
                         break
                     # Protocol matches structurally, but if it has type params
                     # (e.g. Iterable[T]), verify element type compatibility.
                     # Resolve param type params to get the actual expected
                     # element (e.g. tuple[K,V] for dict, not just V).
-                    if _has_type_param_ref(p.type) and expr.call_type and inferred:
-                        resolved_param = self.type_ops.substitute_type_params(p.type, inferred)
+                    if _has_type_param_ref(p_type) and expr.call_type and inferred:
+                        resolved_param = self.type_ops.substitute_type_params(p_type, inferred)
                         expected_elem = resolved_param.get_iteration_element_type()
                         if isinstance(expected_elem, OwnType):
                             expected_elem = expected_elem.wrapped
@@ -1349,16 +1388,16 @@ class CallAnalyzer:
                             if not self.compat.is_type_compatible(arg_elem, expected_elem):
                                 rejected = True
                                 break
-                elif _has_type_param_ref(p.type):
+                elif _has_type_param_ref(p_type):
                     # Can't fully resolve T, but reject clearly incompatible
                     # types. For Span[T]: arg must have an element type, and
                     # if T is known from call_type, element types must match.
-                    if isinstance(p.type, SpanType):
+                    if isinstance(p_type, SpanType):
                         arg_elem = at.get_element_type()
                         if arg_elem is None:
                             rejected = True
                             break
-                        if not p.type.is_readonly and isinstance(at, SpanType) and at.is_readonly:
+                        if not p_type.is_readonly and isinstance(at, SpanType) and at.is_readonly:
                             rejected = True
                             break
                         expected_elem = expr.call_type.get_element_type() if expr.call_type else None
@@ -1366,7 +1405,7 @@ class CallAnalyzer:
                             rejected = True
                             break
                     fully_checked = False
-                elif not type_matches_numeric(at, p.type):
+                elif not type_matches_numeric(at, p_type):
                     rejected = True
                     break
             if not rejected:
@@ -1739,7 +1778,7 @@ class CallAnalyzer:
         # Quick check: if no Fn/Callable params, analyze all args directly
         fn_positions: set[int] = set()
         for i, (_, ptype) in enumerate(func.params):
-            if isinstance(ptype, (FnType, CallableType)):
+            if isinstance(unwrap_ref_type(ptype), (FnType, CallableType)):
                 fn_positions.add(i)
         if not fn_positions:
             return [self.expr.analyze_expr(arg) for arg in expr.args]
@@ -1764,7 +1803,7 @@ class CallAnalyzer:
             for i in fn_positions:
                 if i >= len(func.params) or i >= len(expr.args):
                     continue
-                ptype = func.params[i].type
+                ptype = unwrap_ref_type(func.params[i].type)
                 concrete_hint = _partial_substitute(ptype, partial_inferred)
                 if isinstance(concrete_hint, (FnType, CallableType)):
                     has_unresolved = any(
@@ -1798,7 +1837,7 @@ class CallAnalyzer:
         # For generic overloads with Fn/Callable params, use two-phase arg analysis
         # so function refs and lambdas can be resolved with concrete type hints.
         fn_generic = next((o for o in generic
-                           if any(isinstance(p.type, (FnType, CallableType)) for p in o.params)
+                           if any(isinstance(unwrap_ref_type(p.type), (FnType, CallableType)) for p in o.params)
                            and len(expr.args) >= o.min_args and len(expr.args) <= o.max_args),
                           None)
         if fn_generic is not None:
@@ -1833,7 +1872,8 @@ class CallAnalyzer:
                 generic_originals[id(resolved)] = (overload, type_subst)
 
         # Unified resolution: score all candidates (non-generic + resolved generics)
-        matched = resolve_overload(candidates, arg_types, protocol_checker,
+        enriched_types = _enrich_literal_types(arg_types, expr.args, candidates)
+        matched = resolve_overload(candidates, enriched_types, protocol_checker,
                                    deref_checker=self.type_ops.get_deref_coercion_target,
                                    default_int_type=self.ctx.default_int_type,
                                    subclass_checker=self.ctx.registry.is_subclass_of)
@@ -1989,8 +2029,9 @@ class CallAnalyzer:
                 else:
                     candidates.append(func)
 
+            enriched_types = _enrich_literal_types(arg_types, expr.args, candidates)
             matched = resolve_overload(
-                candidates, arg_types,
+                candidates, enriched_types,
                 protocol_checker=self.protocols.type_conforms_to_protocol,
                 default_int_type=self.ctx.default_int_type,
                 subclass_checker=self.ctx.registry.is_subclass_of,
@@ -2004,7 +2045,7 @@ class CallAnalyzer:
             # No match in unified pool. Fall back to original resolution
             # (structural matching for generics) to preserve error messages.
             matched = resolve_overload(
-                func_infos, arg_types,
+                func_infos, enriched_types,
                 protocol_checker=self.protocols.type_conforms_to_protocol,
                 subclass_checker=self.ctx.registry.is_subclass_of,
             )

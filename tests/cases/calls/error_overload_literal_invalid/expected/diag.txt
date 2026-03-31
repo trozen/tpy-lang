@@ -1,0 +1,1 @@
+main.py:6: error: Literal supports string, int, and bool arguments

@@ -5,7 +5,10 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 ## Next
 - Deferred readonly inference for `self.field.method()`: currently `self.field.method()` where the callee isn't yet known to be readonly conservatively marks `self` as mutated at Phase 1 (`methods.py:630`). For `self.method()`, this is deferred via call edges to Phase 2. Fix: record a deferred check for `self.field.method()` calls; after Phase 2 resolves the callee's readonly status, only mark self as mutated if the callee is genuinely non-readonly. Affects `@model __json_encode__` on classes with user-type fields (the generated method reads `self.field.__json_encode__(writer)` but can't be inferred const because `field.__json_encode__` isn't known readonly at Phase 1).
 - Emit `this->` for self method calls: codegen currently emits bare `method(args)` for `self.method()` calls (`expressions.py:1994`). Prefer explicit `this->method(args)` for readability.
-- add Ref[T] type that would denote references, automatically added to function args/return in parser, so user doesn't need to see it; would it help in managig the pipeline?
+- Combinator composition: reference preservation lost when chaining (e.g. `enumerate(map(identity, pts))` yields copies, not refs). The `owning_enumerate_iter` copies elements into `std::tuple<int32_t, T>` instead of using `val_or_ref<T>`. Need runtime support for reference-preserving tuples in composed iterators.
+- `zip(map(...), map(...))` fails: `owning_zip_iter` stores iterators via `decltype(__iter__(...))` which gives `map_iter&` (self-reference) for `__next__`-based types. The `iters_` tuple stores dangling references to the `make_iters` return value. Fix: store iterators by value (`std::remove_reference_t`) or add a `zip_iter` path for `__next__`-based rvalue inputs.
+- Ref[T] follow-up: warnings for implicit Ref->owned materialization (Phase 6 from the Ref design). Warn when Ref[T] is silently converted to owned T in storage positions where the copy is surprising. Suppressible via `copy()` or `Own[...]`.
+- Ref[T] follow-up: cleanup (Phase 7). Remove `is_value_type()` branching from base class `to_cpp_return()`/`to_cpp_param_type()`. Remove TypeParamRef's to_cpp overrides (now handled by `Ref[TypeParamRef]`). Replace remaining `to_cpp_*` method dispatch with centralized lowering API.
 - Resolve class-level type params in cpp_template at sema time: when sema resolves a generic constructor like `list[Int32](range(10))`, substitute `{T}` -> `Int32` into the template and store a fully-resolved `cpp_template` on `resolved_function_info`. Codegen would then never see unresolved type params -- every template would only have `{0}`, `{1}`, `{cpp}`. Eliminates the `type_subst`/`extract_type_params` machinery in codegen's call_type block and the regex guard in `_gen_call`.
 - Eliminate concrete type classes (ListType, DictType, etc.): replace `isinstance(t, ListType)` checks with name-based or annotation-driven checks. ~60 references for ListType alone across type inference, codegen, and compatibility. Enables treating all types uniformly as NamedType + RecordInfo. Lower priority -- current type classes work fine, this is about uniformity.
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
@@ -14,19 +17,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Define decorators as .py functions: readonly/noalloc/nocopy/pure/dynamic/error_return (tpy), native/cpp_template/builtin_type (tpy.extern), overload/override (typing) are currently parser keywords with empty stub files. Want them as real function definitions eventually so the parser doesn't need special handling. Blocked on: functions need type annotations to compile, and decorator signatures have no meaningful type (identity function over any callable).
 - ContextManager[T] protocol
 
-## Ref[T] -- explicit reference semantics in the type system
-Currently the value/reference split for non-value types is implicit and scattered across codegen: `to_cpp()` vs `to_cpp_return()` vs `to_cpp_param_type()`, `val_or_ref_t<T>`, `val_or_ref<T>` wrapper, `loop_var_binding` decision tree, `unwrap_ref`. Every context that wraps non-value types in a value container (`std::expected`, `std::tuple`, `std::optional`) independently solves "how to not lose the reference".
-
-Proposal: add `Ref[T]` as an internal type (auto-inserted by parser, user never writes it) that maps to `val_or_ref<T>` in C++. The type system carries reference intent explicitly:
-- `def foo(x: Point)` -> internally `x: Ref[Point]` -> C++ `val_or_ref<Point>` (holds `Point*`)
-- `-> tuple[Int32, T]` -> internally `tuple[Int32, Ref[T]]` -> C++ `std::tuple<int32_t, val_or_ref<T>>`
-- `@error_return(E) -> T` -> internally `-> Ref[T]` -> C++ `std::expected<val_or_ref<T>, E>`
-
-This unifies the current ad-hoc mechanisms into one concept. Codegen becomes type-directed instead of context-dependent. New features that wrap non-value types get reference preservation for free.
-
-Can be done incrementally: start where `val_or_ref<T>` already exists (iterator `__next__`, enumerate/zip tuples), extend to error_return, then to params/returns in general.
-
-Motivating example: `map(identity, pts)` where `identity(p: Point) -> Point` returns `Point&` in C++. The `map_iter::__next__()` stores the result in `std::expected<Point, StopIteration>`, copying it. With `Ref[T]`, the return type would be `Ref[Point]` -> `val_or_ref<Point>` -> pointer preserved. Meanwhile `map(lambda p: Point(p.x+1, p.y), pts)` returns `Own[Point]` -> stored by value. The `Own` vs bare distinction already exists in sema but is lost at the C++ template level -- `Ref[T]` would carry it through.
 
 ## Bugs
 - Generic generators with multiple yield points (struct-based codegen path) are not yet supported -- the out-of-line `__next__()` in .cpp won't link for template structs. Currently guarded with a sema error. Fix: emit struct + `__next__()` body into the header when the function has type params.
@@ -77,7 +67,7 @@ Motivating example: `map(identity, pts)` where `identity(p: Point) -> Point` ret
 
 ## Builtins
 - `sorted(key=)`, `min(key=)`, `max(key=)`: accept an optional `key` parameter (`Fn` or `Callable`). `sorted(items, key=lambda x: x.score)` is extremely common. The lambda/Fn infrastructure is already there -- just needs builtin signatures and codegen for comparison-via-key.
-- `map()` / `filter()`: reference preservation through iterator combinators needs `Ref[T]` design.
+- `map()` / `filter()`: reference preservation through single-combinator usage works via `Ref[T]`. Composed combinators (e.g. `enumerate(map(...))`) lose references -- see "Combinator composition" in Next section.
 - `open()` binary mode: needs string literal overload dispatch so `open(path, "rb")` returns `BinaryIO` while `open(path, "r")` returns `TextIO`. Requires compiler support for overload resolution based on literal argument values.
 - type(); (in future `T = type(x); z = T()`)
 - tpy.ctypes.CInt32
@@ -159,6 +149,7 @@ Motivating example: `map(identity, pts)` where `identity(p: Point) -> Point` ret
 - **[HIGH effort]** Inherited fields body-assigned instead of member initializer list: child constructors without `super()` assign inherited `std::string`/container fields in the body (default-construct then assign) instead of via MIL or base-class constructor delegation. Adds an extra default construction per non-trivial inherited field.
 - **[MED effort]** Double `__deref__()` call in auto-deref field access: `r.x + r.y` where `r` has user-defined `__deref__()` emits `r.__deref__().x + r.__deref__().y` -- two separate deref calls. Should generate a temporary for the deref result when multiple field/method accesses share the same deref base in one expression.
 ### Missed optimizations
+- **[MED effort]** Dead branch elision in codegen: when a condition folds to a constant (`if (true)` / `if (false)`), emit only the live branch body instead of the entire if/else structure. Currently the folded constant is emitted and the C++ compiler optimizes it away, but this adds unnecessary work to C++ compilation which is already a bottleneck. Applies to Literal narrowing (`if mode == "rb":` inside a branch where mode is known), union overload specialization (`isinstance` checks), and any future constant-folding path. Pattern exists in `_gen_if_overload_specialized` for union isinstance -- generalize to all if-conditions.
 - **[LOW]** String concat chain produces N-1 intermediate allocations: `a + b + c + d` emits left-associative nested `str_concat` calls, each allocating a temporary `std::string`. A codegen optimization detecting a chain of `+` on string-view operands could emit a single `reserve` + N `append` calls.
 - **[LOW]** `__param_` copy for reassigned parameters: when a parameter is reassigned in the function body, codegen takes it by `const&` then copies into a mutable local. For BigInt/string params, taking by value instead would let the caller move. Only helps when caller passes an rvalue; for lvalue calls it's worse (forces copy at call site vs zero-cost `const&`). Also changes ABI (not API).
 

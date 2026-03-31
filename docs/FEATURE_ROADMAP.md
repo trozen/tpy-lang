@@ -75,7 +75,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D4 | with statement | M | Done | [VI](#with-statement-context-managers) |
 | D5 | Nested `def` with captures, `nonlocal` | M-L | Done | [VI](#closures--nested-functions) |
 | D6 | Properties (@property) | M | Not started | [VII](#properties) |
-| D7 | String literal types (Literal[...]) | M | Not started | [III](#string-literal-types) |
+| D7 | Literal types (Literal[...]) | M | Phase 3 done | [III](#literal-types) |
 | D8 | `@override` decorator | S | Done | [VII](#override-decorator) |
 | D9 | set type | L | Done | [VII](#set-type) |
 | D10 | bytes type | M | Done | [VII](#bytes-type) |
@@ -1078,28 +1078,61 @@ user-defined classes of the same name. See `docs/ERROR_RETURN_DESIGN.md` for ful
 
 ---
 
-### String Literal Types
+### Literal Types
 
 ```python
-def open(path: str, mode: Literal["r", "w", "rb", "wb"] = "r") -> File:
-    ...
+from typing import Literal, overload
 
-open("data.txt", "r")    # ok
-open("data.txt", "x")    # compile error: "x" not in Literal["r", "w", "rb", "wb"]
+@overload
+def open_file(path: str, mode: Literal["r", "w"]) -> TextIO: ...
+@overload
+def open_file(path: str, mode: Literal["rb", "wb"]) -> BinaryIO: ...
+@overload
+def open_file(path: str, mode: str) -> TextIO: ...  # fallback
+
+open_file("data.txt", "r")    # -> TextIO (matched Literal["r", "w"])
+open_file("data.txt", "rb")   # -> BinaryIO (matched Literal["rb", "wb"])
+mode = "r"
+open_file("data.txt", mode)   # -> TextIO (variable, falls through to str)
 ```
 
-Compile-time checked string sets for API compatibility (e.g. `open()` mode parameter).
-Could map to `enum class` internally while accepting string syntax at TPy level.
+Compile-time checked value sets for `@overload` dispatch. `Literal["r", "w", ...]`
+in parameter annotations enables overload resolution based on literal values.
+Supports string, integer (including negative), and bool values.
+Multi-value `Literal` supported. Only direct literal arguments dispatch to
+`Literal` overloads; variables fall through to plain type overloads.
 
 **Why it matters**: Catches a common class of Python `ValueError` at compile time.
 Natural extension of the type system. Works well with overloads (different return types
-per literal value).
+per literal value). Key enabler for `open()` binary mode dispatch.
 
-**Current state**: Not started.
+**Current state**: Phase 3a done. Phases 3b-6 planned. See `docs/LITERAL_TYPES_DESIGN.md`.
 
-**Dependencies**: Enums (internal representation). String equality at compile time.
+- **Phase 1 (done)**: `Literal["a", "b", ...]` with string values. Ordering-independent:
+  `Literal` stubs are preferred over plain stubs regardless of declaration order.
+  Works for free functions, methods, and builtins with `@cpp_template`.
+- **Phase 2 (done)**: Unified `LiteralType` with `LiteralValue(tag, value)`.
+  Integer and bool literals (`Literal[1, 2]`, `Literal[True]`).
+  `IntLiteralType` matches `LiteralType` with int base during overload resolution.
+  Mixed types in a single `Literal[...]` rejected at parse time.
+- **Phase 3 (done)**: Equality narrowing for `Literal`-annotated params.
+  `if mode == "rb":` narrows `Literal["r", "w", "rb", "wb"]` to `Literal["rb"]`,
+  enabling dispatch to more specific overload stubs within branches.
+- **Phase 3a (done)**: Dead branch elimination -- single-value Literal comparisons
+  fold to `true`/`false` in generated C++.
+- **Phase 3b**: Literal overload flattening. User `@overload` stubs with different
+  return types per Literal value generate per-literal C++ specializations
+  (analogous to union flattening). Depends on Phase 3 for dead branch elimination.
+- **Phase 4**: Match/case exhaustiveness for Literal subjects.
+- **Phase 5**: Literal types in variables. `x: Literal["rb"] = "rb"` retains the
+  literal type. Enables indirect dispatch without annotation.
+- **Phase 6**: Literal as a general type. Return types, fields, union flattening
+  (`Literal["a"] | Literal["b"]` == `Literal["a", "b"]`).
 
-**Effort**: M
+**Dependencies**: Phase 3: Narrowing infrastructure. Phase 3b: Phase 3.
+Phase 5: Audit of str type checks.
+
+**Effort**: Phase 3: M. Phase 3b: M. Phase 4: M. Phase 5: M. Phase 6: L.
 
 ---
 

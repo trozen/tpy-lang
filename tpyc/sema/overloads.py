@@ -13,9 +13,10 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, Int32Type, FixedIntType, BigIntType, BIGINT,
     FloatType, Float32Type,
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
-    PendingStrType, StrType, StringType, StrViewType,
+    PendingStrType, StrType, StringType, StrViewType, LiteralType,
     PendingBytesType, BytesType, ByteArrayType, BytesViewType,
     NamedType, PtrType, OwnType, FnType, CallableType, VoidType, NoneType,
+    unwrap_ref_type,
 )
 from ..coercions import resolve_coercion, CoercionContext
 
@@ -36,8 +37,14 @@ def _structural_match(arg: TpyType, param: TpyType) -> bool:
     """Structural match with TypeParamRef as wildcard."""
     if isinstance(param, TypeParamRef):
         return True
-    # Unwrap ReadonlyType from both sides (readonly param accepts mutable arg)
-    from ..typesys import ReadonlyType
+    # Unwrap Ref, Own, Readonly from both sides (transparent for matching)
+    from ..typesys import ReadonlyType, OwnType
+    arg = unwrap_ref_type(arg)
+    param = unwrap_ref_type(param)
+    if isinstance(param, TypeParamRef):
+        return True
+    if isinstance(arg, OwnType):
+        arg = arg.wrapped
     if isinstance(param, ReadonlyType):
         return _structural_match(unwrap_readonly(arg), param.wrapped)
     arg = unwrap_readonly(arg)
@@ -74,14 +81,34 @@ def type_matches_strict(
 
     Used for first-pass overload resolution where no coercions are desired.
     """
-    # Unwrap ReadonlyType and OwnType from args -- readonly values can match
-    # mutable params, and Own[T] variables match T params (passed by ref).
-    arg_inner = unwrap_readonly(arg_type)
+    # Unwrap ReadonlyType, OwnType, RefType -- these are ownership/ref
+    # qualifiers transparent for overload matching.
+    arg_inner = unwrap_ref_type(unwrap_readonly(arg_type))
     if isinstance(arg_inner, OwnType):
         arg_inner = arg_inner.wrapped
-    param_inner = unwrap_readonly(param_type)
+    param_inner = unwrap_ref_type(unwrap_readonly(param_type))
     if arg_inner == param_inner:
         return True
+    # FnType/CallableType: compare with qualifier unwrapping on inner types.
+    # The arg FnType may have Own/Ref on param/return types from FI, while the
+    # resolved overload's Fn type has bare types from substitution.
+    from ..typesys import FnType, CallableType, OwnType as _Own
+    if (isinstance(arg_inner, (FnType, CallableType))
+            and isinstance(param_inner, (FnType, CallableType))
+            and len(arg_inner.param_types) == len(param_inner.param_types)):
+        def _strip(t: TpyType) -> TpyType:
+            t = unwrap_ref_type(t)
+            if isinstance(t, _Own): t = t.wrapped
+            return t
+        if (all(_strip(a) == _strip(p) for a, p in zip(arg_inner.param_types, param_inner.param_types))
+                and _strip(arg_inner.return_type) == _strip(param_inner.return_type)):
+            return True
+    # IntLiteralType matches the specific FixedIntType it was inferred to (from
+    # generic resolution). This allows resolved-generic overloads like
+    # range(stop: Int32) to match IntLiteralType(5) in the first pass.
+    if isinstance(arg_inner, IntLiteralType) and isinstance(param_inner, FixedIntType):
+        if arg_inner.value is None or param_inner.min_value <= arg_inner.value <= param_inner.max_value:
+            return True
     # None literal (NoneType) matches None type annotation (VoidType)
     if isinstance(arg_inner, NoneType) and isinstance(param_inner, VoidType):
         return True
@@ -94,6 +121,16 @@ def type_matches_strict(
     # PendingStrType (unresolved str local) matches str params
     if isinstance(arg_inner, PendingStrType) and isinstance(param_inner, StrType):
         return True
+    # Single-value LiteralType matches multi-value LiteralType if value is in the set.
+    # Only in strict pass -- LiteralType -> base type is deferred to coercion pass
+    # so that Literal stubs are preferred over plain stubs regardless of order.
+    if isinstance(arg_inner, LiteralType) and isinstance(param_inner, LiteralType):
+        return all(v in param_inner.values for v in arg_inner.values)
+    # IntLiteralType matches LiteralType with int base if value is in the set.
+    if isinstance(arg_inner, IntLiteralType) and isinstance(param_inner, LiteralType) and param_inner.is_int_base():
+        if arg_inner.value is not None:
+            return param_inner.contains("int", arg_inner.value)
+        return False
     # PendingBytesType (unresolved bytes local) matches bytes params
     if isinstance(arg_inner, PendingBytesType) and isinstance(param_inner, BytesType):
         return True
@@ -170,17 +207,33 @@ def type_matches_with_coercion(
 
     Used for overload resolution second pass and constructor matching.
     """
-    # Unwrap ReadonlyType and OwnType from args -- mutable values match
-    # readonly params, and Own[T] variables match T params.
-    arg_inner = unwrap_readonly(arg_type)
+    # Unwrap ReadonlyType, OwnType, RefType from args -- mutable values match
+    # readonly params, Own[T] variables match T params, and Ref[T] is transparent.
+    arg_inner = unwrap_ref_type(unwrap_readonly(arg_type))
     if isinstance(arg_inner, OwnType):
         arg_inner = arg_inner.wrapped
-    param_inner = unwrap_readonly(param_type)
+    param_inner = unwrap_ref_type(unwrap_readonly(param_type))
     if type_matches_numeric(arg_inner, param_inner):
         return True
     # PendingStrType matches any string type (str, String, StrView)
     if isinstance(arg_inner, PendingStrType) and isinstance(param_inner, (StrType, StringType, StrViewType)):
         return True
+    # Single-value LiteralType matches multi-value LiteralType if value is in the set
+    if isinstance(arg_inner, LiteralType) and isinstance(param_inner, LiteralType):
+        return all(v in param_inner.values for v in arg_inner.values)
+    # LiteralType falls back to matching its base type
+    if isinstance(arg_inner, LiteralType):
+        if arg_inner.is_str_base() and isinstance(param_inner, (StrType, StringType, StrViewType)):
+            return True
+        if arg_inner.is_int_base() and isinstance(param_inner, (FixedIntType, BigIntType)):
+            return True
+        if arg_inner.is_bool_base() and isinstance(param_inner, BoolType):
+            return True
+    # IntLiteralType matches LiteralType with int base if value is in the set
+    if isinstance(arg_inner, IntLiteralType) and isinstance(param_inner, LiteralType) and param_inner.is_int_base():
+        if arg_inner.value is not None:
+            return param_inner.contains("int", arg_inner.value)
+        return False
     # PendingBytesType matches any bytes type (bytes, bytearray, BytesView)
     if isinstance(arg_inner, PendingBytesType) and isinstance(param_inner, (BytesType, ByteArrayType, BytesViewType)):
         return True
@@ -308,7 +361,7 @@ def resolve_overload(
             score = sum(1 for arg_t, (_, ptype) in zip(arg_types, overload.params)
                         if type_matches_numeric(arg_t, ptype))
             narrowing = sum(1 for arg_t, (_, ptype) in zip(arg_types, overload.params)
-                           if isinstance(arg_t, BigIntType) and isinstance(ptype, Int32Type))
+                           if isinstance(arg_t, BigIntType) and isinstance(unwrap_ref_type(ptype), Int32Type))
             candidates.append((score, narrowing, overload))
 
     if candidates:
@@ -318,6 +371,7 @@ def resolve_overload(
         def _int_literal_penalty(arg_t: TpyType, ptype: TpyType) -> int:
             if not isinstance(arg_t, IntLiteralType):
                 return 0
+            ptype = unwrap_ref_type(ptype)
             # Prefer the configured default integer type for integer literals.
             if ptype == default_int_type:
                 return 0
