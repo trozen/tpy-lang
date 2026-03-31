@@ -13,7 +13,7 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, Int32Type, FixedIntType, BigIntType, BIGINT,
     FloatType, Float32Type,
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
-    PendingStrType, StrType, StringType, StrViewType,
+    PendingStrType, StrType, StringType, StrViewType, StrLiteralType, LiteralStrType,
     PendingBytesType, BytesType, ByteArrayType, BytesViewType,
     NamedType, PtrType, OwnType, FnType, CallableType, VoidType, NoneType,
 )
@@ -94,6 +94,11 @@ def type_matches_strict(
     # PendingStrType (unresolved str local) matches str params
     if isinstance(arg_inner, PendingStrType) and isinstance(param_inner, StrType):
         return True
+    # StrLiteralType("rb") matches LiteralStrType(("rb", ...)) if value in values.
+    # Only in strict pass -- StrLiteralType -> StrType is deferred to coercion pass
+    # so that Literal stubs are preferred over plain str stubs regardless of order.
+    if isinstance(arg_inner, StrLiteralType) and isinstance(param_inner, LiteralStrType):
+        return arg_inner.value in param_inner.values
     # PendingBytesType (unresolved bytes local) matches bytes params
     if isinstance(arg_inner, PendingBytesType) and isinstance(param_inner, BytesType):
         return True
@@ -180,6 +185,12 @@ def type_matches_with_coercion(
         return True
     # PendingStrType matches any string type (str, String, StrView)
     if isinstance(arg_inner, PendingStrType) and isinstance(param_inner, (StrType, StringType, StrViewType)):
+        return True
+    # StrLiteralType("rb") matches LiteralStrType(("rb", ...)) if value in values
+    if isinstance(arg_inner, StrLiteralType) and isinstance(param_inner, LiteralStrType):
+        return arg_inner.value in param_inner.values
+    # StrLiteralType matches any string type (fallback)
+    if isinstance(arg_inner, StrLiteralType) and isinstance(param_inner, (StrType, StringType, StrViewType)):
         return True
     # PendingBytesType matches any bytes type (bytes, bytearray, BytesView)
     if isinstance(arg_inner, PendingBytesType) and isinstance(param_inner, (BytesType, ByteArrayType, BytesViewType)):

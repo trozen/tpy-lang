@@ -1,0 +1,1 @@
+main.py:6: error: Literal currently only supports string arguments

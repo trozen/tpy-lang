@@ -75,7 +75,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D4 | with statement | M | Done | [VI](#with-statement-context-managers) |
 | D5 | Nested `def` with captures, `nonlocal` | M-L | Done | [VI](#closures--nested-functions) |
 | D6 | Properties (@property) | M | Not started | [VII](#properties) |
-| D7 | String literal types (Literal[...]) | M | Not started | [III](#string-literal-types) |
+| D7 | String literal types (Literal[...]) | M | Phase 1 done | [III](#string-literal-types) |
 | D8 | `@override` decorator | S | Done | [VII](#override-decorator) |
 | D9 | set type | L | Done | [VII](#set-type) |
 | D10 | bytes type | M | Done | [VII](#bytes-type) |
@@ -1081,25 +1081,52 @@ user-defined classes of the same name. See `docs/ERROR_RETURN_DESIGN.md` for ful
 ### String Literal Types
 
 ```python
-def open(path: str, mode: Literal["r", "w", "rb", "wb"] = "r") -> File:
-    ...
+from typing import Literal, overload
 
-open("data.txt", "r")    # ok
-open("data.txt", "x")    # compile error: "x" not in Literal["r", "w", "rb", "wb"]
+@overload
+def open_file(path: str, mode: Literal["r", "w"]) -> TextIO: ...
+@overload
+def open_file(path: str, mode: Literal["rb", "wb"]) -> BinaryIO: ...
+@overload
+def open_file(path: str, mode: str) -> TextIO: ...  # fallback
+
+open_file("data.txt", "r")    # -> TextIO (matched Literal["r", "w"])
+open_file("data.txt", "rb")   # -> BinaryIO (matched Literal["rb", "wb"])
+mode = "r"
+open_file("data.txt", mode)   # -> TextIO (variable, falls through to str)
 ```
 
-Compile-time checked string sets for API compatibility (e.g. `open()` mode parameter).
-Could map to `enum class` internally while accepting string syntax at TPy level.
+Compile-time checked string sets for `@overload` dispatch. `Literal["r", "w", ...]`
+in parameter annotations enables overload resolution based on string literal values.
+Multi-value `Literal` supported. Only direct string literal arguments dispatch to
+`Literal` overloads; variables fall through to plain `str` overloads.
 
 **Why it matters**: Catches a common class of Python `ValueError` at compile time.
 Natural extension of the type system. Works well with overloads (different return types
-per literal value).
+per literal value). Key enabler for `open()` binary mode dispatch.
 
-**Current state**: Not started.
+**Current state**: Phase 1 done. Phases 2-4 planned.
 
-**Dependencies**: Enums (internal representation). String equality at compile time.
+- **Phase 1 (done)**: `Literal["a", "b", ...]` with string values only. Meaningful in
+  `@overload` parameter annotations. `StrLiteralType` produced only at call sites during
+  overload resolution (ephemeral -- never stored in variables or reaching codegen).
+  Ordering-independent: `Literal` stubs are preferred over plain `str` stubs regardless
+  of declaration order. Works for free functions, methods, and builtins with `@cpp_template`.
+- **Phase 2**: Integer and bool literals. Extend `Literal` to hold `int`/`bool` values.
+  `Literal[0, 1]` matches `IntLiteralType(0)` or `IntLiteralType(1)`. Unifies with
+  existing `IntLiteralType` infrastructure.
+- **Phase 3**: Literal types in expressions. `StrLiteralType` flows through variables
+  (like `IntLiteralType` does today). `x: Literal["rb"] = "rb"` retains the literal type.
+  Enables indirect dispatch: `mode: Literal["rb"] = "rb"; open(path, mode)`. Requires
+  auditing all `isinstance(t, StrType)` checks.
+- **Phase 4**: Literal as a general type. Usable anywhere a type is expected (return types,
+  fields, unions). `Literal["a"] | Literal["b"]` == `Literal["a", "b"]`. Narrowing:
+  `if mode == "r":` narrows `Literal["r", "w"]` to `Literal["r"]`.
 
-**Effort**: M
+**Dependencies**: Phase 1: None (done). Phase 2: None. Phase 3: Audit of str type checks.
+Phase 4: Narrowing infrastructure.
+
+**Effort**: Phase 1: S (done). Phase 2: S. Phase 3: M. Phase 4: L.
 
 ---
 

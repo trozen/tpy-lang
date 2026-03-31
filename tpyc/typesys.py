@@ -928,6 +928,67 @@ class IntLiteralType(TpyType):
 
 
 @dataclass(frozen=True)
+class StrLiteralType(TpyType):
+    """String literal with known value -- used during overload resolution only.
+
+    Produced by enrichment at call sites when a TpyStrLiteral expression
+    is passed as an argument. Matches LiteralStrType params (value in values)
+    and plain str/StrView/String params (fallback).
+
+    Never stored in variables, never reaches codegen.
+    """
+    value: str
+
+    def to_cpp(self) -> str:
+        return "std::string"
+
+    def __str__(self) -> str:
+        return f"Literal[\"{self.value}\"]"
+
+    def is_value_type(self) -> bool:
+        return True
+
+
+@dataclass(frozen=True)
+class LiteralStrType(TpyType):
+    """Literal["r", "w", ...] annotation type for string literal dispatch.
+
+    Appears in FunctionInfo.params for @overload stubs.
+    Behaves like StrType for codegen (same C++ representation).
+    In overload matching, StrLiteralType(v) matches if v is in self.values.
+    """
+    values: tuple[str, ...]
+
+    def to_cpp(self) -> str:
+        return "std::string"
+
+    def __str__(self) -> str:
+        vals = ", ".join(f'"{v}"' for v in self.values)
+        return f"Literal[{vals}]"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.str"
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def is_expensive_copy(self) -> bool:
+        return True
+
+    def to_cpp_param_type(self) -> str:
+        return "std::string_view"
+
+    def to_cpp_param(self, name: str) -> str:
+        return f"std::string_view {name}"
+
+    def to_cpp_const_param(self, name: str) -> str:
+        return f"std::string_view {name}"
+
+    def param_needs_copy_for_reassign(self) -> bool:
+        return True
+
+
+@dataclass(frozen=True)
 class FloatLiteralType(TpyType):
     """Unresolved float literal - adapts to Float32 or float64 based on context.
 
@@ -1596,8 +1657,13 @@ def unwrap_final(typ: 'TpyType') -> 'TpyType':
 
 
 def is_any_str_type(typ: 'TpyType') -> bool:
-    """Check if a type is any string type (str, String, StrView, PendingStr)."""
-    return isinstance(typ, (StrType, StringType, StrViewType, PendingStrType))
+    """Check if a type is any string type (str, String, StrView, PendingStr, Literal[str]).
+
+    Includes LiteralStrType (the Literal["r", "w"] annotation type in stub params).
+    Excludes StrLiteralType (the ephemeral per-argument enrichment type that only
+    exists during overload resolution and never reaches storage or codegen contexts).
+    """
+    return isinstance(typ, (StrType, StringType, StrViewType, PendingStrType, LiteralStrType))
 
 
 def is_any_bytes_type(typ: 'TpyType') -> bool:

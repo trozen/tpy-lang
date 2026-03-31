@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, NamedType, OwnType, ReadonlyType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
     UnionType, VoidType, FnType,
     BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
-    Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, is_any_str_type, SpanType,
+    Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, LiteralStrType, is_any_str_type, SpanType,
     resolve_int_literals, CONST_PARAMS_METHODS,
     error_return_to_cpp,
 )
@@ -562,8 +562,12 @@ class FunctionGenerator:
         # @overload implementation: emit forward decls for each stub instead
         overload_stubs = self.ctx.analyzer.overload_groups.get(id(func))
         if overload_stubs:
-            for stub in overload_stubs:
-                self._gen_function_forward_decl_single(out, stub)
+            if self._overload_stubs_are_literal_only(overload_stubs, func):
+                # Literal-only stubs: single forward decl for the implementation
+                self._gen_function_forward_decl_single(out, func)
+            else:
+                for stub in overload_stubs:
+                    self._gen_function_forward_decl_single(out, stub)
             return True
         if func.is_stub and not func.is_overload_stub:
             return False
@@ -629,13 +633,14 @@ class FunctionGenerator:
         # @overload implementation with template params: emit specialized defs in header
         overload_stubs = self.ctx.analyzer.overload_groups.get(id(func))
         if overload_stubs:
-            is_generic = bool(func.type_params)
-            has_proto_params = bool(self.protocols.get_all_protocol_params(func.params))
-            if is_generic or has_proto_params:
-                for stub in overload_stubs:
-                    self._gen_overload_specialized_function(out, func, stub)
-                    out.write("\n")
-                return True
+            if not self._overload_stubs_are_literal_only(overload_stubs, func):
+                is_generic = bool(func.type_params)
+                has_proto_params = bool(self.protocols.get_all_protocol_params(func.params))
+                if is_generic or has_proto_params:
+                    for stub in overload_stubs:
+                        self._gen_overload_specialized_function(out, func, stub)
+                        out.write("\n")
+                    return True
             return False
 
         # @native_c and @extern_c both use extern "C" linkage
@@ -713,10 +718,16 @@ class FunctionGenerator:
         # @overload implementation: emit per-stub specialized functions
         overload_stubs = self.ctx.analyzer.overload_groups.get(id(func))
         if overload_stubs:
-            for stub in overload_stubs:
-                self._gen_overload_specialized_function(out, func, stub)
-                out.write("\n")
-            return
+            # Skip per-stub specialization when stubs only differ by Literal
+            # annotations (same C++ parameter types). Emit the implementation
+            # as a single function -- Literal dispatch is compile-time only.
+            if self._overload_stubs_are_literal_only(overload_stubs, func):
+                pass  # fall through to normal function emission
+            else:
+                for stub in overload_stubs:
+                    self._gen_overload_specialized_function(out, func, stub)
+                    out.write("\n")
+                return
 
         self.ctx.emit_preceding_comments(out, func.loc)
         self.ctx.emit_source_comment(out, func.loc)
@@ -775,6 +786,28 @@ class FunctionGenerator:
                                  const_ref_params=crp)
 
         out.write("}\n")
+
+    def _overload_stubs_are_literal_only(
+        self, stubs: list[TpyFunction], impl: TpyFunction,
+    ) -> bool:
+        """Check if overload stubs differ from the impl only by Literal annotations.
+
+        When all stubs have the same C++ parameter types as the implementation
+        (because they only differ by LiteralStrType vs StrType), per-stub
+        specialization would produce duplicate C++ definitions. In that case,
+        emit just the implementation function.
+        """
+        for stub in stubs:
+            for (_, impl_ptype), (_, stub_ptype) in zip(impl.params, stub.params):
+                if isinstance(stub_ptype, LiteralStrType):
+                    continue
+                if stub_ptype != impl_ptype:
+                    return False
+        return any(
+            isinstance(ptype, LiteralStrType)
+            for stub in stubs
+            for _, ptype in stub.params
+        )
 
     def _gen_overload_specialized_function(
         self, out: TextIO, impl: TpyFunction, stub: TpyFunction,

@@ -3,10 +3,10 @@
 from tpy._typing import (
     Protocol, Self, overload, override,
     Sized, Sequence, MutableSequence, Iterator, Iterable,
-    Optional, Final, Callable,
+    Optional, Final, Callable, Literal,
 )
 
 __all__ = [
     "Optional", "Protocol", "Self", "Sized", "Sequence", "MutableSequence",
-    "Iterator", "Iterable", "Final", "override", "overload", "Callable",
+    "Iterator", "Iterable", "Final", "override", "overload", "Callable", "Literal",
 ]

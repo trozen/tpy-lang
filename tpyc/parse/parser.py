@@ -17,7 +17,7 @@ from ..typesys import (
     strip_auto_readonly, apply_auto_readonly, has_auto_readonly, strip_auto_own, apply_auto_own, ensure_qualified,
     TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType, FnType, CallableType,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW, BOOL, FLOAT, FLOAT32, BIGINT, SELF, SLICE, FieldInfo, RecordInfo, TypeRegistry,
-    FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, BoolType, StrType,
+    FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, BoolType, StrType, LiteralStrType,
     ALL_FIXED_INTS, public_module_name,
 )
 from ..modules import lookup_generic_type, lookup_generic_type_in_module, BuiltinTypeDef
@@ -2198,6 +2198,18 @@ class Parser:
                         )
                         return_type = self._parse_type_annotation(return_node, type_param_scope)
                         return CallableType(param_types, return_type)
+                    elif original == "Literal":
+                        slices = _extract_subscript_slices(node)
+                        if not slices:
+                            raise ParseError("Literal requires at least one argument", node)
+                        values: list[str] = []
+                        for s in slices:
+                            if isinstance(s, ast.Constant) and isinstance(s.value, str):
+                                values.append(s.value)
+                            else:
+                                raise ParseError(
+                                    "Literal currently only supports string arguments", node)
+                        return LiteralStrType(tuple(values))
             else:
                 # Qualified name with missing module import
                 if isinstance(node.value, ast.Attribute):

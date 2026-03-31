@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Optional
 
 from ..typesys import (
-    TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, StrType, StrViewType, VoidType, VOID,
+    TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, StrType, StrViewType, LiteralStrType, VoidType, VOID,
     INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
     FunctionInfo, EnumType, is_any_str_type,
 )
@@ -893,6 +893,9 @@ class SemanticAnalyzer:
                 for stub in stubs:
                     stub_ptype = self.type_ops.resolve_type(stub.params[param_idx][1])
                     if stub_ptype != resolved:
+                        # LiteralStrType is compatible with StrType impl param
+                        if isinstance(stub_ptype, LiteralStrType) and isinstance(resolved, StrType):
+                            continue
                         raise SemanticError(
                             f"@overload stub type '{stub_ptype}' for parameter '{pname}' "
                             f"does not match implementation type '{resolved}'",
@@ -999,6 +1002,9 @@ class SemanticAnalyzer:
                 for stub in stubs:
                     stub_ptype = self.type_ops.resolve_type(stub.params[param_idx][1])
                     if stub_ptype != resolved:
+                        # LiteralStrType is compatible with StrType impl param
+                        if isinstance(stub_ptype, LiteralStrType) and isinstance(resolved, StrType):
+                            continue
                         raise SemanticError(
                             f"@overload stub type '{stub_ptype}' for parameter '{pname}' "
                             f"does not match implementation type '{resolved}'",

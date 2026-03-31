@@ -11,7 +11,7 @@ from typing import Callable, TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingViewType, CopyIterType, OwnIterType,
     IntLiteralType, FloatType, Float32Type, BoolType, resolve_int_literals,
-    StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
+    StrType, StrLiteralType, LiteralStrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
     UNKNOWN_ELEMENT, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
     UnionType, EnumType, VOID, BIGINT, BOOL, STR, INT32, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own,
@@ -96,6 +96,33 @@ def prefer_strview_for_literals(
                 if not type_conforms_to_protocol(STRVIEW, func.type_param_bounds[tp]):
                     continue
             type_subst[tp] = STRVIEW
+
+
+def _enrich_str_literal_types(
+    arg_types: list[TpyType], args: list[TpyExpr],
+    candidates: list[FunctionInfo],
+) -> list[TpyType]:
+    """Create enriched arg types where str literal args become StrLiteralType.
+
+    Returns a new list where TpyStrLiteral arguments with StrType get
+    StrLiteralType(value) instead. Used only for overload resolution;
+    the original arg_types are used for everything else.
+
+    Only enriches when at least one candidate has a LiteralStrType param,
+    to avoid breaking protocol-based matching (e.g. hash(Hashable)).
+    """
+    has_literal_param = any(
+        isinstance(p.type, LiteralStrType) for c in candidates for p in c.params
+    )
+    if not has_literal_param:
+        return arg_types
+    enriched = []
+    for arg_t, arg in zip(arg_types, args):
+        if isinstance(arg_t, StrType) and isinstance(arg, TpyStrLiteral):
+            enriched.append(StrLiteralType(arg.value))
+        else:
+            enriched.append(arg_t)
+    return enriched
 
 
 def arity_error_msg(name: str, min_args: int, max_args: int, got: int) -> str:
@@ -1833,7 +1860,8 @@ class CallAnalyzer:
                 generic_originals[id(resolved)] = (overload, type_subst)
 
         # Unified resolution: score all candidates (non-generic + resolved generics)
-        matched = resolve_overload(candidates, arg_types, protocol_checker,
+        enriched_types = _enrich_str_literal_types(arg_types, expr.args, candidates)
+        matched = resolve_overload(candidates, enriched_types, protocol_checker,
                                    deref_checker=self.type_ops.get_deref_coercion_target,
                                    default_int_type=self.ctx.default_int_type,
                                    subclass_checker=self.ctx.registry.is_subclass_of)
@@ -1989,8 +2017,9 @@ class CallAnalyzer:
                 else:
                     candidates.append(func)
 
+            enriched_types = _enrich_str_literal_types(arg_types, expr.args, candidates)
             matched = resolve_overload(
-                candidates, arg_types,
+                candidates, enriched_types,
                 protocol_checker=self.protocols.type_conforms_to_protocol,
                 default_int_type=self.ctx.default_int_type,
                 subclass_checker=self.ctx.registry.is_subclass_of,
@@ -2004,7 +2033,7 @@ class CallAnalyzer:
             # No match in unified pool. Fall back to original resolution
             # (structural matching for generics) to preserve error messages.
             matched = resolve_overload(
-                func_infos, arg_types,
+                func_infos, enriched_types,
                 protocol_checker=self.protocols.type_conforms_to_protocol,
                 subclass_checker=self.ctx.registry.is_subclass_of,
             )

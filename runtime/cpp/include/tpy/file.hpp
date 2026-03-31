@@ -28,14 +28,33 @@ class TextFile {
 public:
     TextFile(std::string_view path, std::string_view mode) : path_(path) {
         std::ios_base::openmode m{};
-        if (mode == "r") {
+        if (mode == "r" || mode == "rt") {
             m = std::ios::in;
             readable_ = true;
-        } else if (mode == "w") {
+        } else if (mode == "w" || mode == "wt") {
             m = std::ios::out | std::ios::trunc;
             writable_ = true;
-        } else if (mode == "a") {
+        } else if (mode == "a" || mode == "at") {
             m = std::ios::out | std::ios::app;
+            writable_ = true;
+        } else if (mode == "r+" || mode == "r+t" || mode == "rt+") {
+            m = std::ios::in | std::ios::out;
+            readable_ = true;
+            writable_ = true;
+        } else if (mode == "w+" || mode == "w+t" || mode == "wt+") {
+            m = std::ios::in | std::ios::out | std::ios::trunc;
+            readable_ = true;
+            writable_ = true;
+        } else if (mode == "a+" || mode == "a+t" || mode == "at+") {
+            m = std::ios::in | std::ios::out | std::ios::app;
+            readable_ = true;
+            writable_ = true;
+        } else if (mode == "x" || mode == "xt") {
+            m = std::ios::out | std::ios::trunc | std::ios::noreplace;
+            writable_ = true;
+        } else if (mode == "x+" || mode == "x+t" || mode == "xt+") {
+            m = std::ios::in | std::ios::out | std::ios::trunc | std::ios::noreplace;
+            readable_ = true;
             writable_ = true;
         } else {
             tpy_panic(("open(): unsupported mode '" + std::string(mode) + "'").c_str());
@@ -106,12 +125,100 @@ public:
     ~TextFile() { close(); }
 };
 
+class BinaryFile {
+    std::fstream fs_;
+    std::string path_;
+    bool readable_ = false;
+    bool writable_ = false;
+    bool closed_ = false;
+
+public:
+    BinaryFile(std::string_view path, std::string_view mode) : path_(path) {
+        std::ios_base::openmode m = std::ios::binary;
+        if (mode == "rb") {
+            m |= std::ios::in;
+            readable_ = true;
+        } else if (mode == "wb") {
+            m |= std::ios::out | std::ios::trunc;
+            writable_ = true;
+        } else if (mode == "ab") {
+            m |= std::ios::out | std::ios::app;
+            writable_ = true;
+        } else if (mode == "r+b" || mode == "rb+") {
+            m |= std::ios::in | std::ios::out;
+            readable_ = true;
+            writable_ = true;
+        } else if (mode == "w+b" || mode == "wb+") {
+            m |= std::ios::in | std::ios::out | std::ios::trunc;
+            readable_ = true;
+            writable_ = true;
+        } else if (mode == "a+b" || mode == "ab+") {
+            m |= std::ios::in | std::ios::out | std::ios::app;
+            readable_ = true;
+            writable_ = true;
+        } else if (mode == "xb") {
+            m |= std::ios::out | std::ios::trunc | std::ios::noreplace;
+            writable_ = true;
+        } else if (mode == "x+b" || mode == "xb+") {
+            m |= std::ios::in | std::ios::out | std::ios::trunc | std::ios::noreplace;
+            readable_ = true;
+            writable_ = true;
+        } else {
+            tpy_panic(("open(): unsupported binary mode '" + std::string(mode) + "'").c_str());
+        }
+        fs_.open(path_, m);
+        if (!fs_.is_open()) {
+            tpy_panic(("open(): cannot open '" + std::string(path) + "'").c_str());
+        }
+    }
+
+    BinaryFile(BinaryFile&&) = default;
+    BinaryFile& operator=(BinaryFile&&) = default;
+    BinaryFile(const BinaryFile&) = delete;
+    BinaryFile& operator=(const BinaryFile&) = delete;
+
+    std::vector<uint8_t> read() {
+        if (!readable_) tpy_panic("read(): file not opened for reading");
+        return std::vector<uint8_t>(
+            std::istreambuf_iterator<char>(fs_),
+            std::istreambuf_iterator<char>()
+        );
+    }
+
+    int32_t write(std::span<const uint8_t> data) {
+        if (!writable_) tpy_panic("write(): file not opened for writing");
+        fs_.write(reinterpret_cast<const char*>(data.data()),
+                  static_cast<std::streamsize>(data.size()));
+        return static_cast<int32_t>(data.size());
+    }
+
+    void close() {
+        if (!closed_) {
+            fs_.close();
+            closed_ = true;
+        }
+    }
+
+    BinaryFile& __enter__() { return *this; }
+    void __exit__() { close(); }
+
+    friend std::ostream& operator<<(std::ostream& os, const BinaryFile& f) {
+        return os << "<BinaryIO '" << f.path_ << "'>";
+    }
+
+    ~BinaryFile() { close(); }
+};
+
 inline TextFile builtin_open(std::string_view path) {
     return TextFile(path, "r");
 }
 
 inline TextFile builtin_open_mode(std::string_view path, std::string_view mode) {
     return TextFile(path, mode);
+}
+
+inline BinaryFile builtin_open_binary(std::string_view path, std::string_view mode) {
+    return BinaryFile(path, mode);
 }
 
 } // namespace tpy

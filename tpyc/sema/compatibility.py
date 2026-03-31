@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Optional
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, BigIntType, Int32Type, ArrayType, ListType, ListRepeatType, DictType, SetType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, UnknownElementType,
-    SpanType, StrType, StringType, StrViewType, BytesType, ByteArrayType, BytesViewType, FloatType, Float32Type,
+    SpanType, StrType, StringType, StrViewType, LiteralStrType, BytesType, ByteArrayType, BytesViewType, FloatType, Float32Type,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
     is_protocol_type, unwrap_readonly, unwrap_optional_own, local_var_is_movable,
@@ -586,10 +586,17 @@ class TypeCompatibility:
 
         # Allow PendingStrType compatibility during first phase (before resolution)
         if isinstance(actual, PendingStrType):
-            if isinstance(expected, (StrType, StringType, StrViewType, PendingStrType)):
+            if isinstance(expected, (StrType, StringType, StrViewType, PendingStrType, LiteralStrType)):
                 return None
         if isinstance(expected, PendingStrType):
             if isinstance(actual, (StrType, StringType, StrViewType)):
+                return None
+        # LiteralStrType behaves like StrType for compatibility
+        if isinstance(expected, LiteralStrType):
+            if isinstance(actual, (StrType, StringType, StrViewType)):
+                return None
+        if isinstance(actual, LiteralStrType):
+            if isinstance(expected, (StrType, StringType, StrViewType)):
                 return None
         # Allow PendingBytesType compatibility during first phase (before resolution)
         if isinstance(actual, PendingBytesType):
