@@ -1723,7 +1723,7 @@ class ExpressionGenerator:
             # functions -- their C++ signatures use natural parameter types so
             # template argument deduction works correctly.
             if func_info.is_generic() and expr.inferred_type_args and not func_info.is_native_import:
-                type_args_str = ", ".join(self.types.type_to_cpp(t) for t in expr.inferred_type_args)
+                type_args_str = ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in expr.inferred_type_args)
                 return f"{func_cpp_name}<{type_args_str}>({', '.join(gen_args)})"
             return f"{func_cpp_name}({', '.join(gen_args)})"
         # Generic type instantiation (e.g., Container[T, N]())
@@ -1962,7 +1962,7 @@ class ExpressionGenerator:
                 return f"{qualified_cpp_name(expr.user_module_call, func_name)}({args})"
             # Emit explicit template args for generic user-module calls
             if fi and fi.is_generic() and expr.inferred_type_args:
-                type_args_str = ", ".join(self.types.type_to_cpp(t) for t in expr.inferred_type_args)
+                type_args_str = ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in expr.inferred_type_args)
                 return f"{qualified_cpp_name(expr.user_module_call, expr.method)}<{type_args_str}>({args})"
             return f"{qualified_cpp_name(expr.user_module_call, expr.method)}({args})"
 
@@ -2029,7 +2029,7 @@ class ExpressionGenerator:
         # Build explicit template args for generic method calls
         method_targs = ""
         if expr.inferred_type_args and not expr.user_module_call and not expr.is_static_call:
-            method_targs = "<" + ", ".join(self.types.type_to_cpp(t) for t in expr.inferred_type_args) + ">"
+            method_targs = "<" + ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in expr.inferred_type_args) + ">"
 
         # Handle self.method() -> just method() (inside method, implicit this)
         if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
@@ -2063,10 +2063,10 @@ class ExpressionGenerator:
                 class_args = expr.inferred_type_args[:n_class]
                 method_args = expr.inferred_type_args[n_class:]
                 if class_args:
-                    type_args_str = ", ".join(self.types.type_to_cpp(t) for t in class_args)
+                    type_args_str = ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in class_args)
                     class_name = f"{class_name}<{type_args_str}>"
                 if method_args:
-                    static_method_targs = "<" + ", ".join(self.types.type_to_cpp(t) for t in method_args) + ">"
+                    static_method_targs = "<" + ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in method_args) + ">"
             return f"{class_name}::{expr.method}{static_method_targs}({args})"
         # Handle module.function() (import X -> X.func())
         # Only if the name isn't shadowed by a variable, user-defined function, or record
@@ -3529,7 +3529,7 @@ class ExpressionGenerator:
         # Build template args suffix for generic function refs
         targs = ""
         if expr.function_ref_type_args:
-            targs = "<" + ", ".join(self.types.type_to_cpp(t) for t in expr.function_ref_type_args) + ">"
+            targs = "<" + ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in expr.function_ref_type_args) + ">"
         # Cross-module: use qualified name
         if expr.name in self.ctx.user_imported_functions:
             source_module, original_name = self.ctx.user_imported_functions[expr.name]

@@ -127,8 +127,30 @@ public:
 };
 
 namespace detail {
+// Requires homogeneous begin/end (same iterator type) so enumerate_direct_iter
+// can store both as CppIter. Excludes next_iter_mixin-derived types whose
+// begin() returns NextIterator<...> but end() returns NextSentinel.
 template<typename T>
-concept has_begin_end = requires(T& t) { t.begin(); t.end(); };
+concept has_begin_end = requires(T& t) { t.begin(); t.end(); }
+    && std::same_as<decltype(std::declval<T&>().begin()), decltype(std::declval<T&>().end())>;
+
+// Extract Nth parameter type from a callable (function pointer, lambda, std::function).
+// Used by map_multi_iter to forward Own[T] args as rvalue refs.
+// Generic lambdas (auto params) are not supported -- tpyc always emits
+// monomorphic lambdas with concrete parameter types.
+template<typename F> struct fn_params;
+template<typename R, typename... A> struct fn_params<R(*)(A...)> { using types = std::tuple<A...>; };
+template<typename R, typename... A> struct fn_params<R(&)(A...)> { using types = std::tuple<A...>; };
+template<typename C, typename R, typename... A> struct fn_params<R(C::*)(A...) const> { using types = std::tuple<A...>; };
+template<typename C, typename R, typename... A> struct fn_params<R(C::*)(A...)> { using types = std::tuple<A...>; };
+
+template<typename F>
+concept has_call_op = requires { &std::remove_cvref_t<F>::operator(); };
+
+template<has_call_op F> struct fn_params<F> : fn_params<decltype(&std::remove_cvref_t<F>::operator())> {};
+
+template<typename F, size_t N>
+using fn_param_t = std::tuple_element_t<N, typename fn_params<std::remove_cvref_t<F>>::types>;
 }
 
 // lvalue: direct iteration for containers (preserves references),
@@ -470,7 +492,8 @@ class map_multi_iter : public next_iter_mixin<map_multi_iter<U, Fn, IterTuple>, 
         auto results = std::tuple{std::get<Is>(iters_).__next__()...};
         if ((!std::get<Is>(results).has_value() || ...))
             return tpy::make_unexpected(StopIteration{});
-        return fn_(unwrap_ref(*std::get<Is>(results))...);
+        // static_cast forwards Own[T] args (Point&&) as rvalues, others as lvalues
+        return fn_(static_cast<detail::fn_param_t<Fn, Is>>(unwrap_ref(*std::get<Is>(results)))...);
     }
 
 public:
@@ -506,7 +529,7 @@ class owning_map_multi_iter
         auto results = std::tuple{std::get<Is>(iters_).__next__()...};
         if ((!std::get<Is>(results).has_value() || ...))
             return tpy::make_unexpected(StopIteration{});
-        return fn_(unwrap_ref(*std::get<Is>(results))...);
+        return fn_(static_cast<detail::fn_param_t<Fn, Is>>(unwrap_ref(*std::get<Is>(results)))...);
     }
 
 public:

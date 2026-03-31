@@ -3,9 +3,8 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
-- Ref[T] follow-up: user-defined generic functions (`def apply[T, U](fn: Fn[[T], U], v: T) -> U`) emit `Point&` as explicit C++ type arg when U=Ref[Point], breaking `val_or_ref_t<Point&>`. Fix: use `to_cpp_stored()` for explicit type args in the generic call codegen path (same pattern as `@cpp_template` builtins). Small change -- one codegen path.
-- Ref[T] follow-up: mixed Ref/Own in multi-iterable map -- `map(fn, refs, owns)` where fn takes `(Point, Own[Point])`. Two issues: (1) C++ `map_multi_iter::call_next()` passes all args as lvalue refs, but `Own[Point]` param needs rvalue ref (`Point&&`). Fix: generate `std::move()` for Own-typed args in the call. (2) `own_iter()` as an rvalue iterable triggers the owning map overload that moves ALL iterables. Fix: separate lvalue/rvalue handling per-iterable in `builtin_map_n`.
-- Combinator composition: `enumerate(map(fn, xs))` fails at C++ level because `enumerate_direct_iter` uses `begin()/end()` but `map_iter` only provides `__next__()`. The codegen should detect `__next__()-`based iterables and use the next-based loop path instead of begin/end. Pre-existing issue exposed by chaining combinators. Once fixed, add regression tests for `enumerate(map(identity, pts))` and `enumerate(map(ro_identity, pts))` (readonly borrowed returns through composed combinators).
+- Combinator composition: reference preservation lost when chaining (e.g. `enumerate(map(identity, pts))` yields copies, not refs). The `owning_enumerate_iter` copies elements into `std::tuple<int32_t, T>` instead of using `val_or_ref<T>`. Need runtime support for reference-preserving tuples in composed iterators.
+- `zip(map(...), map(...))` fails: `owning_zip_iter` stores iterators via `decltype(__iter__(...))` which gives `map_iter&` (self-reference) for `__next__`-based types. The `iters_` tuple stores dangling references to the `make_iters` return value. Fix: store iterators by value (`std::remove_reference_t`) or add a `zip_iter` path for `__next__`-based rvalue inputs.
 - Ref[T] follow-up: warnings for implicit Ref->owned materialization (Phase 6 from the Ref design). Warn when Ref[T] is silently converted to owned T in storage positions where the copy is surprising. Suppressible via `copy()` or `Own[...]`.
 - Ref[T] follow-up: cleanup (Phase 7). Remove `is_value_type()` branching from base class `to_cpp_return()`/`to_cpp_param_type()`. Remove TypeParamRef's to_cpp overrides (now handled by `Ref[TypeParamRef]`). Replace remaining `to_cpp_*` method dispatch with centralized lowering API.
 - Resolve class-level type params in cpp_template at sema time: when sema resolves a generic constructor like `list[Int32](range(10))`, substitute `{T}` -> `Int32` into the template and store a fully-resolved `cpp_template` on `resolved_function_info`. Codegen would then never see unresolved type params -- every template would only have `{0}`, `{1}`, `{cpp}`. Eliminates the `type_subst`/`extract_type_params` machinery in codegen's call_type block and the regex guard in `_gen_call`.
@@ -67,7 +66,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Builtins
 - `sorted(key=)`, `min(key=)`, `max(key=)`: accept an optional `key` parameter (`Fn` or `Callable`). `sorted(items, key=lambda x: x.score)` is extremely common. The lambda/Fn infrastructure is already there -- just needs builtin signatures and codegen for comparison-via-key.
-- `map()` / `filter()`: reference preservation through iterator combinators needs `Ref[T]` design.
+- `map()` / `filter()`: reference preservation through single-combinator usage works via `Ref[T]`. Composed combinators (e.g. `enumerate(map(...))`) lose references -- see "Combinator composition" in Next section.
 - `open()` binary mode: needs string literal overload dispatch so `open(path, "rb")` returns `BinaryIO` while `open(path, "r")` returns `TextIO`. Requires compiler support for overload resolution based on literal argument values.
 - type(); (in future `T = type(x); z = T()`)
 - tpy.ctypes.CInt32
