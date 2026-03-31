@@ -6,7 +6,8 @@
 |-------|---------|--------|
 | 1 | `Literal["r", "w"]` string values in `@overload` params | Done |
 | 2 | Unified `LiteralType`, int/bool values, `LiteralValue(tag, value)` | Done |
-| 3 | Equality narrowing, dead branch elimination | Not started |
+| 3 | Equality narrowing | Done |
+| 3a | Dead branch elimination for single-value Literal | Not started |
 | 3b | Literal overload flattening (different return types per literal value) | Not started |
 | 4 | `match`/`case` exhaustiveness for Literal subjects | Not started |
 | 5 | Literal types in variables (`x: Literal["rb"] = "rb"`) | Not started |
@@ -94,76 +95,49 @@ set_priority(x)   # error: No matching @overload
 ```
 
 
-## Phase 3: Narrowing and Dead Branch Elimination
+## Phase 3: Equality Narrowing (Done)
 
 Equality-based narrowing for `Literal`-annotated parameters, enabling
 type-safe branching within function bodies. Prerequisite for Phase 3b
 (Literal overload flattening with different return types).
 
-### Equality Narrowing
+### What was implemented
 
-The narrowing system (`narrowing.py`) currently handles `isinstance`,
-`is None`, and truthiness. It does NOT handle equality comparisons on
-string/literal types.
+**Narrowing** (`narrowing.py`): `_literal_equality_facts()` extracts
+narrowing facts from `==`/`!=` comparisons on `LiteralType` variables.
+Both forms supported: `mode == "rb"` and `"rb" == mode`. Negative int
+literals handled via `TpyUnaryOp("-", TpyIntLiteral)`.
 
-Adding equality narrowing for Literal types:
+- `==`: true branch narrows to single-value `LiteralType`, false branch
+  removes that value (remaining values, or base type if empty).
+- `!=`: reversed (false branch gets single value, true branch gets remaining).
+- Composes with existing `&&`/`||`/`!` combinators.
 
-```python
-mode: Literal["r", "w", "rb", "wb"] = get_mode()
+**Compatibility** (`compatibility.py`): Added `LiteralType` vs
+`LiteralType` subset check -- a narrowed `Literal["rb"]` is compatible
+with `Literal["rb", "wb"]` because its values are a subset.
 
-if mode == "rb":
-    # Narrow: mode is Literal["rb"] (single value)
-    f = open(file, mode)  # -> BinaryIO (literal value known)
-else:
-    # Narrow: mode is Literal["r", "w", "wb"] (remaining values)
-    ...
-```
-
-**Implementation**: Add a new `elif` arm inside `_isinstance_facts` for
-`TpyBinOp` with `==`/`!=` operators (alongside the existing `&&`/`||`
-composition arms). Use `_expr_to_narrowing_key` (already imported from
-`prescan.py`) to extract the variable name:
+**Overload resolution with narrowed literals**: After narrowing, a
+single-value `LiteralType` variable dispatches to the correct overload
+stub. The enrichment step (Phase 2) passes through already-`LiteralType`
+args without needing AST-level literal detection.
 
 ```python
-elif isinstance(expr, TpyBinOp) and expr.op in ("==", "!="):
-    key = _expr_to_narrowing_key(expr.left)
-    if key and isinstance(expr.right, (TpyStrLiteral, TpyIntLiteral, TpyBoolLiteral)):
-        var_type = self.effective_type(key)
-        if isinstance(var_type, LiteralType):
-            value = LiteralValue(tag=..., value=expr.right.value)
-            if value in var_type.values:
-                true_type = LiteralType(base_type=var_type.base_type,
-                                        values=(value,))
-                remaining = tuple(v for v in var_type.values if v != value)
-                false_type = (LiteralType(base_type=var_type.base_type,
-                                          values=remaining)
-                              if remaining else var_type.base_type)
-                if expr.op == "==":
-                    return {key: true_type}, {key: false_type}
-                else:
-                    return {key: false_type}, {key: true_type}
-```
+@overload
+def classify(mode: Literal["r", "w"]) -> str: ...
+@overload
+def classify(mode: Literal["rb", "wb"]) -> str: ...
+def classify(mode: str) -> str: ...
 
-Also handle the reversed form (`"rb" == mode`).
-
-### Overload Resolution with Narrowed Literals
-
-After narrowing, a single-value `LiteralType` variable can dispatch to
-Literal overloads:
-
-```python
-def process(mode: Literal["r", "rb"]) -> None:
+def dispatch(mode: Literal["r", "w", "rb", "wb"]) -> None:
     if mode == "rb":
-        f = open("data.bin", mode)  # mode: Literal["rb"] -> BinaryIO
-    else:
-        f = open("data.txt", mode)  # mode: Literal["r"] -> TextIO
+        classify(mode)   # mode: Literal["rb"] -> matches binary stub
+    elif mode == "r":
+        classify(mode)   # mode: Literal["r"] -> matches text stub
 ```
 
-The enrichment step recognizes already-`LiteralType` args directly
-(from Phase 2's forwarding support) without needing AST-level string
-literal detection.
 
-### Dead Branch Elimination
+## Phase 3a: Dead Branch Elimination
 
 When a `LiteralType` has a single value, equality checks become constants:
 
@@ -188,9 +162,8 @@ reason about, avoids overloading the narrowed_types channel.
 Recommend **Option A** -- it's the simpler change and consistent with how
 union narrowing already flows through.
 
-### Effort: M
+### Effort: S-M
 
-Equality narrowing: M (new fact extractor in `_isinstance_facts`).
 Codegen fact propagation: S-M (extend `_filter_union_codegen_facts`).
 Dead branch elimination: S (constant folding in codegen comparisons).
 

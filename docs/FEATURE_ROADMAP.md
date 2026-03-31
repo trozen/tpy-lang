@@ -75,7 +75,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D4 | with statement | M | Done | [VI](#with-statement-context-managers) |
 | D5 | Nested `def` with captures, `nonlocal` | M-L | Done | [VI](#closures--nested-functions) |
 | D6 | Properties (@property) | M | Not started | [VII](#properties) |
-| D7 | Literal types (Literal[...]) | M | Phase 2 done | [III](#literal-types) |
+| D7 | Literal types (Literal[...]) | M | Phase 3 done | [III](#literal-types) |
 | D8 | `@override` decorator | S | Done | [VII](#override-decorator) |
 | D9 | set type | L | Done | [VII](#set-type) |
 | D10 | bytes type | M | Done | [VII](#bytes-type) |
@@ -1106,7 +1106,7 @@ Multi-value `Literal` supported. Only direct literal arguments dispatch to
 Natural extension of the type system. Works well with overloads (different return types
 per literal value). Key enabler for `open()` binary mode dispatch.
 
-**Current state**: Phase 2 done. Phases 3-5 planned. See `docs/LITERAL_TYPES_DESIGN.md`.
+**Current state**: Phase 3 done. Phases 3a-6 planned. See `docs/LITERAL_TYPES_DESIGN.md`.
 
 - **Phase 1 (done)**: `Literal["a", "b", ...]` with string values. Ordering-independent:
   `Literal` stubs are preferred over plain stubs regardless of declaration order.
@@ -1115,9 +1115,10 @@ per literal value). Key enabler for `open()` binary mode dispatch.
   Integer and bool literals (`Literal[1, 2]`, `Literal[True]`).
   `IntLiteralType` matches `LiteralType` with int base during overload resolution.
   Mixed types in a single `Literal[...]` rejected at parse time.
-- **Phase 3**: Equality narrowing for `Literal`-annotated params.
-  `if mode == "r":` narrows `Literal["r", "w"]` to `Literal["r"]`.
-  Dead branch elimination.
+- **Phase 3 (done)**: Equality narrowing for `Literal`-annotated params.
+  `if mode == "rb":` narrows `Literal["r", "w", "rb", "wb"]` to `Literal["rb"]`,
+  enabling dispatch to more specific overload stubs within branches.
+- **Phase 3a**: Dead branch elimination for single-value Literal comparisons.
 - **Phase 3b**: Literal overload flattening. User `@overload` stubs with different
   return types per Literal value generate per-literal C++ specializations
   (analogous to union flattening). Depends on Phase 3 for dead branch elimination.

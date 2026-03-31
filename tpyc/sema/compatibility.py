@@ -594,6 +594,9 @@ class TypeCompatibility:
             if isinstance(actual, (StrType, StringType, StrViewType)):
                 return None
         # LiteralType is compatible with its base type family
+        if isinstance(actual, LiteralType) and isinstance(expected, LiteralType):
+            if all(v in expected.values for v in actual.values):
+                return None
         if isinstance(expected, LiteralType):
             if expected.is_str_base() and isinstance(actual, (StrType, StringType, StrViewType)):
                 return None

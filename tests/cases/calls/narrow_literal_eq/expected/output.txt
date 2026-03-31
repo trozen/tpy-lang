@@ -1,0 +1,12 @@
+binary
+binary
+text
+text
+low
+high
+low
+binary
+text
+binary
+text
+ok
