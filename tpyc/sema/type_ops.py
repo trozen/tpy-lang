@@ -14,7 +14,7 @@ from ..typesys import (
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
     NoneType, VoidType, FnType, CallableType,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
-    public_module_name,
+    public_module_name, unwrap_ref_type,
 )
 from ..coercions import resolve_coercion, CoercionContext
 from .diagnostics import SemanticError
@@ -476,6 +476,15 @@ class TypeOperations:
 
         Returns True if types match (with inference), False otherwise.
         """
+        # RefType wrapper on param: strip Ref from param side and also strip
+        # from arg if present (Ref[T] param accepts both T and Ref[T] args).
+        from ..typesys import RefType, unwrap_ref_type
+        if isinstance(param_type, RefType):
+            return self.match_type_with_inference(param_type.wrapped, unwrap_ref_type(arg_type), inferred)
+        # Ref on arg side is preserved for type param inference -- this lets
+        # map(identity, pts) infer U=Ref[Point] from identity's return type,
+        # so the template emits val_or_ref<Point> for reference preservation.
+
         # ReadonlyType wrapper: unwrap for matching (readonly[T] accepts T and readonly[T])
         if isinstance(param_type, ReadonlyType):
             arg_unwrapped = unwrap_readonly(arg_type)
@@ -492,6 +501,13 @@ class TypeOperations:
                 existing = inferred[param_type.name]
                 if isinstance(existing, IntLiteralType) and isinstance(arg_type, (Int32Type, BigIntType)):
                     inferred[param_type.name] = arg_type
+                    return True
+                # Ref[T] matches bare T: the same type param can be inferred
+                # as bare T (from iterables) and Ref[T] (from function returns).
+                # Accept both directions without conflict.
+                if isinstance(arg_type, RefType) and arg_type.wrapped == existing:
+                    return True
+                if isinstance(existing, RefType) and existing.wrapped == arg_type:
                     return True
                 return self.types_match_for_inference(existing, arg_type)
             inferred[param_type.name] = arg_type
@@ -681,6 +697,7 @@ class TypeOperations:
             type_subst = dict(zip(record.type_params, arg_type.type_args))
 
         def _substitute(t: TpyType) -> TpyType:
+            t = unwrap_ref_type(t)
             if isinstance(t, TypeParamRef) and t.name in type_subst:
                 return type_subst[t.name]
             return t
@@ -1067,7 +1084,7 @@ class TypeOperations:
         type_subst = self.build_type_substitution(typ)
         if type_subst:
             method = self.substitute_method_type_params(method, type_subst)
-        return method.return_type
+        return unwrap_ref_type(method.return_type)
 
     def get_deref_coercion_target(self, typ: TpyType) -> TpyType | None:
         """Get the deref target for coercion purposes.

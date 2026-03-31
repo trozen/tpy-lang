@@ -12,7 +12,7 @@ from ..typesys import (
     NamedType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
     ListType, ListRepeatType, DictType, SetType, DictKeysViewType, DictValuesViewType, DictItemsViewType,
     ArrayType, SpanType, TupleType, OwnType, is_protocol_type, unwrap_readonly, is_any_str_type, is_any_bytes_type,
-    BytesType, ByteArrayType, BytesViewType,
+    BytesType, ByteArrayType, BytesViewType, make_ref,
 )
 from ..parse import (
     TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyNoneLiteral, TpyCoerce,
@@ -76,7 +76,7 @@ class BuiltinGenerator:
                 for name, typ in effective_subst.items():
                     placeholder = f"{{{name}}}"
                     if placeholder in template and hasattr(typ, "to_cpp"):
-                        template = template.replace(placeholder, typ.to_cpp())
+                        template = template.replace(placeholder, typ.to_cpp_stored())
             if receiver is not None:
                 return expand_cpp_template(template, receiver, *gen_args,
                                            self_type=self_type)

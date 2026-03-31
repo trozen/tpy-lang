@@ -9,7 +9,7 @@ from ..parse.nodes import (
     TpyFunction, TpyYield, TpyStmt, TpyWhile, TpyForEach, TpyReturn, TpyVarDecl,
     TpyCall, TpyName, TpyExpr,
 )
-from ..typesys import StrType, TypeParamRef, is_protocol_type
+from ..typesys import StrType, TypeParamRef, is_protocol_type, unwrap_ref_type
 from .context import INDENT, escape_cpp_name
 
 
@@ -667,11 +667,12 @@ class GeneratorCodegen:
             ctor_params.append(("__self", f"{const_prefix}{cpp_record}", True))
         for pname, ptype in func.params:
             cpp_name = escape_cpp_name(pname)
-            if isinstance(ptype, StrType):
+            ptype_inner = unwrap_ref_type(ptype)
+            if isinstance(ptype_inner, StrType):
                 ctor_params.append((cpp_name, "std::string_view", False))
             else:
-                cpp_type = self.types.type_to_cpp(ptype)
-                is_ref = not ptype.is_value_type()
+                cpp_type = self.types.type_to_cpp(ptype_inner)
+                is_ref = not ptype_inner.is_value_type()
                 ctor_params.append((cpp_name, cpp_type, is_ref))
 
         label = f"{record_name}.{func.name}" if record_name else func.name

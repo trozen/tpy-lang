@@ -11,6 +11,7 @@ from ..typesys import (
     TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, StrType, StrViewType, LiteralType, VoidType, VOID,
     INT32, FixedIntType, BigIntType, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
     FunctionInfo, EnumType, is_any_str_type,
+    make_ref, unwrap_ref_type, RefType,
 )
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call
@@ -421,6 +422,11 @@ class SemanticAnalyzer:
         # Second pass: register all functions (with @overload grouping)
         self._register_functions_with_overloads(module.functions)
 
+        # Normalize FunctionInfo types: wrap non-value params/returns with Ref[T].
+        # Must run after ALL types are registered (records, protocols, value types,
+        # AND free functions) so make_ref correctly identifies which types need wrapping.
+        self._normalize_function_info_refs()
+
         # Inject synthetic __name__: Final[str] before registration so it flows
         # through the same path as user-defined Finals (single source of truth).
         # Skip for private submodules (containing "._") that may share their
@@ -461,6 +467,44 @@ class SemanticAnalyzer:
         self._propagate_mutation_facts()
         self._sync_inferred_const(module)
         self.calls.resolve_pending_borrow_checks()
+
+    def _normalize_function_info_refs(self) -> None:
+        """Apply make_ref to all registered FunctionInfo param/return types.
+
+        Wraps non-value types with RefType so codegen and type inference see
+        explicit reference semantics. Called after all types (including value
+        type markers) are registered, so make_ref correctly identifies which
+        types need wrapping.
+        """
+        from ..typesys import ParamInfo
+
+        def _ref_params(params: list) -> list:
+            result = []
+            for p in params:
+                if isinstance(p, ParamInfo):
+                    result.append(ParamInfo(
+                        p.name, make_ref(p.type),
+                        requires_mutable_lvalue=p.requires_mutable_lvalue,
+                        default_expr=p.default_expr,
+                    ))
+                else:
+                    # Legacy tuple (name, type) form
+                    result.append((p[0], make_ref(p[1])))
+            return result
+
+        for overloads in self.ctx.registry.functions.values():
+            for fi in overloads:
+                if isinstance(fi.return_type, RefType):
+                    continue
+                fi.return_type = make_ref(fi.return_type)
+                fi.params = _ref_params(fi.params)
+        for rec in self.ctx.registry.records.values():
+            for method_list in rec.methods.values():
+                for fi in method_list:
+                    if isinstance(fi.return_type, RefType):
+                        continue
+                    fi.return_type = make_ref(fi.return_type)
+                    fi.params = _ref_params(fi.params)
 
     def _propagate_mutation_facts(self) -> None:
         """Collect all module-local FunctionInfos and run call-graph propagation."""
@@ -662,19 +706,19 @@ class SemanticAnalyzer:
         if func.is_generator:
             self.ctx._yield_counter = 0
         # Resolve return type (sets is_protocol for cross-module imports)
-        func.return_type = self.type_ops.resolve_type(func.return_type)
+        func.return_type = make_ref(self.type_ops.resolve_type(func.return_type))
         scope = Scope(parent=self.ctx.global_scope)
         self.ctx.current_scope = scope
 
         # Resolve and normalize params (@readonly wraps all non-value params).
-        # Write back to AST so codegen sees ReadonlyType.
+        # Write back to AST so codegen sees Ref/ReadonlyType (codegen reads func.params directly, not FI).
         local_ns = Namespace(parent=self.ctx.global_ns)
         self.ctx.current_ns = local_ns
         resolved_params: list[tuple[str, TpyType]] = []
         for i, (pname, ptype) in enumerate(func.params):
             resolved_ptype = self._normalize_param_type(
                 self.type_ops.resolve_type(ptype), func.is_readonly)
-            func.params[i] = (pname, resolved_ptype)
+            func.params[i] = (pname, make_ref(resolved_ptype))
             resolved_params.append((pname, resolved_ptype))
 
         # Track consuming method for ownership propagation through fields
@@ -1168,7 +1212,7 @@ class SemanticAnalyzer:
             if method.is_generator:
                 self.ctx._yield_counter = 0
             # Resolve return type (sets is_protocol for cross-module imports)
-            method.return_type = self.type_ops.resolve_type(method.return_type)
+            method.return_type = make_ref(self.type_ops.resolve_type(method.return_type))
             scope = Scope(parent=self.ctx.global_scope)
             self.ctx.current_scope = scope
 
@@ -1183,7 +1227,7 @@ class SemanticAnalyzer:
                 local_ns.bind_variable("self", self_type)
 
             # Resolve and normalize params (@readonly wraps all non-value params).
-            # Write back to AST so codegen sees ReadonlyType.
+            # Write back to AST so codegen sees Ref/ReadonlyType (codegen reads func.params directly, not FI).
             # For auto_readonly_params_resolved methods, the parser clone already applied
             # ReadonlyType to the params that need it -- skip blanket wrapping.
             readonly_ctx = method.is_readonly and not method.auto_readonly_params_resolved
@@ -1191,7 +1235,7 @@ class SemanticAnalyzer:
             for i, (pname, ptype) in enumerate(method.params):
                 resolved_ptype = self._normalize_param_type(
                     self.type_ops.resolve_type(ptype), readonly_ctx)
-                method.params[i] = (pname, resolved_ptype)
+                method.params[i] = (pname, make_ref(resolved_ptype))
                 resolved_params.append((pname, resolved_ptype))
 
             # __next__ must have an explicit non-void return type annotation

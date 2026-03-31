@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, CHAR, is_protocol_type, is_any_str_type,
+    TpyType, CHAR, is_protocol_type, is_any_str_type, unwrap_ref_type,
 )
 from .diagnostics import SemanticError
 from .protocols import record_extends_any
@@ -54,6 +54,8 @@ class IterableHelper:
 
         For types extending NativeIterable[T], returns T.
         """
+        # Ref[T] is transparent for iteration resolution
+        iterable_type = unwrap_ref_type(iterable_type)
         # Handle NativeIterable[T] protocol type
         if is_protocol_type(iterable_type) and iterable_type.qualified_name() == "tpy.NativeIterable":
             if iterable_type.type_args:

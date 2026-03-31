@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Callable
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, TypeParamRef,
     ResolvedBinop, ResolvedUnaryop, FunctionInfo, TypeParamKind,
-    INT32, FLOAT, PendingListType, ListType,
+    INT32, FLOAT, PendingListType, ListType, unwrap_ref_type,
 )
 from .overloads import type_matches_numeric, type_matches_strict
 from tpyc import modules as builtin_modules
@@ -121,6 +121,7 @@ class OperatorResolver:
         for method in overloads:
             if len(method.params) == 1:
                 _, param_type = method.params[0]
+                param_type = unwrap_ref_type(param_type)
                 if type_subst:
                     param_type = _substitute_type_params(param_type, type_subst)
                 if (type_matches_strict(arg_type, param_type, protocol_checker)
@@ -141,6 +142,11 @@ class OperatorResolver:
             ]
             new_return = _substitute_type_params(method.return_type, type_subst)
             method = dc_replace(method, params=new_params, return_type=new_return)
+        # Unwrap Ref from return type -- Ref is a codegen-level concern,
+        # sema expression types should not carry it.
+        ret = unwrap_ref_type(method.return_type)
+        if ret is not method.return_type:
+            method = dc_replace(method, return_type=ret)
             # Rebuild receiver_type from subst to resolve IntLiteralType elements.
             # Use inner_types() as the source of truth for the reconstruction -- it
             # defines exactly how many (and which) inner types the type has. params_map
