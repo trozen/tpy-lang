@@ -4085,7 +4085,7 @@ s = repr([1, 2, 3])          # → "[1, 2, 3]" (same as str for containers)
 - **Working**: `tplib.Box[T]` -- heap-allocated owning container (via `from tplib import Box`)
 - **Working**: `tplib.ArrayList[T, N]` -- fixed-capacity list with ownership-correct element lifecycle (iterable via `for x in list`)
 - **Working**: `tplib.FixStr[N]` -- fixed-capacity string with stack-allocated storage (char-level operations, `__str__` for zero-copy printing)
-- **Working**: `tplib.json` -- JSON parsing/serialization library: `JsonReader` (pull parser), `JsonWriter` (serializer), `@model` class macro for pydantic-style typed JSON with `from_json`/`to_json`. Supports `str`, `bool`, `int`/`Int32`/`Int64`/`BigInt`, `float`/`Float32`, enums, `Optional[T]`, `list[T]`, `dict[str, V]`, `tuple[T, ...]`, and nested `@model` records.
+- **Working**: `tplib.json` -- JSON parsing/serialization library: `JsonReader` (pull parser), `JsonWriter` (serializer), `@model` class macro for pydantic-style typed JSON with `from_json`/`to_json`. Supports `str`, `bool`, `int`/`Int32`/`Int64`/`BigInt`, `float`/`Float32`, enums, `Optional[T]`, `list[T]`, `dict[str, V]`, `tuple[T, ...]`, nested `@model` records, and user-defined types implementing `__json_encode__`/`__json_decode__`.
 - **Working**: `bisect` module -- array bisection algorithms (via `from bisect import bisect_left`)
 - **Working**: `from module import *` -- star imports from user modules, `tpy`, `builtins`, and `typing`
   - Respects `__all__` if defined (must be a compile-time literal)
@@ -4301,7 +4301,7 @@ TurboPython has two library search roots that provide reusable modules:
 | `tplib.Box[T]` | Heap-allocated owning container (similar to Rust's `Box<T>`) |
 | `tplib.ArrayList[T, N]` | Fixed-capacity list with stack-allocated uninitialized storage; full list API (`append`, `pop`, `insert`, `index`, `count`, `remove`, `reverse`, `sort`, `swap`, `truncate`, `extend`, `clear`, `__contains__`, `__eq__`, `__repr__`) |
 | `tplib.FixStr[N]` | Fixed-capacity string with stack-allocated storage; `__str__() -> StrView` for zero-copy printing |
-| `tplib.json` | JSON library: `JsonReader` (pull parser), `JsonWriter` (serializer), `@model` macro for typed JSON deserialization/serialization |
+| `tplib.json` | JSON library: `JsonReader` (pull parser), `JsonWriter` (serializer), `@model` macro for typed JSON deserialization/serialization. User types can implement `__json_encode__`/`__json_decode__` to work as `@model` fields. |
 
 ```python
 from tplib import Box

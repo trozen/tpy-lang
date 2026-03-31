@@ -108,9 +108,10 @@ class CpyFixedIntType(CpyType):
 
 
 class CpyNamedType(CpyType):
-    def __init__(self, name: str, *, value_type: bool = True) -> None:
+    def __init__(self, name: str, *, value_type: bool = True, is_record: bool = False) -> None:
         self._name = name
         self._value_type = value_type
+        self.is_record = is_record
 
     def is_value_type(self) -> bool:
         return self._value_type
@@ -395,7 +396,7 @@ class TypeInfo:
             type_args = [TypeInfo.from_tpy_type(et) for et in typ.element_types]
         elif isinstance(typ, CpyNamedType):
             name = typ._name
-            is_record = name in _class_registry
+            is_record = typ.is_record or name in _class_registry
 
         return TypeInfo(
             name=name,
@@ -493,7 +494,14 @@ class TypeInfo:
             name = annotation.__name__
             is_record = name in _class_registry or hasattr(annotation, "__annotations__")
             return TypeInfo(name=name, is_record=is_record, is_value_type=True,
-                            _tpy_type=CpyNamedType(name, value_type=True))
+                            _tpy_type=CpyNamedType(name, value_type=True, is_record=is_record))
+
+        # String annotation (from __future__ annotations or forward refs)
+        if isinstance(annotation, str):
+            name = annotation
+            is_record = name in _class_registry
+            return TypeInfo(name=name, is_record=is_record, is_value_type=True,
+                            _tpy_type=CpyNamedType(name, value_type=True, is_record=is_record))
 
         # Fallback
         name = getattr(annotation, "__name__", str(annotation))
@@ -665,12 +673,20 @@ class ClassInfo:
         self.name: str = cls.__name__
         self.type_params: list[str] = []
 
-        # Build field list from annotations
+        # Build field list from annotations.
+        # Use get_type_hints() to resolve string annotations (from __future__
+        # annotations or forward references), with fallback to raw annotations.
         own_annotations = {}
         if "__annotations__" in cls.__dict__:
             own_annotations = cls.__dict__["__annotations__"]
+        try:
+            import typing as _typing_mod
+            resolved_hints = _typing_mod.get_type_hints(cls)
+        except Exception:
+            resolved_hints = own_annotations
         self.fields: list[FieldInfo] = []
         for attr_name, annotation in own_annotations.items():
+            annotation = resolved_hints.get(attr_name, annotation)
             has_default = attr_name in cls.__dict__
             default_val = cls.__dict__.get(attr_name)
             default_expr = _value_to_ast_default(default_val) if has_default else None

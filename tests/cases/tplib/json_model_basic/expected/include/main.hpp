@@ -43,7 +43,7 @@ struct User {
         return ((((this->name == other.name) && (this->age == other.age)) && (this->active == other.active)) && (this->email == other.email));
     }
 
-    static std::expected<User, ::tpystd::tplib::json::parser::JsonError> _from_reader(::tpystd::tplib::json::parser::JsonReader& __reader) {
+    static std::expected<User, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
             auto __try_tmp_1 = __reader.read_object_start();
             if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
@@ -119,7 +119,7 @@ struct User {
         std::optional<User> __result = std::nullopt;
         {
             {
-                auto __try_tmp_11 = User::_from_reader(__reader);
+                auto __try_tmp_11 = User::__json_decode__(__reader);
                 if (!__try_tmp_11.has_value()) goto __except_10;
                 __result = ::tpy::unwrap_ref(*__try_tmp_11);
             }
@@ -135,10 +135,10 @@ struct User {
 
     static std::expected<User, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s) {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-        return User::_from_reader(__reader);
+        return User::__json_decode__(__reader);
     }
 
-    void _to_writer(::tpystd::tplib::json::writer::JsonWriter& __writer) {
+    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
         __writer.object_start();
         __writer.key("name");
         __writer.write_str(this->name);
@@ -157,9 +157,9 @@ struct User {
         __writer.object_end();
     }
 
-    std::string to_json() {
+    std::string to_json() const {
         ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter();
-        _to_writer(__writer);
+        __json_encode__(__writer);
         return __writer.finish();
     }
 

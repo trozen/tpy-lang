@@ -3,6 +3,8 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
+- Deferred readonly inference for `self.field.method()`: currently `self.field.method()` where the callee isn't yet known to be readonly conservatively marks `self` as mutated at Phase 1 (`methods.py:630`). For `self.method()`, this is deferred via call edges to Phase 2. Fix: record a deferred check for `self.field.method()` calls; after Phase 2 resolves the callee's readonly status, only mark self as mutated if the callee is genuinely non-readonly. Affects `@model __json_encode__` on classes with user-type fields (the generated method reads `self.field.__json_encode__(writer)` but can't be inferred const because `field.__json_encode__` isn't known readonly at Phase 1).
+- Emit `this->` for self method calls: codegen currently emits bare `method(args)` for `self.method()` calls (`expressions.py:1994`). Prefer explicit `this->method(args)` for readability.
 - add Ref[T] type that would denote references, automatically added to function args/return in parser, so user doesn't need to see it; would it help in managig the pipeline?
 - Resolve class-level type params in cpp_template at sema time: when sema resolves a generic constructor like `list[Int32](range(10))`, substitute `{T}` -> `Int32` into the template and store a fully-resolved `cpp_template` on `resolved_function_info`. Codegen would then never see unresolved type params -- every template would only have `{0}`, `{1}`, `{cpp}`. Eliminates the `type_subst`/`extract_type_params` machinery in codegen's call_type block and the regex guard in `_gen_call`.
 - Eliminate concrete type classes (ListType, DictType, etc.): replace `isinstance(t, ListType)` checks with name-based or annotation-driven checks. ~60 references for ListType alone across type inference, codegen, and compatibility. Enables treating all types uniformly as NamedType + RecordInfo. Lower priority -- current type classes work fine, this is about uniformity.
@@ -41,7 +43,6 @@ Motivating example: `map(identity, pts)` where `identity(p: Point) -> Point` ret
 - json: better error message: show position
 - json: model inheritance
 - json: field renaming
-- json: handle user types
 
 
 ## Bytes

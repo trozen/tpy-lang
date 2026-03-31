@@ -277,7 +277,11 @@ class FunctionGenerator:
                 # Rename param so the body can declare a mutable local with the original name
                 part = ptype.to_cpp_param(f"__param_{cpp_pname}")
             elif const_params:
-                if (use_readonly_params
+                if mutated_params is not None and i in mutated_params:
+                    # Param directly mutated (method call, field write) -- keep
+                    # non-const even in const methods.
+                    part = ptype.to_cpp_param(cpp_pname)
+                elif (use_readonly_params
                         and isinstance(own, UnionType) and own.uses_pointer_repr()):
                     part = f"{own.to_cpp_const_ptr_variant()} {cpp_pname}"
                 else:
@@ -394,7 +398,9 @@ class FunctionGenerator:
                         part = f"{base_type}& {cpp_pname}"
                 else:
                     own = unwrap_readonly(ptype)
-                    if const_params and use_readonly_params and isinstance(own, UnionType) and own.uses_pointer_repr():
+                    if const_params and mutated_params is not None and i in mutated_params:
+                        part = ptype.to_cpp_param(cpp_pname)
+                    elif const_params and use_readonly_params and isinstance(own, UnionType) and own.uses_pointer_repr():
                         part = f"{own.to_cpp_const_ptr_variant()} {cpp_pname}"
                     elif const_params:
                         part = ptype.to_cpp_const_param(cpp_pname)
@@ -474,7 +480,9 @@ class FunctionGenerator:
         from ..typesys import TypeParamRef
         result: set[str] = set()
         if use_const_params:
-            for pname, ptype in params:
+            for i, (pname, ptype) in enumerate(params):
+                if mutated_params is not None and i in mutated_params:
+                    continue
                 unwrapped = unwrap_readonly(ptype)
                 if ((unwrapped.is_ref_param()
                      or (isinstance(unwrapped, UnionType) and unwrapped.uses_pointer_repr()))
@@ -522,6 +530,29 @@ class FunctionGenerator:
             overloads = record_info.get_method_overloads(method.name)
             if overloads:
                 return overloads[-1].mutated_params
+        return None
+
+    def _get_method_genuine_mutated_params(self, method: TpyFunction, record_name: str) -> frozenset[int] | None:
+        """Return genuinely mutated params for const method codegen.
+
+        Uses direct_mutated_params (Phase 1 only, no transitive propagation)
+        minus return_borrows_from (params only marked mutated because they're
+        returned by reference, not because they're actually modified).
+        """
+        if method.is_stub or method.is_overload_stub:
+            return None
+        record_info = self.ctx.analyzer.registry.get_record(record_name)
+        if record_info:
+            overloads = record_info.get_method_overloads(method.name)
+            if overloads:
+                fi = overloads[-1]
+                dmp = fi.direct_mutated_params
+                if dmp is None:
+                    return None
+                rb = fi.return_borrows_from
+                if rb:
+                    return dmp - rb
+                return dmp
         return None
 
     def _has_dynamic_protocol_params(self, params: list[tuple[str, TpyType]]) -> bool:
@@ -982,10 +1013,15 @@ class FunctionGenerator:
                             or method.name in CONST_PARAMS_METHODS)
         rp = self._get_reassigned_params(method)
         mp = self._get_method_mutated_params(method, record_name)
+        # For const methods, use genuine mutations only (direct Phase 1 minus
+        # return-borrow) to avoid false positives from transitive propagation
+        # or return-borrow marking.
+        gmp = self._get_method_genuine_mutated_params(method, record_name) if use_const_params else None
         if use_protocol_params:
             if use_const_params:
                 params = self.gen_params_with_protocols(method.params, method.type_params,
                                                         const_params=True,
+                                                        mutated_params=gmp,
                                                         use_readonly_params=const,
                                                         defaults=dfl, emit_defaults=True)
             else:
@@ -996,6 +1032,7 @@ class FunctionGenerator:
             ctp = class_type_params or None
             if use_const_params:
                 params = self.gen_params(method.params, method.type_params, const_params=True,
+                                         mutated_params=gmp,
                                          use_readonly_params=const,
                                          defaults=dfl, emit_defaults=True,
                                          class_type_params=ctp)

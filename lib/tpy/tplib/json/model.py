@@ -3,6 +3,58 @@
 
 Provides @model class macro that bundles @dataclass behavior with
 JSON serialization/deserialization via tplib.json.JsonReader/JsonWriter.
+
+Usage:
+
+    from tplib.json.model import model
+
+    @model
+    class User:
+        name: str
+        age: Int32
+        score: float = 0.0
+
+    u = User("Alice", 30, 9.5)
+    s = u.to_json()                  # '{"name": "Alice", "age": 30, "score": 9.5}'
+    u2 = User.from_json(s)           # panics on parse error
+    u3 = User.try_from_json(s)       # raises JsonError on parse error
+
+Options:
+
+    @model(frozen=True)   -- immutable fields, generates __hash__
+    @model(order=True)    -- generates comparison operators
+
+Generated methods:
+  - __init__, __eq__, __repr__
+  - to_json() -> str                          -- serialize to JSON string
+  - from_json(s: str) -> Self                 -- deserialize, panics on error
+  - try_from_json(s: str) -> Self             -- deserialize with @error_return(JsonError)
+
+Supported field types:
+  - Primitives: str, bool, int/Int32/Int64/BigInt, float/Float32
+  - Containers: list[T], dict[str, V], tuple[T, ...]
+  - Enum types
+  - Optional[T]
+  - Nested @model records
+  - User-defined types implementing __json_encode__/__json_decode__
+
+User-defined type protocol -- any class with these two methods can be
+used as a field in @model classes:
+
+    class Seconds:
+        _value: Int32
+        def __json_encode__(self, writer: JsonWriter) -> None:
+            writer.write_int32(self._value)
+        @staticmethod
+        @error_return(JsonError)
+        def __json_decode__(reader: JsonReader) -> Own[Seconds]:
+            raw = reader.read_int()
+            return Seconds(Int32(raw))
+
+    @model
+    class Event:
+        name: str
+        when: Seconds  # works as @model field
 """
 
 from tpyc.macro_api import (
@@ -28,7 +80,7 @@ def _raise_if(condition: Expr) -> Stmt:
 
 
 # ---------------------------------------------------------------------------
-# from_json / _from_reader body generation
+# from_json / __json_decode__ body generation
 # ---------------------------------------------------------------------------
 
 def _build_read_into(fld_type: TypeInfo, reader: Expr, hint: str = "v") -> tuple[list[Stmt], str]:
@@ -43,10 +95,10 @@ def _build_read_into(fld_type: TypeInfo, reader: Expr, hint: str = "v") -> tuple
     if stmts is not None:
         return (stmts, tmp)
 
-    # Model record: _from_reader call as standalone VarDecl
+    # Model record: __json_decode__ call as standalone VarDecl
     if fld_type.is_record:
         return ([ast.var_decl(tmp, init=ast.method_call(
-            ast.name(fld_type.name), "_from_reader", [reader]))], tmp)
+            ast.name(fld_type.name), "__json_decode__", [reader]))], tmp)
 
     # Enum: read_str first (auto-propagates), then try_parse + raise
     if fld_type.is_enum:
@@ -199,12 +251,12 @@ def _build_read_value_stmts(
 
 def _read_and_assign(fld_name: str, fld_type: TypeInfo, reader: Expr) -> list[Stmt]:
     """Read a value and assign to fld_name."""
-    # Model records: assign directly from _from_reader() call (rvalue)
+    # Model records: assign directly from __json_decode__() call (rvalue)
     # to avoid copy warning when target is Optional[Own[T]].
     if fld_type.is_record:
         return [ast.assign(
             ast.name(fld_name),
-            ast.method_call(ast.name(fld_type.name), "_from_reader", [reader]),
+            ast.method_call(ast.name(fld_type.name), "__json_decode__", [reader]),
         )]
     stmts, var = _build_read_into(fld_type, reader, fld_name)
     stmts.append(ast.assign(ast.name(fld_name), ast.name(var)))
@@ -247,8 +299,8 @@ def _build_field_default(fld: FieldInfo) -> Expr | None:
         return None
 
 
-def _build_from_reader(cls: ClassInfo, all_fields: list[FieldInfo]) -> Function:
-    """Build _from_reader(reader: JsonReader) -> Self static method."""
+def _build_json_decode(cls: ClassInfo, all_fields: list[FieldInfo]) -> Function:
+    """Build __json_decode__(reader: JsonReader) -> Self static method."""
     reader = ast.name("__reader")
     reader_type = types.named("JsonReader")
     body: list[Stmt] = []
@@ -317,7 +369,7 @@ def _build_from_reader(cls: ClassInfo, all_fields: list[FieldInfo]) -> Function:
     cls_type = types.named(cls.name)
     ret_type = cls_type if cls_type.is_value_type() else types.own(cls_type)
     return ast.function(
-        "_from_reader", [("__reader", reader_type)], ret_type, body,
+        "__json_decode__", [("__reader", reader_type)], ret_type, body,
         is_method=True, is_staticmethod=True, error_return=_JSON_ERROR,
     )
 
@@ -343,7 +395,7 @@ def _build_field_dispatch(fields: list[FieldInfo], reader: Expr) -> Stmt:
 def _build_from_json(cls: ClassInfo) -> Function:
     """Build from_json(s: str) -> Self static method (panics on error).
 
-    Wraps _from_reader in try/except and panics on parse errors.
+    Wraps __json_decode__ in try/except and panics on parse errors.
     For error-handling version, use try_from_json.
     """
     cls_type = types.named(cls.name)
@@ -362,7 +414,7 @@ def _build_from_json(cls: ClassInfo) -> Function:
         ast.try_(
             try_body=[
                 ast.assign(ast.name(result_var),
-                           ast.method_call(ast.name(cls.name), "_from_reader",
+                           ast.method_call(ast.name(cls.name), "__json_decode__",
                                            [ast.name("__reader")])),
             ],
             handlers=[ast.except_handler(
@@ -386,7 +438,7 @@ def _build_from_json(cls: ClassInfo) -> Function:
 def _build_try_from_json(cls: ClassInfo) -> Function:
     """Build try_from_json(s: str) -> Self with @error_return(JsonError).
 
-    Calls _from_reader with auto-propagation. Callers handle with
+    Calls __json_decode__ with auto-propagation. Callers handle with
     try/except JsonError.
     """
     cls_type = types.named(cls.name)
@@ -395,7 +447,7 @@ def _build_try_from_json(cls: ClassInfo) -> Function:
         ast.var_decl("__reader", type=types.named("JsonReader"),
                       init=ast.call("JsonReader", [ast.name("__s")])),
         ast.return_(
-            ast.method_call(ast.name(cls.name), "_from_reader", [ast.name("__reader")]),
+            ast.method_call(ast.name(cls.name), "__json_decode__", [ast.name("__reader")]),
         ),
     ]
     return ast.function(
@@ -405,7 +457,7 @@ def _build_try_from_json(cls: ClassInfo) -> Function:
 
 
 # ---------------------------------------------------------------------------
-# to_json / _to_writer body generation
+# to_json / __json_encode__ body generation
 # ---------------------------------------------------------------------------
 
 def _build_write_value_stmts(
@@ -480,7 +532,7 @@ def _build_write_value_stmts(
         ))]
 
     if fld_type.is_record:
-        return [ast.expr_stmt(ast.method_call(access, "_to_writer", [writer]))]
+        return [ast.expr_stmt(ast.method_call(access, "__json_encode__", [writer]))]
 
     if fld_type.is_bigint:
         # Write BigInt as JSON string to preserve precision
@@ -508,8 +560,8 @@ def _get_write_method(fld_type: TypeInfo) -> str:
     raise MacroError(f"@model: unsupported field type for serialization '{fld_type.name}'")
 
 
-def _build_to_writer(cls: ClassInfo, all_fields: list[FieldInfo]) -> Function:
-    """Build _to_writer(self, writer: JsonWriter) -> None method."""
+def _build_json_encode(cls: ClassInfo, all_fields: list[FieldInfo]) -> Function:
+    """Build __json_encode__(self, writer: JsonWriter) -> None method."""
     writer = ast.name("__writer")
     writer_type = types.named("JsonWriter")
     body: list[Stmt] = []
@@ -527,8 +579,8 @@ def _build_to_writer(cls: ClassInfo, all_fields: list[FieldInfo]) -> Function:
     body.append(ast.expr_stmt(ast.method_call(writer, "object_end")))
 
     return ast.function(
-        "_to_writer", [("__writer", writer_type)], types.void, body,
-        is_method=True, readonly_opt_out=True,
+        "__json_encode__", [("__writer", writer_type)], types.void, body,
+        is_method=True,
     )
 
 
@@ -538,12 +590,12 @@ def _build_to_json(cls: ClassInfo) -> Function:
     body: list[Stmt] = [
         ast.var_decl("__writer", type=writer_type,
                       init=ast.call("JsonWriter")),
-        ast.expr_stmt(ast.method_call(ast.name("self"), "_to_writer", [ast.name("__writer")])),
+        ast.expr_stmt(ast.method_call(ast.name("self"), "__json_encode__", [ast.name("__writer")])),
         ast.return_(ast.method_call(ast.name("__writer"), "finish")),
     ]
     return ast.function(
         "to_json", [], types.str, body,
-        is_method=True, readonly_opt_out=True,
+        is_method=True,
     )
 
 
@@ -597,8 +649,8 @@ def model(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> None:
     cls.set_dataclass_fields(all_fields)
 
     # Generate JSON methods
-    cls.add_method(_build_from_reader(cls, all_fields))
+    cls.add_method(_build_json_decode(cls, all_fields))
     cls.add_method(_build_from_json(cls))
     cls.add_method(_build_try_from_json(cls))
-    cls.add_method(_build_to_writer(cls, all_fields))
+    cls.add_method(_build_json_encode(cls, all_fields))
     cls.add_method(_build_to_json(cls))

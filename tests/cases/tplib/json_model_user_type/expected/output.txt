@@ -1,0 +1,12 @@
+{"name": "deploy", "when": 3600}
+deploy
+3600
+True
+{"events": [{"name": "a", "when": 10}, {"name": "b", "when": 20}], "default_duration": 60, "deadline": null}
+2
+10
+60
+{"events": [{"name": "x", "when": 1}], "default_duration": 30, "deadline": 99}
+99
+{"events": [{"name": "y", "when": 2}], "default_duration": 30, "deadline": null}
+True
