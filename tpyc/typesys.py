@@ -928,64 +928,73 @@ class IntLiteralType(TpyType):
 
 
 @dataclass(frozen=True)
-class StrLiteralType(TpyType):
-    """String literal with known value -- used during overload resolution only.
-
-    Produced by enrichment at call sites when a TpyStrLiteral expression
-    is passed as an argument. Matches LiteralStrType params (value in values)
-    and plain str/StrView/String params (fallback).
-
-    Never stored in variables, never reaches codegen.
-    """
-    value: str
-
-    def to_cpp(self) -> str:
-        return "std::string"
+class LiteralValue:
+    """A typed literal value. Distinguishes True from 1 via tag."""
+    tag: str           # "str", "int", "bool"
+    value: str | int | bool
 
     def __str__(self) -> str:
-        return f"Literal[\"{self.value}\"]"
-
-    def is_value_type(self) -> bool:
-        return True
+        if self.tag == "str":
+            return f'"{self.value}"'
+        return str(self.value)
 
 
 @dataclass(frozen=True)
-class LiteralStrType(TpyType):
-    """Literal["r", "w", ...] annotation type for string literal dispatch.
+class LiteralType(TpyType):
+    """Literal[value1, value2, ...] -- unified annotation and enrichment type.
 
-    Appears in FunctionInfo.params for @overload stubs.
-    Behaves like StrType for codegen (same C++ representation).
-    In overload matching, StrLiteralType(v) matches if v is in self.values.
+    Single-value instances (from enrichment at call sites) carry one value.
+    Multi-value instances (from Literal["r", "w"] annotations) carry the set.
+
+    Delegates all C++ codegen methods to base_type, so Literal["r", "w"]
+    behaves identically to str for code generation.
     """
-    values: tuple[str, ...]
+    base_type: TpyType
+    values: tuple[LiteralValue, ...]
 
     def to_cpp(self) -> str:
-        return "std::string"
+        return self.base_type.to_cpp()
 
     def __str__(self) -> str:
-        vals = ", ".join(f'"{v}"' for v in self.values)
+        vals = ", ".join(str(v) for v in self.values)
         return f"Literal[{vals}]"
 
     def qualified_name(self) -> Optional[str]:
-        return "builtins.str"
+        return self.base_type.qualified_name()
 
     def is_value_type(self) -> bool:
-        return True
+        return self.base_type.is_value_type()
 
     def is_expensive_copy(self) -> bool:
-        return True
+        return self.base_type.is_expensive_copy()
 
     def to_cpp_param_type(self) -> str:
-        return "std::string_view"
+        return self.base_type.to_cpp_param_type()
 
     def to_cpp_param(self, name: str) -> str:
-        return f"std::string_view {name}"
+        return self.base_type.to_cpp_param(name)
 
     def to_cpp_const_param(self, name: str) -> str:
-        return f"std::string_view {name}"
+        return self.base_type.to_cpp_const_param(name)
 
     def param_needs_copy_for_reassign(self) -> bool:
-        return True
+        return self.base_type.param_needs_copy_for_reassign()
+
+    def is_str_base(self) -> bool:
+        """True when this Literal is over string values."""
+        return isinstance(self.base_type, StrType)
+
+    def is_int_base(self) -> bool:
+        """True when this Literal is over integer values."""
+        return isinstance(self.base_type, (FixedIntType, BigIntType))
+
+    def is_bool_base(self) -> bool:
+        """True when this Literal is over bool values."""
+        return isinstance(self.base_type, BoolType)
+
+    def contains(self, tag: str, value: str | int | bool) -> bool:
+        """Check if a tagged value is in this Literal's value set."""
+        return LiteralValue(tag, value) in self.values
 
 
 @dataclass(frozen=True)
@@ -1659,11 +1668,12 @@ def unwrap_final(typ: 'TpyType') -> 'TpyType':
 def is_any_str_type(typ: 'TpyType') -> bool:
     """Check if a type is any string type (str, String, StrView, PendingStr, Literal[str]).
 
-    Includes LiteralStrType (the Literal["r", "w"] annotation type in stub params).
-    Excludes StrLiteralType (the ephemeral per-argument enrichment type that only
-    exists during overload resolution and never reaches storage or codegen contexts).
+    Includes LiteralType with str base (the Literal["r", "w"] annotation type).
+    Single-value LiteralType instances from enrichment never reach storage/codegen.
     """
-    return isinstance(typ, (StrType, StringType, StrViewType, PendingStrType, LiteralStrType))
+    if isinstance(typ, (StrType, StringType, StrViewType, PendingStrType)):
+        return True
+    return isinstance(typ, LiteralType) and typ.is_str_base()
 
 
 def is_any_bytes_type(typ: 'TpyType') -> bool:

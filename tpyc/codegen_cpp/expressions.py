@@ -10,7 +10,7 @@ import re
 from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, StrViewType, LiteralStrType, BytesType, BytesViewType, CharType,
+    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, StrViewType, LiteralType, BytesType, BytesViewType, CharType,
     NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, DictType, SetType,
     DictKeysViewType, DictValuesViewType, DictItemsViewType,
     PendingListType, ListRepeatType,
@@ -793,7 +793,9 @@ class ExpressionGenerator:
         Nested and/or/ternary chains are handled recursively.
         """
         if isinstance(expr, TpyName):
-            return (isinstance(self.ctx.current_func_params.get(expr.name), (StrType, LiteralStrType))
+            param_type = self.ctx.current_func_params.get(expr.name)
+            return (isinstance(param_type, StrType)
+                    or (isinstance(param_type, LiteralType) and param_type.is_str_base())
                     or isinstance(self.types.get_resolved_type(expr), StrViewType))
         if isinstance(expr, TpyStrLiteral):
             return True

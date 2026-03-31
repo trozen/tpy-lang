@@ -1,184 +1,104 @@
-# Literal Types Design
+# Literal Types (D7)
+
+## Roadmap
+
+| Phase | Feature | Status |
+|-------|---------|--------|
+| 1 | `Literal["r", "w"]` string values in `@overload` params | Done |
+| 2 | Unified `LiteralType`, int/bool values, `LiteralValue(tag, value)` | Done |
+| 3 | Equality narrowing, dead branch elimination | Not started |
+| 3b | Literal overload flattening (different return types per literal value) | Not started |
+| 4 | `match`/`case` exhaustiveness for Literal subjects | Not started |
+| 5 | Literal types in variables (`x: Literal["rb"] = "rb"`) | Not started |
+| 6 | General type positions (return types, fields, union flattening) | Not started |
+
+## Future Extensions
+
+| Feature | Notes |
+|---------|-------|
+| Literal type in `Final` variables | `x: Final = "rb"` infers `Literal["rb"]`. Variant of Phase 5. |
+| TypedDict with Literal keys | `d["name"]` where key is `Literal`. Separate feature (D19) with own design. |
+| Cross-function literal propagation | Inferring `Literal` from callers. Not planned -- too complex and fragile. |
+
+---
 
 ## Overview
 
 `Literal["r", "w"]` enables compile-time dispatch and narrowing based on
-known constant values. Phase 1 (done) supports string literals in `@overload`
-parameter annotations. This document covers the design for full Literal type
-support through narrowing, variables, and general type positions.
+known constant values. `LiteralType(base_type, values)` is the unified
+internal representation, with `LiteralValue(tag, value)` distinguishing
+`True` from `1`. Delegates all C++ codegen to `base_type`.
 
-## Current State (Phase 1)
+Supported value types: `str`, `int` (including negative), `bool`.
+Mixed types in a single `Literal[...]` rejected at parse time.
 
-Two ephemeral types handle overload dispatch:
+Resolution: strict pass matches literal values against `Literal` params
+(value subset check). Coercion pass falls back to base type matching.
+Literal stubs preferred over plain stubs regardless of declaration order.
 
-- **`LiteralStrType(values: tuple[str, ...])`** -- annotation type in
-  `FunctionInfo.params`. Parsed from `Literal["r", "w"]` in `@overload` stubs.
-  Behaves like `StrType` for codegen (same C++ representation).
+Current limitation: only direct literal arguments dispatch. Variables
+fall through to the base type fallback.
 
-- **`StrLiteralType(value: str)`** -- enrichment type created at call sites
-  during overload resolution. When an argument is a `TpyStrLiteral` and a
-  candidate has `LiteralStrType` params, the arg type is temporarily enriched
-  from `StrType` to `StrLiteralType(value)`. Discarded after matching.
+## Phase 2: Unify Types + Integer/Bool Literals (Done)
 
-**Resolution order**: Strict pass matches `StrLiteralType` against
-`LiteralStrType` only (value in values). Coercion pass matches against
-plain `StrType`/`StrViewType` (fallback). This makes Literal stubs preferred
-over str stubs regardless of declaration order.
+Merged `StrLiteralType` and `LiteralStrType` into a unified `LiteralType`.
+Extended parser to accept `int`, `bool`, and negative `int` constants in
+`Literal[...]`. `LiteralValue(tag, value)` disambiguates `True` from `1`.
+All C++ codegen methods delegate to `base_type`.
 
-**Limitation**: Only direct string literal arguments dispatch. Variables
-always fall through to the `str` fallback:
+### What was implemented
 
-```python
-open("file.txt", "rb")   # -> BinaryIO (Literal match)
-mode = "rb"
-open("file.txt", mode)   # -> TextIO (str fallback -- value lost)
-```
+**Type system** (`typesys.py`):
+- `LiteralValue(tag: str, value: str | int | bool)` -- frozen dataclass,
+  `tag` is "str"/"int"/"bool". Prevents Python's `True == 1` ambiguity.
+- `LiteralType(base_type: TpyType, values: tuple[LiteralValue, ...])` --
+  replaces both `StrLiteralType` and `LiteralStrType`. Delegates `to_cpp()`,
+  `to_cpp_param_type()`, `qualified_name()`, etc. to `base_type`.
+- `is_any_str_type()` checks `isinstance(t, LiteralType) and t.is_str_base()`.
 
-## Phase 2: Unify Types + Integer/Bool Literals
+**Parser** (`parser.py`): `Literal[...]` accepts str, bool (checked before
+int since `bool` is `int` subclass), int, and negative int
+(`ast.UnaryOp(USub, Constant)`). Mixed types rejected at parse time.
+`base_type` is `STR`, `BOOL`, or `INT32` respectively.
 
-Merge `StrLiteralType` and `LiteralStrType` into a single `LiteralType`,
-and extend to accept `int` and `bool` values alongside strings. Also
-extend the parser to support `Literal[...]` in all annotation positions
-(not just `@overload` stubs).
+**Enrichment** (`calls.py`): Renamed to `_enrich_literal_types`. Enriches
+`TpyStrLiteral` -> str `LiteralType`, `TpyIntLiteral` -> int `LiteralType`,
+`TpyBoolLiteral` -> bool `LiteralType`. Passes through already-`LiteralType`
+args (enables forwarding Literal-annotated params to other Literal functions).
 
-### Type System
+**Overload matching** (`overloads.py`): Strict pass matches `LiteralType`
+vs `LiteralType` (value subset) and `IntLiteralType` vs int-base
+`LiteralType`. Coercion pass falls back to base type matching.
 
-Both Phase 1 types are replaced by a unified `LiteralType`:
+**Compatibility** (`compatibility.py`): `LiteralType` compatible with base
+type family. `IntLiteralType` compatible with int-base `LiteralType`.
 
-```python
-@dataclass(frozen=True)
-class LiteralType(TpyType):
-    """Literal[value1, value2, ...] -- both annotation and enrichment type.
+**Codegen** (`functions.py`, `expressions.py`): `_overload_stubs_are_literal_only`
+and `_is_str_view_at_runtime` updated to use `LiteralType`.
 
-    Single-value instances (from enrichment or narrowing) carry one value.
-    Multi-value instances (from annotations) carry the allowed set.
-    """
-    base_type: TpyType          # StrType, Int32Type, BoolType, etc.
-    values: tuple[str | int | bool, ...]
-```
+### What already works without further phases
 
-This replaces:
-- `LiteralStrType(values)` -- now `LiteralType(base_type=StrType, values=...)`
-- `StrLiteralType(value)` -- now `LiteralType(base_type=StrType, values=(value,))`
-
-For int literals, the existing `IntLiteralType(value)` already carries the
-value -- no new enrichment type needed, just new matching rules:
+**Value restriction**: Literal stubs without a base-type fallback restrict
+which values are accepted at compile time:
 
 ```python
-# In type_matches_strict:
-if isinstance(arg, IntLiteralType) and isinstance(param, LiteralType):
-    if isinstance(param.base_type, (FixedIntType, BigIntType)):
-        return arg.value in param.values
+@overload
+def set_priority(level: Literal[1, 2, 3]) -> None: ...
+@overload
+def set_priority(level: Literal[4, 5]) -> None: ...
+# No Int32 fallback -- variable args rejected at call site
+def set_priority(level: Int32) -> None: ...
+
+set_priority(3)   # ok
+set_priority(x)   # error: No matching @overload
 ```
-
-### Bool/Int Disambiguation
-
-Python's `True == 1` and `hash(True) == hash(1)`, so `Literal[True]` and
-`Literal[1]` are ambiguous if values are stored as plain Python objects.
-
-**Solution**: Store values as `(type_tag, value)` pairs internally:
-
-```python
-@dataclass(frozen=True)
-class LiteralValue:
-    """A typed literal value. Distinguishes True from 1."""
-    tag: str           # "str", "int", "bool"
-    value: str | int | bool
-
-values: tuple[LiteralValue, ...]
-```
-
-The parser determines the tag from the AST node type:
-- `ast.Constant(value=True)` where `isinstance(value, bool)` -> tag="bool"
-- `ast.Constant(value=1)` where `isinstance(value, int)` -> tag="int"
-- `ast.Constant(value="r")` -> tag="str"
-
-Matching checks both tag and value: `IntLiteralType(1)` matches
-`LiteralValue(tag="int", value=1)` but NOT `LiteralValue(tag="bool", value=True)`.
-`BoolType` literal `True` matches `LiteralValue(tag="bool", value=True)`.
-
-Mixed types in a single `Literal[...]` are rejected at parse time:
-`Literal[1, "a"]` is an error. `Literal[True, 1]` is also an error (mixed
-bool/int tags).
-
-### Parser
-
-Phase 1 only parses `Literal[...]` inside `@overload` stub parameters.
-Phase 2 extends this to ALL annotation positions: regular function
-parameters, variable annotations, return types. The parser already handles
-`Literal[...]` via `_parse_type_annotation` -- the change is removing any
-`@overload`-only restriction if one exists (currently there is none -- the
-parser produces `LiteralStrType` regardless of context).
-
-New constant types in annotations:
-- `ast.Constant(value: int)` where `not isinstance(value, bool)` -> int
-- `ast.Constant(value: bool)` -> bool (check before int, since bool is int subclass)
-- `ast.Constant(value: str)` -> str (already supported)
-- Negative integers: `ast.UnaryOp(op=USub, operand=ast.Constant(value: int))`
-
-### Enrichment
-
-The enrichment guard in `_enrich_str_literal_types` extends to check for
-`LiteralType` params with any base type. Rename to `_enrich_literal_types`.
-
-Also: when an argument already has `LiteralType` (e.g., a `Literal`-annotated
-parameter being forwarded to another function), it should match `LiteralType`
-params directly without needing AST-level literal detection. This is the key
-enabler for Phase 3's forwarding pattern:
-
-```python
-def process(mode: Literal["r", "rb"]) -> None:
-    open(file, mode)  # mode already carries LiteralType -- matches open()'s Literal params
-```
-
-### Migration
-
-All references to `LiteralStrType` and `StrLiteralType` across sema,
-codegen, overloads, compatibility, and analyzer are updated to use
-`LiteralType`. Key migration points:
-
-- `is_any_str_type()`: check `isinstance(t, LiteralType) and is_str_base(t)`
-- `LiteralType` must delegate C++ methods (`to_cpp()`, `to_cpp_param_type()`,
-  `to_cpp_param()`, `to_cpp_const_param()`, `param_needs_copy_for_reassign()`)
-  to `self.base_type`. For string base: `std::string_view` params. For int/bool:
-  the underlying C++ type directly. The `qualified_name()` method must also
-  delegate to `base_type` (used by overload exhaustiveness checking).
-- `codegen_cpp/functions.py`: `_overload_stubs_are_literal_only` checks
-  `isinstance(stub_ptype, LiteralStrType)` -- update to `isinstance(stub_ptype, LiteralType)`.
-- `sema/analyzer.py`: overload exhaustiveness check allows `LiteralStrType`
-  vs `StrType` -- generalize to `LiteralType` vs `base_type`.
-
-### Effort: M
-
-Type unification touches 10+ files. Int/bool extension is small on top.
-The C++ method delegation on `LiteralType` needs care to avoid regressions
-in string param codegen.
 
 
 ## Phase 3: Narrowing and Dead Branch Elimination
 
 Equality-based narrowing for `Literal`-annotated parameters, enabling
-user-defined functions with Literal dispatch.
-
-### Motivation
-
-With Phase 1, only `@overload` stubs with `@cpp_template` (builtins) can
-have different return types per Literal value. User-defined functions emit
-a single C++ function, so different return types don't work. But narrowing
-enables a different pattern:
-
-```python
-def process(mode: Literal["text", "binary"]) -> None:
-    if mode == "text":
-        # mode narrowed to Literal["text"] -- compiler knows this branch
-        handle_text()
-    else:
-        # mode narrowed to Literal["binary"]
-        handle_binary()
-```
-
-The narrowing makes `mode == "text"` a compile-time fact within the branch,
-enabling dead branch elimination and type-safe dispatch without overloads.
+type-safe branching within function bodies. Prerequisite for Phase 3b
+(Literal overload flattening with different return types).
 
 ### Equality Narrowing
 
@@ -268,9 +188,129 @@ reason about, avoids overloading the narrowed_types channel.
 Recommend **Option A** -- it's the simpler change and consistent with how
 union narrowing already flows through.
 
-### Match/Case on Literal Types
+### Effort: M
 
-Match statements could exhaustively dispatch on Literal values:
+Equality narrowing: M (new fact extractor in `_isinstance_facts`).
+Codegen fact propagation: S-M (extend `_filter_union_codegen_facts`).
+Dead branch elimination: S (constant folding in codegen comparisons).
+
+
+## Phase 3b: Literal Overload Flattening
+
+Per-literal function specialization for user-defined `@overload` functions
+with different return types. Analogous to union overload flattening but
+dispatching on **value** instead of **type**.
+
+### Motivation
+
+With Phases 1-2, only builtins using `@cpp_template` can have different
+return types per Literal value (each stub maps to a different C++ function).
+User-defined overloads emit a single C++ function, so all stubs must have
+the same return type. This limits Literal overloads to value restriction
+(compile-time argument validation) but not return type dispatch.
+
+Union flattening already solves this for type-based dispatch: `f(A | B)`
+generates `f(A) -> RetA` and `f(B) -> RetB`. Literal flattening extends
+this to value-based dispatch.
+
+### Example
+
+```python
+@overload
+def get_field(name: Literal["age"]) -> Int32: ...
+@overload
+def get_field(name: Literal["name"]) -> str: ...
+@overload
+def get_field(name: str) -> Int32 | str: ...
+
+def get_field(name: str) -> Int32 | str:
+    if name == "age":
+        return 42
+    return "hello"
+```
+
+### Generated C++
+
+Per-literal specializations with name mangling, plus a fallback for
+non-literal args:
+
+```cpp
+// Specialization for Literal["age"] -- body with narrowed literal
+int32_t get_field__lit_age(std::string_view name) {
+    // name == "age" is known true -> dead branch elimination (Phase 3)
+    return 42;
+}
+
+// Specialization for Literal["name"]
+std::string get_field__lit_name(std::string_view name) {
+    return "hello";
+}
+
+// Fallback for variable args -- full body, union return
+std::variant<int32_t, std::string> get_field(std::string_view name) {
+    if (name == "age") return 42;
+    return "hello";
+}
+```
+
+Call-site dispatch:
+```python
+x = get_field("age")    # calls get_field__lit_age, type is Int32
+y = get_field("name")   # calls get_field__lit_name, type is str
+z = get_field(mode)      # calls get_field, type is Int32 | str
+```
+
+### Key difference from union flattening
+
+Union flattening dispatches on C++ type -- each stub has a different
+parameter type, so overloaded C++ signatures are naturally distinct.
+
+Literal flattening dispatches on value -- all stubs have the same C++
+parameter type (`std::string_view` for str, `int32_t` for Int32, etc.).
+Specializations need name mangling to produce distinct C++ functions.
+
+### Implementation
+
+**Sema**: Detect when Literal overload stubs have different return types.
+Currently `_overload_stubs_are_literal_only` returns `True` and emits a
+single function. When return types differ, mark the function for literal
+flattening instead.
+
+**Codegen** (`functions.py`): For each Literal stub group:
+1. Emit a name-mangled specialization with the stub's return type
+2. Body is the full implementation, but with the literal value injected
+   as a narrowing fact (from Phase 3)
+3. Dead branch elimination (Phase 3) removes unreachable branches
+
+**Call site** (`calls.py` / `expressions.py`): When the resolved overload
+is a Literal stub with a different return type than the fallback, emit a
+call to the name-mangled specialization instead of the base function.
+
+**Name mangling**: `{func_name}__lit_{sanitized_value}`. Values are
+sanitized for C++ identifiers (e.g., `"rb"` -> `rb`, `42` -> `42`,
+`True` -> `true`). Collisions between string and int values sharing
+the same representation are prevented by the same-type constraint
+(all values in a `Literal[...]` have the same tag).
+
+### Dependencies
+
+- **Phase 3 (narrowing)**: Required for dead branch elimination within
+  specializations. Without it, specializations contain the full if/elif
+  body but still have the correct (narrower) return type. Functionally
+  correct but suboptimal.
+- Phase 3 is independently useful (narrowing within single-function
+  bodies), so implementing it first makes sense.
+
+### Effort: M
+
+Sema detection: S (extend `_overload_stubs_are_literal_only`).
+Name mangling + codegen: M (parallel to union flattening).
+Call-site dispatch: S (already have stub -> function routing).
+
+
+## Phase 4: Match/Case on Literal Types
+
+Match statements can exhaustively dispatch on Literal values:
 
 ```python
 mode: Literal["r", "w", "rb", "wb"] = ...
@@ -296,15 +336,12 @@ The match codegen already handles string patterns via switch-based dispatch
 - Exhaustiveness: validate that all `LiteralType` values are covered by
   case patterns. Missing values produce a compile-time error.
 
-### Effort: M-L
+### Effort: M
 
-Equality narrowing: M (new fact extractor in `_isinstance_facts`).
-Codegen fact propagation: S-M (extend `_filter_union_codegen_facts`).
-Dead branch elimination: S (constant folding in codegen comparisons).
-Match/case: M (subject validation + exhaustiveness + codegen dispatch).
+Subject validation + exhaustiveness + codegen dispatch.
 
 
-## Phase 4: Literal Types in Variables
+## Phase 5: Literal Types in Variables
 
 Literal values persist through variable bindings without explicit
 annotation.
@@ -369,7 +406,7 @@ logic exists in `local_deduction.py` (already handles `literal_values`
 dict for integers).
 
 
-## Phase 5: Literal as General Type (Future)
+## Phase 6: Literal as General Type (Future)
 
 ### Return Types
 
@@ -429,9 +466,13 @@ contexts.
    (`d["name"]` where key is `Literal`) is a separate feature (D19 in
    roadmap) that depends on Literal types but has its own design concerns.
 
-4. **Forwarding `LiteralType` args through calls**: When a
-   `Literal`-annotated parameter is passed to another function that also
-   takes `Literal[...]` (e.g., `def forward(mode: Literal["r", "w"]): open(f, mode)`),
-   the enrichment logic must recognize already-`LiteralType` args without
-   requiring AST-level literal detection. This is addressed in Phase 2's
-   enrichment section but is a key correctness requirement.
+4. **Forwarding `LiteralType` args through calls**: Resolved in Phase 2.
+   `_enrich_literal_types` passes through already-`LiteralType` args
+   without requiring AST-level literal detection.
+
+5. **Name mangling collisions in flattening**: String `"42"` and int `42`
+   would produce the same mangled suffix. The same-tag constraint (all
+   values in a `Literal[...]` have the same type) prevents this within a
+   single function's overload set, but cross-function collisions need care.
+   Consider including the tag in the mangled name: `__lit_str_rb`,
+   `__lit_int_42`.

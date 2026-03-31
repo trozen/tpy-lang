@@ -2764,7 +2764,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
     - `isinstance(x, T)` checks in if/elif/else are statically resolved to `true`/`false` per overload
     - `match`/`case` on union subjects selects only the matching arm per overload
     - Call-site overload resolution picks the most specific stub (exact match preferred, coercions as fallback)
-    - `Literal["r", "w", ...]` parameter annotations for string-literal-based dispatch: `open(path, "rb")` can resolve to a different return type than `open(path, "r")`. Multiple values per `Literal[...]` annotation supported. Only string literal arguments dispatch to `Literal` overloads; variables fall through to plain `str` overloads. Requires `from typing import Literal`.
+    - `Literal["r", "w", ...]` parameter annotations for literal-value-based dispatch: `open(path, "rb")` can resolve to a different return type than `open(path, "r")`. Supports string, integer (including negative), and bool values. Multiple values per `Literal[...]` annotation supported. Mixed value types in a single `Literal[...]` are rejected. Only literal arguments dispatch to `Literal` overloads; variables fall through to plain type overloads. Requires `from typing import Literal`.
     - `from typing import overload` import required
     - CPython compatible: stubs are no-ops in CPython, implementation runs with isinstance checks
 - **Working**: `T | None` for non-value types (records, lists, arrays) → nullable pointer (`T*`)

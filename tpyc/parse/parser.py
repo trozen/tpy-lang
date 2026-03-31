@@ -17,7 +17,7 @@ from ..typesys import (
     strip_auto_readonly, apply_auto_readonly, has_auto_readonly, strip_auto_own, apply_auto_own, ensure_qualified,
     TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType, FnType, CallableType,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW, BOOL, FLOAT, FLOAT32, BIGINT, SELF, SLICE, FieldInfo, RecordInfo, TypeRegistry,
-    FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, BoolType, StrType, LiteralStrType,
+    FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, BoolType, StrType, LiteralType, LiteralValue,
     ALL_FIXED_INTS, public_module_name,
 )
 from ..modules import lookup_generic_type, lookup_generic_type_in_module, BuiltinTypeDef
@@ -2202,14 +2202,37 @@ class Parser:
                         slices = _extract_subscript_slices(node)
                         if not slices:
                             raise ParseError("Literal requires at least one argument", node)
-                        values: list[str] = []
+                        lit_values: list[LiteralValue] = []
+                        tag: str | None = None
                         for s in slices:
                             if isinstance(s, ast.Constant) and isinstance(s.value, str):
-                                values.append(s.value)
+                                if tag is not None and tag != "str":
+                                    raise ParseError("Literal cannot mix value types", node)
+                                tag = "str"
+                                lit_values.append(LiteralValue("str", s.value))
+                            elif isinstance(s, ast.Constant) and isinstance(s.value, bool):
+                                if tag is not None and tag != "bool":
+                                    raise ParseError("Literal cannot mix value types", node)
+                                tag = "bool"
+                                lit_values.append(LiteralValue("bool", s.value))
+                            elif isinstance(s, ast.Constant) and isinstance(s.value, int):
+                                if tag is not None and tag != "int":
+                                    raise ParseError("Literal cannot mix value types", node)
+                                tag = "int"
+                                lit_values.append(LiteralValue("int", s.value))
+                            elif (isinstance(s, ast.UnaryOp) and isinstance(s.op, ast.USub)
+                                  and isinstance(s.operand, ast.Constant)
+                                  and isinstance(s.operand.value, int)
+                                  and not isinstance(s.operand.value, bool)):
+                                if tag is not None and tag != "int":
+                                    raise ParseError("Literal cannot mix value types", node)
+                                tag = "int"
+                                lit_values.append(LiteralValue("int", -s.operand.value))
                             else:
                                 raise ParseError(
-                                    "Literal currently only supports string arguments", node)
-                        return LiteralStrType(tuple(values))
+                                    "Literal supports string, int, and bool arguments", node)
+                        base_type = {"str": STR, "int": INT32, "bool": BOOL}[tag]  # type: ignore[index]
+                        return LiteralType(base_type, tuple(lit_values))
             else:
                 # Qualified name with missing module import
                 if isinstance(node.value, ast.Attribute):

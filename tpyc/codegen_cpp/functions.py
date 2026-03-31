@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, NamedType, OwnType, ReadonlyType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
     UnionType, VoidType, FnType,
     BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
-    Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, LiteralStrType, is_any_str_type, SpanType,
+    Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, LiteralType, is_any_str_type, SpanType,
     resolve_int_literals, CONST_PARAMS_METHODS,
     error_return_to_cpp,
 )
@@ -793,18 +793,18 @@ class FunctionGenerator:
         """Check if overload stubs differ from the impl only by Literal annotations.
 
         When all stubs have the same C++ parameter types as the implementation
-        (because they only differ by LiteralStrType vs StrType), per-stub
+        (because they only differ by LiteralType vs base type), per-stub
         specialization would produce duplicate C++ definitions. In that case,
         emit just the implementation function.
         """
         for stub in stubs:
             for (_, impl_ptype), (_, stub_ptype) in zip(impl.params, stub.params):
-                if isinstance(stub_ptype, LiteralStrType):
+                if isinstance(stub_ptype, LiteralType):
                     continue
                 if stub_ptype != impl_ptype:
                     return False
         return any(
-            isinstance(ptype, LiteralStrType)
+            isinstance(ptype, LiteralType)
             for stub in stubs
             for _, ptype in stub.params
         )

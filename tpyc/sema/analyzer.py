@@ -8,8 +8,8 @@ from __future__ import annotations
 from typing import Optional
 
 from ..typesys import (
-    TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, StrType, StrViewType, LiteralStrType, VoidType, VOID,
-    INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
+    TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, StrType, StrViewType, LiteralType, VoidType, VOID,
+    INT32, FixedIntType, BigIntType, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
     FunctionInfo, EnumType, is_any_str_type,
 )
 from ..namespace import Namespace, NameBinding, BindingKind
@@ -893,9 +893,12 @@ class SemanticAnalyzer:
                 for stub in stubs:
                     stub_ptype = self.type_ops.resolve_type(stub.params[param_idx][1])
                     if stub_ptype != resolved:
-                        # LiteralStrType is compatible with StrType impl param
-                        if isinstance(stub_ptype, LiteralStrType) and isinstance(resolved, StrType):
-                            continue
+                        # LiteralType is compatible with its base type family
+                        if isinstance(stub_ptype, LiteralType):
+                            if stub_ptype.base_type == resolved:
+                                continue
+                            if stub_ptype.is_int_base() and isinstance(resolved, (FixedIntType, BigIntType)):
+                                continue
                         raise SemanticError(
                             f"@overload stub type '{stub_ptype}' for parameter '{pname}' "
                             f"does not match implementation type '{resolved}'",
@@ -1002,9 +1005,12 @@ class SemanticAnalyzer:
                 for stub in stubs:
                     stub_ptype = self.type_ops.resolve_type(stub.params[param_idx][1])
                     if stub_ptype != resolved:
-                        # LiteralStrType is compatible with StrType impl param
-                        if isinstance(stub_ptype, LiteralStrType) and isinstance(resolved, StrType):
-                            continue
+                        # LiteralType is compatible with its base type family
+                        if isinstance(stub_ptype, LiteralType):
+                            if stub_ptype.base_type == resolved:
+                                continue
+                            if stub_ptype.is_int_base() and isinstance(resolved, (FixedIntType, BigIntType)):
+                                continue
                         raise SemanticError(
                             f"@overload stub type '{stub_ptype}' for parameter '{pname}' "
                             f"does not match implementation type '{resolved}'",

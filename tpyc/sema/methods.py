@@ -26,7 +26,7 @@ from .overloads import resolve_overload
 from .calls import (
     arity_error_msg, resolve_kwargs, validate_generic_defaults,
     validate_type_param_bounds, prefer_strview_for_literals,
-    _enrich_str_literal_types,
+    _enrich_literal_types,
 )
 
 if TYPE_CHECKING:
@@ -317,7 +317,7 @@ class MethodAnalyzer:
                 self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
                 for m in overloads
             ]
-            enriched_types = _enrich_str_literal_types(arg_types, expr.args, resolved_overloads)
+            enriched_types = _enrich_literal_types(arg_types, expr.args, resolved_overloads)
             resolved = resolve_overload(
                 resolved_overloads, enriched_types,
                 protocol_checker=self.protocols.type_conforms_to_protocol,

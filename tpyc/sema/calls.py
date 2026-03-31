@@ -11,7 +11,7 @@ from typing import Callable, TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingViewType, CopyIterType, OwnIterType,
     IntLiteralType, FloatType, Float32Type, BoolType, resolve_int_literals,
-    StrType, StrLiteralType, LiteralStrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
+    StrType, LiteralType, LiteralValue, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
     UNKNOWN_ELEMENT, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
     UnionType, EnumType, VOID, BIGINT, BOOL, STR, INT32, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own,
@@ -98,28 +98,37 @@ def prefer_strview_for_literals(
             type_subst[tp] = STRVIEW
 
 
-def _enrich_str_literal_types(
+def _enrich_literal_types(
     arg_types: list[TpyType], args: list[TpyExpr],
     candidates: list[FunctionInfo],
 ) -> list[TpyType]:
-    """Create enriched arg types where str literal args become StrLiteralType.
+    """Create enriched arg types where literal args become single-value LiteralType.
 
-    Returns a new list where TpyStrLiteral arguments with StrType get
-    StrLiteralType(value) instead. Used only for overload resolution;
-    the original arg_types are used for everything else.
+    Returns a new list where literal arguments (str, int, bool) get
+    LiteralType(base, (LiteralValue(...),)) instead of their plain type.
+    Used only for overload resolution; the original arg_types are used
+    for everything else.
 
-    Only enriches when at least one candidate has a LiteralStrType param,
+    Only enriches when at least one candidate has a LiteralType param,
     to avoid breaking protocol-based matching (e.g. hash(Hashable)).
+    Also passes through args that already carry LiteralType (e.g. forwarded
+    Literal-annotated parameters).
     """
     has_literal_param = any(
-        isinstance(p.type, LiteralStrType) for c in candidates for p in c.params
+        isinstance(p.type, LiteralType) for c in candidates for p in c.params
     )
     if not has_literal_param:
         return arg_types
     enriched = []
     for arg_t, arg in zip(arg_types, args):
         if isinstance(arg_t, StrType) and isinstance(arg, TpyStrLiteral):
-            enriched.append(StrLiteralType(arg.value))
+            enriched.append(LiteralType(STR, (LiteralValue("str", arg.value),)))
+        elif isinstance(arg_t, IntLiteralType) and arg_t.value is not None:
+            enriched.append(LiteralType(INT32, (LiteralValue("int", arg_t.value),)))
+        elif isinstance(arg_t, BoolType) and isinstance(arg, TpyBoolLiteral):
+            enriched.append(LiteralType(BOOL, (LiteralValue("bool", arg.value),)))
+        elif isinstance(arg_t, LiteralType):
+            enriched.append(arg_t)
         else:
             enriched.append(arg_t)
     return enriched
@@ -1860,7 +1869,7 @@ class CallAnalyzer:
                 generic_originals[id(resolved)] = (overload, type_subst)
 
         # Unified resolution: score all candidates (non-generic + resolved generics)
-        enriched_types = _enrich_str_literal_types(arg_types, expr.args, candidates)
+        enriched_types = _enrich_literal_types(arg_types, expr.args, candidates)
         matched = resolve_overload(candidates, enriched_types, protocol_checker,
                                    deref_checker=self.type_ops.get_deref_coercion_target,
                                    default_int_type=self.ctx.default_int_type,
@@ -2017,7 +2026,7 @@ class CallAnalyzer:
                 else:
                     candidates.append(func)
 
-            enriched_types = _enrich_str_literal_types(arg_types, expr.args, candidates)
+            enriched_types = _enrich_literal_types(arg_types, expr.args, candidates)
             matched = resolve_overload(
                 candidates, enriched_types,
                 protocol_checker=self.protocols.type_conforms_to_protocol,

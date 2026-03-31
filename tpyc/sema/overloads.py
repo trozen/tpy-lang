@@ -13,7 +13,7 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, Int32Type, FixedIntType, BigIntType, BIGINT,
     FloatType, Float32Type,
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
-    PendingStrType, StrType, StringType, StrViewType, StrLiteralType, LiteralStrType,
+    PendingStrType, StrType, StringType, StrViewType, LiteralType,
     PendingBytesType, BytesType, ByteArrayType, BytesViewType,
     NamedType, PtrType, OwnType, FnType, CallableType, VoidType, NoneType,
 )
@@ -94,11 +94,16 @@ def type_matches_strict(
     # PendingStrType (unresolved str local) matches str params
     if isinstance(arg_inner, PendingStrType) and isinstance(param_inner, StrType):
         return True
-    # StrLiteralType("rb") matches LiteralStrType(("rb", ...)) if value in values.
-    # Only in strict pass -- StrLiteralType -> StrType is deferred to coercion pass
-    # so that Literal stubs are preferred over plain str stubs regardless of order.
-    if isinstance(arg_inner, StrLiteralType) and isinstance(param_inner, LiteralStrType):
-        return arg_inner.value in param_inner.values
+    # Single-value LiteralType matches multi-value LiteralType if value is in the set.
+    # Only in strict pass -- LiteralType -> base type is deferred to coercion pass
+    # so that Literal stubs are preferred over plain stubs regardless of order.
+    if isinstance(arg_inner, LiteralType) and isinstance(param_inner, LiteralType):
+        return all(v in param_inner.values for v in arg_inner.values)
+    # IntLiteralType matches LiteralType with int base if value is in the set.
+    if isinstance(arg_inner, IntLiteralType) and isinstance(param_inner, LiteralType) and param_inner.is_int_base():
+        if arg_inner.value is not None:
+            return param_inner.contains("int", arg_inner.value)
+        return False
     # PendingBytesType (unresolved bytes local) matches bytes params
     if isinstance(arg_inner, PendingBytesType) and isinstance(param_inner, BytesType):
         return True
@@ -186,12 +191,22 @@ def type_matches_with_coercion(
     # PendingStrType matches any string type (str, String, StrView)
     if isinstance(arg_inner, PendingStrType) and isinstance(param_inner, (StrType, StringType, StrViewType)):
         return True
-    # StrLiteralType("rb") matches LiteralStrType(("rb", ...)) if value in values
-    if isinstance(arg_inner, StrLiteralType) and isinstance(param_inner, LiteralStrType):
-        return arg_inner.value in param_inner.values
-    # StrLiteralType matches any string type (fallback)
-    if isinstance(arg_inner, StrLiteralType) and isinstance(param_inner, (StrType, StringType, StrViewType)):
-        return True
+    # Single-value LiteralType matches multi-value LiteralType if value is in the set
+    if isinstance(arg_inner, LiteralType) and isinstance(param_inner, LiteralType):
+        return all(v in param_inner.values for v in arg_inner.values)
+    # LiteralType falls back to matching its base type
+    if isinstance(arg_inner, LiteralType):
+        if arg_inner.is_str_base() and isinstance(param_inner, (StrType, StringType, StrViewType)):
+            return True
+        if arg_inner.is_int_base() and isinstance(param_inner, (FixedIntType, BigIntType)):
+            return True
+        if arg_inner.is_bool_base() and isinstance(param_inner, BoolType):
+            return True
+    # IntLiteralType matches LiteralType with int base if value is in the set
+    if isinstance(arg_inner, IntLiteralType) and isinstance(param_inner, LiteralType) and param_inner.is_int_base():
+        if arg_inner.value is not None:
+            return param_inner.contains("int", arg_inner.value)
+        return False
     # PendingBytesType matches any bytes type (bytes, bytearray, BytesView)
     if isinstance(arg_inner, PendingBytesType) and isinstance(param_inner, (BytesType, ByteArrayType, BytesViewType)):
         return True
