@@ -1,0 +1,15 @@
+1
+2
+10
+20
+True
+False
+x=5, y=10
+name=Alice, age=30
+0
+0
+2
+2
+2
+0
+

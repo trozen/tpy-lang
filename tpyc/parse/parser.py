@@ -10,7 +10,8 @@ import ast
 import copy
 import dataclasses
 import re
-from typing import Any, NoReturn, Optional
+import textwrap
+from typing import Any, Literal, NoReturn, Optional
 
 from ..typesys import (
     TpyType, NamedType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, FinalType, SelfType,
@@ -3155,3 +3156,104 @@ class Parser:
             if record_info:
                 return NamedType(type_name)
         return None
+
+
+# ---------------------------------------------------------------------------
+# FragmentParser -- lightweight parser for macro source fragments
+# ---------------------------------------------------------------------------
+
+class FragmentParser(Parser):
+    """Parser for macro-generated source fragments (quote / add_method_from_source).
+
+    Differs from Parser in two ways:
+    - Resolves tpy/typing exports without explicit imports
+    - Returns NamedType for unresolved type names instead of raising
+    """
+
+    def _resolve_type_name(self, local_name: str) -> tuple[str, str] | None:
+        result = super()._resolve_type_name(local_name)
+        if result:
+            return result
+        if local_name in get_tpy_exports():
+            return ("tpy", local_name)
+        if local_name in get_typing_exports():
+            return ("typing", local_name)
+        return None
+
+    def _raise_unresolved_import_error(self, raw_name: str, node: ast.expr) -> None:
+        pass  # Lenient: unresolved imports are not errors in fragments
+
+    def _parse_type_annotation(
+        self, node: ast.expr, type_param_scope: dict | None = None,
+    ) -> TpyType:
+        try:
+            return super()._parse_type_annotation(node, type_param_scope)
+        except ParseError as e:
+            msg = str(e)
+            # Only catch unresolved-name errors, not structural errors
+            # (e.g., "Fn requires exactly 2 arguments").
+            # "Unsupported qualified type" covers the dotted-name fallback
+            # after _raise_unresolved_qualified_error (which may or may not raise).
+            if not ("Unknown type" in msg or "Unknown generic type" in msg
+                    or "Unsupported qualified type" in msg):
+                raise
+            if isinstance(node, ast.Name):
+                return NamedType(node.id)
+            if isinstance(node, ast.Subscript):
+                raw = node.value.id if isinstance(node.value, ast.Name) else None
+                if raw:
+                    slices = _extract_subscript_slices(node)
+                    type_args = tuple(
+                        self._parse_type_annotation(s, type_param_scope)
+                        for s in slices
+                    )
+                    return NamedType(raw, type_args)
+            if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
+                return NamedType(f"{node.value.id}.{node.attr}")
+            raise
+
+    @classmethod
+    def parse_fragment(
+        cls,
+        source: str,
+        kind: Literal["function", "statements", "expression"] = "function",
+    ) -> 'TpyFunction | list[TpyStmt] | TpyExpr':
+        """Parse a TPy source fragment without full module context.
+
+        Used by macro quote/add_method_from_source APIs. Unresolved type names
+        become NamedType(name) -- sema resolves them later.
+        """
+        source = textwrap.dedent(source).strip()
+        parser = cls()
+        parser.source_lines = source.splitlines()
+        tree = ast.parse(source)
+
+        if kind == "function":
+            funcs = [n for n in tree.body if isinstance(n, ast.FunctionDef)]
+            if len(funcs) != 1:
+                raise ParseError(
+                    f"quote_fun: expected exactly 1 function definition, "
+                    f"got {len(funcs)}", tree)
+            func_node = funcs[0]
+            # Detect method: first param named 'self' (annotation optional)
+            args = func_node.args.args
+            has_self = bool(args and args[0].arg == "self")
+            if has_self and args[0].annotation is None:
+                args[0].annotation = ast.Constant(value=None)
+            func = parser._parse_function(func_node)
+            # Strip self param -- is_method functions don't include it
+            if has_self:
+                func.is_method = True
+                func.params = func.params[1:]
+                if func.defaults and len(func.defaults) > len(func.params):
+                    func.defaults = func.defaults[1:]
+            return func
+        elif kind == "statements":
+            return [parser._parse_stmt(s) for s in tree.body]
+        elif kind == "expression":
+            if len(tree.body) != 1 or not isinstance(tree.body[0], ast.Expr):
+                raise ParseError(
+                    "quote_expr: expected a single expression", tree)
+            return parser._parse_expr(tree.body[0].value)
+        else:
+            raise ValueError(f"Unknown fragment kind: {kind!r}")

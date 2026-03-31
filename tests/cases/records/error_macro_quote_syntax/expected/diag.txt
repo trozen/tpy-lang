@@ -1,0 +1,1 @@
+main.py:5: error: syntax error in quoted source: `if`

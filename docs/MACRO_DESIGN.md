@@ -8,8 +8,7 @@
 | 1b | Macro kwargs validation: typed macro signatures with automatic validation via `inspect.signature` | Done |
 | 1c | Generic `field()` handling: `Field` descriptor + `field()` function in macro module, `call_macro_field_function` infrastructure | Done |
 | 2 | Call-site macros: `@call_macro` functions expand at call site, receive `MacroArg` (expr + type), return replacement `TpyExpr`. First use cases: `asdict`/`astuple` | Done |
-| 3 | Quote templates: `quote()` syntactic sugar for less verbose macro authoring | Not started |
-| 4 | String-based method generation: `add_method_from_source` (parse TPy source strings) | Not started |
+| 3+4 | Source-based macro authoring: `quote()` / `add_method_from_source` for writing macro output as TPy source strings instead of AST builder calls | Done |
 | 5 | CPython compatibility: `lib/cpy/tpyc/macro_api.py` backend targeting Python `ast` module | Done |
 | 6 | TpyMini VM: tree-walking interpreter for self-hosted compiler | Not started |
 
@@ -19,7 +18,7 @@
 |---------|-------|
 | Hygiene | Macro-generated names get unique internal names to avoid shadowing. Opt-out via `unhygienic(name)` |
 | `--expand-macros` flag | CLI flag to dump macro expansions for debugging |
-| Macro expansion trace in errors | Diagnostics include trace pointing to the macro that generated invalid code |
+| Macro expansion trace in errors | Currently errors from macros point at the decorator site (user's class), not the macro source file + line. Diagnostics should include a trace: `in macro 'builder' at builder.py:6` so both the macro author and the user can locate the problem. Also applies to quote/add_method_from_source errors. |
 | `static_read()` | Compile-time file I/O (e.g. reading `.proto` schemas). Needs caching/rebuild triggers |
 | `macro_note()` | Informational diagnostic hint (shown with related errors) |
 | Macro ordering / composition | Multiple macros on one class, inner-to-outer application order |
@@ -27,6 +26,7 @@
 | Replace codegen special cases | Macros generate full `__repr__`/`__hash__`/ordering bodies as AST, not stubs. Requires `repr()` builtin that codegen maps to type-aware formatting |
 | `TpyBlockExpr` | Block expression: sequence of statements + result expression. Codegen hoists statements to enclosing scope. Enables `asdict` with mixed-type fields (typed dict creation + subscript assigns) |
 | Generic mapping detection in `asdict`/`astuple` | Currently only built-in `dict[K, V]` is recursed. A `CallMacroContext.get_mapping_key_value_types()` method could detect any type with `.items() -> Iterable[tuple[K, V]]`, enabling recursion into user-defined mapping types |
+| AST splicing in `quote()` | Embed computed `Expr`/`Stmt` objects into quoted source via `${expr}` syntax. Requires custom parse pass. Enables mixing static method shapes with dynamic AST fragments (e.g., computed comparison chains). Deferred -- f-string interpolation covers common cases |
 
 ---
 
@@ -501,6 +501,159 @@ support classes that the generated code calls. The macro logic is shared.
 - **Minimal runtime surface**: Only `tpyc.macro_api` is importable in macros
   (enforced by import restriction). The CPython backend must provide exactly
   this surface.
+
+## Source-based Macro Authoring (Phase 3+4)
+
+**Goal**: Let macro authors write generated code as TPy source strings instead of
+AST builder calls. The AST builder remains the power-user API for core modules
+(`dataclasses.py`, `model.py`) where full control matters. Source-based authoring
+is for user macros where readability and ease of writing matter more.
+
+### Motivation
+
+The AST builder API is verbose for methods with static structure. A `@builder`
+macro generating setter methods requires ~8 builder calls per field for what's
+naturally a 3-line function:
+
+```python
+# AST builder (current)
+for field in cls.fields:
+    body = [
+        ast.assign(ast.field_access(ast.name("self"), field.name), ast.name("value")),
+        ast.return_(ast.name("self")),
+    ]
+    cls.add_method(ast.function(
+        f"set_{field.name}", [("value", field.type.raw_type)],
+        self_type, body, is_method=True,
+    ))
+
+# Source-based (proposed)
+for field in cls.fields:
+    cls.add_method_from_source(f"""
+def set_{field.name}(self, value: {field.type.name}) -> {cls.name}:
+    self.{field.name} = value
+    return self
+""")
+```
+
+### Performance
+
+Macro expansion is <2% of total compile time (benchmarked: 15 `@model` classes
+with ~50 fields total = 3.5ms out of 200ms). Adding `ast.parse()` calls for
+small method bodies adds microseconds -- negligible vs sema, codegen, and C++
+compilation.
+
+### API
+
+Three `quote` methods on `AstBuilder`, plus a convenience on `ClassInfo`:
+
+**`ast.quote(source: str) -> list[Stmt]`** -- parse TPy statements:
+
+```python
+stmts = ast.quote(f"""
+x = self.{field.name}
+if x is None:
+    raise ValueError
+""")
+```
+
+**`ast.quote_expr(source: str) -> Expr`** -- parse a single expression:
+
+```python
+default = ast.quote_expr(f"{field.type.name}()")
+```
+
+**`ast.quote_fun(source: str) -> Function`** -- parse a complete function
+definition:
+
+```python
+func = ast.quote_fun(f"""
+def validate(self) -> bool:
+    return self.{field.name} > 0
+""")
+cls.add_method(func)
+```
+
+**`cls.add_method_from_source(source: str)`** -- convenience, equivalent to
+`cls.add_method(ast.quote_fun(source))`:
+
+```python
+@class_macro
+def builder(cls: ClassInfo) -> None:
+    for field in cls.fields:
+        cls.add_method_from_source(f"""
+def set_{field.name}(self, value: {field.type.name}) -> {cls.name}:
+    self.{field.name} = value
+    return self
+""")
+```
+
+### Interpolation model
+
+**Phase 3+4**: f-string interpolation only. Macro authors splice names, type
+names, and literals as strings. The source string must be syntactically valid
+Python after interpolation.
+
+```python
+# Works: splicing names and type names
+f"def get_{field.name}(self) -> {field.type.name}:"
+
+# Works: splicing literal values
+f"x = {default_value}"
+
+# Does NOT work: splicing AST node objects
+f"x = {some_expr_node}"  # produces "<TpyName object ...>"
+```
+
+**Future extension -- AST splicing**: Embed computed `Expr`/`Stmt` nodes into
+quoted code via an `$unquote()` or `${expr}` mechanism. This enables patterns
+like building a chain of comparisons for `__eq__` from a dynamic field list:
+
+```python
+# Future: splice computed AST nodes
+eq_body = ast.quote(f"""
+return ${{comparisons_expr}}
+""")
+```
+
+This requires a custom parser pass (not just f-string + `ast.parse()`) and is
+deferred to a later phase. The current f-string approach covers the common case
+of static method shapes with varying names/types.
+
+### Implementation
+
+Both `quote` and `add_method_from_source` use the same underlying primitive:
+
+```python
+# In tpyc/parse/parser.py
+@classmethod
+def parse_fragment(cls, source: str, kind: str = "function") -> ...:
+    """Parse a TPy source fragment without full module context.
+    kind: "function" | "statements" | "expression"
+    """
+```
+
+Creates a throwaway `TpyParser` with minimal state. Type annotations in the
+fragment are left as unresolved names -- sema resolves them later, same as
+AST builder nodes like `ast.name("Int32")`.
+
+The CPython backend (`lib/cpy/tpyc/macro_api.py`) implements the same methods
+using Python's `ast.parse()`, consistent with how `ast.function()` already
+works there.
+
+### What this doesn't replace
+
+The AST builder remains necessary when:
+
+- Method structure depends on runtime macro logic (e.g., `build_eq` chains N
+  comparisons based on field count)
+- You need to build AST nodes conditionally per field type (e.g., `model.py`
+  type-dispatching read/write logic)
+- Core library macros where the builder's explicitness is preferred
+
+The recommended pattern: use `quote`/`add_method_from_source` for the overall
+method shape, and the AST builder for computed fragments within it. Full
+integration of both (via AST splicing) is a future extension.
 
 ## Limitations
 

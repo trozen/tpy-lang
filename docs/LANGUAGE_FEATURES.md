@@ -4851,7 +4851,8 @@ Send/Sync rules for built-in types:
   - Recursion into nested dataclasses, `list[DC]`, `dict[K, DC]`, `tuple[DC, ...]`
   - Qualified form (`dataclasses.asdict`), mixed-type dicts via `dict[str, A|B]`
   - CPython compatibility: `lib/cpy/tpyc/macro_api.py` backend -- same macro source works under both tpyc and CPython
-  - Remaining: quote templates, hygiene
+  - Source-based authoring: `ast.quote()`, `ast.quote_expr()`, `ast.quote_fun()`, `cls.add_method_from_source()` -- write macro output as TPy source strings instead of AST builder calls
+  - Remaining: AST splicing in quote (embed computed AST nodes), hygiene
 
 ### Compile-Time Hooks (Extensible Metaprogramming -- Future Design)
 

@@ -1,0 +1,1 @@
+main.py:5: error: quote_fun: expected exactly 1 function definition, got 0 (source: `x = 1`)

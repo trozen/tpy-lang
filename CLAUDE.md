@@ -265,7 +265,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | Module | Purpose |
 |--------|---------|
 | `cli.py` | CLI entry point, argument parsing, error handling |
-| `parse/` | Parser package: `parser.py` (AST builder using Python's `ast`), `nodes.py` (TurboPython AST node definitions), `imports.py` (import resolution helpers) |
+| `parse/` | Parser package: `parser.py` (AST builder using Python's `ast`, `FragmentParser` subclass for macro source fragments), `nodes.py` (TurboPython AST node definitions), `imports.py` (import resolution helpers) |
 | `typesys.py` | Type definitions (Int32, BigInt, Float, bool, Void, Str, Char, Bytes, ByteArray, BytesView, Record, Ptr, Own, Optional, List, Array, Span, Tuple) and TypeRegistry |
 | `sema/` | Multi-pass semantic analysis (see below) |
 | `codegen_cpp/` | C++ code generation (see below) |
@@ -278,7 +278,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `dump_types.py` | Type documentation generation (`--print-types`) |
 | `repl.py` | Interactive REPL implementation |
 | `qnames.py` | Qualified name constants for compiler-known types, decorators, and protocols |
-| `macro_api.py` | Public API for compile-time macro modules: metadata (`ClassInfo`, `FieldInfo`, `TypeInfo`), AST builder (`ast`), type builder (`types`), type aliases (`Expr`, `Stmt`, `Function`, `Type`) |
+| `macro_api.py` | Public API for compile-time macro modules: metadata (`ClassInfo`, `FieldInfo`, `TypeInfo`), AST builder (`ast`), type builder (`types`), type aliases (`Expr`, `Stmt`, `Function`, `Type`), source-based authoring (`ast.quote`, `ast.quote_expr`, `ast.quote_fun`, `cls.add_method_from_source`) |
 | `macro_loader.py` | Discovers and loads `# tpy: macro_module` files via CPython at compile time |
 | `repl_backends.py` | REPL execution backends (clang-repl JIT, g++/clang++ compile) |
 

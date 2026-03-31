@@ -10,9 +10,11 @@ They are executed via CPython during compilation (not compiled to C++).
 
 from __future__ import annotations
 
+import textwrap
 from dataclasses import dataclass, field
-from typing import Any, Callable, NoReturn, TYPE_CHECKING
+from typing import Any, Callable, Literal, NoReturn, TYPE_CHECKING
 
+from .parse.nodes import ParseError as _ParseError
 from .typesys import (
     TpyType, NamedType, OwnType, VoidType, BoolType, StrType, StrViewType,
     FloatType, Float32Type, FixedIntType, OptionalType, ListType, DictType,
@@ -25,6 +27,7 @@ from .typesys import (
     VOID as _VOID, STR as _STR, STRVIEW as _STRVIEW, BOOL as _BOOL,
     FLOAT as _FLOAT, FLOAT32 as _FLOAT32, BIGINT as _BIGINT,
 )
+from .parse.parser import FragmentParser as _FragmentParser
 from .parse import (
     TpyRecord, TpyFunction, TpyExpr, TpyStmt,
     TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn,
@@ -306,7 +309,7 @@ class TypeInfo:
         elif isinstance(typ, ArrayType):
             type_args = [TypeInfo.from_tpy_type(typ.element_type)]
         return TypeInfo(
-            name=typ.__class__.__name__ if not isinstance(typ, NamedType) else typ.name,
+            name=str(typ),
             type_args=type_args,
             is_optional=isinstance(typ, OptionalType),
             is_value_type=typ.is_value_type(),
@@ -506,6 +509,13 @@ class ClassInfo:
     def add_method(self, func: TpyFunction) -> None:
         """Add a method from a TpyFunction AST node (power user API)."""
         self._added_methods.append(func)
+
+    def add_method_from_source(self, source: str) -> None:
+        """Parse a method definition from TPy source and add it.
+
+        Equivalent to ``self.add_method(ast.quote_fun(source))``.
+        """
+        self.add_method(ast.quote_fun(source))
 
     def add_method_stub(
         self,
@@ -834,6 +844,41 @@ class AstBuilder:
             is_readonly=is_readonly, readonly_opt_out=readonly_opt_out,
             error_return=error_return, defaults=defaults or [],
         )
+
+    # -- Source-based quoting --
+
+    def _quote(
+        self, source: str, kind: Literal["function", "statements", "expression"],
+    ) -> list[Stmt] | Expr | Function:
+        try:
+            return _FragmentParser.parse_fragment(source, kind=kind)
+        except SyntaxError as e:
+            clean = textwrap.dedent(source).strip()
+            lines = clean.splitlines()
+            lineno = (e.lineno or 1) - 1
+            bad_line = lines[lineno].strip() if 0 <= lineno < len(lines) else lines[0]
+            raise MacroError(f"syntax error in quoted source: `{bad_line}`") from None
+        except _ParseError as e:
+            preview = textwrap.dedent(source).strip().split("\n")[0]
+            if len(preview) > 60:
+                preview = preview[:57] + "..."
+            raise MacroError(f"{e} (source: `{preview}`)") from None
+
+    def quote(self, source: str) -> list[Stmt]:
+        """Parse TPy statements from a source string."""
+        return self._quote(source, "statements")
+
+    def quote_expr(self, source: str) -> Expr:
+        """Parse a single TPy expression from a source string."""
+        return self._quote(source, "expression")
+
+    def quote_fun(self, source: str) -> Function:
+        """Parse a complete function definition from a source string.
+
+        Decorators are not supported. To mark as staticmethod, set
+        func.is_staticmethod = True on the returned function.
+        """
+        return self._quote(source, "function")
 
 
 # Module-level singleton

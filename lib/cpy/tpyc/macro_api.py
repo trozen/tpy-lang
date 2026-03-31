@@ -17,6 +17,7 @@ import importlib
 import inspect
 import operator
 import sys as _sys
+import textwrap as _textwrap
 import types as _types_mod
 import warnings as _warnings
 from typing import Any, Callable, NoReturn, Union, get_args, get_origin
@@ -761,6 +762,10 @@ class ClassInfo:
         """Add a compiled function as a method."""
         self._added_methods.append(func)
 
+    def add_method_from_source(self, source: str) -> None:
+        """Parse a method definition from source and add it."""
+        self.add_method(ast.quote_fun(source))
+
     def add_method_stub(
         self,
         name: str,
@@ -794,6 +799,8 @@ class ClassInfo:
         for fn in self._added_methods:
             name = getattr(fn, "__name__", None)
             if name:
+                if getattr(fn, "is_staticmethod", False) and not isinstance(fn, staticmethod):
+                    fn = staticmethod(fn)
                 setattr(cls, name, fn)
 
         # Generate real methods for stubs
@@ -1241,6 +1248,55 @@ class AstBuilder:
             fn = staticmethod(fn)
 
         return fn
+
+    # -- Source-based quoting --
+
+    def _wrap_quote_error(self, source: str, e: Exception) -> MacroError:
+        lines = source.splitlines()
+        if isinstance(e, SyntaxError) and e.lineno:
+            lineno = e.lineno - 1
+            bad = lines[lineno].strip() if 0 <= lineno < len(lines) else lines[0]
+            return MacroError(f"syntax error in quoted source: `{bad}`")
+        preview = lines[0] if lines else ""
+        if len(preview) > 60:
+            preview = preview[:57] + "..."
+        return MacroError(f"{e} (source: `{preview}`)")
+
+    def quote(self, source: str) -> list[_ast.stmt]:
+        """Parse Python statements from a source string."""
+        source = _textwrap.dedent(source).strip()
+        try:
+            tree = _ast.parse(source)
+        except SyntaxError as e:
+            raise self._wrap_quote_error(source, e) from None
+        return tree.body
+
+    def quote_expr(self, source: str) -> _ast.expr:
+        """Parse a single Python expression from a source string."""
+        source = _textwrap.dedent(source).strip()
+        try:
+            tree = _ast.parse(source, mode="eval")
+        except SyntaxError as e:
+            raise self._wrap_quote_error(source, e) from None
+        return tree.body
+
+    def quote_fun(self, source: str) -> Any:
+        """Parse and compile a function definition from a source string."""
+        source = _textwrap.dedent(source).strip()
+        try:
+            tree = _ast.parse(source)
+        except SyntaxError as e:
+            raise self._wrap_quote_error(source, e) from None
+        funcs = [n for n in tree.body if isinstance(n, _ast.FunctionDef)]
+        if len(funcs) != 1:
+            raise MacroError(
+                f"quote_fun: expected exactly 1 function definition, got {len(funcs)} "
+                f"(source: `{source.splitlines()[0]}`)")
+        _ast.fix_missing_locations(tree)
+        code = compile(tree, f"<macro:{funcs[0].name}>", "exec")
+        ns: dict[str, Any] = {}
+        exec(code, _macro_exec_ns, ns)
+        return ns[funcs[0].name]
 
 
 # Module-level singleton
