@@ -10,7 +10,7 @@
 | 2 | Call-site macros: `@call_macro` functions expand at call site, receive `MacroArg` (expr + type), return replacement `TpyExpr`. First use cases: `asdict`/`astuple` | Done |
 | 3 | Quote templates: `quote()` syntactic sugar for less verbose macro authoring | Not started |
 | 4 | String-based method generation: `add_method_from_source` (parse TPy source strings) | Not started |
-| 5 | CPython compatibility: dual `__init_subclass__` / `@class_macro` path | Not started |
+| 5 | CPython compatibility: `lib/cpy/tpyc/macro_api.py` backend targeting Python `ast` module | Done |
 | 6 | TpyMini VM: tree-walking interpreter for self-hosted compiler | Not started |
 
 ### Future Extensions
@@ -42,7 +42,7 @@
 
 | File | Purpose |
 |------|---------|
-| `tpyc/macro_api.py` | Public API: `ClassInfo`, `FieldInfo`, `TypeInfo`, `MacroArg`, `CallMacroContext`, `MacroError`, `class_macro`, `call_macro` |
+| `tpyc/macro_api.py` | Public API: metadata (`ClassInfo`, `FieldInfo`, `TypeInfo`), builders (`ast`, `types`), type aliases (`Expr`, `Stmt`, `Function`, `Type`), decorators (`class_macro`, `call_macro`) |
 | `tpyc/macro_loader.py` | `MacroRegistry`, `validate_and_call_macro`, `call_macro_field_function`, `expand_call_macro` |
 | `lib/tpy/dataclasses.py` | `@dataclass` class macro, `Field`/`field()`, `asdict`/`astuple` call macros |
 | `lib/tpy/enum.py` | `Enum`, `IntEnum`, `auto()` -- resolved via import tracking, not yet macro-driven |
@@ -124,20 +124,26 @@ registers a `FunctionInfo` signature without a body -- codegen generates the C++
 
 ```python
 # tpy: macro_module
-from tpyc.macro_api import ClassInfo, class_macro, build_init, build_eq
+from tpyc.macro_api import (
+    ClassInfo, FieldInfo, TypeInfo, MacroError,
+    class_macro, build_init, build_eq,
+    ast, types, Expr, Stmt, Function,
+)
 
 @class_macro
 def my_decorator(cls: ClassInfo, *, option: bool = False) -> None:
     # inspect cls.fields, cls.type_params, etc.
-    # add methods via cls.add_method() or cls.add_method_stub()
+    # build methods via ast.function(), ast.assign(), ast.call(), etc.
+    # add methods via cls.add_method()
     # set flags via cls.is_dataclass, cls.is_frozen, etc.
     # emit diagnostics via cls.warning() or cls.error()
     pass
 ```
 
 Macro modules use `# tpy: macro_module` directive. They are executed via CPython
-during compilation and never compiled to C++. They can import from `tpyc.macro_api`
-and Python stdlib only.
+during compilation and never compiled to C++. Import restriction enforces that
+macros import only from `tpyc.macro_api` (no compiler internals, no stdlib).
+Dangerous builtins (`open`, `exec`, `eval`, etc.) are also blocked.
 
 ## Use Cases
 
@@ -371,26 +377,130 @@ def model(cls: ClassInfo) -> None:
 
 ## CPython Compatibility (Phase 5)
 
-Same source, two execution paths:
+**Goal**: Same macro source code works under both tpyc and CPython. Macro authors
+write one implementation; user macros get CPython compatibility for free.
 
-```python
-class Model:
-    # CPython path: __init_subclass__ runs at class definition time
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        fields = get_fields(cls)
-        cls.to_json = make_to_json(fields)
+**Approach**: `lib/cpy/tpyc/macro_api.py` provides a CPython backend that
+implements the same public API (`ast`, `types`, `ClassInfo`, `TypeInfo`, etc.)
+but targets Python runtime objects instead of compiler AST nodes.
 
-    # tpyc path: @class_macro runs during compilation
-    @class_macro
-    @classmethod
-    def __generate__(cls, info: ClassInfo) -> None:
-        for field in info.fields:
-            ...
+### How it works
+
+Under **tpyc**: `@class_macro` runs at compile time. `ast.*` builders produce
+TpyAST nodes. Sema analyzes them, codegen emits C++.
+
+Under **CPython**: `@class_macro` runs at class definition time (as a decorator).
+`ast.*` builders produce Python AST nodes via the `ast` stdlib module, which are
+`compile()`'d into function objects and attached to the class.
+
+```
+Macro source (model.py)
+    |
+    +-- tpyc path: ast.* -> TpyAST -> sema -> C++
+    |
+    +-- CPython path: ast.* -> Python ast -> compile() -> function objects
 ```
 
-The `@class_macro` decorator is a no-op in CPython (just returns the function
-unchanged). The `__init_subclass__` path is ignored by tpyc.
+The macro logic (field discovery, validation, type dispatch, method structure)
+is identical. Only the AST backend differs.
+
+### CPython macro_api components
+
+**`lib/cpy/tpyc/macro_api.py`** must provide:
+
+| Component | tpyc behavior | CPython behavior |
+|-----------|--------------|------------------|
+| `@class_macro` | Registers macro for compile-time invocation | Returns a decorator that runs at class definition time |
+| `ClassInfo` | Wraps `TpyRecord` | Wraps Python class + `__annotations__` |
+| `TypeInfo` | Wraps `TpyType` | Wraps Python type annotations (`int`, `str`, `list[X]`, etc.) |
+| `FieldInfo` | Wraps compiler `FieldInfo` | Wraps `(name, annotation, default)` tuples |
+| `ast.*` builders | Produce `TpyExpr`/`TpyStmt` nodes | Produce Python `ast` module nodes |
+| `types.*` properties | Return `TpyType` singletons | Return Python type objects or markers |
+| `ast.function()` | Returns `TpyFunction` | Returns compiled Python function via `compile()` + `exec()` |
+| `macro_deps()` | Registers compile-time module deps | No-op (CPython resolves imports normally) |
+
+### TypeInfo under CPython
+
+TypeInfo predicates inspect Python type annotations:
+
+```python
+# CPython TypeInfo wraps a Python type annotation
+TypeInfo.from_python_type(int)        # is_int = False (Python int = BigInt)
+TypeInfo.from_python_type(Int32)      # is_int = True (from lib/cpy/tpy/)
+TypeInfo.from_python_type(str)        # is_str = True
+TypeInfo.from_python_type(list[str])  # is_list = True, type_args = [TypeInfo(str)]
+```
+
+Uses `typing.get_type_hints()` and `typing.get_args()`/`typing.get_origin()`
+for generic types.
+
+### ClassInfo under CPython
+
+```python
+@class_macro
+def model(cls: ClassInfo, *, frozen: bool = False) -> None:
+    # cls.fields -- from __annotations__ + defaults
+    # cls.add_method(func) -- func is a compiled Python function
+    # cls.is_dataclass = True -- applies @dataclasses.dataclass
+    ...
+```
+
+`ClassInfo` wraps a Python class. `add_method()` attaches compiled functions.
+`apply_to_record()` applies `@dataclasses.dataclass` if `is_dataclass` is set.
+
+### AST builders under CPython
+
+The key challenge. `ast.*` builders must produce Python `ast` module nodes that
+can be compiled into executable functions.
+
+Example -- `ast.method_call(reader, "read_str")` produces:
+
+```python
+# tpyc: TpyMethodCall(obj=reader, method="read_str", args=[])
+# CPython: ast.Call(func=ast.Attribute(value=reader, attr="read_str"), args=[])
+```
+
+`ast.function()` collects all body statements, wraps them in an `ast.FunctionDef`,
+calls `compile()`, and returns the function object.
+
+### Runtime dependencies
+
+Macro-generated methods may reference runtime types (e.g., `JsonReader`).
+Under CPython, these must exist as Python classes:
+
+- `lib/cpy/tplib/json/parser.py` -- `JsonReader` backed by Python's `json` module
+- `lib/cpy/tplib/json/writer.py` -- `JsonWriter` backed by Python's `json` module
+
+These are NOT parallel implementations of the macro logic -- they're runtime
+support classes that the generated code calls. The macro logic is shared.
+
+### Implementation phases
+
+1. **CPython `ClassInfo`/`TypeInfo`/`FieldInfo`** -- wrap Python classes and
+   annotations. Support `is_dataclass`, `add_method`, field discovery.
+2. **CPython `ast.*` expression builders** -- produce `ast.Name`, `ast.Call`,
+   `ast.BinOp`, `ast.Attribute`, literals, subscript, comprehensions.
+3. **CPython `ast.*` statement builders** -- `ast.Assign`, `ast.Return`,
+   `ast.If`, `ast.While`, `ast.For`, `ast.Raise`, `ast.Try`, `ast.Match`.
+4. **CPython `ast.function()`** -- assemble body into `ast.FunctionDef`,
+   `compile()`, `exec()` into function object.
+5. **CPython `types.*`** -- return Python type objects or marker classes.
+6. **`@class_macro` decorator** -- intercept class definition, construct
+   `ClassInfo`, invoke macro, apply results.
+7. **Runtime stubs** -- `JsonReader`/`JsonWriter` CPython implementations.
+8. **Remove `no_cpython.txt`** from `@model` tests, verify `test_cpy` passes.
+
+### Design constraints
+
+- **No parallel logic**: The macro module (`model.py`) is the single source of
+  truth. The CPython backend implements the `ast.*`/`types.*`/`ClassInfo` API,
+  not the serialization logic.
+- **Forward-compatible with TpyMini VM** (Phase 6): The CPython backend is a
+  prototype of the macro VM. The API surface it implements is what TpyMini must
+  support.
+- **Minimal runtime surface**: Only `tpyc.macro_api` is importable in macros
+  (enforced by import restriction). The CPython backend must provide exactly
+  this surface.
 
 ## Limitations
 

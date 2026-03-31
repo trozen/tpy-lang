@@ -4850,7 +4850,8 @@ Send/Sync rules for built-in types:
   - `dataclasses.asdict()` and `dataclasses.astuple()` as first use cases
   - Recursion into nested dataclasses, `list[DC]`, `dict[K, DC]`, `tuple[DC, ...]`
   - Qualified form (`dataclasses.asdict`), mixed-type dicts via `dict[str, A|B]`
-  - Remaining: quote templates, hygiene, CPython compat
+  - CPython compatibility: `lib/cpy/tpyc/macro_api.py` backend -- same macro source works under both tpyc and CPython
+  - Remaining: quote templates, hygiene
 
 ### Compile-Time Hooks (Extensible Metaprogramming -- Future Design)
 

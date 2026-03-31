@@ -402,6 +402,7 @@ Library search roots and CPython stubs:
 | `tpy/tpy/unsafe.py` | Unsafe operations: `unsafe_ptr()`, `unsafe_cast()` |
 | `tpy/math.py`, `time.py`, `sys.py`, `bisect.py`, `dataclasses.py`, `enum.py` | Python stdlib analogs |
 | `cpy/tpy/` | CPython stubs ONLY (not seen by tpyc): `Int32`, `Ptr`, `Array`, decorators; submodules: `mem`, `unsafe` |
+| `cpy/tpyc/` | CPython backend for macro API: `macro_api.py` provides the same public API as `tpyc/macro_api.py` but targets Python `ast` module so macros work as real decorators under CPython |
 | `cpy/tplib` | Symlink to `tpy/tplib/` so CPython tests can find tplib |
 
 **Compiler search order** (first match wins):
