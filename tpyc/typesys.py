@@ -372,6 +372,15 @@ class TpyType:
             return f"{self.to_cpp()} {name}"
         return f"const {self.to_cpp()}& {name}"
 
+    def to_cpp_stored(self) -> str:
+        """Return the C++ type for storage in containers that cannot hold
+        references (std::expected, std::optional).
+
+        Default: same as to_cpp(). Overridden by RefType to produce
+        val_or_ref<T> which stores non-value types as pointers.
+        """
+        return self.to_cpp()
+
     def is_ref_param(self) -> bool:
         """Return True if this type is passed by mutable reference as a parameter."""
         return not self.is_value_type()
@@ -1388,6 +1397,13 @@ class ReadonlyType(TpyType):
     def to_cpp_return_const(self) -> str:
         return self.wrapped.to_cpp_return_const()
 
+    def to_cpp_stored(self) -> str:
+        """Readonly non-value types need val_or_ref<const T> for storage
+        in containers that cannot hold references."""
+        if not self.wrapped.is_value_type():
+            return f"::tpy::val_or_ref<const {self.wrapped.to_cpp()}>"
+        return self.to_cpp()
+
     def is_ref_param(self) -> bool:
         return False
 
@@ -1428,6 +1444,113 @@ def unwrap_qualifiers(typ: 'TpyType') -> 'TpyType':
     if isinstance(typ, OwnType):
         typ = typ.wrapped
     return typ
+
+
+@dataclass(frozen=True)
+class RefType(TpyType):
+    """Borrowed reference to T.
+
+    Auto-inserted by sema for non-value types at function param/return
+    boundaries and iterator element positions. The user never writes this.
+
+    Ref[T] is the internal semantic fact that a value is borrowed, not owned.
+    Codegen lowers it differently depending on context:
+    - Function param/return: T& (or trait-based for generics)
+    - Storage in std::expected / iterators: val_or_ref<T>
+    """
+    wrapped: TpyType
+
+    def to_cpp(self) -> str:
+        if isinstance(self.wrapped, TypeParamRef):
+            return f"::tpy::val_or_ref_t<{self.wrapped.name}>"
+        return f"{self.wrapped.to_cpp()}&"
+
+    def to_cpp_return(self) -> str:
+        return self.to_cpp()
+
+    def to_cpp_return_const(self) -> str:
+        if isinstance(self.wrapped, TypeParamRef):
+            return f"::tpy::val_or_cref_t<{self.wrapped.name}>"
+        return f"const {self.wrapped.to_cpp()}&"
+
+    def to_cpp_param_type(self) -> str:
+        if isinstance(self.wrapped, TypeParamRef):
+            return f"::tpy::param_val_or_ref_t<{self.wrapped.name}>"
+        return f"{self.wrapped.to_cpp()}&"
+
+    def to_cpp_param(self, name: str) -> str:
+        return f"{self.to_cpp_param_type()} {name}"
+
+    def to_cpp_const_param(self, name: str) -> str:
+        return f"const {self.wrapped.to_cpp()}& {name}"
+
+    def to_cpp_stored(self) -> str:
+        """C++ type for storage in containers that cannot hold references
+        (std::expected, std::optional)."""
+        return f"::tpy::val_or_ref<{self.wrapped.to_cpp()}>"
+
+    def is_value_type(self) -> bool:
+        return False
+
+    def is_send(self) -> bool:
+        return self.wrapped.is_send()
+
+    def is_sync(self) -> bool:
+        return self.wrapped.is_sync()
+
+    def is_ref_param(self) -> bool:
+        return True
+
+    def param_needs_copy_for_reassign(self) -> bool:
+        return False
+
+    def get_element_type(self) -> Optional['TpyType']:
+        return self.wrapped.get_element_type()
+
+    def __str__(self) -> str:
+        return f"Ref[{self.wrapped}]"
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.wrapped,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return make_ref(types[0])
+
+
+def make_ref(t: 'TpyType') -> 'TpyType':
+    """Wrap non-value types in Ref[T] to make reference semantics explicit.
+
+    No-op for value types and types that already carry their own
+    ownership/reference semantics (Own, Readonly, Optional, Union).
+    TypeParamRef is always wrapped -- the C++ trait aliases handle
+    value-vs-ref dispatch at template instantiation time.
+    """
+    if isinstance(t, (OwnType, RefType, ReadonlyType,
+                      VoidType, NoneType, OptionalType, UnionType)):
+        return t
+    # AutoReadonlyType / AutoOwnType are stripped before sema normalization
+    # runs, so they should never reach here. Guard defensively.
+    if isinstance(t, (AutoReadonlyType, AutoOwnType)):
+        return t
+    # Value types don't need Ref. TypeParamRef.is_value_type() returns
+    # the right answer: False for TYPE kind (needs wrapping -- the C++ trait
+    # aliases handle value-vs-ref at instantiation), True for INT kind and
+    # ValueType-bounded (genuinely value types, no wrapping).
+    if t.is_value_type():
+        return t
+    return RefType(t)
+
+
+def unwrap_ref_type(t: 'TpyType') -> 'TpyType':
+    """Strip Ref wrapper if present, returning the inner type."""
+    if isinstance(t, RefType):
+        return t.wrapped
+    return t
+
+
+def is_ref_type(t: 'TpyType') -> bool:
+    """Return True if t is a RefType."""
+    return isinstance(t, RefType)
 
 
 @dataclass(frozen=True)

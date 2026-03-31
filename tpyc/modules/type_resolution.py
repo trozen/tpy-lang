@@ -345,7 +345,7 @@ def _find_error_return_next_element(
     record_name: str, type_args: "list[TpyType] | None", registry: "TypeRegistry",
 ) -> "TpyType | None":
     """Walk a record's method table (and parent chain) looking for __next__() with error_return."""
-    from tpyc.typesys import NamedType, OwnType, TypeParamRef
+    from tpyc.typesys import NamedType, OwnType, TypeParamRef, unwrap_ref_type
 
     record = registry.find_record(record_name)
     if record is None:
@@ -357,7 +357,7 @@ def _find_error_return_next_element(
 
     for method in record.get_method_overloads("__next__"):
         if method.error_return_type == "builtins.StopIteration" and len(method.params) == 0:
-            inner = method.return_type
+            inner = unwrap_ref_type(method.return_type)
             if isinstance(inner, OwnType):
                 inner = inner.wrapped
             if isinstance(inner, TypeParamRef) and inner.name in type_subst:
@@ -455,13 +455,13 @@ def _find_iter_method_info(
     *, allow_protocol_return: bool = False,
 ) -> "IterInfo | None":
     """Check __iter__() methods for a concrete iterator return type and extract element type."""
-    from tpyc.typesys import FunctionInfo, NamedType, OwnType, SpanIterType, TypeParamRef, is_protocol_type
+    from tpyc.typesys import FunctionInfo, NamedType, OwnType, SpanIterType, TypeParamRef, is_protocol_type, unwrap_ref_type
 
     for method in methods:
         if len(method.params) != 0:
             continue
         if isinstance(method, FunctionInfo):
-            ret = method.return_type
+            ret = unwrap_ref_type(method.return_type)
         else:
             ret = method.returns
         if isinstance(ret, TypeParamRef) and ret.name in type_subst:

@@ -13,7 +13,7 @@ from ..typesys import (
     BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
     Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, is_any_str_type, SpanType,
     resolve_int_literals, CONST_PARAMS_METHODS,
-    error_return_to_cpp,
+    error_return_to_cpp, unwrap_ref_type,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import (
@@ -271,7 +271,7 @@ class FunctionGenerator:
                     part += f" = {self.default_to_cpp(defaults[i], ptype)}"
                 parts.append(part)
                 continue
-            own = unwrap_readonly(ptype)
+            own = unwrap_readonly(unwrap_ref_type(ptype))
             if (reassigned_params and pname in reassigned_params
                     and ptype.param_needs_copy_for_reassign()):
                 # Rename param so the body can declare a mutable local with the original name
@@ -285,7 +285,7 @@ class FunctionGenerator:
             elif (mutated_params is not None and i not in mutated_params
                     and (ptype.is_ref_param()
                          or (isinstance(own, UnionType) and own.uses_pointer_repr()))
-                    and not isinstance(ptype, TypeParamRef)
+                    and not isinstance(unwrap_ref_type(ptype), TypeParamRef)
                     and not (reassigned_params and pname in reassigned_params)):
                 # Param is provably not mutated and not rebound -- safe to use const.
                 # For ref params: T& -> const T&.
@@ -361,7 +361,7 @@ class FunctionGenerator:
                     part += f" = {self.default_to_cpp(defaults[i], ptype)}"
                 result.append(part)
                 continue
-            unwrapped = unwrap_readonly(ptype)
+            unwrapped = unwrap_readonly(unwrap_ref_type(ptype))
             if self.protocols.is_static_protocol_param(ptype):
                 # Unified static protocol handling (single, optional, or union)
                 info = self._find_protocol_param_info(pname, ptype)
@@ -423,7 +423,7 @@ class FunctionGenerator:
         If error_return is set, wraps the return type in std::expected<T, E>.
         """
         cpp_error = error_return_to_cpp(error_return, self.ctx.module_name, self.ctx.analyzer.registry) if error_return else None
-        unwrapped = unwrap_readonly(return_type)
+        unwrapped = unwrap_readonly(unwrap_ref_type(return_type))
         # Unwrap Own[Protocol] so consuming __iter__ returning Own[Iterator[T]]
         # is recognized as a protocol return and gets `auto` in C++.
         if isinstance(unwrapped, OwnType) and is_protocol_type(unwrapped.wrapped):
@@ -432,12 +432,12 @@ class FunctionGenerator:
             pi = self.ctx.analyzer.registry.get_protocol(unwrapped.name)
             if pi and pi.is_dynamic:
                 base = self.protocols.get_dynamic_base_name(unwrapped.name)
-                if const or isinstance(return_type, ReadonlyType):
+                if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
                     ret = f"const {base}&"
                 else:
                     ret = f"{base}&"
                 if cpp_error:
-                    if const or isinstance(return_type, ReadonlyType):
+                    if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
                         inner = f"::tpy::val_or_ref<const {base}>"
                     else:
                         inner = f"::tpy::val_or_ref<{base}>"
@@ -453,7 +453,7 @@ class FunctionGenerator:
         if cpp_error:
             # std::expected can't hold references. For non-value types
             # (where ret is T&), use val_or_ref<T> which stores by pointer.
-            inner = return_type.to_cpp()
+            inner = unwrap_ref_type(return_type).to_cpp()
             if not return_type.is_value_type() and not isinstance(return_type, VoidType):
                 inner = f"::tpy::val_or_ref<{inner}>"
             return f"std::expected<{inner}, {cpp_error}>"
@@ -475,7 +475,7 @@ class FunctionGenerator:
         result: set[str] = set()
         if use_const_params:
             for pname, ptype in params:
-                unwrapped = unwrap_readonly(ptype)
+                unwrapped = unwrap_readonly(unwrap_ref_type(ptype))
                 if ((unwrapped.is_ref_param()
                      or (isinstance(unwrapped, UnionType) and unwrapped.uses_pointer_repr()))
                         and not isinstance(unwrapped, TypeParamRef)):
@@ -484,10 +484,11 @@ class FunctionGenerator:
         if mutated_params is None:
             return result
         for i, (pname, ptype) in enumerate(params):
+            inner = unwrap_ref_type(ptype)
             if (i not in mutated_params
-                    and (ptype.is_ref_param()
-                         or (isinstance(ptype, UnionType) and ptype.uses_pointer_repr()))
-                    and not isinstance(ptype, TypeParamRef)
+                    and (inner.is_ref_param()
+                         or (isinstance(inner, UnionType) and inner.uses_pointer_repr()))
+                    and not isinstance(inner, TypeParamRef)
                     and not (reassigned_params and pname in reassigned_params)):
                 result.add(pname)
         return result
@@ -527,7 +528,7 @@ class FunctionGenerator:
     def _has_dynamic_protocol_params(self, params: list[tuple[str, TpyType]]) -> bool:
         """Check if any params are @dynamic protocol types (need Base& codegen)."""
         for _, ptype in params:
-            unwrapped = unwrap_readonly(ptype)
+            unwrapped = unwrap_readonly(unwrap_ref_type(ptype))
             if isinstance(unwrapped, OptionalType):
                 unwrapped = unwrapped.inner
             resolved = self.protocols.resolve_type_for_codegen(unwrapped)

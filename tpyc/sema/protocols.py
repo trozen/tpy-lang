@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import re
 
 from ..typesys import (
-    TpyType, NamedType, TypeParamRef, SelfType, OwnType, ReadonlyType,
+    TpyType, NamedType, TypeParamRef, SelfType, OwnType, ReadonlyType, RefType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, is_protocol_type,
     FixedIntType, BigIntType, FloatType, Float32Type, BoolType, StrType, StringType, StrViewType, CharType,
     ListType, ListRepeatType, GenExprType, CopyIterType, OwnIterType, DictType, SetType, ArrayType, TupleType, SpanType, OptionalType, IntLiteralType, FloatLiteralType, PendingListType, BIGINT, FLOAT,
@@ -378,9 +378,9 @@ class ProtocolChecker:
                     for (_, actual_ptype), expected_ptype in zip(method_sig.params, expected_params):
                         resolved_ptype = self.type_ops.substitute_types(actual_ptype, type_subst)
                         # Params use equality (not _protocol_type_matches which is
-                        # covariant). Only unwrap Own/Readonly wrappers.
-                        cmp_actual = resolved_ptype.wrapped if isinstance(resolved_ptype, (OwnType, ReadonlyType)) else resolved_ptype
-                        cmp_expected = expected_ptype.wrapped if isinstance(expected_ptype, (OwnType, ReadonlyType)) else expected_ptype
+                        # covariant). Only unwrap Own/Readonly/Ref wrappers.
+                        cmp_actual = resolved_ptype.wrapped if isinstance(resolved_ptype, (OwnType, ReadonlyType, RefType)) else resolved_ptype
+                        cmp_expected = expected_ptype.wrapped if isinstance(expected_ptype, (OwnType, ReadonlyType, RefType)) else expected_ptype
                         if cmp_actual != cmp_expected:
                             return False
                     return True
@@ -473,10 +473,10 @@ class ProtocolChecker:
         if (isinstance(actual, NamedType) and isinstance(expected, NamedType)
                 and actual.name == expected.name and not expected.type_args):
             return True
-        # Unwrap ownership/const wrappers: Own[T] and readonly[T] both satisfy protocol -> T.
-        # Const return types (readonly[T]) arise from the const clone of @auto_readonly
-        # methods; the caller can read or copy the result, satisfying the protocol contract.
-        if isinstance(actual, (OwnType, ReadonlyType)):
+        # Unwrap ownership/const/ref wrappers: Own[T], readonly[T], and Ref[T]
+        # all satisfy protocol -> T. Ref[T] arises from make_ref on non-value
+        # return types; the reference is transparent for protocol conformance.
+        if isinstance(actual, (OwnType, ReadonlyType, RefType)):
             unwrapped = actual.wrapped
         else:
             unwrapped = actual

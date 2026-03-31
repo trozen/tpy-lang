@@ -3,7 +3,11 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
-- add Ref[T] type that would denote references, automatically added to function args/return in parser, so user doesn't need to see it; would it help in managig the pipeline?
+- Ref[T] follow-up: user-defined generic functions (`def apply[T, U](fn: Fn[[T], U], v: T) -> U`) emit `Point&` as explicit C++ type arg when U=Ref[Point], breaking `val_or_ref_t<Point&>`. Fix: use `to_cpp_stored()` for explicit type args in the generic call codegen path (same pattern as `@cpp_template` builtins). Small change -- one codegen path.
+- Ref[T] follow-up: mixed Ref/Own in multi-iterable map -- `map(fn, refs, owns)` where fn takes `(Point, Own[Point])`. Two issues: (1) C++ `map_multi_iter::call_next()` passes all args as lvalue refs, but `Own[Point]` param needs rvalue ref (`Point&&`). Fix: generate `std::move()` for Own-typed args in the call. (2) `own_iter()` as an rvalue iterable triggers the owning map overload that moves ALL iterables. Fix: separate lvalue/rvalue handling per-iterable in `builtin_map_n`.
+- Combinator composition: `enumerate(map(fn, xs))` fails at C++ level because `enumerate_direct_iter` uses `begin()/end()` but `map_iter` only provides `__next__()`. The codegen should detect `__next__()-`based iterables and use the next-based loop path instead of begin/end. Pre-existing issue exposed by chaining combinators. Once fixed, add regression tests for `enumerate(map(identity, pts))` and `enumerate(map(ro_identity, pts))` (readonly borrowed returns through composed combinators).
+- Ref[T] follow-up: warnings for implicit Ref->owned materialization (Phase 6 from the Ref design). Warn when Ref[T] is silently converted to owned T in storage positions where the copy is surprising. Suppressible via `copy()` or `Own[...]`.
+- Ref[T] follow-up: cleanup (Phase 7). Remove `is_value_type()` branching from base class `to_cpp_return()`/`to_cpp_param_type()`. Remove TypeParamRef's to_cpp overrides (now handled by `Ref[TypeParamRef]`). Replace remaining `to_cpp_*` method dispatch with centralized lowering API.
 - Resolve class-level type params in cpp_template at sema time: when sema resolves a generic constructor like `list[Int32](range(10))`, substitute `{T}` -> `Int32` into the template and store a fully-resolved `cpp_template` on `resolved_function_info`. Codegen would then never see unresolved type params -- every template would only have `{0}`, `{1}`, `{cpp}`. Eliminates the `type_subst`/`extract_type_params` machinery in codegen's call_type block and the regex guard in `_gen_call`.
 - Eliminate concrete type classes (ListType, DictType, etc.): replace `isinstance(t, ListType)` checks with name-based or annotation-driven checks. ~60 references for ListType alone across type inference, codegen, and compatibility. Enables treating all types uniformly as NamedType + RecordInfo. Lower priority -- current type classes work fine, this is about uniformity.
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
@@ -12,19 +16,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Define decorators as .py functions: readonly/noalloc/nocopy/pure/dynamic/error_return (tpy), native/cpp_template/builtin_type (tpy.extern), overload/override (typing) are currently parser keywords with empty stub files. Want them as real function definitions eventually so the parser doesn't need special handling. Blocked on: functions need type annotations to compile, and decorator signatures have no meaningful type (identity function over any callable).
 - ContextManager[T] protocol
 
-## Ref[T] -- explicit reference semantics in the type system
-Currently the value/reference split for non-value types is implicit and scattered across codegen: `to_cpp()` vs `to_cpp_return()` vs `to_cpp_param_type()`, `val_or_ref_t<T>`, `val_or_ref<T>` wrapper, `loop_var_binding` decision tree, `unwrap_ref`. Every context that wraps non-value types in a value container (`std::expected`, `std::tuple`, `std::optional`) independently solves "how to not lose the reference".
-
-Proposal: add `Ref[T]` as an internal type (auto-inserted by parser, user never writes it) that maps to `val_or_ref<T>` in C++. The type system carries reference intent explicitly:
-- `def foo(x: Point)` -> internally `x: Ref[Point]` -> C++ `val_or_ref<Point>` (holds `Point*`)
-- `-> tuple[Int32, T]` -> internally `tuple[Int32, Ref[T]]` -> C++ `std::tuple<int32_t, val_or_ref<T>>`
-- `@error_return(E) -> T` -> internally `-> Ref[T]` -> C++ `std::expected<val_or_ref<T>, E>`
-
-This unifies the current ad-hoc mechanisms into one concept. Codegen becomes type-directed instead of context-dependent. New features that wrap non-value types get reference preservation for free.
-
-Can be done incrementally: start where `val_or_ref<T>` already exists (iterator `__next__`, enumerate/zip tuples), extend to error_return, then to params/returns in general.
-
-Motivating example: `map(identity, pts)` where `identity(p: Point) -> Point` returns `Point&` in C++. The `map_iter::__next__()` stores the result in `std::expected<Point, StopIteration>`, copying it. With `Ref[T]`, the return type would be `Ref[Point]` -> `val_or_ref<Point>` -> pointer preserved. Meanwhile `map(lambda p: Point(p.x+1, p.y), pts)` returns `Own[Point]` -> stored by value. The `Own` vs bare distinction already exists in sema but is lost at the C++ template level -- `Ref[T]` would carry it through.
 
 ## Bugs
 - Generic generators with multiple yield points (struct-based codegen path) are not yet supported -- the out-of-line `__next__()` in .cpp won't link for template structs. Currently guarded with a sema error. Fix: emit struct + `__next__()` body into the header when the function has type params.

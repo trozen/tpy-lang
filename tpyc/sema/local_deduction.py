@@ -50,6 +50,7 @@ from ..typesys import (
     FLOAT,
     UnknownElementType,
     resolve_int_literals,
+    unwrap_ref_type,
 )
 from .context import PENDING_CONTAINER_TYPES
 from .diagnostics import SemanticError
@@ -348,6 +349,7 @@ class LocalTypeDeduction:
             arg_expr = arg_expr.expr
         if not isinstance(arg_expr, TpyName):
             return
+        param_type = unwrap_ref_type(param_type)
 
         if isinstance(arg_type, PendingListType):
             literal_id = self.ctx.variable_to_literal.get(arg_expr.name)
@@ -408,6 +410,7 @@ class LocalTypeDeduction:
 
     def mark_list_return_context(self, return_expr: TpyExpr, return_type: TpyType) -> None:
         """Track return-type context for list literal inference."""
+        return_type = unwrap_ref_type(return_type)
         if isinstance(return_type, OwnType):
             return_type = return_type.wrapped
 

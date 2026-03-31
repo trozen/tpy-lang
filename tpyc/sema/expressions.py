@@ -21,7 +21,7 @@ from ..typesys import (
     resolve_int_literals, FnType, CallableType,
     INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, SLICE, BYTES, BYTESVIEW, UINT8,
     is_protocol_type, container_to_str_template, contains_type_param,
-    PendingGenericInstanceType, SliceType,
+    PendingGenericInstanceType, SliceType, unwrap_ref_type,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -169,6 +169,27 @@ class ExpressionAnalyzer:
         if scopes is not None:
             self.scopes = scopes
 
+    @staticmethod
+    def _strip_ref_from_expr_type(typ: TpyType) -> TpyType:
+        """Strip Ref from inside protocol type args (Iterator, Iterable, etc.).
+
+        When a function returns Iterator[Ref[Point]], the Ref is about the
+        iterator's internal storage (val_or_ref). Downstream consumers
+        (enumerate, zip, etc.) should see the logical element type (Point),
+        not the storage wrapper. Without this, enumerate(map(identity, pts))
+        would get T=Ref[Point] -> val_or_ref<Point> in its template, which
+        doesn't compose with the C++ enumerate implementation.
+        """
+        if (isinstance(typ, NamedType) and typ.is_protocol and typ.type_args):
+            stripped = tuple(
+                unwrap_ref_type(a) if isinstance(a, TpyType) else a
+                for a in typ.type_args
+            )
+            if stripped != typ.type_args:
+                return NamedType(typ.name, stripped, typ.is_protocol,
+                                 typ._module_qname, typ.is_dynamic_protocol)
+        return typ
+
     def analyze_expr(self, expr: TpyExpr) -> TpyType:
         """Analyze an expression and return its type."""
         if isinstance(expr, TpyIntLiteral):
@@ -194,10 +215,10 @@ class ExpressionAnalyzer:
         elif isinstance(expr, TpyUnaryOp):
             typ = self._analyze_unaryop(expr)
         elif isinstance(expr, TpyCall):
-            typ = self.calls.analyze_call(expr)
+            typ = self._strip_ref_from_expr_type(unwrap_ref_type(self.calls.analyze_call(expr)))
             self.narrowing.invalidate_field_facts_for_call(expr)
         elif isinstance(expr, TpyMethodCall):
-            typ = self.methods.analyze_method_call(expr)
+            typ = self._strip_ref_from_expr_type(unwrap_ref_type(self.methods.analyze_method_call(expr)))
             self.narrowing.invalidate_field_facts_for_method_call(expr)
         elif isinstance(expr, TpyFieldAccess):
             typ = self._analyze_field_access(expr)
@@ -251,6 +272,8 @@ class ExpressionAnalyzer:
         """
         if type_hint is None:
             return self.analyze_expr(expr)
+
+        type_hint = unwrap_ref_type(type_hint)
 
         # Lambda with Fn/Callable type hint: infer param types from the hint
         if isinstance(expr, TpyLambda) and isinstance(type_hint, (FnType, CallableType)):
@@ -826,7 +849,7 @@ class ExpressionAnalyzer:
                     # Substitute type params for generic containers
                     from .operators import _substitute_type_params
                     type_subst = builtin_modules.extract_type_params(right_type)
-                    param_type = method.params[0].type
+                    param_type = unwrap_ref_type(method.params[0].type)
                     if type_subst:
                         param_type = _substitute_type_params(param_type, type_subst)
                     # Resolve IntLiteralType: use param type if the literal fits,
@@ -1269,7 +1292,7 @@ class ExpressionAnalyzer:
 
         # Unwrap transparent wrappers
         is_readonly_obj = isinstance(obj_type, ReadonlyType)
-        actual_type = obj_type
+        actual_type = unwrap_ref_type(obj_type)
         if isinstance(actual_type, ReadonlyType):
             actual_type = actual_type.wrapped
         if isinstance(actual_type, OwnType):
@@ -2560,9 +2583,13 @@ class ExpressionAnalyzer:
         if not contains_type_param(hint):
             return hint
         # Build concrete param/return types from the matched function info.
-        # For generic functions with inferred type args, substitute them.
-        param_types = tuple(ptype for _, ptype in fi.params)
-        return_type = fi.return_type
+        # Strip Ref from param types and Own from return type -- FnType represents
+        # the logical callable contract. Ref on return type IS preserved so type
+        # inference can track reference semantics through combinators
+        # (e.g. map(identity, pts) infers U=Ref[Point] -> val_or_ref<Point>).
+        from ..typesys import unwrap_own
+        param_types = tuple(unwrap_ref_type(ptype) for _, ptype in fi.params)
+        return_type = unwrap_own(fi.return_type)
         if fi.is_generic() and expr.function_ref_type_args:
             subst = dict(zip(fi.type_params, expr.function_ref_type_args))
             param_types = tuple(

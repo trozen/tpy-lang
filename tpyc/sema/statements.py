@@ -19,6 +19,7 @@ from ..typesys import (
     INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, is_protocol_type, is_protocol_union,
     qualify_exception_name, is_return_exception, is_exception_type,
     FunctionInfo, ParamInfo,
+    make_ref, unwrap_ref_type,
 )
 from ..parse import (
     TpyExpr,
@@ -558,7 +559,7 @@ class StatementAnalyzer:
             self.expr.analyze_expr(stmt.expr)
         elif isinstance(stmt, TpyReturn):
             if stmt.value:
-                expected = self.ctx.current_function.return_type if self.ctx.current_function else VOID
+                expected = unwrap_ref_type(self.ctx.current_function.return_type) if self.ctx.current_function else VOID
                 ret_type = self.expr.analyze_expr_with_hint(stmt.value, expected)
                 stmt.value_type = ret_type
                 stmt.value = self.compat.coerce_expr(stmt.value, ret_type, expected, "return value",
@@ -806,7 +807,7 @@ class StatementAnalyzer:
                     stmt.var, elem_type, None, None,
                     line=(stmt.loc.line if stmt.loc else None),
                 )
-                stmt.elem_type = elem_type
+                stmt.elem_type = make_ref(elem_type)
 
                 # Auto-consuming decision is deferred until after body analysis
                 # (see below) so we know whether the loop var is mutated.
@@ -1561,7 +1562,7 @@ class StatementAnalyzer:
 
             # Get return type of __enter__() -- use the first overload
             enter_info = enter_overloads[0]
-            enter_type = enter_info.return_type
+            enter_type = unwrap_ref_type(enter_info.return_type)
             item.enter_type = enter_type
 
             # Register the as-variable if present
@@ -1665,9 +1666,12 @@ class StatementAnalyzer:
         self._collect_nonlocal_names(func.body, nonlocal_names)
 
         # Resolve param and return types
-        params = [(p, self.type_ops.resolve_type(t)) for p, t in func.params]
+        resolved_params_bare = [(p, self.type_ops.resolve_type(t)) for p, t in func.params]
+        func.params = [(p, make_ref(t)) for p, t in resolved_params_bare]
+        params = resolved_params_bare
         param_names = {p for p, _ in params}
         return_type = self.type_ops.resolve_type(func.return_type)
+        func.return_type = make_ref(return_type)
 
         # Analyze body in isolated scope
         with self.scopes.nested_def_scope(func) as inner_scope:
@@ -1823,9 +1827,10 @@ class StatementAnalyzer:
         func = self.ctx.current_function
         if isinstance(func, TpyFunction):
             for pname, ptype in func.params:
-                if pname == name and not unwrap_readonly(ptype).is_value_type():
+                ptype_bare = unwrap_ref_type(ptype)
+                if pname == name and not unwrap_readonly(ptype_bare).is_value_type():
                     raise self.ctx.error(
-                        f"Cannot reassign parameter '{name}' of type '{unwrap_readonly(ptype)}'; "
+                        f"Cannot reassign parameter '{name}' of type '{unwrap_readonly(ptype_bare)}'; "
                         f"assign to a new local variable instead",
                         node
                     )

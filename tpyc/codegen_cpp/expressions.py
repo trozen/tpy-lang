@@ -17,7 +17,7 @@ from ..typesys import (
     SpanType, SpanIterType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     EnumType, IntEnumType, TupleType, FnType, CallableType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, is_any_bytes_type, container_to_str_template,
-    ResolvedBinop, get_covariant_params,
+    ResolvedBinop, get_covariant_params, unwrap_ref_type,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -483,7 +483,7 @@ class ExpressionGenerator:
         if ptype is not None:
             # Auto-consuming iteration: Iterable[Own[T]] param with last-use arg
             # that has consuming __iter__. Generate consuming call instead of copy.
-            ptype_inner = unwrap_readonly(ptype)
+            ptype_inner = unwrap_readonly(unwrap_ref_type(ptype))
             if (is_protocol_type(ptype_inner) and isinstance(ptype_inner, NamedType)
                     and ptype_inner.name == "Iterable"
                     and ptype_inner.type_args
@@ -491,7 +491,7 @@ class ExpressionGenerator:
                 consuming = self._gen_consuming_iter(arg, gen_arg)
                 if consuming is not None:
                     return consuming
-            own = unwrap_optional_own(unwrap_readonly(ptype))
+            own = unwrap_optional_own(unwrap_readonly(unwrap_ref_type(ptype)))
             if own is not None:
                 moved = self._maybe_move(arg, gen_arg)
                 if moved is gen_arg and _is_simple_lvalue(arg):
@@ -533,6 +533,8 @@ class ExpressionGenerator:
             expr: The expression to generate
             target_type: Optional expected type (for implicit promotion)
         """
+        if target_type is not None:
+            target_type = unwrap_ref_type(target_type)
         if isinstance(expr, TpyIntLiteral):
             return self._gen_int_literal_value(expr.value, target_type)
 
@@ -1619,6 +1621,9 @@ class ExpressionGenerator:
 
             gen_args = []
             for arg, (pname, ptype) in zip(expr.args, func_info.params):
+                # Strip Ref wrapper -- Ref is a sema annotation; codegen handles
+                # reference semantics through is_value_type() / type traits.
+                ptype = unwrap_ref_type(ptype)
                 # Resolve TypeParamRef for generic functions
                 resolved_ptype = self.types.substitute_type_params(ptype, type_subst) if type_subst else ptype
 
@@ -1649,8 +1654,10 @@ class ExpressionGenerator:
                 if opt_arg is not None:
                     gen_args.append(opt_arg)
                 # Temporaries passed to mutable reference params need a temp variable
-                # because C++ can't bind rvalue to non-const lvalue reference
-                # TypeParamRef generates param_val_or_ref_t<T> which is T& for object types
+                # because C++ can't bind rvalue to non-const lvalue reference.
+                # TypeParamRef generates param_val_or_ref_t<T> which is T& for
+                # object types and const T& for value types -- both need a temp
+                # when the callee captures by reference (e.g. generators).
                 elif (resolved_ptype.is_ref_param() or isinstance(ptype, TypeParamRef)) and self.ctx.is_temporary_expr(arg):
                     init_expr = self.gen_expr(arg, resolved_ptype)
                     temp_name = self.ctx.temps.create(resolved_ptype, init_expr)
@@ -2100,9 +2107,10 @@ class ExpressionGenerator:
                     gen_args = []
                     resolved_params = expr.resolved_function_info.params if expr.resolved_function_info else []
                     for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, method_info.params)):
-                        if isinstance(ptype, TypeParamRef) and self.ctx.is_temporary_expr(arg):
+                        ptype_bare = unwrap_ref_type(ptype)
+                        if isinstance(ptype_bare, TypeParamRef) and self.ctx.is_temporary_expr(arg):
                             # Resolve TypeParamRef to actual type
-                            resolved_type = type_subst.get(ptype.name, ptype)
+                            resolved_type = type_subst.get(ptype_bare.name, ptype_bare)
                             # Only need temp for object types (T&), not value types (const T&)
                             if not resolved_type.is_value_type():
                                 init_expr = self.gen_expr(arg, resolved_type)
