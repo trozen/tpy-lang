@@ -1106,7 +1106,7 @@ Multi-value `Literal` supported. Only direct literal arguments dispatch to
 Natural extension of the type system. Works well with overloads (different return types
 per literal value). Key enabler for `open()` binary mode dispatch.
 
-**Current state**: Phase 3 done. Phases 3a-6 planned. See `docs/LITERAL_TYPES_DESIGN.md`.
+**Current state**: Phase 3a done. Phases 3b-6 planned. See `docs/LITERAL_TYPES_DESIGN.md`.
 
 - **Phase 1 (done)**: `Literal["a", "b", ...]` with string values. Ordering-independent:
   `Literal` stubs are preferred over plain stubs regardless of declaration order.
@@ -1118,7 +1118,8 @@ per literal value). Key enabler for `open()` binary mode dispatch.
 - **Phase 3 (done)**: Equality narrowing for `Literal`-annotated params.
   `if mode == "rb":` narrows `Literal["r", "w", "rb", "wb"]` to `Literal["rb"]`,
   enabling dispatch to more specific overload stubs within branches.
-- **Phase 3a**: Dead branch elimination for single-value Literal comparisons.
+- **Phase 3a (done)**: Dead branch elimination -- single-value Literal comparisons
+  fold to `true`/`false` in generated C++.
 - **Phase 3b**: Literal overload flattening. User `@overload` stubs with different
   return types per Literal value generate per-literal C++ specializations
   (analogous to union flattening). Depends on Phase 3 for dead branch elimination.

@@ -10,3 +10,6 @@ text
 binary
 text
 ok
+always
+text
+reassigned

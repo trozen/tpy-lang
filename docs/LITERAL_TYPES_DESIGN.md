@@ -7,7 +7,7 @@
 | 1 | `Literal["r", "w"]` string values in `@overload` params | Done |
 | 2 | Unified `LiteralType`, int/bool values, `LiteralValue(tag, value)` | Done |
 | 3 | Equality narrowing | Done |
-| 3a | Dead branch elimination for single-value Literal | Not started |
+| 3a | Dead branch elimination for single-value Literal | Done |
 | 3b | Literal overload flattening (different return types per literal value) | Not started |
 | 4 | `match`/`case` exhaustiveness for Literal subjects | Not started |
 | 5 | Literal types in variables (`x: Literal["rb"] = "rb"`) | Not started |
@@ -137,35 +137,41 @@ def dispatch(mode: Literal["r", "w", "rb", "wb"]) -> None:
 ```
 
 
-## Phase 3a: Dead Branch Elimination
+## Phase 3a: Dead Branch Elimination (Done)
 
-When a `LiteralType` has a single value, equality checks become constants:
+When a variable has been narrowed to a single-value `LiteralType`,
+equality checks on it fold to `true`/`false` in the generated C++.
 
 ```python
-mode: Literal["rb"] = "rb"
-if mode == "rb":   # always true -- dead branch elimination
-    ...
+def f(mode: Literal["r", "rb"]) -> None:
+    if mode == "rb":
+        if mode == "rb":  # -> if (true)
+            ...
+        if mode == "r":   # -> if (false)
+            ...
 ```
 
-**Codegen channel**: The existing `_filter_union_codegen_facts` in
-`statements.py` only passes through `UnionType` narrowing facts to codegen.
-Literal narrowing facts would be silently dropped. Two approaches:
+### What was implemented
 
-**Option A**: Extend `_filter_union_codegen_facts` to also pass through
-`LiteralType` narrowings. Codegen then checks narrowed type when generating
-equality comparisons and emits constant `true`/`false`.
+**Sema** (`statements.py`): `_filter_union_codegen_facts` extended to pass
+`LiteralType` narrowing facts through to codegen (alongside `UnionType`).
 
-**Option B**: Add a separate codegen context field (parallel to
-`ctx.value_ranges` for integers) for literal value facts. Simpler to
-reason about, avoids overloading the narrowed_types channel.
+**Codegen context** (`context.py`): Added `literal_facts: dict[str, TpyType]`
+tracking active literal narrowing. Save/restore at branch boundaries.
 
-Recommend **Option A** -- it's the simpler change and consistent with how
-union narrowing already flows through.
+**Codegen statements** (`statements.py`): `_emit_isinstance_extractions`
+skips `LiteralType` (no `std::get` needed) but pushes them into
+`literal_facts`. Literal facts are saved before entering a branch body
+and restored after.
 
-### Effort: S-M
+**Codegen expressions** (`expressions.py`): `_try_fold_literal_comparison`
+checks if one side of `==`/`!=` is a variable with a single-value
+`LiteralType` and the other is a matching literal. Emits `true`/`false`.
 
-Codegen fact propagation: S-M (extend `_filter_union_codegen_facts`).
-Dead branch elimination: S (constant folding in codegen comparisons).
+**Future**: Emit only the then-body when condition folds to `true`, skip
+the branch entirely when `false` (same pattern as
+`_gen_if_overload_specialized` for union isinstance). Low priority since
+the C++ compiler already optimizes away constant branches.
 
 
 ## Phase 3b: Literal Overload Flattening

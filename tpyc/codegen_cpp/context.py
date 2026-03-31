@@ -481,6 +481,8 @@ class CodeGenContext:
     narrowed_vars: dict[str, str] = field(default_factory=dict)
     # Assignment narrowing: var -> narrowed concrete type (for inline std::get at access points)
     assign_narrowed_types: dict[str, 'TpyType'] = field(default_factory=dict)
+    # Literal type narrowing: var -> single-value LiteralType for dead branch elimination
+    literal_facts: dict[str, 'TpyType'] = field(default_factory=dict)
 
     # --- @overload specialization ---
     # When generating code for a specific @overload stub, maps parameter names
@@ -596,6 +598,7 @@ class CodeGenContext:
         self.in_method = False
         self.narrowed_vars = {}
         self.assign_narrowed_types = {}
+        self.literal_facts = {}
         self.walrus_pre_declared = set()
         # Note: overload_param_types is NOT reset here -- it's managed by
         # _gen_overload_specialized_function/method which set it before gen_body
@@ -649,6 +652,14 @@ class CodeGenContext:
                 self.narrowed_vars[var_name] = prev
             else:
                 self.narrowed_vars.pop(var_name, None)
+
+    def save_literal_facts(self) -> dict[str, 'TpyType']:
+        """Snapshot literal_facts before entering a branch."""
+        return dict(self.literal_facts)
+
+    def restore_literal_facts(self, saved: dict[str, 'TpyType']) -> None:
+        """Restore literal_facts after a branch block."""
+        self.literal_facts = saved
 
     def any_ancestor_has_del(self, record_name: str) -> bool:
         """Check if any ancestor of the named record has __del__."""

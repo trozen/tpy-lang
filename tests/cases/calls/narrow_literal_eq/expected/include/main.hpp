@@ -17,6 +17,8 @@ void dispatch_int(int32_t x);
 void dispatch_ne(std::string_view mode);
 void dispatch_or(std::string_view mode);
 void dispatch_out_of_range(std::string_view mode);
+void nested_fold(std::string_view mode);
+void reassign_clears_fold(int32_t x);
 void main();
 
 void __tpy_init();

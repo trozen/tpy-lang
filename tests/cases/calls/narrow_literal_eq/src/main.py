@@ -85,6 +85,30 @@ def dispatch_out_of_range(mode: Literal["r", "w"]) -> None:
         print("ok")
 
 
+def nested_fold(mode: Literal["r", "rb"]) -> None:
+    if mode == "rb":
+        # mode: Literal["rb"] -- single value, comparisons fold to constants
+        if mode == "rb":
+            print("always")
+        if mode == "r":
+            print("never")
+    else:
+        print("text")
+
+
+def reassign_clears_fold(x: Literal[1, 2]) -> None:
+    if x == 1:
+        # x: Literal[1] -- folding active
+        x = 2
+        # x reassigned -- folding must be cleared
+        if x == 1:
+            print("never")
+        else:
+            print("reassigned")
+    else:
+        print("two")
+
+
 def main() -> None:
     dispatch_str("rb")
     dispatch_str("wb")
@@ -102,6 +126,11 @@ def main() -> None:
     dispatch_or("r")
 
     dispatch_out_of_range("r")
+
+    nested_fold("rb")
+    nested_fold("r")
+
+    reassign_clears_fold(1)
 
 
 main()

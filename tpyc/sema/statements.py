@@ -13,7 +13,7 @@ from ..typesys import (
     ListType, DictType, ArrayType, SpanType, PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType, UnknownElementType,
     EnumType, unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType,
-    BytesType, ByteArrayType, BytesViewType,
+    BytesType, ByteArrayType, BytesViewType, LiteralType,
     ViewTypeFamily, VIEW_TYPE_FAMILIES, STR_FAMILY, BYTES_FAMILY,
     PendingGenericInstanceType, FnType, contains_fn_type,
     INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, is_protocol_type, is_protocol_union,
@@ -1059,14 +1059,16 @@ class StatementAnalyzer:
     def _filter_union_codegen_facts(
         self, facts: dict[str, TpyType],
     ) -> dict[str, TpyType]:
-        """Keep only union-origin narrowing facts for codegen.
+        """Keep union-origin and Literal narrowing facts for codegen.
 
         Optional narrowing is handled implicitly by std::optional in C++,
         so only UnionType variables need explicit std::get<T> extraction.
+        LiteralType facts are passed through for dead branch elimination.
         """
         return {
             name: ty for name, ty in facts.items()
-            if isinstance(unwrap_readonly(self.narrowing.declared_type_for_name(name)), UnionType)
+            if (isinstance(unwrap_readonly(self.narrowing.declared_type_for_name(name)), UnionType)
+                or isinstance(ty, LiteralType))
         }
 
     def _analyze_raise(self, stmt: TpyRaise) -> None:

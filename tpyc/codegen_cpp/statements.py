@@ -13,7 +13,7 @@ from ..typesys import (
     ArrayType, ListType, PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
     NoneType, NamedType, StrType, StringType, StrViewType, BytesType, BytesViewType, STR, BYTES, TupleType, VoidType,
     INT32, BIGINT, FLOAT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
-    ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
+    ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType,
     local_var_is_movable, resolve_int_literals,
     error_return_to_cpp, qualify_exception_name, is_return_exception,
 )
@@ -247,6 +247,7 @@ class StatementGenerator:
             if isinstance(stmt, TpyVarDecl):
                 # Clear stale narrowing on any write to this variable
                 self.ctx.assign_narrowed_types.pop(stmt.name, None)
+                self.ctx.literal_facts.pop(stmt.name, None)
                 if stmt.then_type_facts:
                     for var_name, narrowed_type in stmt.then_type_facts.items():
                         self.ctx.assign_narrowed_types[var_name] = narrowed_type
@@ -1315,6 +1316,7 @@ class StatementGenerator:
         # Clear stale assignment narrowing on reassignment
         if isinstance(stmt.target, TpyName):
             self.ctx.assign_narrowed_types.pop(stmt.target.name, None)
+            self.ctx.literal_facts.pop(stmt.target.name, None)
         # Slice assignment: a[x:y] = rhs -> list_set_slice
         if isinstance(stmt.target, TpySubscript) and isinstance(stmt.target.index, TpySlice):
             return self._gen_slice_assign(stmt, indent)
@@ -1417,6 +1419,8 @@ class StatementGenerator:
 
     def _gen_aug_assign_code(self, stmt: TpyAugAssign, indent: str) -> str:
         """Generate code for an augmented assignment. Returns code to write."""
+        if isinstance(stmt.target, TpyName):
+            self.ctx.literal_facts.pop(stmt.target.name, None)
         # Special handling for subscript targets - use set_value() pattern
         if isinstance(stmt.target, TpySubscript):
             return self._gen_aug_assign_subscript_code(stmt, indent)
@@ -1622,6 +1626,11 @@ class StatementGenerator:
         inner_indent = INDENT * (self.ctx.indent_level + indent_extra)
         for var_name, narrowed_type in type_facts.items():
             if isinstance(narrowed_type, (UnionType, NoneType)):
+                continue
+            # LiteralType narrowing: track for dead branch elimination,
+            # no std::get extraction needed.
+            if isinstance(narrowed_type, LiteralType):
+                self.ctx.literal_facts[var_name] = narrowed_type
                 continue
             # Protocol isinstance narrows the concept constraint, not the value;
             # no std::get extraction needed (the variable is already a T& ref).
@@ -2955,6 +2964,7 @@ class StatementGenerator:
                     out.write(f"{indent}}}\n")
                     return
 
+            lit_snap = self.ctx.save_literal_facts()
             then_saved = self._emit_isinstance_extractions(out, node.then_type_facts)
 
             self.ctx.indent_level += 1
@@ -2964,6 +2974,7 @@ class StatementGenerator:
             self.ctx.indent_level -= 1
 
             self.ctx.restore_narrowed_vars(then_saved)
+            self.ctx.restore_literal_facts(lit_snap)
             self.ctx.restore_local_scope(br_snap)
 
         # Final else branch (from the last node in the chain)
@@ -2978,6 +2989,7 @@ class StatementGenerator:
                 and isinstance(last.else_body[0], TpyIf)
                 and self._is_elif(last, last.else_body[0])
             )
+            else_lit_snap = self.ctx.save_literal_facts()
             if is_elif_continuation:
                 else_saved: dict[str, str | None] = {}
             else:
@@ -2990,6 +3002,7 @@ class StatementGenerator:
             self.ctx.indent_level -= 1
 
             self.ctx.restore_narrowed_vars(else_saved)
+            self.ctx.restore_literal_facts(else_lit_snap)
             self.ctx.restore_local_scope(br_snap)
 
         out.write(f"{indent}}}\n")
@@ -3129,7 +3142,7 @@ class StatementGenerator:
     def _has_concrete_isinstance_facts(self, type_facts: dict[str, TpyType]) -> bool:
         """Check if type_facts contain any concrete types that would emit extractions."""
         return any(
-            not isinstance(ty, (UnionType, NoneType)) and not is_protocol_type(ty)
+            not isinstance(ty, (UnionType, NoneType, LiteralType)) and not is_protocol_type(ty)
             for ty in type_facts.values()
         )
 
@@ -3223,6 +3236,7 @@ class StatementGenerator:
         self.ctx.temps.flush(out, indent)
         out.write(f"{indent}while ({cond}) {{\n")
 
+        lit_snap = self.ctx.save_literal_facts()
         saved = self._emit_isinstance_extractions(out, stmt.then_type_facts)
 
         self.ctx.indent_level += 1
@@ -3232,6 +3246,7 @@ class StatementGenerator:
         self.ctx.indent_level -= 1
 
         self.ctx.restore_narrowed_vars(saved)
+        self.ctx.restore_literal_facts(lit_snap)
         out.write(f"{indent}}}\n")
         self.ctx.loop_else_labels.pop()
 

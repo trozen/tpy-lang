@@ -127,6 +127,54 @@ void dispatch_out_of_range(std::string_view mode) {
     // # "rb" not in {"r", "w"} -- no narrowing, no error
 }
 
+// def nested_fold(mode: Literal["r", "rb"]) -> None:
+void nested_fold(std::string_view mode) {
+    // if mode == "rb":
+    if ((mode == "rb")) {
+        // # mode: Literal["rb"] -- single value, comparisons fold to constants
+        // if mode == "rb":
+        if (true) {
+            // print("always")
+            std::cout << "always" << "\n";
+        }
+        // if mode == "r":
+        if (false) {
+            // print("never")
+            std::cout << "never" << "\n";
+        }
+    // else:
+    } else {
+        // print("text")
+        std::cout << "text" << "\n";
+    }
+    // # mode: Literal["rb"] -- single value, comparisons fold to constants
+}
+
+// def reassign_clears_fold(x: Literal[1, 2]) -> None:
+void reassign_clears_fold(int32_t x) {
+    // if x == 1:
+    if ((x == 1)) {
+        // # x: Literal[1] -- folding active
+        // x = 2
+        x = 2;
+        // # x reassigned -- folding must be cleared
+        // if x == 1:
+        if ((x == 1)) {
+            // print("never")
+            std::cout << "never" << "\n";
+        // else:
+        } else {
+            // print("reassigned")
+            std::cout << "reassigned" << "\n";
+        }
+    // else:
+    } else {
+        // print("two")
+        std::cout << "two" << "\n";
+    }
+    // # x: Literal[1] -- folding active
+}
+
 // def main() -> None:
 void main() {
     // dispatch_str("rb")
@@ -153,6 +201,12 @@ void main() {
     dispatch_or("r");
     // dispatch_out_of_range("r")
     dispatch_out_of_range("r");
+    // nested_fold("rb")
+    nested_fold("rb");
+    // nested_fold("r")
+    nested_fold("r");
+    // reassign_clears_fold(1)
+    reassign_clears_fold(1);
 }
 
 void __tpy_init() {

@@ -10,7 +10,7 @@ import re
 from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, StrViewType, LiteralType, BytesType, BytesViewType, CharType,
+    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, StrViewType, LiteralType, LiteralValue, BytesType, BytesViewType, CharType,
     NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, DictType, SetType,
     DictKeysViewType, DictValuesViewType, DictItemsViewType,
     PendingListType, ListRepeatType,
@@ -1063,6 +1063,11 @@ class ExpressionGenerator:
 
         # Comparison operators - generate C++ directly.
         if expr.op in ("==", "!=", "<", ">", "<=", ">="):
+            # Dead branch elimination: fold comparisons on single-value LiteralType
+            if expr.op in ("==", "!="):
+                folded = self._try_fold_literal_comparison(expr)
+                if folded is not None:
+                    return folded
             left_target, right_target = self._comparison_targets(expr)
             left = self.gen_expr_deref(expr.left, left_target)
             right = self.gen_expr_deref(expr.right, right_target)
@@ -1248,6 +1253,36 @@ class ExpressionGenerator:
         for part in parts[1:]:
             result = f"({result} && {part})"
         return result
+
+    def _try_fold_literal_comparison(self, expr: TpyBinOp) -> str | None:
+        """Fold == / != to true/false when one side is a single-value LiteralType variable."""
+        for var_side, lit_side in [(expr.left, expr.right), (expr.right, expr.left)]:
+            if not isinstance(var_side, TpyName):
+                continue
+            lit_type = self.ctx.literal_facts.get(var_side.name)
+            if not isinstance(lit_type, LiteralType) or len(lit_type.values) != 1:
+                continue
+            lit_val = self._extract_literal_value(lit_side)
+            if lit_val is None:
+                continue
+            matches = (lit_val == lit_type.values[0])
+            result = matches if expr.op == "==" else not matches
+            return "true" if result else "false"
+        return None
+
+    @staticmethod
+    def _extract_literal_value(expr: TpyExpr) -> LiteralValue | None:
+        """Extract a LiteralValue from a literal AST node."""
+        if isinstance(expr, TpyStrLiteral):
+            return LiteralValue("str", expr.value)
+        if isinstance(expr, TpyBoolLiteral):
+            return LiteralValue("bool", expr.value)
+        if isinstance(expr, TpyIntLiteral):
+            return LiteralValue("int", expr.value)
+        if (isinstance(expr, TpyUnaryOp) and expr.op == "-"
+                and isinstance(expr.operand, TpyIntLiteral)):
+            return LiteralValue("int", -expr.operand.value)
+        return None
 
     def _comparison_targets(self, pair: TpyBinOp) -> tuple[TpyType | None, TpyType | None]:
         """Determine target types for a comparison pair's operands.
