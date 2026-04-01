@@ -3928,7 +3928,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `int(str)` → string-to-int parsing (via `BigInt::from_str`)
 - **Working**: `iter(x)` → calls `x.__iter__()`, returns `Iterator[T]`
 - **Working**: `make_default[T]()` / `make_default()` → default-constructs `T` (maps to `T{}` in C++). Requires `T: Default`. Type can be explicit or inferred from context. Portable alternative to `T()`.
-- **Working**: `open(path)`, `open(path, mode)` → returns `TextIO` file handle. Supports text modes `"r"` (default), `"w"`, `"a"`. Methods: `read()`, `write()`, `readline()`, `readlines()`, `close()`. Context manager (`with open(...) as f:`). Panics on file-not-found or unsupported mode (no exceptions yet). `readline()`/`readlines()` preserve trailing newlines (Python compat). Binary mode not yet supported.
+- **Working**: `open(path)`, `open(path, mode)` -> `TextIO` or `BinaryIO` file handle. Text modes (`"r"`, `"w"`, `"a"`, `"x"` and variants) return `TextIO` with methods: `read()`, `write()`, `readline()`, `readlines()`, `close()`. Binary modes (`"rb"`, `"wb"`, `"ab"`, `"xb"` and variants) return `BinaryIO` with methods: `read()`, `write()`, `close()`. Mode dispatch uses `Literal` string overloads -- binary vs text is resolved at compile time. Context manager (`with open(...) as f:`). Variable (non-literal) mode falls back to `TextIO`. Raises `FileNotFoundError` (catchable via `try/except`) when the file cannot be opened (all I/O errors currently map to `FileNotFoundError`; `PermissionError` distinction not yet implemented). Panics on unsupported mode strings. `readline()`/`readlines()` preserve trailing newlines (Python compat).
 - **Working**: `enumerate(iterable)`, `enumerate(iterable, start)` → `Iterator[tuple[Int32, T]]`. Supports lvalue and rvalue iterables (owning iterator prevents dangling).
 - **Working**: `zip(iter1, iter2, ...)` → `Iterator[tuple[T1, T2, ...]]`. Overloads for 2-5 iterables. Stops at shortest. Supports lvalue and rvalue iterables.
 - **Working**: `map(fn, iterable, ...)` → `Iterator[U]`. Single and multi-iterable (up to 5). Accepts named functions, lambdas, generic functions, and `Callable`-typed variables. Lazy evaluation. Supports lvalue and rvalue iterables. Reference preservation: when `fn` returns by reference, `map` yields `val_or_ref<T>` so mutations propagate to the original container. Mixed `Ref`/`Own` params forwarded correctly via `fn_param_t` traits. Combinator composition: `enumerate(map(...))`, `filter(map(...))`, `map(filter(...))` work.
@@ -4650,7 +4650,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - `@error_return(E)` requires E to be a `ReturnException` type: `class MyError(Exception, ReturnException): pass`
   - `ReturnException` is a marker protocol that splits exception types into return (zero-cost) vs throw (C++ exceptions) categories
   - `StopIteration` is a built-in `ReturnException` type; user-defined types opt in via `ReturnException` marker
-  - `Exception`/`BaseException`/`StopIteration` defined as `@native` classes in `lib/tpy/builtins/`, mapping to `::tpy::` runtime structs (inherit from `std::exception`)
+  - `BaseException`/`Exception`/`ValueError`/`OSError`/`FileNotFoundError`/`StopIteration` defined as `@native` classes in `lib/tpy/builtins/`, mapping to `::tpy::` runtime structs (inherit from `std::exception`)
   - Decorator on functions: `raise E` compiles to `return std::unexpected(E{})`; `raise E(args)` passes constructor arguments
   - Callers must use `try/except E` or be `@error_return(E)` themselves (auto-propagation)
   - `try/except/else` supported; `except E as e` binds the error value for field access
@@ -4677,7 +4677,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - `try`/`finally` without `except` (pure cleanup)
   - Re-raise: bare `raise` inside `except` block re-throws (`throw;` in C++)
   - Throw-tier raises allowed inside `@error_return` functions (orthogonal to return-tier)
-  - Built-in exceptions: `ValueError(message)` with `message: str` field
+  - Built-in exceptions: `ValueError(message)`, `OSError(message)`, `FileNotFoundError(message)` with `message: str` field
   - User-defined throw exceptions: `class MyError(Exception)` with optional `__init__` + data fields
   - Tier separation enforced: ReturnException and non-ReturnException types cannot be mixed in same `try`/`except`
 - **Open**: Warning when exceptions are used for control flow (e.g., `try: Color(99) except ValueError` to test validity) -- prefer safe alternatives like `try_parse()`

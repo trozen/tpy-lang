@@ -1,0 +1,4 @@
+caught FileNotFoundError
+caught OSError
+caught binary FileNotFoundError
+done

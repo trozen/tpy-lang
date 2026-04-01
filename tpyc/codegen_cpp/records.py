@@ -425,18 +425,16 @@ class RecordGenerator:
         """Generate operator<< overload for printing a record."""
         name = escape_cpp_name(record.name)
 
-        # Check if record has __str__ or __repr__ (including inherited) -- delegate if so
+        # Check if record defines its own __str__ or __repr__ -- delegate if so.
+        # Only check direct methods (not inherited) so that e.g. BaseException.__str__
+        # doesn't override the field-by-field printer for user exception subclasses.
         record_info = self.ctx.analyzer.registry.get_record(record.name)
         has_str = False
         has_repr = False
         if record_info:
-            overloads, _ = self.ctx.analyzer.protocols.lookup_record_method_overloads(
-                record_info, "__str__")
-            has_str = bool(overloads)
+            has_str = bool(record_info.get_method_overloads("__str__"))
             if not has_str:
-                overloads, _ = self.ctx.analyzer.protocols.lookup_record_method_overloads(
-                    record_info, "__repr__")
-                has_repr = bool(overloads)
+                has_repr = bool(record_info.get_method_overloads("__repr__"))
         # For template structs, generate a template operator<<
         if record.type_params:
             # Build params respecting INT type params

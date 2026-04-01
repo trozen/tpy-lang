@@ -12,6 +12,7 @@
 #include <exception>
 #include <expected>
 #include <optional>
+#include <ostream>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -25,9 +26,13 @@ struct BaseException : std::exception {
     BaseException() = default;
     explicit BaseException(std::string msg) : message(std::move(msg)) {}
     const char* what() const noexcept override { return message.c_str(); }
+    std::string_view __str__() const { return message; }
+    friend std::ostream& operator<<(std::ostream& os, const BaseException& e) { return os << e.message; }
 };
 struct Exception : BaseException { using BaseException::BaseException; };
 struct ValueError : Exception { using Exception::Exception; };
+struct OSError : Exception { using Exception::Exception; };
+struct FileNotFoundError : OSError { using OSError::OSError; };
 struct StopIteration : Exception {};
 
 // Portable replacement for std::unexpected(). Some libc++ versions (e.g. zig's

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// # Test that open() panics when file does not exist
+// # Test that unhandled FileNotFoundError from open() terminates the program
 // def main() -> None:
 void main() {
     // f = open("/nonexistent/path/file.txt")

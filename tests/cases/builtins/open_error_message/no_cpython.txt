@@ -1,0 +1,1 @@
+Exception.message is a TPy-specific field (CPython uses e.args[0] or str(e))

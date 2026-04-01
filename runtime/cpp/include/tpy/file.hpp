@@ -61,7 +61,7 @@ public:
         }
         fs_.open(path_, m);
         if (!fs_.is_open()) {
-            tpy_panic(("open(): cannot open '" + std::string(path) + "'").c_str());
+            throw ::tpy::FileNotFoundError("open(): cannot open '" + std::string(path) + "'");
         }
     }
 
@@ -168,7 +168,7 @@ public:
         }
         fs_.open(path_, m);
         if (!fs_.is_open()) {
-            tpy_panic(("open(): cannot open '" + std::string(path) + "'").c_str());
+            throw ::tpy::FileNotFoundError("open(): cannot open '" + std::string(path) + "'");
         }
     }
 

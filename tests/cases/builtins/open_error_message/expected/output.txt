@@ -1,0 +1,2 @@
+open(): cannot open '/nonexistent/path/file.txt'
+open(): cannot open '/nonexistent/path/file.txt'
