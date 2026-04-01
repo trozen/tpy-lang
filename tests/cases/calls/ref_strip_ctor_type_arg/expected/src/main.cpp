@@ -33,8 +33,8 @@ void main() {
         std::cout << p << "\n";
     }
     // # dict from map -- Ref must be stripped from both K and V
-    // d = dict(map(to_pair, pts))  # tpyc: type(dict[str, Point])
-    ::tpy::ordered_map<std::string, Point> d = ::tpy::dict_construct<std::string, Point>(::tpy::builtin_map<Point, std::tuple<std::string, Point>>(to_pair, pts));
+    // d = dict(map(to_pair, pts))  # tpyc: type(dict[str, Point]) warning(/copies tuple\[str, Point\] elements/)
+    ::tpy::ordered_map<std::string, Point> d = ::tpy::dict_construct<std::string, Point>(::tpy::builtin_map<Point, std::tuple<std::string, ::tpy::val_or_ref<Point>>>(to_pair, pts));
     // for k in d:
     auto& __obj_1 = d;
     auto __beg_1 = __obj_1.begin();
@@ -43,6 +43,18 @@ void main() {
         std::string_view k = *__beg_1;
         // print(k, d[k])
         std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n";
+    }
+    // # copy_iter() acknowledges the copy
+    // d2 = dict(copy_iter(map(to_pair, pts)))  # tpyc: ok
+    ::tpy::ordered_map<std::string, Point> d2 = ::tpy::dict_construct<std::string, Point>(::tpy::copy_iter<std::tuple<std::string, Point>>(::tpy::builtin_map<Point, std::tuple<std::string, ::tpy::val_or_ref<Point>>>(to_pair, pts)));
+    // for k in d2:
+    auto& __obj_2 = d2;
+    auto __beg_2 = __obj_2.begin();
+    auto __end_2 = __obj_2.end();
+    for (; __beg_2 != __end_2; ++__beg_2) {
+        std::string_view k = *__beg_2;
+        // print(k, d2[k])
+        std::cout << k << " " << ::tpy::__getitem__(d2, k) << "\n";
     }
 }
 

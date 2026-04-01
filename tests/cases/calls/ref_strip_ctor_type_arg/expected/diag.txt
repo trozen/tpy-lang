@@ -1,1 +1,2 @@
 main.py:25: warning: copies Point elements; use copy_iter() to make this explicit
+main.py:30: warning: copies tuple[str, Point] elements; use copy_iter() to make this explicit

@@ -82,8 +82,8 @@ ordered_map<K, V> dict_from_pairs(Iterable&& iterable) {
     for (;;) {
         auto __r = __iter.__next__();
         if (!__r.has_value()) break;
-        auto&& __item = unwrap_ref(*__r);
-        result.insert_or_assign(std::get<0>(__item), std::get<1>(__item));
+        auto&& __item = unwrap_ref_move(*__r);
+        result.insert_or_assign(std::get<0>(std::move(__item)), std::get<1>(std::move(__item)));
     }
     return result;
 }

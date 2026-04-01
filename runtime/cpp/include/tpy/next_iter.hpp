@@ -13,6 +13,7 @@
 #include "core.hpp"
 
 #include <expected>
+#include <tuple>
 #include <optional>
 
 namespace tpy {
@@ -36,6 +37,18 @@ decltype(auto) unwrap_ref_move(T& v) {
     } else {
         return std::move(v);
     }
+}
+
+// Tuple overload: unwrap val_or_ref from each element.
+// Produces tuple<string, Point> from tuple<string, val_or_ref<Point>>.
+template<typename Tuple, std::size_t... Is>
+auto unwrap_tuple_refs(Tuple& t, std::index_sequence<Is...>) {
+    return std::tuple{unwrap_ref_move(std::get<Is>(t))...};
+}
+
+template<typename... Ts>
+auto unwrap_ref_move(std::tuple<Ts...>& t) {
+    return unwrap_tuple_refs(t, std::index_sequence_for<Ts...>{});
 }
 
 struct NextSentinel {};

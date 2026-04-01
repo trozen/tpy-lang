@@ -3202,6 +3202,10 @@ class ExpressionGenerator:
         elem_strs = []
         for i, elem in enumerate(expr.elements):
             elem_target = target_tuple.element_types[i] if target_tuple and i < len(target_tuple.element_types) else None
+            # Ref in target means the element is borrowed -- unwrap for codegen
+            # since tuple literal capture mode handles ref/value distinction.
+            if isinstance(elem_target, RefType):
+                elem_target = elem_target.wrapped
             resolved = self.types.get_resolved_type(elem, elem_target)
             elem_str = self._wrap_for_owned_slot(self.gen_expr_deref(elem, elem_target), resolved, elem_target)
             # Use elem_target for the tuple type when a target was given: the code was

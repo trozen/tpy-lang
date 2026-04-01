@@ -23,11 +23,12 @@ struct CopyIter {
     Inner inner;
 
     // Iterator protocol: copy each element from the inner iterator.
-    // Uses unwrap() to unwrap val_or_ref from native_iterator.
+    // unwrap_ref_move copies from val_or_ref (borrowed) and moves from
+    // owned values; the tuple overload handles nested val_or_ref elements.
     std::expected<T, StopIteration> __next__() {
         auto r = inner.__next__();
         if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
-        return T(unwrap_ref(*r));
+        return T(unwrap_ref_move(*r));
     }
 
     CopyIter& __iter__() { return *this; }
@@ -64,7 +65,7 @@ struct CopyIter {
 
 // Factory: create CopyIter from a container by calling __iter__ and wrapping.
 template<typename T, typename Container>
-auto copy_iter(const Container& c) {
+auto copy_iter(Container& c) {
     auto it = tpy::__iter__(c);
     return CopyIter<T, decltype(it)>{std::move(it)};
 }

@@ -16,7 +16,7 @@ from ..typesys import (
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType,
     local_var_is_movable, resolve_int_literals,
     error_return_to_cpp, qualify_exception_name, is_return_exception,
-    unwrap_ref_type,
+    unwrap_ref_type, RefType,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn, TpyYield,
@@ -1734,6 +1734,10 @@ class StatementGenerator:
             if name is None:
                 continue
             target_type = stmt.target_types[i]
+            # Ref in target type means reference binding -- unwrap for C++ type
+            # since the binding mode (ref/const_ref/value) is handled below.
+            if isinstance(target_type, RefType):
+                target_type = target_type.wrapped
             cpp_type = self.types.type_to_cpp(target_type)
             cpp_name = escape_cpp_name(name)
             get_expr = f"std::get<{i}>({tmp})"

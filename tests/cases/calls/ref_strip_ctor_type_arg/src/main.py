@@ -1,7 +1,7 @@
 # Ref[T] from function return types must be stripped when inferring container
 # constructor type args. Otherwise we get e.g. list[Ref[Point]] which maps to
 # invalid C++ (std::vector<Point&>).
-from tpy import Int32
+from tpy import Int32, copy_iter
 
 class Point:
     x: Int32
@@ -27,8 +27,13 @@ def main() -> None:
         print(p)
 
     # dict from map -- Ref must be stripped from both K and V
-    d = dict(map(to_pair, pts))  # tpyc: type(dict[str, Point])
+    d = dict(map(to_pair, pts))  # tpyc: type(dict[str, Point]) warning(/copies tuple\[str, Point\] elements/)
     for k in d:
         print(k, d[k])
+
+    # copy_iter() acknowledges the copy
+    d2 = dict(copy_iter(map(to_pair, pts)))  # tpyc: ok
+    for k in d2:
+        print(k, d2[k])
 
 main()

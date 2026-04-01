@@ -1602,6 +1602,13 @@ def make_ref(t: 'TpyType') -> 'TpyType':
     # runs, so they should never reach here. Guard defensively.
     if isinstance(t, (AutoReadonlyType, AutoOwnType)):
         return t
+    # Tuples are value types but may contain non-value elements that need
+    # Ref wrapping (e.g. tuple[str, Point] -> tuple[str, Ref[Point]]).
+    if isinstance(t, TupleType):
+        new_elems = tuple(make_ref(e) for e in t.element_types)
+        if all(n is o for n, o in zip(new_elems, t.element_types)):
+            return t
+        return TupleType(new_elems)
     # Value types don't need Ref. TypeParamRef.is_value_type() returns
     # the right answer: False for TYPE kind (needs wrapping -- the C++ trait
     # aliases handle value-vs-ref at instantiation), True for INT kind and
@@ -1617,9 +1624,14 @@ def make_ref(t: 'TpyType') -> 'TpyType':
 
 
 def unwrap_ref_type(t: 'TpyType') -> 'TpyType':
-    """Strip Ref wrapper if present, returning the inner type."""
+    """Strip Ref wrapper if present, recursing into tuples."""
     if isinstance(t, RefType):
         return t.wrapped
+    if isinstance(t, TupleType):
+        new_elems = tuple(unwrap_ref_type(e) for e in t.element_types)
+        if all(n is o for n, o in zip(new_elems, t.element_types)):
+            return t
+        return TupleType(new_elems)
     return t
 
 
@@ -2081,6 +2093,10 @@ class TupleType(TpyType):
 
     def to_cpp(self) -> str:
         args = ", ".join(t.to_cpp() for t in self.element_types)
+        return f"std::tuple<{args}>"
+
+    def to_cpp_stored(self) -> str:
+        args = ", ".join(t.to_cpp_stored() for t in self.element_types)
         return f"std::tuple<{args}>"
 
     def is_value_type(self) -> bool:
