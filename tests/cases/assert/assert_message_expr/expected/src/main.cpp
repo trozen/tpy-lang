@@ -7,7 +7,9 @@ namespace tpyapp::main {
 // def check_positive(n: Int32, msg: str) -> Int32:
 int32_t check_positive(int32_t n, std::string_view msg) {
     // assert n > 0, msg
-    if (!((n > 0))) ::tpy::tpy_panic(msg);
+    if (!((n > 0))) {
+        ::tpy::tpy_panic(msg);
+    }
     // return n
     return n;
 }
@@ -15,7 +17,9 @@ int32_t check_positive(int32_t n, std::string_view msg) {
 // def check_error(n: Int32, e: Error) -> Int32:
 int32_t check_error(int32_t n, const Error& e) {
     // assert n > 0, e.message
-    if (!((n > 0))) ::tpy::tpy_panic(e.message);
+    if (!((n > 0))) {
+        ::tpy::tpy_panic(e.message);
+    }
     // return n
     return n;
 }

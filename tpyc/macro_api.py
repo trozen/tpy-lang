@@ -357,6 +357,10 @@ class FieldInfo:
             self._internal.default_value = default_value
             self._internal.is_factory_default = is_factory
 
+    def clear_default(self) -> None:
+        """Remove the field's default (e.g. after unwrapping a descriptor)."""
+        self.set_default(None)
+
     def to_internal(self) -> InternalFieldInfo:
         """Return the underlying compiler FieldInfo."""
         if self._internal is not None:

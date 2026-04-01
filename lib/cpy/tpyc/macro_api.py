@@ -584,6 +584,11 @@ class FieldInfo:
         self.has_default = self.default_expr is not None
         self.is_factory_default = is_factory
 
+    def clear_default(self) -> None:
+        """Remove the field's default (e.g. after unwrapping a descriptor)."""
+        self.has_default = False
+        self.default_expr = None
+
     def to_internal(self) -> FieldInfo:
         return self
 

@@ -24,6 +24,16 @@ Options:
     @model(frozen=True)   -- immutable fields, generates __hash__
     @model(order=True)    -- generates comparison operators
 
+Field renaming:
+
+    from tplib.json.model import model, field
+
+    @model
+    class User:
+        first_name: str = field(alias="firstName")
+
+    User("Alice").to_json()       # '{"firstName": "Alice"}'
+
 Generated methods:
   - __init__, __eq__, __repr__
   - to_json() -> str                          -- serialize to JSON string
@@ -60,7 +70,7 @@ used as a field in @model classes:
 from tpyc.macro_api import (
     ClassInfo, FieldInfo, TypeInfo, MacroError,
     class_macro, macro_deps,
-    build_init, build_eq,
+    build_init, build_eq, expr_to_cpp_default,
     ast, types, Expr, Stmt, Function, Type,
 )
 
@@ -72,6 +82,38 @@ macro_deps(
 
 
 _JSON_ERROR = "tplib.json.parser.JsonError"
+
+_MISSING = object()
+
+
+class Field:
+    """Descriptor returned by field(). Inspected by @model macro.
+
+    Note: in the compiler path, kwargs arrive as TpyExpr AST nodes.
+    alias is unwrapped to a plain string here; default/default_factory
+    are kept as AST nodes for set_default/expr_to_cpp_default.
+    """
+
+    def __init__(self, *, alias=_MISSING, default=_MISSING, default_factory=_MISSING):
+        if default is not _MISSING and default_factory is not _MISSING:
+            raise TypeError("cannot specify both 'default' and 'default_factory'")
+        if alias is _MISSING:
+            self.alias = None
+        elif isinstance(alias, str):
+            self.alias = alias  # CPython path
+        else:
+            self.alias = alias.value  # compiler path: TpyStrLiteral
+        self.default = default
+        self.default_factory = default_factory
+
+
+def field(*, alias=_MISSING, default=_MISSING, default_factory=_MISSING) -> Field:
+    """Declare field metadata in @model classes.
+
+    alias: alternate name used as JSON key (Python field name unchanged).
+    default / default_factory: same as dataclasses.field().
+    """
+    return Field(alias=alias, default=default, default_factory=default_factory)
 
 
 def _raise_if(condition: Expr, message: str) -> Stmt:
@@ -344,7 +386,7 @@ def _build_json_decode(cls: ClassInfo, all_fields: list[FieldInfo]) -> Function:
     # Build match/case dispatch for field keys
     key_var = "__key"
     if all_fields:
-        dispatch = _build_field_dispatch(all_fields, reader)
+        dispatch = _build_field_dispatch(cls.name, all_fields, reader)
         loop_body: list[Stmt] = [
             ast.var_decl(key_var, type=types.str_view,
                          init=ast.method_call(reader, "read_key_raw")),
@@ -377,14 +419,14 @@ def _build_json_decode(cls: ClassInfo, all_fields: list[FieldInfo]) -> Function:
     )
 
 
-def _build_field_dispatch(fields: list[FieldInfo], reader: Expr) -> Stmt:
+def _build_field_dispatch(cls_name: str, fields: list[FieldInfo], reader: Expr) -> Stmt:
     """Build match/case dispatch for field name matching."""
     key = ast.name("__key")
     cases = []
 
     for fld in fields:
         body = list(_build_read_value_stmts(fld.name, fld.type, reader))
-        cases.append(ast.match_case(ast.literal_pattern(fld.name), body))
+        cases.append(ast.match_case(ast.literal_pattern(_json_key(cls_name, fld)), body))
 
     # Default case: skip unknown fields
     cases.append(ast.match_case(
@@ -574,8 +616,7 @@ def _build_json_encode(cls: ClassInfo, all_fields: list[FieldInfo]) -> Function:
     body.append(ast.expr_stmt(ast.method_call(writer, "object_start")))
 
     for fld in all_fields:
-        # __writer.key("field_name")
-        body.append(ast.expr_stmt(ast.method_call(writer, "key", [ast.str_lit(fld.name)])))
+        body.append(ast.expr_stmt(ast.method_call(writer, "key", [ast.str_lit(_json_key(cls.name, fld))])))
         access = ast.field_access(ast.name("self"), fld.name)
         body.extend(_build_write_value_stmts(access, fld.type, writer))
 
@@ -607,6 +648,46 @@ def _build_to_json(cls: ClassInfo) -> Function:
 # @model class macro
 # ---------------------------------------------------------------------------
 
+# class_name -> {field_name: json_key} for alias persistence across inheritance
+_aliases: dict[str, dict[str, str]] = {}
+
+
+def _json_key(cls_name: str, fld: FieldInfo) -> str:
+    """Get the JSON key for a field (alias if set, otherwise field name)."""
+    return _aliases.get(cls_name, {}).get(fld.name, fld.name)
+
+
+def _process_fields(cls: ClassInfo) -> None:
+    """Unwrap Field descriptors set by field() calls."""
+    for fld in cls.fields:
+        if not isinstance(fld.default_obj, Field):
+            continue
+        spec = fld.default_obj
+        if spec.alias is not None:
+            if not isinstance(spec.alias, str):
+                raise MacroError(
+                    f"field alias must be a string literal",
+                    loc=fld.loc,
+                )
+            if cls.name not in _aliases:
+                _aliases[cls.name] = {}
+            _aliases[cls.name][fld.name] = spec.alias
+        if spec.default is not _MISSING:
+            fld.set_default(spec.default, default_value=expr_to_cpp_default(spec.default))
+        elif spec.default_factory is not _MISSING:
+            factory_name = ast.get_name(spec.default_factory)
+            if factory_name is None:
+                raise MacroError(
+                    "default_factory must be a type name (e.g., list, dict, MyRecord)",
+                    loc=fld.loc,
+                )
+            factory_call = ast.call(factory_name)
+            factory_call.loc = fld.loc
+            fld.set_default(factory_call, is_factory=True)
+        else:
+            fld.clear_default()
+
+
 @class_macro
 def model(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> None:
     """Transform a class into a JSON-serializable model with @dataclass behavior."""
@@ -615,8 +696,19 @@ def model(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> None:
     cls.is_frozen = frozen
     cls.is_ordered = order
 
+    _process_fields(cls)
+
     parent_fields = cls.get_parent_fields()
     all_fields = parent_fields + cls.fields
+
+    # Inherit parent aliases into this class's alias map
+    if parent_fields:
+        parent_name = cls.parent.name if cls.parent else None
+        if parent_name and parent_name in _aliases:
+            if cls.name not in _aliases:
+                _aliases[cls.name] = {}
+            for k, v in _aliases[parent_name].items():
+                _aliases[cls.name].setdefault(k, v)
 
     if not all_fields:
         raise MacroError(f"@model class '{cls.name}' must have at least one field")

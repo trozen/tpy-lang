@@ -2856,8 +2856,16 @@ class StatementGenerator:
             return
         bool_cond = self.expressions.gen_truthy_expr(stmt.condition)
         self.ctx.temps.flush(out, indent)
-        panic = self._gen_assert_panic(out, stmt, indent)
-        out.write(f'{indent}if (!({bool_cond})) {panic};\n')
+        if stmt.message is None or isinstance(stmt.message, TpyStrLiteral):
+            panic = self._gen_assert_panic(out, stmt, indent)
+            out.write(f'{indent}if (!({bool_cond})) {panic};\n')
+        else:
+            # Evaluate message inside the if block (lazy, per Python semantics)
+            inner = indent + "    "
+            out.write(f'{indent}if (!({bool_cond})) {{\n')
+            panic = self._gen_assert_panic(out, stmt, inner)
+            out.write(f'{inner}{panic};\n')
+            out.write(f'{indent}}}\n')
         # Emit std::get<T> extractions for isinstance-narrowed union variables.
         # Unlike if-branch narrowing, assert narrowing persists for the rest of scope,
         # so we do NOT call ctx.restore_narrowed_vars.
