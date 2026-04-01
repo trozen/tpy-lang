@@ -6,8 +6,9 @@ namespace tpyapp::main {
 
 
 
-// def classify(mode: str) -> str:
-std::string classify(std::string_view mode) {
+// @overload
+// def classify(mode: Literal["r", "w"]) -> str: ...
+std::string classify__lit_r__w(std::string_view mode) {
     // if mode == "r" or mode == "w":
     if (((mode == "r") || (mode == "w"))) {
         // return "text"
@@ -17,28 +18,41 @@ std::string classify(std::string_view mode) {
     return "binary";
 }
 
+// @overload
+// def classify(mode: Literal["rb", "wb"]) -> str: ...
+std::string classify__lit_rb__wb(std::string_view mode) {
+    // if mode == "r" or mode == "w":
+    if ((false || false)) {
+        // return "text"
+        return "text";
+    }
+    // return "binary"
+    return "binary";
+}
+
+
 // def dispatch_str(mode: Literal["r", "w", "rb", "wb"]) -> None:
 void dispatch_str(std::string_view mode) {
     // if mode == "rb":
     if ((mode == "rb")) {
         // # mode: Literal["rb"], matches binary stub
         // print(classify(mode))
-        std::cout << classify(mode) << "\n";
+        std::cout << classify__lit_rb__wb(mode) << "\n";
     // elif mode == "wb":
     } else if ((mode == "wb")) {
         // # mode: Literal["wb"], matches binary stub
         // print(classify(mode))
-        std::cout << classify(mode) << "\n";
+        std::cout << classify__lit_rb__wb(mode) << "\n";
     // elif mode == "r":
     } else if ((mode == "r")) {
         // # mode: Literal["r"], matches text stub
         // print(classify(mode))
-        std::cout << classify(mode) << "\n";
+        std::cout << classify__lit_r__w(mode) << "\n";
     // else:
     } else {
         // # mode: Literal["w"], matches text stub
         // print(classify(mode))
-        std::cout << classify(mode) << "\n";
+        std::cout << classify__lit_r__w(mode) << "\n";
     }
     // # mode: Literal["rb"], matches binary stub
 }
@@ -46,7 +60,32 @@ void dispatch_str(std::string_view mode) {
 
 
 
-// def bucket(x: Int32) -> str:
+// @overload
+// def bucket(x: Literal[1, 2]) -> str: ...
+std::string bucket__lit_1__2(int32_t x) {
+    // if x <= 2:
+    if ((x <= 2)) {
+        // return "low"
+        return "low";
+    }
+    // return "high"
+    return "high";
+}
+
+// @overload
+// def bucket(x: Literal[3, 4]) -> str: ...
+std::string bucket__lit_3__4(int32_t x) {
+    // if x <= 2:
+    if ((x <= 2)) {
+        // return "low"
+        return "low";
+    }
+    // return "high"
+    return "high";
+}
+
+// @overload
+// def bucket(x: Int32) -> str: ...
 std::string bucket(int32_t x) {
     // if x <= 2:
     if ((x <= 2)) {
@@ -57,18 +96,19 @@ std::string bucket(int32_t x) {
     return "high";
 }
 
+
 // def dispatch_int(x: Literal[1, 2, 3, 4]) -> None:
 void dispatch_int(int32_t x) {
     // if x == 1:
     if ((x == 1)) {
         // # x: Literal[1], matches first stub
         // print(bucket(x))
-        std::cout << bucket(x) << "\n";
+        std::cout << bucket__lit_1__2(x) << "\n";
     // elif x == 3:
     } else if ((x == 3)) {
         // # x: Literal[3], matches second stub
         // print(bucket(x))
-        std::cout << bucket(x) << "\n";
+        std::cout << bucket__lit_3__4(x) << "\n";
     // else:
     } else {
         // # x: Literal[2, 4] -- falls through to Int32 fallback
@@ -84,12 +124,12 @@ void dispatch_ne(std::string_view mode) {
     if ((mode != "r")) {
         // # mode: Literal["rb"]
         // print(classify(mode))
-        std::cout << classify(mode) << "\n";
+        std::cout << classify__lit_rb__wb(mode) << "\n";
     // else:
     } else {
         // # mode: Literal["r"]
         // print(classify(mode))
-        std::cout << classify(mode) << "\n";
+        std::cout << classify__lit_r__w(mode) << "\n";
     }
     // # mode: Literal["rb"]
 }
@@ -101,12 +141,12 @@ void dispatch_or(std::string_view mode) {
         // # mode: Literal["rb", "wb"] (|| true intersects to nothing, but
         // # false branch correctly narrows to Literal["r", "w"])
         // print(classify(mode))
-        std::cout << classify(mode) << "\n";
+        std::cout << classify__lit_rb__wb(mode) << "\n";
     // else:
     } else {
         // # mode: Literal["r", "w"]
         // print(classify(mode))
-        std::cout << classify(mode) << "\n";
+        std::cout << classify__lit_r__w(mode) << "\n";
     }
     // # mode: Literal["rb", "wb"] (|| true intersects to nothing, but
     // # false branch correctly narrows to Literal["r", "w"])

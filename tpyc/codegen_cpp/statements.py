@@ -111,6 +111,10 @@ class StatementGenerator:
         Shared by gen_function_def() and _gen_method().
         """
         self.ctx.reset_scope()
+        # Apply literal overload facts (injected by _gen_literal_specialized_function,
+        # survives reset_scope like overload_param_types)
+        if self.ctx.literal_overload_facts:
+            self.ctx.literal_facts.update(self.ctx.literal_overload_facts)
         self.ctx.const_ref_params = const_ref_params if const_ref_params is not None else set()
         self.ctx.declared_vars = {pname for pname, _ in params}
         self.ctx.var_types = {pname: unwrap_ref_type(ptype) for pname, ptype in params}
@@ -316,8 +320,20 @@ class StatementGenerator:
                 # In @overload specialization: validate return type and strip
                 # wrong-target coercions. Sema coerced against the impl's union
                 # return type, which may have picked the wrong union member.
-                if self.ctx.overload_param_types and stmt.value_type is not None:
-                    self._check_overload_return_type(stmt, ret_type)
+                if (self.ctx.overload_param_types or self.ctx.literal_overload_facts) and stmt.value_type is not None:
+                    compatible = self._check_overload_return_type(stmt, ret_type)
+                    if not compatible:
+                        if self.ctx.literal_overload_facts:
+                            return None  # Dead code after literal branch elimination
+                        from .context import CodeGenError
+                        vt = stmt.value_type
+                        if isinstance(vt, IntLiteralType):
+                            vt = BIGINT
+                        raise CodeGenError(
+                            f"@overload return type mismatch: returning '{vt}' "
+                            f"but this overload declares '-> {ret_type}'",
+                            loc=stmt.loc,
+                        )
                     ret_value = self._strip_wrong_overload_coerce(ret_value, ret_type)
                 if isinstance(ret_type, OptionalType):
                     if not ret_type.uses_pointer_repr():
@@ -2855,7 +2871,8 @@ class StatementGenerator:
         # --- @overload dead branch elimination ---
         # When generating specialized overload code, isinstance checks on
         # parameters with known concrete types can be resolved statically.
-        if self.ctx.overload_param_types:
+        # Also applies to literal equality checks in literal specializations.
+        if self.ctx.overload_param_types or self.ctx.literal_overload_facts:
             if self._gen_if_overload_specialized(out, chain, indent):
                 return
 
@@ -2968,12 +2985,12 @@ class StatementGenerator:
 
         out.write(f"{indent}}}\n")
 
-    def _check_overload_return_type(self, stmt: TpyReturn, stub_ret: TpyType) -> None:
+    def _check_overload_return_type(self, stmt: TpyReturn, stub_ret: TpyType) -> bool:
         """Validate that a return expression's type is compatible with the stub's return type.
 
-        Called during @overload specialization codegen. Dead branch elimination
-        has already pruned unreachable branches, so every return we see must
-        be compatible with the stub's declared return type.
+        Called during @overload specialization codegen. Returns True if
+        compatible, False if incompatible (dead code after dead branch
+        elimination -- skip the return).
 
         Delegates to sema's check_type_compatible to reuse all compatibility
         rules (Optional wrapping, inheritance, protocols, coercions, etc.).
@@ -2990,12 +3007,9 @@ class StatementGenerator:
                 value_type, stub_ret, "return value",
                 loc=stmt.loc, is_return=True,
             )
+            return True
         except SemanticError:
-            raise CodeGenError(
-                f"@overload return type mismatch: returning '{value_type}' "
-                f"but this overload declares '-> {stub_ret}'",
-                loc=stmt.loc,
-            )
+            return False
 
     def _strip_wrong_overload_coerce(self, expr: TpyExpr, stub_ret: TpyType) -> TpyExpr:
         """Strip a TpyCoerce if it targets the wrong type for this overload stub.
@@ -3026,37 +3040,62 @@ class StatementGenerator:
         resolved statically). Returns False if no static resolution was
         possible (caller falls through to normal codegen).
         """
-        # Check if any branch has a statically resolvable condition
         resolutions = [self._resolve_isinstance_statically(node.condition) for node in chain]
         if all(r is None for r in resolutions):
-            return False  # nothing to specialize
+            return False
 
-        # Find the first always-true branch; emit it directly, skip the rest
-        for i, (node, resolved) in enumerate(zip(chain, resolutions)):
+        # Collect live (non-False) branches
+        live: list[tuple[TpyIf, bool | None]] = []
+        for node, resolved in zip(chain, resolutions):
             if resolved is True:
-                # This branch is always taken -- emit its body directly
-                # (no conditional, no extractions needed since param is concrete)
+                # Always taken -- emit body directly, skip everything after
                 for s in node.then_body:
                     self.gen_stmt(out, s)
                 return True
             elif resolved is False:
-                # This branch is dead, skip it
                 continue
             else:
-                # Dynamic condition -- emit normally from here.
-                remaining_chain = chain[i:]
-                # Emit the remaining chain normally using a sub-if
-                remaining_if = remaining_chain[0]
-                for node in remaining_chain:
-                    self._emit_branch_decls(out, node, indent)
-                self._gen_if(out, remaining_if, indent)
-                return True
+                live.append((node, resolved))
 
-        # All branches resolved to False -- emit the else body of the last branch
+        if not live:
+            # All branches dead -- emit else body of the last original branch
+            last = chain[-1]
+            if last.else_body:
+                for s in last.else_body:
+                    self.gen_stmt(out, s)
+            return True
+
+        # Emit only the live (dynamic) branches as a clean if/elif chain
+        for node, _ in live:
+            self._emit_branch_decls(out, node, indent)
+        br_snap = self.ctx.snapshot_local_scope()
+        for i, (node, _) in enumerate(live):
+            cond = self.expressions.gen_truthy_expr(node.condition)
+            self.ctx.temps.flush(out, indent)
+            if i == 0:
+                out.write(f"{indent}if ({cond}) {{\n")
+            else:
+                out.write(f"{indent}}} else if ({cond}) {{\n")
+            lit_snap = self.ctx.save_literal_facts()
+            then_saved = self._emit_isinstance_extractions(out, node.then_type_facts)
+            self.ctx.indent_level += 1
+            for s in node.then_body:
+                self.gen_stmt(out, s)
+            self.ctx.indent_level -= 1
+            self.ctx.restore_narrowed_vars(then_saved)
+            self.ctx.restore_literal_facts(lit_snap)
+            self.ctx.restore_local_scope(br_snap)
+
+        # Else body from the last original branch
         last = chain[-1]
         if last.else_body:
+            out.write(f"{indent}}} else {{\n")
+            self.ctx.indent_level += 1
             for s in last.else_body:
                 self.gen_stmt(out, s)
+            self.ctx.indent_level -= 1
+            self.ctx.restore_local_scope(br_snap)
+        out.write(f"{indent}}}\n")
         return True
 
     @staticmethod
@@ -3072,32 +3111,71 @@ class StatementGenerator:
         return inner.loc.column == outer.loc.column
 
     def _resolve_isinstance_statically(self, condition: TpyExpr) -> bool | None:
-        """Check if an isinstance condition can be resolved statically in @overload context.
+        """Check if a condition can be resolved statically in @overload context.
 
         Returns True if always-true, False if always-false, None if dynamic.
-        Only applies when generating specialized overload code with known param types.
+        Handles isinstance checks (union flattening) and literal equality
+        checks (literal flattening).
         """
-        if not self.ctx.overload_param_types:
-            return None
+        # Union flattening: isinstance checks on known param types
+        if self.ctx.overload_param_types:
+            # Direct isinstance: isinstance(x, T)
+            if isinstance(condition, TpyCall) and condition.isinstance_var is not None:
+                var_name = condition.isinstance_var
+                check_type = condition.isinstance_type
+                concrete = self.ctx.overload_param_types.get(var_name)
+                if concrete is not None and check_type is not None:
+                    if concrete == check_type:
+                        return True
+                    if isinstance(check_type, UnionType) and concrete in check_type.members:
+                        return True
+                    return False
 
-        # Direct isinstance: isinstance(x, T)
-        if isinstance(condition, TpyCall) and condition.isinstance_var is not None:
-            var_name = condition.isinstance_var
-            check_type = condition.isinstance_type
-            concrete = self.ctx.overload_param_types.get(var_name)
-            if concrete is not None and check_type is not None:
-                if concrete == check_type:
-                    return True
-                if isinstance(check_type, UnionType) and concrete in check_type.members:
-                    return True
-                return False
+        # Literal flattening: equality checks and bool truthiness
+        if self.ctx.literal_facts:
+            result = self._resolve_literal_eq_statically(condition)
+            if result is not None:
+                return result
+            # Bool truthiness: `if x:` where x is Literal[True] or Literal[False]
+            if isinstance(condition, TpyName):
+                lit_type = self.ctx.literal_facts.get(condition.name)
+                if (isinstance(lit_type, LiteralType) and len(lit_type.values) == 1
+                        and lit_type.values[0].tag == "bool"):
+                    return bool(lit_type.values[0].value)
 
-        # Negated isinstance: not isinstance(x, T)
+        # Negated condition
         if isinstance(condition, TpyUnaryOp) and condition.op == "not":
             inner = self._resolve_isinstance_statically(condition.operand)
             if inner is not None:
                 return not inner
 
+        return None
+
+    def _resolve_literal_eq_statically(self, condition: TpyExpr) -> bool | None:
+        """Resolve `x == lit` / `x != lit` statically using literal_facts.
+
+        Single-value: x == val -> True/False. Multi-value: x == val -> False
+        if val not in set (can't resolve True since we don't know which value).
+        """
+        if not isinstance(condition, TpyBinOp) or condition.op not in ("==", "!="):
+            return None
+        from .expressions import ExpressionGenerator
+        for var_side, lit_side in [(condition.left, condition.right), (condition.right, condition.left)]:
+            if not isinstance(var_side, TpyName):
+                continue
+            lit_type = self.ctx.literal_facts.get(var_side.name)
+            if not isinstance(lit_type, LiteralType):
+                continue
+            lit_val = ExpressionGenerator._extract_literal_value(lit_side)
+            if lit_val is None:
+                continue
+            in_set = lit_val in lit_type.values
+            if len(lit_type.values) == 1:
+                matches = in_set
+                return matches if condition.op == "==" else not matches
+            # Multi-value: can only resolve when value is NOT in set
+            if not in_set:
+                return False if condition.op == "==" else True
         return None
 
     def _has_concrete_isinstance_facts(self, type_facts: dict[str, TpyType]) -> bool:

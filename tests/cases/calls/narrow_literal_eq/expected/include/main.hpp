@@ -10,8 +10,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string classify(std::string_view mode);
+std::string classify__lit_r__w(std::string_view mode);
+std::string classify__lit_rb__wb(std::string_view mode);
 void dispatch_str(std::string_view mode);
+std::string bucket__lit_1__2(int32_t x);
+std::string bucket__lit_3__4(int32_t x);
 std::string bucket(int32_t x);
 void dispatch_int(int32_t x);
 void dispatch_ne(std::string_view mode);

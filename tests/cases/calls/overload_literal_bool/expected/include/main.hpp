@@ -10,6 +10,8 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+std::string describe__lit_True(bool x);
+std::string describe__lit_False(bool x);
 std::string describe(bool x);
 void main();
 

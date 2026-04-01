@@ -484,6 +484,9 @@ class CodeGenContext:
     assign_narrowed_types: dict[str, 'TpyType'] = field(default_factory=dict)
     # Literal type narrowing: var -> single-value LiteralType for dead branch elimination
     literal_facts: dict[str, 'TpyType'] = field(default_factory=dict)
+    # Literal overload specialization: injected facts that survive reset_scope
+    # (managed by _gen_literal_specialized_function, same pattern as overload_param_types)
+    literal_overload_facts: dict[str, 'TpyType'] = field(default_factory=dict)
 
     # --- @overload specialization ---
     # When generating code for a specific @overload stub, maps parameter names
@@ -601,9 +604,9 @@ class CodeGenContext:
         self.assign_narrowed_types = {}
         self.literal_facts = {}
         self.walrus_pre_declared = set()
-        # Note: overload_param_types is NOT reset here -- it's managed by
-        # _gen_overload_specialized_function/method which set it before gen_body
-        # and clear it in a finally block.
+        # Note: overload_param_types and literal_overload_facts are NOT reset
+        # here -- they're managed by the caller (set before gen_body, cleared
+        # in a finally block).
         self.iter_counter = 0
         self.unpack_counter = 0
         self.loop_else_labels = []

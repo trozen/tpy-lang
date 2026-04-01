@@ -10,6 +10,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+std::string classify__lit_1__2(int64_t x);
 std::string classify(int64_t x);
 void main();
 

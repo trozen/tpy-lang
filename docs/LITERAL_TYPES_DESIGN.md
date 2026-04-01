@@ -8,7 +8,7 @@
 | 2 | Unified `LiteralType`, int/bool values, `LiteralValue(tag, value)` | Done |
 | 3 | Equality narrowing | Done |
 | 3a | Dead branch elimination for single-value Literal | Done |
-| 3b | Literal overload flattening (different return types per literal value) | Not started |
+| 3b | Literal overload flattening (per-literal C++ specializations) | Done |
 | 4 | `match`/`case` exhaustiveness for Literal subjects | Not started |
 | 5 | Literal types in variables (`x: Literal["rb"] = "rb"`) | Not started |
 | 6 | General type positions (return types, fields, union flattening) | Not started |
@@ -20,6 +20,7 @@
 | Literal type in `Final` variables | `x: Final = "rb"` infers `Literal["rb"]`. Variant of Phase 5. |
 | TypedDict with Literal keys | `d["name"]` where key is `Literal`. Separate feature (D19) with own design. |
 | Cross-function literal propagation | Inferring `Literal` from callers. Not planned -- too complex and fragile. |
+| Collision-free name mangling | Current scheme replaces non-alnum with `_`, causing collisions (e.g. `Literal[","]` vs `Literal["_"]`). Switch to hex encoding for non-alnum chars (e.g. `,` -> `x2c`). Low priority -- only matters for unusual literal values. |
 
 ---
 
@@ -174,23 +175,45 @@ the branch entirely when `false` (same pattern as
 the C++ compiler already optimizes away constant branches.
 
 
-## Phase 3b: Literal Overload Flattening
+## Phase 3b: Literal Overload Flattening (Done)
 
-Per-literal function specialization for user-defined `@overload` functions
-with different return types. Analogous to union overload flattening but
-dispatching on **value** instead of **type**.
+Per-literal function/method specialization for `@overload` groups.
+Every literal stub gets its own name-mangled C++ function with dead
+branch elimination. Enables different return types per literal value.
 
-### Motivation
+### What was implemented
 
-With Phases 1-2, only builtins using `@cpp_template` can have different
-return types per Literal value (each stub maps to a different C++ function).
-User-defined overloads emit a single C++ function, so all stubs must have
-the same return type. This limits Literal overloads to value restriction
-(compile-time argument validation) but not return type dispatch.
+**Name mangling** (`functions.py`): `literal_mangled_name(base, stub)`
+produces `{name}__lit_{sanitized_values}`. Values sanitized for C++
+identifiers. Non-literal fallback stubs keep the original name.
 
-Union flattening already solves this for type-based dispatch: `f(A | B)`
-generates `f(A) -> RetA` and `f(B) -> RetB`. Literal flattening extends
-this to value-based dispatch.
+**Codegen -- functions** (`functions.py`): When `_overload_stubs_are_literal_only`
+returns True, `_gen_literal_specialized_function` emits per-stub
+specializations using impl's body with stub's return type.
+`literal_overload_facts` injected for dead branch elimination (survives
+`reset_scope`, same pattern as `overload_param_types`). Unreachable
+returns (dead code after branch elimination) are silently skipped.
+
+**Codegen -- methods** (`records.py`, `functions.py`): Parallel
+`_gen_literal_specialized_method` creates a synthetic `TpyFunction` with
+mangled name, impl's body, and stub's return type. Same dead branch
+elimination via `literal_overload_facts`.
+
+**Forward declarations** (`functions.py`): Per-stub forward decls use
+impl's C++ param types with stub's return type and mangled name.
+
+**Call-site dispatch** (`expressions.py`): When `resolved_function_info`
+has `LiteralType` params and the call is to an overloaded function,
+`literal_mangled_name` produces the mangled C++ name. Works for both
+free functions and method calls. Cross-module calls use qualified
+mangled names.
+
+**Dead branch elimination in specializations**: `_gen_if_overload_specialized`
+extended to resolve literal equality conditions statically via
+`_resolve_literal_eq_statically`. Combined with `literal_overload_facts`,
+the specialization bodies have all branches except the matching one
+eliminated. Unreachable returns after eliminated branches are silently
+dropped.
 
 ### Example
 
@@ -201,90 +224,20 @@ def get_field(name: Literal["age"]) -> Int32: ...
 def get_field(name: Literal["name"]) -> str: ...
 @overload
 def get_field(name: str) -> Int32 | str: ...
-
 def get_field(name: str) -> Int32 | str:
-    if name == "age":
-        return 42
+    if name == "age": return 42
     return "hello"
 ```
 
-### Generated C++
-
-Per-literal specializations with name mangling, plus a fallback for
-non-literal args:
-
+Generated C++:
 ```cpp
-// Specialization for Literal["age"] -- body with narrowed literal
-int32_t get_field__lit_age(std::string_view name) {
-    // name == "age" is known true -> dead branch elimination (Phase 3)
-    return 42;
-}
-
-// Specialization for Literal["name"]
-std::string get_field__lit_name(std::string_view name) {
-    return "hello";
-}
-
-// Fallback for variable args -- full body, union return
-std::variant<int32_t, std::string> get_field(std::string_view name) {
-    if (name == "age") return 42;
-    return "hello";
-}
+int32_t get_field__lit_age(std::string_view name) { return 42; }
+std::string get_field__lit_name(std::string_view name) { return "hello"; }
+std::variant<int32_t, std::string> get_field(std::string_view name) { ... }
 ```
 
-Call-site dispatch:
-```python
-x = get_field("age")    # calls get_field__lit_age, type is Int32
-y = get_field("name")   # calls get_field__lit_name, type is str
-z = get_field(mode)      # calls get_field, type is Int32 | str
-```
-
-### Key difference from union flattening
-
-Union flattening dispatches on C++ type -- each stub has a different
-parameter type, so overloaded C++ signatures are naturally distinct.
-
-Literal flattening dispatches on value -- all stubs have the same C++
-parameter type (`std::string_view` for str, `int32_t` for Int32, etc.).
-Specializations need name mangling to produce distinct C++ functions.
-
-### Implementation
-
-**Sema**: Detect when Literal overload stubs have different return types.
-Currently `_overload_stubs_are_literal_only` returns `True` and emits a
-single function. When return types differ, mark the function for literal
-flattening instead.
-
-**Codegen** (`functions.py`): For each Literal stub group:
-1. Emit a name-mangled specialization with the stub's return type
-2. Body is the full implementation, but with the literal value injected
-   as a narrowing fact (from Phase 3)
-3. Dead branch elimination (Phase 3) removes unreachable branches
-
-**Call site** (`calls.py` / `expressions.py`): When the resolved overload
-is a Literal stub with a different return type than the fallback, emit a
-call to the name-mangled specialization instead of the base function.
-
-**Name mangling**: `{func_name}__lit_{sanitized_value}`. Values are
-sanitized for C++ identifiers (e.g., `"rb"` -> `rb`, `42` -> `42`,
-`True` -> `true`). Collisions between string and int values sharing
-the same representation are prevented by the same-type constraint
-(all values in a `Literal[...]` have the same tag).
-
-### Dependencies
-
-- **Phase 3 (narrowing)**: Required for dead branch elimination within
-  specializations. Without it, specializations contain the full if/elif
-  body but still have the correct (narrower) return type. Functionally
-  correct but suboptimal.
-- Phase 3 is independently useful (narrowing within single-function
-  bodies), so implementing it first makes sense.
-
-### Effort: M
-
-Sema detection: S (extend `_overload_stubs_are_literal_only`).
-Name mangling + codegen: M (parallel to union flattening).
-Call-site dispatch: S (already have stub -> function routing).
+Call sites: `get_field("age")` -> `get_field__lit_age("age")`,
+`get_field(var)` -> `get_field(var)`.
 
 
 ## Phase 4: Match/Case on Literal Types

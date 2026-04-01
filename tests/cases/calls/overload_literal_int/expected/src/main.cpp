@@ -8,7 +8,53 @@ namespace tpyapp::main {
 
 
 
-// def classify(x: Int32) -> str:
+// @overload
+// def classify(x: Literal[1, 2]) -> str: ...
+std::string classify__lit_1__2(int32_t x) {
+    // if x == 1:
+    if ((x == 1)) {
+        // return "one"
+        return "one";
+    } else if ((x == 2)) {
+        // return "two"
+        return "two";
+    }
+    // return "other"
+    return "other";
+}
+
+// @overload
+// def classify(x: Literal[3, 4]) -> str: ...
+std::string classify__lit_3__4(int32_t x) {
+    // if x == 1:
+    if ((x == 3)) {
+        // return "three"
+        return "three";
+    } else if ((x == 4)) {
+        // return "four"
+        return "four";
+    }
+    // return "other"
+    return "other";
+}
+
+// @overload
+// def classify(x: Literal[-1, -2]) -> str: ...
+std::string classify__lit_neg1__neg2(int32_t x) {
+    // if x == 1:
+    if ((x == -1)) {
+        // return "neg_one"
+        return "neg_one";
+    } else if ((x == -2)) {
+        // return "neg_two"
+        return "neg_two";
+    }
+    // return "other"
+    return "other";
+}
+
+// @overload
+// def classify(x: Int32) -> str: ...
 std::string classify(int32_t x) {
     // if x == 1:
     if ((x == 1)) {
@@ -39,22 +85,23 @@ std::string classify(int32_t x) {
     return "other";
 }
 
+
 // def main() -> None:
 void main() {
     // # Direct int literals match Literal stubs
     // print(classify(1))
-    std::cout << classify(1) << "\n";
+    std::cout << classify__lit_1__2(1) << "\n";
     // print(classify(2))
-    std::cout << classify(2) << "\n";
+    std::cout << classify__lit_1__2(2) << "\n";
     // print(classify(3))
-    std::cout << classify(3) << "\n";
+    std::cout << classify__lit_3__4(3) << "\n";
     // print(classify(4))
-    std::cout << classify(4) << "\n";
+    std::cout << classify__lit_3__4(4) << "\n";
     // # Negative int literals
     // print(classify(-1))
-    std::cout << classify(-1) << "\n";
+    std::cout << classify__lit_neg1__neg2(-1) << "\n";
     // print(classify(-2))
-    std::cout << classify(-2) << "\n";
+    std::cout << classify__lit_neg1__neg2(-2) << "\n";
     // # Variable falls through to Int32 fallback
     // x: Int32 = 5
     int32_t x = 5;

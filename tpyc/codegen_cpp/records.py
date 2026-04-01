@@ -371,8 +371,12 @@ class RecordGenerator:
             if overload_stubs:
                 overload_dispatched.add(method.name)
                 if self.functions._overload_stubs_are_literal_only(overload_stubs, method):
-                    self.functions.gen_method_def(out, method, record.name, dynamic_overrides,
-                                                  record_type_param_bounds=record.type_param_bounds or None)
+                    for stub in overload_stubs:
+                        self.functions._gen_literal_specialized_method(
+                            out, method, stub, record.name,
+                            record_type_param_bounds=record.type_param_bounds or None,
+                            dynamic_overrides=dynamic_overrides,
+                        )
                 else:
                     for stub in overload_stubs:
                         self.functions._gen_overload_specialized_method(

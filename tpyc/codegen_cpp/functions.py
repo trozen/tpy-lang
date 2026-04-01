@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, NamedType, OwnType, ReadonlyType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
     UnionType, VoidType, FnType,
     BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
-    Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, LiteralType, is_any_str_type, SpanType,
+    Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, LiteralType, LiteralValue, is_any_str_type, SpanType,
     resolve_int_literals, CONST_PARAMS_METHODS,
     error_return_to_cpp, unwrap_ref_type,
 )
@@ -29,6 +29,31 @@ if TYPE_CHECKING:
     from .types import TypeResolver
     from .protocols import ProtocolGenerator, ProtocolParamInfo
     from .statements import StatementGenerator
+
+def literal_mangled_name(base_name: str, stub_or_info: TpyFunction | FunctionInfo) -> str:
+    """Generate a mangled C++ name for a literal-specialized function.
+
+    Collects all LiteralType values from stub params and appends them
+    as __lit_{sanitized}. Multi-value stubs join with double underscore.
+    E.g. Literal["age"] -> __lit_age, Literal[1, 2] -> __lit_1__2,
+    Literal[-1] -> __lit_neg1. Accepts TpyFunction (params as tuples)
+    or FunctionInfo (params as ParamInfo objects).
+    """
+    parts: list[str] = []
+    params = stub_or_info.params
+    for p in params:
+        ptype = p[1] if isinstance(p, tuple) else p.type
+        if isinstance(ptype, LiteralType):
+            for v in ptype.values:
+                s = str(v.value)
+                if s.startswith("-"):
+                    s = "neg" + s[1:]
+                sanitized = "".join(c if c.isalnum() else "_" for c in s)
+                parts.append(sanitized)
+    if not parts:
+        return base_name
+    return f"{base_name}__lit_{'__'.join(parts)}"
+
 
 _FIXED_INT_NAMES = {
     "Int8", "Int16", "Int32", "Int64",
@@ -595,8 +620,12 @@ class FunctionGenerator:
         overload_stubs = self.ctx.analyzer.overload_groups.get(id(func))
         if overload_stubs:
             if self._overload_stubs_are_literal_only(overload_stubs, func):
-                # Literal-only stubs: single forward decl for the implementation
-                self._gen_function_forward_decl_single(out, func)
+                for stub in overload_stubs:
+                    mangled = self._literal_mangled_name(func.name, stub)
+                    self._gen_function_forward_decl_single(
+                        out, func, cpp_name=mangled,
+                        return_type_override=stub.return_type,
+                    )
             else:
                 for stub in overload_stubs:
                     self._gen_function_forward_decl_single(out, stub)
@@ -610,8 +639,12 @@ class FunctionGenerator:
         self._gen_function_forward_decl_single(out, func)
         return True
 
-    def _gen_function_forward_decl_single(self, out: TextIO, func: TpyFunction) -> None:
+    def _gen_function_forward_decl_single(
+        self, out: TextIO, func: TpyFunction, *,
+        cpp_name: str | None = None, return_type_override: TpyType | None = None,
+    ) -> None:
         """Emit a single function forward declaration."""
+        name = escape_cpp_name(cpp_name or func.name)
         proto_params = self.protocols.get_all_protocol_params(func.params)
         has_dynamic = self._has_dynamic_protocol_params(func.params)
         is_generic = bool(func.type_params)
@@ -621,11 +654,12 @@ class FunctionGenerator:
         has_fn_params = any(isinstance(pt, FnType) for _, pt in func.params)
 
         dfl = func.defaults if func.defaults else None
+        effective_ret = return_type_override or func.return_type
         if is_generic or has_proto_params or has_fn_params:
             # Forward decl: skip Fn requires clause (constraint on definition is sufficient)
             out.write(self._gen_template_header_with_fn(func, proto_params,
                                                         emit_fn_requires=False))
-            ret_type = self._resolve_return_type(func.return_type, error_return=func.error_return)
+            ret_type = self._resolve_return_type(effective_ret, error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params, func.type_params,
                                                      mutated_params=mp,
                                                      defaults=dfl, emit_defaults=True)
@@ -633,9 +667,9 @@ class FunctionGenerator:
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
                                            mutated_params=mp, defaults=dfl, emit_defaults=True,
                                            use_readonly_params=func.is_readonly))
-            out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
+            out.write(f"{ret_type} {name}({params});\n")
         else:
-            ret_type = self._resolve_return_type(func.return_type, error_return=func.error_return)
+            ret_type = self._resolve_return_type(effective_ret, error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params,
                                                      mutated_params=mp,
                                                      defaults=dfl, emit_defaults=True)
@@ -643,7 +677,7 @@ class FunctionGenerator:
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
                                            mutated_params=mp, defaults=dfl, emit_defaults=True,
                                            use_readonly_params=func.is_readonly))
-            out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
+            out.write(f"{ret_type} {name}({params});\n")
 
     def gen_function_decl(self, out: TextIO, func: TpyFunction) -> bool:
         """Generate a function declaration (or full definition for template functions).
@@ -665,14 +699,19 @@ class FunctionGenerator:
         # @overload implementation with template params: emit specialized defs in header
         overload_stubs = self.ctx.analyzer.overload_groups.get(id(func))
         if overload_stubs:
-            if not self._overload_stubs_are_literal_only(overload_stubs, func):
-                is_generic = bool(func.type_params)
-                has_proto_params = bool(self.protocols.get_all_protocol_params(func.params))
-                if is_generic or has_proto_params:
+            is_literal_only = self._overload_stubs_are_literal_only(overload_stubs, func)
+            is_generic = bool(func.type_params)
+            has_proto_params = bool(self.protocols.get_all_protocol_params(func.params))
+            if is_generic or has_proto_params:
+                if is_literal_only:
+                    for stub in overload_stubs:
+                        self._gen_literal_specialized_function(out, func, stub)
+                        out.write("\n")
+                else:
                     for stub in overload_stubs:
                         self._gen_overload_specialized_function(out, func, stub)
                         out.write("\n")
-                    return True
+                return True
             return False
 
         # @native_c and @extern_c both use extern "C" linkage
@@ -750,11 +789,11 @@ class FunctionGenerator:
         # @overload implementation: emit per-stub specialized functions
         overload_stubs = self.ctx.analyzer.overload_groups.get(id(func))
         if overload_stubs:
-            # Skip per-stub specialization when stubs only differ by Literal
-            # annotations (same C++ parameter types). Emit the implementation
-            # as a single function -- Literal dispatch is compile-time only.
             if self._overload_stubs_are_literal_only(overload_stubs, func):
-                pass  # fall through to normal function emission
+                for stub in overload_stubs:
+                    self._gen_literal_specialized_function(out, func, stub)
+                    out.write("\n")
+                return
             else:
                 for stub in overload_stubs:
                     self._gen_overload_specialized_function(out, func, stub)
@@ -840,6 +879,52 @@ class FunctionGenerator:
             for stub in stubs
             for _, ptype in stub.params
         )
+
+    _literal_mangled_name = staticmethod(literal_mangled_name)
+
+
+    def _gen_literal_specialized_function(
+        self, out: TextIO, impl: TpyFunction, stub: TpyFunction,
+    ) -> None:
+        """Generate a per-literal specialized C++ function.
+
+        Uses the implementation's body with the stub's return type and
+        injects literal narrowing facts for dead branch elimination.
+        Name is mangled to avoid C++ signature collisions.
+        """
+        self.ctx.emit_preceding_comments(out, stub.loc)
+        self.ctx.emit_source_comment(out, stub.loc)
+
+        mangled = self._literal_mangled_name(impl.name, stub)
+        rp = self._get_reassigned_params(impl)
+        mp = self._get_func_mutated_params(impl)
+
+        ret_type = self._resolve_return_type(stub.return_type, error_return=impl.error_return)
+        params = self.gen_params(impl.params, impl.type_params,
+                                 reassigned_params=rp, mutated_params=mp,
+                                 use_readonly_params=impl.is_readonly)
+        out.write(f"{ret_type} {escape_cpp_name(mangled)}({params}) {{\n")
+
+        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
+        for pname, ptype in impl.params:
+            local_ns.bind_variable(pname, ptype)
+
+        # Inject literal narrowing facts for dead branch elimination.
+        # Uses literal_overload_facts which survives reset_scope (same
+        # pattern as overload_param_types).
+        for (pname, _), (_, stub_ptype) in zip(impl.params, stub.params):
+            if isinstance(stub_ptype, LiteralType):
+                self.ctx.literal_overload_facts[pname] = stub_ptype
+
+        try:
+            self.statements.gen_body(out, impl.body, impl.params, stub.return_type,
+                                     impl, local_ns,
+                                     const_ref_params=self._build_const_ref_params(
+                                         impl.params, mp, rp, use_const_params=impl.is_readonly))
+        finally:
+            self.ctx.literal_overload_facts = {}
+
+        out.write("}\n")
 
     def _gen_overload_specialized_function(
         self, out: TextIO, impl: TpyFunction, stub: TpyFunction,
@@ -961,6 +1046,59 @@ class FunctionGenerator:
                                 record_type_param_bounds=record_type_param_bounds)
         finally:
             self.ctx.overload_param_types = {}
+
+    def _gen_literal_specialized_method(
+        self, out: TextIO, impl: TpyFunction, stub: TpyFunction,
+        record_name: str, *,
+        record_type_param_bounds: dict[str, TpyType] | None = None,
+        dynamic_overrides: dict[str, bool] | None = None,
+    ) -> None:
+        """Generate a per-literal specialized C++ method.
+
+        Uses the implementation's body with the stub's return type and
+        a mangled method name. Injects literal narrowing facts for dead
+        branch elimination.
+        """
+        mangled = literal_mangled_name(impl.name, stub)
+        synth = TpyFunction(
+            name=mangled,
+            params=list(impl.params),
+            return_type=stub.return_type,
+            body=impl.body,
+            is_method=impl.is_method,
+            is_staticmethod=impl.is_staticmethod,
+            is_readonly=impl.is_readonly,
+            readonly_opt_out=impl.readonly_opt_out,
+            is_pure=impl.is_pure,
+            is_consuming=impl.is_consuming,
+            type_params=list(impl.type_params),
+            type_param_bounds=dict(impl.type_param_bounds),
+            defaults=list(impl.defaults) if impl.defaults else [],
+            loc=stub.loc,
+        )
+        # Copy scan results from impl
+        self.ctx.analyzer.function_scan_results[id(synth)] = (
+            self.ctx.analyzer.function_scan_results.get(id(impl), None)
+        )
+        if id(impl) in self.ctx.analyzer.function_hoisted_vars:
+            self.ctx.analyzer.function_hoisted_vars[id(synth)] = (
+                self.ctx.analyzer.function_hoisted_vars[id(impl)]
+            )
+        if id(impl) in self.ctx.analyzer.function_move_through_vars:
+            self.ctx.analyzer.function_move_through_vars[id(synth)] = (
+                self.ctx.analyzer.function_move_through_vars[id(impl)]
+            )
+
+        # Inject literal narrowing facts
+        for (pname, _), (_, stub_ptype) in zip(impl.params, stub.params):
+            if isinstance(stub_ptype, LiteralType):
+                self.ctx.literal_overload_facts[pname] = stub_ptype
+
+        try:
+            self.gen_method_def(out, synth, record_name, dynamic_overrides,
+                                record_type_param_bounds=record_type_param_bounds)
+        finally:
+            self.ctx.literal_overload_facts = {}
 
     def _get_dynamic_override_info(self, record_name: str) -> dict[str, bool]:
         """Get map of method_name -> is_const for methods overriding @dynamic protocol virtuals.

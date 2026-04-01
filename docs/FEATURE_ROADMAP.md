@@ -75,7 +75,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D4 | with statement | M | Done | [VI](#with-statement-context-managers) |
 | D5 | Nested `def` with captures, `nonlocal` | M-L | Done | [VI](#closures--nested-functions) |
 | D6 | Properties (@property) | M | Not started | [VII](#properties) |
-| D7 | Literal types (Literal[...]) | M | Phase 3 done | [III](#literal-types) |
+| D7 | Literal types (Literal[...]) | M | Phase 3b done | [III](#literal-types) |
 | D8 | `@override` decorator | S | Done | [VII](#override-decorator) |
 | D9 | set type | L | Done | [VII](#set-type) |
 | D10 | bytes type | M | Done | [VII](#bytes-type) |
@@ -1106,7 +1106,7 @@ Multi-value `Literal` supported. Only direct literal arguments dispatch to
 Natural extension of the type system. Works well with overloads (different return types
 per literal value). Key enabler for `open()` binary mode dispatch.
 
-**Current state**: Phase 3a done. Phases 3b-6 planned. See `docs/LITERAL_TYPES_DESIGN.md`.
+**Current state**: Phase 3b done. Phases 4-6 planned. See `docs/LITERAL_TYPES_DESIGN.md`.
 
 - **Phase 1 (done)**: `Literal["a", "b", ...]` with string values. Ordering-independent:
   `Literal` stubs are preferred over plain stubs regardless of declaration order.
@@ -1120,9 +1120,9 @@ per literal value). Key enabler for `open()` binary mode dispatch.
   enabling dispatch to more specific overload stubs within branches.
 - **Phase 3a (done)**: Dead branch elimination -- single-value Literal comparisons
   fold to `true`/`false` in generated C++.
-- **Phase 3b**: Literal overload flattening. User `@overload` stubs with different
-  return types per Literal value generate per-literal C++ specializations
-  (analogous to union flattening). Depends on Phase 3 for dead branch elimination.
+- **Phase 3b (done)**: Literal overload flattening. Each `@overload` stub with
+  Literal params gets a per-literal C++ specialization with name mangling
+  (`func__lit_value`) and dead branch elimination. Works for functions and methods.
 - **Phase 4**: Match/case exhaustiveness for Literal subjects.
 - **Phase 5**: Literal types in variables. `x: Literal["rb"] = "rb"` retains the
   literal type. Enables indirect dispatch without annotation.

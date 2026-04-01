@@ -6,7 +6,24 @@ namespace tpyapp::main {
 
 
 
-// def classify(x: Int64) -> str:
+// @overload
+// def classify(x: Literal[1, 2]) -> str: ...
+std::string classify__lit_1__2(int64_t x) {
+    // if x == 1:
+    if ((x == 1)) {
+        // return "one"
+        return "one";
+    // elif x == 2:
+    } else if ((x == 2)) {
+        // return "two"
+        return "two";
+    }
+    // return "other"
+    return "other";
+}
+
+// @overload
+// def classify(x: Int64) -> str: ...
 std::string classify(int64_t x) {
     // if x == 1:
     if ((x == 1)) {
@@ -21,12 +38,13 @@ std::string classify(int64_t x) {
     return "other";
 }
 
+
 // def main() -> None:
 void main() {
     // print(classify(1))
-    std::cout << classify(1) << "\n";
+    std::cout << classify__lit_1__2(1) << "\n";
     // print(classify(2))
-    std::cout << classify(2) << "\n";
+    std::cout << classify__lit_1__2(2) << "\n";
     // x: Int64 = 99
     int64_t x = 99;
     // print(classify(x))

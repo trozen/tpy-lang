@@ -35,6 +35,7 @@ from ..parse import (
 from ..prescan import match_is_none
 from ..namespace import BindingKind
 from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, loop_var_binding, is_lvalue_iterable
+from .functions import literal_mangled_name
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -1257,19 +1258,26 @@ class ExpressionGenerator:
         return result
 
     def _try_fold_literal_comparison(self, expr: TpyBinOp) -> str | None:
-        """Fold == / != to true/false when one side is a single-value LiteralType variable."""
+        """Fold == / != when a variable has a known LiteralType.
+
+        Single-value: fold to true/false. Multi-value: fold to false/true
+        only when the compared value is NOT in the set.
+        """
         for var_side, lit_side in [(expr.left, expr.right), (expr.right, expr.left)]:
             if not isinstance(var_side, TpyName):
                 continue
             lit_type = self.ctx.literal_facts.get(var_side.name)
-            if not isinstance(lit_type, LiteralType) or len(lit_type.values) != 1:
+            if not isinstance(lit_type, LiteralType):
                 continue
             lit_val = self._extract_literal_value(lit_side)
             if lit_val is None:
                 continue
-            matches = (lit_val == lit_type.values[0])
-            result = matches if expr.op == "==" else not matches
-            return "true" if result else "false"
+            in_set = lit_val in lit_type.values
+            if len(lit_type.values) == 1:
+                result = in_set if expr.op == "==" else not in_set
+                return "true" if result else "false"
+            if not in_set:
+                return "false" if expr.op == "==" else "true"
         return None
 
     @staticmethod
@@ -1707,7 +1715,19 @@ class ExpressionGenerator:
                     gen_args.append(self.gen_call_arg(arg, resolved_ptype))
 
             # Determine function name
-            func_cpp_name = escape_cpp_name(expr.func_name)
+            # Literal overload flattening: use mangled name for literal stubs
+            # (only when stubs have different return types, triggering per-literal specialization)
+            is_literal_mangled = (
+                len(func_infos) > 1
+                and expr.resolved_function_info is not None
+                and any(isinstance(p.type, LiteralType) for p in expr.resolved_function_info.params)
+            )
+            if is_literal_mangled:
+                mangled = literal_mangled_name(expr.func_name, expr.resolved_function_info)
+            else:
+                mangled = expr.func_name
+
+            func_cpp_name = escape_cpp_name(mangled)
             if func_info.is_native_import or func_info.is_extern_c:
                 # @native/@native_c/@extern_c: use the C/C++ symbol name directly.
                 # For @native_c, the calling module's header has a local re-declaration
@@ -1716,7 +1736,7 @@ class ExpressionGenerator:
                 func_cpp_name = qualify_native_name(func_info.native_name or func_info.name)
             elif expr.func_name in self.ctx.user_imported_functions:
                 source_module, original_name = self.ctx.user_imported_functions[expr.func_name]
-                func_cpp_name = qualified_cpp_name(source_module, original_name)
+                func_cpp_name = qualified_cpp_name(source_module, mangled if is_literal_mangled else original_name)
 
             # For generic TPy functions, emit explicit type args to avoid C++ deduction
             # issues with ::tpy::param_val_or_ref_t<T> parameters.  Skip for @native
@@ -2216,8 +2236,25 @@ class ExpressionGenerator:
                      or is_optional_ptr)
         accessor = "->" if use_arrow else "."
         # Use native method name if available (for @native/@native_c class methods)
-        cpp_method = expr.resolved_function_info.native_name if expr.resolved_function_info and expr.resolved_function_info.native_name else expr.method
-        return f"{obj}{accessor}{cpp_method}{method_targs}({args})"
+        if expr.resolved_function_info and expr.resolved_function_info.native_name:
+            cpp_method = expr.resolved_function_info.native_name
+        elif (expr.resolved_function_info
+              and any(isinstance(p.type, LiteralType) for p in expr.resolved_function_info.params)
+              and self._is_overloaded_method(expr)):
+            cpp_method = literal_mangled_name(expr.method, expr.resolved_function_info)
+        else:
+            cpp_method = expr.method
+        return f"{obj}{accessor}{escape_cpp_name(cpp_method)}{method_targs}({args})"
+
+    def _is_overloaded_method(self, expr: TpyMethodCall) -> bool:
+        """Check if a method call targets an overloaded method (multiple stubs)."""
+        obj_type = self.ctx.get_expr_type(expr.obj)
+        if obj_type is None or not isinstance(obj_type, NamedType):
+            return False
+        record = self.ctx.analyzer.registry.get_record_for_type(obj_type)
+        if record is None:
+            return False
+        return len(record.get_method_overloads(expr.method)) > 1
 
     def _gen_builtin_method_receiver(self, expr: TpyMethodCall) -> str:
         """Generate the receiver expression for a builtin method call (cpp_template or native_function)."""

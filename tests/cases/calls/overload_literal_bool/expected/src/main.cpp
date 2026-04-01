@@ -7,7 +7,26 @@ namespace tpyapp::main {
 
 
 
-// def describe(x: bool) -> str:
+// @overload
+// def describe(x: Literal[True]) -> str: ...
+std::string describe__lit_True(bool x) {
+    // if x:
+    // return "yes"
+    return "yes";
+    // return "no"
+    return "no";
+}
+
+// @overload
+// def describe(x: Literal[False]) -> str: ...
+std::string describe__lit_False(bool x) {
+    // if x:
+    // return "no"
+    return "no";
+}
+
+// @overload
+// def describe(x: bool) -> str: ...
 std::string describe(bool x) {
     // if x:
     if (x) {
@@ -18,12 +37,13 @@ std::string describe(bool x) {
     return "no";
 }
 
+
 // def main() -> None:
 void main() {
     // print(describe(True))
-    std::cout << describe(true) << "\n";
+    std::cout << describe__lit_True(true) << "\n";
     // print(describe(False))
-    std::cout << describe(false) << "\n";
+    std::cout << describe__lit_False(false) << "\n";
     // # Variable falls through to bool fallback
     // val = True
     bool val = true;
