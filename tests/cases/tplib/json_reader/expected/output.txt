@@ -22,3 +22,9 @@ name
 Alice
 city
 NYC
+{"key" ^---<expected ':'> 123}
+{"name": ^---<unterminated string> "hello
+...me": "Smith", "age" ^---<expected ':'> "thirty"}
+{"key": 1^---<expected '}'>
+json error
+custom msg

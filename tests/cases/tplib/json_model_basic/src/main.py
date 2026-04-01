@@ -44,6 +44,10 @@ def test_skip_unknown() -> None:
     print(user.name)
     print(user.age)
 
+def test_pretty() -> None:
+    user = User("Alice", 30, True, "a@b.com")
+    print(user.to_json(indent=2))
+
 test_deserialize()
 test_optional_missing()
 test_optional_null()
@@ -51,3 +55,4 @@ test_serialize()
 test_serialize_null()
 test_roundtrip()
 test_skip_unknown()
+test_pretty()

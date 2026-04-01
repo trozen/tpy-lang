@@ -74,6 +74,14 @@ void test_skip_unknown() {
     std::cout << user.age << "\n";
 }
 
+// def test_pretty() -> None:
+void test_pretty() {
+    // user = User("Alice", 30, True, "a@b.com")
+    User user = User("Alice", 30, true, "a@b.com");
+    // print(user.to_json(indent=2))
+    std::cout << user.to_json(2) << "\n";
+}
+
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -98,6 +106,8 @@ void __tpy_init() {
     test_roundtrip();
     // test_skip_unknown()
     test_skip_unknown();
+    // test_pretty()
+    test_pretty();
 }
 
 } // namespace tpyapp::main

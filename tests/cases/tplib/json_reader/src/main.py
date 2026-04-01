@@ -118,6 +118,50 @@ def test_raw_methods() -> None:
         print(v)
     reader.read_object_end()
 
+def test_describe() -> None:
+    data = '{"key" 123}'
+    reader = JsonReader(data)
+    try:
+        reader.read_object_start()
+        reader.read_key()
+    except JsonError as e:
+        print(e.describe(data))
+    # Unterminated string
+    data2 = '{"name": "hello'
+    reader2 = JsonReader(data2)
+    try:
+        reader2.read_object_start()
+        reader2.read_key()
+        reader2.read_str()
+    except JsonError as e2:
+        print(e2.describe(data2))
+    # Long context (truncated with ...)
+    data3 = '{"first_name": "Alice", "last_name": "Smith", "age" "thirty"}'
+    reader3 = JsonReader(data3)
+    try:
+        reader3.read_object_start()
+        while reader3.has_next():
+            reader3.read_key()
+            reader3.skip_value()
+    except JsonError as e3:
+        print(e3.describe(data3))
+    # Error at end of input (truncated JSON)
+    data4 = '{"key": 1'
+    reader4 = JsonReader(data4)
+    try:
+        reader4.read_object_start()
+        reader4.read_key()
+        reader4.read_int()
+        reader4.read_object_end()
+    except JsonError as e4:
+        print(e4.describe(data4))
+    # No position (bare JsonError)
+    err = JsonError()
+    print(err.describe("any"))
+    # Message only, no position
+    err2 = JsonError("custom msg")
+    print(err2.describe("any"))
+
 def main() -> None:
     try:
         test_basic_object()
@@ -151,5 +195,7 @@ def main() -> None:
         test_raw_methods()
     except JsonError:
         print("ERROR")
+    test_describe()
 
 main()
+

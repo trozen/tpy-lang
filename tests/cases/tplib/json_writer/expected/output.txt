@@ -3,3 +3,29 @@
 {"msg": "hello\nworld", "path": "c:\\temp"}
 [3.14, -0.5]
 {"obj": {}, "arr": []}
+{
+  "name": "Alice",
+  "age": 30
+}
+{
+  "scores": [
+    1,
+    2,
+    3
+  ],
+  "addr": {
+    "city": "NYC"
+  }
+}
+{
+  "obj": {},
+  "arr": []
+}
+{
+    "x": 1
+}
+[
+  "a",
+  "b",
+  "c"
+]

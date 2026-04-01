@@ -113,8 +113,8 @@ struct Item {
         __writer.object_end();
     }
 
-    std::string to_json() const {
-        ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter();
+    std::string to_json(int32_t indent = 0) const {
+        ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
         __json_encode__(__writer);
         return __writer.finish();
     }

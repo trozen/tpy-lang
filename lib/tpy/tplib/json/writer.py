@@ -9,72 +9,142 @@ def _hex_byte(v: Int32) -> str:
 class JsonWriter:
     _parts: list[str]
     _needs_comma: bool
+    _indent: Int32
+    _depth: Int32
+    _fresh_line: bool
 
-    def __init__(self) -> None:
+    def __init__(self, indent: Int32 = 0) -> None:
         self._parts = []
         self._needs_comma = False
+        self._indent = indent
+        self._depth = 0
+        self._fresh_line = False
 
-    def _comma(self) -> None:
+    # -- pretty-printing helpers (only called when _indent > 0) --
+
+    def _emit_nl(self) -> None:
+        self._parts.append("\n")
+        n = self._indent * self._depth
+        if n > 0:
+            self._parts.append(" " * n)
+
+    def _pretty_sep(self) -> None:
         if self._needs_comma:
-            self._parts.append(", ")
+            self._parts.append(",")
+            self._emit_nl()
+        elif self._fresh_line:
+            self._emit_nl()
+        self._needs_comma = False
+        self._fresh_line = False
+
+    def _pretty_open(self, bracket: str) -> None:
+        self._pretty_sep()
+        self._parts.append(bracket)
+        self._depth += 1
+        self._fresh_line = True
         self._needs_comma = False
 
+    def _pretty_close(self, bracket: str) -> None:
+        self._depth -= 1
+        if not self._fresh_line:
+            self._emit_nl()
+        self._fresh_line = False
+        self._parts.append(bracket)
+        self._needs_comma = True
+
+    # -- public API --
+
     def object_start(self) -> None:
-        self._comma()
+        if self._indent > 0:
+            self._pretty_open("{")
+            return
+        if self._needs_comma:
+            self._parts.append(", ")
         self._parts.append("{")
         self._needs_comma = False
 
     def object_end(self) -> None:
+        if self._indent > 0:
+            self._pretty_close("}")
+            return
         self._parts.append("}")
         self._needs_comma = True
 
     def array_start(self) -> None:
-        self._comma()
+        if self._indent > 0:
+            self._pretty_open("[")
+            return
+        if self._needs_comma:
+            self._parts.append(", ")
         self._parts.append("[")
         self._needs_comma = False
 
     def array_end(self) -> None:
+        if self._indent > 0:
+            self._pretty_close("]")
+            return
         self._parts.append("]")
         self._needs_comma = True
 
     def key(self, k: str) -> None:
-        self._comma()
+        if self._indent > 0:
+            self._pretty_sep()
+        elif self._needs_comma:
+            self._parts.append(", ")
         self._parts.append("\"")
         self._write_escaped(k)
         self._parts.append("\": ")
         self._needs_comma = False
 
     def write_str(self, v: str) -> None:
-        self._comma()
+        if self._indent > 0:
+            self._pretty_sep()
+        elif self._needs_comma:
+            self._parts.append(", ")
         self._parts.append("\"")
         self._write_escaped(v)
         self._parts.append("\"")
         self._needs_comma = True
 
     def write_int(self, v: Int64) -> None:
-        self._comma()
+        if self._indent > 0:
+            self._pretty_sep()
+        elif self._needs_comma:
+            self._parts.append(", ")
         self._parts.append(str(v))
         self._needs_comma = True
 
     def write_int32(self, v: Int32) -> None:
-        self._comma()
+        if self._indent > 0:
+            self._pretty_sep()
+        elif self._needs_comma:
+            self._parts.append(", ")
         self._parts.append(str(v))
         self._needs_comma = True
 
     def write_float(self, v: Float64) -> None:
         # NOTE: nan/inf produce invalid JSON ("nan", "inf"). JSON has no
         # special float values. Callers should validate before writing.
-        self._comma()
+        if self._indent > 0:
+            self._pretty_sep()
+        elif self._needs_comma:
+            self._parts.append(", ")
         self._parts.append(str(v))
         self._needs_comma = True
 
     def write_float32(self, v: Float32) -> None:
-        self._comma()
+        if self._indent > 0:
+            self._pretty_sep()
+        elif self._needs_comma:
+            self._parts.append(", ")
         self._parts.append(str(v))
         self._needs_comma = True
 
     def write_bool(self, v: bool) -> None:
-        self._comma()
+        if self._indent > 0:
+            self._pretty_sep()
+        elif self._needs_comma:
+            self._parts.append(", ")
         if v:
             self._parts.append("true")
         else:
@@ -82,7 +152,10 @@ class JsonWriter:
         self._needs_comma = True
 
     def write_null(self) -> None:
-        self._comma()
+        if self._indent > 0:
+            self._pretty_sep()
+        elif self._needs_comma:
+            self._parts.append(", ")
         self._parts.append("null")
         self._needs_comma = True
 

@@ -17,6 +17,11 @@ void test_nested();
 void test_escape();
 void test_float();
 void test_empty();
+void test_pretty_basic();
+void test_pretty_nested();
+void test_pretty_empty();
+void test_pretty_4space();
+void test_pretty_array();
 
 void __tpy_init();
 } // namespace tpyapp::main

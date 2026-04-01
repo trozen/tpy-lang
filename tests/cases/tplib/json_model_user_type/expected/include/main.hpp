@@ -165,8 +165,8 @@ struct Event {
         __writer.object_end();
     }
 
-    std::string to_json() const {
-        ::tpystd::tplib::json::JsonWriter __writer = ::tpystd::tplib::json::JsonWriter();
+    std::string to_json(int32_t indent = 0) const {
+        ::tpystd::tplib::json::JsonWriter __writer = ::tpystd::tplib::json::JsonWriter(indent);
         __json_encode__(__writer);
         return __writer.finish();
     }
@@ -329,8 +329,8 @@ struct Schedule {
         __writer.object_end();
     }
 
-    std::string to_json() const {
-        ::tpystd::tplib::json::JsonWriter __writer = ::tpystd::tplib::json::JsonWriter();
+    std::string to_json(int32_t indent = 0) const {
+        ::tpystd::tplib::json::JsonWriter __writer = ::tpystd::tplib::json::JsonWriter(indent);
         __json_encode__(__writer);
         return __writer.finish();
     }

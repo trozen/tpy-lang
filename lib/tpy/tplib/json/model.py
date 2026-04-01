@@ -585,17 +585,17 @@ def _build_json_encode(cls: ClassInfo, all_fields: list[FieldInfo]) -> Function:
 
 
 def _build_to_json(cls: ClassInfo) -> Function:
-    """Build to_json(self) -> str method (public entry point)."""
+    """Build to_json(self, indent: Int32 = 0) -> str method (public entry point)."""
     writer_type = types.named("JsonWriter")
     body: list[Stmt] = [
         ast.var_decl("__writer", type=writer_type,
-                      init=ast.call("JsonWriter")),
+                      init=ast.call("JsonWriter", [ast.name("indent")])),
         ast.expr_stmt(ast.method_call(ast.name("self"), "__json_encode__", [ast.name("__writer")])),
         ast.return_(ast.method_call(ast.name("__writer"), "finish")),
     ]
     return ast.function(
-        "to_json", [], types.str, body,
-        is_method=True,
+        "to_json", [("indent", types.int32)], types.str, body,
+        is_method=True, defaults=[ast.int_lit(0)],
     )
 
 

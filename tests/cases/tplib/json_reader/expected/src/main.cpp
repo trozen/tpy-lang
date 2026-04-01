@@ -421,120 +421,270 @@ std::expected<void, ::tpystd::tplib::json::JsonError> test_raw_methods() {
     return {};
 }
 
+// def test_describe() -> None:
+void test_describe() {
+    // data = '{"key" 123}'
+    std::string_view data = "{\"key\" 123}";
+    // reader = JsonReader(data)
+    ::tpystd::tplib::json::JsonReader reader = ::tpystd::tplib::json::JsonReader(data);
+    // try:
+    {
+        std::optional<::tpystd::tplib::json::JsonError> __err_opt_45;
+        // reader.read_object_start()
+        {
+            auto __try_tmp_46 = reader.read_object_start();
+            if (!__try_tmp_46.has_value()) { __err_opt_45 = std::move(__try_tmp_46.error()); goto __except_45; }
+        }
+        // reader.read_key()
+        {
+            auto __try_tmp_47 = reader.read_key();
+            if (!__try_tmp_47.has_value()) { __err_opt_45 = std::move(__try_tmp_47.error()); goto __except_45; }
+        }
+        goto __after_try_45;
+        // except JsonError:
+        __except_45:;
+        {
+            auto& e = *__err_opt_45;
+            // print(e.describe(data))
+            std::cout << e.describe(data) << "\n";
+        }
+        __after_try_45:;
+    }
+    // # Unterminated string
+    // data2 = '{"name": "hello'
+    std::string_view data2 = "{\"name\": \"hello";
+    // reader2 = JsonReader(data2)
+    ::tpystd::tplib::json::JsonReader reader2 = ::tpystd::tplib::json::JsonReader(data2);
+    // try:
+    {
+        std::optional<::tpystd::tplib::json::JsonError> __err_opt_48;
+        // reader2.read_object_start()
+        {
+            auto __try_tmp_49 = reader2.read_object_start();
+            if (!__try_tmp_49.has_value()) { __err_opt_48 = std::move(__try_tmp_49.error()); goto __except_48; }
+        }
+        // reader2.read_key()
+        {
+            auto __try_tmp_50 = reader2.read_key();
+            if (!__try_tmp_50.has_value()) { __err_opt_48 = std::move(__try_tmp_50.error()); goto __except_48; }
+        }
+        // reader2.read_str()
+        {
+            auto __try_tmp_51 = reader2.read_str();
+            if (!__try_tmp_51.has_value()) { __err_opt_48 = std::move(__try_tmp_51.error()); goto __except_48; }
+        }
+        goto __after_try_48;
+        // except JsonError:
+        __except_48:;
+        {
+            auto& e2 = *__err_opt_48;
+            // print(e2.describe(data2))
+            std::cout << e2.describe(data2) << "\n";
+        }
+        __after_try_48:;
+    }
+    // # Long context (truncated with ...)
+    // data3 = '{"first_name": "Alice", "last_name": "Smith", "age" "thirty"}'
+    std::string_view data3 = "{\"first_name\": \"Alice\", \"last_name\": \"Smith\", \"age\" \"thirty\"}";
+    // reader3 = JsonReader(data3)
+    ::tpystd::tplib::json::JsonReader reader3 = ::tpystd::tplib::json::JsonReader(data3);
+    // try:
+    {
+        std::optional<::tpystd::tplib::json::JsonError> __err_opt_52;
+        // reader3.read_object_start()
+        {
+            auto __try_tmp_53 = reader3.read_object_start();
+            if (!__try_tmp_53.has_value()) { __err_opt_52 = std::move(__try_tmp_53.error()); goto __except_52; }
+        }
+        // while reader3.has_next():
+        while (reader3.has_next()) {
+            // reader3.read_key()
+            {
+                auto __try_tmp_54 = reader3.read_key();
+                if (!__try_tmp_54.has_value()) { __err_opt_52 = std::move(__try_tmp_54.error()); goto __except_52; }
+            }
+            // reader3.skip_value()
+            {
+                auto __try_tmp_55 = reader3.skip_value();
+                if (!__try_tmp_55.has_value()) { __err_opt_52 = std::move(__try_tmp_55.error()); goto __except_52; }
+            }
+        }
+        goto __after_try_52;
+        // except JsonError:
+        __except_52:;
+        {
+            auto& e3 = *__err_opt_52;
+            // print(e3.describe(data3))
+            std::cout << e3.describe(data3) << "\n";
+        }
+        __after_try_52:;
+    }
+    // # Error at end of input (truncated JSON)
+    // data4 = '{"key": 1'
+    std::string_view data4 = "{\"key\": 1";
+    // reader4 = JsonReader(data4)
+    ::tpystd::tplib::json::JsonReader reader4 = ::tpystd::tplib::json::JsonReader(data4);
+    // try:
+    {
+        std::optional<::tpystd::tplib::json::JsonError> __err_opt_56;
+        // reader4.read_object_start()
+        {
+            auto __try_tmp_57 = reader4.read_object_start();
+            if (!__try_tmp_57.has_value()) { __err_opt_56 = std::move(__try_tmp_57.error()); goto __except_56; }
+        }
+        // reader4.read_key()
+        {
+            auto __try_tmp_58 = reader4.read_key();
+            if (!__try_tmp_58.has_value()) { __err_opt_56 = std::move(__try_tmp_58.error()); goto __except_56; }
+        }
+        // reader4.read_int()
+        {
+            auto __try_tmp_59 = reader4.read_int();
+            if (!__try_tmp_59.has_value()) { __err_opt_56 = std::move(__try_tmp_59.error()); goto __except_56; }
+        }
+        // reader4.read_object_end()
+        {
+            auto __try_tmp_60 = reader4.read_object_end();
+            if (!__try_tmp_60.has_value()) { __err_opt_56 = std::move(__try_tmp_60.error()); goto __except_56; }
+        }
+        goto __after_try_56;
+        // except JsonError:
+        __except_56:;
+        {
+            auto& e4 = *__err_opt_56;
+            // print(e4.describe(data4))
+            std::cout << e4.describe(data4) << "\n";
+        }
+        __after_try_56:;
+    }
+    // # No position (bare JsonError)
+    // err = JsonError()
+    ::tpystd::tplib::json::JsonError err = ::tpystd::tplib::json::JsonError();
+    // print(err.describe("any"))
+    std::cout << err.describe("any") << "\n";
+    // # Message only, no position
+    // err2 = JsonError("custom msg")
+    ::tpystd::tplib::json::JsonError err2 = ::tpystd::tplib::json::JsonError("custom msg");
+    // print(err2.describe("any"))
+    std::cout << err2.describe("any") << "\n";
+}
+
 // def main() -> None:
 void main() {
     // try:
     {
         // test_basic_object()
         {
-            auto __try_tmp_46 = test_basic_object();
-            if (!__try_tmp_46.has_value()) goto __except_45;
+            auto __try_tmp_62 = test_basic_object();
+            if (!__try_tmp_62.has_value()) goto __except_61;
         }
-        goto __after_try_45;
+        goto __after_try_61;
         // except JsonError:
-        __except_45:;
+        __except_61:;
         // print("ERROR")
         std::cout << "ERROR" << "\n";
-        __after_try_45:;
+        __after_try_61:;
     }
     // try:
     {
         // test_nested()
         {
-            auto __try_tmp_48 = test_nested();
-            if (!__try_tmp_48.has_value()) goto __except_47;
+            auto __try_tmp_64 = test_nested();
+            if (!__try_tmp_64.has_value()) goto __except_63;
         }
-        goto __after_try_47;
+        goto __after_try_63;
         // except JsonError:
-        __except_47:;
+        __except_63:;
         // print("ERROR")
         std::cout << "ERROR" << "\n";
-        __after_try_47:;
+        __after_try_63:;
     }
     // try:
     {
         // test_null_and_escape()
         {
-            auto __try_tmp_50 = test_null_and_escape();
-            if (!__try_tmp_50.has_value()) goto __except_49;
+            auto __try_tmp_66 = test_null_and_escape();
+            if (!__try_tmp_66.has_value()) goto __except_65;
         }
-        goto __after_try_49;
+        goto __after_try_65;
         // except JsonError:
-        __except_49:;
+        __except_65:;
         // print("ERROR")
         std::cout << "ERROR" << "\n";
-        __after_try_49:;
+        __after_try_65:;
     }
     // try:
     {
         // test_float()
         {
-            auto __try_tmp_52 = test_float();
-            if (!__try_tmp_52.has_value()) goto __except_51;
+            auto __try_tmp_68 = test_float();
+            if (!__try_tmp_68.has_value()) goto __except_67;
         }
-        goto __after_try_51;
+        goto __after_try_67;
         // except JsonError:
-        __except_51:;
+        __except_67:;
         // print("ERROR")
         std::cout << "ERROR" << "\n";
-        __after_try_51:;
+        __after_try_67:;
     }
     // try:
     {
         // test_skip()
         {
-            auto __try_tmp_54 = test_skip();
-            if (!__try_tmp_54.has_value()) goto __except_53;
+            auto __try_tmp_70 = test_skip();
+            if (!__try_tmp_70.has_value()) goto __except_69;
         }
-        goto __after_try_53;
+        goto __after_try_69;
         // except JsonError:
-        __except_53:;
+        __except_69:;
         // print("ERROR")
         std::cout << "ERROR" << "\n";
-        __after_try_53:;
+        __after_try_69:;
     }
     // try:
     {
         // test_empty_containers()
         {
-            auto __try_tmp_56 = test_empty_containers();
-            if (!__try_tmp_56.has_value()) goto __except_55;
+            auto __try_tmp_72 = test_empty_containers();
+            if (!__try_tmp_72.has_value()) goto __except_71;
         }
-        goto __after_try_55;
+        goto __after_try_71;
         // except JsonError:
-        __except_55:;
+        __except_71:;
         // print("ERROR")
         std::cout << "ERROR" << "\n";
-        __after_try_55:;
+        __after_try_71:;
     }
     // try:
     {
         // test_negative_int()
         {
-            auto __try_tmp_58 = test_negative_int();
-            if (!__try_tmp_58.has_value()) goto __except_57;
+            auto __try_tmp_74 = test_negative_int();
+            if (!__try_tmp_74.has_value()) goto __except_73;
         }
-        goto __after_try_57;
+        goto __after_try_73;
         // except JsonError:
-        __except_57:;
+        __except_73:;
         // print("ERROR")
         std::cout << "ERROR" << "\n";
-        __after_try_57:;
+        __after_try_73:;
     }
     // try:
     {
         // test_raw_methods()
         {
-            auto __try_tmp_60 = test_raw_methods();
-            if (!__try_tmp_60.has_value()) goto __except_59;
+            auto __try_tmp_76 = test_raw_methods();
+            if (!__try_tmp_76.has_value()) goto __except_75;
         }
-        goto __after_try_59;
+        goto __after_try_75;
         // except JsonError:
-        __except_59:;
+        __except_75:;
         // print("ERROR")
         std::cout << "ERROR" << "\n";
-        __after_try_59:;
+        __after_try_75:;
     }
+    // test_describe()
+    test_describe();
 }
 
 void __tpy_init() {

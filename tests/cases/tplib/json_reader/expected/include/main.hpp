@@ -20,6 +20,7 @@ std::expected<void, ::tpystd::tplib::json::JsonError> test_skip();
 std::expected<void, ::tpystd::tplib::json::JsonError> test_empty_containers();
 std::expected<void, ::tpystd::tplib::json::JsonError> test_negative_int();
 std::expected<void, ::tpystd::tplib::json::JsonError> test_raw_methods();
+void test_describe();
 void main();
 
 void __tpy_init();

@@ -1342,11 +1342,12 @@ class StatementAnalyzer:
         self.init.restore(before)
         self.ctx.current_consumed_own_params = consumed_before.copy()
 
-        # Register except binding
+        # Register except binding -- use find_record_by_qname because
+        # handler.exception_type may be module-qualified (e.g. from macros).
         if handler.binding:
-            exc_record = self.ctx.registry.find_record(handler.exception_type)
+            exc_record = self.ctx.registry.find_record_by_qname(handler.exception_type)
             if exc_record:
-                exc_type = NamedType(handler.exception_type)
+                exc_type = NamedType(exc_record.name)
                 self.ctx.current_scope.bindings[handler.binding] = exc_type
                 self.init.mark_assigned(handler.binding)
 

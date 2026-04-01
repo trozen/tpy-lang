@@ -126,6 +126,118 @@ void test_empty() {
     std::cout << w.finish() << "\n";
 }
 
+// def test_pretty_basic() -> None:
+void test_pretty_basic() {
+    // w = JsonWriter(indent=2)
+    ::tpystd::tplib::json::JsonWriter w = ::tpystd::tplib::json::JsonWriter(2);
+    // w.object_start()
+    w.object_start();
+    // w.key("name")
+    w.key("name");
+    // w.write_str("Alice")
+    w.write_str("Alice");
+    // w.key("age")
+    w.key("age");
+    // w.write_int(30)
+    w.write_int(30);
+    // w.object_end()
+    w.object_end();
+    // print(w.finish())
+    std::cout << w.finish() << "\n";
+}
+
+// def test_pretty_nested() -> None:
+void test_pretty_nested() {
+    // w = JsonWriter(indent=2)
+    ::tpystd::tplib::json::JsonWriter w = ::tpystd::tplib::json::JsonWriter(2);
+    // w.object_start()
+    w.object_start();
+    // w.key("scores")
+    w.key("scores");
+    // w.array_start()
+    w.array_start();
+    // w.write_int(1)
+    w.write_int(1);
+    // w.write_int(2)
+    w.write_int(2);
+    // w.write_int(3)
+    w.write_int(3);
+    // w.array_end()
+    w.array_end();
+    // w.key("addr")
+    w.key("addr");
+    // w.object_start()
+    w.object_start();
+    // w.key("city")
+    w.key("city");
+    // w.write_str("NYC")
+    w.write_str("NYC");
+    // w.object_end()
+    w.object_end();
+    // w.object_end()
+    w.object_end();
+    // print(w.finish())
+    std::cout << w.finish() << "\n";
+}
+
+// def test_pretty_empty() -> None:
+void test_pretty_empty() {
+    // w = JsonWriter(indent=2)
+    ::tpystd::tplib::json::JsonWriter w = ::tpystd::tplib::json::JsonWriter(2);
+    // w.object_start()
+    w.object_start();
+    // w.key("obj")
+    w.key("obj");
+    // w.object_start()
+    w.object_start();
+    // w.object_end()
+    w.object_end();
+    // w.key("arr")
+    w.key("arr");
+    // w.array_start()
+    w.array_start();
+    // w.array_end()
+    w.array_end();
+    // w.object_end()
+    w.object_end();
+    // print(w.finish())
+    std::cout << w.finish() << "\n";
+}
+
+// def test_pretty_4space() -> None:
+void test_pretty_4space() {
+    // w = JsonWriter(indent=4)
+    ::tpystd::tplib::json::JsonWriter w = ::tpystd::tplib::json::JsonWriter(4);
+    // w.object_start()
+    w.object_start();
+    // w.key("x")
+    w.key("x");
+    // w.write_int(1)
+    w.write_int(1);
+    // w.object_end()
+    w.object_end();
+    // print(w.finish())
+    std::cout << w.finish() << "\n";
+}
+
+// def test_pretty_array() -> None:
+void test_pretty_array() {
+    // w = JsonWriter(indent=2)
+    ::tpystd::tplib::json::JsonWriter w = ::tpystd::tplib::json::JsonWriter(2);
+    // w.array_start()
+    w.array_start();
+    // w.write_str("a")
+    w.write_str("a");
+    // w.write_str("b")
+    w.write_str("b");
+    // w.write_str("c")
+    w.write_str("c");
+    // w.array_end()
+    w.array_end();
+    // print(w.finish())
+    std::cout << w.finish() << "\n";
+}
+
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -145,6 +257,16 @@ void __tpy_init() {
     test_float();
     // test_empty()
     test_empty();
+    // test_pretty_basic()
+    test_pretty_basic();
+    // test_pretty_nested()
+    test_pretty_nested();
+    // test_pretty_empty()
+    test_pretty_empty();
+    // test_pretty_4space()
+    test_pretty_4space();
+    // test_pretty_array()
+    test_pretty_array();
 }
 
 } // namespace tpyapp::main

@@ -4,7 +4,45 @@ from tpy import Int32, Int64, Float64, Char, StrView, readonly, error_return, Re
 
 
 class JsonError(Exception, ReturnException):
-    pass
+    message: str
+    pos: Int32
+
+    def __init__(self, message: str = "", pos: Int32 = -1) -> None:
+        self.message = message
+        self.pos = pos
+
+    def describe(self, data: str) -> str:
+        """Format error with context from the input string.
+
+        Returns e.g.: ..."key",^---<expected ':'> 123}...
+        """
+        msg = self.message
+        if self.pos < 0:
+            if len(msg) > 0:
+                return msg
+            return "json error"
+        ctx: Int32 = 20
+        dlen = len(data)
+        # before
+        bstart = self.pos - ctx
+        prefix = ""
+        if bstart < 0:
+            bstart = 0
+        else:
+            prefix = "..."
+        before = data[bstart:self.pos]
+        # after
+        aend = self.pos + ctx
+        suffix = ""
+        if aend > dlen:
+            aend = dlen
+        else:
+            suffix = "..."
+        after = data[self.pos:aend]
+        if len(msg) == 0:
+            msg = "error"
+        gap = " " if len(after) > 0 else ""
+        return prefix + before + "^---<" + msg + ">" + gap + after + suffix
 
 class JsonToken(Enum):
     OBJECT_START = 0
@@ -62,28 +100,28 @@ class JsonReader:
     def read_object_start(self) -> None:
         self._skip_ws()
         if not (self._pos < self._len and self._data[self._pos] == "{"):
-            raise JsonError
+            raise JsonError("expected '{'", self._pos)
         self._pos += 1
 
     @error_return(JsonError)
     def read_object_end(self) -> None:
         self._skip_ws()
         if not (self._pos < self._len and self._data[self._pos] == "}"):
-            raise JsonError
+            raise JsonError("expected '}'", self._pos)
         self._pos += 1
 
     @error_return(JsonError)
     def read_array_start(self) -> None:
         self._skip_ws()
         if not (self._pos < self._len and self._data[self._pos] == "["):
-            raise JsonError
+            raise JsonError("expected '['", self._pos)
         self._pos += 1
 
     @error_return(JsonError)
     def read_array_end(self) -> None:
         self._skip_ws()
         if not (self._pos < self._len and self._data[self._pos] == "]"):
-            raise JsonError
+            raise JsonError("expected ']'", self._pos)
         self._pos += 1
 
     def has_next(self) -> bool:
@@ -102,7 +140,7 @@ class JsonReader:
         result = self._read_raw_str()
         self._skip_ws()
         if not (self._pos < self._len and self._data[self._pos] == ":"):
-            raise JsonError
+            raise JsonError("expected ':'", self._pos)
         self._pos += 1
         return result
 
@@ -115,18 +153,18 @@ class JsonReader:
         """
         self._skip_ws()
         if not (self._pos < self._len and self._data[self._pos] == "\""):
-            raise JsonError
+            raise JsonError("expected '\"'", self._pos)
         self._pos += 1
         start = self._pos
         while self._pos < self._len and self._data[self._pos] != "\"":
             self._pos += 1
         if not (self._pos < self._len):
-            raise JsonError
+            raise JsonError("unterminated string", start - 1)
         end = self._pos
         self._pos += 1
         self._skip_ws()
         if not (self._pos < self._len and self._data[self._pos] == ":"):
-            raise JsonError
+            raise JsonError("expected ':'", self._pos)
         self._pos += 1
         return self._data[start:end]
 
@@ -143,13 +181,13 @@ class JsonReader:
         """
         self._skip_ws()
         if not (self._pos < self._len and self._data[self._pos] == "\""):
-            raise JsonError
+            raise JsonError("expected '\"'", self._pos)
         self._pos += 1
         start = self._pos
         while self._pos < self._len and self._data[self._pos] != "\"":
             self._pos += 1
         if not (self._pos < self._len):
-            raise JsonError
+            raise JsonError("unterminated string", start - 1)
         end = self._pos
         self._pos += 1
         return self._data[start:end]
@@ -170,7 +208,7 @@ class JsonReader:
             result = result * 10 + Int64(ord(c) - ord("0"))
             self._pos += 1
         if not (self._pos > start):
-            raise JsonError
+            raise JsonError("expected digit", self._pos)
         if neg:
             result = -result
         return result
@@ -189,7 +227,7 @@ class JsonReader:
         if self._pos + 5 <= self._len and self._data[self._pos:self._pos + 5] == "false":
             self._pos += 5
             return False
-        raise JsonError
+        raise JsonError("expected 'true' or 'false'", self._pos)
 
     @error_return(JsonError)
     def read_null(self) -> None:
@@ -197,7 +235,7 @@ class JsonReader:
         if self._pos + 4 <= self._len and self._data[self._pos:self._pos + 4] == "null":
             self._pos += 4
             return
-        raise JsonError
+        raise JsonError("expected 'null'", self._pos)
 
     @error_return(JsonError)
     def skip_value(self) -> None:
@@ -228,7 +266,7 @@ class JsonReader:
     def _read_raw_str(self) -> str:
         self._skip_ws()
         if not (self._pos < self._len and self._data[self._pos] == "\""):
-            raise JsonError
+            raise JsonError("expected '\"'", self._pos)
         self._pos += 1
         start = self._pos
         has_escape = False
@@ -242,7 +280,7 @@ class JsonReader:
             else:
                 self._pos += 1
         if not (self._pos < self._len):
-            raise JsonError
+            raise JsonError("unterminated string", start - 1)
         end = self._pos
         self._pos += 1
         if not has_escape:
@@ -334,5 +372,5 @@ class JsonReader:
             else:
                 break
         if not (self._pos > start):
-            raise JsonError
+            raise JsonError("expected number", self._pos)
         return self._data[start:self._pos]

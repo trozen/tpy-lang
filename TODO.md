@@ -27,10 +27,10 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Macros
 - all macro code (at least for json model) generated in headers
-- json: pretty printing
 - json: to/from file
-- json: better error message: show position
 - json: field renaming
+- json: `ast.raise_` with constructor args so macro-generated errors (missing field, invalid enum) can include messages
+- json: `_read_number_raw` accepts lone `"-"` then panics in `float("-")` instead of returning JsonError
 - Macro API: companion type creation: macros can add methods but not new types. `cls.add_companion_enum(name, members)` would let macros generate helper enums (e.g. key enums for JSON field dispatch via `try_parse` + `match`/`case`). Combined with string match or used standalone, this gives O(1) key dispatch.
 
 
