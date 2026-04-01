@@ -1,0 +1,1 @@
+main.py:26: warning: copies Point elements; use copy_iter() to make this explicit

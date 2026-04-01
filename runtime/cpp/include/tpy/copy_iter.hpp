@@ -69,4 +69,11 @@ auto copy_iter(const Container& c) {
     return CopyIter<T, decltype(it)>{std::move(it)};
 }
 
+// Rvalue overload: wrap an iterator directly (e.g. copy_iter(map(f, xs))).
+template<typename T, typename Iter>
+    requires (!std::is_lvalue_reference_v<Iter&&>)
+auto copy_iter(Iter&& iter) {
+    return CopyIter<T, std::remove_cvref_t<Iter>>{std::move(iter)};
+}
+
 } // namespace tpy

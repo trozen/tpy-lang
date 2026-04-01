@@ -67,6 +67,19 @@ def _is_definitely_ref_type(t: TpyType) -> bool:
     return any(_is_definitely_ref_type(inner) for inner in t.inner_types())
 
 
+def _contains_semantic_ref(t: TpyType) -> bool:
+    """True if t contains a RefType wrapper (explicit borrowed reference).
+
+    Unlike _contains_ref_type which checks is_value_type() (structural),
+    this checks for RefType specifically -- the semantic marker that sema
+    inserts for borrowed references. Used to detect iterator-to-container
+    copies where the source is an rvalue but yields borrowed elements.
+    """
+    if isinstance(t, RefType):
+        return True
+    return any(_contains_semantic_ref(inner) for inner in t.inner_types())
+
+
 class CompatError:
     """Type compatibility check failure (returned by _check_compat, not raised)."""
     __slots__ = ('message', 'loc')
@@ -294,11 +307,12 @@ class TypeCompatibility:
             if structurally_ok:
                 if (source_expr is not None
                         and not isinstance(actual, OwnType)
-                        and self.is_lvalue(source_expr)
                         and not self.is_copy_call(source_expr)):
+                    is_lvalue_src = self.is_lvalue(source_expr)
                     # Suppress at last use: no observable semantic divergence from
                     # CPython when the source is dead after this point (Framing A).
-                    is_auto_moved = (isinstance(source_expr, TpyName)
+                    is_auto_moved = (is_lvalue_src
+                                     and isinstance(source_expr, TpyName)
                                      and id(source_expr) in self.ctx.all_last_uses
                                      and self._is_movable_var(source_expr.name))
                     if not is_auto_moved:
@@ -306,22 +320,30 @@ class TypeCompatibility:
                             if not isinstance(inner_t, OwnType):
                                 continue
                             elem_type = inner_t.wrapped
-                            if not _contains_ref_type(elem_type):
-                                continue
-                            if _is_definitely_ref_type(elem_type):
-                                self.ctx.warning(
-                                    f"copies {elem_type} elements; "
-                                    f"use copy_iter() to make this explicit"
-                                    f" (or copy() to copy the entire container)",
-                                    source_expr,
-                                )
-                            else:
-                                self.ctx.warning(
-                                    f"may copy {elem_type} elements if not a value type; "
-                                    f"use copy_iter() to make this explicit"
-                                    f" (or copy() to copy the entire container)",
-                                    source_expr,
-                                )
+                            # Rvalue iterators that yield Ref elements (e.g.
+                            # map(identity, pts)) copy on materialization.
+                            # RefType in the Own-wrapped element is the proof.
+                            has_ref_elements = _contains_semantic_ref(elem_type)
+                            if is_lvalue_src or has_ref_elements:
+                                if not _contains_ref_type(elem_type):
+                                    continue
+                                display_type = unwrap_ref_type(elem_type)
+                                # Lvalue source (container): suggest copy_iter or copy.
+                                # Rvalue with Ref elements (iterator): only copy_iter.
+                                if is_lvalue_src:
+                                    hint = "use copy_iter() to make this explicit (or copy() to copy the entire container)"
+                                else:
+                                    hint = "use copy_iter() to make this explicit"
+                                if _is_definitely_ref_type(elem_type):
+                                    self.ctx.warning(
+                                        f"copies {display_type} elements; {hint}",
+                                        source_expr,
+                                    )
+                                else:
+                                    self.ctx.warning(
+                                        f"may copy {display_type} elements if not a value type; {hint}",
+                                        source_expr,
+                                    )
                 return None
             if is_protocol_type(expected):
                 return CompatError(

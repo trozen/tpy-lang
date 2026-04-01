@@ -686,6 +686,8 @@ class CallAnalyzer:
                                     t = inferred_params[p]
                                     if isinstance(t, IntLiteralType):
                                         t = self.ctx.default_int_for_literal(t)
+                                    # Constructors produce owned storage -- strip Ref
+                                    t = unwrap_ref_type(t)
                                     factory_args.append(t)
                                 result_type = record_info.type_factory(*factory_args)
                                 expr.call_type = result_type
@@ -900,6 +902,8 @@ class CallAnalyzer:
         if elem_type is None:
             raise self.ctx.error(
                 f"copy_iter() argument must be iterable, got {arg_type}", expr)
+        # copy_iter produces owned copies -- strip Ref
+        elem_type = unwrap_ref_type(elem_type)
         result_type = CopyIterType(elem_type)
         expr.resolved_function_info = FunctionInfo(
             name="copy_iter",

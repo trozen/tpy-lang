@@ -460,6 +460,7 @@ class ExpressionGenerator:
         if elem_type is None:
             # Fallback: treat like copy() if we can't determine element type
             return self._gen_copy_expr(arg)
+        elem_type = unwrap_ref_type(elem_type)
         elem_cpp = self.types.type_to_cpp(elem_type)
         arg_expr = self.gen_expr(arg)
         return f"::tpy::copy_iter<{elem_cpp}>({arg_expr})"
