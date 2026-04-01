@@ -651,8 +651,9 @@ class StatementGenerator:
         if target_type is None and stmt.init:
             target_type = self.ctx.analyzer.get_expr_type(stmt.init)
         if target_type is not None:
-            # Strip ReadonlyType -- C++ doesn't need it on locals
-            target_type = unwrap_readonly(target_type)
+            # Strip Ref and ReadonlyType -- C++ reference semantics are
+            # handled by codegen binding (T& / auto&), not by the type itself.
+            target_type = unwrap_readonly(unwrap_ref_type(target_type))
             if isinstance(target_type, OwnType):
                 target_type = target_type.wrapped
             target_type = resolve_int_literals(target_type, self.ctx.analyzer.ctx.default_int_for_literal)
@@ -682,6 +683,7 @@ class StatementGenerator:
 
     def _normalize_decl_type_for_cpp(self, var_type: TpyType) -> TpyType:
         """Normalize declaration type before C++ emission."""
+        var_type = unwrap_ref_type(var_type)
         resolve_lit = self.ctx.analyzer.ctx.default_int_for_literal
         resolved = self._resolve_pending_container(var_type)
         if resolved is not None:
@@ -3759,7 +3761,7 @@ class StatementGenerator:
 
         from tpyc.modules import (get_iter_info,
                                    get_error_return_next_element_type)
-        iterable_type = self.types.get_resolved_type(stmt.iterable)
+        iterable_type = unwrap_ref_type(self.types.get_resolved_type(stmt.iterable))
 
         # Resolve sema-stored elem_type (handles PendingViewType -> concrete).
         # Strip Ref -- codegen loop binding handles reference semantics via

@@ -30,7 +30,7 @@ void main() {
     }
     // # rvalue: filter with lambda, collect to list
     // result = list(filter(lambda x: x > 3, make_nums()))
-    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter<int32_t>([](int32_t x) { return (x > 3); }, make_nums()));
+    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter<int32_t>([](int32_t x) -> bool { return (x > 3); }, make_nums()));
     // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
 }

@@ -709,7 +709,7 @@ Restrictions:
 - **Working**: `Own[T]` -> `T` (ownership transfer for return values)
 - **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_ptr_add`, `unsafe_ptr_diff`, `unsafe_cast`, `unsafe_const_cast`, `unsafe_str_view`, `unsafe_alloc`, `unsafe_alloc_n`, `unsafe_free`, `unsafe_init`, `unsafe_drop`, `unsafe_move_out`)
 - **Working**: `tpy.mem` -- uninitialized storage primitives (`UninitArrayStorage[T, N]`, `UninitHeapStorage[T]`)
-- **Planned**: `Ref[T]` -> `T&` (explicit reference)
+- **Working (internal)**: `Ref[T]` -- internal type for explicit reference semantics. Auto-inserted by sema on non-value function params and returns. Drives copy warnings (storing a reference into a field/container warns), lambda trailing return types (`-> T&`), and `val_or_ref<T>` template args for iterator combinators. Not user-facing -- users see `T` in annotations, the compiler infers reference vs owned.
 - **Planned**: `ConstRef[T]` -> `const T&` (explicit annotation; automatic const qualification via mutation inference already covers most cases -- see Parameter Passing Convention)
 
 #### Pointer Coercions (Working)
@@ -3930,7 +3930,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `open(path)`, `open(path, mode)` → returns `TextIO` file handle. Supports text modes `"r"` (default), `"w"`, `"a"`. Methods: `read()`, `write()`, `readline()`, `readlines()`, `close()`. Context manager (`with open(...) as f:`). Panics on file-not-found or unsupported mode (no exceptions yet). `readline()`/`readlines()` preserve trailing newlines (Python compat). Binary mode not yet supported.
 - **Working**: `enumerate(iterable)`, `enumerate(iterable, start)` → `Iterator[tuple[Int32, T]]`. Supports lvalue and rvalue iterables (owning iterator prevents dangling).
 - **Working**: `zip(iter1, iter2, ...)` → `Iterator[tuple[T1, T2, ...]]`. Overloads for 2-5 iterables. Stops at shortest. Supports lvalue and rvalue iterables.
-- **Working**: `map(fn, iterable)` → `Iterator[U]`. Accepts named functions, lambdas, generic functions, and `Callable`-typed variables. Lazy evaluation. Supports lvalue and rvalue iterables. Limitations: single-iterable only (no `map(fn, a, b)`).
+- **Working**: `map(fn, iterable, ...)` → `Iterator[U]`. Single and multi-iterable (up to 5). Accepts named functions, lambdas, generic functions, and `Callable`-typed variables. Lazy evaluation. Supports lvalue and rvalue iterables. Reference preservation: when `fn` returns by reference, `map` yields `val_or_ref<T>` so mutations propagate to the original container. Mixed `Ref`/`Own` params forwarded correctly via `fn_param_t` traits. Combinator composition: `enumerate(map(...))`, `filter(map(...))`, `map(filter(...))` work.
 - **Working**: `filter(fn, iterable)` → `Iterator[T]`. Accepts named functions, lambdas, and `Callable`-typed variables. Lazy evaluation. Direct iteration for containers preserves element references for non-value types. Limitations: `filter(None, ...)` not supported.
 
 #### Type Conversion Functions

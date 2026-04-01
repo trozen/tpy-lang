@@ -32,7 +32,7 @@ void main() {
     }
     // # lambda
     // for x in map(lambda x: x + 10, nums):
-    auto __iter_1 = ::tpy::builtin_map<int32_t, int32_t>([](int32_t x) { return (::tpy::add_check<int32_t>(x, 10)); }, nums);
+    auto __iter_1 = ::tpy::builtin_map<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 10)); }, nums);
     for (;;) {
         auto __r_1 = __iter_1.__next__();
         if (!__r_1.has_value()) break;
@@ -64,7 +64,7 @@ void main() {
     }
     // # chained: map + list constructor
     // result = list(map(lambda x: x * x, nums))
-    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>([](int32_t x) { return (::tpy::mul_check<int32_t>(x, x)); }, nums));
+    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, x)); }, nums));
     // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
 }

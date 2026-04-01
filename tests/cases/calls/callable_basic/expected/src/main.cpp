@@ -31,15 +31,15 @@ int32_t apply_zero(const std::function<int32_t()>& f) {
 // def main() -> None:
 void main() {
     // print(apply(lambda x: x + 1, 10))
-    std::cout << apply([](int32_t x) { return (::tpy::add_check<int32_t>(x, 1)); }, 10) << "\n";
+    std::cout << apply([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, 10) << "\n";
     // print(apply(lambda x: x * 3, 7))
-    std::cout << apply([](int32_t x) { return (::tpy::mul_check<int32_t>(x, 3)); }, 7) << "\n";
+    std::cout << apply([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 3)); }, 7) << "\n";
     // apply_void(lambda x: print(x), 99)
     apply_void([](int32_t x) { std::cout << x << "\n"; }, 99);
     // print(apply_multi(lambda a, b: a + b, 3, 4))
-    std::cout << apply_multi([](int32_t a, int32_t b) { return (::tpy::add_check<int32_t>(a, b)); }, 3, 4) << "\n";
+    std::cout << apply_multi([](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, 3, 4) << "\n";
     // print(apply_zero(lambda: 42))
-    std::cout << apply_zero([]() { return 42; }) << "\n";
+    std::cout << apply_zero([]() -> int32_t { return 42; }) << "\n";
 }
 
 void __tpy_init() {

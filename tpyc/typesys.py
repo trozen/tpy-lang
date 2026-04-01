@@ -1608,6 +1608,11 @@ def make_ref(t: 'TpyType') -> 'TpyType':
     # ValueType-bounded (genuinely value types, no wrapping).
     if t.is_value_type():
         return t
+    # Protocol types are abstract (Iterator[T], Iterable[T], etc.) -- they
+    # don't represent concrete C++ storage, so Ref doesn't apply.  The Ref
+    # belongs on the element type inside the protocol, not on the protocol.
+    if is_protocol_type(t):
+        return t
     return RefType(t)
 
 
@@ -1616,6 +1621,7 @@ def unwrap_ref_type(t: 'TpyType') -> 'TpyType':
     if isinstance(t, RefType):
         return t.wrapped
     return t
+
 
 
 def is_ref_type(t: 'TpyType') -> bool:

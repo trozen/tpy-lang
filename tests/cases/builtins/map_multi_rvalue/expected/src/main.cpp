@@ -38,7 +38,7 @@ void main() {
     std::cout << ::tpy::ListPrinter(result2) << "\n";
     // # Rvalue with lambda
     // result3 = list(map(lambda a, b: a * b, make_xs(), make_ys()))
-    std::vector<int32_t> result3 = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>([](int32_t a, int32_t b) { return (::tpy::mul_check<int32_t>(a, b)); }, make_xs(), make_ys()));
+    std::vector<int32_t> result3 = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::mul_check<int32_t>(a, b)); }, make_xs(), make_ys()));
     // print(result3)
     std::cout << ::tpy::ListPrinter(result3) << "\n";
 }

@@ -1,0 +1,4 @@
+main.py:15: warning: copies Point into field; use copy() to make this explicit
+main.py:30: warning: copies Point into field; use copy() to make this explicit
+main.py:33: warning: copies Point into container; use copy() to make this explicit
+main.py:29: warning: Passing borrowed container 'pt' to non-readonly parameter 'p' (function may invalidate references)

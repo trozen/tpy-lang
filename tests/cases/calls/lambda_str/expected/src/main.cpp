@@ -7,9 +7,9 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // print(transform(lambda s: s + "!", "hello"))
-    std::cout << transform([](std::string_view s) { return (::tpy::str_concat(s, "!")); }, "hello") << "\n";
+    std::cout << transform([](std::string_view s) -> std::string { return (::tpy::str_concat(s, "!")); }, "hello") << "\n";
     // print(transform(lambda s: s + s, "ab"))
-    std::cout << transform([](std::string_view s) { return (::tpy::str_concat(s, s)); }, "ab") << "\n";
+    std::cout << transform([](std::string_view s) -> std::string { return (::tpy::str_concat(s, s)); }, "ab") << "\n";
 }
 
 void __tpy_init() {

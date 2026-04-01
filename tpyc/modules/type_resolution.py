@@ -334,8 +334,9 @@ def get_extends_protocol_type_arg(
 
 def get_error_return_next_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
     """If type has __next__() with @error_return(StopIteration), return element type T."""
-    from tpyc.typesys import NamedType
+    from tpyc.typesys import NamedType, unwrap_ref_type
 
+    tpy_type = unwrap_ref_type(tpy_type)
     if not isinstance(tpy_type, NamedType) or not tpy_type.is_user_record:
         return None
     return _find_error_return_next_element(tpy_type.name, tpy_type.type_args, registry)
@@ -386,8 +387,9 @@ class IterInfo:
 
 def get_iter_info(tpy_type: "TpyType", registry: "TypeRegistry") -> "IterInfo | None":
     """If type has __iter__() returning a concrete iterator, return element type and dispatch info."""
-    from tpyc.typesys import NamedType
+    from tpyc.typesys import NamedType, unwrap_ref_type
 
+    tpy_type = unwrap_ref_type(tpy_type)
     # Try user records (walks parent chain).
     # allow_protocol_return=True: user __iter__ returning Iterator[T] is recognized.
     if isinstance(tpy_type, NamedType) and tpy_type.is_user_record:

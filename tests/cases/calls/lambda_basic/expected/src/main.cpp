@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // print(apply(lambda x: x + 1, 10))
-    std::cout << apply([](int32_t x) { return (::tpy::add_check<int32_t>(x, 1)); }, 10) << "\n";
+    std::cout << apply([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, 10) << "\n";
     // print(apply(lambda x: x * 2, 5))
-    std::cout << apply([](int32_t x) { return (::tpy::mul_check<int32_t>(x, 2)); }, 5) << "\n";
+    std::cout << apply([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); }, 5) << "\n";
     // print(apply(lambda x: x, 0))
-    std::cout << apply([](int32_t x) { return x; }, 0) << "\n";
+    std::cout << apply([](int32_t x) -> int32_t { return x; }, 0) << "\n";
 }
 
 void __tpy_init() {

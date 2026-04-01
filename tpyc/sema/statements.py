@@ -19,7 +19,7 @@ from ..typesys import (
     INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, is_protocol_type, is_protocol_union,
     qualify_exception_name, is_return_exception, is_exception_type,
     FunctionInfo, ParamInfo,
-    make_ref, unwrap_ref_type,
+    make_ref, unwrap_ref_type, RefType,
 )
 from ..parse import (
     TpyExpr,
@@ -792,7 +792,7 @@ class StatementAnalyzer:
             else:
                 iterable_type = self.expr.analyze_expr(stmt.iterable)
                 is_readonly_iterable = isinstance(iterable_type, ReadonlyType)
-                inner_iterable_type = unwrap_readonly(iterable_type)
+                inner_iterable_type = unwrap_readonly(unwrap_ref_type(iterable_type))
                 # Resolve TypeParamRef to its bound for element type extraction
                 resolved_for_iter = inner_iterable_type
                 if isinstance(inner_iterable_type, TypeParamRef):
@@ -1540,7 +1540,7 @@ class StatementAnalyzer:
         visible after the with block (matching CPython semantics).
         """
         for item in stmt.items:
-            ctx_type = self.expr.analyze_expr(item.context_expr)
+            ctx_type = unwrap_ref_type(self.expr.analyze_expr(item.context_expr))
 
             # Look up __enter__ and __exit__ on the context manager type
             record_info = self.ctx.registry.get_record_for_type(ctx_type)
@@ -2384,6 +2384,11 @@ class StatementAnalyzer:
                     self.ctx.unresolved_none_vars.add(stmt.name)
                 else:
                     var_type = init_type
+            # Strip Ref for scope binding -- locals use C++ T& binding, no
+            # actual copy.  TODO: preserve Ref on locals so copy warnings
+            # detect indirect flows (local -> field), then unify the warning
+            # system (remove needs_copy_warning, use Ref-based detection only).
+            var_type = unwrap_ref_type(var_type)
             # Track inferred writes for potential future retro-validation.
             self.deduction.record_write(stmt.name, stmt.init, init_type)
             # Annotate tuple literal element capture modes (local context)
@@ -2833,10 +2838,31 @@ class StatementAnalyzer:
             # plain name reassignment just rebinds the local.
             if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
                 self.ctx.mark_param_mutated(root)
+        ref_value_type: TpyType | None = None
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             declared_target_type = self.narrowing.declared_type_for_expr(stmt.target)
             if declared_target_type is not None:
                 target_type = declared_target_type
+            # Warn when storing a reference into a field/container (implicit copy).
+            # Check expression type (Ref on locals/call results) and FI param
+            # type (params have bare scope types but Ref on FI).
+            ref_value_type = value_type if isinstance(value_type, RefType) else None
+            if (ref_value_type is None
+                    and isinstance(stmt.value, TpyName)
+                    and stmt.value.name in self.ctx.current_param_names):
+                for pname, ptype in (self.ctx.current_function.params
+                                     if self.ctx.current_function else []):
+                    if pname == stmt.value.name and isinstance(ptype, RefType):
+                        ref_value_type = ptype
+                        break
+            if ref_value_type is not None and stmt.loc is not None:
+                inner = unwrap_ref_type(ref_value_type)
+                dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"
+                if isinstance(inner, TypeParamRef):
+                    msg = f"may copy {inner} into {dest} if not a value type; use copy() to make this explicit"
+                else:
+                    msg = f"copies {inner} into {dest}; use copy() to make this explicit"
+                self.ctx.warning(msg, stmt)
             # Own[T] param stored in a field/container — mark as consumed
             if isinstance(stmt.value, TpyName) and stmt.value.name in self.ctx.current_param_names:
                 self.ctx.mark_own_param_consumed(stmt.value.name)
@@ -3015,7 +3041,8 @@ class StatementAnalyzer:
                 stmt.value, target_type, is_field=is_field)
         if isinstance(stmt.target, TpyFieldAccess):
             # Skip copy warning for synthesized dataclass __init__ assignments (no loc)
-            if stmt.loc is not None and self.compat.needs_copy_warning(stmt.value, target_type):
+            # and when the Ref-based warning already fired (ref_value_type is not None).
+            if stmt.loc is not None and ref_value_type is None and self.compat.needs_copy_warning(stmt.value, target_type):
                 if isinstance(target_type, TypeParamRef):
                     msg = f"may copy {target_type} into field if not a value type; use copy() to make this explicit"
                 else:
@@ -3023,7 +3050,7 @@ class StatementAnalyzer:
                 self.ctx.warning(msg, stmt)
 
         if isinstance(stmt.target, TpySubscript):
-            if self.compat.needs_copy_warning(stmt.value, target_type):
+            if ref_value_type is None and self.compat.needs_copy_warning(stmt.value, target_type):
                 if isinstance(target_type, TypeParamRef):
                     msg = f"may copy {target_type} into container if not a value type; use copy() to make this explicit"
                 else:

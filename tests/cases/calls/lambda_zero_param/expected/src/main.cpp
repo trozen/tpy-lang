@@ -7,9 +7,9 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // print(invoke(lambda: 42))
-    std::cout << invoke([]() { return 42; }) << "\n";
+    std::cout << invoke([]() -> int32_t { return 42; }) << "\n";
     // print(invoke(lambda: 0))
-    std::cout << invoke([]() { return 0; }) << "\n";
+    std::cout << invoke([]() -> int32_t { return 0; }) << "\n";
 }
 
 void __tpy_init() {

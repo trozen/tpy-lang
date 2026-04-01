@@ -169,27 +169,6 @@ class ExpressionAnalyzer:
         if scopes is not None:
             self.scopes = scopes
 
-    @staticmethod
-    def _strip_ref_from_expr_type(typ: TpyType) -> TpyType:
-        """Strip Ref from inside protocol type args (Iterator, Iterable, etc.).
-
-        When a function returns Iterator[Ref[Point]], the Ref is about the
-        iterator's internal storage (val_or_ref). Downstream consumers
-        (enumerate, zip, etc.) should see the logical element type (Point),
-        not the storage wrapper. Without this, enumerate(map(identity, pts))
-        would get T=Ref[Point] -> val_or_ref<Point> in its template, which
-        doesn't compose with the C++ enumerate implementation.
-        """
-        if (isinstance(typ, NamedType) and typ.is_protocol and typ.type_args):
-            stripped = tuple(
-                unwrap_ref_type(a) if isinstance(a, TpyType) else a
-                for a in typ.type_args
-            )
-            if stripped != typ.type_args:
-                return NamedType(typ.name, stripped, typ.is_protocol,
-                                 typ._module_qname, typ.is_dynamic_protocol)
-        return typ
-
     def analyze_expr(self, expr: TpyExpr) -> TpyType:
         """Analyze an expression and return its type."""
         if isinstance(expr, TpyIntLiteral):
@@ -215,10 +194,10 @@ class ExpressionAnalyzer:
         elif isinstance(expr, TpyUnaryOp):
             typ = self._analyze_unaryop(expr)
         elif isinstance(expr, TpyCall):
-            typ = self._strip_ref_from_expr_type(unwrap_ref_type(self.calls.analyze_call(expr)))
+            typ = self.calls.analyze_call(expr)
             self.narrowing.invalidate_field_facts_for_call(expr)
         elif isinstance(expr, TpyMethodCall):
-            typ = self._strip_ref_from_expr_type(unwrap_ref_type(self.methods.analyze_method_call(expr)))
+            typ = self.methods.analyze_method_call(expr)
             self.narrowing.invalidate_field_facts_for_method_call(expr)
         elif isinstance(expr, TpyFieldAccess):
             typ = self._analyze_field_access(expr)

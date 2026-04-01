@@ -42,7 +42,7 @@ void main() {
     std::cout << ::tpy::__getitem__(pts, 2).x << "\n";
     // # scale mutates and returns by reference
     // for p in map(lambda p: scale(p, 2), pts):
-    auto __iter_1 = ::tpy::builtin_map<Point, Point>([](Point& p) { return scale(p, 2); }, pts);
+    auto __iter_1 = ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>([](Point& p) -> Point& { return scale(p, 2); }, pts);
     for (;;) {
         auto __r_1 = __iter_1.__next__();
         if (!__r_1.has_value()) break;

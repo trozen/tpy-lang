@@ -30,7 +30,7 @@ void main() {
     }
     // # rvalue: map with lambda
     // result = list(map(lambda x: x + 1, make_nums()))
-    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>([](int32_t x) { return (::tpy::add_check<int32_t>(x, 1)); }, make_nums()));
+    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, make_nums()));
     // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
 }

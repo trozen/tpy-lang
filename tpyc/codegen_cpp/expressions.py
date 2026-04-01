@@ -17,7 +17,7 @@ from ..typesys import (
     SpanType, SpanIterType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     EnumType, IntEnumType, TupleType, FnType, CallableType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, is_any_bytes_type, container_to_str_template,
-    ResolvedBinop, get_covariant_params, unwrap_ref_type,
+    ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -3555,7 +3555,10 @@ class ExpressionGenerator:
             capture = "[]"
         if isinstance(expr.inferred_return_type, VoidType):
             return f"{capture}({params_str}) {{ {body_code}; }}"
-        return f"{capture}({params_str}) {{ return {body_code}; }}"
+        # Explicit trailing return type -- needed for Ref[T] (C++ lambda
+        # deduction strips references) and consistent for all lambdas.
+        trailing = f" -> {expr.inferred_return_type.to_cpp()}"
+        return f"{capture}({params_str}){trailing} {{ return {body_code}; }}"
 
     def _gen_function_ref(self, expr: TpyName) -> str:
         """Generate C++ code for a named function used as a value."""

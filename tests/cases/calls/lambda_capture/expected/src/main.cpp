@@ -9,11 +9,11 @@ void main() {
     // offset: Int32 = 100
     int32_t offset = 100;
     // print(apply(lambda x: x + offset, 5))
-    std::cout << apply([&offset](int32_t x) { return (::tpy::add_check<int32_t>(x, offset)); }, 5) << "\n";
+    std::cout << apply([&offset](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, offset)); }, 5) << "\n";
     // factor: Int32 = 3
     int32_t factor = 3;
     // print(apply(lambda x: x * factor, 7))
-    std::cout << apply([&factor](int32_t x) { return (::tpy::mul_check<int32_t>(x, factor)); }, 7) << "\n";
+    std::cout << apply([&factor](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, factor)); }, 7) << "\n";
 }
 
 void __tpy_init() {

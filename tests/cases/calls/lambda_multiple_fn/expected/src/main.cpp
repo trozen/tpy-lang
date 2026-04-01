@@ -7,9 +7,9 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // print(apply_both(lambda x: x + 1, lambda x: x * 2, 5))
-    std::cout << apply_both([](int32_t x) { return (::tpy::add_check<int32_t>(x, 1)); }, [](int32_t x) { return (::tpy::mul_check<int32_t>(x, 2)); }, 5) << "\n";
+    std::cout << apply_both([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, [](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); }, 5) << "\n";
     // print(apply_both(lambda x: x * 3, lambda x: x - 1, 4))
-    std::cout << apply_both([](int32_t x) { return (::tpy::mul_check<int32_t>(x, 3)); }, [](int32_t x) { return (::tpy::sub_check<int32_t>(x, 1)); }, 4) << "\n";
+    std::cout << apply_both([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 3)); }, [](int32_t x) -> int32_t { return (::tpy::sub_check<int32_t>(x, 1)); }, 4) << "\n";
     // do_both(lambda x: print(x), lambda x: print(x + 100), 7)
     do_both([](int32_t x) { std::cout << x << "\n"; }, [](int32_t x) { std::cout << (::tpy::add_check<int32_t>(x, 100)) << "\n"; }, 7);
 }

@@ -18,7 +18,7 @@ int32_t maybe_apply(std::optional<std::function<int32_t(int32_t)>> f, int32_t x)
 // def make_doubler() -> Callable[[Int32], Int32]:
 std::function<int32_t(int32_t)> make_doubler() {
     // return lambda x: x * 2
-    return [](int32_t x) { return (::tpy::mul_check<int32_t>(x, 2)); };
+    return [](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); };
 }
 
 // def main() -> None:

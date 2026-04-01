@@ -26,7 +26,7 @@ void main() {
     }
     // # lambda
     // for x in filter(lambda x: x > 3, nums):
-    auto __iter_1 = ::tpy::builtin_filter<int32_t>([](int32_t x) { return (x > 3); }, nums);
+    auto __iter_1 = ::tpy::builtin_filter<int32_t>([](int32_t x) -> bool { return (x > 3); }, nums);
     for (;;) {
         auto __r_1 = __iter_1.__next__();
         if (!__r_1.has_value()) break;
@@ -36,7 +36,7 @@ void main() {
     }
     // # filter to empty result
     // for x in filter(lambda x: x > 100, nums):
-    auto __iter_2 = ::tpy::builtin_filter<int32_t>([](int32_t x) { return (x > 100); }, nums);
+    auto __iter_2 = ::tpy::builtin_filter<int32_t>([](int32_t x) -> bool { return (x > 100); }, nums);
     for (;;) {
         auto __r_2 = __iter_2.__next__();
         if (!__r_2.has_value()) break;
@@ -58,7 +58,7 @@ void main() {
     }
     // # chained: filter + list constructor
     // result = list(filter(lambda x: x % 2 != 0, nums))
-    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter<int32_t>([](int32_t x) { return ((::tpy::mod_floor<int32_t>(x, 2)) != 0); }, nums));
+    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter<int32_t>([](int32_t x) -> bool { return ((::tpy::mod_floor<int32_t>(x, 2)) != 0); }, nums));
     // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
 }
