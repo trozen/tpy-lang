@@ -14,6 +14,7 @@ namespace tpyapp::main {
 
 enum class Color : int32_t {
     Red = 0,
+    Blue = 1,
 };
 
 } // namespace tpyapp::main
@@ -21,7 +22,7 @@ enum class Color : int32_t {
 template<>
 struct tpy::EnumUtil<tpyapp::main::Color> {
     static std::string_view name(tpyapp::main::Color e);
-    static const std::array<tpyapp::main::Color, 1> members;
+    static const std::array<tpyapp::main::Color, 2> members;
     static tpyapp::main::Color from_value(int32_t v);
     static tpyapp::main::Color from_name(std::string_view s);
     static std::optional<tpyapp::main::Color> try_parse(std::string_view s);
@@ -37,6 +38,9 @@ struct Item;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+void test_missing_field();
+void test_invalid_enum();
+void test_malformed_with_describe();
 void main();
 
 // @model

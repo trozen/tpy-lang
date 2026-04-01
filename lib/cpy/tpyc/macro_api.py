@@ -1129,11 +1129,11 @@ class AstBuilder:
             iter=iterable, body=body, orelse=[],
         )
 
-    def raise_(self, exception_type: str) -> _ast.stmt:
+    def raise_(self, exception_type: str, args: list[_ast.expr] | None = None) -> _ast.stmt:
         return _ast.Raise(
             exc=_ast.Call(
                 func=_dotted_name(exception_type),
-                args=[], keywords=[],
+                args=args or [], keywords=[],
             ),
             cause=None,
         )

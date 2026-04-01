@@ -74,9 +74,9 @@ macro_deps(
 _JSON_ERROR = "tplib.json.parser.JsonError"
 
 
-def _raise_if(condition: Expr) -> Stmt:
-    """Build: if condition: raise JsonError"""
-    return ast.if_(condition, [ast.raise_(_JSON_ERROR)])
+def _raise_if(condition: Expr, message: str) -> Stmt:
+    """Build: if condition: raise JsonError(message)"""
+    return ast.if_(condition, [ast.raise_(_JSON_ERROR, [ast.str_lit(message)])])
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +109,8 @@ def _build_read_into(fld_type: TypeInfo, reader: Expr, hint: str = "v") -> tuple
             ast.var_decl(raw_str, init=ast.method_call(reader, "read_str")),
             ast.var_decl(parsed, init=ast.call("try_parse",
                          [ast.name(enum_name), ast.name(raw_str)])),
-            _raise_if(ast.binop(ast.name(parsed), "is", ast.none_lit())),
+            _raise_if(ast.binop(ast.name(parsed), "is", ast.none_lit()),
+                      f"invalid enum value for '{enum_name}'"),
             ast.var_decl(tmp, type=fld_type.raw_type, init=ast.name(parsed)),
         ], tmp)
 
@@ -238,6 +239,7 @@ def _build_read_value_stmts(
                 stmts.append(_raise_if(
                     ast.binop(ast.method_call(reader, "has_next"),
                               "==", ast.bool_lit(False)),
+                    "tuple: not enough elements",
                 ))
         stmts.append(ast.expr_stmt(ast.method_call(reader, "read_array_end")))
         stmts.append(ast.assign(
@@ -359,6 +361,7 @@ def _build_json_decode(cls: ClassInfo, all_fields: list[FieldInfo]) -> Function:
     for req_name in required_fields:
         body.append(_raise_if(
             ast.binop(ast.name(req_name), "is", ast.none_lit()),
+            f"missing required field '{req_name}'",
         ))
 
     # return ClassName(field1, field2, ...)

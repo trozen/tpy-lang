@@ -155,6 +155,14 @@ def test_describe() -> None:
         reader4.read_object_end()
     except JsonError as e4:
         print(e4.describe(data4))
+    # Malformed numbers: lone minus, minus-dot, minus-exponent
+    for bad in ['[-]', '[-.e3]', '[-.]']:
+        reader5 = JsonReader(bad)
+        try:
+            reader5.read_array_start()
+            reader5.read_float()
+        except JsonError as e5:
+            print(e5.describe(bad))
     # No position (bare JsonError)
     err = JsonError()
     print(err.describe("any"))

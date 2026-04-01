@@ -357,6 +357,9 @@ class JsonReader:
         # Optional leading minus
         if self._pos < self._len and self._data[self._pos] == "-":
             self._pos += 1
+        # Must have at least one leading digit
+        if not (self._pos < self._len and self._data[self._pos] >= "0" and self._data[self._pos] <= "9"):
+            raise JsonError("expected number", start)
         # Digits, decimal point, exponent
         while self._pos < self._len:
             c = self._data[self._pos]
@@ -371,6 +374,4 @@ class JsonReader:
                     self._pos += 1
             else:
                 break
-        if not (self._pos > start):
-            raise JsonError("expected number", self._pos)
         return self._data[start:self._pos]

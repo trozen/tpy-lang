@@ -782,7 +782,9 @@ class AstBuilder:
         return TpyForEach(var=var, iterable=iterable, body=body,
                           is_tuple_unpack=is_tuple_unpack)
 
-    def raise_(self, exception_type: str) -> Stmt:
+    def raise_(self, exception_type: str, args: list[Expr] | None = None) -> Stmt:
+        if args:
+            return TpyRaise(exception_type=exception_type, args=args, is_call_form=True)
         return TpyRaise(exception_type=exception_type)
 
     def assert_(self, condition: Expr, message: Expr | None = None) -> Stmt:

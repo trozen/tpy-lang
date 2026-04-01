@@ -87,7 +87,7 @@ struct Item {
                 }
                 std::optional<Color> __parsed_4 = ::tpy::EnumUtil<Color>::try_parse(__estr_3);
                 if ((!__parsed_4.has_value())) {
-                    return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
+                    return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("invalid enum value for 'Color'"));
                 }
                 Color __color_2 = (*__parsed_4);
                 color = __color_2;
@@ -103,7 +103,7 @@ struct Item {
             if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
         }
         if ((!color.has_value())) {
-            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
+            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'color'"));
         }
         return Item(name, (*color));
     }

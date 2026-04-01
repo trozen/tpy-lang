@@ -290,7 +290,7 @@ struct Profile {
                             }
                             std::optional<Role> __parsed_35 = ::tpy::EnumUtil<Role>::try_parse(__estr_34);
                             if ((!__parsed_35.has_value())) {
-                                return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
+                                return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("invalid enum value for 'Role'"));
                             }
                             Role __backup_role_33 = (*__parsed_35);
                             backup_role = __backup_role_33;
@@ -499,7 +499,7 @@ struct Profile {
                         }
                         std::optional<Role> __parsed_12 = ::tpy::EnumUtil<Role>::try_parse(__estr_11);
                         if ((!__parsed_12.has_value())) {
-                            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
+                            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("invalid enum value for 'Role'"));
                         }
                         Role __role_10 = (*__parsed_12);
                         role = __role_10;
@@ -519,7 +519,7 @@ struct Profile {
                             }
                             std::optional<Role> __parsed_19 = ::tpy::EnumUtil<Role>::try_parse(__estr_18);
                             if ((!__parsed_19.has_value())) {
-                                return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
+                                return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("invalid enum value for 'Role'"));
                             }
                             Role __elem_17 = (*__parsed_19);
                             roles.push_back(__elem_17);
@@ -543,7 +543,7 @@ struct Profile {
                         }
                         int32_t __t0_28 = ::tpy::int_cast_check<int32_t>(__raw_29);
                         if ((__reader.has_next() == false)) {
-                            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
+                            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("tuple: not enough elements"));
                         }
                         int64_t __raw_31;
                         {
@@ -553,7 +553,7 @@ struct Profile {
                         }
                         int32_t __t1_30 = ::tpy::int_cast_check<int32_t>(__raw_31);
                         if ((__reader.has_next() == false)) {
-                            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
+                            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("tuple: not enough elements"));
                         }
                         std::string __t2_32;
                         {
@@ -619,13 +619,13 @@ struct Profile {
             if (!__try_tmp_53.has_value()) return ::tpy::make_unexpected(__try_tmp_53.error());
         }
         if ((!role.has_value())) {
-            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
+            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'role'"));
         }
         if ((!address.has_value())) {
-            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
+            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'address'"));
         }
         if ((!coord.has_value())) {
-            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
+            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'coord'"));
         }
         auto __tmp_2 = (*address);
         auto __tmp_3 = alt_address;

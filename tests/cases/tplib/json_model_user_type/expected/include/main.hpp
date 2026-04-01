@@ -126,7 +126,7 @@ struct Event {
             if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(__try_tmp_7.error());
         }
         if ((!when.has_value())) {
-            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
+            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'when'"));
         }
         auto __tmp_1 = (*when);
         return Event(name, std::move(__tmp_1));
@@ -273,7 +273,7 @@ struct Schedule {
             if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
         }
         if ((!default_duration.has_value())) {
-            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
+            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'default_duration'"));
         }
         auto __tmp_2 = (*default_duration);
         auto __tmp_3 = deadline;

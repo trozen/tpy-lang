@@ -26,5 +26,8 @@ NYC
 {"name": ^---<unterminated string> "hello
 ...me": "Smith", "age" ^---<expected ':'> "thirty"}
 {"key": 1^---<expected '}'>
+[^---<expected number> -]
+[^---<expected number> -.e3]
+[^---<expected number> -.]
 json error
 custom msg

@@ -1,0 +1,3 @@
+missing required field 'color'
+invalid enum value for 'Color'
+...ame": "x", "color"  ^---<expected ':'> 123}

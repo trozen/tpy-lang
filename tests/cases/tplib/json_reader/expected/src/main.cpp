@@ -557,6 +557,39 @@ void test_describe() {
         }
         __after_try_56:;
     }
+    // # Malformed numbers: lone minus, minus-dot, minus-exponent
+    // for bad in ['[-]', '[-.e3]', '[-.]']:
+    auto __obj_0 = {"[-]", "[-.e3]", "[-.]"};
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::string_view bad = *__beg_0;
+        // reader5 = JsonReader(bad)
+        ::tpystd::tplib::json::JsonReader reader5 = ::tpystd::tplib::json::JsonReader(bad);
+        // try:
+        {
+            std::optional<::tpystd::tplib::json::JsonError> __err_opt_61;
+            // reader5.read_array_start()
+            {
+                auto __try_tmp_62 = reader5.read_array_start();
+                if (!__try_tmp_62.has_value()) { __err_opt_61 = std::move(__try_tmp_62.error()); goto __except_61; }
+            }
+            // reader5.read_float()
+            {
+                auto __try_tmp_63 = reader5.read_float();
+                if (!__try_tmp_63.has_value()) { __err_opt_61 = std::move(__try_tmp_63.error()); goto __except_61; }
+            }
+            goto __after_try_61;
+            // except JsonError:
+            __except_61:;
+            {
+                auto& e5 = *__err_opt_61;
+                // print(e5.describe(bad))
+                std::cout << e5.describe(bad) << "\n";
+            }
+            __after_try_61:;
+        }
+    }
     // # No position (bare JsonError)
     // err = JsonError()
     ::tpystd::tplib::json::JsonError err = ::tpystd::tplib::json::JsonError();
@@ -575,113 +608,113 @@ void main() {
     {
         // test_basic_object()
         {
-            auto __try_tmp_62 = test_basic_object();
-            if (!__try_tmp_62.has_value()) goto __except_61;
+            auto __try_tmp_65 = test_basic_object();
+            if (!__try_tmp_65.has_value()) goto __except_64;
         }
-        goto __after_try_61;
+        goto __after_try_64;
         // except JsonError:
-        __except_61:;
+        __except_64:;
         // print("ERROR")
         std::cout << "ERROR" << "\n";
-        __after_try_61:;
+        __after_try_64:;
     }
     // try:
     {
         // test_nested()
         {
-            auto __try_tmp_64 = test_nested();
-            if (!__try_tmp_64.has_value()) goto __except_63;
+            auto __try_tmp_67 = test_nested();
+            if (!__try_tmp_67.has_value()) goto __except_66;
         }
-        goto __after_try_63;
+        goto __after_try_66;
         // except JsonError:
-        __except_63:;
+        __except_66:;
         // print("ERROR")
         std::cout << "ERROR" << "\n";
-        __after_try_63:;
+        __after_try_66:;
     }
     // try:
     {
         // test_null_and_escape()
         {
-            auto __try_tmp_66 = test_null_and_escape();
-            if (!__try_tmp_66.has_value()) goto __except_65;
+            auto __try_tmp_69 = test_null_and_escape();
+            if (!__try_tmp_69.has_value()) goto __except_68;
         }
-        goto __after_try_65;
+        goto __after_try_68;
         // except JsonError:
-        __except_65:;
+        __except_68:;
         // print("ERROR")
         std::cout << "ERROR" << "\n";
-        __after_try_65:;
+        __after_try_68:;
     }
     // try:
     {
         // test_float()
         {
-            auto __try_tmp_68 = test_float();
-            if (!__try_tmp_68.has_value()) goto __except_67;
+            auto __try_tmp_71 = test_float();
+            if (!__try_tmp_71.has_value()) goto __except_70;
         }
-        goto __after_try_67;
+        goto __after_try_70;
         // except JsonError:
-        __except_67:;
+        __except_70:;
         // print("ERROR")
         std::cout << "ERROR" << "\n";
-        __after_try_67:;
+        __after_try_70:;
     }
     // try:
     {
         // test_skip()
         {
-            auto __try_tmp_70 = test_skip();
-            if (!__try_tmp_70.has_value()) goto __except_69;
+            auto __try_tmp_73 = test_skip();
+            if (!__try_tmp_73.has_value()) goto __except_72;
         }
-        goto __after_try_69;
+        goto __after_try_72;
         // except JsonError:
-        __except_69:;
+        __except_72:;
         // print("ERROR")
         std::cout << "ERROR" << "\n";
-        __after_try_69:;
+        __after_try_72:;
     }
     // try:
     {
         // test_empty_containers()
         {
-            auto __try_tmp_72 = test_empty_containers();
-            if (!__try_tmp_72.has_value()) goto __except_71;
+            auto __try_tmp_75 = test_empty_containers();
+            if (!__try_tmp_75.has_value()) goto __except_74;
         }
-        goto __after_try_71;
+        goto __after_try_74;
         // except JsonError:
-        __except_71:;
+        __except_74:;
         // print("ERROR")
         std::cout << "ERROR" << "\n";
-        __after_try_71:;
+        __after_try_74:;
     }
     // try:
     {
         // test_negative_int()
         {
-            auto __try_tmp_74 = test_negative_int();
-            if (!__try_tmp_74.has_value()) goto __except_73;
+            auto __try_tmp_77 = test_negative_int();
+            if (!__try_tmp_77.has_value()) goto __except_76;
         }
-        goto __after_try_73;
+        goto __after_try_76;
         // except JsonError:
-        __except_73:;
+        __except_76:;
         // print("ERROR")
         std::cout << "ERROR" << "\n";
-        __after_try_73:;
+        __after_try_76:;
     }
     // try:
     {
         // test_raw_methods()
         {
-            auto __try_tmp_76 = test_raw_methods();
-            if (!__try_tmp_76.has_value()) goto __except_75;
+            auto __try_tmp_79 = test_raw_methods();
+            if (!__try_tmp_79.has_value()) goto __except_78;
         }
-        goto __after_try_75;
+        goto __after_try_78;
         // except JsonError:
-        __except_75:;
+        __except_78:;
         // print("ERROR")
         std::cout << "ERROR" << "\n";
-        __after_try_75:;
+        __after_try_78:;
     }
     // test_describe()
     test_describe();
