@@ -1881,7 +1881,8 @@ class ExpressionGenerator:
             # functions -- their C++ signatures use natural parameter types so
             # template argument deduction works correctly.
             if func_info.is_generic() and expr.inferred_type_args and not func_info.is_native_import:
-                type_args_str = ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in expr.inferred_type_args)
+                type_args_str = ", ".join(
+                    self.types.type_to_cpp_stored(t) for t in expr.inferred_type_args)
                 return f"{func_cpp_name}<{type_args_str}>({', '.join(gen_args)})"
             return f"{func_cpp_name}({', '.join(gen_args)})"
         # Generic type instantiation (e.g., Container[T, N]())
@@ -3248,13 +3249,18 @@ class ExpressionGenerator:
                     mode = TupleElemCapture.VALUE
             else:
                 mode = TupleElemCapture.VALUE
-            if mode == TupleElemCapture.REF:
+            if isinstance(et, TypeParamRef):
+                # Defer value-vs-ref to C++ instantiation time.
+                # T may be val_or_ref<U> when Ref[U] is the type arg,
+                # so T& would be val_or_ref<U>& -- wrong. Use the trait.
+                if mode == TupleElemCapture.CONST_REF:
+                    cpp_parts.append(f"::tpy::val_or_cref_t<{base}>")
+                else:
+                    cpp_parts.append(f"::tpy::val_or_ref_t<{base}>")
+            elif mode == TupleElemCapture.REF:
                 cpp_parts.append(f"{base}&")
             elif mode == TupleElemCapture.CONST_REF:
                 cpp_parts.append(f"const {base}&")
-            elif isinstance(et, TypeParamRef):
-                # Defer value-vs-ref to C++ instantiation time
-                cpp_parts.append(f"::tpy::val_or_ref_t<{base}>")
             else:
                 cpp_parts.append(base)
         return f"std::tuple<{', '.join(cpp_parts)}>"

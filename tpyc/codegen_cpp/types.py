@@ -361,6 +361,16 @@ class TypeResolver:
         # Default: use the type's built-in to_cpp() method
         return typ.to_cpp()
 
+    def type_to_cpp_stored(self, typ: TpyType) -> str:
+        """Convert a type to its stored C++ representation.
+
+        Like type_to_cpp but uses to_cpp_stored() (val_or_ref<T> for Ref types).
+        Resolves PendingViewType before conversion.
+        """
+        if isinstance(typ, PendingViewType):
+            return self._resolve_pending_view(typ).to_cpp_stored()
+        return typ.to_cpp_stored()
+
     def type_to_cpp_ptr_variant(self, typ: 'UnionType') -> str:
         """Return the pointer-variant type with qualified member names.
 

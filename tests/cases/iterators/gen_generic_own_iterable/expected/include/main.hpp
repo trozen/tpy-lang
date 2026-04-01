@@ -21,7 +21,7 @@ inline auto indexed(T_items&& items) {
             if (!__init) { __beg = (items).begin(); __end = (items).end(); __init = true; }
             if (__beg != __end) {
                 auto&& item = *__beg++;
-                auto __val = std::tuple<int32_t, T&>{i, item};
+                auto __val = std::tuple<int32_t, ::tpy::val_or_ref_t<T>>{i, item};
                 // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<std::tuple<int32_t, ::tpy::val_or_ref_t<T>>>(__val);

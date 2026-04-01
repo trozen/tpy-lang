@@ -40,7 +40,7 @@ inline auto enumerate(T_iterable& iterable) {
             if (!__r.has_value()) return std::nullopt;
             {
                 auto&& item = ::tpy::unwrap_ref(*__r);
-                auto __val = std::tuple<int32_t, T&>{i, item};
+                auto __val = std::tuple<int32_t, ::tpy::val_or_ref_t<T>>{i, item};
                 // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<std::tuple<int32_t, T>>(__val);

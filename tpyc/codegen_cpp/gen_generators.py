@@ -151,6 +151,8 @@ class GeneratorCodegen:
         assert isinstance(while_stmt, TpyWhile)
         init_stmts = func.body[:-1]
         yield_stmt, pre_yield, post_yield = self._split_at_yield(while_stmt.body)
+        ref_yield = not post_yield and isinstance(elem_type, TypeParamRef)
+        val_binding = "auto&&" if ref_yield else "auto"
 
         ind1 = INDENT
         ind2 = INDENT * 2
@@ -198,7 +200,7 @@ class GeneratorCodegen:
         for stmt in pre_yield:
             self.statements.gen_stmt(out, stmt)
         yield_expr = self.expressions.gen_expr(yield_stmt.value)
-        out.write(f"{INDENT * (4 + extra)}auto __val = {yield_expr};\n")
+        out.write(f"{INDENT * (4 + extra)}{val_binding} __val = {yield_expr};\n")
         for stmt in post_yield:
             self.statements.gen_stmt(out, stmt)
 
@@ -228,6 +230,11 @@ class GeneratorCodegen:
         assert isinstance(for_stmt, TpyForEach)
         init_stmts = func.body[:-1]
         yield_stmt, pre_yield, post_yield = self._split_at_yield(for_stmt.body)
+
+        # auto&&: preserve references for generic generators (T may be val_or_ref).
+        # Only safe when no post_yield code can modify the referenced value.
+        ref_yield = not post_yield and isinstance(elem_type, TypeParamRef)
+        val_binding = "auto&&" if ref_yield else "auto"
 
         ind1 = INDENT
         ind2 = INDENT * 2
@@ -302,7 +309,7 @@ class GeneratorCodegen:
             for stmt in pre_yield:
                 self.statements.gen_stmt(out, stmt)
             yield_expr = self.expressions.gen_expr(yield_stmt.value)
-            out.write(f"{I(4)}auto __val = {yield_expr};\n")
+            out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
             for stmt in post_yield:
                 self.statements.gen_stmt(out, stmt)
             out.write(f"{I(4)}return std::optional<{cpp_elem}>(__val);\n")
@@ -353,7 +360,7 @@ class GeneratorCodegen:
             for stmt in pre_yield:
                 self.statements.gen_stmt(out, stmt)
             yield_expr = self.expressions.gen_expr(yield_stmt.value)
-            out.write(f"{I(4)}auto __val = {yield_expr};\n")
+            out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
             for stmt in post_yield:
                 self.statements.gen_stmt(out, stmt)
             out.write(f"{I(4)}return std::optional<{cpp_elem}>(__val);\n")
@@ -391,7 +398,7 @@ class GeneratorCodegen:
             for stmt in pre_yield:
                 self.statements.gen_stmt(out, stmt)
             yield_expr = self.expressions.gen_expr(yield_stmt.value)
-            out.write(f"{I(4)}auto __val = {yield_expr};\n")
+            out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
             for stmt in post_yield:
                 self.statements.gen_stmt(out, stmt)
             out.write(f"{I(4)}return std::optional<{cpp_elem_ref}>(__val);\n")

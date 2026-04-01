@@ -54,6 +54,10 @@ template<typename T> struct is_value_type<SpanIter<T>> : std::true_type {};
 // Tuples are value types (immutable in Python, always copied/moved)
 template<typename... Ts> struct is_value_type<std::tuple<Ts...>> : std::true_type {};
 
+// val_or_ref<T> is a lightweight pointer/value wrapper, always passed by value
+template<typename T> struct val_or_ref;
+template<typename T> struct is_value_type<val_or_ref<T>> : std::true_type {};
+
 // C++ concept for the ValueType marker protocol
 template<typename T>
 concept ValueType = is_value_type<T>::value;
