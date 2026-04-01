@@ -25,11 +25,11 @@ Full diff vs master: !`git diff master --stat 2>/dev/null || echo "(none)"`
    - Add a body explaining what and why
    - Do NOT include Co-Authored-By or references to Claude/LLM
 4. Derive a branch name from the commit message (e.g. "sema: fix readonly deref" -> "fix-readonly-deref"). Keep it short.
-5. Create the new branch from master, apply the squashed diff, commit with current date.
+5. Create the new branch from master, apply the squashed diff, commit.
 6. Show the final state: branch name, commit hash, diff stat.
 
 ## Important
 
 - Do NOT push to remote
 - Do NOT delete the original branch
-- Use the current date/time for the commit
+- Do NOT pass `--date` to git commit -- let git use the system time automatically

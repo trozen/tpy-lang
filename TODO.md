@@ -25,13 +25,13 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Overload resolution: generic overloads with protocol params lose to concrete overloads with coercion. `sum[T: AnyFixedInt](Iterable[T])` doesn't match `list[Int32]` in pass 1 because `_structural_match` requires `type(arg) == type(param)` -- `ArrayType` != `NamedType("Iterable")`. The concrete `sum(Iterable[float])` then wins via coercion in pass 2. Fix: `_structural_match` should check protocol conformance when `param` is a protocol type, so generic overloads with protocol params match in pass 1. Workaround: add concrete overloads for common types (Int32, Int64) before the generic.
 
 ## Macros
-- macros should work in cpython as well
 - all macro code (at least for json model) generated in headers
 - json: pretty printing
 - json: to/from file
 - json: better error message: show position
 - json: model inheritance
 - json: field renaming
+- Macro API: companion type creation: macros can add methods but not new types. `cls.add_companion_enum(name, members)` would let macros generate helper enums (e.g. key enums for JSON field dispatch via `try_parse` + `match`/`case`). Combined with string match or used standalone, this gives O(1) key dispatch.
 
 
 ## Bytes
@@ -157,7 +157,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - None-seeded variable assigned in all branches stays `Optional[T]`: when `x = None` is followed by assignment in both the `if` and `else` branches (so every path guarantees a value), `x` is still typed `std::optional<T>` after the if/else block. Post-dominance analysis could demote it to `T` and skip the optional wrapper. Not a correctness issue -- output is identical -- but adds unnecessary runtime cost and less readable C++.
 
 ## Known Limitations
-- Macro API: companion type creation: macros can add methods but not new types. `cls.add_companion_enum(name, members)` would let macros generate helper enums (e.g. key enums for JSON field dispatch via `try_parse` + `match`/`case`). Combined with string match or used standalone, this gives O(1) key dispatch.
 - Subscript narrowing: `if items[i] is not None:` does not narrow `items[i]`. Hard to make sound due to index aliasing and container mutation; would need invalidation on any container write.
 - Pointer-local slot reuse: reassigned T* pointer-locals allocate a fresh `std::optional<T>` slot per assignment. The initial slot could be reused after reassignment instead of allocating a new one.
 - Inherited constructor forwarding: multi-level inheritance (`Child -> Mid -> Base`) where intermediate classes have no `__init__` doesn't forward the base constructor. C++ generates `Child() = default;` only, so `Child(args)` fails. Workaround: add explicit `__init__` + `super().__init__()` at each level.
