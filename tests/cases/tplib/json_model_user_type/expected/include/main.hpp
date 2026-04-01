@@ -136,15 +136,19 @@ struct Event {
         ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
         std::optional<Event> __result = std::nullopt;
         {
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_8;
             {
                 auto __try_tmp_9 = Event::__json_decode__(__reader);
-                if (!__try_tmp_9.has_value()) goto __except_8;
+                if (!__try_tmp_9.has_value()) { __err_opt_8 = std::move(__try_tmp_9.error()); goto __except_8; }
                 __result = ::tpy::unwrap_ref(*__try_tmp_9);
             }
             goto __after_try_8;
             // except tplib.json.parser.JsonError:
             __except_8:;
-            ::tpy::tpy_panic("json: parse error");
+            {
+                auto& __e = *__err_opt_8;
+                ::tpy::tpy_panic(__e.message);
+            }
             __after_try_8:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
@@ -284,15 +288,19 @@ struct Schedule {
         ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
         std::optional<Schedule> __result = std::nullopt;
         {
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_20;
             {
                 auto __try_tmp_21 = Schedule::__json_decode__(__reader);
-                if (!__try_tmp_21.has_value()) goto __except_20;
+                if (!__try_tmp_21.has_value()) { __err_opt_20 = std::move(__try_tmp_21.error()); goto __except_20; }
                 __result = ::tpy::unwrap_ref(*__try_tmp_21);
             }
             goto __after_try_20;
             // except tplib.json.parser.JsonError:
             __except_20:;
-            ::tpy::tpy_panic("json: parse error");
+            {
+                auto& __e = *__err_opt_20;
+                ::tpy::tpy_panic(__e.message);
+            }
             __after_try_20:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");

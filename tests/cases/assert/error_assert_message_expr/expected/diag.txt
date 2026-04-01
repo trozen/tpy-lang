@@ -1,1 +1,1 @@
-main.py:5: error: assert message must be a string literal
+main.py:4: error: assert message must be a string

@@ -4642,10 +4642,10 @@ Unknown directives produce a warning. Directives after the first line of code pr
 ## Error Handling
 
 - **Working**: Runtime panics (bounds checks → abort)
-- **Working**: `assert` (`assert cond`, `assert cond, "msg"`)
+- **Working**: `assert` (`assert cond`, `assert cond, msg`)
   - Emits runtime panic when condition is false
+  - Message can be any string expression (literal, variable, field access, method call)
   - Contributes control-flow narrowing facts
-  - Current limitation: assert message must be a string literal
 - **Working**: `@error_return(E)` -- zero-cost error returns via `std::expected<T, E>`
   - `@error_return(E)` requires E to be a `ReturnException` type: `class MyError(Exception, ReturnException): pass`
   - `ReturnException` is a marker protocol that splits exception types into return (zero-cost) vs throw (C++ exceptions) categories

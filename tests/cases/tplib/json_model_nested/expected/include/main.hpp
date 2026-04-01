@@ -108,15 +108,19 @@ struct Address {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Address> __result = std::nullopt;
         {
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_7;
             {
                 auto __try_tmp_8 = Address::__json_decode__(__reader);
-                if (!__try_tmp_8.has_value()) goto __except_7;
+                if (!__try_tmp_8.has_value()) { __err_opt_7 = std::move(__try_tmp_8.error()); goto __except_7; }
                 __result = ::tpy::unwrap_ref(*__try_tmp_8);
             }
             goto __after_try_7;
             // except tplib.json.parser.JsonError:
             __except_7:;
-            ::tpy::tpy_panic("json: parse error");
+            {
+                auto& __e = *__err_opt_7;
+                ::tpy::tpy_panic(__e.message);
+            }
             __after_try_7:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
@@ -636,15 +640,19 @@ struct Profile {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Profile> __result = std::nullopt;
         {
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_54;
             {
                 auto __try_tmp_55 = Profile::__json_decode__(__reader);
-                if (!__try_tmp_55.has_value()) goto __except_54;
+                if (!__try_tmp_55.has_value()) { __err_opt_54 = std::move(__try_tmp_55.error()); goto __except_54; }
                 __result = ::tpy::unwrap_ref(*__try_tmp_55);
             }
             goto __after_try_54;
             // except tplib.json.parser.JsonError:
             __except_54:;
-            ::tpy::tpy_panic("json: parse error");
+            {
+                auto& __e = *__err_opt_54;
+                ::tpy::tpy_panic(__e.message);
+            }
             __after_try_54:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");

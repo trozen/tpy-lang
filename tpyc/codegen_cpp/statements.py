@@ -2821,32 +2821,34 @@ class StatementGenerator:
         self.ctx.current_ns = old_ns
         out.write(f"{indent}}}\n")
 
+    def _gen_assert_panic(self, out: TextIO, stmt: TpyAssert, indent: str) -> str:
+        """Generate the tpy_panic call string for an assert statement."""
+        if stmt.message is None:
+            return '::tpy::tpy_panic("assertion failed")'
+        if isinstance(stmt.message, TpyStrLiteral):
+            msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
+            return f'::tpy::tpy_panic("{msg}")'
+        msg_expr = self.expressions.gen_expr(stmt.message)
+        self.ctx.temps.flush(out, indent)
+        return f'::tpy::tpy_panic({msg_expr})'
+
     def _gen_assert(self, out: TextIO, stmt: TpyAssert, indent: str) -> None:
         """Generate an assert statement with optional isinstance union narrowing."""
         # Constant-fold trivially-known assertions (no temps to flush).
         if isinstance(stmt.condition, TpyBoolLiteral):
             if stmt.condition.value:
                 return
-            if stmt.message is not None and isinstance(stmt.message, TpyStrLiteral):
-                msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
-                out.write(f'{indent}::tpy::tpy_panic("{msg}");\n')
-                return
-            out.write(f'{indent}::tpy::tpy_panic("assertion failed");\n')
+            panic = self._gen_assert_panic(out, stmt, indent)
+            out.write(f'{indent}{panic};\n')
             return
         if isinstance(stmt.condition, TpyNoneLiteral):
-            if stmt.message is not None and isinstance(stmt.message, TpyStrLiteral):
-                msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
-                out.write(f'{indent}::tpy::tpy_panic("{msg}");\n')
-                return
-            out.write(f'{indent}::tpy::tpy_panic("assertion failed");\n')
+            panic = self._gen_assert_panic(out, stmt, indent)
+            out.write(f'{indent}{panic};\n')
             return
         bool_cond = self.expressions.gen_truthy_expr(stmt.condition)
         self.ctx.temps.flush(out, indent)
-        if stmt.message is not None and isinstance(stmt.message, TpyStrLiteral):
-            msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
-            out.write(f'{indent}if (!({bool_cond})) ::tpy::tpy_panic("{msg}");\n')
-        else:
-            out.write(f'{indent}if (!({bool_cond})) ::tpy::tpy_panic("assertion failed");\n')
+        panic = self._gen_assert_panic(out, stmt, indent)
+        out.write(f'{indent}if (!({bool_cond})) {panic};\n')
         # Emit std::get<T> extractions for isinstance-narrowed union variables.
         # Unlike if-branch narrowing, assert narrowing persists for the rest of scope,
         # so we do NOT call ctx.restore_narrowed_vars.

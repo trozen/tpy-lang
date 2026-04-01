@@ -421,8 +421,9 @@ def _build_from_json(cls: ClassInfo) -> Function:
                                            [ast.name("__reader")])),
             ],
             handlers=[ast.except_handler(
-                _JSON_ERROR, body=[
-                    ast.assert_(ast.bool_lit(False), ast.str_lit("json: parse error")),
+                _JSON_ERROR, binding="__e", body=[
+                    ast.assert_(ast.bool_lit(False),
+                                ast.field_access(ast.name("__e"), "message")),
                 ],
             )],
         ),

@@ -993,9 +993,9 @@ class StatementAnalyzer:
             self.expr.analyze_expr(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             if stmt.message is not None:
-                self.expr.analyze_expr(stmt.message)
-                if not isinstance(stmt.message, TpyStrLiteral):
-                    raise self.ctx.error("assert message must be a string literal", stmt)
+                msg_type = self.expr.analyze_expr(stmt.message)
+                if not is_any_str_type(msg_type):
+                    raise self.ctx.error("assert message must be a string", stmt)
             then_type_facts, _ = self.narrowing.condition_type_facts(stmt.condition)
             ptr_nn, _ = self.narrowing.condition_ptr_null_facts(stmt.condition)
             range_true, _ = self.narrowing.condition_range_facts(stmt.condition)

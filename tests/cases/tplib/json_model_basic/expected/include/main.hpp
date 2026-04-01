@@ -119,15 +119,19 @@ struct User {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<User> __result = std::nullopt;
         {
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_10;
             {
                 auto __try_tmp_11 = User::__json_decode__(__reader);
-                if (!__try_tmp_11.has_value()) goto __except_10;
+                if (!__try_tmp_11.has_value()) { __err_opt_10 = std::move(__try_tmp_11.error()); goto __except_10; }
                 __result = ::tpy::unwrap_ref(*__try_tmp_11);
             }
             goto __after_try_10;
             // except tplib.json.parser.JsonError:
             __except_10:;
-            ::tpy::tpy_panic("json: parse error");
+            {
+                auto& __e = *__err_opt_10;
+                ::tpy::tpy_panic(__e.message);
+            }
             __after_try_10:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");

@@ -66,8 +66,10 @@ auto next(Iter& it) -> decltype(it.__next__()) {
 /**
  * Panic and abort - called on fatal runtime errors.
  */
-[[noreturn]] inline void tpy_panic(const char* msg) {
-    std::fprintf(stderr, "TurboPython panic: %s\n", msg);
+[[noreturn]] inline void tpy_panic(std::string_view msg) {
+    std::fputs("TurboPython panic: ", stderr);
+    std::fwrite(msg.data(), 1, msg.size(), stderr);
+    std::fputc('\n', stderr);
     std::exit(1);
 }
 

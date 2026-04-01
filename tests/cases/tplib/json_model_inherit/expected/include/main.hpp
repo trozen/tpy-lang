@@ -89,15 +89,19 @@ struct Base {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Base> __result = std::nullopt;
         {
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_7;
             {
                 auto __try_tmp_8 = Base::__json_decode__(__reader);
-                if (!__try_tmp_8.has_value()) goto __except_7;
+                if (!__try_tmp_8.has_value()) { __err_opt_7 = std::move(__try_tmp_8.error()); goto __except_7; }
                 __result = ::tpy::unwrap_ref(*__try_tmp_8);
             }
             goto __after_try_7;
             // except tplib.json.parser.JsonError:
             __except_7:;
-            ::tpy::tpy_panic("json: parse error");
+            {
+                auto& __e = *__err_opt_7;
+                ::tpy::tpy_panic(__e.message);
+            }
             __after_try_7:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
@@ -211,15 +215,19 @@ struct WithDefaults {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<WithDefaults> __result = std::nullopt;
         {
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_15;
             {
                 auto __try_tmp_16 = WithDefaults::__json_decode__(__reader);
-                if (!__try_tmp_16.has_value()) goto __except_15;
+                if (!__try_tmp_16.has_value()) { __err_opt_15 = std::move(__try_tmp_16.error()); goto __except_15; }
                 __result = ::tpy::unwrap_ref(*__try_tmp_16);
             }
             goto __after_try_15;
             // except tplib.json.parser.JsonError:
             __except_15:;
-            ::tpy::tpy_panic("json: parse error");
+            {
+                auto& __e = *__err_opt_15;
+                ::tpy::tpy_panic(__e.message);
+            }
             __after_try_15:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
@@ -338,15 +346,19 @@ struct Tagged {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Tagged> __result = std::nullopt;
         {
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_24;
             {
                 auto __try_tmp_25 = Tagged::__json_decode__(__reader);
-                if (!__try_tmp_25.has_value()) goto __except_24;
+                if (!__try_tmp_25.has_value()) { __err_opt_24 = std::move(__try_tmp_25.error()); goto __except_24; }
                 __result = ::tpy::unwrap_ref(*__try_tmp_25);
             }
             goto __after_try_24;
             // except tplib.json.parser.JsonError:
             __except_24:;
-            ::tpy::tpy_panic("json: parse error");
+            {
+                auto& __e = *__err_opt_24;
+                ::tpy::tpy_panic(__e.message);
+            }
             __after_try_24:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
@@ -471,15 +483,19 @@ struct User : Base {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<User> __result = std::nullopt;
         {
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_33;
             {
                 auto __try_tmp_34 = User::__json_decode__(__reader);
-                if (!__try_tmp_34.has_value()) goto __except_33;
+                if (!__try_tmp_34.has_value()) { __err_opt_33 = std::move(__try_tmp_34.error()); goto __except_33; }
                 __result = ::tpy::unwrap_ref(*__try_tmp_34);
             }
             goto __after_try_33;
             // except tplib.json.parser.JsonError:
             __except_33:;
-            ::tpy::tpy_panic("json: parse error");
+            {
+                auto& __e = *__err_opt_33;
+                ::tpy::tpy_panic(__e.message);
+            }
             __after_try_33:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
@@ -604,15 +620,19 @@ struct Extended : WithDefaults {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Extended> __result = std::nullopt;
         {
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_42;
             {
                 auto __try_tmp_43 = Extended::__json_decode__(__reader);
-                if (!__try_tmp_43.has_value()) goto __except_42;
+                if (!__try_tmp_43.has_value()) { __err_opt_42 = std::move(__try_tmp_43.error()); goto __except_42; }
                 __result = ::tpy::unwrap_ref(*__try_tmp_43);
             }
             goto __after_try_42;
             // except tplib.json.parser.JsonError:
             __except_42:;
-            ::tpy::tpy_panic("json: parse error");
+            {
+                auto& __e = *__err_opt_42;
+                ::tpy::tpy_panic(__e.message);
+            }
             __after_try_42:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
@@ -742,15 +762,19 @@ struct Scored : Tagged {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Scored> __result = std::nullopt;
         {
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_52;
             {
                 auto __try_tmp_53 = Scored::__json_decode__(__reader);
-                if (!__try_tmp_53.has_value()) goto __except_52;
+                if (!__try_tmp_53.has_value()) { __err_opt_52 = std::move(__try_tmp_53.error()); goto __except_52; }
                 __result = ::tpy::unwrap_ref(*__try_tmp_53);
             }
             goto __after_try_52;
             // except tplib.json.parser.JsonError:
             __except_52:;
-            ::tpy::tpy_panic("json: parse error");
+            {
+                auto& __e = *__err_opt_52;
+                ::tpy::tpy_panic(__e.message);
+            }
             __after_try_52:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
@@ -889,15 +913,19 @@ struct Admin : User {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Admin> __result = std::nullopt;
         {
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_62;
             {
                 auto __try_tmp_63 = Admin::__json_decode__(__reader);
-                if (!__try_tmp_63.has_value()) goto __except_62;
+                if (!__try_tmp_63.has_value()) { __err_opt_62 = std::move(__try_tmp_63.error()); goto __except_62; }
                 __result = ::tpy::unwrap_ref(*__try_tmp_63);
             }
             goto __after_try_62;
             // except tplib.json.parser.JsonError:
             __except_62:;
-            ::tpy::tpy_panic("json: parse error");
+            {
+                auto& __e = *__err_opt_62;
+                ::tpy::tpy_panic(__e.message);
+            }
             __after_try_62:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
