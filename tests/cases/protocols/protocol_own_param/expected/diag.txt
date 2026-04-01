@@ -1,0 +1,4 @@
+main.py:6: warning: Own[Iterable[T]] param 'items' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:14: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:11: warning: Own[Iterable[T]] param 'items' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:22: warning: copies list[str] into owned storage; use copy() to make this explicit

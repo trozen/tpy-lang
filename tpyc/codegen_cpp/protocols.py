@@ -10,9 +10,9 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, TypeParamKind, ReadonlyType, VoidType, SelfType,
-    OptionalType, UnionType, StrType, MethodSignature, is_protocol_type, unwrap_readonly,
-    is_protocol_union, protocol_union_protocols, protocol_union_has_none,
-    unwrap_ref_type,
+    OptionalType, UnionType, StrType, OwnType, MethodSignature, is_protocol_type,
+    unwrap_readonly, unwrap_own, is_protocol_union, protocol_union_protocols,
+    protocol_union_has_none, unwrap_ref_type,
 )
 from ..parse import TpyProtocol, TpyRecord
 from .context import INDENT, DUNDER_TO_BINARY_OP, qualified_cpp_name
@@ -52,7 +52,7 @@ class ProtocolGenerator:
         - UnionType of 2+ static protocols (optionally with None)
         Excludes @dynamic protocols.
         """
-        unwrapped = unwrap_readonly(unwrap_ref_type(typ))
+        unwrapped = unwrap_own(unwrap_readonly(unwrap_ref_type(typ)))
         # Optional[Protocol]
         if isinstance(unwrapped, OptionalType):
             resolved = self.resolve_type_for_codegen(unwrapped.inner)
@@ -86,7 +86,7 @@ class ProtocolGenerator:
         """
         result: list[ProtocolParamInfo] = []
         for pname, ptype in params:
-            unwrapped = unwrap_readonly(unwrap_ref_type(ptype))
+            unwrapped = unwrap_own(unwrap_readonly(unwrap_ref_type(ptype)))
 
             # Optional[Protocol] -- single protocol, nullable
             if isinstance(unwrapped, OptionalType):
