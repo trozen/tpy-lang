@@ -13,8 +13,6 @@ std::string describe__lit_True(bool x) {
     // if x:
     // return "yes"
     return "yes";
-    // return "no"
-    return "no";
 }
 
 // @overload

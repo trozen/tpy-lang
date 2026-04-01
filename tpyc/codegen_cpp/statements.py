@@ -89,6 +89,8 @@ class StatementGenerator:
                 body_buf.write(f"{indent}{cpp_type} {cpp_name} = {init};\n")
             self._reassigned_param_copies = []
         for stmt in stmts:
+            if self.ctx.overload_terminated:
+                break
             if track_stmt_line:
                 self.ctx.current_stmt_line = stmt.loc.line if hasattr(stmt, 'loc') and stmt.loc else 0
             self.gen_stmt(body_buf, stmt)
@@ -3053,6 +3055,8 @@ class StatementGenerator:
                 # Always taken -- emit body directly, skip everything after
                 for s in node.then_body:
                     self.gen_stmt(out, s)
+                if node.then_body and isinstance(node.then_body[-1], (TpyReturn, TpyRaise)):
+                    self.ctx.overload_terminated = True
                 return True
             elif resolved is False:
                 continue

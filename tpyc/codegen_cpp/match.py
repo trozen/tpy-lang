@@ -11,6 +11,7 @@ from typing import TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, BoolType, FixedIntType, NamedType, OptionalType,
     StrType, StringType, StrViewType, PendingStrType, UnionType, EnumType,
+    LiteralType,
     unwrap_readonly,
 )
 from ..parse import (
@@ -76,6 +77,17 @@ class MatchGenerator:
                 self._gen_match_switch_union(out, stmt, subject_type, indent)
         elif isinstance(subject_type, EnumType):
             self._gen_match_switch_enum(out, stmt, indent)
+        elif isinstance(subject_type, LiteralType):
+            base = subject_type.base_type
+            if isinstance(base, (StrType, StringType, StrViewType, PendingStrType)):
+                if self._should_switch_str(stmt):
+                    self._gen_match_switch_str(out, stmt, indent)
+                else:
+                    self._gen_match_if_elif(out, stmt, indent)
+            elif isinstance(base, (FixedIntType, BoolType)):
+                self._gen_match_switch_primitive(out, stmt, indent)
+            else:
+                self._gen_match_if_elif(out, stmt, indent)
         elif isinstance(subject_type, (FixedIntType, BoolType)):
             self._gen_match_switch_primitive(out, stmt, indent)
         elif isinstance(subject_type, NamedType) and subject_type.is_user_record:
@@ -265,11 +277,11 @@ class MatchGenerator:
         self._emit_switch_groups(out, groups, indent)
 
     # Entry in a switch arm group:
-    # (guard, body, capture_escaped, as_escaped, raw_names, loc)
+    # (guard, body, capture_escaped, as_escaped, raw_names, loc, type_facts)
     # raw_names: set of raw Python names for declared_vars lookup
     _SwitchEntry = tuple[
         TpyExpr | None, list['TpyStmt'], str | None, str | None, set[str],
-        'SourceLocation | None',
+        'SourceLocation | None', dict[str, TpyType],
     ]
 
     def _group_switch_arms(
@@ -304,7 +316,7 @@ class MatchGenerator:
                     assert isinstance(pattern, TpyLiteralPattern)
                     label = self._switch_literal_label(pattern)
                 entry: MatchGenerator._SwitchEntry = (
-                    case.guard, case.body, None, as_escaped, raw_names, case.loc,
+                    case.guard, case.body, None, as_escaped, raw_names, case.loc, case.type_facts,
                 )
                 if label in groups:
                     groups[label][1].append(entry)
@@ -317,7 +329,7 @@ class MatchGenerator:
                     for alt in pattern.patterns
                 )
                 if has_wild:
-                    default_entries.append((case.guard, case.body, None, as_escaped, raw_names, case.loc))
+                    default_entries.append((case.guard, case.body, None, as_escaped, raw_names, case.loc, case.type_facts))
                 else:
                     labels = []
                     for alt in pattern.patterns:
@@ -328,7 +340,7 @@ class MatchGenerator:
                             assert isinstance(alt, TpyLiteralPattern)
                             labels.append(self._switch_literal_label(alt))
                     key = "|".join(labels)
-                    entry = (case.guard, case.body, None, as_escaped, raw_names, case.loc)
+                    entry = (case.guard, case.body, None, as_escaped, raw_names, case.loc, case.type_facts)
                     if key in groups:
                         groups[key][1].append(entry)
                     else:
@@ -338,7 +350,7 @@ class MatchGenerator:
                 cap_escaped = escape_cpp_name(pattern.name) if isinstance(pattern, TpyCapturePattern) else None
                 if isinstance(pattern, TpyCapturePattern):
                     raw_names.add(pattern.name)
-                default_entries.append((case.guard, case.body, cap_escaped, as_escaped, raw_names, case.loc))
+                default_entries.append((case.guard, case.body, cap_escaped, as_escaped, raw_names, case.loc, case.type_facts))
 
             else:
                 raise CodeGenError(f"Unsupported pattern in {kind} switch: {type(pattern).__name__}")
@@ -361,7 +373,7 @@ class MatchGenerator:
         has_default = any(labels == ["default"] for labels, _ in groups)
         needs_default_goto = has_default and any(
             labels != ["default"]
-            and all(g is not None for g, _, _, _, _, _ in entries)
+            and all(g is not None for g, _, _, _, _, _, _ in entries)
             for labels, entries in groups
         )
         default_label: str | None = None
@@ -388,9 +400,18 @@ class MatchGenerator:
                     out.write(f"{indent}case {label}:\n")
                 out.write(f"{indent}{{\n")
 
+            # Push literal_facts from the first entry (all entries in a group
+            # match the same value, so type_facts are equivalent)
+            lit_snap = self.ctx.save_literal_facts()
+            type_facts_0 = entries[0][6]
+            if type_facts_0:
+                for var_name, ty in type_facts_0.items():
+                    if isinstance(ty, LiteralType):
+                        self.ctx.literal_facts[var_name] = ty
+
             # Single entry, no guard -> simple body
             if len(entries) == 1 and entries[0][0] is None:
-                _, body, cap, as_name, raw_names, _loc = entries[0]
+                _, body, cap, as_name, raw_names, _loc, _tf = entries[0]
                 self._emit_switch_binding(out, cap, as_name, raw_names, inner, subject_expr)
                 self.ctx.indent_level += 1
                 for s in body:
@@ -400,16 +421,16 @@ class MatchGenerator:
                 # Emit capture/as binding before the guard chain so guards
                 # can reference the bound variable
                 bindings_emitted: set[str] = set()
-                for _g, _b, cap, as_name, raw_names, _loc in entries:
+                for _g, _b, cap, as_name, raw_names, _loc, _tf in entries:
                     for escaped, raw in self._binding_pairs(cap, as_name, raw_names):
                         if escaped not in bindings_emitted:
                             self._emit_binding(out, escaped, raw, subject_expr, inner)
                             bindings_emitted.add(escaped)
 
                 # Guard chain: if (g1) { body1 } else if (g2) { body2 } else { fallback }
-                has_unguarded = any(g is None for g, _, _, _, _, _ in entries)
+                has_unguarded = any(g is None for g, _, _, _, _, _, _ in entries)
                 if_opened = False
-                for _j, (guard, body, _cap, _as, _raw, _loc) in enumerate(entries):
+                for _j, (guard, body, _cap, _as, _raw, _loc, _tf) in enumerate(entries):
                     if guard is not None:
                         guard_code = self.expressions.gen_expr(guard)
                         self.ctx.temps.flush(out, inner)
@@ -435,6 +456,8 @@ class MatchGenerator:
                     out.write(f"{inner}goto {default_label};\n")
                 else:
                     out.write(f"{inner}}}\n")
+
+            self.ctx.restore_literal_facts(lit_snap)
 
             out.write(f"{inner}break;\n")
             out.write(f"{indent}}}\n")
@@ -712,6 +735,16 @@ class MatchGenerator:
                 self.ctx.narrowed_vars[var_name] = case_var
         return saved
 
+    def _push_literal_facts(self, case: 'TpyMatchCase') -> dict[str, TpyType]:
+        """Push LiteralType narrowing facts for dead branch elimination.
+        Returns saved literal_facts for restoration."""
+        saved = self.ctx.save_literal_facts()
+        if case.type_facts:
+            for var_name, ty in case.type_facts.items():
+                if isinstance(ty, LiteralType):
+                    self.ctx.literal_facts[var_name] = ty
+        return saved
+
     def _gen_match_if_elif(self, out: TextIO, stmt: TpyMatch, indent: str) -> None:
         """Generate match/case as an if/elif/else chain (for str and float subjects)."""
         inner = INDENT * (self.ctx.indent_level + 1)
@@ -721,6 +754,7 @@ class MatchGenerator:
             keyword = "if" if i == 0 else "} else if"
             pattern = case.pattern
             guard = case.guard
+            lit_snap = self._push_literal_facts(case)
 
             if isinstance(pattern, TpyLiteralPattern):
                 cond = self._gen_literal_cond(pattern)
@@ -835,6 +869,8 @@ class MatchGenerator:
             else:
                 raise CodeGenError(f"Unsupported match pattern: {type(pattern).__name__}")
 
+            self.ctx.restore_literal_facts(lit_snap)
+
         out.write(f"{indent}}}\n")
 
     def _should_switch_str(self, stmt: TpyMatch) -> bool:
@@ -914,10 +950,12 @@ class MatchGenerator:
             cond = f"({cond}) && {guard_code}" if is_or else f"{cond} && {guard_code}"
             out.write(f"{indent}if ({cond}) {{\n")
             self._emit_binding(out, as_name, as_raw, "__match_subject", inner)
+            lit_snap = self._push_literal_facts(case)
             self.ctx.indent_level += 1
             for s in case.body:
                 self.stmts.gen_stmt(out, s)
             self.ctx.indent_level -= 1
+            self.ctx.restore_literal_facts(lit_snap)
             out.write(f"{inner}goto {end_label};\n")
             out.write(f"{indent}}}\n")
 
@@ -947,10 +985,12 @@ class MatchGenerator:
                 pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
                 out.write(f'{sw_inner}if (__match_subject == "{escape_cpp_string(string_val)}") {{\n')
                 self._emit_binding(out, as_name, as_raw, "__match_subject", sw_deep)
+                lit_snap = self._push_literal_facts(case)
                 self.ctx.indent_level += (3 if kind == "char_at" else 2)
                 for s in case.body:
                     self.stmts.gen_stmt(out, s)
                 self.ctx.indent_level -= (3 if kind == "char_at" else 2)
+                self.ctx.restore_literal_facts(lit_snap)
                 out.write(f"{sw_deep}goto {end_label};\n")
                 out.write(f"{sw_inner}}}\n")
             out.write(f"{sw_inner}break;\n")

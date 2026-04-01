@@ -9,7 +9,7 @@ from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING, Callable
 
 from ..typesys import (
-    TpyType, IntLiteralType, FloatLiteralType, TypeParamRef,
+    TpyType, IntLiteralType, FloatLiteralType, LiteralType, TypeParamRef,
     ResolvedBinop, ResolvedUnaryop, FunctionInfo, TypeParamKind,
     INT32, FLOAT, PendingListType, ListType, unwrap_ref_type,
 )
@@ -73,7 +73,7 @@ class OperatorResolver:
         self.ctx = ctx
 
     def _resolve_pending_types(self, tpy_type: TpyType) -> TpyType:
-        """Resolve pending/structural types (PendingListType, TypeParamRef).
+        """Resolve pending/structural types (PendingListType, TypeParamRef, LiteralType).
 
         Preserves IntLiteralType for flexible overload matching.
         """
@@ -81,6 +81,8 @@ class OperatorResolver:
             return INT32
         if isinstance(tpy_type, PendingListType):
             return ListType(tpy_type.element_type)
+        if isinstance(tpy_type, LiteralType):
+            return tpy_type.base_type
         return tpy_type
 
     def get_effective_type_for_binop(self, tpy_type: TpyType) -> TpyType:
@@ -89,6 +91,8 @@ class OperatorResolver:
             return self.ctx.default_int_for_literal(tpy_type)
         if isinstance(tpy_type, FloatLiteralType):
             return FLOAT
+        if isinstance(tpy_type, LiteralType):
+            return tpy_type.base_type
         return self._resolve_pending_types(tpy_type)
 
     def _build_type_subst(

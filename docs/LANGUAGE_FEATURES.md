@@ -2764,7 +2764,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
     - `isinstance(x, T)` checks in if/elif/else are statically resolved to `true`/`false` per overload
     - `match`/`case` on union subjects selects only the matching arm per overload
     - Call-site overload resolution picks the most specific stub (exact match preferred, coercions as fallback)
-    - `Literal["r", "w", ...]` parameter annotations for literal-value-based dispatch: `open(path, "rb")` can resolve to a different return type than `open(path, "r")`. Supports string, integer (including negative), and bool values. Multiple values per `Literal[...]` annotation supported. Mixed value types in a single `Literal[...]` are rejected. Literal arguments dispatch to `Literal` overloads; variables fall through to plain type overloads. Equality narrowing on `Literal`-typed parameters: `if mode == "rb":` narrows to `Literal["rb"]`, enabling dispatch to more specific stubs within branches. Literal overload flattening: each stub gets a per-literal C++ specialization with name mangling and dead branch elimination, enabling different return types per literal value for both functions and methods. Requires `from typing import Literal`.
+    - `Literal["r", "w", ...]` parameter annotations for literal-value-based dispatch: `open(path, "rb")` can resolve to a different return type than `open(path, "r")`. Supports string, integer (including negative), and bool values. Multiple values per `Literal[...]` annotation supported. Mixed value types in a single `Literal[...]` are rejected. Literal arguments dispatch to `Literal` overloads; variables fall through to plain type overloads. Equality narrowing on `Literal`-typed parameters: `if mode == "rb":` narrows to `Literal["rb"]`, enabling dispatch to more specific stubs within branches. `match`/`case` on `Literal`-typed parameters with exhaustiveness checking and subject narrowing per arm. Literal overload flattening: each stub gets a per-literal C++ specialization with name mangling and dead branch elimination, enabling different return types per literal value for both functions and methods. Requires `from typing import Literal`.
     - `from typing import overload` import required
     - CPython compatible: stubs are no-ops in CPython, implementation runs with isinstance checks
 - **Working**: `T | None` for non-value types (records, lists, arrays) → nullable pointer (`T*`)
@@ -2897,6 +2897,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: `match`/`case` -- structural pattern matching
   - **Union subjects**: class patterns (`case Circle():`, `case Circle(radius=r):`), subject narrowing, `switch (s.index())` codegen with `std::get<N>`
   - **Enum subjects**: value patterns (`case Color.Red:`), `switch` codegen
+  - **Literal subjects** (`Literal["r", "w"]`, `Literal[1, 2, 3]`): match on `Literal`-typed parameters with exhaustiveness warnings for missing values, subject narrowing in each arm (e.g. `case "r" | "w":` narrows to `Literal["r", "w"]`), enabling overload dispatch from match bodies. Codegen routes to str switch/if-elif or int/bool switch based on base type.
   - **Primitive subjects** (`int`, `bool`): literal patterns, `switch` codegen; (`str`): switch-based dispatch for 5+ unguarded literal cases (best length/char discriminator), if/elif fallback below threshold; (`float`): if/elif fallback
   - **Record subjects**: field-value matching (`case Point(x=0, y=0):`), if/elif codegen; `goto`-based fallthrough for guards
   - **Optional subjects**: `case None:` + literal/class/value patterns on inner type; if/elif with `has_value()`/`nullptr`; value-type and pointer-repr
@@ -2907,7 +2908,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   - Or-patterns (`case Dog() | Cat():`) with `switch` case fallthrough; with bindings (`case Dog(name=n) | Cat(name=n):`) via body duplication in switch (str/float fall back to if/elif with `||`)
   - Guard clauses (`case Dog(name=n) if n == "Rex":`) with `goto`-based fallthrough for unions and records, `switch` with if/else guard chains + `goto` to default for enums/int/bool, `&&` inlining for str/float
   - Error diagnostics: non-member type, duplicate case, type mismatch, unreachable case after wildcard, too many positional patterns, positional/keyword overlap, or-pattern variable name mismatch, wrong class for record subject
-  - Exhaustiveness warnings for unions (missing member types), enums (missing values), booleans (missing True/False), optionals (missing None), and records (no unconditional catch-all arm)
+  - Exhaustiveness warnings for unions (missing member types), enums (missing values), booleans (missing True/False), optionals (missing None), Literal types (missing literal values), and records (no unconditional catch-all arm)
 
 ---
 

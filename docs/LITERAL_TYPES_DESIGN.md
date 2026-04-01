@@ -9,7 +9,7 @@
 | 3 | Equality narrowing | Done |
 | 3a | Dead branch elimination for single-value Literal | Done |
 | 3b | Literal overload flattening (per-literal C++ specializations) | Done |
-| 4 | `match`/`case` exhaustiveness for Literal subjects | Not started |
+| 4 | `match`/`case` exhaustiveness for Literal subjects | Done |
 | 5 | Literal types in variables (`x: Literal["rb"] = "rb"`) | Not started |
 | 6 | General type positions (return types, fields, union flattening) | Not started |
 
@@ -21,6 +21,7 @@
 | TypedDict with Literal keys | `d["name"]` where key is `Literal`. Separate feature (D19) with own design. |
 | Cross-function literal propagation | Inferring `Literal` from callers. Not planned -- too complex and fragile. |
 | Collision-free name mangling | Current scheme replaces non-alnum with `_`, causing collisions (e.g. `Literal[","]` vs `Literal["_"]`). Switch to hex encoding for non-alnum chars (e.g. `,` -> `x2c`). Low priority -- only matters for unusual literal values. |
+| Multi-value Literal dead branch elimination | `if mode == "r" or mode == "w":` where mode is `Literal["r", "w"]` should fold to `true`. Currently only single-value Literals fold individual `==` comparisons. Requires analyzing `or`/`and`/ternary chains to detect full-set coverage. The C++ compiler cannot optimize this since the C++ signature is just the base type. |
 
 ---
 
@@ -240,37 +241,43 @@ Call sites: `get_field("age")` -> `get_field__lit_age("age")`,
 `get_field(var)` -> `get_field(var)`.
 
 
-## Phase 4: Match/Case on Literal Types
+## Phase 4: Match/Case on Literal Types (Done)
 
-Match statements can exhaustively dispatch on Literal values:
+Match statements exhaustively dispatch on Literal values with narrowing
+in each arm, enabling overload dispatch from match bodies.
 
 ```python
 mode: Literal["r", "w", "rb", "wb"] = ...
 match mode:
     case "r" | "w":
-        handle_text()
+        handle_text(mode)    # mode: Literal["r", "w"]
     case "rb" | "wb":
-        handle_binary()
+        handle_binary(mode)  # mode: Literal["rb", "wb"]
     # exhaustive -- no default needed
 ```
 
-The match codegen already handles string patterns via switch-based dispatch
-(for 5+ unguarded cases) or if/elif chains.
+### What was implemented
 
-**Required changes**:
-- `sema/match.py`: `is_primitive` check (used to validate match subjects)
-  must include `LiteralType` -- otherwise match on a `Literal`-typed
-  subject raises "match subject must be a union, enum, primitive, record,
-  or Optional type".
-- `codegen_cpp/match.py`: string type check
-  `isinstance(subject_type, (StrType, StringType, StrViewType, PendingStrType))`
-  must include `LiteralType` with string base.
-- Exhaustiveness: validate that all `LiteralType` values are covered by
-  case patterns. Missing values produce a compile-time error.
+**Sema** (`sema/match.py`): `LiteralType` added to `is_primitive` check,
+routing to `_analyze_pattern_nonunion`. `_validate_literal_pattern` unwraps
+`LiteralType` to `base_type` for pattern type checking. Exhaustiveness
+via `_match_missing_cases` compares `seen_values` against the type's value
+set -- missing values produce a warning (consistent with enum/bool/union).
 
-### Effort: M
+**Narrowing** (`sema/match.py`): `_extract_literal_pattern_values` extracts
+matched `LiteralValue`s from patterns (literal, or-pattern, recursive).
+Each arm narrows the subject to a `LiteralType` with only the matched
+values. Narrowing facts propagate through `type_facts` for codegen.
 
-Subject validation + exhaustiveness + codegen dispatch.
+**Codegen** (`codegen_cpp/match.py`): `LiteralType` subjects route to
+existing codegen paths based on `base_type`: string switch/if-elif for
+str, primitive switch for int/bool. `_push_literal_facts` pushes
+narrowing facts into `literal_facts` for dead branch elimination within
+arm bodies. `_SwitchEntry` extended with `type_facts` for the switch path.
+
+**Operator fix** (`sema/operators.py`): `LiteralType` resolved to
+`base_type` in `get_effective_type_for_binop` and `_resolve_pending_types`,
+enabling operators like `str + Literal[str]` on narrowed variables.
 
 
 ## Phase 5: Literal Types in Variables

@@ -12,6 +12,7 @@ from ..typesys import (
     TpyType, Int32Type, BigIntType, FixedIntType, FloatType, Float32Type,
     BoolType, StrType, StrViewType, StringType, CharType, NamedType,
     NoneType, OptionalType, UnionType, EnumType, PendingStrType,
+    LiteralType, LiteralValue,
     unwrap_readonly,
 )
 from ..parse import (
@@ -57,7 +58,8 @@ class MatchAnalyzer:
         effective_type = unwrap_readonly(subject_type)
         is_union = isinstance(effective_type, UnionType)
         is_enum = isinstance(effective_type, EnumType)
-        is_primitive = isinstance(effective_type, (
+        is_literal = isinstance(effective_type, LiteralType)
+        is_primitive = is_literal or isinstance(effective_type, (
             Int32Type, BigIntType, FixedIntType, FloatType, Float32Type,
             BoolType, StrType, StrViewType, StringType, CharType,
             PendingStrType,
@@ -153,6 +155,15 @@ class MatchAnalyzer:
                 is_none_arm = isinstance(pat, TpyLiteralPattern) and pat.value is None
                 if not is_none_arm:
                     self.ctx.narrowed_types[subject_name] = effective_type.inner
+
+            # Narrow Literal subject to matched value(s)
+            if is_literal and subject_name is not None:
+                matched = self._extract_literal_pattern_values(case.pattern, effective_type)
+                if matched is not None:
+                    narrowed = LiteralType(effective_type.base_type, tuple(matched))
+                    self.ctx.narrowed_types[subject_name] = narrowed
+                    facts = {subject_name: narrowed}
+                    case.type_facts = self.stmts._filter_union_codegen_facts(facts)
 
             # Analyze guard expression (pattern bindings are in scope)
             if case.guard is not None:
@@ -307,6 +318,14 @@ class MatchAnalyzer:
                 missing.append("True")
             if False not in seen_values:
                 missing.append("False")
+            return missing
+
+        if isinstance(subject_type, LiteralType):
+            all_values = {v.value for v in subject_type.values}
+            missing = sorted(
+                (str(v) if not isinstance(v, str) else f'"{v}"')
+                for v in all_values if v not in seen_values
+            )
             return missing
 
         if isinstance(subject_type, NamedType) and subject_type.is_user_record:
@@ -631,35 +650,59 @@ class MatchAnalyzer:
         self, pattern: TpyLiteralPattern, subject_type: TpyType,
     ) -> None:
         """Validate that a literal pattern is compatible with the subject type."""
+        # Unwrap LiteralType to base_type for validation
+        check_type = subject_type.base_type if isinstance(subject_type, LiteralType) else subject_type
         val = pattern.value
         if val is None:
             raise self.ctx.error(
                 "None literal pattern requires an Optional subject", pattern
             )
         if isinstance(val, bool):
-            if not isinstance(subject_type, BoolType):
+            if not isinstance(check_type, BoolType):
                 raise self.ctx.error(
                     f"bool literal pattern not valid for subject type '{subject_type}'",
                     pattern,
                 )
         elif isinstance(val, int):
-            if not isinstance(subject_type, (Int32Type, BigIntType, FixedIntType, EnumType)):
+            if not isinstance(check_type, (Int32Type, BigIntType, FixedIntType, EnumType)):
                 raise self.ctx.error(
                     f"int literal pattern not valid for subject type '{subject_type}'",
                     pattern,
                 )
         elif isinstance(val, float):
-            if not isinstance(subject_type, (FloatType, Float32Type)):
+            if not isinstance(check_type, (FloatType, Float32Type)):
                 raise self.ctx.error(
                     f"float literal pattern not valid for subject type '{subject_type}'",
                     pattern,
                 )
         elif isinstance(val, str):
-            if not isinstance(subject_type, (StrType, StrViewType, StringType, PendingStrType)):
+            if not isinstance(check_type, (StrType, StrViewType, StringType, PendingStrType)):
                 raise self.ctx.error(
                     f"str literal pattern not valid for subject type '{subject_type}'",
                     pattern,
                 )
+
+    def _extract_literal_pattern_values(
+        self, pattern: TpyPattern, lit_type: LiteralType,
+    ) -> list[LiteralValue] | None:
+        """Extract LiteralValues matched by a pattern. None for wildcard/capture."""
+        if isinstance(pattern, TpyAsPattern):
+            return self._extract_literal_pattern_values(pattern.pattern, lit_type)
+        if isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
+            return None
+        if isinstance(pattern, TpyLiteralPattern):
+            val = pattern.value
+            tag = "bool" if isinstance(val, bool) else "int" if isinstance(val, int) else "str"
+            return [LiteralValue(tag, val)]
+        if isinstance(pattern, TpyOrPattern):
+            result: list[LiteralValue] = []
+            for alt in pattern.patterns:
+                sub = self._extract_literal_pattern_values(alt, lit_type)
+                if sub is None:
+                    return None
+                result.extend(sub)
+            return result
+        return None
 
     def _validate_value_pattern(
         self, pattern: TpyValuePattern, subject_type: TpyType,

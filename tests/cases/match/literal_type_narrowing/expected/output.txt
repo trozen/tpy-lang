@@ -1,0 +1,4 @@
+text:r
+binary:rb
+text:w
+binary:wb

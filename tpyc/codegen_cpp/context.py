@@ -604,6 +604,7 @@ class CodeGenContext:
         self.assign_narrowed_types = {}
         self.literal_facts = {}
         self.walrus_pre_declared = set()
+        self.overload_terminated = False
         # Note: overload_param_types and literal_overload_facts are NOT reset
         # here -- they're managed by the caller (set before gen_body, cleared
         # in a finally block).
