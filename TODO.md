@@ -30,7 +30,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - json: pretty printing
 - json: to/from file
 - json: better error message: show position
-- json: model inheritance
 - json: field renaming
 - Macro API: companion type creation: macros can add methods but not new types. `cls.add_companion_enum(name, members)` would let macros generate helper enums (e.g. key enums for JSON field dispatch via `try_parse` + `match`/`case`). Combined with string match or used standalone, this gives O(1) key dispatch.
 

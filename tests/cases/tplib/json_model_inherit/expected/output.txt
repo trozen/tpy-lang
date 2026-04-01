@@ -1,0 +1,11 @@
+{"name": "Alice", "age": 30, "email": "alice@example.com"}
+Alice 30 alice@example.com
+{"name": "Bob", "age": 40, "email": "bob@co.com", "role": "superuser"}
+Bob 40 bob@co.com superuser
+{"x": 1, "y": 0, "z": 99}
+{"x": 1, "y": 2, "z": 3}
+10 0 99
+{"tag": "hello", "note": null, "score": 42}
+hi None 7
+True
+False

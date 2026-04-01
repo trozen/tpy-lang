@@ -1219,6 +1219,7 @@ class AstBuilder:
         readonly_opt_out: bool = False,
         error_return: str | None = None,
         defaults: list[_ast.expr | None] | None = None,
+        hides_parent: bool = False,
     ) -> Any:
         """Compile an AST function definition into a real Python function."""
         # Build argument list

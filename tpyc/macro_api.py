@@ -837,12 +837,14 @@ class AstBuilder:
                  is_method: bool = False, is_staticmethod: bool = False,
                  is_readonly: bool = False, readonly_opt_out: bool = False,
                  error_return: str | None = None,
-                 defaults: list[Expr | None] | None = None) -> Function:
+                 defaults: list[Expr | None] | None = None,
+                 hides_parent: bool = False) -> Function:
         return TpyFunction(
             name=name, params=params, return_type=return_type, body=body,
             is_method=is_method, is_staticmethod=is_staticmethod,
             is_readonly=is_readonly, readonly_opt_out=readonly_opt_out,
             error_return=error_return, defaults=defaults or [],
+            hides_parent=hides_parent,
         )
 
     # -- Source-based quoting --

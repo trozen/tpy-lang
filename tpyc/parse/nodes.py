@@ -914,6 +914,7 @@ class TpyFunction:
     readonly_opt_out: bool = False
     is_pure: bool = False
     is_override: bool = False
+    hides_parent: bool = False
     is_overload_stub: bool = False
     is_method: bool = False
     is_staticmethod: bool = False

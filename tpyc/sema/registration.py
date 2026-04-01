@@ -962,6 +962,9 @@ class TypeRegistrar:
         if record_info.is_ordered:
             skip_dc.update({"__lt__", "__le__", "__gt__", "__ge__"})
 
+        # Methods explicitly marked as hiding parent versions
+        hides = {m.name for m in record.methods if m.hides_parent}
+
         # Check each method defined in this class
         for method_name in record_info.methods:
             if method_name in ("__init__", "__del__"):
@@ -970,6 +973,8 @@ class TypeRegistrar:
                 continue
             if skip_names and method_name in skip_names:
                 continue  # @override methods are checked (with better messages) separately
+            if method_name in hides:
+                continue
 
             # Check if any ancestor has this method
             ancestor_with_method = self._find_ancestor_with_method(parent_info, method_name)

@@ -649,8 +649,13 @@ def model(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> None:
     cls.set_dataclass_fields(all_fields)
 
     # Generate JSON methods
-    cls.add_method(_build_json_decode(cls, all_fields))
-    cls.add_method(_build_from_json(cls))
-    cls.add_method(_build_try_from_json(cls))
-    cls.add_method(_build_json_encode(cls, all_fields))
-    cls.add_method(_build_to_json(cls))
+    has_parent = len(parent_fields) > 0
+    for fn in [
+        _build_json_decode(cls, all_fields),
+        _build_from_json(cls),
+        _build_try_from_json(cls),
+        _build_json_encode(cls, all_fields),
+        _build_to_json(cls),
+    ]:
+        fn.hides_parent = has_parent
+        cls.add_method(fn)
