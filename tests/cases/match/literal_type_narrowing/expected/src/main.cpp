@@ -10,22 +10,14 @@ namespace tpyapp::main {
 // def process(mode: Literal["r", "w"]) -> str: ...
 std::string process__lit_r__w(std::string_view mode) {
     // if mode == "r" or mode == "w":
-    if (((mode == "r") || (mode == "w"))) {
-        // return "text:" + mode
-        return (::tpy::str_concat("text:", mode));
-    }
-    // return "binary:" + mode
-    return (::tpy::str_concat("binary:", mode));
+    // return "text:" + mode
+    return (::tpy::str_concat("text:", mode));
 }
 
 // @overload
 // def process(mode: Literal["rb", "wb"]) -> str: ...
 std::string process__lit_rb__wb(std::string_view mode) {
     // if mode == "r" or mode == "w":
-    if ((false || false)) {
-        // return "text:" + mode
-        return (::tpy::str_concat("text:", mode));
-    }
     // return "binary:" + mode
     return (::tpy::str_concat("binary:", mode));
 }

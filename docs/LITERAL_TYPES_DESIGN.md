@@ -9,6 +9,7 @@
 | 3 | Equality narrowing | Done |
 | 3a | Dead branch elimination for single-value Literal | Done |
 | 3b | Literal overload flattening (per-literal C++ specializations) | Done |
+| 3c | Multi-value Literal dead branch elimination | Done |
 | 4 | `match`/`case` exhaustiveness for Literal subjects | Done |
 | 5 | Literal types in variables (`x: Literal["rb"] = "rb"`) | Not started |
 | 6 | General type positions (return types, fields, union flattening) | Not started |
@@ -21,7 +22,6 @@
 | TypedDict with Literal keys | `d["name"]` where key is `Literal`. Separate feature (D19) with own design. |
 | Cross-function literal propagation | Inferring `Literal` from callers. Not planned -- too complex and fragile. |
 | Collision-free name mangling | Current scheme replaces non-alnum with `_`, causing collisions (e.g. `Literal[","]` vs `Literal["_"]`). Switch to hex encoding for non-alnum chars (e.g. `,` -> `x2c`). Low priority -- only matters for unusual literal values. |
-| Multi-value Literal dead branch elimination | `if mode == "r" or mode == "w":` where mode is `Literal["r", "w"]` should fold to `true`. Currently only single-value Literals fold individual `==` comparisons. Requires analyzing `or`/`and`/ternary chains to detect full-set coverage. The C++ compiler cannot optimize this since the C++ signature is just the base type. |
 
 ---
 
@@ -239,6 +239,82 @@ std::variant<int32_t, std::string> get_field(std::string_view name) { ... }
 
 Call sites: `get_field("age")` -> `get_field__lit_age("age")`,
 `get_field(var)` -> `get_field(var)`.
+
+
+## Phase 3c: Multi-Value Literal Dead Branch Elimination (Done)
+
+Extends dead branch elimination from single-value Literals to multi-value
+Literals by analyzing compound conditions: `or`/`and` chains, `in`/`not in`
+operators, and `not` wrapping.
+
+### What was implemented
+
+**Shared helpers** (`codegen_cpp/expressions.py`): Module-level functions
+used by both statement-level and expression-level folding:
+
+- `_flatten_chain(expr, op)`: flattens left-recursive `&&`/`||` chains.
+- `_extract_literal_value(expr)`: extracts `LiteralValue` from AST nodes.
+- `_check_literal_chain(expr, literal_facts)`: flattens a `&&`/`||` chain,
+  extracts `(var_name, LiteralValue)` from each `var == lit` operand.
+  For `||`: returns True if collected values cover the full `LiteralType` set.
+  For `&&`: returns False if the same variable must equal two different values.
+- `_check_literal_in(expr, literal_facts)`: checks `in`/`not in` with
+  tuple/set literal RHS against `LiteralType` value sets.
+
+**Statement-level** (`codegen_cpp/statements.py`): `_resolve_isinstance_statically`
+extended with three new resolution paths:
+
+- **`&&`/`||` chains**: Recursively resolves both operands. Short-circuits
+  when possible (`||` any True -> True, `&&` any False -> False). When both
+  operands are unresolved, delegates to `_check_literal_chain`.
+- **`in`/`not in`**: Delegates to `_check_literal_in`.
+- **`not` fix**: Pre-existing bug fixed -- the negation handler compared
+  `op == "not"` but the parser emits `"!"`. Now correctly recurses through
+  negation.
+
+**Expression-level** (`codegen_cpp/expressions.py`): Thin wrappers that
+convert `bool | None` results from the shared helpers to `"true"/"false"/None`
+strings for C++ output:
+- `_try_fold_literal_chain`: `&&`/`||` chains with short-circuit + delegation.
+- `_try_fold_literal_in`: `in`/`not in` delegation.
+- `_try_fold_literal_operand`: recursive resolver for `==`/`!=`, `&&`/`||`,
+  `in`/`not in`, and `!` (negation).
+
+### Limitations
+
+- **Whole-expression only**: no partial folding. `(mode == "r" or mode == "w")
+  and flag` does not fold unless `flag` also resolves to a constant.
+- **Same variable**: `mode == "r" or other == "w"` cannot do coverage analysis
+  across different variables (individual operand folding still applies).
+- **`==` only for coverage**: `!=` chains do not participate in set-coverage
+  analysis (individual `!=` already folds for out-of-set values).
+- **No tuple `in`**: `mode in ("r", "w")` with tuple literal is not supported
+  by sema (tuple `in` not implemented). Use set literals: `mode in {"r", "w"}`.
+- **Ternary conditions**: `TpyIfExpr` does not go through
+  `_resolve_isinstance_statically`, so ternary condition folding is not covered.
+
+### Example
+
+```python
+@overload
+def handle(mode: Literal["r", "w"]) -> str: ...
+@overload
+def handle(mode: Literal["rb", "wb"]) -> str: ...
+def handle(mode: str) -> str:
+    if mode == "r" or mode == "w":
+        return "text"
+    return "binary"
+```
+
+Generated specializations:
+```cpp
+std::string handle__lit_r__w(std::string_view mode) { return "text"; }
+std::string handle__lit_rb__wb(std::string_view mode) { return "binary"; }
+```
+
+Both branches are eliminated: the `||` chain covers all values for
+`Literal["r", "w"]` (folds to true), and both `==` comparisons are
+out-of-set for `Literal["rb", "wb"]` (folds to false).
 
 
 ## Phase 4: Match/Case on Literal Types (Done)

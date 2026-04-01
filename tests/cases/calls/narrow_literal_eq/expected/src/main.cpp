@@ -10,22 +10,14 @@ namespace tpyapp::main {
 // def classify(mode: Literal["r", "w"]) -> str: ...
 std::string classify__lit_r__w(std::string_view mode) {
     // if mode == "r" or mode == "w":
-    if (((mode == "r") || (mode == "w"))) {
-        // return "text"
-        return "text";
-    }
-    // return "binary"
-    return "binary";
+    // return "text"
+    return "text";
 }
 
 // @overload
 // def classify(mode: Literal["rb", "wb"]) -> str: ...
 std::string classify__lit_rb__wb(std::string_view mode) {
     // if mode == "r" or mode == "w":
-    if ((false || false)) {
-        // return "text"
-        return "text";
-    }
     // return "binary"
     return "binary";
 }

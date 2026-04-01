@@ -1,0 +1,14 @@
+text
+binary
+text
+binary
+text
+binary
+read
+write
+text
+binary
+ok
+ok
+not-xy
+not-xy

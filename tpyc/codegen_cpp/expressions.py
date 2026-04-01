@@ -47,6 +47,97 @@ from tpyc import modules as builtin_modules
 
 
 
+def _flatten_chain(expr: TpyExpr, op: str) -> list[TpyExpr]:
+    """Flatten a left-recursive &&/|| chain into a list of operands."""
+    result: list[TpyExpr] = []
+    while isinstance(expr, TpyBinOp) and expr.op == op:
+        result.append(expr.right)
+        expr = expr.left
+    result.append(expr)
+    result.reverse()
+    return result
+
+
+def _extract_literal_value(expr: TpyExpr) -> LiteralValue | None:
+    """Extract a LiteralValue from a literal AST node."""
+    if isinstance(expr, TpyStrLiteral):
+        return LiteralValue("str", expr.value)
+    if isinstance(expr, TpyBoolLiteral):
+        return LiteralValue("bool", expr.value)
+    if isinstance(expr, TpyIntLiteral):
+        return LiteralValue("int", expr.value)
+    if (isinstance(expr, TpyUnaryOp) and expr.op == "-"
+            and isinstance(expr.operand, TpyIntLiteral)):
+        return LiteralValue("int", -expr.operand.value)
+    return None
+
+
+def _check_literal_chain(
+    expr: TpyBinOp, literal_facts: dict[str, TpyType],
+) -> bool | None:
+    """Check if a flattened &&/|| chain of == comparisons can be resolved.
+
+    For ||: returns True if collected values cover the variable's full
+    LiteralType set (full-set coverage).
+    For &&: returns False if the same variable is required to equal two
+    different values (contradiction).
+    """
+    operands = _flatten_chain(expr, expr.op)
+    eq_facts: dict[str, set] = {}
+    for operand in operands:
+        if not isinstance(operand, TpyBinOp) or operand.op != "==":
+            return None
+        extracted = False
+        for var_side, lit_side in [(operand.left, operand.right),
+                                   (operand.right, operand.left)]:
+            if not isinstance(var_side, TpyName):
+                continue
+            lit_val = _extract_literal_value(lit_side)
+            if lit_val is None:
+                continue
+            eq_facts.setdefault(var_side.name, set()).add(lit_val)
+            extracted = True
+            break
+        if not extracted:
+            return None
+    if expr.op == "||":
+        for var_name, values in eq_facts.items():
+            lit_type = literal_facts.get(var_name)
+            if isinstance(lit_type, LiteralType) and set(lit_type.values) <= values:
+                return True
+    else:
+        for values in eq_facts.values():
+            if len(values) > 1:
+                return False
+    return None
+
+
+def _check_literal_in(
+    expr: TpyBinOp, literal_facts: dict[str, TpyType],
+) -> bool | None:
+    """Check if `x in (a, b, ...)` / `x not in (a, b, ...)` can be resolved."""
+    if not isinstance(expr.left, TpyName):
+        return None
+    lit_type = literal_facts.get(expr.left.name)
+    if not isinstance(lit_type, LiteralType):
+        return None
+    if not isinstance(expr.right, (TpyTupleLiteral, TpySetLiteral)):
+        return None
+    rhs_values: set = set()
+    for elem in expr.right.elements:
+        val = _extract_literal_value(elem)
+        if val is None:
+            return None
+        rhs_values.add(val)
+    lit_values = set(lit_type.values)
+    is_in = expr.op == "in"
+    if lit_values <= rhs_values:
+        return True if is_in else False
+    if lit_values.isdisjoint(rhs_values):
+        return False if is_in else True
+    return None
+
+
 def _is_simple_lvalue(expr: TpyExpr) -> bool:
     """Check if expression is a variable or field access (safe to capture by ref).
 
@@ -942,6 +1033,10 @@ class ExpressionGenerator:
 
         # Handle 'in' and 'not in' operators
         if expr.op in ("in", "not in"):
+            if self.ctx.literal_facts:
+                folded = self._try_fold_literal_in(expr)
+                if folded is not None:
+                    return folded
             left = self.gen_expr(expr.left)
             right = self.gen_expr(expr.right)
             # Dereference globals for .begin()/.end() calls
@@ -1040,6 +1135,10 @@ class ExpressionGenerator:
 
         # Logical operators
         if expr.op in ("&&", "||"):
+            if self.ctx.literal_facts:
+                folded = self._try_fold_literal_chain(expr)
+                if folded is not None:
+                    return folded
             result_type = self.types.get_resolved_type(expr)
             if not isinstance(result_type, BoolType):
                 # Value-context: Python operand semantics via temp + ternary.
@@ -1280,18 +1379,56 @@ class ExpressionGenerator:
                 return "false" if expr.op == "==" else "true"
         return None
 
-    @staticmethod
-    def _extract_literal_value(expr: TpyExpr) -> LiteralValue | None:
-        """Extract a LiteralValue from a literal AST node."""
-        if isinstance(expr, TpyStrLiteral):
-            return LiteralValue("str", expr.value)
-        if isinstance(expr, TpyBoolLiteral):
-            return LiteralValue("bool", expr.value)
-        if isinstance(expr, TpyIntLiteral):
-            return LiteralValue("int", expr.value)
-        if (isinstance(expr, TpyUnaryOp) and expr.op == "-"
-                and isinstance(expr.operand, TpyIntLiteral)):
-            return LiteralValue("int", -expr.operand.value)
+    # Keep static method alias for backward compatibility (used by statements.py)
+    _extract_literal_value = staticmethod(_extract_literal_value)
+
+    def _try_fold_literal_chain(self, expr: TpyBinOp) -> str | None:
+        """Fold &&/|| chains to "true"/"false" using literal_facts."""
+        left = self._try_fold_literal_operand(expr.left)
+        right = self._try_fold_literal_operand(expr.right)
+        if expr.op == "||":
+            if left is True or right is True:
+                return "true"
+            if left is False and right is False:
+                return "false"
+        else:
+            if left is False or right is False:
+                return "false"
+            if left is True and right is True:
+                return "true"
+        if left is None and right is None:
+            result = _check_literal_chain(expr, self.ctx.literal_facts)
+            if result is True:
+                return "true"
+            if result is False:
+                return "false"
+        return None
+
+    def _try_fold_literal_operand(self, expr: TpyExpr) -> bool | None:
+        """Resolve a single operand in a &&/|| chain to a bool."""
+        if isinstance(expr, TpyBinOp):
+            if expr.op in ("&&", "||"):
+                result = self._try_fold_literal_chain(expr)
+                return {"true": True, "false": False}.get(result)  # type: ignore[arg-type]
+            if expr.op in ("==", "!="):
+                result = self._try_fold_literal_comparison(expr)
+                return {"true": True, "false": False}.get(result)  # type: ignore[arg-type]
+            if expr.op in ("in", "not in"):
+                result = self._try_fold_literal_in(expr)
+                return {"true": True, "false": False}.get(result)  # type: ignore[arg-type]
+        if isinstance(expr, TpyUnaryOp) and expr.op == "!":
+            inner = self._try_fold_literal_operand(expr.operand)
+            if inner is not None:
+                return not inner
+        return None
+
+    def _try_fold_literal_in(self, expr: TpyBinOp) -> str | None:
+        """Fold `x in (a, b, ...)` / `x not in (a, b, ...)` using literal_facts."""
+        result = _check_literal_in(expr, self.ctx.literal_facts)
+        if result is True:
+            return "true"
+        if result is False:
+            return "false"
         return None
 
     def _comparison_targets(self, pair: TpyBinOp) -> tuple[TpyType | None, TpyType | None]:

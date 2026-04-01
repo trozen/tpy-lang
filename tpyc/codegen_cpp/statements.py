@@ -3149,8 +3149,34 @@ class StatementGenerator:
                         and lit_type.values[0].tag == "bool"):
                     return bool(lit_type.values[0].value)
 
+        # Logical chains: && / ||
+        if isinstance(condition, TpyBinOp) and condition.op in ("&&", "||"):
+            left = self._resolve_isinstance_statically(condition.left)
+            right = self._resolve_isinstance_statically(condition.right)
+            if condition.op == "||":
+                if left is True or right is True:
+                    return True
+                if left is False and right is False:
+                    return False
+            else:
+                if left is False or right is False:
+                    return False
+                if left is True and right is True:
+                    return True
+            # Coverage / contradiction on unresolved operands
+            if self.ctx.literal_facts and left is None and right is None:
+                return self._resolve_literal_chain_statically(condition)
+            return None
+
+        # Containment: x in (a, b, ...) / x not in (a, b, ...)
+        if (isinstance(condition, TpyBinOp) and condition.op in ("in", "not in")
+                and self.ctx.literal_facts):
+            result = self._resolve_literal_in_statically(condition)
+            if result is not None:
+                return result
+
         # Negated condition
-        if isinstance(condition, TpyUnaryOp) and condition.op == "not":
+        if isinstance(condition, TpyUnaryOp) and condition.op == "!":
             inner = self._resolve_isinstance_statically(condition.operand)
             if inner is not None:
                 return not inner
@@ -3165,14 +3191,14 @@ class StatementGenerator:
         """
         if not isinstance(condition, TpyBinOp) or condition.op not in ("==", "!="):
             return None
-        from .expressions import ExpressionGenerator
+        from .expressions import _extract_literal_value
         for var_side, lit_side in [(condition.left, condition.right), (condition.right, condition.left)]:
             if not isinstance(var_side, TpyName):
                 continue
             lit_type = self.ctx.literal_facts.get(var_side.name)
             if not isinstance(lit_type, LiteralType):
                 continue
-            lit_val = ExpressionGenerator._extract_literal_value(lit_side)
+            lit_val = _extract_literal_value(lit_side)
             if lit_val is None:
                 continue
             in_set = lit_val in lit_type.values
@@ -3183,6 +3209,16 @@ class StatementGenerator:
             if not in_set:
                 return False if condition.op == "==" else True
         return None
+
+    def _resolve_literal_chain_statically(self, condition: TpyBinOp) -> bool | None:
+        """Resolve || / && chains of == comparisons using literal_facts."""
+        from .expressions import _check_literal_chain
+        return _check_literal_chain(condition, self.ctx.literal_facts)
+
+    def _resolve_literal_in_statically(self, condition: TpyBinOp) -> bool | None:
+        """Resolve `x in (a, b, ...)` / `x not in (a, b, ...)` using literal_facts."""
+        from .expressions import _check_literal_in
+        return _check_literal_in(condition, self.ctx.literal_facts)
 
     def _has_concrete_isinstance_facts(self, type_facts: dict[str, TpyType]) -> bool:
         """Check if type_facts contain any concrete types that would emit extractions."""
