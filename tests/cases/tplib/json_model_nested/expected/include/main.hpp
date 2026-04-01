@@ -745,7 +745,7 @@ struct Profile {
             auto&& __kv_38 = *__beg_5;
             auto& __tup_2 = __kv_38;
             std::string_view __dk = std::get<0>(__tup_2);
-            std::vector<int32_t>* __dv = &std::get<1>(__tup_2);
+            std::vector<int32_t>* __dv = &::tpy::unwrap_ref(std::get<1>(__tup_2));
             __writer.key(__dk);
             __writer.array_start();
             auto& __obj_6 = (*__dv);

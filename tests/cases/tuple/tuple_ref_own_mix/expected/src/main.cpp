@@ -16,7 +16,7 @@ void main() {
     Point p = Point(1, 2);
     // ref, owned = split(p)
     auto __tup_1 = split(p);
-    Point& ref = std::get<0>(__tup_1);
+    Point& ref = ::tpy::unwrap_ref(std::get<0>(__tup_1));
     Point owned = std::move(std::get<1>(__tup_1));
     // print(ref)
     std::cout << ref << "\n";

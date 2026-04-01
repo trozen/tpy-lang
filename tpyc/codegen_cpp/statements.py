@@ -1741,6 +1741,11 @@ class StatementGenerator:
             cpp_type = self.types.type_to_cpp(target_type)
             cpp_name = escape_cpp_name(name)
             get_expr = f"std::get<{i}>({tmp})"
+            if stmt.is_ref[i]:
+                # Unwrap val_or_ref<T> from iterator-composed tuples
+                # (e.g. enumerate(map(f, xs)) yields tuple<int, val_or_ref<T>>).
+                # No-op for plain T& elements from regular tuples.
+                get_expr = f"::tpy::unwrap_ref({get_expr})"
             if stmt.is_owned[i]:
                 get_expr = f"std::move({get_expr})"
 

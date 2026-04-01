@@ -18,7 +18,7 @@ void main() {
         // for name, pt in items:
         auto& __tup_1 = __for_tup_0;
         std::string_view name = std::get<0>(__tup_1);
-        Point* pt = &std::get<1>(__tup_1);
+        Point* pt = &::tpy::unwrap_ref(std::get<1>(__tup_1));
         // print(name, pt)
         std::cout << name << " " << (*pt) << "\n";
     }
@@ -34,7 +34,7 @@ void main() {
         // for n, pt in pairs:
         auto& __tup_2 = __for_tup_1;
         const ::tpy::BigInt& n = std::get<0>(__tup_2);
-        Point* pt = &std::get<1>(__tup_2);
+        Point* pt = &::tpy::unwrap_ref(std::get<1>(__tup_2));
         // print(n, pt)
         std::cout << n << " " << (*pt) << "\n";
     }
@@ -49,8 +49,8 @@ void main() {
         auto&& __for_tup_2 = *__beg_2;
         // for a, b in segments:
         auto& __tup_3 = __for_tup_2;
-        Point& a = std::get<0>(__tup_3);
-        Point& b = std::get<1>(__tup_3);
+        Point& a = ::tpy::unwrap_ref(std::get<0>(__tup_3));
+        Point& b = ::tpy::unwrap_ref(std::get<1>(__tup_3));
         // print(a, b)
         std::cout << a << " " << b << "\n";
     }

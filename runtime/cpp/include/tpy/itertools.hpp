@@ -262,7 +262,10 @@ template<typename... Ts, typename... Containers>
 class owning_zip_iter<zip_types<Ts...>, Containers...>
     : public next_iter_mixin<owning_zip_iter<zip_types<Ts...>, Containers...>, std::tuple<Ts...>> {
     std::tuple<Containers...> owned_;
-    std::tuple<decltype(tpy::__iter__(std::declval<Containers&>()))...> iters_;
+    // Store iterators by value (not reference). __iter__() on __next__-based
+    // types (map_iter, etc.) returns Self& -- storing that reference would
+    // dangle after make_iters returns. remove_reference_t copies the iterator.
+    std::tuple<std::remove_reference_t<decltype(tpy::__iter__(std::declval<Containers&>()))>...> iters_;
 
     template<std::size_t... Is>
     auto make_iters(std::index_sequence<Is...>) {
@@ -274,6 +277,8 @@ public:
         : owned_(std::forward<Us>(cs)...),
           iters_(make_iters(std::index_sequence_for<Containers...>{})) {}
 
+    owning_zip_iter(const owning_zip_iter&) = delete;
+    owning_zip_iter& operator=(const owning_zip_iter&) = delete;
     owning_zip_iter(owning_zip_iter&&) = delete;
     owning_zip_iter& operator=(owning_zip_iter&&) = delete;
 
