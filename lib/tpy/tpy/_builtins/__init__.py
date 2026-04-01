@@ -7,4 +7,4 @@ from ._types import bool, int, float, str
 from ._list import list
 from ._dict import dict, dict_keys, dict_values, dict_items
 from ._set import set
-from ._io import TextIO, open
+from ._io import TextIO, BinaryIO, open, open_text, open_binary

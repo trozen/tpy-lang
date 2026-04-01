@@ -28,6 +28,7 @@ from ._core import (
     span, deref, take_ptr, make_default,
     copy, copy_iter, own_iter, try_parse,
 )
+from ._builtins._io import BinaryIO, open_text, open_binary
 
 type Float64 = float
 
@@ -56,4 +57,6 @@ __all__ = [
     # Functions
     "span", "deref", "take_ptr", "make_default",
     "copy", "copy_iter", "own_iter", "try_parse",
+    # I/O
+    "BinaryIO", "open_text", "open_binary",
 ]

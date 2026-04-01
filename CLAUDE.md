@@ -378,6 +378,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `own_iter.hpp` | `OwnIter<C>` drain iterator for consuming iteration over heap-backed containers |
 | `slice.hpp` | Built-in slice type for user-defined `__getitem__` overloads |
 | `math_ops.hpp` | Wrapper for two-argument `math.log(x, base)` |
+| `file.hpp` | `TextFile`, `BinaryFile` for `open()` builtin, `FileFlags` mode parsing |
 
 Generated code requires C++23 (for `std::ranges` concepts) and uses the GCC statement expression extension (`({ ... })`) for expression-level `@error_return` unwrapping. This extension is supported by GCC, Clang, and all LLVM-based compilers (Intel ICX, ARM armclang, IBM Open XL). It is not supported by MSVC.
 
@@ -392,7 +393,7 @@ Library search roots and CPython stubs:
 | `tpy/tpy/_bootstrap/` | Bootstrap layer: `_extern.py` (native, cpp_template, etc. -- compiler intrinsic stubs), `_decorators.py` (readonly, pure, Own, etc. -- decorator stubs) |
 | `tpy/tpy/_typing/` | Typing layer: `__init__.py` (Protocol, Self, Sized, Sequence, Iterator, Iterable) |
 | `tpy/tpy/_core/` | Core types: `_types.py` (protocols, primitives), `_containers.py` (Span, Array, Ptr), `_functions.py` (span, deref, copy, copy_iter, own_iter, try_parse), `_bytes_view.py` (BytesView) |
-| `tpy/tpy/_builtins/` | Builtin types and functions: `_types.py` (bool, int, float, str), `_funcs.py` (len, hash, print, isinstance, etc.), `_list.py`, `_dict.py`, `_set.py`, `_range.py`, `_bytes.py`, `_exceptions.py` |
+| `tpy/tpy/_builtins/` | Builtin types and functions: `_types.py` (bool, int, float, str), `_funcs.py` (len, hash, print, isinstance, etc.), `_list.py`, `_dict.py`, `_set.py`, `_range.py`, `_bytes.py`, `_exceptions.py`, `_io.py` (TextIO, BinaryIO, open, open_text, open_binary) |
 | `tpy/tplib/` | TPy standard library: `Box[T]`, custom collections, JSON library |
 | `tpy/tplib/json/` | JSON library: `parser.py` (JsonToken, JsonReader), `writer.py` (JsonWriter), `model.py` (@model macro -- compile-time only) |
 | `tpy/typing.py` | `typing` protocols (`Sized`, `Sequence`, etc.). Re-exports from `tpy._typing`. Implicitly compiled. |

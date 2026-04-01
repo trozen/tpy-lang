@@ -1,6 +1,6 @@
 # tpy: cpp_namespace("tpystd::builtins")
 from .._typing import overload, Literal
-from .._bootstrap._extern import native, cpp_template, builtin_type
+from .._bootstrap._extern import native, builtin_type
 from .._core._types import Int32
 
 
@@ -35,6 +35,12 @@ class BinaryIO:
     @native("read")
     def read(self) -> bytes: ...
 
+    @native("readline")
+    def readline(self) -> bytes: ...
+
+    @native("readlines")
+    def readlines(self) -> list[bytes]: ...
+
     @native("write")
     def write(self, data: bytes) -> Int32: ...
 
@@ -49,23 +55,39 @@ class BinaryIO:
 
 
 @overload
-@cpp_template("::tpy::builtin_open({0})")
+@native("tpy::builtin_open")
 def open(path: str) -> TextIO: ...
 
 @overload
-@cpp_template("::tpy::builtin_open_mode({0}, {1})")
+@native("tpy::builtin_open_mode")
 def open(path: str, mode: Literal[
     "r", "w", "a", "x", "rt", "wt", "at", "xt",
     "r+", "w+", "a+", "x+", "r+t", "w+t", "a+t", "x+t", "rt+", "wt+", "at+", "xt+",
 ]) -> TextIO: ...
 
 @overload
-@cpp_template("::tpy::builtin_open_binary({0}, {1})")
+@native("tpy::builtin_open_binary")
 def open(path: str, mode: Literal[
     "rb", "wb", "ab", "xb",
     "r+b", "w+b", "a+b", "x+b", "rb+", "wb+", "ab+", "xb+",
 ]) -> BinaryIO: ...
 
 @overload
-@cpp_template("::tpy::builtin_open_mode({0}, {1})")
+@native("tpy::builtin_open_mode")
 def open(path: str, mode: str) -> TextIO: ...
+
+@overload
+@native("tpy::builtin_open")
+def open_text(path: str) -> TextIO: ...
+
+@overload
+@native("tpy::builtin_open_mode")
+def open_text(path: str, mode: str) -> TextIO: ...
+
+@overload
+@native("tpy::builtin_open_binary")
+def open_binary(path: str) -> BinaryIO: ...
+
+@overload
+@native("tpy::builtin_open_binary")
+def open_binary(path: str, mode: str) -> BinaryIO: ...

@@ -9,7 +9,7 @@ from tpy._builtins import (
     bool, int, float, str,
     list, dict, dict_keys, dict_values, dict_items,
     set,
-    TextIO, open,
+    TextIO, BinaryIO, open, open_text, open_binary,
 )
 
 __all__ = [
@@ -25,5 +25,5 @@ __all__ = [
     "all", "any", "sum", "sorted", "bin", "hex", "oct", "enumerate", "reversed", "zip",
     "map", "filter",
     "StopIteration",
-    "TextIO", "open",
+    "TextIO", "BinaryIO", "open", "open_text", "open_binary",
 ]

@@ -18,48 +18,68 @@
 
 namespace tpy {
 
+struct FileFlags {
+    std::ios_base::openmode mode;
+    bool readable;
+    bool writable;
+
+    static const FileFlags text_read;
+    static const FileFlags binary_read;
+
+    static FileFlags parse_text(std::string_view mode) {
+        if (mode == "r" || mode == "rt")
+            return {std::ios::in, true, false};
+        if (mode == "w" || mode == "wt")
+            return {std::ios::out | std::ios::trunc, false, true};
+        if (mode == "a" || mode == "at")
+            return {std::ios::out | std::ios::app, false, true};
+        if (mode == "r+" || mode == "r+t" || mode == "rt+")
+            return {std::ios::in | std::ios::out, true, true};
+        if (mode == "w+" || mode == "w+t" || mode == "wt+")
+            return {std::ios::in | std::ios::out | std::ios::trunc, true, true};
+        if (mode == "a+" || mode == "a+t" || mode == "at+")
+            return {std::ios::in | std::ios::out | std::ios::app, true, true};
+        if (mode == "x" || mode == "xt")
+            return {std::ios::out | std::ios::trunc | std::ios::noreplace, false, true};
+        if (mode == "x+" || mode == "x+t" || mode == "xt+")
+            return {std::ios::in | std::ios::out | std::ios::trunc | std::ios::noreplace, true, true};
+        tpy_panic(("open(): unsupported mode '" + std::string(mode) + "'").c_str());
+    }
+
+    static FileFlags parse_binary(std::string_view mode) {
+        std::ios_base::openmode base = std::ios::binary;
+        if (mode == "rb")
+            return {base | std::ios::in, true, false};
+        if (mode == "wb")
+            return {base | std::ios::out | std::ios::trunc, false, true};
+        if (mode == "ab")
+            return {base | std::ios::out | std::ios::app, false, true};
+        if (mode == "r+b" || mode == "rb+")
+            return {base | std::ios::in | std::ios::out, true, true};
+        if (mode == "w+b" || mode == "wb+")
+            return {base | std::ios::in | std::ios::out | std::ios::trunc, true, true};
+        if (mode == "a+b" || mode == "ab+")
+            return {base | std::ios::in | std::ios::out | std::ios::app, true, true};
+        if (mode == "xb")
+            return {base | std::ios::out | std::ios::trunc | std::ios::noreplace, false, true};
+        if (mode == "x+b" || mode == "xb+")
+            return {base | std::ios::in | std::ios::out | std::ios::trunc | std::ios::noreplace, true, true};
+        tpy_panic(("open(): unsupported binary mode '" + std::string(mode) + "'").c_str());
+    }
+};
+
+inline const FileFlags FileFlags::text_read = {std::ios::in, true, false};
+inline const FileFlags FileFlags::binary_read = {std::ios::binary | std::ios::in, true, false};
+
 class TextFile {
     std::fstream fs_;
     std::string path_;
-    bool readable_ = false;
-    bool writable_ = false;
+    FileFlags flags_{};
     bool closed_ = false;
 
 public:
-    TextFile(std::string_view path, std::string_view mode) : path_(path) {
-        std::ios_base::openmode m{};
-        if (mode == "r" || mode == "rt") {
-            m = std::ios::in;
-            readable_ = true;
-        } else if (mode == "w" || mode == "wt") {
-            m = std::ios::out | std::ios::trunc;
-            writable_ = true;
-        } else if (mode == "a" || mode == "at") {
-            m = std::ios::out | std::ios::app;
-            writable_ = true;
-        } else if (mode == "r+" || mode == "r+t" || mode == "rt+") {
-            m = std::ios::in | std::ios::out;
-            readable_ = true;
-            writable_ = true;
-        } else if (mode == "w+" || mode == "w+t" || mode == "wt+") {
-            m = std::ios::in | std::ios::out | std::ios::trunc;
-            readable_ = true;
-            writable_ = true;
-        } else if (mode == "a+" || mode == "a+t" || mode == "at+") {
-            m = std::ios::in | std::ios::out | std::ios::app;
-            readable_ = true;
-            writable_ = true;
-        } else if (mode == "x" || mode == "xt") {
-            m = std::ios::out | std::ios::trunc | std::ios::noreplace;
-            writable_ = true;
-        } else if (mode == "x+" || mode == "x+t" || mode == "xt+") {
-            m = std::ios::in | std::ios::out | std::ios::trunc | std::ios::noreplace;
-            readable_ = true;
-            writable_ = true;
-        } else {
-            tpy_panic(("open(): unsupported mode '" + std::string(mode) + "'").c_str());
-        }
-        fs_.open(path_, m);
+    TextFile(std::string_view path, FileFlags flags) : path_(path), flags_(flags) {
+        fs_.open(path_, flags_.mode);
         if (!fs_.is_open()) {
             throw ::tpy::FileNotFoundError("open(): cannot open '" + std::string(path) + "'");
         }
@@ -71,20 +91,20 @@ public:
     TextFile& operator=(const TextFile&) = delete;
 
     std::string read() {
-        if (!readable_) tpy_panic("read(): file not opened for reading");
+        if (!flags_.readable) tpy_panic("read(): file not opened for reading");
         std::ostringstream ss;
         ss << fs_.rdbuf();
         return ss.str();
     }
 
     int32_t write(std::string_view text) {
-        if (!writable_) tpy_panic("write(): file not opened for writing");
+        if (!flags_.writable) tpy_panic("write(): file not opened for writing");
         fs_ << text;
         return static_cast<int32_t>(text.size());
     }
 
     std::string readline() {
-        if (!readable_) tpy_panic("readline(): file not opened for reading");
+        if (!flags_.readable) tpy_panic("readline(): file not opened for reading");
         std::string line;
         if (!std::getline(fs_, line)) {
             return "";
@@ -98,7 +118,7 @@ public:
     }
 
     std::vector<std::string> readlines() {
-        if (!readable_) tpy_panic("readlines(): file not opened for reading");
+        if (!flags_.readable) tpy_panic("readlines(): file not opened for reading");
         std::vector<std::string> lines;
         std::string line;
         while (std::getline(fs_, line)) {
@@ -128,45 +148,12 @@ public:
 class BinaryFile {
     std::fstream fs_;
     std::string path_;
-    bool readable_ = false;
-    bool writable_ = false;
+    FileFlags flags_{};
     bool closed_ = false;
 
 public:
-    BinaryFile(std::string_view path, std::string_view mode) : path_(path) {
-        std::ios_base::openmode m = std::ios::binary;
-        if (mode == "rb") {
-            m |= std::ios::in;
-            readable_ = true;
-        } else if (mode == "wb") {
-            m |= std::ios::out | std::ios::trunc;
-            writable_ = true;
-        } else if (mode == "ab") {
-            m |= std::ios::out | std::ios::app;
-            writable_ = true;
-        } else if (mode == "r+b" || mode == "rb+") {
-            m |= std::ios::in | std::ios::out;
-            readable_ = true;
-            writable_ = true;
-        } else if (mode == "w+b" || mode == "wb+") {
-            m |= std::ios::in | std::ios::out | std::ios::trunc;
-            readable_ = true;
-            writable_ = true;
-        } else if (mode == "a+b" || mode == "ab+") {
-            m |= std::ios::in | std::ios::out | std::ios::app;
-            readable_ = true;
-            writable_ = true;
-        } else if (mode == "xb") {
-            m |= std::ios::out | std::ios::trunc | std::ios::noreplace;
-            writable_ = true;
-        } else if (mode == "x+b" || mode == "xb+") {
-            m |= std::ios::in | std::ios::out | std::ios::trunc | std::ios::noreplace;
-            readable_ = true;
-            writable_ = true;
-        } else {
-            tpy_panic(("open(): unsupported binary mode '" + std::string(mode) + "'").c_str());
-        }
-        fs_.open(path_, m);
+    BinaryFile(std::string_view path, FileFlags flags) : path_(path), flags_(flags) {
+        fs_.open(path_, flags_.mode);
         if (!fs_.is_open()) {
             throw ::tpy::FileNotFoundError("open(): cannot open '" + std::string(path) + "'");
         }
@@ -178,15 +165,40 @@ public:
     BinaryFile& operator=(const BinaryFile&) = delete;
 
     std::vector<uint8_t> read() {
-        if (!readable_) tpy_panic("read(): file not opened for reading");
+        if (!flags_.readable) tpy_panic("read(): file not opened for reading");
         return std::vector<uint8_t>(
             std::istreambuf_iterator<char>(fs_),
             std::istreambuf_iterator<char>()
         );
     }
 
+    std::vector<uint8_t> readline() {
+        if (!flags_.readable) tpy_panic("readline(): file not opened for reading");
+        std::string line;
+        if (!std::getline(fs_, line)) {
+            return {};
+        }
+        std::vector<uint8_t> result(line.begin(), line.end());
+        if (!fs_.eof()) {
+            result.push_back('\n');
+        }
+        return result;
+    }
+
+    std::vector<std::vector<uint8_t>> readlines() {
+        if (!flags_.readable) tpy_panic("readlines(): file not opened for reading");
+        std::vector<std::vector<uint8_t>> lines;
+        std::string line;
+        while (std::getline(fs_, line)) {
+            std::vector<uint8_t> row(line.begin(), line.end());
+            if (!fs_.eof()) row.push_back('\n');
+            lines.push_back(std::move(row));
+        }
+        return lines;
+    }
+
     int32_t write(std::span<const uint8_t> data) {
-        if (!writable_) tpy_panic("write(): file not opened for writing");
+        if (!flags_.writable) tpy_panic("write(): file not opened for writing");
         fs_.write(reinterpret_cast<const char*>(data.data()),
                   static_cast<std::streamsize>(data.size()));
         return static_cast<int32_t>(data.size());
@@ -209,16 +221,18 @@ public:
     ~BinaryFile() { close(); }
 };
 
+// --- Builtin open() helpers ---
+
 inline TextFile builtin_open(std::string_view path) {
-    return TextFile(path, "r");
+    return TextFile(path, FileFlags::text_read);
 }
 
 inline TextFile builtin_open_mode(std::string_view path, std::string_view mode) {
-    return TextFile(path, mode);
+    return TextFile(path, FileFlags::parse_text(mode));
 }
 
-inline BinaryFile builtin_open_binary(std::string_view path, std::string_view mode) {
-    return BinaryFile(path, mode);
+inline BinaryFile builtin_open_binary(std::string_view path, std::string_view mode = "rb") {
+    return BinaryFile(path, FileFlags::parse_binary(mode));
 }
 
 } // namespace tpy
