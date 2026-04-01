@@ -52,6 +52,9 @@ namespace tpyapp::main {
 struct Counter;
 struct Box;
 struct SortableBox;
+struct Inner;
+struct Outer;
+struct WithOpt;
 struct Valued;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -136,8 +139,8 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 // # self.field.method() -- calling a non-readonly method on a field IS self-mutation.
-// # The receiver is self.items (a field access), not self directly, so mutation is
-// # recorded immediately rather than going through the call-edge propagation path.
+// # Deferred to Phase 2 via receiver_is_self call edge; Phase 2 marks self as
+// # mutated because list.sort/append have unknown (conservative) mutation status.
 // class SortableBox:
 struct SortableBox {
     // items: list[Int32]
@@ -170,6 +173,112 @@ struct SortableBox {
 inline std::ostream& operator<<(std::ostream& os, const SortableBox& obj) {
     os << "SortableBox("
        << "items=" << ::tpy::ListPrinter(obj.items)
+       << ")";
+    return os;
+}
+
+// # self.field.method() -- readonly method on a field is deferred to Phase 2
+// # and correctly resolved as non-mutating. Both direct field access and
+// # for-each iteration over fields are covered.
+// class Inner:
+struct Inner {
+    // value: Int32
+    int32_t value;
+
+    // def __init__(self, v: Int32) -> None:
+    Inner() = default;
+    explicit Inner(int32_t v) : value(v) {}
+
+    // def get(self) -> Int32:
+    int32_t get() const {
+        // return self.value
+        return this->value;
+    }
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
+    os << "Inner("
+       << "value=" << obj.value
+       << ")";
+    return os;
+}
+
+// class Outer:
+struct Outer {
+    // items: list[Inner]
+    std::vector<Inner> items;
+    // extra: Inner
+    Inner extra;
+
+    // def __init__(self) -> None:
+    Outer() : items({Inner(1), Inner(2)}), extra(Inner(3)) {}
+
+    // def sum_items(self) -> Int32:                  # for-each + readonly method -- inferred const
+    int32_t sum_items() const {
+        // total = 0
+        int32_t total = 0;
+        // for item in self.items:
+        auto& __obj_0 = this->items;
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            auto&& item = *__beg_0;
+            // total += item.get()
+            total = ::tpy::add_check<int32_t>(total, item.get());
+        }
+        // return total
+        return total;
+    }
+
+    // def get_extra(self) -> Int32:                  # field.method() readonly -- inferred const
+    int32_t get_extra() const {
+        // return self.extra.get()
+        return this->extra.get();
+    }
+
+    // def mutate_extra(self) -> None:                # field.method() mutating -- must NOT be const
+    void mutate_extra() {
+        // self.items.append(Inner(4))
+        this->items.push_back(Inner(4));
+    }
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
+    os << "Outer("
+       << "items=" << ::tpy::ListPrinter(obj.items)
+       << ", "
+       << "extra=" << obj.extra
+       << ")";
+    return os;
+}
+
+// # Optional[UserType] field: const inference + codegen const propagation for
+// # optional_to_ptr narrowing in const methods.
+// class WithOpt:
+struct WithOpt {
+    // child: Optional[Inner]
+    std::optional<Inner> child;
+
+    // def __init__(self) -> None:
+    WithOpt() : child(Inner(5)) {}
+
+    // def get_child_value(self) -> Int32:            # Optional field + readonly -- inferred const
+    int32_t get_child_value() const {
+        // c = self.child
+        const Inner* c = ::tpy::optional_to_ptr(this->child);
+        // if c is not None:
+        if ((c != nullptr)) {
+            // return c.get()
+            return c->get();
+        }
+        // return 0
+        return 0;
+    }
+};
+
+inline std::ostream& operator<<(std::ostream& os, const WithOpt& obj) {
+    os << "WithOpt("
+       << "child=" << ::tpy::print_optional_val(obj.child)
        << ")";
     return os;
 }

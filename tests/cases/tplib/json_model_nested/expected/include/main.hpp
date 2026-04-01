@@ -656,7 +656,7 @@ struct Profile {
         return Profile::__json_decode__(__reader);
     }
 
-    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) {
+    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
         __writer.object_start();
         __writer.key("name");
         __writer.write_str(this->name);
@@ -765,9 +765,9 @@ struct Profile {
             __writer.write_null();
         }
         __writer.key("alt_address");
-        Address* __opt_alt_address = ::tpy::optional_to_ptr(this->alt_address);
+        const Address* __opt_alt_address = ::tpy::optional_to_ptr(this->alt_address);
         if ((__opt_alt_address != nullptr)) {
-            Address& __val_alt_address = (*__opt_alt_address);
+            const Address& __val_alt_address = (*__opt_alt_address);
             __val_alt_address.__json_encode__(__writer);
         } else {
             __writer.write_null();
@@ -783,7 +783,7 @@ struct Profile {
         __writer.object_end();
     }
 
-    std::string to_json() {
+    std::string to_json() const {
         ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter();
         __json_encode__(__writer);
         return __writer.finish();

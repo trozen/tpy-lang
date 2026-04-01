@@ -156,7 +156,7 @@ struct Event {
         return Event::__json_decode__(__reader);
     }
 
-    void __json_encode__(::tpystd::tplib::json::JsonWriter& __writer) {
+    void __json_encode__(::tpystd::tplib::json::JsonWriter& __writer) const {
         __writer.object_start();
         __writer.key("name");
         __writer.write_str(this->name);
@@ -165,7 +165,7 @@ struct Event {
         __writer.object_end();
     }
 
-    std::string to_json() {
+    std::string to_json() const {
         ::tpystd::tplib::json::JsonWriter __writer = ::tpystd::tplib::json::JsonWriter();
         __json_encode__(__writer);
         return __writer.finish();
@@ -304,7 +304,7 @@ struct Schedule {
         return Schedule::__json_decode__(__reader);
     }
 
-    void __json_encode__(::tpystd::tplib::json::JsonWriter& __writer) {
+    void __json_encode__(::tpystd::tplib::json::JsonWriter& __writer) const {
         __writer.object_start();
         __writer.key("events");
         __writer.array_start();
@@ -319,9 +319,9 @@ struct Schedule {
         __writer.key("default_duration");
         this->default_duration.__json_encode__(__writer);
         __writer.key("deadline");
-        Seconds* __opt_deadline = ::tpy::optional_to_ptr(this->deadline);
+        const Seconds* __opt_deadline = ::tpy::optional_to_ptr(this->deadline);
         if ((__opt_deadline != nullptr)) {
-            Seconds& __val_deadline = (*__opt_deadline);
+            const Seconds& __val_deadline = (*__opt_deadline);
             __val_deadline.__json_encode__(__writer);
         } else {
             __writer.write_null();
@@ -329,7 +329,7 @@ struct Schedule {
         __writer.object_end();
     }
 
-    std::string to_json() {
+    std::string to_json() const {
         ::tpystd::tplib::json::JsonWriter __writer = ::tpystd::tplib::json::JsonWriter();
         __json_encode__(__writer);
         return __writer.finish();

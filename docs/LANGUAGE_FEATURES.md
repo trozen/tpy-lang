@@ -2937,8 +2937,8 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   - Protocol concept generation: user-defined protocols where all methods are readonly generate `const T&` in C++ concepts
   - Deep readonly for pointers: accessing a `Ptr[T]` field through a readonly receiver yields `Ptr[readonly[T]]`, preventing mutation through pointer fields
 - **Working**: Const method auto-inference -- methods that never mutate `self` are automatically emitted as `const` C++ member functions without requiring an explicit `@readonly` annotation
-  - Phase 1 tracks whether each method directly writes to `self` (field writes, subscript writes, non-readonly method calls on `self` or `self.field`)
-  - Phase 2 propagates `self_mutated` through the call graph: if `increment_twice()` calls `self.increment()` and `increment()` mutates self, `increment_twice()` is also considered self-mutating
+  - Phase 1 tracks whether each method directly writes to `self` (field writes, subscript writes)
+  - Phase 2 propagates `self_mutated` through the call graph via call edges: `self.method()`, `self.field.method()`, and for-each iteration over self fields are all deferred to Phase 2, which only marks self as mutated when the callee actually mutates its self
   - Post-pass (`infer_method_const`) marks all non-self-mutating methods as `is_readonly`, and the codegen sync pass copies the flag to AST nodes
   - Exceptions: `__init__`, `__del__`, in-place operators, consuming methods (`Own[Self]` receiver), and methods that override non-const C++ virtuals from `@dynamic` protocols are never inferred const
   - `@readonly(False)` opts out of const inference for a specific method

@@ -810,6 +810,11 @@ class StatementGenerator:
         if isinstance(init_type, OptionalType) and init_type.uses_pointer_repr():
             if isinstance(init, TpyFieldAccess):
                 if not self.ctx.is_rvalue_source(init):
+                    # In const methods, field access yields const ref; propagate const
+                    # to the narrowed pointer so downstream dereferences are also const.
+                    if not const_pfx and self._is_const_union_source(init):
+                        const_pfx = "const "
+                        self.ctx.const_indirect_locals.add(name)
                     init_expr = self.expressions.gen_expr(init, target_type)
                     return f"{indent}{const_pfx}{cpp_type}* {name} = ::tpy::optional_to_ptr({init_expr});\n"
                 # rvalue field: fall through to rvalue path

@@ -38,6 +38,20 @@ void main() {
     sb.sort_items();
     // print(sb.get_first())
     std::cout << sb.get_first() << "\n";
+    // o = Outer()
+    Outer o = Outer();
+    // print(o.sum_items())
+    std::cout << o.sum_items() << "\n";
+    // print(o.get_extra())
+    std::cout << o.get_extra() << "\n";
+    // o.mutate_extra()
+    o.mutate_extra();
+    // print(o.sum_items())
+    std::cout << o.sum_items() << "\n";
+    // wo = WithOpt()
+    WithOpt wo = WithOpt();
+    // print(wo.get_child_value())
+    std::cout << wo.get_child_value() << "\n";
     // show(Valued(7))
     Valued __tmp_1{Valued(7)};
     show(__tmp_1);

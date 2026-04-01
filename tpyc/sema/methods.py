@@ -70,6 +70,37 @@ def _contains_type_param_ref_type(typ: TpyType, param_names: set[str]) -> bool:
     return False
 
 
+def _is_self_call_deferred(
+    expr_obj: 'TpyExpr', obj_root: str | None,
+    loop_var_iterable: dict[str, str],
+) -> bool:
+    """Check if a method call receiver traces to self through field accesses or loop vars.
+
+    When True, self-mutation is deferred to Phase 2 via call edges
+    (receiver_is_self=True) instead of being marked directly in Phase 1.
+    This enables readonly inference for methods that call non-mutating
+    methods on fields or loop elements.
+    """
+    if obj_root == "self":
+        # Verify the chain is purely field accesses (no subscripts like
+        # self.items[0].method()). _root_name_of_expr strips both FieldAccess
+        # and Subscript, so obj_root=="self" doesn't rule out subscripts.
+        # Subscript-rooted calls are not deferred because the call edge in
+        # calls.py also only walks TpyFieldAccess.
+        chain = expr_obj
+        while isinstance(chain, TpyFieldAccess):
+            chain = chain.obj
+        return isinstance(chain, TpyName) and chain.name == "self"
+    if obj_root is not None:
+        # loop_var.method() where loop_var iterates over self.field
+        iterable = loop_var_iterable.get(obj_root)
+        if iterable is not None:
+            root = iterable.split(".")[0] if "." in iterable else iterable
+            if root == "self":
+                return True
+    return False
+
+
 def _unresolved_params_in_type(typ: TpyType, inferred: dict[str, TpyType], param_names: set[str]) -> list[str]:
     """Return list of type param names that appear in typ but are not yet in inferred."""
     result: list[str] = []
@@ -617,23 +648,33 @@ class MethodAnalyzer:
                 info = expr.resolved_function_info
                 if info is not None and not info.is_readonly:
                     from .statements import _root_name_of_expr
-                    from ..parse.nodes import TpyName as _TpyName, TpyMethodCall as _TpyMethodCall
+                    from ..parse.nodes import (
+                        TpyName as _TpyName, TpyMethodCall as _TpyMethodCall,
+                        TpyFieldAccess as _TpyFieldAccess,
+                    )
                     obj_root = _root_name_of_expr(expr.obj)
                     if obj_root is not None:
                         self.ctx.mark_loop_var_mutated(obj_root)
-                        # For direct self.method() calls (expr.obj is exactly
-                        # TpyName("self")), use call edges with receiver_is_self=True
-                        # so Phase 2 can resolve transitively. For indirect cases
-                        # like self.field.method(), mark self-mutation directly --
-                        # mutating a field IS self-mutation and there is no callee
-                        # self-mutation to propagate.
                         is_direct_self_call = (
                             isinstance(expr.obj, _TpyName) and expr.obj.name == "self"
                         )
-                        if not is_direct_self_call:
-                            self.ctx.mark_param_mutated(obj_root)
-                            # Structural mutation: non-readonly methods that can
-                            # invalidate iterators/references (not @native_preserves_refs).
+                        if is_direct_self_call:
+                            # self.method() -- entirely deferred to call edges
+                            pass
+                        else:
+                            # For self.field.method() and loop_var.method() (where the
+                            # loop var iterates over a self field), defer self-mutation
+                            # to Phase 2 via call edges (receiver_is_self=True, recorded
+                            # by _record_mutation_call_edges). Phase 2 only sets
+                            # self_mutated when the callee actually mutates its self,
+                            # enabling readonly inference for methods like __json_encode__
+                            # that call non-mutating methods on fields.
+                            self_deferred = _is_self_call_deferred(
+                                expr.obj, obj_root, self.ctx.loop_var_iterable)
+                            if not self_deferred:
+                                self.ctx.mark_param_mutated(obj_root)
+                            # Structural mutation tracked directly (Phase 2 doesn't
+                            # propagate structural self-mutation through call edges).
                             if self._is_invalidating_method(obj_type, expr.method):
                                 self.ctx.mark_param_structurally_mutated(obj_root)
                         storage = self.ctx.borrow_tracker.effective_storage(obj_root)

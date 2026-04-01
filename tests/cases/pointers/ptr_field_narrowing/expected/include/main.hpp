@@ -67,7 +67,7 @@ struct Container {
     }
 
     // def call_if_present(self) -> Int32:
-    int32_t call_if_present() {
+    int32_t call_if_present() const {
         // if self.node is not None:
         if ((this->node != nullptr)) {
             // return self.node.get_value()  # tpyc: non_null(self.node)
@@ -145,7 +145,7 @@ struct Wrapper {
 
     // # Method call on nested field invalidates its sub-path narrowing
     // def read_after_inner_mutate(self) -> Int32:
-    int32_t read_after_inner_mutate() {
+    int32_t read_after_inner_mutate() const {
         // if self.inner.node is not None:
         if ((this->inner.node != nullptr)) {
             // self.inner.mutate()

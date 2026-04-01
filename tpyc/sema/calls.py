@@ -1546,16 +1546,25 @@ class CallAnalyzer:
         name_to_idx = self.ctx.current_param_name_to_idx
         rebound = self.ctx.current_rebound_params
 
-        # Detect self.method() or self.<field>.method() receiver so Phase 2
-        # can propagate self-mutation (mutating a field's value mutates self).
+        # Detect receivers rooted at self so Phase 2 can propagate self-mutation.
+        # Covers: self.method(), self.field.method(), and loop_var.method()
+        # where loop_var iterates over a self field.
         receiver_is_self = False
         if isinstance(expr, TpyMethodCall):
             obj = expr.obj
             # Walk through field access chain to find self at the root
             while isinstance(obj, TpyFieldAccess):
                 obj = obj.obj
-            if isinstance(obj, TpyName) and obj.name == "self":
-                receiver_is_self = True
+            if isinstance(obj, TpyName):
+                if obj.name == "self":
+                    receiver_is_self = True
+                else:
+                    # Loop variable iterating over self.field
+                    iterable = self.ctx.loop_var_iterable.get(obj.name)
+                    if iterable is not None:
+                        root = iterable.split(".")[0] if "." in iterable else iterable
+                        if root == "self":
+                            receiver_is_self = True
 
         # Nothing to record if no params flow through and no self-call
         if not name_to_idx and not receiver_is_self:
