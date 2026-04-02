@@ -346,9 +346,15 @@ class FieldInfo:
             _internal=fld,
         )
 
-    def set_default(self, expr: TpyExpr | None, default_value: str | None = None,
+    def set_default(self, expr: TpyExpr | int | float | str | bool | None,
+                    default_value: str | None = None,
                     is_factory: bool = False) -> None:
-        """Replace this field's default expression (updates the underlying record)."""
+        """Replace this field's default expression (updates the underlying record).
+
+        Accepts plain Python values (from unwrapped macro kwargs) and wraps
+        them in TpyExpr nodes automatically.
+        """
+        expr = _wrap_literal(expr)
         self.default_expr = expr
         self.has_default = expr is not None
         self.is_factory_default = is_factory
@@ -359,7 +365,13 @@ class FieldInfo:
 
     def clear_default(self) -> None:
         """Remove the field's default (e.g. after unwrapping a descriptor)."""
-        self.set_default(None)
+        self.default_expr = None
+        self.has_default = False
+        self.is_factory_default = False
+        if self._internal is not None:
+            self._internal.default_expr = None
+            self._internal.default_value = None
+            self._internal.is_factory_default = False
 
     def to_internal(self) -> InternalFieldInfo:
         """Return the underlying compiler FieldInfo."""
@@ -1012,8 +1024,28 @@ types = TypeBuilder()
 # AST builder helpers for common macro patterns
 # ---------------------------------------------------------------------------
 
-def expr_to_cpp_default(expr: TpyExpr) -> str | None:
-    """Convert a TpyExpr to a C++ default value literal string, or None."""
+def _wrap_literal(value: object) -> TpyExpr | None:
+    """Wrap a plain Python value in a TpyExpr node. Pass through TpyExpr unchanged."""
+    if isinstance(value, TpyExpr):
+        return value
+    if value is None:
+        return TpyNoneLiteral()
+    if isinstance(value, bool):
+        return TpyBoolLiteral(value=value)
+    if isinstance(value, int):
+        return TpyIntLiteral(value=value)
+    if isinstance(value, float):
+        return TpyFloatLiteral(value=value)
+    if isinstance(value, str):
+        return TpyStrLiteral(value=value)
+    return value  # non-literal (e.g. factory callable)
+
+
+def expr_to_cpp_default(expr: TpyExpr | int | float | str | bool | None) -> str | None:
+    """Convert a TpyExpr or plain value to a C++ default value literal string, or None."""
+    # Normalize plain Python values to TpyExpr first
+    if not isinstance(expr, TpyExpr) and expr is not None:
+        expr = _wrap_literal(expr)
     if isinstance(expr, TpyIntLiteral):
         return str(expr.value)
     if isinstance(expr, TpyFloatLiteral):

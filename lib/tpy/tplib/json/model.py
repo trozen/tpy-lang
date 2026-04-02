@@ -87,22 +87,12 @@ _MISSING = object()
 
 
 class Field:
-    """Descriptor returned by field(). Inspected by @model macro.
-
-    Note: in the compiler path, kwargs arrive as TpyExpr AST nodes.
-    alias is unwrapped to a plain string here; default/default_factory
-    are kept as AST nodes for set_default/expr_to_cpp_default.
-    """
+    """Descriptor returned by field(). Inspected by @model macro."""
 
     def __init__(self, *, alias=_MISSING, default=_MISSING, default_factory=_MISSING):
         if default is not _MISSING and default_factory is not _MISSING:
             raise TypeError("cannot specify both 'default' and 'default_factory'")
-        if alias is _MISSING:
-            self.alias = None
-        elif isinstance(alias, str):
-            self.alias = alias  # CPython path
-        else:
-            self.alias = alias.value  # compiler path: TpyStrLiteral
+        self.alias = None if alias is _MISSING else alias
         self.default = default
         self.default_factory = default_factory
 

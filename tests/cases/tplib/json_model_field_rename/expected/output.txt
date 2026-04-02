@@ -1,7 +1,7 @@
 {"firstName": "Alice", "lastName": "Smith", "age": 30}
 Bob Jones 25
 True
-{"lbl": "none", "score": 0}
-hi 7
+{"lbl": "none", "note": null, "score": 0}
+hi None 7
 {"id": 42, "label": "hello"}
 99 world

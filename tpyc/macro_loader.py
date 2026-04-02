@@ -110,9 +110,23 @@ def call_macro_field_function(
         raise SemanticError(
             f"{func_name}() does not accept positional arguments", loc)
 
-    # Pass TpyExpr kwargs directly -- the function stores them as-is
+    # Unwrap literal kwargs to plain Python values so macro field functions
+    # see the same types in both compiler and CPython paths.
+    from .parse import (
+        TpyStrLiteral, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral,
+    )
+    kwargs = {}
+    for k, v in call.kwargs.items():
+        if isinstance(v, TpyBoolLiteral):
+            kwargs[k] = v.value
+        elif isinstance(v, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral)):
+            kwargs[k] = v.value
+        elif isinstance(v, TpyNoneLiteral):
+            kwargs[k] = None
+        else:
+            kwargs[k] = v  # non-literal (e.g. TpyName for default_factory)
     try:
-        return func(**call.kwargs)
+        return func(**kwargs)
     except TypeError as e:
         raise SemanticError(f"{func_name}(): {e}", loc) from e
 

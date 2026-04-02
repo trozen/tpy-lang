@@ -23,15 +23,15 @@ void main() {
     User u3 = User::from_json(u.to_json());
     // print(u == u3)
     std::cout << ::tpy::print_bool((u == u3)) << "\n";
-    // # Alias with default
+    // # Alias with default, field(default=None)
     // w = WithDefault()
     WithDefault w = WithDefault();
     // print(w.to_json())
     std::cout << w.to_json() << "\n";
     // w2 = WithDefault.from_json('{"lbl": "hi", "score": 7}')
     WithDefault w2 = WithDefault::from_json("{\"lbl\": \"hi\", \"score\": 7}");
-    // print(w2.label, w2.score)
-    std::cout << w2.label << " " << w2.score << "\n";
+    // print(w2.label, w2.note, w2.score)
+    std::cout << w2.label << " " << ::tpy::print_optional_val(w2.note) << " " << w2.score << "\n";
     // # Inherited alias
     // e = Extended(42, "hello")
     Extended e = Extended(42, "hello");
