@@ -993,9 +993,7 @@ class TpyRecord:
     linkage: RecordLinkage = RecordLinkage.DEFAULT
     native_name: str | None = None
     is_nocopy: bool = False
-    is_dataclass: bool = False
     is_frozen: bool = False
-    is_ordered: bool = False
     builtin_type_key: str | None = None
     pending_macros: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
     loc: SourceLocation | None = None

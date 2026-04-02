@@ -448,9 +448,9 @@ class RecordGenerator:
         elif has_repr:
             out.write(f"{INDENT}os << obj.__repr__();\n")
         else:
-            # For dataclass children, include parent + own fields
-            if record_info and record_info.is_dataclass and record_info.dataclass_fields:
-                print_fields = record_info.dataclass_fields
+            # For records with match_args (macro records), include inherited fields
+            if record_info and record_info.match_args is not None:
+                print_fields = self.ctx.analyzer.registry.get_all_fields(record_info)
             else:
                 print_fields = record.fields
             self._write_field_format(out, print_fields, record.name,

@@ -9,11 +9,14 @@ from tpyc.macro_api import (
     ClassInfo, FieldInfo, TypeInfo, CallMacroContext, MacroArg, MacroError,
     class_macro, call_macro,
     build_init, build_eq, build_repr, build_hash, build_order,
-    expr_to_cpp_default,
-    ast, types, Expr, Stmt, Function, Type,
+    expr_to_cpp_default, ast, types, Expr, Stmt, Function, Type,
 )
 
 _MISSING = object()
+
+# Module-level registry: tracks which records were built by @dataclass.
+# Class macro writes here; call macros (asdict/astuple) read it.
+_dataclass_records: set[str] = set()
 
 
 class Field:
@@ -36,17 +39,19 @@ def field(*, default=_MISSING, default_factory=_MISSING) -> Field:
 @class_macro
 def dataclass(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> None:
     """Transform a class into a dataclass with auto-generated methods."""
-    cls.is_dataclass = True
     cls.is_frozen = frozen
-    cls.is_ordered = order
 
     _process_field_defaults(cls)
 
-    parent_fields = cls.get_parent_fields()
+    # Only inherit fields from parent @dataclass records
+    parent_name = cls.parent.name if cls.parent else None
+    if parent_name and parent_name in _dataclass_records:
+        parent_fields = cls.get_parent_fields()
+        _validate_frozen_consistency(cls, frozen)
+    else:
+        parent_fields = []
     all_fields = parent_fields + cls.fields
-
-    # Validate frozen consistency with parent
-    _validate_frozen_consistency(cls, frozen)
+    has_parent = len(parent_fields) > 0
 
     # Synthesize __init__
     if cls.has_method("__init__"):
@@ -74,21 +79,27 @@ def dataclass(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> N
             )
         else:
             eq_fn = build_eq(cls, all_fields)
+            eq_fn.hides_parent = has_parent
             cls.add_method(eq_fn)
 
     # Generate __repr__
     if all_fields and not cls.has_method("__repr__"):
-        cls.add_method(build_repr(cls, all_fields))
+        repr_fn = build_repr(cls, all_fields)
+        repr_fn.hides_parent = has_parent
+        cls.add_method(repr_fn)
 
     # Generate __hash__ for frozen dataclasses
     if frozen and all_fields and not cls.has_method("__hash__"):
-        cls.add_method(build_hash(cls, all_fields))
+        hash_fn = build_hash(cls, all_fields)
+        hash_fn.hides_parent = has_parent
+        cls.add_method(hash_fn)
 
     # Generate ordering methods
     if order and all_fields:
-        _synthesize_order_methods(cls, all_fields)
+        _synthesize_order_methods(cls, all_fields, has_parent)
 
-    cls.set_dataclass_fields(all_fields)
+    cls.set_match_args([f.name for f in all_fields])
+    _dataclass_records.add(cls.name)
 
 
 def _process_field_defaults(cls: ClassInfo) -> None:
@@ -144,7 +155,9 @@ def _validate_field_order(cls: ClassInfo, all_fields: list[FieldInfo]) -> None:
             )
 
 
-def _synthesize_order_methods(cls: ClassInfo, all_fields: list[FieldInfo]) -> None:
+def _synthesize_order_methods(
+    cls: ClassInfo, all_fields: list[FieldInfo], has_parent: bool,
+) -> None:
     """Add ordering methods for @dataclass(order=True)."""
     order_dunders = ("__lt__", "__le__", "__gt__", "__ge__")
     for dunder in order_dunders:
@@ -154,6 +167,7 @@ def _synthesize_order_methods(cls: ClassInfo, all_fields: list[FieldInfo]) -> No
                 f"defined in class '{cls.name}'"
             )
     for fn in build_order(cls, all_fields):
+        fn.hides_parent = has_parent
         cls.add_method(fn)
 
 
@@ -169,7 +183,7 @@ def asdict(ctx: CallMacroContext, obj: MacroArg) -> Expr:
 
 def _has_dc(ctx: CallMacroContext, type_info: TypeInfo) -> bool:
     """Check if a type contains dataclass instances needing recursion."""
-    if type_info.is_record and ctx.is_dataclass(type_info.name):
+    if type_info.is_record and type_info.name in _dataclass_records:
         return True
     # Check dict/tuple before iterable -- iterating a dict yields keys,
     # which would incorrectly match dict[DC_Key, V] as list[DC_Key].
@@ -193,7 +207,7 @@ def _value_transform(
     dc_fn: called for direct dataclass fields (e.g. _build_asdict or _build_astuple)
     value_fn: called recursively for nested elements (e.g. _asdict_value or _astuple_value)
     """
-    if fld_type.is_record and ctx.is_dataclass(fld_type.name):
+    if fld_type.is_record and fld_type.name in _dataclass_records:
         return dc_fn(ctx, access, fld_type)
     # dict/tuple before iterable (see _has_dc comment)
     if fld_type.is_dict and len(fld_type.type_args) == 2:
@@ -249,9 +263,9 @@ def _asdict_value(ctx: CallMacroContext, access: Expr, fld_type: TypeInfo) -> Ex
 
 
 def _build_asdict(ctx: CallMacroContext, expr: Expr, type_info: TypeInfo) -> Expr:
-    fields = ctx.get_record_fields(type_info.name)
-    if fields is None:
+    if type_info.name not in _dataclass_records:
         raise MacroError(f"asdict() requires a @dataclass instance, got '{type_info.name}'")
+    fields = ctx.get_record_fields(type_info.name)
     keys = []
     values = []
     value_tpy_types = []
@@ -276,7 +290,7 @@ def _build_asdict(ctx: CallMacroContext, expr: Expr, type_info: TypeInfo) -> Exp
 def _asdict_result_type(ctx: CallMacroContext, type_info: TypeInfo) -> Type:
     """Compute the result type for a field in asdict expansion."""
     # Direct dataclass
-    if type_info.is_record and ctx.is_dataclass(type_info.name):
+    if type_info.is_record and type_info.name in _dataclass_records:
         fields = ctx.get_record_fields(type_info.name)
         if fields is None:
             return type_info.raw_type
@@ -314,9 +328,9 @@ def astuple(ctx: CallMacroContext, obj: MacroArg) -> Expr:
 def _build_astuple(ctx: CallMacroContext, expr: Expr, type_info: TypeInfo) -> Expr:
     # Result type is inferred by sema from the element types;
     # no explicit type annotation needed (unlike _build_asdict for mixed fields).
-    fields = ctx.get_record_fields(type_info.name)
-    if fields is None:
+    if type_info.name not in _dataclass_records:
         raise MacroError(f"astuple() requires a @dataclass instance, got '{type_info.name}'")
+    fields = ctx.get_record_fields(type_info.name)
     elements = []
     for fld in fields:
         access = ast.field_access(expr, fld.name)

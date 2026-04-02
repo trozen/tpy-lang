@@ -1,1 +1,1 @@
-main.py:12: error: Field 'r' in @dataclass 'Bad' uses default_factory but type 'Rigid' is not default-constructible
+main.py:12: error: Field 'r' in 'Bad' uses default_factory but type 'Rigid' is not default-constructible

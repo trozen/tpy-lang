@@ -307,10 +307,6 @@ class TypeRegistrar:
             if fld.default_expr is not None and not fld.is_factory_default:
                 _validate_const_field_default(fld.default_expr, fld.loc)
 
-        # Collect inherited fields from parent @dataclass (for RecordInfo)
-        parent_dc_fields = self._get_parent_dataclass_fields(record)
-        all_dc_fields = parent_dc_fields + record.fields
-
         init_params = []
         if record.init_method:
             init_defaults = record.init_method.defaults
@@ -592,8 +588,14 @@ class TypeRegistrar:
                     copy_loc,
                 )
 
-        # Don't classify bases here - defer to validate_record_inheritance
-        # (so forward-referenced protocols are properly recognized)
+        # Set provisional parent from bases (for get_all_fields during macro execution).
+        # Full validation (protocols, circular check) is deferred to validate_record_inheritance.
+        provisional_parent = None
+        for base in record.bases:
+            if isinstance(base, NamedType) and self.ctx.registry.get_record(base.name) is not None:
+                provisional_parent = base
+                break
+
         info = RecordInfo(
             name=record.name,
             fields=record.fields,
@@ -603,21 +605,19 @@ class TypeRegistrar:
             type_params=record.type_params,
             type_param_kinds=record.type_param_kinds,
             type_param_bounds=record.type_param_bounds,
-            parent=None,
+            parent=provisional_parent,
             implemented_protocols=[],
             native_name=ensure_qualified(record.native_name) if record.native_name else None,
             is_native=is_native,
             is_native_c=is_native_c,
             is_nocopy=record.is_nocopy,
-            is_dataclass=record.is_dataclass,
-            dataclass_fields=(
-                record._macro_cls_info.get_dataclass_fields()
+            match_args=(
+                record._macro_cls_info.get_match_args()
                 if hasattr(record, '_macro_cls_info') and record._macro_cls_info is not None
-                   and record._macro_cls_info.get_dataclass_fields() is not None
-                else all_dc_fields
+                   and record._macro_cls_info.get_match_args() is not None
+                else None
             ),
             is_frozen=record.is_frozen,
-            is_ordered=record.is_ordered,
             has_del=record.del_method is not None,
             has_copy=has_copy,
             builtin_type_key=record.builtin_type_key,
@@ -943,13 +943,6 @@ class TypeRegistrar:
         if not parent_info:
             return
 
-        # Synthesized dataclass methods intentionally hide parent versions
-        skip_dc: set[str] = set()
-        if record_info.is_dataclass:
-            skip_dc = {"__eq__", "__hash__", "__repr__"}
-        if record_info.is_ordered:
-            skip_dc.update({"__lt__", "__le__", "__gt__", "__ge__"})
-
         # Methods explicitly marked as hiding parent versions
         hides = {m.name for m in record.methods if m.hides_parent}
 
@@ -957,8 +950,6 @@ class TypeRegistrar:
         for method_name in record_info.methods:
             if method_name in ("__init__", "__del__"):
                 continue  # constructor/destructor hiding is expected
-            if method_name in skip_dc:
-                continue
             if skip_names and method_name in skip_names:
                 continue  # @override methods are checked (with better messages) separately
             if method_name in hides:
@@ -1059,22 +1050,6 @@ class TypeRegistrar:
             validate_and_call_macro(macro_fn, cls_info, kwargs, qname, record.loc)
             cls_info.apply_to_record()
             record._macro_cls_info = cls_info  # type: ignore[attr-defined]
-
-    def _get_parent_dataclass_fields(self, record: TpyRecord) -> list[FieldInfo]:
-        """Get inherited fields from parent @dataclass chain.
-
-        Returns parent's full dataclass_fields (including grandparent fields),
-        or empty list if no parent is a @dataclass.
-        """
-        if not record.is_dataclass:
-            return []
-        for base in record.bases:
-            if not isinstance(base, NamedType):
-                continue
-            parent_info = self.ctx.registry.get_record(base.name)
-            if parent_info is not None and parent_info.is_dataclass:
-                return list(parent_info.dataclass_fields)
-        return []
 
     def _is_inheritable_builtin(self, typ: TpyType) -> bool:
         """Check if a type is a builtin type that can be inherited from."""

@@ -642,6 +642,9 @@ def _build_to_json(cls: ClassInfo) -> Function:
 # class_name -> {field_name: json_key} for alias persistence across inheritance
 _aliases: dict[str, dict[str, str]] = {}
 
+# Tracks which records were built by @model (for parent field inheritance)
+_model_records: set[str] = set()
+
 
 def _json_key(cls_name: str, fld: FieldInfo) -> str:
     """Get the JSON key for a field (alias if set, otherwise field name)."""
@@ -683,18 +686,21 @@ def _process_fields(cls: ClassInfo) -> None:
 def model(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> None:
     """Transform a class into a JSON-serializable model with @dataclass behavior."""
     # Apply @dataclass behavior
-    cls.is_dataclass = True
     cls.is_frozen = frozen
-    cls.is_ordered = order
 
     _process_fields(cls)
 
-    parent_fields = cls.get_parent_fields()
+    # Only inherit fields from parent @model records
+    parent_name = cls.parent.name if cls.parent else None
+    if parent_name and parent_name in _model_records:
+        parent_fields = cls.get_parent_fields()
+    else:
+        parent_fields = []
     all_fields = parent_fields + cls.fields
+    has_parent = len(parent_fields) > 0
 
     # Inherit parent aliases into this class's alias map
     if parent_fields:
-        parent_name = cls.parent.name if cls.parent else None
         if parent_name and parent_name in _aliases:
             if cls.name not in _aliases:
                 _aliases[cls.name] = {}
@@ -724,15 +730,20 @@ def model(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> None:
     # Generate __eq__
     if not cls.has_method("__eq__"):
         eq_fn = build_eq(cls, all_fields)
+        eq_fn.hides_parent = has_parent
         cls.add_method(eq_fn)
 
     # Generate __repr__
     if not cls.has_method("__repr__"):
-        cls.add_method(build_repr(cls, all_fields))
+        repr_fn = build_repr(cls, all_fields)
+        repr_fn.hides_parent = has_parent
+        cls.add_method(repr_fn)
 
     # Generate __hash__ for frozen models
     if frozen and not cls.has_method("__hash__"):
-        cls.add_method(build_hash(cls, all_fields))
+        hash_fn = build_hash(cls, all_fields)
+        hash_fn.hides_parent = has_parent
+        cls.add_method(hash_fn)
 
     # Generate ordering methods
     if order and all_fields:
@@ -743,12 +754,12 @@ def model(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> None:
                     f"defined in class '{cls.name}'"
                 )
         for fn in build_order(cls, all_fields):
+            fn.hides_parent = has_parent
             cls.add_method(fn)
 
-    cls.set_dataclass_fields(all_fields)
+    cls.set_match_args([f.name for f in all_fields])
+    _model_records.add(cls.name)
 
-    # Generate JSON methods
-    has_parent = len(parent_fields) > 0
     for fn in [
         _build_json_decode(cls, all_fields),
         _build_from_json(cls),

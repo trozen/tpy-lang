@@ -1,15 +1,15 @@
 # tpy: macro_module
 """Test macro module using quote/add_method_from_source APIs."""
 from tpyc.macro_api import (
-    ClassInfo, FieldInfo, class_macro, build_init, build_eq,
-    ast, types, Expr, Stmt, Function, Type,
+    ClassInfo, FieldInfo, class_macro, build_init, build_eq, ast, types,
+    Expr, Stmt, Function, Type,
 )
 
 
 @class_macro
 def builder(cls: ClassInfo) -> None:
     """Macro that generates init, eq, setters, and a describe() method."""
-    cls.is_dataclass = True
+    cls.set_match_args([f.name for f in cls.fields])
     cls.add_method(build_init(cls, [], cls.fields))
     cls.add_method(build_eq(cls, cls.fields))
 

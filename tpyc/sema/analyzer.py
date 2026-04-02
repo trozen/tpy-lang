@@ -604,14 +604,12 @@ class SemanticAnalyzer:
         """Validate that field(default_factory=X) fields have Default-constructible types."""
         default_proto = NamedType("Default", (), is_protocol=True)
         for record in module.records:
-            if not record.is_dataclass:
-                continue
             for fld in record.fields:
                 if not fld.is_factory_default:
                     continue
                 if not self.protocols.type_conforms_to_protocol(fld.type, default_proto):
                     raise SemanticError(
-                        f"Field '{fld.name}' in @dataclass '{record.name}' uses "
+                        f"Field '{fld.name}' in '{record.name}' uses "
                         f"default_factory but type '{fld.type}' is not default-constructible",
                         fld.loc or record.loc,
                     )

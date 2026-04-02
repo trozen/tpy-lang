@@ -1199,11 +1199,6 @@ class ExpressionAnalyzer:
             if not has_dunder and dunder == "__ne__":
                 overloads, _ = self.protocols.lookup_record_method_overloads(record, "__eq__")
                 has_dunder = bool(overloads)
-            # For ordering, check if dataclass(order=True)
-            if not has_dunder and dunder in ("__lt__", "__le__", "__gt__", "__ge__"):
-                record_info = self.ctx.registry.get_record(check_type.name)
-                if record_info and record_info.is_ordered:
-                    has_dunder = True
             if not has_dunder:
                 if dunder == "__ne__":
                     msg = (f"Comparison '!=' on '{check_type}': "

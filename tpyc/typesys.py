@@ -3315,10 +3315,8 @@ class RecordInfo:
     is_native: bool = False       # True for @native or @native_c records
     is_native_c: bool = False     # True for @native_c specifically
     is_nocopy: bool = False       # True for @nocopy records (copy deleted, move-only)
-    is_dataclass: bool = False    # True for @dataclass classes
-    dataclass_fields: list[FieldInfo] = field(default_factory=list)  # All dataclass fields (parent + own)
+    match_args: tuple[str, ...] | None = None  # Positional match arg names (set by macro, mirrors __match_args__)
     is_frozen: bool = False       # True for @dataclass(frozen=True) (field mutation rejected)
-    is_ordered: bool = False      # True for @dataclass(order=True) (auto __lt__ etc.)
     is_value_type: bool = False   # True for ValueType marker protocol
     has_del: bool = False           # True if class declares __del__ (needs drop flag)
     has_copy: bool = False          # True if class defines __copy__ (custom copy semantics)
@@ -3706,6 +3704,15 @@ class TypeRegistry:
         if mod and name in mod.records:
             return mod.records[name]
         return None
+
+    def get_all_fields(self, record: RecordInfo) -> list[FieldInfo]:
+        """Get all fields for a record including inherited, in parent-first order."""
+        if record.parent is None or not isinstance(record.parent, NamedType):
+            return list(record.fields)
+        parent = self.get_record(record.parent.name)
+        if parent is None:
+            return list(record.fields)
+        return self.get_all_fields(parent) + list(record.fields)
 
     def find_record_by_qname(self, qname: str) -> Optional[RecordInfo]:
         """Find a record by qualified name (e.g. 'builtins.Exception')."""

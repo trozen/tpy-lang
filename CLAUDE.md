@@ -278,7 +278,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `dump_types.py` | Type documentation generation (`--print-types`) |
 | `repl.py` | Interactive REPL implementation |
 | `qnames.py` | Qualified name constants for compiler-known types, decorators, and protocols |
-| `macro_api.py` | Public API for compile-time macro modules: metadata (`ClassInfo`, `FieldInfo`, `TypeInfo`), AST builder (`ast`), type builder (`types`), type aliases (`Expr`, `Stmt`, `Function`, `Type`), source-based authoring (`ast.quote`, `ast.quote_expr`, `ast.quote_fun`, `cls.add_method_from_source`) |
+| `macro_api.py` | Public API for compile-time macro modules: metadata (`ClassInfo`, `FieldInfo`, `TypeInfo`), AST builder (`ast`), type builder (`types`), type aliases (`Expr`, `Stmt`, `Function`, `Type`), source-based authoring (`ast.quote`, `ast.quote_expr`, `ast.quote_fun`, `cls.add_method_from_source`), method builders (`build_init`, `build_eq`, `build_repr`, `build_hash`, `build_order`) |
 | `macro_loader.py` | Discovers and loads `# tpy: macro_module` files via CPython at compile time |
 | `repl_backends.py` | REPL execution backends (clang-repl JIT, g++/clang++ compile) |
 

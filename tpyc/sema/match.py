@@ -424,13 +424,16 @@ class MatchAnalyzer:
         """Resolve positional patterns and validate keyword field bindings."""
         cls_name = pattern.cls.name if isinstance(pattern.cls, TpyName) else "?"
 
-        # Use all fields in constructor order for positional resolution and field lookup.
-        # For @dataclass, dataclass_fields includes inherited fields; for others, use own fields.
-        all_fields = record.dataclass_fields if record.is_dataclass else record.fields
+        # Use match_args for positional resolution (if set by macro), own fields otherwise.
+        # For field type lookup, include inherited fields.
+        all_fields = self.ctx.registry.get_all_fields(record)
+        match_args = record.match_args if record.match_args is not None else tuple(
+            f.name for f in record.fields
+        )
 
-        # Resolve positional patterns to keyword patterns via field declaration order
+        # Resolve positional patterns to keyword patterns via match_args order
         if pattern.positional:
-            n = len(all_fields)
+            n = len(match_args)
             if len(pattern.positional) > n:
                 noun = "positional pattern" if n == 1 else "positional patterns"
                 raise self.ctx.error(
@@ -440,7 +443,7 @@ class MatchAnalyzer:
             kwd_names = {name for name, _ in pattern.keywords}
             resolved: list[tuple[str, TpyPattern]] = []
             for i, sub_pat in enumerate(pattern.positional):
-                field_name = all_fields[i].name
+                field_name = match_args[i]
                 if field_name in kwd_names:
                     raise self.ctx.error(
                         f"field '{field_name}' is bound both positionally and by keyword "

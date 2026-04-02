@@ -708,7 +708,7 @@ class Parser:
                     self.registry.register_record(RecordInfo(
                         name=result.name,
                         fields=result.fields,
-                        has_init=result.init_method is not None or result.is_dataclass,
+                        has_init=result.init_method is not None,
                         builtin_type_key=result.builtin_type_key,
                     ))
                     # Fix up method return types that reference the class by

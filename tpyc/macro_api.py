@@ -164,16 +164,15 @@ class CallMacroContext:
         self._loc = loc
 
     def get_record_fields(self, name: str) -> list[FieldInfo] | None:
-        """Get dataclass fields for a record type, or None if not a dataclass."""
-        record_info = self._ctx.registry.get_record(name)
-        if record_info is None or not record_info.is_dataclass:
-            return None
-        return [FieldInfo.from_internal(f) for f in record_info.dataclass_fields]
+        """Get all fields (parent + own) for a macro record, or None.
 
-    def is_dataclass(self, name: str) -> bool:
-        """Check if a type name refers to a registered @dataclass."""
+        Only returns fields for records that called set_match_args().
+        """
         record_info = self._ctx.registry.get_record(name)
-        return record_info is not None and record_info.is_dataclass
+        if record_info is None or record_info.match_args is None:
+            return None
+        all_fields = self._ctx.registry.get_all_fields(record_info)
+        return [FieldInfo.from_internal(f) for f in all_fields]
 
     def get_iterable_element_type(self, type_info: TypeInfo) -> TypeInfo | None:
         """Get the element type of an iterable type, or None if not iterable.
@@ -406,7 +405,7 @@ class ClassInfo:
     """Class metadata passed to class macros.
 
     Macros inspect fields/methods and can add methods, set flags, and
-    set dataclass_fields. Mutations are applied back to the TpyRecord
+    set match_args. Mutations are applied back to the TpyRecord
     via ``apply_to_record()``.
     """
 
@@ -418,7 +417,7 @@ class ClassInfo:
         self._record = record
         self._ctx = ctx
         self._added_methods: list[TpyFunction] = []
-        self._dataclass_fields: list[InternalFieldInfo] | None = None
+        self._match_args: list[str] | None = None
 
         # Populate read-only views
         self.name: str = record.name
@@ -434,28 +433,12 @@ class ClassInfo:
     # -- Flags (settable by macro, propagated to TpyRecord) --
 
     @property
-    def is_dataclass(self) -> bool:
-        return self._record.is_dataclass
-
-    @is_dataclass.setter
-    def is_dataclass(self, value: bool) -> None:
-        self._record.is_dataclass = value
-
-    @property
     def is_frozen(self) -> bool:
         return self._record.is_frozen
 
     @is_frozen.setter
     def is_frozen(self, value: bool) -> None:
         self._record.is_frozen = value
-
-    @property
-    def is_ordered(self) -> bool:
-        return self._record.is_ordered
-
-    @is_ordered.setter
-    def is_ordered(self, value: bool) -> None:
-        self._record.is_ordered = value
 
     # -- Read methods --
 
@@ -491,20 +474,20 @@ class ClassInfo:
         return False
 
     def get_parent_fields(self) -> list[FieldInfo]:
-        """Get inherited dataclass fields from parent @dataclass (if any).
+        """Get all fields from parent record (including inherited).
 
-        Uses the registry to look up parent's dataclass_fields. Parent must
-        already be registered (guaranteed by compilation order).
+        Returns fields for the first base that is a registered record,
+        or empty list if no record parent. The caller decides whether
+        to use these based on its own eligibility checks.
         """
-        result: list[FieldInfo] = []
         for base in self._record.bases:
             if not isinstance(base, NamedType):
                 continue
             parent_info = self._ctx.registry.get_record(base.name)
-            if parent_info is not None and parent_info.is_dataclass:
-                result = [FieldInfo.from_internal(f) for f in parent_info.dataclass_fields]
-                break
-        return result
+            if parent_info is not None:
+                all_parent = self._ctx.registry.get_all_fields(parent_info)
+                return [FieldInfo.from_internal(f) for f in all_parent]
+        return []
 
     # -- Mutation methods --
 
@@ -519,20 +502,20 @@ class ClassInfo:
         """
         self.add_method(ast.quote_fun(source))
 
-    def set_dataclass_fields(self, fields: list[FieldInfo]) -> None:
-        """Set the all_dc_fields list (parent + own) for codegen."""
-        self._dataclass_fields = [f.to_internal() for f in fields]
+    def set_match_args(self, names: list[str]) -> None:
+        """Set positional match arg names (mirrors Python's __match_args__)."""
+        self._match_args = list(names)
 
     def is_parent_frozen(self) -> tuple[bool, str] | None:
-        """Check if the parent @dataclass is frozen.
+        """Check if the first parent record is frozen.
 
-        Returns (is_frozen, parent_name) or None if no dataclass parent.
+        Returns (is_frozen, parent_name) or None if no record parent.
         """
         for base in self._record.bases:
             if not isinstance(base, NamedType):
                 continue
             parent_info = self._ctx.registry.get_record(base.name)
-            if parent_info is not None and parent_info.is_dataclass:
+            if parent_info is not None:
                 return (parent_info.is_frozen, base.name)
         return None
 
@@ -564,9 +547,9 @@ class ClassInfo:
             else:
                 self._record.methods.append(func)
 
-    def get_dataclass_fields(self) -> list[InternalFieldInfo] | None:
-        """Return the dataclass fields set by the macro, or None."""
-        return self._dataclass_fields
+    def get_match_args(self) -> tuple[str, ...] | None:
+        """Return the match args set by the macro, or None."""
+        return tuple(self._match_args) if self._match_args is not None else None
 
 
 # ---------------------------------------------------------------------------

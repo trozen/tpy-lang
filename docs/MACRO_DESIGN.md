@@ -23,7 +23,7 @@
 | `macro_note()` | Informational diagnostic hint (shown with related errors) |
 | Macro ordering / composition | Multiple macros on one class, inner-to-outer application order |
 | FieldInfo.metadata | Typed metadata for macro-specific field annotations (e.g. `proto.Field`) |
-| Replace codegen special cases | Macros generate full `__repr__`/`__hash__`/ordering bodies as AST, not stubs. Requires `repr()` builtin that codegen maps to type-aware formatting |
+| API tightening | `set_match_args()` is boilerplate -- auto-derive from init params. More broadly, reduce exposed compiler internals; common patterns (field management, method generation, match support) should be automatic |
 | `TpyBlockExpr` | Block expression: sequence of statements + result expression. Codegen hoists statements to enclosing scope. Enables `asdict` with mixed-type fields (typed dict creation + subscript assigns) |
 | Generic mapping detection in `asdict`/`astuple` | Currently only built-in `dict[K, V]` is recursed. A `CallMacroContext.get_mapping_key_value_types()` method could detect any type with `.items() -> Iterable[tuple[K, V]]`, enabling recursion into user-defined mapping types |
 | AST splicing in `quote()` | Embed computed `Expr`/`Stmt` objects into quoted source via `${expr}` syntax. Requires custom parse pass. Enables mixing static method shapes with dynamic AST fragments (e.g., computed comparison chains). Deferred -- f-string interpolation covers common cases |
@@ -103,22 +103,19 @@ class ClassInfo:
     fields: list[FieldInfo]        # own fields only
     type_params: list[str]
     parent: TypeInfo | None
-    is_dataclass: bool             # settable
     is_frozen: bool                # settable
-    is_ordered: bool               # settable
 
     def add_method(self, func: TpyFunction) -> None: ...
-    def add_method_stub(self, name, params, return_type, is_readonly=False) -> None: ...
     def has_method(self, name: str) -> bool: ...
     def get_parent_fields(self) -> list[FieldInfo]: ...
-    def set_dataclass_fields(self, fields: list[FieldInfo]) -> None: ...
+    def set_match_args(self, names: list[str]) -> None: ...
     def warning(self, msg: str, loc=None) -> None: ...
     def error(self, msg: str, loc=None) -> NoReturn: ...
 ```
 
-`add_method` injects a `TpyFunction` AST node (power user API). `add_method_stub`
-registers a `FunctionInfo` signature without a body -- codegen generates the C++
-(used for `__repr__`, `__hash__`, ordering where codegen has type-aware formatting).
+`add_method` injects a `TpyFunction` AST node (power user API). For common patterns,
+use the builder functions (`build_init`, `build_eq`, `build_repr`, `build_hash`,
+`build_order`) to generate complete method bodies.
 
 ### Macro Module Format
 
@@ -126,7 +123,7 @@ registers a `FunctionInfo` signature without a body -- codegen generates the C++
 # tpy: macro_module
 from tpyc.macro_api import (
     ClassInfo, FieldInfo, TypeInfo, MacroError,
-    class_macro, build_init, build_eq,
+    class_macro, build_init, build_eq, build_repr, build_hash, build_order,
     ast, types, Expr, Stmt, Function,
 )
 
@@ -135,7 +132,7 @@ def my_decorator(cls: ClassInfo, *, option: bool = False) -> None:
     # inspect cls.fields, cls.type_params, etc.
     # build methods via ast.function(), ast.assign(), ast.call(), etc.
     # add methods via cls.add_method()
-    # set flags via cls.is_dataclass, cls.is_frozen, etc.
+    # set flags via cls.is_frozen, etc.
     # emit diagnostics via cls.warning() or cls.error()
     pass
 ```
@@ -223,7 +220,7 @@ The `Message` class macro:
 - Generates `__eq__` (via `build_eq`)
 - Generates `encode(self) -> bytearray` method (field-by-field serialization)
 - Generates `decode(cls, data: bytes) -> Self` classmethod (field-by-field parsing)
-- Sets `is_dataclass = True` so `asdict`/`astuple` work
+- Calls `set_match_args` so `asdict`/`astuple` work
 
 #### C++ runtime support
 
@@ -441,12 +438,12 @@ for generic types.
 def model(cls: ClassInfo, *, frozen: bool = False) -> None:
     # cls.fields -- from __annotations__ + defaults
     # cls.add_method(func) -- func is a compiled Python function
-    # cls.is_dataclass = True -- applies @dataclasses.dataclass
+    # cls.set_match_args(all_fields)
     ...
 ```
 
 `ClassInfo` wraps a Python class. `add_method()` attaches compiled functions.
-`apply_to_record()` applies `@dataclasses.dataclass` if `is_dataclass` is set.
+`apply_to_record()` applies mutations back to the class.
 
 ### AST builders under CPython
 
@@ -477,7 +474,7 @@ support classes that the generated code calls. The macro logic is shared.
 ### Implementation phases
 
 1. **CPython `ClassInfo`/`TypeInfo`/`FieldInfo`** -- wrap Python classes and
-   annotations. Support `is_dataclass`, `add_method`, field discovery.
+   annotations. Support `set_match_args`, `add_method`, field discovery.
 2. **CPython `ast.*` expression builders** -- produce `ast.Name`, `ast.Call`,
    `ast.BinOp`, `ast.Attribute`, literals, subscript, comprehensions.
 3. **CPython `ast.*` statement builders** -- `ast.Assign`, `ast.Return`,

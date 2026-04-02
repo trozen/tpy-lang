@@ -141,20 +141,16 @@ class Bad:
 
 ### Implementation Strategy
 
+**Note**: The original design used `is_dataclass`/`is_ordered` flags on
+`TpyRecord`. These have been replaced by the macro system: macros call
+`set_match_args()` and generate methods directly. Only `is_frozen` remains
+as a compiler-enforced flag.
+
 **Parser** (`tpyc/parse/parser.py`):
 - Recognize `@dataclass` decorator (resolved via `_resolve_decorator()`).
-- Add `is_dataclass: bool` flag to `TpyRecord`.
-- Accept `@dataclass` with no arguments or `@dataclass(...)` with keyword args
-  (Phase 1: no args only; Phase 3 adds `frozen=True`).
-
-**AST** (`tpyc/parse/nodes.py`):
-- Add `is_dataclass: bool = False` to `TpyRecord`.
 
 **Registration** (`tpyc/sema/registration.py`):
-- When `record.is_dataclass` is True and no user `__init__` exists:
-  - Build parameter list from `record.fields` (name, type, default).
-  - Create synthetic `TpyFunction` with `self.field = param` assignments.
-  - Insert into `record.methods`.
+- Macros generate `__init__` via `build_init()` and register fields via `set_match_args()`.
 - The synthesized `__init__` is identical to what a user would write -- existing
   init-list extraction in codegen handles it automatically.
 

@@ -238,7 +238,7 @@ class MacroError(Exception):
 # ===================================================================
 
 _class_registry: dict[str, type] = {}
-_class_dc_fields: dict[str, list[FieldInfo]] = {}
+_class_all_fields: dict[str, list[FieldInfo]] = {}
 
 # Shared exec namespace for compiled functions.  Populated by macro_deps()
 # and _apply_class_macro.  Functions compiled via ast.function() look up
@@ -630,12 +630,9 @@ class CallMacroContext:
         self._loc = loc
 
     def get_record_fields(self, name: str) -> list[FieldInfo] | None:
-        if name not in _class_dc_fields:
+        if name not in _class_all_fields:
             return None
-        return list(_class_dc_fields[name])
-
-    def is_dataclass(self, name: str) -> bool:
-        return name in _class_dc_fields
+        return list(_class_all_fields[name])
 
     def get_iterable_element_type(self, type_info: TypeInfo) -> TypeInfo | None:
         if type_info.name == "list" and type_info.type_args:
@@ -661,7 +658,7 @@ class ClassInfo:
     def __init__(self, cls: type) -> None:
         self._cls = cls
         self._added_methods: list[Any] = []   # compiled function objects
-        self._dataclass_fields: list[FieldInfo] | None = None
+        self._match_args: list[str] | None = None
 
         self.name: str = cls.__name__
         self.type_params: list[str] = []
@@ -700,28 +697,12 @@ class ClassInfo:
     # -- Flags ---------------------------------------------------------
 
     @property
-    def is_dataclass(self) -> bool:
-        return getattr(self._cls, "_cpy_is_dataclass", False)
-
-    @is_dataclass.setter
-    def is_dataclass(self, value: bool) -> None:
-        self._cls._cpy_is_dataclass = value  # type: ignore[attr-defined]
-
-    @property
     def is_frozen(self) -> bool:
         return getattr(self._cls, "_cpy_is_frozen", False)
 
     @is_frozen.setter
     def is_frozen(self, value: bool) -> None:
         self._cls._cpy_is_frozen = value  # type: ignore[attr-defined]
-
-    @property
-    def is_ordered(self) -> bool:
-        return getattr(self._cls, "_cpy_is_ordered", False)
-
-    @is_ordered.setter
-    def is_ordered(self, value: bool) -> None:
-        self._cls._cpy_is_ordered = value  # type: ignore[attr-defined]
 
     # -- Read methods --------------------------------------------------
 
@@ -751,8 +732,8 @@ class ClassInfo:
     def get_parent_fields(self) -> list[FieldInfo]:
         bases = [b for b in self._cls.__bases__ if b is not object]
         for base in bases:
-            if base.__name__ in _class_dc_fields:
-                return list(_class_dc_fields[base.__name__])
+            if base.__name__ in _class_all_fields:
+                return list(_class_all_fields[base.__name__])
         return []
 
     def get_method_loc(self, name: str) -> Any:
@@ -760,9 +741,9 @@ class ClassInfo:
 
     def is_parent_frozen(self) -> tuple[bool, str] | None:
         bases = [b for b in self._cls.__bases__ if b is not object]
-        for base in bases:
-            if base.__name__ in _class_dc_fields:
-                return (getattr(base, "_cpy_is_frozen", False), base.__name__)
+        if bases:
+            base = bases[0]
+            return (getattr(base, "_cpy_is_frozen", False), base.__name__)
         return None
 
     # -- Mutation methods ----------------------------------------------
@@ -775,8 +756,8 @@ class ClassInfo:
         """Parse a method definition from source and add it."""
         self.add_method(ast.quote_fun(source))
 
-    def set_dataclass_fields(self, fields: list[FieldInfo]) -> None:
-        self._dataclass_fields = list(fields)
+    def set_match_args(self, names: list[str]) -> None:
+        self._match_args = list(names)
 
     # -- Diagnostics ---------------------------------------------------
 
@@ -805,14 +786,16 @@ class ClassInfo:
             _apply_frozen(cls)
 
         # Set __match_args__ for match/case positional patterns
-        if self._dataclass_fields is not None:
-            cls.__match_args__ = tuple(f.name for f in self._dataclass_fields)  # type: ignore[attr-defined]
+        if self._match_args is not None:
+            cls.__match_args__ = tuple(self._match_args)  # type: ignore[attr-defined]
 
         # Register in class registry for call macros
         _class_registry[cls.__name__] = cls
         _macro_exec_ns[cls.__name__] = cls
-        if self._dataclass_fields is not None:
-            _class_dc_fields[cls.__name__] = list(self._dataclass_fields)
+        if self._match_args is not None:
+            # Build full field list (parent + own) for call macro queries
+            all_fields = self.get_parent_fields() + self.fields
+            _class_all_fields[cls.__name__] = all_fields
 
         # Clean up class-level field descriptors (like Field instances)
         # so they don't shadow instance attributes
@@ -825,8 +808,8 @@ class ClassInfo:
                     except AttributeError:
                         pass
 
-    def get_dataclass_fields(self) -> list[FieldInfo] | None:
-        return self._dataclass_fields
+    def get_match_args(self) -> tuple[str, ...] | None:
+        return tuple(self._match_args) if self._match_args is not None else None
 
 
 def _apply_frozen(cls: type) -> None:

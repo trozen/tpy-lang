@@ -26,7 +26,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Overload resolution: generic overloads with protocol params lose to concrete overloads with coercion. `sum[T: AnyFixedInt](Iterable[T])` doesn't match `list[Int32]` in pass 1 because `_structural_match` requires `type(arg) == type(param)` -- `ArrayType` != `NamedType("Iterable")`. The concrete `sum(Iterable[float])` then wins via coercion in pass 2. Fix: `_structural_match` should check protocol conformance when `param` is a protocol type, so generic overloads with protocol params match in pass 1. Workaround: add concrete overloads for common types (Int32, Int64) before the generic.
 
 ## Macros
-- Remove is_dataclass/is_ordered/dataclass_fields from compiler internals (follow-up to macro self-contained cleanup). Keep is_frozen.
 - Extract build_init/build_eq/build_repr/build_hash/build_order from macro_api.py (compiler) to shared library module under lib/ importable by both dataclasses.py and model.py
 - hash(tuple) -- not supported (no __hash__ for tuples in runtime)
 - tuple ordering -- `<`/`<=`/`>`/`>=` not supported for tuple types (sema rejects)
