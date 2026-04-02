@@ -30,18 +30,12 @@ struct Point {
         return ((this->x == other.x) && (this->y == other.y));
     }
 
-    friend bool operator==(const Point& lhs, const Point& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Point("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ")";
-        return __os.str();
+    friend bool operator==(const Point& lhs, const Point& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -63,20 +57,12 @@ struct Point3D : Point {
         return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
     }
 
-    friend bool operator==(const Point3D& lhs, const Point3D& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Point3D(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Point3D("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ", "
-           << "z=" << this->z
-           << ")";
-        return __os.str();
+    friend bool operator==(const Point3D& lhs, const Point3D& other) {
+        return lhs.__eq__(other);
     }
 };
 

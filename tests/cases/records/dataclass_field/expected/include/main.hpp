@@ -30,18 +30,12 @@ struct Point {
         return ((this->x == other.x) && (this->y == other.y));
     }
 
-    friend bool operator==(const Point& lhs, const Point& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Point("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ")";
-        return __os.str();
+    friend bool operator==(const Point& lhs, const Point& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -69,22 +63,12 @@ struct Config {
         return ((((this->name == other.name) && (this->value == other.value)) && (this->tags == other.tags)) && (this->lookup == other.lookup));
     }
 
-    friend bool operator==(const Config& lhs, const Config& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Config(name={}, value={}, tags={}, lookup={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->value), ::tpy::list_to_str(this->tags), ::tpy::dict_to_str(this->lookup));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Config("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "value=" << this->value
-           << ", "
-           << "tags=" << ::tpy::ListPrinter(this->tags)
-           << ", "
-           << "lookup=" << ::tpy::DictPrinter(this->lookup)
-           << ")";
-        return __os.str();
+    friend bool operator==(const Config& lhs, const Config& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -109,18 +93,12 @@ struct Canvas {
         return ((this->name == other.name) && (this->origin == other.origin));
     }
 
-    friend bool operator==(const Canvas& lhs, const Canvas& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Canvas(name={}, origin={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->origin));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Canvas("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "origin=" << this->origin
-           << ")";
-        return __os.str();
+    friend bool operator==(const Canvas& lhs, const Canvas& other) {
+        return lhs.__eq__(other);
     }
 };
 

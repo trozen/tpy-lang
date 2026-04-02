@@ -38,6 +38,10 @@ struct User {
         return (((this->first_name == other.first_name) && (this->last_name == other.last_name)) && (this->age == other.age));
     }
 
+    std::string __repr__() const {
+        return std::format("User(first_name={}, last_name={}, age={})", ::tpy::__repr__(this->first_name), ::tpy::__repr__(this->last_name), ::tpy::__repr__(this->age));
+    }
+
     static std::expected<User, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
             auto __try_tmp_1 = __reader.read_object_start();
@@ -141,18 +145,6 @@ struct User {
     friend bool operator==(const User& lhs, const User& other) {
         return lhs.__eq__(other);
     }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "User("
-           << "first_name=" << "'" << this->first_name << "'"
-           << ", "
-           << "last_name=" << "'" << this->last_name << "'"
-           << ", "
-           << "age=" << this->age
-           << ")";
-        return __os.str();
-    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const User& obj) {
@@ -174,6 +166,10 @@ struct WithDefault {
 
     bool __eq__(const WithDefault& other) const {
         return (((this->label == other.label) && (this->note == other.note)) && (this->score == other.score));
+    }
+
+    std::string __repr__() const {
+        return std::format("WithDefault(label={}, note={}, score={})", ::tpy::__repr__(this->label), ::tpy::__repr__(this->note), ::tpy::__repr__(this->score));
     }
 
     static std::expected<WithDefault, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
@@ -292,18 +288,6 @@ struct WithDefault {
     friend bool operator==(const WithDefault& lhs, const WithDefault& other) {
         return lhs.__eq__(other);
     }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "WithDefault("
-           << "label=" << "'" << this->label << "'"
-           << ", "
-           << "note=" << (this->note.has_value() ? std::string("'") + std::string(this->note.value()) + "'" : std::string("None"))
-           << ", "
-           << "score=" << this->score
-           << ")";
-        return __os.str();
-    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WithDefault& obj) {
@@ -322,6 +306,10 @@ struct Base {
 
     bool __eq__(const Base& other) const {
         return (this->item_id == other.item_id);
+    }
+
+    std::string __repr__() const {
+        return std::format("Base(item_id={})", ::tpy::__repr__(this->item_id));
     }
 
     static std::expected<Base, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
@@ -405,14 +393,6 @@ struct Base {
     friend bool operator==(const Base& lhs, const Base& other) {
         return lhs.__eq__(other);
     }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Base("
-           << "item_id=" << this->item_id
-           << ")";
-        return __os.str();
-    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -431,6 +411,10 @@ struct Extended : Base {
 
     bool __eq__(const Extended& other) const {
         return ((this->item_id == other.item_id) && (this->label == other.label));
+    }
+
+    std::string __repr__() const {
+        return std::format("Extended(item_id={}, label={})", ::tpy::__repr__(this->item_id), ::tpy::__repr__(this->label));
     }
 
     static std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
@@ -524,16 +508,6 @@ struct Extended : Base {
 
     friend bool operator==(const Extended& lhs, const Extended& other) {
         return lhs.__eq__(other);
-    }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Extended("
-           << "item_id=" << this->item_id
-           << ", "
-           << "label=" << "'" << this->label << "'"
-           << ")";
-        return __os.str();
     }
 };
 

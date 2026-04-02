@@ -59,6 +59,10 @@ struct Address {
         return ((this->street == other.street) && (this->city == other.city));
     }
 
+    std::string __repr__() const {
+        return std::format("Address(street={}, city={})", ::tpy::__repr__(this->street), ::tpy::__repr__(this->city));
+    }
+
     static std::expected<Address, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
             auto __try_tmp_1 = __reader.read_object_start();
@@ -150,16 +154,6 @@ struct Address {
     friend bool operator==(const Address& lhs, const Address& other) {
         return lhs.__eq__(other);
     }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Address("
-           << "street=" << "'" << this->street << "'"
-           << ", "
-           << "city=" << "'" << this->city << "'"
-           << ")";
-        return __os.str();
-    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Address& obj) {
@@ -212,6 +206,10 @@ struct Profile {
 
     bool __eq__(const Profile& other) const {
         return ((((((((((((((((((this->name == other.name) && (this->age == other.age)) && (this->score == other.score)) && (this->precision == other.precision)) && (this->active == other.active)) && (this->big_id == other.big_id)) && (this->role == other.role)) && (this->address == other.address)) && (this->tags == other.tags)) && (this->scores == other.scores)) && (this->friends == other.friends)) && (this->roles == other.roles)) && (this->metadata == other.metadata)) && (this->nested_map == other.nested_map)) && (this->coord == other.coord)) && (this->backup_role == other.backup_role)) && (this->alt_address == other.alt_address)) && (this->email == other.email));
+    }
+
+    std::string __repr__() const {
+        return std::format("Profile(name={}, age={}, score={}, precision={}, active={}, big_id={}, role={}, address={}, tags={}, scores={}, friends={}, roles={}, metadata={}, nested_map={}, coord={}, backup_role={}, alt_address={}, email={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age), ::tpy::__repr__(this->score), ::tpy::__repr__(this->precision), ::tpy::__repr__(this->active), ::tpy::__repr__(this->big_id), ::tpy::__repr__(this->role), ::tpy::__repr__(this->address), ::tpy::list_to_str(this->tags), ::tpy::list_to_str(this->scores), ::tpy::list_to_str(this->friends), ::tpy::list_to_str(this->roles), ::tpy::dict_to_str(this->metadata), ::tpy::dict_to_str(this->nested_map), ::tpy::tuple_to_str(this->coord), ::tpy::__repr__(this->backup_role), ::tpy::__repr__(this->alt_address), ::tpy::__repr__(this->email));
     }
 
     static std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
@@ -799,48 +797,6 @@ struct Profile {
 
     friend bool operator==(const Profile& lhs, const Profile& other) {
         return lhs.__eq__(other);
-    }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Profile("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "age=" << this->age
-           << ", "
-           << "score=" << ::tpy::print_float(this->score)
-           << ", "
-           << "precision=" << ::tpy::print_float(static_cast<double>(this->precision))
-           << ", "
-           << "active=" << ::tpy::print_bool(this->active)
-           << ", "
-           << "big_id=" << this->big_id
-           << ", "
-           << "role=" << this->role
-           << ", "
-           << "address=" << this->address
-           << ", "
-           << "tags=" << ::tpy::ListPrinter(this->tags)
-           << ", "
-           << "scores=" << ::tpy::ListPrinter(this->scores)
-           << ", "
-           << "friends=" << ::tpy::ListPrinter(this->friends)
-           << ", "
-           << "roles=" << ::tpy::ListPrinter(this->roles)
-           << ", "
-           << "metadata=" << ::tpy::DictPrinter(this->metadata)
-           << ", "
-           << "nested_map=" << ::tpy::DictPrinter(this->nested_map)
-           << ", "
-           << "coord=" << ::tpy::TuplePrinter(this->coord)
-           << ", "
-           << "backup_role=" << ::tpy::print_optional_val(this->backup_role)
-           << ", "
-           << "alt_address=" << ::tpy::print_optional_val(this->alt_address)
-           << ", "
-           << "email=" << (this->email.has_value() ? std::string("'") + std::string(this->email.value()) + "'" : std::string("None"))
-           << ")";
-        return __os.str();
     }
 };
 

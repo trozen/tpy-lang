@@ -1,0 +1,1 @@
+TPy generates operator<< for all records (field-by-field printing), so repr() produces Python-style output. CPython's default repr() shows memory address instead.

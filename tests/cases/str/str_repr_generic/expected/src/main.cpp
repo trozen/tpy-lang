@@ -11,7 +11,7 @@ void main() {
     // print(str(wp))
     std::cout << std::string(::tpy::__str__(wp)) << "\n";
     // print(repr(wp))
-    std::cout << std::string(::tpy::__repr__(wp)) << "\n";
+    std::cout << ::tpy::__repr__(wp) << "\n";
     // print(wp)
     std::cout << wp << "\n";
     // print(f"val = {wp}")

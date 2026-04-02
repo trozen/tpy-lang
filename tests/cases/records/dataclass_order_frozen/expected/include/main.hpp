@@ -31,28 +31,75 @@ struct Version {
         return (((this->major == other.major) && (this->minor == other.minor)) && (this->patch == other.patch));
     }
 
+    std::string __repr__() const {
+        return std::format("Version(major={}, minor={}, patch={})", ::tpy::__repr__(this->major), ::tpy::__repr__(this->minor), ::tpy::__repr__(this->patch));
+    }
+
+    uint64_t __hash__() const {
+        uint64_t h = ::tpy::__hash__(this->major);
+        h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->minor)));
+        h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->patch)));
+        return h;
+    }
+
+    bool __lt__(const Version& other) const {
+        if ((this->major != other.major)) {
+            return (this->major < other.major);
+        }
+        if ((this->minor != other.minor)) {
+            return (this->minor < other.minor);
+        }
+        return (this->patch < other.patch);
+    }
+
+    bool __le__(const Version& other) const {
+        if ((this->major != other.major)) {
+            return (this->major <= other.major);
+        }
+        if ((this->minor != other.minor)) {
+            return (this->minor <= other.minor);
+        }
+        return (this->patch <= other.patch);
+    }
+
+    bool __gt__(const Version& other) const {
+        if ((this->major != other.major)) {
+            return (this->major > other.major);
+        }
+        if ((this->minor != other.minor)) {
+            return (this->minor > other.minor);
+        }
+        return (this->patch > other.patch);
+    }
+
+    bool __ge__(const Version& other) const {
+        if ((this->major != other.major)) {
+            return (this->major >= other.major);
+        }
+        if ((this->minor != other.minor)) {
+            return (this->minor >= other.minor);
+        }
+        return (this->patch >= other.patch);
+    }
+
     friend bool operator==(const Version& lhs, const Version& other) {
         return lhs.__eq__(other);
     }
 
-    uint64_t __hash__() const {
-        return ::tpy::hash_combine(0, this->major, this->minor, this->patch);
+    friend bool operator<(const Version& lhs, const Version& other) {
+        return lhs.__lt__(other);
     }
 
-    friend auto operator<=>(const Version& lhs, const Version& rhs) {
-        return std::tie(lhs.major, lhs.minor, lhs.patch) <=> std::tie(rhs.major, rhs.minor, rhs.patch);
+    friend bool operator<=(const Version& lhs, const Version& other) {
+        return lhs.__le__(other);
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Version("
-           << "major=" << this->major
-           << ", "
-           << "minor=" << this->minor
-           << ", "
-           << "patch=" << this->patch
-           << ")";
-        return __os.str();
+    friend bool operator>(const Version& lhs, const Version& other) {
+        return lhs.__gt__(other);
+    }
+
+    friend bool operator>=(const Version& lhs, const Version& other) {
+        return lhs.__ge__(other);
     }
 };
 

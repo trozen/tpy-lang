@@ -30,22 +30,18 @@ struct Vec2 {
         return ((this->x == other.x) && (this->y == other.y));
     }
 
-    friend bool operator==(const Vec2& lhs, const Vec2& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Vec2(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
     }
 
     uint64_t __hash__() const {
-        return ::tpy::hash_combine(0, this->x, this->y);
+        uint64_t h = ::tpy::__hash__(this->x);
+        h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->y)));
+        return h;
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Vec2("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ")";
-        return __os.str();
+    friend bool operator==(const Vec2& lhs, const Vec2& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -67,24 +63,19 @@ struct Vec3 : Vec2 {
         return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
     }
 
-    friend bool operator==(const Vec3& lhs, const Vec3& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Vec3(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
     }
 
     uint64_t __hash__() const {
-        return ::tpy::hash_combine(0, this->x, this->y, this->z);
+        uint64_t h = ::tpy::__hash__(this->x);
+        h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->y)));
+        h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->z)));
+        return h;
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Vec3("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ", "
-           << "z=" << this->z
-           << ")";
-        return __os.str();
+    friend bool operator==(const Vec3& lhs, const Vec3& other) {
+        return lhs.__eq__(other);
     }
 };
 

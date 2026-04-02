@@ -32,18 +32,12 @@ struct Point {
         return ((this->x == other.x) && (this->y == other.y));
     }
 
-    friend bool operator==(const Point& lhs, const Point& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Point("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ")";
-        return __os.str();
+    friend bool operator==(const Point& lhs, const Point& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -67,18 +61,12 @@ struct Person {
         return ((this->name == other.name) && (this->age == other.age));
     }
 
-    friend bool operator==(const Person& lhs, const Person& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Person(name={}, age={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Person("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "age=" << this->age
-           << ")";
-        return __os.str();
+    friend bool operator==(const Person& lhs, const Person& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -102,18 +90,12 @@ struct NamedPoint {
         return ((this->name == other.name) && (this->pos == other.pos));
     }
 
-    friend bool operator==(const NamedPoint& lhs, const NamedPoint& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("NamedPoint(name={}, pos={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->pos));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "NamedPoint("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "pos=" << this->pos
-           << ")";
-        return __os.str();
+    friend bool operator==(const NamedPoint& lhs, const NamedPoint& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -137,18 +119,12 @@ struct Group {
         return ((this->label == other.label) && (this->members == other.members));
     }
 
-    friend bool operator==(const Group& lhs, const Group& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Group(label={}, members={})", ::tpy::__repr__(this->label), ::tpy::list_to_str(this->members));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Group("
-           << "label=" << "'" << this->label << "'"
-           << ", "
-           << "members=" << ::tpy::ListPrinter(this->members)
-           << ")";
-        return __os.str();
+    friend bool operator==(const Group& lhs, const Group& other) {
+        return lhs.__eq__(other);
     }
 };
 

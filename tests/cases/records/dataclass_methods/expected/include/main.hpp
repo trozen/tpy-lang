@@ -43,18 +43,12 @@ struct Rect {
         return ((this->width == other.width) && (this->height == other.height));
     }
 
-    friend bool operator==(const Rect& lhs, const Rect& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Rect(width={}, height={})", ::tpy::__repr__(this->width), ::tpy::__repr__(this->height));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Rect("
-           << "width=" << this->width
-           << ", "
-           << "height=" << this->height
-           << ")";
-        return __os.str();
+    friend bool operator==(const Rect& lhs, const Rect& other) {
+        return lhs.__eq__(other);
     }
 };
 

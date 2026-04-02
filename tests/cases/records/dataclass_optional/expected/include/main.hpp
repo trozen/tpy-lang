@@ -29,18 +29,12 @@ struct Node {
         return ((this->value == other.value) && (this->label == other.label));
     }
 
-    friend bool operator==(const Node& lhs, const Node& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Node(value={}, label={})", ::tpy::__repr__(this->value), ::tpy::__repr__(this->label));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Node("
-           << "value=" << this->value
-           << ", "
-           << "label=" << (this->label.has_value() ? std::string("'") + std::string(this->label.value()) + "'" : std::string("None"))
-           << ")";
-        return __os.str();
+    friend bool operator==(const Node& lhs, const Node& other) {
+        return lhs.__eq__(other);
     }
 };
 

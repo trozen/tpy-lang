@@ -29,16 +29,12 @@ struct A {
         return (this->x == other.x);
     }
 
-    friend bool operator==(const A& lhs, const A& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("A(x={})", ::tpy::__repr__(this->x));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "A("
-           << "x=" << this->x
-           << ")";
-        return __os.str();
+    friend bool operator==(const A& lhs, const A& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -60,18 +56,12 @@ struct B : A {
         return ((this->x == other.x) && (this->y == other.y));
     }
 
-    friend bool operator==(const B& lhs, const B& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("B(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "B("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ")";
-        return __os.str();
+    friend bool operator==(const B& lhs, const B& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -93,20 +83,12 @@ struct C : B {
         return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
     }
 
-    friend bool operator==(const C& lhs, const C& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("C(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "C("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ", "
-           << "z=" << this->z
-           << ")";
-        return __os.str();
+    friend bool operator==(const C& lhs, const C& other) {
+        return lhs.__eq__(other);
     }
 };
 

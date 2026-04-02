@@ -32,18 +32,12 @@ struct Base {
         return ((this->x == other.x) && (this->y == other.y));
     }
 
-    friend bool operator==(const Base& lhs, const Base& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Base(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Base("
-           << "x=" << ::tpy::print_float(this->x)
-           << ", "
-           << "y=" << ::tpy::print_float(this->y)
-           << ")";
-        return __os.str();
+    friend bool operator==(const Base& lhs, const Base& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -65,16 +59,12 @@ struct Other {
         return (this->v == other.v);
     }
 
-    friend bool operator==(const Other& lhs, const Other& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Other(v={})", ::tpy::__repr__(this->v));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Other("
-           << "v=" << ::tpy::print_float(this->v)
-           << ")";
-        return __os.str();
+    friend bool operator==(const Other& lhs, const Other& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -96,20 +86,12 @@ struct Child : Base {
         return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
     }
 
-    friend bool operator==(const Child& lhs, const Child& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Child(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Child("
-           << "x=" << ::tpy::print_float(this->x)
-           << ", "
-           << "y=" << ::tpy::print_float(this->y)
-           << ", "
-           << "z=" << ::tpy::print_float(this->z)
-           << ")";
-        return __os.str();
+    friend bool operator==(const Child& lhs, const Child& other) {
+        return lhs.__eq__(other);
     }
 };
 

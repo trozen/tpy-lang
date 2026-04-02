@@ -29,22 +29,18 @@ struct Point {
         return ((this->x == other.x) && (this->y == other.y));
     }
 
-    friend bool operator==(const Point& lhs, const Point& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
     }
 
     uint64_t __hash__() const {
-        return ::tpy::hash_combine(0, this->x, this->y);
+        uint64_t h = ::tpy::__hash__(this->x);
+        h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->y)));
+        return h;
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Point("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ")";
-        return __os.str();
+    friend bool operator==(const Point& lhs, const Point& other) {
+        return lhs.__eq__(other);
     }
 };
 

@@ -58,6 +58,10 @@ struct Item {
         return ((this->name == other.name) && (this->color == other.color));
     }
 
+    std::string __repr__() const {
+        return std::format("Item(name={}, color={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->color));
+    }
+
     static std::expected<Item, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
             auto __try_tmp_1 = __reader.read_object_start();
@@ -156,16 +160,6 @@ struct Item {
 
     friend bool operator==(const Item& lhs, const Item& other) {
         return lhs.__eq__(other);
-    }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Item("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "color=" << this->color
-           << ")";
-        return __os.str();
     }
 };
 

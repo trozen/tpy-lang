@@ -32,18 +32,12 @@ struct Point {
         return ((this->x == other.x) && (this->y == other.y));
     }
 
-    friend bool operator==(const Point& lhs, const Point& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Point("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ")";
-        return __os.str();
+    friend bool operator==(const Point& lhs, const Point& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -66,16 +60,12 @@ struct DictOfDC {
         return (this->items == other.items);
     }
 
-    friend bool operator==(const DictOfDC& lhs, const DictOfDC& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("DictOfDC(items={})", ::tpy::dict_to_str(this->items));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "DictOfDC("
-           << "items=" << ::tpy::DictPrinter(this->items)
-           << ")";
-        return __os.str();
+    friend bool operator==(const DictOfDC& lhs, const DictOfDC& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -98,16 +88,12 @@ struct TupleOfDC {
         return (this->pair == other.pair);
     }
 
-    friend bool operator==(const TupleOfDC& lhs, const TupleOfDC& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("TupleOfDC(pair={})", ::tpy::tuple_to_str(this->pair));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "TupleOfDC("
-           << "pair=" << ::tpy::TuplePrinter(this->pair)
-           << ")";
-        return __os.str();
+    friend bool operator==(const TupleOfDC& lhs, const TupleOfDC& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -130,16 +116,12 @@ struct TupleAllDC {
         return (this->pair == other.pair);
     }
 
-    friend bool operator==(const TupleAllDC& lhs, const TupleAllDC& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("TupleAllDC(pair={})", ::tpy::tuple_to_str(this->pair));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "TupleAllDC("
-           << "pair=" << ::tpy::TuplePrinter(this->pair)
-           << ")";
-        return __os.str();
+    friend bool operator==(const TupleAllDC& lhs, const TupleAllDC& other) {
+        return lhs.__eq__(other);
     }
 };
 

@@ -9,13 +9,13 @@ void main() {
     // t: Tag = Tag("hello")
     Tag t = Tag("hello");
     // print(repr(t))
-    std::cout << std::string(::tpy::__repr__(t)) << "\n";
+    std::cout << ::tpy::__repr__(t) << "\n";
     // print(f"{t!r}")
     std::cout << std::format("{}", ::tpy::__repr__(t)) << "\n";
     // print(t)
     std::cout << t << "\n";
     // print(str(t))
-    std::cout << std::string(::tpy::__repr__(t)) << "\n";
+    std::cout << ::tpy::__repr__(t) << "\n";
     // print(f"{t}")
     std::cout << std::format("{}", ::tpy::__str__(t)) << "\n";
     // print(f"{t!s}")

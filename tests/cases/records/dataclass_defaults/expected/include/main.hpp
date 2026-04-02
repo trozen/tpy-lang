@@ -33,22 +33,12 @@ struct Color {
         return ((((this->r == other.r) && (this->g == other.g)) && (this->b == other.b)) && (this->a == other.a));
     }
 
-    friend bool operator==(const Color& lhs, const Color& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Color(r={}, g={}, b={}, a={})", ::tpy::__repr__(this->r), ::tpy::__repr__(this->g), ::tpy::__repr__(this->b), ::tpy::__repr__(this->a));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Color("
-           << "r=" << this->r
-           << ", "
-           << "g=" << this->g
-           << ", "
-           << "b=" << this->b
-           << ", "
-           << "a=" << this->a
-           << ")";
-        return __os.str();
+    friend bool operator==(const Color& lhs, const Color& other) {
+        return lhs.__eq__(other);
     }
 };
 

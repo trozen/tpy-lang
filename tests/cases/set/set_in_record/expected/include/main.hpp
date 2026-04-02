@@ -29,18 +29,12 @@ struct TaggedItem {
         return ((this->name == other.name) && (this->tags == other.tags));
     }
 
-    friend bool operator==(const TaggedItem& lhs, const TaggedItem& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("TaggedItem(name={}, tags={})", ::tpy::__repr__(this->name), ::tpy::set_to_str(this->tags));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "TaggedItem("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "tags=" << ::tpy::SetPrinter(this->tags)
-           << ")";
-        return __os.str();
+    friend bool operator==(const TaggedItem& lhs, const TaggedItem& other) {
+        return lhs.__eq__(other);
     }
 };
 

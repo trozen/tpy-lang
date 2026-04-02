@@ -42,18 +42,12 @@ struct Point {
         return ((this->x == other.x) && (this->y == other.y));
     }
 
-    friend bool operator==(const Point& lhs, const Point& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Point("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ")";
-        return __os.str();
+    friend bool operator==(const Point& lhs, const Point& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -78,18 +72,12 @@ struct Person {
         return ((this->name == other.name) && (this->age == other.age));
     }
 
-    friend bool operator==(const Person& lhs, const Person& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Person(name={}, age={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Person("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "age=" << this->age
-           << ")";
-        return __os.str();
+    friend bool operator==(const Person& lhs, const Person& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -114,18 +102,12 @@ struct Line {
         return ((this->start == other.start) && (this->end == other.end));
     }
 
-    friend bool operator==(const Line& lhs, const Line& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Line(start={}, end={})", ::tpy::__repr__(this->start), ::tpy::__repr__(this->end));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Line("
-           << "start=" << this->start
-           << ", "
-           << "end=" << this->end
-           << ")";
-        return __os.str();
+    friend bool operator==(const Line& lhs, const Line& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -150,18 +132,12 @@ struct NamedPoint {
         return ((this->name == other.name) && (this->pos == other.pos));
     }
 
-    friend bool operator==(const NamedPoint& lhs, const NamedPoint& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("NamedPoint(name={}, pos={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->pos));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "NamedPoint("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "pos=" << this->pos
-           << ")";
-        return __os.str();
+    friend bool operator==(const NamedPoint& lhs, const NamedPoint& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -184,16 +160,12 @@ struct Polygon {
         return (this->vertices == other.vertices);
     }
 
-    friend bool operator==(const Polygon& lhs, const Polygon& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Polygon(vertices={})", ::tpy::list_to_str(this->vertices));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Polygon("
-           << "vertices=" << ::tpy::ListPrinter(this->vertices)
-           << ")";
-        return __os.str();
+    friend bool operator==(const Polygon& lhs, const Polygon& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -218,18 +190,12 @@ struct Drawing {
         return ((this->title == other.title) && (this->shapes == other.shapes));
     }
 
-    friend bool operator==(const Drawing& lhs, const Drawing& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Drawing(title={}, shapes={})", ::tpy::__repr__(this->title), ::tpy::list_to_str(this->shapes));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Drawing("
-           << "title=" << "'" << this->title << "'"
-           << ", "
-           << "shapes=" << ::tpy::ListPrinter(this->shapes)
-           << ")";
-        return __os.str();
+    friend bool operator==(const Drawing& lhs, const Drawing& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -252,16 +218,12 @@ struct Wrapper {
         return (this->inner == other.inner);
     }
 
-    friend bool operator==(const Wrapper& lhs, const Wrapper& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Wrapper(inner={})", ::tpy::__repr__(this->inner));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Wrapper("
-           << "inner=" << this->inner
-           << ")";
-        return __os.str();
+    friend bool operator==(const Wrapper& lhs, const Wrapper& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -286,18 +248,12 @@ struct MaybeNamed {
         return ((this->name == other.name) && (this->value == other.value));
     }
 
-    friend bool operator==(const MaybeNamed& lhs, const MaybeNamed& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("MaybeNamed(name={}, value={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->value));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "MaybeNamed("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "value=" << this->value
-           << ")";
-        return __os.str();
+    friend bool operator==(const MaybeNamed& lhs, const MaybeNamed& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -320,16 +276,12 @@ struct Container {
         return (this->items == other.items);
     }
 
-    friend bool operator==(const Container& lhs, const Container& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Container(items={})", ::tpy::list_to_str(this->items));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Container("
-           << "items=" << ::tpy::ListPrinter(this->items)
-           << ")";
-        return __os.str();
+    friend bool operator==(const Container& lhs, const Container& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -354,18 +306,12 @@ struct MultiList {
         return ((this->points == other.points) && (this->labels == other.labels));
     }
 
-    friend bool operator==(const MultiList& lhs, const MultiList& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("MultiList(points={}, labels={})", ::tpy::list_to_str(this->points), ::tpy::list_to_str(this->labels));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "MultiList("
-           << "points=" << ::tpy::ListPrinter(this->points)
-           << ", "
-           << "labels=" << ::tpy::ListPrinter(this->labels)
-           << ")";
-        return __os.str();
+    friend bool operator==(const MultiList& lhs, const MultiList& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -388,16 +334,12 @@ struct DictOfDC {
         return (this->items == other.items);
     }
 
-    friend bool operator==(const DictOfDC& lhs, const DictOfDC& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("DictOfDC(items={})", ::tpy::dict_to_str(this->items));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "DictOfDC("
-           << "items=" << ::tpy::DictPrinter(this->items)
-           << ")";
-        return __os.str();
+    friend bool operator==(const DictOfDC& lhs, const DictOfDC& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -420,16 +362,12 @@ struct TupleMixed {
         return (this->pair == other.pair);
     }
 
-    friend bool operator==(const TupleMixed& lhs, const TupleMixed& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("TupleMixed(pair={})", ::tpy::tuple_to_str(this->pair));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "TupleMixed("
-           << "pair=" << ::tpy::TuplePrinter(this->pair)
-           << ")";
-        return __os.str();
+    friend bool operator==(const TupleMixed& lhs, const TupleMixed& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -452,16 +390,12 @@ struct TupleAllDC {
         return (this->pair == other.pair);
     }
 
-    friend bool operator==(const TupleAllDC& lhs, const TupleAllDC& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("TupleAllDC(pair={})", ::tpy::tuple_to_str(this->pair));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "TupleAllDC("
-           << "pair=" << ::tpy::TuplePrinter(this->pair)
-           << ")";
-        return __os.str();
+    friend bool operator==(const TupleAllDC& lhs, const TupleAllDC& other) {
+        return lhs.__eq__(other);
     }
 };
 

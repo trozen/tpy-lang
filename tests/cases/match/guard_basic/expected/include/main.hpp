@@ -29,16 +29,12 @@ struct Dog {
         return (this->name == other.name);
     }
 
-    friend bool operator==(const Dog& lhs, const Dog& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Dog(name={})", ::tpy::__repr__(this->name));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Dog("
-           << "name=" << "'" << this->name << "'"
-           << ")";
-        return __os.str();
+    friend bool operator==(const Dog& lhs, const Dog& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -60,16 +56,12 @@ struct Cat {
         return (this->name == other.name);
     }
 
-    friend bool operator==(const Cat& lhs, const Cat& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Cat(name={})", ::tpy::__repr__(this->name));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Cat("
-           << "name=" << "'" << this->name << "'"
-           << ")";
-        return __os.str();
+    friend bool operator==(const Cat& lhs, const Cat& other) {
+        return lhs.__eq__(other);
     }
 };
 

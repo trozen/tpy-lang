@@ -400,15 +400,6 @@ class RecordGenerator:
         # Generate operator*() for types with __deref__ (C++ interop)
         self._gen_deref_operators(out, record)
 
-        # Generate __hash__ for frozen dataclasses
-        self._gen_hash_method(out, record)
-
-        # Generate operator<=> for @dataclass(order=True)
-        self._gen_order_operator(out, record)
-
-        # Generate __repr__ for @dataclass
-        self._gen_repr_method(out, record)
-
         # Generate size() from __len__ for STL compatibility
         self._gen_size_method(out, record)
 
@@ -979,63 +970,13 @@ class RecordGenerator:
         out.write(f"{INDENT}{INDENT}return __deref__();\n")
         out.write(f"{INDENT}}}\n")
 
-    def _gen_hash_method(self, out: TextIO, record: TpyRecord) -> None:
-        """Generate __hash__() for frozen dataclasses."""
-        # Skip if user defined __hash__ in source (it will be in record.methods)
-        if any(m.name == "__hash__" for m in record.methods):
-            return
-        record_info = self.ctx.analyzer.registry.get_record(record.name)
-        if record_info is None or not record_info.is_frozen:
-            return
-        dc_fields = record_info.dataclass_fields if record_info.is_dataclass else record_info.fields
-        if not dc_fields:
-            return
-        hash_fields = ", ".join(f"this->{escape_cpp_name(fld.name)}" for fld in dc_fields)
-        out.write(f"\n{INDENT}uint64_t __hash__() const {{\n")
-        out.write(f"{INDENT}{INDENT}return ::tpy::hash_combine(0, {hash_fields});\n")
-        out.write(f"{INDENT}}}\n")
-
-    def _gen_order_operator(self, out: TextIO, record: TpyRecord) -> None:
-        """Generate operator<=> for @dataclass(order=True)."""
-        if any(m.name == "__lt__" for m in record.methods):
-            return
-        record_info = self.ctx.analyzer.registry.get_record(record.name)
-        if record_info is None or not record_info.is_ordered:
-            return
-        dc_fields = record_info.dataclass_fields if record_info.is_dataclass else record_info.fields
-        if not dc_fields:
-            return
-        name = escape_cpp_name(record.name)
-        lhs_fields = ", ".join(f"lhs.{escape_cpp_name(fld.name)}" for fld in dc_fields)
-        rhs_fields = ", ".join(f"rhs.{escape_cpp_name(fld.name)}" for fld in dc_fields)
-        out.write(f"\n{INDENT}friend auto operator<=>(const {name}& lhs, const {name}& rhs) {{\n")
-        out.write(f"{INDENT}{INDENT}return std::tie({lhs_fields}) <=> std::tie({rhs_fields});\n")
-        out.write(f"{INDENT}}}\n")
-
-    def _gen_repr_method(self, out: TextIO, record: TpyRecord) -> None:
-        """Generate __repr__() for @dataclass."""
-        if any(m.name == "__repr__" for m in record.methods):
-            return
-        record_info = self.ctx.analyzer.registry.get_record(record.name)
-        if record_info is None or not record_info.is_dataclass:
-            return
-        dc_fields = record_info.dataclass_fields
-        if not dc_fields:
-            return
-        out.write(f"\n{INDENT}std::string __repr__() const {{\n")
-        out.write(f"{INDENT}{INDENT}std::ostringstream __os;\n")
-        self._write_field_format(out, dc_fields, record.name,
-                                 "__os", "this->", INDENT + INDENT)
-        out.write(f"{INDENT}{INDENT}return __os.str();\n")
-        out.write(f"{INDENT}}}\n")
-
     def _write_field_format(
         self, out: TextIO, fields: list, record_name: str,
         stream: str, prefix: str, indent: str,
     ) -> None:
         """Write field-by-field formatting using stream operator<<.
 
-        Used by _gen_record_ostream (inline) and _gen_repr_method (__repr__).
+        Used by _gen_record_ostream (inline operator<< for print()).
         """
         out.write(f'{indent}{stream} << "{record_name}("')
 

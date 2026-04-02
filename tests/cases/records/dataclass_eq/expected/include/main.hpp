@@ -29,16 +29,12 @@ struct Id {
         return (this->value == other.value);
     }
 
-    friend bool operator==(const Id& lhs, const Id& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Id(value={})", ::tpy::__repr__(this->value));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Id("
-           << "value=" << this->value
-           << ")";
-        return __os.str();
+    friend bool operator==(const Id& lhs, const Id& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -62,18 +58,12 @@ struct Point {
         return ((this->x == other.x) && (this->y == other.y));
     }
 
-    friend bool operator==(const Point& lhs, const Point& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Point("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ")";
-        return __os.str();
+    friend bool operator==(const Point& lhs, const Point& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -99,20 +89,12 @@ struct Config {
         return (((this->name == other.name) && (this->value == other.value)) && (this->label == other.label));
     }
 
-    friend bool operator==(const Config& lhs, const Config& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Config(name={}, value={}, label={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->value), ::tpy::__repr__(this->label));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Config("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "value=" << this->value
-           << ", "
-           << "label=" << (this->label.has_value() ? std::string("'") + std::string(this->label.value()) + "'" : std::string("None"))
-           << ")";
-        return __os.str();
+    friend bool operator==(const Config& lhs, const Config& other) {
+        return lhs.__eq__(other);
     }
 };
 

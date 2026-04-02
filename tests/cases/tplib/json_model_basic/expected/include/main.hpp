@@ -44,6 +44,10 @@ struct User {
         return ((((this->name == other.name) && (this->age == other.age)) && (this->active == other.active)) && (this->email == other.email));
     }
 
+    std::string __repr__() const {
+        return std::format("User(name={}, age={}, active={}, email={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age), ::tpy::__repr__(this->active), ::tpy::__repr__(this->email));
+    }
+
     static std::expected<User, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
             auto __try_tmp_1 = __reader.read_object_start();
@@ -170,20 +174,6 @@ struct User {
 
     friend bool operator==(const User& lhs, const User& other) {
         return lhs.__eq__(other);
-    }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "User("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "age=" << this->age
-           << ", "
-           << "active=" << ::tpy::print_bool(this->active)
-           << ", "
-           << "email=" << (this->email.has_value() ? std::string("'") + std::string(this->email.value()) + "'" : std::string("None"))
-           << ")";
-        return __os.str();
     }
 };
 

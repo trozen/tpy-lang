@@ -6,12 +6,12 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // p = Point(1, 2)
-    Point p = Point(1, 2);
-    // print(p)
-    std::cout << p << "\n";
-    // print(repr(p))
-    std::cout << ::tpy::__repr__(p) << "\n";
+    // f = Foo(1)
+    Foo f = Foo(::tpy::BigInt(1));
+    // s: str = repr(f)  # tpyc: ok
+    std::string s = ::tpy::__repr__(f);
+    // print(s)
+    std::cout << s << "\n";
 }
 
 void __tpy_init() {
@@ -19,8 +19,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # @dataclass with user-defined __repr__ suppresses auto-generation
-    // from dataclasses import dataclass
     // main()
     main();
 }

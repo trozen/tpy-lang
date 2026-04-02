@@ -30,22 +30,18 @@ struct Point {
         return ((this->x == other.x) && (this->y == other.y));
     }
 
-    friend bool operator==(const Point& lhs, const Point& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
     }
 
     uint64_t __hash__() const {
-        return ::tpy::hash_combine(0, this->x, this->y);
+        uint64_t h = ::tpy::__hash__(this->x);
+        h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->y)));
+        return h;
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Point("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ")";
-        return __os.str();
+    friend bool operator==(const Point& lhs, const Point& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -69,22 +65,18 @@ struct Config {
         return ((this->name == other.name) && (this->value == other.value));
     }
 
-    friend bool operator==(const Config& lhs, const Config& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Config(name={}, value={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->value));
     }
 
     uint64_t __hash__() const {
-        return ::tpy::hash_combine(0, this->name, this->value);
+        uint64_t h = ::tpy::__hash__(this->name);
+        h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->value)));
+        return h;
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Config("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "value=" << this->value
-           << ")";
-        return __os.str();
+    friend bool operator==(const Config& lhs, const Config& other) {
+        return lhs.__eq__(other);
     }
 };
 

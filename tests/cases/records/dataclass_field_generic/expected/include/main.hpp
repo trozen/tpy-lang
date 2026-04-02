@@ -62,18 +62,12 @@ struct Wrapper {
         return ((this->name == other.name) && (this->pair == other.pair));
     }
 
-    friend bool operator==(const Wrapper& lhs, const Wrapper& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Wrapper(name={}, pair={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->pair));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Wrapper("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "pair=" << this->pair
-           << ")";
-        return __os.str();
+    friend bool operator==(const Wrapper& lhs, const Wrapper& other) {
+        return lhs.__eq__(other);
     }
 };
 

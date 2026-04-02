@@ -592,18 +592,6 @@ class TypeRegistrar:
                     copy_loc,
                 )
 
-        # Apply method stubs from class macros (e.g. __repr__, __hash__, ordering)
-        if hasattr(record, '_macro_cls_info') and record._macro_cls_info is not None:
-            for stub in record._macro_cls_info.get_method_stubs():
-                if stub.name not in methods:
-                    methods[stub.name] = [FunctionInfo(
-                        name=stub.name,
-                        params=stub.params,
-                        return_type=stub.return_type,
-                        is_method=True,
-                        is_readonly=stub.is_readonly,
-                    )]
-
         # Don't classify bases here - defer to validate_record_inheritance
         # (so forward-referenced protocols are properly recognized)
         info = RecordInfo(

@@ -34,6 +34,10 @@ struct Item {
         return ((this->name == other.name) && (this->value == other.value));
     }
 
+    std::string __repr__() const {
+        return std::format("Item(name={}, value={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->value));
+    }
+
     static std::expected<Item, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
             auto __try_tmp_1 = __reader.read_object_start();
@@ -126,16 +130,6 @@ struct Item {
     friend bool operator==(const Item& lhs, const Item& other) {
         return lhs.__eq__(other);
     }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Item("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "value=" << this->value
-           << ")";
-        return __os.str();
-    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
@@ -158,18 +152,12 @@ struct Container {
         return ((this->label == other.label) && (this->items == other.items));
     }
 
-    friend bool operator==(const Container& lhs, const Container& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Container(label={}, items={})", ::tpy::__repr__(this->label), ::tpy::list_to_str(this->items));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Container("
-           << "label=" << "'" << this->label << "'"
-           << ", "
-           << "items=" << ::tpy::ListPrinter(this->items)
-           << ")";
-        return __os.str();
+    friend bool operator==(const Container& lhs, const Container& other) {
+        return lhs.__eq__(other);
     }
 };
 

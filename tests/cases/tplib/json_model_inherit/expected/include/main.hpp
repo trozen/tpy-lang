@@ -39,6 +39,10 @@ struct Base {
         return ((this->name == other.name) && (this->age == other.age));
     }
 
+    std::string __repr__() const {
+        return std::format("Base(name={}, age={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age));
+    }
+
     static std::expected<Base, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
             auto __try_tmp_1 = __reader.read_object_start();
@@ -131,16 +135,6 @@ struct Base {
     friend bool operator==(const Base& lhs, const Base& other) {
         return lhs.__eq__(other);
     }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Base("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "age=" << this->age
-           << ")";
-        return __os.str();
-    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -162,6 +156,10 @@ struct WithDefaults {
 
     bool __eq__(const WithDefaults& other) const {
         return ((this->x == other.x) && (this->y == other.y));
+    }
+
+    std::string __repr__() const {
+        return std::format("WithDefaults(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
     }
 
     static std::expected<WithDefaults, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
@@ -257,16 +255,6 @@ struct WithDefaults {
     friend bool operator==(const WithDefaults& lhs, const WithDefaults& other) {
         return lhs.__eq__(other);
     }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "WithDefaults("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ")";
-        return __os.str();
-    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WithDefaults& obj) {
@@ -288,6 +276,10 @@ struct Tagged {
 
     bool __eq__(const Tagged& other) const {
         return ((this->tag == other.tag) && (this->note == other.note));
+    }
+
+    std::string __repr__() const {
+        return std::format("Tagged(tag={}, note={})", ::tpy::__repr__(this->tag), ::tpy::__repr__(this->note));
     }
 
     static std::expected<Tagged, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
@@ -394,16 +386,6 @@ struct Tagged {
     friend bool operator==(const Tagged& lhs, const Tagged& other) {
         return lhs.__eq__(other);
     }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Tagged("
-           << "tag=" << "'" << this->tag << "'"
-           << ", "
-           << "note=" << (this->note.has_value() ? std::string("'") + std::string(this->note.value()) + "'" : std::string("None"))
-           << ")";
-        return __os.str();
-    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
@@ -422,6 +404,10 @@ struct User : Base {
 
     bool __eq__(const User& other) const {
         return (((this->name == other.name) && (this->age == other.age)) && (this->email == other.email));
+    }
+
+    std::string __repr__() const {
+        return std::format("User(name={}, age={}, email={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age), ::tpy::__repr__(this->email));
     }
 
     static std::expected<User, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
@@ -527,18 +513,6 @@ struct User : Base {
     friend bool operator==(const User& lhs, const User& other) {
         return lhs.__eq__(other);
     }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "User("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "age=" << this->age
-           << ", "
-           << "email=" << "'" << this->email << "'"
-           << ")";
-        return __os.str();
-    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const User& obj) {
@@ -557,6 +531,10 @@ struct Extended : WithDefaults {
 
     bool __eq__(const Extended& other) const {
         return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
+    }
+
+    std::string __repr__() const {
+        return std::format("Extended(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
     }
 
     static std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
@@ -664,18 +642,6 @@ struct Extended : WithDefaults {
     friend bool operator==(const Extended& lhs, const Extended& other) {
         return lhs.__eq__(other);
     }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Extended("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ", "
-           << "z=" << this->z
-           << ")";
-        return __os.str();
-    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Extended& obj) {
@@ -694,6 +660,10 @@ struct Scored : Tagged {
 
     bool __eq__(const Scored& other) const {
         return (((this->tag == other.tag) && (this->note == other.note)) && (this->score == other.score));
+    }
+
+    std::string __repr__() const {
+        return std::format("Scored(tag={}, note={}, score={})", ::tpy::__repr__(this->tag), ::tpy::__repr__(this->note), ::tpy::__repr__(this->score));
     }
 
     static std::expected<Scored, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
@@ -812,18 +782,6 @@ struct Scored : Tagged {
     friend bool operator==(const Scored& lhs, const Scored& other) {
         return lhs.__eq__(other);
     }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Scored("
-           << "tag=" << "'" << this->tag << "'"
-           << ", "
-           << "note=" << (this->note.has_value() ? std::string("'") + std::string(this->note.value()) + "'" : std::string("None"))
-           << ", "
-           << "score=" << this->score
-           << ")";
-        return __os.str();
-    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Scored& obj) {
@@ -843,6 +801,10 @@ struct Admin : User {
 
     bool __eq__(const Admin& other) const {
         return ((((this->name == other.name) && (this->age == other.age)) && (this->email == other.email)) && (this->role == other.role));
+    }
+
+    std::string __repr__() const {
+        return std::format("Admin(name={}, age={}, email={}, role={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age), ::tpy::__repr__(this->email), ::tpy::__repr__(this->role));
     }
 
     static std::expected<Admin, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
@@ -958,20 +920,6 @@ struct Admin : User {
 
     friend bool operator==(const Admin& lhs, const Admin& other) {
         return lhs.__eq__(other);
-    }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Admin("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "age=" << this->age
-           << ", "
-           << "email=" << "'" << this->email << "'"
-           << ", "
-           << "role=" << "'" << this->role << "'"
-           << ")";
-        return __os.str();
     }
 };
 

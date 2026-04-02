@@ -308,6 +308,35 @@ def validate_type_param_bounds(
                     f"for type parameter '{param_name}' of '{func_name}'")
 
 
+_REPR_TEMPLATE = "::tpy::__repr__({0})"
+
+
+def _repr_fallback_template(typ: TpyType) -> str | None:
+    """Return a C++ template for repr() on types without Representable,
+    or None if the type has no known repr path.
+
+    Covers: bool, fixed ints, float, BigInt, strings, optionals,
+    enums, and user records (which always have operator<<).
+    """
+    if isinstance(typ, BoolType):
+        return _REPR_TEMPLATE
+    if isinstance(typ, (FixedIntType, BigIntType)):
+        return _REPR_TEMPLATE
+    if isinstance(typ, (FloatType, Float32Type)):
+        return _REPR_TEMPLATE
+    if is_any_str_type(typ):
+        return _REPR_TEMPLATE
+    if isinstance(typ, CharType):
+        return _REPR_TEMPLATE
+    if isinstance(typ, EnumType):
+        return _REPR_TEMPLATE
+    if isinstance(typ, OptionalType):
+        return _REPR_TEMPLATE
+    if isinstance(typ, NamedType) and typ.is_user_record:
+        return _REPR_TEMPLATE
+    return None
+
+
 class CallAnalyzer:
     """Function and constructor call analysis."""
 
@@ -1942,9 +1971,14 @@ class CallAnalyzer:
                 return ret
             return matched.return_type
 
-        # repr(container) fallback: containers have runtime to_str helpers
+        # repr() fallback for types without Representable protocol but with
+        # known C++ __repr__ overloads (containers, primitives, optionals,
+        # user records with operator<<)
         if expr.func_name == "repr" and len(arg_types) == 1:
-            tmpl = container_to_str_template(unwrap_readonly(arg_types[0]))
+            inner = unwrap_readonly(arg_types[0])
+            tmpl = container_to_str_template(inner)
+            if tmpl is None:
+                tmpl = _repr_fallback_template(inner)
             if tmpl is not None:
                 expr.resolved_function_info = FunctionInfo(
                     name="repr",

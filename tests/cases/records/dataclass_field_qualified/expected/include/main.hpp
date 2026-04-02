@@ -28,18 +28,12 @@ struct Foo {
         return ((this->items == other.items) && (this->x == other.x));
     }
 
-    friend bool operator==(const Foo& lhs, const Foo& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Foo(items={}, x={})", ::tpy::list_to_str(this->items), ::tpy::__repr__(this->x));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Foo("
-           << "items=" << ::tpy::ListPrinter(this->items)
-           << ", "
-           << "x=" << this->x
-           << ")";
-        return __os.str();
+    friend bool operator==(const Foo& lhs, const Foo& other) {
+        return lhs.__eq__(other);
     }
 };
 

@@ -417,7 +417,7 @@ class str(NativeIterable[Char], Iterable[Char], Comparable, Equatable):
     @pure
     def __init__(self, x: Stringable) -> None: ...
     @overload
-    @cpp_template("std::string(::tpy::__repr__({0}))")
+    @cpp_template("::tpy::__repr__({0})")
     @readonly
     @pure
     def __init__(self, x: Representable) -> None: ...

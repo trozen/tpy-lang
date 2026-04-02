@@ -15,6 +15,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Move type resolution from parser to sema: parser still creates canonical types (FixedIntType etc.) via `_resolve_primitive_type` for `from tpy import` names. Future: sema resolution pass so parser only creates NamedType and sema resolves via @builtin_type factories. Blocked on types appearing everywhere in AST (expressions, constructor calls, etc.) -- needs comprehensive AST walker or lazy normalization.
 - Define decorators as .py functions: readonly/noalloc/nocopy/pure/dynamic/error_return (tpy), native/cpp_template/builtin_type (tpy.extern), overload/override (typing) are currently parser keywords with empty stub files. Want them as real function definitions eventually so the parser doesn't need special handling. Blocked on: functions need type annotations to compile, and decorator signatures have no meaningful type (identity function over any callable).
 - ContextManager[T] protocol
+- Default operator<< on user records: replace field-by-field printing with placeholder (e.g. `<ClassName object>`). Only delegate to __repr__/__str__ when explicitly defined. Currently _gen_record_ostream dumps all fields for every record, which leaks internals for non-dataclass types. Also consider a dedicated dunder (e.g. `__stream__` or `__write__`) for efficient stream-based output (avoids allocating a string just to print it).
 
 
 ## Bugs
@@ -25,9 +26,13 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Overload resolution: generic overloads with protocol params lose to concrete overloads with coercion. `sum[T: AnyFixedInt](Iterable[T])` doesn't match `list[Int32]` in pass 1 because `_structural_match` requires `type(arg) == type(param)` -- `ArrayType` != `NamedType("Iterable")`. The concrete `sum(Iterable[float])` then wins via coercion in pass 2. Fix: `_structural_match` should check protocol conformance when `param` is a protocol type, so generic overloads with protocol params match in pass 1. Workaround: add concrete overloads for common types (Int32, Int64) before the generic.
 
 ## Macros
+- Remove is_dataclass/is_ordered/dataclass_fields from compiler internals (follow-up to macro self-contained cleanup). Keep is_frozen.
+- Extract build_init/build_eq/build_repr/build_hash/build_order from macro_api.py (compiler) to shared library module under lib/ importable by both dataclasses.py and model.py
+- hash(tuple) -- not supported (no __hash__ for tuples in runtime)
+- tuple ordering -- `<`/`<=`/`>`/`>=` not supported for tuple types (sema rejects)
 - all macro code (at least for json model) generated in headers
 - json: to/from file
-- Macro API: companion type creation: macros can add methods but not new types. `cls.add_companion_enum(name, members)` would let macros generate helper enums (e.g. key enums for JSON field dispatch via `try_parse` + `match`/`case`). Combined with string match or used standalone, this gives O(1) key dispatch.
+- Macro API: companion type creation: macros can add methods but not new types. `cls.add_companion_type(name, ...)` would let macros generate helper types (e.g. key enums for JSON field dispatch via `try_parse` + `match`/`case`). Requires nested class support in parser/sema/codegen first. Combined with string match or used standalone, this gives O(1) key dispatch.
 
 
 ## Bytes
@@ -69,6 +74,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - `tpy.unsafe.unsafe_address_of(x) -> int`: return the memory address of an object as an integer. Useful for identity comparison in tests (proving reference semantics vs silent copy). C++ codegen: `reinterpret_cast<uintptr_t>(&x)`.
 
 ## Python features
+- Nested class definitions: `class Outer: class Inner: ...` is rejected by the parser. Needed both as a language feature and for macro companion type creation (e.g. key enums for JSON field dispatch). C++ codegen: nested struct/class.
 - Any
 - dynamic attributes
 - list/container slicing (Phase 3: step)
@@ -151,6 +157,8 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - **[LOW]** `__param_` copy for reassigned parameters: when a parameter is reassigned in the function body, codegen takes it by `const&` then copies into a mutable local. For BigInt/string params, taking by value instead would let the caller move. Only helps when caller passes an rvalue; for lvalue calls it's worse (forces copy at call site vs zero-cost `const&`). Also changes ABI (not API).
 
 ## Low Priority
+- `f"{x!r}"` doesn't use the repr() sema fallback: `repr(x)` accepts primitives and user records, but `f"{x!r}"` still requires the `Representable` protocol. Should share the same acceptance logic.
+- `Optional[float]` repr uses C++ default float formatting: the `operator<<` fallback in `__repr__(optional<T>)` doesn't use `print_float`, so output may differ from Python-style float repr (e.g. missing trailing `.0`).
 - Catch uncaught `tpy::BaseException` in generated `main()`: currently an unhandled exception produces GCC's `terminate called after throwing...` message, which is a C++ implementation detail. Should catch `tpy::BaseException` and print Python-style `ExceptionType: message` to stderr instead.
 - `= default` semantic gap: records with required `__init__` params currently emit `ClassName() = default;` if their C++ fields are all trivially constructible, bypassing the Python-level construction contract. Should emit `= delete` (or nothing) instead -- `std::optional<T>` and containers don't require default-constructibility, so the impact is limited to direct `T t;` / `T arr[N]` patterns which tpyc doesn't generate anyway. Fix: check `init_params` required count in `_fld_type_cpp_default_constructible` (same as `_is_default_constructible`). See `docs/CONSTRUCTOR_DESIGN.md` open question 4.
 - Unnecessary pointer locals for loop-scoped tuple unpack vars: `reassigned_vars` marks a name as reassigned when it appears in two for-loops, even though the C++ declarations are in independent loop-body scopes. This causes `T*` pointer indirection instead of `T&` reference binding. The scopes are independent in C++ so re-declaration as `T&` each iteration is safe.

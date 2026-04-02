@@ -85,6 +85,10 @@ struct Event {
         return ((this->name == other.name) && (this->when == other.when));
     }
 
+    std::string __repr__() const {
+        return std::format("Event(name={}, when={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->when));
+    }
+
     static std::expected<Event, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::JsonReader& __reader) {
         {
             auto __try_tmp_2 = __reader.read_object_start();
@@ -178,16 +182,6 @@ struct Event {
     friend bool operator==(const Event& lhs, const Event& other) {
         return lhs.__eq__(other);
     }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Event("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "when=" << this->when
-           << ")";
-        return __os.str();
-    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Event& obj) {
@@ -210,6 +204,10 @@ struct Schedule {
 
     bool __eq__(const Schedule& other) const {
         return (((this->events == other.events) && (this->default_duration == other.default_duration)) && (this->deadline == other.deadline));
+    }
+
+    std::string __repr__() const {
+        return std::format("Schedule(events={}, default_duration={}, deadline={})", ::tpy::list_to_str(this->events), ::tpy::__repr__(this->default_duration), ::tpy::__repr__(this->deadline));
     }
 
     static std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::JsonReader& __reader) {
@@ -345,18 +343,6 @@ struct Schedule {
 
     friend bool operator==(const Schedule& lhs, const Schedule& other) {
         return lhs.__eq__(other);
-    }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Schedule("
-           << "events=" << ::tpy::ListPrinter(this->events)
-           << ", "
-           << "default_duration=" << this->default_duration
-           << ", "
-           << "deadline=" << ::tpy::print_optional_val(this->deadline)
-           << ")";
-        return __os.str();
     }
 };
 

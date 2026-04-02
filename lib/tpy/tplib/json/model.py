@@ -70,7 +70,8 @@ used as a field in @model classes:
 from tpyc.macro_api import (
     ClassInfo, FieldInfo, TypeInfo, MacroError,
     class_macro, macro_deps,
-    build_init, build_eq, expr_to_cpp_default,
+    build_init, build_eq, build_repr, build_hash, build_order,
+    expr_to_cpp_default,
     ast, types, Expr, Stmt, Function, Type,
 )
 
@@ -725,12 +726,24 @@ def model(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> None:
         eq_fn = build_eq(cls, all_fields)
         cls.add_method(eq_fn)
 
-    # Generate __repr__ stub
+    # Generate __repr__
     if not cls.has_method("__repr__"):
-        cls.add_method_stub("__repr__", [], types.str, is_readonly=True)
+        cls.add_method(build_repr(cls, all_fields))
 
+    # Generate __hash__ for frozen models
     if frozen and not cls.has_method("__hash__"):
-        cls.add_method_stub("__hash__", [], types.uint64, is_readonly=True)
+        cls.add_method(build_hash(cls, all_fields))
+
+    # Generate ordering methods
+    if order and all_fields:
+        for dunder in ("__lt__", "__le__", "__gt__", "__ge__"):
+            if cls.has_method(dunder):
+                raise MacroError(
+                    f"@model(order=True) cannot overwrite '{dunder}' "
+                    f"defined in class '{cls.name}'"
+                )
+        for fn in build_order(cls, all_fields):
+            cls.add_method(fn)
 
     cls.set_dataclass_fields(all_fields)
 

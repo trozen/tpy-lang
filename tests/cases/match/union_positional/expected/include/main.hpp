@@ -29,16 +29,12 @@ struct Circle {
         return (this->radius == other.radius);
     }
 
-    friend bool operator==(const Circle& lhs, const Circle& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Circle(radius={})", ::tpy::__repr__(this->radius));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Circle("
-           << "radius=" << ::tpy::print_float(this->radius)
-           << ")";
-        return __os.str();
+    friend bool operator==(const Circle& lhs, const Circle& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -62,18 +58,12 @@ struct Rect {
         return ((this->width == other.width) && (this->height == other.height));
     }
 
-    friend bool operator==(const Rect& lhs, const Rect& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Rect(width={}, height={})", ::tpy::__repr__(this->width), ::tpy::__repr__(this->height));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Rect("
-           << "width=" << ::tpy::print_float(this->width)
-           << ", "
-           << "height=" << ::tpy::print_float(this->height)
-           << ")";
-        return __os.str();
+    friend bool operator==(const Rect& lhs, const Rect& other) {
+        return lhs.__eq__(other);
     }
 };
 

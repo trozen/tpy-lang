@@ -13,7 +13,7 @@ void main() {
     std::cout << std::string(::tpy::__str__(p)) << "\n";
     // # repr() dispatches to __repr__
     // print(repr(p))
-    std::cout << std::string(::tpy::__repr__(p)) << "\n";
+    std::cout << ::tpy::__repr__(p) << "\n";
     // # print() uses operator<< which delegates to __str__
     // print(p)
     std::cout << p << "\n";

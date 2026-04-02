@@ -30,22 +30,56 @@ struct Base {
         return ((this->x == other.x) && (this->y == other.y));
     }
 
+    std::string __repr__() const {
+        return std::format("Base(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+    }
+
+    bool __lt__(const Base& other) const {
+        if ((this->x != other.x)) {
+            return (this->x < other.x);
+        }
+        return (this->y < other.y);
+    }
+
+    bool __le__(const Base& other) const {
+        if ((this->x != other.x)) {
+            return (this->x <= other.x);
+        }
+        return (this->y <= other.y);
+    }
+
+    bool __gt__(const Base& other) const {
+        if ((this->x != other.x)) {
+            return (this->x > other.x);
+        }
+        return (this->y > other.y);
+    }
+
+    bool __ge__(const Base& other) const {
+        if ((this->x != other.x)) {
+            return (this->x >= other.x);
+        }
+        return (this->y >= other.y);
+    }
+
     friend bool operator==(const Base& lhs, const Base& other) {
         return lhs.__eq__(other);
     }
 
-    friend auto operator<=>(const Base& lhs, const Base& rhs) {
-        return std::tie(lhs.x, lhs.y) <=> std::tie(rhs.x, rhs.y);
+    friend bool operator<(const Base& lhs, const Base& other) {
+        return lhs.__lt__(other);
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Base("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ")";
-        return __os.str();
+    friend bool operator<=(const Base& lhs, const Base& other) {
+        return lhs.__le__(other);
+    }
+
+    friend bool operator>(const Base& lhs, const Base& other) {
+        return lhs.__gt__(other);
+    }
+
+    friend bool operator>=(const Base& lhs, const Base& other) {
+        return lhs.__ge__(other);
     }
 };
 
@@ -67,24 +101,68 @@ struct Child : Base {
         return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
     }
 
+    std::string __repr__() const {
+        return std::format("Child(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
+    }
+
+    bool __lt__(const Child& other) const {
+        if ((this->x != other.x)) {
+            return (this->x < other.x);
+        }
+        if ((this->y != other.y)) {
+            return (this->y < other.y);
+        }
+        return (this->z < other.z);
+    }
+
+    bool __le__(const Child& other) const {
+        if ((this->x != other.x)) {
+            return (this->x <= other.x);
+        }
+        if ((this->y != other.y)) {
+            return (this->y <= other.y);
+        }
+        return (this->z <= other.z);
+    }
+
+    bool __gt__(const Child& other) const {
+        if ((this->x != other.x)) {
+            return (this->x > other.x);
+        }
+        if ((this->y != other.y)) {
+            return (this->y > other.y);
+        }
+        return (this->z > other.z);
+    }
+
+    bool __ge__(const Child& other) const {
+        if ((this->x != other.x)) {
+            return (this->x >= other.x);
+        }
+        if ((this->y != other.y)) {
+            return (this->y >= other.y);
+        }
+        return (this->z >= other.z);
+    }
+
     friend bool operator==(const Child& lhs, const Child& other) {
         return lhs.__eq__(other);
     }
 
-    friend auto operator<=>(const Child& lhs, const Child& rhs) {
-        return std::tie(lhs.x, lhs.y, lhs.z) <=> std::tie(rhs.x, rhs.y, rhs.z);
+    friend bool operator<(const Child& lhs, const Child& other) {
+        return lhs.__lt__(other);
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Child("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ", "
-           << "z=" << this->z
-           << ")";
-        return __os.str();
+    friend bool operator<=(const Child& lhs, const Child& other) {
+        return lhs.__le__(other);
+    }
+
+    friend bool operator>(const Child& lhs, const Child& other) {
+        return lhs.__gt__(other);
+    }
+
+    friend bool operator>=(const Child& lhs, const Child& other) {
+        return lhs.__ge__(other);
     }
 };
 

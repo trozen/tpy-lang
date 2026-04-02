@@ -334,12 +334,39 @@ auto __repr__(const T& x) {
     return x.__repr__();
 }
 
+// Bool: Python repr uses True/False (not C++ true/false)
+inline std::string_view __repr__(bool x) {
+    return x ? "True" : "False";
+}
+
 // Strings: Python repr wraps in single quotes
 inline std::string __repr__(const std::string& x) {
     return "'" + x + "'";
 }
 inline std::string __repr__(std::string_view x) {
     return "'" + std::string(x) + "'";
+}
+
+// Optional: None or repr(value)
+// Uses __str__ (which delegates to __repr__ or operator<< via the
+// tpy::__str__ fallback chain) to avoid qualified lookup issues with
+// user-defined operator<< in non-tpy namespaces.
+template<typename T>
+std::string __repr__(const std::optional<T>& x) {
+    if (!x.has_value()) return "None";
+    // For strings, use proper repr (quoted)
+    if constexpr (std::same_as<T, std::string> || std::same_as<T, std::string_view>) {
+        return "'" + std::string(*x) + "'";
+    } else if constexpr (std::same_as<T, bool>) {
+        return *x ? "True" : "False";
+    } else if constexpr (requires(const T& t) { t.__repr__(); }) {
+        return std::string((*x).__repr__());
+    } else {
+        // Fallback via operator<< (which is always generated for user records)
+        std::ostringstream ss;
+        ss << *x;
+        return ss.str();
+    }
 }
 
 // Fallback for formattable types without __repr__ (e.g. int, double).

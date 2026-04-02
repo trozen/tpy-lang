@@ -28,16 +28,12 @@ struct Inner {
         return (this->x == other.x);
     }
 
-    friend bool operator==(const Inner& lhs, const Inner& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Inner(x={})", ::tpy::__repr__(this->x));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Inner("
-           << "x=" << this->x
-           << ")";
-        return __os.str();
+    friend bool operator==(const Inner& lhs, const Inner& other) {
+        return lhs.__eq__(other);
     }
 };
 
@@ -61,18 +57,12 @@ struct Outer {
         return ((this->name == other.name) && (this->inner == other.inner));
     }
 
-    friend bool operator==(const Outer& lhs, const Outer& other) {
-        return lhs.__eq__(other);
+    std::string __repr__() const {
+        return std::format("Outer(name={}, inner={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->inner));
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Outer("
-           << "name=" << "'" << this->name << "'"
-           << ", "
-           << "inner=" << ::tpy::print_optional_val(this->inner)
-           << ")";
-        return __os.str();
+    friend bool operator==(const Outer& lhs, const Outer& other) {
+        return lhs.__eq__(other);
     }
 };
 

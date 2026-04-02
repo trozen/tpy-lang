@@ -29,22 +29,56 @@ struct Point {
         return ((this->x == other.x) && (this->y == other.y));
     }
 
+    std::string __repr__() const {
+        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+    }
+
+    bool __lt__(const Point& other) const {
+        if ((this->x != other.x)) {
+            return (this->x < other.x);
+        }
+        return (this->y < other.y);
+    }
+
+    bool __le__(const Point& other) const {
+        if ((this->x != other.x)) {
+            return (this->x <= other.x);
+        }
+        return (this->y <= other.y);
+    }
+
+    bool __gt__(const Point& other) const {
+        if ((this->x != other.x)) {
+            return (this->x > other.x);
+        }
+        return (this->y > other.y);
+    }
+
+    bool __ge__(const Point& other) const {
+        if ((this->x != other.x)) {
+            return (this->x >= other.x);
+        }
+        return (this->y >= other.y);
+    }
+
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
     }
 
-    friend auto operator<=>(const Point& lhs, const Point& rhs) {
-        return std::tie(lhs.x, lhs.y) <=> std::tie(rhs.x, rhs.y);
+    friend bool operator<(const Point& lhs, const Point& other) {
+        return lhs.__lt__(other);
     }
 
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Point("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ")";
-        return __os.str();
+    friend bool operator<=(const Point& lhs, const Point& other) {
+        return lhs.__le__(other);
+    }
+
+    friend bool operator>(const Point& lhs, const Point& other) {
+        return lhs.__gt__(other);
+    }
+
+    friend bool operator>=(const Point& lhs, const Point& other) {
+        return lhs.__ge__(other);
     }
 };
 

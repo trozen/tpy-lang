@@ -91,6 +91,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D20 | Mutual recursion (cross-type cycles) | M-L | Not started | [I](#mutual-recursion) |
 | D21 | TypedDict | M | Not started | [VII](#typeddict) |
 | D22 | Multiple inheritance (mixins) | L | Not started | [VII](#multiple-inheritance) |
+| D23 | Nested classes | M | Not started | [VII](#nested-classes) |
 
 ### Phase E: Advanced Safety
 
@@ -1401,6 +1402,9 @@ See `docs/MACRO_DESIGN.md` for the full design.
 Remaining (Phase 3+): quote templates, string-based method generation,
 hygiene, CPython compatibility, replace codegen special cases
 (`__repr__`/`__hash__`/`operator<=>`) with macro-generated AST.
+Companion type creation (`cls.add_companion_type`) for generating helper
+types (e.g. key enums for O(1) JSON field dispatch). Requires nested
+class support in parser/sema/codegen.
 
 **Dependencies**: None for Phase 1 (done). Compile-time evaluation (F1) needed for
 Phase 4 (TpyMini VM). `@dataclass` replacement validates the API.
@@ -2482,6 +2486,43 @@ interface-composition use case; multiple inheritance adds implementation reuse.
 
 **Effort**: L (MRO computation, C++ multiple base codegen, `super()` disambiguation,
 diamond detection/rejection, constructor ordering)
+
+---
+
+### Nested Classes
+
+```python
+class Tree:
+    class Node:
+        value: Int32
+        left: Optional[Ptr[Tree.Node]]
+        right: Optional[Ptr[Tree.Node]]
+
+        def __init__(self, value: Int32) -> None:
+            self.value = value
+            self.left = None
+            self.right = None
+
+    root: Optional[Ptr[Tree.Node]]
+```
+
+Class definitions inside another class body. Standard Python feature.
+
+**C++ mapping**: Nested struct/class. `Tree::Node` in C++. Straightforward codegen
+since C++ natively supports nested types with the same semantics.
+
+**Why it matters**: Common pattern for helper types that belong to a parent class.
+Also a prerequisite for macro companion type creation (`cls.add_companion_type`) --
+macros generating helper types (e.g. key enums for O(1) JSON field dispatch) need
+the compiler to support nested type definitions.
+
+**Current state**: Not started. Parser rejects class definitions inside class bodies
+("Unsupported construct in class").
+
+**Dependencies**: None beyond existing class support.
+
+**Effort**: M (parser support for nested class in class body, sema registration with
+qualified names, codegen for nested struct, name resolution for `Outer.Inner` access)
 
 ---
 
