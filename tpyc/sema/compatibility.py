@@ -14,7 +14,7 @@ from ..typesys import (
     SpanType, StrType, StringType, StrViewType, LiteralType, BytesType, ByteArrayType, BytesViewType, FloatType, Float32Type,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
-    is_protocol_type, unwrap_readonly, unwrap_optional_own, local_var_is_movable,
+    is_protocol_type, unwrap_readonly, unwrap_optional_own,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     FnType, CallableType, RefType, unwrap_ref_type,
 )
@@ -157,8 +157,12 @@ class TypeCompatibility:
 
         Returns Coercion or None on success, CompatError on failure.
         """
+        # OwnType from name lookup (implicit owned local) should not
+        # shortcircuit the Own[T] coercion path -- that path emits copy
+        # warnings when storing at non-last-use.
         if actual == expected:
-            return None
+            if not (isinstance(actual, OwnType) and isinstance(source_expr, TpyName)):
+                return None
         # FnType/CallableType: inner param/return types may carry Own/Ref
         # qualifiers from FI that don't affect callable contract compatibility.
         if (isinstance(actual, (FnType, CallableType))
@@ -305,8 +309,13 @@ class TypeCompatibility:
                 # Concrete type: exact match after Own stripping
                 structurally_ok = (actual_inner == stripped_expected)
             if structurally_ok:
+                # Own[T] from explicit return/param means caller acknowledged
+                # ownership -- skip warning.  Own[T] from name lookup (owned
+                # local) is implicit and still needs the warning.
+                explicit_own = (isinstance(actual, OwnType)
+                                and not isinstance(source_expr, TpyName))
                 if (source_expr is not None
-                        and not isinstance(actual, OwnType)
+                        and not explicit_own
                         and not self.is_copy_call(source_expr)):
                     is_lvalue_src = self.is_lvalue(source_expr)
                     # Suppress at last use: no observable semantic divergence from
@@ -314,7 +323,7 @@ class TypeCompatibility:
                     is_auto_moved = (is_lvalue_src
                                      and isinstance(source_expr, TpyName)
                                      and id(source_expr) in self.ctx.all_last_uses
-                                     and self._is_movable_var(source_expr.name))
+                                     and self._is_owned_var(source_expr.name))
                     if not is_auto_moved:
                         for inner_t in expected.inner_types():
                             if not isinstance(inner_t, OwnType):
@@ -431,7 +440,7 @@ class TypeCompatibility:
             # Only locals and Own[T] params are movable -- regular params are borrowed.
             is_auto_moved = False
             if isinstance(source_expr, TpyName) and id(source_expr) in self.ctx.all_last_uses:
-                is_auto_moved = self._is_movable_var(source_expr.name)
+                is_auto_moved = self._is_owned_var(source_expr.name)
             self.check_own_consumption(source_expr)
             # Mark loop variables as consumed for auto-consuming heuristic
             if isinstance(source_expr, TpyName):
@@ -876,7 +885,7 @@ class TypeCompatibility:
         """
         if isinstance(expr, TpyName):
             if (id(expr) in self.ctx.all_last_uses
-                    and self._is_movable_var(expr.name)):
+                    and self._is_owned_var(expr.name)):
                 self.ctx.mark_own_param_consumed(expr.name)
             return
         if self.is_copy_call(expr) and isinstance(expr, TpyCall) and expr.args:
@@ -943,26 +952,35 @@ class TypeCompatibility:
             scope = scope.parent
         return False
 
-    def _is_movable_var(self, name: str) -> bool:
-        """Check if a variable is eligible for auto-move (owned, not borrowed).
+    def _is_owned_var(self, name: str) -> bool:
+        """Check if a variable has owned storage (eligible for auto-move).
 
-        Delegates local-variable logic to local_var_is_movable() which is
-        also used by codegen (single source of truth).
-        Movable: Own[T] params, rvalue-init locals (not hoisted, not lvalue-reassigned).
-        NOT movable: lvalue-init locals, hoisted locals, top-level vars.
+        Uses OwnType in scope as the primary authority.  Falls back to
+        rvalue_vars for variables excluded from OwnType wrapping
+        (reassigned vars, move-through vars).
         """
         func = self.ctx.current_function
         if isinstance(func, TpyFunction):
+            # Own[T] params
             for pname, ptype in func.params:
                 if pname == name:
                     return unwrap_optional_own(unwrap_readonly(ptype)) is not None
-            return local_var_is_movable(
-                name,
-                self.ctx.hoisted_vars,
-                self.ctx.current_reassigned_vars,
-                self.ctx.current_lvalue_reassigned,
-                name in self.ctx.rvalue_vars,
-            )
+            # Locals: check scope type.
+            # Exclude for-loop vars: they get Own[T] from consuming iteration
+            # element types but are not "rvalue-initialized" in the same sense
+            # as constructor calls. Their movability is handled by the
+            # consuming iteration system (consumed_loop_vars).
+            scope_type = self.ctx.current_scope.lookup(name) if self.ctx.current_scope else None
+            if scope_type and isinstance(scope_type, OwnType) and name not in self.ctx.loop_vars:
+                return True
+            # Fallback: rvalue_vars covers move-through vars and
+            # reassigned-but-all-rvalue vars not wrapped with OwnType.
+            # Hoisted vars are not movable (T* pointer-locals).
+            if name in self.ctx.rvalue_vars and name not in self.ctx.hoisted_vars:
+                if name in self.ctx.current_reassigned_vars:
+                    return name not in self.ctx.current_lvalue_reassigned
+                return True
+            return False
         # Top-level: non-value-type vars become pointer-globals, can't be moved
         var_type = self.ctx.current_scope.lookup(name) if self.ctx.current_scope else None
         if var_type:
@@ -1015,36 +1033,6 @@ class TypeCompatibility:
                         if self.is_param_derived_expr(args[idx]):
                             return True
         # Constructors, function calls, literals -- local storage
-        return False
-
-    def needs_copy_warning(self, expr: TpyExpr, target_type: TpyType) -> bool:
-        """Check if assigning expr to inline storage (field) needs a copy warning.
-
-        Returns True when the assignment silently copies in C++ but would share
-        in CPython, and the programmer hasn't made intent explicit with copy().
-        """
-        if target_type.is_value_type():
-            return False
-        if self._is_value_type_param(target_type):
-            return False
-        if self.is_copy_call(expr):
-            return False
-        if self.is_lvalue(expr):
-            # Skip warning when auto-move applies (last use of a movable var)
-            if isinstance(expr, TpyName) and id(expr) in self.ctx.all_last_uses:
-                if self._is_movable_var(expr.name):
-                    return False
-            return True
-        # T|None function returns always alias an existing object
-        if isinstance(target_type, OptionalType) and not target_type.inner.is_value_type():
-            val_type = self.ctx.get_expr_type(expr)
-            if isinstance(val_type, OptionalType) and not val_type.inner.is_value_type():
-                return True
-        # Non-value union function returns: pointer-variant -> value-variant field copies
-        if isinstance(target_type, UnionType) and target_type.uses_pointer_repr():
-            val_type = self.ctx.get_expr_type(expr)
-            if isinstance(val_type, UnionType) and val_type.uses_pointer_repr():
-                return True
         return False
 
     def is_mutable_lvalue(self, expr: TpyExpr) -> bool:

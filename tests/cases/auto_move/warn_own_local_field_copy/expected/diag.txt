@@ -1,0 +1,2 @@
+main.py:17: warning: copies Item into field; use copy() to make this explicit
+main.py:28: warning: copies Item into owned storage; use copy() to make this explicit

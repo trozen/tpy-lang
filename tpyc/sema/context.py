@@ -19,7 +19,7 @@ from ..typesys import (
     PendingListType, PendingDictType, PendingSetType,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
-    unwrap_readonly, unwrap_ref_type,
+    unwrap_readonly, unwrap_ref_type, unwrap_qualifiers,
 )
 from ..namespace import Namespace
 from ..parse import (
@@ -649,15 +649,29 @@ class SemanticContext:
         return False
 
     def get_expr_type(self, expr: TpyExpr) -> TpyType | None:
-        """Get the cached type of an expression, stripping Ref.
+        """Get the cached type of an expression, stripping Ref and Own.
 
-        Ref is an internal annotation for reference provenance; callers
-        that need bare types (codegen, type resolution, narrowing) should
-        not see it.  The assignment handler uses the analyze_expr return
-        value directly (which preserves Ref) for copy-warning detection.
+        Ref/Own are internal annotations for reference provenance and
+        ownership; callers that need bare types (codegen, type resolution,
+        narrowing) should not see them.  ReadonlyType is preserved because
+        codegen needs it for const emission.  The assignment handler uses
+        the analyze_expr return value directly (which preserves Ref/Own)
+        for copy-warning detection.
         """
         typ = self.expr_types.get(id(expr))
-        return unwrap_ref_type(typ) if typ is not None else None
+        if typ is None:
+            return None
+        typ = unwrap_ref_type(typ)
+        if isinstance(typ, OwnType):
+            typ = typ.wrapped
+        return typ
+
+    def get_raw_expr_type(self, expr: TpyExpr) -> TpyType | None:
+        """Get the cached type of an expression WITHOUT stripping qualifiers.
+
+        Used by copy-warning detection to see Ref/Own qualifiers.
+        """
+        return self.expr_types.get(id(expr))
 
     def set_expr_type(self, expr: TpyExpr, typ: TpyType) -> None:
         """Cache the type of an expression."""

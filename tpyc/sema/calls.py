@@ -669,7 +669,7 @@ class CallAnalyzer:
 
             # Check for constructors that can infer type from arguments
             if expr.args:
-                arg_types = [unwrap_ref_type(self.expr.analyze_expr(arg)) for arg in expr.args]
+                arg_types = [unwrap_own(unwrap_ref_type(self.expr.analyze_expr(arg))) for arg in expr.args]
                 init_overloads = record_info.get_method_overloads("__init__")
                 if init_overloads:
                     for ctor in init_overloads:
@@ -938,7 +938,7 @@ class CallAnalyzer:
         arg = expr.args[0]
         if isinstance(arg, TpyName):
             is_last_use = id(arg) in self.ctx.all_last_uses
-            is_movable = self.compat._is_movable_var(arg.name)
+            is_movable = self.compat._is_owned_var(arg.name)
             if not is_last_use or not is_movable:
                 self.ctx.warning(
                     f"own_iter() consumes '{arg.name}' -- "
@@ -1214,14 +1214,14 @@ class CallAnalyzer:
             return
         is_last_use_movable = (isinstance(arg, TpyName)
                                and id(arg) in self.ctx.all_last_uses
-                               and self.compat._is_movable_var(arg.name))
+                               and self.compat._is_owned_var(arg.name))
         if is_last_use_movable:
             self.compat.check_own_consumption(arg)
             return
         if self._is_nocopy_type(arg_type):
             reason = self.ctx.nocopy_reason(arg_type)
             is_movable = (isinstance(arg, TpyName)
-                          and self.compat._is_movable_var(arg.name))
+                          and self.compat._is_owned_var(arg.name))
             if is_movable:
                 # Movable owner, but not at last use (used later)
                 raise self.ctx.error(
@@ -1250,7 +1250,7 @@ class CallAnalyzer:
         inner = arg.args[0]
         if (isinstance(inner, TpyName)
                 and id(inner) in self.ctx.all_last_uses
-                and self.compat._is_movable_var(inner.name)):
+                and self.compat._is_owned_var(inner.name)):
             self.compat.check_own_consumption(arg)
             self.ctx.warning(
                 f"unnecessary copy() -- '{inner.name}' is at its last use and would be moved automatically",
@@ -1268,9 +1268,21 @@ class CallAnalyzer:
         own_ptype = unwrap_optional_own(ptype)
         if own_ptype is None:
             return
-        if not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
-            self._check_own_param_arg(arg, arg_type, pname, own_ptype)
-        # Own[T] param forwarded to another Own[T] param — mark consumption
+        # Unwrap OwnType from name lookup (implicit owned local) for the check.
+        # Explicit OwnType (from function return, not a name) means ownership
+        # was already acknowledged -- skip the check.
+        check_type = arg_type
+        if isinstance(arg_type, OwnType):
+            if isinstance(arg, TpyName):
+                check_type = arg_type.wrapped  # implicit Own from local
+            else:
+                # Explicit Own from function return -- ownership acknowledged
+                self.compat.check_own_consumption(arg)
+                self._warn_unnecessary_copy(arg)
+                return
+        if not check_type.is_value_type():
+            self._check_own_param_arg(arg, check_type, pname, own_ptype)
+        # Own[T] local passed to Own[T] param — mark consumption
         if isinstance(arg_type, OwnType):
             self.compat.check_own_consumption(arg)
         self._warn_unnecessary_copy(arg)
@@ -1636,7 +1648,7 @@ class CallAnalyzer:
         and str(container).
         """
         self._reject_kwargs_for_builtin(expr, expr.func_name)
-        arg_types = [unwrap_ref_type(self.expr.analyze_expr(arg)) for arg in expr.args]
+        arg_types = [unwrap_own(unwrap_ref_type(self.expr.analyze_expr(arg))) for arg in expr.args]
 
         # Resolve the concrete type (e.g. Float32Type). __init__ returns None
         # in Python, so we look up the actual type via the type factory.
@@ -1860,9 +1872,9 @@ class CallAnalyzer:
             arg_types = self._infer_arg_types(expr, fn_generic)
         else:
             arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-        # Strip Ref from arg types: builtin overloads are defined with bare
-        # types, and Ref is a semantic annotation not a type difference.
-        arg_types = [unwrap_ref_type(t) for t in arg_types]
+        # Strip Ref/Own from arg types: builtin overloads are defined with bare
+        # types, and Ref/Own are semantic annotations not type differences.
+        arg_types = [unwrap_own(unwrap_ref_type(t)) for t in arg_types]
 
         # Validate explicit type args before generic inference
         if expr.type_args_parse_error:

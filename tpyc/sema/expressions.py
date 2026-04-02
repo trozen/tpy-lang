@@ -474,8 +474,12 @@ class ExpressionAnalyzer:
                 if binding.kind == BindingKind.VARIABLE:
                     self._check_definitely_assigned(expr)
                     result = self.narrowing.narrow_name_type(expr.name, binding.type)
-                    # Strip Own[T] -- see comment below at scope fallback path.
-                    return result.wrapped if isinstance(result, OwnType) else result
+                    # Own[T] at last-use: strip to signal auto-move (no copy warning).
+                    # Own[T] at non-last-use: preserve to signal ownership to callers
+                    # (enables unified copy detection in the assignment handler).
+                    if isinstance(result, OwnType) and id(expr) in self.ctx.all_last_uses:
+                        result = result.wrapped
+                    return result
                 if binding.kind == BindingKind.BUILTIN:
                     return binding.type
                 # For other bindings (FUNCTION, RECORD, MODULE, IMPORTED_NAME),
@@ -497,10 +501,9 @@ class ExpressionAnalyzer:
                 raise self.ctx.error(f"Undefined variable: '{expr.name}'", expr)
         self._check_definitely_assigned(expr)
         result = self.narrowing.narrow_name_type(expr.name, typ)
-        # Strip Own[T] for expression type -- Own indicates the variable owns
-        # its storage (for movability), but the expression type is T (the
-        # variable is an lvalue when used in expressions).
-        if isinstance(result, OwnType):
+        # Own[T] at last-use: strip to signal auto-move.
+        # Own[T] at non-last-use: preserve for unified copy detection.
+        if isinstance(result, OwnType) and id(expr) in self.ctx.all_last_uses:
             result = result.wrapped
         return result
 
@@ -664,9 +667,10 @@ class ExpressionAnalyzer:
                     expr,
                 )
 
+        # Unwrap OwnType -- ownership doesn't affect operator resolution
+        left_effective = left_type.wrapped if isinstance(left_type, OwnType) else left_type
+        right_effective = right_type.wrapped if isinstance(right_type, OwnType) else right_type
         # Value optionals in operator expressions use runtime null checks unless
-        left_effective = left_type
-        right_effective = right_type
         # flow already proved non-None for the specific expression.
         warned_optional_operator = False
         if expr.op not in ("is", "is not", "&&", "||", "in", "not in", "==", "!="):
@@ -820,6 +824,8 @@ class ExpressionAnalyzer:
         # Membership operators (in, not in) return Bool
         if expr.op in ("in", "not in"):
             right_type = unwrap_ref_type(right_type)
+            if isinstance(right_type, OwnType):
+                right_type = right_type.wrapped
             # Try __contains__ method (O(1) for dict, set, dict_keys; user-defined for records)
             right_record = self.ctx.registry.get_record_for_type(right_type)
             if right_record:
@@ -1108,6 +1114,8 @@ class ExpressionAnalyzer:
         """Analyze a unary operation."""
         operand_type = self.analyze_expr(expr.operand)
         effective_type = unwrap_ref_type(operand_type)
+        if isinstance(effective_type, OwnType):
+            effective_type = effective_type.wrapped
 
         # Value optionals in unary arithmetic/bitwise ops use runtime checks
         # unless flow already narrowed them to non-Optional.
@@ -1601,10 +1609,14 @@ class ExpressionAnalyzer:
 
         self.ctx.narrowed_types = saved_narrowed
 
-        # Strip Ref from branch types -- Ref is provenance, not part of the
-        # result type.  The ternary produces a value, not a reference.
+        # Strip Ref/Own from branch types -- these are provenance qualifiers,
+        # not part of the result type.  The ternary produces a value.
         then_type = unwrap_ref_type(then_type)
+        if isinstance(then_type, OwnType):
+            then_type = then_type.wrapped
         else_type = unwrap_ref_type(else_type)
+        if isinstance(else_type, OwnType):
+            else_type = else_type.wrapped
 
         common = self._ternary_common_type(expr, then_type, else_type,
                                            widen_numeric_types)
@@ -2415,6 +2427,8 @@ class ExpressionAnalyzer:
             if isinstance(part, TpyFStringValue):
                 part_type = self.analyze_expr(part.expr)
                 resolved = unwrap_readonly(part_type)
+                if isinstance(resolved, OwnType):
+                    resolved = resolved.wrapped
                 conv = part.conversion
 
                 if container_to_str_template(resolved) is not None:

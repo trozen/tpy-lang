@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Callable
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, LiteralType, TypeParamRef,
     ResolvedBinop, ResolvedUnaryop, FunctionInfo, TypeParamKind,
-    INT32, FLOAT, PendingListType, ListType, unwrap_ref_type,
+    INT32, FLOAT, PendingListType, ListType, OwnType, unwrap_ref_type,
 )
 from .overloads import type_matches_numeric, type_matches_strict
 from tpyc import modules as builtin_modules
@@ -87,6 +87,8 @@ class OperatorResolver:
 
     def get_effective_type_for_binop(self, tpy_type: TpyType) -> TpyType:
         """Fully resolve type for registry lookup (also resolves IntLiteralType/FloatLiteralType)."""
+        if isinstance(tpy_type, OwnType):
+            tpy_type = tpy_type.wrapped
         if isinstance(tpy_type, IntLiteralType):
             return self.ctx.default_int_for_literal(tpy_type)
         if isinstance(tpy_type, FloatLiteralType):

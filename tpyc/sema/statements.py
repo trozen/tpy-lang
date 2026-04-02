@@ -219,7 +219,7 @@ class StatementAnalyzer:
         inner = value.args[0]
         if (isinstance(inner, TpyName)
                 and id(inner) in self.ctx.all_last_uses
-                and self.compat._is_movable_var(inner.name)):
+                and self.compat._is_owned_var(inner.name)):
             self.ctx.warning(
                 f"unnecessary copy() -- '{inner.name}' is at its last use and would be moved automatically",
                 value,
@@ -275,7 +275,7 @@ class StatementAnalyzer:
             return
         is_auto_moved = (isinstance(expr, TpyName)
                          and id(expr) in self.ctx.all_last_uses
-                         and self.compat._is_movable_var(expr.name))
+                         and self.compat._is_owned_var(expr.name))
         if is_auto_moved:
             self.compat.check_own_consumption(expr)
             return
@@ -284,7 +284,7 @@ class StatementAnalyzer:
         if is_nocopy:
             reason = self.ctx.nocopy_reason(expr_type)
             is_movable = (isinstance(expr, TpyName)
-                          and self.compat._is_movable_var(expr.name))
+                          and self.compat._is_owned_var(expr.name))
             if is_movable:
                 raise self.ctx.error(
                     f"{reason} is used after this point "
@@ -345,7 +345,16 @@ class StatementAnalyzer:
             # Field context: all reference-type elements are owned (VALUE)
             # Warn if not an explicit copy() -- same as scalar field assignment
             if is_field:
-                if self.compat.needs_copy_warning(elem, et):
+                elem_val_type = self.ctx.get_raw_expr_type(elem)
+                should_warn = False
+                if elem_val_type is not None and isinstance(elem_val_type, (RefType, OwnType)):
+                    if not self.compat.is_copy_call(elem):
+                        should_warn = isinstance(elem_val_type, RefType) or isinstance(elem, TpyName)
+                elif self._is_non_owned_var_copy(elem, et):
+                    should_warn = True
+                elif self._is_compound_return_copy(elem, et):
+                    should_warn = True
+                if should_warn:
                     self.ctx.warning(
                         f"copies {et} into field (tuple element {i}); "
                         f"use copy() to make this explicit",
@@ -792,7 +801,7 @@ class StatementAnalyzer:
             else:
                 iterable_type = self.expr.analyze_expr(stmt.iterable)
                 is_readonly_iterable = isinstance(iterable_type, ReadonlyType)
-                inner_iterable_type = unwrap_readonly(unwrap_ref_type(iterable_type))
+                inner_iterable_type = unwrap_readonly(unwrap_own(unwrap_ref_type(iterable_type)))
                 # Resolve TypeParamRef to its bound for element type extraction
                 resolved_for_iter = inner_iterable_type
                 if isinstance(inner_iterable_type, TypeParamRef):
@@ -953,7 +962,7 @@ class StatementAnalyzer:
                         and not unwrapped.is_value_type()
                         and isinstance(stmt.iterable, TpyName)
                         and id(stmt.iterable) in self.ctx.all_last_uses
-                        and self.compat._is_movable_var(stmt.iterable.name)):
+                        and self.compat._is_owned_var(stmt.iterable.name)):
                     consuming_fi = self._find_consuming_iter(inner_iterable_type)
                     if consuming_fi is not None:
                         stmt.consuming_iter_fi = consuming_fi
@@ -1541,7 +1550,7 @@ class StatementAnalyzer:
         visible after the with block (matching CPython semantics).
         """
         for item in stmt.items:
-            ctx_type = unwrap_ref_type(self.expr.analyze_expr(item.context_expr))
+            ctx_type = unwrap_own(unwrap_ref_type(self.expr.analyze_expr(item.context_expr)))
 
             # Look up __enter__ and __exit__ on the context manager type
             record_info = self.ctx.registry.get_record_for_type(ctx_type)
@@ -2389,6 +2398,11 @@ class StatementAnalyzer:
                     self.ctx.unresolved_none_vars.add(stmt.name)
                 else:
                     var_type = init_type
+            # Strip OwnType from init_type: ownership of the source variable
+            # doesn't transfer to the target. The target determines its own
+            # ownership via the OwnType wrapping logic below (line ~2570).
+            if isinstance(var_type, OwnType):
+                var_type = var_type.wrapped
             # Preserve Ref on non-reassigned function locals from reference
             # sources (call returns, field access, subscript, params).
             # Strip for: reassigned locals (T* codegen), top-level globals.
@@ -2550,7 +2564,7 @@ class StatementAnalyzer:
                         and stmt.name not in self.ctx.current_reassigned_vars
                         and stmt.init.name not in self.ctx.current_reassigned_vars
                         and id(stmt.init) in self.ctx.all_last_uses
-                        and self.compat._is_movable_var(stmt.init.name)
+                        and self.compat._is_owned_var(stmt.init.name)
                         and var_type is not None
                         and not var_type.is_value_type()
                         and not (isinstance(var_type, OptionalType) and var_type.uses_pointer_repr())
@@ -2573,7 +2587,7 @@ class StatementAnalyzer:
                         and not var_type.is_value_type()
                         and not isinstance(var_type, (NoneType, ReadonlyType,
                                                       PendingListType, PendingDictType, PendingSetType,
-                                                      PendingViewType))
+                                                      PendingViewType, PendingGenericInstanceType))
                         and not (isinstance(var_type, OptionalType) and var_type.uses_pointer_repr())
                         and not isinstance(var_type, UnionType)
                         and stmt.name not in self.ctx.hoisted_vars
@@ -2586,7 +2600,8 @@ class StatementAnalyzer:
                         self.ctx.current_scope.define(stmt.name, var_type)
         # Track provenance for non-value types and pointer types
         # (pointers are value types but carry address provenance)
-        if stmt.init and (not var_type.is_value_type() or isinstance(var_type, PtrType)):
+        provenance_type = var_type.wrapped if isinstance(var_type, OwnType) else var_type
+        if stmt.init and (not provenance_type.is_value_type() or isinstance(provenance_type, PtrType)):
             self.init.mark_provenance(stmt.name, self.compat.is_param_derived_expr(stmt.init))
         # Track non-null pointer provenance for null-check elision
         if stmt.init and isinstance(var_type, PtrType):
@@ -2603,7 +2618,8 @@ class StatementAnalyzer:
             self.init.mark_non_null_ptr(stmt.name, is_non_null)
 
         # Scope escape check for variable declarations (new and reassignment)
-        if stmt.init and not var_type.is_value_type():
+        escape_type = var_type.wrapped if isinstance(var_type, OwnType) else var_type
+        if stmt.init and not escape_type.is_value_type():
             self.scopes.check_escape(stmt.name, stmt.init, stmt)
         if self.ctx.current_ns:
             self.ctx.current_ns.bind_variable(stmt.name, var_type)
@@ -2649,6 +2665,11 @@ class StatementAnalyzer:
                 # Value types are always by-value
                 if rt.is_value_type():
                     return False
+                # User-defined record constructors: call_type is None (not set
+                # by the constructor resolution path) but fi resolves to __init__.
+                # These create new values, not references.
+                if fi.name == "__init__":
+                    return False
                 # Non-Own non-value return = reference
                 return True
         return False
@@ -2656,11 +2677,13 @@ class StatementAnalyzer:
     def _analyze_tuple_unpack(self, stmt: TpyTupleUnpack) -> None:
         """Analyze tuple unpacking: a, b = expr."""
         rhs_type = self.expr.analyze_expr(stmt.value)
+        rhs_check = rhs_type.wrapped if isinstance(rhs_type, OwnType) else rhs_type
 
-        if not isinstance(rhs_type, TupleType):
+        if not isinstance(rhs_check, TupleType):
             raise self.ctx.error(
                 f"Cannot unpack non-tuple type {rhs_type}", stmt)
 
+        rhs_type = rhs_check
         n_targets = len(stmt.targets)
         n_elems = len(rhs_type.element_types)
         if n_targets != n_elems:
@@ -2773,7 +2796,7 @@ class StatementAnalyzer:
         assert isinstance(sl, TpySlice)
 
         obj_type = self.expr.analyze_expr(stmt.target.obj)
-        inner_type = unwrap_readonly(unwrap_ref_type(obj_type))
+        inner_type = unwrap_own(unwrap_readonly(unwrap_ref_type(obj_type)))
         if not isinstance(inner_type, ListType):
             raise self.ctx.error(
                 f"Slice assignment not supported for type '{obj_type}'", stmt)
@@ -2844,24 +2867,30 @@ class StatementAnalyzer:
             # plain name reassignment just rebinds the local.
             if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
                 self.ctx.mark_param_mutated(root)
-        ref_value_type: TpyType | None = None
+        copy_warning_fired = False
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             declared_target_type = self.narrowing.declared_type_for_expr(stmt.target)
             if declared_target_type is not None:
                 target_type = declared_target_type
-            # Warn when storing a reference into a field/container (implicit copy).
-            # Ref on the value expression type means it's borrowed -- covers
-            # params, locals from ref sources, call returns, field access,
-            # and subscript uniformly.
-            ref_value_type = value_type if isinstance(value_type, RefType) else None
-            if ref_value_type is not None and stmt.loc is not None:
-                inner = unwrap_ref_type(ref_value_type)
+            # Unified copy detection: Ref (borrowed) or Own (owned at non-last-use)
+            # on the value expression type means storing it into a field/container
+            # will copy.  Ref covers params, call returns, field access, subscript.
+            # Own covers owned locals at non-last-use.
+            # Skip explicit copy() calls (caller acknowledged the copy) and
+            # OwnType from non-name sources (explicit Own return from function).
+            is_own_from_name = isinstance(value_type, OwnType) and isinstance(stmt.value, TpyName)
+            if (isinstance(value_type, (RefType, OwnType))
+                    and stmt.loc is not None
+                    and not self.compat.is_copy_call(stmt.value)
+                    and (isinstance(value_type, RefType) or is_own_from_name)):
+                inner = unwrap_qualifiers(value_type)
                 dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"
                 if isinstance(inner, TypeParamRef):
                     msg = f"may copy {inner} into {dest} if not a value type; use copy() to make this explicit"
                 else:
                     msg = f"copies {inner} into {dest}; use copy() to make this explicit"
                 self.ctx.warning(msg, stmt)
+                copy_warning_fired = True
             # Own[T] param stored in a field/container — mark as consumed
             if isinstance(stmt.value, TpyName) and stmt.value.name in self.ctx.current_param_names:
                 self.ctx.mark_own_param_consumed(stmt.value.name)
@@ -2880,10 +2909,10 @@ class StatementAnalyzer:
             declared_target_type = self.ctx.current_scope.lookup(stmt.target.name)
             if declared_target_type is not None:
                 target_type = declared_target_type
-            # Unwrap Ref and ReadonlyType for reassignment type resolution --
+            # Unwrap Ref, Own, and ReadonlyType for reassignment type resolution --
             # this is a binding, not passing by reference.
-            inner_target = unwrap_ref_type(unwrap_readonly(target_type))
-            inner_value = unwrap_ref_type(unwrap_readonly(value_type))
+            inner_target = unwrap_own(unwrap_ref_type(unwrap_readonly(target_type)))
+            inner_value = unwrap_own(unwrap_ref_type(unwrap_readonly(value_type)))
             # PendingListType reassignment: different sizes force list
             if isinstance(inner_target, PendingListType):
                 if isinstance(inner_value, PendingListType):
@@ -3038,22 +3067,21 @@ class StatementAnalyzer:
             is_field = isinstance(stmt.target, TpyFieldAccess)
             self._annotate_tuple_elem_capture(
                 stmt.value, target_type, is_field=is_field)
-        if isinstance(stmt.target, TpyFieldAccess):
-            # Skip when Ref-based warning already fired.
-            if stmt.loc is not None and ref_value_type is None and self.compat.needs_copy_warning(stmt.value, target_type):
-                if isinstance(target_type, TypeParamRef):
-                    msg = f"may copy {target_type} into field if not a value type; use copy() to make this explicit"
-                else:
-                    msg = f"copies {value_type} into field; use copy() to make this explicit"
-                self.ctx.warning(msg, stmt)
-
-        if isinstance(stmt.target, TpySubscript):
-            if ref_value_type is None and self.compat.needs_copy_warning(stmt.value, target_type):
-                if isinstance(target_type, TypeParamRef):
-                    msg = f"may copy {target_type} into container if not a value type; use copy() to make this explicit"
-                else:
-                    msg = f"copies {value_type} into container; use copy() to make this explicit"
-                self.ctx.warning(msg, stmt)
+        # Residual copy warnings for cases not covered by the Ref/Own check:
+        # - Reassigned vars without OwnType in scope at non-last-use
+        # - Optional/Union function returns (make_ref skips these)
+        if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
+            if stmt.loc is not None and not copy_warning_fired:
+                dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"
+                if self._is_non_owned_var_copy(stmt.value, target_type):
+                    if isinstance(target_type, TypeParamRef):
+                        msg = f"may copy {target_type} into {dest} if not a value type; use copy() to make this explicit"
+                    else:
+                        msg = f"copies {value_type} into {dest}; use copy() to make this explicit"
+                    self.ctx.warning(msg, stmt)
+                elif self._is_compound_return_copy(stmt.value, target_type):
+                    msg = f"copies {value_type} into {dest}; use copy() to make this explicit"
+                    self.ctx.warning(msg, stmt)
 
         # Scope escape check for assignments to named variables
         if isinstance(stmt.target, TpyName) and not target_type.is_value_type():
@@ -3182,6 +3210,54 @@ class StatementAnalyzer:
                 f"'{op}=' to {_format_aug_target(target)}", loc=stmt.loc,
             )
 
+    def _is_non_owned_var_copy(self, expr: TpyExpr, target_type: TpyType) -> bool:
+        """Check if storing a non-OwnType variable copies into storage.
+
+        Covers locals excluded from OwnType wrapping: reassigned vars,
+        union types, Optional with pointer repr.  These are not caught by
+        the unified Ref/Own check.
+        """
+        if target_type.is_value_type():
+            return False
+        if self.compat._is_value_type_param(target_type):
+            return False
+        if self.compat.is_copy_call(expr):
+            return False
+        if not isinstance(expr, TpyName):
+            return False
+        scope_type = self.ctx.current_scope.lookup(expr.name) if self.ctx.current_scope else None
+        if scope_type is not None and isinstance(scope_type, (RefType, OwnType)):
+            return False  # already caught by the Ref/Own check
+        if scope_type is not None and scope_type.is_value_type():
+            return False
+        # Skip at last-use of movable var
+        if id(expr) in self.ctx.all_last_uses and self.compat._is_owned_var(expr.name):
+            return False
+        if scope_type is None:
+            return False
+        return True
+
+    def _is_compound_return_copy(self, expr: TpyExpr, target_type: TpyType) -> bool:
+        """Check if storing an Optional/Union function return copies into storage.
+
+        make_ref() skips Optional and Union types, so they don't get RefType
+        wrapping.  This residual check catches them.
+        TODO: extend make_ref() to wrap Optional/Union -> eliminate this.
+        """
+        if self.compat.is_copy_call(expr):
+            return False
+        # T|None function returns always alias an existing object
+        if isinstance(target_type, OptionalType) and not target_type.inner.is_value_type():
+            val_type = self.ctx.get_expr_type(expr)
+            if isinstance(val_type, OptionalType) and not val_type.inner.is_value_type():
+                return True
+        # Non-value union function returns: pointer-variant -> value-variant field copies
+        if isinstance(target_type, UnionType) and target_type.uses_pointer_repr():
+            val_type = self.ctx.get_expr_type(expr)
+            if isinstance(val_type, UnionType) and val_type.uses_pointer_repr():
+                return True
+        return False
+
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
         # In nested defs, aug-assign to an outer variable requires nonlocal
@@ -3200,7 +3276,7 @@ class StatementAnalyzer:
                 stmt
             )
         from .operators import OperatorResolver
-        target_type = unwrap_ref_type(self.expr.analyze_expr(stmt.target))
+        target_type = unwrap_own(unwrap_ref_type(self.expr.analyze_expr(stmt.target)))
         value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
         # Track mutation of for-each loop variables and parameters
         aug_root = _root_name_of_expr(stmt.target)
