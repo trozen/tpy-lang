@@ -19,7 +19,7 @@ from ..typesys import (
     PendingListType, PendingDictType, PendingSetType,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
-    unwrap_readonly,
+    unwrap_readonly, unwrap_ref_type,
 )
 from ..namespace import Namespace
 from ..parse import (
@@ -649,8 +649,15 @@ class SemanticContext:
         return False
 
     def get_expr_type(self, expr: TpyExpr) -> TpyType | None:
-        """Get the cached type of an expression."""
-        return self.expr_types.get(id(expr))
+        """Get the cached type of an expression, stripping Ref.
+
+        Ref is an internal annotation for reference provenance; callers
+        that need bare types (codegen, type resolution, narrowing) should
+        not see it.  The assignment handler uses the analyze_expr return
+        value directly (which preserves Ref) for copy-warning detection.
+        """
+        typ = self.expr_types.get(id(expr))
+        return unwrap_ref_type(typ) if typ is not None else None
 
     def set_expr_type(self, expr: TpyExpr, typ: TpyType) -> None:
         """Cache the type of an expression."""

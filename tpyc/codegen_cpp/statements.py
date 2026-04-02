@@ -3249,7 +3249,8 @@ class StatementGenerator:
     def _emit_branch_decls(self, out: TextIO, stmt: TpyStmt, indent: str) -> None:
         """Pre-declare variables first declared inside if/elif/match branches."""
         branch_decls = self.ctx.analyzer.if_branch_decls.get(id(stmt), {})
-        for name, var_type in branch_decls.items():
+        for name, raw_var_type in branch_decls.items():
+            var_type = unwrap_ref_type(raw_var_type)
             if (name not in self.ctx.declared_vars
                     and name not in self.ctx.global_declared_vars
                     and name not in self.ctx.native_global_names):

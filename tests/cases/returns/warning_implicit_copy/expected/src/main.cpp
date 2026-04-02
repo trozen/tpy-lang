@@ -29,6 +29,24 @@ void main() {
     // # Warning: subscript assignment copies from reference
     // pts[0] = identity(pts[1])  # tpyc: warning(/copies Point into container/)
     ::tpy::__setitem__(pts, 0, identity(::tpy::__getitem__(pts, 1)));
+    // # Warning: indirect flow through local -> field
+    // r = identity(pt)
+    Point& r = identity(pt);
+    // h.p = r  # tpyc: warning(/copies Point into field/)
+    h.p = r;
+    // # Warning: indirect flow through local -> container
+    // s = identity(pts[0])
+    Point& s = identity(::tpy::__getitem__(pts, 0));
+    // pts[1] = s  # tpyc: warning(/copies Point into container/)
+    ::tpy::__setitem__(pts, 1, s);
+    // # Warning: field-to-field copy (field access is a reference)
+    // h2 = Holder(pt)  # tpyc: warning(/borrowed container/)
+    Holder h2 = Holder(pt);
+    // h.p = h2.p  # tpyc: warning(/copies Point into field/)
+    h.p = h2.p;
+    // # Warning: subscript-to-field copy (subscript is a reference)
+    // h.p = pts[0]  # tpyc: warning(/copies Point into field/)
+    h.p = ::tpy::__getitem__(pts, 0);
     // print(h.p.x)
     std::cout << h.p.x << "\n";
     // print(pts[0].x)

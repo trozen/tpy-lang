@@ -21,7 +21,7 @@ from ..typesys import (
     resolve_int_literals, FnType, CallableType,
     INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, SLICE, BYTES, BYTESVIEW, UINT8,
     is_protocol_type, container_to_str_template, contains_type_param,
-    PendingGenericInstanceType, SliceType, unwrap_ref_type,
+    PendingGenericInstanceType, SliceType, unwrap_ref_type, make_ref, RefType,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -819,6 +819,7 @@ class ExpressionAnalyzer:
 
         # Membership operators (in, not in) return Bool
         if expr.op in ("in", "not in"):
+            right_type = unwrap_ref_type(right_type)
             # Try __contains__ method (O(1) for dict, set, dict_keys; user-defined for records)
             right_record = self.ctx.registry.get_record_for_type(right_type)
             if right_record:
@@ -1106,7 +1107,7 @@ class ExpressionAnalyzer:
     def _analyze_unaryop(self, expr: TpyUnaryOp) -> TpyType:
         """Analyze a unary operation."""
         operand_type = self.analyze_expr(expr.operand)
-        effective_type = operand_type
+        effective_type = unwrap_ref_type(operand_type)
 
         # Value optionals in unary arithmetic/bitwise ops use runtime checks
         # unless flow already narrowed them to non-Optional.
@@ -1122,7 +1123,7 @@ class ExpressionAnalyzer:
             if record and (record.get_method_overloads("__bool__")
                            or record.get_method_overloads("__len__")):
                 return BOOL
-            raise self.ctx.error(f"Invalid operand type for 'not': {operand_type} (expected bool, numeric, or type with __bool__/__len__)", expr)
+            raise self.ctx.error(f"Invalid operand type for 'not': {effective_type} (expected bool, numeric, or type with __bool__/__len__)", expr)
 
         # Float types support unary negation and plus
         if isinstance(effective_type, (FloatType, Float32Type, FloatLiteralType)):
@@ -1341,7 +1342,7 @@ class ExpressionAnalyzer:
                     narrowed = self.ctx.narrowed_types.get(field_key)
                     if narrowed is not None:
                         result = narrowed
-                return result
+                return make_ref(result)
 
             deref_target = self.get_deref_target_type(
                 current_type, is_readonly=is_readonly_obj)
@@ -1599,6 +1600,11 @@ class ExpressionAnalyzer:
             else_type = self.analyze_expr(expr.else_expr)
 
         self.ctx.narrowed_types = saved_narrowed
+
+        # Strip Ref from branch types -- Ref is provenance, not part of the
+        # result type.  The ternary produces a value, not a reference.
+        then_type = unwrap_ref_type(then_type)
+        else_type = unwrap_ref_type(else_type)
 
         common = self._ternary_common_type(expr, then_type, else_type,
                                            widen_numeric_types)
@@ -2241,8 +2247,10 @@ class ExpressionAnalyzer:
 
         obj_type = self.analyze_expr(expr.obj)
 
-        # Unwrap Own[T] -- ownership marker doesn't affect subscript behavior
-        inner_obj_type = obj_type.wrapped if isinstance(obj_type, OwnType) else obj_type
+        # Unwrap transparent wrappers -- Ref/Own don't affect subscript behavior
+        inner_obj_type = unwrap_ref_type(obj_type)
+        if isinstance(inner_obj_type, OwnType):
+            inner_obj_type = inner_obj_type.wrapped
 
         # Tuple indexing: t[0], t[-1] -- compile-time constant index only
         actual_for_tuple = unwrap_readonly(inner_obj_type)
@@ -2264,14 +2272,14 @@ class ExpressionAnalyzer:
                     f"dict key (expected {actual_obj.key_type})",
                     loc=expr.loc,
                 )
-            return actual_obj.value_type
+            return make_ref(actual_obj.value_type)
         if isinstance(actual_obj, DictType):
             self.compat.check_type_compatible(
                 index_type, actual_obj.key_type,
                 f"dict key (expected {actual_obj.key_type})",
                 loc=expr.loc,
             )
-            return actual_obj.value_type
+            return make_ref(actual_obj.value_type)
 
         if not isinstance(index_type, (Int32Type, BigIntType, IntLiteralType)):
             raise self.ctx.error(f"Subscript index must be an integer type, got {index_type}", expr)
@@ -2302,7 +2310,7 @@ class ExpressionAnalyzer:
                     info.needs_indexing = True
             if is_readonly_obj and not elem_type.is_value_type():
                 elem_type = ReadonlyType(unwrap_readonly(elem_type))
-            return elem_type
+            return make_ref(elem_type)
 
         # Protocol types - lookup __getitem__ return type
         if is_protocol_type(actual_type):
@@ -2311,7 +2319,7 @@ class ExpressionAnalyzer:
                 raise self.ctx.error(f"Protocol {actual_type.name} does not support indexing", expr)
             if is_readonly_obj and not ret.is_value_type():
                 ret = ReadonlyType(unwrap_readonly(ret))
-            return ret
+            return make_ref(ret)
 
         # Records with __getitem__ method
         if isinstance(actual_type, NamedType) and actual_type.is_record:
@@ -2320,7 +2328,7 @@ class ExpressionAnalyzer:
                 raise self.ctx.error(f"Cannot index type {actual_type}: no __getitem__ method", expr)
             if is_readonly_obj and not ret.is_value_type():
                 ret = ReadonlyType(unwrap_readonly(ret))
-            return ret
+            return make_ref(ret)
 
         raise self.ctx.error(f"Cannot index type {obj_type}", expr)
 

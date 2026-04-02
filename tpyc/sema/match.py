@@ -13,7 +13,7 @@ from ..typesys import (
     BoolType, StrType, StrViewType, StringType, CharType, NamedType,
     NoneType, OptionalType, UnionType, EnumType, PendingStrType,
     LiteralType, LiteralValue,
-    unwrap_readonly,
+    unwrap_readonly, unwrap_ref_type,
 )
 from ..parse import (
     TpyName, TpyFieldAccess,
@@ -53,9 +53,8 @@ class MatchAnalyzer:
         from .flow_facts import FlowFacts
 
         subject_type = self.expr.analyze_expr(stmt.subject)
-        stmt.subject_type = subject_type
-
-        effective_type = unwrap_readonly(subject_type)
+        effective_type = unwrap_ref_type(unwrap_readonly(subject_type))
+        stmt.subject_type = effective_type
         is_union = isinstance(effective_type, UnionType)
         is_enum = isinstance(effective_type, EnumType)
         is_literal = isinstance(effective_type, LiteralType)
@@ -73,7 +72,7 @@ class MatchAnalyzer:
         if not (is_union or is_enum or is_primitive or is_record or is_optional):
             raise self.ctx.error(
                 f"match subject must be a union, enum, primitive, record, "
-                f"or Optional type, got '{subject_type}'", stmt
+                f"or Optional type, got '{effective_type}'", stmt
             )
 
         # Subject variable name for narrowing (only if simple name)

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, OptionalType, NoneType, VoidType, PtrType, OwnType, NamedType,
     TypeParamRef, FixedIntType, BigIntType, IntLiteralType,
-    ReadonlyType, UnionType, unwrap_readonly, make_union, union_none_narrow,
+    ReadonlyType, UnionType, unwrap_readonly, unwrap_ref_type, make_union, union_none_narrow,
     is_protocol_type, LiteralType, LiteralValue,
 )
 from ..parse import (
@@ -52,12 +52,17 @@ class NarrowingTracker:
         return self.ctx.narrowed_types.get(name, typ)
 
     def declared_type_for_name(self, name: str) -> TpyType | None:
-        """Get a variable's declared type (without applying flow narrowing)."""
+        """Get a variable's declared type (without applying flow narrowing).
+
+        Strips Ref -- declared types reflect the user's annotation, not
+        the internal reference-provenance wrapper.
+        """
         if self.ctx.current_ns:
             binding = self.ctx.current_ns.lookup(name)
             if binding and binding.kind == BindingKind.VARIABLE:
-                return binding.type
-        return self.ctx.current_scope.lookup(name)
+                return unwrap_ref_type(binding.type)
+        typ = self.ctx.current_scope.lookup(name)
+        return unwrap_ref_type(typ) if typ is not None else None
 
     def _resolve_field_path_type(self, key: str) -> TpyType | None:
         """Resolve the declared type for a dotted field path like 'obj.field' or 'obj.a.b'."""
@@ -102,7 +107,7 @@ class NarrowingTracker:
             obj_type = self.declared_type_for_expr(expr.obj)
             if obj_type is None:
                 return None
-            actual_type = unwrap_readonly(obj_type)
+            actual_type = unwrap_readonly(unwrap_ref_type(obj_type))
             if isinstance(actual_type, PtrType):
                 actual_type = actual_type.pointee
             elif isinstance(actual_type, OwnType):

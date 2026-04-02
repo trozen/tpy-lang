@@ -14,7 +14,7 @@ from ..typesys import (
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
     NoneType, VoidType, FnType, CallableType,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
-    public_module_name, unwrap_ref_type,
+    public_module_name, unwrap_ref_type, RefType,
 )
 from ..coercions import resolve_coercion, CoercionContext
 from .diagnostics import SemanticError
@@ -361,7 +361,12 @@ class TypeOperations:
                                  typ._module_qname, typ.is_dynamic_protocol)
             return typ
         # Use map_inner_types for types that have inner types
-        return typ.map_inner_types(lambda t: self.substitute_type_params(t, subst))
+        result = typ.map_inner_types(lambda t: self.substitute_type_params(t, subst))
+        # Ptr[Ref[T]] -> Ptr[T]: Ref inside Ptr is redundant (Ptr is
+        # already a pointer; the Ref from make_ref should not nest).
+        if isinstance(result, PtrType) and isinstance(result.pointee, RefType):
+            result = PtrType(result.pointee.wrapped, result.is_readonly)
+        return result
 
     def build_type_substitution(self, record_type: TpyType) -> dict[str, TpyType | int]:
         """Build a type parameter substitution map for a generic record instantiation.

@@ -1508,7 +1508,9 @@ def unwrap_own(typ: 'TpyType') -> 'TpyType':
 
 
 def unwrap_qualifiers(typ: 'TpyType') -> 'TpyType':
-    """Strip both ReadonlyType and OwnType wrappers."""
+    """Strip ReadonlyType, OwnType, and RefType wrappers."""
+    if isinstance(typ, RefType):
+        typ = typ.wrapped
     if isinstance(typ, ReadonlyType):
         typ = typ.wrapped
     if isinstance(typ, OwnType):

@@ -828,7 +828,7 @@ class StatementAnalyzer:
                         # Protocol-typed and TypeParamRef params used as for-loop iterables
                         # require mutable access: .__next__() mutates iterator state.
                         # Mark them mutated so the generated param gets T& not const T&.
-                        inner = unwrap_readonly(iterable_type)
+                        inner = unwrap_ref_type(unwrap_readonly(iterable_type))
                         if (isinstance(inner, (TypeParamRef,)) or is_protocol_type(inner)):
                             self.ctx.mark_param_mutated(stmt.iterable.name)
                     elif isinstance(stmt.iterable, TpyFieldAccess):
@@ -1622,15 +1622,19 @@ class StatementAnalyzer:
         Used by both _analyze_function (analyzer.py) and _analyze_nested_def.
         Callers handle scope creation, type resolution, and post-processing.
         """
-        # Bind params to scope
+        # Bind params to scope with Ref for non-value types.
+        # analyze_expr strips Ref from return values, so downstream sema
+        # sees bare types.  Ref on scope types enables provenance-aware
+        # code (assignment warnings, local scope propagation).
         param_names: set[str] = set()
         for pname, ptype in params:
             param_names.add(pname)
-            scope.define(pname, ptype)
+            scope_type = make_ref(ptype)
+            scope.define(pname, scope_type)
             self.ctx.var_scope_depth[pname] = scope.depth
             self.ctx.definitely_assigned.add(pname)
             if ns:
-                ns.bind_variable(pname, ptype)
+                ns.bind_variable(pname, scope_type)
 
         # Param tracking for mutation analysis
         self.ctx.current_param_names = param_names
@@ -2385,11 +2389,12 @@ class StatementAnalyzer:
                     self.ctx.unresolved_none_vars.add(stmt.name)
                 else:
                     var_type = init_type
-            # Strip Ref for scope binding -- locals use C++ T& binding, no
-            # actual copy.  TODO: preserve Ref on locals so copy warnings
-            # detect indirect flows (local -> field), then unify the warning
-            # system (remove needs_copy_warning, use Ref-based detection only).
-            var_type = unwrap_ref_type(var_type)
+            # Preserve Ref on non-reassigned function locals from reference
+            # sources (call returns, field access, subscript, params).
+            # Strip for: reassigned locals (T* codegen), top-level globals.
+            if (stmt.name in self.ctx.current_reassigned_vars
+                    or self.ctx.is_top_level):
+                var_type = unwrap_ref_type(var_type)
             # Track inferred writes for potential future retro-validation.
             self.deduction.record_write(stmt.name, stmt.init, init_type)
             # Annotate tuple literal element capture modes (local context)
@@ -2614,9 +2619,9 @@ class StatementAnalyzer:
         if existing_type is None:
             self.ctx.var_decl_by_name[stmt.name] = stmt
         # Record declared type for test type-annotation validation.
-        # Strip Own[T] for display -- Own is an internal property, not user-facing.
+        # Strip Own[T] and Ref[T] for display -- internal annotations, not user-facing.
         if stmt.loc:
-            display_type = unwrap_own(var_type) if var_type else var_type
+            display_type = unwrap_ref_type(unwrap_own(var_type)) if var_type else var_type
             self.ctx.declared_var_types[(stmt.loc.line, stmt.name)] = display_type
 
     def _is_reference_returning_call(self, expr: TpyExpr | None) -> bool:
@@ -2768,7 +2773,7 @@ class StatementAnalyzer:
         assert isinstance(sl, TpySlice)
 
         obj_type = self.expr.analyze_expr(stmt.target.obj)
-        inner_type = unwrap_readonly(obj_type)
+        inner_type = unwrap_readonly(unwrap_ref_type(obj_type))
         if not isinstance(inner_type, ListType):
             raise self.ctx.error(
                 f"Slice assignment not supported for type '{obj_type}'", stmt)
@@ -2845,17 +2850,10 @@ class StatementAnalyzer:
             if declared_target_type is not None:
                 target_type = declared_target_type
             # Warn when storing a reference into a field/container (implicit copy).
-            # Check expression type (Ref on locals/call results) and FI param
-            # type (params have bare scope types but Ref on FI).
+            # Ref on the value expression type means it's borrowed -- covers
+            # params, locals from ref sources, call returns, field access,
+            # and subscript uniformly.
             ref_value_type = value_type if isinstance(value_type, RefType) else None
-            if (ref_value_type is None
-                    and isinstance(stmt.value, TpyName)
-                    and stmt.value.name in self.ctx.current_param_names):
-                for pname, ptype in (self.ctx.current_function.params
-                                     if self.ctx.current_function else []):
-                    if pname == stmt.value.name and isinstance(ptype, RefType):
-                        ref_value_type = ptype
-                        break
             if ref_value_type is not None and stmt.loc is not None:
                 inner = unwrap_ref_type(ref_value_type)
                 dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"
@@ -2882,10 +2880,10 @@ class StatementAnalyzer:
             declared_target_type = self.ctx.current_scope.lookup(stmt.target.name)
             if declared_target_type is not None:
                 target_type = declared_target_type
-            # Unwrap ReadonlyType for reassignment type resolution -- this is a
-            # binding, not passing by reference.
-            inner_target = unwrap_readonly(target_type)
-            inner_value = unwrap_readonly(value_type)
+            # Unwrap Ref and ReadonlyType for reassignment type resolution --
+            # this is a binding, not passing by reference.
+            inner_target = unwrap_ref_type(unwrap_readonly(target_type))
+            inner_value = unwrap_ref_type(unwrap_readonly(value_type))
             # PendingListType reassignment: different sizes force list
             if isinstance(inner_target, PendingListType):
                 if isinstance(inner_value, PendingListType):
@@ -3041,8 +3039,7 @@ class StatementAnalyzer:
             self._annotate_tuple_elem_capture(
                 stmt.value, target_type, is_field=is_field)
         if isinstance(stmt.target, TpyFieldAccess):
-            # Skip copy warning for synthesized dataclass __init__ assignments (no loc)
-            # and when the Ref-based warning already fired (ref_value_type is not None).
+            # Skip when Ref-based warning already fired.
             if stmt.loc is not None and ref_value_type is None and self.compat.needs_copy_warning(stmt.value, target_type):
                 if isinstance(target_type, TypeParamRef):
                     msg = f"may copy {target_type} into field if not a value type; use copy() to make this explicit"
@@ -3203,7 +3200,7 @@ class StatementAnalyzer:
                 stmt
             )
         from .operators import OperatorResolver
-        target_type = self.expr.analyze_expr(stmt.target)
+        target_type = unwrap_ref_type(self.expr.analyze_expr(stmt.target))
         value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
         # Track mutation of for-each loop variables and parameters
         aug_root = _root_name_of_expr(stmt.target)

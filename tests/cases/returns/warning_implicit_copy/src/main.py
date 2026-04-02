@@ -32,6 +32,21 @@ def main() -> None:
     # Warning: subscript assignment copies from reference
     pts[0] = identity(pts[1])  # tpyc: warning(/copies Point into container/)
 
+    # Warning: indirect flow through local -> field
+    r = identity(pt)
+    h.p = r  # tpyc: warning(/copies Point into field/)
+
+    # Warning: indirect flow through local -> container
+    s = identity(pts[0])
+    pts[1] = s  # tpyc: warning(/copies Point into container/)
+
+    # Warning: field-to-field copy (field access is a reference)
+    h2 = Holder(pt)  # tpyc: warning(/borrowed container/)
+    h.p = h2.p  # tpyc: warning(/copies Point into field/)
+
+    # Warning: subscript-to-field copy (subscript is a reference)
+    h.p = pts[0]  # tpyc: warning(/copies Point into field/)
+
     print(h.p.x)
     print(pts[0].x)
 

@@ -669,7 +669,7 @@ class CallAnalyzer:
 
             # Check for constructors that can infer type from arguments
             if expr.args:
-                arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+                arg_types = [unwrap_ref_type(self.expr.analyze_expr(arg)) for arg in expr.args]
                 init_overloads = record_info.get_method_overloads("__init__")
                 if init_overloads:
                     for ctor in init_overloads:
@@ -1617,9 +1617,12 @@ class CallAnalyzer:
         if isinstance(pointee, VoidType):
             raise self.ctx.error(f"{kind} to None does not accept arguments", expr)
 
-        if arg_type != pointee:
+        # Strip Ref from pointee: Ptr[T] where T was inferred as Ref[Point]
+        # should match Point (Ref is provenance, not part of the pointee type).
+        bare_pointee = unwrap_ref_type(pointee)
+        if arg_type != bare_pointee:
             raise self.ctx.error(
-                f"{kind} to {pointee} expects {pointee}, got {arg_type}", expr)
+                f"{kind} to {bare_pointee} expects {bare_pointee}, got {arg_type}", expr)
         # Mutable pointer to a for-each loop var prevents const-ref binding
         if not expr.call_type.is_readonly and isinstance(arg, TpyName):
             self.ctx.mark_loop_var_mutated(arg.name)
@@ -1633,7 +1636,7 @@ class CallAnalyzer:
         and str(container).
         """
         self._reject_kwargs_for_builtin(expr, expr.func_name)
-        arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+        arg_types = [unwrap_ref_type(self.expr.analyze_expr(arg)) for arg in expr.args]
 
         # Resolve the concrete type (e.g. Float32Type). __init__ returns None
         # in Python, so we look up the actual type via the type factory.
@@ -1857,6 +1860,9 @@ class CallAnalyzer:
             arg_types = self._infer_arg_types(expr, fn_generic)
         else:
             arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+        # Strip Ref from arg types: builtin overloads are defined with bare
+        # types, and Ref is a semantic annotation not a type difference.
+        arg_types = [unwrap_ref_type(t) for t in arg_types]
 
         # Validate explicit type args before generic inference
         if expr.type_args_parse_error:
@@ -2260,7 +2266,7 @@ class CallAnalyzer:
                                         self.protocols.type_conforms_to_protocol,
                                         n_explicit)
 
-        # Store inferred type args for codegen
+        # Store inferred type args for codegen (preserves Ref for val_or_ref<T>)
         expr.inferred_type_args = tuple(type_subst[p] for p in func.type_params)
 
         # Validate defaults for generic params not covered by explicit args
