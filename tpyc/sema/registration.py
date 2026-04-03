@@ -260,13 +260,6 @@ class TypeRegistrar:
                     f"Protocols are only valid as function and method parameters",
                     loc=fld.loc
                 )
-            # StrView fields are a lifetime hazard -- use str or String instead
-            if isinstance(fld.type, StrViewType):
-                raise SemanticError(
-                    f"StrView cannot be used as a field type (dangling reference risk). "
-                    f"Use 'str' or 'String' for owned string fields",
-                    loc=fld.loc
-                )
             # Self cannot be used as a field type (infinite size or broken codegen)
             if _contains_self_type(fld.type):
                 raise SemanticError(

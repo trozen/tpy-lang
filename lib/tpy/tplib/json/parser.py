@@ -1,10 +1,5 @@
 # JSON pull-parser: JsonToken enum and JsonReader class.
 #
-# TODO(perf): _data should be StrView, not str -- avoids copying entire input
-# TODO(perf): _unescape() uses O(n^2) string concat in a loop; use list+join
-#   or a single-buffer builder
-# TODO(perf): read_float() allocates an intermediate string via _read_number_raw();
-#   parse directly from the buffer (like read_int does)
 # TODO(perf): _read_raw_str() scans the string twice (once for escape detection,
 #   once in _unescape); merge into a single pass
 # TODO(perf): redundant _skip_ws() calls -- every read_* method calls it, even
@@ -67,7 +62,7 @@ class JsonToken(Enum):
     END = 9
 
 class JsonReader:
-    _data: str
+    _data: StrView
     _pos: Int32
     _len: Int32
 
@@ -225,7 +220,7 @@ class JsonReader:
 
     @error_return(JsonError)
     def read_float(self) -> Float64:
-        raw: str = self._read_number_raw()
+        raw: StrView = self._read_number_raw()
         return float(raw)
 
     @error_return(JsonError)
@@ -361,7 +356,7 @@ class JsonReader:
         return result
 
     @error_return(JsonError)
-    def _read_number_raw(self) -> str:
+    def _read_number_raw(self) -> StrView:
         self._skip_ws()
         start = self._pos
         # Optional leading minus

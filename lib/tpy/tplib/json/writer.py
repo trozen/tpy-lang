@@ -1,9 +1,5 @@
 # JSON writer: builds a JSON string incrementally.
-#
-# TODO(perf): _parts is list[str] joined at the end -- in C++ this becomes
-#   vector<string> with scattered allocations and an O(n) final join. Use a
-#   single str buffer (String type) with reserved capacity and append in-place.
-from tpy import Int32, Int64, Float64, Float32, Char
+from tpy import Int32, Int64, Float64, Float32, Char, String
 
 _HEX = "0123456789abcdef"
 
@@ -11,14 +7,14 @@ def _hex_byte(v: Int32) -> str:
     return _HEX[v // 16] + _HEX[v % 16]
 
 class JsonWriter:
-    _parts: list[str]
+    _buf: str
     _needs_comma: bool
     _indent: Int32
     _depth: Int32
     _fresh_line: bool
 
     def __init__(self, indent: Int32 = 0) -> None:
-        self._parts = []
+        self._buf = ""
         self._needs_comma = False
         self._indent = indent
         self._depth = 0
@@ -27,14 +23,14 @@ class JsonWriter:
     # -- pretty-printing helpers (only called when _indent > 0) --
 
     def _emit_nl(self) -> None:
-        self._parts.append("\n")
+        self._buf += "\n"
         n = self._indent * self._depth
         if n > 0:
-            self._parts.append(" " * n)
+            self._buf += " " * n
 
     def _pretty_sep(self) -> None:
         if self._needs_comma:
-            self._parts.append(",")
+            self._buf += ","
             self._emit_nl()
         elif self._fresh_line:
             self._emit_nl()
@@ -43,7 +39,7 @@ class JsonWriter:
 
     def _pretty_open(self, bracket: str) -> None:
         self._pretty_sep()
-        self._parts.append(bracket)
+        self._buf += bracket
         self._depth += 1
         self._fresh_line = True
         self._needs_comma = False
@@ -53,7 +49,7 @@ class JsonWriter:
         if not self._fresh_line:
             self._emit_nl()
         self._fresh_line = False
-        self._parts.append(bracket)
+        self._buf += bracket
         self._needs_comma = True
 
     # -- public API --
@@ -63,15 +59,15 @@ class JsonWriter:
             self._pretty_open("{")
             return
         if self._needs_comma:
-            self._parts.append(", ")
-        self._parts.append("{")
+            self._buf += ", "
+        self._buf += "{"
         self._needs_comma = False
 
     def object_end(self) -> None:
         if self._indent > 0:
             self._pretty_close("}")
             return
-        self._parts.append("}")
+        self._buf += "}"
         self._needs_comma = True
 
     def array_start(self) -> None:
@@ -79,51 +75,51 @@ class JsonWriter:
             self._pretty_open("[")
             return
         if self._needs_comma:
-            self._parts.append(", ")
-        self._parts.append("[")
+            self._buf += ", "
+        self._buf += "["
         self._needs_comma = False
 
     def array_end(self) -> None:
         if self._indent > 0:
             self._pretty_close("]")
             return
-        self._parts.append("]")
+        self._buf += "]"
         self._needs_comma = True
 
     def key(self, k: str) -> None:
         if self._indent > 0:
             self._pretty_sep()
         elif self._needs_comma:
-            self._parts.append(", ")
-        self._parts.append("\"")
+            self._buf += ", "
+        self._buf += "\""
         self._write_escaped(k)
-        self._parts.append("\": ")
+        self._buf += "\": "
         self._needs_comma = False
 
     def write_str(self, v: str) -> None:
         if self._indent > 0:
             self._pretty_sep()
         elif self._needs_comma:
-            self._parts.append(", ")
-        self._parts.append("\"")
+            self._buf += ", "
+        self._buf += "\""
         self._write_escaped(v)
-        self._parts.append("\"")
+        self._buf += "\""
         self._needs_comma = True
 
     def write_int(self, v: Int64) -> None:
         if self._indent > 0:
             self._pretty_sep()
         elif self._needs_comma:
-            self._parts.append(", ")
-        self._parts.append(str(v))
+            self._buf += ", "
+        self._buf += str(v)
         self._needs_comma = True
 
     def write_int32(self, v: Int32) -> None:
         if self._indent > 0:
             self._pretty_sep()
         elif self._needs_comma:
-            self._parts.append(", ")
-        self._parts.append(str(v))
+            self._buf += ", "
+        self._buf += str(v)
         self._needs_comma = True
 
     def write_float(self, v: Float64) -> None:
@@ -132,39 +128,39 @@ class JsonWriter:
         if self._indent > 0:
             self._pretty_sep()
         elif self._needs_comma:
-            self._parts.append(", ")
-        self._parts.append(str(v))
+            self._buf += ", "
+        self._buf += str(v)
         self._needs_comma = True
 
     def write_float32(self, v: Float32) -> None:
         if self._indent > 0:
             self._pretty_sep()
         elif self._needs_comma:
-            self._parts.append(", ")
-        self._parts.append(str(v))
+            self._buf += ", "
+        self._buf += str(v)
         self._needs_comma = True
 
     def write_bool(self, v: bool) -> None:
         if self._indent > 0:
             self._pretty_sep()
         elif self._needs_comma:
-            self._parts.append(", ")
+            self._buf += ", "
         if v:
-            self._parts.append("true")
+            self._buf += "true"
         else:
-            self._parts.append("false")
+            self._buf += "false"
         self._needs_comma = True
 
     def write_null(self) -> None:
         if self._indent > 0:
             self._pretty_sep()
         elif self._needs_comma:
-            self._parts.append(", ")
-        self._parts.append("null")
+            self._buf += ", "
+        self._buf += "null"
         self._needs_comma = True
 
-    def finish(self) -> str:
-        return "".join(self._parts)
+    def finish(self) -> String:
+        return self._buf
 
     def _write_escaped(self, s: str) -> None:
         start: Int32 = 0
@@ -193,9 +189,9 @@ class JsonWriter:
                     esc = "\\u00" + _hex_byte(ord(c))
             if len(esc) > 0:
                 if i > start:
-                    self._parts.append(s[start:i])
-                self._parts.append(esc)
+                    self._buf += s[start:i]
+                self._buf += esc
                 start = i + 1
             i += 1
         if start < slen:
-            self._parts.append(s[start:slen])
+            self._buf += s[start:slen]

@@ -1,1 +1,0 @@
-main.py:5: error: StrView cannot be used as a field type (dangling reference risk). Use 'str' or 'String' for owned string fields
