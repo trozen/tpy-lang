@@ -64,7 +64,9 @@ struct CopyIter {
 };
 
 // Factory: create CopyIter from a container by calling __iter__ and wrapping.
+// Excluded for iterator types (have __next__) -- use the rvalue overload via std::move.
 template<typename T, typename Container>
+    requires (!requires(Container& c) { c.__next__(); })
 auto copy_iter(Container& c) {
     auto it = tpy::__iter__(c);
     return CopyIter<T, decltype(it)>{std::move(it)};

@@ -352,8 +352,13 @@ class StatementAnalyzer:
                         should_warn = isinstance(elem_val_type, RefType) or isinstance(elem, TpyName)
                 elif self._is_non_owned_var_copy(elem, et):
                     should_warn = True
-                elif self._is_compound_return_copy(elem, et):
-                    should_warn = True
+                else:
+                    elem_stripped = self.ctx.get_expr_type(elem)
+                    if not self.compat.is_copy_call(elem):
+                        if (isinstance(elem_stripped, OptionalType) and not elem_stripped.inner.is_value_type()):
+                            should_warn = True
+                        elif isinstance(elem_stripped, UnionType) and elem_stripped.uses_pointer_repr():
+                            should_warn = True
                 if should_warn:
                     self.ctx.warning(
                         f"copies {et} into field (tuple element {i}); "
@@ -2872,17 +2877,25 @@ class StatementAnalyzer:
             declared_target_type = self.narrowing.declared_type_for_expr(stmt.target)
             if declared_target_type is not None:
                 target_type = declared_target_type
-            # Unified copy detection: Ref (borrowed) or Own (owned at non-last-use)
-            # on the value expression type means storing it into a field/container
+            # Unified copy detection: Ref (borrowed), Own (owned at non-last-use),
+            # or compound borrowed types (Optional/Union with pointer repr) on
+            # the value expression type means storing it into a field/container
             # will copy.  Ref covers params, call returns, field access, subscript.
             # Own covers owned locals at non-last-use.
+            # Optional[NonValue] and Union[pointer-repr] use pointer representation
+            # (T*, variant<A*,B*>) which is semantically borrowed -- copying into
+            # storage (std::optional<T>, variant<A,B>) is a pointer-to-value copy.
             # Skip explicit copy() calls (caller acknowledged the copy) and
             # OwnType from non-name sources (explicit Own return from function).
             is_own_from_name = isinstance(value_type, OwnType) and isinstance(stmt.value, TpyName)
-            if (isinstance(value_type, (RefType, OwnType))
+            stripped_value = self.ctx.get_expr_type(stmt.value)
+            is_compound_ref = (
+                (isinstance(stripped_value, OptionalType) and not stripped_value.inner.is_value_type())
+                or (isinstance(stripped_value, UnionType) and stripped_value.uses_pointer_repr())
+            )
+            if ((isinstance(value_type, RefType) or is_own_from_name or is_compound_ref)
                     and stmt.loc is not None
-                    and not self.compat.is_copy_call(stmt.value)
-                    and (isinstance(value_type, RefType) or is_own_from_name)):
+                    and not self.compat.is_copy_call(stmt.value)):
                 inner = unwrap_qualifiers(value_type)
                 dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"
                 if isinstance(inner, TypeParamRef):
@@ -3067,20 +3080,15 @@ class StatementAnalyzer:
             is_field = isinstance(stmt.target, TpyFieldAccess)
             self._annotate_tuple_elem_capture(
                 stmt.value, target_type, is_field=is_field)
-        # Residual copy warnings for cases not covered by the Ref/Own check:
-        # - Reassigned vars without OwnType in scope at non-last-use
-        # - Optional/Union function returns (make_ref skips these)
+        # Residual copy warning: reassigned vars without OwnType in scope
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             if stmt.loc is not None and not copy_warning_fired:
-                dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"
                 if self._is_non_owned_var_copy(stmt.value, target_type):
+                    dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"
                     if isinstance(target_type, TypeParamRef):
                         msg = f"may copy {target_type} into {dest} if not a value type; use copy() to make this explicit"
                     else:
                         msg = f"copies {value_type} into {dest}; use copy() to make this explicit"
-                    self.ctx.warning(msg, stmt)
-                elif self._is_compound_return_copy(stmt.value, target_type):
-                    msg = f"copies {value_type} into {dest}; use copy() to make this explicit"
                     self.ctx.warning(msg, stmt)
 
         # Scope escape check for assignments to named variables
@@ -3236,27 +3244,6 @@ class StatementAnalyzer:
         if scope_type is None:
             return False
         return True
-
-    def _is_compound_return_copy(self, expr: TpyExpr, target_type: TpyType) -> bool:
-        """Check if storing an Optional/Union function return copies into storage.
-
-        make_ref() skips Optional and Union types, so they don't get RefType
-        wrapping.  This residual check catches them.
-        TODO: extend make_ref() to wrap Optional/Union -> eliminate this.
-        """
-        if self.compat.is_copy_call(expr):
-            return False
-        # T|None function returns always alias an existing object
-        if isinstance(target_type, OptionalType) and not target_type.inner.is_value_type():
-            val_type = self.ctx.get_expr_type(expr)
-            if isinstance(val_type, OptionalType) and not val_type.inner.is_value_type():
-                return True
-        # Non-value union function returns: pointer-variant -> value-variant field copies
-        if isinstance(target_type, UnionType) and target_type.uses_pointer_repr():
-            val_type = self.ctx.get_expr_type(expr)
-            if isinstance(val_type, UnionType) and val_type.uses_pointer_repr():
-                return True
-        return False
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
