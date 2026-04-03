@@ -14,7 +14,7 @@ from ..typesys import (
     NoneType, NamedType, StrType, StringType, StrViewType, BytesType, BytesViewType, STR, BYTES, TupleType, VoidType,
     INT32, BIGINT, FLOAT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType,
-    local_var_is_movable, resolve_int_literals,
+    resolve_int_literals,
     error_return_to_cpp, qualify_exception_name, is_return_exception,
     unwrap_ref_type, RefType,
 )
@@ -133,6 +133,7 @@ class StatementGenerator:
             self.ctx.lvalue_reassigned_vars = set()
         self.ctx.hoisted_vars = self.ctx.analyzer.function_hoisted_vars.get(id(func), set())
         self.ctx.move_through_vars = self.ctx.analyzer.function_move_through_vars.get(id(func), set())
+        self.ctx.sema_movable_locals = self.ctx.analyzer.function_movable_locals.get(id(func), set())
         # Optional non-value params are T* / const T* in C++ -- need pointer-local treatment (->)
         for pname, ptype in params:
             actual = unwrap_readonly(ptype)
@@ -1264,12 +1265,7 @@ class StatementGenerator:
             if is_optional or stmt.name in self.ctx.reassigned_vars or stmt.name in self.ctx.hoisted_vars:
                 # T* pointer-local -- needs rebinding support (or hoisted storage)
                 self.ctx.pointer_locals.add(stmt.name)
-                if local_var_is_movable(
-                        stmt.name,
-                        self.ctx.hoisted_vars,
-                        self.ctx.reassigned_vars,
-                        self.ctx.lvalue_reassigned_vars,
-                        stmt.init is None or self.ctx.is_rvalue_source(stmt.init)):
+                if stmt.name in self.ctx.sema_movable_locals:
                     self.ctx.movable_locals.add(stmt.name)
                 if stmt.init:
                     return self._gen_pointer_local_init(stmt.name, cpp_type, stmt.init, target_type, indent)
@@ -1307,16 +1303,8 @@ class StatementGenerator:
                 return f"{indent}{const_pfx}{cpp_type}& {cpp_name} = {init_expr};\n"
 
         # Tier 1 non-value-type locals are eligible for auto-move at last use
-        init_is_rvalue = stmt.init is None or self.ctx.is_rvalue_source(stmt.init)
-        if stmt.name in self.ctx.move_through_vars:
-            init_is_rvalue = True
         if (target_type and not target_type.is_value_type()
-                and local_var_is_movable(
-                    stmt.name,
-                    self.ctx.hoisted_vars,
-                    self.ctx.reassigned_vars,
-                    self.ctx.lvalue_reassigned_vars,
-                    init_is_rvalue)):
+                and stmt.name in self.ctx.sema_movable_locals):
             self.ctx.movable_locals.add(stmt.name)
 
         if stmt.init:
@@ -3321,12 +3309,7 @@ class StatementGenerator:
                     self.ctx.branch_hoisted_vars.add(name)
                     if is_const:
                         self.ctx.const_indirect_locals.add(name)
-                    if local_var_is_movable(
-                            name,
-                            self.ctx.hoisted_vars,
-                            self.ctx.reassigned_vars,
-                            self.ctx.lvalue_reassigned_vars,
-                            True):  # branch-declared vars have no init; movability is reassignment-based
+                    if name in self.ctx.sema_movable_locals:
                         self.ctx.movable_locals.add(name)
                     const_pfx = "const " if is_const else ""
                     if name in self.ctx.rvalue_reassigned_vars:

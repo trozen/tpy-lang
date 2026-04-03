@@ -3856,31 +3856,3 @@ class TypeRegistry:
         return False
 
 
-def local_var_is_movable(
-        name: str,
-        hoisted: set[str],
-        reassigned: set[str],
-        lvalue_reassigned: set[str],
-        init_is_rvalue: bool) -> bool:
-    """Return True if a local variable has owned (movable) storage.
-
-    Single source of truth for auto-move eligibility shared between sema
-    (tpyc/sema/compatibility.py) and codegen (tpyc/codegen_cpp/statements.py).
-
-    Parameters
-    ----------
-    name : variable name
-    hoisted : vars that escaped to outer scope (become T* pointer-locals)
-    reassigned : vars assigned more than once (prescan)
-    lvalue_reassigned : reassigned vars with at least one lvalue binding
-    init_is_rvalue : True when the variable's initial/declaring binding is
-        an rvalue (owned) -- callers supply this from their own context:
-        sema uses ``name in ctx.rvalue_vars``,
-        codegen uses ``init is None or ctx.is_rvalue_source(init)``.
-    """
-    if name in hoisted:
-        return False
-    if name in reassigned:
-        # Movable only when ALL bindings are rvalue-owned
-        return name not in lvalue_reassigned and init_is_rvalue
-    return init_is_rvalue

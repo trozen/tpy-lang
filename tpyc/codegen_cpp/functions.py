@@ -1044,6 +1044,10 @@ class FunctionGenerator:
             self.ctx.analyzer.function_move_through_vars[id(synth)] = (
                 self.ctx.analyzer.function_move_through_vars[id(impl)]
             )
+        if id(impl) in self.ctx.analyzer.function_movable_locals:
+            self.ctx.analyzer.function_movable_locals[id(synth)] = (
+                self.ctx.analyzer.function_movable_locals[id(impl)]
+            )
 
         # Set overload context
         self.ctx.overload_param_types = overload_types
@@ -1093,6 +1097,10 @@ class FunctionGenerator:
         if id(impl) in self.ctx.analyzer.function_move_through_vars:
             self.ctx.analyzer.function_move_through_vars[id(synth)] = (
                 self.ctx.analyzer.function_move_through_vars[id(impl)]
+            )
+        if id(impl) in self.ctx.analyzer.function_movable_locals:
+            self.ctx.analyzer.function_movable_locals[id(synth)] = (
+                self.ctx.analyzer.function_movable_locals[id(impl)]
             )
 
         # Inject literal narrowing facts

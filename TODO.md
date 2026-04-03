@@ -3,7 +3,6 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
-- Ref[T] follow-up: update codegen `movable_locals` to read from sema scope types (OwnType) instead of recomputing via `local_var_is_movable()`. Export per-function `movable_locals` from sema like `function_move_through_vars`.
 - Emit `this->` for self method calls: codegen currently emits bare `method(args)` for `self.method()` calls (`expressions.py:1994`). Prefer explicit `this->method(args)` for readability.
 - Ref[T] follow-up: cleanup (Phase 7). Remove `is_value_type()` branching from base class `to_cpp_return()`/`to_cpp_param_type()`. Remove TypeParamRef's to_cpp overrides (now handled by `Ref[TypeParamRef]`). Replace remaining `to_cpp_*` method dispatch with centralized lowering API.
 - Resolve class-level type params in cpp_template at sema time: when sema resolves a generic constructor like `list[Int32](range(10))`, substitute `{T}` -> `Int32` into the template and store a fully-resolved `cpp_template` on `resolved_function_info`. Codegen would then never see unresolved type params -- every template would only have `{0}`, `{1}`, `{cpp}`. Eliminates the `type_subst`/`extract_type_params` machinery in codegen's call_type block and the regex guard in `_gen_call`.
@@ -94,7 +93,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - language restriction documentation
 
 ## Refactor
-- Own[T] side-channel cleanup: `_is_movable_var` replaced by `_is_owned_var` (scope OwnType check). Remaining: `rvalue_vars` in FlowFacts (needed for reassigned-var and move-through fallback in `_is_owned_var`), `consumed_loop_vars` (auto-consuming iteration), `move_through_vars` (codegen optimization), `local_var_is_movable()` (codegen only -- remove when codegen reads sema's scope types).
 - Inplace operator C++ return type: `__iadd__`/`__ior__` etc. declare returning self type (Python semantics) but the C++ helpers (`list_extend`, `dict_update`) return `void`. Add thin wrappers that return `T&` (e.g. `list_extend_inplace`, `dict_update_inplace`) so the declared return type matches the C++ signature. Affects list and dict.
 - `tpy::ptr_variant<Ts...>` wrapper: replace `std::variant<Ts*...>` in param signatures with a thin wrapper that has an implicit converting constructor from `ptr_variant<T*...>` to `ptr_variant<const T*...>`. This would let deduced-const (non-mutated) params use deep const consistently with `@readonly`, without breaking callers. Currently deduced-const uses shallow const (`const variant<T*...>`) which doesn't prevent mutation through the pointer at the C++ level. Start with param signatures only; locals/fields/returns can stay `std::variant`.
 - Inline `and`/`or` chains for side-effect-free operands: `a or b or c` currently emits an intermediate temp (`auto&& __tmp = (a ? a : b); result = (__tmp ? __tmp : c)`) to avoid double-evaluation. When all operands are provably side-effect-free (variables, literals), the temp is unnecessary and the chain can be emitted as a single nested ternary (`!a.empty() ? a : !b.empty() ? b : c`), which is more readable.

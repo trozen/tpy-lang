@@ -292,7 +292,12 @@ class TypeInfo:
 
     @staticmethod
     def from_tpy_type(typ: TpyType) -> TypeInfo:
-        from .typesys import SetType, ArrayType
+        from .typesys import SetType, ArrayType, RefType
+        # Strip sema-internal wrappers -- macros see user-facing types
+        if isinstance(typ, OwnType):
+            typ = typ.wrapped
+        if isinstance(typ, RefType):
+            typ = typ.wrapped
         type_args: list[TypeInfo] = []
         if isinstance(typ, TupleType):
             type_args = [TypeInfo.from_tpy_type(et) for et in typ.element_types]

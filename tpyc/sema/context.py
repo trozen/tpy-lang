@@ -360,6 +360,10 @@ class FunctionTrackingState:
     hoisted_vars: set[str] = field(default_factory=set)
     rvalue_vars: set[str] = field(default_factory=set)
     owned_locals: set[str] = field(default_factory=set)
+    # Accumulator: all locals that were ever owned. Survives FlowFacts
+    # save/restore (not in FlowFacts). Used to compute the exported
+    # movable_locals set at function end.
+    ever_owned_locals: set[str] = field(default_factory=set)
     move_through_vars: set[str] = field(default_factory=set)
 
     # --- Prescan / last-use ---

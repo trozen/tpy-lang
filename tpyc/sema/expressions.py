@@ -1545,6 +1545,8 @@ class ExpressionAnalyzer:
 
     def _validate_dict_key_type(self, key_type: TpyType, expr: TpyExpr) -> None:
         """Validate that a type can be used as a dict key."""
+        if isinstance(key_type, OwnType):
+            key_type = key_type.wrapped
         if isinstance(key_type, IntLiteralType):
             return
         if isinstance(key_type, (EnumType, IntEnumType)):
@@ -1762,13 +1764,13 @@ class ExpressionAnalyzer:
             return PendingDictType(UNKNOWN_ELEMENT, UNKNOWN_ELEMENT, literal_id)
 
         if expected_key:
-            key_types = [self.analyze_expr_with_hint(k, expected_key) for k in expr.keys]
+            key_types = [self._analyze_and_strip(k, expected_key) for k in expr.keys]
         else:
-            key_types = [self.analyze_expr(k) for k in expr.keys]
+            key_types = [self._analyze_and_strip(k) for k in expr.keys]
         if expected_value:
-            value_types = [self.analyze_expr_with_hint(v, expected_value) for v in expr.values]
+            value_types = [self._analyze_and_strip(v, expected_value) for v in expr.values]
         else:
-            value_types = [self.analyze_expr(v) for v in expr.values]
+            value_types = [self._analyze_and_strip(v) for v in expr.values]
 
         # Unify key types
         if isinstance(expected_key, (UnionType, OptionalType)):
@@ -1873,9 +1875,9 @@ class ExpressionAnalyzer:
             )
 
         if expected_elem:
-            elem_types = [self.analyze_expr_with_hint(e, expected_elem) for e in expr.elements]
+            elem_types = [self._analyze_and_strip(e, expected_elem) for e in expr.elements]
         else:
-            elem_types = [self.analyze_expr(e) for e in expr.elements]
+            elem_types = [self._analyze_and_strip(e) for e in expr.elements]
 
         # Unify element types
         if isinstance(expected_elem, (UnionType, OptionalType)):
@@ -2222,6 +2224,20 @@ class ExpressionAnalyzer:
             return self.analyze_expr_with_hint(expr.element_expr, hint)
         return self.analyze_expr(expr.element_expr)
 
+    def _analyze_and_strip(self, expr: TpyExpr, hint: TpyType | None = None) -> TpyType:
+        """Analyze an expression and strip sema-internal wrappers (Own/Ref).
+
+        Used for container literal element types where the declared type
+        should be the user-facing type, not the provenance-tagged expression type.
+        """
+        if hint is not None:
+            self.analyze_expr_with_hint(expr, hint)
+        else:
+            self.analyze_expr(expr)
+        result = self.ctx.get_expr_type(expr)
+        assert result is not None
+        return result
+
     def _analyze_tuple_literal(
         self, expr: TpyTupleLiteral, element_hints: list[TpyType | None] | None = None
     ) -> TupleType:
@@ -2236,7 +2252,11 @@ class ExpressionAnalyzer:
                     analyzed = OwnType(analyzed)
                 elem_types.append(analyzed)
             else:
-                elem_types.append(self.analyze_expr(elem))
+                self.analyze_expr(elem)
+                # Use get_expr_type to strip expression-level OwnType/Ref:
+                # the tuple's declared element type should be bare T,
+                # not the provenance-tagged expression type.
+                elem_types.append(self.ctx.get_expr_type(elem))
         return TupleType(tuple(elem_types))
 
     def _analyze_tuple_subscript(self, expr: TpySubscript, tuple_type: TupleType) -> TpyType:

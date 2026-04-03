@@ -198,6 +198,9 @@ class SemanticAnalyzer:
         self.function_move_through_vars: dict[int, set[str]] = {}
         self.top_level_move_through_vars: set[str] = set()
 
+        # Per-function movable locals (owned, not hoisted/loop/lvalue-reassigned)
+        self.function_movable_locals: dict[int, set[str]] = {}
+
         # Per-function `global x` declarations (for codegen)
         self.function_global_decls: dict[int, set[str]] = {}
 
@@ -796,6 +799,16 @@ class SemanticAnalyzer:
             self.function_hoisted_vars[id(func)] = self.ctx.hoisted_vars.copy()
         if self.ctx.move_through_vars:
             self.function_move_through_vars[id(func)] = self.ctx.move_through_vars.copy()
+        # Compute movable locals from ever_owned_locals (survives FlowFacts restores)
+        movable = set()
+        for name in self.ctx.ever_owned_locals:
+            if name in self.ctx.hoisted_vars:
+                continue
+            if name in self.ctx.current_reassigned_vars and name in self.ctx.current_lvalue_reassigned:
+                continue
+            movable.add(name)
+        if movable:
+            self.function_movable_locals[id(func)] = movable
         if self.ctx.global_declarations:
             self.function_global_decls[id(func)] = self.ctx.global_declarations.copy()
         self.if_branch_decls.update(self.ctx.if_branch_decls)

@@ -463,6 +463,7 @@ class CodeGenContext:
 
     # --- Auto-move tracking (last-use -> std::move) ---
     movable_locals: set[str] = field(default_factory=set)
+    sema_movable_locals: set[str] = field(default_factory=set)
 
     # --- Move-through vars (lvalue alias promoted to owned via std::move) ---
     move_through_vars: set[str] = field(default_factory=set)

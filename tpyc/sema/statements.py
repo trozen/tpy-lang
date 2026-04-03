@@ -2599,6 +2599,7 @@ class StatementAnalyzer:
                         and not is_protocol_union(var_type)):
                     self.ctx.rvalue_vars.add(stmt.name)
                     self.ctx.owned_locals.add(stmt.name)
+                    self.ctx.ever_owned_locals.add(stmt.name)
                     self.ctx.move_through_vars.add(stmt.name)
                 else:
                     self.ctx.rvalue_vars.discard(stmt.name)
@@ -2609,6 +2610,7 @@ class StatementAnalyzer:
                 # (constructor, Own return) vs reference-returning call.
                 if not self._is_reference_returning_call(stmt.init):
                     self.ctx.owned_locals.add(stmt.name)
+                    self.ctx.ever_owned_locals.add(stmt.name)
                 else:
                     self.ctx.owned_locals.discard(stmt.name)
         # Track provenance for non-value types and pointer types
@@ -2678,9 +2680,12 @@ class StatementAnalyzer:
                 if rt.is_value_type():
                     return False
                 # User-defined record constructors: call_type is None (not set
-                # by the constructor resolution path) but fi resolves to __init__.
-                # These create new values, not references.
+                # by the constructor resolution path) but fi resolves to __init__
+                # or has the record's name as the function name.
                 if fi.name == "__init__":
+                    return False
+                if (isinstance(expr, TpyCall) and isinstance(expr.func, TpyName)
+                        and self.ctx.registry.find_record(expr.func.name) is not None):
                     return False
                 # Non-Own non-value return = reference
                 return True
@@ -3022,6 +3027,7 @@ class StatementAnalyzer:
                 self.ctx.rvalue_vars.add(stmt.target.name)
                 if not self._is_reference_returning_call(stmt.value):
                     self.ctx.owned_locals.add(stmt.target.name)
+                    self.ctx.ever_owned_locals.add(stmt.target.name)
                 else:
                     self.ctx.owned_locals.discard(stmt.target.name)
 
