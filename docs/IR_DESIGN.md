@@ -717,6 +717,52 @@ Example: `y = x` for a non-value type creates a borrow of `x`'s place. The check
 tracks an active loan on that place while `y` is live. A later `Move(x)` conflicts with
 that active loan unless analysis proves `y` is dead.
 
+#### Derived Lifetimes and Provenance
+
+TPy should not expose Rust-style explicit lifetime parameters in ordinary source code.
+Instead, lifetimes are derived from MIR loan liveness and carried internally as:
+
+- the place being borrowed
+- the CFG region where the loan is live
+- the provenance of any derived view / pointer / borrowed return
+
+Conceptually:
+
+```text
+LoanInfo
+  id: LoanId
+  place: Place
+  mode: BorrowMode
+  kind: BorrowKind
+  origin: StmtId | ExprId
+  holder: LocalName | TempId | ReturnValue | FieldSink
+  live_blocks: set[BlockId]
+  provenance: Provenance
+```
+
+Where provenance captures where a non-owning value came from:
+
+```text
+Provenance
+  = FromPlace(place: Place)
+  | FromParam(index: int)
+  | FromGlobal(name: str)
+  | FromCapture(name: str)
+  | FromUnknown
+  | Join(sources: list[Provenance])
+```
+
+Examples:
+
+- `span = items[a:b]` -> provenance from `Elements(Local("items"))`
+- `p = ptr(x)` -> provenance from `Local("x")`
+- `return self.field` -> provenance from `Field(Local("self"), "field")`
+- borrowed value returned from a wrapper -> provenance joined from the source params
+
+This is the internal lifetime model for safe-mode checks. A move, mutation, return, or
+escape is legal only if no conflicting live loan reaches that program point and the
+provenance proves the source outlives the use.
+
 #### Borrow Kinds and Modes
 
 ```
@@ -749,6 +795,38 @@ the borrow came from and what invalidates it.
 language design. It is primarily an explicit nullable reference form. Pointer arithmetic
 and unchecked pointer manipulation remain in `tpy.unsafe`; plain `Ptr[T]` operations can
 still participate in normal provenance / lifetime analysis.
+
+#### Function Lifetime / Effect Contracts
+
+For ordinary TPy functions, many facts can be inferred and materialized into THIR / MIR:
+
+- `return_borrows_from = {0, ...}`
+- `mutated_params = {...}`
+- structural invalidation facts for container-like methods
+- whether a returned `Ptr[T]` / `Span[T]` / `StrView` is derived from an input place
+
+For native functions implemented in C++, these contracts should usually be explicit,
+because the compiler cannot reliably infer them from the definition body. The IR design
+therefore needs room for native summaries such as:
+
+- `return_borrows_from`
+- `returns_ptr_to`
+- `mutates`
+- `may_invalidate`
+- `readonly`
+- `opaque_effects`
+
+These contracts are especially important for core-library functions that construct or
+return views (`Span`, `StrView`, `BytesView`), explicit nullable references (`Ptr[T]`),
+or iterator/pointer-like adapters.
+
+Absent an explicit contract, native code should be treated conservatively:
+
+- returned provenance may be `FromUnknown`
+- mutation / invalidation may be assumed
+- advisory mode may warn and reduce optimization
+- safe mode may reject lifetime-sensitive uses unless the call is behind an explicit
+  escape hatch
 
 ### THIR -> MIR Lowering
 
@@ -1182,6 +1260,27 @@ or eliminating the C++ compiler dependency), the MIR is ready.
 ---
 
 ## Open Questions
+
+### Implementation Notes
+
+- **Dynamic / opaque values.** Define how `Any`, dynamic `__getattr__` / `__setattr__`,
+  namespace-style objects, and opaque native objects lower to coarse summarized places
+  and how they degrade analysis precision.
+- **Native contract surface.** Decide the exact user-facing annotation/decorator syntax
+  for native lifetime/effect summaries such as `return_borrows_from`, `returns_ptr_to`,
+  `mutates`, and `may_invalidate`.
+- **Safe-mode boundary.** Spell out which operations are inside the safety guarantee and
+  which remain explicit escape hatches (`tpy.unsafe`, pointer arithmetic, unchecked
+  casts, opaque native code without contracts).
+- **Rebind vs mutate.** Make the rule explicit during implementation that rebinding a
+  name creates a new owner/place binding, while mutation changes an existing place.
+- **Worked examples.** Add a few focused examples once implementation starts,
+  especially for borrowed returns, `Ptr[T]`, views, captures, and structural
+  invalidation.
+- **Structured MIR metadata.** Decide the exact representation of the region tags needed
+  for readable MIR-backed C++ emission.
+- **Native default conservatism.** Define the default behavior when a native function
+  lacks an explicit lifetime/effect contract in advisory mode vs safe mode.
 
 1. **THIR granularity for match/case.** Match arms have complex pattern-matching
    logic. Should THIR preserve the high-level `THIRMatch` with structured arms, or
