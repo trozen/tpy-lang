@@ -136,13 +136,13 @@ def _build_read_into(fld_type: TypeInfo, reader: Expr, hint: str = "v") -> tuple
         return ([ast.var_decl(tmp, init=ast.method_call(
             ast.name(fld_type.name), "__json_decode__", [reader]))], tmp)
 
-    # Enum: read_str first (auto-propagates), then try_parse + raise
+    # Enum: read_str_raw (zero-copy StrView), then try_parse + raise
     if fld_type.is_enum:
         raw_str = ast.fresh_tmp("estr")
         parsed = ast.fresh_tmp("parsed")
         enum_name = fld_type.enum_name
         return ([
-            ast.var_decl(raw_str, init=ast.method_call(reader, "read_str")),
+            ast.var_decl(raw_str, init=ast.method_call(reader, "read_str_raw")),
             ast.var_decl(parsed, init=ast.call("try_parse",
                          [ast.name(enum_name), ast.name(raw_str)])),
             _raise_if(ast.binop(ast.name(parsed), "is", ast.none_lit()),

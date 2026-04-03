@@ -86,9 +86,9 @@ struct Item {
                 }
                 name = __name_1;
             } else if (__match_subject == "color") {
-                std::string __estr_3;
+                std::string_view __estr_3;
                 {
-                    auto __try_tmp_4 = __reader.read_str();
+                    auto __try_tmp_4 = __reader.read_str_raw();
                     if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
                     __estr_3 = ::tpy::unwrap_ref(*__try_tmp_4);
                 }

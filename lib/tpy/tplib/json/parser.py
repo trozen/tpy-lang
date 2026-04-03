@@ -138,6 +138,7 @@ class JsonReader:
             return False
         if c == ",":
             self._pos += 1
+            self._skip_ws()
         return True
 
     @error_return(JsonError)
@@ -244,28 +245,78 @@ class JsonReader:
 
     @error_return(JsonError)
     def skip_value(self) -> None:
-        tok = self.peek()
-        if tok == JsonToken.OBJECT_START:
-            self.read_object_start()
+        self._skip_ws()
+        if self._pos >= self._len:
+            return
+        c = self._data[self._pos]
+        if c == "\"":
+            self._skip_str_no_ws()
+        elif c == "{":
+            self._pos += 1
             while self.has_next():
-                self.read_key()
+                self._skip_key()
                 self.skip_value()
-            self.read_object_end()
-        elif tok == JsonToken.ARRAY_START:
-            self.read_array_start()
+            self._pos += 1
+        elif c == "[":
+            self._pos += 1
             while self.has_next():
                 self.skip_value()
-            self.read_array_end()
-        elif tok == JsonToken.STRING:
-            self.read_str()
-        elif tok == JsonToken.NUMBER:
-            self._read_number_raw()
-        elif tok == JsonToken.TRUE or tok == JsonToken.FALSE:
-            self.read_bool()
-        elif tok == JsonToken.NONE:
-            self.read_null()
+            self._pos += 1
+        elif c == "t":
+            self._pos += 4
+        elif c == "f":
+            self._pos += 5
+        elif c == "n":
+            self._pos += 4
+        else:
+            self._skip_number()
 
     # -- internal helpers --
+
+    @error_return(JsonError)
+    def _skip_str(self) -> None:
+        """Advance past a JSON string without allocating. Handles escapes."""
+        self._skip_ws()
+        self._skip_str_no_ws()
+
+    def _skip_str_no_ws(self) -> None:
+        """Advance past a JSON string, assuming _pos is on the opening quote."""
+        self._pos += 1
+        while self._pos < self._len:
+            c = self._data[self._pos]
+            if c == "\\":
+                self._pos += 2
+            elif c == "\"":
+                self._pos += 1
+                return
+            else:
+                self._pos += 1
+
+    @error_return(JsonError)
+    def _skip_key(self) -> None:
+        """Skip an object key and its trailing colon. No allocation."""
+        self._skip_str_no_ws()
+        self._skip_ws()
+        if not (self._pos < self._len and self._data[self._pos] == ":"):
+            raise JsonError("expected ':'", self._pos)
+        self._pos += 1
+
+    def _skip_number(self) -> None:
+        """Advance past a JSON number. No allocation, no return value."""
+        if self._pos < self._len and self._data[self._pos] == "-":
+            self._pos += 1
+        while self._pos < self._len:
+            c = self._data[self._pos]
+            if c >= "0" and c <= "9":
+                self._pos += 1
+            elif c == ".":
+                self._pos += 1
+            elif c == "e" or c == "E":
+                self._pos += 1
+                if self._pos < self._len and (self._data[self._pos] == "+" or self._data[self._pos] == "-"):
+                    self._pos += 1
+            else:
+                return
 
     @error_return(JsonError)
     def _read_raw_str(self) -> str:

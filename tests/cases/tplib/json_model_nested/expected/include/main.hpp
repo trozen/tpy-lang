@@ -351,9 +351,9 @@ struct Profile {
                                 if (!__try_tmp_20.has_value()) return ::tpy::make_unexpected(__try_tmp_20.error());
                             }
                         } else {
-                            std::string __estr_34;
+                            std::string_view __estr_34;
                             {
-                                auto __try_tmp_21 = __reader.read_str();
+                                auto __try_tmp_21 = __reader.read_str_raw();
                                 if (!__try_tmp_21.has_value()) return ::tpy::make_unexpected(__try_tmp_21.error());
                                 __estr_34 = ::tpy::unwrap_ref(*__try_tmp_21);
                             }
@@ -560,9 +560,9 @@ struct Profile {
                 }
                 case 'o': {
                     if (__match_subject == "role") {
-                        std::string __estr_11;
+                        std::string_view __estr_11;
                         {
-                            auto __try_tmp_44 = __reader.read_str();
+                            auto __try_tmp_44 = __reader.read_str_raw();
                             if (!__try_tmp_44.has_value()) return ::tpy::make_unexpected(__try_tmp_44.error());
                             __estr_11 = ::tpy::unwrap_ref(*__try_tmp_44);
                         }
@@ -580,9 +580,9 @@ struct Profile {
                             if (!__try_tmp_45.has_value()) return ::tpy::make_unexpected(__try_tmp_45.error());
                         }
                         while (__reader.has_next()) {
-                            std::string __estr_18;
+                            std::string_view __estr_18;
                             {
-                                auto __try_tmp_46 = __reader.read_str();
+                                auto __try_tmp_46 = __reader.read_str_raw();
                                 if (!__try_tmp_46.has_value()) return ::tpy::make_unexpected(__try_tmp_46.error());
                                 __estr_18 = ::tpy::unwrap_ref(*__try_tmp_46);
                             }

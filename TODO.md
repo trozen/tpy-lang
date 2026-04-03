@@ -143,6 +143,12 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 ### Minor type mismatches
 - **[LOW]** Generator yield tuple uses `T&` instead of `T`: generic for-generators emit `auto __val = std::tuple<int32_t, T&>{...}` because the loop variable is bound as `auto&&`. The return wraps it in `std::optional<std::tuple<int32_t, val_or_ref_t<T>>>`, so the implicit tuple converting constructor strips the ref and it compiles correctly. Cosmetic -- the intermediate type is technically wrong but has no runtime impact.
 
+### Performance: JSON parser codegen overhead
+Benchmarked with CME MBO order book (15MB JSON, 20K messages). Library-level optimizations (skip_value rewrite, redundant _skip_ws elimination) brought 68ms->59ms. Hand-optimizing the generated C++ (removing checked arithmetic, direct pointer indexing) brought it to 23ms (7.6x vs CPython). The gap is:
+- **[MED effort]** StrView/str direct indexing: `sv[i]` where `i` is non-negative Int32 guarded by `i < len` should emit `sv.data()[i]` instead of `__getitem__(sv, i)` with `normalize_index`. The pattern `while pos < len: c = data[pos]` is ubiquitous in parsers.
+- **[MED effort]** Checked arithmetic elision for bounded loop counters: `pos += 1` where `pos < len` was just checked, `pos` is Int32, and `len` is Int32 -- the increment can't overflow. Extend `value_range.py` to propagate bounds from loop/if guards.
+- **[LOW effort]** `ord("0")` -> char literal: `ord(single_char_literal)` should emit the char value directly instead of `::tpy::ord_str("0")`.
+
 ### Missed optimizations
 - **[MED effort]** Dead branch elision in codegen: when a condition folds to a constant (`if (true)` / `if (false)`), emit only the live branch body instead of the entire if/else structure. Currently the folded constant is emitted and the C++ compiler optimizes it away, but this adds unnecessary work to C++ compilation which is already a bottleneck. Applies to Literal narrowing (`if mode == "rb":` inside a branch where mode is known), union overload specialization (`isinstance` checks), and any future constant-folding path. Pattern exists in `_gen_if_overload_specialized` for union isinstance -- generalize to all if-conditions.
 - **[LOW]** String concat chain produces N-1 intermediate allocations: `a + b + c + d` emits left-associative nested `str_concat` calls, each allocating a temporary `std::string`. A codegen optimization detecting a chain of `+` on string-view operands could emit a single `reserve` + N `append` calls.
