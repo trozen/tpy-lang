@@ -49,20 +49,16 @@ class BuiltinGenerator:
     def gen_call_from_fi(self, fi: FunctionInfo, receiver: str | None,
                          gen_args: list[str], *,
                          self_type: TpyType | None = None,
-                         type_args: tuple[TpyType, ...] | None = None,
-                         result_type: TpyType | None = None) -> str:
+                         type_args: tuple[TpyType, ...] | None = None) -> str:
         """Generate a call from a resolved FunctionInfo.
 
         Unified entry point for cpp_template, native_function, and native member calls.
         receiver is None for free function calls (no self).
         self_type: receiver's TpyType (for {cpp} expansion in method templates).
         type_args: inferred type arguments paired with fi.type_params by position.
-        result_type: concrete result type for {cpp} substitution in constructors.
         """
         if fi.cpp_template:
             template = fi.cpp_template
-            if result_type is not None and "{cpp}" in template:
-                template = template.replace("{cpp}", result_type.to_cpp())
             # Substitute method-level type params
             effective_subst: dict[str, TpyType] | None = None
             if type_args and fi.type_params:

@@ -1915,8 +1915,7 @@ class ExpressionGenerator:
                 gen_args = []
                 for a, (_, ptype) in zip(expr.args, ctor.params):
                     gen_args.append(self.gen_call_arg(a, ptype, inline_template=True))
-                return self.builtins.gen_call_from_fi(ctor, None, gen_args,
-                                                       result_type=expr.call_type)
+                return self.builtins.gen_call_from_fi(ctor, None, gen_args)
             # Look up resolved init params for auto-move on Own[T] params
             init_params = []
             call_type = expr.call_type
@@ -2166,9 +2165,7 @@ class ExpressionGenerator:
             if fi and fi.cpp_template and not fi.type_params:
                 gen_args = [self.builtins._gen_expr_deref(arg, ptype)
                             for arg, (_, ptype) in zip(expr.args, fi.params)]
-                result_type = self.ctx.get_expr_type(expr) or fi.return_type
-                return self.builtins.gen_call_from_fi(
-                    fi, None, gen_args, result_type=result_type)
+                return self.builtins.gen_call_from_fi(fi, None, gen_args)
 
         # Check for builtin method with native_function or cpp_template first
         # This must be checked before the self.method() shortcut because
