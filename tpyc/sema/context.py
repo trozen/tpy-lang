@@ -359,6 +359,7 @@ class FunctionTrackingState:
     var_scope_depth: dict[str, int] = field(default_factory=dict)
     hoisted_vars: set[str] = field(default_factory=set)
     rvalue_vars: set[str] = field(default_factory=set)
+    owned_locals: set[str] = field(default_factory=set)
     move_through_vars: set[str] = field(default_factory=set)
 
     # --- Prescan / last-use ---

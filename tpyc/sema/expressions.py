@@ -474,12 +474,7 @@ class ExpressionAnalyzer:
                 if binding.kind == BindingKind.VARIABLE:
                     self._check_definitely_assigned(expr)
                     result = self.narrowing.narrow_name_type(expr.name, binding.type)
-                    # Own[T] at last-use: strip to signal auto-move (no copy warning).
-                    # Own[T] at non-last-use: preserve to signal ownership to callers
-                    # (enables unified copy detection in the assignment handler).
-                    if isinstance(result, OwnType) and id(expr) in self.ctx.all_last_uses:
-                        result = result.wrapped
-                    return result
+                    return self._apply_own_wrapper(expr, result)
                 if binding.kind == BindingKind.BUILTIN:
                     return binding.type
                 # For other bindings (FUNCTION, RECORD, MODULE, IMPORTED_NAME),
@@ -501,10 +496,35 @@ class ExpressionAnalyzer:
                 raise self.ctx.error(f"Undefined variable: '{expr.name}'", expr)
         self._check_definitely_assigned(expr)
         result = self.narrowing.narrow_name_type(expr.name, typ)
-        # Own[T] at last-use: strip to signal auto-move.
-        # Own[T] at non-last-use: preserve for unified copy detection.
-        if isinstance(result, OwnType) and id(expr) in self.ctx.all_last_uses:
-            result = result.wrapped
+        return self._apply_own_wrapper(expr, result)
+
+    def _apply_own_wrapper(self, expr: TpyName, result: TpyType) -> TpyType:
+        """Derive OwnType wrapping at use time for local variable names.
+
+        Params keep their FunctionInfo type (Ref/Own is a C++ contract).
+        Owned locals (rvalue-init, not ref-returning) get OwnType at
+        non-last-use, bare T at last-use (auto-move).
+        """
+        name = expr.name
+        # Params: FunctionInfo type already carries Ref/Own.
+        # Reassigned params fall through to local derivation.
+        if name in self.ctx.current_param_names:
+            if name not in self.ctx.current_reassigned_vars:
+                # Strip Own at last-use for auto-move (same as before)
+                if isinstance(result, OwnType) and id(expr) in self.ctx.all_last_uses:
+                    return result.wrapped
+                return result
+        # Locals: derive OwnType from owned_locals set.
+        # Scope stores bare T; wrap when owned and not at last-use.
+        if (not result.is_value_type()
+                and not isinstance(result, (OwnType, RefType, NoneType,
+                                            PendingListType, PendingDictType, PendingSetType,
+                                            PendingViewType, PendingGenericInstanceType))
+                and name in self.ctx.owned_locals
+                and name not in self.ctx.hoisted_vars
+                and name not in self.ctx.loop_vars):
+            if id(expr) not in self.ctx.all_last_uses:
+                return OwnType(result)
         return result
 
     def _check_definitely_assigned(self, expr: TpyName) -> None:
@@ -1280,7 +1300,7 @@ class ExpressionAnalyzer:
             actual_type = actual_type.wrapped
         if isinstance(actual_type, OwnType):
             actual_type = actual_type.wrapped
-        elif isinstance(actual_type, OptionalType):
+        if isinstance(actual_type, OptionalType):
             if actual_type.inner.is_value_type():
                 raise self.ctx.error(f"Cannot access field '{expr.field}' on type {obj_type}", expr)
             self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)

@@ -2575,37 +2575,22 @@ class StatementAnalyzer:
                         and not (isinstance(var_type, OptionalType) and var_type.uses_pointer_repr())
                         and not is_protocol_union(var_type)):
                     self.ctx.rvalue_vars.add(stmt.name)
+                    self.ctx.owned_locals.add(stmt.name)
                     self.ctx.move_through_vars.add(stmt.name)
                 else:
                     self.ctx.rvalue_vars.discard(stmt.name)
+                    self.ctx.owned_locals.discard(stmt.name)
             else:
                 self.ctx.rvalue_vars.add(stmt.name)
-                # Wrap rvalue-init non-value types in Own[T] when the init
-                # expression is a constructor call or other value-creating
-                # expression (not a reference-returning function call).
-                # Uses init_type: if the function returned Own[T], var_type
-                # is already Own[T] from the preservation at line 2012.
-                # For constructors, init_type is T (not Own), so we wrap here.
-                if (existing_type is None
-                        and var_type is not None
-                        and not isinstance(var_type, OwnType)
-                        and not var_type.is_value_type()
-                        and not isinstance(var_type, (NoneType, ReadonlyType,
-                                                      PendingListType, PendingDictType, PendingSetType,
-                                                      PendingViewType, PendingGenericInstanceType))
-                        and not (isinstance(var_type, OptionalType) and var_type.uses_pointer_repr())
-                        and not isinstance(var_type, UnionType)
-                        and stmt.name not in self.ctx.hoisted_vars
-                        and stmt.name not in self.ctx.current_reassigned_vars
-                        and not is_global_declared
-                        and isinstance(self.ctx.current_function, TpyFunction)
-                        and not self._is_reference_returning_call(stmt.init)):
-                    var_type = OwnType(var_type)
-                    if self.ctx.current_scope:
-                        self.ctx.current_scope.define(stmt.name, var_type)
+                # Track ownership: rvalue-init from value-creating expression
+                # (constructor, Own return) vs reference-returning call.
+                if not self._is_reference_returning_call(stmt.init):
+                    self.ctx.owned_locals.add(stmt.name)
+                else:
+                    self.ctx.owned_locals.discard(stmt.name)
         # Track provenance for non-value types and pointer types
         # (pointers are value types but carry address provenance)
-        provenance_type = var_type.wrapped if isinstance(var_type, OwnType) else var_type
+        provenance_type = var_type
         if stmt.init and (not provenance_type.is_value_type() or isinstance(provenance_type, PtrType)):
             self.init.mark_provenance(stmt.name, self.compat.is_param_derived_expr(stmt.init))
         # Track non-null pointer provenance for null-check elision
@@ -2623,8 +2608,7 @@ class StatementAnalyzer:
             self.init.mark_non_null_ptr(stmt.name, is_non_null)
 
         # Scope escape check for variable declarations (new and reassignment)
-        escape_type = var_type.wrapped if isinstance(var_type, OwnType) else var_type
-        if stmt.init and not escape_type.is_value_type():
+        if stmt.init and not var_type.is_value_type():
             self.scopes.check_escape(stmt.name, stmt.init, stmt)
         if self.ctx.current_ns:
             self.ctx.current_ns.bind_variable(stmt.name, var_type)
@@ -2988,11 +2972,16 @@ class StatementAnalyzer:
 
         # Disallow reassignment of non-value-type params and loop vars
         if isinstance(stmt.target, TpyName):
-            # Update rvalue status for hoist eligibility
+            # Update rvalue/ownership status for hoist eligibility and copy detection
             if self.compat.is_lvalue(stmt.value):
                 self.ctx.rvalue_vars.discard(stmt.target.name)
+                self.ctx.owned_locals.discard(stmt.target.name)
             else:
                 self.ctx.rvalue_vars.add(stmt.target.name)
+                if not self._is_reference_returning_call(stmt.value):
+                    self.ctx.owned_locals.add(stmt.target.name)
+                else:
+                    self.ctx.owned_locals.discard(stmt.target.name)
 
         # Tuples are immutable -- reject element assignment
         if isinstance(stmt.target, TpySubscript):

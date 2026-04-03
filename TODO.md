@@ -3,7 +3,6 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
-- Ref[T] follow-up: remove OwnType from local scope types. Scope stores bare `T` for all locals; `_analyze_name()` derives Own/Ref wrappers at use time from existing side channels (`rvalue_vars`, `all_last_uses`, `current_lvalue_reassigned`). Params keep their FunctionInfo type (Ref/Own is a real C++ contract); reassigned params fall back to local derivation. Eliminates the var_decl exclusion list (reassigned, hoisted, loop, PendingGenericInstance), makes reassigned vars work naturally, and removes the `_is_non_owned_var_copy` residual. Subsumes the old "extend OwnType to reassigned vars" item.
 - Ref[T] follow-up: update codegen `movable_locals` to read from sema scope types (OwnType) instead of recomputing via `local_var_is_movable()`. Export per-function `movable_locals` from sema like `function_move_through_vars`.
 - Emit `this->` for self method calls: codegen currently emits bare `method(args)` for `self.method()` calls (`expressions.py:1994`). Prefer explicit `this->method(args)` for readability.
 - Ref[T] follow-up: cleanup (Phase 7). Remove `is_value_type()` branching from base class `to_cpp_return()`/`to_cpp_param_type()`. Remove TypeParamRef's to_cpp overrides (now handled by `Ref[TypeParamRef]`). Replace remaining `to_cpp_*` method dispatch with centralized lowering API.
