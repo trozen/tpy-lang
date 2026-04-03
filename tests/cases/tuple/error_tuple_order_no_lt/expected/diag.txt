@@ -1,0 +1,1 @@
+main.py:16: error: Comparison '<' on 'Foo': no '__lt__' method defined

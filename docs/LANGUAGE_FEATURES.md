@@ -652,10 +652,16 @@ items: list[tuple[Int32, str]] = [(Int32(1), "one"), (Int32(2), "two")]
 for n, s in items:
     print(n, s)
 
-# Comparison (== and != only)
+# Comparison (==, !=, <, <=, >, >=)
 a2 = (Int32(1), "hello")
 b2 = (Int32(1), "hello")
 print(a2 == b2)       # True
+print((1, 2) < (1, 3))  # True (lexicographic)
+
+# Hashing -- tuples can be used as dict keys
+d: dict[tuple[Int32, Int32], str] = {}
+d[(Int32(1), Int32(2))] = "one-two"
+print(hash((1, 2, 3)))  # hash of a tuple
 ```
 
 Reference types in tuples follow context-dependent semantics (same rules as standalone `T`):

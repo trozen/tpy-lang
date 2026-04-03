@@ -27,6 +27,7 @@
 | `TpyBlockExpr` | Block expression: sequence of statements + result expression. Codegen hoists statements to enclosing scope. Enables `asdict` with mixed-type fields (typed dict creation + subscript assigns) |
 | Generic mapping detection in `asdict`/`astuple` | Currently only built-in `dict[K, V]` is recursed. A `CallMacroContext.get_mapping_key_value_types()` method could detect any type with `.items() -> Iterable[tuple[K, V]]`, enabling recursion into user-defined mapping types |
 | AST splicing in `quote()` | Embed computed `Expr`/`Stmt` objects into quoted source via `${expr}` syntax. Requires custom parse pass. Enables mixing static method shapes with dynamic AST fragments (e.g., computed comparison chains). Deferred -- f-string interpolation covers common cases |
+| Companion type creation | `cls.add_companion_type(name, ...)` -- macros can add methods but not new types. Would let macros generate helper types (e.g. key enums for JSON field dispatch via `try_parse` + `match`/`case`). Requires nested class support in parser/sema/codegen first |
 | CPython macro compat | CPython backend for macro API was dropped -- maintaining parity between compiler AST and CPython `exec`-based codegen (frozen fields, factory defaults, `super()` in exec'd code) was not worth the effort. Could be revisited if CPython test coverage of macro-generated code becomes important |
 
 ---

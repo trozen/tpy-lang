@@ -800,9 +800,9 @@ class ExpressionAnalyzer:
                     expr,
                 )
 
-        # Tuple comparison: == and != only, same length, element-wise compatible
+        # Tuple comparison: ==, !=, <, <=, >, >= with element-wise validation
         if isinstance(left_effective, TupleType) or isinstance(right_effective, TupleType):
-            if expr.op in ("==", "!="):
+            if expr.op in ("==", "!=", "<", "<=", ">", ">="):
                 if not (isinstance(left_effective, TupleType) and isinstance(right_effective, TupleType)):
                     raise self.ctx.error(
                         f"Cannot compare {left_effective} with {right_effective}",
@@ -829,6 +829,9 @@ class ExpressionAnalyzer:
                                     f"{lt} vs {rt}",
                                     expr,
                                 )
+                    # For ordering ops, validate that element types support the operator
+                    if expr.op in ("<", "<=", ">", ">="):
+                        self._validate_comparison(expr, lt, rt)
                 return BOOL
             raise self.ctx.error(
                 f"Operator '{expr.op}' is not supported for tuple types",

@@ -20,6 +20,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <type_traits>
 #include <vector>
 
@@ -456,6 +457,14 @@ uint64_t hash_combine(uint64_t seed, const T& val, const Rest&... rest) {
     return hash_combine(seed, rest...);
 }
 
+// Tuple types
+template<typename... Ts>
+uint64_t __hash__(const std::tuple<Ts...>& t) {
+    return std::apply([](const auto&... elems) {
+        return hash_combine(0, elems...);
+    }, t);
+}
+
 // =============================================
 // native_iterator: wraps C++ begin/end into __next__() / __iter__()
 // Inherits begin()/end() from next_iter_mixin so the result of
@@ -580,5 +589,13 @@ struct std::hash<std::vector<uint8_t>> {
     size_t operator()(const std::vector<uint8_t>& v) const noexcept {
         return std::hash<std::string_view>{}(
             std::string_view(reinterpret_cast<const char*>(v.data()), v.size()));
+    }
+};
+
+// std::hash specialization for tuples (needed by std::unordered_map/set)
+template<typename... Ts>
+struct std::hash<std::tuple<Ts...>> {
+    size_t operator()(const std::tuple<Ts...>& t) const noexcept {
+        return static_cast<size_t>(tpy::__hash__(t));
     }
 };

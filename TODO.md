@@ -21,13 +21,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Property narrowing not supported: `if f.val is not None: f.val + 1` does not narrow because property access is a method call (could return different values). Same as function calls. Workaround: `v = f.val; if v is not None: v + 1`. Could support narrowing for simple field-returning getters in the future (requires getter body analysis).
 - Overload resolution: generic overloads with protocol params lose to concrete overloads with coercion. `sum[T: AnyFixedInt](Iterable[T])` doesn't match `list[Int32]` in pass 1 because `_structural_match` requires `type(arg) == type(param)` -- `ArrayType` != `NamedType("Iterable")`. The concrete `sum(Iterable[float])` then wins via coercion in pass 2. Fix: `_structural_match` should check protocol conformance when `param` is a protocol type, so generic overloads with protocol params match in pass 1. Workaround: add concrete overloads for common types (Int32, Int64) before the generic.
 
-## Macros
-- hash(tuple) -- not supported (no __hash__ for tuples in runtime)
-- tuple ordering -- `<`/`<=`/`>`/`>=` not supported for tuple types (sema rejects)
-- all macro code (at least for json model) generated in headers
-- Macro API: companion type creation: macros can add methods but not new types. `cls.add_companion_type(name, ...)` would let macros generate helper types (e.g. key enums for JSON field dispatch via `try_parse` + `match`/`case`). Requires nested class support in parser/sema/codegen first. Combined with string match or used standalone, this gives O(1) key dispatch.
-
-
 ## Bytes
 - `BytesView` as dict key / set element: `__hash__` works but `std::span<const uint8_t>` has no `operator==`, so `ordered_map`/`ordered_set` fail to compile. Needs an `__eq__` overload or `std::equal_to` specialization.
 

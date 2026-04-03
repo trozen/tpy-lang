@@ -3249,7 +3249,10 @@ class ExpressionGenerator:
                 # Rvalues and subscripts get VALUE to avoid binding issues
                 # (e.g. Span[readonly[T]] subscript returns const ref).
                 if _is_simple_lvalue(expr.elements[i]):
-                    mode = TupleElemCapture.REF
+                    sema_type = self.ctx.analyzer.get_expr_type(expr.elements[i])
+                    mode = (TupleElemCapture.CONST_REF
+                            if isinstance(sema_type, ReadonlyType)
+                            else TupleElemCapture.REF)
                 else:
                     mode = TupleElemCapture.VALUE
             else:

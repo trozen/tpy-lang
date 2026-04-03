@@ -90,6 +90,11 @@ class ProtocolChecker:
         - e.g., checking Int32 against Addable with __add__(Self) -> Self
           expects __add__(Int32) -> Int32
         """
+        # Unwrap ownership/const/ref wrappers -- readonly[T], Own[T], Ref[T]
+        # conform to any protocol that T conforms to
+        if isinstance(actual, (ReadonlyType, OwnType, RefType)):
+            return self.type_conforms_to_protocol(actual.wrapped, protocol)
+
         # IntLiteralType: check if default int type conforms
         if isinstance(actual, IntLiteralType):
             return self.type_conforms_to_protocol(BIGINT, protocol)
@@ -123,6 +128,14 @@ class ProtocolChecker:
         if isinstance(actual, (EnumType, IntEnumType)):
             if protocol.qualified_name() in (qnames.HASHABLE, qnames.COMPARABLE, qnames.EQUATABLE):
                 return True
+
+        # Tuple: hashable if all element types are hashable
+        if isinstance(actual, TupleType):
+            if protocol.qualified_name() == qnames.HASHABLE:
+                return all(
+                    self.type_conforms_to_protocol(et, protocol)
+                    for et in actual.element_types
+                )
 
         # Bounded type parameter: T: Sized conforms to Sized (and any protocol its bound conforms to)
         if isinstance(actual, TypeParamRef):
