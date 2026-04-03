@@ -3228,7 +3228,7 @@ class Container[T]:
 - **Working**: Docstrings in class and method bodies (silently ignored)
 - **Working**: `@dataclass` decorator (`from dataclasses import dataclass`) -- auto-generates `__init__`, `__eq__`, `__repr__`, and `__hash__` (frozen only) from field annotations; `frozen=True` for immutable instances usable as dict keys; `order=True` for lexicographic comparison via `operator<=>`; `field(default=X)` and `field(default_factory=X)` for mutable defaults; dataclass inheritance (child inherits parent fields into all synthesized methods)
 - **Open**: `@classmethod` → if use case is clear
-- **Working**: `@property` decorator for computed attributes. Getter: `@property def x(self) -> T`. Setter: `@x.setter def x(self, value: T) -> None`. C++ codegen: getter emits `T x() const`, setter emits `void set_x(T)`. Field-access syntax desugared to method calls. Read-only properties (no setter) produce a compile error on assignment. Properties are inherited. Augmented assignment on properties (`obj.x += 1`) not yet supported. `@x.deleter` not supported.
+- **Working**: `@property` decorator for computed attributes. Getter: `@property def x(self) -> T`. Setter: `@x.setter def x(self, value: T) -> None`. C++ codegen: getter emits `T x() const`, setter emits `void set_x(T)`. Field-access syntax desugared to method calls. Read-only properties (no setter) produce a compile error on assignment. Properties are inherited. Borrow tracking works through properties via `return_borrows_from` -- `v = obj.prop` registers a borrow on the receiver, so subsequent mutations warn. Augmented assignment on properties (`obj.x += 1`) not yet supported. `@x.deleter` not supported.
 
 ### Generic Classes
 

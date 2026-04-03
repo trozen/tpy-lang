@@ -1327,6 +1327,17 @@ class SemanticAnalyzer:
             record_info = self.ctx.registry.get_record(record.name)
             if record_info is not None and not method.is_stub:
                 method_fi = record_info.get_method(method.name)
+                # Property methods are not in the methods dict (popped during
+                # registration) -- look them up through the properties registry
+                # so their return_borrows_from facts are recorded.
+                if method_fi is None and method.is_property_getter:
+                    prop = record_info.properties.get(method.name)
+                    if prop is not None:
+                        method_fi = prop.getter
+                elif method_fi is None and method.is_property_setter:
+                    prop = record_info.properties.get(method.property_name)
+                    if prop is not None:
+                        method_fi = prop.setter
                 if method_fi is not None and method_fi.direct_mutated_params is None:
                     param_list = [pname for pname, _ in method.params]
                     direct = frozenset(

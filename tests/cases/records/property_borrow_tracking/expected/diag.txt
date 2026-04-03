@@ -1,0 +1,3 @@
+main.py:21: warning: Mutation of 'c' while borrowed (field assignment may invalidate references)
+main.py:27: warning: Mutation of 'c' while borrowed (field assignment may invalidate references)
+main.py:34: warning: Mutation of 'c' while borrowed (field assignment may invalidate references)

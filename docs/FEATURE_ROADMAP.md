@@ -74,7 +74,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D3 | f-strings | M | Done | [VII](#f-strings) |
 | D4 | with statement | M | Done | [VI](#with-statement-context-managers) |
 | D5 | Nested `def` with captures, `nonlocal` | M-L | Done | [VI](#closures--nested-functions) |
-| D6 | Properties (@property) | M | Not started | [VII](#properties) |
+| D6 | Properties (@property) | M | Done | [VII](#properties) |
 | D7 | Literal types (Literal[...]) | M | Phase 3b done | [III](#literal-types) |
 | D8 | `@override` decorator | S | Done | [VII](#override-decorator) |
 | D9 | set type | L | Done | [VII](#set-type) |
@@ -2227,11 +2227,11 @@ Maps to C++ getter/setter methods, with field-access syntax desugared in codegen
 **Why it matters**: Common Python OOP pattern for encapsulation. Without properties,
 users must use explicit `get_x()`/`set_x()` methods, which is un-Pythonic.
 
-**Current state**: Not started.
+**Current state**: Done. Getter (`@property`), setter (`@x.setter`), inheritance, readonly propagation (const/mutable overloads for non-value return types), borrow tracking through `return_borrows_from`, union and optional return types all working. Augmented assignment (`obj.x += 1`) not yet supported. `@x.deleter` not supported.
 
 **Dependencies**: None.
 
-**Effort**: M (sema desugaring of attribute access + codegen)
+**Effort**: M (done)
 
 ---
 

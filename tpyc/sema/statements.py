@@ -91,6 +91,11 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
         fi = expr.resolved_function_info
         args = expr.args
         obj = expr.obj
+    elif isinstance(expr, TpyFieldAccess) and expr.property_getter_call is not None:
+        # Property getter is a method call; use its return_borrows_from facts
+        fi = expr.property_getter_call.resolved_function_info
+        args = expr.property_getter_call.args
+        obj = expr.property_getter_call.obj
     else:
         return
     if fi is None or fi.return_borrows_from is None:
@@ -846,10 +851,28 @@ class StatementAnalyzer:
                         if (isinstance(inner, (TypeParamRef,)) or is_protocol_type(inner)):
                             self.ctx.mark_param_mutated(stmt.iterable.name)
                     elif isinstance(stmt.iterable, TpyFieldAccess):
-                        key = _storage_key(stmt.iterable)
-                        if key is not None:
-                            self.ctx.borrow_tracker.add_borrow(key, "__for_iter", BorrowKind.ITER)
-                            self.ctx.loop_var_iterable[stmt.var] = key
+                        # Property getter: register ITER borrow via return_borrows_from
+                        # on the receiver object (more precise than the field-path key).
+                        gc = stmt.iterable.property_getter_call
+                        if gc is not None:
+                            fi_gc = gc.resolved_function_info
+                            if fi_gc is not None and fi_gc.return_borrows_from:
+                                for idx in fi_gc.return_borrows_from:
+                                    if idx == -1 and gc.obj is not None:
+                                        src = _borrow_storage_root(gc.obj)
+                                        if src is not None:
+                                            self.ctx.borrow_tracker.add_borrow(src, "__for_iter", BorrowKind.ITER)
+                                            self.ctx.loop_var_iterable[stmt.var] = src
+                                    elif idx >= 0 and idx < len(gc.args):
+                                        src = _borrow_storage_root(gc.args[idx])
+                                        if src is not None:
+                                            self.ctx.borrow_tracker.add_borrow(src, "__for_iter", BorrowKind.ITER)
+                                            self.ctx.loop_var_iterable[stmt.var] = src
+                        else:
+                            key = _storage_key(stmt.iterable)
+                            if key is not None:
+                                self.ctx.borrow_tracker.add_borrow(key, "__for_iter", BorrowKind.ITER)
+                                self.ctx.loop_var_iterable[stmt.var] = key
                     elif isinstance(stmt.iterable, (TpyCall, TpyMethodCall)):
                         # 8b: iterable is a call whose return borrows from source arg(s).
                         # Register ITER borrow directly on those source containers so that
