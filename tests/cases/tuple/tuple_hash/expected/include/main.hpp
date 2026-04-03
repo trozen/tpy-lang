@@ -141,17 +141,17 @@ inline std::ostream& operator<<(std::ostream& os, const Edge& obj) {
 
 template<> struct std::hash<tpyapp::main::Key> {
     size_t operator()(const tpyapp::main::Key& val) const noexcept {
-        return static_cast<size_t>(val.__hash__());
+        return static_cast<size_t>(::tpy::__hash__(val));
     }
 };
 template<> struct std::hash<tpyapp::main::Point> {
     size_t operator()(const tpyapp::main::Point& val) const noexcept {
-        return static_cast<size_t>(val.__hash__());
+        return static_cast<size_t>(::tpy::__hash__(val));
     }
 };
 template<> struct std::hash<tpyapp::main::Edge> {
     size_t operator()(const tpyapp::main::Edge& val) const noexcept {
-        return static_cast<size_t>(val.__hash__());
+        return static_cast<size_t>(::tpy::__hash__(val));
     }
 };
 

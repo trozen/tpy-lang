@@ -305,7 +305,7 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 template<> struct std::hash<tpyapp::main::Vec2> {
     size_t operator()(const tpyapp::main::Vec2& val) const noexcept {
-        return static_cast<size_t>(val.__hash__());
+        return static_cast<size_t>(::tpy::__hash__(val));
     }
 };
 

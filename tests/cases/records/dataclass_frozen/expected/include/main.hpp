@@ -89,12 +89,12 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 
 template<> struct std::hash<tpyapp::main::Point> {
     size_t operator()(const tpyapp::main::Point& val) const noexcept {
-        return static_cast<size_t>(val.__hash__());
+        return static_cast<size_t>(::tpy::__hash__(val));
     }
 };
 template<> struct std::hash<tpyapp::main::Config> {
     size_t operator()(const tpyapp::main::Config& val) const noexcept {
-        return static_cast<size_t>(val.__hash__());
+        return static_cast<size_t>(::tpy::__hash__(val));
     }
 };
 

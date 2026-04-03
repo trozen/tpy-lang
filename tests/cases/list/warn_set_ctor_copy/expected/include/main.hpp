@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 template<> struct std::hash<tpyapp::main::Node> {
     size_t operator()(const tpyapp::main::Node& val) const noexcept {
-        return static_cast<size_t>(val.__hash__());
+        return static_cast<size_t>(::tpy::__hash__(val));
     }
 };
 

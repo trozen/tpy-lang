@@ -443,6 +443,14 @@ uint64_t __hash__(const T& x) {
     return x.__hash__();
 }
 
+// User types with __hash__() returning BigInt
+template<typename T>
+    requires (requires(const T& t) { { t.__hash__() } -> std::same_as<BigInt>; }
+              && !requires(const T& t) { { t.__hash__() } -> std::convertible_to<uint64_t>; })
+uint64_t __hash__(const T& x) {
+    return x.__hash__().hash();
+}
+
 // =============================================
 // tpy::hash_combine -- Boost-style hash combining for dataclass __hash__
 // =============================================

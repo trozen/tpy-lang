@@ -14,7 +14,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 
 ## Bugs
-- `__hash__` returning `int` (BigInt) generates invalid C++: the `std::hash<T>` specialization does `static_cast<size_t>(val.__hash__())` which fails for BigInt (no implicit conversion). Either require `__hash__` to return a fixed-width int (Int32/Int64/UInt64), or generate a BigInt-to-size_t conversion in the hash specialization.
 - Generic generators with multiple yield points (struct-based codegen path) are not yet supported -- the out-of-line `__next__()` in .cpp won't link for template structs. Currently guarded with a sema error. Fix: emit struct + `__next__()` body into the header when the function has type params.
 - Non-native functions in builtin modules can't be called from user code: codegen emits unqualified names (e.g. bare `enumerate(...)` instead of `tpystd::builtins::enumerate(...)`). The `imported_names` path considers any registered function as "shadowing" the import. Blocks defining pure TPy generator builtins. Workaround: use `@cpp_template`/`@native` with C++ implementation instead.
 - Use-after-free not caught by borrow checker: `old = d.get(k); del d[k]; use(old)` -- `dict.get()` returns a pointer into the dict's internal storage. `del d[k]` frees that entry, making `old` a dangling pointer. The subsequent `use(old)` is undefined behavior (reads garbage). The borrow checker should warn that `old` borrows from `d` and `del d[k]` invalidates it. Workaround: reorder to use `old` before `del`.

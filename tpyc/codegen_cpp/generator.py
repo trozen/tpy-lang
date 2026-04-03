@@ -704,7 +704,7 @@ class CodeGenerator:
                 cpp_name = f"{ns}::{record.name}"
                 hpp.write(f"template<> struct std::hash<{cpp_name}> {{\n")
                 hpp.write(f"    size_t operator()(const {cpp_name}& val) const noexcept {{\n")
-                hpp.write(f"        return static_cast<size_t>(val.__hash__());\n")
+                hpp.write(f"        return static_cast<size_t>(::tpy::__hash__(val));\n")
                 hpp.write(f"    }}\n")
                 hpp.write(f"}};\n")
             hpp.write(f"\nnamespace {ns} {{\n\n")
