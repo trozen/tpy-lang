@@ -6,7 +6,6 @@ Generates C++ code from TurboPython expressions.
 
 from __future__ import annotations
 import io
-import re
 from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
@@ -1742,17 +1741,18 @@ class ExpressionGenerator:
             cpp_type = enum_type.to_cpp()
             arg = self.gen_expr(expr.args[1])
             return f"::tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
-        # Type constructor with @cpp_template (e.g. Int32(42), str(x), bool())
-        # Templates with type param placeholders ({T}, {K}) need type_subst
-        # resolution from the call_type block below -- skip those here.
+        # Type constructor with resolved @cpp_template (e.g. Int32(42), str(x))
+        # Sema resolves {cpp} and class-level type params, so the template only
+        # has positional {0}, {1} placeholders.  Generic constructors (call_type
+        # set) need auto-move/own_iter arg handling in the full path below.
         fi = expr.resolved_function_info
-        if fi and fi.cpp_template and not re.search(r'\{[A-Z]', fi.cpp_template):
+        if fi and fi.cpp_template and not expr.call_type:
             result_type = self.ctx.get_expr_type(expr) or fi.return_type
             if result_type and result_type is not VOID:
                 gen_args = [self.builtins._gen_expr_deref(arg, ptype)
                             for arg, (_, ptype) in zip(expr.args, fi.params)]
                 return self.builtins.gen_call_from_fi(
-                    fi, None, gen_args, result_type=result_type)
+                    fi, None, gen_args, type_args=expr.inferred_type_args)
         # print() maps to std::printf
         if expr.func_name == "print":
             return self.builtins.gen_print(expr.args, expr.kwargs)
@@ -1912,12 +1912,11 @@ class ExpressionGenerator:
                     and (expr.resolved_function_info.cpp_template
                          or expr.resolved_function_info.native_function)):
                 ctor = expr.resolved_function_info
-                type_params = builtin_modules.extract_type_params(expr.call_type)
                 gen_args = []
                 for a, (_, ptype) in zip(expr.args, ctor.params):
                     gen_args.append(self.gen_call_arg(a, ptype, inline_template=True))
                 return self.builtins.gen_call_from_fi(ctor, None, gen_args,
-                                                       type_subst=type_params, result_type=expr.call_type)
+                                                       result_type=expr.call_type)
             # Look up resolved init params for auto-move on Own[T] params
             init_params = []
             call_type = expr.call_type

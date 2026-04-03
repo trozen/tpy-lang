@@ -217,6 +217,36 @@ def resolve_kwargs_init_params(
     return resolve_kwargs(expr_args, expr_kwargs, params, func_name, error_fn, call_loc=call_loc)
 
 
+def _resolve_cpp_template_type_params(
+    fi: FunctionInfo,
+    type_params: dict[str, TpyType] | None = None,
+    result_type: TpyType | None = None,
+) -> FunctionInfo:
+    """Substitute type param placeholders and {cpp} in cpp_template.
+
+    type_params: class-level type params ({T}, {K}, {V}) to substitute.
+    result_type: concrete result type for {cpp} substitution.
+
+    Returns a dc_replace'd copy with the resolved template, or the original
+    FunctionInfo if no substitution was needed.
+    """
+    if not fi.cpp_template:
+        return fi
+    if not type_params and not result_type:
+        return fi
+    template = fi.cpp_template
+    if result_type is not None and "{cpp}" in template:
+        template = template.replace("{cpp}", result_type.to_cpp())
+    if type_params:
+        for name, typ in type_params.items():
+            placeholder = f"{{{name}}}"
+            if placeholder in template:
+                template = template.replace(placeholder, typ.to_cpp_stored())
+    if template == fi.cpp_template:
+        return fi
+    return dc_replace(fi, cpp_template=template)
+
+
 def _has_type_param_ref(t: TpyType) -> bool:
     """Check if a type contains an unresolved TypeParamRef (e.g. Span[T], Span[readonly[T]])."""
     if isinstance(t, TypeParamRef):
@@ -723,7 +753,12 @@ class CallAnalyzer:
                                 if isinstance(result_type, PtrType):
                                     self._validate_ptr_constructor(expr)
                                 if ctor.cpp_template or ctor.native_function:
-                                    expr.resolved_function_info = ctor
+                                    # Use extract_type_params on the clean result_type
+                                    # (Ref already stripped), not inferred_params which
+                                    # may contain val_or_ref wrappers.
+                                    clean_params = extract_type_params(result_type)
+                                    expr.resolved_function_info = _resolve_cpp_template_type_params(
+                                        ctor, clean_params, result_type=result_type)
                                 self._validate_lvalue_params(expr)
                                 self._check_ctor_arg_compatibility(expr, ctor, arg_types, inferred_params)
                                 return result_type
@@ -736,7 +771,9 @@ class CallAnalyzer:
                                 if hint.qualified_name() == lookup.qualified_name:
                                     expr.call_type = hint
                                     if ctor.cpp_template or ctor.native_function:
-                                        expr.resolved_function_info = ctor
+                                        hint_params = extract_type_params(hint)
+                                        expr.resolved_function_info = _resolve_cpp_template_type_params(
+                                            ctor, hint_params, result_type=hint)
                                     self._validate_lvalue_params(expr)
                                     self._check_ctor_arg_compatibility(expr, ctor, arg_types, inferred_params)
                                     return hint
@@ -1406,7 +1443,6 @@ class CallAnalyzer:
         init_overloads = record_info.get_method_overloads("__init__")
         if not init_overloads:
             return
-        from ..modules import extract_type_params
         inferred = extract_type_params(expr.call_type) if expr.call_type else {}
         for ctor in init_overloads:
             if len(ctor.params) != len(arg_types):
@@ -1455,7 +1491,8 @@ class CallAnalyzer:
                     break
             if not rejected:
                 if fully_checked and (ctor.cpp_template or ctor.native_function):
-                    expr.resolved_function_info = ctor
+                    expr.resolved_function_info = _resolve_cpp_template_type_params(
+                        ctor, inferred, result_type=expr.call_type)
                 return
         # Arg type compatible with target (e.g. dict[K,V]({...}), list[T](other_list))
         if len(arg_types) == 1 and self.compat.is_type_compatible(arg_types[0], expr.call_type):
@@ -1700,7 +1737,7 @@ class CallAnalyzer:
                             f"[{ret.min_value}, {ret.max_value}]",
                             expr,
                         )
-                expr.resolved_function_info = ctor
+                expr.resolved_function_info = _resolve_cpp_template_type_params(ctor, result_type=ret)
                 self._check_cast_safe(expr, ctor, arg_types, ret)
                 return ret
 
@@ -1711,8 +1748,8 @@ class CallAnalyzer:
             subclass_checker=self.ctx.registry.is_subclass_of,
         )
         if matched:
-            expr.resolved_function_info = matched
             ret = record_type or matched.return_type
+            expr.resolved_function_info = _resolve_cpp_template_type_params(matched, result_type=ret)
             self._check_cast_safe(expr, matched, arg_types, ret)
             return ret
 

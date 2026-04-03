@@ -50,7 +50,6 @@ class BuiltinGenerator:
                          gen_args: list[str], *,
                          self_type: TpyType | None = None,
                          type_args: tuple[TpyType, ...] | None = None,
-                         type_subst: dict[str, TpyType] | None = None,
                          result_type: TpyType | None = None) -> str:
         """Generate a call from a resolved FunctionInfo.
 
@@ -58,19 +57,15 @@ class BuiltinGenerator:
         receiver is None for free function calls (no self).
         self_type: receiver's TpyType (for {cpp} expansion in method templates).
         type_args: inferred type arguments paired with fi.type_params by position.
-        type_subst: explicit name-to-type mapping (for class-level type params
-            where fi.type_params may be empty). Takes precedence over type_args.
         result_type: concrete result type for {cpp} substitution in constructors.
         """
         if fi.cpp_template:
             template = fi.cpp_template
             if result_type is not None and "{cpp}" in template:
                 template = template.replace("{cpp}", result_type.to_cpp())
-            # Build effective type substitution
+            # Substitute method-level type params
             effective_subst: dict[str, TpyType] | None = None
-            if type_subst:
-                effective_subst = type_subst
-            elif type_args and fi.type_params:
+            if type_args and fi.type_params:
                 effective_subst = dict(zip(fi.type_params, type_args))
             if effective_subst:
                 for name, typ in effective_subst.items():
