@@ -40,9 +40,7 @@ struct Shape {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shape& obj) {
-    os << "Shape("
-       << "name=" << "'" << obj.name << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Shape", obj);
     return os;
 }
 
@@ -66,9 +64,7 @@ struct Square : Shape {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
-    os << "Square("
-       << "side=" << obj.side
-       << ")";
+    ::tpy::print_object_default(os, "Square", obj);
     return os;
 }
 
@@ -94,11 +90,7 @@ struct Rectangle : Shape {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rectangle& obj) {
-    os << "Rectangle("
-       << "width=" << obj.width
-       << ", "
-       << "height=" << obj.height
-       << ")";
+    ::tpy::print_object_default(os, "Rectangle", obj);
     return os;
 }
 

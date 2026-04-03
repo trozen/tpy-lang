@@ -53,9 +53,7 @@ struct Impl {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
-    os << "Impl("
-       << "value=" << obj.value
-       << ")";
+    ::tpy::print_object_default(os, "Impl", obj);
     return os;
 }
 

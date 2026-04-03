@@ -75,11 +75,7 @@ struct Builder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Builder& obj) {
-    os << "Builder("
-       << "name=" << "'" << obj.name << "'"
-       << ", "
-       << "value=" << obj.value
-       << ")";
+    ::tpy::print_object_default(os, "Builder", obj);
     return os;
 }
 
@@ -113,11 +109,7 @@ struct Stack {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Stack<T>& obj) {
-    os << "Stack("
-       << "items=" << ::tpy::ListPrinter(obj.items)
-       << ", "
-       << "label=" << "'" << obj.label << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Stack", obj);
     return os;
 }
 

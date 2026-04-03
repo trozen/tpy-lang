@@ -33,9 +33,7 @@ struct Wrapper {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
-    os << "Wrapper("
-       << "_storage=" << obj._storage
-       << ")";
+    ::tpy::print_object_default(os, "Wrapper", obj);
     return os;
 }
 

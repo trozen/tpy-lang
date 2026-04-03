@@ -9,10 +9,10 @@ from collections import defaultdict
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, StrType, BoolType, FloatType, Float32Type, OptionalType, OwnType, ReadonlyType,
-    TypeParamRef, TypeParamKind, RecordInfo, TupleType, DictType, SetType, UnionType,
-    ListType, ArrayType, SpanType, SpanIterType, unwrap_readonly, unwrap_optional_own, is_any_str_type,
-    get_covariant_params, FixedIntType, BigIntType, EnumType, PtrType, CallableType,
+    TpyType, NamedType, OptionalType, OwnType, ReadonlyType,
+    TypeParamRef, TypeParamKind, RecordInfo, TupleType, UnionType,
+    ArrayType, SpanType, SpanIterType, unwrap_readonly, unwrap_optional_own,
+    get_covariant_params, FixedIntType, BigIntType, EnumType, PtrType,
 )
 from ..parse import (
     TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -451,13 +451,7 @@ class RecordGenerator:
         elif has_repr:
             out.write(f"{INDENT}os << obj.__repr__();\n")
         else:
-            # For records with match_args (macro records), include inherited fields
-            if record_info and record_info.match_args is not None:
-                print_fields = self.ctx.analyzer.registry.get_all_fields(record_info)
-            else:
-                print_fields = record.fields
-            self._write_field_format(out, print_fields, record.name,
-                                     "os", "obj.", INDENT)
+            out.write(f'{INDENT}::tpy::print_object_default(os, "{record.name}", obj);\n')
 
         out.write(f"{INDENT}return os;\n")
         out.write("}\n")
@@ -972,78 +966,6 @@ class RecordGenerator:
         out.write(f"\n{INDENT}auto operator*() -> decltype(__deref__()) {{\n")
         out.write(f"{INDENT}{INDENT}return __deref__();\n")
         out.write(f"{INDENT}}}\n")
-
-    def _write_field_format(
-        self, out: TextIO, fields: list, record_name: str,
-        stream: str, prefix: str, indent: str,
-    ) -> None:
-        """Write field-by-field formatting using stream operator<<.
-
-        Used by _gen_record_ostream (inline operator<< for print()).
-        """
-        out.write(f'{indent}{stream} << "{record_name}("')
-
-        for i, fld in enumerate(fields):
-            cpp_fld = escape_cpp_name(fld.name)
-            acc = f"{prefix}{cpp_fld}"
-            if i > 0:
-                out.write(f'\n{indent}   << ", "')
-            out.write(f'\n{indent}   << "{fld.name}="')
-            if is_any_str_type(fld.type):
-                out.write(f" << \"'\" << {acc} << \"'\"")
-            elif isinstance(fld.type, OptionalType):
-                inner = fld.type.inner
-                inner_cpp = inner.to_cpp()
-                if isinstance(inner, BoolType):
-                    out.write(f' << ::tpy::print_optional_val<::tpy::print_bool, {inner_cpp}>({acc})')
-                elif isinstance(inner, (FloatType, Float32Type)):
-                    out.write(f' << ::tpy::print_optional_val<::tpy::print_float, {inner_cpp}>({acc})')
-                elif is_any_str_type(inner):
-                    out.write(f' << ({acc}.has_value() ? std::string("\'") + std::string({acc}.value()) + "\'" : std::string("None"))')
-                elif isinstance(inner, TupleType):
-                    out.write(f';\n{indent}if ({acc}.has_value()) {stream} << ::tpy::TuplePrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
-                elif isinstance(inner, DictType):
-                    out.write(f';\n{indent}if ({acc}.has_value()) {stream} << ::tpy::DictPrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
-                elif isinstance(inner, SetType):
-                    out.write(f';\n{indent}if ({acc}.has_value()) {stream} << ::tpy::SetPrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
-                elif isinstance(inner, (ListType, ArrayType, SpanType)):
-                    out.write(f';\n{indent}if ({acc}.has_value()) {stream} << ::tpy::ListPrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
-                elif isinstance(inner, CallableType):
-                    out.write(f' << ({acc}.has_value() ? "<function>" : "None")')
-                else:
-                    out.write(f' << ::tpy::print_optional_val({acc})')
-            elif isinstance(fld.type, BoolType):
-                out.write(f' << ::tpy::print_bool({acc})')
-            elif isinstance(fld.type, FloatType):
-                out.write(f' << ::tpy::print_float({acc})')
-            elif isinstance(fld.type, Float32Type):
-                out.write(f' << ::tpy::print_float(static_cast<double>({acc}))')
-            elif isinstance(fld.type, TypeParamRef):
-                out.write(f' << ::tpy::ValuePrinter({acc})')
-            elif isinstance(fld.type, TupleType):
-                out.write(f' << ::tpy::TuplePrinter({acc})')
-            elif isinstance(fld.type, DictType):
-                out.write(f' << ::tpy::DictPrinter({acc})')
-            elif isinstance(fld.type, SetType):
-                out.write(f' << ::tpy::SetPrinter({acc})')
-            elif isinstance(fld.type, (ListType, ArrayType, SpanType)):
-                out.write(f' << ::tpy::ListPrinter({acc})')
-            elif isinstance(fld.type, UnionType):
-                if fld.type.has_none_member():
-                    out.write(f';\n{indent}std::visit([&](const auto& __v) {{'
-                              f' if constexpr (std::is_same_v<std::remove_cvref_t<decltype(__v)>, std::monostate>)'
-                              f' {stream} << "None"; else {stream} << __v;'
-                              f' }}, {acc});\n{indent}{stream}')
-                else:
-                    out.write(f';\n{indent}std::visit([&](const auto& __v) {{ {stream} << __v; }}, {acc});\n{indent}{stream}')
-            elif isinstance(fld.type, CallableType):
-                out.write(f' << "<function>"')
-            elif isinstance(fld.type, NamedType) and (fld.type.is_module_type or self._is_native(fld.type)):
-                out.write(f' << "<{fld.type}>"')
-            else:
-                out.write(f' << {acc}')
-
-        out.write(f'\n{indent}   << ")";\n')
 
     def _has_method_or_field(self, record: TpyRecord, name: str) -> bool:
         """Check if a record has a method or field with the given name."""

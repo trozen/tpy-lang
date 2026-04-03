@@ -44,11 +44,7 @@ struct RangeIter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const RangeIter& obj) {
-    os << "RangeIter("
-       << "current=" << obj.current
-       << ", "
-       << "limit=" << obj.limit
-       << ")";
+    ::tpy::print_object_default(os, "RangeIter", obj);
     return os;
 }
 
@@ -71,11 +67,7 @@ struct NumberRange {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NumberRange& obj) {
-    os << "NumberRange("
-       << "start=" << obj.start
-       << ", "
-       << "limit=" << obj.limit
-       << ")";
+    ::tpy::print_object_default(os, "NumberRange", obj);
     return os;
 }
 

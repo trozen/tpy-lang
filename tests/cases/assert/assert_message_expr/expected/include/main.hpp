@@ -27,9 +27,7 @@ struct Error {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Error& obj) {
-    os << "Error("
-       << "message=" << "'" << obj.message << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Error", obj);
     return os;
 }
 

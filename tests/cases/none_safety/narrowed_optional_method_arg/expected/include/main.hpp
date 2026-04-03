@@ -47,8 +47,7 @@ struct Printer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Printer& obj) {
-    os << "Printer("
-       << ")";
+    ::tpy::print_object_default(os, "Printer", obj);
     return os;
 }
 
@@ -62,9 +61,7 @@ struct Node {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
-    os << "Node("
-       << "label=" << (obj.label.has_value() ? std::string("'") + std::string(obj.label.value()) + "'" : std::string("None"))
-       << ")";
+    ::tpy::print_object_default(os, "Node", obj);
     return os;
 }
 

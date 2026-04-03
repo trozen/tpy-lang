@@ -26,9 +26,7 @@ struct Bag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
-    os << "Bag("
-       << "items=" << ::tpy::ListPrinter(obj.items)
-       << ")";
+    ::tpy::print_object_default(os, "Bag", obj);
     return os;
 }
 

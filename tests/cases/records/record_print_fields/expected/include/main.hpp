@@ -14,6 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
+// @dataclass
 // class Config:
 struct Config {
     // flag: bool
@@ -27,23 +28,24 @@ struct Config {
     // pair: tuple[Int32, str]
     std::tuple<int32_t, std::string> pair;
 
-    // def __init__(self, flag: bool, ratio: float, items: list[Int32],
     Config() = default;
-    explicit Config(bool flag, double ratio, const std::vector<int32_t>& items, const ::tpy::ordered_map<std::string, int32_t>& tags, const std::tuple<int32_t, std::string>& pair) : flag(flag), ratio(ratio), items(items), tags(tags), pair(pair) {}
+    explicit Config(bool flag, double ratio, std::vector<int32_t>&& items, ::tpy::ordered_map<std::string, int32_t>&& tags, const std::tuple<int32_t, std::string>& pair) : flag(flag), ratio(ratio), items(std::move(items)), tags(std::move(tags)), pair(pair) {}
+
+    bool __eq__(const Config& other) const {
+        return (((((this->flag == other.flag) && (this->ratio == other.ratio)) && (this->items == other.items)) && (this->tags == other.tags)) && (this->pair == other.pair));
+    }
+
+    std::string __repr__() const {
+        return std::format("Config(flag={}, ratio={}, items={}, tags={}, pair={})", ::tpy::__repr__(this->flag), ::tpy::__repr__(this->ratio), ::tpy::list_to_str(this->items), ::tpy::dict_to_str(this->tags), ::tpy::tuple_to_str(this->pair));
+    }
+
+    friend bool operator==(const Config& lhs, const Config& other) {
+        return lhs.__eq__(other);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
-    os << "Config("
-       << "flag=" << ::tpy::print_bool(obj.flag)
-       << ", "
-       << "ratio=" << ::tpy::print_float(obj.ratio)
-       << ", "
-       << "items=" << ::tpy::ListPrinter(obj.items)
-       << ", "
-       << "tags=" << ::tpy::DictPrinter(obj.tags)
-       << ", "
-       << "pair=" << ::tpy::TuplePrinter(obj.pair)
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

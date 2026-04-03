@@ -59,8 +59,7 @@ struct Parrot {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Parrot& obj) {
-    os << "Parrot("
-       << ")";
+    ::tpy::print_object_default(os, "Parrot", obj);
     return os;
 }
 

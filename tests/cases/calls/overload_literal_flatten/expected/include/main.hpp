@@ -59,11 +59,7 @@ struct Record {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Record& obj) {
-    os << "Record("
-       << "data_age=" << obj.data_age
-       << ", "
-       << "data_name=" << "'" << obj.data_name << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Record", obj);
     return os;
 }
 

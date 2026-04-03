@@ -25,9 +25,7 @@ struct Item {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
-    os << "Item("
-       << "value=" << obj.value
-       << ")";
+    ::tpy::print_object_default(os, "Item", obj);
     return os;
 }
 

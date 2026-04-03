@@ -62,9 +62,7 @@ struct Widget {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
-    os << "Widget("
-       << "val=" << obj.val
-       << ")";
+    ::tpy::print_object_default(os, "Widget", obj);
     return os;
 }
 

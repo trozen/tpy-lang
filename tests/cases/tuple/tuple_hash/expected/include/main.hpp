@@ -51,9 +51,7 @@ struct Key {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Key& obj) {
-    os << "Key("
-       << "val=" << obj.val
-       << ")";
+    ::tpy::print_object_default(os, "Key", obj);
     return os;
 }
 
@@ -86,11 +84,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    ::tpy::print_object_default(os, "Point", obj);
     return os;
 }
 
@@ -129,11 +123,7 @@ struct Edge {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Edge& obj) {
-    os << "Edge("
-       << "a=" << obj.a
-       << ", "
-       << "b=" << obj.b
-       << ")";
+    ::tpy::print_object_default(os, "Edge", obj);
     return os;
 }
 

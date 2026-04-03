@@ -51,9 +51,7 @@ struct IntWrapper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntWrapper& obj) {
-    os << "IntWrapper("
-       << "data=" << ::tpy::ListPrinter(obj.data)
-       << ")";
+    ::tpy::print_object_default(os, "IntWrapper", obj);
     return os;
 }
 

@@ -45,11 +45,7 @@ struct NumberList {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NumberList& obj) {
-    os << "NumberList("
-       << "_items=" << ::tpy::ListPrinter(obj._items)
-       << ", "
-       << "_label=" << "'" << obj._label << "'"
-       << ")";
+    ::tpy::print_object_default(os, "NumberList", obj);
     return os;
 }
 

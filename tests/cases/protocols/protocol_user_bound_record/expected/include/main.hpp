@@ -33,9 +33,7 @@ struct Message {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
-    os << "Message("
-       << "text=" << "'" << obj.text << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Message", obj);
     return os;
 }
 
@@ -76,9 +74,7 @@ struct Container {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-    os << "Container("
-       << "value=" << ::tpy::ValuePrinter(obj.value)
-       << ")";
+    ::tpy::print_object_default(os, "Container", obj);
     return os;
 }
 
@@ -95,8 +91,7 @@ struct DefaultFactory {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {
-    os << "DefaultFactory("
-       << ")";
+    ::tpy::print_object_default(os, "DefaultFactory", obj);
     return os;
 }
 

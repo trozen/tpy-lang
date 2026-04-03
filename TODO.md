@@ -9,7 +9,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Move type resolution from parser to sema: parser still creates canonical types (FixedIntType etc.) via `_resolve_primitive_type` for `from tpy import` names. Future: sema resolution pass so parser only creates NamedType and sema resolves via @builtin_type factories. Blocked on types appearing everywhere in AST (expressions, constructor calls, etc.) -- needs comprehensive AST walker or lazy normalization.
 - Define decorators as .py functions: readonly/noalloc/nocopy/pure/dynamic/error_return (tpy), native/cpp_template/builtin_type (tpy.extern), overload/override (typing) are currently parser keywords with empty stub files. Want them as real function definitions eventually so the parser doesn't need special handling. Blocked on: functions need type annotations to compile, and decorator signatures have no meaningful type (identity function over any callable).
 - ContextManager[T] protocol
-- Default operator<< on user records: replace field-by-field printing with placeholder (e.g. `<ClassName object>`). Only delegate to __repr__/__str__ when explicitly defined. Currently _gen_record_ostream dumps all fields for every record, which leaks internals for non-dataclass types. Also consider a dedicated dunder (e.g. `__stream__` or `__write__`) for efficient stream-based output (avoids allocating a string just to print it).
+- `__stream__` / `__write__` dunder: efficient stream-based output for records (avoids allocating a string just to print). Needed for no-alloc logging.
 
 
 ## Bugs
@@ -18,6 +18,8 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Use-after-free not caught by borrow checker: `old = d.get(k); del d[k]; use(old)` -- `dict.get()` returns a pointer into the dict's internal storage. `del d[k]` frees that entry, making `old` a dangling pointer. The subsequent `use(old)` is undefined behavior (reads garbage). The borrow checker should warn that `old` borrows from `d` and `del d[k]` invalidates it. Workaround: reorder to use `old` before `del`.
 - Property narrowing not supported: `if f.val is not None: f.val + 1` does not narrow because property access is a method call (could return different values). Same as function calls. Workaround: `v = f.val; if v is not None: v + 1`. Could support narrowing for simple field-returning getters in the future (requires getter body analysis).
 - Overload resolution: generic overloads with protocol params lose to concrete overloads with coercion. `sum[T: AnyFixedInt](Iterable[T])` doesn't match `list[Int32]` in pass 1 because `_structural_match` requires `type(arg) == type(param)` -- `ArrayType` != `NamedType("Iterable")`. The concrete `sum(Iterable[float])` then wins via coercion in pass 2. Fix: `_structural_match` should check protocol conformance when `param` is a protocol type, so generic overloads with protocol params match in pass 1. Workaround: add concrete overloads for common types (Int32, Int64) before the generic.
+- `repr()` and f-string `{}` don't work on union types: `repr(x)` where `x: A | B` fails with "No matching overload". Requires isinstance narrowing to access the concrete type. Fix: `_repr_fallback_template` should handle `UnionType` via `std::visit` dispatch.
+- Inherited `__repr__` not used by `operator<<`: `_gen_record_ostream` only checks direct methods (not inherited) to avoid `BaseException.__str__` leaking into exception subclasses. This means `print(child)` gives `<Child object at 0x...>` even when the parent defines `__repr__`, but `repr(child)` correctly finds the inherited method. Consider checking inherited `__repr__` while excluding known problematic base classes.
 
 ## Bytes
 - `BytesView` as dict key / set element: `__hash__` works but `std::span<const uint8_t>` has no `operator==`, so `ordered_map`/`ordered_set` fail to compile. Needs an `__eq__` overload or `std::equal_to` specialization.
@@ -99,7 +101,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - `DefaultInt` type alias: currently a sentinel class in `tpy.extern` used only by `@type_param_default`. Make it a real type alias with compiler support so it can be used in type annotations (e.g. `x: DefaultInt = 42`).
 - `iter()` non-native: currently `@native("tpy::__iter__")` because regular functions can't return protocol types (`Iterator[T]`). Relax the protocol return type restriction for generic functions so `iter()` can have a real body (`return x.__iter__()`).
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
-- better class operator<< tests (but missing str formatting/concatenation)
 - formatting/linting like in genweb
 - existing C++ interoperability: when we want to call existing C++ we need to declare types/functions in TPy files, but without generation, only annotating how to use them in code
 - auto-declare fields from `__init__`: extend to `self.f = expr` and `self.f = Constructor()` (Phase 1 param-only is done, see `docs/CONSTRUCTOR_DESIGN.md`)
@@ -148,7 +149,6 @@ Benchmarked with CME MBO order book (15MB JSON, 20K messages). Library-level opt
 
 ## Low Priority
 - `f"{x!r}"` doesn't use the repr() sema fallback: `repr(x)` accepts primitives and user records, but `f"{x!r}"` still requires the `Representable` protocol. Should share the same acceptance logic.
-- `Optional[float]` repr uses C++ default float formatting: the `operator<<` fallback in `__repr__(optional<T>)` doesn't use `print_float`, so output may differ from Python-style float repr (e.g. missing trailing `.0`).
 - Catch uncaught `tpy::BaseException` in generated `main()`: currently an unhandled exception produces GCC's `terminate called after throwing...` message, which is a C++ implementation detail. Should catch `tpy::BaseException` and print Python-style `ExceptionType: message` to stderr instead.
 - `= default` semantic gap: records with required `__init__` params currently emit `ClassName() = default;` if their C++ fields are all trivially constructible, bypassing the Python-level construction contract. Should emit `= delete` (or nothing) instead -- `std::optional<T>` and containers don't require default-constructibility, so the impact is limited to direct `T t;` / `T arr[N]` patterns which tpyc doesn't generate anyway. Fix: check `init_params` required count in `_fld_type_cpp_default_constructible` (same as `_is_default_constructible`). See `docs/CONSTRUCTOR_DESIGN.md` open question 4.
 - Unnecessary pointer locals for loop-scoped tuple unpack vars: `reassigned_vars` marks a name as reassigned when it appears in two for-loops, even though the C++ declarations are in independent loop-body scopes. This causes `T*` pointer indirection instead of `T&` reference binding. The scopes are independent in C++ so re-declaration as `T&` each iteration is safe.

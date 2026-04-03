@@ -34,9 +34,7 @@ struct Box {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-    os << "Box("
-       << "val=" << ::tpy::ValuePrinter(obj.val)
-       << ")";
+    ::tpy::print_object_default(os, "Box", obj);
     return os;
 }
 

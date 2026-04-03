@@ -37,9 +37,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    os << "Counter("
-       << "count=" << obj.count
-       << ")";
+    ::tpy::print_object_default(os, "Counter", obj);
     return os;
 }
 
@@ -66,9 +64,7 @@ struct Accumulator {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Accumulator& obj) {
-    os << "Accumulator("
-       << "total=" << ::tpy::print_float(obj.total)
-       << ")";
+    ::tpy::print_object_default(os, "Accumulator", obj);
     return os;
 }
 

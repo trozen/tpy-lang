@@ -33,9 +33,7 @@ struct Container {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-    os << "Container("
-       << "value=" << ::tpy::ValuePrinter(obj.value)
-       << ")";
+    ::tpy::print_object_default(os, "Container", obj);
     return os;
 }
 
@@ -53,9 +51,7 @@ struct IntContainer : Container<int32_t> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntContainer& obj) {
-    os << "IntContainer("
-       << "extra=" << obj.extra
-       << ")";
+    ::tpy::print_object_default(os, "IntContainer", obj);
     return os;
 }
 

@@ -39,9 +39,7 @@ struct Grid {
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Grid<T, N>& obj) {
-    os << "Grid("
-       << "_value=" << ::tpy::ValuePrinter(obj._value)
-       << ")";
+    ::tpy::print_object_default(os, "Grid", obj);
     return os;
 }
 

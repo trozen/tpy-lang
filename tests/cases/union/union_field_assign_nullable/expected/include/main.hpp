@@ -29,9 +29,7 @@ struct Dog {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    os << "Dog("
-       << "name=" << "'" << obj.name << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Dog", obj);
     return os;
 }
 
@@ -46,9 +44,7 @@ struct Cat {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-    os << "Cat("
-       << "name=" << "'" << obj.name << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Cat", obj);
     return os;
 }
 
@@ -62,11 +58,7 @@ struct Shelter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shelter& obj) {
-    os << "Shelter("
-       << "pet=";
-    std::visit([&](const auto& __v) { if constexpr (std::is_same_v<std::remove_cvref_t<decltype(__v)>, std::monostate>) os << "None"; else os << __v; }, obj.pet);
-    os
-       << ")";
+    ::tpy::print_object_default(os, "Shelter", obj);
     return os;
 }
 

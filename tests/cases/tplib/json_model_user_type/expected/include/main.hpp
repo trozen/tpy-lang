@@ -64,9 +64,7 @@ struct Seconds {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Seconds& obj) {
-    os << "Seconds("
-       << "_value=" << obj._value
-       << ")";
+    ::tpy::print_object_default(os, "Seconds", obj);
     return os;
 }
 

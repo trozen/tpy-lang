@@ -41,9 +41,7 @@ struct Key {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Key& obj) {
-    os << "Key("
-       << "val=" << obj.val
-       << ")";
+    ::tpy::print_object_default(os, "Key", obj);
     return os;
 }
 

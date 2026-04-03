@@ -30,9 +30,7 @@ struct Box {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-    os << "Box("
-       << "val=" << ::tpy::ValuePrinter(obj.val)
-       << ")";
+    ::tpy::print_object_default(os, "Box", obj);
     return os;
 }
 
@@ -51,11 +49,7 @@ struct Wrapper {
 
 template<typename A, typename B>
 inline std::ostream& operator<<(std::ostream& os, const Wrapper<A, B>& obj) {
-    os << "Wrapper("
-       << "inner=" << ::tpy::ValuePrinter(obj.inner)
-       << ", "
-       << "tag=" << ::tpy::ValuePrinter(obj.tag)
-       << ")";
+    ::tpy::print_object_default(os, "Wrapper", obj);
     return os;
 }
 

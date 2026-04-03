@@ -47,9 +47,7 @@ struct Vec {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Vec<T>& obj) {
-    os << "Vec("
-       << "_data=" << ::tpy::ListPrinter(obj._data)
-       << ")";
+    ::tpy::print_object_default(os, "Vec", obj);
     return os;
 }
 

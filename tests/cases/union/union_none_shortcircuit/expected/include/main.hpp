@@ -28,9 +28,7 @@ struct Dog {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    os << "Dog("
-       << "name=" << "'" << obj.name << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Dog", obj);
     return os;
 }
 

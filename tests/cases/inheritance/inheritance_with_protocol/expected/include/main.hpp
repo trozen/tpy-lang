@@ -41,11 +41,7 @@ struct Entity {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Entity& obj) {
-    os << "Entity("
-       << "name=" << "'" << obj.name << "'"
-       << ", "
-       << "id=" << obj.id
-       << ")";
+    ::tpy::print_object_default(os, "Entity", obj);
     return os;
 }
 

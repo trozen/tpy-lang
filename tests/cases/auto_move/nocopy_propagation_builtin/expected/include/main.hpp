@@ -55,9 +55,7 @@ struct Storage {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Storage& obj) {
-    os << "Storage("
-       << "buf=" << "<UninitHeapStorage[Int32]>"
-       << ")";
+    ::tpy::print_object_default(os, "Storage", obj);
     return os;
 }
 

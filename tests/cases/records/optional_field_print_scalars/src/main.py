@@ -1,28 +1,27 @@
 from tpy import Int32
+from dataclasses import dataclass
 
 
+@dataclass
 class Settings:
-    count: Int32 | None
-    flag: bool | None
-    ratio: float | None
-    label: str | None
-
-    def __init__(self) -> None:
-        self.count = None
-        self.flag = None
-        self.ratio = None
-        self.label = None
+    count: Int32 | None = None
+    flag: bool | None = None
+    ratio: float | None = None
+    label: str | None = None
 
 
-s = Settings()
-print(s)
+def main() -> None:
+    s = Settings()
+    print(s)
 
-s.count = 42
-s.flag = True
-s.ratio = 3.14
-s.label = "hello"
-print(s)
+    s.count = 42
+    s.flag = True
+    s.ratio = 3.14
+    s.label = "hello"
+    print(s)
 
-s.flag = False
-s.ratio = 0.0
-print(s)
+    s.flag = False
+    s.ratio = 0.0
+    print(s)
+
+main()

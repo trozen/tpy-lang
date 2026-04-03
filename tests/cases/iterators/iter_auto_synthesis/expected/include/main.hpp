@@ -44,11 +44,7 @@ struct SimpleIter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SimpleIter& obj) {
-    os << "SimpleIter("
-       << "current=" << obj.current
-       << ", "
-       << "limit=" << obj.limit
-       << ")";
+    ::tpy::print_object_default(os, "SimpleIter", obj);
     return os;
 }
 

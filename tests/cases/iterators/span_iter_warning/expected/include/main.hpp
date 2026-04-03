@@ -43,9 +43,7 @@ struct MyIter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyIter& obj) {
-    os << "MyIter("
-       << "_val=" << obj._val
-       << ")";
+    ::tpy::print_object_default(os, "MyIter", obj);
     return os;
 }
 
@@ -79,9 +77,7 @@ struct Dual {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dual& obj) {
-    os << "Dual("
-       << "_data=" << ::tpy::ListPrinter(obj._data)
-       << ")";
+    ::tpy::print_object_default(os, "Dual", obj);
     return os;
 }
 

@@ -56,9 +56,7 @@ struct MyList {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyList& obj) {
-    os << "MyList("
-       << "_data=" << ::tpy::ListPrinter(obj._data)
-       << ")";
+    ::tpy::print_object_default(os, "MyList", obj);
     return os;
 }
 

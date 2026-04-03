@@ -51,11 +51,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    os << "Counter("
-       << "value=" << obj.value
-       << ", "
-       << "limit=" << obj.limit
-       << ")";
+    ::tpy::print_object_default(os, "Counter", obj);
     return os;
 }
 

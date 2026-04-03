@@ -38,9 +38,7 @@ struct MyNumber {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyNumber& obj) {
-    os << "MyNumber("
-       << "value=" << obj.value
-       << ")";
+    ::tpy::print_object_default(os, "MyNumber", obj);
     return os;
 }
 
@@ -63,9 +61,7 @@ struct Holder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
-    os << "Holder("
-       << "item=" << ::tpy::ValuePrinter(obj.item)
-       << ")";
+    ::tpy::print_object_default(os, "Holder", obj);
     return os;
 }
 

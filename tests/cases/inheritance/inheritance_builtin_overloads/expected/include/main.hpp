@@ -28,9 +28,7 @@ struct MyList : std::vector<int32_t> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyList& obj) {
-    os << "MyList("
-       << "name=" << "'" << obj.name << "'"
-       << ")";
+    ::tpy::print_object_default(os, "MyList", obj);
     return os;
 }
 

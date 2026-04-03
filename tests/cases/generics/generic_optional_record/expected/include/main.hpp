@@ -35,11 +35,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    ::tpy::print_object_default(os, "Point", obj);
     return os;
 }
 
@@ -69,11 +65,7 @@ struct Container {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-    os << "Container("
-       << "_value=" << ::tpy::ValuePrinter(obj._value)
-       << ", "
-       << "_has=" << ::tpy::print_bool(obj._has)
-       << ")";
+    ::tpy::print_object_default(os, "Container", obj);
     return os;
 }
 

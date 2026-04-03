@@ -34,9 +34,7 @@ struct Resource {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
-    os << "Resource("
-       << "id=" << obj.id
-       << ")";
+    ::tpy::print_object_default(os, "Resource", obj);
     return os;
 }
 
@@ -56,9 +54,7 @@ struct Wrapper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
-    os << "Wrapper("
-       << "res=" << obj.res
-       << ")";
+    ::tpy::print_object_default(os, "Wrapper", obj);
     return os;
 }
 
@@ -78,9 +74,7 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    os << "Outer("
-       << "w=" << obj.w
-       << ")";
+    ::tpy::print_object_default(os, "Outer", obj);
     return os;
 }
 

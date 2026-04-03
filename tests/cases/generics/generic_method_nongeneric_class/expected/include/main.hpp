@@ -32,8 +32,7 @@ struct Converter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Converter& obj) {
-    os << "Converter("
-       << ")";
+    ::tpy::print_object_default(os, "Converter", obj);
     return os;
 }
 

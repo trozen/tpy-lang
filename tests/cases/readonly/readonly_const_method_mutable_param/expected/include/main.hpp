@@ -38,9 +38,7 @@ struct Writer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Writer& obj) {
-    os << "Writer("
-       << "_parts=" << ::tpy::ListPrinter(obj._parts)
-       << ")";
+    ::tpy::print_object_default(os, "Writer", obj);
     return os;
 }
 
@@ -65,11 +63,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    ::tpy::print_object_default(os, "Point", obj);
     return os;
 }
 

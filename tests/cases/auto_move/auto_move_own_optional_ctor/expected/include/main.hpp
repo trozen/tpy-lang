@@ -25,11 +25,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    ::tpy::print_object_default(os, "Point", obj);
     return os;
 }
 
@@ -54,9 +50,7 @@ struct Wrapper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
-    os << "Wrapper("
-       << "tag=" << obj.tag
-       << ")";
+    ::tpy::print_object_default(os, "Wrapper", obj);
     return os;
 }
 

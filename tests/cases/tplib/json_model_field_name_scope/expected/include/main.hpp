@@ -273,9 +273,7 @@ struct Registry {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Registry& obj) {
-    os << "Registry("
-       << "items=" << ::tpy::DictPrinter(obj.items)
-       << ")";
+    ::tpy::print_object_default(os, "Registry", obj);
     return os;
 }
 

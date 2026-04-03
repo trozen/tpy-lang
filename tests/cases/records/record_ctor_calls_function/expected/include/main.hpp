@@ -28,11 +28,7 @@ struct Pair {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
-    os << "Pair("
-       << "a=" << obj.a
-       << ", "
-       << "b=" << obj.b
-       << ")";
+    ::tpy::print_object_default(os, "Pair", obj);
     return os;
 }
 

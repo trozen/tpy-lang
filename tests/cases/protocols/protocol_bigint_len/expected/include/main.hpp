@@ -33,9 +33,7 @@ struct MyCollection {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyCollection& obj) {
-    os << "MyCollection("
-       << "size=" << obj.size
-       << ")";
+    ::tpy::print_object_default(os, "MyCollection", obj);
     return os;
 }
 

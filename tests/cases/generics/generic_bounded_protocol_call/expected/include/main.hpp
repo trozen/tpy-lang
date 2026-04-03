@@ -72,8 +72,7 @@ struct Printer {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Printer<T>& obj) {
-    os << "Printer("
-       << ")";
+    ::tpy::print_object_default(os, "Printer", obj);
     return os;
 }
 
@@ -107,9 +106,7 @@ struct MyValue {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyValue& obj) {
-    os << "MyValue("
-       << "val=" << obj.val
-       << ")";
+    ::tpy::print_object_default(os, "MyValue", obj);
     return os;
 }
 
@@ -133,11 +130,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    ::tpy::print_object_default(os, "Point", obj);
     return os;
 }
 
@@ -167,11 +160,7 @@ struct Widget {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
-    os << "Widget("
-       << "name=" << "'" << obj.name << "'"
-       << ", "
-       << "val=" << obj.val
-       << ")";
+    ::tpy::print_object_default(os, "Widget", obj);
     return os;
 }
 
@@ -193,9 +182,7 @@ struct Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    os << "Box("
-       << "value=" << obj.value
-       << ")";
+    ::tpy::print_object_default(os, "Box", obj);
     return os;
 }
 

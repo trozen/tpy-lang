@@ -22,8 +22,7 @@ struct NotFound : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NotFound& obj) {
-    os << "NotFound("
-       << ")";
+    ::tpy::print_object_default(os, "NotFound", obj);
     return os;
 }
 
@@ -38,9 +37,7 @@ struct BadKey : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BadKey& obj) {
-    os << "BadKey("
-       << "key=" << "'" << obj.key << "'"
-       << ")";
+    ::tpy::print_object_default(os, "BadKey", obj);
     return os;
 }
 

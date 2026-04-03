@@ -65,9 +65,7 @@ struct Dog : Speaker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    os << "Dog("
-       << "name=" << "'" << obj.name << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Dog", obj);
     return os;
 }
 
@@ -88,9 +86,7 @@ struct Cat : Speaker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-    os << "Cat("
-       << "name=" << "'" << obj.name << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Cat", obj);
     return os;
 }
 
@@ -105,9 +101,7 @@ struct Recorder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Recorder& obj) {
-    os << "Recorder("
-       << "message=" << "'" << obj.message << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Recorder", obj);
     return os;
 }
 
@@ -128,9 +122,7 @@ struct Announcer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Announcer& obj) {
-    os << "Announcer("
-       << "prefix=" << "'" << obj.prefix << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Announcer", obj);
     return os;
 }
 

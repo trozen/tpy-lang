@@ -38,11 +38,7 @@ struct CachedList {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CachedList& obj) {
-    os << "CachedList("
-       << "_data=" << ::tpy::ListPrinter(obj._data)
-       << ", "
-       << "_hits=" << obj._hits
-       << ")";
+    ::tpy::print_object_default(os, "CachedList", obj);
     return os;
 }
 

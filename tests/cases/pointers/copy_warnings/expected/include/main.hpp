@@ -29,11 +29,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    ::tpy::print_object_default(os, "Point", obj);
     return os;
 }
 
@@ -63,11 +59,7 @@ struct Rect {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
-    os << "Rect("
-       << "corner=" << obj.corner
-       << ", "
-       << "width=" << obj.width
-       << ")";
+    ::tpy::print_object_default(os, "Rect", obj);
     return os;
 }
 
@@ -89,9 +81,7 @@ struct Container {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
-    os << "Container("
-       << "items=" << ::tpy::ListPrinter(obj.items)
-       << ")";
+    ::tpy::print_object_default(os, "Container", obj);
     return os;
 }
 
@@ -113,9 +103,7 @@ struct Holder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
-    os << "Holder("
-       << "value=" << ::tpy::ValuePrinter(obj.value)
-       << ")";
+    ::tpy::print_object_default(os, "Holder", obj);
     return os;
 }
 
@@ -137,9 +125,7 @@ struct OptHolder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OptHolder& obj) {
-    os << "OptHolder("
-       << "value=" << ::tpy::print_optional_val(obj.value)
-       << ")";
+    ::tpy::print_object_default(os, "OptHolder", obj);
     return os;
 }
 

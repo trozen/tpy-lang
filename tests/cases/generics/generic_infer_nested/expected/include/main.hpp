@@ -29,9 +29,7 @@ struct Inner {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Inner<T>& obj) {
-    os << "Inner("
-       << "value=" << ::tpy::ValuePrinter(obj.value)
-       << ")";
+    ::tpy::print_object_default(os, "Inner", obj);
     return os;
 }
 
@@ -48,9 +46,7 @@ struct Outer {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Outer<T>& obj) {
-    os << "Outer("
-       << "inner=" << ::tpy::ValuePrinter(obj.inner)
-       << ")";
+    ::tpy::print_object_default(os, "Outer", obj);
     return os;
 }
 

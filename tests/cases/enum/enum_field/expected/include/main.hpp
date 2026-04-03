@@ -52,13 +52,7 @@ struct Pixel {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pixel& obj) {
-    os << "Pixel("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ", "
-       << "color=" << obj.color
-       << ")";
+    ::tpy::print_object_default(os, "Pixel", obj);
     return os;
 }
 

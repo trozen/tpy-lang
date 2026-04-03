@@ -39,9 +39,7 @@ struct MyContainer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyContainer& obj) {
-    os << "MyContainer("
-       << "data=" << ::tpy::ListPrinter(obj.data)
-       << ")";
+    ::tpy::print_object_default(os, "MyContainer", obj);
     return os;
 }
 

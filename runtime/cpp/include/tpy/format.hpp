@@ -8,6 +8,7 @@
 
 #include <cctype>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <format>
 #include <iostream>
@@ -725,6 +726,16 @@ template<typename T>
 const T* optional_to_ptr(const std::optional<T>& opt) {
     if (opt.has_value()) return &*opt;
     return nullptr;
+}
+
+// Default repr for records without __repr__/__str__: "<ClassName object at 0xADDR>"
+template<typename T>
+inline std::ostream& print_object_default(std::ostream& os, std::string_view class_name, const T& obj) {
+    auto flags = os.flags();
+    os << "<" << class_name << " object at 0x"
+       << std::hex << reinterpret_cast<uintptr_t>(&obj) << ">";
+    os.flags(flags);
+    return os;
 }
 
 } // namespace tpy

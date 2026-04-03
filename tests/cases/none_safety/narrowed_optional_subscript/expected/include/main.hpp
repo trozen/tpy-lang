@@ -37,9 +37,7 @@ struct Wrapper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
-    os << "Wrapper("
-       << "text=" << (obj.text.has_value() ? std::string("'") + std::string(obj.text.value()) + "'" : std::string("None"))
-       << ")";
+    ::tpy::print_object_default(os, "Wrapper", obj);
     return os;
 }
 

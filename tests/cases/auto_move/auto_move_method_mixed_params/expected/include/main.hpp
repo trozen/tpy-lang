@@ -25,9 +25,7 @@ struct Inner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
-    os << "Inner("
-       << "value=" << obj.value
-       << ")";
+    ::tpy::print_object_default(os, "Inner", obj);
     return os;
 }
 
@@ -47,9 +45,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    os << "Holder("
-       << "inner=" << obj.inner
-       << ")";
+    ::tpy::print_object_default(os, "Holder", obj);
     return os;
 }
 
@@ -74,9 +70,7 @@ struct GenericHolder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GenericHolder<T>& obj) {
-    os << "GenericHolder("
-       << "item=" << ::tpy::ValuePrinter(obj.item)
-       << ")";
+    ::tpy::print_object_default(os, "GenericHolder", obj);
     return os;
 }
 
@@ -93,9 +87,7 @@ struct GenericBox {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GenericBox<T>& obj) {
-    os << "GenericBox("
-       << "item=" << ::tpy::ValuePrinter(obj.item)
-       << ")";
+    ::tpy::print_object_default(os, "GenericBox", obj);
     return os;
 }
 

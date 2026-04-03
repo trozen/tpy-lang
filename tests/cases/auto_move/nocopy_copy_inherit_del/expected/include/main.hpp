@@ -49,9 +49,7 @@ struct Resource {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
-    os << "Resource("
-       << "id=" << obj.id
-       << ")";
+    ::tpy::print_object_default(os, "Resource", obj);
     return os;
 }
 
@@ -78,8 +76,7 @@ struct CopyableResource : Resource {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CopyableResource& obj) {
-    os << "CopyableResource("
-       << ")";
+    ::tpy::print_object_default(os, "CopyableResource", obj);
     return os;
 }
 

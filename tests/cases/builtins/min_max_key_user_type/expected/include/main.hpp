@@ -36,9 +36,7 @@ struct Priority {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Priority& obj) {
-    os << "Priority("
-       << "level=" << obj.level
-       << ")";
+    ::tpy::print_object_default(os, "Priority", obj);
     return os;
 }
 
@@ -55,11 +53,7 @@ struct Task {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Task& obj) {
-    os << "Task("
-       << "name=" << "'" << obj.name << "'"
-       << ", "
-       << "prio=" << obj.prio
-       << ")";
+    ::tpy::print_object_default(os, "Task", obj);
     return os;
 }
 

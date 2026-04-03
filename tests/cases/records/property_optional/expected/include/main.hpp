@@ -26,9 +26,7 @@ struct Node {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
-    os << "Node("
-       << "val=" << obj.val
-       << ")";
+    ::tpy::print_object_default(os, "Node", obj);
     return os;
 }
 
@@ -63,9 +61,7 @@ struct Wrapper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
-    os << "Wrapper("
-       << "_node=" << ::tpy::print_optional_val(obj._node)
-       << ")";
+    ::tpy::print_object_default(os, "Wrapper", obj);
     return os;
 }
 

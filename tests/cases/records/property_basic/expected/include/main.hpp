@@ -39,9 +39,7 @@ struct Circle {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
-    os << "Circle("
-       << "_radius=" << obj._radius
-       << ")";
+    ::tpy::print_object_default(os, "Circle", obj);
     return os;
 }
 

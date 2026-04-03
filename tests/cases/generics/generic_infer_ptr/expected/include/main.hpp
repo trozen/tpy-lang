@@ -33,9 +33,7 @@ struct PtrHolder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const PtrHolder<T>& obj) {
-    os << "PtrHolder("
-       << "ptr=" << obj.ptr
-       << ")";
+    ::tpy::print_object_default(os, "PtrHolder", obj);
     return os;
 }
 
@@ -52,9 +50,7 @@ struct ReadOnlyPtrHolder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const ReadOnlyPtrHolder<T>& obj) {
-    os << "ReadOnlyPtrHolder("
-       << "ptr=" << obj.ptr
-       << ")";
+    ::tpy::print_object_default(os, "ReadOnlyPtrHolder", obj);
     return os;
 }
 
@@ -68,11 +64,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    ::tpy::print_object_default(os, "Point", obj);
     return os;
 }
 

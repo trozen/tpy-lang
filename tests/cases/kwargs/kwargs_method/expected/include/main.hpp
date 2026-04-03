@@ -33,9 +33,7 @@ struct Formatter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Formatter& obj) {
-    os << "Formatter("
-       << "prefix=" << "'" << obj.prefix << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Formatter", obj);
     return os;
 }
 

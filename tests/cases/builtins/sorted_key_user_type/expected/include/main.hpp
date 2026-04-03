@@ -36,9 +36,7 @@ struct Score {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Score& obj) {
-    os << "Score("
-       << "val=" << obj.val
-       << ")";
+    ::tpy::print_object_default(os, "Score", obj);
     return os;
 }
 
@@ -55,11 +53,7 @@ struct Item {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
-    os << "Item("
-       << "name=" << "'" << obj.name << "'"
-       << ", "
-       << "score=" << obj.score
-       << ")";
+    ::tpy::print_object_default(os, "Item", obj);
     return os;
 }
 

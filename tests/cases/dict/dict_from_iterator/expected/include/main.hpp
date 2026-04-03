@@ -50,11 +50,7 @@ struct PairIter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PairIter& obj) {
-    os << "PairIter("
-       << "current=" << obj.current
-       << ", "
-       << "limit=" << obj.limit
-       << ")";
+    ::tpy::print_object_default(os, "PairIter", obj);
     return os;
 }
 

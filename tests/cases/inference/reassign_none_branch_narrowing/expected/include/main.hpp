@@ -27,9 +27,7 @@ struct Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    os << "Box("
-       << "v=" << obj.v
-       << ")";
+    ::tpy::print_object_default(os, "Box", obj);
     return os;
 }
 

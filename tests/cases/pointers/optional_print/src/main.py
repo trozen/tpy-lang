@@ -9,6 +9,9 @@ class Point:
         self.x = x
         self.y = y
 
+    def __repr__(self) -> str:
+        return f"Point(x={self.x}, y={self.y})"
+
 
 def find(points: list[Point], target: Int32) -> Point | None:
     for p in points:

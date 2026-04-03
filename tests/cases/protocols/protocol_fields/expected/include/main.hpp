@@ -68,9 +68,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "value=" << obj.value
-       << ")";
+    ::tpy::print_object_default(os, "Point", obj);
     return os;
 }
 
@@ -88,11 +86,7 @@ struct Vec2 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
-    os << "Vec2("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    ::tpy::print_object_default(os, "Vec2", obj);
     return os;
 }
 
@@ -114,9 +108,7 @@ struct Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    os << "Box("
-       << "count=" << obj.count
-       << ")";
+    ::tpy::print_object_default(os, "Box", obj);
     return os;
 }
 
@@ -132,9 +124,7 @@ struct IntHolder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntHolder& obj) {
-    os << "IntHolder("
-       << "item=" << obj.item
-       << ")";
+    ::tpy::print_object_default(os, "IntHolder", obj);
     return os;
 }
 
@@ -158,9 +148,7 @@ struct Wrapper {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
-    os << "Wrapper("
-       << "inner=" << ::tpy::ValuePrinter(obj.inner)
-       << ")";
+    ::tpy::print_object_default(os, "Wrapper", obj);
     return os;
 }
 

@@ -28,8 +28,7 @@ struct Container {
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Container<T, N>& obj) {
-    os << "Container("
-       << ")";
+    ::tpy::print_object_default(os, "Container", obj);
     return os;
 }
 

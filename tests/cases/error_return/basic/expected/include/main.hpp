@@ -21,8 +21,7 @@ struct NotFound : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NotFound& obj) {
-    os << "NotFound("
-       << ")";
+    ::tpy::print_object_default(os, "NotFound", obj);
     return os;
 }
 

@@ -67,9 +67,7 @@ struct HeapVal {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HeapVal& obj) {
-    os << "HeapVal("
-       << "_ptr=" << obj._ptr
-       << ")";
+    ::tpy::print_object_default(os, "HeapVal", obj);
     return os;
 }
 

@@ -82,9 +82,7 @@ struct Rank {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rank& obj) {
-    os << "Rank("
-       << "val=" << obj.val
-       << ")";
+    ::tpy::print_object_default(os, "Rank", obj);
     return os;
 }
 

@@ -49,13 +49,7 @@ struct StorageIter {
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const StorageIter<T, N>& obj) {
-    os << "StorageIter("
-       << "_storage=" << obj._storage
-       << ", "
-       << "_size=" << obj._size
-       << ", "
-       << "_index=" << obj._index
-       << ")";
+    ::tpy::print_object_default(os, "StorageIter", obj);
     return os;
 }
 
@@ -112,11 +106,7 @@ struct SimpleList {
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const SimpleList<T, N>& obj) {
-    os << "SimpleList("
-       << "_storage=" << "<UninitArrayStorage[T, N]>"
-       << ", "
-       << "_size=" << obj._size
-       << ")";
+    ::tpy::print_object_default(os, "SimpleList", obj);
     return os;
 }
 

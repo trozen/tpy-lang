@@ -9,12 +9,13 @@
 namespace tpyapp::main {
 
 struct Foo;
+struct Bar;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// # repr() works on records without explicit __repr__ (uses operator<< fallback)
+// # repr() on records without __repr__ uses default "<ClassName object at 0xADDR>"
 // class Foo:
 struct Foo {
     // x: int
@@ -26,9 +27,28 @@ struct Foo {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
-    os << "Foo("
-       << "x=" << obj.x
-       << ")";
+    ::tpy::print_object_default(os, "Foo", obj);
+    return os;
+}
+
+// class Bar:
+struct Bar {
+    // x: int
+    ::tpy::BigInt x;
+
+    // def __init__(self, x: int) -> None:
+    Bar() = default;
+    explicit Bar(const ::tpy::BigInt& x) : x(x) {}
+
+    // def __repr__(self) -> str:
+    std::string __repr__() const {
+        // return f"Bar({self.x})"
+        return std::format("Bar({})", (this->x).to_string());
+    }
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Bar& obj) {
+    os << obj.__repr__();
     return os;
 }
 

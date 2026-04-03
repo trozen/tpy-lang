@@ -21,12 +21,16 @@ struct Handler {
 
     // def __init__(self) -> None:
     Handler() : action([]() { std::cout << 0 << "\n"; }) {}
+
+    // def __repr__(self) -> str:
+    std::string __repr__() const {
+        // return "Handler(action=<function>)"
+        return "Handler(action=<function>)";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
-    os << "Handler("
-       << "action=" << "<function>"
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

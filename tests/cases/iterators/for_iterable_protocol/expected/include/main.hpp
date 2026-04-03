@@ -47,11 +47,7 @@ struct CounterIter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CounterIter& obj) {
-    os << "CounterIter("
-       << "current=" << obj.current
-       << ", "
-       << "limit=" << obj.limit
-       << ")";
+    ::tpy::print_object_default(os, "CounterIter", obj);
     return os;
 }
 
@@ -74,11 +70,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    os << "Counter("
-       << "start=" << obj.start
-       << ", "
-       << "limit=" << obj.limit
-       << ")";
+    ::tpy::print_object_default(os, "Counter", obj);
     return os;
 }
 

@@ -50,9 +50,7 @@ struct Clamped {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Clamped& obj) {
-    os << "Clamped("
-       << "_value=" << obj._value
-       << ")";
+    ::tpy::print_object_default(os, "Clamped", obj);
     return os;
 }
 

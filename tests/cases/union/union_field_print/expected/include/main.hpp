@@ -16,38 +16,57 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// # operator<< for records with non-value union fields (visit-based printing)
+// @dataclass
 // class Dog:
 struct Dog {
     // name: str
     std::string name;
 
-    // def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
+
+    bool __eq__(const Dog& other) const {
+        return (this->name == other.name);
+    }
+
+    std::string __repr__() const {
+        return std::format("Dog(name={})", ::tpy::__repr__(this->name));
+    }
+
+    friend bool operator==(const Dog& lhs, const Dog& other) {
+        return lhs.__eq__(other);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    os << "Dog("
-       << "name=" << "'" << obj.name << "'"
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 
+// @dataclass
 // class Cat:
 struct Cat {
     // name: str
     std::string name;
 
-    // def __init__(self, name: str) -> None:
     Cat() = default;
     explicit Cat(std::string_view name) : name(name) {}
+
+    bool __eq__(const Cat& other) const {
+        return (this->name == other.name);
+    }
+
+    std::string __repr__() const {
+        return std::format("Cat(name={})", ::tpy::__repr__(this->name));
+    }
+
+    friend bool operator==(const Cat& lhs, const Cat& other) {
+        return lhs.__eq__(other);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-    os << "Cat("
-       << "name=" << "'" << obj.name << "'"
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 
@@ -63,13 +82,7 @@ struct Zoo {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Zoo& obj) {
-    os << "Zoo("
-       << "pet=";
-    std::visit([&](const auto& __v) { os << __v; }, obj.pet);
-    os
-       << ", "
-       << "tag=" << "'" << obj.tag << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Zoo", obj);
     return os;
 }
 

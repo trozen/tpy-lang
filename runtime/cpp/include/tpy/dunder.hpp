@@ -360,6 +360,8 @@ std::string __repr__(const std::optional<T>& x) {
         return "'" + std::string(*x) + "'";
     } else if constexpr (std::same_as<T, bool>) {
         return *x ? "True" : "False";
+    } else if constexpr (std::floating_point<T>) {
+        return format_float(static_cast<double>(*x));
     } else if constexpr (requires(const T& t) { t.__repr__(); }) {
         return std::string((*x).__repr__());
     } else {
@@ -370,11 +372,16 @@ std::string __repr__(const std::optional<T>& x) {
     }
 }
 
-// Fallback for formattable types without __repr__ (e.g. int, double).
+// Python-faithful repr for floating point: always shows trailing .0
+inline std::string __repr__(double x) { return format_float(x); }
+inline std::string __repr__(float x) { return format_float(static_cast<double>(x)); }
+
+// Fallback for formattable types without __repr__ (e.g. int).
 template<typename T>
     requires (!requires(const T& t) { t.__repr__(); })
           && (!std::same_as<T, std::string>)
           && (!std::same_as<T, std::string_view>)
+          && (!std::floating_point<T>)
           && std::formattable<T, char>
 auto __repr__(const T& x) {
     return std::format("{}", x);

@@ -48,11 +48,7 @@ struct Pair {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
-    os << "Pair("
-       << "a=" << ::tpy::ValuePrinter(obj.a)
-       << ", "
-       << "b=" << ::tpy::ValuePrinter(obj.b)
-       << ")";
+    ::tpy::print_object_default(os, "Pair", obj);
     return os;
 }
 

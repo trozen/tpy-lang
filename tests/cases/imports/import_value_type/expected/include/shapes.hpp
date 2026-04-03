@@ -22,11 +22,7 @@ struct Vec2 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
-    os << "Vec2("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    ::tpy::print_object_default(os, "Vec2", obj);
     return os;
 }
 

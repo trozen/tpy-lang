@@ -40,9 +40,7 @@ struct Container {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-    os << "Container("
-       << "_val=" << ::tpy::print_optional_val(obj._val)
-       << ")";
+    ::tpy::print_object_default(os, "Container", obj);
     return os;
 }
 

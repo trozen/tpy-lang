@@ -43,9 +43,7 @@ struct Box {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-    os << "Box("
-       << "val=" << ::tpy::ValuePrinter(obj.val)
-       << ")";
+    ::tpy::print_object_default(os, "Box", obj);
     return os;
 }
 
@@ -64,11 +62,7 @@ struct Pair {
 
 template<typename T, typename U>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T, U>& obj) {
-    os << "Pair("
-       << "a=" << ::tpy::ValuePrinter(obj.a)
-       << ", "
-       << "b=" << ::tpy::ValuePrinter(obj.b)
-       << ")";
+    ::tpy::print_object_default(os, "Pair", obj);
     return os;
 }
 
@@ -98,9 +92,7 @@ struct Container {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-    os << "Container("
-       << "val=" << ::tpy::ValuePrinter(obj.val)
-       << ")";
+    ::tpy::print_object_default(os, "Container", obj);
     return os;
 }
 
@@ -124,9 +116,7 @@ struct Mapper {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Mapper<T>& obj) {
-    os << "Mapper("
-       << "val=" << ::tpy::ValuePrinter(obj.val)
-       << ")";
+    ::tpy::print_object_default(os, "Mapper", obj);
     return os;
 }
 

@@ -52,11 +52,7 @@ struct CachingContainer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CachingContainer& obj) {
-    os << "CachingContainer("
-       << "data=" << obj.data
-       << ", "
-       << "last_access=" << obj.last_access
-       << ")";
+    ::tpy::print_object_default(os, "CachingContainer", obj);
     return os;
 }
 

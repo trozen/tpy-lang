@@ -26,11 +26,7 @@ struct Vec2 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
-    os << "Vec2("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    ::tpy::print_object_default(os, "Vec2", obj);
     return os;
 }
 
@@ -46,11 +42,7 @@ struct Pair {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
-    os << "Pair("
-       << "first=" << ::tpy::ValuePrinter(obj.first)
-       << ", "
-       << "second=" << ::tpy::ValuePrinter(obj.second)
-       << ")";
+    ::tpy::print_object_default(os, "Pair", obj);
     return os;
 }
 

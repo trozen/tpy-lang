@@ -82,9 +82,7 @@ struct Circle : Shape {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
-    os << "Circle("
-       << "radius=" << ::tpy::print_float(obj.radius)
-       << ")";
+    ::tpy::print_object_default(os, "Circle", obj);
     return os;
 }
 

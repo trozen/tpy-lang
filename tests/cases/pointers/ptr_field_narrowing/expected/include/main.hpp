@@ -40,9 +40,7 @@ struct Node {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
-    os << "Node("
-       << "value=" << obj.value
-       << ")";
+    ::tpy::print_object_default(os, "Node", obj);
     return os;
 }
 
@@ -128,9 +126,7 @@ struct Container {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
-    os << "Container("
-       << "node=" << obj.node
-       << ")";
+    ::tpy::print_object_default(os, "Container", obj);
     return os;
 }
 
@@ -159,9 +155,7 @@ struct Wrapper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
-    os << "Wrapper("
-       << "inner=" << obj.inner
-       << ")";
+    ::tpy::print_object_default(os, "Wrapper", obj);
     return os;
 }
 

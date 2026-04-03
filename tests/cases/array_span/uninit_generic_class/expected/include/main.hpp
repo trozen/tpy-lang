@@ -57,9 +57,7 @@ struct Holder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
-    os << "Holder("
-       << "_storage=" << "<UninitHeapStorage[T]>"
-       << ")";
+    ::tpy::print_object_default(os, "Holder", obj);
     return os;
 }
 

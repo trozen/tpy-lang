@@ -1,1 +1,1 @@
-TPy generates operator<< for all records (field-by-field printing), so repr() produces Python-style output. CPython's default repr() shows memory address instead.
+TPy default repr omits module prefix (e.g. "<Foo object at 0x..." vs CPython "<__main__.Foo object at 0x...")

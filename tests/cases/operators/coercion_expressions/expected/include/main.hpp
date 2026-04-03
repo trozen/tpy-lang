@@ -47,9 +47,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    os << "Counter("
-       << "value=" << obj.value
-       << ")";
+    ::tpy::print_object_default(os, "Counter", obj);
     return os;
 }
 
@@ -66,11 +64,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    ::tpy::print_object_default(os, "Point", obj);
     return os;
 }
 
@@ -85,9 +79,7 @@ struct Container {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
-    os << "Container("
-       << "pt=" << obj.pt
-       << ")";
+    ::tpy::print_object_default(os, "Container", obj);
     return os;
 }
 
@@ -102,9 +94,7 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    os << "Outer("
-       << "inner=" << obj.inner
-       << ")";
+    ::tpy::print_object_default(os, "Outer", obj);
     return os;
 }
 

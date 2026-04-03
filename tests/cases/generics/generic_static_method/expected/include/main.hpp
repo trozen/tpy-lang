@@ -24,6 +24,12 @@ struct Container {
     Container() = default;
     explicit Container(T&& value) : value(std::move(value)) {}
 
+    // def __repr__(self) -> str:
+    std::string __repr__() const {
+        // return f"Container(value={self.value!r})"
+        return std::format("Container(value={})", ::tpy::__repr__(this->value));
+    }
+
     // @staticmethod
     // def create(v: Own[T]) -> Own[Container[T]]:
     static Container<T> create(T&& v) {
@@ -46,9 +52,7 @@ struct Container {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-    os << "Container("
-       << "value=" << ::tpy::ValuePrinter(obj.value)
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

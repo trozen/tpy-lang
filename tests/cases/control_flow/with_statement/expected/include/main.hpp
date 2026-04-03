@@ -60,9 +60,7 @@ struct Logger {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Logger& obj) {
-    os << "Logger("
-       << "name=" << "'" << obj.name << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Logger", obj);
     return os;
 }
 
@@ -92,9 +90,7 @@ struct Connection {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Connection& obj) {
-    os << "Connection("
-       << "active=" << ::tpy::print_bool(obj.active)
-       << ")";
+    ::tpy::print_object_default(os, "Connection", obj);
     return os;
 }
 

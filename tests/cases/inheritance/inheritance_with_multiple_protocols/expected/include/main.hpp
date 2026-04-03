@@ -53,11 +53,7 @@ struct Vehicle {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vehicle& obj) {
-    os << "Vehicle("
-       << "brand=" << "'" << obj.brand << "'"
-       << ", "
-       << "year=" << obj.year
-       << ")";
+    ::tpy::print_object_default(os, "Vehicle", obj);
     return os;
 }
 

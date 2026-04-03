@@ -30,8 +30,7 @@ struct Sink {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
-    os << "Sink("
-       << ")";
+    ::tpy::print_object_default(os, "Sink", obj);
     return os;
 }
 

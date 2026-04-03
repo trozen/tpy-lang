@@ -31,9 +31,7 @@ struct Stack {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
-    os << "Stack("
-       << "size=" << obj.size
-       << ")";
+    ::tpy::print_object_default(os, "Stack", obj);
     return os;
 }
 

@@ -46,9 +46,7 @@ struct SimpleCalc {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SimpleCalc& obj) {
-    os << "SimpleCalc("
-       << "base=" << obj.base
-       << ")";
+    ::tpy::print_object_default(os, "SimpleCalc", obj);
     return os;
 }
 

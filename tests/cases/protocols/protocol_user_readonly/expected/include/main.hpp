@@ -40,9 +40,7 @@ struct GoodReader {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const GoodReader& obj) {
-    os << "GoodReader("
-       << "value=" << obj.value
-       << ")";
+    ::tpy::print_object_default(os, "GoodReader", obj);
     return os;
 }
 

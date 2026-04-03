@@ -3888,6 +3888,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `__del__` -- maps to C++ destructor `~ClassName()`. Parent destructors are called automatically after child body (no `super().__del__()` needed). If `super().__del__()` is written (Python style), it must be the last statement and is silently dropped in codegen. A warning is emitted when parent has `__del__` but child omits the call, since C++ always calls parent dtors automatically while Python requires an explicit call. Non-virtual; virtual dispatch is a separate feature. Classes with `__del__` get a hidden `__tpy_owned_` drop flag and custom move constructor/assignment to prevent double-drop after move -- the moved-from object's destructor skips its body.
 - **Working**: `__str__` -> `str(obj)`, `print(obj)`, `f"{obj}"` (via `Stringable` protocol / `tpy::__str__`)
 - **Working**: `__repr__` -> `repr(obj)`, `f"{obj!r}"` (via `Representable` protocol / `tpy::__repr__`)
+- **Working**: Default record printing matches CPython: plain classes print as `<ClassName object at 0xADDR>`. `@dataclass` classes print fields (via macro-generated `__repr__`). Custom `__str__`/`__repr__` always takes priority.
 - **Working**: `__call__` → C++ `operator()` (callable objects). Classes with `__call__` can be invoked with `obj(args)` syntax and passed to `Fn`/`Callable` parameters. Supports `@readonly`, mutable state, and recursive `self(args)` calls.
 - **Open**: `__setitem__` -> mutable `operator[]`
 - **Open**: `__enter__`, `__exit__` -> RAII wrapper

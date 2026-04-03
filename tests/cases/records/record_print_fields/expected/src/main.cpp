@@ -13,7 +13,7 @@ void main() {
     // empty: dict[str, Int32] = {}
     ::tpy::ordered_map<std::string, int32_t> empty = ::tpy::ordered_map<std::string, int32_t>();
     // c2 = Config(False, 1.0, [], empty, (Int32(0), ""))
-    Config c2 = Config(false, 1.0, std::vector<int32_t>{}, empty, std::tuple<int32_t, std::string>{0, ""});
+    Config c2 = Config(false, 1.0, std::vector<int32_t>{}, std::move(empty), std::tuple<int32_t, std::string>{0, ""});
     // print(c2)
     std::cout << c2 << "\n";
 }
@@ -23,6 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // from dataclasses import dataclass
     // main()
     main();
 }

@@ -50,9 +50,7 @@ struct Buffer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
-    os << "Buffer("
-       << "_data=" << ::tpy::ListPrinter(obj._data)
-       << ")";
+    ::tpy::print_object_default(os, "Buffer", obj);
     return os;
 }
 

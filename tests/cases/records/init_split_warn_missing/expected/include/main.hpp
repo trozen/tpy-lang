@@ -32,13 +32,7 @@ struct Config {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
-    os << "Config("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ", "
-       << "z=" << obj.z
-       << ")";
+    ::tpy::print_object_default(os, "Config", obj);
     return os;
 }
 

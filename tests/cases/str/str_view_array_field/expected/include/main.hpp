@@ -50,11 +50,7 @@ struct Person {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
-    os << "Person("
-       << "name=" << "'" << obj.name << "'"
-       << ", "
-       << "age=" << obj.age
-       << ")";
+    ::tpy::print_object_default(os, "Person", obj);
     return os;
 }
 

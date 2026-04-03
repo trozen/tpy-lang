@@ -59,8 +59,7 @@ struct Dog : Speaker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    os << "Dog("
-       << ")";
+    ::tpy::print_object_default(os, "Dog", obj);
     return os;
 }
 

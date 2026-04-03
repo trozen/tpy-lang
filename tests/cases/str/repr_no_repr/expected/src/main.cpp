@@ -10,8 +10,15 @@ void main() {
     Foo f = Foo(::tpy::BigInt(1));
     // s: str = repr(f)  # tpyc: ok
     std::string s = ::tpy::__repr__(f);
-    // print(s)
-    std::cout << s << "\n";
+    // # Address is non-deterministic -- verify prefix and suffix
+    // print(s.startswith("<Foo object at 0x"))
+    std::cout << ::tpy::print_bool(::tpy::str_startswith(s, "<Foo object at 0x")) << "\n";
+    // print(s.endswith(">"))
+    std::cout << ::tpy::print_bool(::tpy::str_endswith(s, ">")) << "\n";
+    // b = Bar(42)
+    Bar b = Bar(::tpy::BigInt(42));
+    // print(repr(b))
+    std::cout << ::tpy::__repr__(b) << "\n";
 }
 
 void __tpy_init() {

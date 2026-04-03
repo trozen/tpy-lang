@@ -31,9 +31,7 @@ struct Handle {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
-    os << "Handle("
-       << "fd=" << obj.fd
-       << ")";
+    ::tpy::print_object_default(os, "Handle", obj);
     return os;
 }
 
@@ -57,9 +55,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    os << "Holder("
-       << "h=" << obj.h
-       << ")";
+    ::tpy::print_object_default(os, "Holder", obj);
     return os;
 }
 
@@ -82,9 +78,7 @@ struct GenericHolder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GenericHolder<T>& obj) {
-    os << "GenericHolder("
-       << "item=" << ::tpy::ValuePrinter(obj.item)
-       << ")";
+    ::tpy::print_object_default(os, "GenericHolder", obj);
     return os;
 }
 

@@ -10,34 +10,39 @@ namespace tpyapp::main {
 
 struct Settings;
 
-extern Settings* s;
 inline constexpr std::string_view __name__ = "__main__";
 
+void main();
+
+// @dataclass
 // class Settings:
 struct Settings {
-    // count: Int32 | None
-    std::optional<int32_t> count;
-    // flag: bool | None
-    std::optional<bool> flag;
-    // ratio: float | None
-    std::optional<double> ratio;
-    // label: str | None
-    std::optional<std::string> label;
+    // count: Int32 | None = None
+    std::optional<int32_t> count = std::nullopt;
+    // flag: bool | None = None
+    std::optional<bool> flag = std::nullopt;
+    // ratio: float | None = None
+    std::optional<double> ratio = std::nullopt;
+    // label: str | None = None
+    std::optional<std::string> label = std::nullopt;
 
-    // def __init__(self) -> None:
-    Settings() : count(std::nullopt), flag(std::nullopt), ratio(std::nullopt), label(std::nullopt) {}
+    explicit Settings(std::optional<int32_t> count = std::nullopt, std::optional<bool> flag = std::nullopt, std::optional<double> ratio = std::nullopt, std::optional<std::string_view> label = std::nullopt) : count(count), flag(flag), ratio(ratio), label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
+
+    bool __eq__(const Settings& other) const {
+        return ((((this->count == other.count) && (this->flag == other.flag)) && (this->ratio == other.ratio)) && (this->label == other.label));
+    }
+
+    std::string __repr__() const {
+        return std::format("Settings(count={}, flag={}, ratio={}, label={})", ::tpy::__repr__(this->count), ::tpy::__repr__(this->flag), ::tpy::__repr__(this->ratio), ::tpy::__repr__(this->label));
+    }
+
+    friend bool operator==(const Settings& lhs, const Settings& other) {
+        return lhs.__eq__(other);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Settings& obj) {
-    os << "Settings("
-       << "count=" << ::tpy::print_optional_val(obj.count)
-       << ", "
-       << "flag=" << ::tpy::print_optional_val<::tpy::print_bool, bool>(obj.flag)
-       << ", "
-       << "ratio=" << ::tpy::print_optional_val<::tpy::print_float, double>(obj.ratio)
-       << ", "
-       << "label=" << (obj.label.has_value() ? std::string("'") + std::string(obj.label.value()) + "'" : std::string("None"))
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

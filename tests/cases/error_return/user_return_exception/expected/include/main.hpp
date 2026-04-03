@@ -21,8 +21,7 @@ struct ParseError : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {
-    os << "ParseError("
-       << ")";
+    ::tpy::print_object_default(os, "ParseError", obj);
     return os;
 }
 

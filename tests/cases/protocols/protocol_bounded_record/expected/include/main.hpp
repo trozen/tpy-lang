@@ -55,11 +55,7 @@ struct SortedPair {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const SortedPair<T>& obj) {
-    os << "SortedPair("
-       << "first=" << ::tpy::ValuePrinter(obj.first)
-       << ", "
-       << "second=" << ::tpy::ValuePrinter(obj.second)
-       << ")";
+    ::tpy::print_object_default(os, "SortedPair", obj);
     return os;
 }
 
@@ -75,8 +71,7 @@ struct DefaultPairFactory {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DefaultPairFactory& obj) {
-    os << "DefaultPairFactory("
-       << ")";
+    ::tpy::print_object_default(os, "DefaultPairFactory", obj);
     return os;
 }
 

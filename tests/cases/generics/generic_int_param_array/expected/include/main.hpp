@@ -40,9 +40,7 @@ struct Buffer {
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Buffer<T, N>& obj) {
-    os << "Buffer("
-       << "data=" << ::tpy::ListPrinter(obj.data)
-       << ")";
+    ::tpy::print_object_default(os, "Buffer", obj);
     return os;
 }
 

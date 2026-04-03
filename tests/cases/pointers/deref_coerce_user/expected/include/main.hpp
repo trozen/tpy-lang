@@ -29,11 +29,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    ::tpy::print_object_default(os, "Point", obj);
     return os;
 }
 
@@ -66,9 +62,7 @@ struct Ref {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ref& obj) {
-    os << "Ref("
-       << "_target=" << obj._target
-       << ")";
+    ::tpy::print_object_default(os, "Ref", obj);
     return os;
 }
 

@@ -32,8 +32,7 @@ struct Utils {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Utils& obj) {
-    os << "Utils("
-       << ")";
+    ::tpy::print_object_default(os, "Utils", obj);
     return os;
 }
 

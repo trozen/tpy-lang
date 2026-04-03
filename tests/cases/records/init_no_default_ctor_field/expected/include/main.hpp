@@ -32,9 +32,7 @@ struct Handle {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
-    os << "Handle("
-       << "id=" << obj.id
-       << ")";
+    ::tpy::print_object_default(os, "Handle", obj);
     return os;
 }
 
@@ -56,11 +54,7 @@ struct Owner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
-    os << "Owner("
-       << "h=" << obj.h
-       << ", "
-       << "tag=" << obj.tag
-       << ")";
+    ::tpy::print_object_default(os, "Owner", obj);
     return os;
 }
 

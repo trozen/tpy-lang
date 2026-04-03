@@ -28,9 +28,7 @@ struct Circle {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
-    os << "Circle("
-       << "radius=" << ::tpy::print_float(obj.radius)
-       << ")";
+    ::tpy::print_object_default(os, "Circle", obj);
     return os;
 }
 
@@ -45,9 +43,7 @@ struct Square {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
-    os << "Square("
-       << "side=" << ::tpy::print_float(obj.side)
-       << ")";
+    ::tpy::print_object_default(os, "Square", obj);
     return os;
 }
 

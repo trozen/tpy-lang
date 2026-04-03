@@ -27,11 +27,7 @@ struct Rect {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
-    os << "Rect("
-       << "width=" << obj.width
-       << ", "
-       << "height=" << obj.height
-       << ")";
+    ::tpy::print_object_default(os, "Rect", obj);
     return os;
 }
 

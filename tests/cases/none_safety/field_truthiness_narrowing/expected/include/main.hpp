@@ -30,11 +30,7 @@ struct Config {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
-    os << "Config("
-       << "name=" << (obj.name.has_value() ? std::string("'") + std::string(obj.name.value()) + "'" : std::string("None"))
-       << ", "
-       << "port=" << ::tpy::print_optional_val(obj.port)
-       << ")";
+    ::tpy::print_object_default(os, "Config", obj);
     return os;
 }
 

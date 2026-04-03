@@ -40,11 +40,7 @@ struct Range {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Range& obj) {
-    os << "Range("
-       << "start=" << obj.start
-       << ", "
-       << "stop=" << obj.stop
-       << ")";
+    ::tpy::print_object_default(os, "Range", obj);
     return os;
 }
 

@@ -66,9 +66,7 @@ struct Dog : Animal {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    os << "Dog("
-       << "_name=" << "'" << obj._name << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Dog", obj);
     return os;
 }
 
@@ -89,9 +87,7 @@ struct Cat : Animal {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-    os << "Cat("
-       << "_name=" << "'" << obj._name << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Cat", obj);
     return os;
 }
 
@@ -161,13 +157,7 @@ struct Tagged {
 
 template<typename T, typename N>
 inline std::ostream& operator<<(std::ostream& os, const Tagged<T, N>& obj) {
-    os << "Tagged("
-       << "_ptr=" << obj._ptr
-       << ", "
-       << "_tag=" << ::tpy::ValuePrinter(obj._tag)
-       << ", "
-       << "_owned=" << ::tpy::print_bool(obj._owned)
-       << ")";
+    ::tpy::print_object_default(os, "Tagged", obj);
     return os;
 }
 

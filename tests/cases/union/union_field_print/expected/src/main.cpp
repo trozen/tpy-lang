@@ -12,16 +12,39 @@ void main() {
     std::variant<Cat*, Dog*> pet{&(d)};
     // z = Zoo(pet, "test")
     Zoo z = Zoo(pet, "test");
-    // print(z)
-    std::cout << z << "\n";
+    // # Print the union field components directly (narrowing required for union)
+    // p = z.pet
+    std::variant<Cat*, Dog*> p = ::tpy::to_ptr_variant(z.pet);
+    // if isinstance(p, Dog):
+    if (std::holds_alternative<Dog*>(p)) {
+        auto& __p = *std::get<Dog*>(p);
+        // print(f"Zoo(pet={repr(p)}, tag='{z.tag}')")
+        std::cout << std::format("Zoo(pet={}, tag='{}')", ::tpy::__repr__(__p), z.tag) << "\n";
+    // else:
+    } else {
+        auto& __p = *std::get<Cat*>(p);
+        // print(f"Zoo(pet={repr(p)}, tag='{z.tag}')")
+        std::cout << std::format("Zoo(pet={}, tag='{}')", ::tpy::__repr__(__p), z.tag) << "\n";
+    }
     // c = Cat("Whiskers")
     Cat c = Cat("Whiskers");
     // pet2: Dog | Cat = c
     std::variant<Cat*, Dog*> pet2{&(c)};
     // z2 = Zoo(pet2, "cats")
     Zoo z2 = Zoo(pet2, "cats");
-    // print(z2)
-    std::cout << z2 << "\n";
+    // p2 = z2.pet
+    std::variant<Cat*, Dog*> p2 = ::tpy::to_ptr_variant(z2.pet);
+    // if isinstance(p2, Cat):
+    if (std::holds_alternative<Cat*>(p2)) {
+        auto& __p2 = *std::get<Cat*>(p2);
+        // print(f"Zoo(pet={repr(p2)}, tag='{z2.tag}')")
+        std::cout << std::format("Zoo(pet={}, tag='{}')", ::tpy::__repr__(__p2), z2.tag) << "\n";
+    // else:
+    } else {
+        auto& __p2 = *std::get<Dog*>(p2);
+        // print(f"Zoo(pet={repr(p2)}, tag='{z2.tag}')")
+        std::cout << std::format("Zoo(pet={}, tag='{}')", ::tpy::__repr__(__p2), z2.tag) << "\n";
+    }
 }
 
 void __tpy_init() {
@@ -29,6 +52,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Printing records with non-value union fields via __repr__ with isinstance dispatch
+    // from dataclasses import dataclass
     // main()
     main();
 }

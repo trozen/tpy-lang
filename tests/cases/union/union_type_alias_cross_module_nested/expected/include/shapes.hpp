@@ -24,9 +24,7 @@ struct Circle {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
-    os << "Circle("
-       << "radius=" << obj.radius
-       << ")";
+    ::tpy::print_object_default(os, "Circle", obj);
     return os;
 }
 
@@ -41,9 +39,7 @@ struct Rect {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
-    os << "Rect("
-       << "width=" << obj.width
-       << ")";
+    ::tpy::print_object_default(os, "Rect", obj);
     return os;
 }
 

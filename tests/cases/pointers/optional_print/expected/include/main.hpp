@@ -26,14 +26,16 @@ struct Point {
     // def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+
+    // def __repr__(self) -> str:
+    std::string __repr__() const {
+        // return f"Point(x={self.x}, y={self.y})"
+        return std::format("Point(x={}, y={})", this->x, this->y);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

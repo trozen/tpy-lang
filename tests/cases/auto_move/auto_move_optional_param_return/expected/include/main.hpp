@@ -31,11 +31,7 @@ struct Payload {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Payload& obj) {
-    os << "Payload("
-       << "data=" << "'" << obj.data << "'"
-       << ", "
-       << "count=" << obj.count
-       << ")";
+    ::tpy::print_object_default(os, "Payload", obj);
     return os;
 }
 

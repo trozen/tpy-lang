@@ -3,35 +3,39 @@
 
 namespace tpyapp::main {
 
-// s = Settings()
-Settings* s{};
+
+// def main() -> None:
+void main() {
+    // s = Settings()
+    Settings s = Settings();
+    // print(s)
+    std::cout << s << "\n";
+    // s.count = 42
+    s.count = 42;
+    // s.flag = True
+    s.flag = true;
+    // s.ratio = 3.14
+    s.ratio = 3.14;
+    // s.label = "hello"
+    s.label = "hello";
+    // print(s)
+    std::cout << s << "\n";
+    // s.flag = False
+    s.flag = false;
+    // s.ratio = 0.0
+    s.ratio = 0.0;
+    // print(s)
+    std::cout << s << "\n";
+}
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // s = Settings()
-    static Settings __global_slot_1 = Settings();
-    s = &__global_slot_1;
-    // print(s)
-    std::cout << (*s) << "\n";
-    // s.count = 42
-    s->count = 42;
-    // s.flag = True
-    s->flag = true;
-    // s.ratio = 3.14
-    s->ratio = 3.14;
-    // s.label = "hello"
-    s->label = "hello";
-    // print(s)
-    std::cout << (*s) << "\n";
-    // s.flag = False
-    s->flag = false;
-    // s.ratio = 0.0
-    s->ratio = 0.0;
-    // print(s)
-    std::cout << (*s) << "\n";
+    // from dataclasses import dataclass
+    // main()
+    main();
 }
 
 } // namespace tpyapp::main

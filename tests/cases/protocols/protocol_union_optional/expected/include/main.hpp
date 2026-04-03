@@ -46,9 +46,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    os << "Holder("
-       << "count=" << obj.count
-       << ")";
+    ::tpy::print_object_default(os, "Holder", obj);
     return os;
 }
 

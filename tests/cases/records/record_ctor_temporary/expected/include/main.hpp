@@ -42,9 +42,7 @@ struct Numbers {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Numbers& obj) {
-    os << "Numbers("
-       << "data=" << ::tpy::ListPrinter(obj.data)
-       << ")";
+    ::tpy::print_object_default(os, "Numbers", obj);
     return os;
 }
 

@@ -35,8 +35,7 @@ struct Doubler {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Doubler& obj) {
-    os << "Doubler("
-       << ")";
+    ::tpy::print_object_default(os, "Doubler", obj);
     return os;
 }
 
@@ -61,9 +60,7 @@ struct Adder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Adder& obj) {
-    os << "Adder("
-       << "offset=" << obj.offset
-       << ")";
+    ::tpy::print_object_default(os, "Adder", obj);
     return os;
 }
 

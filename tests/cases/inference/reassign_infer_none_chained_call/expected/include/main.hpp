@@ -27,9 +27,7 @@ struct Product {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Product& obj) {
-    os << "Product("
-       << "value=" << obj.value
-       << ")";
+    ::tpy::print_object_default(os, "Product", obj);
     return os;
 }
 
@@ -45,8 +43,7 @@ struct Factory {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
-    os << "Factory("
-       << ")";
+    ::tpy::print_object_default(os, "Factory", obj);
     return os;
 }
 

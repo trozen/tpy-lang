@@ -35,9 +35,7 @@ struct Accum {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Accum& obj) {
-    os << "Accum("
-       << "total=" << obj.total
-       << ")";
+    ::tpy::print_object_default(os, "Accum", obj);
     return os;
 }
 

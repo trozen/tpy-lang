@@ -32,8 +32,7 @@ struct Doubler {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Doubler& obj) {
-    os << "Doubler("
-       << ")";
+    ::tpy::print_object_default(os, "Doubler", obj);
     return os;
 }
 

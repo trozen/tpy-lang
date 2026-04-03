@@ -98,9 +98,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    os << "Counter("
-       << "count=" << obj.count
-       << ")";
+    ::tpy::print_object_default(os, "Counter", obj);
     return os;
 }
 
@@ -132,9 +130,7 @@ struct Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    os << "Box("
-       << "items=" << ::tpy::ListPrinter(obj.items)
-       << ")";
+    ::tpy::print_object_default(os, "Box", obj);
     return os;
 }
 
@@ -171,9 +167,7 @@ struct SortableBox {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SortableBox& obj) {
-    os << "SortableBox("
-       << "items=" << ::tpy::ListPrinter(obj.items)
-       << ")";
+    ::tpy::print_object_default(os, "SortableBox", obj);
     return os;
 }
 
@@ -197,9 +191,7 @@ struct Inner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
-    os << "Inner("
-       << "value=" << obj.value
-       << ")";
+    ::tpy::print_object_default(os, "Inner", obj);
     return os;
 }
 
@@ -244,11 +236,7 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    os << "Outer("
-       << "items=" << ::tpy::ListPrinter(obj.items)
-       << ", "
-       << "extra=" << obj.extra
-       << ")";
+    ::tpy::print_object_default(os, "Outer", obj);
     return os;
 }
 
@@ -277,9 +265,7 @@ struct WithOpt {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WithOpt& obj) {
-    os << "WithOpt("
-       << "child=" << ::tpy::print_optional_val(obj.child)
-       << ")";
+    ::tpy::print_object_default(os, "WithOpt", obj);
     return os;
 }
 
@@ -300,9 +286,7 @@ struct Valued : DynValued {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Valued& obj) {
-    os << "Valued("
-       << "_n=" << obj._n
-       << ")";
+    ::tpy::print_object_default(os, "Valued", obj);
     return os;
 }
 

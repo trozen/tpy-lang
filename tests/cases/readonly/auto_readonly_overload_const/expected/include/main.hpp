@@ -97,9 +97,7 @@ struct Container {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-    os << "Container("
-       << "_data=" << ::tpy::ListPrinter(obj._data)
-       << ")";
+    ::tpy::print_object_default(os, "Container", obj);
     return os;
 }
 

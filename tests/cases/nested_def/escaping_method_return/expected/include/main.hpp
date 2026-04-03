@@ -31,8 +31,7 @@ struct Factory {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
-    os << "Factory("
-       << ")";
+    ::tpy::print_object_default(os, "Factory", obj);
     return os;
 }
 

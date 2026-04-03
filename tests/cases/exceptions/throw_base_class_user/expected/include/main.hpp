@@ -25,9 +25,7 @@ struct AppError : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
-    os << "AppError("
-       << "code=" << obj.code
-       << ")";
+    ::tpy::print_object_default(os, "AppError", obj);
     return os;
 }
 

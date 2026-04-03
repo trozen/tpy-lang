@@ -44,9 +44,7 @@ struct Stack {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Stack<T>& obj) {
-    os << "Stack("
-       << "items=" << ::tpy::ListPrinter(obj.items)
-       << ")";
+    ::tpy::print_object_default(os, "Stack", obj);
     return os;
 }
 

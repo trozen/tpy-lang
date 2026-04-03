@@ -33,8 +33,7 @@ struct E : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const E& obj) {
-    os << "E("
-       << ")";
+    ::tpy::print_object_default(os, "E", obj);
     return os;
 }
 
@@ -49,9 +48,7 @@ struct ParseErr : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ParseErr& obj) {
-    os << "ParseErr("
-       << "code=" << obj.code
-       << ")";
+    ::tpy::print_object_default(os, "ParseErr", obj);
     return os;
 }
 

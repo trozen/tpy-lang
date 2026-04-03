@@ -29,11 +29,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    ::tpy::print_object_default(os, "Point", obj);
     return os;
 }
 
@@ -52,13 +48,7 @@ struct Config {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
-    os << "Config("
-       << "host=" << "'" << obj.host << "'"
-       << ", "
-       << "port=" << obj.port
-       << ", "
-       << "verbose=" << ::tpy::print_bool(obj.verbose)
-       << ")";
+    ::tpy::print_object_default(os, "Config", obj);
     return os;
 }
 

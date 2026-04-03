@@ -33,9 +33,7 @@ struct Resource {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
-    os << "Resource("
-       << "val=" << obj.val
-       << ")";
+    ::tpy::print_object_default(os, "Resource", obj);
     return os;
 }
 

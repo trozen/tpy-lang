@@ -59,9 +59,7 @@ struct Tagged {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Tagged<T>& obj) {
-    os << "Tagged("
-       << "tag=" << obj.tag
-       << ")";
+    ::tpy::print_object_default(os, "Tagged", obj);
     return os;
 }
 
@@ -76,9 +74,7 @@ struct Owner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
-    os << "Owner("
-       << "item=" << obj.item
-       << ")";
+    ::tpy::print_object_default(os, "Owner", obj);
     return os;
 }
 

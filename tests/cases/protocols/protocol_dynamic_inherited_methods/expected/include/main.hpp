@@ -65,8 +65,7 @@ struct Dog : DynNamed {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    os << "Dog("
-       << ")";
+    ::tpy::print_object_default(os, "Dog", obj);
     return os;
 }
 
@@ -82,8 +81,7 @@ struct Cat {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-    os << "Cat("
-       << ")";
+    ::tpy::print_object_default(os, "Cat", obj);
     return os;
 }
 

@@ -4,12 +4,18 @@ from tpy import Int32, Own
 class Container[T]:
     val: T
 
+    def __repr__(self) -> str:
+        return f"Container(val={self.val!r})"
+
 class Pair[A, B]:
     first: A
     second: B
 
     def __init__(self, a: A) -> None:
         self.first = a
+
+    def __repr__(self) -> str:
+        return f"Pair(first={self.first!r}, second={self.second!r})"
 
 def make_box[T]() -> Own[Container[T]]:
     return Container[T]()

@@ -20,8 +20,7 @@ struct Token {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Token& obj) {
-    os << "Token("
-       << ")";
+    ::tpy::print_object_default(os, "Token", obj);
     return os;
 }
 

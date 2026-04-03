@@ -26,9 +26,7 @@ struct time {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const time& obj) {
-    os << "time("
-       << "value=" << obj.value
-       << ")";
+    ::tpy::print_object_default(os, "time", obj);
     return os;
 }
 

@@ -32,9 +32,7 @@ struct Inner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
-    os << "Inner("
-       << "val=" << obj.val
-       << ")";
+    ::tpy::print_object_default(os, "Inner", obj);
     return os;
 }
 
@@ -60,9 +58,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    os << "Holder("
-       << "inner=" << obj.inner
-       << ")";
+    ::tpy::print_object_default(os, "Holder", obj);
     return os;
 }
 

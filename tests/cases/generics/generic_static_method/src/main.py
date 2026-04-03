@@ -7,6 +7,9 @@ class Container[T]:
     def __init__(self, value: Own[T]):
         self.value = value
 
+    def __repr__(self) -> str:
+        return f"Container(value={self.value!r})"
+
     @staticmethod
     def create(v: Own[T]) -> Own[Container[T]]:
         return Container(v)

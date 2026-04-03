@@ -34,9 +34,7 @@ struct Message {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
-    os << "Message("
-       << "text=" << "'" << obj.text << "'"
-       << ")";
+    ::tpy::print_object_default(os, "Message", obj);
     return os;
 }
 

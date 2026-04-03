@@ -23,8 +23,7 @@ struct E : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const E& obj) {
-    os << "E("
-       << ")";
+    ::tpy::print_object_default(os, "E", obj);
     return os;
 }
 
@@ -51,11 +50,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    ::tpy::print_object_default(os, "Point", obj);
     return os;
 }
 

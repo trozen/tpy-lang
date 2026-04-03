@@ -33,8 +33,7 @@ struct Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
-    os << "Base("
-       << ")";
+    ::tpy::print_object_default(os, "Base", obj);
     return os;
 }
 
@@ -44,8 +43,7 @@ struct Child : Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
-    os << "Child("
-       << ")";
+    ::tpy::print_object_default(os, "Child", obj);
     return os;
 }
 

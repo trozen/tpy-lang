@@ -62,9 +62,7 @@ struct MutBuffer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MutBuffer& obj) {
-    os << "MutBuffer("
-       << "_data=" << ::tpy::ListPrinter(obj._data)
-       << ")";
+    ::tpy::print_object_default(os, "MutBuffer", obj);
     return os;
 }
 
@@ -96,9 +94,7 @@ struct ROBuffer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ROBuffer& obj) {
-    os << "ROBuffer("
-       << "_data=" << ::tpy::ListPrinter(obj._data)
-       << ")";
+    ::tpy::print_object_default(os, "ROBuffer", obj);
     return os;
 }
 

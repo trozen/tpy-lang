@@ -46,11 +46,7 @@ struct RangeIter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const RangeIter& obj) {
-    os << "RangeIter("
-       << "current=" << obj.current
-       << ", "
-       << "limit=" << obj.limit
-       << ")";
+    ::tpy::print_object_default(os, "RangeIter", obj);
     return os;
 }
 
@@ -73,11 +69,7 @@ struct MyRange {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyRange& obj) {
-    os << "MyRange("
-       << "start=" << obj.start
-       << ", "
-       << "limit=" << obj.limit
-       << ")";
+    ::tpy::print_object_default(os, "MyRange", obj);
     return os;
 }
 
@@ -112,9 +104,7 @@ struct Summer {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Summer<T>& obj) {
-    os << "Summer("
-       << "items=" << ::tpy::ValuePrinter(obj.items)
-       << ")";
+    ::tpy::print_object_default(os, "Summer", obj);
     return os;
 }
 

@@ -74,11 +74,7 @@ struct Item : Describable {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
-    os << "Item("
-       << "_name=" << "'" << obj._name << "'"
-       << ", "
-       << "_id=" << obj._id
-       << ")";
+    ::tpy::print_object_default(os, "Item", obj);
     return os;
 }
 

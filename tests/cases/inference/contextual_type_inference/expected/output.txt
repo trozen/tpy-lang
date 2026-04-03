@@ -3,5 +3,5 @@ Container(val=0)
 Container(val=0)
 5
 Container(val=0)
-Pair(first=42, second=)
+Pair(first=42, second='')
 done

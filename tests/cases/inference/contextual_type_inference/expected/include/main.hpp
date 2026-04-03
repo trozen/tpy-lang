@@ -26,13 +26,17 @@ struct Container {
     // val: T
     T val;
 
+
+    // def __repr__(self) -> str:
+    std::string __repr__() const {
+        // return f"Container(val={self.val!r})"
+        return std::format("Container(val={})", ::tpy::__repr__(this->val));
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-    os << "Container("
-       << "val=" << ::tpy::ValuePrinter(obj.val)
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 
@@ -47,15 +51,17 @@ struct Pair {
     // def __init__(self, a: A) -> None:
     Pair() = default;
     explicit Pair(const A& a) : first(a) {}
+
+    // def __repr__(self) -> str:
+    std::string __repr__() const {
+        // return f"Pair(first={self.first!r}, second={self.second!r})"
+        return std::format("Pair(first={}, second={})", ::tpy::__repr__(this->first), ::tpy::__repr__(this->second));
+    }
 };
 
 template<typename A, typename B>
 inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
-    os << "Pair("
-       << "first=" << ::tpy::ValuePrinter(obj.first)
-       << ", "
-       << "second=" << ::tpy::ValuePrinter(obj.second)
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

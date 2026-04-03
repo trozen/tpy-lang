@@ -27,9 +27,7 @@ struct Node {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
-    os << "Node("
-       << "val=" << obj.val
-       << ")";
+    ::tpy::print_object_default(os, "Node", obj);
     return os;
 }
 
@@ -60,11 +58,7 @@ struct Pair {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
-    os << "Pair("
-       << "first_val=" << ::tpy::ValuePrinter(obj.first_val)
-       << ", "
-       << "second_val=" << ::tpy::ValuePrinter(obj.second_val)
-       << ")";
+    ::tpy::print_object_default(os, "Pair", obj);
     return os;
 }
 

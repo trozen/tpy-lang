@@ -41,9 +41,7 @@ struct IntBox {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
-    os << "IntBox("
-       << "v=" << obj.v
-       << ")";
+    ::tpy::print_object_default(os, "IntBox", obj);
     return os;
 }
 
@@ -80,9 +78,7 @@ struct BoxContainer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BoxContainer& obj) {
-    os << "BoxContainer("
-       << "items=" << ::tpy::ListPrinter(obj.items)
-       << ")";
+    ::tpy::print_object_default(os, "BoxContainer", obj);
     return os;
 }
 

@@ -46,11 +46,7 @@ struct Box {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-    os << "Box("
-       << "_value=" << ::tpy::ValuePrinter(obj._value)
-       << ", "
-       << "_has=" << ::tpy::print_bool(obj._has)
-       << ")";
+    ::tpy::print_object_default(os, "Box", obj);
     return os;
 }
 

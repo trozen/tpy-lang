@@ -27,9 +27,7 @@ struct Handler {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
-    os << "Handler("
-       << "cb=" << "<function>"
-       << ")";
+    ::tpy::print_object_default(os, "Handler", obj);
     return os;
 }
 

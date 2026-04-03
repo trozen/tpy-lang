@@ -40,9 +40,7 @@ struct Processor {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Processor<T>& obj) {
-    os << "Processor("
-       << "val=" << ::tpy::ValuePrinter(obj.val)
-       << ")";
+    ::tpy::print_object_default(os, "Processor", obj);
     return os;
 }
 

@@ -1,1 +1,0 @@
-print(obj) uses auto-generated operator<< (no CPython __repr__)

@@ -1,19 +1,14 @@
-# Auto-generated operator<< for records with bool, float, list, dict, tuple fields.
+# Record printing with explicit __repr__ for bool, float, list, dict, tuple fields.
 from tpy import Int32, copy
+from dataclasses import dataclass
 
+@dataclass
 class Config:
     flag: bool
     ratio: float
     items: list[Int32]
     tags: dict[str, Int32]
     pair: tuple[Int32, str]
-    def __init__(self, flag: bool, ratio: float, items: list[Int32],
-                 tags: dict[str, Int32], pair: tuple[Int32, str]) -> None:
-        self.flag = flag
-        self.ratio = ratio
-        self.items = copy(items)
-        self.tags = copy(tags)
-        self.pair = pair
 
 def main() -> None:
     c = Config(True, 3.14, [Int32(1), Int32(2)], {"a": Int32(10)}, (Int32(7), "ok"))

@@ -48,9 +48,7 @@ struct Handle {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
-    os << "Handle("
-       << "id=" << obj.id
-       << ")";
+    ::tpy::print_object_default(os, "Handle", obj);
     return os;
 }
 

@@ -1,14 +1,13 @@
-# operator<< for records with non-value union fields (visit-based printing)
+# Printing records with non-value union fields via __repr__ with isinstance dispatch
+from dataclasses import dataclass
 
+@dataclass
 class Dog:
     name: str
-    def __init__(self, name: str) -> None:
-        self.name = name
 
+@dataclass
 class Cat:
     name: str
-    def __init__(self, name: str) -> None:
-        self.name = name
 
 class Zoo:
     pet: Dog | Cat
@@ -21,11 +20,20 @@ def main() -> None:
     d = Dog("Rex")
     pet: Dog | Cat = d
     z = Zoo(pet, "test")
-    print(z)
+    # Print the union field components directly (narrowing required for union)
+    p = z.pet
+    if isinstance(p, Dog):
+        print(f"Zoo(pet={repr(p)}, tag='{z.tag}')")
+    else:
+        print(f"Zoo(pet={repr(p)}, tag='{z.tag}')")
 
     c = Cat("Whiskers")
     pet2: Dog | Cat = c
     z2 = Zoo(pet2, "cats")
-    print(z2)
+    p2 = z2.pet
+    if isinstance(p2, Cat):
+        print(f"Zoo(pet={repr(p2)}, tag='{z2.tag}')")
+    else:
+        print(f"Zoo(pet={repr(p2)}, tag='{z2.tag}')")
 
 main()

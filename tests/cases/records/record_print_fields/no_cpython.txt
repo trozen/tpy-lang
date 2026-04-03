@@ -1,1 +1,0 @@
-Auto-generated operator<< output differs from CPython default __repr__

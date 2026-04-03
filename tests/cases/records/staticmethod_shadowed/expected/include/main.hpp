@@ -39,9 +39,7 @@ struct Helper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Helper& obj) {
-    os << "Helper("
-       << "value=" << obj.value
-       << ")";
+    ::tpy::print_object_default(os, "Helper", obj);
     return os;
 }
 
