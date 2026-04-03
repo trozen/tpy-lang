@@ -35,6 +35,27 @@ from .sema import SemanticAnalyzer, SemanticError
 from .codegen_cpp import CodeGenerator
 
 __version__ = "0.1.0"
+
+
+def get_git_commit() -> str:
+    """Return git commit: from _buildinfo (installed) or live git (dev)."""
+    try:
+        from ._buildinfo import GIT_COMMIT
+        return GIT_COMMIT
+    except ImportError:
+        pass
+    import subprocess
+    try:
+        r = subprocess.run(
+            ["git", "describe", "--always", "--dirty"],
+            cwd=str(Path(__file__).parent.parent),
+            capture_output=True, text=True, timeout=5,
+        )
+        if r.returncode == 0:
+            return r.stdout.strip()
+    except Exception:
+        pass
+    return "unknown"
 __all__ = [
     "Parser", "ParseError",
     "SemanticAnalyzer", "SemanticError",

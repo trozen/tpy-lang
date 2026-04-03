@@ -21,10 +21,15 @@ package = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["tpyc"]
+exclude = ["tpyc/_build_hook.py"]
+
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "tpyc/_build_hook.py"
 
 [tool.hatch.build.targets.wheel.force-include]
 "runtime" = "tpyc/_data/runtime"
-"lib" = "tpyc/_data/lib"
+"lib/tpy" = "tpyc/_data/lib/tpy"
+"tpyc/_buildinfo.py" = "tpyc/_buildinfo.py"
 
 [tool.pyright]
 extraPaths = ["lib/cpy"]

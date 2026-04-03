@@ -1,5 +1,6 @@
 # Python-generated files
 __pycache__/
+tpyc/_buildinfo.py
 
 # TurboPython build output
 __tpyc__/

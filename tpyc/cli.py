@@ -32,7 +32,7 @@ from .compiler import (
     Compiler, CompileError, CompilerNotFoundError, BuildLayout, CppCompilerConfig,
     DEFAULT_INT_CHOICES, list_compilers,
 )
-from . import __version__, get_runtime_dir, get_lib_dir
+from . import __version__, get_git_commit, get_runtime_dir, get_lib_dir
 
 
 def _fmt_ms(seconds: float) -> str:
@@ -41,6 +41,36 @@ def _fmt_ms(seconds: float) -> str:
     if ms < 1000:
         return f"{ms:.0f}ms"
     return f"{ms / 1000:.1f}s"
+
+
+def _print_info() -> None:
+    """Print compiler version, paths, and environment info."""
+    commit = get_git_commit()
+    print(f"tpyc {__version__} ({commit})")
+    print()
+
+    # Paths
+    pkg_dir = Path(__file__).parent
+    lib_dir = get_lib_dir()
+    runtime_dir = get_runtime_dir()
+    print(f"compiler:  {pkg_dir}")
+    print(f"lib:       {lib_dir / 'tpy'}")
+    print(f"runtime:   {runtime_dir}")
+    print()
+
+    # C++ compiler
+    try:
+        config = CppCompilerConfig.from_env(cxx="auto")
+        cxx_desc = config.compiler_name
+        if config.ccache:
+            cxx_desc += " + ccache"
+        print(f"cxx:       {cxx_desc} ({' '.join(config.compiler)})")
+    except CompilerNotFoundError:
+        print("cxx:       not found")
+    print()
+
+    # Python
+    print(f"python:    {sys.version.split()[0]} ({sys.executable})")
 
 
 class ProgressPrinter:
@@ -161,6 +191,8 @@ def main() -> int:
                         help="Parallel compile jobs (default: number of CPUs)")
     parser.add_argument("-q", "--quiet", action="store_true",
                         help="Suppress progress lines (show only errors and program output)")
+    parser.add_argument("--info", action="store_true",
+                        help="Print compiler version, paths, and environment info")
 
     args = parser.parse_args()
 
@@ -171,6 +203,11 @@ def main() -> int:
         lib_dirs.append(Path(extra).resolve())
     if not args.no_stdlib:
         lib_dirs.append(lib_dir / "tpy")
+
+    # Handle --info
+    if args.info:
+        _print_info()
+        return 0
 
     # Handle --cxx list
     if args.cxx == "list":
