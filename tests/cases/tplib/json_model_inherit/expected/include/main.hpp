@@ -132,6 +132,64 @@ struct Base {
         return __writer.finish();
     }
 
+    void save_json(std::string_view __path, int32_t indent = 0) const {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
+        auto& __f = __ctx_1.__enter__();
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __f.write(to_json(indent));
+        } catch (...) {
+            __ctx_1.__exit__();
+            throw;
+        }
+        __finally_9:;
+        __ctx_1.__exit__();
+    }
+
+    static Base load_json(std::string_view __path) {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        std::string __data;
+        auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_2.__enter__();
+        std::optional<Base> __retval_11;
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __data = __f.read();
+        } catch (...) {
+            __ctx_2.__exit__();
+            throw;
+        }
+        __finally_10:;
+        __ctx_2.__exit__();
+        if (__retval_11) return (*__retval_11);
+        // from tplib.json.model import model
+        return Base::from_json(__data);
+    }
+
+    static std::expected<Base, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        std::string __data;
+        auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_3.__enter__();
+        std::optional<std::expected<Base, ::tpystd::tplib::json::parser::JsonError>> __retval_13;
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __data = __f.read();
+        } catch (...) {
+            __ctx_3.__exit__();
+            throw;
+        }
+        __finally_12:;
+        __ctx_3.__exit__();
+        if (__retval_13) return (*__retval_13);
+        // from tplib.json.model import model
+        return Base::try_from_json(__data);
+    }
+
     friend bool operator==(const Base& lhs, const Base& other) {
         return lhs.__eq__(other);
     }
@@ -164,47 +222,47 @@ struct WithDefaults {
 
     static std::expected<WithDefaults, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
-            auto __try_tmp_9 = __reader.read_object_start();
-            if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
+            auto __try_tmp_14 = __reader.read_object_start();
+            if (!__try_tmp_14.has_value()) return ::tpy::make_unexpected(__try_tmp_14.error());
         }
         int32_t x = 0;
         int32_t y = 0;
         while (__reader.has_next()) {
             std::string_view __key;
             {
-                auto __try_tmp_10 = __reader.read_key_raw();
-                if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
-                __key = ::tpy::unwrap_ref(*__try_tmp_10);
+                auto __try_tmp_15 = __reader.read_key_raw();
+                if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(__try_tmp_15.error());
+                __key = ::tpy::unwrap_ref(*__try_tmp_15);
             }
             auto& __match_subject = __key;
             if (__match_subject == "x") {
                 int64_t __raw_2;
                 {
-                    auto __try_tmp_11 = __reader.read_int();
-                    if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
-                    __raw_2 = ::tpy::unwrap_ref(*__try_tmp_11);
+                    auto __try_tmp_16 = __reader.read_int();
+                    if (!__try_tmp_16.has_value()) return ::tpy::make_unexpected(__try_tmp_16.error());
+                    __raw_2 = ::tpy::unwrap_ref(*__try_tmp_16);
                 }
                 int32_t __x_1 = ::tpy::int_cast_check<int32_t>(__raw_2);
                 x = __x_1;
             } else if (__match_subject == "y") {
                 int64_t __raw_4;
                 {
-                    auto __try_tmp_12 = __reader.read_int();
-                    if (!__try_tmp_12.has_value()) return ::tpy::make_unexpected(__try_tmp_12.error());
-                    __raw_4 = ::tpy::unwrap_ref(*__try_tmp_12);
+                    auto __try_tmp_17 = __reader.read_int();
+                    if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
+                    __raw_4 = ::tpy::unwrap_ref(*__try_tmp_17);
                 }
                 int32_t __y_3 = ::tpy::int_cast_check<int32_t>(__raw_4);
                 y = __y_3;
             } else {
                 {
-                    auto __try_tmp_13 = __reader.skip_value();
-                    if (!__try_tmp_13.has_value()) return ::tpy::make_unexpected(__try_tmp_13.error());
+                    auto __try_tmp_18 = __reader.skip_value();
+                    if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
                 }
             }
         }
         {
-            auto __try_tmp_14 = __reader.read_object_end();
-            if (!__try_tmp_14.has_value()) return ::tpy::make_unexpected(__try_tmp_14.error());
+            auto __try_tmp_19 = __reader.read_object_end();
+            if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
         }
         return WithDefaults(x, y);
     }
@@ -213,20 +271,20 @@ struct WithDefaults {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<WithDefaults> __result = std::nullopt;
         {
-            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_15;
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_20;
             {
-                auto __try_tmp_16 = WithDefaults::__json_decode__(__reader);
-                if (!__try_tmp_16.has_value()) { __err_opt_15 = std::move(__try_tmp_16.error()); goto __except_15; }
-                __result = ::tpy::unwrap_ref(*__try_tmp_16);
+                auto __try_tmp_21 = WithDefaults::__json_decode__(__reader);
+                if (!__try_tmp_21.has_value()) { __err_opt_20 = std::move(__try_tmp_21.error()); goto __except_20; }
+                __result = ::tpy::unwrap_ref(*__try_tmp_21);
             }
-            goto __after_try_15;
+            goto __after_try_20;
             // except tplib.json.parser.JsonError:
-            __except_15:;
+            __except_20:;
             {
-                auto& __e = *__err_opt_15;
+                auto& __e = *__err_opt_20;
                 ::tpy::tpy_panic(__e.message);
             }
-            __after_try_15:;
+            __after_try_20:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
         return (*__result);
@@ -250,6 +308,64 @@ struct WithDefaults {
         ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
         __json_encode__(__writer);
         return __writer.finish();
+    }
+
+    void save_json(std::string_view __path, int32_t indent = 0) const {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        auto __ctx_4 = ::tpy::builtin_open_mode(__path, "w");
+        auto& __f = __ctx_4.__enter__();
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __f.write(to_json(indent));
+        } catch (...) {
+            __ctx_4.__exit__();
+            throw;
+        }
+        __finally_22:;
+        __ctx_4.__exit__();
+    }
+
+    static WithDefaults load_json(std::string_view __path) {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        std::string __data;
+        auto __ctx_5 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_5.__enter__();
+        std::optional<WithDefaults> __retval_24;
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __data = __f.read();
+        } catch (...) {
+            __ctx_5.__exit__();
+            throw;
+        }
+        __finally_23:;
+        __ctx_5.__exit__();
+        if (__retval_24) return (*__retval_24);
+        // from tplib.json.model import model
+        return WithDefaults::from_json(__data);
+    }
+
+    static std::expected<WithDefaults, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        std::string __data;
+        auto __ctx_6 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_6.__enter__();
+        std::optional<std::expected<WithDefaults, ::tpystd::tplib::json::parser::JsonError>> __retval_26;
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __data = __f.read();
+        } catch (...) {
+            __ctx_6.__exit__();
+            throw;
+        }
+        __finally_25:;
+        __ctx_6.__exit__();
+        if (__retval_26) return (*__retval_26);
+        // from tplib.json.model import model
+        return WithDefaults::try_from_json(__data);
     }
 
     friend bool operator==(const WithDefaults& lhs, const WithDefaults& other) {
@@ -284,52 +400,52 @@ struct Tagged {
 
     static std::expected<Tagged, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
-            auto __try_tmp_17 = __reader.read_object_start();
-            if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
+            auto __try_tmp_27 = __reader.read_object_start();
+            if (!__try_tmp_27.has_value()) return ::tpy::make_unexpected(__try_tmp_27.error());
         }
         std::string tag = "";
         std::optional<std::string> note = std::nullopt;
         while (__reader.has_next()) {
             std::string_view __key;
             {
-                auto __try_tmp_18 = __reader.read_key_raw();
-                if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
-                __key = ::tpy::unwrap_ref(*__try_tmp_18);
+                auto __try_tmp_28 = __reader.read_key_raw();
+                if (!__try_tmp_28.has_value()) return ::tpy::make_unexpected(__try_tmp_28.error());
+                __key = ::tpy::unwrap_ref(*__try_tmp_28);
             }
             auto& __match_subject = __key;
             if (__match_subject == "tag") {
                 std::string __tag_1;
                 {
-                    auto __try_tmp_19 = __reader.read_str();
-                    if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
-                    __tag_1 = ::tpy::unwrap_ref(*__try_tmp_19);
+                    auto __try_tmp_29 = __reader.read_str();
+                    if (!__try_tmp_29.has_value()) return ::tpy::make_unexpected(__try_tmp_29.error());
+                    __tag_1 = ::tpy::unwrap_ref(*__try_tmp_29);
                 }
                 tag = __tag_1;
             } else if (__match_subject == "note") {
                 if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
                     {
-                        auto __try_tmp_20 = __reader.read_null();
-                        if (!__try_tmp_20.has_value()) return ::tpy::make_unexpected(__try_tmp_20.error());
+                        auto __try_tmp_30 = __reader.read_null();
+                        if (!__try_tmp_30.has_value()) return ::tpy::make_unexpected(__try_tmp_30.error());
                     }
                 } else {
                     std::string __note_2;
                     {
-                        auto __try_tmp_21 = __reader.read_str();
-                        if (!__try_tmp_21.has_value()) return ::tpy::make_unexpected(__try_tmp_21.error());
-                        __note_2 = ::tpy::unwrap_ref(*__try_tmp_21);
+                        auto __try_tmp_31 = __reader.read_str();
+                        if (!__try_tmp_31.has_value()) return ::tpy::make_unexpected(__try_tmp_31.error());
+                        __note_2 = ::tpy::unwrap_ref(*__try_tmp_31);
                     }
                     note = __note_2;
                 }
             } else {
                 {
-                    auto __try_tmp_22 = __reader.skip_value();
-                    if (!__try_tmp_22.has_value()) return ::tpy::make_unexpected(__try_tmp_22.error());
+                    auto __try_tmp_32 = __reader.skip_value();
+                    if (!__try_tmp_32.has_value()) return ::tpy::make_unexpected(__try_tmp_32.error());
                 }
             }
         }
         {
-            auto __try_tmp_23 = __reader.read_object_end();
-            if (!__try_tmp_23.has_value()) return ::tpy::make_unexpected(__try_tmp_23.error());
+            auto __try_tmp_33 = __reader.read_object_end();
+            if (!__try_tmp_33.has_value()) return ::tpy::make_unexpected(__try_tmp_33.error());
         }
         return Tagged(tag, note);
     }
@@ -338,20 +454,20 @@ struct Tagged {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Tagged> __result = std::nullopt;
         {
-            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_24;
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_34;
             {
-                auto __try_tmp_25 = Tagged::__json_decode__(__reader);
-                if (!__try_tmp_25.has_value()) { __err_opt_24 = std::move(__try_tmp_25.error()); goto __except_24; }
-                __result = ::tpy::unwrap_ref(*__try_tmp_25);
+                auto __try_tmp_35 = Tagged::__json_decode__(__reader);
+                if (!__try_tmp_35.has_value()) { __err_opt_34 = std::move(__try_tmp_35.error()); goto __except_34; }
+                __result = ::tpy::unwrap_ref(*__try_tmp_35);
             }
-            goto __after_try_24;
+            goto __after_try_34;
             // except tplib.json.parser.JsonError:
-            __except_24:;
+            __except_34:;
             {
-                auto& __e = *__err_opt_24;
+                auto& __e = *__err_opt_34;
                 ::tpy::tpy_panic(__e.message);
             }
-            __after_try_24:;
+            __after_try_34:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
         return (*__result);
@@ -383,6 +499,64 @@ struct Tagged {
         return __writer.finish();
     }
 
+    void save_json(std::string_view __path, int32_t indent = 0) const {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        auto __ctx_7 = ::tpy::builtin_open_mode(__path, "w");
+        auto& __f = __ctx_7.__enter__();
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __f.write(to_json(indent));
+        } catch (...) {
+            __ctx_7.__exit__();
+            throw;
+        }
+        __finally_36:;
+        __ctx_7.__exit__();
+    }
+
+    static Tagged load_json(std::string_view __path) {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        std::string __data;
+        auto __ctx_8 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_8.__enter__();
+        std::optional<Tagged> __retval_38;
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __data = __f.read();
+        } catch (...) {
+            __ctx_8.__exit__();
+            throw;
+        }
+        __finally_37:;
+        __ctx_8.__exit__();
+        if (__retval_38) return (*__retval_38);
+        // from tplib.json.model import model
+        return Tagged::from_json(__data);
+    }
+
+    static std::expected<Tagged, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        std::string __data;
+        auto __ctx_9 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_9.__enter__();
+        std::optional<std::expected<Tagged, ::tpystd::tplib::json::parser::JsonError>> __retval_40;
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __data = __f.read();
+        } catch (...) {
+            __ctx_9.__exit__();
+            throw;
+        }
+        __finally_39:;
+        __ctx_9.__exit__();
+        if (__retval_40) return (*__retval_40);
+        // from tplib.json.model import model
+        return Tagged::try_from_json(__data);
+    }
+
     friend bool operator==(const Tagged& lhs, const Tagged& other) {
         return lhs.__eq__(other);
     }
@@ -412,8 +586,8 @@ struct User : Base {
 
     static std::expected<User, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
-            auto __try_tmp_26 = __reader.read_object_start();
-            if (!__try_tmp_26.has_value()) return ::tpy::make_unexpected(__try_tmp_26.error());
+            auto __try_tmp_41 = __reader.read_object_start();
+            if (!__try_tmp_41.has_value()) return ::tpy::make_unexpected(__try_tmp_41.error());
         }
         std::string name = "";
         int32_t age = 0;
@@ -421,46 +595,46 @@ struct User : Base {
         while (__reader.has_next()) {
             std::string_view __key;
             {
-                auto __try_tmp_27 = __reader.read_key_raw();
-                if (!__try_tmp_27.has_value()) return ::tpy::make_unexpected(__try_tmp_27.error());
-                __key = ::tpy::unwrap_ref(*__try_tmp_27);
+                auto __try_tmp_42 = __reader.read_key_raw();
+                if (!__try_tmp_42.has_value()) return ::tpy::make_unexpected(__try_tmp_42.error());
+                __key = ::tpy::unwrap_ref(*__try_tmp_42);
             }
             auto& __match_subject = __key;
             if (__match_subject == "name") {
                 std::string __name_1;
                 {
-                    auto __try_tmp_28 = __reader.read_str();
-                    if (!__try_tmp_28.has_value()) return ::tpy::make_unexpected(__try_tmp_28.error());
-                    __name_1 = ::tpy::unwrap_ref(*__try_tmp_28);
+                    auto __try_tmp_43 = __reader.read_str();
+                    if (!__try_tmp_43.has_value()) return ::tpy::make_unexpected(__try_tmp_43.error());
+                    __name_1 = ::tpy::unwrap_ref(*__try_tmp_43);
                 }
                 name = __name_1;
             } else if (__match_subject == "age") {
                 int64_t __raw_3;
                 {
-                    auto __try_tmp_29 = __reader.read_int();
-                    if (!__try_tmp_29.has_value()) return ::tpy::make_unexpected(__try_tmp_29.error());
-                    __raw_3 = ::tpy::unwrap_ref(*__try_tmp_29);
+                    auto __try_tmp_44 = __reader.read_int();
+                    if (!__try_tmp_44.has_value()) return ::tpy::make_unexpected(__try_tmp_44.error());
+                    __raw_3 = ::tpy::unwrap_ref(*__try_tmp_44);
                 }
                 int32_t __age_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
                 age = __age_2;
             } else if (__match_subject == "email") {
                 std::string __email_4;
                 {
-                    auto __try_tmp_30 = __reader.read_str();
-                    if (!__try_tmp_30.has_value()) return ::tpy::make_unexpected(__try_tmp_30.error());
-                    __email_4 = ::tpy::unwrap_ref(*__try_tmp_30);
+                    auto __try_tmp_45 = __reader.read_str();
+                    if (!__try_tmp_45.has_value()) return ::tpy::make_unexpected(__try_tmp_45.error());
+                    __email_4 = ::tpy::unwrap_ref(*__try_tmp_45);
                 }
                 email = __email_4;
             } else {
                 {
-                    auto __try_tmp_31 = __reader.skip_value();
-                    if (!__try_tmp_31.has_value()) return ::tpy::make_unexpected(__try_tmp_31.error());
+                    auto __try_tmp_46 = __reader.skip_value();
+                    if (!__try_tmp_46.has_value()) return ::tpy::make_unexpected(__try_tmp_46.error());
                 }
             }
         }
         {
-            auto __try_tmp_32 = __reader.read_object_end();
-            if (!__try_tmp_32.has_value()) return ::tpy::make_unexpected(__try_tmp_32.error());
+            auto __try_tmp_47 = __reader.read_object_end();
+            if (!__try_tmp_47.has_value()) return ::tpy::make_unexpected(__try_tmp_47.error());
         }
         return User(name, age, email);
     }
@@ -469,20 +643,20 @@ struct User : Base {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<User> __result = std::nullopt;
         {
-            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_33;
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_48;
             {
-                auto __try_tmp_34 = User::__json_decode__(__reader);
-                if (!__try_tmp_34.has_value()) { __err_opt_33 = std::move(__try_tmp_34.error()); goto __except_33; }
-                __result = ::tpy::unwrap_ref(*__try_tmp_34);
+                auto __try_tmp_49 = User::__json_decode__(__reader);
+                if (!__try_tmp_49.has_value()) { __err_opt_48 = std::move(__try_tmp_49.error()); goto __except_48; }
+                __result = ::tpy::unwrap_ref(*__try_tmp_49);
             }
-            goto __after_try_33;
+            goto __after_try_48;
             // except tplib.json.parser.JsonError:
-            __except_33:;
+            __except_48:;
             {
-                auto& __e = *__err_opt_33;
+                auto& __e = *__err_opt_48;
                 ::tpy::tpy_panic(__e.message);
             }
-            __after_try_33:;
+            __after_try_48:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
         return (*__result);
@@ -508,6 +682,64 @@ struct User : Base {
         ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
         __json_encode__(__writer);
         return __writer.finish();
+    }
+
+    void save_json(std::string_view __path, int32_t indent = 0) const {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        auto __ctx_10 = ::tpy::builtin_open_mode(__path, "w");
+        auto& __f = __ctx_10.__enter__();
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __f.write(to_json(indent));
+        } catch (...) {
+            __ctx_10.__exit__();
+            throw;
+        }
+        __finally_50:;
+        __ctx_10.__exit__();
+    }
+
+    static User load_json(std::string_view __path) {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        std::string __data;
+        auto __ctx_11 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_11.__enter__();
+        std::optional<User> __retval_52;
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __data = __f.read();
+        } catch (...) {
+            __ctx_11.__exit__();
+            throw;
+        }
+        __finally_51:;
+        __ctx_11.__exit__();
+        if (__retval_52) return (*__retval_52);
+        // from tplib.json.model import model
+        return User::from_json(__data);
+    }
+
+    static std::expected<User, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        std::string __data;
+        auto __ctx_12 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_12.__enter__();
+        std::optional<std::expected<User, ::tpystd::tplib::json::parser::JsonError>> __retval_54;
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __data = __f.read();
+        } catch (...) {
+            __ctx_12.__exit__();
+            throw;
+        }
+        __finally_53:;
+        __ctx_12.__exit__();
+        if (__retval_54) return (*__retval_54);
+        // from tplib.json.model import model
+        return User::try_from_json(__data);
     }
 
     friend bool operator==(const User& lhs, const User& other) {
@@ -539,8 +771,8 @@ struct Extended : WithDefaults {
 
     static std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
-            auto __try_tmp_35 = __reader.read_object_start();
-            if (!__try_tmp_35.has_value()) return ::tpy::make_unexpected(__try_tmp_35.error());
+            auto __try_tmp_55 = __reader.read_object_start();
+            if (!__try_tmp_55.has_value()) return ::tpy::make_unexpected(__try_tmp_55.error());
         }
         int32_t x = 0;
         int32_t y = 0;
@@ -548,48 +780,48 @@ struct Extended : WithDefaults {
         while (__reader.has_next()) {
             std::string_view __key;
             {
-                auto __try_tmp_36 = __reader.read_key_raw();
-                if (!__try_tmp_36.has_value()) return ::tpy::make_unexpected(__try_tmp_36.error());
-                __key = ::tpy::unwrap_ref(*__try_tmp_36);
+                auto __try_tmp_56 = __reader.read_key_raw();
+                if (!__try_tmp_56.has_value()) return ::tpy::make_unexpected(__try_tmp_56.error());
+                __key = ::tpy::unwrap_ref(*__try_tmp_56);
             }
             auto& __match_subject = __key;
             if (__match_subject == "x") {
                 int64_t __raw_2;
                 {
-                    auto __try_tmp_37 = __reader.read_int();
-                    if (!__try_tmp_37.has_value()) return ::tpy::make_unexpected(__try_tmp_37.error());
-                    __raw_2 = ::tpy::unwrap_ref(*__try_tmp_37);
+                    auto __try_tmp_57 = __reader.read_int();
+                    if (!__try_tmp_57.has_value()) return ::tpy::make_unexpected(__try_tmp_57.error());
+                    __raw_2 = ::tpy::unwrap_ref(*__try_tmp_57);
                 }
                 int32_t __x_1 = ::tpy::int_cast_check<int32_t>(__raw_2);
                 x = __x_1;
             } else if (__match_subject == "y") {
                 int64_t __raw_4;
                 {
-                    auto __try_tmp_38 = __reader.read_int();
-                    if (!__try_tmp_38.has_value()) return ::tpy::make_unexpected(__try_tmp_38.error());
-                    __raw_4 = ::tpy::unwrap_ref(*__try_tmp_38);
+                    auto __try_tmp_58 = __reader.read_int();
+                    if (!__try_tmp_58.has_value()) return ::tpy::make_unexpected(__try_tmp_58.error());
+                    __raw_4 = ::tpy::unwrap_ref(*__try_tmp_58);
                 }
                 int32_t __y_3 = ::tpy::int_cast_check<int32_t>(__raw_4);
                 y = __y_3;
             } else if (__match_subject == "z") {
                 int64_t __raw_6;
                 {
-                    auto __try_tmp_39 = __reader.read_int();
-                    if (!__try_tmp_39.has_value()) return ::tpy::make_unexpected(__try_tmp_39.error());
-                    __raw_6 = ::tpy::unwrap_ref(*__try_tmp_39);
+                    auto __try_tmp_59 = __reader.read_int();
+                    if (!__try_tmp_59.has_value()) return ::tpy::make_unexpected(__try_tmp_59.error());
+                    __raw_6 = ::tpy::unwrap_ref(*__try_tmp_59);
                 }
                 int32_t __z_5 = ::tpy::int_cast_check<int32_t>(__raw_6);
                 z = __z_5;
             } else {
                 {
-                    auto __try_tmp_40 = __reader.skip_value();
-                    if (!__try_tmp_40.has_value()) return ::tpy::make_unexpected(__try_tmp_40.error());
+                    auto __try_tmp_60 = __reader.skip_value();
+                    if (!__try_tmp_60.has_value()) return ::tpy::make_unexpected(__try_tmp_60.error());
                 }
             }
         }
         {
-            auto __try_tmp_41 = __reader.read_object_end();
-            if (!__try_tmp_41.has_value()) return ::tpy::make_unexpected(__try_tmp_41.error());
+            auto __try_tmp_61 = __reader.read_object_end();
+            if (!__try_tmp_61.has_value()) return ::tpy::make_unexpected(__try_tmp_61.error());
         }
         return Extended(x, y, z);
     }
@@ -598,20 +830,20 @@ struct Extended : WithDefaults {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Extended> __result = std::nullopt;
         {
-            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_42;
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_62;
             {
-                auto __try_tmp_43 = Extended::__json_decode__(__reader);
-                if (!__try_tmp_43.has_value()) { __err_opt_42 = std::move(__try_tmp_43.error()); goto __except_42; }
-                __result = ::tpy::unwrap_ref(*__try_tmp_43);
+                auto __try_tmp_63 = Extended::__json_decode__(__reader);
+                if (!__try_tmp_63.has_value()) { __err_opt_62 = std::move(__try_tmp_63.error()); goto __except_62; }
+                __result = ::tpy::unwrap_ref(*__try_tmp_63);
             }
-            goto __after_try_42;
+            goto __after_try_62;
             // except tplib.json.parser.JsonError:
-            __except_42:;
+            __except_62:;
             {
-                auto& __e = *__err_opt_42;
+                auto& __e = *__err_opt_62;
                 ::tpy::tpy_panic(__e.message);
             }
-            __after_try_42:;
+            __after_try_62:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
         return (*__result);
@@ -637,6 +869,64 @@ struct Extended : WithDefaults {
         ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
         __json_encode__(__writer);
         return __writer.finish();
+    }
+
+    void save_json(std::string_view __path, int32_t indent = 0) const {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        auto __ctx_13 = ::tpy::builtin_open_mode(__path, "w");
+        auto& __f = __ctx_13.__enter__();
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __f.write(to_json(indent));
+        } catch (...) {
+            __ctx_13.__exit__();
+            throw;
+        }
+        __finally_64:;
+        __ctx_13.__exit__();
+    }
+
+    static Extended load_json(std::string_view __path) {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        std::string __data;
+        auto __ctx_14 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_14.__enter__();
+        std::optional<Extended> __retval_66;
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __data = __f.read();
+        } catch (...) {
+            __ctx_14.__exit__();
+            throw;
+        }
+        __finally_65:;
+        __ctx_14.__exit__();
+        if (__retval_66) return (*__retval_66);
+        // from tplib.json.model import model
+        return Extended::from_json(__data);
+    }
+
+    static std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        std::string __data;
+        auto __ctx_15 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_15.__enter__();
+        std::optional<std::expected<Extended, ::tpystd::tplib::json::parser::JsonError>> __retval_68;
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __data = __f.read();
+        } catch (...) {
+            __ctx_15.__exit__();
+            throw;
+        }
+        __finally_67:;
+        __ctx_15.__exit__();
+        if (__retval_68) return (*__retval_68);
+        // from tplib.json.model import model
+        return Extended::try_from_json(__data);
     }
 
     friend bool operator==(const Extended& lhs, const Extended& other) {
@@ -668,8 +958,8 @@ struct Scored : Tagged {
 
     static std::expected<Scored, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
-            auto __try_tmp_44 = __reader.read_object_start();
-            if (!__try_tmp_44.has_value()) return ::tpy::make_unexpected(__try_tmp_44.error());
+            auto __try_tmp_69 = __reader.read_object_start();
+            if (!__try_tmp_69.has_value()) return ::tpy::make_unexpected(__try_tmp_69.error());
         }
         std::string tag = "";
         std::optional<std::string> note = std::nullopt;
@@ -677,53 +967,53 @@ struct Scored : Tagged {
         while (__reader.has_next()) {
             std::string_view __key;
             {
-                auto __try_tmp_45 = __reader.read_key_raw();
-                if (!__try_tmp_45.has_value()) return ::tpy::make_unexpected(__try_tmp_45.error());
-                __key = ::tpy::unwrap_ref(*__try_tmp_45);
+                auto __try_tmp_70 = __reader.read_key_raw();
+                if (!__try_tmp_70.has_value()) return ::tpy::make_unexpected(__try_tmp_70.error());
+                __key = ::tpy::unwrap_ref(*__try_tmp_70);
             }
             auto& __match_subject = __key;
             if (__match_subject == "tag") {
                 std::string __tag_1;
                 {
-                    auto __try_tmp_46 = __reader.read_str();
-                    if (!__try_tmp_46.has_value()) return ::tpy::make_unexpected(__try_tmp_46.error());
-                    __tag_1 = ::tpy::unwrap_ref(*__try_tmp_46);
+                    auto __try_tmp_71 = __reader.read_str();
+                    if (!__try_tmp_71.has_value()) return ::tpy::make_unexpected(__try_tmp_71.error());
+                    __tag_1 = ::tpy::unwrap_ref(*__try_tmp_71);
                 }
                 tag = __tag_1;
             } else if (__match_subject == "note") {
                 if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
                     {
-                        auto __try_tmp_47 = __reader.read_null();
-                        if (!__try_tmp_47.has_value()) return ::tpy::make_unexpected(__try_tmp_47.error());
+                        auto __try_tmp_72 = __reader.read_null();
+                        if (!__try_tmp_72.has_value()) return ::tpy::make_unexpected(__try_tmp_72.error());
                     }
                 } else {
                     std::string __note_2;
                     {
-                        auto __try_tmp_48 = __reader.read_str();
-                        if (!__try_tmp_48.has_value()) return ::tpy::make_unexpected(__try_tmp_48.error());
-                        __note_2 = ::tpy::unwrap_ref(*__try_tmp_48);
+                        auto __try_tmp_73 = __reader.read_str();
+                        if (!__try_tmp_73.has_value()) return ::tpy::make_unexpected(__try_tmp_73.error());
+                        __note_2 = ::tpy::unwrap_ref(*__try_tmp_73);
                     }
                     note = __note_2;
                 }
             } else if (__match_subject == "score") {
                 int64_t __raw_4;
                 {
-                    auto __try_tmp_49 = __reader.read_int();
-                    if (!__try_tmp_49.has_value()) return ::tpy::make_unexpected(__try_tmp_49.error());
-                    __raw_4 = ::tpy::unwrap_ref(*__try_tmp_49);
+                    auto __try_tmp_74 = __reader.read_int();
+                    if (!__try_tmp_74.has_value()) return ::tpy::make_unexpected(__try_tmp_74.error());
+                    __raw_4 = ::tpy::unwrap_ref(*__try_tmp_74);
                 }
                 int32_t __score_3 = ::tpy::int_cast_check<int32_t>(__raw_4);
                 score = __score_3;
             } else {
                 {
-                    auto __try_tmp_50 = __reader.skip_value();
-                    if (!__try_tmp_50.has_value()) return ::tpy::make_unexpected(__try_tmp_50.error());
+                    auto __try_tmp_75 = __reader.skip_value();
+                    if (!__try_tmp_75.has_value()) return ::tpy::make_unexpected(__try_tmp_75.error());
                 }
             }
         }
         {
-            auto __try_tmp_51 = __reader.read_object_end();
-            if (!__try_tmp_51.has_value()) return ::tpy::make_unexpected(__try_tmp_51.error());
+            auto __try_tmp_76 = __reader.read_object_end();
+            if (!__try_tmp_76.has_value()) return ::tpy::make_unexpected(__try_tmp_76.error());
         }
         return Scored(tag, note, score);
     }
@@ -732,20 +1022,20 @@ struct Scored : Tagged {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Scored> __result = std::nullopt;
         {
-            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_52;
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_77;
             {
-                auto __try_tmp_53 = Scored::__json_decode__(__reader);
-                if (!__try_tmp_53.has_value()) { __err_opt_52 = std::move(__try_tmp_53.error()); goto __except_52; }
-                __result = ::tpy::unwrap_ref(*__try_tmp_53);
+                auto __try_tmp_78 = Scored::__json_decode__(__reader);
+                if (!__try_tmp_78.has_value()) { __err_opt_77 = std::move(__try_tmp_78.error()); goto __except_77; }
+                __result = ::tpy::unwrap_ref(*__try_tmp_78);
             }
-            goto __after_try_52;
+            goto __after_try_77;
             // except tplib.json.parser.JsonError:
-            __except_52:;
+            __except_77:;
             {
-                auto& __e = *__err_opt_52;
+                auto& __e = *__err_opt_77;
                 ::tpy::tpy_panic(__e.message);
             }
-            __after_try_52:;
+            __after_try_77:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
         return (*__result);
@@ -779,6 +1069,64 @@ struct Scored : Tagged {
         return __writer.finish();
     }
 
+    void save_json(std::string_view __path, int32_t indent = 0) const {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        auto __ctx_16 = ::tpy::builtin_open_mode(__path, "w");
+        auto& __f = __ctx_16.__enter__();
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __f.write(to_json(indent));
+        } catch (...) {
+            __ctx_16.__exit__();
+            throw;
+        }
+        __finally_79:;
+        __ctx_16.__exit__();
+    }
+
+    static Scored load_json(std::string_view __path) {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        std::string __data;
+        auto __ctx_17 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_17.__enter__();
+        std::optional<Scored> __retval_81;
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __data = __f.read();
+        } catch (...) {
+            __ctx_17.__exit__();
+            throw;
+        }
+        __finally_80:;
+        __ctx_17.__exit__();
+        if (__retval_81) return (*__retval_81);
+        // from tplib.json.model import model
+        return Scored::from_json(__data);
+    }
+
+    static std::expected<Scored, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        std::string __data;
+        auto __ctx_18 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_18.__enter__();
+        std::optional<std::expected<Scored, ::tpystd::tplib::json::parser::JsonError>> __retval_83;
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __data = __f.read();
+        } catch (...) {
+            __ctx_18.__exit__();
+            throw;
+        }
+        __finally_82:;
+        __ctx_18.__exit__();
+        if (__retval_83) return (*__retval_83);
+        // from tplib.json.model import model
+        return Scored::try_from_json(__data);
+    }
+
     friend bool operator==(const Scored& lhs, const Scored& other) {
         return lhs.__eq__(other);
     }
@@ -809,8 +1157,8 @@ struct Admin : User {
 
     static std::expected<Admin, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
-            auto __try_tmp_54 = __reader.read_object_start();
-            if (!__try_tmp_54.has_value()) return ::tpy::make_unexpected(__try_tmp_54.error());
+            auto __try_tmp_84 = __reader.read_object_start();
+            if (!__try_tmp_84.has_value()) return ::tpy::make_unexpected(__try_tmp_84.error());
         }
         std::string name = "";
         int32_t age = 0;
@@ -819,54 +1167,54 @@ struct Admin : User {
         while (__reader.has_next()) {
             std::string_view __key;
             {
-                auto __try_tmp_55 = __reader.read_key_raw();
-                if (!__try_tmp_55.has_value()) return ::tpy::make_unexpected(__try_tmp_55.error());
-                __key = ::tpy::unwrap_ref(*__try_tmp_55);
+                auto __try_tmp_85 = __reader.read_key_raw();
+                if (!__try_tmp_85.has_value()) return ::tpy::make_unexpected(__try_tmp_85.error());
+                __key = ::tpy::unwrap_ref(*__try_tmp_85);
             }
             auto& __match_subject = __key;
             if (__match_subject == "name") {
                 std::string __name_1;
                 {
-                    auto __try_tmp_56 = __reader.read_str();
-                    if (!__try_tmp_56.has_value()) return ::tpy::make_unexpected(__try_tmp_56.error());
-                    __name_1 = ::tpy::unwrap_ref(*__try_tmp_56);
+                    auto __try_tmp_86 = __reader.read_str();
+                    if (!__try_tmp_86.has_value()) return ::tpy::make_unexpected(__try_tmp_86.error());
+                    __name_1 = ::tpy::unwrap_ref(*__try_tmp_86);
                 }
                 name = __name_1;
             } else if (__match_subject == "age") {
                 int64_t __raw_3;
                 {
-                    auto __try_tmp_57 = __reader.read_int();
-                    if (!__try_tmp_57.has_value()) return ::tpy::make_unexpected(__try_tmp_57.error());
-                    __raw_3 = ::tpy::unwrap_ref(*__try_tmp_57);
+                    auto __try_tmp_87 = __reader.read_int();
+                    if (!__try_tmp_87.has_value()) return ::tpy::make_unexpected(__try_tmp_87.error());
+                    __raw_3 = ::tpy::unwrap_ref(*__try_tmp_87);
                 }
                 int32_t __age_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
                 age = __age_2;
             } else if (__match_subject == "email") {
                 std::string __email_4;
                 {
-                    auto __try_tmp_58 = __reader.read_str();
-                    if (!__try_tmp_58.has_value()) return ::tpy::make_unexpected(__try_tmp_58.error());
-                    __email_4 = ::tpy::unwrap_ref(*__try_tmp_58);
+                    auto __try_tmp_88 = __reader.read_str();
+                    if (!__try_tmp_88.has_value()) return ::tpy::make_unexpected(__try_tmp_88.error());
+                    __email_4 = ::tpy::unwrap_ref(*__try_tmp_88);
                 }
                 email = __email_4;
             } else if (__match_subject == "role") {
                 std::string __role_5;
                 {
-                    auto __try_tmp_59 = __reader.read_str();
-                    if (!__try_tmp_59.has_value()) return ::tpy::make_unexpected(__try_tmp_59.error());
-                    __role_5 = ::tpy::unwrap_ref(*__try_tmp_59);
+                    auto __try_tmp_89 = __reader.read_str();
+                    if (!__try_tmp_89.has_value()) return ::tpy::make_unexpected(__try_tmp_89.error());
+                    __role_5 = ::tpy::unwrap_ref(*__try_tmp_89);
                 }
                 role = __role_5;
             } else {
                 {
-                    auto __try_tmp_60 = __reader.skip_value();
-                    if (!__try_tmp_60.has_value()) return ::tpy::make_unexpected(__try_tmp_60.error());
+                    auto __try_tmp_90 = __reader.skip_value();
+                    if (!__try_tmp_90.has_value()) return ::tpy::make_unexpected(__try_tmp_90.error());
                 }
             }
         }
         {
-            auto __try_tmp_61 = __reader.read_object_end();
-            if (!__try_tmp_61.has_value()) return ::tpy::make_unexpected(__try_tmp_61.error());
+            auto __try_tmp_91 = __reader.read_object_end();
+            if (!__try_tmp_91.has_value()) return ::tpy::make_unexpected(__try_tmp_91.error());
         }
         return Admin(name, age, email, role);
     }
@@ -875,20 +1223,20 @@ struct Admin : User {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Admin> __result = std::nullopt;
         {
-            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_62;
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_92;
             {
-                auto __try_tmp_63 = Admin::__json_decode__(__reader);
-                if (!__try_tmp_63.has_value()) { __err_opt_62 = std::move(__try_tmp_63.error()); goto __except_62; }
-                __result = ::tpy::unwrap_ref(*__try_tmp_63);
+                auto __try_tmp_93 = Admin::__json_decode__(__reader);
+                if (!__try_tmp_93.has_value()) { __err_opt_92 = std::move(__try_tmp_93.error()); goto __except_92; }
+                __result = ::tpy::unwrap_ref(*__try_tmp_93);
             }
-            goto __after_try_62;
+            goto __after_try_92;
             // except tplib.json.parser.JsonError:
-            __except_62:;
+            __except_92:;
             {
-                auto& __e = *__err_opt_62;
+                auto& __e = *__err_opt_92;
                 ::tpy::tpy_panic(__e.message);
             }
-            __after_try_62:;
+            __after_try_92:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
         return (*__result);
@@ -916,6 +1264,64 @@ struct Admin : User {
         ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
         __json_encode__(__writer);
         return __writer.finish();
+    }
+
+    void save_json(std::string_view __path, int32_t indent = 0) const {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        auto __ctx_19 = ::tpy::builtin_open_mode(__path, "w");
+        auto& __f = __ctx_19.__enter__();
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __f.write(to_json(indent));
+        } catch (...) {
+            __ctx_19.__exit__();
+            throw;
+        }
+        __finally_94:;
+        __ctx_19.__exit__();
+    }
+
+    static Admin load_json(std::string_view __path) {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        std::string __data;
+        auto __ctx_20 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_20.__enter__();
+        std::optional<Admin> __retval_96;
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __data = __f.read();
+        } catch (...) {
+            __ctx_20.__exit__();
+            throw;
+        }
+        __finally_95:;
+        __ctx_20.__exit__();
+        if (__retval_96) return (*__retval_96);
+        // from tplib.json.model import model
+        return Admin::from_json(__data);
+    }
+
+    static std::expected<Admin, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
+        // # @model inheritance: parent fields included in JSON serialization, multi-level.
+        std::string __data;
+        auto __ctx_21 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_21.__enter__();
+        std::optional<std::expected<Admin, ::tpystd::tplib::json::parser::JsonError>> __retval_98;
+        try {
+            // # @model inheritance: parent fields included in JSON serialization, multi-level.
+            // from tpy import Int32
+            __data = __f.read();
+        } catch (...) {
+            __ctx_21.__exit__();
+            throw;
+        }
+        __finally_97:;
+        __ctx_21.__exit__();
+        if (__retval_98) return (*__retval_98);
+        // from tplib.json.model import model
+        return Admin::try_from_json(__data);
     }
 
     friend bool operator==(const Admin& lhs, const Admin& other) {

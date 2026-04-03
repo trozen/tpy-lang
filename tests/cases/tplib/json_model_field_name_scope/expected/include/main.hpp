@@ -149,6 +149,70 @@ struct Msg {
         return __writer.finish();
     }
 
+    void save_json(std::string_view __path, int32_t indent = 0) const {
+        // # Regression: @model field names must not leak into other methods' scopes.
+        auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
+        auto& __f = __ctx_1.__enter__();
+        try {
+            // # Regression: @model field names must not leak into other methods' scopes.
+            // # A @model with field `color: str` must not shadow a `color: Color` parameter
+            __f.write(to_json(indent));
+        } catch (...) {
+            __ctx_1.__exit__();
+            throw;
+        }
+        __finally_9:;
+        __ctx_1.__exit__();
+        // # A @model with field `color: str` must not shadow a `color: Color` parameter
+        // # in an unrelated method after an if-statement triggers _sync_promoted_var_types.
+    }
+
+    static Msg load_json(std::string_view __path) {
+        // # Regression: @model field names must not leak into other methods' scopes.
+        std::string __data;
+        auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_2.__enter__();
+        std::optional<Msg> __retval_11;
+        try {
+            // # Regression: @model field names must not leak into other methods' scopes.
+            // # A @model with field `color: str` must not shadow a `color: Color` parameter
+            __data = __f.read();
+        } catch (...) {
+            __ctx_2.__exit__();
+            throw;
+        }
+        __finally_10:;
+        __ctx_2.__exit__();
+        if (__retval_11) return (*__retval_11);
+        // # Regression: @model field names must not leak into other methods' scopes.
+        // # A @model with field `color: str` must not shadow a `color: Color` parameter
+        // # in an unrelated method after an if-statement triggers _sync_promoted_var_types.
+        return Msg::from_json(__data);
+    }
+
+    static std::expected<Msg, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
+        // # Regression: @model field names must not leak into other methods' scopes.
+        std::string __data;
+        auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_3.__enter__();
+        std::optional<std::expected<Msg, ::tpystd::tplib::json::parser::JsonError>> __retval_13;
+        try {
+            // # Regression: @model field names must not leak into other methods' scopes.
+            // # A @model with field `color: str` must not shadow a `color: Color` parameter
+            __data = __f.read();
+        } catch (...) {
+            __ctx_3.__exit__();
+            throw;
+        }
+        __finally_12:;
+        __ctx_3.__exit__();
+        if (__retval_13) return (*__retval_13);
+        // # Regression: @model field names must not leak into other methods' scopes.
+        // # A @model with field `color: str` must not shadow a `color: Color` parameter
+        // # in an unrelated method after an if-statement triggers _sync_promoted_var_types.
+        return Msg::try_from_json(__data);
+    }
+
     friend bool operator==(const Msg& lhs, const Msg& other) {
         return lhs.__eq__(other);
     }

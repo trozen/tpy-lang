@@ -12,51 +12,34 @@
 
 namespace tpyapp::main {
 
-enum class Color : int32_t {
-    Red = 0,
-    Blue = 1,
-};
-
-} // namespace tpyapp::main
-
-template<>
-struct tpy::EnumUtil<tpyapp::main::Color> {
-    static std::string_view name(tpyapp::main::Color e);
-    static const std::array<tpyapp::main::Color, 2> members;
-    static tpyapp::main::Color from_value(int32_t v);
-    static tpyapp::main::Color from_name(std::string_view s);
-    static std::optional<tpyapp::main::Color> try_parse(std::string_view s);
-};
-
-namespace tpyapp::main {
-
-inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
-}
-
 struct Item;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void main();
+void test_roundtrip();
+void test_pretty();
+void test_try_load();
+void test_try_load_bad();
 
 // @model
 // class Item:
 struct Item {
     // name: str
     std::string name;
-    // color: Color
-    Color color;
+    // count: Int32
+    int32_t count;
+    // active: bool
+    bool active;
 
     Item() = default;
-    explicit Item(std::string_view name, Color color) : name(name), color(color) {}
+    explicit Item(std::string_view name, int32_t count, bool active) : name(name), count(count), active(active) {}
 
     bool __eq__(const Item& other) const {
-        return ((this->name == other.name) && (this->color == other.color));
+        return (((this->name == other.name) && (this->count == other.count)) && (this->active == other.active));
     }
 
     std::string __repr__() const {
-        return std::format("Item(name={}, color={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->color));
+        return std::format("Item(name={}, count={}, active={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->count), ::tpy::__repr__(this->active));
     }
 
     static std::expected<Item, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
@@ -65,7 +48,8 @@ struct Item {
             if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
         }
         std::string name = "";
-        std::optional<Color> color = std::nullopt;
+        int32_t count = 0;
+        bool active = false;
         while (__reader.has_next()) {
             std::string_view __key;
             {
@@ -82,54 +66,55 @@ struct Item {
                     __name_1 = ::tpy::unwrap_ref(*__try_tmp_3);
                 }
                 name = __name_1;
-            } else if (__match_subject == "color") {
-                std::string __estr_3;
+            } else if (__match_subject == "count") {
+                int64_t __raw_3;
                 {
-                    auto __try_tmp_4 = __reader.read_str();
+                    auto __try_tmp_4 = __reader.read_int();
                     if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
-                    __estr_3 = ::tpy::unwrap_ref(*__try_tmp_4);
+                    __raw_3 = ::tpy::unwrap_ref(*__try_tmp_4);
                 }
-                std::optional<Color> __parsed_4 = ::tpy::EnumUtil<Color>::try_parse(__estr_3);
-                if ((!__parsed_4.has_value())) {
-                    return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("invalid enum value for 'Color'"));
+                int32_t __count_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
+                count = __count_2;
+            } else if (__match_subject == "active") {
+                bool __active_4;
+                {
+                    auto __try_tmp_5 = __reader.read_bool();
+                    if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
+                    __active_4 = ::tpy::unwrap_ref(*__try_tmp_5);
                 }
-                Color __color_2 = (*__parsed_4);
-                color = __color_2;
+                active = __active_4;
             } else {
                 {
-                    auto __try_tmp_5 = __reader.skip_value();
-                    if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
+                    auto __try_tmp_6 = __reader.skip_value();
+                    if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
                 }
             }
         }
         {
-            auto __try_tmp_6 = __reader.read_object_end();
-            if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
+            auto __try_tmp_7 = __reader.read_object_end();
+            if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(__try_tmp_7.error());
         }
-        if ((!color.has_value())) {
-            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'color'"));
-        }
-        return Item(name, (*color));
+        return Item(name, count, active);
     }
 
     static Item from_json(std::string_view __s) {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Item> __result = std::nullopt;
         {
-            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_7;
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_8;
             {
-                auto __try_tmp_8 = Item::__json_decode__(__reader);
-                if (!__try_tmp_8.has_value()) { __err_opt_7 = std::move(__try_tmp_8.error()); goto __except_7; }
-                __result = ::tpy::unwrap_ref(*__try_tmp_8);
+                auto __try_tmp_9 = Item::__json_decode__(__reader);
+                if (!__try_tmp_9.has_value()) { __err_opt_8 = std::move(__try_tmp_9.error()); goto __except_8; }
+                __result = ::tpy::unwrap_ref(*__try_tmp_9);
             }
-            goto __after_try_7;
+            goto __after_try_8;
             // except tplib.json.parser.JsonError:
-            __except_7:;
+            __except_8:;
             {
-                auto& __e = *__err_opt_7;
+                auto& __e = *__err_opt_8;
                 ::tpy::tpy_panic(__e.message);
             }
-            __after_try_7:;
+            __after_try_8:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
         return (*__result);
@@ -144,8 +129,10 @@ struct Item {
         __writer.object_start();
         __writer.key("name");
         __writer.write_str(this->name);
-        __writer.key("color");
-        __writer.write_str(::tpy::EnumUtil<Color>::name(this->color));
+        __writer.key("count");
+        __writer.write_int32(this->count);
+        __writer.key("active");
+        __writer.write_bool(this->active);
         __writer.object_end();
     }
 
@@ -156,60 +143,60 @@ struct Item {
     }
 
     void save_json(std::string_view __path, int32_t indent = 0) const {
-        // # Test panic on invalid enum value in JSON.
+        // # Test @model file I/O: save_json, load_json, try_load_json.
         auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
         auto& __f = __ctx_1.__enter__();
         try {
-            // # Test panic on invalid enum value in JSON.
-            // from tpy import Int32, try_parse
+            // # Test @model file I/O: save_json, load_json, try_load_json.
+            // from tpy import Int32
             __f.write(to_json(indent));
         } catch (...) {
             __ctx_1.__exit__();
             throw;
         }
-        __finally_9:;
+        __finally_10:;
         __ctx_1.__exit__();
     }
 
     static Item load_json(std::string_view __path) {
-        // # Test panic on invalid enum value in JSON.
+        // # Test @model file I/O: save_json, load_json, try_load_json.
         std::string __data;
         auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
         auto& __f = __ctx_2.__enter__();
-        std::optional<Item> __retval_11;
+        std::optional<Item> __retval_12;
         try {
-            // # Test panic on invalid enum value in JSON.
-            // from tpy import Int32, try_parse
+            // # Test @model file I/O: save_json, load_json, try_load_json.
+            // from tpy import Int32
             __data = __f.read();
         } catch (...) {
             __ctx_2.__exit__();
             throw;
         }
-        __finally_10:;
+        __finally_11:;
         __ctx_2.__exit__();
-        if (__retval_11) return (*__retval_11);
-        // from enum import Enum
+        if (__retval_12) return (*__retval_12);
+        // from tplib.json.model import model
         return Item::from_json(__data);
     }
 
     static std::expected<Item, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
-        // # Test panic on invalid enum value in JSON.
+        // # Test @model file I/O: save_json, load_json, try_load_json.
         std::string __data;
         auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
         auto& __f = __ctx_3.__enter__();
-        std::optional<std::expected<Item, ::tpystd::tplib::json::parser::JsonError>> __retval_13;
+        std::optional<std::expected<Item, ::tpystd::tplib::json::parser::JsonError>> __retval_14;
         try {
-            // # Test panic on invalid enum value in JSON.
-            // from tpy import Int32, try_parse
+            // # Test @model file I/O: save_json, load_json, try_load_json.
+            // from tpy import Int32
             __data = __f.read();
         } catch (...) {
             __ctx_3.__exit__();
             throw;
         }
-        __finally_12:;
+        __finally_13:;
         __ctx_3.__exit__();
-        if (__retval_13) return (*__retval_13);
-        // from enum import Enum
+        if (__retval_14) return (*__retval_14);
+        // from tplib.json.model import model
         return Item::try_from_json(__data);
     }
 

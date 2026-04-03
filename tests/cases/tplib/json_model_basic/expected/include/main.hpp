@@ -172,6 +172,64 @@ struct User {
         return __writer.finish();
     }
 
+    void save_json(std::string_view __path, int32_t indent = 0) const {
+        // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
+        auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
+        auto& __f = __ctx_1.__enter__();
+        try {
+            // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
+            // from tpy import Int32
+            __f.write(to_json(indent));
+        } catch (...) {
+            __ctx_1.__exit__();
+            throw;
+        }
+        __finally_12:;
+        __ctx_1.__exit__();
+    }
+
+    static User load_json(std::string_view __path) {
+        // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
+        std::string __data;
+        auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_2.__enter__();
+        std::optional<User> __retval_14;
+        try {
+            // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
+            // from tpy import Int32
+            __data = __f.read();
+        } catch (...) {
+            __ctx_2.__exit__();
+            throw;
+        }
+        __finally_13:;
+        __ctx_2.__exit__();
+        if (__retval_14) return (*__retval_14);
+        // from tplib.json.model import model
+        return User::from_json(__data);
+    }
+
+    static std::expected<User, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
+        // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
+        std::string __data;
+        auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_3.__enter__();
+        std::optional<std::expected<User, ::tpystd::tplib::json::parser::JsonError>> __retval_16;
+        try {
+            // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
+            // from tpy import Int32
+            __data = __f.read();
+        } catch (...) {
+            __ctx_3.__exit__();
+            throw;
+        }
+        __finally_15:;
+        __ctx_3.__exit__();
+        if (__retval_16) return (*__retval_16);
+        // from tplib.json.model import model
+        return User::try_from_json(__data);
+    }
+
     friend bool operator==(const User& lhs, const User& other) {
         return lhs.__eq__(other);
     }

@@ -151,6 +151,73 @@ struct Address {
         return __writer.finish();
     }
 
+    void save_json(std::string_view __path, int32_t indent = 0) const {
+        // # Test @model macro: all type combos, nesting, and round-trip.
+        auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
+        auto& __f = __ctx_1.__enter__();
+        try {
+            // # Test @model macro: all type combos, nesting, and round-trip.
+            // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+            __f.write(to_json(indent));
+        } catch (...) {
+            __ctx_1.__exit__();
+            throw;
+        }
+        __finally_9:;
+        __ctx_1.__exit__();
+        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+        // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
+        // # dict[str, list[T]].
+    }
+
+    static Address load_json(std::string_view __path) {
+        // # Test @model macro: all type combos, nesting, and round-trip.
+        std::string __data;
+        auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_2.__enter__();
+        std::optional<Address> __retval_11;
+        try {
+            // # Test @model macro: all type combos, nesting, and round-trip.
+            // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+            __data = __f.read();
+        } catch (...) {
+            __ctx_2.__exit__();
+            throw;
+        }
+        __finally_10:;
+        __ctx_2.__exit__();
+        if (__retval_11) return (*__retval_11);
+        // # Test @model macro: all type combos, nesting, and round-trip.
+        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+        // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
+        return Address::from_json(__data);
+        // # dict[str, list[T]].
+    }
+
+    static std::expected<Address, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
+        // # Test @model macro: all type combos, nesting, and round-trip.
+        std::string __data;
+        auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_3.__enter__();
+        std::optional<std::expected<Address, ::tpystd::tplib::json::parser::JsonError>> __retval_13;
+        try {
+            // # Test @model macro: all type combos, nesting, and round-trip.
+            // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+            __data = __f.read();
+        } catch (...) {
+            __ctx_3.__exit__();
+            throw;
+        }
+        __finally_12:;
+        __ctx_3.__exit__();
+        if (__retval_13) return (*__retval_13);
+        // # Test @model macro: all type combos, nesting, and round-trip.
+        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+        // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
+        return Address::try_from_json(__data);
+        // # dict[str, list[T]].
+    }
+
     friend bool operator==(const Address& lhs, const Address& other) {
         return lhs.__eq__(other);
     }
@@ -214,8 +281,8 @@ struct Profile {
 
     static std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
-            auto __try_tmp_9 = __reader.read_object_start();
-            if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
+            auto __try_tmp_14 = __reader.read_object_start();
+            if (!__try_tmp_14.has_value()) return ::tpy::make_unexpected(__try_tmp_14.error());
         }
         std::string name = "";
         int32_t age = 0;
@@ -238,9 +305,9 @@ struct Profile {
         while (__reader.has_next()) {
             std::string_view __key;
             {
-                auto __try_tmp_10 = __reader.read_key_raw();
-                if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
-                __key = ::tpy::unwrap_ref(*__try_tmp_10);
+                auto __try_tmp_15 = __reader.read_key_raw();
+                if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(__try_tmp_15.error());
+                __key = ::tpy::unwrap_ref(*__try_tmp_15);
             }
             auto& __match_subject = __key;
             if (__match_subject.size() >= 2) {
@@ -249,46 +316,46 @@ struct Profile {
                     if (__match_subject == "name") {
                         std::string __name_1;
                         {
-                            auto __try_tmp_11 = __reader.read_str();
-                            if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
-                            __name_1 = ::tpy::unwrap_ref(*__try_tmp_11);
+                            auto __try_tmp_16 = __reader.read_str();
+                            if (!__try_tmp_16.has_value()) return ::tpy::make_unexpected(__try_tmp_16.error());
+                            __name_1 = ::tpy::unwrap_ref(*__try_tmp_16);
                         }
                         name = __name_1;
                         goto __match_end_1;
                     }
                     if (__match_subject == "tags") {
                         {
-                            auto __try_tmp_12 = __reader.read_array_start();
-                            if (!__try_tmp_12.has_value()) return ::tpy::make_unexpected(__try_tmp_12.error());
+                            auto __try_tmp_17 = __reader.read_array_start();
+                            if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
                         }
                         while (__reader.has_next()) {
                             std::string __elem_13;
                             {
-                                auto __try_tmp_13 = __reader.read_str();
-                                if (!__try_tmp_13.has_value()) return ::tpy::make_unexpected(__try_tmp_13.error());
-                                __elem_13 = ::tpy::unwrap_ref(*__try_tmp_13);
+                                auto __try_tmp_18 = __reader.read_str();
+                                if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
+                                __elem_13 = ::tpy::unwrap_ref(*__try_tmp_18);
                             }
                             std::string __tmp_1{__elem_13};
                             tags.push_back(std::move(__tmp_1));
                         }
                         {
-                            auto __try_tmp_14 = __reader.read_array_end();
-                            if (!__try_tmp_14.has_value()) return ::tpy::make_unexpected(__try_tmp_14.error());
+                            auto __try_tmp_19 = __reader.read_array_end();
+                            if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
                         }
                         goto __match_end_1;
                     }
                     if (__match_subject == "backup_role") {
                         if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
                             {
-                                auto __try_tmp_15 = __reader.read_null();
-                                if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(__try_tmp_15.error());
+                                auto __try_tmp_20 = __reader.read_null();
+                                if (!__try_tmp_20.has_value()) return ::tpy::make_unexpected(__try_tmp_20.error());
                             }
                         } else {
                             std::string __estr_34;
                             {
-                                auto __try_tmp_16 = __reader.read_str();
-                                if (!__try_tmp_16.has_value()) return ::tpy::make_unexpected(__try_tmp_16.error());
-                                __estr_34 = ::tpy::unwrap_ref(*__try_tmp_16);
+                                auto __try_tmp_21 = __reader.read_str();
+                                if (!__try_tmp_21.has_value()) return ::tpy::make_unexpected(__try_tmp_21.error());
+                                __estr_34 = ::tpy::unwrap_ref(*__try_tmp_21);
                             }
                             std::optional<Role> __parsed_35 = ::tpy::EnumUtil<Role>::try_parse(__estr_34);
                             if ((!__parsed_35.has_value())) {
@@ -305,9 +372,9 @@ struct Profile {
                     if (__match_subject == "score") {
                         double __score_4;
                         {
-                            auto __try_tmp_17 = __reader.read_float();
-                            if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
-                            __score_4 = ::tpy::unwrap_ref(*__try_tmp_17);
+                            auto __try_tmp_22 = __reader.read_float();
+                            if (!__try_tmp_22.has_value()) return ::tpy::make_unexpected(__try_tmp_22.error());
+                            __score_4 = ::tpy::unwrap_ref(*__try_tmp_22);
                         }
                         score = __score_4;
                         goto __match_end_1;
@@ -315,31 +382,31 @@ struct Profile {
                     if (__match_subject == "active") {
                         bool __active_7;
                         {
-                            auto __try_tmp_18 = __reader.read_bool();
-                            if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
-                            __active_7 = ::tpy::unwrap_ref(*__try_tmp_18);
+                            auto __try_tmp_23 = __reader.read_bool();
+                            if (!__try_tmp_23.has_value()) return ::tpy::make_unexpected(__try_tmp_23.error());
+                            __active_7 = ::tpy::unwrap_ref(*__try_tmp_23);
                         }
                         active = __active_7;
                         goto __match_end_1;
                     }
                     if (__match_subject == "scores") {
                         {
-                            auto __try_tmp_19 = __reader.read_array_start();
-                            if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
+                            auto __try_tmp_24 = __reader.read_array_start();
+                            if (!__try_tmp_24.has_value()) return ::tpy::make_unexpected(__try_tmp_24.error());
                         }
                         while (__reader.has_next()) {
                             int64_t __raw_15;
                             {
-                                auto __try_tmp_20 = __reader.read_int();
-                                if (!__try_tmp_20.has_value()) return ::tpy::make_unexpected(__try_tmp_20.error());
-                                __raw_15 = ::tpy::unwrap_ref(*__try_tmp_20);
+                                auto __try_tmp_25 = __reader.read_int();
+                                if (!__try_tmp_25.has_value()) return ::tpy::make_unexpected(__try_tmp_25.error());
+                                __raw_15 = ::tpy::unwrap_ref(*__try_tmp_25);
                             }
                             int32_t __elem_14 = ::tpy::int_cast_check<int32_t>(__raw_15);
                             scores.push_back(__elem_14);
                         }
                         {
-                            auto __try_tmp_21 = __reader.read_array_end();
-                            if (!__try_tmp_21.has_value()) return ::tpy::make_unexpected(__try_tmp_21.error());
+                            auto __try_tmp_26 = __reader.read_array_end();
+                            if (!__try_tmp_26.has_value()) return ::tpy::make_unexpected(__try_tmp_26.error());
                         }
                         goto __match_end_1;
                     }
@@ -348,9 +415,9 @@ struct Profile {
                 case 'd': {
                     if (__match_subject == "address") {
                         {
-                            auto __try_tmp_22 = Address::__json_decode__(__reader);
-                            if (!__try_tmp_22.has_value()) return ::tpy::make_unexpected(__try_tmp_22.error());
-                            address = ::tpy::unwrap_ref(*__try_tmp_22);
+                            auto __try_tmp_27 = Address::__json_decode__(__reader);
+                            if (!__try_tmp_27.has_value()) return ::tpy::make_unexpected(__try_tmp_27.error());
+                            address = ::tpy::unwrap_ref(*__try_tmp_27);
                         }
                         goto __match_end_1;
                     }
@@ -359,67 +426,67 @@ struct Profile {
                 case 'e': {
                     if (__match_subject == "metadata") {
                         {
-                            auto __try_tmp_23 = __reader.read_object_start();
-                            if (!__try_tmp_23.has_value()) return ::tpy::make_unexpected(__try_tmp_23.error());
+                            auto __try_tmp_28 = __reader.read_object_start();
+                            if (!__try_tmp_28.has_value()) return ::tpy::make_unexpected(__try_tmp_28.error());
                         }
                         while (__reader.has_next()) {
                             std::string __dk_20;
                             {
-                                auto __try_tmp_24 = __reader.read_key();
-                                if (!__try_tmp_24.has_value()) return ::tpy::make_unexpected(__try_tmp_24.error());
-                                __dk_20 = ::tpy::unwrap_ref(*__try_tmp_24);
+                                auto __try_tmp_29 = __reader.read_key();
+                                if (!__try_tmp_29.has_value()) return ::tpy::make_unexpected(__try_tmp_29.error());
+                                __dk_20 = ::tpy::unwrap_ref(*__try_tmp_29);
                             }
                             int64_t __raw_22;
                             {
-                                auto __try_tmp_25 = __reader.read_int();
-                                if (!__try_tmp_25.has_value()) return ::tpy::make_unexpected(__try_tmp_25.error());
-                                __raw_22 = ::tpy::unwrap_ref(*__try_tmp_25);
+                                auto __try_tmp_30 = __reader.read_int();
+                                if (!__try_tmp_30.has_value()) return ::tpy::make_unexpected(__try_tmp_30.error());
+                                __raw_22 = ::tpy::unwrap_ref(*__try_tmp_30);
                             }
                             int32_t __dv_21 = ::tpy::int_cast_check<int32_t>(__raw_22);
                             ::tpy::__setitem__(metadata, __dk_20, __dv_21);
                         }
                         {
-                            auto __try_tmp_26 = __reader.read_object_end();
-                            if (!__try_tmp_26.has_value()) return ::tpy::make_unexpected(__try_tmp_26.error());
+                            auto __try_tmp_31 = __reader.read_object_end();
+                            if (!__try_tmp_31.has_value()) return ::tpy::make_unexpected(__try_tmp_31.error());
                         }
                         goto __match_end_1;
                     }
                     if (__match_subject == "nested_map") {
                         {
-                            auto __try_tmp_27 = __reader.read_object_start();
-                            if (!__try_tmp_27.has_value()) return ::tpy::make_unexpected(__try_tmp_27.error());
+                            auto __try_tmp_32 = __reader.read_object_start();
+                            if (!__try_tmp_32.has_value()) return ::tpy::make_unexpected(__try_tmp_32.error());
                         }
                         while (__reader.has_next()) {
                             std::string __dk_23;
                             {
-                                auto __try_tmp_28 = __reader.read_key();
-                                if (!__try_tmp_28.has_value()) return ::tpy::make_unexpected(__try_tmp_28.error());
-                                __dk_23 = ::tpy::unwrap_ref(*__try_tmp_28);
+                                auto __try_tmp_33 = __reader.read_key();
+                                if (!__try_tmp_33.has_value()) return ::tpy::make_unexpected(__try_tmp_33.error());
+                                __dk_23 = ::tpy::unwrap_ref(*__try_tmp_33);
                             }
                             std::vector<int32_t> __dv_25 = std::vector<int32_t>{};
                             {
-                                auto __try_tmp_29 = __reader.read_array_start();
-                                if (!__try_tmp_29.has_value()) return ::tpy::make_unexpected(__try_tmp_29.error());
+                                auto __try_tmp_34 = __reader.read_array_start();
+                                if (!__try_tmp_34.has_value()) return ::tpy::make_unexpected(__try_tmp_34.error());
                             }
                             while (__reader.has_next()) {
                                 int64_t __raw_27;
                                 {
-                                    auto __try_tmp_30 = __reader.read_int();
-                                    if (!__try_tmp_30.has_value()) return ::tpy::make_unexpected(__try_tmp_30.error());
-                                    __raw_27 = ::tpy::unwrap_ref(*__try_tmp_30);
+                                    auto __try_tmp_35 = __reader.read_int();
+                                    if (!__try_tmp_35.has_value()) return ::tpy::make_unexpected(__try_tmp_35.error());
+                                    __raw_27 = ::tpy::unwrap_ref(*__try_tmp_35);
                                 }
                                 int32_t __elem_26 = ::tpy::int_cast_check<int32_t>(__raw_27);
                                 __dv_25.push_back(__elem_26);
                             }
                             {
-                                auto __try_tmp_31 = __reader.read_array_end();
-                                if (!__try_tmp_31.has_value()) return ::tpy::make_unexpected(__try_tmp_31.error());
+                                auto __try_tmp_36 = __reader.read_array_end();
+                                if (!__try_tmp_36.has_value()) return ::tpy::make_unexpected(__try_tmp_36.error());
                             }
                             ::tpy::__setitem__(nested_map, __dk_23, std::move(__dv_25));
                         }
                         {
-                            auto __try_tmp_32 = __reader.read_object_end();
-                            if (!__try_tmp_32.has_value()) return ::tpy::make_unexpected(__try_tmp_32.error());
+                            auto __try_tmp_37 = __reader.read_object_end();
+                            if (!__try_tmp_37.has_value()) return ::tpy::make_unexpected(__try_tmp_37.error());
                         }
                         goto __match_end_1;
                     }
@@ -429,9 +496,9 @@ struct Profile {
                     if (__match_subject == "age") {
                         int64_t __raw_3;
                         {
-                            auto __try_tmp_33 = __reader.read_int();
-                            if (!__try_tmp_33.has_value()) return ::tpy::make_unexpected(__try_tmp_33.error());
-                            __raw_3 = ::tpy::unwrap_ref(*__try_tmp_33);
+                            auto __try_tmp_38 = __reader.read_int();
+                            if (!__try_tmp_38.has_value()) return ::tpy::make_unexpected(__try_tmp_38.error());
+                            __raw_3 = ::tpy::unwrap_ref(*__try_tmp_38);
                         }
                         int32_t __age_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
                         age = __age_2;
@@ -443,9 +510,9 @@ struct Profile {
                     if (__match_subject == "big_id") {
                         std::string __raw_9;
                         {
-                            auto __try_tmp_34 = __reader.read_str();
-                            if (!__try_tmp_34.has_value()) return ::tpy::make_unexpected(__try_tmp_34.error());
-                            __raw_9 = ::tpy::unwrap_ref(*__try_tmp_34);
+                            auto __try_tmp_39 = __reader.read_str();
+                            if (!__try_tmp_39.has_value()) return ::tpy::make_unexpected(__try_tmp_39.error());
+                            __raw_9 = ::tpy::unwrap_ref(*__try_tmp_39);
                         }
                         ::tpy::BigInt __big_id_8 = ::tpy::BigInt::from_str(__raw_9);
                         big_id = __big_id_8;
@@ -457,14 +524,14 @@ struct Profile {
                     if (__match_subject == "alt_address") {
                         if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
                             {
-                                auto __try_tmp_35 = __reader.read_null();
-                                if (!__try_tmp_35.has_value()) return ::tpy::make_unexpected(__try_tmp_35.error());
+                                auto __try_tmp_40 = __reader.read_null();
+                                if (!__try_tmp_40.has_value()) return ::tpy::make_unexpected(__try_tmp_40.error());
                             }
                         } else {
                             {
-                                auto __try_tmp_36 = Address::__json_decode__(__reader);
-                                if (!__try_tmp_36.has_value()) return ::tpy::make_unexpected(__try_tmp_36.error());
-                                alt_address = ::tpy::unwrap_ref(*__try_tmp_36);
+                                auto __try_tmp_41 = Address::__json_decode__(__reader);
+                                if (!__try_tmp_41.has_value()) return ::tpy::make_unexpected(__try_tmp_41.error());
+                                alt_address = ::tpy::unwrap_ref(*__try_tmp_41);
                             }
                         }
                         goto __match_end_1;
@@ -475,15 +542,15 @@ struct Profile {
                     if (__match_subject == "email") {
                         if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
                             {
-                                auto __try_tmp_37 = __reader.read_null();
-                                if (!__try_tmp_37.has_value()) return ::tpy::make_unexpected(__try_tmp_37.error());
+                                auto __try_tmp_42 = __reader.read_null();
+                                if (!__try_tmp_42.has_value()) return ::tpy::make_unexpected(__try_tmp_42.error());
                             }
                         } else {
                             std::string __email_36;
                             {
-                                auto __try_tmp_38 = __reader.read_str();
-                                if (!__try_tmp_38.has_value()) return ::tpy::make_unexpected(__try_tmp_38.error());
-                                __email_36 = ::tpy::unwrap_ref(*__try_tmp_38);
+                                auto __try_tmp_43 = __reader.read_str();
+                                if (!__try_tmp_43.has_value()) return ::tpy::make_unexpected(__try_tmp_43.error());
+                                __email_36 = ::tpy::unwrap_ref(*__try_tmp_43);
                             }
                             email = __email_36;
                         }
@@ -495,9 +562,9 @@ struct Profile {
                     if (__match_subject == "role") {
                         std::string __estr_11;
                         {
-                            auto __try_tmp_39 = __reader.read_str();
-                            if (!__try_tmp_39.has_value()) return ::tpy::make_unexpected(__try_tmp_39.error());
-                            __estr_11 = ::tpy::unwrap_ref(*__try_tmp_39);
+                            auto __try_tmp_44 = __reader.read_str();
+                            if (!__try_tmp_44.has_value()) return ::tpy::make_unexpected(__try_tmp_44.error());
+                            __estr_11 = ::tpy::unwrap_ref(*__try_tmp_44);
                         }
                         std::optional<Role> __parsed_12 = ::tpy::EnumUtil<Role>::try_parse(__estr_11);
                         if ((!__parsed_12.has_value())) {
@@ -509,15 +576,15 @@ struct Profile {
                     }
                     if (__match_subject == "roles") {
                         {
-                            auto __try_tmp_40 = __reader.read_array_start();
-                            if (!__try_tmp_40.has_value()) return ::tpy::make_unexpected(__try_tmp_40.error());
+                            auto __try_tmp_45 = __reader.read_array_start();
+                            if (!__try_tmp_45.has_value()) return ::tpy::make_unexpected(__try_tmp_45.error());
                         }
                         while (__reader.has_next()) {
                             std::string __estr_18;
                             {
-                                auto __try_tmp_41 = __reader.read_str();
-                                if (!__try_tmp_41.has_value()) return ::tpy::make_unexpected(__try_tmp_41.error());
-                                __estr_18 = ::tpy::unwrap_ref(*__try_tmp_41);
+                                auto __try_tmp_46 = __reader.read_str();
+                                if (!__try_tmp_46.has_value()) return ::tpy::make_unexpected(__try_tmp_46.error());
+                                __estr_18 = ::tpy::unwrap_ref(*__try_tmp_46);
                             }
                             std::optional<Role> __parsed_19 = ::tpy::EnumUtil<Role>::try_parse(__estr_18);
                             if ((!__parsed_19.has_value())) {
@@ -527,21 +594,21 @@ struct Profile {
                             roles.push_back(__elem_17);
                         }
                         {
-                            auto __try_tmp_42 = __reader.read_array_end();
-                            if (!__try_tmp_42.has_value()) return ::tpy::make_unexpected(__try_tmp_42.error());
+                            auto __try_tmp_47 = __reader.read_array_end();
+                            if (!__try_tmp_47.has_value()) return ::tpy::make_unexpected(__try_tmp_47.error());
                         }
                         goto __match_end_1;
                     }
                     if (__match_subject == "coord") {
                         {
-                            auto __try_tmp_43 = __reader.read_array_start();
-                            if (!__try_tmp_43.has_value()) return ::tpy::make_unexpected(__try_tmp_43.error());
+                            auto __try_tmp_48 = __reader.read_array_start();
+                            if (!__try_tmp_48.has_value()) return ::tpy::make_unexpected(__try_tmp_48.error());
                         }
                         int64_t __raw_29;
                         {
-                            auto __try_tmp_44 = __reader.read_int();
-                            if (!__try_tmp_44.has_value()) return ::tpy::make_unexpected(__try_tmp_44.error());
-                            __raw_29 = ::tpy::unwrap_ref(*__try_tmp_44);
+                            auto __try_tmp_49 = __reader.read_int();
+                            if (!__try_tmp_49.has_value()) return ::tpy::make_unexpected(__try_tmp_49.error());
+                            __raw_29 = ::tpy::unwrap_ref(*__try_tmp_49);
                         }
                         int32_t __t0_28 = ::tpy::int_cast_check<int32_t>(__raw_29);
                         if ((__reader.has_next() == false)) {
@@ -549,9 +616,9 @@ struct Profile {
                         }
                         int64_t __raw_31;
                         {
-                            auto __try_tmp_45 = __reader.read_int();
-                            if (!__try_tmp_45.has_value()) return ::tpy::make_unexpected(__try_tmp_45.error());
-                            __raw_31 = ::tpy::unwrap_ref(*__try_tmp_45);
+                            auto __try_tmp_50 = __reader.read_int();
+                            if (!__try_tmp_50.has_value()) return ::tpy::make_unexpected(__try_tmp_50.error());
+                            __raw_31 = ::tpy::unwrap_ref(*__try_tmp_50);
                         }
                         int32_t __t1_30 = ::tpy::int_cast_check<int32_t>(__raw_31);
                         if ((__reader.has_next() == false)) {
@@ -559,13 +626,13 @@ struct Profile {
                         }
                         std::string __t2_32;
                         {
-                            auto __try_tmp_46 = __reader.read_str();
-                            if (!__try_tmp_46.has_value()) return ::tpy::make_unexpected(__try_tmp_46.error());
-                            __t2_32 = ::tpy::unwrap_ref(*__try_tmp_46);
+                            auto __try_tmp_51 = __reader.read_str();
+                            if (!__try_tmp_51.has_value()) return ::tpy::make_unexpected(__try_tmp_51.error());
+                            __t2_32 = ::tpy::unwrap_ref(*__try_tmp_51);
                         }
                         {
-                            auto __try_tmp_47 = __reader.read_array_end();
-                            if (!__try_tmp_47.has_value()) return ::tpy::make_unexpected(__try_tmp_47.error());
+                            auto __try_tmp_52 = __reader.read_array_end();
+                            if (!__try_tmp_52.has_value()) return ::tpy::make_unexpected(__try_tmp_52.error());
                         }
                         coord = std::tuple<int32_t, int32_t, std::string>{__t0_28, __t1_30, __t2_32};
                         goto __match_end_1;
@@ -576,9 +643,9 @@ struct Profile {
                     if (__match_subject == "precision") {
                         double __raw_6;
                         {
-                            auto __try_tmp_48 = __reader.read_float();
-                            if (!__try_tmp_48.has_value()) return ::tpy::make_unexpected(__try_tmp_48.error());
-                            __raw_6 = ::tpy::unwrap_ref(*__try_tmp_48);
+                            auto __try_tmp_53 = __reader.read_float();
+                            if (!__try_tmp_53.has_value()) return ::tpy::make_unexpected(__try_tmp_53.error());
+                            __raw_6 = ::tpy::unwrap_ref(*__try_tmp_53);
                         }
                         float __precision_5 = static_cast<float>(__raw_6);
                         precision = __precision_5;
@@ -586,21 +653,21 @@ struct Profile {
                     }
                     if (__match_subject == "friends") {
                         {
-                            auto __try_tmp_49 = __reader.read_array_start();
-                            if (!__try_tmp_49.has_value()) return ::tpy::make_unexpected(__try_tmp_49.error());
+                            auto __try_tmp_54 = __reader.read_array_start();
+                            if (!__try_tmp_54.has_value()) return ::tpy::make_unexpected(__try_tmp_54.error());
                         }
                         while (__reader.has_next()) {
                             Address __elem_16;
                             {
-                                auto __try_tmp_50 = Address::__json_decode__(__reader);
-                                if (!__try_tmp_50.has_value()) return ::tpy::make_unexpected(__try_tmp_50.error());
-                                __elem_16 = ::tpy::unwrap_ref(*__try_tmp_50);
+                                auto __try_tmp_55 = Address::__json_decode__(__reader);
+                                if (!__try_tmp_55.has_value()) return ::tpy::make_unexpected(__try_tmp_55.error());
+                                __elem_16 = ::tpy::unwrap_ref(*__try_tmp_55);
                             }
                             friends.push_back(__elem_16);
                         }
                         {
-                            auto __try_tmp_51 = __reader.read_array_end();
-                            if (!__try_tmp_51.has_value()) return ::tpy::make_unexpected(__try_tmp_51.error());
+                            auto __try_tmp_56 = __reader.read_array_end();
+                            if (!__try_tmp_56.has_value()) return ::tpy::make_unexpected(__try_tmp_56.error());
                         }
                         goto __match_end_1;
                     }
@@ -610,15 +677,15 @@ struct Profile {
             }
             {
                 {
-                    auto __try_tmp_52 = __reader.skip_value();
-                    if (!__try_tmp_52.has_value()) return ::tpy::make_unexpected(__try_tmp_52.error());
+                    auto __try_tmp_57 = __reader.skip_value();
+                    if (!__try_tmp_57.has_value()) return ::tpy::make_unexpected(__try_tmp_57.error());
                 }
             }
             __match_end_1:;
         }
         {
-            auto __try_tmp_53 = __reader.read_object_end();
-            if (!__try_tmp_53.has_value()) return ::tpy::make_unexpected(__try_tmp_53.error());
+            auto __try_tmp_58 = __reader.read_object_end();
+            if (!__try_tmp_58.has_value()) return ::tpy::make_unexpected(__try_tmp_58.error());
         }
         if ((!role.has_value())) {
             return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'role'"));
@@ -638,20 +705,20 @@ struct Profile {
         ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Profile> __result = std::nullopt;
         {
-            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_54;
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_59;
             {
-                auto __try_tmp_55 = Profile::__json_decode__(__reader);
-                if (!__try_tmp_55.has_value()) { __err_opt_54 = std::move(__try_tmp_55.error()); goto __except_54; }
-                __result = ::tpy::unwrap_ref(*__try_tmp_55);
+                auto __try_tmp_60 = Profile::__json_decode__(__reader);
+                if (!__try_tmp_60.has_value()) { __err_opt_59 = std::move(__try_tmp_60.error()); goto __except_59; }
+                __result = ::tpy::unwrap_ref(*__try_tmp_60);
             }
-            goto __after_try_54;
+            goto __after_try_59;
             // except tplib.json.parser.JsonError:
-            __except_54:;
+            __except_59:;
             {
-                auto& __e = *__err_opt_54;
+                auto& __e = *__err_opt_59;
                 ::tpy::tpy_panic(__e.message);
             }
-            __after_try_54:;
+            __after_try_59:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
         return (*__result);
@@ -793,6 +860,73 @@ struct Profile {
         ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
         __json_encode__(__writer);
         return __writer.finish();
+    }
+
+    void save_json(std::string_view __path, int32_t indent = 0) const {
+        // # Test @model macro: all type combos, nesting, and round-trip.
+        auto __ctx_4 = ::tpy::builtin_open_mode(__path, "w");
+        auto& __f = __ctx_4.__enter__();
+        try {
+            // # Test @model macro: all type combos, nesting, and round-trip.
+            // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+            __f.write(to_json(indent));
+        } catch (...) {
+            __ctx_4.__exit__();
+            throw;
+        }
+        __finally_61:;
+        __ctx_4.__exit__();
+        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+        // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
+        // # dict[str, list[T]].
+    }
+
+    static Profile load_json(std::string_view __path) {
+        // # Test @model macro: all type combos, nesting, and round-trip.
+        std::string __data;
+        auto __ctx_5 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_5.__enter__();
+        std::optional<Profile> __retval_63;
+        try {
+            // # Test @model macro: all type combos, nesting, and round-trip.
+            // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+            __data = __f.read();
+        } catch (...) {
+            __ctx_5.__exit__();
+            throw;
+        }
+        __finally_62:;
+        __ctx_5.__exit__();
+        if (__retval_63) return (*__retval_63);
+        // # Test @model macro: all type combos, nesting, and round-trip.
+        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+        // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
+        return Profile::from_json(__data);
+        // # dict[str, list[T]].
+    }
+
+    static std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
+        // # Test @model macro: all type combos, nesting, and round-trip.
+        std::string __data;
+        auto __ctx_6 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_6.__enter__();
+        std::optional<std::expected<Profile, ::tpystd::tplib::json::parser::JsonError>> __retval_65;
+        try {
+            // # Test @model macro: all type combos, nesting, and round-trip.
+            // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+            __data = __f.read();
+        } catch (...) {
+            __ctx_6.__exit__();
+            throw;
+        }
+        __finally_64:;
+        __ctx_6.__exit__();
+        if (__retval_65) return (*__retval_65);
+        // # Test @model macro: all type combos, nesting, and round-trip.
+        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+        // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
+        return Profile::try_from_json(__data);
+        // # dict[str, list[T]].
     }
 
     friend bool operator==(const Profile& lhs, const Profile& other) {

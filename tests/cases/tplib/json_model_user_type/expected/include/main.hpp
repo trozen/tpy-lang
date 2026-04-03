@@ -179,6 +179,64 @@ struct Event {
         return __writer.finish();
     }
 
+    void save_json(std::string_view __path, int32_t indent = 0) const {
+        // # User-defined types as @model fields via __json_encode__/__json_decode__.
+        auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
+        auto& __f = __ctx_1.__enter__();
+        try {
+            // # User-defined types as @model fields via __json_encode__/__json_decode__.
+            // from __future__ import annotations
+            __f.write(to_json(indent));
+        } catch (...) {
+            __ctx_1.__exit__();
+            throw;
+        }
+        __finally_10:;
+        __ctx_1.__exit__();
+    }
+
+    static Event load_json(std::string_view __path) {
+        // # User-defined types as @model fields via __json_encode__/__json_decode__.
+        std::string __data;
+        auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_2.__enter__();
+        std::optional<Event> __retval_12;
+        try {
+            // # User-defined types as @model fields via __json_encode__/__json_decode__.
+            // from __future__ import annotations
+            __data = __f.read();
+        } catch (...) {
+            __ctx_2.__exit__();
+            throw;
+        }
+        __finally_11:;
+        __ctx_2.__exit__();
+        if (__retval_12) return (*__retval_12);
+        // from typing import Optional
+        return Event::from_json(__data);
+    }
+
+    static std::expected<Event, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
+        // # User-defined types as @model fields via __json_encode__/__json_decode__.
+        std::string __data;
+        auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_3.__enter__();
+        std::optional<std::expected<Event, ::tpystd::tplib::json::parser::JsonError>> __retval_14;
+        try {
+            // # User-defined types as @model fields via __json_encode__/__json_decode__.
+            // from __future__ import annotations
+            __data = __f.read();
+        } catch (...) {
+            __ctx_3.__exit__();
+            throw;
+        }
+        __finally_13:;
+        __ctx_3.__exit__();
+        if (__retval_14) return (*__retval_14);
+        // from typing import Optional
+        return Event::try_from_json(__data);
+    }
+
     friend bool operator==(const Event& lhs, const Event& other) {
         return lhs.__eq__(other);
     }
@@ -212,8 +270,8 @@ struct Schedule {
 
     static std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::JsonReader& __reader) {
         {
-            auto __try_tmp_10 = __reader.read_object_start();
-            if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
+            auto __try_tmp_15 = __reader.read_object_start();
+            if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(__try_tmp_15.error());
         }
         std::vector<Event> events = std::vector<Event>{};
         std::optional<Seconds> default_duration = std::nullopt;
@@ -221,58 +279,58 @@ struct Schedule {
         while (__reader.has_next()) {
             std::string_view __key;
             {
-                auto __try_tmp_11 = __reader.read_key_raw();
-                if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
-                __key = ::tpy::unwrap_ref(*__try_tmp_11);
+                auto __try_tmp_16 = __reader.read_key_raw();
+                if (!__try_tmp_16.has_value()) return ::tpy::make_unexpected(__try_tmp_16.error());
+                __key = ::tpy::unwrap_ref(*__try_tmp_16);
             }
             auto& __match_subject = __key;
             if (__match_subject == "events") {
                 {
-                    auto __try_tmp_12 = __reader.read_array_start();
-                    if (!__try_tmp_12.has_value()) return ::tpy::make_unexpected(__try_tmp_12.error());
+                    auto __try_tmp_17 = __reader.read_array_start();
+                    if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
                 }
                 while (__reader.has_next()) {
                     Event __elem_1;
                     {
-                        auto __try_tmp_13 = Event::__json_decode__(__reader);
-                        if (!__try_tmp_13.has_value()) return ::tpy::make_unexpected(__try_tmp_13.error());
-                        __elem_1 = ::tpy::unwrap_ref(*__try_tmp_13);
+                        auto __try_tmp_18 = Event::__json_decode__(__reader);
+                        if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
+                        __elem_1 = ::tpy::unwrap_ref(*__try_tmp_18);
                     }
                     events.push_back(__elem_1);
                 }
                 {
-                    auto __try_tmp_14 = __reader.read_array_end();
-                    if (!__try_tmp_14.has_value()) return ::tpy::make_unexpected(__try_tmp_14.error());
+                    auto __try_tmp_19 = __reader.read_array_end();
+                    if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
                 }
             } else if (__match_subject == "default_duration") {
                 {
-                    auto __try_tmp_15 = Seconds::__json_decode__(__reader);
-                    if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(__try_tmp_15.error());
-                    default_duration = ::tpy::unwrap_ref(*__try_tmp_15);
+                    auto __try_tmp_20 = Seconds::__json_decode__(__reader);
+                    if (!__try_tmp_20.has_value()) return ::tpy::make_unexpected(__try_tmp_20.error());
+                    default_duration = ::tpy::unwrap_ref(*__try_tmp_20);
                 }
             } else if (__match_subject == "deadline") {
                 if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
                     {
-                        auto __try_tmp_16 = __reader.read_null();
-                        if (!__try_tmp_16.has_value()) return ::tpy::make_unexpected(__try_tmp_16.error());
+                        auto __try_tmp_21 = __reader.read_null();
+                        if (!__try_tmp_21.has_value()) return ::tpy::make_unexpected(__try_tmp_21.error());
                     }
                 } else {
                     {
-                        auto __try_tmp_17 = Seconds::__json_decode__(__reader);
-                        if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
-                        deadline = ::tpy::unwrap_ref(*__try_tmp_17);
+                        auto __try_tmp_22 = Seconds::__json_decode__(__reader);
+                        if (!__try_tmp_22.has_value()) return ::tpy::make_unexpected(__try_tmp_22.error());
+                        deadline = ::tpy::unwrap_ref(*__try_tmp_22);
                     }
                 }
             } else {
                 {
-                    auto __try_tmp_18 = __reader.skip_value();
-                    if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
+                    auto __try_tmp_23 = __reader.skip_value();
+                    if (!__try_tmp_23.has_value()) return ::tpy::make_unexpected(__try_tmp_23.error());
                 }
             }
         }
         {
-            auto __try_tmp_19 = __reader.read_object_end();
-            if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
+            auto __try_tmp_24 = __reader.read_object_end();
+            if (!__try_tmp_24.has_value()) return ::tpy::make_unexpected(__try_tmp_24.error());
         }
         if ((!default_duration.has_value())) {
             return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'default_duration'"));
@@ -286,20 +344,20 @@ struct Schedule {
         ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
         std::optional<Schedule> __result = std::nullopt;
         {
-            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_20;
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_25;
             {
-                auto __try_tmp_21 = Schedule::__json_decode__(__reader);
-                if (!__try_tmp_21.has_value()) { __err_opt_20 = std::move(__try_tmp_21.error()); goto __except_20; }
-                __result = ::tpy::unwrap_ref(*__try_tmp_21);
+                auto __try_tmp_26 = Schedule::__json_decode__(__reader);
+                if (!__try_tmp_26.has_value()) { __err_opt_25 = std::move(__try_tmp_26.error()); goto __except_25; }
+                __result = ::tpy::unwrap_ref(*__try_tmp_26);
             }
-            goto __after_try_20;
+            goto __after_try_25;
             // except tplib.json.parser.JsonError:
-            __except_20:;
+            __except_25:;
             {
-                auto& __e = *__err_opt_20;
+                auto& __e = *__err_opt_25;
                 ::tpy::tpy_panic(__e.message);
             }
-            __after_try_20:;
+            __after_try_25:;
         }
         if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
         return (*__result);
@@ -339,6 +397,64 @@ struct Schedule {
         ::tpystd::tplib::json::JsonWriter __writer = ::tpystd::tplib::json::JsonWriter(indent);
         __json_encode__(__writer);
         return __writer.finish();
+    }
+
+    void save_json(std::string_view __path, int32_t indent = 0) const {
+        // # User-defined types as @model fields via __json_encode__/__json_decode__.
+        auto __ctx_4 = ::tpy::builtin_open_mode(__path, "w");
+        auto& __f = __ctx_4.__enter__();
+        try {
+            // # User-defined types as @model fields via __json_encode__/__json_decode__.
+            // from __future__ import annotations
+            __f.write(to_json(indent));
+        } catch (...) {
+            __ctx_4.__exit__();
+            throw;
+        }
+        __finally_27:;
+        __ctx_4.__exit__();
+    }
+
+    static Schedule load_json(std::string_view __path) {
+        // # User-defined types as @model fields via __json_encode__/__json_decode__.
+        std::string __data;
+        auto __ctx_5 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_5.__enter__();
+        std::optional<Schedule> __retval_29;
+        try {
+            // # User-defined types as @model fields via __json_encode__/__json_decode__.
+            // from __future__ import annotations
+            __data = __f.read();
+        } catch (...) {
+            __ctx_5.__exit__();
+            throw;
+        }
+        __finally_28:;
+        __ctx_5.__exit__();
+        if (__retval_29) return (*__retval_29);
+        // from typing import Optional
+        return Schedule::from_json(__data);
+    }
+
+    static std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
+        // # User-defined types as @model fields via __json_encode__/__json_decode__.
+        std::string __data;
+        auto __ctx_6 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_6.__enter__();
+        std::optional<std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError>> __retval_31;
+        try {
+            // # User-defined types as @model fields via __json_encode__/__json_decode__.
+            // from __future__ import annotations
+            __data = __f.read();
+        } catch (...) {
+            __ctx_6.__exit__();
+            throw;
+        }
+        __finally_30:;
+        __ctx_6.__exit__();
+        if (__retval_31) return (*__retval_31);
+        // from typing import Optional
+        return Schedule::try_from_json(__data);
     }
 
     friend bool operator==(const Schedule& lhs, const Schedule& other) {

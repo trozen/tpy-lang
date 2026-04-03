@@ -1,0 +1,8 @@
+widget
+42
+True
+True
+gadget
+True
+ok
+caught: expected '"'

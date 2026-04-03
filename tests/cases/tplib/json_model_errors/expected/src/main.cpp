@@ -48,21 +48,21 @@ void test_missing_field() {
     std::string_view data = "{\"name\": \"x\"}";
     // try:
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_9;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_14;
         // Item.try_from_json(data)
         {
-            auto __try_tmp_10 = Item::try_from_json(data);
-            if (!__try_tmp_10.has_value()) { __err_opt_9 = std::move(__try_tmp_10.error()); goto __except_9; }
+            auto __try_tmp_15 = Item::try_from_json(data);
+            if (!__try_tmp_15.has_value()) { __err_opt_14 = std::move(__try_tmp_15.error()); goto __except_14; }
         }
-        goto __after_try_9;
+        goto __after_try_14;
         // except JsonError:
-        __except_9:;
+        __except_14:;
         {
-            auto& e = *__err_opt_9;
+            auto& e = *__err_opt_14;
             // print(e.message)
             std::cout << e.message << "\n";
         }
-        __after_try_9:;
+        __after_try_14:;
     }
 }
 
@@ -72,21 +72,21 @@ void test_invalid_enum() {
     std::string_view data = "{\"name\": \"x\", \"color\": \"Purple\"}";
     // try:
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_11;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_16;
         // Item.try_from_json(data)
         {
-            auto __try_tmp_12 = Item::try_from_json(data);
-            if (!__try_tmp_12.has_value()) { __err_opt_11 = std::move(__try_tmp_12.error()); goto __except_11; }
+            auto __try_tmp_17 = Item::try_from_json(data);
+            if (!__try_tmp_17.has_value()) { __err_opt_16 = std::move(__try_tmp_17.error()); goto __except_16; }
         }
-        goto __after_try_11;
+        goto __after_try_16;
         // except JsonError:
-        __except_11:;
+        __except_16:;
         {
-            auto& e = *__err_opt_11;
+            auto& e = *__err_opt_16;
             // print(e.message)
             std::cout << e.message << "\n";
         }
-        __after_try_11:;
+        __after_try_16:;
     }
 }
 
@@ -96,21 +96,21 @@ void test_malformed_with_describe() {
     std::string_view data = "{\"name\": \"x\", \"color\"  123}";
     // try:
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_13;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_18;
         // Item.try_from_json(data)
         {
-            auto __try_tmp_14 = Item::try_from_json(data);
-            if (!__try_tmp_14.has_value()) { __err_opt_13 = std::move(__try_tmp_14.error()); goto __except_13; }
+            auto __try_tmp_19 = Item::try_from_json(data);
+            if (!__try_tmp_19.has_value()) { __err_opt_18 = std::move(__try_tmp_19.error()); goto __except_18; }
         }
-        goto __after_try_13;
+        goto __after_try_18;
         // except JsonError:
-        __except_13:;
+        __except_18:;
         {
-            auto& e = *__err_opt_13;
+            auto& e = *__err_opt_18;
             // print(e.describe(data))
             std::cout << e.describe(data) << "\n";
         }
-        __after_try_13:;
+        __after_try_18:;
     }
 }
 

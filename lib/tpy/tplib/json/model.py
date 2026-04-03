@@ -39,6 +39,9 @@ Generated methods:
   - to_json() -> str                          -- serialize to JSON string
   - from_json(s: str) -> Self                 -- deserialize, panics on error
   - try_from_json(s: str) -> Self             -- deserialize with @error_return(JsonError)
+  - save_json(path: str, indent: Int32 = 0) -> None  -- serialize and write to file
+  - load_json(path: str) -> Self              -- read file and deserialize, panics on error
+  - try_load_json(path: str) -> Self          -- read file and deserialize with @error_return
 
 Supported field types:
   - Primitives: str, bool, int/Int32/Int64/BigInt, float/Float32
@@ -635,6 +638,49 @@ def _build_to_json(cls: ClassInfo) -> Function:
     )
 
 
+def _build_save_json(cls: ClassInfo) -> Function:
+    """Build save_json(self, path: str, indent: Int32 = 0) -> None."""
+    body: list[Stmt] = ast.quote("""
+        with open(__path, "w") as __f:
+            __f.write(self.to_json(indent))
+    """)
+    return ast.function(
+        "save_json", [("__path", types.str), ("indent", types.int32)],
+        types.void, body,
+        is_method=True, defaults=[None, ast.int_lit(0)],
+    )
+
+
+def _build_load_json(cls: ClassInfo) -> Function:
+    """Build load_json(path: str) -> Self static method (panics on error)."""
+    cls_type = types.named(cls.name)
+    ret_type = cls_type if cls_type.is_value_type() else types.own(cls_type)
+    body: list[Stmt] = ast.quote(f"""
+        with open(__path, "r") as __f:
+            __data: str = __f.read()
+        return {cls.name}.from_json(__data)
+    """)
+    return ast.function(
+        "load_json", [("__path", types.str)], ret_type, body,
+        is_method=True, is_staticmethod=True,
+    )
+
+
+def _build_try_load_json(cls: ClassInfo) -> Function:
+    """Build try_load_json(path: str) -> Self with @error_return(JsonError)."""
+    cls_type = types.named(cls.name)
+    ret_type = cls_type if cls_type.is_value_type() else types.own(cls_type)
+    body: list[Stmt] = ast.quote(f"""
+        with open(__path, "r") as __f:
+            __data: str = __f.read()
+        return {cls.name}.try_from_json(__data)
+    """)
+    return ast.function(
+        "try_load_json", [("__path", types.str)], ret_type, body,
+        is_method=True, is_staticmethod=True, error_return=_JSON_ERROR,
+    )
+
+
 # ---------------------------------------------------------------------------
 # @model class macro
 # ---------------------------------------------------------------------------
@@ -766,6 +812,9 @@ def model(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> None:
         _build_try_from_json(cls),
         _build_json_encode(cls, all_fields),
         _build_to_json(cls),
+        _build_save_json(cls),
+        _build_load_json(cls),
+        _build_try_load_json(cls),
     ]:
         fn.hides_parent = has_parent
         cls.add_method(fn)

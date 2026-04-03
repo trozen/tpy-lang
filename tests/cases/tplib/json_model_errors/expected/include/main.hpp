@@ -158,6 +158,64 @@ struct Item {
         return __writer.finish();
     }
 
+    void save_json(std::string_view __path, int32_t indent = 0) const {
+        // # Test @model error messages via try_from_json: missing field, invalid enum, describe().
+        auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
+        auto& __f = __ctx_1.__enter__();
+        try {
+            // # Test @model error messages via try_from_json: missing field, invalid enum, describe().
+            // from enum import Enum
+            __f.write(to_json(indent));
+        } catch (...) {
+            __ctx_1.__exit__();
+            throw;
+        }
+        __finally_9:;
+        __ctx_1.__exit__();
+    }
+
+    static Item load_json(std::string_view __path) {
+        // # Test @model error messages via try_from_json: missing field, invalid enum, describe().
+        std::string __data;
+        auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_2.__enter__();
+        std::optional<Item> __retval_11;
+        try {
+            // # Test @model error messages via try_from_json: missing field, invalid enum, describe().
+            // from enum import Enum
+            __data = __f.read();
+        } catch (...) {
+            __ctx_2.__exit__();
+            throw;
+        }
+        __finally_10:;
+        __ctx_2.__exit__();
+        if (__retval_11) return (*__retval_11);
+        // from tplib.json import JsonError
+        return Item::from_json(__data);
+    }
+
+    static std::expected<Item, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
+        // # Test @model error messages via try_from_json: missing field, invalid enum, describe().
+        std::string __data;
+        auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
+        auto& __f = __ctx_3.__enter__();
+        std::optional<std::expected<Item, ::tpystd::tplib::json::parser::JsonError>> __retval_13;
+        try {
+            // # Test @model error messages via try_from_json: missing field, invalid enum, describe().
+            // from enum import Enum
+            __data = __f.read();
+        } catch (...) {
+            __ctx_3.__exit__();
+            throw;
+        }
+        __finally_12:;
+        __ctx_3.__exit__();
+        if (__retval_13) return (*__retval_13);
+        // from tplib.json import JsonError
+        return Item::try_from_json(__data);
+    }
+
     friend bool operator==(const Item& lhs, const Item& other) {
         return lhs.__eq__(other);
     }
