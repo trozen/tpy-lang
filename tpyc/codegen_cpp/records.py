@@ -190,12 +190,15 @@ class RecordGenerator:
         # Determine constructor generation strategy
         if record.init_method:
             has_params = bool(record.init_method.params)
-            base_init = self._extract_base_init(record.init_method, record)
             saved_func_params = self.ctx.current_func_params
+            saved_in_method = self.ctx.in_method
             self.ctx.current_func_params = {
                 pname: ptype for pname, ptype in record.init_method.params}
+            self.ctx.in_method = True
+            base_init = self._extract_base_init(record.init_method, record)
             inits = self._extract_field_inits(record.init_method, record)
             self.ctx.current_func_params = saved_func_params
+            self.ctx.in_method = saved_in_method
             non_init_stmts = self._get_non_init_stmts(record.init_method, record)
 
             self.ctx.emit_preceding_comments(out, record.init_method.loc, indent=INDENT)
@@ -335,10 +338,10 @@ class RecordGenerator:
                 if record_info and "__iter__" in record_info.methods:
                     iter_overloads = record_info.methods["__iter__"]
                     if iter_overloads and isinstance(iter_overloads[0].return_type, SpanIterType):
-                        out.write(f"\n{INDENT}auto begin() {{ return __iter__().begin(); }}\n")
-                        out.write(f"{INDENT}auto end() {{ return __iter__().end(); }}\n")
-                        out.write(f"{INDENT}auto begin() const {{ return __iter__().begin(); }}\n")
-                        out.write(f"{INDENT}auto end() const {{ return __iter__().end(); }}\n")
+                        out.write(f"\n{INDENT}auto begin() {{ return this->__iter__().begin(); }}\n")
+                        out.write(f"{INDENT}auto end() {{ return this->__iter__().end(); }}\n")
+                        out.write(f"{INDENT}auto begin() const {{ return this->__iter__().begin(); }}\n")
+                        out.write(f"{INDENT}auto end() const {{ return this->__iter__().end(); }}\n")
 
         # Generate methods (excluding __init__ and __del__)
         dynamic_overrides = self.functions._get_dynamic_override_info(record.name)
@@ -521,7 +524,7 @@ class RecordGenerator:
         self.ctx.emit_preceding_comments(out, del_method.loc, indent=INDENT)
         self.ctx.emit_source_comment(out, del_method.loc, indent=INDENT)
         out.write(f"\n{INDENT}~{cpp_name}() {{\n")
-        out.write(f"{INDENT}{INDENT}if (!__tpy_owned_) return;\n")
+        out.write(f"{INDENT}{INDENT}if (!this->__tpy_owned_) return;\n")
         if body_stmts:
             local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
             local_ns.bind_variable("self", NamedType(name))

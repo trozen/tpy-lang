@@ -145,7 +145,7 @@ struct Msg {
 
     std::string to_json(int32_t indent = 0) const {
         ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
-        __json_encode__(__writer);
+        this->__json_encode__(__writer);
         return __writer.finish();
     }
 
@@ -156,7 +156,7 @@ struct Msg {
         try {
             // # Regression: @model field names must not leak into other methods' scopes.
             // # A @model with field `color: str` must not shadow a `color: Color` parameter
-            __f.write(to_json(indent));
+            __f.write(this->to_json(indent));
         } catch (...) {
             __ctx_1.__exit__();
             throw;

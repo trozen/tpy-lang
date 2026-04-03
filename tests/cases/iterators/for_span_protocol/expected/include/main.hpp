@@ -27,10 +27,10 @@ struct MutBuffer {
     // def __init__(self) -> None:
     MutBuffer() : _data({10, 20, 30}) {}
 
-    auto begin() { return __iter__().begin(); }
-    auto end() { return __iter__().end(); }
-    auto begin() const { return __iter__().begin(); }
-    auto end() const { return __iter__().end(); }
+    auto begin() { return this->__iter__().begin(); }
+    auto end() { return this->__iter__().end(); }
+    auto begin() const { return this->__iter__().begin(); }
+    auto end() const { return this->__iter__().end(); }
 
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[Int32]]:
@@ -50,14 +50,14 @@ struct MutBuffer {
     // def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
     ::tpy::SpanIter<int32_t> __iter__() {
         // return SpanIter(self.__span__())
-        return ::tpy::SpanIter<int32_t>(__span__());
+        return ::tpy::SpanIter<int32_t>(this->__span__());
     }
 
     // @auto_readonly
     // def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
     ::tpy::SpanIter<const int32_t> __iter__() const {
         // return SpanIter(self.__span__())
-        return ::tpy::SpanIter<const int32_t>(__span__());
+        return ::tpy::SpanIter<const int32_t>(this->__span__());
     }
 };
 
@@ -76,10 +76,10 @@ struct ROBuffer {
     // def __init__(self) -> None:
     ROBuffer() : _data({40, 50, 60}) {}
 
-    auto begin() { return __iter__().begin(); }
-    auto end() { return __iter__().end(); }
-    auto begin() const { return __iter__().begin(); }
-    auto end() const { return __iter__().end(); }
+    auto begin() { return this->__iter__().begin(); }
+    auto end() { return this->__iter__().end(); }
+    auto begin() const { return this->__iter__().begin(); }
+    auto end() const { return this->__iter__().end(); }
 
     // def __span__(self) -> Span[readonly[Int32]]:
     std::span<const int32_t> __span__() const {
@@ -91,7 +91,7 @@ struct ROBuffer {
     // def __iter__(self) -> SpanIter[readonly[Int32]]:
     ::tpy::SpanIter<const int32_t> __iter__() const {
         // return SpanIter(self.__span__())
-        return ::tpy::SpanIter<const int32_t>(__span__());
+        return ::tpy::SpanIter<const int32_t>(this->__span__());
     }
 };
 

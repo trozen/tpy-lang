@@ -55,7 +55,7 @@ struct Builder {
         // if self.value == target:
         if ((this->value == target)) {
             // return self
-            return &((*this));
+            return this;
         }
         // return None
         return nullptr;
@@ -67,7 +67,7 @@ struct Builder {
         // if self.value == target:
         if ((this->value == target)) {
             // return self
-            return &((*this));
+            return this;
         }
         // return None
         return nullptr;

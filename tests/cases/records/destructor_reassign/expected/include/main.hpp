@@ -43,7 +43,7 @@ struct Resource {
     // def __del__(self):
 
     ~Resource() {
-        if (!__tpy_owned_) return;
+        if (!this->__tpy_owned_) return;
         // print("drop", self.name)
         std::cout << "drop" << " " << this->name << "\n";
     }
@@ -80,7 +80,7 @@ struct Base {
     // def __del__(self):
 
     ~Base() {
-        if (!__tpy_owned_) return;
+        if (!this->__tpy_owned_) return;
         // print("~Base", self.tag)
         std::cout << "~Base" << " " << this->tag << "\n";
     }
@@ -114,7 +114,7 @@ struct Child : Base {
     // def __del__(self):
 
     ~Child() {
-        if (!__tpy_owned_) return;
+        if (!this->__tpy_owned_) return;
         // print("~Child", self.tag)
         std::cout << "~Child" << " " << this->tag << "\n";
     }

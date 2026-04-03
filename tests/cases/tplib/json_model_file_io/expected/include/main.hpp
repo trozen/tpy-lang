@@ -138,7 +138,7 @@ struct Item {
 
     std::string to_json(int32_t indent = 0) const {
         ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
-        __json_encode__(__writer);
+        this->__json_encode__(__writer);
         return __writer.finish();
     }
 
@@ -149,7 +149,7 @@ struct Item {
         try {
             // # Test @model file I/O: save_json, load_json, try_load_json.
             // from tpy import Int32
-            __f.write(to_json(indent));
+            __f.write(this->to_json(indent));
         } catch (...) {
             __ctx_1.__exit__();
             throw;

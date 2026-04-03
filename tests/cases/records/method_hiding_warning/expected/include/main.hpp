@@ -27,7 +27,7 @@ struct Animal {
     // def make_noise(self) -> None:
     void make_noise() const {
         // self.speak()
-        speak();
+        this->speak();
     }
 };
 

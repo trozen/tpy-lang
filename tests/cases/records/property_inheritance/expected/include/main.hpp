@@ -58,7 +58,7 @@ struct Child : Base {
     // def sum(self) -> Int32:
     int32_t sum() const {
         // return self.x + self.y
-        return (::tpy::add_check<int32_t>(x(), y()));
+        return (::tpy::add_check<int32_t>(this->x(), this->y()));
     }
 };
 

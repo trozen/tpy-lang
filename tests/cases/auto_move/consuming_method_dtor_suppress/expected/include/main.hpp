@@ -43,7 +43,7 @@ struct HeapVal {
     // def __del__(self):
 
     ~HeapVal() {
-        if (!__tpy_owned_) return;
+        if (!this->__tpy_owned_) return;
         // print("del")
         std::cout << "del" << "\n";
         // unsafe_drop(self._ptr)

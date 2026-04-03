@@ -86,7 +86,7 @@ struct SimpleList {
     // def __del__(self) -> None:
 
     ~SimpleList() {
-        if (!__tpy_owned_) return;
+        if (!this->__tpy_owned_) return;
         // for i in range(self._size):
         int32_t __stop_0 = this->_size;
         for (int32_t i = 0; i < __stop_0; ++i) {

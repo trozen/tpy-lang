@@ -39,7 +39,7 @@ struct Tracker {
     // def __del__(self):
 
     ~Tracker() {
-        if (!__tpy_owned_) return;
+        if (!this->__tpy_owned_) return;
         // print("drop", self.name)
         std::cout << "drop" << " " << this->name << "\n";
     }

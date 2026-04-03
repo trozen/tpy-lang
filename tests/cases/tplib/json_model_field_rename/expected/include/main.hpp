@@ -138,7 +138,7 @@ struct User {
 
     std::string to_json(int32_t indent = 0) const {
         ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
-        __json_encode__(__writer);
+        this->__json_encode__(__writer);
         return __writer.finish();
     }
 
@@ -149,7 +149,7 @@ struct User {
         try {
             // # @model field renaming: alias maps Python field name to JSON key.
             // from tpy import Int32
-            __f.write(to_json(indent));
+            __f.write(this->to_json(indent));
         } catch (...) {
             __ctx_1.__exit__();
             throw;
@@ -339,7 +339,7 @@ struct WithDefault {
 
     std::string to_json(int32_t indent = 0) const {
         ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
-        __json_encode__(__writer);
+        this->__json_encode__(__writer);
         return __writer.finish();
     }
 
@@ -350,7 +350,7 @@ struct WithDefault {
         try {
             // # @model field renaming: alias maps Python field name to JSON key.
             // from tpy import Int32
-            __f.write(to_json(indent));
+            __f.write(this->to_json(indent));
         } catch (...) {
             __ctx_4.__exit__();
             throw;
@@ -502,7 +502,7 @@ struct Base {
 
     std::string to_json(int32_t indent = 0) const {
         ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
-        __json_encode__(__writer);
+        this->__json_encode__(__writer);
         return __writer.finish();
     }
 
@@ -513,7 +513,7 @@ struct Base {
         try {
             // # @model field renaming: alias maps Python field name to JSON key.
             // from tpy import Int32
-            __f.write(to_json(indent));
+            __f.write(this->to_json(indent));
         } catch (...) {
             __ctx_7.__exit__();
             throw;
@@ -676,7 +676,7 @@ struct Extended : Base {
 
     std::string to_json(int32_t indent = 0) const {
         ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
-        __json_encode__(__writer);
+        this->__json_encode__(__writer);
         return __writer.finish();
     }
 
@@ -687,7 +687,7 @@ struct Extended : Base {
         try {
             // # @model field renaming: alias maps Python field name to JSON key.
             // from tpy import Int32
-            __f.write(to_json(indent));
+            __f.write(this->to_json(indent));
         } catch (...) {
             __ctx_10.__exit__();
             throw;

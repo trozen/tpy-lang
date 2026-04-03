@@ -27,7 +27,7 @@ struct Recursive {
             return 0;
         }
         // return self(x - 1) + 1
-        return (::tpy::add_check<int32_t>(__call__((::tpy::sub_check<int32_t>(x, 1))), 1));
+        return (::tpy::add_check<int32_t>(this->__call__((::tpy::sub_check<int32_t>(x, 1))), 1));
     }
 
     int32_t operator()(int32_t x) const {
@@ -53,7 +53,7 @@ struct Fibonacci {
             return n;
         }
         // return self(n - 1) + self(n - 2)
-        return (::tpy::add_check<int32_t>(__call__((::tpy::sub_check<int32_t>(n, 1))), __call__((::tpy::sub_check<int32_t>(n, 2)))));
+        return (::tpy::add_check<int32_t>(this->__call__((::tpy::sub_check<int32_t>(n, 1))), this->__call__((::tpy::sub_check<int32_t>(n, 2)))));
     }
 
     int32_t operator()(int32_t n) const {

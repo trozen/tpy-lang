@@ -41,7 +41,7 @@ struct Printer {
         // if x is not None:
         if ((x.has_value())) {
             // self.show(x)
-            show((*x));
+            this->show((*x));
         }
     }
 };

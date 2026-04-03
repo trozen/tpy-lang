@@ -175,7 +175,7 @@ struct Event {
 
     std::string to_json(int32_t indent = 0) const {
         ::tpystd::tplib::json::JsonWriter __writer = ::tpystd::tplib::json::JsonWriter(indent);
-        __json_encode__(__writer);
+        this->__json_encode__(__writer);
         return __writer.finish();
     }
 
@@ -186,7 +186,7 @@ struct Event {
         try {
             // # User-defined types as @model fields via __json_encode__/__json_decode__.
             // from __future__ import annotations
-            __f.write(to_json(indent));
+            __f.write(this->to_json(indent));
         } catch (...) {
             __ctx_1.__exit__();
             throw;
@@ -395,7 +395,7 @@ struct Schedule {
 
     std::string to_json(int32_t indent = 0) const {
         ::tpystd::tplib::json::JsonWriter __writer = ::tpystd::tplib::json::JsonWriter(indent);
-        __json_encode__(__writer);
+        this->__json_encode__(__writer);
         return __writer.finish();
     }
 
@@ -406,7 +406,7 @@ struct Schedule {
         try {
             // # User-defined types as @model fields via __json_encode__/__json_decode__.
             // from __future__ import annotations
-            __f.write(to_json(indent));
+            __f.write(this->to_json(indent));
         } catch (...) {
             __ctx_4.__exit__();
             throw;

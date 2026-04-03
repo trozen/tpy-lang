@@ -40,7 +40,7 @@ struct Base {
     // def __del__(self):
 
     ~Base() {
-        if (!__tpy_owned_) return;
+        if (!this->__tpy_owned_) return;
         // print("drop", self.name)
         std::cout << "drop" << " " << this->name << "\n";
     }

@@ -902,12 +902,18 @@ class CodeGenContext:
     def is_indirect_name(self, expr: TpyExpr) -> bool:
         """Check if expression needs indirect access (-> / deref).
 
-        Unifies pointer-globals (T*), pointer-locals (T*), and cross-module
-        imported pointer variables -- all use -> for field/method access
-        and (*x) for value dereference.
+        Unifies pointer-globals (T*), pointer-locals (T*), cross-module
+        imported pointer variables, and `self` (this pointer in methods)
+        -- all use -> for field/method access and (*x) for value dereference.
         """
         if isinstance(expr, TpyName) and expr.name in self.comp_local_names:
             return False
+        # self -> this (pointer) in instance methods, unless inside a generator
+        # where generator_self_ref is already a dereferenced reference
+        if (isinstance(expr, TpyName) and expr.name == "self"
+                and self.in_method and "self" not in self.current_func_params
+                and self.generator_self_ref is None):
+            return True
         if self._is_pointer_global(expr) or self.is_pointer_local(expr):
             return True
         if isinstance(expr, TpyName) and expr.name in self.user_imported_variables:

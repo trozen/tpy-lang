@@ -44,7 +44,7 @@ struct Base {
     // def __del__(self):
 
     ~Base() {
-        if (!__tpy_owned_) return;
+        if (!this->__tpy_owned_) return;
         // print("Base.del")
         std::cout << "Base.del" << "\n";
         // unsafe_drop(self._ptr)
@@ -87,7 +87,7 @@ struct Child : Base {
     // def __del__(self):
 
     ~Child() {
-        if (!__tpy_owned_) return;
+        if (!this->__tpy_owned_) return;
         // print("Child.del")
         std::cout << "Child.del" << "\n";
     }

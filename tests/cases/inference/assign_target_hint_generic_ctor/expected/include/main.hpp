@@ -43,7 +43,7 @@ struct Wrapper {
     // def __del__(self):
 
     ~Wrapper() {
-        if (!__tpy_owned_) return;
+        if (!this->__tpy_owned_) return;
         // self._storage.drop0()
         this->_storage.drop0();
     }

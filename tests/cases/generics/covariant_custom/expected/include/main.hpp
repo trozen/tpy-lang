@@ -129,7 +129,7 @@ struct Tagged {
     // def __del__(self) -> None:
 
     ~Tagged() {
-        if (!__tpy_owned_) return;
+        if (!this->__tpy_owned_) return;
         // if self._owned:
         if (this->_owned) {
             // unsafe_drop(self._ptr)

@@ -712,9 +712,10 @@ class ExpressionGenerator:
             # In generator method __next__(), self -> __self (struct reference field)
             if expr.name == "self" and self.ctx.generator_self_ref is not None:
                 return self.ctx.generator_self_ref
-            # self -> (*this) only in instance methods (self is implicit receiver, not a param)
+            # self -> this (pointer) in instance methods; callers use
+            # is_indirect_name to decide -> vs . and (*x) for value deref
             if expr.name == "self" and self.ctx.in_method and "self" not in self.ctx.current_func_params:
-                return "(*this)"
+                return "this"
             # Native global name substitution (Python name -> C/C++ name)
             # Skip if shadowed by a local variable
             if expr.name in self.ctx.native_global_names and expr.name not in self.ctx.local_scope_names:
@@ -2069,15 +2070,11 @@ class ExpressionGenerator:
         _skip_first_pass = (_fi is not None
                             and (_fi.cpp_template is not None or _fi.native_function))
         if not _skip_first_pass:
-            # self.method() returns early before the user-record TypeParamRef path,
-            # so it needs the first-pass args with full protocol/covariant handling.
-            _is_self_call = isinstance(expr.obj, TpyName) and expr.obj.name == "self"
-            if not _is_self_call:
-                _obj_type = self.types.get_resolved_type(expr.obj)
-                if isinstance(_obj_type, NamedType) and _obj_type.is_user_record:
-                    _ri = self.ctx.analyzer.registry.get_record_for_type(_obj_type)
-                    if _ri and _ri.get_method(expr.method):
-                        _skip_first_pass = True
+            _obj_type = self.types.get_resolved_type(expr.obj)
+            if isinstance(_obj_type, NamedType) and _obj_type.is_user_record:
+                _ri = self.ctx.analyzer.registry.get_record_for_type(_obj_type)
+                if _ri and _ri.get_method(expr.method):
+                    _skip_first_pass = True
         _is_native_stub = _fi is not None and bool(_fi.native_name or _fi.cpp_template)
         if not _skip_first_pass and _fi:
             params = expr.resolved_function_info.params
@@ -2201,11 +2198,6 @@ class ExpressionGenerator:
         if expr.inferred_type_args and not expr.user_module_call and not expr.is_static_call:
             method_targs = "<" + ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in expr.inferred_type_args) + ">"
 
-        # Handle self.method() -> just method() (inside method, implicit this)
-        if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
-            if self.ctx.generator_self_ref is not None:
-                return f"{self.ctx.generator_self_ref}.{expr.method}{method_targs}({args})"
-            return f"{expr.method}{method_targs}({args})"
         # Handle super().method() -> ParentClass::method(args)
         if expr.super_parent_type is not None:
             parent_cpp = expr.super_parent_type.to_cpp()
@@ -2412,10 +2404,6 @@ class ExpressionGenerator:
 
     def _gen_builtin_method_receiver(self, expr: TpyMethodCall) -> str:
         """Generate the receiver expression for a builtin method call (cpp_template or native_function)."""
-        if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
-            if self.ctx.generator_self_ref is not None:
-                return self.ctx.generator_self_ref
-            return "(*this)"
         obj = self.gen_expr(expr.obj)
         obj, an = self._apply_assign_narrowing(expr.obj, obj)
         is_ptr_deref = expr.deref_depth > 0 and self.types.get_resolved_type(expr.obj).is_pointer()
@@ -2453,13 +2441,6 @@ class ExpressionGenerator:
         # Property getter: delegate to normal method call codegen
         if expr.property_getter_call is not None:
             return self._gen_method_call(expr.property_getter_call)
-
-        # Handle self.field -> this->field (inside method)
-        # Using this-> avoids shadowing issues when field name matches parameter name
-        if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
-            if self.ctx.generator_self_ref is not None:
-                return f"{self.ctx.generator_self_ref}.{cpp_field}"
-            return f"this->{cpp_field}"
 
         # Check for module variable access (e.g., sys.argv) and enum member access
         if isinstance(expr.obj, TpyName):

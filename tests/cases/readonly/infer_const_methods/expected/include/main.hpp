@@ -79,9 +79,9 @@ struct Counter {
     // def increment_twice(self) -> None:  # delegates to self.increment() -- must NOT be const
     void increment_twice() {
         // self.increment()
-        increment();
+        this->increment();
         // self.increment()
-        increment();
+        this->increment();
     }
 
     // def get(self) -> Int32:             # only reads -- inferred const
@@ -121,7 +121,7 @@ struct Box {
     // def push_default(self) -> None:    # calls self.push() -- must NOT be const
     void push_default() {
         // self.push(0)
-        push(0);
+        this->push(0);
     }
 
     // def size(self) -> Int32:           # only reads -- inferred const

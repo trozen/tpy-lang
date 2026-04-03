@@ -41,7 +41,7 @@ struct Resource {
     // def __del__(self):
 
     ~Resource() {
-        if (!__tpy_owned_) return;
+        if (!this->__tpy_owned_) return;
         // print("destroying", self.name)
         std::cout << "destroying" << " " << this->name << "\n";
     }

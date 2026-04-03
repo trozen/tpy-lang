@@ -50,19 +50,19 @@ struct Rect {
     // def area(self) -> Int32:
     int32_t area() const {
         // return self.width * self.height
-        return (::tpy::mul_check<int32_t>(width(), height()));
+        return (::tpy::mul_check<int32_t>(this->width(), this->height()));
     }
 
     // def describe(self) -> str:
     std::string describe() const {
         // return f"{self.width}x{self.height}={self.area}"
-        return std::format("{}x{}={}", width(), height(), area());
+        return std::format("{}x{}={}", this->width(), this->height(), this->area());
     }
 
     // def scale(self, factor: Int32) -> None:
     void scale(int32_t factor) {
         // self.width = self._w * factor
-        set_width((::tpy::mul_check<int32_t>(this->_w, factor)));
+        this->set_width((::tpy::mul_check<int32_t>(this->_w, factor)));
     }
 };
 

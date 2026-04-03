@@ -147,7 +147,7 @@ struct Address {
 
     std::string to_json(int32_t indent = 0) const {
         ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
-        __json_encode__(__writer);
+        this->__json_encode__(__writer);
         return __writer.finish();
     }
 
@@ -158,7 +158,7 @@ struct Address {
         try {
             // # Test @model macro: all type combos, nesting, and round-trip.
             // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
-            __f.write(to_json(indent));
+            __f.write(this->to_json(indent));
         } catch (...) {
             __ctx_1.__exit__();
             throw;
@@ -858,7 +858,7 @@ struct Profile {
 
     std::string to_json(int32_t indent = 0) const {
         ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
-        __json_encode__(__writer);
+        this->__json_encode__(__writer);
         return __writer.finish();
     }
 
@@ -869,7 +869,7 @@ struct Profile {
         try {
             // # Test @model macro: all type combos, nesting, and round-trip.
             // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
-            __f.write(to_json(indent));
+            __f.write(this->to_json(indent));
         } catch (...) {
             __ctx_4.__exit__();
             throw;

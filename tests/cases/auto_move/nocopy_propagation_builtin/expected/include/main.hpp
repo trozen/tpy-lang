@@ -42,7 +42,7 @@ struct Storage {
     // def __del__(self):
 
     ~Storage() {
-        if (!__tpy_owned_) return;
+        if (!this->__tpy_owned_) return;
         // self.buf.drop0()
         this->buf.drop0();
     }

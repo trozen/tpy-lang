@@ -150,7 +150,7 @@ struct Item {
 
     std::string to_json(int32_t indent = 0) const {
         ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
-        __json_encode__(__writer);
+        this->__json_encode__(__writer);
         return __writer.finish();
     }
 
@@ -161,7 +161,7 @@ struct Item {
         try {
             // # Test panic on missing required field in @model deserialization.
             // from tpy import Int32, try_parse
-            __f.write(to_json(indent));
+            __f.write(this->to_json(indent));
         } catch (...) {
             __ctx_1.__exit__();
             throw;

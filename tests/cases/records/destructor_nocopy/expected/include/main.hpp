@@ -41,7 +41,7 @@ struct Handle {
     // def __del__(self):
 
     ~Handle() {
-        if (!__tpy_owned_) return;
+        if (!this->__tpy_owned_) return;
         // print("close", self.id)
         std::cout << "close" << " " << this->id << "\n";
     }

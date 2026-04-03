@@ -37,7 +37,7 @@ struct Base {
     // def __del__(self):
 
     ~Base() {
-        if (!__tpy_owned_) return;
+        if (!this->__tpy_owned_) return;
         // print("Base destroyed")
         std::cout << "Base destroyed" << "\n";
     }
@@ -72,7 +72,7 @@ struct Child : Base {
     // def __del__(self):
 
     ~Child() {
-        if (!__tpy_owned_) return;
+        if (!this->__tpy_owned_) return;
         // print("Child destroyed:", self.label)
         std::cout << "Child destroyed:" << " " << this->label << "\n";
     }

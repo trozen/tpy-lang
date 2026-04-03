@@ -104,7 +104,7 @@ struct Container {
         // if self.node is not None:
         if ((this->node != nullptr)) {
             // self.mutate()
-            mutate();
+            this->mutate();
             // return self.node.value  # tpyc: nullable(self.node)
             return ::tpy::deref_check(this->node).value;
         }
