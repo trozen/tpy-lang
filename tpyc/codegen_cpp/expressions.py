@@ -323,12 +323,22 @@ class ExpressionGenerator:
         # Also check the C++ declared type for variables whose sema type was
         # narrowed (e.g. inside `if x is not None:`). The sema type is the
         # narrowed inner type but the C++ variable is still std::optional<T>.
+        # Fields always use std::optional<T> regardless of uses_pointer_repr(),
+        # so include field accesses when sema has actually narrowed them.
         cpp_declared_type = self._get_cpp_declared_type(expr)
+        is_narrowed_optional_field = (
+            isinstance(expr, TpyFieldAccess)
+            and cpp_declared_type is not None
+            and isinstance(cpp_declared_type, OptionalType)
+            and analyzed_type is not None
+            and not isinstance(analyzed_type, OptionalType)
+        )
         is_value_optional = (
             isinstance(expr_type, OptionalType) and not expr_type.uses_pointer_repr()
-        ) or (
+        ) or is_narrowed_optional_field or (
             cpp_declared_type is not None
-            and isinstance(cpp_declared_type, OptionalType) and not cpp_declared_type.uses_pointer_repr()
+            and isinstance(cpp_declared_type, OptionalType)
+            and not cpp_declared_type.uses_pointer_repr()
         )
         effective_target = target_type
         if isinstance(effective_target, OwnType):
@@ -378,22 +388,22 @@ class ExpressionGenerator:
         return None
 
     def _is_narrowed_value_optional(self, expr: TpyExpr) -> bool:
-        """True if expr is a value-optional whose sema type was narrowed to non-Optional.
+        """True if expr is an optional whose sema type was narrowed to non-Optional.
 
-        The C++ variable is still std::optional<T> but sema proved it holds a value
+        The C++ storage is still std::optional<T> but sema proved it holds a value
         (e.g. inside `if x is not None:`). Callers use this to pass target_type
         to gen_expr_deref so it emits the (*x) unwrap.
         """
         cpp_type = self._get_cpp_declared_type(expr)
         if (cpp_type is not None
                 and isinstance(cpp_type, OptionalType)
-                and not cpp_type.uses_pointer_repr()):
+                and (isinstance(expr, TpyFieldAccess) or not cpp_type.uses_pointer_repr())):
             analyzed = self.ctx.get_expr_type(expr)
             return analyzed is not None and not isinstance(analyzed, OptionalType)
         return False
 
     def _maybe_unwrap_narrowed_optional(self, expr_obj: TpyExpr, obj: str, needs_deref: bool) -> str:
-        """Unwrap narrowed value-Optional receivers.
+        """Unwrap narrowed Optional receivers.
 
         When sema has proven a std::optional<T> variable holds a value,
         the C++ variable is still optional -- dereference it with (*obj).
@@ -404,7 +414,8 @@ class ExpressionGenerator:
         cpp_decl = self._get_cpp_declared_type(expr_obj)
         analyzed = self.ctx.get_expr_type(expr_obj)
         if (cpp_decl is not None
-                and isinstance(cpp_decl, OptionalType) and not cpp_decl.uses_pointer_repr()
+                and isinstance(cpp_decl, OptionalType)
+                and (isinstance(expr_obj, TpyFieldAccess) or not cpp_decl.uses_pointer_repr())
                 and not isinstance(analyzed, OptionalType)):
             return f"(*{obj})"
         return obj
@@ -2347,10 +2358,14 @@ class ExpressionGenerator:
         # (OptionalType non-value expressions like function calls return T*)
         obj_type = self.ctx.get_expr_type(expr.obj)
         is_optional_ptr = isinstance(obj_type, OptionalType) and obj_type.uses_pointer_repr()
-        # Narrowed std::optional<T>: sema sees T but C++ var is still std::optional<T>
+        # Narrowed std::optional<T>: sema sees T but C++ var is still std::optional<T>.
+        # Fields always use std::optional<T> (not pointer repr), so dereference
+        # unconditionally. Locals with pointer repr (T*) are handled by is_indirect.
         if not isinstance(obj_type, OptionalType):
             cpp_decl = self._get_cpp_declared_type(expr.obj)
-            if isinstance(cpp_decl, OptionalType) and not cpp_decl.uses_pointer_repr():
+            if isinstance(cpp_decl, OptionalType) and (
+                isinstance(expr.obj, TpyFieldAccess) or not cpp_decl.uses_pointer_repr()
+            ):
                 obj = f"(*{obj})"
         deref_chain = ".__deref__()" * expr.deref_depth
         # Optional with runtime null check -- must come before deref fast path
@@ -2493,10 +2508,14 @@ class ExpressionGenerator:
         is_narrowed = (isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.narrowed_vars) or is_assign_narrowed
         is_indirect = self.ctx.is_indirect_name(expr.obj) and not is_narrowed
         is_optional_ptr = isinstance(obj_type, OptionalType) and obj_type.uses_pointer_repr()
-        # Narrowed std::optional<T>: sema sees T but C++ var is still std::optional<T>
+        # Narrowed std::optional<T>: sema sees T but C++ var is still std::optional<T>.
+        # Fields always use std::optional<T> (not pointer repr), so dereference
+        # unconditionally. Locals with pointer repr (T*) are handled by is_indirect.
         if not isinstance(obj_type, OptionalType):
             cpp_decl = self._get_cpp_declared_type(expr.obj)
-            if isinstance(cpp_decl, OptionalType) and not cpp_decl.uses_pointer_repr():
+            if isinstance(cpp_decl, OptionalType) and (
+                isinstance(expr.obj, TpyFieldAccess) or not cpp_decl.uses_pointer_repr()
+            ):
                 obj = f"(*{obj})"
         deref_chain = ".__deref__()" * expr.deref_depth
         # Optional with runtime null check -- must come before deref fast path
