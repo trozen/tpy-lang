@@ -13,7 +13,7 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, Int32Type, FixedIntType, BigIntType, BIGINT,
     FloatType, Float32Type,
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
-    PendingStrType, StrType, StringType, StrViewType, LiteralType,
+    PendingStrType, PendingViewType, StrType, StringType, StrViewType, LiteralType,
     PendingBytesType, BytesType, ByteArrayType, BytesViewType,
     NamedType, PtrType, OwnType, FnType, CallableType, VoidType, NoneType,
     unwrap_ref_type,
@@ -99,6 +99,7 @@ def type_matches_strict(
         def _strip(t: TpyType) -> TpyType:
             t = unwrap_ref_type(t)
             if isinstance(t, _Own): t = t.wrapped
+            if isinstance(t, PendingViewType): t = t.family.owned_type
             return t
         if (all(_strip(a) == _strip(p) for a, p in zip(arg_inner.param_types, param_inner.param_types))
                 and _strip(arg_inner.return_type) == _strip(param_inner.return_type)):
@@ -118,7 +119,10 @@ def type_matches_strict(
             and (arg_inner.return_type == param_inner.return_type
                  or isinstance(param_inner.return_type, VoidType))):
         return True
-    # PendingStrType (unresolved str local) matches str params
+    # PendingViewType: same-family pending types match each other and their resolved types
+    if isinstance(arg_inner, PendingViewType) and isinstance(param_inner, PendingViewType):
+        if arg_inner.family is param_inner.family:
+            return True
     if isinstance(arg_inner, PendingStrType) and isinstance(param_inner, StrType):
         return True
     # Single-value LiteralType matches multi-value LiteralType if value is in the set.

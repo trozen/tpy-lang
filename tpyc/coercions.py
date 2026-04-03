@@ -125,6 +125,13 @@ COERCIONS: list[Coercion] = [
         check_range=lambda lit, target: lit.value is None or (target.min_value <= lit.value <= target.max_value),
     ),
 
+    # Integer literal to BigInt (always valid)
+    Coercion(
+        name="int_literal_to_bigint",
+        from_type=IntLiteralType,
+        to_type=BigIntType,
+    ),
+
     # Widening between fixed-width integers (e.g. Int8 -> Int32, UInt8 -> Int16)
     Coercion(
         name="fixed_int_widening",

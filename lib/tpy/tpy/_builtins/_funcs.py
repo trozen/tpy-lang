@@ -117,6 +117,18 @@ def min(a: float, b: float) -> float: ...
 @cpp_template("std::fmin(std::fmin({0}, {1}), {2})")
 def min(a: float, b: float, c: float) -> float: ...
 
+@overload
+@pure
+@readonly
+@cpp_template("::tpy::min_key({0}, {1}, {2})")
+def min[T, K: Comparable](a: T, b: T, key: Fn[[T], K]) -> T: ...
+
+@overload
+@pure
+@readonly
+@cpp_template("::tpy::min3_key({0}, {1}, {2}, {3})")
+def min[T, K: Comparable](a: T, b: T, c: T, key: Fn[[T], K]) -> T: ...
+
 
 @overload
 @pure
@@ -153,6 +165,18 @@ def max(a: float, b: float) -> float: ...
 @readonly
 @cpp_template("std::fmax(std::fmax({0}, {1}), {2})")
 def max(a: float, b: float, c: float) -> float: ...
+
+@overload
+@pure
+@readonly
+@cpp_template("::tpy::max_key({0}, {1}, {2})")
+def max[T, K: Comparable](a: T, b: T, key: Fn[[T], K]) -> T: ...
+
+@overload
+@pure
+@readonly
+@cpp_template("::tpy::max3_key({0}, {1}, {2}, {3})")
+def max[T, K: Comparable](a: T, b: T, c: T, key: Fn[[T], K]) -> T: ...
 
 
 # pow(x, y) -- checked exponentiation
@@ -483,10 +507,17 @@ def sum(iterable: Iterable[float], start: float) -> float: ...
 
 # -- sorted --
 
+@overload
 @pure
 @readonly
 @cpp_template("::tpy::builtin_sorted<{T}>({0})")
 def sorted[T: Comparable](iterable: Iterable[T]) -> Own[list[T]]: ...
+
+@overload
+@pure
+@readonly
+@cpp_template("::tpy::builtin_sorted_key<{T}>({0}, {1})")
+def sorted[T, K: Comparable](iterable: Iterable[T], key: Fn[[T], K]) -> Own[list[T]]: ...
 
 
 # -- bin / hex / oct --

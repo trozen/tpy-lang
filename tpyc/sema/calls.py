@@ -24,7 +24,7 @@ from ..typesys import (
 from ..parse import (
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
-    TpyTypeParamConstruct, TpyCoerce,
+    TpyTypeParamConstruct, TpyCoerce, TpyLambda,
     TpyDictLiteral, TpySetLiteral,
 )
 from ..modules import extract_type_params
@@ -1855,6 +1855,8 @@ class CallAnalyzer:
         for k, v in partial_inferred.items():
             if isinstance(v, IntLiteralType):
                 partial_inferred[k] = self.ctx.default_int_type or INT32
+            elif isinstance(v, PendingViewType):
+                partial_inferred[k] = v.family.owned_type
 
         if partial_inferred:
             for i in fn_positions:
@@ -1877,12 +1879,30 @@ class CallAnalyzer:
 
         return arg_types  # type: ignore[return-value]
 
+    def _flatten_key_kwarg(self, expr: TpyCall, name: str) -> None:
+        """Flatten key= kwarg to positional arg for sorted/min/max."""
+        if not expr.kwargs:
+            return
+        if name not in ("sorted", "min", "max"):
+            return
+        bad = [k for k in expr.kwargs if k != "key"]
+        if bad:
+            raise self.ctx.error(
+                f"'{name}()' does not support keyword argument '{bad[0]}'", expr)
+        if "key" in expr.kwargs:
+            key_arg = expr.kwargs["key"]
+            if isinstance(key_arg, TpyLambda):
+                key_arg.readonly_params = True
+            expr.args.append(key_arg)
+            expr.kwargs = {}
+
     def _analyze_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> TpyType:
         """Type-check a call to a builtin function using unified FunctionInfo overloads.
 
         Uses two-pass overload resolution: prefer exact type matches over coercion matches.
         For generic overloads (with type_params), uses type inference.
         """
+        self._flatten_key_kwarg(expr, overloads[0].name)
         self._reject_kwargs_for_builtin(expr, overloads[0].name)
         protocol_checker = self.protocols.type_conforms_to_protocol
 
@@ -1923,6 +1943,11 @@ class CallAnalyzer:
                 explicit_type_args=explicit,
             )
             if type_subst is not None:
+                # Resolve PendingViewType to owned type for builtin overloads
+                # (codegen can't resolve these via view_vars like user functions)
+                for k, v in type_subst.items():
+                    if isinstance(v, PendingViewType):
+                        type_subst[k] = v.family.owned_type
                 n_explicit = len(explicit) if explicit else 0
                 if n_explicit < len(overload.type_params):
                     prefer_strview_for_literals(type_subst, overload, expr.args,

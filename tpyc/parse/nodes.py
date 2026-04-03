@@ -375,6 +375,7 @@ class TpyLambda(TpyExpr):
     inferred_return_type: 'TpyType | None' = None
     captured_names: list[str] = field(default_factory=list)
     captures_by_value: bool = False  # True for Callable context (captures escape)
+    readonly_params: bool = False  # True when params should be const (key functions)
 
     def children(self) -> list[TpyExpr]:
         # Lambda creates its own scope; outer walks should not recurse into

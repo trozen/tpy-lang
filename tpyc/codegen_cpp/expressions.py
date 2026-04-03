@@ -3682,9 +3682,8 @@ class ExpressionGenerator:
         params = []
         for pname, ptype in zip(expr.param_names, expr.inferred_param_types):
             cpp_name = escape_cpp_name(pname)
-            if expr.captures_by_value:
-                # Callable context: lambda params must match std::function signature
-                # (const ref for non-value types, not mutable ref)
+            if expr.captures_by_value or expr.readonly_params:
+                # Callable context or key function: const ref for non-value types
                 cpp_type_str = CallableType._callable_param_cpp(ptype)
                 cpp_type = f"{cpp_type_str} {cpp_name}"
             else:
@@ -3713,7 +3712,11 @@ class ExpressionGenerator:
             return f"{capture}({params_str}) {{ {body_code}; }}"
         # Explicit trailing return type -- needed for Ref[T] (C++ lambda
         # deduction strips references) and consistent for all lambdas.
-        trailing = f" -> {expr.inferred_return_type.to_cpp()}"
+        ret_type = expr.inferred_return_type
+        if expr.readonly_params:
+            trailing = f" -> {ret_type.to_cpp_return_const()}"
+        else:
+            trailing = f" -> {ret_type.to_cpp()}"
         return f"{capture}({params_str}){trailing} {{ return {body_code}; }}"
 
     def _gen_function_ref(self, expr: TpyName) -> str:

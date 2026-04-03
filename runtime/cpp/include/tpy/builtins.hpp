@@ -262,6 +262,62 @@ std::vector<T> builtin_sorted(Iter&& iterable) {
     return result;
 }
 
+template<typename T, typename Iter, typename KeyFn>
+std::vector<T> builtin_sorted_key(Iter&& iterable, KeyFn&& key) {
+    std::vector<T> items;
+    for (auto&& elem : iterable) {
+        items.emplace_back(std::forward<decltype(elem)>(elem));
+    }
+    // Schwartzian transform: compute key once per element (O(n)), then sort
+    // by pre-computed keys (O(n log n) comparisons on cheap key values).
+    using K = std::decay_t<decltype(key(items[0]))>;
+    std::vector<std::pair<K, size_t>> decorated;
+    decorated.reserve(items.size());
+    for (size_t i = 0; i < items.size(); ++i) {
+        decorated.emplace_back(key(items[i]), i);
+    }
+    std::stable_sort(decorated.begin(), decorated.end(),
+        [](const auto& a, const auto& b) { return a.first < b.first; });
+    std::vector<T> result;
+    result.reserve(items.size());
+    for (auto& [k, idx] : decorated) {
+        result.emplace_back(std::move(items[idx]));
+    }
+    return result;
+}
+
+// -- min/max with key --
+
+template<typename T, typename KeyFn>
+const T& min_key(const T& a, const T& b, KeyFn&& key) {
+    auto ka = key(a), kb = key(b);
+    return kb < ka ? b : a;
+}
+
+template<typename T, typename KeyFn>
+const T& min3_key(const T& a, const T& b, const T& c, KeyFn&& key) {
+    auto ka = key(a), kb = key(b), kc = key(c);
+    if (kb < ka) {
+        return kc < kb ? c : b;
+    }
+    return kc < ka ? c : a;
+}
+
+template<typename T, typename KeyFn>
+const T& max_key(const T& a, const T& b, KeyFn&& key) {
+    auto ka = key(a), kb = key(b);
+    return ka < kb ? b : a;
+}
+
+template<typename T, typename KeyFn>
+const T& max3_key(const T& a, const T& b, const T& c, KeyFn&& key) {
+    auto ka = key(a), kb = key(b), kc = key(c);
+    if (ka < kb) {
+        return kb < kc ? c : b;
+    }
+    return ka < kc ? c : a;
+}
+
 // -- bin / hex / oct --
 
 inline std::string builtin_bin(int64_t x) {

@@ -1,0 +1,1 @@
+main.py:11: error: Type 'Opaque' does not satisfy 'Comparable' required by 'sorted'

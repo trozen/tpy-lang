@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, TypeParamRef, NamedType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType,
-    ArrayType, SpanType, ListType, PendingListType, GenExprType, CopyIterType, OwnIterType, SelfType, OptionalType, UnionType,
+    ArrayType, SpanType, ListType, PendingListType, PendingViewType, GenExprType, CopyIterType, OwnIterType, SelfType, OptionalType, UnionType,
     TupleType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
     NoneType, VoidType, FnType, CallableType,
@@ -827,7 +827,9 @@ class TypeOperations:
     def types_match_for_inference(self, type_a: TpyType, type_b: TpyType) -> bool:
         """Check if two types match for inference consistency.
 
-        Handles IntLiteralType matching other integer types (BigInt, Int32).
+        Handles IntLiteralType matching other integer types (BigInt, Int32),
+        and PendingViewType (PendingStr/PendingBytes) matching each other
+        and their resolved types.
         """
         if type_a == type_b:
             return True
@@ -839,6 +841,13 @@ class TypeOperations:
         # Both IntLiteralType - they're compatible
         if isinstance(type_a, IntLiteralType) and isinstance(type_b, IntLiteralType):
             return True
+        # PendingViewType (PendingStr/PendingBytes) matches same-family pending or resolved types
+        if isinstance(type_a, PendingViewType) and isinstance(type_b, PendingViewType):
+            return type_a.family is type_b.family
+        if isinstance(type_a, PendingViewType):
+            return type_b in (type_a.family.owned_type, type_a.family.view_type)
+        if isinstance(type_b, PendingViewType):
+            return type_a in (type_b.family.owned_type, type_b.family.view_type)
         return False
 
     def infer_type_params_for_function(

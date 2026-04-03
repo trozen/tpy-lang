@@ -51,7 +51,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Inline iterators: `@inline` on generator functions to unroll the loop body at the call site instead of creating a state machine. Zero overhead, important for hot paths. Generalizes what `range()` already does implicitly to user-defined iterators. Inspired by Nim's inline vs closure iterator distinction.
 
 ## Builtins
-- `sorted(key=)`, `min(key=)`, `max(key=)`: accept an optional `key` parameter (`Fn` or `Callable`). `sorted(items, key=lambda x: x.score)` is extremely common. The lambda/Fn infrastructure is already there -- just needs builtin signatures and codegen for comparison-via-key.
+- `sorted(key=)`/`min(key=)`/`max(key=)` type promotion: `sorted([3,1,4], key=negate)` where `negate(x: int)` widens T from Int32 (list literal element) to BigInt (key function param). The result is `list[BigInt]` instead of `list[Int32]`, with hidden Int32->BigInt copies. Root cause: `types_match_for_inference` lets IntLiteral be overridden by any concrete int type. Fixing it narrowly (seed T from iterable before Fn matching) risks breaking `foo(3, bigint_var)` for generic `foo[T](a: T, b: T)`. Needs design decision: should the iterable's element type always win, or is widening acceptable?
 - `map()` / `filter()`: reference preservation through single-combinator usage and composed combinators (e.g. `enumerate(map(...))`, `zip(map(...), map(...))`) works via `Ref[T]` and `val_or_ref<T>` tuple elements.
 - type(); (in future `T = type(x); z = T()`)
 - tpy.ctypes.CInt32
