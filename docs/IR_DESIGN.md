@@ -4,8 +4,20 @@
 
 | Feature | Status |
 |---------|--------|
-| **Phase 1: THIR** -- typed, immutable IR between sema and codegen | Not started |
-| **Phase 2: MIR** -- CFG-based IR for borrow checking and optimization | Not started |
+| THIR node definitions (`tpyc/thir/nodes.py`) | Not started |
+| AST + sema -> THIR lowering (`tpyc/thir/lower.py`) | Not started |
+| `--dump-thir` debug output | Not started |
+| THIR-backed codegen context | Not started |
+| Codegen migration from analyzer/AST to THIR | Not started |
+| MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
+| THIR -> MIR lowering (`tpyc/mir/lower.py`) | Not started |
+| `--dump-mir` debug output | Not started |
+| MIR liveness pass | Not started |
+| MIR move/copy lowering and move optimization | Not started |
+| MIR advisory loan checker (default mode) | Not started |
+| MIR safe opt-in enforcement mode | Not started |
+| MIR-backed codegen | Not started |
+| Retirement of old sema/codegen ownership logic | Not started |
 
 ---
 
@@ -77,7 +89,7 @@ positives. MIR solved this.
 
 ---
 
-## Phase 1: Typed High-Level IR (THIR)
+## THIR Design
 
 ### Goal
 
@@ -95,6 +107,9 @@ codegen (and later MIR lowering) can consume without referencing the `SemanticAn
 | `subscript_bounds_facts` dict | `THIRSubscript.bounds_safe: bool` on the node |
 | `all_last_uses: set[int]` + `movable_locals: set[str]` | `THIRName.is_last_use: bool` + `THIRName.is_movable: bool` on the node |
 | `resolved_function_info` optional field | `THIRCall.target: ResolvedFunction` required field |
+| Per-function analyzer dicts (`function_scan_results`, `function_hoisted_vars`, `function_movable_locals`, `function_move_through_vars`, `function_global_decls`) | `THIRFunction.layout` and `THIRFunction.declared_globals` |
+| Module options from sema/context (`default_int_type`, `default_int_for_literal`) | `THIRModule` required fields |
+| View/literal registries (`str_vars`, `bytes_vars`, `list_literals`, `dict_literals`, `set_literals`) | explicit `view_info` / `literal_info` on the relevant THIR nodes |
 | Codegen holds `self.ctx.analyzer` reference | Codegen receives `THIRModule`, no analyzer reference |
 
 ### THIR Node Hierarchy
@@ -109,6 +124,8 @@ THIRModule
   enums: list[THIREnum]
   globals: list[THIRGlobal]
   top_level: list[THIRStmt]
+  default_int_type: TpyType
+  default_int_for_literal: TpyType
   type_registry: TypeRegistry          # shared, immutable after sema
 
 THIRFunction
@@ -116,15 +133,40 @@ THIRFunction
   params: list[THIRParam]
   return_type: TpyType
   body: list[THIRStmt]
+  layout: THIRFunctionLayout
+  declared_globals: frozenset[str]
   mutated_params: frozenset[str]       # from Phase 2 propagation
   is_readonly: bool
   return_borrows_from: frozenset[int]  # param indices
   is_generic: bool
   type_params: list[TypeParam]
   overload_group: str | None
-  is_generator: bool                   # generator function (yield)
-  generator_yield_type: TpyType | None # yield element type
-  generator_states: list[int]          # yield state numbers
+  generator: THIRGeneratorInfo | None
+
+THIRFunctionLayout
+  hoisted_locals: frozenset[str]
+  movable_locals: frozenset[str]
+  move_through_locals: frozenset[str]
+  pointer_locals: frozenset[str]
+  ref_locals: frozenset[str]
+  reassigned_locals: frozenset[str]    # affects C++ declaration style / slot handling
+
+THIRGeneratorInfo
+  yield_type: TpyType
+  states: list[THIRGeneratorState]
+  frame_fields: list[THIRSyntheticField]
+  strategy: GeneratorStrategy          # current codegen strategy, if any
+
+GeneratorStrategy
+  = current backend-defined enum matching generator lowering variants
+
+THIRGeneratorState
+  state_id: int
+  resume_label: str
+
+THIRSyntheticField
+  name: str
+  type: TpyType
 
 THIRParam
   name: str
@@ -200,9 +242,54 @@ THIRLiteral
 THIRListLiteral
   elements: list[THIRExpr]
   element_type: TpyType                # resolved element type
+  literal_info: THIRLiteralInfo | None
   result_type: TpyType
 
-# ... (dict, set, tuple, array, f-string, comprehension, lambda, etc.)
+THIRDictLiteral
+  items: list[(THIRExpr, THIRExpr)]
+  key_type: TpyType
+  value_type: TpyType
+  literal_info: THIRLiteralInfo | None
+  result_type: TpyType
+
+THIRSetLiteral
+  elements: list[THIRExpr]
+  element_type: TpyType
+  literal_info: THIRLiteralInfo | None
+  result_type: TpyType
+
+THIRTupleLiteral
+  elements: list[THIRExpr]
+  result_type: TpyType
+
+THIRTupleUnpack
+  targets: list[THIRExpr]
+  value: THIRExpr
+  result_type: TpyType
+
+THIRComprehension
+  kind: AggregateKind
+  element: THIRExpr
+  clauses: list[THIRComprehensionClause]
+  result_type: TpyType
+
+THIRGeneratorExpr
+  element: THIRExpr
+  clauses: list[THIRComprehensionClause]
+  result_type: TpyType
+
+THIRComprehensionClause
+  = For(target: THIRExpr, iterable: THIRExpr)
+  | If(condition: THIRExpr)
+
+THIRLiteralInfo
+  needs_stable_storage: bool
+
+THIRViewInfo
+  source_kind: str                     # str / bytes / span / ptr / field / element
+  source_expr: THIRExpr
+
+# ... (array, f-string, lambda, etc.)
 ```
 
 #### Statements
@@ -214,11 +301,13 @@ THIRVarDecl
   init: THIRExpr | None
   is_hoisted: bool                     # escapes inner scope
   is_pointer_local: bool               # T* slot (non-value type local)
+  view_info: THIRViewInfo | None
   narrowing_facts: dict[str, TpyType]  # from isinstance/assert on this decl
 
 THIRAssign
   target: THIRExpr                     # name, field, subscript
   value: THIRExpr
+  view_info: THIRViewInfo | None
 
 THIRAugAssign
   target: THIRExpr                     # name, field, subscript
@@ -275,8 +364,14 @@ THIRYield
   state_id: int                        # generator state machine ID
 
 THIRTryExcept                          # @error_return(E) zero-cost error handling
+  kind: TryKind                        # ErrorReturn or Throw
+  error_local: str | None
   body: list[THIRStmt]
   handlers: list[THIRExceptHandler]
+
+TryKind
+  = ErrorReturn
+  | Throw
 
 THIRWith
   context: THIRExpr
@@ -298,6 +393,21 @@ def lower_module(ast: TpyModule, analyzer: SemanticAnalyzer) -> THIRModule:
 This is where all `id()`-keyed lookups, optional field reads, and side table accesses
 are resolved into concrete THIR fields. After lowering, the analyzer can be discarded.
 
+Two requirements are important here:
+
+1. **Implicit coercions must be materialized.** Every sema-selected conversion becomes
+   an explicit `THIRCoerce` at the exact site where it applies: call arguments,
+   assignments, returns, operator operands, literal elements, default arguments,
+   `Own` stripping, optional wrapping, enum-from-value, `str -> StrView`,
+   `bytes -> BytesView`, and the other coercion families currently scattered across
+   sema. THIR lowering must not rely on codegen or MIR lowering to rediscover them.
+
+2. **THIR must be codegen-complete.** If current codegen needs per-function layout
+   facts, view provenance, literal lowering metadata, module integer defaults,
+   generator frame shape, or declared globals, THIR must carry an explicit equivalent.
+   The shape may improve over today's analyzer dicts, but the analyzer dependency must
+   end after THIR lowering.
+
 ### Debugging: `--dump-thir`
 
 A human-readable text format for inspecting the THIR:
@@ -313,24 +423,99 @@ fn main() -> Void:
 
 This makes the resolved types, overloads, and optimization facts visible at a glance.
 
+## Rollout Plan
+
 ### Migration Strategy
 
-Codegen currently reads from two sources: AST node annotations and `SemanticAnalyzer`
-state. The migration is mechanical:
+The migration should be incremental. The compiler currently has three concerns tangled
+together:
 
-1. Define THIR node types in `tpyc/thir/nodes.py`
-2. Implement `lower_module()` in `tpyc/thir/lower.py`
-3. Add `--dump-thir` to CLI
-4. Create a `THIRCodeGenContext` that reads from THIR instead of analyzer
-5. Migrate codegen modules one at a time (expressions, statements, functions, records)
-6. Remove `analyzer` reference from `CodeGenContext`
-7. Run full test suite at each step -- output should not change
+- sema as the source of truth for typed program facts
+- borrow/move analysis spread across sema and codegen
+- codegen reading directly from analyzer internals
 
-The lowering pass is the only new logic. Everything else is rewiring existing reads.
+Those should be separated in phases. The key sequencing principle:
+
+- **switch codegen to THIR before switching codegen to MIR**
+
+THIR is structurally close to the current codegen input, so it is the right first
+boundary. MIR should first become the analysis source of truth, and only later the
+emission source of truth.
+
+#### Migration Principles
+
+1. **Preserve behavior first.** Early THIR and MIR work should not intentionally change
+   generated code or diagnostics.
+2. **Make phase boundaries explicit before changing semantics.** First remove analyzer
+   coupling, then move borrow/move logic into MIR, then strengthen enforcement.
+3. **Advisory first, safe mode later.** The MIR loan checker must initially preserve the
+   current migration-friendly warning behavior. Safe opt-in enforcement is layered on
+   after the analysis is stable.
+4. **Keep explicit low-level tools.** `Ptr[T]` remains available in both default and safe
+   mode; only pointer arithmetic / unchecked pointer fabrication stay in `tpy.unsafe`.
+5. **Run old and new analyses in parallel during transition.** MIR diagnostics should be
+   compared against existing sema behavior before MIR becomes authoritative.
+
+#### Recommended Rollout
+
+Before any codegen switch, the IR must first be complete enough to replace the current
+analyzer coupling:
+
+- **Before THIR-backed codegen**: THIR must cover per-function layout/scan facts,
+  module options, explicit coercions, view/literal metadata, generator frame metadata,
+  and declared globals.
+- **Before MIR-backed codegen**: MIR must preserve narrowing, structured region tags
+  for reconstructable control flow, and both return-tier and throw-tier error handling.
+
+1. **Define THIR nodes** in `tpyc/thir/nodes.py`
+2. **Implement `lower_module()`** in `tpyc/thir/lower.py`
+3. **Add `--dump-thir`** to CLI
+4. **Create a `THIRCodeGenContext`** that reads from THIR instead of analyzer
+5. **Migrate codegen modules one at a time** (expressions, statements, functions, records)
+6. **Remove analyzer references from codegen**
+7. **Define MIR nodes** in `tpyc/mir/nodes.py`
+8. **Lower THIR -> MIR** in `tpyc/mir/lower.py`
+9. **Add `--dump-mir`**
+10. **Implement MIR liveness + move/copy passes**
+11. **Implement MIR advisory loan checker**
+12. **Run MIR checker in parallel with existing sema borrow/move logic**
+13. **Make MIR authoritative for ownership/borrow diagnostics**
+14. **Add safe opt-in mode** on top of the same MIR analysis
+15. **Switch codegen from THIR to MIR** once MIR carries enough information for readable,
+    stable emission
+16. **Retire old sema/codegen ownership logic**
+
+#### Why THIR-Backed Codegen Comes First
+
+Jumping directly from "analyzer-backed codegen" to "MIR-backed codegen" would mix four
+independent risks:
+
+- new IR design bugs
+- new lowering bugs
+- new borrow/move analysis bugs
+- codegen porting bugs
+
+Switching to THIR first isolates the representation migration from the ownership-model
+migration. MIR can then mature as an analysis artifact before it becomes the executable
+source.
+
+#### Behavior Expectations By Stage
+
+- **THIR stages**: no intentional behavior change; output should stay identical
+- **Early MIR stages**: analysis/debug only; codegen still reads THIR
+- **MIR advisory stages**: diagnostics may be compared or duplicated, but default
+  severity stays warning-level for migration-friendliness
+- **Safe mode stages**: selected MIR violations become errors only under explicit opt-in
+- **MIR-backed codegen**: ownership and control-flow decisions now come from MIR, not
+  sema/codegen heuristics
+
+Run the full test suite at each stage. THIR migration should be behavior-preserving;
+later MIR stages may intentionally alter diagnostics or move/copy decisions, but only
+when the corresponding phase is made authoritative.
 
 ---
 
-## Phase 2: Mid-Level IR (MIR)
+## MIR Design
 
 ### Goal
 
@@ -372,7 +557,8 @@ Terminator
   | Panic(message: str)
   | Switch(operand: MIROperand, arms: list[(Pattern, BlockId)], default: BlockId)
   | Yield(value: MIROperand, resume: BlockId)     # generator yield point
-  | Invoke(call: MIRRvalue, ok: BlockId, err: BlockId)  # @error_return try/except
+  | Invoke(call: MIRRvalue, ok: BlockId, err: BlockId, err_local: str | None)
+                                               # return-tier @error_return handling
   | Unreachable
 ```
 
@@ -380,32 +566,71 @@ Terminator
 continues at the `resume` block. This supports the existing state-machine codegen for
 generator functions (`gen_generators.py`).
 
-`Invoke` is used for `@error_return(E)` calls: if the callee returns an error via
-`std::expected`, control flows to `err`; otherwise to `ok`. This replaces the current
-goto-label-based `try`/`except` codegen.
+`Invoke` is used for return-tier `@error_return(E)` calls: if the callee returns an
+error via `std::expected`, control flows to `err`; otherwise to `ok`. `err_local`
+captures the `__err_opt_N`-style temporary when the surrounding `except` block needs
+to read the error payload.
+
+Throw-tier `try`/`except` still needs explicit region metadata in MIR. The lowering
+must retain enough structured information to represent nested `try` regions and
+exception handlers even after CFG flattening. The exact encoding can be block metadata
+or explicit handler tables, but MIR-backed codegen cannot assume "return-tier only".
 
 #### Places
 
-A `Place` identifies a memory location. This replaces the current string-based storage
-keys in `BorrowTracker`:
+A `Place` identifies a logical storage location. This replaces the current string-based
+storage keys in `BorrowTracker`.
+
+Important: places model ownership-relevant storage, not literal C++ object layout. For
+example, `list[T]` is backed by `std::vector<T>`, so the element storage is not inline in
+the vector object itself. MIR should still model:
+
+- the container object
+- the container structure (operations like `append`, `insert`, `del` may replace or shift
+  the owned backing storage)
+- the element storage region borrowed by `items[i]`, `Span[T]`, iterators, etc.
+
+This lets the borrow checker express "element/view borrow of `items`" without caring
+whether the runtime representation is inline storage, heap storage, or a view.
+
+The minimal place set should therefore include both direct places and summarized storage
+regions:
 
 ```
 Place
-  = Local(name: str)                         # local variable
+  = Local(name: str)                         # local variable / local owner slot
+  | Global(name: str)                        # module/global storage
+  | Capture(name: str)                       # captured outer-scope variable
   | Field(base: Place, field: str)           # record field
-  | Index(base: Place, index: MIROperand)    # container subscript
+  | Index(base: Place, index: MIROperand)    # precise container subscript
+  | Struct(base: Place)                      # container structural identity
+  | Elements(base: Place)                    # container element storage region
   | Deref(base: Place)                       # pointer dereference
 
 # Examples:
 # x           -> Local("x")
+# G           -> Global("G")
+# x from outer -> Capture("x")
 # x.items     -> Field(Local("x"), "items")
 # x.items[i]  -> Index(Field(Local("x"), "items"), Local("i"))
+# items[*]    -> Elements(Local("items"))
+# append(items, v) mutates Struct(Local("items"))
 # *ptr        -> Deref(Local("ptr"))
 ```
 
 Places give the borrow checker precise knowledge of what is accessed. `Field(x, "a")`
 and `Field(x, "b")` are distinct -- borrowing one does not conflict with mutating
 the other.
+
+`Struct(base)` and `Elements(base)` are intentionally coarser than exact indices. They
+match the current TPy safety needs well:
+
+- `items[i]` can borrow from `Elements(items)`
+- `Span(items)` / `items[a:b]` borrow from `Elements(items)`
+- `append`, `insert`, `del`, slice assignment mutate `Struct(items)` and may invalidate
+  loans on `Elements(items)`
+
+This is a good first step even if the compiler later grows exact per-element reasoning.
 
 #### Statements
 
@@ -414,12 +639,27 @@ MIRStmt
   = Assign(place: Place, rvalue: MIRRvalue)
   | StorageLive(local: str, type: TpyType, kind: LocalKind)
   | StorageDead(local: str)                   # explicit early destruction (del x)
+  | Narrow(local: str, narrowed_type: TpyType, source: NarrowSource)
   | Validate(kind: ValidateKind, place: Place)  # borrow check assertion
 
 LocalKind
   = Value                    # T -- value type, stored directly
   | Pointer                  # T* -- pointer-local (non-value type, stack-allocated slot)
   | Ref                      # T& -- reference to another local (alias)
+
+NarrowSource
+  = IsInstance
+  | Assert
+  | MatchArm
+  | NonNull
+  | PatternGuard
+
+ValidateKind
+  = ActiveLoanConflict
+  | UseAfterMove
+  | StructuralMutationDuringLoan
+  | DanglingBorrowReturn
+  | InvalidPtrProvenance
 ```
 
 `LocalKind` reflects TPy's pointer-variable model (see `OWNERSHIP_DESIGN.md`):
@@ -438,7 +678,9 @@ MIRRvalue
   = Use(operand: MIROperand)                        # plain read
   | Move(operand: MIROperand)                        # move (source dead after)
   | Copy(operand: MIROperand)                        # explicit copy
-  | Borrow(place: Place, kind: BorrowKind)           # create reference
+  | Borrow(place: Place,
+           mode: BorrowMode,
+           provenance: BorrowKind)                   # create reference
   | Call(target: ResolvedFunction,
          args: list[MIROperand],
          type_args: tuple[TpyType, ...])
@@ -458,15 +700,37 @@ The critical distinction is `Move` vs `Copy` vs `Use`:
 In the current compiler, this decision is made at codegen time via `_maybe_move()`.
 In MIR, it is an explicit instruction decided by the move optimization pass.
 
-#### BorrowKind
+Conceptually, `Move` is an ownership-transfer request on a place, not "the variable's
+type changed to `Own[T]`". A local binding keeps its base type `T`; MIR decides whether
+a particular use site becomes `Use(x)`, `Copy(x)`, or `Move(x)` based on liveness,
+uniqueness, and active loans on the underlying place.
+
+#### Borrows vs Loans
+
+A useful distinction:
+
+- **borrow**: the source-language semantic relation ("this value refers to someone
+  else's storage")
+- **loan**: the MIR borrow checker's active tracked record of that borrow over a place
+
+Example: `y = x` for a non-value type creates a borrow of `x`'s place. The checker then
+tracks an active loan on that place while `y` is live. A later `Move(x)` conflicts with
+that active loan unless analysis proves `y` is dead.
+
+#### Borrow Kinds and Modes
 
 ```
+BorrowMode
+  = Shared
+  | Mutable
+
 BorrowKind
   = Alias                   # whole-container alias (safe through mutations)
   | Field                   # field-level reference
   | Element                 # reference to container element
   | Iterator                # for-loop iterator over container
-  | Pointer                 # raw pointer (Ptr[T])
+  | Pointer                 # Ptr[T]
+  | View                    # StrView / BytesView / Span-like view
 ```
 
 These correspond to the existing `BorrowKind` enum in `sema/context.py` (`ALIAS`,
@@ -477,7 +741,14 @@ mutations (append, insert, del). `Field` borrows are invalidated when the parent
 object is reassigned but not by sibling field mutations.
 
 In the current compiler, borrows are side-state in `BorrowTracker`. In MIR they
-become explicit `Borrow` instructions, making conflicts visible in the IR.
+become explicit `Borrow` instructions, making conflicts visible in the IR. `BorrowMode`
+captures whether the use requires shared or mutable access; `BorrowKind` captures where
+the borrow came from and what invalidates it.
+
+`Pointer` deserves special treatment: `Ptr[T]` is not "arbitrary raw pointer" in the
+language design. It is primarily an explicit nullable reference form. Pointer arithmetic
+and unchecked pointer manipulation remain in `tpy.unsafe`; plain `Ptr[T]` operations can
+still participate in normal provenance / lifetime analysis.
 
 ### THIR -> MIR Lowering
 
@@ -487,19 +758,36 @@ The lowering pass (`tpyc/mir/lower.py`) converts THIR to MIR:
    blocks with `Goto`/`Branch`, `match` -> `Switch`, `while` -> loop with `Branch`.
    `for/else` and `while/else` desugar to a boolean flag + `Branch` after the loop
    (flag is set on `break`, checked after loop exit). `try`/`except` for
-   `@error_return` desugars to `Invoke` terminators. Chained comparisons (`a < b < c`)
-   desugar to short-circuit `Branch` chains during lowering.
+   `@error_return` desugars to `Invoke` terminators for return-tier handling, while
+   throw-tier `try` / `except` must preserve enclosing region / handler metadata.
+   Chained comparisons (`a < b < c`) desugar to short-circuit `Branch` chains during
+   lowering.
 
 2. **Place construction.** Each lvalue expression becomes a `Place`. Field accesses,
    subscripts, and derefs nest naturally.
+
+   Type narrowing must also survive lowering. Branches and match arms that narrow a
+   name's type insert explicit `Narrow(local, narrowed_type, source)` statements on the
+   dominated path. Later MIR passes and MIR-backed codegen consult these statements to
+   build block-local type environments. This avoids losing facts like "in this block,
+   `x` is known to be `Foo`" after flattening THIR control flow into basic blocks.
 
 3. **Initial Move/Copy assignment.** The lowering pass inserts `Move` for last-use
    sites (from THIR's `is_last_use` flags) and `Copy` elsewhere. The optimization
    pass may upgrade `Copy` -> `Move` later.
 
 4. **Borrow creation.** Alias assignments (`y = x` for non-value types) become
-   `Borrow(Local("x"), Shared)` instructions. Element access on containers becomes
-   `Borrow(place, Element)`.
+   borrows of the underlying owner place. Element access and view creation should lower
+   to summarized element-storage borrows:
+
+   - `y = x` -> borrow of `Local("x")` (or the owner place behind it)
+   - `v = items[i]` -> borrow of `Elements(Local("items"))`
+   - `span = items[a:b]` -> view borrow of `Elements(Local("items"))`
+   - `p = take_ptr(x)` -> pointer borrow of `Local("x")`
+
+   Exact `Index(base, i)` borrows can be added later for more precision, but the initial
+   MIR should support the summarized `Elements(base)` form because it matches the current
+   TPy invalidation rules.
 
 5. **StorageLive/StorageDead.** `StorageLive` at variable declaration, `StorageDead`
    at explicit `del` statements.
@@ -535,22 +823,53 @@ Walk the CFG forward, maintaining per-block borrow state:
 
 ```python
 BorrowState:
-  active_borrows: dict[Place, set[BorrowInfo]]
+  active_loans: dict[Place, set[LoanInfo]]
   moved_places: set[Place]
 ```
 
 At each statement:
-- `Borrow(place, Mutable)` -- check no other borrows on `place` or parent/child places
-- `Borrow(place, Shared)` -- check no mutable borrows on `place`
-- `Move(place)` -- check no active borrows on `place`, mark as moved
-- `Assign(place, ...)` -- invalidate borrows on child places (field/element borrows)
-- Calls with mutated params -- check no conflicting borrows on arguments
+- `Borrow(place, mode=Mutable, ...)` -- check no conflicting live loans on `place` or overlapping
+  parent/child places
+- `Borrow(place, mode=Shared, ...)` -- check no live mutable / move-conflicting loans on `place`
+- `Move(place)` -- check no active loans that still reach `place`, mark as moved
+- `Assign(place, ...)` -- invalidate or conflict with child-place loans as appropriate
+- `Assign(Struct(base), ...)` / structural mutation calls -- conflict with loans on
+  `Elements(base)` and views derived from them
+- Calls with mutated params -- check no conflicting loans on argument places
+- `Ptr[T]` creation / use -- treat as explicit nullable-reference loans, not as a fully
+  unchecked bypass; pointer arithmetic remains outside this pass in `tpy.unsafe`
 
-At branch join points, merge borrow states conservatively (union of active borrows).
+For summarized container places, the critical rules are:
+
+- loans on `Elements(base)` represent element refs, spans, iterators, and other views
+- mutating `Struct(base)` may invalidate `Elements(base)` loans
+- sibling field loans (`Field(x, "a")` vs `Field(x, "b")`) do not conflict unless a
+  parent-place operation invalidates both
+
+At branch join points, merge loan states conservatively across reachable predecessors.
+The key win over the current AST-based checker is that the analysis is attached to CFG
+edges and explicit places rather than string roots and ad hoc freeze/restore snapshots.
 
 This replaces the current `BorrowTracker` in `sema/context.py` with path-sensitive
 analysis. The key improvement: an `if` branch that moves a variable does not conflict
 with an `else` branch that borrows it, because they are on different paths.
+
+The same pass can produce different severities depending on enforcement mode:
+
+- **advisory/default**: emit warnings, keep lowering
+- **safe opt-in**: elevate selected violations (dangling borrowed return, structural
+  mutation while `Elements(base)` is loaned, move with live aliases, invalid `Ptr`
+  provenance) to hard errors
+
+The `Validate` statement family exists so MIR lowering and early analysis passes can
+materialize the checks that later become diagnostics or hard errors:
+
+- `Validate(ActiveLoanConflict, place)` -- use/mutation conflicts with a live loan
+- `Validate(UseAfterMove, place)` -- moved place used again
+- `Validate(StructuralMutationDuringLoan, place)` -- structural mutation invalidates
+  element/view loans
+- `Validate(DanglingBorrowReturn, place)` -- borrowed return escapes owner lifetime
+- `Validate(InvalidPtrProvenance, place)` -- `Ptr[T]` escapes or aliases invalidly
 
 #### Pass 4: Value Range Propagation
 
@@ -592,18 +911,41 @@ fn main() -> Void:
 
 ### Interaction with Ownership Model
 
-TPy's ownership model is a **copy-avoidance heuristic**, not an affine type system
-(see `docs/CONSUMING_ITERATION_DESIGN.md`). The MIR respects this:
+TPy's ownership model is advisory by default. Existing codebases must continue to
+compile, so the MIR needs to support two enforcement levels over the same core place /
+loan analysis:
 
-**Move/Copy is advisory, not enforced linearly.** `Move` means "the compiler believes
-this is the last use and can transfer ownership." It does not mean "use-after-move is
-a compile error." Use-after-move checking is a separate validation pass that can be
-strict for `@nocopy` types and advisory (warning) for regular types.
+- **Default mode (advisory)**: emit warnings, drive move/copy optimization, preserve
+  current migration-friendly behavior
+- **Safe opt-in mode**: treat a selected subset of ownership / lifetime violations as
+  hard errors, with explicit escape hatches still available
 
-**`Own[T]` lowers to `Move`.** When a function parameter is `Own[T]`, the caller's
-argument is lowered as `Move(arg)`. When a variable is assigned to owned storage
-(field, container), it is lowered as `Copy(arg)` with a copy warning -- or `Move(arg)`
-if it is a last use.
+TPy is therefore not a globally affine type system (see
+`docs/CONSUMING_ITERATION_DESIGN.md`). The MIR should model ownership strongly enough to
+support an enforcing mode later, but its default interpretation remains advisory.
+
+**Move/Copy is a place-level decision.** `Move` means "transfer ownership of the
+underlying place". In advisory mode, a failed move check may become a warning or may be
+lowered back to `Copy` / `Use` depending on the operation. In safe mode, the same check
+can be a hard error.
+
+**`Own[T]` requests transfer, it does not make names affine.** When a function parameter
+is `Own[T]`, the caller's argument is lowered as a request to `Move(arg_place)`. This is
+legal only when the owner place is unique enough at that program point. The local binding
+itself does not permanently change type from `Ref[T]` to `Own[T]`; the access mode is
+chosen per use site.
+
+**`Ptr[T]` remains available even in safe mode.** The intended meaning of `Ptr[T]` is
+"explicit nullable reference", not unrestricted raw pointer. In safe mode:
+
+- plain creation / passing / returning / dereferencing of `Ptr[T]` can remain allowed
+- provenance and lifetime of the pointee place are checked
+- `Ptr[readonly[T]]` participates as an explicit readonly borrow
+- pointer arithmetic, unchecked casts, and arbitrary address fabrication stay in
+  `tpy.unsafe` as escape hatches outside the safety guarantee
+
+This preserves migration viability for existing low-level code while still allowing a
+stronger safety story for ordinary non-pointer borrows.
 
 **Consuming iteration lowers naturally.** A consuming `for` loop:
 
@@ -652,21 +994,26 @@ The codegen backend reads MIR instead of THIR:
 | `Move(x)` | `std::move(x)` |
 | `Copy(x)` | `x` (C++ copy constructor) |
 | `Use(x)` | `x` |
-| `Borrow(x, Alias)` | (variable is `T*` or `T&` -- whole-object reference) |
-| `Borrow(x, Field)` | (variable points to `parent.field`) |
-| `Borrow(x, Element)` | (variable points to `container[i]`) |
+| `Borrow(x, Shared, Alias)` | (variable is `T*` or `T&` -- whole-object reference) |
+| `Borrow(x, Shared, Field)` | (variable points to `parent.field`) |
+| `Borrow(x, Shared, Element)` | (variable points to `container[i]`) |
 | `StorageLive(x, T, Value)` | `T x;` or `T x = ...;` |
 | `StorageLive(x, T, Pointer)` | `T __slot_x; auto* x = &__slot_x;` |
 | `StorageDead(x)` | `{ /* end scope for x */ }` or explicit destruction |
 | `Goto(bb)` | fall-through or `goto` (structured emission avoids goto where possible) |
 | `Branch(c, t, f)` | `if (c) { ... } else { ... }` |
 | `Switch(...)` | `switch` or `if`/`else if` chain |
-| `Invoke(call, ok, err)` | `auto __res = call; if (!__res) goto err;` |
+| `Invoke(call, ok, err, err_local)` | `auto __res = call; if (!__res) { err_local = __res.error(); goto err; }` |
 | `Yield(val, resume)` | state-machine `switch` dispatch |
 
 The codegen reconstructs structured control flow from the CFG where possible (if/else,
 while, for) to keep the C++ readable. This is a well-studied problem (structural
-analysis / region detection).
+analysis / region detection), but it is also one of the biggest migration risks. MIR-
+backed codegen should therefore require explicit structured-region tags from lowering:
+loop headers/latches/exits, `for/else` and `while/else` regions, `with` guards,
+return-tier and throw-tier `try` regions, generator dispatch roots, and short-circuit
+comparison regions. "Recover structure from raw CFG alone" is not a realistic
+implementation requirement for the first MIR-backed codegen pass.
 
 ---
 
