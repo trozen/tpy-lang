@@ -121,3 +121,4 @@ ENUM_AUTO = "enum.auto"
 
 # -- builtins special --
 STATICMETHOD = "builtins.staticmethod"
+PROPERTY = "builtins.property"

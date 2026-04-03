@@ -1,0 +1,2 @@
+main.py:22: warning: copies Node | None into field; use copy() to make this explicit
+main.py:31: warning: Mutation of 'w.node' while borrowed (field assignment may invalidate references)

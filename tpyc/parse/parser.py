@@ -848,9 +848,11 @@ class Parser:
         # Bare name: @name or @name(arg)
         if isinstance(func_node, ast.Name):
             name = func_node.id
-            # @staticmethod is a Python builtin, not resolved through imports
+            # @staticmethod and @property are Python builtins, not resolved through imports
             if name == "staticmethod":
                 return ("builtins", "staticmethod", arg_value)
+            if name == "property":
+                return ("builtins", "property", arg_value)
             resolved = self._resolve_type_name(name)
             if resolved:
                 return (resolved[0], resolved[1], arg_value)
@@ -1161,6 +1163,7 @@ class Parser:
 
         fields = []
         methods = []
+        property_names: set[str] = set()
 
         for item in node.body:
             if isinstance(item, ast.AnnAssign):
@@ -1189,7 +1192,12 @@ class Parser:
                 default_val = self._get_default_value(item.value)
                 fields.append(FieldInfo(field_name, field_type, default_val, loc=self._loc(item)))
             elif isinstance(item, ast.FunctionDef):
-                parsed = self._parse_method(item, node.name, type_param_scope)
+                parsed = self._parse_method(item, node.name, type_param_scope, property_names)
+                if parsed.is_property_getter:
+                    property_names.add(parsed.name)
+                    # Dual overloads (const + mutable) for correct reference semantics.
+                    # Registration prunes the mutable clone for value-type returns.
+                    parsed.auto_readonly = True
                 if parsed.auto_readonly:
                     methods.extend(self._clone_auto_readonly(parsed))
                 elif parsed.auto_own:
@@ -1215,7 +1223,7 @@ class Parser:
                     init_method = m
                     break
             if init_method is not None:
-                new_fields = self._auto_declare_fields_from_init(init_method, fields)
+                new_fields = self._auto_declare_fields_from_init(init_method, fields, property_names)
                 fields.extend(new_fields)
                 # Reorder fields to match __init__ assignment order so that
                 # C++ struct layout matches the init list (avoids -Wreorder).
@@ -1248,6 +1256,7 @@ class Parser:
         self,
         init_method: TpyFunction,
         existing_fields: list[FieldInfo],
+        property_names: set[str] | None = None,
     ) -> list[FieldInfo]:
         """Auto-declare fields from top-level `self.f = param` in __init__.
 
@@ -1269,6 +1278,8 @@ class Parser:
                 continue
             field_name = target.field
             if field_name in existing_names:
+                continue
+            if property_names and field_name in property_names:
                 continue
             value = stmt.value
             if not isinstance(value, TpyName):
@@ -1534,7 +1545,7 @@ class Parser:
         qnames.NATIVE_C: FunctionLinkage.NATIVE_C,
     }
 
-    def _parse_method(self, node: ast.FunctionDef, class_name: str, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyFunction:
+    def _parse_method(self, node: ast.FunctionDef, class_name: str, type_param_scope: dict[str, TypeParamKind] | None = None, property_names: set[str] | None = None) -> TpyFunction:
         """Parse a method definition."""
         # Check decorators (@staticmethod, @readonly, @native("cpp_name"), @override)
         is_staticmethod = False
@@ -1551,11 +1562,28 @@ class Parser:
         native_function: bool = False
         native_preserves_refs: bool = False
         cpp_template: str | None = None
+        is_property_getter = False
+        is_property_setter = False
+        property_setter_name: str | None = None
         for dec in node.decorator_list:
+            # Detect @prop_name.setter / @prop_name.deleter before general resolution
+            func_node_check = dec.func if isinstance(dec, ast.Call) else dec
+            if (isinstance(func_node_check, ast.Attribute)
+                    and isinstance(func_node_check.value, ast.Name)
+                    and property_names
+                    and func_node_check.value.id in property_names):
+                if func_node_check.attr == "setter":
+                    is_property_setter = True
+                    property_setter_name = func_node_check.value.id
+                    continue
+                if func_node_check.attr == "deleter":
+                    raise ParseError(f"@property deleter is not supported", dec)
             qname, arg = self._require_decorator(dec, f"method '{node.name}'")
             pos, kw = self._validate_decorator_args(qname, arg, dec)
             if qname == qnames.STATICMETHOD:
                 is_staticmethod = True
+            elif qname == qnames.PROPERTY:
+                is_property_getter = True
             elif qname == qnames.PURE:
                 is_pure = True
             elif qname == qnames.OVERRIDE:
@@ -1587,6 +1615,22 @@ class Parser:
                 raise ParseError(f"Unknown decorator '{dec_name}' on method '{node.name}'", dec)
         if is_override and is_staticmethod:
             raise ParseError(f"@override cannot be combined with @staticmethod on method '{node.name}'", node)
+        if is_property_getter:
+            if is_staticmethod:
+                raise ParseError(f"@property cannot be combined with @staticmethod on method '{node.name}'", node)
+            # Getter: only self param, must have return type
+            params_without_self = [a for a in node.args.args if a.arg != "self"]
+            if params_without_self:
+                raise ParseError(f"@property getter '{node.name}' must take only 'self' parameter", node)
+            if node.returns is None:
+                raise ParseError(f"@property getter '{node.name}' must have a return type annotation", node)
+        if is_property_setter:
+            if is_staticmethod:
+                raise ParseError(f"@property setter cannot be combined with @staticmethod on method '{node.name}'", node)
+            # Setter: self + one value param
+            params_without_self = [a for a in node.args.args if a.arg != "self"]
+            if len(params_without_self) != 1:
+                raise ParseError(f"@property setter '{node.name}' must take exactly one value parameter (plus self)", node)
         if auto_readonly:
             if is_readonly:
                 raise ParseError(f"@auto_readonly cannot be combined with @readonly on method '{node.name}'", auto_readonly_dec)
@@ -1772,6 +1816,12 @@ class Parser:
         if node.name == "__next__" and error_return is None:
             error_return = "StopIteration"
 
+        # Property setter: wrap value param in Own (stores into field = ownership transfer)
+        if is_property_setter and params:
+            pname, ptype = params[0]
+            if not isinstance(ptype, OwnType) and not ptype.is_value_type():
+                params[0] = (pname, OwnType(ptype))
+
         method = TpyFunction(
             name=node.name,
             params=params,
@@ -1779,6 +1829,9 @@ class Parser:
             body=body,
             is_method=True,
             is_staticmethod=is_staticmethod,
+            is_property_getter=is_property_getter,
+            is_property_setter=is_property_setter,
+            property_name=property_setter_name,
             is_consuming=is_consuming,
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,

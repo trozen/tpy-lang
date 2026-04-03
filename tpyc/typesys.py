@@ -3278,6 +3278,18 @@ class FieldInfo:
 
 
 @dataclass
+class PropertyInfo:
+    """Descriptor for a @property on a record."""
+    name: str
+    getter: 'FunctionInfo'
+    setter: Optional['FunctionInfo'] = None
+
+    @property
+    def type(self) -> TpyType:
+        return self.getter.return_type
+
+
+@dataclass
 class RecordInfo:
     """Information about a user-defined record (class) or builtin type.
 
@@ -3304,6 +3316,7 @@ class RecordInfo:
     has_init: bool = False
     init_params: list[tuple[str, TpyType, Optional[str]]] = field(default_factory=list)  # (name, type, default)
     methods: dict[str, list['FunctionInfo']] = field(default_factory=dict)  # method_name -> list of overloads
+    properties: dict[str, 'PropertyInfo'] = field(default_factory=dict)  # property_name -> PropertyInfo
     type_params: list[str] = field(default_factory=list)  # ["T", "U"] for class Stack[T, U]
     type_param_kinds: list[TypeParamKind] = field(default_factory=list)  # [TYPE, INT] for class Matrix[T, N: int]
     type_param_bounds: dict[str, 'NamedType'] = field(default_factory=dict)  # {"T": Comparable} (must be protocols)
@@ -3406,6 +3419,9 @@ class FunctionInfo:
     is_consuming: bool = False
     is_method: bool = False
     is_staticmethod: bool = False
+    is_property_getter: bool = False
+    is_property_setter: bool = False
+    property_name: Optional[str] = None  # for setter: which property it belongs to
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT
     native_name: Optional[str] = None
     native_function: bool = False  # @native("func", function=True) -> generates func(self, args)

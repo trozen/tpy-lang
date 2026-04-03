@@ -428,6 +428,7 @@ class CodeGenContext:
     current_ns: Namespace | None = None
     in_method: bool = False
     in_consuming_method: bool = False
+    in_property_getter: bool = False
     current_return_type: TpyType | None = None
     current_error_return: str | None = None
     error_return_stmt_handled: bool = False

@@ -2847,6 +2847,25 @@ class StatementAnalyzer:
             return
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
+        # Property setter: validate and tag for codegen
+        if isinstance(stmt.target, TpyFieldAccess) and stmt.target.is_property_access:
+            obj_type = self.ctx.get_expr_type(stmt.target.obj)
+            actual = unwrap_readonly(obj_type) if obj_type else None
+            record = self.ctx.registry.get_record_for_type(actual) if isinstance(actual, NamedType) else None
+            prop = self.protocols.lookup_record_property(record, stmt.target.field) if record else None
+            if prop and prop.setter:
+                stmt.target.property_setter = True
+                # Construct setter TpyMethodCall for codegen delegation
+                setter_name = f"set_{stmt.target.field}"
+                setter_call = TpyMethodCall(
+                    obj=stmt.target.obj, method=setter_name, args=[stmt.value])
+                setter_call.resolved_function_info = prop.setter
+                stmt.target.property_setter_call = setter_call
+            elif prop and not prop.setter:
+                raise self.ctx.error(
+                    f"Property '{stmt.target.field}' is read-only (no setter defined)",
+                    stmt,
+                )
         self._enforce_readonly_assignment_target(stmt.target)
         # Track mutation of for-each loop variables (prevents const-ref binding)
         root = _root_name_of_expr(stmt.target)
@@ -3253,6 +3272,12 @@ class StatementAnalyzer:
             )
         from .operators import OperatorResolver
         target_type = unwrap_own(unwrap_ref_type(self.expr.analyze_expr(stmt.target)))
+        # Augmented assignment on properties not yet supported
+        if isinstance(stmt.target, TpyFieldAccess) and stmt.target.is_property_access:
+            raise self.ctx.error(
+                f"Augmented assignment on property '{stmt.target.field}' is not yet supported",
+                stmt,
+            )
         value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
         # Track mutation of for-each loop variables and parameters
         aug_root = _root_name_of_expr(stmt.target)

@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage,
+    TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
     IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, EnumType, IntEnumType, BoolType, SpanIterType,
     FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64,
@@ -228,9 +228,13 @@ class TypeRegistrar:
         # is_auto_readonly_mutable_clone=True so only those pairs bypass the duplicate check.
         propagate_clone_names: set[str] = {m.name for m in record.methods if m.is_auto_readonly_mutable_clone or m.is_auto_own_borrowing_clone}
         overload_names: set[str] = {m.name for m in record.methods if m.is_overload_stub}
+        # Property getter+setter share a name -- exempt from duplicate check
+        property_method_names: set[str] = {m.name for m in record.methods if m.is_property_getter or m.is_property_setter}
         seen_method_names: set[str] = set()
         for method in record.methods:
             if method.name in overload_names or method.name in propagate_clone_names:
+                continue
+            if method.name in property_method_names:
                 continue
             if method.name in seen_method_names:
                 raise SemanticError(
@@ -498,6 +502,9 @@ class TypeRegistrar:
                 is_consuming=method.is_consuming,
                 is_method=True,
                 is_staticmethod=method.is_staticmethod,
+                is_property_getter=method.is_property_getter,
+                is_property_setter=method.is_property_setter,
+                property_name=method.property_name,
                 linkage=method.linkage,
                 native_name=method.native_name,
                 native_function=method.native_function,
@@ -515,7 +522,10 @@ class TypeRegistrar:
             # validate_record_inheritance, which runs after register_record.
             if method.error_return:
                 method.error_return = func_info.error_return_type
-            if method.is_overload_stub:
+            if method.is_property_getter or method.is_property_setter:
+                # Property getter/setter share a name -- store both in the list
+                methods.setdefault(method.name, []).append(func_info)
+            elif method.is_overload_stub:
                 # Accumulate overload stubs for this method name
                 methods.setdefault(method.name, []).append(func_info)
             elif (method.name in methods
@@ -588,6 +598,58 @@ class TypeRegistrar:
                     copy_loc,
                 )
 
+        # Build property registry from @property getter/setter methods
+        properties: dict[str, PropertyInfo] = {}
+        field_names = {f.name for f in record.fields}
+        for method_name, overloads in list(methods.items()):
+            for fi in overloads:
+                if fi.is_property_getter:
+                    if method_name in field_names:
+                        raise SemanticError(
+                            f"Property '{method_name}' conflicts with field of the same name",
+                            record.loc,
+                        )
+                    # Use the first overload for PropertyInfo (for type inference).
+                    # Both const and mutable overloads exist from parser cloning.
+                    if method_name not in properties:
+                        properties[method_name] = PropertyInfo(name=method_name, getter=fi)
+                elif fi.is_property_setter:
+                    setter_target = fi.property_name
+                    if setter_target and setter_target in properties:
+                        if properties[setter_target].setter is not None:
+                            raise SemanticError(
+                                f"Property '{setter_target}' already has a setter defined",
+                                record.loc,
+                            )
+                        properties[setter_target].setter = fi
+                    else:
+                        raise SemanticError(
+                            f"@property setter '{method_name}' has no matching @property getter",
+                            record.loc,
+                        )
+        # Validate setter name doesn't conflict with existing methods
+        for prop_name, prop_info in properties.items():
+            if prop_info.setter is not None:
+                setter_cpp_name = f"set_{prop_name}"
+                if setter_cpp_name in methods:
+                    raise SemanticError(
+                        f"Property setter 'set_{prop_name}' conflicts with method '{setter_cpp_name}'",
+                        record.loc,
+                    )
+        # Remove property methods from methods dict (not callable as obj.method())
+        # Prune the mutable getter clone when a single const overload suffices.
+        # Only mutable non-value types (records, containers) need dual overloads
+        # for T& vs const T& semantics.
+        for prop_name, prop_info in properties.items():
+            ret = prop_info.getter.return_type
+            if ret.is_value_type():
+                record.methods = [
+                    m for m in record.methods
+                    if not (m.is_property_getter and m.name == prop_name
+                            and m.is_auto_readonly_mutable_clone)
+                ]
+            methods.pop(prop_name, None)
+
         # Set provisional parent from bases (for get_all_fields during macro execution).
         # Full validation (protocols, circular check) is deferred to validate_record_inheritance.
         provisional_parent = None
@@ -602,6 +664,7 @@ class TypeRegistrar:
             has_init=record.init_method is not None,
             init_params=init_params,
             methods=methods,
+            properties=properties,
             type_params=record.type_params,
             type_param_kinds=record.type_param_kinds,
             type_param_bounds=record.type_param_bounds,

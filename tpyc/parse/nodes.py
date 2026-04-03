@@ -251,6 +251,10 @@ class TpyFieldAccess(TpyExpr):
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
     deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before field lookup
     ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr (or Ptr[readonly[T]])
+    is_property_access: bool = False  # Set by sema: this is a property getter
+    property_setter: bool = False  # Set by sema: assignment target is a property setter
+    property_getter_call: 'TpyMethodCall | None' = None  # Set by sema: getter method call for codegen
+    property_setter_call: 'TpyMethodCall | None' = None  # Set by sema: setter method call for codegen
 
     def children(self) -> list[TpyExpr]:
         return [self.obj]
@@ -918,6 +922,9 @@ class TpyFunction:
     is_overload_stub: bool = False
     is_method: bool = False
     is_staticmethod: bool = False
+    is_property_getter: bool = False
+    is_property_setter: bool = False
+    property_name: str | None = None  # for setter: which property it belongs to
     is_consuming: bool = False
     # Transient: True only during parsing for @auto_readonly methods.
     # After _clone_auto_readonly runs, both clones have auto_readonly=False.

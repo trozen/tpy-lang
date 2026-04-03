@@ -2434,6 +2434,11 @@ class ExpressionGenerator:
     def _gen_field_access(self, expr: TpyFieldAccess) -> str:
         """Generate field access code."""
         cpp_field = escape_cpp_name(expr.field)
+
+        # Property getter: delegate to normal method call codegen
+        if expr.property_getter_call is not None:
+            return self._gen_method_call(expr.property_getter_call)
+
         # Handle self.field -> this->field (inside method)
         # Using this-> avoids shadowing issues when field name matches parameter name
         if isinstance(expr.obj, TpyName) and expr.obj.name == "self":

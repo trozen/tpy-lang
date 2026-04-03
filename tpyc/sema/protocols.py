@@ -11,7 +11,7 @@ import re
 
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, OwnType, ReadonlyType, RefType,
-    MethodSignature, FunctionInfo, FieldInfo, RecordInfo, is_protocol_type,
+    MethodSignature, FunctionInfo, FieldInfo, RecordInfo, PropertyInfo, is_protocol_type,
     FixedIntType, BigIntType, FloatType, Float32Type, BoolType, StrType, StringType, StrViewType, CharType,
     ListType, ListRepeatType, GenExprType, CopyIterType, OwnIterType, DictType, SetType, ArrayType, TupleType, SpanType, OptionalType, IntLiteralType, FloatLiteralType, PendingListType, BIGINT, FLOAT,
     EnumType, IntEnumType,
@@ -708,6 +708,17 @@ class ProtocolChecker:
             return None
         method = overloads[0]
         return self.type_ops.substitute_method_type_params(method, type_subst) if type_subst else method
+
+    def lookup_record_property(self, record_info: RecordInfo, prop_name: str) -> 'PropertyInfo | None':
+        """Look up a property by name, including inherited properties."""
+        prop = record_info.properties.get(prop_name)
+        if prop:
+            return prop
+        if record_info.parent:
+            parent_info = self.ctx.registry.get_record_for_type(record_info.parent)
+            if parent_info:
+                return self.lookup_record_property(parent_info, prop_name)
+        return None
 
     def lookup_record_method_overloads(
         self, record_info: RecordInfo, method_name: str

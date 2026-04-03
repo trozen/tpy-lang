@@ -660,7 +660,8 @@ class FunctionGenerator:
             # Forward decl: skip Fn requires clause (constraint on definition is sufficient)
             out.write(self._gen_template_header_with_fn(func, proto_params,
                                                         emit_fn_requires=False))
-            ret_type = self._resolve_return_type(effective_ret, error_return=func.error_return)
+            ret_type = self._resolve_return_type(effective_ret, const=func.is_readonly,
+                                                  error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params, func.type_params,
                                                      mutated_params=mp,
                                                      defaults=dfl, emit_defaults=True)
@@ -670,7 +671,8 @@ class FunctionGenerator:
                                            use_readonly_params=func.is_readonly))
             out.write(f"{ret_type} {name}({params});\n")
         else:
-            ret_type = self._resolve_return_type(effective_ret, error_return=func.error_return)
+            ret_type = self._resolve_return_type(effective_ret, const=func.is_readonly,
+                                                  error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params,
                                                      mutated_params=mp,
                                                      defaults=dfl, emit_defaults=True)
@@ -752,7 +754,8 @@ class FunctionGenerator:
         # Non-template non-stub: already forward-declared
         if not func.is_stub:
             return False
-        ret_type = self._resolve_return_type(func.return_type, error_return=func.error_return)
+        ret_type = self._resolve_return_type(func.return_type, const=func.is_readonly,
+                                              error_return=func.error_return)
         params = (self.gen_params_with_protocols(func.params, mutated_params=mp,
                                                 use_readonly_params=func.is_readonly) if has_dynamic
                   else self.gen_params(func.params, func.type_params,
@@ -832,7 +835,8 @@ class FunctionGenerator:
             out.write(self._gen_template_header_with_fn(
                 func, proto_params, emit_defaults=False,
             ))
-            ret_type = self._resolve_return_type(func.return_type, error_return=func.error_return)
+            ret_type = self._resolve_return_type(func.return_type, const=func.is_readonly,
+                                                  error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params, func.type_params,
                                                      mutated_params=mp)
                       if has_proto_params or has_dynamic
@@ -841,7 +845,8 @@ class FunctionGenerator:
                                            use_readonly_params=func.is_readonly))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params}) {{\n")
         else:
-            ret_type = self._resolve_return_type(func.return_type, error_return=func.error_return)
+            ret_type = self._resolve_return_type(func.return_type, const=func.is_readonly,
+                                                  error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params, mutated_params=mp) if has_dynamic
                       else self.gen_params(func.params, func.type_params,
                                            reassigned_params=rp, mutated_params=mp,
@@ -1127,6 +1132,10 @@ class FunctionGenerator:
         cpp_name = method.name
         cpp_return_type = method.return_type
 
+        # Property setter: rename to set_<name> in C++
+        if method.is_property_setter:
+            cpp_name = f"set_{escape_cpp_name(method.property_name or method.name)}"
+
         is_const = method.is_readonly
         is_static = method.is_staticmethod
 
@@ -1158,6 +1167,21 @@ class FunctionGenerator:
         is_inplace_dunder = method.name in CONST_PARAMS_METHODS
         if is_inplace_dunder:
             ret_type = f"{escape_cpp_name(record_name)}&"
+        elif method.is_property_getter:
+            # Property getters return references to fields. For pointer-repr types
+            # (Optional[non-value], Union[non-value]), use the storage type
+            # (std::optional<T>&, std::variant<A,B>&) instead of method convention
+            # (T*, variant<A*,B*>). Other types use normal _resolve_return_type.
+            inner = unwrap_ref_type(cpp_return_type)
+            if isinstance(inner, OptionalType) and inner.uses_pointer_repr():
+                storage = f"std::optional<{inner.inner.to_cpp()}>"
+                ret_type = f"const {storage}&" if const else f"{storage}&"
+            elif isinstance(inner, UnionType) and inner.uses_pointer_repr():
+                members_cpp = ", ".join(m.to_cpp() for m in inner.members)
+                ret_type = f"const std::variant<{members_cpp}>&" if const else f"std::variant<{members_cpp}>&"
+            else:
+                ret_type = self._resolve_return_type(cpp_return_type, const=const,
+                                                      error_return=method.error_return)
         elif override and is_any_str_type(cpp_return_type):
             # @dynamic protocol virtual returns std::string; override must match
             # even if the impl declares -> StrView or -> String.

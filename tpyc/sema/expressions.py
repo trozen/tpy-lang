@@ -1250,6 +1250,18 @@ class ExpressionAnalyzer:
                 if type_subst:
                     field_type = self.type_ops.substitute_type_params(field_type, type_subst)
                 return field_type
+            # Check properties (getter access)
+            prop = self.protocols.lookup_record_property(record, expr.field)
+            if prop is not None:
+                expr.is_property_access = True
+                # Construct a TpyMethodCall so codegen can delegate to normal method path
+                getter_call = TpyMethodCall(obj=expr.obj, method=expr.field, args=[])
+                getter_call.resolved_function_info = prop.getter
+                expr.property_getter_call = getter_call
+                prop_type = prop.type
+                if type_subst:
+                    prop_type = self.type_ops.substitute_type_params(prop_type, type_subst)
+                return prop_type
             return None
 
         if isinstance(typ, TypeParamRef):

@@ -1,0 +1,1 @@
+main.py:7: error: @property cannot be combined with @staticmethod on method 'x'

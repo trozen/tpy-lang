@@ -168,6 +168,7 @@ class StatementGenerator:
         raw_error_return = getattr(func, 'error_return', None)
         self.ctx.current_error_return = error_return_to_cpp(raw_error_return, self.ctx.module_name, self.ctx.analyzer.registry) if raw_error_return else None
         self.ctx.current_func_params = {pname: ptype for pname, ptype in params}
+        self.ctx.in_property_getter = getattr(func, 'is_property_getter', False)
         self.ctx.current_type_param_bounds = dict(record_type_param_bounds) if record_type_param_bounds else {}
         if func.type_param_bounds:
             self.ctx.current_type_param_bounds.update(func.type_param_bounds)
@@ -337,6 +338,13 @@ class StatementGenerator:
                             loc=stmt.loc,
                         )
                     ret_value = self._strip_wrong_overload_coerce(ret_value, ret_type)
+                # Property getter with pointer-repr return: return field directly
+                # (C++ return is std::optional<T>& / std::variant<A,B>&, not T* / variant<T*>)
+                if (self.ctx.in_property_getter
+                        and isinstance(ret_type, (OptionalType, UnionType))
+                        and ret_type.uses_pointer_repr()):
+                    ret_expr = self.expressions.gen_expr(ret_value)
+                    return self._make_return(indent, ret_expr)
                 if isinstance(ret_type, OptionalType):
                     if not ret_type.uses_pointer_repr():
                         # Value-type Optional: return std::nullopt or plain value
@@ -1376,6 +1384,11 @@ class StatementGenerator:
             cpp_type = self.types.type_to_cpp(target_type) if target_type else "auto"
             return self._gen_pointer_local_rebind(stmt.target.name, cpp_type, stmt.value, target_type, indent)
 
+        # Property setter: delegate to normal method call codegen
+        if isinstance(stmt.target, TpyFieldAccess) and stmt.target.property_setter_call is not None:
+            call = self.expressions._gen_method_call(stmt.target.property_setter_call)
+            return f"{indent}{call};\n"
+
         # Field assignment: boundary conversions for optional/union pointer repr
         if isinstance(stmt.target, TpyFieldAccess):
             target_type = self.ctx.get_expr_type(stmt.target)
@@ -1394,6 +1407,11 @@ class StatementGenerator:
                     # T | None returns T* -- needs ptr_to_optional wrapping
                     is_owned_optional = (isinstance(val_type, OptionalType)
                                          and isinstance(val_type.inner, OwnType))
+                    # Own[Optional[T]] param is std::optional<T>&& -- also direct assign
+                    if not is_owned_optional and isinstance(stmt.value, TpyName):
+                        param_type = self.ctx.current_func_params.get(stmt.value.name)
+                        if isinstance(param_type, OwnType):
+                            is_owned_optional = True
                     value = self.expressions.gen_expr(stmt.value, target_type)
                     if is_owned_optional:
                         value = self.expressions._maybe_move(stmt.value, value)
