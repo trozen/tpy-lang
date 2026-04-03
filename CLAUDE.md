@@ -278,8 +278,8 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `dump_types.py` | Type documentation generation (`--print-types`) |
 | `repl.py` | Interactive REPL implementation |
 | `qnames.py` | Qualified name constants for compiler-known types, decorators, and protocols |
-| `macro_api.py` | Public API for compile-time macro modules: metadata (`ClassInfo`, `FieldInfo`, `TypeInfo`), AST builder (`ast`), type builder (`types`), type aliases (`Expr`, `Stmt`, `Function`, `Type`), source-based authoring (`ast.quote`, `ast.quote_expr`, `ast.quote_fun`, `cls.add_method_from_source`), method builders (`build_init`, `build_eq`, `build_repr`, `build_hash`, `build_order`) |
-| `macro_loader.py` | Discovers and loads `# tpy: macro_module` files via CPython at compile time |
+| `macro_api.py` | Public API for compile-time macro modules: metadata (`ClassInfo`, `FieldInfo`, `TypeInfo`), AST builder (`ast`), type builder (`types`), type aliases (`Expr`, `Stmt`, `Function`, `Type`), source-based authoring (`ast.quote`, `ast.quote_expr`, `ast.quote_fun`, `cls.add_method_from_source`) |
+| `macro_loader.py` | Discovers and loads `# tpy: macro_module` files via CPython at compile time. Supports macro-to-macro imports from lib search paths |
 | `repl_backends.py` | REPL execution backends (clang-repl JIT, g++/clang++ compile) |
 
 ### Semantic Analysis (`tpyc/sema/`)
@@ -401,9 +401,10 @@ Library search roots and CPython stubs:
 | `tpy/tpy/extern.py` | Re-exports native, native_c, extern_c, cpp_template from `_bootstrap` |
 | `tpy/tpy/mem.py` | Memory management: `UninitArrayStorage[T, N]` inline uninitialized storage |
 | `tpy/tpy/unsafe.py` | Unsafe operations: `unsafe_ptr()`, `unsafe_cast()` |
+| `tpy/_macro_helpers.py` | Shared macro helpers: `build_init`, `build_eq`, `build_repr`, `build_hash`, `build_order` (compile-time only) |
 | `tpy/math.py`, `time.py`, `sys.py`, `bisect.py`, `dataclasses.py`, `enum.py` | Python stdlib analogs |
 | `cpy/tpy/` | CPython stubs ONLY (not seen by tpyc): `Int32`, `Ptr`, `Array`, decorators; submodules: `mem`, `unsafe` |
-| `cpy/tpyc/` | CPython backend for macro API: `macro_api.py` provides the same public API as `tpyc/macro_api.py` but targets Python `ast` module so macros work as real decorators under CPython |
+| `cpy/tpyc/` | CPython stub for macro API: `macro_api.py` raises ImportError -- macro modules run at compile time only and are not available under CPython |
 | `cpy/tplib` | Symlink to `tpy/tplib/` so CPython tests can find tplib |
 
 **Compiler search order** (first match wins):

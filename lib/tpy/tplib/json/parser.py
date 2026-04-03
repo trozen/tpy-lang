@@ -1,4 +1,14 @@
 # JSON pull-parser: JsonToken enum and JsonReader class.
+#
+# TODO(perf): _data should be StrView, not str -- avoids copying entire input
+# TODO(perf): _unescape() uses O(n^2) string concat in a loop; use list+join
+#   or a single-buffer builder
+# TODO(perf): read_float() allocates an intermediate string via _read_number_raw();
+#   parse directly from the buffer (like read_int does)
+# TODO(perf): _read_raw_str() scans the string twice (once for escape detection,
+#   once in _unescape); merge into a single pass
+# TODO(perf): redundant _skip_ws() calls -- every read_* method calls it, even
+#   when whitespace was already consumed by the previous call
 from enum import Enum
 from tpy import Int32, Int64, Float64, Char, StrView, readonly, error_return, ReturnException
 

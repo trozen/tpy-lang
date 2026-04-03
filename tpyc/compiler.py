@@ -594,7 +594,10 @@ class Compiler:
         self.compile_order: list[str] = []
         self.shadowed_builtins: dict[str, set[tuple[str, int]]] = {}
         self._source_input: tuple[str, str] | None = None
-        self._macro_registry = MacroRegistry()
+        search_dirs = []
+        if self.resolver is not None:
+            search_dirs = [self.resolver.base_dir] + self.resolver.extra_dirs
+        self._macro_registry = MacroRegistry(search_dirs=search_dirs)
         # Decorator arg schemas derived from @builtin_decorator stubs,
         # accumulated across parsed modules and passed to subsequent parsers.
         self._decorator_schemas: dict = {}

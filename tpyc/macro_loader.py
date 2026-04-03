@@ -44,7 +44,9 @@ _BLOCKED_BUILTINS: frozenset[str] = frozenset({
 _original_import = _builtins_module.__import__
 
 
-def _make_restricted_import(module_name: str) -> Callable:
+def _make_restricted_import(
+    module_name: str, registry: "MacroRegistry",
+) -> Callable:
     """Create a restricted __import__ for a macro module."""
     def _restricted_import(name: str, *args: Any, **kwargs: Any) -> Any:
         if not name:
@@ -54,20 +56,26 @@ def _make_restricted_import(module_name: str) -> Callable:
         for allowed in _ALLOWED_IMPORTS:
             if name == allowed or name.startswith(allowed + "."):
                 return _original_import(name, *args, **kwargs)
+        # Try resolving as another macro module from lib search paths
+        mod = registry._resolve_macro_import(name)
+        if mod is not None:
+            return mod
         raise ImportError(
             f"Macro module '{module_name}' cannot import '{name}' "
-            f"-- only tpyc.macro_api is allowed"
+            f"-- only tpyc.macro_api and other macro modules are allowed"
         )
     return _restricted_import
 
 
-def _make_restricted_builtins(module_name: str) -> dict[str, Any]:
+def _make_restricted_builtins(
+    module_name: str, registry: "MacroRegistry",
+) -> dict[str, Any]:
     """Create a restricted __builtins__ dict for a macro module."""
     restricted = {
         k: v for k, v in _builtins_module.__dict__.items()
         if k not in _BLOCKED_BUILTINS
     }
-    restricted["__import__"] = _make_restricted_import(module_name)
+    restricted["__import__"] = _make_restricted_import(module_name, registry)
     return restricted
 
 
@@ -314,7 +322,7 @@ class MacroRegistry:
     implements the macro.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, search_dirs: list[Path] | None = None) -> None:
         self._macros: dict[tuple[str, str], Callable] = {}
         self._call_macros: dict[tuple[str, str], Callable] = {}
         self._modules: dict[str, Any] = {}
@@ -322,6 +330,10 @@ class MacroRegistry:
         # module_name -> {dep_module: names_or_None}
         # None means all exports, list means specific names only.
         self._macro_deps: dict[str, dict[str, list[str] | None]] = {}
+        # Lib search dirs for resolving macro-to-macro imports
+        self._search_dirs: list[Path] = list(search_dirs or [])
+        # Guard against circular macro imports
+        self._loading: set[str] = set()
 
     def register(self, module: str, name: str, func: Callable) -> None:
         self._macros[(module, name)] = func
@@ -346,6 +358,24 @@ class MacroRegistry:
         for all exports). Empty dict if no deps declared.
         """
         return self._macro_deps.get(module_name, {})
+
+    def _resolve_macro_import(self, name: str) -> Any | None:
+        """Resolve an import to another macro module from lib search paths.
+
+        Returns the loaded module object, or None if not found.
+        """
+        if name in self._modules:
+            return self._modules[name]
+        if name in self._loading:
+            raise ImportError(f"Circular macro module import: '{name}'")
+        for d in self._search_dirs:
+            path = d / Path(name.replace(".", "/")).with_suffix(".py")
+            if path.is_file():
+                source = path.read_text()
+                if is_macro_module_source(source):
+                    self.load_module(name, path)
+                    return self._modules.get(name)
+        return None
 
     def is_loaded(self, module_name: str) -> bool:
         return module_name in self._loaded_modules
@@ -372,7 +402,8 @@ class MacroRegistry:
             )
 
         mod = importlib.util.module_from_spec(spec)
-        mod.__builtins__ = _make_restricted_builtins(module_name)
+        mod.__builtins__ = _make_restricted_builtins(module_name, self)
+        self._loading.add(module_name)
         try:
             spec.loader.exec_module(mod)
         except Exception as e:
@@ -380,6 +411,8 @@ class MacroRegistry:
             raise RuntimeError(
                 f"Error executing macro module '{module_name}' ({file_path}): {e}"
             ) from e
+        finally:
+            self._loading.discard(module_name)
 
         self._modules[module_name] = mod
 

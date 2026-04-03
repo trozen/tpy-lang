@@ -8,9 +8,9 @@ It is loaded by the compiler via CPython (not compiled to C++).
 from tpyc.macro_api import (
     ClassInfo, FieldInfo, TypeInfo, CallMacroContext, MacroArg, MacroError,
     class_macro, call_macro,
-    build_init, build_eq, build_repr, build_hash, build_order,
     expr_to_cpp_default, ast, types, Expr, Stmt, Function, Type,
 )
+from _macro_helpers import build_init, build_eq, build_repr, build_hash, build_order
 
 _MISSING = object()
 

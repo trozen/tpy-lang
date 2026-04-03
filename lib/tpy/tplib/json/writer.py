@@ -1,4 +1,8 @@
 # JSON writer: builds a JSON string incrementally.
+#
+# TODO(perf): _parts is list[str] joined at the end -- in C++ this becomes
+#   vector<string> with scattered allocations and an O(n) final join. Use a
+#   single str buffer (String type) with reserved capacity and append in-place.
 from tpy import Int32, Int64, Float64, Float32, Char
 
 _HEX = "0123456789abcdef"

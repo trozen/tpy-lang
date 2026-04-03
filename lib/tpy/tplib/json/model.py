@@ -70,10 +70,10 @@ used as a field in @model classes:
 from tpyc.macro_api import (
     ClassInfo, FieldInfo, TypeInfo, MacroError,
     class_macro, macro_deps,
-    build_init, build_eq, build_repr, build_hash, build_order,
     expr_to_cpp_default,
     ast, types, Expr, Stmt, Function, Type,
 )
+from _macro_helpers import build_init, build_eq, build_repr, build_hash, build_order
 
 macro_deps(
     "tplib.json.parser",

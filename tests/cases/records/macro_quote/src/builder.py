@@ -1,9 +1,10 @@
 # tpy: macro_module
 """Test macro module using quote/add_method_from_source APIs."""
 from tpyc.macro_api import (
-    ClassInfo, FieldInfo, class_macro, build_init, build_eq, ast, types,
+    ClassInfo, FieldInfo, class_macro, ast, types,
     Expr, Stmt, Function, Type,
 )
+from _macro_helpers import build_init, build_eq
 
 
 @class_macro

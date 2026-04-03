@@ -9,7 +9,7 @@
 | 1c | Generic `field()` handling: `Field` descriptor + `field()` function in macro module, `call_macro_field_function` infrastructure | Done |
 | 2 | Call-site macros: `@call_macro` functions expand at call site, receive `MacroArg` (expr + type), return replacement `TpyExpr`. First use cases: `asdict`/`astuple` | Done |
 | 3+4 | Source-based macro authoring: `quote()` / `add_method_from_source` for writing macro output as TPy source strings instead of AST builder calls | Done |
-| 5 | CPython compatibility: `lib/cpy/tpyc/macro_api.py` backend targeting Python `ast` module | Done |
+| 5 | CPython compatibility: `lib/cpy/tpyc/macro_api.py` backend targeting Python `ast` module | Dropped |
 | 6 | TpyMini VM: tree-walking interpreter for self-hosted compiler | Not started |
 
 ### Future Extensions
@@ -27,6 +27,7 @@
 | `TpyBlockExpr` | Block expression: sequence of statements + result expression. Codegen hoists statements to enclosing scope. Enables `asdict` with mixed-type fields (typed dict creation + subscript assigns) |
 | Generic mapping detection in `asdict`/`astuple` | Currently only built-in `dict[K, V]` is recursed. A `CallMacroContext.get_mapping_key_value_types()` method could detect any type with `.items() -> Iterable[tuple[K, V]]`, enabling recursion into user-defined mapping types |
 | AST splicing in `quote()` | Embed computed `Expr`/`Stmt` objects into quoted source via `${expr}` syntax. Requires custom parse pass. Enables mixing static method shapes with dynamic AST fragments (e.g., computed comparison chains). Deferred -- f-string interpolation covers common cases |
+| CPython macro compat | CPython backend for macro API was dropped -- maintaining parity between compiler AST and CPython `exec`-based codegen (frozen fields, factory defaults, `super()` in exec'd code) was not worth the effort. Could be revisited if CPython test coverage of macro-generated code becomes important |
 
 ---
 
@@ -44,6 +45,7 @@
 |------|---------|
 | `tpyc/macro_api.py` | Public API: metadata (`ClassInfo`, `FieldInfo`, `TypeInfo`), builders (`ast`, `types`), type aliases (`Expr`, `Stmt`, `Function`, `Type`), decorators (`class_macro`, `call_macro`) |
 | `tpyc/macro_loader.py` | `MacroRegistry`, `validate_and_call_macro`, `call_macro_field_function`, `expand_call_macro` |
+| `lib/tpy/_macro_helpers.py` | Shared macro helpers: `build_init`, `build_eq`, `build_repr`, `build_hash`, `build_order` |
 | `lib/tpy/dataclasses.py` | `@dataclass` class macro, `Field`/`field()`, `asdict`/`astuple` call macros |
 | `lib/tpy/enum.py` | `Enum`, `IntEnum`, `auto()` -- resolved via import tracking, not yet macro-driven |
 
@@ -114,8 +116,8 @@ class ClassInfo:
 ```
 
 `add_method` injects a `TpyFunction` AST node (power user API). For common patterns,
-use the builder functions (`build_init`, `build_eq`, `build_repr`, `build_hash`,
-`build_order`) to generate complete method bodies.
+use the shared builder functions from `_macro_helpers` (`build_init`, `build_eq`,
+`build_repr`, `build_hash`, `build_order`) to generate complete method bodies.
 
 ### Macro Module Format
 
@@ -123,9 +125,9 @@ use the builder functions (`build_init`, `build_eq`, `build_repr`, `build_hash`,
 # tpy: macro_module
 from tpyc.macro_api import (
     ClassInfo, FieldInfo, TypeInfo, MacroError,
-    class_macro, build_init, build_eq, build_repr, build_hash, build_order,
-    ast, types, Expr, Stmt, Function,
+    class_macro, ast, types, Expr, Stmt, Function,
 )
+from _macro_helpers import build_init, build_eq, build_repr, build_hash, build_order
 
 @class_macro
 def my_decorator(cls: ClassInfo, *, option: bool = False) -> None:
@@ -139,8 +141,9 @@ def my_decorator(cls: ClassInfo, *, option: bool = False) -> None:
 
 Macro modules use `# tpy: macro_module` directive. They are executed via CPython
 during compilation and never compiled to C++. Import restriction enforces that
-macros import only from `tpyc.macro_api` (no compiler internals, no stdlib).
-Dangerous builtins (`open`, `exec`, `eval`, etc.) are also blocked.
+macros import only from `tpyc.macro_api` and other macro modules (files with
+`# tpy: macro_module` found in lib search paths). Dangerous builtins (`open`,
+`exec`, `eval`, etc.) are also blocked.
 
 ## Use Cases
 
