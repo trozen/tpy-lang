@@ -256,6 +256,47 @@ def list_compilers() -> None:
     print("  A path to any C++ compiler binary is also accepted.")
 
 
+def get_or_build_pch(
+    config: CppCompilerConfig,
+    runtime_include_dir: Path,
+    opt_flags: list[str],
+    pch_dir: Path,
+) -> Path | None:
+    """Return path to cached PCH header (with .gch next to it), or None on failure.
+
+    The PCH is stored in pch_dir (typically inside the build output directory).
+    Rebuilds only when runtime headers are newer than the cached .gch.
+    """
+    import subprocess
+
+    pch_dir.mkdir(parents=True, exist_ok=True)
+    pch_header = pch_dir / "tpy_pch.hpp"
+    pch_gch = pch_dir / "tpy_pch.hpp.gch"
+
+    # Staleness check
+    if pch_gch.exists():
+        pch_mtime = pch_gch.stat().st_mtime
+        runtime_tpy = runtime_include_dir / "tpy"
+        stale = any(h.stat().st_mtime > pch_mtime
+                    for h in runtime_tpy.glob("**/*.hpp"))
+        if not stale:
+            return pch_header
+
+    pch_header.write_text('#include <tpy/tpy.hpp>\n')
+    cmd = [
+        *config.compiler, f"-std={config.std}",
+        *config.extra_flags,
+        *opt_flags,
+        "-I", str(runtime_include_dir),
+        "-x", "c++-header",
+        str(pch_header), "-o", str(pch_gch),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode == 0:
+        return pch_header
+    return None
+
+
 @dataclass
 class CppCompilerConfig:
     """Configuration for the C++ compiler used to build generated code."""

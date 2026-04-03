@@ -30,7 +30,7 @@ from .sema import SemanticError, DiagnosticLevel
 from .codegen_cpp import CodeGenOptions, CodeGenError
 from .compiler import (
     Compiler, CompileError, CompilerNotFoundError, BuildLayout, CppCompilerConfig,
-    DEFAULT_INT_CHOICES, list_compilers,
+    DEFAULT_INT_CHOICES, list_compilers, get_or_build_pch,
 )
 from . import __version__, get_git_commit, get_runtime_dir, get_lib_dir
 
@@ -108,6 +108,10 @@ class ProgressPrinter:
             w = "warning" if n_warnings == 1 else "warnings"
             self._write(f"    {n_warnings} {w}\n")
 
+    def pch(self, elapsed: float) -> None:
+        if elapsed >= 0.1:
+            self._write(f"  precompiled tpy.hpp ({_fmt_ms(elapsed)})\n")
+
     def translated(self, name: str, elapsed: float) -> None:
         self._write(f"  translated {name}.py ({_fmt_ms(elapsed)})\n")
 
@@ -153,6 +157,8 @@ def main() -> int:
         prog="tpyc",
         description="TurboPython Compiler - compiles TurboPython to C++"
     )
+    parser.add_argument("--version", action="version",
+                        version=f"%(prog)s {__version__} ({get_git_commit()})")
     parser.add_argument("input", nargs="?", help="Input TurboPython source file (.py)")
     parser.add_argument("-c", dest="cmd", metavar="CMD", help="Execute CMD as a TurboPython program string")
     parser.add_argument("-o", "--output", help="Output directory (default: __tpyc__/ next to source)")
@@ -187,6 +193,8 @@ def main() -> int:
                               help="Force ccache usage")
     ccache_group.add_argument("--no-ccache", dest="ccache", action="store_false",
                               help="Disable ccache")
+    parser.add_argument("--no-pch", dest="pch", action="store_false", default=True,
+                        help="Disable precompiled header caching")
     parser.add_argument("-j", "--jobs", type=int, default=None,
                         help="Parallel compile jobs (default: number of CPUs)")
     parser.add_argument("-q", "--quiet", action="store_true",
@@ -410,11 +418,32 @@ def main() -> int:
 
             opt_flags = ["-O3", "-DNDEBUG"] if args.release else ["-g", "-O0"]
             cpp_config.link_flags = link_flags
+
+            # Build or reuse precompiled header
+            pch_includes: list[Path] = []
+            if args.pch:
+                t_pch_start = time.monotonic()
+                pch_path = get_or_build_pch(
+                    cpp_config, runtime_dir / "cpp" / "include", opt_flags,
+                    pch_dir=layout.root_dir / "pch",
+                )
+                t_pch = time.monotonic() - t_pch_start
+                if pch_path:
+                    pch_includes.append(pch_path)
+                    progress.pch(t_pch)
+                    # ccache needs these sloppiness flags for PCH support
+                    if cpp_config.ccache:
+                        slop = os.environ.get("CCACHE_SLOPPINESS", "")
+                        parts = {s.strip() for s in slop.split(",") if s.strip()}
+                        parts.update(("pch_defines", "time_macros"))
+                        os.environ["CCACHE_SLOPPINESS"] = ",".join(sorted(parts))
+
             compile_cmds = layout.build_cpp_commands(
                 runtime_include_dir=runtime_dir / "cpp" / "include",
                 cpp_files=all_cpp_paths,
                 opt_flags=opt_flags,
                 config=cpp_config,
+                force_includes=pch_includes or None,
             )
 
             compile_steps = compile_cmds[:-1]
