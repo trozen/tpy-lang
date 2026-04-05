@@ -5,6 +5,7 @@ Registers builtin types, records, protocols, and functions.
 """
 
 from __future__ import annotations
+from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING
 
 from ..typesys import (
@@ -570,11 +571,7 @@ class TypeRegistrar:
             for method_list in methods.values():
                 for i, func_info in enumerate(method_list):
                     new_params = [
-                        ParamInfo(p.name, attach_type_param_bounds(p.type, record.type_param_bounds),
-                                  requires_mutable_lvalue=p.requires_mutable_lvalue,
-                                  default_expr=p.default_expr,
-                                  keyword_only=p.keyword_only,
-                                  is_variadic=p.is_variadic)
+                        dc_replace(p, type=attach_type_param_bounds(p.type, record.type_param_bounds))
                         for p in func_info.params
                     ]
                     new_return = attach_type_param_bounds(func_info.return_type, record.type_param_bounds)

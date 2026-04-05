@@ -5,6 +5,7 @@ Type validation, substitution, and inference operations.
 """
 
 from __future__ import annotations
+from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING
 
 from ..typesys import (
@@ -1060,9 +1061,7 @@ class TypeOperations:
             if tp not in effective_subst:
                 effective_subst[tp] = TypeParamRef(tp)
         substituted_params = [
-            ParamInfo(p.name, self.substitute_type_params(p.type, effective_subst),
-                      requires_mutable_lvalue=p.requires_mutable_lvalue, default_expr=p.default_expr,
-                      keyword_only=p.keyword_only, is_variadic=p.is_variadic)
+            dc_replace(p, type=self.substitute_type_params(p.type, effective_subst))
             for p in method.params
         ]
         substituted_return = self.substitute_type_params(method.return_type, effective_subst)

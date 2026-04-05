@@ -1012,7 +1012,7 @@ class ExpressionAnalyzer:
                                 cpp = DUNDER_CPP_TEMPLATES.get(method_name)
                             resolved_method = FunctionInfo(
                                 name=method_name,
-                                params=[ParamInfo(n, t) for n, t in method.params],
+                                params=list(method.params),
                                 return_type=ret_type,
                                 cpp_template=cpp,
                                 native_name=method.native_name,

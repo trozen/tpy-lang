@@ -1774,6 +1774,8 @@ class Parser:
         vararg_type = None
         if node.args.vararg is not None:
             va = node.args.vararg
+            if is_overload_stub:
+                raise ParseError("*args is not supported on @overload stubs", node)
             if va.annotation is None:
                 raise ParseError(
                     f"*{va.arg} must have a type annotation (element type)", node)
@@ -2088,6 +2090,8 @@ class Parser:
         if node.args.vararg is not None:
             va = node.args.vararg
             if builtin_function_key is None:
+                if is_overload_stub:
+                    raise ParseError("*args is not supported on @overload stubs", node)
                 if va.annotation is None:
                     raise ParseError(
                         f"*{va.arg} must have a type annotation (element type)", node)

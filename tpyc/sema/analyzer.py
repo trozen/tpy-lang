@@ -5,6 +5,7 @@ Main orchestrator that wires all components together.
 """
 
 from __future__ import annotations
+from dataclasses import replace as dc_replace
 from typing import Optional
 
 from ..typesys import (
@@ -485,13 +486,7 @@ class SemanticAnalyzer:
             result = []
             for p in params:
                 if isinstance(p, ParamInfo):
-                    result.append(ParamInfo(
-                        p.name, make_ref(p.type),
-                        requires_mutable_lvalue=p.requires_mutable_lvalue,
-                        default_expr=p.default_expr,
-                        keyword_only=p.keyword_only,
-                        is_variadic=p.is_variadic,
-                    ))
+                    result.append(dc_replace(p, type=make_ref(p.type)))
                 else:
                     # Legacy tuple (name, type) form
                     result.append((p[0], make_ref(p[1])))

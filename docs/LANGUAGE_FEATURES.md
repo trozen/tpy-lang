@@ -2930,7 +2930,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: Homogeneous `*args: T` -- `def f(*args: Int32)`. Type annotation required. Inside the body, `args` supports `len()`, indexing, and iteration. At call sites, trailing positional args are packed into a stack array. Works with fixed positional params before `*args` and keyword-only params after. C++ codegen uses `tpy::varargs<T>` -- a dual-mode span that stores value types directly (like `std::span<T>`) and non-value types via pointer indirection for correct reference semantics. Mutations through `*args` to non-value types are visible to the caller. Works with `@nocopy` types (no copies made).
 - **Working**: `*list` unpacking at call sites -- `f(*my_list)` passes a list/array/span to a `*args` function. Zero-cost for contiguous containers (direct span mode). Supports forwarding: `def g(*args: T): f(*args)`.
 - **Working**: Generic `*args` -- `def first[T](*args: T) -> T` infers `T` from call-site arg types.
-- **Limitation**: `*args` on `@overload` stubs not yet supported.
+- **Limitation**: `*args` on `@overload` stubs is rejected (clear error).
 - **Open**: Heterogeneous `*args` (untyped) -- needs `Any` type
 - **Open**: `**kwargs` definition syntax -- TypedDict + `Unpack` approach planned
 
