@@ -1,1 +1,1 @@
-main.py:9: error: Type alias 'Shape' references unknown type 'UnknownType'
+main.py:9: error: Unknown type: UnknownType

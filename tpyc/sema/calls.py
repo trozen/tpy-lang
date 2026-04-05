@@ -516,11 +516,24 @@ class CallAnalyzer:
                 )
 
         # Generic type instantiation (e.g., Container[T, N](), Array[Int32, 8]())
-        # Only if it's actually a type - for generic functions with uppercase names,
-        # call_type may be set but we should use type_args instead
+        # The parser speculatively sets call_type for any imported name, so
+        # verify it's actually a type before using it
         if expr.call_type is not None:
-            # Check if this is a user-defined generic function
+            # Check if this is actually a function -- the parser speculatively
+            # sets call_type for any imported name, so we need to verify
             is_known_function = self.ctx.registry.get_function(expr.func_name) is not None
+            if not is_known_function and self.ctx.current_ns:
+                binding = self.ctx.current_ns.lookup(expr.func_name)
+                if binding and binding.kind == BindingKind.FUNCTION:
+                    is_known_function = True
+                elif binding and binding.kind == BindingKind.IMPORTED_NAME and binding.import_source:
+                    mod_info = self.ctx.registry.get_module(binding.import_source[0])
+                    if mod_info and binding.import_source[1] in mod_info.functions:
+                        is_known_function = True
+            if is_known_function:
+                # Clear speculative call_type; fall through to function
+                # handling below where type_args will be used instead
+                expr.call_type = None
             if not is_known_function:
                 # Check if it's a user-defined record - use _analyze_record_constructor for bound validation
                 record = self.ctx.registry.get_record(expr.func_name)

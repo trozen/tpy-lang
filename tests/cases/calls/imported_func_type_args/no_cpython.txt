@@ -1,0 +1,1 @@
+make_default is a tpyc builtin with no CPython equivalent

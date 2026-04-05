@@ -402,6 +402,9 @@ class Parser:
         # from previously-parsed modules, or from same-file definitions)
         self._decorator_schemas: dict[str, _DecoratorArgSchema] = dict(decorator_schemas) if decorator_schemas else {}
         self._star_import_resolver = star_import_resolver
+        # Top-level class names pre-scanned from the module body, used to
+        # resolve forward references in type annotations.
+        self._module_class_names: frozenset[str] = frozenset()
 
     def _loc(self, node: ast.AST) -> SourceLocation | None:
         """Create a SourceLocation from an AST node."""
@@ -531,7 +534,7 @@ class Parser:
             return alias
         elif not resolved:
             self._raise_unresolved_import_error(name, node)
-        if self.registry.is_known_type(name) or name[0].isupper():
+        if resolved or self.registry.is_known_type(name) or name in self._module_class_names:
             return NamedType(name)
         return None
 
@@ -539,10 +542,10 @@ class Parser:
         """Raise a helpful error for unresolved type names with import hints."""
         if raw_name in get_typing_exports():
             raise ParseError(f"'{raw_name}' requires: from typing import {raw_name}", node)
-        # In stdlib _core modules, unresolved uppercase names may be forward
-        # references to types defined later in the same file. Let them through.
+        # In stdlib _core modules, unresolved names may be forward references
+        # to types defined later in the same file. Let them through.
         mod = self._imports._module_name
-        if mod and "._" in mod and raw_name[0].isupper():
+        if mod and "._" in mod and raw_name in self._module_class_names:
             if public_module_name(mod) in _IMPLICIT_MODULES:
                 return
         if raw_name in get_tpy_exports():
@@ -605,12 +608,23 @@ class Parser:
         # Also check registry directly for user-defined types
         return self.registry.is_known_type(name)
 
+    def _could_be_type(self, name: str) -> bool:
+        """Check if a name could plausibly refer to a type.
+
+        Checks the local class pre-scan, the parser registry, and import
+        resolution. Used at call-parsing sites where the parser needs to
+        decide whether Name[args](...) could be a type instantiation.
+        """
+        return (name in self._module_class_names
+                or self.registry.is_known_type(name)
+                or self._resolve_type_name(name) is not None)
+
     def _is_type_alias_assign(self, node: ast.Assign) -> bool:
         """Check if an assignment is an old-style type alias (e.g., Shape = Circle | Rect).
 
         Triggers when ALL arms are Names/None AND at least one arm is a
         confirmed type (registered or builtin). Pure forward-ref aliases
-        (all arms capitalized but none yet registered) also match.
+        (all arms are class names defined in this module) also match.
         """
         if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
             return False
@@ -618,7 +632,7 @@ class Parser:
             return False
         arms = _collect_bitor_arms(node.value)
         has_confirmed_type = False
-        all_capitalized = True
+        all_module_classes = True
         for arm in arms:
             if isinstance(arm, ast.Constant) and arm.value is None:
                 has_confirmed_type = True
@@ -627,9 +641,9 @@ class Parser:
                 return False
             if self._is_type_name(arm.id):
                 has_confirmed_type = True
-            elif not arm.id[0].isupper():
-                all_capitalized = False
-        return has_confirmed_type or all_capitalized
+            elif arm.id not in self._module_class_names:
+                all_module_classes = False
+        return has_confirmed_type or all_module_classes
 
     def _register_type_alias(
         self, name: str, type_node: ast.expr,
@@ -643,6 +657,9 @@ class Parser:
 
     def _parse_module(self, tree: ast.Module) -> TpyModule:
         """Parse a module."""
+        self._module_class_names = frozenset(
+            node.name for node in tree.body if isinstance(node, ast.ClassDef)
+        )
         records = []
         functions = []
         protocols = []
@@ -2323,7 +2340,9 @@ class Parser:
                 # User-defined generic records (e.g., Stack[Int32])
                 if not resolved and raw_name:
                     self._raise_unresolved_import_error(raw_name, node)
-                if self.registry.get_record(resolved_container) is not None or resolved_container[0].isupper():
+                if (resolved
+                        or self.registry.get_record(resolved_container) is not None
+                        or resolved_container in self._module_class_names):
                     type_args = self._parse_record_type_args(node, resolved_container, type_param_scope)
                     return NamedType(resolved_container, type_args)
 
@@ -2435,9 +2454,6 @@ class Parser:
             # Integer constants are not valid type arguments
             if isinstance(s, ast.Constant) and isinstance(s.value, int):
                 raise ParseError(f"Integer '{s.value}' is not a valid type argument", s)
-            # Variable names that aren't types
-            if isinstance(s, ast.Name) and not self.registry.is_known_type(s.id) and s.id[0].islower():
-                raise ParseError(f"'{s.id}' is not a valid type", s)
             type_args.append(self._parse_type_annotation(s))
         return tuple(type_args)
 
@@ -2888,7 +2904,7 @@ class Parser:
                 # ClassName[TypeArgs].method(args) -- static call with explicit class type args
                 if (isinstance(node.func.value, ast.Subscript)
                         and isinstance(node.func.value.value, ast.Name)
-                        and node.func.value.value.id[0].isupper()):
+                        and self._could_be_type(node.func.value.value.id)):
                     name = node.func.value.value.id
                     type_args, type_args_parse_error = self._try_parse_type_args(node.func.value)
                     if type_args or type_args_parse_error:
@@ -2911,14 +2927,15 @@ class Parser:
                     # (for type instantiations like Array[Int32, 8], non-type args are valid
                     # so parse error is stored and sema decides whether to report it)
                     type_args, type_args_parse_error = self._try_parse_type_args(node.func)
-                    # If name looks like a type (starts with uppercase or is registered), also parse as call_type
+                    # Try to parse as a type annotation (for type instantiation
+                    # like ArrayList[Int32]()). Sema decides whether to use
+                    # call_type or type_args based on whether the name resolves
+                    # to a type or a function.
                     call_type = None
-                    if name[0].isupper() or self.registry.is_known_type(name):
+                    if self._could_be_type(name):
                         try:
                             call_type = self._parse_type_annotation(node.func)
                         except ParseError:
-                            # call_type parsing failed - if type_args also failed, sema will report
-                            # the type_args_parse_error; otherwise it's a function call
                             pass
                     # Try to parse the subscript as an expression so sema can
                     # fall back to expression callee when the name turns out to

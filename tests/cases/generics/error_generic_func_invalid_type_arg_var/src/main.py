@@ -7,4 +7,4 @@ def first[T](items: list[T]) -> T:  # tpyc: ok
 
 nums = [1, 2, 3]  # tpyc: ok
 x = 42  # tpyc: ok
-first[x](nums)  # tpyc: error(/'x' is not a valid type/)
+first[x](nums)  # tpyc: error(/Unknown type: x/)
