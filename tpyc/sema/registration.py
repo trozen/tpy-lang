@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
-    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, EnumType, IntEnumType, BoolType, SpanIterType,
+    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, EnumType, IntEnumType, BoolType, SpanType, SpanIterType,
     FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64,
     register_value_type_record, register_send_record, register_sync_record,
     register_return_exception, is_return_exception,
@@ -37,6 +37,15 @@ if TYPE_CHECKING:
 
 from tpyc import modules as builtin_modules
 from .. import qnames
+
+def _vararg_span_type(elem_type: 'TpyType') -> SpanType:
+    """Build the sema-level Span type for a *args parameter.
+
+    Always Span[readonly[T]] regardless of value/non-value. The distinction
+    (std::span<const T> vs tpy::varargs<T>) is handled in codegen only.
+    """
+    return SpanType(elem_type, is_readonly=True)
+
 
 _LINKAGE_MAP = {
     'DEFAULT': FunctionLinkage.DEFAULT,
@@ -483,12 +492,21 @@ class TypeRegistrar:
                         f"got '{method_return}'",
                         method.loc or record.loc,
                     )
+            method_param_infos = [
+                ParamInfo(n, t,
+                          default_expr=method_defaults[i] if i < len(method_defaults) else None,
+                          keyword_only=(method.keyword_only_start is not None
+                                        and i >= method.keyword_only_start))
+                for i, (n, t) in enumerate(method_params)
+            ]
+            if method.vararg_name is not None and method.vararg_type is not None:
+                va_type = self.type_ops.resolve_type(method.vararg_type)
+                method_param_infos.append(
+                    ParamInfo(method.vararg_name, _vararg_span_type(va_type),
+                              is_variadic=True))
             func_info = FunctionInfo(
                 name=method.name,
-                params=[
-                    ParamInfo(n, t, default_expr=method_defaults[i] if i < len(method_defaults) else None)
-                    for i, (n, t) in enumerate(method_params)
-                ],
+                params=method_param_infos,
                 return_type=method_return,
                 is_readonly=resolved_readonly,
                 is_pure=method.is_pure,
@@ -553,7 +571,10 @@ class TypeRegistrar:
                 for i, func_info in enumerate(method_list):
                     new_params = [
                         ParamInfo(p.name, attach_type_param_bounds(p.type, record.type_param_bounds),
-                                  requires_mutable_lvalue=p.requires_mutable_lvalue, default_expr=p.default_expr)
+                                  requires_mutable_lvalue=p.requires_mutable_lvalue,
+                                  default_expr=p.default_expr,
+                                  keyword_only=p.keyword_only,
+                                  is_variadic=p.is_variadic)
                         for p in func_info.params
                     ]
                     new_return = attach_type_param_bounds(func_info.return_type, record.type_param_bounds)
@@ -1276,6 +1297,12 @@ class TypeRegistrar:
                 )
             resolved_params.append((pname, resolved_ptype))
 
+        # Resolve *args parameter: append as Span[readonly[T]]
+        resolved_vararg_type = None
+        if func.vararg_name is not None:
+            resolved_vararg_type = self.type_ops.resolve_type(func.vararg_type)
+            self.type_ops.validate_type(resolved_vararg_type, allow_type_param_ref=is_generic)
+
         resolved_return = self.type_ops.resolve_type(func.return_type)
         try:
             self.type_ops.validate_type(resolved_return, allow_type_param_ref=is_generic)
@@ -1352,12 +1379,25 @@ class TypeRegistrar:
         fi_linkage = _LINKAGE_MAP[func.linkage.name]
 
         func_defaults = func.defaults if func.defaults else []
+        param_infos = []
+        kw_start = func.keyword_only_start
+        for i, (n, t) in enumerate(resolved_params):
+            is_kwonly = kw_start is not None and i >= kw_start
+            # Insert *args param before keyword-only params
+            if is_kwonly and func.vararg_name is not None and resolved_vararg_type is not None and i == kw_start:
+                span_type = _vararg_span_type(resolved_vararg_type)
+                param_infos.append(ParamInfo(func.vararg_name, span_type, is_variadic=True))
+            param_infos.append(ParamInfo(n, t,
+                      default_expr=func_defaults[i] if i < len(func_defaults) else None,
+                      keyword_only=is_kwonly))
+        # *args with no keyword-only params: append at end
+        if func.vararg_name is not None and resolved_vararg_type is not None and (kw_start is None or kw_start >= len(resolved_params)):
+            span_type = SpanType(resolved_vararg_type, is_readonly=True)
+            param_infos.append(ParamInfo(func.vararg_name, span_type, is_variadic=True))
+
         info = FunctionInfo(
             name=func.name,
-            params=[
-                ParamInfo(n, t, default_expr=func_defaults[i] if i < len(func_defaults) else None)
-                for i, (n, t) in enumerate(resolved_params)
-            ],
+            params=param_infos,
             return_type=resolved_return,
             is_noalloc=func.is_noalloc,
             is_readonly=func.is_readonly or func.is_pure,
@@ -1438,12 +1478,21 @@ class TypeRegistrar:
                 func.type_param_bounds.update(type_param_bounds)
 
             func_defaults = func.defaults if func.defaults else []
+            stub_param_infos = [
+                ParamInfo(n, t,
+                          default_expr=func_defaults[i] if i < len(func_defaults) else None,
+                          keyword_only=(func.keyword_only_start is not None
+                                        and i >= func.keyword_only_start))
+                for i, (n, t) in enumerate(resolved_params)
+            ]
+            if func.vararg_name is not None and func.vararg_type is not None:
+                va_type = self.type_ops.resolve_type(func.vararg_type)
+                stub_param_infos.append(
+                    ParamInfo(func.vararg_name, _vararg_span_type(va_type),
+                              is_variadic=True))
             info = FunctionInfo(
                 name=func.name,
-                params=[
-                    ParamInfo(n, t, default_expr=func_defaults[i] if i < len(func_defaults) else None)
-                    for i, (n, t) in enumerate(resolved_params)
-                ],
+                params=stub_param_infos,
                 return_type=resolved_return,
                 is_noalloc=func.is_noalloc,
                 is_readonly=func.is_readonly or func.is_pure,

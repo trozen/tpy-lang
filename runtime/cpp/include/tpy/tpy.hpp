@@ -61,6 +61,9 @@
 // SpanIter: lightweight iterator over contiguous span (depends on <span>, error_return)
 #include "span_iter.hpp"
 
+// varargs<T>: dual-mode span for *args (direct contiguous or indirect pointer array)
+#include "varargs.hpp"
+
 // OwnIter: drain iterator for std::vector (depends on core)
 #include "own_iter.hpp"
 

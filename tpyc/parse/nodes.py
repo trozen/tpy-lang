@@ -177,6 +177,29 @@ class TpyTypeParamConstruct(TpyExpr):
 
 
 @dataclass
+class TpyVarargPack(TpyExpr):
+    """Pack of variadic arguments at a call site (created by sema, not parser).
+
+    Represents the trailing args that get packed into a Span[readonly[T]] for
+    a *args: T parameter.
+    """
+    args: list[TpyExpr]
+    element_type: TpyType
+
+    def children(self) -> list[TpyExpr]:
+        return list(self.args)
+
+
+@dataclass
+class TpyStarUnpack(TpyExpr):
+    """Star unpacking at a call site: f(*expr). Created by parser for *expr in calls."""
+    expr: TpyExpr
+
+    def children(self) -> list[TpyExpr]:
+        return [self.expr]
+
+
+@dataclass
 class TpyCall(TpyExpr):
     """Function or constructor call.
 
@@ -953,6 +976,9 @@ class TpyFunction:
     type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
     type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "tpy.extern.DefaultInt"}
     defaults: list['TpyExpr | None'] = field(default_factory=list)  # len == len(params); None = no default
+    keyword_only_start: int | None = None  # index into params where keyword-only begins
+    vararg_name: str | None = None  # name of *args parameter
+    vararg_type: 'TpyType | None' = None  # element type T from *args: T
     error_return: str | None = None  # @error_return(E) exception type name
     builtin_decorator_key: str | None = None  # @builtin_decorator("tpy.readonly")
     builtin_function_key: str | None = None  # @builtin_function("tpy.extern.native_c_global")

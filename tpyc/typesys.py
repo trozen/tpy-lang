@@ -3377,6 +3377,8 @@ class ParamInfo:
     type: TpyType
     requires_mutable_lvalue: bool = False
     default_expr: 'Any | None' = None  # TpyExpr from parser; None = required param
+    keyword_only: bool = False  # True for params after * separator
+    is_variadic: bool = False  # True for *args param (type is Span[readonly[T]])
 
     @property
     def has_default(self) -> bool:
@@ -3494,13 +3496,26 @@ class FunctionInfo:
         return bool(self.type_params)
 
     @property
+    def has_variadic(self) -> bool:
+        """True if this function has a *args parameter."""
+        return any(p.is_variadic for p in self.params)
+
+    @property
+    def has_keyword_only(self) -> bool:
+        """True if this function has keyword-only parameters."""
+        return any(p.keyword_only for p in self.params)
+
+    @property
     def min_args(self) -> int:
-        """Minimum number of arguments (params without defaults)."""
-        return sum(1 for p in self.params if not p.has_default)
+        """Minimum number of required positional arguments (excludes keyword-only and variadic)."""
+        return sum(1 for p in self.params
+                   if not p.has_default and not p.keyword_only and not p.is_variadic)
 
     @property
     def max_args(self) -> int:
-        """Maximum number of arguments (all params)."""
+        """Maximum number of total arguments (all params). Unlimited if variadic."""
+        if self.has_variadic:
+            return 2**31
         return len(self.params)
 
 

@@ -1,0 +1,1 @@
+main.py:6: error: 'greet' takes 1 positional argument(s), got 2

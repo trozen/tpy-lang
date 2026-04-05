@@ -59,6 +59,10 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - ptr() function? Auto-select Ptr vs Ptr[readonly[T]] based on binding mutability. Needs sema-level magic (mutability not in type, it's in binding context).
 - `tpy.unsafe.unsafe_address_of(x) -> int`: return the memory address of an object as an integer. Useful for identity comparison in tests (proving reference semantics vs silent copy). C++ codegen: `reinterpret_cast<uintptr_t>(&x)`.
 
+## *args / keyword-only params
+- `@overload` + `*args`: no rejection check. Would produce confusing errors rather than a clear "not supported" message.
+- ParamInfo reconstruction fragility: 5+ sites manually construct new ParamInfo (e.g. `_ref_params` in analyzer.py, `substitute_method_type_params` in type_ops.py, `attach_type_param_bounds` in registration.py). Each must forward `keyword_only` and `is_variadic`. Adding a new ParamInfo field will silently lose it at these sites. Consider using `dataclasses.replace()` instead.
+
 ## Python features
 - Nested class definitions: `class Outer: class Inner: ...` is rejected by the parser. Needed both as a language feature and for macro companion type creation (e.g. key enums for JSON field dispatch). C++ codegen: nested struct/class.
 - Any

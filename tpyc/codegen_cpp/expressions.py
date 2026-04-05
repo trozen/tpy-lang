@@ -29,6 +29,7 @@ from ..parse import (
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr, TpyNamedExpr,
     TpyLambda,
+    TpyVarargPack, TpyStarUnpack,
     collect_name_refs,
 )
 from ..prescan import match_is_none
@@ -1827,6 +1828,11 @@ class ExpressionGenerator:
                     gen_args.append(f"{self.types.type_to_cpp(resolved_ptype)}{{}}")
                     continue
 
+                # *args pack: materialize as std::array temp + std::span
+                if isinstance(arg, TpyVarargPack):
+                    gen_args.append(self._gen_vararg_pack(arg))
+                    continue
+
                 # @dynamic protocol params: wrap concrete args in temp adapter
                 dynamic_arg = self._gen_dynamic_protocol_arg(arg, resolved_ptype)
                 if dynamic_arg is not None:
@@ -3423,6 +3429,38 @@ class ExpressionGenerator:
         if binop_result.is_reverse:
             return self.builtins.gen_call_from_fi(binop_result.method, wrapped_right, [wrapped_left])
         return self.builtins.gen_call_from_fi(binop_result.method, wrapped_left, [wrapped_right])
+
+    def _gen_vararg_pack(self, pack: TpyVarargPack) -> str:
+        """Generate C++ for a *args pack: stack array + span.
+
+        Value types: std::array<T, N> + std::span<const T> (copies, immutable).
+        Non-value types: std::array<T*, N> + tpy::ptr_span<T> (pointers, reference semantics).
+        """
+        elem_type = pack.element_type
+        elem_cpp = self.types.type_to_cpp(elem_type)
+        is_ref = not elem_type.is_value_type() and not isinstance(elem_type, TypeParamRef)
+
+        if not pack.args:
+            return f"::tpy::varargs<{elem_cpp}>()"
+        sub_args = []
+        for a in pack.args:
+            if isinstance(a, TpyStarUnpack):
+                # *expr unpacking -- wrap in varargs (direct mode from span)
+                inner = self.gen_expr(a.expr)
+                inner_type = self.ctx.get_expr_type(a.expr)
+                if isinstance(inner_type, SpanType):
+                    return f"::tpy::varargs<{elem_cpp}>({inner})"
+                return f"::tpy::varargs<{elem_cpp}>(::tpy::as_mut_span({inner}))"
+            gen = self.gen_expr(a)
+            sub_args.append(f"&{gen}" if is_ref else gen)
+        n = len(sub_args)
+        init = ", ".join(sub_args)
+        if is_ref:
+            array_type = f"std::array<{elem_cpp}*, {n}>"
+        else:
+            array_type = f"std::array<{elem_cpp}, {n}>"
+        temp = self.ctx.temps.create_typed(array_type, init, brace_init=True)
+        return f"::tpy::varargs<{elem_cpp}>({temp})"
 
     def _gen_span_coercion(self, expr: TpyExpr, span_type: SpanType, gen_inner: str) -> str:
         """Generate std::span conversion for supported container types."""

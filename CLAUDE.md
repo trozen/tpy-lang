@@ -376,6 +376,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `bytes_ops.hpp` | Python-style bytes operations: printing, encode/decode, search helpers |
 | `copy_iter.hpp` | `CopyIter<I>` iterator adapter that copies elements from a borrowing iterator |
 | `own_iter.hpp` | `OwnIter<C>` drain iterator for consuming iteration over heap-backed containers |
+| `varargs.hpp` | `varargs<T>` dual-mode span for `*args` (direct storage or pointer indirection) |
 | `slice.hpp` | Built-in slice type for user-defined `__getitem__` overloads |
 | `math_ops.hpp` | Wrapper for two-argument `math.log(x, base)` |
 | `file.hpp` | `TextFile`, `BinaryFile` for `open()` builtin, `FileFlags` mode parsing |

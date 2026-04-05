@@ -262,7 +262,8 @@ class FunctionGenerator:
                    mutated_params: frozenset[int] | None = None,
                    defaults: list | None = None,
                    emit_defaults: bool = False,
-                   class_type_params: set[str] | None = None) -> str:
+                   class_type_params: set[str] | None = None,
+                   func: 'TpyFunction | None' = None) -> str:
         """Generate function parameter list.
 
         Own[T] params are emitted as T&& (rvalue ref) for concrete T, or
@@ -297,6 +298,15 @@ class FunctionGenerator:
                 parts.append(part)
                 continue
             own = unwrap_readonly(unwrap_ref_type(ptype))
+            bare_ptype = unwrap_ref_type(ptype)
+            # *args parameter: emit tpy::varargs<T>
+            if func and func.vararg_name and pname == func.vararg_name and isinstance(bare_ptype, SpanType):
+                inner_cpp = bare_ptype.inner_element_type.to_cpp()
+                part = f"::tpy::varargs<{inner_cpp}> {escape_cpp_name(pname)}"
+                if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
+                    part += f" = {self.default_to_cpp(defaults[i], ptype)}"
+                parts.append(part)
+                continue
             if (reassigned_params and pname in reassigned_params
                     and ptype.param_needs_copy_for_reassign()):
                 # Rename param so the body can declare a mutable local with the original name
@@ -668,7 +678,7 @@ class FunctionGenerator:
                       if has_proto_params or has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
                                            mutated_params=mp, defaults=dfl, emit_defaults=True,
-                                           use_readonly_params=func.is_readonly))
+                                           use_readonly_params=func.is_readonly, func=func))
             out.write(f"{ret_type} {name}({params});\n")
         else:
             ret_type = self._resolve_return_type(effective_ret, const=func.is_readonly,
@@ -679,7 +689,7 @@ class FunctionGenerator:
                       if has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
                                            mutated_params=mp, defaults=dfl, emit_defaults=True,
-                                           use_readonly_params=func.is_readonly))
+                                           use_readonly_params=func.is_readonly, func=func))
             out.write(f"{ret_type} {name}({params});\n")
 
     def gen_function_decl(self, out: TextIO, func: TpyFunction) -> bool:
@@ -745,7 +755,7 @@ class FunctionGenerator:
                           if has_proto_params or has_dynamic
                           else self.gen_params(func.params, func.type_params,
                                                reassigned_params=rp, mutated_params=mp,
-                                               use_readonly_params=func.is_readonly))
+                                               use_readonly_params=func.is_readonly, func=func))
                 out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
             else:
                 self.gen_function_def(out, func)
@@ -760,7 +770,7 @@ class FunctionGenerator:
                                                 use_readonly_params=func.is_readonly) if has_dynamic
                   else self.gen_params(func.params, func.type_params,
                                        reassigned_params=rp, mutated_params=mp,
-                                       use_readonly_params=func.is_readonly))
+                                       use_readonly_params=func.is_readonly, func=func))
         out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
         return True
 
@@ -842,7 +852,7 @@ class FunctionGenerator:
                       if has_proto_params or has_dynamic
                       else self.gen_params(func.params, func.type_params,
                                            reassigned_params=rp, mutated_params=mp,
-                                           use_readonly_params=func.is_readonly))
+                                           use_readonly_params=func.is_readonly, func=func))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params}) {{\n")
         else:
             ret_type = self._resolve_return_type(func.return_type, const=func.is_readonly,
@@ -850,7 +860,7 @@ class FunctionGenerator:
             params = (self.gen_params_with_protocols(func.params, mutated_params=mp) if has_dynamic
                       else self.gen_params(func.params, func.type_params,
                                            reassigned_params=rp, mutated_params=mp,
-                                           use_readonly_params=func.is_readonly))
+                                           use_readonly_params=func.is_readonly, func=func))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params}) {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
@@ -908,7 +918,7 @@ class FunctionGenerator:
         ret_type = self._resolve_return_type(stub.return_type, error_return=impl.error_return)
         params = self.gen_params(impl.params, impl.type_params,
                                  reassigned_params=rp, mutated_params=mp,
-                                 use_readonly_params=impl.is_readonly)
+                                 use_readonly_params=impl.is_readonly, func=impl)
         out.write(f"{ret_type} {escape_cpp_name(mangled)}({params}) {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
@@ -968,14 +978,14 @@ class FunctionGenerator:
                       if has_proto_params or has_dynamic
                       else self.gen_params(stub.params, impl.type_params,
                                            reassigned_params=rp, mutated_params=mp,
-                                           use_readonly_params=stub.is_readonly))
+                                           use_readonly_params=stub.is_readonly, func=stub))
             out.write(f"{ret_type} {escape_cpp_name(stub.name)}({params}) {{\n")
         else:
             ret_type = self._resolve_return_type(stub.return_type)
             params = (self.gen_params_with_protocols(stub.params, mutated_params=mp) if has_dynamic
                       else self.gen_params(stub.params, impl.type_params,
                                            reassigned_params=rp, mutated_params=mp,
-                                           use_readonly_params=stub.is_readonly))
+                                           use_readonly_params=stub.is_readonly, func=stub))
             out.write(f"{ret_type} {escape_cpp_name(stub.name)}({params}) {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
@@ -1240,14 +1250,14 @@ class FunctionGenerator:
                                          mutated_params=gmp,
                                          use_readonly_params=const,
                                          defaults=dfl, emit_defaults=True,
-                                         class_type_params=ctp)
+                                         class_type_params=ctp, func=method)
             else:
                 use_ro = const and not method.auto_readonly_params_resolved
                 params = self.gen_params(method.params, method.type_params,
                                          reassigned_params=rp, mutated_params=mp,
                                          use_readonly_params=use_ro,
                                          defaults=dfl, emit_defaults=True,
-                                         class_type_params=ctp)
+                                         class_type_params=ctp, func=method)
         const_suffix = " const" if const else ""
         # auto_own borrowing clone needs & qualifier so C++ can distinguish
         # f() & from f() && (both must have ref-qualifiers or neither).
@@ -1540,7 +1550,7 @@ class FunctionGenerator:
             return
         cpp_name = func.native_name or func.name
         ret_type = func.return_type.to_cpp_return()
-        params = self.gen_params(func.params, func.type_params)
+        params = self.gen_params(func.params, func.type_params, func=func)
         ns, bare_name = self._split_extern_cpp_name(cpp_name)
 
         self.ctx.emit_preceding_comments(out, func.loc)

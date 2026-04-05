@@ -314,7 +314,8 @@ class MethodAnalyzer:
         Sets expr.resolved_function_info. Returns the return type.
         """
         # Resolve kwargs before arity check
-        if expr.kwargs:
+        has_kwonly = any(p.keyword_only for p in (overloads[0].params if len(overloads) == 1 else []))
+        if expr.kwargs or has_kwonly:
             if len(overloads) > 1:
                 raise self.ctx.error(
                     f"Keyword arguments not supported for overloaded method '{expr.method}'", expr)
@@ -997,8 +998,8 @@ class MethodAnalyzer:
         # For MVP: use first overload (user records have single overloads per name)
         method = overloads[0]
 
-        # Resolve kwargs
-        if expr.kwargs:
+        # Resolve kwargs (also enforces keyword-only constraints when no kwargs)
+        if expr.kwargs or method.has_keyword_only:
             expr.args = resolve_kwargs(
                 expr.args, expr.kwargs, method.params, expr.method,
                 lambda msg: self.ctx.error(msg, expr),

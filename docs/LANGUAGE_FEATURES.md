@@ -2926,8 +2926,13 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: C++ keyword escaping -- Python identifiers that clash with C++ reserved words (e.g., `default`, `class`, `namespace`) are automatically mangled in generated code
 - **Working**: Default parameter values -- constant expressions (literals, `None`, fixed-int constructors). Maps to C++ default arguments. Defaults on generic type parameters are validated at instantiation time: `def f[T](x: T = 0)` called as `f[str]()` produces a clear sema error. `T()` default-construction syntax is supported: `def f[T](x: T = T()) -> T` maps to `T{}` in C++.
 - **Working**: Keyword arguments at call sites -- `f(name="World")`, `Point(y=1, x=2)`, mixed positional+kwargs. Resolved to positional at compile time. Supported for user functions, methods, constructors, and generic functions. Not supported for overloaded builtins (e.g., `range`, `len`).
-- **Open**: `*args` → variadic templates or fixed overloads
-- **Open**: `**kwargs` definition syntax → if keys known at compile time
+- **Working**: Keyword-only parameters -- `def f(x: int, *, name: str = "default")`. Parameters after `*` or `*args` can only be passed by name. Enforced at compile time; no C++ codegen changes (keyword-only is a Python-level constraint).
+- **Working**: Homogeneous `*args: T` -- `def f(*args: Int32)`. Type annotation required. Inside the body, `args` supports `len()`, indexing, and iteration. At call sites, trailing positional args are packed into a stack array. Works with fixed positional params before `*args` and keyword-only params after. C++ codegen uses `tpy::varargs<T>` -- a dual-mode span that stores value types directly (like `std::span<T>`) and non-value types via pointer indirection for correct reference semantics. Mutations through `*args` to non-value types are visible to the caller. Works with `@nocopy` types (no copies made).
+- **Working**: `*list` unpacking at call sites -- `f(*my_list)` passes a list/array/span to a `*args` function. Zero-cost for contiguous containers (direct span mode). Supports forwarding: `def g(*args: T): f(*args)`.
+- **Working**: Generic `*args` -- `def first[T](*args: T) -> T` infers `T` from call-site arg types.
+- **Limitation**: `*args` on `@overload` stubs not yet supported.
+- **Open**: Heterogeneous `*args` (untyped) -- needs `Any` type
+- **Open**: `**kwargs` definition syntax -- TypedDict + `Unpack` approach planned
 
 ### Decorators
 - **Working**: `@noalloc` (parsed and recognized, enforcement planned)

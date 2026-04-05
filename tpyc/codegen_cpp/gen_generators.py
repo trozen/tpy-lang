@@ -96,7 +96,7 @@ class GeneratorCodegen:
             return self.functions.gen_params_with_protocols(
                 func.params, func.type_params, emit_defaults=emit_defaults)
         return self.functions.gen_params(func.params, func.type_params,
-                                         emit_defaults=emit_defaults)
+                                         emit_defaults=emit_defaults, func=func)
 
     @staticmethod
     def gen_struct_name(func: TpyFunction, record_name: str | None = None) -> str:

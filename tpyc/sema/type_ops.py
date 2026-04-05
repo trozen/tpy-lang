@@ -874,14 +874,31 @@ class TypeOperations:
             for tp, arg in zip(func.type_params, explicit_type_args):
                 if arg is not None:  # None = _ wildcard, skip
                     inferred[tp] = arg
-        for (pname, ptype), arg_type in zip(func.params, arg_types):
+        arg_idx = 0
+        for p in func.params:
+            if arg_idx >= len(arg_types):
+                break
+            ptype = p.type
+            if p.is_variadic and isinstance(unwrap_ref_type(ptype), SpanType):
+                # Variadic param: match each remaining arg against element type
+                elem_type = unwrap_ref_type(ptype).inner_element_type
+                while arg_idx < len(arg_types):
+                    if not self.match_type_with_inference(elem_type, arg_types[arg_idx], inferred):
+                        return None
+                    arg_idx += 1
+                continue
+            if p.keyword_only:
+                # Skip keyword-only params in arg_types matching (they were
+                # appended by resolve_kwargs, not from positional args)
+                continue
             # @value_ptr_coercion: Ptr[T] params accept T values, so match
             # the arg against the pointee type for inference purposes.
             match_type = ptype
             if func.value_ptr_coercion and isinstance(ptype, PtrType):
                 match_type = ptype.pointee
-            if not self.match_type_with_inference(match_type, arg_type, inferred):
+            if not self.match_type_with_inference(match_type, arg_types[arg_idx], inferred):
                 return None
+            arg_idx += 1
 
         # Fallback: infer remaining params from expected return type
         if expected_return_type is not None:
@@ -1044,7 +1061,8 @@ class TypeOperations:
                 effective_subst[tp] = TypeParamRef(tp)
         substituted_params = [
             ParamInfo(p.name, self.substitute_type_params(p.type, effective_subst),
-                      requires_mutable_lvalue=p.requires_mutable_lvalue, default_expr=p.default_expr)
+                      requires_mutable_lvalue=p.requires_mutable_lvalue, default_expr=p.default_expr,
+                      keyword_only=p.keyword_only, is_variadic=p.is_variadic)
             for p in method.params
         ]
         substituted_return = self.substitute_type_params(method.return_type, effective_subst)

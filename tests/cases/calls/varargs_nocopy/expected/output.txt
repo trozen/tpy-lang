@@ -1,0 +1,5 @@
+use 1
+use 2
+after use_all
+drop 2
+drop 1

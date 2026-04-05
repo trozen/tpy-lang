@@ -12,7 +12,7 @@ from .nodes import (
     FSTRING_CONV_NONE, FSTRING_CONV_STR, FSTRING_CONV_REPR, FSTRING_CONV_ASCII,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
-    TpyCall, TpyMethodCall,
+    TpyVarargPack, TpyStarUnpack, TpyCall, TpyMethodCall,
     TpyFieldAccess, TpyArrayLiteral, TpyTupleLiteral, TupleElemCapture, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyComprehensionGenerator, TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression,
     TpySlice, TpySubscript, TpyCoerce,

@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingViewType, CopyIterType, OwnIterType,
     IntLiteralType, FloatType, Float32Type, BoolType, resolve_int_literals,
     StrType, LiteralType, LiteralValue, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
-    PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
+    PtrType, is_readonly_ptr, VoidType, SpanType, ArrayType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
     UNKNOWN_ELEMENT, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
     UnionType, EnumType, VOID, BIGINT, BOOL, STR, INT32, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own,
     is_any_str_type, container_to_str_template, error_return_matches,
@@ -26,6 +26,7 @@ from ..parse import (
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
     TpyTypeParamConstruct, TpyCoerce, TpyLambda,
     TpyDictLiteral, TpySetLiteral,
+    TpyVarargPack, TpyStarUnpack,
 )
 from ..modules import extract_type_params
 from ..namespace import BindingKind
@@ -160,23 +161,70 @@ def resolve_kwargs(
     Validates kwarg names, detects duplicate/missing args, and fills gaps
     with default expressions from ParamInfo. Gap-filled defaults get the
     call site's loc so errors point to the call, not the function definition.
+    Keyword-only params can only be supplied via kwargs, not positionally.
+    Variadic params are excluded from kwargs resolution.
     """
-    if not expr_kwargs:
-        return expr_args
+    # Build name -> index map, excluding variadic params
+    name_to_index = {p.name: i for i, p in enumerate(params) if not p.is_variadic}
 
-    name_to_index = {p.name: i for i, p in enumerate(params)}
+    # Count positional slots (non-keyword-only, non-variadic)
+    has_kwonly = any(p.keyword_only for p in params)
+    has_variadic = any(p.is_variadic for p in params)
+    pos_count = sum(1 for p in params if not p.keyword_only and not p.is_variadic)
+
+    # Check positional overflow into keyword-only slots (variadic absorbs extras)
+    if has_kwonly and not has_variadic and len(expr_args) > pos_count:
+        raise error_fn(
+            f"'{func_name}' takes {pos_count} positional argument(s), got {len(expr_args)}")
+
+    if not expr_kwargs:
+        # Even without kwargs, check for missing required keyword-only params
+        # and fill in defaults for optional keyword-only params
+        for p in params:
+            if p.keyword_only and not p.has_default:
+                raise error_fn(f"'{func_name}' missing required keyword argument: '{p.name}'")
+        if has_kwonly:
+            # Append keyword-only defaults to the args list
+            result = list(expr_args)
+            for p in params:
+                if not p.keyword_only:
+                    continue
+                default = p.default_expr
+                if call_loc is not None and default is not None:
+                    default = dc_replace(default, loc=call_loc)
+                result.append(default)
+            return result
+        return expr_args
 
     # Validate all kwarg names exist in params
     for kw_name in expr_kwargs:
         if kw_name not in name_to_index:
             raise error_fn(f"'{func_name}' got unexpected keyword argument '{kw_name}'")
 
-    # Validate no kwarg overlaps with a positional arg
+    # Validate no kwarg overlaps with a positional arg (skip keyword-only params)
     for param_name, idx in name_to_index.items():
-        if param_name in expr_kwargs and idx < len(expr_args):
+        if param_name in expr_kwargs and idx < len(expr_args) and not params[idx].keyword_only:
             raise error_fn(f"'{func_name}' got multiple values for argument '{param_name}'")
 
-    # Find the rightmost explicitly-provided index
+    # When there's a variadic param, positional args don't map 1:1 to params.
+    # Handle separately: raw positional args stay as-is, then append resolved kwonly args.
+    if has_variadic:
+        result = list(expr_args)
+        for p in params:
+            if not p.keyword_only:
+                continue
+            if p.name in expr_kwargs:
+                result.append(expr_kwargs[p.name])
+            elif p.has_default:
+                default = p.default_expr
+                if call_loc is not None:
+                    default = dc_replace(default, loc=call_loc)
+                result.append(default)
+            else:
+                raise error_fn(f"'{func_name}' missing required keyword argument: '{p.name}'")
+        return result
+
+    # Non-variadic: find the rightmost explicitly-provided index
     rightmost = len(expr_args) - 1
     for kw_name in expr_kwargs:
         idx = name_to_index[kw_name]
@@ -186,17 +234,23 @@ def resolve_kwargs(
     # Build result list up to rightmost
     result: list[TpyExpr] = []
     for i in range(rightmost + 1):
+        p = params[i]
         if i < len(expr_args):
             result.append(expr_args[i])
-        elif params[i].name in expr_kwargs:
-            result.append(expr_kwargs[params[i].name])
-        elif params[i].has_default:
-            default = params[i].default_expr
+        elif p.name in expr_kwargs:
+            result.append(expr_kwargs[p.name])
+        elif p.has_default:
+            default = p.default_expr
             if call_loc is not None:
                 default = dc_replace(default, loc=call_loc)
             result.append(default)
         else:
-            raise error_fn(f"'{func_name}' missing required argument: '{params[i].name}'")
+            raise error_fn(f"'{func_name}' missing required argument: '{p.name}'")
+
+    # Check for missing required keyword-only params that are beyond rightmost
+    for i, p in enumerate(params):
+        if i > rightmost and p.keyword_only and not p.has_default and p.name not in expr_kwargs:
+            raise error_fn(f"'{func_name}' missing required keyword argument: '{p.name}'")
 
     return result
 
@@ -427,7 +481,7 @@ class CallAnalyzer:
 
     def _resolve_call_kwargs(self, expr: TpyCall, func: FunctionInfo) -> None:
         """Resolve keyword arguments on a TpyCall into positional form."""
-        if not expr.kwargs:
+        if not expr.kwargs and not func.has_keyword_only:
             return
         expr.args = resolve_kwargs(
             expr.args, expr.kwargs, func.params, expr.func_name,
@@ -2243,15 +2297,30 @@ class CallAnalyzer:
         if len(expr.args) < func.min_args or len(expr.args) > func.max_args:
             raise self.ctx.error(
                 arity_error_msg(expr.func_name, func.min_args, func.max_args, len(expr.args)), expr)
+
+        # Pack variadic args if function has *args
+        if func.has_variadic:
+            self._analyze_and_pack_varargs(expr, func)
+        else:
+            self._typecheck_call_args(expr, func)
+
+        self._check_borrow_arg_conflicts(expr)
+        self._check_loop_var_arg_mutation(expr)
+        self._record_mutation_call_edges(expr)
+        self._check_error_return_handled(expr, func)
+        return func.return_type
+
+    def _typecheck_call_args(self, expr: TpyCall, func: FunctionInfo) -> None:
+        """Type-check call arguments against function parameters (non-variadic)."""
+        # Reject *unpacking on non-variadic functions
+        for arg in expr.args:
+            if isinstance(arg, TpyStarUnpack):
+                raise self.ctx.error(
+                    f"Cannot use *unpacking: '{func.name}' does not accept *args", arg)
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
-            # Handle list() constructor - infer type from parameter
             arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
             arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 
-            # Check for Own[T] passed directly to object type parameter
-            # Reject rvalue Own[T] passed directly to non-Own param (e.g.
-            # func(make_thing()) where param is T not Own[T]). Named variables
-            # with Own[T] type are fine -- they're lvalues passed by reference.
             if (isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType)
                     and not ptype.is_value_type() and not isinstance(arg, TpyName)):
                 hint = "Assign to a variable first: x = func(); other_func(x)"
@@ -2260,31 +2329,85 @@ class CallAnalyzer:
                     f"(object types are passed by reference). {hint}",
                     arg
                 )
-            # Strip Own from arg_type for downstream matching -- Own[T] variables
-            # pass as T& (by reference), same as non-Own variables.
             if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType):
                 arg_type = arg_type.wrapped
 
             self.check_own_param(arg, arg_type, pname, ptype)
 
-            # Special case: single-char string literal can be passed as Char
             if not (isinstance(ptype, CharType) and is_any_str_type(arg_type) and
                     isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
                 coerced_arg = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                        coercion_ctx=CoercionContext.ARG)
                 expr.args[i] = coerced_arg
 
-            # Track parameter context for container/str inference
             if isinstance(arg_type, PENDING_CONTAINER_TYPES):
                 self.deduction.mark_container_param_context(arg, arg_type, ptype)
             if isinstance(arg_type, PendingViewType):
                 self.deduction.mark_view_param_context(arg, ptype, arg_type.family)
 
-        self._check_borrow_arg_conflicts(expr)
-        self._check_loop_var_arg_mutation(expr)
-        self._record_mutation_call_edges(expr)
-        self._check_error_return_handled(expr, func)
-        return func.return_type
+    def _analyze_and_pack_varargs(self, expr: TpyCall, func: FunctionInfo) -> None:
+        """Analyze call with variadic params: type-check fixed args, pack trailing args."""
+        # Find variadic param index and count keyword-only params after it
+        va_idx = next(i for i, p in enumerate(func.params) if p.is_variadic)
+        va_param = func.params[va_idx]
+        n_kwonly = sum(1 for p in func.params if p.keyword_only)
+
+        # Element type T from Span[readonly[T]]
+        assert isinstance(unwrap_ref_type(va_param.type), SpanType)
+        span_type = unwrap_ref_type(va_param.type)
+        elem_type = span_type.inner_element_type
+
+        # Split args: [fixed_positional...] [varargs...] [kwonly_defaults...]
+        fixed_args = expr.args[:va_idx]
+        kwonly_args = expr.args[len(expr.args) - n_kwonly:] if n_kwonly else []
+        vararg_exprs = expr.args[va_idx:len(expr.args) - n_kwonly] if n_kwonly else expr.args[va_idx:]
+
+        # Type-check fixed positional args
+        for i, ((pname, ptype), arg) in enumerate(zip(func.params[:va_idx], fixed_args)):
+            arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
+            arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
+            if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType):
+                arg_type = arg_type.wrapped
+            self.check_own_param(arg, arg_type, pname, ptype)
+            if not (isinstance(ptype, CharType) and is_any_str_type(arg_type) and
+                    isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
+                coerced_arg = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
+                                                       coercion_ctx=CoercionContext.ARG)
+                fixed_args[i] = coerced_arg
+
+        # Type-check each variadic arg against element type T
+        for i, arg in enumerate(vararg_exprs):
+            if isinstance(arg, TpyStarUnpack):
+                # *expr unpacking: analyze inner expr and check element type compat
+                inner_type = self.expr.analyze_expr(arg.expr)
+                inner_elem = None
+                if isinstance(inner_type, (ListType, SpanType, ArrayType)):
+                    inner_elem = inner_type.get_element_type()
+                elif isinstance(inner_type, PendingListType):
+                    inner_elem = inner_type.element_type
+                if inner_elem is None:
+                    raise self.ctx.error(
+                        f"Cannot unpack type '{inner_type}' into *args", arg)
+                continue
+            arg_type = self.expr.analyze_expr_with_hint(arg, elem_type)
+            arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
+            if isinstance(arg_type, OwnType):
+                arg_type = arg_type.wrapped
+            coerced_arg = self.compat.coerce_expr(
+                arg, arg_type, elem_type, f"*args element {i}",
+                coercion_ctx=CoercionContext.ARG)
+            vararg_exprs[i] = coerced_arg
+
+        # Type-check keyword-only args (defaults already filled by resolve_kwargs)
+        kwonly_params = [p for p in func.params if p.keyword_only]
+        for i, (p, arg) in enumerate(zip(kwonly_params, kwonly_args)):
+            if arg is not None:
+                arg_type = self.expr.analyze_expr_with_hint(arg, p.type)
+
+        # Build pack node and reconstruct args list:
+        # [fixed_args..., vararg_pack, kwonly_args...]
+        pack = TpyVarargPack(args=vararg_exprs, element_type=elem_type, loc=expr.loc)
+        expr.args = fixed_args + [pack] + kwonly_args
 
     def _check_error_return_handled(self, expr: TpyCall | TpyMethodCall, func: FunctionInfo) -> None:
         """Check that calls to @error_return functions are inside matching try/except."""
@@ -2405,67 +2528,66 @@ class CallAnalyzer:
             )
 
         expr.resolved_function_info = resolved_func
-        for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
-            resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst)
 
-            # @value_ptr_coercion: Ptr[T] params accept T values via address-of coercion.
-            # Type-check against the pointee type, then wrap in VALUE_TO_PTR coercion.
-            vpc_active = func.value_ptr_coercion and isinstance(resolved_ptype, PtrType)
-            check_ptype = resolved_ptype.pointee if vpc_active else resolved_ptype
+        # Pack variadic args or type-check normally
+        if resolved_func.has_variadic:
+            self._analyze_and_pack_varargs(expr, resolved_func)
+        else:
+            for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
+                resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst)
 
-            arg_type = self.expr.analyze_expr_with_hint(arg, check_ptype)
-            arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
+                # @value_ptr_coercion: Ptr[T] params accept T values via address-of coercion.
+                vpc_active = func.value_ptr_coercion and isinstance(resolved_ptype, PtrType)
+                check_ptype = resolved_ptype.pointee if vpc_active else resolved_ptype
 
-            # Reject rvalue Own[T] passed directly to non-Own param
-            if (isinstance(arg_type, OwnType) and not isinstance(check_ptype, OwnType)
-                    and not check_ptype.is_value_type() and not isinstance(arg, TpyName)):
-                hint = "Assign to a variable first: x = func(); other_func(x)"
-                raise self.ctx.error(
-                    f"Cannot pass Own[{arg_type.wrapped}] directly to parameter '{pname}' "
-                    f"(object types are passed by reference). {hint}",
-                    arg
-                )
-            if isinstance(arg_type, OwnType) and not isinstance(check_ptype, OwnType):
-                arg_type = arg_type.wrapped
+                arg_type = self.expr.analyze_expr_with_hint(arg, check_ptype)
+                arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 
-            self.check_own_param(arg, arg_type, pname, check_ptype)
-
-            # Special case: single-char string literal can be passed as Char
-            if not (isinstance(check_ptype, CharType) and is_any_str_type(arg_type) and
-                    isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
-                coerced_arg = self.compat.coerce_expr(arg, arg_type, check_ptype, f"argument '{pname}'",
-                                                       coercion_ctx=CoercionContext.ARG)
-                expr.args[i] = coerced_arg
-
-            if vpc_active:
-                # Mutable lvalue check (can't take address of temporaries or readonly)
-                source = expr.args[i]
-                if not self.compat.is_mutable_lvalue(source):
+                if (isinstance(arg_type, OwnType) and not isinstance(check_ptype, OwnType)
+                        and not check_ptype.is_value_type() and not isinstance(arg, TpyName)):
+                    hint = "Assign to a variable first: x = func(); other_func(x)"
                     raise self.ctx.error(
-                        f"argument '{pname}' must be a mutable lvalue", expr)
-                for name in addr_taken_roots(source):
-                    root = self.ctx.borrow_tracker.effective_storage(name)
-                    self.ctx.mark_param_mutated(root)
-                    self.ctx.mark_loop_var_mutated(root)
-                # Wrap in address-of coercion
-                inner_type = self.ctx.get_expr_type(source)
-                vpc_node = TpyCoerce(
-                    expr=source,
-                    actual_type=inner_type,
-                    expected_type=resolved_ptype,
-                    coercion=VALUE_TO_PTR,
-                    context_kind=CoercionContext.ARG,
-                    context_msg=f"argument '{pname}'",
-                    loc=arg.loc,
-                )
-                self.ctx.set_expr_type(vpc_node, resolved_ptype)
-                expr.args[i] = vpc_node
+                        f"Cannot pass Own[{arg_type.wrapped}] directly to parameter '{pname}' "
+                        f"(object types are passed by reference). {hint}",
+                        arg
+                    )
+                if isinstance(arg_type, OwnType) and not isinstance(check_ptype, OwnType):
+                    arg_type = arg_type.wrapped
 
-            # Track parameter context for container/str inference
-            if isinstance(arg_type, PENDING_CONTAINER_TYPES):
-                self.deduction.mark_container_param_context(arg, arg_type, resolved_ptype)
-            if isinstance(arg_type, PendingViewType):
-                self.deduction.mark_view_param_context(arg, resolved_ptype, arg_type.family)
+                self.check_own_param(arg, arg_type, pname, check_ptype)
+
+                if not (isinstance(check_ptype, CharType) and is_any_str_type(arg_type) and
+                        isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
+                    coerced_arg = self.compat.coerce_expr(arg, arg_type, check_ptype, f"argument '{pname}'",
+                                                           coercion_ctx=CoercionContext.ARG)
+                    expr.args[i] = coerced_arg
+
+                if vpc_active:
+                    source = expr.args[i]
+                    if not self.compat.is_mutable_lvalue(source):
+                        raise self.ctx.error(
+                            f"argument '{pname}' must be a mutable lvalue", expr)
+                    for name in addr_taken_roots(source):
+                        root = self.ctx.borrow_tracker.effective_storage(name)
+                        self.ctx.mark_param_mutated(root)
+                        self.ctx.mark_loop_var_mutated(root)
+                    inner_type = self.ctx.get_expr_type(source)
+                    vpc_node = TpyCoerce(
+                        expr=source,
+                        actual_type=inner_type,
+                        expected_type=resolved_ptype,
+                        coercion=VALUE_TO_PTR,
+                        context_kind=CoercionContext.ARG,
+                        context_msg=f"argument '{pname}'",
+                        loc=arg.loc,
+                    )
+                    self.ctx.set_expr_type(vpc_node, resolved_ptype)
+                    expr.args[i] = vpc_node
+
+                if isinstance(arg_type, PENDING_CONTAINER_TYPES):
+                    self.deduction.mark_container_param_context(arg, arg_type, resolved_ptype)
+                if isinstance(arg_type, PendingViewType):
+                    self.deduction.mark_view_param_context(arg, resolved_ptype, arg_type.family)
 
         # Resolve return type
         resolved_return = self.type_ops.substitute_type_params(func.return_type, type_subst)
@@ -2776,38 +2898,11 @@ class CallAnalyzer:
         if len(expr.args) < func.min_args or len(expr.args) > func.max_args:
             raise self.ctx.error(
                 arity_error_msg(expr.func_name, func.min_args, func.max_args, len(expr.args)), expr)
-        for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
-            # Handle list() constructor - infer type from parameter
-            arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
-            arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 
-            # Reject rvalue Own[T] passed directly to non-Own param
-            if (isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType)
-                    and not ptype.is_value_type() and not isinstance(arg, TpyName)):
-                hint = "Assign to a variable first: x = func(); other_func(x)"
-                raise self.ctx.error(
-                    f"Cannot pass Own[{arg_type.wrapped}] directly to parameter '{pname}' "
-                    f"(object types are passed by reference). {hint}",
-                    arg
-                )
-            if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType):
-                arg_type = arg_type.wrapped
-
-            # Check for T passed to Own[T] parameter - would be implicit copy
-            self.check_own_param(arg, arg_type, pname, ptype)
-
-            # Special case: single-char string literal can be passed as Char
-            if not (isinstance(ptype, CharType) and is_any_str_type(arg_type) and
-                    isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
-                coerced_arg = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
-                                                       coercion_ctx=CoercionContext.ARG)
-                expr.args[i] = coerced_arg
-
-            # Track parameter context for container/str inference
-            if isinstance(arg_type, PENDING_CONTAINER_TYPES):
-                self.deduction.mark_container_param_context(arg, arg_type, ptype)
-            if isinstance(arg_type, PendingViewType):
-                self.deduction.mark_view_param_context(arg, ptype, arg_type.family)
+        if func.has_variadic:
+            self._analyze_and_pack_varargs(expr, func)
+        else:
+            self._typecheck_call_args(expr, func)
 
         self._check_borrow_arg_conflicts(expr)
         self._check_loop_var_arg_mutation(expr)

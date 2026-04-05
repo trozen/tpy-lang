@@ -10,12 +10,12 @@ from typing import Optional
 from ..typesys import (
     TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, StrType, StrViewType, LiteralType, VoidType, VOID,
     INT32, FixedIntType, BigIntType, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
-    FunctionInfo, EnumType, is_any_str_type,
+    FunctionInfo, EnumType, SpanType, is_any_str_type,
     make_ref, unwrap_ref_type, RefType,
 )
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call
-from .registration import build_record_self_type
+from .registration import build_record_self_type, _vararg_span_type
 from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
     TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef,
@@ -489,6 +489,8 @@ class SemanticAnalyzer:
                         p.name, make_ref(p.type),
                         requires_mutable_lvalue=p.requires_mutable_lvalue,
                         default_expr=p.default_expr,
+                        keyword_only=p.keyword_only,
+                        is_variadic=p.is_variadic,
                     ))
                 else:
                     # Legacy tuple (name, type) form
@@ -721,6 +723,26 @@ class SemanticAnalyzer:
                 self.type_ops.resolve_type(ptype), func.is_readonly)
             func.params[i] = (pname, make_ref(resolved_ptype))
             resolved_params.append((pname, resolved_ptype))
+
+        # Add *args parameter as Span[readonly[T]] to func.params and resolved_params.
+        # Insert before keyword-only params to match FunctionInfo param order.
+        if func.vararg_name is not None and func.vararg_type is not None:
+            va_type = _vararg_span_type(self.type_ops.resolve_type(func.vararg_type))
+            kw_start = func.keyword_only_start
+            if kw_start is not None and kw_start < len(func.params):
+                func.params.insert(kw_start, (func.vararg_name, make_ref(va_type)))
+                resolved_params.insert(kw_start, (func.vararg_name, va_type))
+                if func.defaults:
+                    func.defaults.insert(kw_start, None)
+                # Adjust keyword_only_start since we inserted before it
+                func.keyword_only_start = kw_start + 1
+            else:
+                func.params.append((func.vararg_name, make_ref(va_type)))
+                resolved_params.append((func.vararg_name, va_type))
+                if func.defaults:
+                    func.defaults.append(None)
+            # Clear vararg_type to prevent re-processing; keep vararg_name for codegen
+            func.vararg_type = None
 
         # Track consuming method for ownership propagation through fields
         prev_consuming = self.ctx.in_consuming_method
@@ -1248,6 +1270,23 @@ class SemanticAnalyzer:
                     self.type_ops.resolve_type(ptype), readonly_ctx)
                 method.params[i] = (pname, make_ref(resolved_ptype))
                 resolved_params.append((pname, resolved_ptype))
+
+            # Add *args parameter as Span[readonly[T]] to method.params and resolved_params
+            if method.vararg_name is not None and method.vararg_type is not None:
+                va_type = _vararg_span_type(self.type_ops.resolve_type(method.vararg_type))
+                kw_start = method.keyword_only_start
+                if kw_start is not None and kw_start < len(method.params):
+                    method.params.insert(kw_start, (method.vararg_name, make_ref(va_type)))
+                    resolved_params.insert(kw_start, (method.vararg_name, va_type))
+                    if method.defaults:
+                        method.defaults.insert(kw_start, None)
+                    method.keyword_only_start = kw_start + 1
+                else:
+                    method.params.append((method.vararg_name, make_ref(va_type)))
+                    resolved_params.append((method.vararg_name, va_type))
+                    if method.defaults:
+                        method.defaults.append(None)
+                method.vararg_type = None
 
             # __next__ must have an explicit non-void return type annotation
             if method.name == "__next__" and isinstance(method.return_type, VoidType):

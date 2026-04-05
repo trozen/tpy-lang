@@ -58,9 +58,12 @@ template<typename... Ts> struct is_value_type<std::tuple<Ts...>> : std::true_typ
 template<typename T> struct val_or_ref;
 template<typename T> struct is_value_type<val_or_ref<T>> : std::true_type {};
 
+template<typename T>
+inline constexpr bool is_value_type_v = is_value_type<T>::value;
+
 // C++ concept for the ValueType marker protocol
 template<typename T>
-concept ValueType = is_value_type<T>::value;
+concept ValueType = is_value_type_v<T>;
 
 // --- Thread safety markers ---
 

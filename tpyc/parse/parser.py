@@ -27,7 +27,8 @@ from .nodes import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_ASCII,
     TpyBoolLiteral,
-    TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyMethodCall,
+    TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
+    TpyStarUnpack, TpyCall, TpyMethodCall,
     TpyFieldAccess, TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyComprehensionGenerator, TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression,
     TpySlice, TpySubscript, TpyCoerce,
@@ -1768,6 +1769,31 @@ class Parser:
                 node,
             )
 
+        # Parse *args parameter
+        vararg_name = None
+        vararg_type = None
+        if node.args.vararg is not None:
+            va = node.args.vararg
+            if va.annotation is None:
+                raise ParseError(
+                    f"*{va.arg} must have a type annotation (element type)", node)
+            vararg_name = va.arg
+            vararg_type = self._parse_type_annotation(va.annotation, type_param_scope)
+
+        # Parse keyword-only parameters (after * or *args)
+        keyword_only_start = None
+        if node.args.kwonlyargs:
+            keyword_only_start = len(params)
+            for arg in node.args.kwonlyargs:
+                if arg.annotation is None:
+                    raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
+                param_type = self._parse_type_annotation(arg.annotation, type_param_scope)
+                params.append((arg.arg, param_type))
+
+        # Reject **kwargs
+        if node.args.kwarg is not None:
+            raise ParseError("**kwargs is not supported", node)
+
         # @auto_readonly decorator: wrap all eligible params with AutoReadonlyType.
         # This unifies with the per-param annotation path -- the decorator is just
         # sugar for annotating every non-value, non-already-readonly param.
@@ -1797,7 +1823,9 @@ class Parser:
 
         # Parse default parameter values (skip_self for non-static methods)
         defaults = self._parse_param_defaults(node, params, skip_self=has_self,
-                                              type_param_scope=type_param_scope)
+                                              type_param_scope=type_param_scope,
+                                              kw_defaults=node.args.kw_defaults,
+                                              n_kwonly=len(node.args.kwonlyargs))
 
         # Get return type (default to Void for __init__)
         return_type = VOID
@@ -1866,6 +1894,9 @@ class Parser:
             type_params=method_type_params,
             type_param_bounds=method_type_param_bounds,
             defaults=defaults,
+            keyword_only_start=keyword_only_start,
+            vararg_name=vararg_name,
+            vararg_type=vararg_type,
             error_return=error_return,
             is_generator=is_generator,
             loc=self._loc(node)
@@ -2051,9 +2082,42 @@ class Parser:
                 param_type = self._parse_type_annotation(arg.annotation, type_param_scope)
                 params.append((arg.arg, param_type))
 
+        # Parse *args parameter
+        vararg_name = None
+        vararg_type = None
+        if node.args.vararg is not None:
+            va = node.args.vararg
+            if builtin_function_key is None:
+                if va.annotation is None:
+                    raise ParseError(
+                        f"*{va.arg} must have a type annotation (element type)", node)
+                vararg_name = va.arg
+                vararg_type = self._parse_type_annotation(va.annotation, type_param_scope)
+
+        # Parse keyword-only parameters (after * or *args)
+        keyword_only_start = None
+        if node.args.kwonlyargs:
+            keyword_only_start = len(params)
+            for arg in node.args.kwonlyargs:
+                if arg.annotation is None:
+                    raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
+                param_type = self._parse_type_annotation(arg.annotation, type_param_scope)
+                params.append((arg.arg, param_type))
+        elif vararg_name is None and node.args.vararg is not None:
+            # bare * separator with no kwonlyargs -- unusual but valid Python
+            pass
+        # If there's a bare * (no vararg name but kwonlyargs exist), keyword_only_start is set above.
+        # If there's *args, kwonlyargs after it are also keyword-only (set above).
+
+        # Reject **kwargs
+        if node.args.kwarg is not None and builtin_function_key is None:
+            raise ParseError("**kwargs is not supported", node)
+
         # Parse default parameter values
         defaults = self._parse_param_defaults(node, params, skip_self=False,
-                                              type_param_scope=type_param_scope)
+                                              type_param_scope=type_param_scope,
+                                              kw_defaults=node.args.kw_defaults,
+                                              n_kwonly=len(node.args.kwonlyargs))
 
         return_type = VOID
         if node.returns:
@@ -2126,6 +2190,9 @@ class Parser:
             type_param_bounds=type_param_bounds,
             type_param_defaults=type_param_defaults,
             defaults=defaults,
+            keyword_only_start=keyword_only_start,
+            vararg_name=vararg_name,
+            vararg_type=vararg_type,
             error_return=error_return,
             builtin_decorator_key=builtin_decorator_key,
             builtin_function_key=builtin_function_key,
@@ -2887,7 +2954,13 @@ class Parser:
             return result
 
         elif isinstance(node, ast.Call):
-            args = [self._parse_expr(a) for a in node.args]
+            args = []
+            for a in node.args:
+                if isinstance(a, ast.Starred):
+                    args.append(TpyStarUnpack(
+                        expr=self._parse_expr(a.value), loc=self._loc(a)))
+                else:
+                    args.append(self._parse_expr(a))
             kwargs = {}
 
             if node.keywords:
@@ -3181,28 +3254,29 @@ class Parser:
     def _parse_param_defaults(self, node: ast.FunctionDef, params: list,
                               skip_self: bool = False,
                               type_param_scope: dict | None = None,
+                              kw_defaults: list | None = None,
+                              n_kwonly: int = 0,
                               ) -> list['TpyExpr | None']:
         """Parse default values from a function definition.
 
         Returns a list aligned with params: None for params without defaults.
         Python's ast.arguments.defaults is right-aligned with args, so we
-        left-pad with None.
+        left-pad with None. kw_defaults is 1:1 aligned with kwonlyargs.
         """
+        n_positional = len(params) - n_kwonly
         ast_defaults = node.args.defaults
-        if not ast_defaults:
-            return [None] * len(params)
 
         # In methods, self is skipped from params but still counted in node.args.args
         num_ast_args = len(node.args.args)
         # defaults are right-aligned with the full args list
-        num_no_default = num_ast_args - len(ast_defaults)
+        num_no_default = num_ast_args - len(ast_defaults) if ast_defaults else num_ast_args
 
         defaults: list[TpyExpr | None] = []
         param_offset = 1 if skip_self else 0  # skip self in index mapping
-        for i in range(len(params)):
+        for i in range(n_positional):
             ast_idx = i + param_offset  # index into node.args.args
             default_idx = ast_idx - num_no_default
-            if default_idx >= 0 and default_idx < len(ast_defaults):
+            if ast_defaults and default_idx >= 0 and default_idx < len(ast_defaults):
                 expr = self._parse_expr(ast_defaults[default_idx])
                 # Detect T() where T is a type parameter
                 if (isinstance(expr, TpyCall) and not expr.args and not expr.kwargs
@@ -3212,6 +3286,22 @@ class Parser:
                 defaults.append(expr)
             else:
                 defaults.append(None)
+
+        # Append keyword-only defaults (1:1 aligned with kwonlyargs)
+        if kw_defaults and n_kwonly > 0:
+            for kw_default in kw_defaults:
+                if kw_default is not None:
+                    expr = self._parse_expr(kw_default)
+                    if (isinstance(expr, TpyCall) and not expr.args and not expr.kwargs
+                            and type_param_scope and expr.func_name in type_param_scope):
+                        expr = TpyTypeParamConstruct(expr.func_name, loc=expr.loc)
+                    self._validate_const_default(expr, kw_default)
+                    defaults.append(expr)
+                else:
+                    defaults.append(None)
+        elif n_kwonly > 0:
+            defaults.extend([None] * n_kwonly)
+
         return defaults
 
     def _get_default_value(self, node: ast.expr) -> str:
