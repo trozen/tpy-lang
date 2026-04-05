@@ -361,9 +361,9 @@ class StatementGenerator:
                         # Already a pointer -- return as-is
                         return self._make_return(indent, ret_expr)
                     if isinstance(ret_value, TpyIfExpr):
-                        # Ternary already produces T* via _ptr_optional_branch
+                        # Ternary produces T* in non-container context
                         return self._make_return(indent, ret_expr)
-                    # Field access with non-value Optional produces std::optional<T>, convert to T*
+                    # Field access produces std::optional<T>, convert to T*
                     if isinstance(ret_value, TpyFieldAccess):
                         val_type = self.ctx.get_expr_type(ret_value)
                         if isinstance(val_type, OptionalType) and val_type.uses_pointer_repr():
@@ -830,9 +830,6 @@ class StatementGenerator:
             return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = nullptr;\n"
 
         init_type = self.ctx.get_expr_type(init)
-        # Optional non-value field on lvalue object -> optional_to_ptr directly
-        # Optional non-value non-field source -> T* pass-through
-        # Optional non-value field on rvalue -> falls through to rvalue path
         is_opt_field = (isinstance(init_type, OptionalType)
                         and init_type.uses_pointer_repr()
                         and isinstance(init, TpyFieldAccess))

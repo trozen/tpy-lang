@@ -5,6 +5,7 @@ Generates C++ code from TurboPython expressions.
 """
 
 from __future__ import annotations
+import contextlib
 import io
 from typing import Final, TYPE_CHECKING
 
@@ -413,9 +414,11 @@ class ExpressionGenerator:
             return obj
         cpp_decl = self._get_cpp_declared_type(expr_obj)
         analyzed = self.ctx.get_expr_type(expr_obj)
+        is_comp_var = isinstance(expr_obj, TpyName) and expr_obj.name in self.ctx.comp_local_names
         if (cpp_decl is not None
                 and isinstance(cpp_decl, OptionalType)
-                and (isinstance(expr_obj, TpyFieldAccess) or not cpp_decl.uses_pointer_repr())
+                and (isinstance(expr_obj, TpyFieldAccess) or is_comp_var
+                     or not cpp_decl.uses_pointer_repr())
                 and not isinstance(analyzed, OptionalType)):
             return f"(*{obj})"
         return obj
@@ -2353,12 +2356,15 @@ class ExpressionGenerator:
         obj_type = self.ctx.get_expr_type(expr.obj)
         is_optional_ptr = isinstance(obj_type, OptionalType) and obj_type.uses_pointer_repr()
         # Narrowed std::optional<T>: sema sees T but C++ var is still std::optional<T>.
-        # Fields always use std::optional<T> (not pointer repr), so dereference
-        # unconditionally. Locals with pointer repr (T*) are handled by is_indirect.
+        # Fields and comprehension variables always use std::optional<T> (not pointer
+        # repr), so dereference unconditionally. Locals with pointer repr (T*) are
+        # handled by is_indirect.
+        is_comp_var = isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.comp_local_names
         if not isinstance(obj_type, OptionalType):
             cpp_decl = self._get_cpp_declared_type(expr.obj)
             if isinstance(cpp_decl, OptionalType) and (
-                isinstance(expr.obj, TpyFieldAccess) or not cpp_decl.uses_pointer_repr()
+                isinstance(expr.obj, TpyFieldAccess) or is_comp_var
+                or not cpp_decl.uses_pointer_repr()
             ):
                 obj = f"(*{obj})"
         deref_chain = ".__deref__()" * expr.deref_depth
@@ -2492,12 +2498,15 @@ class ExpressionGenerator:
         is_indirect = self.ctx.is_indirect_name(expr.obj) and not is_narrowed
         is_optional_ptr = isinstance(obj_type, OptionalType) and obj_type.uses_pointer_repr()
         # Narrowed std::optional<T>: sema sees T but C++ var is still std::optional<T>.
-        # Fields always use std::optional<T> (not pointer repr), so dereference
-        # unconditionally. Locals with pointer repr (T*) are handled by is_indirect.
+        # Fields and comprehension variables always use std::optional<T> (not pointer
+        # repr), so dereference unconditionally. Locals with pointer repr (T*) are
+        # handled by is_indirect.
+        is_comp_var = isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.comp_local_names
         if not isinstance(obj_type, OptionalType):
             cpp_decl = self._get_cpp_declared_type(expr.obj)
             if isinstance(cpp_decl, OptionalType) and (
-                isinstance(expr.obj, TpyFieldAccess) or not cpp_decl.uses_pointer_repr()
+                isinstance(expr.obj, TpyFieldAccess) or is_comp_var
+                or not cpp_decl.uses_pointer_repr()
             ):
                 obj = f"(*{obj})"
         deref_chain = ".__deref__()" * expr.deref_depth
@@ -2560,13 +2569,14 @@ class ExpressionGenerator:
                 if isinstance(et, (OptionalType, UnionType, TupleType, StrType)):
                     elem_target = et
         elements = []
-        for e in expr.elements:
-            # Use elem_target for generation (preserves old int-literal behavior, and for
-            # tuple elements passes the full slot type into _gen_tuple_literal so STR hints
-            # reach nested str slots).
-            code = self.gen_expr_deref(e, elem_target)
-            resolved = self.types.get_resolved_type(e, elem_target)
-            elements.append(self._wrap_for_owned_slot(code, resolved, elem_target))
+        with self._container_element_context():
+            for e in expr.elements:
+                # Use elem_target for generation (preserves old int-literal behavior, and for
+                # tuple elements passes the full slot type into _gen_tuple_literal so STR hints
+                # reach nested str slots).
+                code = self.gen_expr_deref(e, elem_target)
+                resolved = self.types.get_resolved_type(e, elem_target)
+                elements.append(self._wrap_for_owned_slot(code, resolved, elem_target))
         literal = f"{{{', '.join(elements)}}}"
         # std::array of std::array needs an extra brace level
         if isinstance(elem_target, ArrayType):
@@ -2587,6 +2597,16 @@ class ExpressionGenerator:
                 return f"{expr_type.to_cpp()}{literal}"
         return literal
 
+    @contextlib.contextmanager
+    def _container_element_context(self):
+        """Set in_container_element so ternary codegen uses value-repr Optional."""
+        saved = self.ctx.in_container_element
+        self.ctx.in_container_element = True
+        try:
+            yield
+        finally:
+            self.ctx.in_container_element = saved
+
     def _gen_dict_literal(self, expr: TpyDictLiteral) -> str:
         """Generate dict literal code: {k: v, ...} -> ::tpy::ordered_map<K, V>({{k, v}, ...})"""
         dict_type = self.ctx.get_expr_type(expr)
@@ -2598,12 +2618,13 @@ class ExpressionGenerator:
             return f"::tpy::ordered_map<{cpp_key}, {cpp_val}>()"
 
         pairs = []
-        for k, v in zip(expr.keys, expr.values):
-            k_resolved = self.types.get_resolved_type(k, dict_type.key_type)
-            k_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(k, dict_type.key_type), k_resolved, dict_type.key_type)
-            v_resolved = self.types.get_resolved_type(v, dict_type.value_type)
-            v_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(v, dict_type.value_type), v_resolved, dict_type.value_type)
-            pairs.append(f"{{{k_cpp}, {v_cpp}}}")
+        with self._container_element_context():
+            for k, v in zip(expr.keys, expr.values):
+                k_resolved = self.types.get_resolved_type(k, dict_type.key_type)
+                k_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(k, dict_type.key_type), k_resolved, dict_type.key_type)
+                v_resolved = self.types.get_resolved_type(v, dict_type.value_type)
+                v_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(v, dict_type.value_type), v_resolved, dict_type.value_type)
+                pairs.append(f"{{{k_cpp}, {v_cpp}}}")
         return f"::tpy::ordered_map<{cpp_key}, {cpp_val}>({{{', '.join(pairs)}}})"
 
     def _gen_set_literal(self, expr: TpySetLiteral) -> str:
@@ -2616,9 +2637,10 @@ class ExpressionGenerator:
             return f"::tpy::ordered_set<{cpp_elem}>()"
 
         elems = []
-        for e in expr.elements:
-            e_resolved = self.types.get_resolved_type(e, set_type.element_type)
-            elems.append(self._wrap_for_owned_slot(self.gen_expr_deref(e, set_type.element_type), e_resolved, set_type.element_type))
+        with self._container_element_context():
+            for e in expr.elements:
+                e_resolved = self.types.get_resolved_type(e, set_type.element_type)
+                elems.append(self._wrap_for_owned_slot(self.gen_expr_deref(e, set_type.element_type), e_resolved, set_type.element_type))
         return f"::tpy::ordered_set<{cpp_elem}>({{{', '.join(elems)}}})"
 
     def _gen_list_repeat(self, expr: TpyListRepeat, target_type: TpyType | None) -> str:
@@ -2679,8 +2701,9 @@ class ExpressionGenerator:
 
         comp_names = self._enter_comp_scope(expr.generator)
         try:
-            elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
-            insert_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
+            with self._container_element_context():
+                elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
+                insert_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
             return self._gen_comprehension_iife(
                 expr.generator, f"std::vector<{cpp_elem}>",
                 f"__result.push_back({insert_code})", skip_reserve=False)
@@ -2770,10 +2793,11 @@ class ExpressionGenerator:
         cpp_val = self.types.type_to_cpp(value_type)
         comp_names = self._enter_comp_scope(expr.generator)
         try:
-            key_resolved = self.types.get_resolved_type(expr.key_expr, key_type)
-            key_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.key_expr, key_type), key_resolved, key_type)
-            value_resolved = self.types.get_resolved_type(expr.value_expr, value_type)
-            value_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.value_expr, value_type), value_resolved, value_type)
+            with self._container_element_context():
+                key_resolved = self.types.get_resolved_type(expr.key_expr, key_type)
+                key_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.key_expr, key_type), key_resolved, key_type)
+                value_resolved = self.types.get_resolved_type(expr.value_expr, value_type)
+                value_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.value_expr, value_type), value_resolved, value_type)
             return self._gen_comprehension_iife(
                 expr.generator, f"::tpy::ordered_map<{cpp_key}, {cpp_val}>",
                 f"__result.insert_or_assign({key_code}, {value_code})", skip_reserve=True)
@@ -2785,8 +2809,9 @@ class ExpressionGenerator:
         cpp_elem = self.types.type_to_cpp(elem_type)
         comp_names = self._enter_comp_scope(expr.generator)
         try:
-            elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
-            insert_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
+            with self._container_element_context():
+                elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
+                insert_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
             return self._gen_comprehension_iife(
                 expr.generator, f"::tpy::ordered_set<{cpp_elem}>",
                 f"__result.insert({insert_code})", skip_reserve=True)
@@ -3132,12 +3157,27 @@ class ExpressionGenerator:
         if gen.unpack_vars:
             names.update(v for v in gen.unpack_vars if v is not None)
         self.ctx.comp_local_names |= names
+        # Register the loop variable's C++ declared type so that narrowed
+        # Optional deref works (e.g. `item.x if item is not None else ...`).
+        iterable_type = self.types.get_resolved_type(gen.iterable)
+        if iterable_type is not None:
+            elem = iterable_type.get_iteration_element_type()
+            if elem is not None:
+                self.ctx.var_types[gen.var] = elem
+                # Also register unpack var types (e.g. dict comprehension
+                # `for k, v in d.items()` where v is Optional[T]).
+                if gen.unpack_vars and isinstance(elem, TupleType):
+                    for i, uvar in enumerate(gen.unpack_vars):
+                        if uvar is not None and i < len(elem.element_types):
+                            self.ctx.var_types[uvar] = elem.element_types[i]
         return names
 
     def _exit_comp_scope(self, names: set[str]) -> None:
         # Safe as set-difference because sema rejects nested comprehensions,
         # so no name can appear in two active comp scopes simultaneously.
         self.ctx.comp_local_names -= names
+        for n in names:
+            self.ctx.var_types.pop(n, None)
 
     def _comp_is_lvalue(self, expr: TpyExpr) -> bool:
         """Check if an iterable expression is a C++ lvalue."""
@@ -3208,19 +3248,20 @@ class ExpressionGenerator:
         target_tuple = target_type if isinstance(target_type, TupleType) else None
         resolved_elem_types = []
         elem_strs = []
-        for i, elem in enumerate(expr.elements):
-            elem_target = target_tuple.element_types[i] if target_tuple and i < len(target_tuple.element_types) else None
-            # Ref in target means the element is borrowed -- unwrap for codegen
-            # since tuple literal capture mode handles ref/value distinction.
-            if isinstance(elem_target, RefType):
-                elem_target = elem_target.wrapped
-            resolved = self.types.get_resolved_type(elem, elem_target)
-            elem_str = self._wrap_for_owned_slot(self.gen_expr_deref(elem, elem_target), resolved, elem_target)
-            # Use elem_target for the tuple type when a target was given: the code was
-            # generated with that target in mind, so the C++ expression's type is elem_target.
-            effective_type = elem_target if elem_target is not None else resolved
-            resolved_elem_types.append(effective_type)
-            elem_strs.append(elem_str)
+        with self._container_element_context():
+            for i, elem in enumerate(expr.elements):
+                elem_target = target_tuple.element_types[i] if target_tuple and i < len(target_tuple.element_types) else None
+                # Ref in target means the element is borrowed -- unwrap for codegen
+                # since tuple literal capture mode handles ref/value distinction.
+                if isinstance(elem_target, RefType):
+                    elem_target = elem_target.wrapped
+                resolved = self.types.get_resolved_type(elem, elem_target)
+                elem_str = self._wrap_for_owned_slot(self.gen_expr_deref(elem, elem_target), resolved, elem_target)
+                # Use elem_target for the tuple type when a target was given: the code was
+                # generated with that target in mind, so the C++ expression's type is elem_target.
+                effective_type = elem_target if elem_target is not None else resolved
+                resolved_elem_types.append(effective_type)
+                elem_strs.append(elem_str)
         has_ref_elements = any(
             (i < len(expr.elem_capture) and expr.elem_capture[i] != TupleElemCapture.VALUE)
             or isinstance(resolved_elem_types[i], TypeParamRef)
@@ -3619,6 +3660,7 @@ class ExpressionGenerator:
         result_type = self.types.get_resolved_type(expr)
         is_ptr_optional = (
             isinstance(result_type, OptionalType) and result_type.uses_pointer_repr()
+            and not self.ctx.in_container_element
         )
         cond = self.gen_truthy_expr(expr.condition)
 

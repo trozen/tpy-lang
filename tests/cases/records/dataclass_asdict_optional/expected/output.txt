@@ -1,0 +1,13 @@
+{'label': 'origin', 'pos': {'x': 0, 'y': 0}}
+('origin', (0, 0))
+{'label': 'none', 'pos': None}
+('none', None)
+{'items': [{'x': 1, 'y': 2}, None, {'x': 3, 'y': 4}]}
+([(1, 2), None, (3, 4)],)
+{'line': {'start': {'x': 0, 'y': 0}, 'end': {'x': 1, 'y': 1}}}
+(((0, 0), (1, 1)),)
+{'line': None}
+(None,)
+{'name': 'both', 'required': {'x': 1, 'y': 2}, 'optional': {'x': 3, 'y': 4}}
+{'name': 'req-only', 'required': {'x': 5, 'y': 6}, 'optional': None}
+{'items': {'a': {'x': 1, 'y': 2}, 'b': None, 'c': {'x': 3, 'y': 4}}}

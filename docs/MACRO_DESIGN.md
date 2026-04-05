@@ -24,7 +24,7 @@
 | Macro ordering / composition | Multiple macros on one class, inner-to-outer application order |
 | FieldInfo.metadata | Typed metadata for macro-specific field annotations (e.g. `proto.Field`) |
 | API tightening | `set_match_args()` is boilerplate -- auto-derive from init params. More broadly, reduce exposed compiler internals; common patterns (field management, method generation, match support) should be automatic |
-| `TpyBlockExpr` | Block expression: sequence of statements + result expression. Codegen hoists statements to enclosing scope. Enables `asdict` with mixed-type fields (typed dict creation + subscript assigns) |
+| `TpyBlockExpr` | Block expression: sequence of statements + result expression. Codegen hoists statements to enclosing scope |
 | Generic mapping detection in `asdict`/`astuple` | Currently only built-in `dict[K, V]` is recursed. A `CallMacroContext.get_mapping_key_value_types()` method could detect any type with `.items() -> Iterable[tuple[K, V]]`, enabling recursion into user-defined mapping types |
 | AST splicing in `quote()` | Embed computed `Expr`/`Stmt` objects into quoted source via `${expr}` syntax. Requires custom parse pass. Enables mixing static method shapes with dynamic AST fragments (e.g., computed comparison chains). Deferred -- f-string interpolation covers common cases |
 | Companion type creation | `cls.add_companion_type(name, ...)` -- macros can add methods but not new types. Would let macros generate helper types (e.g. key enums for JSON field dispatch via `try_parse` + `match`/`case`). Requires nested class support in parser/sema/codegen first |

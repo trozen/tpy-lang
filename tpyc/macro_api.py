@@ -10,6 +10,7 @@ They are executed via CPython during compilation (not compiled to C++).
 
 from __future__ import annotations
 
+import copy
 import textwrap
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal, NoReturn, TYPE_CHECKING
@@ -18,7 +19,7 @@ from .parse.nodes import ParseError as _ParseError
 from .typesys import (
     TpyType, NamedType, OwnType, BoolType,
     FloatType, Float32Type, FixedIntType, OptionalType, ListType, DictType,
-    TupleType, EnumType, BigIntType, UnionType,
+    TupleType, EnumType, BigIntType, UnionType, SetType,
     FieldInfo as InternalFieldInfo,
     INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64,
     ALL_FIXED_INTS,
@@ -39,6 +40,7 @@ from .parse import (
     TpyMatch, TpyMatchCase, TpyLiteralPattern, TpyWildcardPattern,
     TpySubscript, TpyTupleLiteral, TpyArrayLiteral, TpyDictLiteral,
     TpyListComprehension, TpyComprehensionGenerator, TpyDictComprehension,
+    TpySetComprehension, TpyIfExpr,
     TpyPattern,
 )
 
@@ -263,6 +265,10 @@ class TypeInfo:
         return isinstance(self._tpy_type, DictType)
 
     @property
+    def is_set(self) -> bool:
+        return isinstance(self._tpy_type, SetType)
+
+    @property
     def is_tuple(self) -> bool:
         return isinstance(self._tpy_type, TupleType)
 
@@ -292,7 +298,7 @@ class TypeInfo:
 
     @staticmethod
     def from_tpy_type(typ: TpyType) -> TypeInfo:
-        from .typesys import SetType, ArrayType, RefType
+        from .typesys import ArrayType, RefType
         # Strip sema-internal wrappers -- macros see user-facing types
         if isinstance(typ, OwnType):
             typ = typ.wrapped
@@ -637,6 +643,13 @@ class AstBuilder:
         return TpyDictComprehension(key_expr=key_expr, value_expr=value_expr,
                                     generator=generator)
 
+    def set_comprehension(self, element_expr: Expr,
+                          generator: TpyComprehensionGenerator) -> Expr:
+        return TpySetComprehension(element_expr=element_expr, generator=generator)
+
+    def if_expr(self, condition: Expr, then_expr: Expr, else_expr: Expr) -> Expr:
+        return TpyIfExpr(condition=condition, then_expr=then_expr, else_expr=else_expr)
+
     def comprehension_generator(self, var: str, iterable: Expr,
                                 conditions: list[Expr] | None = None,
                                 unpack_vars: list[str | None] | None = None) -> TpyComprehensionGenerator:
@@ -707,6 +720,14 @@ class AstBuilder:
 
     def tuple_unpack(self, targets: list[str | None], value: Expr) -> Stmt:
         return TpyTupleUnpack(targets=targets, value=value)
+
+    # -- Cloning --
+
+    def clone(self, expr: Expr) -> Expr:
+        """Deep-copy an expression tree. Use when the same logical expression
+        must appear in multiple places (e.g. condition and body of a ternary)
+        to avoid sema overwriting resolved types on shared nodes."""
+        return copy.deepcopy(expr)
 
     # -- Introspection --
 
@@ -806,6 +827,9 @@ class TypeBuilder:
 
     def dict(self, key_type: TpyType, value_type: TpyType) -> TpyType:
         return DictType(key_type, value_type)
+
+    def set(self, element_type: TpyType) -> TpyType:
+        return SetType(element_type)
 
     def tuple(self, element_types: tuple[TpyType, ...] | list[TpyType]) -> TpyType:
         if isinstance(element_types, list):

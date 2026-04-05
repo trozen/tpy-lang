@@ -183,6 +183,9 @@ def asdict(ctx: CallMacroContext, obj: MacroArg) -> Expr:
 
 def _has_dc(ctx: CallMacroContext, type_info: TypeInfo) -> bool:
     """Check if a type contains dataclass instances needing recursion."""
+    inner = type_info.unwrap_optional()
+    if inner is not None:
+        return _has_dc(ctx, inner)
     if type_info.is_record and type_info.name in _dataclass_records:
         return True
     # Check dict/tuple before iterable -- iterating a dict yields keys,
@@ -191,6 +194,10 @@ def _has_dc(ctx: CallMacroContext, type_info: TypeInfo) -> bool:
         return any(_has_dc(ctx, t) for t in type_info.type_args)
     if type_info.is_tuple and type_info.type_args:
         return any(_has_dc(ctx, t) for t in type_info.type_args)
+    # Skip sets: the result (dict) isn't hashable, so set[DC] -> set[DC]
+    # unchanged (matches CPython). Only recurse into list-like iterables.
+    if type_info.is_set:
+        return False
     elem = ctx.get_iterable_element_type(type_info)
     if elem is not None and _has_dc(ctx, elem):
         return True
@@ -207,6 +214,17 @@ def _value_transform(
     dc_fn: called for direct dataclass fields (e.g. _build_asdict or _build_astuple)
     value_fn: called recursively for nested elements (e.g. _asdict_value or _astuple_value)
     """
+    # Optional[T] -> None if access is None else recurse(access, T)
+    inner = fld_type.unwrap_optional()
+    if inner is not None and _has_dc(ctx, inner):
+        # Clone to avoid sharing AST nodes between condition and body --
+        # sema sets resolved types on nodes, so reuse would cause overwrites.
+        transformed = _value_transform(ctx, ast.clone(access), inner, dc_fn, value_fn)
+        return ast.if_expr(
+            ast.binop(access, "is not", ast.none_lit()),
+            transformed,
+            ast.none_lit(),
+        )
     if fld_type.is_record and fld_type.name in _dataclass_records:
         return dc_fn(ctx, access, fld_type)
     # dict/tuple before iterable (see _has_dc comment)
@@ -289,6 +307,10 @@ def _build_asdict(ctx: CallMacroContext, expr: Expr, type_info: TypeInfo) -> Exp
 
 def _asdict_result_type(ctx: CallMacroContext, type_info: TypeInfo) -> Type:
     """Compute the result type for a field in asdict expansion."""
+    # Optional[T] -> Optional[result_type(T)]
+    inner = type_info.unwrap_optional()
+    if inner is not None and _has_dc(ctx, inner):
+        return types.optional(_asdict_result_type(ctx, inner))
     # Direct dataclass
     if type_info.is_record and type_info.name in _dataclass_records:
         fields = ctx.get_record_fields(type_info.name)
@@ -312,7 +334,7 @@ def _asdict_result_type(ctx: CallMacroContext, type_info: TypeInfo) -> Type:
             return types.tuple(tuple(
                 _asdict_result_type(ctx, t) for t in type_info.type_args
             ))
-    # Iterable[Dataclass] -> list[dict[...]]
+    # list[Dataclass] -> list[dict[...]] (sets excluded by _has_dc)
     elem = ctx.get_iterable_element_type(type_info)
     if elem is not None and _has_dc(ctx, elem):
         return types.list(_asdict_result_type(ctx, elem))

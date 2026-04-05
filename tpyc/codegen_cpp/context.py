@@ -480,6 +480,12 @@ class CodeGenContext:
     comp_local_names: set[str] = field(default_factory=set)
     pending_hoist_decls: list[str] = field(default_factory=list)
 
+    # True while generating container element expressions (dict/list/set/tuple
+    # literals, comprehension elements). Ternary codegen checks this to produce
+    # std::optional<T> instead of T*/nullptr -- containers always store
+    # std::optional<T>, while locals/returns use T*.
+    in_container_element: bool = False
+
     # --- Union type narrowing (isinstance -> std::get) ---
     narrowed_vars: dict[str, str] = field(default_factory=dict)
     # Assignment narrowing: var -> narrowed concrete type (for inline std::get at access points)
