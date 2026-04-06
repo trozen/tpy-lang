@@ -72,8 +72,8 @@ struct Point {
    from user-written methods. This minimizes special-casing.
 
 3. **Explicit over implicit**: `@dataclass` is opt-in. A class with only field annotations
-   and no `__init__` remains a C++ aggregate (current behavior). Only `@dataclass` triggers
-   method synthesis.
+   and no `__init__` cannot be constructed with positional arguments -- use `@dataclass`
+   or define `__init__`. Only `@dataclass` triggers method synthesis.
 
 4. **User methods win**: If a `@dataclass` class has a user-defined `__init__`, `__eq__`,
    or `__hash__`, the user's version takes precedence -- no synthesis for that method.

@@ -2634,7 +2634,7 @@ class CallAnalyzer:
 
         # Resolve kwargs for record constructors
         if expr.kwargs:
-            if record.has_init:
+            if record.init_params:
                 self._resolve_call_kwargs_init(expr, record)
             else:
                 first_kwarg = next(iter(expr.kwargs))
@@ -2668,8 +2668,9 @@ class CallAnalyzer:
         if expr.call_type is not None and isinstance(expr.call_type, NamedType) and expr.call_type.is_record:
             # Analyze and type-check constructor arguments with type substitution
             type_subst = self.type_ops.build_type_substitution(expr.call_type)
-            if record.has_init:
-                # Type-check __init__ parameters
+            if record.init_params:
+                # Type-check constructor arguments (from __init__ or
+                # synthesized from fields for native records)
                 min_args = _init_params_min_args(record.init_params)
                 max_args = len(record.init_params)
                 if len(expr.args) < min_args or len(expr.args) > max_args:
@@ -2684,9 +2685,10 @@ class CallAnalyzer:
                     self.check_own_param(arg, arg_type, pname, resolved_ptype)
                     expr.args[i] = self.compat.coerce_expr(arg, arg_type, resolved_ptype, f"argument '{pname}'",
                                                            coercion_ctx=CoercionContext.ARG)
-            else:
-                for arg in expr.args:
-                    self.expr.analyze_expr(arg)
+            elif expr.args:
+                raise self.ctx.error(
+                    f"'{record.name}' has no __init__ and cannot be constructed with arguments",
+                    expr)
             self._set_record_constructor_info(expr, record, expr.call_type, type_subst)
             return expr.call_type
         # Generic record without explicit type args - try type inference
@@ -2762,6 +2764,11 @@ class CallAnalyzer:
                     self._set_record_constructor_info(expr, record, inferred_type, type_subst)
                     return inferred_type
             else:
+                if expr.args:
+                    raise self.ctx.error(
+                        f"'{record.name}' has no __init__; "
+                        f"use @dataclass or define __init__ to accept constructor arguments",
+                        expr)
                 # No __init__ -- try contextual inference only
                 if self.ctx.expr_type_hint is not None or wildcard_type_args is not None:
                     inferred: dict[str, TpyType] = {}
@@ -2804,8 +2811,9 @@ class CallAnalyzer:
                 expr
             )
         # Non-generic record
-        if record.has_init:
-            # Type-check __init__ parameters
+        if record.init_params:
+            # Type-check constructor arguments (from __init__ or
+            # synthesized from fields for native records)
             min_args = _init_params_min_args(record.init_params)
             max_args = len(record.init_params)
             if len(expr.args) < min_args or len(expr.args) > max_args:
@@ -2819,9 +2827,11 @@ class CallAnalyzer:
                 self.check_own_param(arg, arg_type, pname, ptype)
                 expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                         coercion_ctx=CoercionContext.ARG)
-        else:
-            for arg in expr.args:
-                self.expr.analyze_expr(arg)
+        elif expr.args:
+            raise self.ctx.error(
+                f"'{record.name}' has no __init__; "
+                f"use @dataclass or define __init__ to accept constructor arguments",
+                expr)
         # Use expr.func (local name) not record.name (original) for alias support
         result_type = NamedType(expr.func_name)
         self._set_record_constructor_info(expr, record, result_type)
@@ -2836,7 +2846,7 @@ class CallAnalyzer:
         if self.ctx.record_ctx.record is not None:
             return False
         # Check constructor arity (args must be valid count, ignoring type constraints)
-        if record.has_init:
+        if record.init_params:
             min_args = _init_params_min_args(record.init_params)
             max_args = len(record.init_params)
             if len(expr.args) < min_args or len(expr.args) > max_args:
@@ -2851,7 +2861,7 @@ class CallAnalyzer:
         """Create a deferred generic instance for later resolution from method calls."""
         # Analyze constructor args (we need their types even though we can't
         # type-check against params yet -- T is unknown)
-        if record.has_init:
+        if record.init_params:
             for arg in expr.args:
                 self.expr.analyze_expr(arg)
 
@@ -2864,8 +2874,8 @@ class CallAnalyzer:
             for tp, arg in zip(record.type_params, expr.type_args):
                 if arg is not None:
                     inferred[tp] = arg
-        # Seed from constructor args if has_init
-        if record.has_init and expr.args:
+        # Seed from constructor args
+        if record.init_params and expr.args:
             arg_types = [self.ctx.get_expr_type(arg) for arg in expr.args]
             # Try partial inference from available args
             partial = self.type_ops.infer_type_params_for_record(

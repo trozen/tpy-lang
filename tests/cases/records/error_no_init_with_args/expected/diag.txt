@@ -1,0 +1,1 @@
+main.py:9: error: 'Foo' has no __init__; use @dataclass or define __init__ to accept constructor arguments

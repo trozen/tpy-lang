@@ -1,0 +1,1 @@
+Zero-arg construction without __init__ relies on C++ default construction

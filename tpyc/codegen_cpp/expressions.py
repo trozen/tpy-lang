@@ -248,8 +248,12 @@ class ExpressionGenerator:
             return arg_gen
         gen = self.gen_expr(arg, ptype)
         if self.ctx.is_temporary_expr(arg):
-            arg_type = self.ctx.get_expr_type(arg)
-            tmp = self.ctx.temps.create(arg_type, gen) if arg_type else self.ctx.temps.create_typed("auto", gen)
+            # Use the Optional's inner type for the temp -- gen was already
+            # generated with ptype as target (e.g. list literal becomes
+            # std::vector{...}), so the temp must match the param's inner
+            # type, not the sema expression type (which can differ, e.g.
+            # ArrayType for a fixed-size list literal).
+            tmp = self.ctx.temps.create(actual.inner, gen)
             return f"&({tmp})"
         return f"&({gen})"
 

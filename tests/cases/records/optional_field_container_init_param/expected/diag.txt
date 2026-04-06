@@ -1,0 +1,2 @@
+main.py:12: warning: copies list[Int32] into field; use copy() to make this explicit
+main.py:11: warning: field 'items' is not initialized before the constructor body; it will be default-constructed in C++ (in CPython, the attribute would not exist)

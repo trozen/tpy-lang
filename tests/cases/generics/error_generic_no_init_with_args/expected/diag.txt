@@ -1,0 +1,1 @@
+main.py:8: error: 'Box' has no __init__ and cannot be constructed with arguments

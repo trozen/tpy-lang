@@ -6,11 +6,19 @@ class Vec2(ValueType):
     x: Int32
     y: Int32
 
+    def __init__(self, x: Int32, y: Int32) -> None:
+        self.x = x
+        self.y = y
+
 
 # Rect uses Vec2 -- tests nested value types
 class Rect(ValueType):
     pos: Vec2
     size: Vec2
+
+    def __init__(self, pos: Vec2, size: Vec2) -> None:
+        self.pos = pos
+        self.size = size
 
 
 def modify(v: Vec2) -> None:

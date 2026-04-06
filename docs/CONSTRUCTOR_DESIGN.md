@@ -123,7 +123,7 @@ class Point:
         self.x = x  # Auto-declares field x: Int32
         self.y = y  # Auto-declares field y: Int32
 
-# Supported: annotations only (aggregate, no __init__)
+# Annotations only -- requires @dataclass or explicit __init__ to construct
 class Point:
     x: Int32
     y: Int32
@@ -248,9 +248,9 @@ class Point:
     # Auto-generated __init__(self, x: Int32, y: Int32)
 ```
 
-This is a separate feature from the core constructor design and will be implemented later. For now, classes without `__init__` remain C++ aggregates (current behavior).
+This is a separate feature from the core constructor design and will be implemented later. For now, classes without `__init__` require `@dataclass` for constructor synthesis.
 
-Note: current aggregate behavior (no `__init__` -> struct without constructor) is a pragmatic choice that happens to work with C++ aggregate initialization. It's not CPython-compatible either, but it's useful and doesn't conflict with `@dataclass` -- once `@dataclass` is implemented, plain annotated classes could be tightened to require either `__init__` or `@dataclass`.
+Note: classes with only field annotations and no `__init__` cannot be constructed with positional arguments -- the compiler rejects `Point(1, 2)` with an error suggesting `@dataclass` or explicit `__init__`. Zero-argument construction `Point()` still works (C++ default construction).
 
 ---
 

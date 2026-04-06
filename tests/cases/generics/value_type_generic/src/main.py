@@ -6,10 +6,18 @@ class Vec2(ValueType):
     x: Int32
     y: Int32
 
+    def __init__(self, x: Int32, y: Int32) -> None:
+        self.x = x
+        self.y = y
+
 
 class Pair[T: ValueType](ValueType):
     first: T
     second: T
+
+    def __init__(self, first: T, second: T) -> None:
+        self.first = first
+        self.second = second
 
 
 def swap(p: Pair[Int32]) -> Pair[Int32]:

@@ -23,6 +23,9 @@ struct Vec2 {
     // y: Int32
     int32_t y;
 
+    // def __init__(self, x: Int32, y: Int32) -> None:
+    Vec2() = default;
+    explicit Vec2(int32_t x, int32_t y) : x(x), y(y) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
@@ -38,6 +41,9 @@ struct Rect {
     // size: Vec2
     Vec2 size;
 
+    // def __init__(self, pos: Vec2, size: Vec2) -> None:
+    Rect() = default;
+    explicit Rect(Vec2 pos, Vec2 size) : pos(pos), size(size) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
