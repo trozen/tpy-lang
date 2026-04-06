@@ -97,9 +97,6 @@
 // System utilities (depends on core)
 #include "system.hpp"
 
-// Math helpers for lib/stdlib/math.py @native declarations (log_base wrapper)
-#include "math_ops.hpp"
-
 // Pointer-variant utilities for non-value union types (depends on <variant>)
 #include "variant_ref.hpp"
 

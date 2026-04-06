@@ -3014,6 +3014,9 @@ class CallAnalyzer:
         loc: object,
     ) -> tuple[TpyExpr, TpyType]:
         """Analyze args, call a @call_macro, analyze expansion. Returns (expansion, type)."""
+        # Ensure macro_deps for this call macro's module are populated
+        self._ensure_call_macro_deps(module_name)
+
         macro_args = [
             MacroArg(expr=a, type=TypeInfo.from_tpy_type(self.expr.analyze_expr(a)))
             for a in args
@@ -3027,6 +3030,51 @@ class CallAnalyzer:
         expansion = expand_call_macro(
             macro_fn, ctx, macro_args, macro_kwargs, qname, loc)
         return expansion, self.expr.analyze_expr(expansion)
+
+    def _ensure_call_macro_deps(self, module_name: str) -> None:
+        """Populate macro_ns with deps from a call macro's module (if not already done)."""
+        macro_reg = self.ctx.macro_registry
+        if macro_reg is None:
+            return
+        deps = macro_reg.get_deps(module_name)
+        if not deps:
+            return
+        for dep_mod, name_filter in deps.items():
+            if dep_mod in self.ctx.macro_dep_modules:
+                continue
+            self.ctx.macro_dep_modules.add(dep_mod)
+            module_info = self.ctx.registry.get_module(dep_mod)
+            if module_info is None:
+                continue
+            if module_info.records:
+                for name, record_info in module_info.records.items():
+                    if name_filter is not None and name not in name_filter:
+                        continue
+                    if self.ctx.registry.get_record(name) is None:
+                        self.ctx.registry.register_record(record_info, name)
+                    self.ctx.macro_ns.bind_imported_name(name, dep_mod, name)
+                    self.ctx.imported_names.setdefault(name, (dep_mod, name))
+                    self.ctx.user_imported_records.setdefault(name, (dep_mod, name))
+            if module_info.functions:
+                for name, func_infos in module_info.functions.items():
+                    if name_filter is not None and name not in name_filter:
+                        continue
+                    is_special = func_infos and func_infos[0].special_handling
+                    if not is_special:
+                        if self.ctx.registry.get_function(name) is None:
+                            self.ctx.registry.register_function_group(name, func_infos)
+                        self.ctx.user_imported_functions.setdefault(name, (dep_mod, name))
+                    self.ctx.macro_ns.bind_imported_name(name, dep_mod, name)
+                    self.ctx.imported_names.setdefault(name, (dep_mod, name))
+            if module_info.enums:
+                for name, enum_type in module_info.enums.items():
+                    if name_filter is not None and name not in name_filter:
+                        continue
+                    if self.ctx.registry.get_enum(name) is None:
+                        self.ctx.registry.register_enum(enum_type, name)
+                    self.ctx.macro_ns.bind_enum(enum_type, name=name)
+                    self.ctx.imported_names.setdefault(name, (dep_mod, name))
+                    self.ctx.user_imported_enums.setdefault(name, (dep_mod, name))
 
     def _expand_call_macro(
         self, expr: TpyCall, macro_fn: Callable,

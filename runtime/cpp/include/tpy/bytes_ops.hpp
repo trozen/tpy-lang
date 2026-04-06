@@ -260,6 +260,31 @@ inline Bytes bytes_rstrip(BytesView b) {
     return Bytes(b.begin(), end);
 }
 
+inline Bytes bytes_rstrip_chars(BytesView b, BytesView chars) {
+    auto end = b.end();
+    while (end != b.begin() &&
+           std::find(chars.begin(), chars.end(), *(end - 1)) != chars.end())
+        --end;
+    return Bytes(b.begin(), end);
+}
+
+inline Bytes bytes_upper(BytesView b) {
+    Bytes result(b.begin(), b.end());
+    for (auto& c : result) {
+        if (c >= 'a' && c <= 'z') c -= 32;
+    }
+    return result;
+}
+
+inline bool bytes_contains_sub(BytesView haystack, BytesView needle) {
+    return std::search(haystack.begin(), haystack.end(),
+                       needle.begin(), needle.end()) != haystack.end();
+}
+
+inline Bytes bytes_read_sub(BytesView data, int32_t offset, int32_t count) {
+    return Bytes(data.begin() + offset, data.begin() + offset + count);
+}
+
 // -- Concatenation / repetition ---------------------------------------------
 
 inline Bytes bytes_concat(BytesView a, BytesView b) {

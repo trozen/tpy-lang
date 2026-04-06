@@ -1,5 +1,4 @@
 log(e) ok
-log(8,2) ok
 sqrt ok
 sin/cos ok
 floor/ceil ok

@@ -60,6 +60,13 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - ptr() function? Auto-select Ptr vs Ptr[readonly[T]] based on binding mutability. Needs sema-level magic (mutability not in type, it's in binding context).
 - `tpy.unsafe.unsafe_address_of(x) -> int`: return the memory address of an object as an integer. Useful for identity comparison in tests (proving reference semantics vs silent copy). C++ codegen: `reinterpret_cast<uintptr_t>(&x)`.
 
+## Operator overload diagnostics
+- `in` operator error with multi-overload `__contains__`: when no overload matches, the error reports only the first overload's param type (e.g. "expected UInt8") even though other overloads exist (e.g. `bytes`). Should list all candidates like function call overload errors do.
+
+## Overloads
+- Overload implementation arity mismatch: `@overload` stubs with different arities (e.g. `log(x)` and `log(x, base)`) can't have an implementation function with a default param (`def log(x, base=None)`) -- the compiler rejects the param count mismatch. Blocks `math.log(x, base)` overload. Workaround: `log_base(x, base)` as separate function. Low priority.
+- Overloads with bodies (no dispatch function): allow `@overload` variants to have bodies directly, removing the need for a separate implementation function. TPy dispatches at compile time so this is straightforward. For CPython compatibility, `tpy.overload` could build a runtime dispatch table (pick by arity/types). Would simplify stdlib modules that mix `@native` and TPy overloads.
+
 ## Python features
 - Nested class definitions: `class Outer: class Inner: ...` is rejected by the parser. Needed both as a language feature and for macro companion type creation (e.g. key enums for JSON field dispatch). C++ codegen: nested struct/class.
 - Any

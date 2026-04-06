@@ -1,7 +1,7 @@
 # tpy: native_module
 from typing import overload
 from tpy.extern import native, cpp_template
-from tpy import Ptr, Own, UInt32, Int64, StrView, Char, Array, readonly
+from tpy import Ptr, Own, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Float32, StrView, Char, Array, readonly
 
 # unsafe_ptr: get a raw pointer from a container or string
 @overload
@@ -94,6 +94,41 @@ def unsafe_drop[T](p: Ptr[T]) -> None: ...
 # unsafe_move_out: move a value out of a pointer location
 @cpp_template("std::move(*{0})")
 def unsafe_move_out[T](p: Ptr[T]) -> Own[T]: ...
+
+# unsafe_read_*: read typed values from a byte buffer at a byte offset.
+# Uses reinterpret_cast -- safe on little-endian targets (x86, ARM).
+@cpp_template("*reinterpret_cast<const int8_t*>({0}.data() + {1})")
+def unsafe_read_i8(data: bytes, offset: Int32) -> Int8: ...
+
+@cpp_template("({0})[{1}]")
+def unsafe_read_u8(data: bytes, offset: Int32) -> UInt8: ...
+
+@cpp_template("*reinterpret_cast<const int16_t*>({0}.data() + {1})")
+def unsafe_read_i16(data: bytes, offset: Int32) -> Int16: ...
+
+@cpp_template("*reinterpret_cast<const uint16_t*>({0}.data() + {1})")
+def unsafe_read_u16(data: bytes, offset: Int32) -> UInt16: ...
+
+@cpp_template("*reinterpret_cast<const int32_t*>({0}.data() + {1})")
+def unsafe_read_i32(data: bytes, offset: Int32) -> Int32: ...
+
+@cpp_template("*reinterpret_cast<const uint32_t*>({0}.data() + {1})")
+def unsafe_read_u32(data: bytes, offset: Int32) -> UInt32: ...
+
+@cpp_template("*reinterpret_cast<const int64_t*>({0}.data() + {1})")
+def unsafe_read_i64(data: bytes, offset: Int32) -> Int64: ...
+
+@cpp_template("*reinterpret_cast<const uint64_t*>({0}.data() + {1})")
+def unsafe_read_u64(data: bytes, offset: Int32) -> UInt64: ...
+
+@cpp_template("*reinterpret_cast<const float*>({0}.data() + {1})")
+def unsafe_read_f32(data: bytes, offset: Int32) -> Float32: ...
+
+@cpp_template("*reinterpret_cast<const double*>({0}.data() + {1})")
+def unsafe_read_f64(data: bytes, offset: Int32) -> float: ...
+
+@native("tpy::bytes_read_sub")
+def unsafe_read_bytes(data: bytes, offset: Int32, count: Int32) -> bytes: ...
 
 # unsafe_str_view: create a StrView from a pointer and length
 @overload

@@ -655,6 +655,12 @@ class ExpressionGenerator:
                 if val == "nan":
                     return "std::numeric_limits<float>::quiet_NaN()"
                 return val + "f"
+            if val == "inf":
+                return "std::numeric_limits<double>::infinity()"
+            if val == "-inf":
+                return "(-std::numeric_limits<double>::infinity())"
+            if val == "nan":
+                return "std::numeric_limits<double>::quiet_NaN()"
             return val
 
         elif isinstance(expr, TpyBoolLiteral):

@@ -18,18 +18,6 @@ void main() {
         // print("log(e) error")
         std::cout << "log(e) error" << "\n";
     }
-    // # Test math.log with base
-    // y = math.log(8.0, 2.0)
-    double y = ::tpy::math::log_base(8.0, 2.0);
-    // if y > 2.99 and y < 3.01:
-    if (((y > 2.99) && (y < 3.01))) {
-        // print("log(8,2) ok")
-        std::cout << "log(8,2) ok" << "\n";
-    // else:
-    } else {
-        // print("log(8,2) error")
-        std::cout << "log(8,2) error" << "\n";
-    }
     // # Test math.sqrt
     // z = math.sqrt(4.0)
     double z = ::std::sqrt(4.0);
@@ -78,6 +66,7 @@ void __tpy_init() {
     initialized = true;
 
     // import math
+    ::tpystd::math::__tpy_init();
     // main()
     main();
 }

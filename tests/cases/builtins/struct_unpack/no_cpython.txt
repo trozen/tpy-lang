@@ -1,0 +1,1 @@
+tpyc struct is a compile-time macro module; CPython struct.unpack requires exact buffer size

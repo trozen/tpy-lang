@@ -25,7 +25,13 @@ Full diff vs master: !`git diff master --stat 2>/dev/null || echo "(none)"`
    - Add a body explaining what and why
    - Do NOT include Co-Authored-By or references to Claude/LLM
 4. Derive a branch name from the commit message (e.g. "sema: fix readonly deref" -> "fix-readonly-deref"). Keep it short.
-5. Create the new branch from master, apply the squashed diff, commit.
+5. Create the new branch from master, squash-merge the original branch, commit:
+   ```bash
+   git checkout -b <new-branch> origin/master
+   git merge --squash <original-branch>
+   git commit -m "<message>"
+   ```
+   IMPORTANT: Always use `git merge --squash`. Never use `git checkout <branch> -- .` (it does not handle file deletions).
 6. Show the final state: branch name, commit hash, diff stat.
 
 ## Important

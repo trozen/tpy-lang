@@ -854,30 +854,44 @@ class ExpressionAnalyzer:
             if right_record:
                 contains_overloads = right_record.get_method_overloads("__contains__")
                 if contains_overloads:
-                    method = contains_overloads[0]
-                    # Substitute type params for generic containers
                     from .operators import _substitute_type_params
+                    from .overloads import resolve_overload
                     type_subst = builtin_modules.extract_type_params(right_type)
-                    param_type = unwrap_ref_type(method.params[0].type)
+                    # Substitute type params for generic containers
+                    subst_overloads = contains_overloads
                     if type_subst:
-                        param_type = _substitute_type_params(param_type, type_subst)
+                        from dataclasses import replace as dc_replace
+                        subst_overloads = [
+                            dc_replace(m, params=[
+                                ParamInfo(p.name, _substitute_type_params(p.type, type_subst))
+                                for p in m.params
+                            ]) for m in contains_overloads
+                        ]
                     # Resolve IntLiteralType: use param type if the literal fits,
                     # otherwise fall back to default int type
                     check_left = left_type
                     if isinstance(check_left, IntLiteralType):
-                        if (isinstance(param_type, FixedIntType)
-                                and param_type.min_value <= check_left.value <= param_type.max_value):
-                            check_left = param_type
+                        for m in subst_overloads:
+                            pt = m.params[0].type
+                            if (isinstance(pt, FixedIntType)
+                                    and pt.min_value <= check_left.value <= pt.max_value):
+                                check_left = pt
+                                break
                         else:
                             check_left = self.ctx.default_int_for_literal(check_left)
-                    if not isinstance(param_type, TypeParamRef):
-                        self.compat.check_type_compatible(
-                            check_left, param_type,
-                            f"membership test (expected {param_type})",
-                            loc=expr.loc,
-                        )
-                    expr.resolved_contains = method
-                    return BOOL
+                    matched = resolve_overload(subst_overloads, [check_left])
+                    if matched is not None:
+                        # Map back to the original (un-substituted) method for codegen
+                        idx = subst_overloads.index(matched)
+                        expr.resolved_contains = contains_overloads[idx]
+                        return BOOL
+                    # No overload matched -- report error using first overload's param type
+                    param_type = subst_overloads[0].params[0].type
+                    self.compat.check_type_compatible(
+                        left_type, param_type,
+                        f"membership test (expected {param_type})",
+                        loc=expr.loc,
+                    )
             # Right side must be iterable (intrinsically or via NativeIterable protocol)
             helper = IterableHelper(self.ctx)
             if helper.is_type_iterable(right_type):

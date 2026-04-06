@@ -1,16 +1,15 @@
-# tpy: native_module(forward=True)
 # tpy: cpp_namespace("tpystd::math")
-# tpy: include("<tpy/math_ops.hpp>")
-from typing import overload
-from tpy.extern import native
+from typing import Final
+from tpy.extern import native, cpp_template, type_param_default, DefaultInt
 
-@overload
+pi: Final[float] = 3.141592653589793
+e: Final[float] = 2.718281828459045
+inf: Final[float] = 1e309
+
 @native("std::log")
 def log(x: float) -> float: ...
 
-@overload
-@native("tpy::math::log_base")
-def log(x: float, base: float) -> float: ...
+# TODO: add log(x, base) overload when overload arity mismatch is fixed (see TODO.md)
 
 @native("std::log10")
 def log10(x: float) -> float: ...
@@ -44,3 +43,25 @@ def tan(x: float) -> float: ...
 
 @native("std::fabs")
 def fabs(x: float) -> float: ...
+
+@native("std::hypot")
+def hypot(x: float, y: float) -> float: ...
+
+@native("std::atan2")
+def atan2(y: float, x: float) -> float: ...
+
+@native("std::asin")
+def asin(x: float) -> float: ...
+
+@native("std::acos")
+def acos(x: float) -> float: ...
+
+def radians(x: float) -> float:
+    return x * (pi / 180.0)
+
+def degrees(x: float) -> float:
+    return x * (180.0 / pi)
+
+@type_param_default(T=DefaultInt)
+@cpp_template("::tpy::from_float_check<{T}>({0})")
+def trunc[T](x: float) -> T: ...

@@ -1,0 +1,5 @@
+b'HELLO'
+b'HELLO WORLD'
+b'ALREADY'
+b'123ABC'
+bytearray(b'MIXED CASE')

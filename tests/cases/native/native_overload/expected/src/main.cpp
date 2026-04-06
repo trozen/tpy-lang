@@ -6,12 +6,13 @@ namespace tpyapp::main {
 
 
 
+
 // def main() -> None:
 void main() {
     // print(log(1.0))
     std::cout << ::tpy::print_float(::std::log(1.0)) << "\n";
     // print(log(8.0, 2.0))
-    std::cout << ::tpy::print_float(::tpy::math::log_base(8.0, 2.0)) << "\n";
+    std::cout << ::tpy::print_float(std::log(8.0) / std::log(2.0)) << "\n";
 }
 
 void __tpy_init() {
@@ -19,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native
+    // from tpy.extern import native, cpp_template
     // main()
     main();
 }

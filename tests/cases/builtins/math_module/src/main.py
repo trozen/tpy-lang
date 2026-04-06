@@ -8,13 +8,6 @@ def main():
     else:
         print("log(e) error")
 
-    # Test math.log with base
-    y = math.log(8.0, 2.0)
-    if y > 2.99 and y < 3.01:
-        print("log(8,2) ok")
-    else:
-        print("log(8,2) error")
-
     # Test math.sqrt
     z = math.sqrt(4.0)
     if z > 1.99 and z < 2.01:

@@ -1,1 +1,1 @@
-main.py:4: error: Type mismatch in membership test (expected UInt8): expected UInt8, got Int32
+main.py:4: error: Integer literal 256 is outside UInt8 range [0, 255] in membership test (expected UInt8)
