@@ -49,7 +49,6 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     ::tpy::print_object_default(os, "Node", obj);
     return os;
 }
-
 } // namespace tpyapp::main
 
 template<> struct std::hash<tpyapp::main::Node> {
@@ -59,6 +58,7 @@ template<> struct std::hash<tpyapp::main::Node> {
 };
 
 namespace tpyapp::main {
+
 
 void __tpy_init();
 } // namespace tpyapp::main

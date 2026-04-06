@@ -49,6 +49,16 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
     os << obj.__repr__();
     return os;
 }
+} // namespace tpyapp::main
+
+template<> struct std::hash<tpyapp::main::Vec2> {
+    size_t operator()(const tpyapp::main::Vec2& val) const noexcept {
+        return static_cast<size_t>(::tpy::__hash__(val));
+    }
+};
+
+namespace tpyapp::main {
+
 
 // @dataclass(frozen=True)
 // class Vec3(Vec2):
@@ -83,14 +93,8 @@ inline std::ostream& operator<<(std::ostream& os, const Vec3& obj) {
     os << obj.__repr__();
     return os;
 }
-
 } // namespace tpyapp::main
 
-template<> struct std::hash<tpyapp::main::Vec2> {
-    size_t operator()(const tpyapp::main::Vec2& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
 template<> struct std::hash<tpyapp::main::Vec3> {
     size_t operator()(const tpyapp::main::Vec3& val) const noexcept {
         return static_cast<size_t>(::tpy::__hash__(val));
@@ -98,6 +102,7 @@ template<> struct std::hash<tpyapp::main::Vec3> {
 };
 
 namespace tpyapp::main {
+
 
 void __tpy_init();
 } // namespace tpyapp::main

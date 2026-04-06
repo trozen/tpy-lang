@@ -107,7 +107,6 @@ inline std::ostream& operator<<(std::ostream& os, const Version& obj) {
     os << obj.__repr__();
     return os;
 }
-
 } // namespace tpyapp::main
 
 template<> struct std::hash<tpyapp::main::Version> {
@@ -117,6 +116,7 @@ template<> struct std::hash<tpyapp::main::Version> {
 };
 
 namespace tpyapp::main {
+
 
 void __tpy_init();
 } // namespace tpyapp::main

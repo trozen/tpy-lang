@@ -2114,11 +2114,11 @@ class TupleType(TpyType):
         return any(t.is_expensive_copy() for t in self.element_types)
 
     def to_cpp_return(self) -> str:
-        args = ", ".join(t.to_cpp_return() for t in self.element_types)
+        args = ", ".join(self._element_to_cpp_param(t, const=False) for t in self.element_types)
         return f"std::tuple<{args}>"
 
     def to_cpp_return_const(self) -> str:
-        args = ", ".join(t.to_cpp_return_const() for t in self.element_types)
+        args = ", ".join(self._element_to_cpp_param(t, const=True) for t in self.element_types)
         return f"std::tuple<{args}>"
 
     def has_ref_elements(self) -> bool:
@@ -2127,16 +2127,31 @@ class TupleType(TpyType):
             for et in self.element_types
         )
 
+    def _element_to_cpp_param(self, t: 'TpyType', const: bool) -> str:
+        """C++ type for a tuple element in param context.
+
+        For Optional elements, uses to_cpp() (std::optional<T>) instead of
+        to_cpp_return (T*) so the param type matches the field storage type.
+        Tuples are passed as const&, so pointer repr inside makes no sense.
+        """
+        unwrapped = t.wrapped if isinstance(t, RefType) else t
+        if isinstance(unwrapped, OptionalType) and unwrapped.uses_pointer_repr():
+            # Use std::optional<T> (field repr) not T* (param/return repr)
+            ref_prefix = "const " if const and isinstance(t, RefType) else ""
+            suffix = "&" if isinstance(t, RefType) else ""
+            return f"{ref_prefix}{unwrapped.to_cpp()}{suffix}"
+        return t.to_cpp_return_const() if const else t.to_cpp_return()
+
     def to_cpp_param_type(self) -> str:
-        args = ", ".join(t.to_cpp_return() for t in self.element_types)
+        args = ", ".join(self._element_to_cpp_param(t, const=False) for t in self.element_types)
         return f"const std::tuple<{args}>&"
 
     def to_cpp_param(self, name: str) -> str:
-        args = ", ".join(t.to_cpp_return() for t in self.element_types)
+        args = ", ".join(self._element_to_cpp_param(t, const=False) for t in self.element_types)
         return f"const std::tuple<{args}>& {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
-        args = ", ".join(t.to_cpp_return_const() for t in self.element_types)
+        args = ", ".join(self._element_to_cpp_param(t, const=True) for t in self.element_types)
         return f"const std::tuple<{args}>& {name}"
 
     def __str__(self) -> str:

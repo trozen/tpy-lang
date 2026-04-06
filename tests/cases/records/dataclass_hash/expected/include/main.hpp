@@ -48,7 +48,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     os << obj.__repr__();
     return os;
 }
-
 } // namespace tpyapp::main
 
 template<> struct std::hash<tpyapp::main::Point> {
@@ -58,6 +57,7 @@ template<> struct std::hash<tpyapp::main::Point> {
 };
 
 namespace tpyapp::main {
+
 
 void __tpy_init();
 } // namespace tpyapp::main

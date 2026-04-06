@@ -49,6 +49,16 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     os << obj.__repr__();
     return os;
 }
+} // namespace tpyapp::main
+
+template<> struct std::hash<tpyapp::main::Point> {
+    size_t operator()(const tpyapp::main::Point& val) const noexcept {
+        return static_cast<size_t>(::tpy::__hash__(val));
+    }
+};
+
+namespace tpyapp::main {
+
 
 // @dataclass(frozen=True)
 // class Config:
@@ -84,14 +94,8 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     os << obj.__repr__();
     return os;
 }
-
 } // namespace tpyapp::main
 
-template<> struct std::hash<tpyapp::main::Point> {
-    size_t operator()(const tpyapp::main::Point& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
 template<> struct std::hash<tpyapp::main::Config> {
     size_t operator()(const tpyapp::main::Config& val) const noexcept {
         return static_cast<size_t>(::tpy::__hash__(val));
@@ -99,6 +103,7 @@ template<> struct std::hash<tpyapp::main::Config> {
 };
 
 namespace tpyapp::main {
+
 
 void __tpy_init();
 } // namespace tpyapp::main

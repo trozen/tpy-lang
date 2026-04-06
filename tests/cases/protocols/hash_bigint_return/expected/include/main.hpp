@@ -44,7 +44,6 @@ inline std::ostream& operator<<(std::ostream& os, const Key& obj) {
     ::tpy::print_object_default(os, "Key", obj);
     return os;
 }
-
 } // namespace tpyapp::main
 
 template<> struct std::hash<tpyapp::main::Key> {
@@ -54,6 +53,7 @@ template<> struct std::hash<tpyapp::main::Key> {
 };
 
 namespace tpyapp::main {
+
 
 void __tpy_init();
 } // namespace tpyapp::main

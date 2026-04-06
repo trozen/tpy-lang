@@ -151,6 +151,16 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
     ::tpy::print_object_default(os, "Vec2", obj);
     return os;
 }
+} // namespace tpyapp::main
+
+template<> struct std::hash<tpyapp::main::Vec2> {
+    size_t operator()(const tpyapp::main::Vec2& val) const noexcept {
+        return static_cast<size_t>(::tpy::__hash__(val));
+    }
+};
+
+namespace tpyapp::main {
+
 
 // class Score:
 struct Score {
@@ -289,16 +299,6 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     ::tpy::print_object_default(os, "Child", obj);
     return os;
 }
-
-} // namespace tpyapp::main
-
-template<> struct std::hash<tpyapp::main::Vec2> {
-    size_t operator()(const tpyapp::main::Vec2& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
-
-namespace tpyapp::main {
 
 void __tpy_init();
 } // namespace tpyapp::main

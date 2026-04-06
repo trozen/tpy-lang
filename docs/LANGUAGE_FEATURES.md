@@ -4858,12 +4858,12 @@ Send/Sync rules for built-in types:
   - `# tpy: macro_module` directive marks modules as compile-time-only
   - `@class_macro` functions receive `ClassInfo` and add/modify methods
   - `@dataclass` reimplemented as a class macro (`lib/tpy/dataclasses.py`)
-  - `tpyc/macro_api.py` provides public API: metadata (`ClassInfo`, `FieldInfo`, `TypeInfo`), AST builder (`ast`), type builder (`types`), type aliases (`Expr`, `Stmt`, `Function`, `Type`). Macro modules import only from `macro_api`.
+  - `tpyc/macro_api.py` provides public API: metadata (`ClassInfo`, `FieldInfo`, `TypeInfo`), AST builder (`ast`), type builder (`types`), type aliases (`Expr`, `Stmt`, `Function`, `Type`). Macro modules import only from `macro_api`. AST builder includes `if_expr()`, `set_comprehension()`, `clone()`. Type builder includes `set()`. `TypeInfo` has `is_set`, `unwrap_optional()`.
   - `tpyc/macro_loader.py` loads macro modules via CPython `importlib`
 - **Phase 2 done**: Call-site macros (`@call_macro`) expand at compile time
   - Macros receive `MacroArg` (AST + resolved type), return replacement `TpyExpr`
   - `dataclasses.asdict()` and `dataclasses.astuple()` as first use cases
-  - Recursion into nested dataclasses, `list[DC]`, `dict[K, DC]`, `tuple[DC, ...]`
+  - Recursion into nested dataclasses, `list[DC]`, `dict[K, DC]`, `tuple[DC, ...]`, `Optional[DC]`
   - Qualified form (`dataclasses.asdict`), mixed-type dicts via `dict[str, A|B]`
   - CPython compatibility: `lib/cpy/tpyc/macro_api.py` backend -- same macro source works under both tpyc and CPython
   - Source-based authoring: `ast.quote()`, `ast.quote_expr()`, `ast.quote_fun()`, `cls.add_method_from_source()` -- write macro output as TPy source strings instead of AST builder calls

@@ -38,7 +38,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     ::tpy::print_object_default(os, "Point", obj);
     return os;
 }
-
 } // namespace tpyapp::main
 
 template<> struct std::hash<tpyapp::main::Point> {
@@ -48,6 +47,7 @@ template<> struct std::hash<tpyapp::main::Point> {
 };
 
 namespace tpyapp::main {
+
 
 // def get_hash(x: Hashable) -> UInt64:
 template<::tpystd::tpy::Hashable T_x>

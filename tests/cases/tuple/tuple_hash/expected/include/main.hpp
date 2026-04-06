@@ -54,6 +54,16 @@ inline std::ostream& operator<<(std::ostream& os, const Key& obj) {
     ::tpy::print_object_default(os, "Key", obj);
     return os;
 }
+} // namespace tpyapp::main
+
+template<> struct std::hash<tpyapp::main::Key> {
+    size_t operator()(const tpyapp::main::Key& val) const noexcept {
+        return static_cast<size_t>(::tpy::__hash__(val));
+    }
+};
+
+namespace tpyapp::main {
+
 
 // class Point:
 struct Point {
@@ -87,6 +97,16 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     ::tpy::print_object_default(os, "Point", obj);
     return os;
 }
+} // namespace tpyapp::main
+
+template<> struct std::hash<tpyapp::main::Point> {
+    size_t operator()(const tpyapp::main::Point& val) const noexcept {
+        return static_cast<size_t>(::tpy::__hash__(val));
+    }
+};
+
+namespace tpyapp::main {
+
 
 // @nocopy
 // class Edge:
@@ -126,19 +146,8 @@ inline std::ostream& operator<<(std::ostream& os, const Edge& obj) {
     ::tpy::print_object_default(os, "Edge", obj);
     return os;
 }
-
 } // namespace tpyapp::main
 
-template<> struct std::hash<tpyapp::main::Key> {
-    size_t operator()(const tpyapp::main::Key& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
-template<> struct std::hash<tpyapp::main::Point> {
-    size_t operator()(const tpyapp::main::Point& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
 template<> struct std::hash<tpyapp::main::Edge> {
     size_t operator()(const tpyapp::main::Edge& val) const noexcept {
         return static_cast<size_t>(::tpy::__hash__(val));
@@ -146,6 +155,7 @@ template<> struct std::hash<tpyapp::main::Edge> {
 };
 
 namespace tpyapp::main {
+
 
 void __tpy_init();
 } // namespace tpyapp::main

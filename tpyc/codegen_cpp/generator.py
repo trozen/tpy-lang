@@ -420,6 +420,27 @@ class CodeGenerator:
 
         return deps
 
+    def _emit_hash_specialization(self, hpp: TextIO, record: TpyRecord) -> None:
+        """Emit std::hash specialization for a hashable record.
+
+        Called immediately after the record's struct definition so that
+        subsequent records can use it as a set/dict-key element type.
+        """
+        info = self.analyzer.registry.get_record(record.name)
+        if not info or "__hash__" not in info.methods:
+            return
+        if record.type_params or record.builtin_type_key:
+            return
+        ns = module_to_cpp_namespace(self.ctx.module_name)
+        cpp_name = f"{ns}::{record.name}"
+        hpp.write(f"}} // namespace {ns}\n\n")
+        hpp.write(f"template<> struct std::hash<{cpp_name}> {{\n")
+        hpp.write(f"    size_t operator()(const {cpp_name}& val) const noexcept {{\n")
+        hpp.write(f"        return static_cast<size_t>(::tpy::__hash__(val));\n")
+        hpp.write(f"    }}\n")
+        hpp.write(f"}};\n")
+        hpp.write(f"\nnamespace {ns} {{\n\n")
+
     def _emit_concept_and_dynamic(self, hpp: TextIO, protocol: 'TpyProtocol') -> None:
         """Emit concept for a protocol, plus base class if @dynamic.
 
@@ -487,6 +508,7 @@ class CodeGenerator:
         for record in module.records:
             if record.name in deps.bound_protocol_records:
                 self.records.gen_record_decl(hpp, record)
+                self._emit_hash_specialization(hpp, record)
                 hpp.write("\n")
 
         # Full definitions for records that are type args to bounded records
@@ -495,6 +517,7 @@ class CodeGenerator:
                 if record.name in deps.bound_protocol_records:
                     continue
                 self.records.gen_record_decl(hpp, record)
+                self._emit_hash_specialization(hpp, record)
                 hpp.write("\n")
 
         # Forward declare records referenced in protocols (bounds now available)
@@ -634,6 +657,7 @@ class CodeGenerator:
             if record.name in deps.bound_protocol_records:
                 continue
             self.records.gen_record_decl(hpp, record)
+            self._emit_hash_specialization(hpp, record)
             hpp.write("\n")
 
         # Generator struct full definitions (after records, so struct fields
@@ -688,26 +712,9 @@ class CodeGenerator:
                     hpp.write(f"template<> struct tpy::is_value_type<{ns}::{record.name}> : std::true_type {{}};\n")
             hpp.write(f"\nnamespace {ns} {{\n\n")
 
-        # std::hash specializations for records with __hash__
-        # (frozen dataclasses with auto-generated __hash__, or user-defined __hash__)
-        hashable_records = [
-            r for r in module.records
-            if (info := self.analyzer.registry.get_record(r.name))
-            and "__hash__" in info.methods
-            and not r.type_params
-            and not r.builtin_type_key  # builtin types have their own hash
-        ]
-        if hashable_records:
-            ns = module_to_cpp_namespace(self.ctx.module_name)
-            hpp.write(f"}} // namespace {ns}\n\n")
-            for record in hashable_records:
-                cpp_name = f"{ns}::{record.name}"
-                hpp.write(f"template<> struct std::hash<{cpp_name}> {{\n")
-                hpp.write(f"    size_t operator()(const {cpp_name}& val) const noexcept {{\n")
-                hpp.write(f"        return static_cast<size_t>(::tpy::__hash__(val));\n")
-                hpp.write(f"    }}\n")
-                hpp.write(f"}};\n")
-            hpp.write(f"\nnamespace {ns} {{\n\n")
+        # std::hash specializations are emitted per-record inline (see
+        # _emit_hash_specialization), not batched here. This ensures hash
+        # specs appear before any struct that uses the type as a set/dict-key.
 
         # Module-local type alias definitions (after record definitions
         # so member types are complete for std::variant)
