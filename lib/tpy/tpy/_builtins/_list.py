@@ -48,10 +48,23 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], ReadO
     @readonly
     def unchecked_get(self, index: Int32) -> T: ...
 
+    @overload
     @native("tpy::__getitem__", function=True)
     @pure
     @readonly
     def __getitem__(self, index: Int32) -> T: ...
+
+    @overload
+    @cpp_template("::tpy::list_slice({self}, {0})")
+    @pure
+    @readonly
+    def __getitem__(self, index: basic_slice) -> Span[T]: ...
+
+    @overload
+    @cpp_template("::tpy::list_stepped_slice({self}, {0})")
+    @pure
+    @readonly
+    def __getitem__(self, index: slice) -> Own[list[T]]: ...
 
     @native("tpy::__setitem__", function=True)
     @native_preserves_refs

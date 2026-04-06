@@ -2192,14 +2192,16 @@ negative indices supported. `@readonly` context and `Span[readonly[T]]` source p
 to `Span[readonly[T]]` result.
 
 Phase 2 adds the `slice` built-in type. User records with `@overload __getitem__`
-can accept both `Int32` (index) and `slice` (range) parameters. The `slice` type
-has `start` and `stop` attributes of type `Optional[Int32]` (matching CPython).
-Syntax `obj[x:y]` on a user type with `__getitem__(slice)` overload constructs a
-`tpy::Slice` C++ struct and calls `__getitem__` directly. Phase 3 (step) not
-started.
+can accept both `Int32` (index) and `slice` (range) parameters.
 
-**Dependencies**: None for Phase 1 (done). Phase 2 needs `slice` type + B10
-(`@overload`) (done). Phase 3 needs step parsing (currently rejected by parser).
+Phase 3 adds stepped slicing with a two-type design: `basic_slice` (start, stop)
+for `a[1:3]` syntax returning zero-copy views, and `slice` (start, stop, step)
+for `a[1:3:2]` syntax returning owned copies. `basic_slice` coerces to `slice`.
+C++ structs: `tpy::BasicSlice` and `tpy::Slice`. Stepped slice assignment
+(`a[::2] = [...]`) not yet supported.
+
+**Dependencies**: All phases done. Remaining: `slice()`/`basic_slice()` constructors,
+stepped slice assignment.
 
 **Effort**: S (Phase 1, done), M (Phase 2, done), S (Phase 3)
 

@@ -3,6 +3,7 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
+- `Own[union]` return with mixed value/non-value members: `Own[Span[T] | list[T]]` forces all return paths to be rvalues, but a `Span` from a basic slice is treated as an lvalue by sema even though it's a computed value. Blocks user types from overloading `__getitem__` with `basic_slice -> Span[T]` and `slice -> Own[list[T]]` in a single body. The built-in types work because they dispatch to separate C++ functions via `@cpp_template`.
 - Eliminate concrete type classes (ListType, DictType, etc.): replace `isinstance(t, ListType)` checks with name-based or annotation-driven checks. ~60 references for ListType alone across type inference, codegen, and compatibility. Enables treating all types uniformly as NamedType + RecordInfo. Lower priority -- current type classes work fine, this is about uniformity.
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 - drop builtin types, like RangeType
@@ -16,6 +17,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Native records without `__init__` silently get a positional constructor synthesized from field order. This is fragile -- reordering fields in the `.py` stub breaks callers with no error. Should require an explicit `__init__` stub instead (like non-native records).
 
 ## Bugs
+- `@auto_readonly` overload validation rejects `basic_slice` in generic classes: `@overload __getitem__(self, index: basic_slice)` on a generic class like `ArrayList[T, N: int]` triggers "readonly[basic_slice] which is not in the implementation's union type". The const variant wraps the param in `readonly[basic_slice]` but the validator checks it against the mutable implementation's union. Works fine with `slice` and in non-generic classes. Blocks ArrayList from using `basic_slice` overload.
 - Generic generators with multiple yield points (struct-based codegen path) are not yet supported -- the out-of-line `__next__()` in .cpp won't link for template structs. Currently guarded with a sema error. Fix: emit struct + `__next__()` body into the header when the function has type params.
 - Non-native functions in builtin modules can't be called from user code: codegen emits unqualified names (e.g. bare `enumerate(...)` instead of `tpystd::builtins::enumerate(...)`). The `imported_names` path considers any registered function as "shadowing" the import. Blocks defining pure TPy generator builtins. Workaround: use `@cpp_template`/`@native` with C++ implementation instead.
 - Use-after-free not caught by borrow checker: `old = d.get(k); del d[k]; use(old)` -- `dict.get()` returns a pointer into the dict's internal storage. `del d[k]` frees that entry, making `old` a dangling pointer. The subsequent `use(old)` is undefined behavior (reads garbage). The borrow checker should warn that `old` borrows from `d` and `del d[k]` invalidates it. Workaround: reorder to use `old` before `del`.
@@ -25,6 +27,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Inherited `__repr__` not used by `operator<<`: `_gen_record_ostream` only checks direct methods (not inherited) to avoid `BaseException.__str__` leaking into exception subclasses. This means `print(child)` gives `<Child object at 0x...>` even when the parent defines `__repr__`, but `repr(child)` correctly finds the inherited method. Consider checking inherited `__repr__` while excluding known problematic base classes.
 
 ## Bytes
+- Bytes literals as static storage: bytes literals compile to temporary `std::vector<uint8_t>{...}` which has no static lifetime. Consider compiling them to `static constexpr uint8_t[]` arrays (like C++ string literals have static storage) so `BytesView` slices of literals don't risk dangling when stored in variables. Currently safe in practice because `bytesview_to_bytes` coercion copies when needed, but static storage would be more efficient.
 - `BytesView` as dict key / set element: `__hash__` works but `std::span<const uint8_t>` has no `operator==`, so `ordered_map`/`ordered_set` fail to compile. Needs an `__eq__` overload or `std::equal_to` specialization.
 
 ## Ownership & Consuming Iteration
@@ -73,7 +76,8 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Nested class definitions: `class Outer: class Inner: ...` is rejected by the parser. Needed both as a language feature and for macro companion type creation (e.g. key enums for JSON field dispatch). C++ codegen: nested struct/class.
 - Any
 - dynamic attributes
-- list/container slicing (Phase 3: step)
+- stepped slice assignment (`a[::2] = [...]`)
+- Move slice assignment to .py stubs: `_gen_slice_assign` in codegen hardcodes `::tpy::list_set_slice()` directly instead of going through `__setitem__(basic_slice)` stub dispatch. Should follow the same pattern as `__getitem__` slice stubs.
 - properties
 - Generator: `yield from`, `send()`, `throw()`, `close()`
 - Generator: protocol-typed params (`def gen(it: Iterator[T])`) -- needs template struct + factory. Currently emits `T&` without `template<typename T>` and simple generator path tries `begin()/end()` instead of `__next__()`.

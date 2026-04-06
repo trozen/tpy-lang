@@ -16,7 +16,7 @@
 | Alias source tracking with retroactive promotion | Done |
 | `string_view` -> `string` codegen for return and init | Done |
 | `str` slicing (`s[1:3]`) | Done |
-| `str` slice step (`s[::2]`) | Planned |
+| `str` slice step (`s[::2]`) | Done |
 | `__str__` / `__repr__` dispatch via `str(obj)` and `repr(obj)` | Done |
 | f-strings | Done |
 | `@noalloc` string restrictions | Planned |
@@ -71,7 +71,7 @@ Methods available on `str`, `String`, and `StrView` types. All methods are `is_r
 | `s.rindex(sub)` | Working | Like `rfind` but panics on miss |
 | `s.splitlines()` | Working | Split on `\n`/`\r\n`, returns `list[str]` |
 | `s[i:j]` (slicing) | Working | Returns `StrView`, Python clamping semantics |
-| `s[i:j:k]` (slice step) | Not yet | Requires step support |
+| `s[i:j:k]` (slice step) | Working | Returns owned `str`, Python semantics |
 | `s.format(...)` | Not yet | f-strings planned separately |
 
 ## Types

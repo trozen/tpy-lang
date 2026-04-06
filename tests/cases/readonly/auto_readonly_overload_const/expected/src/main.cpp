@@ -9,7 +9,7 @@ void read_container(const Container<int32_t>& c) {
     // x = c[Int32(0)]    # tpyc: type(Int32)
     int32_t x = c[0];
     // s = c[Int32(0):Int32(2)]  # tpyc: type(Span[readonly[Int32]])
-    std::span<const int32_t> s = c.__getitem__(::tpy::Slice{0, 2});
+    std::span<const int32_t> s = c.__getitem__(::tpy::BasicSlice{0, 2});
     // print(x)
     std::cout << x << "\n";
     // print(s[Int32(0)])
@@ -31,7 +31,7 @@ void main() {
     // x = c[Int32(1)]    # tpyc: type(Int32)
     int32_t x = c[1];
     // s = c[Int32(0):Int32(2)]  # tpyc: type(Span[Int32])
-    std::span<int32_t> s = c.__getitem__(::tpy::Slice{0, 2});
+    std::span<int32_t> s = c.__getitem__(::tpy::BasicSlice{0, 2});
     // print(x)
     std::cout << x << "\n";
     // print(s[Int32(0)])

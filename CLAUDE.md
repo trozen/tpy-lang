@@ -377,7 +377,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `copy_iter.hpp` | `CopyIter<I>` iterator adapter that copies elements from a borrowing iterator |
 | `own_iter.hpp` | `OwnIter<C>` drain iterator for consuming iteration over heap-backed containers |
 | `varargs.hpp` | `varargs<T>` dual-mode span for `*args` (direct storage or pointer indirection) |
-| `slice.hpp` | Built-in slice type for user-defined `__getitem__` overloads |
+| `slice.hpp` | `BasicSlice` (start, stop) and `Slice` (start, stop, step) types |
 | `math_ops.hpp` | Wrapper for two-argument `math.log(x, base)` |
 | `file.hpp` | `TextFile`, `BinaryFile` for `open()` builtin, `FileFlags` mode parsing |
 
@@ -428,7 +428,7 @@ Note: `@noalloc` is parsed but not yet enforced. See `docs/LANGUAGE_FEATURES.md`
 
 The compiler is a proof-of-concept. Not yet implemented:
 - `async`/`await`
-- Slice step (`items[::2]`, `items[::-1]`)
+- Stepped slice assignment (`items[::2] = [...]`)
 
 Working but not previously listed:
 - `match`/`case` pattern matching (union, literal, record, optional, enum, guard, or-pattern, positional)
@@ -470,6 +470,8 @@ Working but not previously listed:
 | `bytes` | `std::vector<uint8_t>` |
 | `bytearray` | `std::vector<uint8_t>` (mutable) |
 | `BytesView` | `std::span<const uint8_t>` |
+| `basic_slice` | `tpy::BasicSlice` (start, stop) |
+| `slice` | `tpy::Slice` (start, stop, step) |
 
 ## Supported Language Features
 

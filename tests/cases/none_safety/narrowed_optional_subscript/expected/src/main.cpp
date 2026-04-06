@@ -11,7 +11,7 @@ void check(std::optional<std::string_view> s) {
         // print(s[0])
         std::cout << ::tpy::__getitem__((*s), 0) << "\n";
         // print(s[1:4])
-        std::cout << ::tpy::str_slice((*s), 1, 4) << "\n";
+        std::cout << ::tpy::str_slice((*s), ::tpy::BasicSlice{1, 4}) << "\n";
         // print(len(s))
         std::cout << ::tpy::__len__((*s)) << "\n";
     // else:

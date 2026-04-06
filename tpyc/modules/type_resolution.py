@@ -23,7 +23,7 @@ def _resolve_concrete_type_name(name: str) -> "TpyType | None":
     Used for resolving extends declarations like extends=["NativeIterable[Char]"].
     """
     from tpyc.typesys import (
-        CHAR, BOOL, STR, VOID, BIGINT, FLOAT, FLOAT32, SLICE,
+        CHAR, BOOL, STR, VOID, BIGINT, FLOAT, FLOAT32, BASIC_SLICE, SLICE,
         INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64,
     )
 
@@ -36,6 +36,7 @@ def _resolve_concrete_type_name(name: str) -> "TpyType | None":
         "str": STR,
         "int": BIGINT,
         "float": FLOAT,
+        "basic_slice": BASIC_SLICE,
         "slice": SLICE,
         "None": VOID,
     }
@@ -90,7 +91,7 @@ def _get_type_factories() -> dict[str, tuple[list[TypeParamKind], "Callable[...,
         from tpyc.typesys import (
             ListType, DictType, DictKeysViewType, DictValuesViewType,
             DictItemsViewType, SetType, ArrayType, SpanType, SpanIterType,
-            PtrType, RangeType, FLOAT32, FLOAT, BIGINT, BOOL, CHAR, STR, STRING, STRVIEW, BYTES, BYTEARRAY, BYTESVIEW,
+            PtrType, RangeType, FLOAT32, FLOAT, BIGINT, BOOL, CHAR, STR, STRING, STRVIEW, BYTES, BYTEARRAY, BYTESVIEW, BASIC_SLICE, SLICE,
             ALL_FIXED_INTS,
         )
         TYPE = TypeParamKind.TYPE
@@ -118,6 +119,8 @@ def _get_type_factories() -> dict[str, tuple[list[TypeParamKind], "Callable[...,
             "builtins.bytes": ([], lambda: BYTES),
             "builtins.bytearray": ([], lambda: BYTEARRAY),
             "tpy.BytesView": ([], lambda: BYTESVIEW),
+            "builtins.basic_slice": ([], lambda: BASIC_SLICE),
+            "builtins.slice": ([], lambda: SLICE),
             **{f"tpy.{t}": ([], (lambda typ: lambda: typ)(t)) for t in ALL_FIXED_INTS},
         }
     return _type_factories

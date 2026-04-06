@@ -22,10 +22,23 @@ class BytesView(NativeIterable[UInt8], Iterable[UInt8]):
     @pure
     def __len__(self) -> Int32: ...
 
+    @overload
     @native("tpy::bytes_getitem", function=True)
     @readonly
     @pure
     def __getitem__(self, index: Int32) -> UInt8: ...
+
+    @overload
+    @cpp_template("::tpy::bytes_slice({self}, {0})")
+    @readonly
+    @pure
+    def __getitem__(self, index: basic_slice) -> BytesView: ...
+
+    @overload
+    @cpp_template("::tpy::bytes_stepped_slice({self}, {0})")
+    @readonly
+    @pure
+    def __getitem__(self, index: slice) -> bytes: ...
 
     @native("tpy::bytes_contains", function=True)
     @readonly

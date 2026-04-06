@@ -652,3 +652,12 @@ def deref(x):
 
 
 Fn = Callable
+
+
+# ---------------------------------------------------------------------------
+# Slice types
+# ---------------------------------------------------------------------------
+
+# In TPy, basic_slice and slice are distinct types. In CPython, both map to
+# the built-in slice type so isinstance checks work correctly.
+basic_slice = slice

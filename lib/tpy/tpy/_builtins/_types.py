@@ -432,10 +432,23 @@ class str(NativeIterable[Char], Iterable[Char], Comparable, Equatable):
     @pure
     def __len__(self) -> Int32: ...
 
+    @overload
     @cpp_template("::tpy::__getitem__({self}, {0})")
     @readonly
     @pure
     def __getitem__(self, index: Int32) -> Char: ...
+
+    @overload
+    @cpp_template("::tpy::str_slice({self}, {0})")
+    @readonly
+    @pure
+    def __getitem__(self, index: basic_slice) -> StrView: ...
+
+    @overload
+    @cpp_template("::tpy::str_stepped_slice({self}, {0})")
+    @readonly
+    @pure
+    def __getitem__(self, index: slice) -> str: ...
 
     @overload
     @cpp_template("::tpy::str_concat({self}, {0})")

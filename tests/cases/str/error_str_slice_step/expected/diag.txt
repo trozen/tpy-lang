@@ -1,1 +1,0 @@
-main.py:5: error: Slice step is not yet supported

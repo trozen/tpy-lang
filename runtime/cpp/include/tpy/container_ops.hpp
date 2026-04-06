@@ -19,12 +19,20 @@
 #include <vector>
 
 #include "core.hpp"
+#include "slice.hpp"
 #include "type_traits.hpp"
 
 namespace tpy {
 
 /// Sentinel for omitted slice upper bound.
 inline constexpr int32_t SLICE_END = INT32_MAX;
+/// Sentinel for omitted slice bound in stepped slicing (distinct from SLICE_END
+/// because stepped slicing needs to distinguish None from 0 -- negative step
+/// reverses the default start/stop direction).
+/// Note: collides with INT32_MIN as a valid Int32 value. In practice this is
+/// harmless -- no container can have 2^31 elements, so the clamped result is
+/// identical whether the bound is treated as "absent" or as -2147483648.
+inline constexpr int32_t SLICE_NONE = INT32_MIN;
 
 /**
  * normalize_index - Convert Python-style index to size_t.
@@ -79,6 +87,11 @@ inline std::string_view str_slice(std::string_view s, int32_t start, int32_t sto
     return s.substr(static_cast<std::size_t>(i), static_cast<std::size_t>(j - i));
 }
 
+/// BasicSlice overload: unpacks start/stop from the slice object.
+inline std::string_view str_slice(std::string_view s, BasicSlice sl) {
+    return str_slice(s, sl.start.value_or(0), sl.stop.value_or(SLICE_END));
+}
+
 /**
  * list_slice - Python-style container slicing: items[start:stop].
  *
@@ -100,6 +113,13 @@ auto list_slice(Container&& c, int32_t start, int32_t stop) {
     j = std::clamp(j, std::ptrdiff_t{0}, len);
     if (i >= j) return SpanT{};
     return SpanT{c.data() + i, static_cast<std::size_t>(j - i)};
+}
+
+/// BasicSlice overload: unpacks start/stop from the slice object.
+template <typename Container>
+auto list_slice(Container&& c, BasicSlice sl) {
+    return list_slice(std::forward<Container>(c),
+                      sl.start.value_or(0), sl.stop.value_or(SLICE_END));
 }
 
 /**
@@ -129,6 +149,102 @@ void list_set_slice(std::vector<T>& vec, int32_t start, int32_t stop, const Rang
     }
     vec.erase(vec.begin() + i, vec.begin() + j);
     vec.insert(vec.begin() + i, values.begin(), values.end());
+}
+
+// =============================================
+// Stepped slice helpers (a[start:stop:step])
+// =============================================
+
+namespace detail {
+
+/// Resolve SLICE_NONE bounds for stepped slicing. When step > 0, default
+/// start is 0 and default stop is len. When step < 0, default start is
+/// len-1 and default stop is -(len+1) (i.e., one before the beginning).
+struct SteppedSliceBounds {
+    std::ptrdiff_t start;
+    std::ptrdiff_t stop;
+    std::ptrdiff_t step;
+};
+
+inline SteppedSliceBounds resolve_stepped_bounds(
+        int32_t raw_start, int32_t raw_stop, int32_t raw_step,
+        std::ptrdiff_t len) {
+    if (raw_step == 0) tpy_panic("slice step cannot be zero");
+    auto step = static_cast<std::ptrdiff_t>(raw_step);
+    std::ptrdiff_t start, stop;
+    if (raw_start == SLICE_NONE) {
+        start = (step > 0) ? 0 : len - 1;
+    } else {
+        start = raw_start;
+        if (start < 0) start += len;
+        // Positive step: clamp to [0, len]. Negative step: clamp to [-1, len-1]
+        // (start=-1 means "before the beginning" -> empty result).
+        start = std::clamp(start,
+                           (step > 0) ? std::ptrdiff_t{0} : std::ptrdiff_t{-1},
+                           (step > 0) ? len : len - 1);
+    }
+    if (raw_stop == SLICE_NONE) {
+        stop = (step > 0) ? len : std::ptrdiff_t{-1};
+    } else {
+        stop = raw_stop;
+        if (stop < 0) stop += len;
+        stop = std::clamp(stop, std::ptrdiff_t{-1}, len);
+    }
+    return {start, stop, step};
+}
+
+} // namespace detail
+
+/**
+ * str_stepped_slice - Python-style stepped string slicing: s[start:stop:step].
+ * Returns a new owned string (non-contiguous).
+ */
+inline std::string str_stepped_slice(std::string_view s, int32_t start, int32_t stop, int32_t step) {
+    auto len = static_cast<std::ptrdiff_t>(s.size());
+    auto [i, j, st] = detail::resolve_stepped_bounds(start, stop, step, len);
+    std::string result;
+    if (st > 0) {
+        for (auto k = i; k < j; k += st)
+            result += s[static_cast<std::size_t>(k)];
+    } else {
+        for (auto k = i; k > j; k += st)
+            result += s[static_cast<std::size_t>(k)];
+    }
+    return result;
+}
+
+/**
+ * list_stepped_slice - Python-style stepped container slicing: c[start:stop:step].
+ * Returns a new owned vector (non-contiguous).
+ */
+template <typename Container>
+auto list_stepped_slice(const Container& c, int32_t start, int32_t stop, int32_t step) {
+    using T = std::remove_const_t<std::remove_reference_t<decltype(c[0])>>;
+    auto len = static_cast<std::ptrdiff_t>(c.size());
+    auto [i, j, st] = detail::resolve_stepped_bounds(start, stop, step, len);
+    std::vector<T> result;
+    if (st > 0) {
+        for (auto k = i; k < j; k += st)
+            result.push_back(c[static_cast<std::size_t>(k)]);
+    } else {
+        for (auto k = i; k > j; k += st)
+            result.push_back(c[static_cast<std::size_t>(k)]);
+    }
+    return result;
+}
+
+/// Slice overloads: unpack start/stop/step from the slice object.
+inline std::string str_stepped_slice(std::string_view s, Slice sl) {
+    return str_stepped_slice(s, sl.start.value_or(SLICE_NONE),
+                             sl.stop.value_or(SLICE_NONE),
+                             sl.step.value_or(1));
+}
+
+template <typename Container>
+auto list_stepped_slice(const Container& c, Slice sl) {
+    return list_stepped_slice(c, sl.start.value_or(SLICE_NONE),
+                              sl.stop.value_or(SLICE_NONE),
+                              sl.step.value_or(1));
 }
 
 // =============================================

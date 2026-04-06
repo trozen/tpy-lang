@@ -17,7 +17,7 @@ from ..typesys import (
     TpyType, NamedType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, FinalType, SelfType,
     strip_auto_readonly, apply_auto_readonly, has_auto_readonly, strip_auto_own, apply_auto_own, ensure_qualified,
     TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType, FnType, CallableType,
-    INT32, VOID, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW, BOOL, FLOAT, FLOAT32, BIGINT, SELF, SLICE, FieldInfo, RecordInfo, TypeRegistry,
+    INT32, VOID, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW, BOOL, FLOAT, FLOAT32, BIGINT, SELF, BASIC_SLICE, SLICE, FieldInfo, RecordInfo, TypeRegistry,
     FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, BoolType, StrType, LiteralType, LiteralValue,
     ALL_FIXED_INTS, public_module_name,
 )
@@ -490,6 +490,7 @@ class Parser:
             elif original == "str": return STR
             elif original == "bytes": return BYTES
             elif original == "bytearray": return BYTEARRAY
+            elif original == "basic_slice": return BASIC_SLICE
             elif original == "slice": return SLICE
             elif original == "None": return VOID
             elif original == "type": return NamedType("type", _module_qname=qnames.TYPE)
@@ -3045,8 +3046,7 @@ class Parser:
                     # be a variable, not a function/type (e.g., fns[0](args),
                     # Handlers[MyType](args)). May fail for known generic types
                     # (list[T], Array[T,N], etc. can't be used as values).
-                    # Skip slices -- they can't produce a callable value and
-                    # would swallow the "slice step not supported" diagnostic.
+                    # Skip slices -- they can't produce a callable value.
                     subscript_callee = None
                     if not isinstance(node.func.slice, ast.Slice):
                         try:
@@ -3152,11 +3152,10 @@ class Parser:
             obj = self._parse_expr(node.value)
             if isinstance(node.slice, ast.Slice):
                 sl = node.slice
-                if sl.step is not None:
-                    raise ParseError("Slice step is not yet supported", node)
                 lower = self._parse_expr(sl.lower) if sl.lower is not None else None
                 upper = self._parse_expr(sl.upper) if sl.upper is not None else None
-                index = TpySlice(lower=lower, upper=upper, loc=loc)
+                step = self._parse_expr(sl.step) if sl.step is not None else None
+                index = TpySlice(lower=lower, upper=upper, step=step, loc=loc)
             else:
                 index = self._parse_expr(node.slice)
             return TpySubscript(obj=obj, index=index, loc=loc)

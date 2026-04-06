@@ -417,7 +417,7 @@ class TpySetLiteral(TpyExpr):
 
 @dataclass
 class TpySlice(TpyExpr):
-    """Slice expression: lower:upper (step not yet supported)."""
+    """Slice expression: lower:upper or lower:upper:step."""
     lower: TpyExpr | None = None
     upper: TpyExpr | None = None
     step: TpyExpr | None = None  # reserved for future step support
@@ -434,7 +434,8 @@ class TpySubscript(TpyExpr):
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
     enum_from_name: 'EnumType | None' = None    # Set by sema for Color["Red"] name lookup
     bounds_safe: bool = False  # Set by sema: index provably in [0, len(obj)), skip bounds check
-    user_slice_getitem: bool = False  # Set by sema: slice dispatches to user __getitem__(slice)
+    is_stepped_slice: bool = False  # Set by sema: slice has step (a[::2])
+    slice_function_info: 'FunctionInfo | None' = None  # Set by sema: resolved __getitem__ for slice
     typed_dict_field: str | None = None  # Set by sema: d["key"] on TypedDict -> field access
 
     def children(self) -> list[TpyExpr]:

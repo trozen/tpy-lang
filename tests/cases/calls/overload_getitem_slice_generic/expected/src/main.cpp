@@ -19,7 +19,7 @@ void main() {
     std::cout << c[1] << "\n";
     // # Slice
     // sp = c[Int32(0):Int32(2)]
-    std::span<const int32_t> sp = c.__getitem__(::tpy::Slice{0, 2});
+    std::span<const int32_t> sp = c.__getitem__(::tpy::BasicSlice{0, 2});
     // for x in sp:
     auto& __obj_0 = sp;
     auto __beg_0 = __obj_0.begin();

@@ -307,14 +307,40 @@ inline Bytes bytes_repeat(BytesView b, int32_t n) {
 
 // -- Slicing ----------------------------------------------------------------
 
-inline Bytes bytes_slice(BytesView b, int32_t start, int32_t stop) {
+inline BytesView bytes_slice(BytesView b, int32_t start, int32_t stop) {
     auto sz = static_cast<int32_t>(b.size());
     if (start < 0) start = std::max(0, sz + start);
     if (stop < 0) stop = std::max(0, sz + stop);
     start = std::min(start, sz);
     stop = std::min(stop, sz);
     if (start >= stop) return {};
-    return Bytes(b.begin() + start, b.begin() + stop);
+    return b.subspan(static_cast<std::size_t>(start),
+                     static_cast<std::size_t>(stop - start));
+}
+
+inline Bytes bytes_stepped_slice(BytesView b, int32_t start, int32_t stop, int32_t step) {
+    auto len = static_cast<std::ptrdiff_t>(b.size());
+    auto [i, j, st] = detail::resolve_stepped_bounds(start, stop, step, len);
+    Bytes result;
+    if (st > 0) {
+        for (auto k = i; k < j; k += st)
+            result.push_back(b[static_cast<std::size_t>(k)]);
+    } else {
+        for (auto k = i; k > j; k += st)
+            result.push_back(b[static_cast<std::size_t>(k)]);
+    }
+    return result;
+}
+
+/// BasicSlice/Slice overloads.
+inline BytesView bytes_slice(BytesView b, BasicSlice sl) {
+    return bytes_slice(b, sl.start.value_or(0), sl.stop.value_or(SLICE_END));
+}
+
+inline Bytes bytes_stepped_slice(BytesView b, Slice sl) {
+    return bytes_stepped_slice(b, sl.start.value_or(SLICE_NONE),
+                               sl.stop.value_or(SLICE_NONE),
+                               sl.step.value_or(1));
 }
 
 // -- Equality ---------------------------------------------------------------

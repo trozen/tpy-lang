@@ -10,21 +10,21 @@ void main() {
     // data = b"hello world"
     std::vector<uint8_t> data = std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x77, 0x6f, 0x72, 0x6c, 0x64};
     // print(data[0:5])
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, 0, 5)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 5})) << "\n";
     // print(data[6:11])
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, 6, 11)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, ::tpy::BasicSlice{6, 11})) << "\n";
     // print(data[-5:])
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, -5, ::tpy::SLICE_END)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, ::tpy::BasicSlice{-5, std::nullopt})) << "\n";
     // print(data[:5])
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, 0, 5)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, ::tpy::BasicSlice{std::nullopt, 5})) << "\n";
     // print(data[3:3])
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, 3, 3)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, ::tpy::BasicSlice{3, 3})) << "\n";
     // # Slice of a literal
     // print(b"abcdef"[1:4])
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(std::vector<uint8_t>{0x61, 0x62, 0x63, 0x64, 0x65, 0x66}, 1, 4)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(std::vector<uint8_t>{0x61, 0x62, 0x63, 0x64, 0x65, 0x66}, ::tpy::BasicSlice{1, 4})) << "\n";
     // # Slice passed to function
     // chunk = data[0:5]
-    std::vector<uint8_t> chunk = ::tpy::bytes_slice(data, 0, 5);
+    std::span<const uint8_t> chunk = ::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 5});
     // print(len(chunk))
     std::cout << ::tpy::__len__(chunk) << "\n";
     // print(chunk)

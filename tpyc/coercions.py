@@ -12,7 +12,7 @@ from .typesys import (
     NamedType, PtrType, is_readonly_ptr, CharType, StrType, StringType, StrViewType,
     BytesType, ByteArrayType, BytesViewType,
     SpanType, is_readonly_span, PendingListType, TypeParamRef, TypeParamKind, ReadonlyType,
-    ListType, ArrayType,
+    ListType, ArrayType, BasicSliceType, SliceType,
 )
 
 
@@ -366,6 +366,12 @@ COERCIONS: list[Coercion] = [
         to_type=SpanType,
         type_match=lambda s1, s2: isinstance(s1, SpanType) and not s1.is_readonly and is_readonly_span(s2) and s1.inner_element_type == s2.inner_element_type,
         protocol_safe=True,
+    ),
+    # basic_slice -> slice (adds step=nullopt). C++ implicit via Slice(BasicSlice) ctor.
+    Coercion(
+        name="basic_slice_to_slice",
+        from_type=BasicSliceType,
+        to_type=SliceType,
     ),
     # Span coercions: any ReadOnlySpanLike[T] type can coerce to Span[T]
     # Arg context allows temporaries

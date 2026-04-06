@@ -19,9 +19,9 @@ from ..typesys import (
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
     PendingDictType, PendingSetType, DictLiteralInfo,
     resolve_int_literals, FnType, CallableType,
-    INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, SLICE, BYTES, BYTESVIEW, UINT8,
+    INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, BASIC_SLICE, SLICE, BYTES, BYTESVIEW, UINT8,
     is_protocol_type, container_to_str_template, contains_type_param,
-    PendingGenericInstanceType, SliceType, unwrap_ref_type, make_ref, RefType,
+    PendingGenericInstanceType, BasicSliceType, SliceType, unwrap_ref_type, make_ref, RefType,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -1251,8 +1251,12 @@ class ExpressionAnalyzer:
 
     def _try_find_field(self, typ: TpyType, expr: TpyFieldAccess) -> TpyType | None:
         """Try to find a field on typ. Returns field type or None."""
-        if isinstance(typ, SliceType):
+        if isinstance(typ, BasicSliceType):
             if expr.field in ("start", "stop"):
+                return OptionalType(INT32)
+            return None
+        if isinstance(typ, SliceType):
+            if expr.field in ("start", "stop", "step"):
                 return OptionalType(INT32)
             return None
 
@@ -2429,74 +2433,77 @@ class ExpressionAnalyzer:
 
         raise self.ctx.error(f"Cannot index type {obj_type}", expr)
 
-    _SLICEABLE_STR_TYPES = (StrType, StringType, StrViewType, PendingStrType)
-    _SLICEABLE_BYTES_TYPES = (BytesType, ByteArrayType, BytesViewType, PendingBytesType)
-    _SLICEABLE_CONTAINER_TYPES = (ListType, PendingListType, ArrayType, SpanType)
-
     def _analyze_slice(self, expr: TpySubscript, obj_type: TpyType) -> TpyType:
-        """Analyze slice expression: obj[start:stop]"""
+        """Analyze slice expression: obj[start:stop] or obj[start:stop:step].
+
+        Resolves the __getitem__(basic_slice) or __getitem__(slice) overload
+        on the type (built-in or user-defined) and stores the FunctionInfo
+        on the expression for codegen.
+        """
         sl = expr.index
         assert isinstance(sl, TpySlice)
-        for bound, label in ((sl.lower, "start"), (sl.upper, "stop")):
+        stepped = sl.step is not None
+        for bound, label in ((sl.lower, "start"), (sl.upper, "stop"), (sl.step, "step")):
             if bound is not None:
                 bound_type = self.analyze_expr(bound)
                 if not isinstance(bound_type, (Int32Type, BigIntType, IntLiteralType)):
                     raise self.ctx.error(
                         f"Slice {label} must be an integer type, got {bound_type}", bound
                     )
+        if stepped:
+            expr.is_stepped_slice = True
+
         is_readonly = isinstance(obj_type, ReadonlyType)
         actual_type = unwrap_readonly(obj_type)
 
-        # String slicing -> StrView
-        if isinstance(actual_type, self._SLICEABLE_STR_TYPES):
-            return STRVIEW
-
-        # Bytes slicing -> owned bytes (not a view -- avoids dangling span
-        # since bytes literals are temporary vectors, not static storage)
-        if isinstance(actual_type, self._SLICEABLE_BYTES_TYPES):
-            return BYTES
-
-        # Container slicing -> Span[T] or Span[readonly[T]]
-        if isinstance(actual_type, self._SLICEABLE_CONTAINER_TYPES):
-            elem_type = actual_type.get_element_type()
-            assert elem_type is not None
-            # Span[readonly[T]] source or @readonly context -> Span[readonly[T]]
-            src_readonly = isinstance(actual_type, SpanType) and actual_type.is_readonly
-            return SpanType(elem_type, is_readonly=(is_readonly or src_readonly))
-
-        # User records with __getitem__(slice) overload
-        if isinstance(actual_type, NamedType) and actual_type.is_record:
-            ret = self._find_slice_getitem_return(actual_type, is_readonly=is_readonly)
-            if ret is not None:
-                expr.user_slice_getitem = True
-                return ret
+        result = self._find_slice_getitem(actual_type, stepped=stepped, is_readonly=is_readonly)
+        if result is not None:
+            ret, fi = result
+            expr.slice_function_info = fi
+            # Propagate readonly to Span return types (source is readonly or
+            # Span[readonly[T]] -> sliced result should also be readonly)
+            if isinstance(ret, SpanType) and not ret.is_readonly:
+                src_readonly = isinstance(actual_type, SpanType) and actual_type.is_readonly
+                if is_readonly or src_readonly:
+                    ret = SpanType(ret.element_type, is_readonly=True)
+            return ret
 
         raise self.ctx.error(f"Slicing is not supported for {obj_type}", expr)
 
-    def _find_slice_getitem_return(self, record_type: NamedType, *, is_readonly: bool = False) -> TpyType | None:
-        """Find __getitem__(slice) overload on a record and return its return type.
+    def _find_slice_getitem(self, actual_type: TpyType, *, stepped: bool = False,
+                            is_readonly: bool = False) -> tuple[TpyType, 'FunctionInfo'] | None:
+        """Find __getitem__(basic_slice) or __getitem__(slice) overload on any type.
 
-        Prefers the const overload when is_readonly=True (readonly receiver),
-        and the mutable overload otherwise. Falls back to the first slice overload
-        if no const/mutable-specific one exists.
+        Works for both built-in types (via qualified_name -> registry) and user records.
+        When stepped=False, looks for BasicSliceType param first, falls back to SliceType.
+        When stepped=True, looks for SliceType param first, falls back to BasicSliceType.
+        Prefers the const overload when is_readonly=True.
+        Returns (return_type, FunctionInfo) or None.
         """
-        record = self.ctx.registry.get_record_for_type(record_type)
+        record = self.ctx.registry.get_record_for_type(actual_type)
         if record is None:
             return None
         getitem_overloads = record.methods.get("__getitem__", [])
+        primary = SliceType if stepped else BasicSliceType
+        fallback = BasicSliceType if stepped else SliceType
         slice_overloads = [
             fi for fi in getitem_overloads
-            if len(fi.params) == 1 and isinstance(fi.params[0].type, SliceType)
+            if len(fi.params) == 1 and isinstance(fi.params[0].type, primary)
         ]
+        if not slice_overloads:
+            slice_overloads = [
+                fi for fi in getitem_overloads
+                if len(fi.params) == 1 and isinstance(fi.params[0].type, fallback)
+            ]
         if not slice_overloads:
             return None
         preferred = [fi for fi in slice_overloads if fi.is_readonly == is_readonly]
         func_info = preferred[0] if preferred else slice_overloads[0]
         ret = func_info.return_type
-        type_subst = self.type_ops.build_type_substitution(record_type)
+        type_subst = self.type_ops.build_type_substitution(actual_type)
         if type_subst:
             ret = self.type_ops.substitute_type_params(ret, type_subst)
-        return ret
+        return ret, func_info
 
     _FORMATTABLE_TYPES = (
         FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, BoolType,

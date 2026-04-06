@@ -2812,6 +2812,10 @@ class StatementAnalyzer:
         sl = stmt.target.index
         assert isinstance(sl, TpySlice)
 
+        if sl.step is not None:
+            raise self.ctx.error(
+                "Stepped slice assignment is not yet supported", stmt)
+
         obj_type = self.expr.analyze_expr(stmt.target.obj)
         inner_type = unwrap_own(unwrap_readonly(unwrap_ref_type(obj_type)))
         if not isinstance(inner_type, ListType):

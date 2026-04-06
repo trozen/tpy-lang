@@ -451,7 +451,7 @@ items.append(b"carol")  # source mutated -> x becomes owned bytes
 ### Containers
 - **Working**: `list[T]` - dynamic list → `std::vector<T>` (with context-dependent inference; type parameter is invariant: `list[Child]` is not compatible with `list[Base]`)
 - **Working**: `list[T] + list[T]` concatenation → new list, `list[T] += list[T]` extend in-place, `del lst[i]` element removal
-- **Working**: `lst[x:y]` read slicing → `Span[readonly[T]]` (clamped, no-panic). `lst[x:y] = rhs` slice assignment → replaces, resizes, deletes, or inserts (Python semantics). Bounds must be integers; step not supported yet. RHS must be `list[T]`.
+- **Working**: `lst[x:y]` basic slicing -> `Span[T]` (zero-copy view, clamped, no-panic). `lst[x:y:z]` stepped slicing -> `list[T]` (owned copy). `lst[x:y] = rhs` slice assignment -> replaces, resizes, deletes, or inserts (Python semantics). Stepped slice assignment not yet supported. Bounds must be integers. RHS must be `list[T]`.
 - **Working**: Array literals `[1, 2, 3]` → `std::array<T, N>` or `std::vector<T>` (context-dependent)
 - **Working**: `Array[T, N]` - fixed-size array with explicit type annotation
 - **Working**: `Span[T]` - non-owning mutable view into contiguous memory → `std::span<T>`
@@ -3928,9 +3928,10 @@ class Car(Vehicle, Printable, Measurable):
   - `round(x)` uses banker's rounding (round half to even, matching Python)
   - `round[T](x)` is generic: return type defaults to `default_int`, can be inferred from context
   - `divmod(a, b)` returns `tuple[T, T]` with Python floor-division semantics
-- **Working**: String slicing: `s[1:3]`, `s[:3]`, `s[1:]`, `s[:-1]` -- returns `StrView`, Python clamping semantics, no step yet
-- **Working**: Container slicing: `items[1:3]`, `items[:3]`, `items[2:]`, `items[:]`, `items[-2:]` -- returns `Span[T]` (zero-copy view), supports `list[T]`, `Array[T,N]`, `Span[T]`, `Span[readonly[T]]`. No step yet
-- **Working**: User-type slicing via `@overload __getitem__(self, index: slice)`. The `slice` builtin type has `start`/`stop` attributes of type `Optional[Int32]`. Maps to `tpy::Slice` in C++
+- **Working**: String slicing: `s[1:3]` -> `StrView` (zero-copy), `s[::2]` -> owned `str`. Python clamping semantics, negative indices, negative step
+- **Working**: Container slicing: `items[1:3]` -> `Span[T]` (zero-copy), `items[::2]` -> owned `list[T]`. Supports `list[T]`, `Array[T,N]`, `Span[T]`, `Span[readonly[T]]`
+- **Working**: Bytes slicing: `b[1:3]` -> `BytesView` (zero-copy), `b[::2]` -> owned `bytes`
+- **Working**: User-type slicing via `@overload __getitem__(self, index: basic_slice)` or `__getitem__(self, index: slice)`. `basic_slice` has `start`/`stop` (`Optional[Int32]`), maps to `tpy::BasicSlice`. `slice` adds `step`, maps to `tpy::Slice`. `basic_slice` coerces to `slice`
 - **Working**: `isinstance(x, T)` → compile-time type narrowing for union types (`std::holds_alternative<T>` + `std::get<T>`)
 - **Working**: `isinstance(x, Protocol)` → compile-time protocol check on protocol-typed template params (`if constexpr (Concept<T_x>)`)
 - **Open**: `type()` → compile-time type info
@@ -4646,9 +4647,10 @@ Unknown directives produce a warning. Directives after the first line of code pr
 - **Working**: Dict comprehensions `{key: value for x in iterable if cond}` -> IIFE with loop + `insert_or_assign`. Supports tuple unpacking, annotation propagation, all iteration strategies, const-ref loop variable binding
 - **Working**: Set comprehensions `{expr for x in iterable if cond}` -> IIFE with loop + `insert`. Supports tuple unpacking, annotation propagation, all iteration strategies, const-ref loop variable binding
 - **Working**: Lambda expressions `lambda x: expr` with `Fn` type inference (see Lambda / Closures section)
-- **Working**: String slice `s[start:end]` -> `std::string_view` (clamping, negative indices)
-- **Working**: Container slice `items[start:end]` -> `std::span<T>` (zero-copy view, clamping, negative indices). Supports list, Array, Span, Span[readonly[T]]. Step not yet supported
-- **Working**: User-type slice `obj[start:end]` via `@overload __getitem__(self, index: slice)` with `tpy::Slice` dispatch
+- **Working**: String slice `s[start:end]` -> `StrView` (zero-copy). Stepped `s[start:end:step]` -> owned `str`
+- **Working**: Container slice `items[start:end]` -> `Span[T]` (zero-copy). Stepped `items[start:end:step]` -> owned `list[T]`. Supports list, Array, Span, Span[readonly[T]]
+- **Working**: Bytes slice `b[start:end]` -> `BytesView` (zero-copy). Stepped `b[start:end:step]` -> owned `bytes`
+- **Working**: User-type slice via `@overload __getitem__(self, index: basic_slice)` or `__getitem__(self, index: slice)` with `tpy::BasicSlice`/`tpy::Slice` dispatch. `basic_slice` coerces to `slice`
 
 ---
 

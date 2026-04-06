@@ -890,8 +890,25 @@ class RangeType(TpyType):
 
 
 @dataclass(frozen=True)
+class BasicSliceType(TpyType):
+    """Basic slice type: basic_slice(start, stop) for subscript ranges without step."""
+
+    def to_cpp(self) -> str:
+        return "::tpy::BasicSlice"
+
+    def __str__(self) -> str:
+        return "basic_slice"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.basic_slice"
+
+    def is_value_type(self) -> bool:
+        return True
+
+
+@dataclass(frozen=True)
 class SliceType(TpyType):
-    """Slice type: slice(start, stop) for subscript ranges."""
+    """Stepped slice type: slice(start, stop, step) for subscript ranges with step."""
 
     def to_cpp(self) -> str:
         return "::tpy::Slice"
@@ -3210,6 +3227,7 @@ FLOAT32 = Float32Type()
 
 BIGINT = BigIntType()
 NONE = NoneType()
+BASIC_SLICE = BasicSliceType()
 SLICE = SliceType()
 
 # View-type family descriptors (must follow singleton definitions)

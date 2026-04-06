@@ -15,7 +15,7 @@ from tpy._builtins import (
 __all__ = [
     # Types (always available without import)
     "int", "float", "bool", "str", "bytes", "bytearray", "None",
-    "tuple", "slice", "type",
+    "tuple", "basic_slice", "slice", "type",
     "Exception", "ValueError", "OSError", "FileNotFoundError", "BaseException",
     # These require explicit import in user code
     "list", "dict", "dict_keys", "dict_values", "dict_items", "set",

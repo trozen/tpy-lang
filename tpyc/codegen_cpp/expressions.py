@@ -3349,12 +3349,13 @@ class ExpressionGenerator:
         obj = self._maybe_unwrap_narrowed_optional(
             expr.obj, obj, self.ctx.is_indirect_name(expr.obj))
 
-        # Slice: obj[start:stop]
+        # Slice: obj[start:stop] or obj[start:stop:step]
         if isinstance(expr.index, TpySlice):
             subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
-            if expr.user_slice_getitem:
-                return self._gen_user_slice(subscript_obj, expr.index)
-            return self._gen_slice(subscript_obj, expr.index, expr.obj)
+            fi = expr.slice_function_info
+            assert fi, "slice_function_info not set -- sema should have rejected this"
+            slice_arg = self._gen_slice_object(expr.index, stepped=expr.is_stepped_slice)
+            return self.builtins.gen_call_from_fi(fi, subscript_obj, [slice_arg])
 
         obj_type = self.types.get_resolved_type(expr.obj)
 
@@ -3439,23 +3440,14 @@ class ExpressionGenerator:
         return False
 
 
-    def _gen_slice(self, obj: str, sl: TpySlice, obj_expr: TpyExpr) -> str:
-        """Generate slice: str_slice for strings, list_slice for containers."""
-        start = self._gen_slice_bound(sl.lower) if sl.lower is not None else "0"
-        stop = self._gen_slice_bound(sl.upper) if sl.upper is not None else "::tpy::SLICE_END"
-        obj_type = self.types.get_resolved_type(obj_expr)
-        # get_resolved_type returns the C++ declared type, which stays
-        # Optional even after narrowing. Use sema's analyzed type to
-        # detect the unwrapped inner type for correct dispatch.
-        if isinstance(obj_type, OptionalType):
-            analyzed = self.ctx.get_expr_type(obj_expr)
-            if not isinstance(analyzed, OptionalType):
-                obj_type = obj_type.inner
-        if is_any_str_type(obj_type):
-            return f"::tpy::str_slice({obj}, {start}, {stop})"
-        if is_any_bytes_type(obj_type):
-            return f"::tpy::bytes_slice({obj}, {start}, {stop})"
-        return f"::tpy::list_slice({obj}, {start}, {stop})"
+    def _gen_slice_object(self, sl: TpySlice, *, stepped: bool) -> str:
+        """Generate a BasicSlice or Slice C++ object from slice bounds."""
+        start = self._gen_optional_slice_bound(sl.lower)
+        stop = self._gen_optional_slice_bound(sl.upper)
+        if stepped:
+            step = self._gen_optional_slice_bound(sl.step)
+            return f"::tpy::Slice{{{start}, {stop}, {step}}}"
+        return f"::tpy::BasicSlice{{{start}, {stop}}}"
 
     def _gen_slice_bound(self, expr: TpyExpr) -> str:
         """Generate a slice bound expression, converting to int32_t if needed."""
@@ -3465,14 +3457,8 @@ class ExpressionGenerator:
             code = f"{code}.to_fixed_check<int32_t>()"
         return code
 
-    def _gen_user_slice(self, obj: str, sl: TpySlice) -> str:
-        """Generate user-type slice via direct __getitem__ call."""
-        start = self._gen_optional_slice_bound(sl.lower)
-        stop = self._gen_optional_slice_bound(sl.upper)
-        return f"{obj}.__getitem__(::tpy::Slice{{{start}, {stop}}})"
-
     def _gen_optional_slice_bound(self, expr: TpyExpr | None) -> str:
-        """Generate an optional slice bound for ::tpy::Slice construction."""
+        """Generate an optional slice bound for slice construction."""
         if expr is None:
             return "std::nullopt"
         return self._gen_slice_bound(expr)

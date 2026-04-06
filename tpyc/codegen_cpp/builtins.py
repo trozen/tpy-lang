@@ -96,6 +96,12 @@ class BuiltinGenerator:
             overloads = record_info.get_method_overloads(method_name)
             if len(overloads) > 1:
                 if method_name == "__getitem__":
+                    # Multi-overload __getitem__: find the integer-index overload
+                    for fi in overloads:
+                        if (len(fi.params) == 1
+                                and isinstance(fi.params[0].type, (FixedIntType, BigIntType))
+                                and (fi.cpp_template or fi.native_function or fi.native_name)):
+                            return fi
                     return None
                 raise RuntimeError(
                     f"get_type_method_fi called for multi-overload method "

@@ -43,7 +43,7 @@ struct MyList {
         // stop: Int32 = s_stop if s_stop is not None else Int32(len(self._data))
         int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
         // return self._data[start:stop]
-        return ::tpy::list_slice(this->_data, start, stop);
+        return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
     }
 
     int32_t operator[](int32_t index) const {
