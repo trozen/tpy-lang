@@ -3036,8 +3036,13 @@ class StatementAnalyzer:
             obj_type = self.ctx.get_expr_type(stmt.target.obj)
             if isinstance(obj_type, TupleType):
                 raise self.ctx.error("Tuples are immutable; cannot assign to tuple elements", stmt)
-            # Dict subscript assignment is always allowed (no read-only dict variant)
-            if not isinstance(unwrap_readonly(obj_type), (DictType, PendingDictType)):
+            # Dict/TypedDict subscript assignment is always allowed
+            actual_obj = unwrap_readonly(obj_type)
+            is_typed_dict_target = (
+                isinstance(actual_obj, NamedType) and actual_obj.is_record
+                and stmt.target.typed_dict_field is not None
+            )
+            if not isinstance(actual_obj, (DictType, PendingDictType)) and not is_typed_dict_target:
                 elem_type = obj_type.get_element_type()
                 if elem_type is not None:
                     # Span[readonly[T]] always rejects element assignment

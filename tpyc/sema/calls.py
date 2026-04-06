@@ -2632,6 +2632,11 @@ class CallAnalyzer:
             if init_overloads:
                 return self._analyze_template_constructor(expr, record, init_overloads)
 
+        # TypedDict: keyword-only construction (matches CPython)
+        if record.is_typed_dict and expr.args:
+            raise self.ctx.error(
+                f"TypedDict '{record.name}' only accepts keyword arguments", expr)
+
         # Resolve kwargs for record constructors
         if expr.kwargs:
             if record.init_params:

@@ -1,0 +1,1 @@
+main.py:7: error: TypedDict cannot have additional base classes

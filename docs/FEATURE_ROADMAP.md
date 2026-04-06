@@ -89,7 +89,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D18 | `**kwargs` (variadic keyword arguments) | M-L | Not started | [VI](#args--kwargs) |
 | D19 | Recursive type aliases | M | Not started | [I](#recursive-type-aliases) |
 | D20 | Mutual recursion (cross-type cycles) | M-L | Not started | [I](#mutual-recursion) |
-| D21 | TypedDict | M | Not started | [VII](#typeddict) |
+| D21 | TypedDict | M | Done | [VII](#typeddict) |
 | D22 | Multiple inheritance (mixins) | L | Not started | [VII](#multiple-inheritance) |
 | D23 | Nested classes | M | Not started | [VII](#nested-classes) |
 
@@ -2410,8 +2410,8 @@ def process(info: UserInfo) -> None:
     # info["unknown"]       # compile error: key not in UserInfo
     # info[variable]        # compile error: key must be string literal
 
-# Construction
-user: UserInfo = {"name": "Alice", "age": Int32(30), "active": True}
+# Construction (keyword arguments)
+user = UserInfo(name="Alice", age=Int32(30), active=True)
 ```
 
 A dict-like type where keys are fixed string literals with per-key value types.
@@ -2447,13 +2447,22 @@ class Partial(TypedDict, total=False):
     age: Int32      # Optional
 ```
 
-**Current state**: Not started.
+**Current state**: Basic form done. `class Foo(TypedDict):` defines a struct with
+string-literal subscript access (`d["key"]` -> `d.key`). Construction via kwargs,
+field defaults, mutation via subscript assignment. No methods, no type parameters,
+no `total=False`, no dict-like API (`.keys()`, `.items()`), no dict literal construction.
+
+**Not yet supported**:
+- `total=False` / `NotRequired[]` (PEP 655)
+- Dict-like API (`.keys()`, `.values()`, `.items()`, `.get()`, `in`)
+- Dict literal construction (`{"name": "Alice"}` as TypedDict)
+- Type parameters on TypedDict
+- TypedDict inheritance
 
 **Dependencies**: None for basic form. Typed `**kwargs` (D18) is the primary consumer.
 `Unpack` from `typing` needed for PEP 692 integration.
 
-**Effort**: M (sema string-literal-dependent subscript resolution + struct codegen
-with dict-like API generation)
+**Effort**: Basic done. Remaining: S-M (dict-like API, `total=False`)
 
 ### Multiple Inheritance
 

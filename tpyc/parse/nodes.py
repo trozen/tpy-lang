@@ -435,6 +435,7 @@ class TpySubscript(TpyExpr):
     enum_from_name: 'EnumType | None' = None    # Set by sema for Color["Red"] name lookup
     bounds_safe: bool = False  # Set by sema: index provably in [0, len(obj)), skip bounds check
     user_slice_getitem: bool = False  # Set by sema: slice dispatches to user __getitem__(slice)
+    typed_dict_field: str | None = None  # Set by sema: d["key"] on TypedDict -> field access
 
     def children(self) -> list[TpyExpr]:
         return [self.obj, self.index]
@@ -1028,6 +1029,7 @@ class TpyRecord:
     native_name: str | None = None
     is_nocopy: bool = False
     is_frozen: bool = False
+    is_typed_dict: bool = False
     builtin_type_key: str | None = None
     pending_macros: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
     loc: SourceLocation | None = None

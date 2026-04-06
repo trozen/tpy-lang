@@ -27,7 +27,7 @@ Full diff vs master: !`git diff master --stat 2>/dev/null || echo "(none)"`
 4. Derive a branch name from the commit message (e.g. "sema: fix readonly deref" -> "fix-readonly-deref"). Keep it short.
 5. Create the new branch from master, squash-merge the original branch, commit:
    ```bash
-   git checkout -b <new-branch> origin/master
+   git checkout -b <new-branch> master
    git merge --squash <original-branch>
    git commit -m "<message>"
    ```

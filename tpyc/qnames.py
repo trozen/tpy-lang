@@ -73,6 +73,7 @@ CALLABLE = "typing.Callable"
 OVERLOAD = "typing.overload"
 OVERRIDE = "typing.override"
 LITERAL = "typing.Literal"
+TYPED_DICT = "typing.TypedDict"
 
 # -- typing protocols --
 ITERATOR = "typing.Iterator"

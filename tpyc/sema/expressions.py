@@ -2337,10 +2337,31 @@ class ExpressionAnalyzer:
         if isinstance(expr.index, TpySlice):
             return self._analyze_slice(expr, inner_obj_type)
 
+        # TypedDict subscript: d["key"] -> field type (compile-time string literal only)
+        actual_obj = unwrap_readonly(inner_obj_type)
+        if isinstance(actual_obj, NamedType) and actual_obj.is_record:
+            record_info = self.ctx.registry.get_record_for_type(actual_obj)
+            if record_info and record_info.is_typed_dict:
+                if not isinstance(expr.index, TpyStrLiteral):
+                    raise self.ctx.error(
+                        f"TypedDict '{actual_obj.name}' keys must be string literals", expr.index)
+                key = expr.index.value
+                type_subst = self.type_ops.build_type_substitution(actual_obj)
+                for fld in record_info.fields:
+                    if fld.name == key:
+                        field_type = fld.type
+                        if type_subst:
+                            field_type = self.type_ops.substitute_type_params(field_type, type_subst)
+                        expr.typed_dict_field = key
+                        # Analyze the index expression so its type is recorded
+                        self.analyze_expr(expr.index)
+                        return make_ref(field_type)
+                raise self.ctx.error(
+                    f"TypedDict '{actual_obj.name}' has no key '{key}'", expr.index)
+
         index_type = self.analyze_expr(expr.index)
 
         # Dict subscript: d[key] -> V (key can be non-integer)
-        actual_obj = unwrap_readonly(inner_obj_type)
         if isinstance(actual_obj, PendingDictType):
             if not isinstance(actual_obj.key_type, UnknownElementType):
                 self.compat.check_type_compatible(

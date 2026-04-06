@@ -322,9 +322,16 @@ class TypeRegistrar:
                 resolved_ptype = self.type_ops.resolve_type(ptype, protocols_only=True)
                 init_params.append((pname, resolved_ptype, init_defaults[i] if has_default else None))
         elif is_native and record.fields:
-            # Native records without __init__: synthesize init_params from fields
+            # Native records without __init__: synthesize init_params from fields.
+            # Uses default_value (raw C++ literal string like "0", "nullptr") -- these
+            # go directly into struct field declarations, not through kwargs resolution.
             for fld in record.fields:
                 init_params.append((fld.name, fld.type, fld.default_value))
+        elif record.is_typed_dict and record.fields:
+            # TypedDict: synthesize init_params from fields (all keyword-constructible).
+            # Uses default_expr (TpyExpr) so kwargs resolution can clone them with dc_replace.
+            for fld in record.fields:
+                init_params.append((fld.name, fld.type, fld.default_expr))
 
         # Build the Self type for this record (used to substitute SelfType in methods)
         record_self_type = build_record_self_type(record)
@@ -672,7 +679,7 @@ class TypeRegistrar:
         info = RecordInfo(
             name=record.name,
             fields=record.fields,
-            has_init=record.init_method is not None,
+            has_init=record.init_method is not None or record.is_typed_dict,
             init_params=init_params,
             methods=methods,
             properties=properties,
@@ -692,6 +699,7 @@ class TypeRegistrar:
                 else None
             ),
             is_frozen=record.is_frozen,
+            is_typed_dict=record.is_typed_dict,
             has_del=record.del_method is not None,
             has_copy=has_copy,
             builtin_type_key=record.builtin_type_key,

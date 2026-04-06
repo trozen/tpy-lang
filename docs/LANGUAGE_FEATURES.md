@@ -2931,6 +2931,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: `*list` unpacking at call sites -- `f(*my_list)` passes a list/array/span to a `*args` function. Zero-cost for contiguous containers (direct span mode). Supports forwarding: `def g(*args: T): f(*args)`.
 - **Working**: Generic `*args` -- `def first[T](*args: T) -> T` infers `T` from call-site arg types.
 - **Limitation**: `*args` on `@overload` stubs is rejected (clear error).
+- **Working**: TypedDict -- `class Foo(TypedDict):` defines a struct with dict-like subscript syntax. `d["key"]` compiles to `d.key` (compile-time field access, key must be string literal). Construction via kwargs: `Foo(name="Alice", age=30)`. Field defaults supported. C++ mapping: plain struct, zero hash-map overhead. Dynamic keys and unknown keys produce compile errors. No methods allowed on TypedDict. `total=False`, dict-like API (`.keys()`, `.items()`), and dict literal construction are not yet supported.
 - **Open**: Heterogeneous `*args` (untyped) -- needs `Any` type
 - **Open**: `**kwargs` definition syntax -- TypedDict + `Unpack` approach planned
 

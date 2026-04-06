@@ -12,6 +12,9 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - `__stream__` / `__write__` dunder: efficient stream-based output for records (avoids allocating a string just to print). Needed for no-alloc logging.
 
 
+## Cleanup
+- Native records without `__init__` silently get a positional constructor synthesized from field order. This is fragile -- reordering fields in the `.py` stub breaks callers with no error. Should require an explicit `__init__` stub instead (like non-native records).
+
 ## Bugs
 - Generic generators with multiple yield points (struct-based codegen path) are not yet supported -- the out-of-line `__next__()` in .cpp won't link for template structs. Currently guarded with a sema error. Fix: emit struct + `__next__()` body into the header when the function has type params.
 - Non-native functions in builtin modules can't be called from user code: codegen emits unqualified names (e.g. bare `enumerate(...)` instead of `tpystd::builtins::enumerate(...)`). The `imported_names` path considers any registered function as "shadowing" the import. Blocks defining pure TPy generator builtins. Workaround: use `@cpp_template`/`@native` with C++ implementation instead.

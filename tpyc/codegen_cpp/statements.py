@@ -1339,6 +1339,15 @@ class StatementGenerator:
         # Slice assignment: a[x:y] = rhs -> list_set_slice
         if isinstance(stmt.target, TpySubscript) and isinstance(stmt.target.index, TpySlice):
             return self._gen_slice_assign(stmt, indent)
+        # TypedDict subscript assignment: d["key"] = val -> d.key = val
+        if isinstance(stmt.target, TpySubscript) and stmt.target.typed_dict_field is not None:
+            obj = self.expressions.gen_expr(stmt.target.obj)
+            subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(stmt.target.obj) else obj
+            target_type = self.ctx.get_expr_type(stmt.target)
+            value = self.expressions.gen_expr(stmt.value, target_type)
+            value = self.expressions._maybe_move(stmt.value, value)
+            cpp_field = escape_cpp_name(stmt.target.typed_dict_field)
+            return f"{indent}{subscript_obj}.{cpp_field} = {value};\n"
         # Special handling for subscript assignment
         if isinstance(stmt.target, TpySubscript):
             obj = self.expressions.gen_expr(stmt.target.obj)
@@ -1451,7 +1460,8 @@ class StatementGenerator:
         if isinstance(stmt.target, TpyName):
             self.ctx.literal_facts.pop(stmt.target.name, None)
         # Special handling for subscript targets - use set_value() pattern
-        if isinstance(stmt.target, TpySubscript):
+        # TypedDict subscript generates as field access, so the general path handles it
+        if isinstance(stmt.target, TpySubscript) and stmt.target.typed_dict_field is None:
             return self._gen_aug_assign_subscript_code(stmt, indent)
 
         # In-place operator (__iadd__, __ior__, etc.) -- mutates target directly

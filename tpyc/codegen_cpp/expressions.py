@@ -3334,6 +3334,15 @@ class ExpressionGenerator:
             index = self.gen_expr(expr.index)
             return f"::tpy::EnumUtil<{cpp_type}>::from_name({index})"
 
+        # TypedDict subscript: d["key"] -> d.key (field access)
+        if expr.typed_dict_field is not None:
+            obj = self.gen_expr(expr.obj)
+            obj = self._maybe_unwrap_narrowed_optional(
+                expr.obj, obj, self.ctx.is_indirect_name(expr.obj))
+            subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
+            cpp_field = escape_cpp_name(expr.typed_dict_field)
+            return f"{subscript_obj}.{cpp_field}"
+
         obj = self.gen_expr(expr.obj)
 
         # Narrowed value-Optional: sema sees T but C++ var is still std::optional<T>

@@ -798,6 +798,16 @@ class Parser:
             return resolved == ("enum", "IntEnum")
         return False
 
+    def _is_typed_dict_base(self, base: ast.expr) -> bool:
+        """Check if a base class expression refers to typing.TypedDict."""
+        if isinstance(base, ast.Name):
+            resolved = self._resolve_type_name(base.id)
+            return resolved == ("typing", "TypedDict")
+        elif isinstance(base, ast.Attribute):
+            resolved = self._resolve_qualified_type_name(base)
+            return resolved == ("typing", "TypedDict")
+        return False
+
     # Valid integer mixin types for IntEnum: class P(int, Enum) or class P(Int8, Enum)
     _INT_MIXIN_TYPES: dict[str, str] = {
         "int": "int",
@@ -1112,6 +1122,17 @@ class Parser:
             if has_protocol:
                 return self._parse_protocol(node)
 
+        # Check if this is a TypedDict definition
+        is_typed_dict = bool(node.bases) and any(self._is_typed_dict_base(base) for base in node.bases)
+        if is_typed_dict:
+            non_td_bases = [b for b in node.bases if not self._is_typed_dict_base(b)]
+            if non_td_bases:
+                raise ParseError("TypedDict cannot have additional base classes", node)
+            if node.decorator_list:
+                raise ParseError("Decorators are not supported on TypedDict", node)
+            if hasattr(node, 'type_params') and node.type_params:
+                raise ParseError("Type parameters are not supported on TypedDict", node)
+
         # Parse record decorators (@native, @native_c, @nocopy, macro decorators)
         linkage = RecordLinkage.DEFAULT
         native_name: str | None = None
@@ -1174,8 +1195,11 @@ class Parser:
 
         # Parse base classes/protocols for inheritance (with type params in scope)
         # Classification into parent class vs protocol is deferred to sema
+        # TypedDict marker base is filtered out (it's not a real parent)
         bases: list[TpyType] = []
         for base in node.bases:
+            if is_typed_dict and self._is_typed_dict_base(base):
+                continue
             base_type = self._parse_type_annotation(base, type_param_scope)
             bases.append(base_type)
 
@@ -1210,6 +1234,8 @@ class Parser:
                 default_val = self._get_default_value(item.value)
                 fields.append(FieldInfo(field_name, field_type, default_val, loc=self._loc(item)))
             elif isinstance(item, ast.FunctionDef):
+                if is_typed_dict:
+                    raise ParseError(f"Methods are not allowed on TypedDict '{node.name}'", item)
                 parsed = self._parse_method(item, node.name, type_param_scope, property_names)
                 if parsed.is_property_getter:
                     property_names.add(parsed.name)
@@ -1268,7 +1294,7 @@ class Parser:
 
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, pending_macros=pending_macros, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, pending_macros=pending_macros, is_typed_dict=is_typed_dict, loc=self._loc(node))
 
     def _auto_declare_fields_from_init(
         self,

@@ -3345,6 +3345,7 @@ class RecordInfo:
     is_nocopy: bool = False       # True for @nocopy records (copy deleted, move-only)
     match_args: tuple[str, ...] | None = None  # Positional match arg names (set by macro, mirrors __match_args__)
     is_frozen: bool = False       # True for @dataclass(frozen=True) (field mutation rejected)
+    is_typed_dict: bool = False   # True for TypedDict (struct with string-literal subscript)
     is_value_type: bool = False   # True for ValueType marker protocol
     has_del: bool = False           # True if class declares __del__ (needs drop flag)
     has_copy: bool = False          # True if class defines __copy__ (custom copy semantics)
