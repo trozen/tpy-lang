@@ -4,7 +4,7 @@
 # TODO: construct with fixed-extent Span[T, N] (deduce both T and N from the argument)
 from __future__ import annotations
 from typing import MutableSequence, Iterable, overload
-from tpy import Int32, UInt32, Own, Ptr, Span, ReadOnlySpanLike, SpanIter, copy, Default, Comparable, Equatable, make_default, span, readonly, auto_readonly
+from tpy import Int32, UInt32, Own, Ptr, Span, ReadOnlySpanLike, SpanIter, copy, Default, Comparable, Equatable, make_default, span, readonly, auto_readonly, basic_slice
 from tpy.mem import UninitArrayStorage
 
 
@@ -114,16 +114,12 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
 
     @overload
     @auto_readonly
-    def __getitem__(self, index: slice) -> Span[auto_readonly[T]]: ...
+    def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]: ...
 
     @auto_readonly
-    def __getitem__(self, index: Int32 | slice) -> auto_readonly[T] | Span[auto_readonly[T]]:
-        if isinstance(index, slice):
-            s_start = index.start
-            s_stop = index.stop
-            start: Int32 = s_start if s_start is not None else Int32(0)
-            stop: Int32 = s_stop if s_stop is not None else Int32(self._size)
-            return self.__span__()[start:stop]
+    def __getitem__(self, index: Int32 | basic_slice) -> auto_readonly[T] | Span[auto_readonly[T]]:
+        if isinstance(index, basic_slice):
+            return self.__span__()[index]
         else:
             ui = UInt32.trunc(index)
             assert ui < self._size
