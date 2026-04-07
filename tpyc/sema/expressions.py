@@ -2548,6 +2548,34 @@ class ExpressionAnalyzer:
                 ret = SpanType(ret.element_type, is_readonly=True)
         return ret, func_info
 
+    def _find_slice_setitem(self, actual_type: TpyType, *, stepped: bool = False
+                            ) -> tuple[TpyType, 'FunctionInfo'] | None:
+        """Find __setitem__(basic_slice, value) or __setitem__(slice, value) overload.
+
+        Similar to _find_slice_getitem but for assignment.
+        No fallback from SliceType to BasicSliceType (or vice versa) -- unlike
+        getitem where a basic_slice can promote to slice for reading, assignment
+        semantics differ (stepped requires exact-length match).
+        Returns (value_param_type, FunctionInfo) or None.
+        """
+        record = self.ctx.registry.get_record_for_type(actual_type)
+        if record is None:
+            return None
+        setitem_overloads = record.methods.get("__setitem__", [])
+        target = SliceType if stepped else BasicSliceType
+        slice_overloads = [
+            fi for fi in setitem_overloads
+            if len(fi.params) == 2 and isinstance(fi.params[0].type, target)
+        ]
+        if not slice_overloads:
+            return None
+        func_info = slice_overloads[0]
+        value_type = func_info.params[1].type
+        type_subst = self.type_ops.build_type_substitution(actual_type)
+        if type_subst:
+            value_type = self.type_ops.substitute_type_params(value_type, type_subst)
+        return value_type, func_info
+
     _FORMATTABLE_TYPES = (
         FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, BoolType,
         StrType, StringType, StrViewType, PendingStrType, CharType, EnumType,

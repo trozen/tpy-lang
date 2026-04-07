@@ -87,6 +87,8 @@ def type_matches_strict(
     if isinstance(arg_inner, OwnType):
         arg_inner = arg_inner.wrapped
     param_inner = unwrap_ref_type(unwrap_readonly(param_type))
+    if isinstance(param_inner, OwnType):
+        param_inner = param_inner.wrapped
     if arg_inner == param_inner:
         return True
     # FnType/CallableType: compare with qualifier unwrapping on inner types.
@@ -217,6 +219,9 @@ def type_matches_with_coercion(
     if isinstance(arg_inner, OwnType):
         arg_inner = arg_inner.wrapped
     param_inner = unwrap_ref_type(unwrap_readonly(param_type))
+    # Own[T] param accepts T values (ownership marker, not a distinct type)
+    if isinstance(param_inner, OwnType):
+        param_inner = param_inner.wrapped
     if type_matches_numeric(arg_inner, param_inner):
         return True
     # PendingStrType matches any string type (str, String, StrView)

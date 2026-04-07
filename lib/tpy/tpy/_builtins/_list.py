@@ -66,9 +66,18 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], ReadO
     @readonly
     def __getitem__(self, index: slice) -> Own[list[T]]: ...
 
+    @overload
     @native("tpy::__setitem__", function=True)
     @native_preserves_refs
     def __setitem__(self, index: Int32, value: Own[T]) -> None: ...
+
+    @overload
+    @native("tpy::list_set_slice", function=True)
+    def __setitem__(self, index: basic_slice, value: Iterable[Own[T]]) -> None: ...
+
+    @overload
+    @native("tpy::list_set_stepped_slice", function=True)
+    def __setitem__(self, index: slice, value: Iterable[Own[T]]) -> None: ...
 
     @native("tpy::__delitem__", function=True)
     def __delitem__(self, index: Int32) -> None: ...

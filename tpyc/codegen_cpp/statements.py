@@ -910,24 +910,26 @@ class StatementGenerator:
             return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = &({init_expr});\n"
 
     def _gen_slice_assign(self, stmt: TpyAssign, indent: str) -> str:
-        """Generate code for slice assignment: a[x:y] = rhs -> ::tpy::list_set_slice."""
+        """Generate code for slice assignment via __setitem__(basic_slice/slice) stub dispatch."""
         assert isinstance(stmt.target, TpySubscript)
         sl = stmt.target.index
         assert isinstance(sl, TpySlice)
+        fi = stmt.target.slice_function_info
+        assert fi is not None
         obj = self.expressions.gen_expr(stmt.target.obj)
         subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(stmt.target.obj) else obj
-        start = self.expressions._gen_slice_bound(sl.lower) if sl.lower is not None else "0"
-        stop = self.expressions._gen_slice_bound(sl.upper) if sl.upper is not None else "::tpy::SLICE_END"
+        slice_arg = self.expressions._gen_slice_object(sl, stepped=stmt.target.is_stepped_slice)
         target_type = self.ctx.get_expr_type(stmt.target)
         value = self.expressions.gen_expr(stmt.value, target_type)
         value = self.expressions._maybe_move(stmt.value, value)
-        # Non-empty array literals generate bare {e1, e2, ...} which C++ can't use to deduce Range;
+        # Non-empty array literals generate bare {e1, e2, ...} which C++ can't deduce Range from;
         # empty literals already include the explicit type from _gen_array_literal.
         if isinstance(stmt.value, TpyArrayLiteral) and stmt.value.elements:
             assert isinstance(target_type, ListType)
             elem_cpp = self.types.type_to_cpp(target_type.element_type)
             value = f"std::vector<{elem_cpp}>{value}"
-        return f"{indent}::tpy::list_set_slice({subscript_obj}, {start}, {stop}, {value});\n"
+        code = self.builtins.gen_call_from_fi(fi, subscript_obj, [slice_arg, value])
+        return f"{indent}{code};\n"
 
     def _gen_pointer_local_rebind(self, name: str, cpp_type: str, init: 'TpyExpr',
                                    target_type: TpyType | None, indent: str) -> str:

@@ -461,7 +461,7 @@ process(b"hello")      # zero-alloc: static span passed directly
 ### Containers
 - **Working**: `list[T]` - dynamic list → `std::vector<T>` (with context-dependent inference; type parameter is invariant: `list[Child]` is not compatible with `list[Base]`)
 - **Working**: `list[T] + list[T]` concatenation → new list, `list[T] += list[T]` extend in-place, `del lst[i]` element removal
-- **Working**: `lst[x:y]` basic slicing -> `Span[T]` (zero-copy view, clamped, no-panic). `lst[x:y:z]` stepped slicing -> `list[T]` (owned copy). `lst[x:y] = rhs` slice assignment -> replaces, resizes, deletes, or inserts (Python semantics). Stepped slice assignment not yet supported. Bounds must be integers. RHS must be `list[T]`.
+- **Working**: `lst[x:y]` basic slicing -> `Span[T]` (zero-copy view, clamped, no-panic). `lst[x:y:z]` stepped slicing -> `list[T]` (owned copy). `lst[x:y] = rhs` basic slice assignment -> replaces, resizes, deletes, or inserts (Python semantics). `lst[x:y:z] = rhs` stepped slice assignment -> in-place replacement (RHS length must match selected elements; step=1 allows resize like basic slice). RHS accepts any `Iterable[T]` (lists, generators, ranges). Both dispatch through `__setitem__(basic_slice/slice)` stubs.
 - **Working**: Array literals `[1, 2, 3]` → `std::array<T, N>` or `std::vector<T>` (context-dependent)
 - **Working**: `Array[T, N]` - fixed-size array with explicit type annotation
 - **Working**: `Span[T]` - non-owning mutable view into contiguous memory → `std::span<T>`

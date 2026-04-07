@@ -2821,44 +2821,45 @@ class StatementAnalyzer:
                 stmt.is_const_ref.append(eligible)
 
     def _analyze_slice_assign(self, stmt: TpyAssign) -> None:
-        """Analyze a slice assignment: a[x:y] = rhs."""
+        """Analyze a slice assignment: a[x:y] = rhs or a[x:y:z] = rhs."""
         assert isinstance(stmt.target, TpySubscript)
         sl = stmt.target.index
         assert isinstance(sl, TpySlice)
 
-        if sl.step is not None:
-            raise self.ctx.error(
-                "Stepped slice assignment is not yet supported", stmt)
+        stepped = sl.step is not None
 
         obj_type = self.expr.analyze_expr(stmt.target.obj)
-        inner_type = unwrap_own(unwrap_readonly(unwrap_ref_type(obj_type)))
-        if not isinstance(inner_type, ListType):
+        actual_type = unwrap_own(unwrap_readonly(unwrap_ref_type(obj_type)))
+
+        # Look up __setitem__(basic_slice/slice, value) overload via .py stubs
+        result = self.expr._find_slice_setitem(actual_type, stepped=stepped)
+        if result is None:
             raise self.ctx.error(
                 f"Slice assignment not supported for type '{obj_type}'", stmt)
+
+        _value_param_type, fi = result
+        stmt.target.slice_function_info = fi
+        stmt.target.is_stepped_slice = stepped
 
         self._enforce_readonly_assignment_target(stmt.target)
 
         # Analyze slice bounds and validate they are integer types
-        if sl.lower is not None:
-            lower_type = self.expr.analyze_expr(sl.lower)
-            if not isinstance(lower_type, (FixedIntType, BigIntType, IntLiteralType)):
-                raise self.ctx.error(
-                    f"Slice bound must be an integer, got '{lower_type}'", sl.lower)
-        if sl.upper is not None:
-            upper_type = self.expr.analyze_expr(sl.upper)
-            if not isinstance(upper_type, (FixedIntType, BigIntType, IntLiteralType)):
-                raise self.ctx.error(
-                    f"Slice bound must be an integer, got '{upper_type}'", sl.upper)
+        for bound in (sl.lower, sl.upper, sl.step):
+            if bound is not None:
+                bound_type = self.expr.analyze_expr(bound)
+                if not isinstance(bound_type, (FixedIntType, BigIntType, IntLiteralType)):
+                    raise self.ctx.error(
+                        f"Slice bound must be an integer, got '{bound_type}'", bound)
 
-        # RHS must be a list[T]
-        rhs_target = ListType(inner_type.element_type)
-        self.ctx.set_expr_type(stmt.target, rhs_target)
+        # Use the container's element type as hint so array literals infer correctly.
+        # Use the stub's value param type (e.g. Iterable[Own[T]]) for coercion,
+        # which accepts any iterable and triggers copy warnings for lvalue sources.
+        elem_type = actual_type.get_element_type()
+        rhs_hint = ListType(elem_type) if elem_type is not None else _value_param_type
+        self.ctx.set_expr_type(stmt.target, rhs_hint)
 
-        value_type = self.expr.analyze_expr_with_hint(stmt.value, rhs_target)
-        # Own[list[T]] as the coercion target triggers the standard copy warning when
-        # the RHS is a named variable used after this assignment (not at last use).
-        own_rhs_target = OwnType(rhs_target)
-        stmt.value = self.compat.coerce_expr(stmt.value, value_type, own_rhs_target, "slice assignment",
+        value_type = self.expr.analyze_expr_with_hint(stmt.value, rhs_hint)
+        stmt.value = self.compat.coerce_expr(stmt.value, value_type, _value_param_type, "slice assignment",
                                              coercion_ctx=CoercionContext.ASSIGN)
 
         # Mutation tracking

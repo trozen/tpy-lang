@@ -1,1 +1,1 @@
-main.py:12: warning: copies list[Node] into owned storage; use copy() to make this explicit
+main.py:12: warning: copies Node elements; use copy_iter() to make this explicit (or copy() to copy the entire container)

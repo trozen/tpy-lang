@@ -9,7 +9,7 @@ class Node:
 def test_warn_non_last_use() -> None:
     a: list[Node] = [Node(Int32(1)), Node(Int32(2)), Node(Int32(3))]
     b: list[Node] = [Node(Int32(10)), Node(Int32(20))]
-    a[1:3] = b  # tpyc: warning(/copies list\[Node\] into owned storage/)
+    a[1:3] = b  # tpyc: warning(/copies Node elements/)
     print(b[0].val)  # b used after -> not last use
 
 def test_no_warn_last_use() -> None:

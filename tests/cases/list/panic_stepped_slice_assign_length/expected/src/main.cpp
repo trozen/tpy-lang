@@ -8,17 +8,8 @@ namespace tpyapp::main {
 void main() {
     // a: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> a = {1, 2, 3, 4, 5};
-    // for x in a:
-    auto& __obj_0 = a;
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t x = *__beg_0;
-        // a[0:1] = [99]  # tpyc: warning(/Mutation of 'a'.*while borrowed/)
-        ::tpy::list_set_slice(a, ::tpy::BasicSlice{0, 1}, std::vector<int32_t>{99});
-        // break
-        break;
-    }
+    // a[::2] = [10, 20]  # slice selects 3 elements, RHS has 2
+    ::tpy::list_set_stepped_slice(a, ::tpy::Slice{std::nullopt, std::nullopt, 2}, std::vector<int32_t>{10, 20});
 }
 
 void __tpy_init() {

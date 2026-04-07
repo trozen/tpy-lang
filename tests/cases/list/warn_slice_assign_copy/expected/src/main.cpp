@@ -10,8 +10,8 @@ void test_warn_non_last_use() {
     std::vector<Node> a = {Node(1), Node(2), Node(3)};
     // b: list[Node] = [Node(Int32(10)), Node(Int32(20))]
     std::vector<Node> b = {Node(10), Node(20)};
-    // a[1:3] = b  # tpyc: warning(/copies list\[Node\] into owned storage/)
-    ::tpy::list_set_slice(a, 1, 3, b);
+    // a[1:3] = b  # tpyc: warning(/copies Node elements/)
+    ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 3}, b);
     // print(b[0].val)  # b used after -> not last use
     std::cout << ::tpy::__getitem__(b, 0).val << "\n";
 }
@@ -23,7 +23,7 @@ void test_no_warn_last_use() {
     // b: list[Node] = [Node(Int32(10)), Node(Int32(20))]
     std::vector<Node> b = {Node(10), Node(20)};
     // a[1:3] = b  # tpyc: ok  (last use of b -> auto-move)
-    ::tpy::list_set_slice(a, 1, 3, std::move(b));
+    ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 3}, std::move(b));
 }
 
 // def test_no_warn_literal() -> None:
@@ -31,7 +31,7 @@ void test_no_warn_literal() {
     // a: list[Node] = [Node(Int32(1)), Node(Int32(2)), Node(Int32(3))]
     std::vector<Node> a = {Node(1), Node(2), Node(3)};
     // a[1:3] = [Node(Int32(10)), Node(Int32(20))]  # tpyc: ok  (temporary)
-    ::tpy::list_set_slice(a, 1, 3, std::vector<Node>{Node(10), Node(20)});
+    ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 3}, std::vector<Node>{Node(10), Node(20)});
 }
 
 // def test_no_warn_explicit_copy() -> None:
@@ -41,7 +41,7 @@ void test_no_warn_explicit_copy() {
     // b: list[Node] = [Node(Int32(10)), Node(Int32(20))]
     std::vector<Node> b = {Node(10), Node(20)};
     // a[1:3] = b.copy()  # tpyc: ok  (explicit copy)
-    ::tpy::list_set_slice(a, 1, 3, ::tpy::list_copy(b));
+    ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 3}, ::tpy::list_copy(b));
     // print(b[0].val)
     std::cout << ::tpy::__getitem__(b, 0).val << "\n";
 }

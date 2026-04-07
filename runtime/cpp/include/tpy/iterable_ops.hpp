@@ -16,6 +16,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "container_ops.hpp"
 #include "dunder.hpp"
 #include "ordered_map.hpp"
 
@@ -37,6 +38,36 @@ void list_extend(std::vector<T>& v, Container&& other) {
         if (!__r.has_value()) break;
         v.push_back(unwrap_ref(*__r));
     }
+}
+
+// -- list_set_slice for non-range iterables ---------------------------------
+
+template<typename T, typename Container>
+    requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
+void list_set_slice(std::vector<T>& vec, BasicSlice sl, Container&& other) {
+    std::vector<T> tmp;
+    auto __iter = tpy::__iter__(other);
+    for (;;) {
+        auto __r = __iter.__next__();
+        if (!__r.has_value()) break;
+        tmp.push_back(unwrap_ref(*__r));
+    }
+    list_set_slice(vec, sl, tmp);
+}
+
+// -- list_set_stepped_slice for non-range iterables -------------------------
+
+template<typename T, typename Container>
+    requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
+void list_set_stepped_slice(std::vector<T>& vec, Slice sl, Container&& other) {
+    std::vector<T> tmp;
+    auto __iter = tpy::__iter__(other);
+    for (;;) {
+        auto __r = __iter.__next__();
+        if (!__r.has_value()) break;
+        tmp.push_back(unwrap_ref(*__r));
+    }
+    list_set_stepped_slice(vec, sl, tmp);
 }
 
 // -- str_join for non-range iterables ---------------------------------------

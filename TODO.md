@@ -79,8 +79,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Nested class definitions: `class Outer: class Inner: ...` is rejected by the parser. Needed both as a language feature and for macro companion type creation (e.g. key enums for JSON field dispatch). C++ codegen: nested struct/class.
 - Any
 - dynamic attributes
-- stepped slice assignment (`a[::2] = [...]`)
-- Move slice assignment to .py stubs: `_gen_slice_assign` in codegen hardcodes `::tpy::list_set_slice()` directly instead of going through `__setitem__(basic_slice)` stub dispatch. Should follow the same pattern as `__getitem__` slice stubs.
+- properties master
 - Generator: `yield from`, `send()`, `throw()`, `close()`
 - Generator: protocol-typed params (`def gen(it: Iterator[T])`) -- needs template struct + factory. Currently emits `T&` without `template<typename T>` and simple generator path tries `begin()/end()` instead of `__next__()`.
 - Generator: liveness optimization -- only promote yield-crossing variables to struct fields, keep others as stack locals in `__next__()` (currently all locals are promoted)

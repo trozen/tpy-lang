@@ -1,5 +1,11 @@
-# List slice assignment: a[x:y] = rhs. Tests replace, resize, delete, insert, negative indices.
+# List slice assignment: a[x:y] = rhs. Tests replace, resize, delete, insert, negative indices,
+# and iterable RHS (generator).
 from tpy import Int32
+from typing import Iterator
+
+def gen_values() -> Iterator[Int32]:
+    yield 10
+    yield 20
 
 def main() -> None:
     a: list[Int32] = [1, 2, 3, 4, 5]
@@ -33,6 +39,12 @@ def main() -> None:
     c: list[Int32] = [1, 2, 3]
     c[:] = [10, 20]
     for x in c:
+        print(x)
+
+    # Generator as RHS
+    d: list[Int32] = [1, 2, 3, 4, 5]
+    d[1:3] = gen_values()
+    for x in d:
         print(x)
 
 main()

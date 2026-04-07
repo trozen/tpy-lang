@@ -4,11 +4,12 @@
 namespace tpyapp::main {
 
 
-std::expected<int32_t, ::tpy::StopIteration> __gen_gen_values::__next__() {
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen3::__next__() {
     switch (__state) {
         case 0: break;
         case 1: goto __resume_1;
         case 2: goto __resume_2;
+        case 3: goto __resume_3;
         default: goto __done;
     }
     // yield 10
@@ -19,22 +20,26 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_values::__next__() {
     __state = 2;
     return 20;
     __resume_2:;
+    // yield 30
+    __state = 3;
+    return 30;
+    __resume_3:;
     __done:
     __state = -1;
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 
-__gen_gen_values gen_values() {
-    return __gen_gen_values();
+__gen_gen3 gen3() {
+    return __gen_gen3();
 }
 
 // def main() -> None:
 void main() {
+    // # Every other element
     // a: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> a = {1, 2, 3, 4, 5};
-    // # Replace same length
-    // a[1:3] = [10, 20]
-    ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 3}, std::vector<int32_t>{10, 20});
+    // a[::2] = [10, 20, 30]
+    ::tpy::list_set_stepped_slice(a, ::tpy::Slice{std::nullopt, std::nullopt, 2}, std::vector<int32_t>{10, 20, 30});
     // for x in a:
     auto& __obj_0 = a;
     auto __beg_0 = __obj_0.begin();
@@ -44,16 +49,13 @@ void main() {
         // print(x)
         std::cout << x << "\n";
     }
-    // # Replace with longer (resize)
-    // a[1:3] = [10, 20, 30, 40]
-    ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 3}, std::vector<int32_t>{10, 20, 30, 40});
-    // print(len(a))
-    std::cout << ::tpy::__len__(a) << "\n";
-    // # Delete elements
-    // a[1:4] = []
-    ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 4}, std::vector<int32_t>{});
-    // for x in a:
-    auto& __obj_1 = a;
+    // # Negative step: reverse order positions
+    // b: list[Int32] = [1, 2, 3, 4, 5]
+    std::vector<int32_t> b = {1, 2, 3, 4, 5};
+    // b[::-2] = [50, 30, 10]
+    ::tpy::list_set_stepped_slice(b, ::tpy::Slice{std::nullopt, std::nullopt, -2}, std::vector<int32_t>{50, 30, 10});
+    // for x in b:
+    auto& __obj_1 = b;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
@@ -61,11 +63,13 @@ void main() {
         // print(x)
         std::cout << x << "\n";
     }
-    // # Insert at position (start == stop)
-    // a[1:1] = [99, 98]
-    ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 1}, std::vector<int32_t>{99, 98});
-    // for x in a:
-    auto& __obj_2 = a;
+    // # Step with start/stop
+    // c: list[Int32] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    std::vector<int32_t> c = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    // c[1:8:3] = [100, 200, 300]
+    ::tpy::list_set_stepped_slice(c, ::tpy::Slice{1, 8, 3}, std::vector<int32_t>{100, 200, 300});
+    // for x in c:
+    auto& __obj_2 = c;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
@@ -73,13 +77,13 @@ void main() {
         // print(x)
         std::cout << x << "\n";
     }
-    // # Negative indices
-    // b: list[Int32] = [1, 2, 3, 4, 5]
-    std::vector<int32_t> b = {1, 2, 3, 4, 5};
-    // b[-2:] = [100, 200]
-    ::tpy::list_set_slice(b, ::tpy::BasicSlice{-2, std::nullopt}, std::vector<int32_t>{100, 200});
-    // for x in b:
-    auto& __obj_3 = b;
+    // # Step=1 allows resize (same as basic slice)
+    // d: list[Int32] = [1, 2, 3, 4, 5]
+    std::vector<int32_t> d = {1, 2, 3, 4, 5};
+    // d[1:4:1] = [10, 20]
+    ::tpy::list_set_stepped_slice(d, ::tpy::Slice{1, 4, 1}, std::vector<int32_t>{10, 20});
+    // for x in d:
+    auto& __obj_3 = d;
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
@@ -87,31 +91,17 @@ void main() {
         // print(x)
         std::cout << x << "\n";
     }
-    // # Full slice replace
-    // c: list[Int32] = [1, 2, 3]
-    std::vector<int32_t> c = {1, 2, 3};
-    // c[:] = [10, 20]
-    ::tpy::list_set_slice(c, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{10, 20});
-    // for x in c:
-    auto& __obj_4 = c;
+    // # Generator as RHS
+    // e: list[Int32] = [1, 2, 3, 4, 5]
+    std::vector<int32_t> e = {1, 2, 3, 4, 5};
+    // e[::2] = gen3()
+    ::tpy::list_set_stepped_slice(e, ::tpy::Slice{std::nullopt, std::nullopt, 2}, gen3());
+    // for x in e:
+    auto& __obj_4 = e;
     auto __beg_4 = __obj_4.begin();
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
         int32_t x = *__beg_4;
-        // print(x)
-        std::cout << x << "\n";
-    }
-    // # Generator as RHS
-    // d: list[Int32] = [1, 2, 3, 4, 5]
-    std::vector<int32_t> d = {1, 2, 3, 4, 5};
-    // d[1:3] = gen_values()
-    ::tpy::list_set_slice(d, ::tpy::BasicSlice{1, 3}, gen_values());
-    // for x in d:
-    auto& __obj_5 = d;
-    auto __beg_5 = __obj_5.begin();
-    auto __end_5 = __obj_5.end();
-    for (; __beg_5 != __end_5; ++__beg_5) {
-        int32_t x = *__beg_5;
         // print(x)
         std::cout << x << "\n";
     }

@@ -103,6 +103,14 @@ class BuiltinGenerator:
                                 and (fi.cpp_template or fi.native_function or fi.native_name)):
                             return fi
                     return None
+                if method_name == "__setitem__":
+                    # Multi-overload __setitem__: find the integer-index overload
+                    for fi in overloads:
+                        if (len(fi.params) == 2
+                                and isinstance(fi.params[0].type, (FixedIntType, BigIntType))
+                                and (fi.cpp_template or fi.native_function or fi.native_name)):
+                            return fi
+                    return None
                 raise RuntimeError(
                     f"get_type_method_fi called for multi-overload method "
                     f"'{method_name}' on {tpy_type}; use resolved_function_info instead"

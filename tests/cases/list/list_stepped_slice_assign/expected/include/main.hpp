@@ -10,23 +10,23 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-struct __gen_gen_values;
+struct __gen_gen3;
 
-__gen_gen_values gen_values();
+__gen_gen3 gen3();
 void main();
 
-// Generator: gen_values
-struct __gen_gen_values {
+// Generator: gen3
+struct __gen_gen3 {
     int __state;
 
-    __gen_gen_values()
+    __gen_gen3()
         : __state(0) {}
 
-    __gen_gen_values& __iter__() { return *this; }
+    __gen_gen3& __iter__() { return *this; }
     std::expected<int32_t, ::tpy::StopIteration> __next__();
 
-    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_values&) {
-        return os << "<generator gen_values>";
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen3&) {
+        return os << "<generator gen3>";
     }
 };
 

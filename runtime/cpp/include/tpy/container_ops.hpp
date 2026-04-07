@@ -151,6 +151,13 @@ void list_set_slice(std::vector<T>& vec, int32_t start, int32_t stop, const Rang
     vec.insert(vec.begin() + i, values.begin(), values.end());
 }
 
+/// BasicSlice overload: unpacks start/stop from the slice object.
+template<typename T, typename Range>
+    requires std::ranges::input_range<const Range>
+void list_set_slice(std::vector<T>& vec, BasicSlice sl, const Range& values) {
+    list_set_slice(vec, sl.start.value_or(0), sl.stop.value_or(SLICE_END), values);
+}
+
 // =============================================
 // Stepped slice helpers (a[start:stop:step])
 // =============================================
@@ -245,6 +252,52 @@ auto list_stepped_slice(const Container& c, Slice sl) {
     return list_stepped_slice(c, sl.start.value_or(SLICE_NONE),
                               sl.stop.value_or(SLICE_NONE),
                               sl.step.value_or(1));
+}
+
+/**
+ * list_set_stepped_slice - Python-style stepped slice assignment: a[start:stop:step] = values.
+ * Replaces elements at stepped positions. Unlike basic slice assignment, the RHS
+ * must have exactly the same number of elements as the slice selects (Python semantics).
+ * Exception: step==1 is equivalent to basic slice assignment (allows resize).
+ */
+template<typename T, typename Range>
+    requires std::ranges::input_range<const Range>
+void list_set_stepped_slice(std::vector<T>& vec, int32_t start, int32_t stop, int32_t step, const Range& values) {
+    // step==1 is equivalent to basic slice assignment (allows resize)
+    if (step == 1) {
+        auto resolved_start = (start == SLICE_NONE) ? 0 : start;
+        auto resolved_stop = (stop == SLICE_NONE) ? SLICE_END : stop;
+        list_set_slice(vec, resolved_start, resolved_stop, values);
+        return;
+    }
+    auto len = static_cast<std::ptrdiff_t>(vec.size());
+    auto [i, j, st] = detail::resolve_stepped_bounds(start, stop, step, len);
+    // Collect target indices
+    std::vector<std::ptrdiff_t> indices;
+    if (st > 0) {
+        for (auto k = i; k < j; k += st) indices.push_back(k);
+    } else {
+        for (auto k = i; k > j; k += st) indices.push_back(k);
+    }
+    // Collect values first to validate length before mutating vec
+    std::vector<T> vals(std::ranges::begin(values), std::ranges::end(values));
+    if (vals.size() != indices.size()) {
+        tpy_panic("attempt to assign sequence of size " + std::to_string(vals.size())
+                  + " to extended slice of size " + std::to_string(indices.size()));
+    }
+    // Self-aliasing guard: vals is already a copy, so safe to assign
+    for (std::size_t idx = 0; idx < indices.size(); ++idx) {
+        vec[static_cast<std::size_t>(indices[idx])] = std::move(vals[idx]);
+    }
+}
+
+/// Slice overload: unpacks start/stop/step from the slice object.
+template<typename T, typename Range>
+    requires std::ranges::input_range<const Range>
+void list_set_stepped_slice(std::vector<T>& vec, Slice sl, const Range& values) {
+    list_set_stepped_slice(vec, sl.start.value_or(SLICE_NONE),
+                           sl.stop.value_or(SLICE_NONE),
+                           sl.step.value_or(1), values);
 }
 
 // =============================================
