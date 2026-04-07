@@ -23,7 +23,7 @@ from ..typesys import (
 )
 from ..parse import (
     TpyExpr,
-    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn, TpyYield,
+    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyExprStmt, TpyReturn, TpyYield,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
     TpyRaise, TpyExceptHandler, TpyTry, TpyWith,
     TpyGlobal, TpyNonlocal, TpyNestedDef,
@@ -574,6 +574,8 @@ class StatementAnalyzer:
             self._analyze_aug_assign(stmt)
         elif isinstance(stmt, TpyDelItem):
             self._analyze_del_item(stmt)
+        elif isinstance(stmt, TpyDelVar):
+            self._analyze_del_var(stmt)
         elif isinstance(stmt, TpyExprStmt):
             self.expr.analyze_expr(stmt.expr)
         elif isinstance(stmt, TpyReturn):
@@ -3219,6 +3221,22 @@ class StatementAnalyzer:
                     f"'del' is not supported for type {actual}", stmt)
             # Analyze the index expression only after confirming __delitem__ exists
             self.expr.analyze_expr(subscript.index)
+
+    def _analyze_del_var(self, stmt: TpyDelVar) -> None:
+        """Analyze a variable deletion statement (del x)."""
+        for name in stmt.names:
+            # Global-declared and nonlocal vars are always reachable;
+            # locals/params must be definitely assigned.
+            is_external = (name in self.ctx.global_declarations
+                           or name in self.ctx.current_nonlocal_names)
+            if not is_external and name not in self.ctx.definitely_assigned:
+                raise self.ctx.error(
+                    f"variable '{name}' may not be assigned at this point", stmt)
+            # Remove from definitely_assigned so use-after-del is caught
+            self.ctx.definitely_assigned.discard(name)
+            # Clear narrowing facts
+            self.ctx.narrowed_types.pop(name, None)
+            self.ctx.non_null_ptr_vars.discard(name)
 
     def _apply_aug_assign_writeback(
         self,

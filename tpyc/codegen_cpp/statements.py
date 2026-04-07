@@ -19,7 +19,7 @@ from ..typesys import (
     unwrap_ref_type, RefType,
 )
 from ..parse import (
-    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn, TpyYield,
+    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyExprStmt, TpyReturn, TpyYield,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt,
     TpyRaise, TpyExceptHandler, TpyTry, TpyWith,
     TpyGlobal, TpyNonlocal, TpyNestedDef,
@@ -288,6 +288,8 @@ class StatementGenerator:
             return self._gen_aug_assign_code(stmt, indent)
         elif isinstance(stmt, TpyDelItem):
             return self._gen_del_item_code(stmt, indent)
+        elif isinstance(stmt, TpyDelVar):
+            return self._gen_del_var_code(stmt, indent)
         elif isinstance(stmt, TpyExprStmt):
             if isinstance(stmt.expr, TpyStrLiteral):
                 return None  # Skip docstrings
@@ -1453,6 +1455,22 @@ class StatementGenerator:
                 parts.append(f"{indent}{code};\n")
             else:
                 parts.append(f"{indent}::tpy::__delitem__({subscript_obj}, {index_expr});\n")
+        return "".join(parts)
+
+    def _gen_del_var_code(self, stmt: TpyDelVar, indent: str) -> str:
+        """Generate code for variable deletion (del x).
+
+        Moves the value into a temporary that is immediately destroyed,
+        releasing resources early. Elided for trivially destructible types
+        (primitives, enums) where the move would be a no-op.
+        """
+        parts: list[str] = []
+        for name in stmt.names:
+            var_type = self.ctx.var_types.get(name)
+            if var_type and var_type.is_trivially_destructible():
+                continue
+            cpp_name = escape_cpp_name(name)
+            parts.append(f"{indent}{{ auto __del_sink = std::move({cpp_name}); }}\n")
         return "".join(parts)
 
     def _gen_aug_assign_code(self, stmt: TpyAugAssign, indent: str) -> str:

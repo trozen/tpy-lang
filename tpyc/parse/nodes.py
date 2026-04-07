@@ -570,6 +570,15 @@ class TpyDelItem(TpyStmt):
 
 
 @dataclass
+class TpyDelVar(TpyStmt):
+    """Delete statement for local variables: del x, y, ..."""
+    names: list[str]
+
+    def exprs(self) -> list[TpyExpr]:
+        return []
+
+
+@dataclass
 class TpyExprStmt(TpyStmt):
     """Expression statement (e.g., function call)."""
     expr: TpyExpr

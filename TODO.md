@@ -93,12 +93,14 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Closures: method references (`obj.method` as a value) -- needs partial application binding `self`. Currently gives "has no field" error.
 - Protocol isinstance in ternary expressions: `x = a.foo() if isinstance(a, P1) else a.bar()` generates a runtime `?:` but both branches must be valid C++ at template instantiation time. Fix: generate an IIFE with `if constexpr` inside, e.g. `[&]() -> T { if constexpr (P1<T_a>) { return a.foo(); } else { return a.bar(); } }()`. This also enables single-line field init in `__init__` (goes into the C++ member initializer list instead of requiring unconditional pre-assignment + reassignment in branches).
 - Allow `@runtime_checkable` decorator on protocols (no-op in tpyc, enables CPython compatibility for isinstance checks on user-defined protocols)
-- `del x` (variable unbinding): complex in compiled context -- needs lifetime/scope analysis. Low priority.
 - allow type annotation to use "" (forward decl)
 - C-style for loop: reassigning loop variable affects iteration (differs from Python)
 
 ## Documentation
 - language restriction documentation
+
+## Type System
+- `is_trivially_destructible()`: current approximation uses `is_value_type() and not is_expensive_copy()`, which is conservative for non-value types (e.g. Span, SpanIter are trivially destructible but return False). Proper implementation: primitives/views/pointers always trivial; records trivial if no `__del__` and all fields/bases are trivially destructible; tuples/optionals trivial if elements are. Used by `del` codegen to elide move-sink.
 
 ## Refactor
 - Inplace operator C++ return type: `__iadd__`/`__ior__` etc. declare returning self type (Python semantics) but the C++ helpers (`list_extend`, `dict_update`) return `void`. Add thin wrappers that return `T&` (e.g. `list_extend_inplace`, `dict_update_inplace`) so the declared return type matches the C++ signature. Affects list and dict.

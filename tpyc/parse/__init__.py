@@ -17,7 +17,7 @@ from .nodes import (
     TpyComprehensionGenerator, TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr, TpyNamedExpr, TpyLambda,
-    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn, TpyYield,
+    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyExprStmt, TpyReturn, TpyYield,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyNonlocal, TpyRaise, TpyExceptHandler, TpyTry, TpyWithItem, TpyWith,
     TpyNestedDef,

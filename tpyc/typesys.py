@@ -291,6 +291,16 @@ class TpyType:
         """
         return False
 
+    def is_trivially_destructible(self) -> bool:
+        """Return True if the C++ type has a trivial destructor.
+
+        Approximation: value types without heap storage. Correct for
+        primitives, views, pointers, enums, tuples of trivial types.
+        Conservative for non-value types (always returns False even if
+        the C++ type is actually trivially destructible, e.g. Span).
+        """
+        return self.is_value_type() and not self.is_expensive_copy()
+
     def is_expensive_copy(self) -> bool:
         """Return True if copying this value type involves heap allocation."""
         return False

@@ -33,7 +33,7 @@ from .nodes import (
     TpyComprehensionGenerator, TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr, TpyNamedExpr, TpyLambda,
-    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn, TpyYield,
+    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyExprStmt, TpyReturn, TpyYield,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyNonlocal, TpyRaise, TpyExceptHandler, TpyTry, TpyWithItem, TpyWith,
     TpyNestedDef,
@@ -2880,19 +2880,24 @@ class Parser:
         return TpyNestedDef(func=func, loc=loc)
 
     def _parse_delete(self, node: ast.Delete, loc: SourceLocation | None) -> TpyStmt:
-        """Parse a del statement. Only subscript targets are supported."""
+        """Parse a del statement. Supports subscript and variable targets."""
         subscripts: list[TpySubscript] = []
+        names: list[str] = []
         for target in node.targets:
             if isinstance(target, ast.Subscript):
                 obj = self._parse_expr(target.value)
                 index = self._parse_expr(target.slice)
                 subscripts.append(TpySubscript(obj, index, loc=loc))
             elif isinstance(target, ast.Name):
-                raise ParseError("'del' on variables is not supported", node)
+                names.append(target.id)
             elif isinstance(target, ast.Attribute):
                 raise ParseError("'del' on attributes is not supported", node)
             else:
                 raise ParseError(f"Unsupported del target: {type(target).__name__}", node)
+        if subscripts and names:
+            raise ParseError("Cannot mix variable and subscript targets in a single 'del' statement", node)
+        if names:
+            return TpyDelVar(names, loc=loc)
         return TpyDelItem(subscripts, loc=loc)
 
     def _parse_match(self, node: ast.Match, loc: SourceLocation | None) -> TpyMatch:
