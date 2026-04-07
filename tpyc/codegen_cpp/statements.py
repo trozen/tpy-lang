@@ -127,10 +127,14 @@ class StatementGenerator:
             self.ctx.reassigned_vars = scan.reassigned - self.ctx.global_declared_vars
             self.ctx.rvalue_reassigned_vars = scan.rvalue_reassigned - self.ctx.global_declared_vars
             self.ctx.lvalue_reassigned_vars = scan.lvalue_reassigned - self.ctx.global_declared_vars
+            self.ctx.aliased_vars = set(scan.alias_sources.values())
+            self.ctx.alias_names = scan.initial_alias_names
         else:
             self.ctx.reassigned_vars = set()
             self.ctx.rvalue_reassigned_vars = set()
             self.ctx.lvalue_reassigned_vars = set()
+            self.ctx.aliased_vars = set()
+            self.ctx.alias_names = set()
         self.ctx.hoisted_vars = self.ctx.analyzer.function_hoisted_vars.get(id(func), set())
         self.ctx.move_through_vars = self.ctx.analyzer.function_move_through_vars.get(id(func), set())
         self.ctx.sema_movable_locals = self.ctx.analyzer.function_movable_locals.get(id(func), set())
@@ -1273,6 +1277,7 @@ class StatementGenerator:
                     return f"{indent}{const_pfx}{cpp_type}* {cpp_name} = nullptr;\n"
             else:
                 # T& reference -- alias without rebinding
+                self.ctx.ref_bound_locals.add(stmt.name)
                 init_expr = self.expressions.gen_expr_deref(stmt.init, target_type)
                 init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
                 # 8a.5: for element borrow locals, determine const from the source.
@@ -1461,13 +1466,34 @@ class StatementGenerator:
         """Generate code for variable deletion (del x).
 
         Moves the value into a temporary that is immediately destroyed,
-        releasing resources early. Elided for trivially destructible types
-        (primitives, enums) where the move would be a no-op.
+        releasing resources early. Move-sink is only emitted when the
+        variable is the sole owner of its value:
+        - Skip trivially destructible types (no-op)
+        - Skip T& aliases (source still owns it)
+        - Skip sources of T& aliases (alias still references it)
+        - Skip pointer-locals that started as aliases (may point at source's storage)
+        - Skip parameters (non-value params are const T& -- can't move from const)
+        - Skip globals (other code may access it)
+        Pointer-locals that own their value use std::move(*name) to deref first.
         """
         parts: list[str] = []
         for name in stmt.names:
             var_type = self.ctx.var_types.get(name)
             if var_type and var_type.is_trivially_destructible():
+                continue
+            if name in self.ctx.ref_bound_locals:
+                continue
+            if name in self.ctx.aliased_vars:
+                continue
+            if name in self.ctx.current_func_params:
+                continue
+            if name in self.ctx.global_declared_vars:
+                continue
+            if name in self.ctx.pointer_locals:
+                if name in self.ctx.alias_names:
+                    continue
+                cpp_name = escape_cpp_name(name)
+                parts.append(f"{indent}{{ auto __del_sink = std::move(*{cpp_name}); }}\n")
                 continue
             cpp_name = escape_cpp_name(name)
             parts.append(f"{indent}{{ auto __del_sink = std::move({cpp_name}); }}\n")

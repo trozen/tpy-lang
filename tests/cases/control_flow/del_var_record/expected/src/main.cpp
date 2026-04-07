@@ -13,7 +13,7 @@ void main() {
     // print(p.x)
     std::cout << p->x << "\n";
     // del p
-    { auto __del_sink = std::move(p); }
+    { auto __del_sink = std::move(*p); }
     // p = Point(3, 4)
     p = &*(__slot_2 = Point(::tpy::BigInt(3), ::tpy::BigInt(4)));
     // print(p.x)

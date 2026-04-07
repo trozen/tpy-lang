@@ -2876,6 +2876,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 ### Assignment
 - **Working**: `=`, `+=`, `-=`, `*=`, `/=`, `//=`, `%=`, `&=`, `|=`, `^=`, `<<=`, `>>=`
   - Augmented assignment works on variables, fields, and subscripts (`items[i] += 1`)
+- **Working**: Multiple assignment (`a = b = c = expr`) -- value is evaluated once; all name targets alias (non-value types) or copy (value types). Supports mixed name/field/subscript targets and property setters. Tuple unpacking targets not supported in multiple assignment. Note: the rightmost Name target is assigned first (anchor strategy), so `b[a] = a = 3` uses the new value of `a` for the subscript index, unlike Python which assigns left-to-right.
 
 ---
 
@@ -2910,7 +2911,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 ### Other
 - **Working**: `return`, `pass`
 - **Working**: `del obj[key]` -- element deletion via `__delitem__` dunder (dict, list, user types)
-- **Working**: `del x` -- variable unbinding. The value is moved into a temporary scope for early destruction. Use after del is a compile-time error. Re-assignment after del is supported. Works on locals, parameters, globals, nonlocals, loop variables, generators, and module-level variables.
+- **Working**: `del x` -- variable unbinding. Use after del is a compile-time error. Re-assignment after del is supported. Works on locals, parameters, globals, nonlocals, loop variables, generators, and module-level variables. Early destruction (move-sink) is only emitted when the variable is the sole owner of its value; aliases, alias sources, parameters, and globals just unbind the name without destroying. Limitation: pointer-locals that were initially aliases (e.g. `a = b; a = new_value; del a`) skip early destruction conservatively, even after reassignment to an owned value.
 - **Working**: `match`/`case` -- structural pattern matching
   - **Union subjects**: class patterns (`case Circle():`, `case Circle(radius=r):`), subject narrowing, `switch (s.index())` codegen with `std::get<N>`
   - **Enum subjects**: value patterns (`case Color.Red:`), `switch` codegen

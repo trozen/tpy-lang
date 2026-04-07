@@ -619,6 +619,7 @@ class RecordGenerator:
         # Build field name -> type map for target type passing
         field_types = {fld.name: fld.type for fld in record.fields}
         own_field_names = set(field_types.keys())
+        param_names = {p[0] for p in init_method.params}
         # Temporarily populate movable_locals with constructor Own params so that
         # gen_call_arg/_maybe_move can emit std::move() for last-use args inside
         # init list expressions (e.g. Box.from_optional(next)).
@@ -640,11 +641,15 @@ class RecordGenerator:
                     if isinstance(stmt.target, TpyFieldAccess):
                         if isinstance(stmt.target.obj, TpyName) and stmt.target.obj.name == "self":
                             field_name = stmt.target.field
-                            # Skip if value is a nested def (lambda defined in body)
                             source_expr = stmt.value
                             while isinstance(source_expr, TpyCoerce):
                                 source_expr = source_expr.expr
+                            # Skip if value is a nested def (lambda defined in body)
                             if isinstance(source_expr, TpyName) and source_expr.name in nested_def_names:
+                                continue
+                            # Skip if value references a body-local variable
+                            # (not available in the C++ member initializer list)
+                            if isinstance(source_expr, TpyName) and source_expr.name not in param_names:
                                 continue
                             # Only add to member init list if it's this class's own field
                             if field_name in own_field_names:
@@ -771,6 +776,7 @@ class RecordGenerator:
         """
         # Get the set of this record's own field names
         own_field_names = {fld.name for fld in record.fields}
+        param_names = {p[0] for p in init_method.params}
         # Nested def names -- field assignments referencing these go in the body
         nested_def_names = {
             s.func.name for s in init_method.body if isinstance(s, TpyNestedDef)
@@ -786,12 +792,16 @@ class RecordGenerator:
                 if isinstance(stmt.target, TpyFieldAccess):
                     if isinstance(stmt.target.obj, TpyName) and stmt.target.obj.name == "self":
                         field_name = stmt.target.field
-                        # Only skip if it's this class's own field AND not a nested def ref
+                        # Only skip if it's this class's own field, not a nested
+                        # def ref, and not a body-local variable ref (must mirror
+                        # _extract_field_inits guards exactly).
                         if field_name in own_field_names:
                             source_expr = stmt.value
                             while isinstance(source_expr, TpyCoerce):
                                 source_expr = source_expr.expr
-                            if not (isinstance(source_expr, TpyName) and source_expr.name in nested_def_names):
+                            is_nested = isinstance(source_expr, TpyName) and source_expr.name in nested_def_names
+                            is_body_local = isinstance(source_expr, TpyName) and source_expr.name not in param_names
+                            if not is_nested and not is_body_local:
                                 is_own_field_init = True
             if not is_own_field_init:
                 non_init.append(stmt)

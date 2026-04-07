@@ -14,7 +14,7 @@ void main() {
     // print(len(items))
     std::cout << ::tpy::__len__((*items)) << "\n";
     // del items
-    { auto __del_sink = std::move(items); }
+    { auto __del_sink = std::move(*items); }
     // items = [4, 5]
     items = &*(__slot_2 = {4, 5});
     // print(len(items))

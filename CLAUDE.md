@@ -436,7 +436,8 @@ Working but not previously listed:
 - Generator functions (yield -> state machine codegen)
 - Compile-time macro modules (`# tpy: macro_module`)
 - `tplib.json` -- JSON parsing/serialization library with `@model` macro for pydantic-style typed deserialization
-- `del x` -- variable unbinding with early destruction via move-sink
+- `del x` -- variable unbinding; early destruction only for sole owners (not aliases, params, or globals)
+- `a = b = c = expr` -- multiple assignment with anchor-based desugaring
 
 ## Type Mappings
 

@@ -384,6 +384,7 @@ class LocalScopeSnap:
     ptr_variant_locals: set[str]
     const_indirect_locals: set[str]
     movable_locals: set[str]
+    ref_bound_locals: set[str]
     rebind_slots: dict[str, str]
     plain_rebind_slots: set[str]
     assign_narrowed_types: dict[str, 'TpyType']
@@ -464,6 +465,13 @@ class CodeGenContext:
     # --- Auto-move tracking (last-use -> std::move) ---
     movable_locals: set[str] = field(default_factory=set)
     sema_movable_locals: set[str] = field(default_factory=set)
+
+    # --- Reference-bound locals (T& aliases -- del must not move-sink) ---
+    # ref_bound_locals grows during codegen as T& decls are emitted -> in LocalScopeSnap.
+    # aliased_vars/alias_names are set once per function from prescan -> NOT in LocalScopeSnap.
+    ref_bound_locals: set[str] = field(default_factory=set)
+    aliased_vars: set[str] = field(default_factory=set)
+    alias_names: set[str] = field(default_factory=set)
 
     # --- Move-through vars (lvalue alias promoted to owned via std::move) ---
     move_through_vars: set[str] = field(default_factory=set)
@@ -595,6 +603,9 @@ class CodeGenContext:
         self.rvalue_reassigned_vars = set()
         self.lvalue_reassigned_vars = set()
         self.movable_locals = set()
+        self.ref_bound_locals = set()
+        self.aliased_vars = set()
+        self.alias_names = set()
         self.move_through_vars = set()
         self.hoisted_vars = set()
         self.branch_hoisted_vars = set()
@@ -639,6 +650,7 @@ class CodeGenContext:
             ptr_variant_locals=self.ptr_variant_locals.copy(),
             const_indirect_locals=self.const_indirect_locals.copy(),
             movable_locals=self.movable_locals.copy(),
+            ref_bound_locals=self.ref_bound_locals.copy(),
             rebind_slots=dict(self.rebind_slots),
             plain_rebind_slots=self.plain_rebind_slots.copy(),
             assign_narrowed_types=dict(self.assign_narrowed_types),
@@ -654,6 +666,7 @@ class CodeGenContext:
         self.ptr_variant_locals = snap.ptr_variant_locals.copy()
         self.const_indirect_locals = snap.const_indirect_locals.copy()
         self.movable_locals = snap.movable_locals.copy()
+        self.ref_bound_locals = snap.ref_bound_locals.copy()
         self.rebind_slots = dict(snap.rebind_slots)
         self.plain_rebind_slots = snap.plain_rebind_slots.copy()
         self.assign_narrowed_types = dict(snap.assign_narrowed_types)

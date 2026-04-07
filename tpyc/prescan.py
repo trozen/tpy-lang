@@ -31,6 +31,10 @@ class ScanResult:
     # alias_name -> source_name for lvalue-initialized, non-reassigned variables
     # with simple TpyName init (T& reference candidates).
     alias_sources: dict[str, str] = field(default_factory=dict)
+    # Variables initially aliased from another name (before reassignment cleanup).
+    # Used by del codegen to avoid destroying through a pointer that may
+    # still point at the source variable's storage.
+    initial_alias_names: set[str] = field(default_factory=set)
 
 
 def scan_reassigned_vars(stmts: list[TpyStmt],
@@ -51,6 +55,7 @@ def scan_reassigned_vars(stmts: list[TpyStmt],
     declared: set[str] = set(pre_declared) if pre_declared else set()
     result = ScanResult()
     _scan_stmts(stmts, declared, result)
+    result.initial_alias_names = set(result.alias_sources.keys())
     # Reassigned vars become T* pointers, not T& refs -- remove from alias map
     for name in result.reassigned:
         result.alias_sources.pop(name, None)

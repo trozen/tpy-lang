@@ -11,7 +11,6 @@ void f(const ::tpy::BigInt& __param_x) {
     // print(x)
     std::cout << x << "\n";
     // del x
-    { auto __del_sink = std::move(x); }
     // x = 99
     x = ::tpy::BigInt(99);
     // print(x)

@@ -399,6 +399,7 @@ class Parser:
         self._bare_module_imports: set[str] = set()
         self._reverse_module_aliases: dict[str, str] = {}
         self._for_unpack_counter: int = 0
+        self._multi_assign_counter: int = 0
         # Schemas derived from @builtin_decorator stubs (populated by compiler
         # from previously-parsed modules, or from same-file definitions)
         self._decorator_schemas: dict[str, _DecoratorArgSchema] = dict(decorator_schemas) if decorator_schemas else {}
@@ -769,7 +770,11 @@ class Parser:
                 if not self._is_ignorable_for_import_order(node):
                     seen_non_import = True
                 # All other statements go through _parse_stmt (same as function bodies)
-                top_level_stmts.append(self._parse_stmt(node))
+                stmt = self._parse_stmt(node)
+                if isinstance(stmt, list):
+                    top_level_stmts.extend(stmt)
+                else:
+                    top_level_stmts.append(stmt)
 
         return TpyModule(records=records, functions=functions, protocols=protocols, enums=enums, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, tpy_star_import=self._imports.tpy_star_import, star_imports=self._imports.star_imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings)
 
@@ -1928,7 +1933,7 @@ class Parser:
         elif is_stub:
             body = []
         else:
-            body = [self._parse_stmt(stmt) for stmt in node.body]
+            body = self._parse_body(node.body)
 
         # Detect generator methods (yield in body)
         is_generator = _body_contains_yield(body)
@@ -2251,9 +2256,9 @@ class Parser:
                 raise ParseError(
                     f"@extern_c function '{node.name}' must have a body (it exports a TPy function)",
                     node)
-            body = [self._parse_stmt(stmt) for stmt in node.body]
+            body = self._parse_body(node.body)
         else:
-            body = [self._parse_stmt(stmt) for stmt in node.body]
+            body = self._parse_body(node.body)
 
         # Restore the scope
         self._type_param_scope = old_scope
@@ -2698,7 +2703,18 @@ class Parser:
         except Exception as e:
             raise ParseError(f"Failed to construct type {name}: {e}", node) from e
 
-    def _parse_stmt(self, node: ast.stmt) -> TpyStmt:
+    def _parse_body(self, nodes: list[ast.stmt]) -> list[TpyStmt]:
+        """Parse a list of statements, flattening any multi-statement expansions."""
+        result: list[TpyStmt] = []
+        for node in nodes:
+            stmt = self._parse_stmt(node)
+            if isinstance(stmt, list):
+                result.extend(stmt)
+            else:
+                result.append(stmt)
+        return result
+
+    def _parse_stmt(self, node: ast.stmt) -> 'TpyStmt | list[TpyStmt]':
         """Parse a statement."""
         loc = self._loc(node)
 
@@ -2712,8 +2728,8 @@ class Parser:
 
         elif isinstance(node, ast.Assign):
             # Simple assignment: x = expr or x.field = expr
-            if len(node.targets) != 1:
-                raise ParseError("Multiple assignment targets not supported", node)
+            if len(node.targets) > 1:
+                return self._parse_multi_assign(node, loc)
             if isinstance(node.targets[0], ast.Tuple):
                 elts = node.targets[0].elts
                 if not elts:
@@ -2759,18 +2775,18 @@ class Parser:
 
         elif isinstance(node, ast.If):
             cond = self._parse_expr(node.test)
-            then_body = [self._parse_stmt(s) for s in node.body]
-            else_body = [self._parse_stmt(s) for s in node.orelse]
+            then_body = self._parse_body(node.body)
+            else_body = self._parse_body(node.orelse)
             return TpyIf(cond, then_body, else_body, loc=loc)
 
         elif isinstance(node, ast.While):
             cond = self._parse_expr(node.test)
-            body = [self._parse_stmt(s) for s in node.body]
-            orelse = [self._parse_stmt(s) for s in node.orelse]
+            body = self._parse_body(node.body)
+            orelse = self._parse_body(node.orelse)
             return TpyWhile(cond, body, orelse=orelse, loc=loc)
 
         elif isinstance(node, ast.For):
-            orelse = [self._parse_stmt(s) for s in node.orelse]
+            orelse = self._parse_body(node.orelse)
             if isinstance(node.target, ast.Tuple):
                 for elt in node.target.elts:
                     if not isinstance(elt, ast.Name):
@@ -2784,7 +2800,7 @@ class Parser:
                 synth_var = f"__for_tup_{self._for_unpack_counter}"
                 self._for_unpack_counter += 1
                 iterable = self._parse_expr(node.iter)
-                body = [self._parse_stmt(s) for s in node.body]
+                body = self._parse_body(node.body)
                 unpack = TpyTupleUnpack(
                     targets=targets,
                     value=TpyName(synth_var, loc=loc),
@@ -2794,7 +2810,7 @@ class Parser:
             if not isinstance(node.target, ast.Name):
                 raise ParseError("For loop target must be a simple variable", node)
             var = node.target.id
-            body = [self._parse_stmt(s) for s in node.body]
+            body = self._parse_body(node.body)
             iterable = self._parse_expr(node.iter)
             return TpyForEach(var, iterable, body, orelse=orelse, loc=loc)
 
@@ -2865,16 +2881,16 @@ class Parser:
                 # Bare except: -- must be last handler (Python enforces this)
                 handlers.append(TpyExceptHandler(
                     exception_type=None, binding=h.name,
-                    body=[self._parse_stmt(s) for s in h.body], loc=h_loc))
+                    body=self._parse_body(h.body), loc=h_loc))
             elif isinstance(h.type, ast.Name):
                 handlers.append(TpyExceptHandler(
                     exception_type=h.type.id, binding=h.name,
-                    body=[self._parse_stmt(s) for s in h.body], loc=h_loc))
+                    body=self._parse_body(h.body), loc=h_loc))
             else:
                 raise ParseError("'except' requires a simple name (e.g. 'except MyError')", node)
-        try_body = [self._parse_stmt(s) for s in node.body]
-        else_body = [self._parse_stmt(s) for s in node.orelse]
-        finally_body = [self._parse_stmt(s) for s in node.finalbody]
+        try_body = self._parse_body(node.body)
+        else_body = self._parse_body(node.orelse)
+        finally_body = self._parse_body(node.finalbody)
         return TpyTry(
             try_body=try_body,
             handlers=handlers,
@@ -2897,7 +2913,7 @@ class Parser:
                 target = item.optional_vars.id
             item_loc = self._loc(item.context_expr)
             items.append(TpyWithItem(context_expr, target, loc=item_loc))
-        body = [self._parse_stmt(s) for s in node.body]
+        body = self._parse_body(node.body)
         return TpyWith(items, body, loc=loc)
 
     def _parse_nested_def(self, node: ast.FunctionDef, loc: SourceLocation | None) -> TpyNestedDef:
@@ -2910,6 +2926,46 @@ class Parser:
                 f"Type parameters are not supported on nested functions", node)
         func = self._parse_function(node)
         return TpyNestedDef(func=func, loc=loc)
+
+    def _parse_multi_assign(self, node: ast.Assign,
+                            loc: SourceLocation | None) -> list[TpyStmt]:
+        """Desugar multi-target assignment: a = b = c = expr.
+
+        Uses a name target as anchor so the value is evaluated exactly once.
+        All other targets reference the anchor. If no name target exists,
+        a synthetic temp is introduced.
+        """
+        for t in node.targets:
+            if isinstance(t, ast.Tuple):
+                raise ParseError(
+                    "Tuple unpacking not supported in multiple assignment", node)
+        value_expr = self._parse_expr(node.value)
+        # Find rightmost Name target to use as anchor
+        anchor: ast.Name | None = None
+        for t in reversed(node.targets):
+            if isinstance(t, ast.Name):
+                anchor = t
+                break
+        stmts: list[TpyStmt] = []
+        if anchor is not None:
+            anchor_name = anchor.id
+            stmts.append(TpyVarDecl(anchor_name, None, value_expr, loc=loc))
+        else:
+            # No name target -- introduce synthetic temp
+            anchor_name = f"__ma_{self._multi_assign_counter}"
+            self._multi_assign_counter += 1
+            stmts.append(TpyVarDecl(anchor_name, None, value_expr, loc=loc))
+        # Assign anchor to remaining targets (left-to-right, no source comment)
+        for t in node.targets:
+            if t is anchor:
+                continue
+            target = self._parse_expr(t)
+            ref = TpyName(anchor_name, loc=loc)
+            if isinstance(target, TpyName):
+                stmts.append(TpyVarDecl(target.name, None, ref, loc=None))
+            else:
+                stmts.append(TpyAssign(target, ref, loc=None))
+        return stmts
 
     def _parse_delete(self, node: ast.Delete, loc: SourceLocation | None) -> TpyStmt:
         """Parse a del statement. Supports subscript and variable targets."""
@@ -2939,7 +2995,7 @@ class Parser:
         for case in node.cases:
             pattern = self._parse_pattern(case.pattern)
             guard = self._parse_expr(case.guard) if case.guard else None
-            body = [self._parse_stmt(s) for s in case.body]
+            body = self._parse_body(case.body)
             # match_case nodes lack lineno; use the pattern's location instead
             cases.append(TpyMatchCase(pattern, guard, body, loc=self._loc(case.pattern)))
         return TpyMatch(subject, cases, loc=loc)
@@ -3556,7 +3612,7 @@ class FragmentParser(Parser):
                     func.defaults = func.defaults[1:]
             return func
         elif kind == "statements":
-            return [parser._parse_stmt(s) for s in tree.body]
+            return parser._parse_body(tree.body)
         elif kind == "expression":
             if len(tree.body) != 1 or not isinstance(tree.body[0], ast.Expr):
                 raise ParseError(
