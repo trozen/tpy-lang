@@ -5,3 +5,6 @@ b'hello'
 b'hello'
 b''
 b''
+2
+4
+4

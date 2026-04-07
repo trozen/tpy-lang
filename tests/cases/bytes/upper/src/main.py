@@ -7,4 +7,8 @@ def main() -> None:
     # bytearray too
     ba = bytearray(b"mixed Case")
     print(ba.upper())             # bytearray(b'MIXED CASE')
+    # BytesView (from slice)
+    print(b"hello world"[0:5].upper())   # b'HELLO'
+    # chain: slice -> rstrip -> upper
+    print(b"hello\x00\x00"[0:7].rstrip(b"\x00").upper())  # b'HELLO'
 main()

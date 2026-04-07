@@ -246,32 +246,54 @@ inline bool is_ascii_whitespace(uint8_t b) {
     return b == 0x20 || b == 0x09 || b == 0x0a || b == 0x0d || b == 0x0b || b == 0x0c;
 }
 
-inline Bytes bytes_strip(BytesView b) {
+// View-returning variants (for BytesView methods)
+inline BytesView bytes_strip_view(BytesView b) {
     auto start = b.begin();
     auto end = b.end();
     while (start != end && is_ascii_whitespace(*start)) ++start;
     while (end != start && is_ascii_whitespace(*(end - 1))) --end;
-    return Bytes(start, end);
+    return BytesView(start, end);
 }
 
-inline Bytes bytes_lstrip(BytesView b) {
+inline BytesView bytes_lstrip_view(BytesView b) {
     auto start = b.begin();
     while (start != b.end() && is_ascii_whitespace(*start)) ++start;
-    return Bytes(start, b.end());
+    return BytesView(start, b.end());
 }
 
-inline Bytes bytes_rstrip(BytesView b) {
+inline BytesView bytes_rstrip_view(BytesView b) {
     auto end = b.end();
     while (end != b.begin() && is_ascii_whitespace(*(end - 1))) --end;
-    return Bytes(b.begin(), end);
+    return BytesView(b.begin(), end);
 }
 
-inline Bytes bytes_rstrip_chars(BytesView b, BytesView chars) {
+inline BytesView bytes_rstrip_chars_view(BytesView b, BytesView chars) {
     auto end = b.end();
     while (end != b.begin() &&
            std::find(chars.begin(), chars.end(), *(end - 1)) != chars.end())
         --end;
-    return Bytes(b.begin(), end);
+    return BytesView(b.begin(), end);
+}
+
+// Copy-returning variants (for bytes/bytearray methods)
+inline Bytes bytes_strip(BytesView b) {
+    auto v = bytes_strip_view(b);
+    return Bytes(v.begin(), v.end());
+}
+
+inline Bytes bytes_lstrip(BytesView b) {
+    auto v = bytes_lstrip_view(b);
+    return Bytes(v.begin(), v.end());
+}
+
+inline Bytes bytes_rstrip(BytesView b) {
+    auto v = bytes_rstrip_view(b);
+    return Bytes(v.begin(), v.end());
+}
+
+inline Bytes bytes_rstrip_chars(BytesView b, BytesView chars) {
+    auto v = bytes_rstrip_chars_view(b, chars);
+    return Bytes(v.begin(), v.end());
 }
 
 inline Bytes bytes_upper(BytesView b) {

@@ -1,6 +1,7 @@
 # tpy: cpp_namespace("tpystd::tpy")
 from .._typing import overload, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure
+from .._bootstrap._decorators import Own
 from ._types import UInt8, UInt64, Int32, NativeIterable
 from .._bootstrap._extern import native, cpp_template, builtin_type
 
@@ -89,3 +90,39 @@ class BytesView(NativeIterable[UInt8], Iterable[UInt8]):
     @readonly
     @pure
     def endswith(self, suffix: BytesView) -> bool: ...
+
+    @native("tpy::bytes_replace", function=True)
+    @readonly
+    @pure
+    def replace(self, old: BytesView, new: BytesView) -> bytes: ...
+
+    @native("tpy::bytes_split", function=True)
+    @readonly
+    @pure
+    def split(self, sep: BytesView) -> Own[list[bytes]]: ...
+
+    @native("tpy::bytes_strip_view", function=True)
+    @readonly
+    @pure
+    def strip(self) -> BytesView: ...
+
+    @native("tpy::bytes_lstrip_view", function=True)
+    @readonly
+    @pure
+    def lstrip(self) -> BytesView: ...
+
+    @overload
+    @native("tpy::bytes_rstrip_view", function=True)
+    @readonly
+    @pure
+    def rstrip(self) -> BytesView: ...
+    @overload
+    @native("tpy::bytes_rstrip_chars_view", function=True)
+    @readonly
+    @pure
+    def rstrip(self, chars: BytesView) -> BytesView: ...
+
+    @native("tpy::bytes_upper", function=True)
+    @readonly
+    @pure
+    def upper(self) -> bytes: ...

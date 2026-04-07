@@ -692,7 +692,10 @@ class ExpressionGenerator:
             coerce_target = expr.expected_type
             if isinstance(coerce_target, OptionalType) and isinstance(coerce_target.inner, SpanType):
                 coerce_target = coerce_target.inner
-            if expr.coercion.name in ("int_literal_to_fixed_int", "float_literal_to_float32") or isinstance(coerce_target, SpanType):
+            # Forward coercion target to literals/views so they can pick the
+            # right C++ representation (e.g. bytes_literal vs vector<uint8_t>,
+            # char literal vs string)
+            if isinstance(expr.expr, (TpyStrLiteral, TpyBytesLiteral)) or isinstance(coerce_target, SpanType) or expr.coercion.name in ("int_literal_to_fixed_int", "float_literal_to_float32"):
                 inner_target = coerce_target
             else:
                 inner_target = expr.actual_type

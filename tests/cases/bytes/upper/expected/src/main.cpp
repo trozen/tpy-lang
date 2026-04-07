@@ -20,6 +20,12 @@ void main() {
     std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("\x6d\x69\x78\x65\x64\x20\x43\x61\x73\x65", 10));
     // print(ba.upper())             # bytearray(b'MIXED CASE')
     std::cout << ::tpy::ByteArrayPrinter(::tpy::bytes_upper(ba)) << "\n";
+    // # BytesView (from slice)
+    // print(b"hello world"[0:5].upper())   # b'HELLO'
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_slice(std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x77, 0x6f, 0x72, 0x6c, 0x64}, ::tpy::BasicSlice{0, 5}))) << "\n";
+    // # chain: slice -> rstrip -> upper
+    // print(b"hello\x00\x00"[0:7].rstrip(b"\x00").upper())  # b'HELLO'
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_rstrip_chars_view(::tpy::bytes_slice(std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x00, 0x00}, ::tpy::BasicSlice{0, 7}), ::tpy::bytes_literal("\x00", 1)))) << "\n";
 }
 
 void __tpy_init() {

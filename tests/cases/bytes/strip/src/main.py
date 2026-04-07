@@ -17,4 +17,11 @@ def main() -> None:
     only_ws = b"   "
     print(only_ws.strip())
 
+    # BytesView (from slice) -- strip/lstrip/rstrip return views
+    bv_data: bytes = b"  hi  "
+    v = bv_data[0:6]
+    print(len(v.strip()))
+    print(len(v.lstrip()))
+    print(len(v.rstrip()))
+
 main()

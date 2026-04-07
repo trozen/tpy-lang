@@ -44,6 +44,24 @@ void main() {
     std::vector<uint8_t> joined = ::tpy::bytes_join(std::vector<uint8_t>{0x2c, 0x20}, parts);
     // print(joined)
     std::cout << ::tpy::BytesPrinter(joined) << "\n";
+    // # BytesView (from slice) -- methods work on views
+    // v = data[0:11]
+    std::span<const uint8_t> v = ::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 11});
+    // print(v.find(b"world"))
+    std::cout << ::tpy::bytes_find(v, ::tpy::bytes_literal("\x77\x6f\x72\x6c\x64", 5)) << "\n";
+    // print(v.replace(b"world", b"there"))
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_replace(v, ::tpy::bytes_literal("\x77\x6f\x72\x6c\x64", 5), ::tpy::bytes_literal("\x74\x68\x65\x72\x65", 5))) << "\n";
+    // vparts = data[0:11].split(b" ")
+    std::vector<std::vector<uint8_t>> vparts = ::tpy::bytes_split(::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 11}), ::tpy::bytes_literal("\x20", 1));
+    // for vp in vparts:
+    auto& __obj_1 = vparts;
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        std::span<const uint8_t> vp = *__beg_1;
+        // print(vp)
+        std::cout << ::tpy::BytesPrinter(vp) << "\n";
+    }
 }
 
 void __tpy_init() {

@@ -11,3 +11,7 @@ b'a'
 b'b'
 b'c'
 b'a, b, c'
+6
+b'hello there'
+b'hello'
+b'world'

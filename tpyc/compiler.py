@@ -22,6 +22,7 @@ from .parse.imports import StarImportResolver, NonLiteralAllError
 from .sema import SemanticAnalyzer, SemanticError, DiagnosticLevel
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names, get_type_factory as _get_type_factory
+from .modules.type_resolution import _get_type_factories
 from .codegen_cpp import CodeGenerator, CodeGenOptions
 from .codegen_cpp.context import module_to_cpp_namespace, set_namespace_map, set_include_path_map, get_include_path, clear_namespace_map, module_to_include_path
 import warnings
@@ -1406,6 +1407,41 @@ class Compiler:
                     record.extends_protocols.append(ext_str)
             if record.builtin_type_key:
                 analyzer.registry.register_builtin_record(record.builtin_type_key, record)
+        # Resolve NamedType self-references in method signatures.
+        # When a @builtin_type class references itself in method params/returns
+        # (e.g. BytesView.find(sub: BytesView)), the parser creates NamedType
+        # because the factory type isn't registered yet. Resolve them now.
+        self._resolve_builtin_self_refs(module_info)
+
+    def _resolve_builtin_self_refs(self, module_info: 'ModuleInfo') -> None:
+        """Replace NamedType with factory types in builtin record method signatures."""
+        from dataclasses import replace as dc_replace
+        from .typesys import NamedType
+        factories = _get_type_factories()
+        # Build name -> factory for non-generic builtin types in this module
+        name_to_factory: dict[str, 'Callable[[], TpyType]'] = {}
+        for rec in module_info.records.values():
+            btk = rec.builtin_type_key
+            if btk:
+                entry = factories.get(btk)
+                if entry and not entry[0]:  # non-generic (no type params)
+                    name_to_factory[rec.name] = entry[1]
+        if not name_to_factory:
+            return
+        def resolve(t: TpyType) -> TpyType:
+            if isinstance(t, NamedType) and not t.type_args and t.name in name_to_factory:
+                return name_to_factory[t.name]()
+            return t.map_inner_types(resolve)
+        for rec in module_info.records.values():
+            for methods in rec.methods.values():
+                for method in methods:
+                    for i, p in enumerate(method.params):
+                        resolved = resolve(p.type)
+                        if resolved is not p.type:
+                            method.params[i] = dc_replace(p, type=resolved)
+                    resolved_ret = resolve(method.return_type)
+                    if resolved_ret is not method.return_type:
+                        method.return_type = resolved_ret
 
     def _check_no_errors(self, compiled: CompiledModule) -> None:
         """Raise if the module has any error-level diagnostics from analysis."""

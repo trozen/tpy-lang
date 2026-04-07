@@ -21,4 +21,12 @@ def main() -> None:
     joined = b", ".join(parts)
     print(joined)
 
+    # BytesView (from slice) -- methods work on views
+    v = data[0:11]
+    print(v.find(b"world"))
+    print(v.replace(b"world", b"there"))
+    vparts = data[0:11].split(b" ")
+    for vp in vparts:
+        print(vp)
+
 main()

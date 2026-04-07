@@ -31,6 +31,17 @@ void main() {
     std::span<const uint8_t> only_ws = ::tpy::bytes_literal("\x20\x20\x20", 3);
     // print(only_ws.strip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip(only_ws)) << "\n";
+    // # BytesView (from slice) -- strip/lstrip/rstrip return views
+    // bv_data: bytes = b"  hi  "
+    std::span<const uint8_t> bv_data = ::tpy::bytes_literal("\x20\x20\x68\x69\x20\x20", 6);
+    // v = bv_data[0:6]
+    std::span<const uint8_t> v = ::tpy::bytes_slice(bv_data, ::tpy::BasicSlice{0, 6});
+    // print(len(v.strip()))
+    std::cout << ::tpy::__len__(::tpy::bytes_strip_view(v)) << "\n";
+    // print(len(v.lstrip()))
+    std::cout << ::tpy::__len__(::tpy::bytes_lstrip_view(v)) << "\n";
+    // print(len(v.rstrip()))
+    std::cout << ::tpy::__len__(::tpy::bytes_rstrip_view(v)) << "\n";
 }
 
 void __tpy_init() {
