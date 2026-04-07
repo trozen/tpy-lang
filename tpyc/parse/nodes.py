@@ -440,6 +440,7 @@ class TpySubscript(TpyExpr):
     is_stepped_slice: bool = False  # Set by sema: slice has step (a[::2])
     slice_function_info: 'FunctionInfo | None' = None  # Set by sema: resolved __getitem__ for slice
     typed_dict_field: str | None = None  # Set by sema: d["key"] on TypedDict -> field access
+    typed_dict_optional: bool = False  # Set by sema: total=False field, needs runtime check
 
     def children(self) -> list[TpyExpr]:
         return [self.obj, self.index]
@@ -1045,6 +1046,7 @@ class TpyRecord:
     is_nocopy: bool = False
     is_frozen: bool = False
     is_typed_dict: bool = False
+    is_total_false: bool = False  # TypedDict(total=False): all fields Optional
     builtin_type_key: str | None = None
     pending_macros: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
     loc: SourceLocation | None = None

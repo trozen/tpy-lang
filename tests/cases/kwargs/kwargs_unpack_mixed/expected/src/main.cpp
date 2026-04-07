@@ -16,18 +16,14 @@ void connect(std::string_view host, const Options& kwargs) {
 
 // def main() -> None:
 void main() {
-    // # host positional, override one kwarg default
-    // connect("localhost", port=Int32(9090))
-    Options __tmp_1 = Options(9090);
+    // # host positional, kwargs explicit
+    // connect("localhost", port=Int32(9090), debug=False)
+    Options __tmp_1 = Options(9090, false);
     connect("localhost", __tmp_1);
     // # host as keyword alongside kwargs
     // connect(host="example.com", port=Int32(443), debug=True)
     Options __tmp_2 = Options(443, true);
     connect("example.com", __tmp_2);
-    // # all kwargs defaults, only host provided
-    // connect("127.0.0.1")
-    Options __tmp_3 = Options();
-    connect("127.0.0.1", __tmp_3);
 }
 
 void __tpy_init() {

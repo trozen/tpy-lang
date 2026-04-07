@@ -262,12 +262,15 @@ def resolve_kwargs_init_params(
     func_name: str,
     error_fn,
     call_loc: 'SourceLocation | None' = None,
+    keyword_only: bool = False,
 ) -> list[TpyExpr]:
     """Resolve keyword arguments for record constructors using init_params format.
 
     Adapts init_params tuples to ParamInfo and delegates to resolve_kwargs.
+    keyword_only=True marks all params as keyword-only (used for **kwargs TD packing).
     """
-    params = [ParamInfo(name, ptype, default_expr=default) for name, ptype, default in init_params]
+    params = [ParamInfo(name, ptype, default_expr=default, keyword_only=keyword_only)
+              for name, ptype, default in init_params]
     return resolve_kwargs(expr_args, expr_kwargs, params, func_name, error_fn, call_loc=call_loc)
 
 
@@ -534,7 +537,9 @@ class CallAnalyzer:
                 f"**kwargs type '{td_type.name}' is not a TypedDict", expr)
 
         # Split kwargs: regular param kwargs stay for _resolve_call_kwargs,
-        # remaining kwargs go to the TD constructor (which validates them)
+        # remaining kwargs go to the TD constructor.
+        # Unlike direct TypedDict construction, kwargs context honors field defaults
+        # (fields with defaults become optional keyword params).
         regular_param_names = {p.name for p in func.params if p.name != func.kwarg_name}
         td_kwargs = {}
         remaining_kwargs = {}
@@ -543,10 +548,7 @@ class CallAnalyzer:
                 remaining_kwargs[k] = v
             else:
                 td_kwargs[k] = v
-        td_call = TpyCall(TpyName(td_type.name, loc=expr.loc), [],
-                          kwargs=td_kwargs, loc=expr.loc)
-        td_call_type = self._analyze_record_constructor(td_call, record)
-        self.ctx.set_expr_type(td_call, td_call_type)
+        td_call = self._build_td_call(record, td_kwargs, f"{func.name}()", expr)
         expr.kwarg_td_call = td_call
         expr.kwargs = remaining_kwargs
 
@@ -573,12 +575,35 @@ class CallAnalyzer:
         record = self.ctx.registry.get_record(td_type.name)
         if record is None:
             raise self.ctx.error(f"**kwargs type '{td_type.name}' is not a TypedDict", expr)
-        td_call = TpyCall(TpyName(td_type.name, loc=expr.loc), [],
-                          kwargs=dict(expr.kwargs), loc=expr.loc)
-        td_call_type = self._analyze_record_constructor(td_call, record)
-        self.ctx.set_expr_type(td_call, td_call_type)
+        td_call = self._build_td_call(record, dict(expr.kwargs), f"{expr.method}()", expr)
         expr.args.append(td_call)
         expr.kwargs = {}
+
+    def _build_td_call(self, record: RecordInfo, td_kwargs: dict, func_name: str, expr) -> TpyCall:
+        """Build a TypedDict constructor call from kwargs, with type-checking."""
+        init_params = [
+            (fld.name, fld.type, fld.default_expr) for fld in record.fields
+        ]
+        td_args = resolve_kwargs_init_params(
+            [], td_kwargs, init_params, func_name,
+            lambda msg: self.ctx.error(msg, expr),
+            call_loc=expr.loc, keyword_only=True,
+        )
+        # Pad trailing fields that have defaults (resolve_kwargs stops at rightmost)
+        for fld in record.fields[len(td_args):]:
+            if fld.default_expr is not None:
+                td_args.append(dc_replace(fld.default_expr, loc=expr.loc))
+            else:
+                raise self.ctx.error(
+                    f"'{func_name}' missing required keyword argument: '{fld.name}'", expr)
+        td_call = TpyCall(TpyName(record.name, loc=expr.loc), td_args, loc=expr.loc)
+        for i, (arg, fld) in enumerate(zip(td_args, record.fields)):
+            arg_type = self.expr.analyze_expr_with_hint(arg, fld.type)
+            td_call.args[i] = self.compat.coerce_expr(
+                arg, arg_type, fld.type, f"argument '{fld.name}'",
+                coercion_ctx=CoercionContext.ARG)
+        self.ctx.set_expr_type(td_call, NamedType(record.name))
+        return td_call
 
     def _resolve_inferred_type_arg(self, t: TpyType) -> TpyType:
         """Resolve literal types in inferred type args before codegen."""

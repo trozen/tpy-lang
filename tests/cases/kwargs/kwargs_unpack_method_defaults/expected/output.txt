@@ -1,6 +1,0 @@
-MyServer
-localhost
-8080
-MyServer
-localhost
-9090

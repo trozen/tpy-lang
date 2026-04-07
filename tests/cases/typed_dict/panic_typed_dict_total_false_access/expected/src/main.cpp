@@ -6,12 +6,10 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // s = Server(name="MyServer")
-    Server s = Server("MyServer");
-    // s.start()
-    s.start(Config());
-    // s.start(port=Int32(9090))
-    s.start(Config("localhost", 9090));
+    // partial = Info(name="Alice")
+    Info partial = Info("Alice");
+    // print(partial["age"])  # panics -- age is None
+    std::cout << partial.age.value() << "\n";
 }
 
 void __tpy_init() {

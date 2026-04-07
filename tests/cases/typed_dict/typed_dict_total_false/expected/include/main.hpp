@@ -8,24 +8,23 @@
 
 namespace tpyapp::main {
 
-struct Options;
+struct Info;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void connect(std::string_view host, const Options& kwargs);
 void main();
 
-// class Options(TypedDict):
-struct Options {
-    // port: Int32
-    int32_t port;
-    // debug: bool
-    bool debug;
+// class Info(TypedDict, total=False):
+struct Info {
+    // name: str
+    std::optional<std::string> name = std::nullopt;
+    // age: Int32
+    std::optional<int32_t> age = std::nullopt;
 
 };
 
-inline std::ostream& operator<<(std::ostream& os, const Options& obj) {
-    ::tpy::print_object_default(os, "Options", obj);
+inline std::ostream& operator<<(std::ostream& os, const Info& obj) {
+    ::tpy::print_object_default(os, "Info", obj);
     return os;
 }
 

@@ -2368,6 +2368,10 @@ class ExpressionAnalyzer:
                         if type_subst:
                             field_type = self.type_ops.substitute_type_params(field_type, type_subst)
                         expr.typed_dict_field = key
+                        # total=False: field is Optional[T], unwrap to T with runtime check
+                        if isinstance(field_type, OptionalType):
+                            expr.typed_dict_optional = True
+                            field_type = field_type.inner
                         # Analyze the index expression so its type is recorded
                         self.analyze_expr(expr.index)
                         return make_ref(field_type)

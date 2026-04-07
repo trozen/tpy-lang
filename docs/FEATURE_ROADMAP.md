@@ -2447,14 +2447,14 @@ class Partial(TypedDict, total=False):
     age: Int32      # Optional
 ```
 
-**Current state**: Basic form done. `class Foo(TypedDict):` defines a struct with
-string-literal subscript access (`d["key"]` -> `d.key`). Construction via kwargs,
-field defaults, mutation via subscript assignment. No methods, no type parameters,
-no `total=False`, no dict-like API (`.keys()`, `.items()`), no dict literal construction.
+**Current state**: Done. `class Foo(TypedDict):` with string-literal subscript,
+keyword-only construction, `total=False` for optional fields (maps to `Optional[T]`,
+`d["key"]` panics on absent), `**kwargs: Unpack[TD]` for typed variadic keywords.
+Field `= default` values are ignored with a warning (matches CPython runtime).
 
 **Not yet supported**:
-- `total=False` / `NotRequired[]` (PEP 655)
-- Dict-like API (`.keys()`, `.values()`, `.items()`, `.get()`, `in`)
+- Per-field `NotRequired[]` / `Required[]` (PEP 655)
+- Dict-like API (`.keys()`, `.values()`, `.items()`, `.get()`, `"key" in td`)
 - Dict literal construction (`{"name": "Alice"}` as TypedDict)
 - Type parameters on TypedDict
 - TypedDict inheritance

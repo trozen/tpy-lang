@@ -13,16 +13,15 @@ struct Config;
 inline constexpr std::string_view __name__ = "__main__";
 
 void start(const Config& kwargs);
+void start_safe(const Config& kwargs);
 void main();
 
-// class Config(TypedDict):
+// class Config(TypedDict, total=False):
 struct Config {
-    // host: str = "localhost"
-    std::string host = "localhost";
-    // port: Int32 = Int32(8080)
-    int32_t port = 8080;
-    // debug: bool = False
-    bool debug = false;
+    // host: str
+    std::optional<std::string> host = std::nullopt;
+    // port: Int32
+    std::optional<int32_t> port = std::nullopt;
 
 };
 

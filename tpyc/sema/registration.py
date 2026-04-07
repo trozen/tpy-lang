@@ -18,12 +18,13 @@ from ..typesys import (
     attach_type_param_bounds,
     has_auto_readonly, has_auto_own,
     qualify_exception_name, ensure_qualified,
-    FnType, contains_fn_type,
+    FnType, contains_fn_type, OptionalType,
     public_module_name,
 )
 from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
     TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn, TpyMethodCall, TpyCall, TpyExprStmt,
+    TpyNoneLiteral,
 )
 from ..namespace import NameBinding, BindingKind
 from .diagnostics import SemanticError
@@ -328,10 +329,19 @@ class TypeRegistrar:
             for fld in record.fields:
                 init_params.append((fld.name, fld.type, fld.default_value))
         elif record.is_typed_dict and record.fields:
-            # TypedDict: synthesize init_params from fields (all keyword-constructible).
-            # Uses default_expr (TpyExpr) so kwargs resolution can clone them with dc_replace.
+            # total=False: wrap all field types in Optional, set None as default
+            if record.is_total_false:
+                for fld in record.fields:
+                    if not isinstance(fld.type, OptionalType):
+                        fld.type = OptionalType(fld.type)
+                    if fld.default_expr is None:
+                        fld.default_expr = TpyNoneLiteral(loc=fld.loc)
+                        fld.default_value = "std::nullopt"
+            # Synthesize init_params from fields (all keyword-constructible).
+            # total=True: all required (no defaults). total=False: Optional with None default.
             for fld in record.fields:
-                init_params.append((fld.name, fld.type, fld.default_expr))
+                default = fld.default_expr if record.is_total_false else None
+                init_params.append((fld.name, fld.type, default))
 
         # Build the Self type for this record (used to substitute SelfType in methods)
         record_self_type = build_record_self_type(record)

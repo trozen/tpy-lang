@@ -1,0 +1,1 @@
+main.py:10: error: 'Info()' expects 2 argument(s), got 1

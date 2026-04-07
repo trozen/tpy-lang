@@ -6,24 +6,15 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # Use all defaults
-    // c1 = Config()
-    Config c1 = Config();
-    // print(c1["host"])
-    std::cout << c1.host << "\n";
-    // print(c1["port"])
-    std::cout << c1.port << "\n";
-    // print(c1["debug"])
-    std::cout << ::tpy::print_bool(c1.debug) << "\n";
-    // # Override some fields
-    // c2 = Config(port=Int32(9090), debug=True)
-    Config c2 = Config("localhost", 9090, true);
-    // print(c2["host"])
-    std::cout << c2.host << "\n";
-    // print(c2["port"])
-    std::cout << c2.port << "\n";
-    // print(c2["debug"])
-    std::cout << ::tpy::print_bool(c2.debug) << "\n";
+    // # All fields must be provided at direct construction
+    // c = Config(host="example.com", port=Int32(9090), debug=True)
+    Config c = Config("example.com", 9090, true);
+    // print(c["host"])
+    std::cout << c.host << "\n";
+    // print(c["port"])
+    std::cout << c.port << "\n";
+    // print(c["debug"])
+    std::cout << ::tpy::print_bool(c.debug) << "\n";
 }
 
 void __tpy_init() {

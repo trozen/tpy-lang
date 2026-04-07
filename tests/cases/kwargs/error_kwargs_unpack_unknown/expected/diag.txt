@@ -1,1 +1,1 @@
-main.py:13: error: 'Options()' got unexpected keyword argument 'timeout'
+main.py:13: error: 'connect()' got unexpected keyword argument 'timeout'

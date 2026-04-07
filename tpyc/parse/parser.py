@@ -1140,6 +1140,7 @@ class Parser:
 
         # Check if this is a TypedDict definition
         is_typed_dict = bool(node.bases) and any(self._is_typed_dict_base(base) for base in node.bases)
+        is_total_false = False
         if is_typed_dict:
             non_td_bases = [b for b in node.bases if not self._is_typed_dict_base(b)]
             if non_td_bases:
@@ -1148,6 +1149,26 @@ class Parser:
                 raise ParseError("Decorators are not supported on TypedDict", node)
             if hasattr(node, 'type_params') and node.type_params:
                 raise ParseError("Type parameters are not supported on TypedDict", node)
+            # Parse total=False keyword
+            for kw in node.keywords:
+                if kw.arg == "total":
+                    if isinstance(kw.value, ast.Constant) and kw.value.value is False:
+                        is_total_false = True
+                    elif isinstance(kw.value, ast.Constant) and kw.value.value is True:
+                        pass  # total=True is the default
+                    else:
+                        raise ParseError("total must be True or False", node)
+                else:
+                    self._warnings.append(ParseWarning(
+                        f"Unknown class keyword argument '{kw.arg}' on TypedDict",
+                        self._loc(node)))
+
+        # Warn on class keyword arguments for non-TypedDict classes
+        if not is_typed_dict and node.keywords:
+            for kw in node.keywords:
+                self._warnings.append(ParseWarning(
+                    f"Class keyword argument '{kw.arg}' is not supported",
+                    self._loc(node)))
 
         # Parse record decorators (@native, @native_c, @nocopy, macro decorators)
         linkage = RecordLinkage.DEFAULT
@@ -1239,6 +1260,13 @@ class Parser:
                         self._resolve_call_import(default_expr, item.value)
                     default_val = self._get_default_value(item.value)
                 fields.append(FieldInfo(field_name, field_type, default_val, default_expr=default_expr, loc=self._loc(item)))
+                if is_typed_dict and default_expr is not None:
+                    self._warnings.append(ParseWarning(
+                        f"TypedDict field '{field_name}' has a default value which is "
+                        f"ignored by CPython at runtime; consider using total=False "
+                        f"for optional fields",
+                        self._loc(item),
+                    ))
             elif isinstance(item, ast.Assign):
                 # Field with inferred type: name = Int32(0)
                 if len(item.targets) != 1 or not isinstance(item.targets[0], ast.Name):
@@ -1310,7 +1338,7 @@ class Parser:
 
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, pending_macros=pending_macros, is_typed_dict=is_typed_dict, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, pending_macros=pending_macros, is_typed_dict=is_typed_dict, is_total_false=is_total_false, loc=self._loc(node))
 
     def _auto_declare_fields_from_init(
         self,

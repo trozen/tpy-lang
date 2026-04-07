@@ -17,7 +17,7 @@ from ..typesys import (
     SpanType, SpanIterType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     EnumType, IntEnumType, TupleType, FnType, CallableType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, is_any_bytes_type, container_to_str_template,
-    ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType,
+    ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -2015,6 +2015,9 @@ class ExpressionGenerator:
         if record_info := self.ctx.analyzer.registry.get_record(expr.func_name):
             init_info = record_info.get_method("__init__")
             init_params = init_info.params if init_info else []
+            # TypedDict/native records without __init__: use init_params for type hints
+            if not init_params and record_info.init_params:
+                init_params = [ParamInfo(n, t) for n, t, _ in record_info.init_params]
             gen_args = []
             for i, a in enumerate(expr.args):
                 ptype = init_params[i].type if i < len(init_params) else None
@@ -3371,6 +3374,9 @@ class ExpressionGenerator:
                 expr.obj, obj, self.ctx.is_indirect_name(expr.obj))
             subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
             cpp_field = escape_cpp_name(expr.typed_dict_field)
+            if expr.typed_dict_optional:
+                # total=False field: unwrap std::optional with runtime check
+                return f"{subscript_obj}.{cpp_field}.value()"
             return f"{subscript_obj}.{cpp_field}"
 
         obj = self.gen_expr(expr.obj)

@@ -1,0 +1,3 @@
+main.py:6: warning: TypedDict field 'host' has a default value which is ignored by CPython at runtime; consider using total=False for optional fields
+main.py:7: warning: TypedDict field 'port' has a default value which is ignored by CPython at runtime; consider using total=False for optional fields
+main.py:8: warning: TypedDict field 'debug' has a default value which is ignored by CPython at runtime; consider using total=False for optional fields

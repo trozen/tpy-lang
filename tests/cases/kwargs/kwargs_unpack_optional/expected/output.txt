@@ -1,0 +1,4 @@
+localhost
+8080
+started
+started

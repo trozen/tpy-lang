@@ -1,6 +1,3 @@
-localhost
-8080
-False
-localhost
+example.com
 9090
 True

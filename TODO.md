@@ -15,7 +15,8 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Cleanup
 - Native records without `__init__` silently get a positional constructor synthesized from field order. This is fragile -- reordering fields in the `.py` stub breaks callers with no error. Should require an explicit `__init__` stub instead (like non-native records).
-- TypedDict defaults diverge from CPython: `TD()` fills defaults (struct semantics) but CPython creates `{}`. Same issue for `**kwargs` with all-default fields. Consider requiring all fields at construction (matching CPython runtime), with defaults only honored via `Unpack` in `**kwargs` context. Also add `td.get("key", default)` for CPython-compatible access patterns.
+- TypedDict per-field `NotRequired[]` / `Required[]` (PEP 655) for finer control than `total=False`.
+- TypedDict `td.get("key", default)` and `"key" in td` for CPython-compatible access patterns on `total=False` fields.
 
 ## Bugs
 - `@auto_readonly` overload validation rejects `basic_slice` in generic classes: `@overload __getitem__(self, index: basic_slice)` on a generic class like `ArrayList[T, N: int]` triggers "readonly[basic_slice] which is not in the implementation's union type". The const variant wraps the param in `readonly[basic_slice]` but the validator checks it against the mutable implementation's union. Works fine with `slice` and in non-generic classes. Blocks ArrayList from using `basic_slice` overload.
