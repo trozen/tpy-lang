@@ -28,7 +28,7 @@ void main() {
     // bw = open_binary(bpath, "wb")
     ::tpy::BinaryFile bw = ::tpy::builtin_open_binary(bpath, "wb");
     // bw.write(b"\x01\x02\x03")
-    bw.write(std::vector<uint8_t>{0x01, 0x02, 0x03});
+    bw.write(::tpy::bytes_literal("\x01\x02\x03", 3));
     // bw.close()
     bw.close();
     // # open_binary with default mode (rb)

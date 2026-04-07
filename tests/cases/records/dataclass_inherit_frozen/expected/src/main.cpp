@@ -16,9 +16,9 @@ void main() {
     std::cout << v.z << "\n";
     // # Equality with all fields
     // print(v == Vec3(1, 2, 3))
-    std::cout << ::tpy::print_bool((v == Vec3(1, 2, 3))) << "\n";
+    std::cout << ::tpy::print_bool(((v) == (Vec3(1, 2, 3)))) << "\n";
     // print(v == Vec3(1, 2, 4))
-    std::cout << ::tpy::print_bool((v == Vec3(1, 2, 4))) << "\n";
+    std::cout << ::tpy::print_bool(((v) == (Vec3(1, 2, 4)))) << "\n";
     // # Hash works (frozen)
     // d: dict[Vec3, str] = {v: "a"}
     ::tpy::ordered_map<Vec3, std::string> d = ::tpy::ordered_map<Vec3, std::string>({{v, "a"}});

@@ -24,6 +24,12 @@ namespace tpy {
 using Bytes = std::vector<uint8_t>;
 using BytesView = std::span<const uint8_t>;
 
+// -- Static bytes literal ---------------------------------------------------
+
+inline BytesView bytes_literal(const char* data, size_t n) {
+    return {reinterpret_cast<const uint8_t*>(data), n};
+}
+
 // -- Printing: b'hello\x00' ------------------------------------------------
 
 namespace detail {

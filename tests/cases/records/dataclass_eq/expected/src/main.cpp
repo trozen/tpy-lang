@@ -8,9 +8,9 @@ namespace tpyapp::main {
 void main() {
     // # Single field
     // print(Id(1) == Id(1))
-    std::cout << ::tpy::print_bool((Id(1) == Id(1))) << "\n";
+    std::cout << ::tpy::print_bool(((Id(1)) == (Id(1)))) << "\n";
     // print(Id(1) == Id(2))
-    std::cout << ::tpy::print_bool((Id(1) == Id(2))) << "\n";
+    std::cout << ::tpy::print_bool(((Id(1)) == (Id(2)))) << "\n";
     // p1 = Point(1, 2)
     Point p1 = Point(1, 2);
     // p2 = Point(1, 2)
@@ -18,9 +18,9 @@ void main() {
     // p3 = Point(1, 3)
     Point p3 = Point(1, 3);
     // print(p1 == p2)
-    std::cout << ::tpy::print_bool((p1 == p2)) << "\n";
+    std::cout << ::tpy::print_bool(((p1) == (p2))) << "\n";
     // print(p1 == p3)
-    std::cout << ::tpy::print_bool((p1 == p3)) << "\n";
+    std::cout << ::tpy::print_bool(((p1) == (p3))) << "\n";
     // print(p1 != p3)
     std::cout << ::tpy::print_bool((p1 != p3)) << "\n";
     // c1 = Config("a", 1)
@@ -30,9 +30,9 @@ void main() {
     // c3 = Config("a", 1, "x")
     Config c3 = Config("a", 1, "x");
     // print(c1 == c2)
-    std::cout << ::tpy::print_bool((c1 == c2)) << "\n";
+    std::cout << ::tpy::print_bool(((c1) == (c2))) << "\n";
     // print(c1 == c3)
-    std::cout << ::tpy::print_bool((c1 == c3)) << "\n";
+    std::cout << ::tpy::print_bool(((c1) == (c3))) << "\n";
 }
 
 void __tpy_init() {

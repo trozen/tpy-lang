@@ -8,29 +8,29 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // data = b"hello world"
-    std::vector<uint8_t> data = std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x77, 0x6f, 0x72, 0x6c, 0x64};
+    std::span<const uint8_t> data = ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f\x20\x77\x6f\x72\x6c\x64", 11);
     // print(data.hex())
     std::cout << ::tpy::bytes_hex(data) << "\n";
     // print(data.find(b"world"))
-    std::cout << ::tpy::bytes_find(data, std::vector<uint8_t>{0x77, 0x6f, 0x72, 0x6c, 0x64}) << "\n";
+    std::cout << ::tpy::bytes_find(data, ::tpy::bytes_literal("\x77\x6f\x72\x6c\x64", 5)) << "\n";
     // print(data.find(b"xyz"))
-    std::cout << ::tpy::bytes_find(data, std::vector<uint8_t>{0x78, 0x79, 0x7a}) << "\n";
+    std::cout << ::tpy::bytes_find(data, ::tpy::bytes_literal("\x78\x79\x7a", 3)) << "\n";
     // print(data.rfind(b"l"))
-    std::cout << ::tpy::bytes_rfind(data, std::vector<uint8_t>{0x6c}) << "\n";
+    std::cout << ::tpy::bytes_rfind(data, ::tpy::bytes_literal("\x6c", 1)) << "\n";
     // print(data.count(b"l"))
-    std::cout << ::tpy::bytes_count(data, std::vector<uint8_t>{0x6c}) << "\n";
+    std::cout << ::tpy::bytes_count(data, ::tpy::bytes_literal("\x6c", 1)) << "\n";
     // print(data.startswith(b"hello"))
-    std::cout << ::tpy::print_bool(::tpy::bytes_startswith(data, std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f})) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::bytes_startswith(data, ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5))) << "\n";
     // print(data.endswith(b"world"))
-    std::cout << ::tpy::print_bool(::tpy::bytes_endswith(data, std::vector<uint8_t>{0x77, 0x6f, 0x72, 0x6c, 0x64})) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::bytes_endswith(data, ::tpy::bytes_literal("\x77\x6f\x72\x6c\x64", 5))) << "\n";
     // print(data.startswith(b"world"))
-    std::cout << ::tpy::print_bool(::tpy::bytes_startswith(data, std::vector<uint8_t>{0x77, 0x6f, 0x72, 0x6c, 0x64})) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::bytes_startswith(data, ::tpy::bytes_literal("\x77\x6f\x72\x6c\x64", 5))) << "\n";
     // replaced = data.replace(b"world", b"bytes")
-    std::vector<uint8_t> replaced = ::tpy::bytes_replace(data, std::vector<uint8_t>{0x77, 0x6f, 0x72, 0x6c, 0x64}, std::vector<uint8_t>{0x62, 0x79, 0x74, 0x65, 0x73});
+    std::vector<uint8_t> replaced = ::tpy::bytes_replace(data, ::tpy::bytes_literal("\x77\x6f\x72\x6c\x64", 5), ::tpy::bytes_literal("\x62\x79\x74\x65\x73", 5));
     // print(replaced)
     std::cout << ::tpy::BytesPrinter(replaced) << "\n";
     // parts = b"a,b,c".split(b",")
-    std::vector<std::vector<uint8_t>> parts = ::tpy::bytes_split(std::vector<uint8_t>{0x61, 0x2c, 0x62, 0x2c, 0x63}, std::vector<uint8_t>{0x2c});
+    std::vector<std::vector<uint8_t>> parts = ::tpy::bytes_split(std::vector<uint8_t>{0x61, 0x2c, 0x62, 0x2c, 0x63}, ::tpy::bytes_literal("\x2c", 1));
     // for p in parts:
     auto& __obj_0 = parts;
     auto __beg_0 = __obj_0.begin();

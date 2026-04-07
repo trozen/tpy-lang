@@ -37,9 +37,9 @@ void test_eq() {
     // c = Point(3, 4)
     Point c = Point(3, 4);
     // print(a == b)
-    std::cout << ::tpy::print_bool((a == b)) << "\n";
+    std::cout << ::tpy::print_bool(((a) == (b))) << "\n";
     // print(a == c)
-    std::cout << ::tpy::print_bool((a == c)) << "\n";
+    std::cout << ::tpy::print_bool(((a) == (c))) << "\n";
 }
 
 // def test_describe() -> None:

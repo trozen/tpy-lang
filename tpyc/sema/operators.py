@@ -37,6 +37,13 @@ DUNDER_CPP_TEMPLATES: dict[str, str] = {
     "__and__": "({self}) & ({0})",
     "__or__": "({self}) | ({0})",
     "__xor__": "({self}) ^ ({0})",
+    # Comparison operators
+    "__eq__": "({self}) == ({0})",
+    "__ne__": "({self}) != ({0})",
+    "__lt__": "({self}) < ({0})",
+    "__le__": "({self}) <= ({0})",
+    "__gt__": "({self}) > ({0})",
+    "__ge__": "({self}) >= ({0})",
     # Reverse operators
     "__radd__": "({0}) + ({self})",
     "__rsub__": "({0}) - ({self})",

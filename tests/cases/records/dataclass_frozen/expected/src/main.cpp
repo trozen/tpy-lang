@@ -13,9 +13,9 @@ void main() {
     // print(p.x, p.y)
     std::cout << p.x << " " << p.y << "\n";
     // print(p == Point(1, 2))
-    std::cout << ::tpy::print_bool((p == Point(1, 2))) << "\n";
+    std::cout << ::tpy::print_bool(((p) == (Point(1, 2)))) << "\n";
     // print(p == Point(3, 4))
-    std::cout << ::tpy::print_bool((p == Point(3, 4))) << "\n";
+    std::cout << ::tpy::print_bool(((p) == (Point(3, 4)))) << "\n";
     // c = Config("test", 42)
     Config c = Config("test", 42);
     // print(c)

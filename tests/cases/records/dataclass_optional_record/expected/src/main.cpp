@@ -19,11 +19,11 @@ void main() {
     // print(o3)
     std::cout << o3 << "\n";
     // print(o1 == o2)
-    std::cout << ::tpy::print_bool((o1 == o2)) << "\n";
+    std::cout << ::tpy::print_bool(((o1) == (o2))) << "\n";
     // print(o2 == o3)
-    std::cout << ::tpy::print_bool((o2 == o3)) << "\n";
+    std::cout << ::tpy::print_bool(((o2) == (o3))) << "\n";
     // print(o1 == Outer("a", Inner(42)))
-    std::cout << ::tpy::print_bool((o1 == Outer("a", Inner(42)))) << "\n";
+    std::cout << ::tpy::print_bool(((o1) == (Outer("a", Inner(42))))) << "\n";
 }
 
 void __tpy_init() {

@@ -17,16 +17,16 @@ void main() {
     // print(c.z)
     std::cout << c.z << "\n";
     // print(c == C(1, 2, 3))
-    std::cout << ::tpy::print_bool((c == C(1, 2, 3))) << "\n";
+    std::cout << ::tpy::print_bool(((c) == (C(1, 2, 3)))) << "\n";
     // print(c == C(1, 2, 4))
-    std::cout << ::tpy::print_bool((c == C(1, 2, 4))) << "\n";
+    std::cout << ::tpy::print_bool(((c) == (C(1, 2, 4)))) << "\n";
     // # Intermediate works
     // b = B(10, 20)
     B b = B(10, 20);
     // print(b)
     std::cout << b << "\n";
     // print(b == B(10, 20))
-    std::cout << ::tpy::print_bool((b == B(10, 20))) << "\n";
+    std::cout << ::tpy::print_bool(((b) == (B(10, 20)))) << "\n";
 }
 
 void __tpy_init() {

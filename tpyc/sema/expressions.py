@@ -844,6 +844,15 @@ class ExpressionAnalyzer:
         if expr.op in ("==", "!=", "<", ">", "<=", ">="):
             # Validate that user record types support the comparison
             self._validate_comparison(expr, left_effective, right_effective)
+            # Resolve comparison method (__eq__, __lt__, etc.) for codegen.
+            if result := self.operators.resolve_binop(left_effective, expr.op, right_effective):
+                expr.resolved_binop = result
+            elif expr.op == "!=":
+                # No __ne__: fall back to negated __eq__ when the method
+                # can't use raw C++ != (e.g. native freestanding function).
+                if result := self.operators.resolve_binop(left_effective, "==", right_effective):
+                    if result.method.native_function:
+                        expr.resolved_binop = result
             return BOOL
 
         # Membership operators (in, not in) return Bool

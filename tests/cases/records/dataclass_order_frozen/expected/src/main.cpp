@@ -14,14 +14,14 @@ void main() {
     Version v3 = Version(1, 1, 0);
     // # Ordering
     // print(v1 < v2)
-    std::cout << ::tpy::print_bool((v1 < v2)) << "\n";
+    std::cout << ::tpy::print_bool(((v1) < (v2))) << "\n";
     // print(v1 < v3)
-    std::cout << ::tpy::print_bool((v1 < v3)) << "\n";
+    std::cout << ::tpy::print_bool(((v1) < (v3))) << "\n";
     // print(v2 > v3)
-    std::cout << ::tpy::print_bool((v2 > v3)) << "\n";
+    std::cout << ::tpy::print_bool(((v2) > (v3))) << "\n";
     // # Equality
     // print(v1 == Version(1, 0, 0))
-    std::cout << ::tpy::print_bool((v1 == Version(1, 0, 0))) << "\n";
+    std::cout << ::tpy::print_bool(((v1) == (Version(1, 0, 0)))) << "\n";
     // print(v1 != v2)
     std::cout << ::tpy::print_bool((v1 != v2)) << "\n";
     // # Hash (from frozen) -- usable as dict key

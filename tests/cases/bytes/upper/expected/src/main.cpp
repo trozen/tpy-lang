@@ -17,7 +17,7 @@ void main() {
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(std::vector<uint8_t>{0x31, 0x32, 0x33, 0x61, 0x62, 0x63})) << "\n";
     // # bytearray too
     // ba = bytearray(b"mixed Case")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(std::vector<uint8_t>{0x6d, 0x69, 0x78, 0x65, 0x64, 0x20, 0x43, 0x61, 0x73, 0x65});
+    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("\x6d\x69\x78\x65\x64\x20\x43\x61\x73\x65", 10));
     // print(ba.upper())             # bytearray(b'MIXED CASE')
     std::cout << ::tpy::ByteArrayPrinter(::tpy::bytes_upper(ba)) << "\n";
 }

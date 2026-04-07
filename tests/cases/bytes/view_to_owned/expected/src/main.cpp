@@ -28,10 +28,10 @@ void augassign(std::span<const uint8_t> data) {
     std::cout << ::tpy::BytesPrinter(b) << "\n";
 }
 
-// def literal_copy() -> None:
-void literal_copy() {
-    // b = b"hello"     # literal -> owned (not view-safe)
-    std::vector<uint8_t> b = std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f};
+// def literal_view() -> None:
+void literal_view() {
+    // b = b"hello"     # literal -> view (static storage)
+    std::span<const uint8_t> b = ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5);
     // print(b)
     std::cout << ::tpy::BytesPrinter(b) << "\n";
 }
@@ -39,11 +39,11 @@ void literal_copy() {
 // def main() -> None:
 void main() {
     // process(b"hello")
-    process(std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f});
+    process(::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5));
     // augassign(b"world")
-    augassign(std::vector<uint8_t>{0x77, 0x6f, 0x72, 0x6c, 0x64});
-    // literal_copy()
-    literal_copy();
+    augassign(::tpy::bytes_literal("\x77\x6f\x72\x6c\x64", 5));
+    // literal_view()
+    literal_view();
 }
 
 void __tpy_init() {

@@ -29,7 +29,7 @@ Vec negate_param(const Vec& v) {
 bool compare_params(const Vec& a, const Vec& b) {
     // # Ref[Vec] == Ref[Vec]
     // return a == b
-    return (a == b);
+    return ((a) == (b));
 }
 
 // def test_field_ops() -> None:

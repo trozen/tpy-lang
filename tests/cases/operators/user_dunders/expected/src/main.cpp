@@ -109,9 +109,9 @@ void test_eq() {
     // c = Vec2(Int32(3), Int32(4))
     Vec2 c = Vec2(3, 4);
     // print(a == b)
-    std::cout << ::tpy::print_bool((a == b)) << "\n";
+    std::cout << ::tpy::print_bool(((a) == (b))) << "\n";
     // print(a == c)
-    std::cout << ::tpy::print_bool((a == c)) << "\n";
+    std::cout << ::tpy::print_bool(((a) == (c))) << "\n";
     // print(a != c)
     std::cout << ::tpy::print_bool((a != c)) << "\n";
 }
@@ -125,9 +125,9 @@ void test_explicit_ne() {
     // c = Tag(Int32(2))
     Tag c = Tag(2);
     // print(a != b)
-    std::cout << ::tpy::print_bool((a != b)) << "\n";
+    std::cout << ::tpy::print_bool(((a) != (b))) << "\n";
     // print(a != c)
-    std::cout << ::tpy::print_bool((a != c)) << "\n";
+    std::cout << ::tpy::print_bool(((a) != (c))) << "\n";
 }
 
 // def test_inherited_eq() -> None:
@@ -153,17 +153,17 @@ void test_comparisons() {
     // c = Score(Int32(10))
     Score c = Score(10);
     // print(a < b)
-    std::cout << ::tpy::print_bool((a < b)) << "\n";
+    std::cout << ::tpy::print_bool(((a) < (b))) << "\n";
     // print(a > b)
-    std::cout << ::tpy::print_bool((a > b)) << "\n";
+    std::cout << ::tpy::print_bool(((a) > (b))) << "\n";
     // print(a <= c)
-    std::cout << ::tpy::print_bool((a <= c)) << "\n";
+    std::cout << ::tpy::print_bool(((a) <= (c))) << "\n";
     // print(a >= c)
-    std::cout << ::tpy::print_bool((a >= c)) << "\n";
+    std::cout << ::tpy::print_bool(((a) >= (c))) << "\n";
     // print(b > a)
-    std::cout << ::tpy::print_bool((b > a)) << "\n";
+    std::cout << ::tpy::print_bool(((b) > (a))) << "\n";
     // print(b <= a)
-    std::cout << ::tpy::print_bool((b <= a)) << "\n";
+    std::cout << ::tpy::print_bool(((b) <= (a))) << "\n";
 }
 
 // def test_invert() -> None:

@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // data: bytes = b"abcdef"
-    std::vector<uint8_t> data = std::vector<uint8_t>{0x61, 0x62, 0x63, 0x64, 0x65, 0x66};
+    std::span<const uint8_t> data = ::tpy::bytes_literal("\x61\x62\x63\x64\x65\x66", 6);
     // # Every other byte
     // print(data[::2])
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_stepped_slice(data, ::tpy::Slice{std::nullopt, std::nullopt, 2})) << "\n";

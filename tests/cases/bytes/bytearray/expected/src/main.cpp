@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // ba = bytearray(b"\x01\x02\x03")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(std::vector<uint8_t>{0x01, 0x02, 0x03});
+    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("\x01\x02\x03", 3));
     // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
     // print(len(ba))

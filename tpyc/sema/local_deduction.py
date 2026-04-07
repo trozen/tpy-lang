@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from ..coercions import CoercionContext
 from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction, TpyListRepeat
-from ..parse.nodes import TpyStrLiteral, TpySubscript, TpyFieldAccess, TpyBinOp, TpyIfExpr
+from ..parse.nodes import TpyStrLiteral, TpyBytesLiteral, TpySubscript, TpyFieldAccess, TpyBinOp, TpyIfExpr
 from ..typesys import (
     ArrayType,
     BigIntType,
@@ -759,9 +759,10 @@ class LocalTypeDeduction:
         if isinstance(init_expr, TpyCoerce):
             init_expr = init_expr.expr
 
-        # String literal -> static lifetime, always view-safe
-        # (bytes literals are NOT -- they're temporary vectors)
-        if isinstance(init_expr, TpyStrLiteral):
+        # String/bytes literal -> static lifetime, always view-safe.
+        # Codegen emits bytes literals as static constexpr uint8_t[] arrays
+        # when the target type is BytesView, giving them static storage.
+        if isinstance(init_expr, (TpyStrLiteral, TpyBytesLiteral)):
             return True
 
         # Named variable reference

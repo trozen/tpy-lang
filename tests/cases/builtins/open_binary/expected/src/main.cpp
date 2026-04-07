@@ -13,7 +13,7 @@ void main() {
     // w = open(path, "wb")
     ::tpy::BinaryFile w = ::tpy::builtin_open_binary(path, "wb");
     // w.write(b"\x00\x01\x02\x03")
-    w.write(std::vector<uint8_t>{0x00, 0x01, 0x02, 0x03});
+    w.write(::tpy::bytes_literal("\x00\x01\x02\x03", 4));
     // w.close()
     w.close();
     // # Read back
@@ -33,7 +33,7 @@ void main() {
     auto& f1 = __ctx_1.__enter__();
     try {
         // f1.write(b"\xaa\xbb")
-        f1.write(std::vector<uint8_t>{0xaa, 0xbb});
+        f1.write(::tpy::bytes_literal("\xaa\xbb", 2));
     } catch (...) {
         __ctx_1.__exit__();
         throw;
@@ -62,7 +62,7 @@ void main() {
     auto& f3 = __ctx_3.__enter__();
     try {
         // f3.write(b"\xcc")
-        f3.write(std::vector<uint8_t>{0xcc});
+        f3.write(::tpy::bytes_literal("\xcc", 1));
     } catch (...) {
         __ctx_3.__exit__();
         throw;
@@ -90,7 +90,7 @@ void main() {
     auto& f5 = __ctx_5.__enter__();
     try {
         // f5.write(b"alpha\nbeta\ngamma")
-        f5.write(std::vector<uint8_t>{0x61, 0x6c, 0x70, 0x68, 0x61, 0x0a, 0x62, 0x65, 0x74, 0x61, 0x0a, 0x67, 0x61, 0x6d, 0x6d, 0x61});
+        f5.write(::tpy::bytes_literal("\x61\x6c\x70\x68\x61\x0a\x62\x65\x74\x61\x0a\x67\x61\x6d\x6d\x61", 16));
     } catch (...) {
         __ctx_5.__exit__();
         throw;

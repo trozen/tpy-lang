@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // data = b"ABC"
-    std::vector<uint8_t> data = std::vector<uint8_t>{0x41, 0x42, 0x43};
+    std::span<const uint8_t> data = ::tpy::bytes_literal("\x41\x42\x43", 3);
     // for b in data:
     auto& __obj_0 = data;
     auto __beg_0 = __obj_0.begin();
@@ -29,9 +29,9 @@ void main() {
     // print(0 in data)
     std::cout << ::tpy::print_bool((::tpy::bytes_contains(data, 0))) << "\n";
     // a = b"hello"
-    std::vector<uint8_t> a = std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f};
+    std::span<const uint8_t> a = ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5);
     // b2 = b" world"
-    std::vector<uint8_t> b2 = std::vector<uint8_t>{0x20, 0x77, 0x6f, 0x72, 0x6c, 0x64};
+    std::span<const uint8_t> b2 = ::tpy::bytes_literal("\x20\x77\x6f\x72\x6c\x64", 6);
     // print(a + b2)
     std::cout << ::tpy::BytesPrinter((::tpy::bytes_concat(a, b2))) << "\n";
     // print(a * 3)

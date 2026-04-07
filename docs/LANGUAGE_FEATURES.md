@@ -422,7 +422,7 @@ log(f"x={x}")
 - **Working**: `bytes` type -- immutable byte sequence -> `std::vector<uint8_t>`
 - **Working**: `bytearray` type -- mutable byte sequence -> `std::vector<uint8_t>`
 - **Working**: `BytesView` (`tpy.BytesView`) -- non-owning read-only view -> `std::span<const uint8_t>`
-- **Working**: Byte literals (`b"hello"`, `b"\x00\xff"`)
+- **Working**: Byte literals (`b"hello"`, `b"\x00\xff"`) -- use static storage (C++ string literal) when used as `BytesView` or function arguments (zero heap allocation)
 - **Working**: `bytes(n)` zero-fill constructor, `bytes(b)` / `bytearray(b)` copy constructors
 - **Working**: Subscript (`b[i]` -> `UInt8`), `len()`, `in` operator
 - **Working**: Concatenation (`+`), repetition (`*`), equality (`==`)
@@ -432,18 +432,28 @@ log(f"x={x}")
 - **Working**: `bytearray` mutation: `append`, `extend`, `pop`, `clear`, `insert`, `remove`, `__setitem__`
 - **Working**: `hash(b)` for `bytes` and `BytesView` -- enables use as dict keys and set elements
 - **Working**: Iteration over bytes (`for b in data`)
-- **Working**: View deduction: `list[bytes]` subscript infers `BytesView` when safe, falls back to owned `bytes` when the source is mutated
+- **Working**: View deduction: bytes literals and `list[bytes]` subscripts infer `BytesView` when safe, fall back to owned `bytes` when mutated
 
 #### Bytes Type Semantics (Working)
 
 `bytes` and `bytearray` both map to `std::vector<uint8_t>` in C++. The difference is at the type-system level: `bytes` is immutable (no mutation methods), `bytearray` is mutable.
 
-`BytesView` (`std::span<const uint8_t>`) is a non-owning view, analogous to `StrView` for strings. Local variables inferred from `list[bytes]` subscripts use `BytesView` when the source is not mutated, and fall back to owned `bytes` when it is:
+`BytesView` (`std::span<const uint8_t>`) is a non-owning view, analogous to `StrView` for strings. Bytes literals use C++ string literal static storage (via `bytes_literal()`), so `BytesView` references to literals never dangle. Local variables inferred from bytes literals or `list[bytes]` subscripts use `BytesView` when safe, and fall back to owned `bytes` when mutated:
 
 ```python
+b = b"hello"           # BytesView (static storage, zero allocation)
+b += b"!"              # mutation -> promotes to owned bytes
+
 items: list[bytes] = [b"alice", b"bob"]
 x = items[0]           # BytesView (no mutation follows)
 items.append(b"carol")  # source mutated -> x becomes owned bytes
+```
+
+Bytes literals passed as function arguments also use static storage, avoiding heap allocation:
+
+```python
+def process(data: bytes) -> None: ...
+process(b"hello")      # zero-alloc: static span passed directly
 ```
 
 `bytes` and `BytesView` are hashable and can be used with `hash()`. `bytes` can be used as dict keys and set elements. `bytearray` is not hashable (mutable type).

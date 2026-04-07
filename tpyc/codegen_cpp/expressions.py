@@ -590,6 +590,13 @@ class ExpressionGenerator:
         natively accepts lvalues, so the copy-into-temp + move is unnecessary
         for plain names and literals.
         """
+        # Bytes literal passed to bytes/BytesView param: use static storage.
+        # The C++ param is std::span<const uint8_t>, so bytes_literal()
+        # avoids the heap allocation of a temporary vector.
+        if isinstance(arg, TpyBytesLiteral) and isinstance(ptype, (BytesType, BytesViewType)):
+            if not arg.value:
+                return "std::span<const uint8_t>{}"
+            return self._gen_bytes_literal_span(arg.value)
         gen_arg = self.gen_expr_deref(arg, ptype if target_type is _UNSET else target_type)
         if ptype is not None:
             # Auto-consuming iteration: Iterable[Own[T]] param with last-use arg
@@ -711,7 +718,11 @@ class ExpressionGenerator:
 
         elif isinstance(expr, TpyBytesLiteral):
             if not expr.value:
+                if isinstance(target_type, BytesViewType):
+                    return "std::span<const uint8_t>{}"
                 return "std::vector<uint8_t>{}"
+            if isinstance(target_type, BytesViewType):
+                return self._gen_bytes_literal_span(expr.value)
             hex_bytes = ", ".join(f"0x{b:02x}" for b in expr.value)
             return f"std::vector<uint8_t>{{{hex_bytes}}}"
 
@@ -930,9 +941,11 @@ class ExpressionGenerator:
     def _is_bytes_view_at_runtime(self, expr: TpyExpr) -> bool:
         """True if this expression produces std::span<const uint8_t> at C++ runtime.
 
-        bytes params use span via to_cpp_param. Bytes literals are NOT views
-        (temporary vectors). BytesViewType locals are explicit views.
+        bytes params use span via to_cpp_param. Bytes literals with BytesView
+        resolved type use static storage. BytesViewType locals are explicit views.
         """
+        if isinstance(expr, TpyBytesLiteral):
+            return isinstance(self.types.get_resolved_type(expr), BytesViewType)
         if isinstance(expr, TpyName):
             return (isinstance(self.ctx.current_func_params.get(expr.name), BytesType)
                     or isinstance(self.types.get_resolved_type(expr), BytesViewType))
@@ -943,6 +956,13 @@ class ExpressionGenerator:
             return (self._is_bytes_view_at_runtime(expr.then_expr)
                     and self._is_bytes_view_at_runtime(expr.else_expr))
         return isinstance(self.types.get_resolved_type(expr), BytesViewType)
+
+    @staticmethod
+    def _gen_bytes_literal_span(value: bytes) -> str:
+        """Generate a bytes_literal() call that returns a span over a C++ string
+        literal (which has static storage), avoiding heap allocation."""
+        escaped = "".join(f"\\x{b:02x}" for b in value)
+        return f'::tpy::bytes_literal("{escaped}", {len(value)})'
 
     def _gen_logical_value(self, expr: TpyBinOp, result_type: TpyType) -> str:
         """Generate and/or with Python operand semantics (returns operand, not bool).
@@ -1217,6 +1237,13 @@ class ExpressionGenerator:
                     left = f"static_cast<{underlying_cpp}>({left})"
                 if isinstance(right_type, IntEnumType):
                     right = f"static_cast<{underlying_cpp}>({right})"
+            # Use sema-resolved comparison method when available.
+            if expr.resolved_binop:
+                result = self._gen_binop_from_result(expr.resolved_binop, left, right)
+                # != resolved via __eq__ -> negate
+                if expr.op == "!=" and expr.resolved_binop.method.name == "__eq__":
+                    return f"(!({result}))"
+                return f"({result})"
             return f"({left} {expr.op} {right})"
 
         # Optimization: IntLiteral op IntLiteral with Int32 target -> direct Int32 arithmetic

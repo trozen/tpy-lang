@@ -11,7 +11,7 @@ void main() {
     // p2 = Point(1, 3)
     Point p2 = Point(1, 3);
     // print(p1 == p2)
-    std::cout << ::tpy::print_bool((p1 == p2)) << "\n";
+    std::cout << ::tpy::print_bool(((p1) == (p2))) << "\n";
 }
 
 void __tpy_init() {

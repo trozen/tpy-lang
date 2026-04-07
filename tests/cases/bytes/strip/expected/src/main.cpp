@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // padded = b"  hello  "
-    std::vector<uint8_t> padded = std::vector<uint8_t>{0x20, 0x20, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x20};
+    std::span<const uint8_t> padded = ::tpy::bytes_literal("\x20\x20\x68\x65\x6c\x6c\x6f\x20\x20", 9);
     // print(padded.strip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip(padded)) << "\n";
     // print(padded.lstrip())
@@ -16,19 +16,19 @@ void main() {
     // print(padded.rstrip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip(padded)) << "\n";
     // tabs = b"\thello\n"
-    std::vector<uint8_t> tabs = std::vector<uint8_t>{0x09, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x0a};
+    std::span<const uint8_t> tabs = ::tpy::bytes_literal("\x09\x68\x65\x6c\x6c\x6f\x0a", 7);
     // print(tabs.strip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip(tabs)) << "\n";
     // no_ws = b"hello"
-    std::vector<uint8_t> no_ws = std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f};
+    std::span<const uint8_t> no_ws = ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5);
     // print(no_ws.strip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip(no_ws)) << "\n";
     // empty = b""
-    std::vector<uint8_t> empty = std::vector<uint8_t>{};
+    std::span<const uint8_t> empty = std::span<const uint8_t>{};
     // print(empty.strip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip(empty)) << "\n";
     // only_ws = b"   "
-    std::vector<uint8_t> only_ws = std::vector<uint8_t>{0x20, 0x20, 0x20};
+    std::span<const uint8_t> only_ws = ::tpy::bytes_literal("\x20\x20\x20", 3);
     // print(only_ws.strip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip(only_ws)) << "\n";
 }

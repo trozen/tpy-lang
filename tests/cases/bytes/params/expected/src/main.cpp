@@ -37,7 +37,7 @@ std::vector<uint8_t> copy_bytes(std::span<const uint8_t> data) {
 // def main() -> None:
 void main() {
     // b = b"hello"
-    std::vector<uint8_t> b = std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f};
+    std::span<const uint8_t> b = ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5);
     // print(byte_len(b))
     std::cout << byte_len(b) << "\n";
     // print(first_byte(b))
@@ -45,13 +45,13 @@ void main() {
     // print(is_empty(b))
     std::cout << ::tpy::print_bool(is_empty(b)) << "\n";
     // print(is_empty(b""))
-    std::cout << ::tpy::print_bool(is_empty(std::vector<uint8_t>{})) << "\n";
+    std::cout << ::tpy::print_bool(is_empty(std::span<const uint8_t>{})) << "\n";
     // copied = copy_bytes(b)
     std::vector<uint8_t> copied = copy_bytes(b);
     // print(copied)
     std::cout << ::tpy::BytesPrinter(copied) << "\n";
     // print(copied == b)
-    std::cout << ::tpy::print_bool((copied == b)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::bytes_eq(copied, b))) << "\n";
 }
 
 void __tpy_init() {

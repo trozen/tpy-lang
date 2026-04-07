@@ -12,7 +12,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void process(std::span<const uint8_t> data);
 void augassign(std::span<const uint8_t> data);
-void literal_copy();
+void literal_view();
 void main();
 
 void __tpy_init();

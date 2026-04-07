@@ -55,9 +55,9 @@ void main() {
     std::cout << sc2.tag << " " << ::tpy::print_optional_val(sc2.note) << " " << sc2.score << "\n";
     // # Equality across inherited fields
     // print(User("A", 1, "a") == User("A", 1, "a"))
-    std::cout << ::tpy::print_bool((User("A", 1, "a") == User("A", 1, "a"))) << "\n";
+    std::cout << ::tpy::print_bool(((User("A", 1, "a")) == (User("A", 1, "a")))) << "\n";
     // print(User("A", 1, "a") == User("A", 1, "b"))
-    std::cout << ::tpy::print_bool((User("A", 1, "a") == User("A", 1, "b"))) << "\n";
+    std::cout << ::tpy::print_bool(((User("A", 1, "a")) == (User("A", 1, "b")))) << "\n";
 }
 
 void __tpy_init() {

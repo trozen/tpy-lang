@@ -19,7 +19,7 @@ void test_roundtrip() {
     // print(e2.when._value)
     std::cout << e2.when._value << "\n";
     // print(e == e2)
-    std::cout << ::tpy::print_bool((e == e2)) << "\n";
+    std::cout << ::tpy::print_bool(((e) == (e2))) << "\n";
 }
 
 // def test_nested() -> None:

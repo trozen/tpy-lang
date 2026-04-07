@@ -24,9 +24,9 @@ void main() {
     std::cout << p2.z << "\n";
     // # Equality
     // print(p1 == Point3D(1, 2, 0))
-    std::cout << ::tpy::print_bool((p1 == Point3D(1, 2, 0))) << "\n";
+    std::cout << ::tpy::print_bool(((p1) == (Point3D(1, 2, 0)))) << "\n";
     // print(p1 == p2)
-    std::cout << ::tpy::print_bool((p1 == p2)) << "\n";
+    std::cout << ::tpy::print_bool(((p1) == (p2))) << "\n";
 }
 
 void __tpy_init() {

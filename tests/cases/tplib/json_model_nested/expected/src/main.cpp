@@ -123,7 +123,7 @@ void test_roundtrip() {
     // p2 = Profile.from_json(out)
     Profile p2 = Profile::from_json(out);
     // print(p == p2)
-    std::cout << ::tpy::print_bool((p == p2)) << "\n";
+    std::cout << ::tpy::print_bool(((p) == (p2))) << "\n";
 }
 
 void __tpy_init() {

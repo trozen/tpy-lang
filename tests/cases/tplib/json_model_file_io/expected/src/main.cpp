@@ -19,7 +19,7 @@ void test_roundtrip() {
     // print(loaded.active)
     std::cout << ::tpy::print_bool(loaded.active) << "\n";
     // print(item == loaded)
-    std::cout << ::tpy::print_bool((item == loaded)) << "\n";
+    std::cout << ::tpy::print_bool(((item) == (loaded))) << "\n";
 }
 
 // def test_pretty() -> None:
@@ -33,7 +33,7 @@ void test_pretty() {
     // print(loaded.name)
     std::cout << loaded.name << "\n";
     // print(item == loaded)
-    std::cout << ::tpy::print_bool((item == loaded)) << "\n";
+    std::cout << ::tpy::print_bool(((item) == (loaded))) << "\n";
 }
 
 // def test_try_load() -> None:

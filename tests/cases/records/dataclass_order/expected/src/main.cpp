@@ -14,24 +14,24 @@ void main() {
     Point c = Point(1, 3);
     // # Lexicographic ordering by fields
     // print(a < b)
-    std::cout << ::tpy::print_bool((a < b)) << "\n";
+    std::cout << ::tpy::print_bool(((a) < (b))) << "\n";
     // print(b < a)
-    std::cout << ::tpy::print_bool((b < a)) << "\n";
+    std::cout << ::tpy::print_bool(((b) < (a))) << "\n";
     // print(a < c)
-    std::cout << ::tpy::print_bool((a < c)) << "\n";
+    std::cout << ::tpy::print_bool(((a) < (c))) << "\n";
     // # <= and >=
     // print(a <= Point(1, 2))
-    std::cout << ::tpy::print_bool((a <= Point(1, 2))) << "\n";
+    std::cout << ::tpy::print_bool(((a) <= (Point(1, 2)))) << "\n";
     // print(a >= a)
-    std::cout << ::tpy::print_bool((a >= a)) << "\n";
+    std::cout << ::tpy::print_bool(((a) >= (a))) << "\n";
     // # > operator
     // print(b > a)
-    std::cout << ::tpy::print_bool((b > a)) << "\n";
+    std::cout << ::tpy::print_bool(((b) > (a))) << "\n";
     // print(a > c)
-    std::cout << ::tpy::print_bool((a > c)) << "\n";
+    std::cout << ::tpy::print_bool(((a) > (c))) << "\n";
     // # Equality still works
     // print(a == Point(1, 2))
-    std::cout << ::tpy::print_bool((a == Point(1, 2))) << "\n";
+    std::cout << ::tpy::print_bool(((a) == (Point(1, 2)))) << "\n";
     // print(a != b)
     std::cout << ::tpy::print_bool((a != b)) << "\n";
 }

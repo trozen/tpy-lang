@@ -88,7 +88,7 @@ void test_while_bigint_index() {
     // i: int = 0
     ::tpy::BigInt i = ::tpy::BigInt(0);
     // while i < len(lst):
-    while ((i < ::tpy::__len__(lst))) {
+    while ((i < ::tpy::BigInt(::tpy::__len__(lst)))) {
         // print(lst[i])  # tpyc: bounds_safe(lst)
         std::cout << lst[i.to_fixed_check<int32_t>()] << "\n";
         // i += 1

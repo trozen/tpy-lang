@@ -61,7 +61,7 @@ void test_roundtrip() {
     // user2 = User.from_json(user.to_json())
     User user2 = User::from_json(user.to_json());
     // print(user == user2)
-    std::cout << ::tpy::print_bool((user == user2)) << "\n";
+    std::cout << ::tpy::print_bool(((user) == (user2))) << "\n";
 }
 
 // def test_skip_unknown() -> None:

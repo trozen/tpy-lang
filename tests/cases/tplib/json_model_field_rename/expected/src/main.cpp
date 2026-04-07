@@ -22,7 +22,7 @@ void main() {
     // u3 = User.from_json(u.to_json())
     User u3 = User::from_json(u.to_json());
     // print(u == u3)
-    std::cout << ::tpy::print_bool((u == u3)) << "\n";
+    std::cout << ::tpy::print_bool(((u) == (u3))) << "\n";
     // # Alias with default, field(default=None)
     // w = WithDefault()
     WithDefault w = WithDefault();

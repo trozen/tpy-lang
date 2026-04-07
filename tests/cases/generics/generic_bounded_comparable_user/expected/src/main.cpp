@@ -24,9 +24,9 @@ void main() {
     std::cout << result.value << "\n";
     // # Test equality
     // print(x == z)  # True
-    std::cout << ::tpy::print_bool((x == z)) << "\n";
+    std::cout << ::tpy::print_bool(((x) == (z))) << "\n";
     // print(x == y)  # False
-    std::cout << ::tpy::print_bool((x == y)) << "\n";
+    std::cout << ::tpy::print_bool(((x) == (y))) << "\n";
 }
 
 void __tpy_init() {

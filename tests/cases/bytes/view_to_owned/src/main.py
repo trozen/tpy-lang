@@ -11,13 +11,13 @@ def augassign(data: bytes) -> None:
     b += b"!"        # augassign promotes to owned
     print(b)
 
-def literal_copy() -> None:
-    b = b"hello"     # literal -> owned (not view-safe)
+def literal_view() -> None:
+    b = b"hello"     # literal -> view (static storage)
     print(b)
 
 def main() -> None:
     process(b"hello")
     augassign(b"world")
-    literal_copy()
+    literal_view()
 
 main()

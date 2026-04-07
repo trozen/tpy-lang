@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // data = b"abc"
-    std::vector<uint8_t> data = std::vector<uint8_t>{0x61, 0x62, 0x63};
+    std::span<const uint8_t> data = ::tpy::bytes_literal("\x61\x62\x63", 3);
     // print(data[10])
     std::cout << static_cast<int>(::tpy::bytes_getitem(data, 10)) << "\n";
 }

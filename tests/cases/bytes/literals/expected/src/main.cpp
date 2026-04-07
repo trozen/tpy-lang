@@ -8,13 +8,13 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // empty = b""
-    std::vector<uint8_t> empty = std::vector<uint8_t>{};
+    std::span<const uint8_t> empty = std::span<const uint8_t>{};
     // hello = b"hello"
-    std::vector<uint8_t> hello = std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f};
+    std::span<const uint8_t> hello = ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5);
     // binary = b"\x00\x01\xff"
-    std::vector<uint8_t> binary = std::vector<uint8_t>{0x00, 0x01, 0xff};
+    std::span<const uint8_t> binary = ::tpy::bytes_literal("\x00\x01\xff", 3);
     // escape = b"\t\n\r\\"
-    std::vector<uint8_t> escape = std::vector<uint8_t>{0x09, 0x0a, 0x0d, 0x5c};
+    std::span<const uint8_t> escape = ::tpy::bytes_literal("\x09\x0a\x0d\x5c", 4);
     // print(empty)
     std::cout << ::tpy::BytesPrinter(empty) << "\n";
     // print(hello)
