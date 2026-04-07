@@ -6,7 +6,7 @@ from tpy._builtins import (
     len, repr, hash, chr, ord, abs, min, max, pow, divmod, next, iter, round, print, isinstance,
     all, any, sum, sorted, bin, hex, oct, enumerate, reversed, zip, map, filter,
     bytes, bytearray,
-    bool, int, float, str,
+    bool, int, float, str, slice,
     list, dict, dict_keys, dict_values, dict_items,
     set,
     TextIO, BinaryIO, open, open_text, open_binary,

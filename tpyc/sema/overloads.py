@@ -16,6 +16,7 @@ from ..typesys import (
     PendingStrType, PendingViewType, StrType, StringType, StrViewType, LiteralType,
     PendingBytesType, BytesType, ByteArrayType, BytesViewType,
     NamedType, PtrType, OwnType, FnType, CallableType, VoidType, NoneType,
+    OptionalType,
     unwrap_ref_type,
 )
 from ..coercions import resolve_coercion, CoercionContext
@@ -115,6 +116,11 @@ def type_matches_strict(
     # None literal (NoneType) matches None type annotation (VoidType)
     if isinstance(arg_inner, NoneType) and isinstance(param_inner, VoidType):
         return True
+    # T -> Optional[T] and None -> Optional[T]
+    if isinstance(param_inner, OptionalType):
+        if isinstance(arg_inner, NoneType):
+            return True
+        return type_matches_strict(arg_inner, param_inner.inner, protocol_checker)
     # Callable -> Fn: std::function satisfies template requires clauses
     if (isinstance(arg_inner, CallableType) and isinstance(param_inner, FnType)
             and arg_inner.param_types == param_inner.param_types
@@ -193,6 +199,9 @@ def type_matches_numeric(
     if isinstance(arg_type, TypeParamRef) and arg_type.kind == TypeParamKind.INT:
         if isinstance(param_type, (Int32Type, BigIntType)):
             return True
+    # T -> Optional[T]: unwrap Optional param and match inner type
+    if isinstance(param_type, OptionalType):
+        return type_matches_numeric(arg_type, param_type.inner)
     # Recursive container matching: e.g. ListType(IntLiteralType) vs ListType(Int32)
     if type(arg_type) == type(param_type):
         arg_elem = arg_type.get_element_type()
@@ -223,6 +232,9 @@ def type_matches_with_coercion(
     if isinstance(param_inner, OwnType):
         param_inner = param_inner.wrapped
     if type_matches_numeric(arg_inner, param_inner):
+        return True
+    # None -> Optional[T]
+    if isinstance(arg_inner, NoneType) and isinstance(param_inner, OptionalType):
         return True
     # PendingStrType matches any string type (str, String, StrView)
     if isinstance(arg_inner, PendingStrType) and isinstance(param_inner, (StrType, StringType, StrViewType)):

@@ -28,6 +28,7 @@ from ._core import (
     span, deref, take_ptr, make_default,
     copy, copy_iter, own_iter, try_parse,
 )
+from ._builtins._types import basic_slice
 from ._builtins._io import BinaryIO, open_text, open_binary
 
 type Float64 = float
@@ -40,6 +41,8 @@ __all__ = [
     "Char", "String", "StrView", "BytesView",
     # Container types
     "Span", "Array", "Ptr", "SpanIter",
+    # Slice types
+    "basic_slice",
     # Pointer / ownership
     "Own", "Fn",
     # Decorators / type modifiers

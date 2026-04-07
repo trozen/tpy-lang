@@ -3945,6 +3945,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: Container slicing: `items[1:3]` -> `Span[T]` (zero-copy), `items[::2]` -> owned `list[T]`. Supports `list[T]`, `Array[T,N]`, `Span[T]`, `Span[readonly[T]]`
 - **Working**: Bytes slicing: `b[1:3]` -> `BytesView` (zero-copy), `b[::2]` -> owned `bytes`
 - **Working**: User-type slicing via `@overload __getitem__(self, index: basic_slice)` or `__getitem__(self, index: slice)`. `basic_slice` has `start`/`stop` (`Optional[Int32]`), maps to `tpy::BasicSlice`. `slice` adds `step`, maps to `tpy::Slice`. `basic_slice` coerces to `slice`
+- **Working**: `basic_slice(start, stop)` and `slice(start, stop, step)` constructors. Args are `Int32 | None`. `slice` is a Python builtin (no import needed), `basic_slice` requires `from tpy import basic_slice`
 - **Working**: `isinstance(x, T)` → compile-time type narrowing for union types (`std::holds_alternative<T>` + `std::get<T>`)
 - **Working**: `isinstance(x, Protocol)` → compile-time protocol check on protocol-typed template params (`if constexpr (Concept<T_x>)`)
 - **Open**: `type()` → compile-time type info
@@ -4664,6 +4665,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
 - **Working**: Container slice `items[start:end]` -> `Span[T]` (zero-copy). Stepped `items[start:end:step]` -> owned `list[T]`. Supports list, Array, Span, Span[readonly[T]]
 - **Working**: Bytes slice `b[start:end]` -> `BytesView` (zero-copy). Stepped `b[start:end:step]` -> owned `bytes`
 - **Working**: User-type slice via `@overload __getitem__(self, index: basic_slice)` or `__getitem__(self, index: slice)` with `tpy::BasicSlice`/`tpy::Slice` dispatch. `basic_slice` coerces to `slice`
+- **Working**: `basic_slice(start, stop)` and `slice(start, stop, step)` constructors with `Int32 | None` args
 
 ---
 

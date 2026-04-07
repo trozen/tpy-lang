@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <ostream>
 
 namespace tpy {
 
@@ -24,5 +25,23 @@ struct Slice {
     // Implicit conversion from BasicSlice (basic_slice coerces to slice)
     Slice(const BasicSlice& bs) : start(bs.start), stop(bs.stop), step(std::nullopt) {}
 };
+
+inline std::ostream& operator<<(std::ostream& os, const BasicSlice& s) {
+    os << "basic_slice(";
+    if (s.start) os << *s.start; else os << "None";
+    os << ", ";
+    if (s.stop) os << *s.stop; else os << "None";
+    return os << ")";
+}
+
+inline std::ostream& operator<<(std::ostream& os, const Slice& s) {
+    os << "slice(";
+    if (s.start) os << *s.start; else os << "None";
+    os << ", ";
+    if (s.stop) os << *s.stop; else os << "None";
+    os << ", ";
+    if (s.step) os << *s.step; else os << "None";
+    return os << ")";
+}
 
 } // namespace tpy

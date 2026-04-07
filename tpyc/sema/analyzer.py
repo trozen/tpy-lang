@@ -278,6 +278,7 @@ class SemanticAnalyzer:
         # inference code but need namespace entry to distinguish from tpy types
         python_builtin_types = ["int", "str", "bool", "float", "bytes", "bytearray",
                                 "list", "dict", "set",
+                                "slice",
                                 "BaseException", "Exception", "StopIteration",
                                 "TextIO"]
         for name in python_builtin_types:

@@ -1954,12 +1954,24 @@ class CallAnalyzer:
         type_name = expr.func_name
         if not init_overloads:
             raise self.ctx.error(f"{type_name}() is not callable", expr)
-        elif len(arg_types) == 0:
-            raise self.ctx.error(f"{type_name}() requires an argument", expr)
-        elif len(arg_types) == 1:
+        # Build expected arity from overloads
+        arities = sorted({len(o.params) for o in init_overloads})
+        got = len(arg_types)
+        if got == 0:
+            raise self.ctx.error(f"{type_name}() requires arguments", expr)
+        elif len(arities) == 1 and got != arities[0]:
+            expected = arities[0]
+            raise self.ctx.error(
+                f"{type_name}() takes {expected} argument{'s' if expected != 1 else ''}, got {got}", expr)
+        elif got == 1:
             raise self.ctx.error(f"{type_name}() cannot convert {arg_types[0]}", expr)
+        elif got in arities:
+            arg_str = ", ".join(str(t) for t in arg_types)
+            raise self.ctx.error(f"{type_name}() cannot convert ({arg_str})", expr)
         else:
-            raise self.ctx.error(f"{type_name}() takes at most 1 argument, got {len(arg_types)}", expr)
+            arity_str = ", ".join(str(a) for a in arities)
+            raise self.ctx.error(
+                f"{type_name}() takes ({arity_str}) arguments, got {got}", expr)
 
     def _check_cast_safe(self, expr: TpyCall, ctor: FunctionInfo,
                          arg_types: list[TpyType], target_type: TpyType | None = None) -> None:

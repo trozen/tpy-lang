@@ -119,7 +119,7 @@ def _get_type_factories() -> dict[str, tuple[list[TypeParamKind], "Callable[...,
             "builtins.bytes": ([], lambda: BYTES),
             "builtins.bytearray": ([], lambda: BYTEARRAY),
             "tpy.BytesView": ([], lambda: BYTESVIEW),
-            "builtins.basic_slice": ([], lambda: BASIC_SLICE),
+            "tpy.basic_slice": ([], lambda: BASIC_SLICE),
             "builtins.slice": ([], lambda: SLICE),
             **{f"tpy.{t}": ([], (lambda typ: lambda: typ)(t)) for t in ALL_FIXED_INTS},
         }

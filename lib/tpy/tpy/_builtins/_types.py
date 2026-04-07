@@ -643,3 +643,19 @@ class str(NativeIterable[Char], Iterable[Char], Comparable, Equatable):
     @readonly
     @pure
     def __lt__(self, other: str) -> bool: ...
+
+
+@builtin_type("tpy.basic_slice")
+@native("tpy::BasicSlice")
+class basic_slice:
+    @cpp_template("::tpy::BasicSlice{{{0}, {1}}}")
+    @pure
+    def __init__(self, start: Int32 | None, stop: Int32 | None) -> None: ...
+
+
+@builtin_type("builtins.slice")
+@native("tpy::Slice")
+class slice:
+    @cpp_template("::tpy::Slice{{{0}, {1}, {2}}}")
+    @pure
+    def __init__(self, start: Int32 | None, stop: Int32 | None, step: Int32 | None) -> None: ...
