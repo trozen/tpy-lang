@@ -215,6 +215,8 @@ class TpyCall(TpyExpr):
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     subscript_callee: 'TpyExpr | None' = None  # Set by parser: fns[0](args) -> stores TpySubscript(fns, 0) for sema fallback
     kwargs: dict[str, TpyExpr] = field(default_factory=dict)  # Keyword arguments (limited support)
+    double_star_unpack: 'TpyExpr | None' = None  # **expr unpacking at call site
+    kwarg_td_call: 'TpyExpr | None' = None  # Set by sema: synthetic TypedDict construction for **kwargs
     resolved_import: tuple[str, str] | None = None  # Set by parser: (module, name) for resolved imports
     resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved function overloads
     enum_from_value: EnumType | None = None  # Set by sema for enum value lookup: Color(0)
@@ -245,6 +247,7 @@ class TpyMethodCall(TpyExpr):
     method: str
     args: list[TpyExpr]
     kwargs: dict[str, TpyExpr] = field(default_factory=dict)
+    double_star_unpack: 'TpyExpr | None' = None  # **expr unpacking at call site
     resolved_import: tuple[str, str] | None = None  # Set by parser: (module, name) for resolved imports
     type_args: tuple[TpyType, ...] = ()  # Explicit type args for module.func[T](args) syntax
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
@@ -981,6 +984,8 @@ class TpyFunction:
     keyword_only_start: int | None = None  # index into params where keyword-only begins
     vararg_name: str | None = None  # name of *args parameter
     vararg_type: 'TpyType | None' = None  # element type T from *args: T
+    kwarg_name: str | None = None  # name of **kwargs parameter
+    kwarg_type: 'TpyType | None' = None  # TypedDict type from **kwargs: Unpack[TD]
     error_return: str | None = None  # @error_return(E) exception type name
     builtin_decorator_key: str | None = None  # @builtin_decorator("tpy.readonly")
     builtin_function_key: str | None = None  # @builtin_function("tpy.extern.native_c_global")

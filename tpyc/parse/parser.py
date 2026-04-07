@@ -809,6 +809,21 @@ class Parser:
             return resolved == ("typing", "TypedDict")
         return False
 
+    def _parse_unpack_annotation(self, annotation: ast.expr, type_param_scope, error_node) -> 'TpyType':
+        """Parse Unpack[TypedDict] annotation from **kwargs. Returns the inner TypedDict type."""
+        if not isinstance(annotation, ast.Subscript):
+            raise ParseError("**kwargs must have Unpack[TypedDict] annotation", error_node)
+        func_node = annotation.value
+        resolved = None
+        if isinstance(func_node, ast.Name):
+            resolved = self._resolve_type_name(func_node.id)
+        elif isinstance(func_node, ast.Attribute):
+            resolved = self._resolve_qualified_type_name(func_node)
+        if resolved != ("typing", "Unpack"):
+            raise ParseError("**kwargs must have Unpack[TypedDict] annotation", error_node)
+        inner_type = self._parse_type_annotation(annotation.slice, type_param_scope)
+        return inner_type
+
     # Valid integer mixin types for IntEnum: class P(int, Enum) or class P(Int8, Enum)
     _INT_MIXIN_TYPES: dict[str, str] = {
         "int": "int",
@@ -1819,9 +1834,15 @@ class Parser:
                 param_type = self._parse_type_annotation(arg.annotation, type_param_scope)
                 params.append((arg.arg, param_type))
 
-        # Reject **kwargs
+        # **kwargs: Unpack[TypedDict]
+        kwarg_name = None
+        kwarg_type = None
         if node.args.kwarg is not None:
-            raise ParseError("**kwargs is not supported", node)
+            kwarg_node = node.args.kwarg
+            if kwarg_node.annotation is None:
+                raise ParseError("**kwargs must have Unpack[TypedDict] annotation", node)
+            kwarg_type = self._parse_unpack_annotation(kwarg_node.annotation, type_param_scope, node)
+            kwarg_name = kwarg_node.arg
 
         # @auto_readonly decorator: wrap all eligible params with AutoReadonlyType.
         # This unifies with the per-param annotation path -- the decorator is just
@@ -1926,6 +1947,8 @@ class Parser:
             keyword_only_start=keyword_only_start,
             vararg_name=vararg_name,
             vararg_type=vararg_type,
+            kwarg_name=kwarg_name,
+            kwarg_type=kwarg_type,
             error_return=error_return,
             is_generator=is_generator,
             loc=self._loc(node)
@@ -2140,9 +2163,15 @@ class Parser:
         # If there's a bare * (no vararg name but kwonlyargs exist), keyword_only_start is set above.
         # If there's *args, kwonlyargs after it are also keyword-only (set above).
 
-        # Reject **kwargs
+        # **kwargs: Unpack[TypedDict]
+        kwarg_name = None
+        kwarg_type = None
         if node.args.kwarg is not None and builtin_function_key is None:
-            raise ParseError("**kwargs is not supported", node)
+            kwarg_node = node.args.kwarg
+            if kwarg_node.annotation is None:
+                raise ParseError("**kwargs must have Unpack[TypedDict] annotation", node)
+            kwarg_type = self._parse_unpack_annotation(kwarg_node.annotation, type_param_scope, node)
+            kwarg_name = kwarg_node.arg
 
         # Parse default parameter values
         defaults = self._parse_param_defaults(node, params, skip_self=False,
@@ -2224,6 +2253,8 @@ class Parser:
             keyword_only_start=keyword_only_start,
             vararg_name=vararg_name,
             vararg_type=vararg_type,
+            kwarg_name=kwarg_name,
+            kwarg_type=kwarg_type,
             error_return=error_return,
             builtin_decorator_key=builtin_decorator_key,
             builtin_function_key=builtin_function_key,
@@ -2993,17 +3024,27 @@ class Parser:
                 else:
                     args.append(self._parse_expr(a))
             kwargs = {}
+            double_star_unpack = None
 
             if node.keywords:
                 for kw in node.keywords:
                     if kw.arg is None:
-                        raise ParseError("**kwargs unpacking not supported", node)
-                    if kw.arg in kwargs:
-                        raise ParseError(f"Keyword argument '{kw.arg}' repeated", node)
-                    kwargs[kw.arg] = self._parse_expr(kw.value)
+                        # **expr unpacking
+                        if double_star_unpack is not None:
+                            raise ParseError("Only one **expr unpacking allowed per call", node)
+                        if kwargs:
+                            raise ParseError("**expr unpacking cannot be mixed with keyword arguments", node)
+                        double_star_unpack = self._parse_expr(kw.value)
+                    else:
+                        if double_star_unpack is not None:
+                            raise ParseError("**expr unpacking cannot be mixed with keyword arguments", node)
+                        if kw.arg in kwargs:
+                            raise ParseError(f"Keyword argument '{kw.arg}' repeated", node)
+                        kwargs[kw.arg] = self._parse_expr(kw.value)
 
             if isinstance(node.func, ast.Name):
-                return TpyCall(TpyName(node.func.id, loc=loc), args, kwargs=kwargs, loc=loc)
+                return TpyCall(TpyName(node.func.id, loc=loc), args, kwargs=kwargs,
+                               double_star_unpack=double_star_unpack, loc=loc)
             elif isinstance(node.func, ast.Attribute):
                 # ClassName[TypeArgs].method(args) -- static call with explicit class type args
                 if (isinstance(node.func.value, ast.Subscript)
@@ -3014,13 +3055,14 @@ class Parser:
                     if type_args or type_args_parse_error:
                         return TpyMethodCall(
                             TpyName(name, loc=loc), node.func.attr, args,
-                            kwargs=kwargs,
+                            kwargs=kwargs, double_star_unpack=double_star_unpack,
                             type_args=type_args, type_args_parse_error=type_args_parse_error,
                             loc=loc,
                         )
                     # No type args and no error: fall through (e.g., variable[index].method())
                 obj = self._parse_expr(node.func.value)
-                return TpyMethodCall(obj, node.func.attr, args, kwargs=kwargs, loc=loc)
+                return TpyMethodCall(obj, node.func.attr, args, kwargs=kwargs,
+                                     double_star_unpack=double_star_unpack, loc=loc)
             elif isinstance(node.func, ast.Subscript):
                 # Could be generic type instantiation (Stack[Int32]()) or generic function call (First[Int32](x))
                 # Parse both call_type and type_args - sema decides which applies based on whether
@@ -3055,22 +3097,26 @@ class Parser:
                             pass
                     return TpyCall(TpyName(name, loc=loc), args, call_type=call_type, type_args=type_args,
                                    type_args_parse_error=type_args_parse_error,
-                                   subscript_callee=subscript_callee, kwargs=kwargs, loc=loc)
+                                   subscript_callee=subscript_callee, kwargs=kwargs,
+                                   double_star_unpack=double_star_unpack, loc=loc)
                 elif isinstance(node.func.value, ast.Attribute):
                     # module.func[T](args) -- method call with explicit type args
                     obj = self._parse_expr(node.func.value.value)
                     method = node.func.value.attr
                     type_args, type_args_parse_error = self._try_parse_type_args(node.func)
                     return TpyMethodCall(obj, method, args, kwargs=kwargs,
+                                         double_star_unpack=double_star_unpack,
                                          type_args=type_args,
                                          type_args_parse_error=type_args_parse_error, loc=loc)
                 # Expression callee with subscript: expr[i](args)
                 expr_func = self._parse_expr(node.func)
-                return TpyCall(expr_func, args, kwargs=kwargs, loc=loc)
+                return TpyCall(expr_func, args, kwargs=kwargs,
+                               double_star_unpack=double_star_unpack, loc=loc)
             else:
                 # Expression callee: f()(x), (lambda: fn)()(), etc.
                 expr_func = self._parse_expr(node.func)
-                return TpyCall(expr_func, args, kwargs=kwargs, loc=loc)
+                return TpyCall(expr_func, args, kwargs=kwargs,
+                               double_star_unpack=double_star_unpack, loc=loc)
 
         elif isinstance(node, ast.Attribute):
             obj = self._parse_expr(node.value)

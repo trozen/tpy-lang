@@ -1,0 +1,9 @@
+localhost
+9090
+False
+example.com
+443
+True
+127.0.0.1
+8080
+False

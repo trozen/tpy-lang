@@ -1,1 +1,1 @@
-main.py:7: error: **kwargs unpacking not supported
+main.py:7: error: 'f' does not accept **kwargs

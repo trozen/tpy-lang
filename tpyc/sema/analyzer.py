@@ -739,6 +739,16 @@ class SemanticAnalyzer:
             # Clear vararg_type to prevent re-processing; keep vararg_name for codegen
             func.vararg_type = None
 
+        # Add **kwargs parameter as TypedDict type to func.params and resolved_params.
+        if func.kwarg_name is not None and func.kwarg_type is not None:
+            kw_type = self.type_ops.resolve_type(func.kwarg_type)
+            func.params.append((func.kwarg_name, make_ref(kw_type)))
+            resolved_params.append((func.kwarg_name, kw_type))
+            if func.defaults:
+                func.defaults.append(None)
+            # Clear kwarg_type to prevent re-processing; keep kwarg_name for codegen
+            func.kwarg_type = None
+
         # Track consuming method for ownership propagation through fields
         prev_consuming = self.ctx.in_consuming_method
         self.ctx.in_consuming_method = func.is_consuming
@@ -1282,6 +1292,15 @@ class SemanticAnalyzer:
                     if method.defaults:
                         method.defaults.append(None)
                 method.vararg_type = None
+
+            # Add **kwargs parameter as TypedDict type
+            if method.kwarg_name is not None and method.kwarg_type is not None:
+                kw_type = self.type_ops.resolve_type(method.kwarg_type)
+                method.params.append((method.kwarg_name, make_ref(kw_type)))
+                resolved_params.append((method.kwarg_name, kw_type))
+                if method.defaults:
+                    method.defaults.append(None)
+                method.kwarg_type = None
 
             # __next__ must have an explicit non-void return type annotation
             if method.name == "__next__" and isinstance(method.return_type, VoidType):

@@ -75,6 +75,7 @@ OVERLOAD = "typing.overload"
 OVERRIDE = "typing.override"
 LITERAL = "typing.Literal"
 TYPED_DICT = "typing.TypedDict"
+UNPACK = "typing.Unpack"
 
 # -- typing protocols --
 ITERATOR = "typing.Iterator"

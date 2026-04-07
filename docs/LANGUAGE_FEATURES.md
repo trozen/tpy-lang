@@ -2933,7 +2933,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Limitation**: `*args` on `@overload` stubs is rejected (clear error).
 - **Working**: TypedDict -- `class Foo(TypedDict):` defines a struct with dict-like subscript syntax. `d["key"]` compiles to `d.key` (compile-time field access, key must be string literal). Construction via kwargs: `Foo(name="Alice", age=30)`. Field defaults supported. C++ mapping: plain struct, zero hash-map overhead. Dynamic keys and unknown keys produce compile errors. No methods allowed on TypedDict. `total=False`, dict-like API (`.keys()`, `.items()`), and dict literal construction are not yet supported.
 - **Open**: Heterogeneous `*args` (untyped) -- needs `Any` type
-- **Open**: `**kwargs` definition syntax -- TypedDict + `Unpack` approach planned
+- **Working**: `**kwargs: Unpack[TypedDict]` -- typed variadic keyword arguments via PEP 692. `def f(**kwargs: Unpack[TD])` compiles to `void f(const TD& kwargs)` (single struct parameter). At call sites, keyword args are packed into a TypedDict construction. `f(**td_instance)` passes the struct directly. `kwargs["key"]` uses TypedDict subscript. Field defaults make kwargs optional. Works with regular positional params (`def f(host: str, **kwargs: Unpack[TD])`), on methods, and with kwargs forwarding (`inner(**kwargs)`). Mixed keyword args are split: regular param kwargs resolve normally, remaining go to the TypedDict.
 
 ### Decorators
 - **Working**: `@noalloc` (parsed and recognized, enforcement planned)

@@ -512,6 +512,9 @@ class TypeRegistrar:
                 method_param_infos.append(
                     ParamInfo(method.vararg_name, _vararg_span_type(va_type),
                               is_variadic=True))
+            if method.kwarg_name is not None and method.kwarg_type is not None:
+                resolved_kwarg_type = self.type_ops.resolve_type(method.kwarg_type)
+                method_param_infos.append(ParamInfo(method.kwarg_name, resolved_kwarg_type))
             func_info = FunctionInfo(
                 name=method.name,
                 params=method_param_infos,
@@ -534,6 +537,7 @@ class TypeRegistrar:
                 type_param_bounds=method_type_param_bounds,
                 error_return_type=(qualify_exception_name(method.error_return, self.ctx.registry)
                                    if method.error_return else None),
+                kwarg_name=method.kwarg_name,
             )
             # Propagate qualified name back to AST so codegen can use it directly.
             # ReturnException validation is deferred to validate_method_error_returns()
@@ -1400,6 +1404,24 @@ class TypeRegistrar:
             span_type = SpanType(resolved_vararg_type, is_readonly=True)
             param_infos.append(ParamInfo(func.vararg_name, span_type, is_variadic=True))
 
+        # **kwargs: Unpack[TypedDict] -- append as TypedDict param at end
+        resolved_kwarg_type = None
+        if func.kwarg_name is not None and func.kwarg_type is not None:
+            resolved_kwarg_type = self.type_ops.resolve_type(func.kwarg_type)
+            # Validate no field name conflicts with regular params
+            if isinstance(resolved_kwarg_type, NamedType):
+                td_record = self.ctx.registry.get_record(resolved_kwarg_type.name)
+                if td_record is not None:
+                    param_names = {n for n, _ in resolved_params}
+                    for fld in td_record.fields:
+                        if fld.name in param_names:
+                            raise SemanticError(
+                                f"TypedDict field '{fld.name}' conflicts with "
+                                f"parameter '{fld.name}' on '{func.name}'",
+                                func.loc,
+                            )
+            param_infos.append(ParamInfo(func.kwarg_name, resolved_kwarg_type))
+
         info = FunctionInfo(
             name=func.name,
             params=param_infos,
@@ -1421,6 +1443,7 @@ class TypeRegistrar:
             qualified_name=(func.builtin_function_key
                             if func.builtin_function_key
                             else f"{self.ctx.module_name}.{func.name}"),
+            kwarg_name=func.kwarg_name,
         )
         # Propagate qualified name back to AST so codegen can use it directly
         if func.error_return:

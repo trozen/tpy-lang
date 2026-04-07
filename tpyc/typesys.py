@@ -3489,6 +3489,7 @@ class FunctionInfo:
     # None = not yet analyzed; True/False = Phase 1 direct fact; finalized by Phase 2.
     direct_self_mutated: Optional[bool] = None
     self_mutated: bool = True  # conservative default until Phase 2 resolves
+    kwarg_name: Optional[str] = None  # name of **kwargs param (TypedDict type)
 
     @property
     def is_decorator_stub(self) -> bool:
@@ -3541,13 +3542,17 @@ class FunctionInfo:
 
     @property
     def min_args(self) -> int:
-        """Minimum number of required positional arguments (excludes keyword-only and variadic)."""
+        """Minimum number of required positional arguments (excludes keyword-only, variadic, **kwargs)."""
         return sum(1 for p in self.params
-                   if not p.has_default and not p.keyword_only and not p.is_variadic)
+                   if not p.has_default and not p.keyword_only and not p.is_variadic
+                   and not (self.kwarg_name and p.name == self.kwarg_name))
 
     @property
     def max_args(self) -> int:
-        """Maximum number of total arguments (all params). Unlimited if variadic."""
+        """Maximum number of total arguments (all params). Unlimited if variadic.
+
+        Includes **kwargs param since call-site packing fills it as a positional arg.
+        """
         if self.has_variadic:
             return 2**31
         return len(self.params)

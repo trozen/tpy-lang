@@ -313,6 +313,16 @@ class MethodAnalyzer:
 
         Sets expr.resolved_function_info. Returns the return type.
         """
+        # Pack **kwargs into TypedDict construction for methods with **kwargs param
+        if len(overloads) == 1 and overloads[0].kwarg_name:
+            func = overloads[0]
+            resolved_func = (self.type_ops.substitute_method_type_params(func, type_subst)
+                             if type_subst else func)
+            self.calls._pack_kwargs_into_typed_dict_method(expr, resolved_func)
+        elif expr.double_star_unpack is not None:
+            raise self.ctx.error(
+                f"'{expr.method}' does not accept **kwargs", expr)
+
         # Resolve kwargs before arity check
         has_kwonly = any(p.keyword_only for p in (overloads[0].params if len(overloads) == 1 else []))
         if expr.kwargs or has_kwonly:

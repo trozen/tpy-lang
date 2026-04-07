@@ -86,7 +86,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D15 | `Any` type | M | Not started | [I](#any-type) |
 | D16 | Dynamic attributes (`__getattr__`/`__setattr__`) | M-L | Not started | [VII](#dynamic-attributes) |
 | D17 | `*args` (variadic positional arguments) | M | Done (homogeneous) | [VI](#args--kwargs) |
-| D18 | `**kwargs` (variadic keyword arguments) | M-L | Not started | [VI](#args--kwargs) |
+| D18 | `**kwargs` (variadic keyword arguments) | M-L | Done | [VI](#args--kwargs) |
 | D19 | Recursive type aliases | M | Not started | [I](#recursive-type-aliases) |
 | D20 | Mutual recursion (cross-type cycles) | M-L | Not started | [I](#mutual-recursion) |
 | D21 | TypedDict | M | Done | [VII](#typeddict) |
@@ -1767,20 +1767,18 @@ static and matches the direction Python typing is heading. The `dict[str, Any]`
 fallback (option 1) is needed for full CPython compat but depends on `Any` (D15).
 Start with option 2 when the kwargs schema is known, fall back to option 1 when it isn't.
 
-**Current state**: Homogeneous `*args: T` is done -- maps to `Span[readonly[T]]`.
-Supports keyword-only params (bare `*` separator and params after `*args`), `*list`
-unpacking at call sites, forwarding (`def g(*args: T): f(*args)`), and generic
-type inference (`def first[T](*args: T) -> T`).
-Not yet supported: `@overload` stubs with `*args`, heterogeneous `*args` (needs
-`Any`), `**kwargs` in definitions.
+**Current state**: `*args: T` done (homogeneous). `**kwargs: Unpack[TypedDict]` done
+(option 2). Compiles to `void f(const TD& kwargs)` -- single struct parameter. Call-site
+kwargs are split between regular params and TypedDict fields, then packed into a
+constructor call. `f(**td_instance)` passes the struct directly. Works with mixed
+positional + kwargs, on methods, and with forwarding (`inner(**kwargs)`).
+
+Not yet supported: `@overload` stubs with `*args`, heterogeneous `*args` (needs `Any`),
+untyped `**kwargs` (option 1, needs `Any`).
 
 **Dependencies**: `Any` type (D15) for heterogeneous `*args` and untyped `**kwargs`.
-Homogeneous `*args: T` has no dependencies (done). TypedDict `**kwargs` needs TypedDict
-support (D21).
 
-**Effort**: D17 (`*args`): Homogeneous done. Heterogeneous needs variadic templates (L).
-D18 (`**kwargs`): M-L (TypedDict approach is clean; `dict[str, Any]`
-fallback depends on `Any` and is heavier)
+**Effort**: D17 done. D18 done (TypedDict approach). Untyped fallback depends on `Any`.
 
 ---
 

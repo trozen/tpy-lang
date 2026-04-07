@@ -503,6 +503,83 @@ class CallAnalyzer:
         )
         expr.kwargs = {}
 
+    def _pack_kwargs_into_typed_dict(self, expr: TpyCall, func: FunctionInfo) -> None:
+        """Pack call-site kwargs or **expr into a TypedDict construction for **kwargs param.
+
+        Splits kwargs between regular params and TypedDict fields, builds the TD
+        construction, and stores it on expr.kwarg_td_call. The caller appends it
+        to expr.args AFTER regular kwargs resolution (so positional ordering is correct).
+        """
+        kwarg_param = next(p for p in func.params if p.name == func.kwarg_name)
+        td_type = unwrap_ref_type(kwarg_param.type)
+
+        if expr.double_star_unpack is not None:
+            if expr.kwargs:
+                raise self.ctx.error(
+                    "Cannot mix keyword arguments with **unpacking", expr)
+            unpack_type = self.expr.analyze_expr(expr.double_star_unpack)
+            unpack_type = unwrap_ref_type(unpack_type)
+            self.compat.check_type_compatible(
+                unpack_type, td_type,
+                f"**kwargs unpacking (expected {td_type})",
+                loc=expr.loc,
+            )
+            expr.kwarg_td_call = expr.double_star_unpack
+            expr.double_star_unpack = None
+            return
+
+        record = self.ctx.registry.get_record(td_type.name)
+        if record is None:
+            raise self.ctx.error(
+                f"**kwargs type '{td_type.name}' is not a TypedDict", expr)
+
+        # Split kwargs: regular param kwargs stay for _resolve_call_kwargs,
+        # remaining kwargs go to the TD constructor (which validates them)
+        regular_param_names = {p.name for p in func.params if p.name != func.kwarg_name}
+        td_kwargs = {}
+        remaining_kwargs = {}
+        for k, v in expr.kwargs.items():
+            if k in regular_param_names:
+                remaining_kwargs[k] = v
+            else:
+                td_kwargs[k] = v
+        td_call = TpyCall(TpyName(td_type.name, loc=expr.loc), [],
+                          kwargs=td_kwargs, loc=expr.loc)
+        td_call_type = self._analyze_record_constructor(td_call, record)
+        self.ctx.set_expr_type(td_call, td_call_type)
+        expr.kwarg_td_call = td_call
+        expr.kwargs = remaining_kwargs
+
+    def _pack_kwargs_into_typed_dict_method(self, expr: 'TpyMethodCall', func: FunctionInfo) -> None:
+        """Pack call-site kwargs or **expr into a TypedDict for method **kwargs param."""
+        kwarg_param = next(p for p in func.params if p.name == func.kwarg_name)
+        td_type = unwrap_ref_type(kwarg_param.type)
+
+        if expr.double_star_unpack is not None:
+            if expr.kwargs:
+                raise self.ctx.error(
+                    "Cannot mix keyword arguments with **unpacking", expr)
+            unpack_type = self.expr.analyze_expr(expr.double_star_unpack)
+            unpack_type = unwrap_ref_type(unpack_type)
+            self.compat.check_type_compatible(
+                unpack_type, td_type,
+                f"**kwargs unpacking (expected {td_type})",
+                loc=expr.loc,
+            )
+            expr.args.append(expr.double_star_unpack)
+            expr.double_star_unpack = None
+            return
+
+        record = self.ctx.registry.get_record(td_type.name)
+        if record is None:
+            raise self.ctx.error(f"**kwargs type '{td_type.name}' is not a TypedDict", expr)
+        td_call = TpyCall(TpyName(td_type.name, loc=expr.loc), [],
+                          kwargs=dict(expr.kwargs), loc=expr.loc)
+        td_call_type = self._analyze_record_constructor(td_call, record)
+        self.ctx.set_expr_type(td_call, td_call_type)
+        expr.args.append(td_call)
+        expr.kwargs = {}
+
     def _resolve_inferred_type_arg(self, t: TpyType) -> TpyType:
         """Resolve literal types in inferred type args before codegen."""
         return resolve_int_literals(t, self.ctx.default_int_type)
@@ -2290,8 +2367,20 @@ class CallAnalyzer:
                 expr,
             )
 
-        # Resolve kwargs before arity check
+        # Pack **kwargs into TypedDict construction before regular kwargs resolution
+        if func.kwarg_name:
+            self._pack_kwargs_into_typed_dict(expr, func)
+        elif expr.double_star_unpack is not None:
+            raise self.ctx.error(
+                f"'{expr.func_name}' does not accept **kwargs", expr)
+
+        # Resolve regular kwargs before arity check
         self._resolve_call_kwargs(expr, func)
+
+        # Append the TypedDict construction AFTER regular kwargs are resolved to positional
+        if expr.kwarg_td_call is not None:
+            expr.args.append(expr.kwarg_td_call)
+            expr.kwarg_td_call = None
 
         expr.resolved_function_info = func
         if len(expr.args) < func.min_args or len(expr.args) > func.max_args:
@@ -2626,6 +2715,10 @@ class CallAnalyzer:
 
     def _analyze_record_constructor(self, expr: TpyCall, record: RecordInfo) -> TpyType:
         """Analyze a call to a record constructor."""
+        # Skip re-analysis for already-analyzed synthetic constructor calls
+        cached = self.ctx.get_expr_type(expr)
+        if cached is not None:
+            return cached
         # Types with overloaded @cpp_template/@native __init__ (e.g. Int32, str, bool)
         if record.builtin_type_key and not record.type_params:
             init_overloads = record.get_method_overloads("__init__")
