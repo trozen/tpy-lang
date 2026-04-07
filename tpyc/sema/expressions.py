@@ -687,9 +687,11 @@ class ExpressionAnalyzer:
                     expr,
                 )
 
-        # Unwrap OwnType -- ownership doesn't affect operator resolution
-        left_effective = left_type.wrapped if isinstance(left_type, OwnType) else left_type
-        right_effective = right_type.wrapped if isinstance(right_type, OwnType) else right_type
+        # Unwrap OwnType/RefType -- ownership/references don't affect operator resolution
+        left_effective = unwrap_ref_type(left_type)
+        left_effective = left_effective.wrapped if isinstance(left_effective, OwnType) else left_effective
+        right_effective = unwrap_ref_type(right_type)
+        right_effective = right_effective.wrapped if isinstance(right_effective, OwnType) else right_effective
         # Value optionals in operator expressions use runtime null checks unless
         # flow already proved non-None for the specific expression.
         warned_optional_operator = False

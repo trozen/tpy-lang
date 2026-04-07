@@ -87,6 +87,7 @@ class OperatorResolver:
 
     def get_effective_type_for_binop(self, tpy_type: TpyType) -> TpyType:
         """Fully resolve type for registry lookup (also resolves IntLiteralType/FloatLiteralType)."""
+        tpy_type = unwrap_ref_type(tpy_type)
         if isinstance(tpy_type, OwnType):
             tpy_type = tpy_type.wrapped
         if isinstance(tpy_type, IntLiteralType):
@@ -209,8 +210,8 @@ class OperatorResolver:
 
         # For overload matching, resolve structural types but preserve
         # IntLiteralType flexibility (matches any numeric type)
-        left_arg = self._resolve_pending_types(left_type)
-        right_arg = self._resolve_pending_types(right_type)
+        left_arg = unwrap_ref_type(self._resolve_pending_types(left_type))
+        right_arg = unwrap_ref_type(self._resolve_pending_types(right_type))
 
         # 1. Try direct: left.__add__(right)
         if left_record:
@@ -278,7 +279,7 @@ class OperatorResolver:
             return None
 
         type_subst = self._build_type_subst(target_effective, value_type)
-        value_arg = self._resolve_pending_types(value_type)
+        value_arg = unwrap_ref_type(self._resolve_pending_types(value_type))
 
         overloads = record.get_method_overloads(method_name)
         # Try builtin methods with cpp_template first

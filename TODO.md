@@ -25,6 +25,11 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Property narrowing not supported: `if f.val is not None: f.val + 1` does not narrow because property access is a method call (could return different values). Same as function calls. Workaround: `v = f.val; if v is not None: v + 1`. Could support narrowing for simple field-returning getters in the future (requires getter body analysis).
 - Overload resolution: generic overloads with protocol params lose to concrete overloads with coercion. `sum[T: AnyFixedInt](Iterable[T])` doesn't match `list[Int32]` in pass 1 because `_structural_match` requires `type(arg) == type(param)` -- `ArrayType` != `NamedType("Iterable")`. The concrete `sum(Iterable[float])` then wins via coercion in pass 2. Fix: `_structural_match` should check protocol conformance when `param` is a protocol type, so generic overloads with protocol params match in pass 1. Workaround: add concrete overloads for common types (Int32, Int64) before the generic.
 - `repr()` and f-string `{}` don't work on union types: `repr(x)` where `x: A | B` fails with "No matching overload". Requires isinstance narrowing to access the concrete type. Fix: `_repr_fallback_template` should handle `UnionType` via `std::visit` dispatch.
+- `bytes` parameter assigned to `bytes` field fails in C++: `bytes` params are `std::span<const uint8_t>` but `bytes` fields are `std::vector<uint8_t>`. Direct assignment in constructor member initializer list fails because `vector` has no `span` constructor. Workaround: `self.name = b + b""` forces concatenation which materializes a vector. Fix: codegen should emit `std::vector<uint8_t>(param.begin(), param.end())` in the member initializer list when assigning a `bytes` param to a `bytes` field.
+- `x in (1, 17)` tuple membership not supported: `in` operator on tuple literals is not implemented. Workaround: use `x == 1 or x == 17`.
+- `key in dict` fails when key is a tuple type: the `in` operator sees the tuple LHS and tries tuple `__contains__` instead of dict `__contains__`. Workaround: use `dict.get()` or restructure keys as flat integers.
+- `[False] * n` crashes at runtime: `list[bool]` maps to `std::vector<bool>`, which is a C++ special case (bit-packed proxy type). `repeat_range`/`from_range` don't work with it because `vector<bool>::reference` is a proxy, not a real `bool&`. Workaround: use `list[Int32]` with 0/1 values. Fix: either avoid `std::vector<bool>` (use `std::vector<uint8_t>` or `std::vector<char>` for `list[bool]`), or specialize the repeat path.
+- `neg_check` not `constexpr`: `Final[Int32] = -OTHER_FINAL` fails at C++ level because `neg_check<int32_t>()` is called in a `constexpr` initializer but isn't marked `constexpr`. Fix: mark checked arithmetic functions `constexpr` in `fixed_int.hpp`.
 - Inherited `__repr__` not used by `operator<<`: `_gen_record_ostream` only checks direct methods (not inherited) to avoid `BaseException.__str__` leaking into exception subclasses. This means `print(child)` gives `<Child object at 0x...>` even when the parent defines `__repr__`, but `repr(child)` correctly finds the inherited method. Consider checking inherited `__repr__` while excluding known problematic base classes.
 
 ## Bytes
@@ -136,6 +141,8 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - logging, stream object printing, to log instead of __str__
 
 ## Standard Library
+- `collections` module: `defaultdict`, `Counter`, `deque`, `OrderedDict`
+- `itertools` module: `product`, `permutations`, `combinations`, `chain`, `islice`, `groupby`
 
 ## Other
 - Docstrings: silently skipped in codegen (harmless, but no introspection support)
@@ -175,8 +182,3 @@ Benchmarked with CME MBO order book (15MB JSON, 20K messages). Library-level opt
 - Inherited constructor forwarding: multi-level inheritance (`Child -> Mid -> Base`) where intermediate classes have no `__init__` doesn't forward the base constructor. C++ generates `Child() = default;` only, so `Child(args)` fails. Workaround: add explicit `__init__` + `super().__init__()` at each level.
 - INT type params on functions: parsing works (`def foo[T, N: int]`) but codegen crashes for non-stub functions -- `inferred_type_args` contains `int` values that `type_to_cpp()` can't handle. Need `type_param_kinds` on `FunctionInfo` + codegen fixes. Stubs (`@cpp_template`/`@native`) work fine.
 - Union isinstance narrowing in ternary: `x if isinstance(x, str) else ...` where `x: str | int` would need `std::get<T>()` extraction, which requires statement-level codegen (variable declaration for the extracted value).
-
-## ShedSkin examples
-- score4
-- mandelbrot
-- nbody

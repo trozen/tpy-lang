@@ -1,0 +1,2 @@
+main.py:40: warning: copies Vec into field; use copy() to make this explicit
+main.py:41: warning: copies Vec into field; use copy() to make this explicit
