@@ -3,6 +3,12 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
+- test time imrovement -- the tests are taking again a lot of time, investigate how to make them shorter; e.g. a set of a few quick tests that cover all/most functionality
+- overload_getitem_both_slices -- overload flattening -- invalid source comments, should show if and note that dead code has been removed
+- Overload implementation arity mismatch: `@overload` stubs with different arities (e.g. `log(x)` and `log(x, base)`) can't have an implementation function with a default param (`def log(x, base=None)`) -- the compiler rejects the param count mismatch. Blocks `math.log(x, base)` overload. Workaround: `log_base(x, base)` as separate function. Low priority.
+- range function/type defined in .py and generic
+- iterator overhaul, drop begin/end iterators in sema and only use python iterators; codegen may still generate begin/end loops, e.g. for range(); but the compilation pipeline should be centered around Iterator/Iterable types
+- Overloads with bodies (no dispatch function): allow `@overload` variants to have bodies directly, removing the need for a separate implementation function. TPy dispatches at compile time so this is straightforward. For CPython compatibility, `tpy.overload` could build a runtime dispatch table (pick by arity/types). Would simplify stdlib modules that mix `@native` and TPy overloads.
 - Recursive types (D19/D20): blocks tree data structures, linked lists, AST nodes -- prerequisite for self-hosting. Needs auto-boxing (`Box[T]`) for recursive fields. See FEATURE_ROADMAP.md.
 - async/await (G1): entire concurrency model absent. XL effort -- needs runtime (event loop or alternative), coroutine codegen, async for/with. See FEATURE_ROADMAP.md.
 - Eliminate concrete type classes (ListType, DictType, etc.): replace `isinstance(t, ListType)` checks with name-based or annotation-driven checks. ~60 references for ListType alone across type inference, codegen, and compatibility. Enables treating all types uniformly as NamedType + RecordInfo. Lower priority -- current type classes work fine, this is about uniformity.
@@ -12,6 +18,11 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Define decorators as .py functions: readonly/noalloc/nocopy/pure/dynamic/error_return (tpy), native/cpp_template/builtin_type (tpy.extern), overload/override (typing) are currently parser keywords with empty stub files. Want them as real function definitions eventually so the parser doesn't need special handling. Blocked on: functions need type annotations to compile, and decorator signatures have no meaningful type (identity function over any callable).
 - ContextManager[T] protocol
 - `__stream__` / `__write__` dunder: efficient stream-based output for records (avoids allocating a string just to print). Needed for no-alloc logging.
+- default macro protocols to implement hash/eq/compare/str/etc? -- rust inspired?
+- and/or: replaced with expression block?
+- python dict lookup with string_view? (no need to create std::string)
+- KeyInterrupt exception?
+- optmize build, split headers
 
 
 ## Bugs
@@ -29,6 +40,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Readonly-deduced method returns `Span[const T]` but declared return type has `Span[T]`: when a method is deduced readonly, `list_slice` on the const container returns `std::span<const T>`, but the return type `Own[Span[T] | list[T]]` uses non-const `std::span<T>`. The implicit conversion fails. Fix: propagate readonly into Span members of union return types when the method is deduced const, or emit a const_cast in codegen.
 - Stepped slice result bound as lvalue reference: `list_stepped_slice` returns `std::vector<T>` by value, but codegen binds the result to `std::vector<T>&` (lvalue reference) when assigned to a local variable. C++ rejects binding a non-const lvalue reference to an rvalue. Fix: codegen should use `auto&&` or value binding for rvalue-returning subscript results.
 - Inherited `__repr__` not used by `operator<<`: `_gen_record_ostream` only checks direct methods (not inherited) to avoid `BaseException.__str__` leaking into exception subclasses. This means `print(child)` gives `<Child object at 0x...>` even when the parent defines `__repr__`, but `repr(child)` correctly finds the inherited method. Consider checking inherited `__repr__` while excluding known problematic base classes.
+- `in` operator error with multi-overload `__contains__`: when no overload matches, the error reports only the first overload's param type (e.g. "expected UInt8") even though other overloads exist (e.g. `bytes`). Should list all candidates like function call overload errors do.
 
 ## Bytes
 - `BytesView` as dict key / set element: `__hash__` works but `std::span<const uint8_t>` has no `operator==`, so `ordered_map`/`ordered_set` fail to compile. Needs an `__eq__` overload or `std::equal_to` specialization.
@@ -66,13 +78,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - tpy.ctypes.CInt32
 - ptr() function? Auto-select Ptr vs Ptr[readonly[T]] based on binding mutability. Needs sema-level magic (mutability not in type, it's in binding context).
 - `tpy.unsafe.unsafe_address_of(x) -> int`: return the memory address of an object as an integer. Useful for identity comparison in tests (proving reference semantics vs silent copy). C++ codegen: `reinterpret_cast<uintptr_t>(&x)`.
-
-## Operator overload diagnostics
-- `in` operator error with multi-overload `__contains__`: when no overload matches, the error reports only the first overload's param type (e.g. "expected UInt8") even though other overloads exist (e.g. `bytes`). Should list all candidates like function call overload errors do.
-
-## Overloads
-- Overload implementation arity mismatch: `@overload` stubs with different arities (e.g. `log(x)` and `log(x, base)`) can't have an implementation function with a default param (`def log(x, base=None)`) -- the compiler rejects the param count mismatch. Blocks `math.log(x, base)` overload. Workaround: `log_base(x, base)` as separate function. Low priority.
-- Overloads with bodies (no dispatch function): allow `@overload` variants to have bodies directly, removing the need for a separate implementation function. TPy dispatches at compile time so this is straightforward. For CPython compatibility, `tpy.overload` could build a runtime dispatch table (pick by arity/types). Would simplify stdlib modules that mix `@native` and TPy overloads.
 
 ## Python features
 - Nested class definitions: `class Outer: class Inner: ...` is rejected by the parser. Needed both as a language feature and for macro companion type creation (e.g. key enums for JSON field dispatch). C++ codegen: nested struct/class.
@@ -137,6 +142,9 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - analysis: when an object is passed to a function by reference but then copied, should we suggest passing as Own[]?
 - sizeof() function
 - logging, stream object printing, to log instead of __str__
+
+## tplib (TPy standard library)
+- Protobuf macro (tplib.protobuf) — designed in the doc, would be the next real use case for the macro system
 
 ## Standard Library
 - `collections` module: `defaultdict`, `Counter`, `deque`, `OrderedDict`
