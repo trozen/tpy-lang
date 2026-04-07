@@ -3385,12 +3385,14 @@ class ExpressionGenerator:
         obj = self._maybe_unwrap_narrowed_optional(
             expr.obj, obj, self.ctx.is_indirect_name(expr.obj))
 
-        # Slice: obj[start:stop] or obj[start:stop:step]
-        if isinstance(expr.index, TpySlice):
+        # Slice: literal a:b syntax or variable of basic_slice/slice type
+        if expr.slice_function_info is not None:
             subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
             fi = expr.slice_function_info
-            assert fi, "slice_function_info not set -- sema should have rejected this"
-            slice_arg = self._gen_slice_object(expr.index, stepped=expr.is_stepped_slice)
+            if isinstance(expr.index, TpySlice):
+                slice_arg = self._gen_slice_object(expr.index, stepped=expr.is_stepped_slice)
+            else:
+                slice_arg = self.gen_expr(expr.index)
             return self.builtins.gen_call_from_fi(fi, subscript_obj, [slice_arg])
 
         obj_type = self.types.get_resolved_type(expr.obj)

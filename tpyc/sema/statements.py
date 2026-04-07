@@ -272,6 +272,18 @@ class StatementAnalyzer:
             return
         if not self.compat.is_lvalue(expr):
             return
+        # Value types are always safe to return as Own -- they're copied, not
+        # aliased. Expressions already typed as Own (e.g. stepped slice
+        # returning Own[list[T]]) produce owned values regardless.
+        # Unwrap TpyCoerce to get the source type (coerce records the target).
+        inner = expr
+        while isinstance(inner, TpyCoerce):
+            inner = inner.expr
+        raw_type = self.ctx.get_raw_expr_type(inner)
+        if raw_type is not None:
+            unwrapped = unwrap_ref_type(raw_type)
+            if isinstance(unwrapped, OwnType) or unwrapped.is_value_type():
+                return
         # In a consuming method, self.field is owned (ownership propagation)
         # and can be moved out of the struct. The codegen wraps in std::move.
         if (self.ctx.in_consuming_method

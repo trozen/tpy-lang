@@ -2397,6 +2397,21 @@ class ExpressionAnalyzer:
             )
             return make_ref(actual_obj.value_type)
 
+        # Slice-typed variable as index: route through __getitem__ overload
+        # resolution (same path as literal a:b syntax but with variable index).
+        if isinstance(index_type, (BasicSliceType, SliceType)):
+            stepped = isinstance(index_type, SliceType)
+            if stepped:
+                expr.is_stepped_slice = True
+            is_readonly = isinstance(inner_obj_type, ReadonlyType)
+            actual_type = unwrap_readonly(inner_obj_type)
+            result = self._find_slice_getitem(actual_type, stepped=stepped, is_readonly=is_readonly)
+            if result is not None:
+                ret, fi = result
+                expr.slice_function_info = fi
+                return ret
+            raise self.ctx.error(f"Slicing is not supported for {inner_obj_type}", expr)
+
         if not isinstance(index_type, (Int32Type, BigIntType, IntLiteralType)):
             raise self.ctx.error(f"Subscript index must be an integer type, got {index_type}", expr)
 
@@ -2475,12 +2490,6 @@ class ExpressionAnalyzer:
         if result is not None:
             ret, fi = result
             expr.slice_function_info = fi
-            # Propagate readonly to Span return types (source is readonly or
-            # Span[readonly[T]] -> sliced result should also be readonly)
-            if isinstance(ret, SpanType) and not ret.is_readonly:
-                src_readonly = isinstance(actual_type, SpanType) and actual_type.is_readonly
-                if is_readonly or src_readonly:
-                    ret = SpanType(ret.element_type, is_readonly=True)
             return ret
 
         raise self.ctx.error(f"Slicing is not supported for {obj_type}", expr)
@@ -2518,6 +2527,12 @@ class ExpressionAnalyzer:
         type_subst = self.type_ops.build_type_substitution(actual_type)
         if type_subst:
             ret = self.type_ops.substitute_type_params(ret, type_subst)
+        # Propagate readonly to Span return types (source is readonly or
+        # Span[readonly[T]] -> sliced result should also be readonly)
+        if isinstance(ret, SpanType) and not ret.is_readonly:
+            src_readonly = isinstance(actual_type, SpanType) and actual_type.is_readonly
+            if is_readonly or src_readonly:
+                ret = SpanType(ret.element_type, is_readonly=True)
         return ret, func_info
 
     _FORMATTABLE_TYPES = (

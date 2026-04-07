@@ -509,6 +509,10 @@ class Parser:
                 return STRVIEW
             elif original == "BytesView":
                 return BYTESVIEW
+            elif original == "basic_slice":
+                return BASIC_SLICE
+            elif original == "slice":
+                return SLICE
         elif module == "typing":
             if original == "Self":
                 return SELF
