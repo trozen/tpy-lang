@@ -10,7 +10,7 @@ import io
 from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, StrViewType, LiteralType, LiteralValue, BytesType, BytesViewType, CharType,
+    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, StringType, StrViewType, LiteralType, LiteralValue, BytesType, BytesViewType, CharType,
     NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, DictType, SetType,
     DictKeysViewType, DictValuesViewType, DictItemsViewType,
     PendingListType, ListRepeatType,
@@ -1082,6 +1082,17 @@ class ExpressionGenerator:
 
         # Handle 'in' and 'not in' operators
         if expr.op in ("in", "not in"):
+            # TypedDict: "key" in td -> compile-time field presence check
+            if expr.typed_dict_in_field is not None:
+                negate = expr.op == "not in"
+                if expr.typed_dict_in_always_true:
+                    return "false" if negate else "true"
+                right = self.gen_expr(expr.right)
+                if self.ctx.is_indirect_name(expr.right):
+                    right = f"(*{right})"
+                cpp_field = escape_cpp_name(expr.typed_dict_in_field)
+                has_value = f"{right}.{cpp_field}.has_value()"
+                return f"(!{has_value})" if negate else has_value
             if self.ctx.literal_facts:
                 folded = self._try_fold_literal_in(expr)
                 if folded is not None:
@@ -2095,6 +2106,43 @@ class ExpressionGenerator:
 
     def _gen_method_call(self, expr: TpyMethodCall) -> str:
         """Generate method call code."""
+        # TypedDict: td.get("key") / td.get("key", default)
+        if expr.typed_dict_get_field is not None:
+            obj = self.gen_expr(expr.obj)
+            if self.ctx.is_indirect_name(expr.obj):
+                obj = f"(*{obj})"
+            cpp_field = escape_cpp_name(expr.typed_dict_get_field)
+            has_default = len(expr.args) == 2
+            if has_default:
+                default = self.gen_expr(expr.args[1])
+                if expr.typed_dict_get_optional:
+                    # value_or needs a type implicitly convertible to the optional's
+                    # inner type; string_view is not implicitly convertible to
+                    # std::string, so wrap when the field stores an owned string
+                    result_type = self.types.get_resolved_type(expr)
+                    if isinstance(result_type, (StrType, StringType)):
+                        default = f"std::string({default})"
+                    return f"{obj}.{cpp_field}.value_or({default})"
+                else:
+                    return f"({default}, {obj}.{cpp_field})"
+            else:
+                if expr.typed_dict_get_optional:
+                    return f"{obj}.{cpp_field}"
+                else:
+                    # Check if the field is already Optional in C++ (total=True
+                    # with explicit Optional[T] annotation) -- no wrapping needed
+                    result_type = self.types.get_resolved_type(expr)
+                    obj_type = self.types.get_resolved_type(expr.obj)
+                    rec = self.ctx.analyzer.registry.get_record_for_type(obj_type)
+                    field_already_optional = False
+                    if rec:
+                        for fld in rec.fields:
+                            if fld.name == expr.typed_dict_get_field:
+                                field_already_optional = isinstance(fld.type, OptionalType)
+                                break
+                    if field_already_optional:
+                        return f"{obj}.{cpp_field}"
+                    return f"std::make_optional({obj}.{cpp_field})"
         # Callable-typed field invocation: obj.field(args) -> obj.field(args)
         if expr.is_callable_field:
             obj_code = self.gen_expr_deref(expr.obj)

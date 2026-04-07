@@ -860,8 +860,21 @@ class ExpressionAnalyzer:
             right_type = unwrap_ref_type(right_type)
             if isinstance(right_type, OwnType):
                 right_type = right_type.wrapped
-            # Try __contains__ method (O(1) for dict, set, dict_keys; user-defined for records)
+            # TypedDict: "key" in td -> compile-time field presence check
             right_record = self.ctx.registry.get_record_for_type(right_type)
+            if right_record and right_record.is_typed_dict:
+                if not isinstance(expr.left, TpyStrLiteral):
+                    raise self.ctx.error(
+                        f"TypedDict '{right_type.name}' membership test requires a string literal key",
+                        expr.left)
+                key = expr.left.value
+                for fld in right_record.fields:
+                    if fld.name == key:
+                        expr.typed_dict_in_field = key
+                        expr.typed_dict_in_always_true = not right_record.is_total_false
+                        return BOOL
+                raise self.ctx.error(
+                    f"TypedDict '{right_type.name}' has no key '{key}'", expr.left)
             if right_record:
                 contains_overloads = right_record.get_method_overloads("__contains__")
                 if contains_overloads:

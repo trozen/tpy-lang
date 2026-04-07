@@ -1,0 +1,1 @@
+main.py:10: error: TypedDict 'Info' keys must be string literals

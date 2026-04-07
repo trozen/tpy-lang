@@ -714,6 +714,7 @@ class TypeRegistrar:
             ),
             is_frozen=record.is_frozen,
             is_typed_dict=record.is_typed_dict,
+            is_total_false=record.is_total_false,
             has_del=record.del_method is not None,
             has_copy=has_copy,
             builtin_type_key=record.builtin_type_key,

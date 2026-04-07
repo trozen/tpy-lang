@@ -13,11 +13,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - `__stream__` / `__write__` dunder: efficient stream-based output for records (avoids allocating a string just to print). Needed for no-alloc logging.
 
 
-## Cleanup
-- Native records without `__init__` silently get a positional constructor synthesized from field order. This is fragile -- reordering fields in the `.py` stub breaks callers with no error. Should require an explicit `__init__` stub instead (like non-native records).
-- TypedDict per-field `NotRequired[]` / `Required[]` (PEP 655) for finer control than `total=False`.
-- TypedDict `td.get("key", default)` and `"key" in td` for CPython-compatible access patterns on `total=False` fields.
-
 ## Bugs
 - Generic generators with multiple yield points (struct-based codegen path) are not yet supported -- the out-of-line `__next__()` in .cpp won't link for template structs. Currently guarded with a sema error. Fix: emit struct + `__next__()` body into the header when the function has type params.
 - Non-native functions in builtin modules can't be called from user code: codegen emits unqualified names (e.g. bare `enumerate(...)` instead of `tpystd::builtins::enumerate(...)`). The `imported_names` path considers any registered function as "shadowing" the import. Blocks defining pure TPy generator builtins. Workaround: use `@cpp_template`/`@native` with C++ implementation instead.
@@ -175,6 +170,8 @@ Benchmarked with CME MBO order book (15MB JSON, 20K messages). Library-level opt
 - **[LOW]** `__param_` copy for reassigned parameters: when a parameter is reassigned in the function body, codegen takes it by `const&` then copies into a mutable local. For BigInt/string params, taking by value instead would let the caller move. Only helps when caller passes an rvalue; for lvalue calls it's worse (forces copy at call site vs zero-cost `const&`). Also changes ABI (not API).
 
 ## Low Priority
+- Native records without `__init__` silently get a positional constructor synthesized from field order. This is fragile -- reordering fields in the `.py` stub breaks callers with no error. Should require an explicit `__init__` stub instead (like non-native records).
+- TypedDict per-field `NotRequired[]` / `Required[]` (PEP 655) for finer control than `total=False`.
 - `f"{x!r}"` doesn't use the repr() sema fallback: `repr(x)` accepts primitives and user records, but `f"{x!r}"` still requires the `Representable` protocol. Should share the same acceptance logic.
 - Catch uncaught `tpy::BaseException` in generated `main()`: currently an unhandled exception produces GCC's `terminate called after throwing...` message, which is a C++ implementation detail. Should catch `tpy::BaseException` and print Python-style `ExceptionType: message` to stderr instead.
 - `= default` semantic gap: records with required `__init__` params currently emit `ClassName() = default;` if their C++ fields are all trivially constructible, bypassing the Python-level construction contract. Should emit `= delete` (or nothing) instead -- `std::optional<T>` and containers don't require default-constructibility, so the impact is limited to direct `T t;` / `T arr[N]` patterns which tpyc doesn't generate anyway. Fix: check `init_params` required count in `_fld_type_cpp_default_constructible` (same as `_is_default_constructible`). See `docs/CONSTRUCTOR_DESIGN.md` open question 4.

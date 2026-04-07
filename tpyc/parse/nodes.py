@@ -138,6 +138,8 @@ class TpyBinOp(TpyExpr):
     right: TpyExpr
     resolved_binop: 'ResolvedBinop | None' = None  # Set by sema for builtin ops
     resolved_contains: 'FunctionInfo | None' = None  # Set by sema for 'in'/'not in' with __contains__
+    typed_dict_in_field: str | None = None  # Set by sema: "key" in TypedDict -> field presence check
+    typed_dict_in_always_true: bool = False  # Set by sema: total=True field, fold to True
     optional_safe_eq: bool = False  # Set by sema: ==/!= with Optional value-type operand(s)
     int_enum_coercion: 'IntEnumType | None' = None  # Set by sema: IntEnum arithmetic coerced to underlying type
     divisor_non_zero: bool = False  # Set by sema: divisor provably non-zero, skip div-zero check
@@ -262,6 +264,8 @@ class TpyMethodCall(TpyExpr):
     ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr (or Ptr[readonly[T]])
     is_callable_field: bool = False  # Set by sema: method name is a Callable-typed field
     macro_expansion: 'TpyExpr | None' = None  # Set by sema: replacement expr from @call_macro
+    typed_dict_get_field: str | None = None  # Set by sema: td.get("key") -> field access
+    typed_dict_get_optional: bool = False  # Set by sema: total=False field, absent by default
 
     def children(self) -> list[TpyExpr]:
         if self.macro_expansion is not None:

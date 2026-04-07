@@ -2427,8 +2427,8 @@ string literal is used -- this can't be expressed with regular generics.
 
 **C++ mapping**: A TypedDict is a struct that pretends to be a dict. Codegen emits
 a plain C++ struct; `d["name"]` compiles to `d.name` (field access). No hash map
-overhead. The dict-like API (`.get()`, `.keys()`, `.items()`, `in`, iteration) can
-be generated as methods on the struct.
+overhead. `.get()` and `"key" in td` are supported; remaining dict-like API
+(`.keys()`, `.items()`, iteration) can be generated as methods on the struct.
 
 ```cpp
 struct UserInfo {
@@ -2451,13 +2451,19 @@ class Partial(TypedDict, total=False):
 keyword-only construction, `total=False` for optional fields (maps to `Optional[T]`,
 `d["key"]` panics on absent), `**kwargs: Unpack[TD]` for typed variadic keywords.
 Field `= default` values are ignored with a warning (matches CPython runtime).
+`.get("key")` and `.get("key", default)` for safe access (returns `Optional[T]` or `T`).
+`"key" in td` for field presence checks (`has_value()` for `total=False`, constant
+`True` for `total=True`).
 
-**Not yet supported**:
+**Not yet supported** (see also `docs/LANGUAGE_FEATURES.md` TypedDict entry):
 - Per-field `NotRequired[]` / `Required[]` (PEP 655)
-- Dict-like API (`.keys()`, `.values()`, `.items()`, `.get()`, `"key" in td`)
+- Dict-like methods: `.keys()`, `.values()`, `.items()`, `.update()`, `.pop()`, `.setdefault()`
+- `len(td)`, `del td["key"]`, iteration (`for k in td`)
 - Dict literal construction (`{"name": "Alice"}` as TypedDict)
+- `**td` unpacking in dict contexts
 - Type parameters on TypedDict
 - TypedDict inheritance
+- All keys must be compile-time string literals (no dynamic access)
 
 **Dependencies**: None for basic form. Typed `**kwargs` (D18) is the primary consumer.
 `Unpack` from `typing` needed for PEP 692 integration.

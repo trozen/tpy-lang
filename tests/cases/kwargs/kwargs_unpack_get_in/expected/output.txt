@@ -1,0 +1,9 @@
+verbose mode
+example.com
+8080
+localhost
+3000
+myhost
+no port
+no host
+no port

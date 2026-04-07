@@ -1197,6 +1197,52 @@ class MethodAnalyzer:
 
         return resolved_type
 
+    def _analyze_typed_dict_get(self, expr: TpyMethodCall, record_info, obj_type: TpyType) -> TpyType:
+        """Analyze td.get("key") or td.get("key", default) on a TypedDict."""
+        if len(expr.args) < 1 or len(expr.args) > 2:
+            raise self.ctx.error(
+                f"TypedDict.get() takes 1 or 2 arguments, got {len(expr.args)}", expr)
+        if expr.kwargs:
+            raise self.ctx.error("TypedDict.get() does not accept keyword arguments", expr)
+        key_expr = expr.args[0]
+        if not isinstance(key_expr, TpyStrLiteral):
+            raise self.ctx.error(
+                f"TypedDict '{obj_type.name}' keys must be string literals", key_expr)
+        key = key_expr.value
+        type_subst = self.type_ops.build_type_substitution(obj_type)
+        for fld in record_info.fields:
+            if fld.name == key:
+                field_type = fld.type
+                if type_subst:
+                    field_type = self.type_ops.substitute_type_params(field_type, type_subst)
+                # total=False: field stored as Optional[T], unwrap to get inner type
+                # total=True: field is always present, even if annotated Optional[T]
+                is_absent_optional = record_info.is_total_false
+                if is_absent_optional:
+                    assert isinstance(field_type, OptionalType)
+                    inner_type = field_type.inner
+                else:
+                    inner_type = field_type
+                expr.typed_dict_get_field = key
+                expr.typed_dict_get_optional = is_absent_optional
+                # Analyze key expression so its type is recorded
+                self.expr.analyze_expr(key_expr)
+                has_default = len(expr.args) == 2
+                if has_default:
+                    default_type = self.expr.analyze_expr_with_hint(expr.args[1], inner_type)
+                    self.compat.check_type_compatible(
+                        default_type, inner_type,
+                        f"default value for TypedDict.get()", loc=expr.args[1].loc,
+                        source_expr=expr.args[1])
+                    return inner_type
+                else:
+                    # Don't double-wrap: total=True Optional[T] field is already Optional
+                    if isinstance(inner_type, OptionalType):
+                        return inner_type
+                    return OptionalType(inner_type)
+        raise self.ctx.error(
+            f"TypedDict '{obj_type.name}' has no key '{key}'", key_expr)
+
     def _analyze_instance_method(self, expr: TpyMethodCall, obj_type: TpyType,
                                   is_readonly_receiver: bool = False,
                                   is_consuming_receiver: bool = False) -> TpyType | None:
@@ -1204,6 +1250,9 @@ class MethodAnalyzer:
         record_info = self.ctx.registry.get_record_for_type(obj_type)
         if not record_info:
             return None
+        # TypedDict: td.get("key") / td.get("key", default)
+        if record_info.is_typed_dict and expr.method == "get":
+            return self._analyze_typed_dict_get(expr, record_info, obj_type)
         overloads, inherited_subst = self.protocols.lookup_record_method_overloads(
             record_info, expr.method)
         if not overloads:
