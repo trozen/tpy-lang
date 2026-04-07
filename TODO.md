@@ -3,6 +3,8 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
+- Recursive types (D19/D20): blocks tree data structures, linked lists, AST nodes -- prerequisite for self-hosting. Needs auto-boxing (`Box[T]`) for recursive fields. See FEATURE_ROADMAP.md.
+- async/await (G1): entire concurrency model absent. XL effort -- needs runtime (event loop or alternative), coroutine codegen, async for/with. See FEATURE_ROADMAP.md.
 - Eliminate concrete type classes (ListType, DictType, etc.): replace `isinstance(t, ListType)` checks with name-based or annotation-driven checks. ~60 references for ListType alone across type inference, codegen, and compatibility. Enables treating all types uniformly as NamedType + RecordInfo. Lower priority -- current type classes work fine, this is about uniformity.
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 - drop builtin types, like RangeType
@@ -61,7 +63,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Builtins
 - Generic Fn param type deduction: `sorted[T,K](Iterable[T], Fn[[T],K])` shares T between iterable and Fn, so the Fn param can widen T (e.g. `sorted([3,1,4], key=negate)` widens T from Int32 to BigInt). In C++, T and KeyFn are independent template params -- the key function's type is deduced separately and implicit conversion handles the call. The proper TPy fix: support independent callable type params bounded over other params, e.g. `sorted[T, KFn: Callable[[T], Comparable]](Iterable[T], KFn)`. Current behavior (widening) is correct but suboptimal; explicit `list[Int32]` + BigInt key already errors.
-- `map()` / `filter()`: reference preservation through single-combinator usage and composed combinators (e.g. `enumerate(map(...))`, `zip(map(...), map(...))`) works via `Ref[T]` and `val_or_ref<T>` tuple elements.
 - type(); (in future `T = type(x); z = T()`)
 - tpy.ctypes.CInt32
 - ptr() function? Auto-select Ptr vs Ptr[readonly[T]] based on binding mutability. Needs sema-level magic (mutability not in type, it's in binding context).
@@ -80,7 +81,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - dynamic attributes
 - stepped slice assignment (`a[::2] = [...]`)
 - Move slice assignment to .py stubs: `_gen_slice_assign` in codegen hardcodes `::tpy::list_set_slice()` directly instead of going through `__setitem__(basic_slice)` stub dispatch. Should follow the same pattern as `__getitem__` slice stubs.
-- properties
 - Generator: `yield from`, `send()`, `throw()`, `close()`
 - Generator: protocol-typed params (`def gen(it: Iterator[T])`) -- needs template struct + factory. Currently emits `T&` without `template<typename T>` and simple generator path tries `begin()/end()` instead of `__next__()`.
 - Generator: liveness optimization -- only promote yield-crossing variables to struct fields, keep others as stack locals in `__next__()` (currently all locals are promoted)
@@ -117,13 +117,13 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Fixed-int division semantics: Python `//` uses floor division (round toward -inf), C++ `/` uses truncation (round toward zero). They differ for negative operands (`-7 // 2` = `-4` in Python, `-3` in C++). Current codegen emits `div_floor`/`mod_floor` which adds a branch per operation. Options: (A) configurable flag like `--int-div=floor|trunc` (similar to `--default-int`), (B) default to truncation for fixed-width types (users opting into Int32 already accept C++ semantics), BigInt always floor, (C) rely on range tracking to emit raw `/` when both operands are provably non-negative (no semantic change, but only helps when compiler can prove it)
 - c++ generation profiles: utf8 strings vs char strings
 - static_cast<char> -- should rather use checked cast (policy based)
-- `Own[T]` for argument passing: callee takes ownership (how to pass an object from pointer? require explicit copy?)
+- `Own[T]` for argument passing: passing an object from a pointer to an `Own[T]` param -- require explicit copy?
 - `DefaultInt` type alias: currently a sentinel class in `tpy.extern` used only by `@type_param_default`. Make it a real type alias with compiler support so it can be used in type annotations (e.g. `x: DefaultInt = 42`).
 - `iter()` non-native: currently `@native("tpy::__iter__")` because regular functions can't return protocol types (`Iterator[T]`). Relax the protocol return type restriction for generic functions so `iter()` can have a real body (`return x.__iter__()`).
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 - formatting/linting like in genweb
 - existing C++ interoperability: when we want to call existing C++ we need to declare types/functions in TPy files, but without generation, only annotating how to use them in code
-- auto-declare fields from `__init__`: extend to `self.f = expr` and `self.f = Constructor()` (Phase 1 param-only is done, see `docs/CONSTRUCTOR_DESIGN.md`)
+- auto-declare fields from `__init__`: extend beyond param-only to `self.f = expr` and `self.f = Constructor()` (requires expression type inference at parse/registration time, see `docs/CONSTRUCTOR_DESIGN.md`)
 - `__int__` equivalent for Int32 etc types (e.g. `__int32__` etc or prefixed: `__tpy_int32__`)
 - hoisted variable slots: keep them at the lowest scope that satisfies lifetime, instead of always hoisting to function scope
 - runtime `using` declarations in global namespace (`tpy.hpp`): generated code should use `tpy::` prefix instead of relying on `using tpy::BigInt` etc.
@@ -143,6 +143,18 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 ## Standard Library
 - `collections` module: `defaultdict`, `Counter`, `deque`, `OrderedDict`
 - `itertools` module: `product`, `permutations`, `combinations`, `chain`, `islice`, `groupby`
+- `os` module: `path.join`, `path.exists`, `path.dirname`, `path.basename`, `getcwd`, `listdir`, `makedirs`, `remove`, `rename`, `environ`
+- `pathlib` module: `Path` class with `/` operator, `exists`, `read_text`, `write_text`, `mkdir`, `iterdir`, `glob`
+- `re` module: `search`, `match`, `findall`, `sub`, `split`, `compile` (wrap PCRE2 or RE2)
+- `functools` module: `partial`, `reduce`
+- `datetime` module: `datetime`, `date`, `time`, `timedelta`, `datetime.now`, `strftime`, `strptime`
+- `hashlib` module: `md5`, `sha1`, `sha256`, `sha512`, `hexdigest`
+- `argparse` module: `ArgumentParser`, `add_argument`, `parse_args`
+- `json` module: CPython-compatible `json.loads`, `json.dumps` API (complement to `tplib.json`)
+- `csv` module: `reader`, `writer`, `DictReader`, `DictWriter`
+- `logging` module: `getLogger`, `info`, `warning`, `error`, `debug`, `basicConfig`
+- `subprocess` module: `run`, `Popen`, `PIPE`, `CompletedProcess`
+- `string` module: `ascii_letters`, `digits`, `punctuation`, `whitespace` constants
 
 ## Other
 - Docstrings: silently skipped in codegen (harmless, but no introspection support)

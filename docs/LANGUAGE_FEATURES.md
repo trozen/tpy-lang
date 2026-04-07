@@ -3909,8 +3909,8 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `__repr__` -> `repr(obj)`, `f"{obj!r}"` (via `Representable` protocol / `tpy::__repr__`)
 - **Working**: Default record printing matches CPython: plain classes print as `<ClassName object at 0xADDR>`. `@dataclass` classes print fields (via macro-generated `__repr__`). Custom `__str__`/`__repr__` always takes priority.
 - **Working**: `__call__` → C++ `operator()` (callable objects). Classes with `__call__` can be invoked with `obj(args)` syntax and passed to `Fn`/`Callable` parameters. Supports `@readonly`, mutable state, and recursive `self(args)` calls.
-- **Open**: `__setitem__` -> mutable `operator[]`
-- **Open**: `__enter__`, `__exit__` -> RAII wrapper
+- **Working** (builtins only): `__setitem__` -> `::tpy::__setitem__()` free function dispatch. Works for builtin types (list, dict, Array, ArrayList) via registry lookup. User-defined `__setitem__` on custom records with `obj[key] = value` syntax is not yet tested.
+- **Working**: `__enter__`, `__exit__` -> context manager protocol for `with` statement. Duck-typed: sema validates methods exist, codegen emits try/catch cleanup. See [with statement](#with-statement-context-managers).
 
 ---
 
