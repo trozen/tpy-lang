@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tpy-poc"
-version = "0.1.0"
+dynamic = ["version"]
 description = "TurboPython compiler - translates restricted Python-syntax to C++ for ultra-low-latency applications"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -18,6 +18,10 @@ tpyc = "tpyc.cli:main"
 
 [tool.uv]
 package = true
+
+[tool.hatch.version]
+source = "regex"
+path = "tpyc/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["tpyc"]

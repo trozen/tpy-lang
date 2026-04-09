@@ -85,15 +85,24 @@ class ProgressPrinter:
         sys.stderr.write(msg)
         sys.stderr.flush()
 
-    def header(self, config: CppCompilerConfig, release: bool, n_jobs: int) -> None:
+    @staticmethod
+    def _module_path(name: str) -> str:
+        """Convert dot-separated module name to path format."""
+        return name.replace('.', '/')
+
+    def header(self, config: CppCompilerConfig | None = None,
+               release: bool = False, n_jobs: int = 1) -> None:
         if not self.enabled:
             return
-        variant = "release" if release else "debug"
-        cxx = config.compiler_name
-        if config.ccache:
-            cxx += " + ccache"
-        job_s = "job" if n_jobs == 1 else "jobs"
-        sys.stderr.write(f"TurboPython compiler v{__version__} ({cxx}, {variant}, {n_jobs} {job_s})\n")
+        if config is not None:
+            variant = "release" if release else "debug"
+            cxx = config.compiler_name
+            if config.ccache:
+                cxx += " + ccache"
+            job_s = "job" if n_jobs == 1 else "jobs"
+            sys.stderr.write(f"TurboPython compiler v{__version__} ({cxx}, {variant}, {n_jobs} {job_s})\n")
+        else:
+            sys.stderr.write(f"TurboPython compiler v{__version__}\n")
         sys.stderr.flush()
 
     def analyzed(self, user_modules: list[str], n_stdlib: int,
@@ -103,7 +112,7 @@ class ProgressPrinter:
         for i, name in enumerate(user_modules):
             is_last = i == len(user_modules) - 1
             suffix = f" (+ {n_stdlib} stdlib)\n" if is_last and n_stdlib else "\n"
-            self._write(f"    {name}.py{suffix}")
+            self._write(f"    {self._module_path(name)}.py{suffix}")
         if n_warnings:
             w = "warning" if n_warnings == 1 else "warnings"
             self._write(f"    {n_warnings} {w}\n")
@@ -113,7 +122,7 @@ class ProgressPrinter:
             self._write(f"  precompiled tpy.hpp ({_fmt_ms(elapsed)})\n")
 
     def translated(self, name: str, elapsed: float) -> None:
-        self._write(f"  translated {name}.py ({_fmt_ms(elapsed)})\n")
+        self._write(f"  translated {self._module_path(name)}.py ({_fmt_ms(elapsed)})\n")
 
     def compiled(self, name: str, elapsed: float) -> None:
         self._write(f"  compiled {name} ({_fmt_ms(elapsed)})\n")
@@ -289,20 +298,22 @@ def main() -> int:
         parser.error("-j/--jobs must be a positive integer")
     building = args.build or args.exec
     quiet = args.dump_code or args.quiet
+    explicit_output = bool(args.output)
     n_jobs = args.jobs or os.cpu_count() or 1
-    progress = ProgressPrinter(enabled=building and not quiet)
+    progress = ProgressPrinter(enabled=not quiet)
 
     try:
         options = CodeGenOptions(emit_source_comments=args.emit_source)
         all_cpp_paths = []
 
-        # Print header when building
         cpp_config: CppCompilerConfig | None = None
         if building:
             cpp_config = CppCompilerConfig.from_env(cxx=args.cxx)
             if args.ccache is not None:
                 cpp_config.ccache = args.ccache
             progress.header(cpp_config, args.release, n_jobs)
+        else:
+            progress.header()
 
         # Create compiler (unified for both stdin and file input)
         t_compile_start = time.monotonic()
@@ -378,7 +389,8 @@ def main() -> int:
 
             t_file_start = time.monotonic()
             try:
-                hpp_path, cpp_path = compiler.generate_code(compiled, output_dir, options=options)
+                hpp_path, cpp_path = compiler.generate_code(compiled, output_dir, options=options,
+                                                                flat=explicit_output)
             except CodeGenError as e:
                 if e.filename is None and not compiled.is_entry_point:
                     e.filename = source_name
@@ -388,10 +400,6 @@ def main() -> int:
                 all_cpp_paths.append(cpp_path)
                 progress.translated(compiled.name, t_file)
 
-            if not building and hpp_path.exists():
-                print(f"Generated: {hpp_path}")
-                if cpp_path is not None:
-                    print(f"Generated: {cpp_path}")
         t_codegen = time.monotonic() - t_codegen_start
 
         if args.dump_code:
@@ -402,7 +410,7 @@ def main() -> int:
         # Generate sources.cmake for CMake integration
         runtime_dir = get_runtime_dir()
         link_flags = compiler.collect_link_flags()
-        cmake_layout = BuildLayout(output_dir, module_name)
+        cmake_layout = BuildLayout(output_dir, module_name, flat=explicit_output)
         cmake_layout.generate_cmake(
             runtime_include_dir=runtime_dir / "cpp" / "include",
             cpp_files=all_cpp_paths,
@@ -413,7 +421,8 @@ def main() -> int:
         if building:
             assert cpp_config is not None
             build_variant = "release" if args.release else "debug"
-            layout = BuildLayout(output_dir, module_name, build_variant=build_variant)
+            layout = BuildLayout(output_dir, module_name, build_variant=build_variant,
+                                   flat=explicit_output)
             binary_path = layout.binary_path()
 
             opt_flags = ["-O3", "-DNDEBUG"] if args.release else ["-g", "-O0"]

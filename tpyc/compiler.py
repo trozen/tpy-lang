@@ -361,10 +361,10 @@ class BuildLayout:
     """
 
     def __init__(self, output_dir: Path, entry_module_name: str,
-                 build_variant: str | None = None):
+                 build_variant: str | None = None, flat: bool = False):
         self.output_dir = output_dir
         self.entry_module_name = entry_module_name
-        self.root_dir = output_dir / f"{entry_module_name}.d"
+        self.root_dir = output_dir if flat else output_dir / f"{entry_module_name}.d"
         self.include_dir = self.root_dir / "include"
         self.src_dir = self.root_dir / "src"
         self.build_variant = build_variant
@@ -1455,7 +1455,8 @@ class Compiler:
 
     def generate_code(self, compiled: CompiledModule, output_dir: Path,
                       entry_module_name: str | None = None,
-                      options: CodeGenOptions | None = None) -> tuple[Path, Path | None]:
+                      options: CodeGenOptions | None = None,
+                      flat: bool = False) -> tuple[Path, Path | None]:
         """Generate C++ code for a compiled module.
 
         Args:
@@ -1480,7 +1481,7 @@ class Compiler:
             else:
                 entry_module_name = mod_name
 
-        layout = BuildLayout(output_dir, entry_module_name)
+        layout = BuildLayout(output_dir, entry_module_name, flat=flat)
         hpp_path = layout.hpp_path(mod_name)
         cpp_path = layout.cpp_path(mod_name)
 

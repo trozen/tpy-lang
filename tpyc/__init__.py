@@ -34,7 +34,7 @@ from .parse import Parser, ParseError, TpyModule
 from .sema import SemanticAnalyzer, SemanticError
 from .codegen_cpp import CodeGenerator
 
-__version__ = "0.1.0"
+__version__ = "0.1.0.dev0"
 
 
 def get_git_commit() -> str:
