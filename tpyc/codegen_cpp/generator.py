@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import TextIO, TYPE_CHECKING
 import io
 
-from ..typesys import TpyType, NamedType, UnionType, OwnType, PendingListType, ListType, ArrayType, PtrType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names
+from ..typesys import TpyType, NamedType, EnumType, UnionType, OwnType, PendingListType, ListType, ArrayType, PtrType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
 
@@ -39,6 +39,21 @@ class _ProtocolDeps:
     prereq_protocol_records: set[str] = field(default_factory=set)
     module_record_names: set[str] = field(default_factory=set)
     records_by_name: dict[str, TpyRecord] = field(default_factory=dict)
+
+
+def _references_nested_type(typ: TpyType) -> bool:
+    """Check if a type references a nested type (dotted name)."""
+    if isinstance(typ, (NamedType, EnumType)) and "." in typ.name:
+        return True
+    return any(_references_nested_type(inner) for inner in typ.inner_types())
+
+
+def _func_uses_nested_type(func: TpyFunction) -> bool:
+    """Check if a function's signature references any nested type."""
+    for _, ptype in func.params:
+        if _references_nested_type(ptype):
+            return True
+    return _references_nested_type(func.return_type)
 
 
 class CodeGenerator:
@@ -654,7 +669,10 @@ class CodeGenerator:
             hpp.write("\n")
 
         # Function forward declarations (before records, so inline
-        # constructor/method bodies can call free functions)
+        # constructor/method bodies can call free functions).
+        # Functions whose signatures reference nested types are deferred
+        # until after record definitions (the parent struct must be complete).
+        deferred_fwd_funcs: list[TpyFunction] = []
         emitted_fwd_func = False
         for func in module.functions:
             if func.is_generator:
@@ -662,6 +680,8 @@ class CodeGenerator:
                     continue  # Simple generators are inline -- no forward decl
                 if self.gen_generators.gen_generator_factory_forward_decl(hpp, func):
                     emitted_fwd_func = True
+            elif _func_uses_nested_type(func):
+                deferred_fwd_funcs.append(func)
             elif self.functions.gen_function_forward_decl(hpp, func):
                 emitted_fwd_func = True
         if emitted_fwd_func:
@@ -677,6 +697,12 @@ class CodeGenerator:
             self.records.gen_record_decl(hpp, record)
             self._emit_hash_specialization(hpp, record)
             self._emit_nested_hash_specializations(hpp, record)
+            hpp.write("\n")
+
+        # Deferred forward declarations for functions with nested types
+        for func in deferred_fwd_funcs:
+            self.functions.gen_function_forward_decl(hpp, func)
+        if deferred_fwd_funcs:
             hpp.write("\n")
 
         # EnumUtil + operator<< for nested enums (must come after parent struct definitions)
