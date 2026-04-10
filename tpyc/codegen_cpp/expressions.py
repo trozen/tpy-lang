@@ -18,6 +18,7 @@ from ..typesys import (
     EnumType, IntEnumType, TupleType, FnType, CallableType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
+    RecursiveUnionType, variant_data_expr,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -1182,6 +1183,9 @@ class ExpressionGenerator:
                 val = self.gen_expr(union_expr)
                 if self.ctx.is_indirect_name(union_expr):
                     val = f"(*{val})"
+                # Recursive union wrapper: access .data for variant operations
+                union_type = left_type if isinstance(left_type, UnionType) else right_type
+                val = variant_data_expr(val, union_type)
                 check = f"std::holds_alternative<std::monostate>({val})"
                 if expr.op == "is":
                     return f"({check})"
@@ -1633,7 +1637,14 @@ class ExpressionGenerator:
                 const_pfx = "const " if var_name in self.ctx.const_indirect_locals else ""
                 result[var_name] = f"(*std::get<{const_pfx}{cpp_type}*>({var_ref}))"
             else:
-                result[var_name] = f"std::get<{cpp_type}>({var_ref})"
+                # Recursive union wrapper: access .data for variant operations.
+                # Skip if already narrowed (narrowed var is concrete, not a wrapper).
+                if var_name not in self.ctx.narrowed_vars:
+                    var_decl_type = self.ctx.var_types.get(var_name)
+                    get_ref = variant_data_expr(var_ref, var_decl_type) if var_decl_type else var_ref
+                else:
+                    get_ref = var_ref
+                result[var_name] = f"std::get<{cpp_type}>({get_ref})"
         return result
 
     def _extract_isinstance_facts(
@@ -1778,7 +1789,10 @@ class ExpressionGenerator:
             if orig_var in self.ctx.ptr_variant_locals:
                 const_pfx = "const " if orig_var in self.ctx.const_indirect_locals else ""
                 return f"std::holds_alternative<{const_pfx}{cpp_type}*>({var_ref})"
-            return f"std::holds_alternative<{cpp_type}>({var_ref})"
+            # Recursive union wrapper: access .data for variant operations
+            var_decl_type = self.ctx.var_types.get(orig_var)
+            get_ref = variant_data_expr(var_ref, var_decl_type) if var_decl_type else var_ref
+            return f"std::holds_alternative<{cpp_type}>({get_ref})"
         # Enum value lookup: Color(0) -> ::tpy::EnumUtil<Color>::from_value(0)
         if expr.enum_from_value is not None:
             enum_type = expr.enum_from_value
@@ -2546,7 +2560,10 @@ class ExpressionGenerator:
                 return f"(*std::get<{const_pfx}{cpp_type}*>({obj_code}))", True
             if self.ctx.is_indirect_name(expr_obj):
                 return f"std::get<{cpp_type}>((*{expr_obj.name}))", True
-            return f"std::get<{cpp_type}>({obj_code})", True
+            # Recursive union wrapper: access .data for variant operations
+            var_decl_type = self.ctx.var_types.get(expr_obj.name)
+            get_ref = variant_data_expr(obj_code, var_decl_type) if var_decl_type else obj_code
+            return f"std::get<{cpp_type}>({get_ref})", True
         return obj_code, False
 
     def _gen_field_access(self, expr: TpyFieldAccess) -> str:

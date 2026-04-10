@@ -13,8 +13,8 @@ from ..typesys import (
     ArrayType, ListType, PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
     NoneType, NamedType, StrType, StringType, StrViewType, BytesType, BytesViewType, STR, BYTES, TupleType, VoidType,
     INT32, BIGINT, FLOAT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
-    ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType,
-    resolve_int_literals,
+    ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, RecursiveUnionType, LiteralType,
+    variant_data_expr, resolve_int_literals,
     error_return_to_cpp, qualify_exception_name, is_return_exception,
     unwrap_ref_type, RefType,
 )
@@ -1743,7 +1743,9 @@ class StatementGenerator:
                 const_pfx = "const " if var_name in self.ctx.const_indirect_locals else ""
                 out.write(f"{inner_indent}{qualifier} {local_name} = *std::get<{const_pfx}{cpp_type}*>({var_ref});\n")
             else:
-                out.write(f"{inner_indent}{qualifier} {local_name} = std::get<{cpp_type}>({var_ref});\n")
+                # Recursive union wrapper: access .data for variant operations
+                get_ref = variant_data_expr(var_ref, var_decl_type) if var_decl_type else var_ref
+                out.write(f"{inner_indent}{qualifier} {local_name} = std::get<{cpp_type}>({get_ref});\n")
             saved[var_name] = self.ctx.narrowed_vars.get(var_name)
             self.ctx.narrowed_vars[var_name] = local_name
         return saved

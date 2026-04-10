@@ -9,7 +9,7 @@ from dataclasses import replace as dc_replace
 from typing import Optional
 
 from ..typesys import (
-    TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, StrType, StrViewType, LiteralType, VoidType, VOID,
+    TpyType, TypeRegistry, NamedType, UnionType, RecursiveUnionType, FinalType, STR, StrType, StrViewType, LiteralType, VoidType, VOID,
     INT32, FixedIntType, BigIntType, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
     FunctionInfo, EnumType, SpanType, is_any_str_type,
     make_ref, unwrap_ref_type, RefType,
@@ -1143,6 +1143,10 @@ class SemanticAnalyzer:
         self, alias_name: str, typ: TpyType, loc: 'SourceLocation | None'
     ) -> None:
         """Validate that all NamedType members in a type alias are registered."""
+        # Recursive union aliases have self-referencing NamedType placeholders
+        # inside their members -- safety was already validated in the parser.
+        if isinstance(typ, RecursiveUnionType):
+            return
         from ..parse import SourceLocation
         members: list[TpyType] = []
         if isinstance(typ, UnionType):

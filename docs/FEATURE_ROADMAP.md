@@ -87,7 +87,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D16 | Dynamic attributes (`__getattr__`/`__setattr__`) | M-L | Not started | [VII](#dynamic-attributes) |
 | D17 | `*args` (variadic positional arguments) | M | Done (homogeneous) | [VI](#args--kwargs) |
 | D18 | `**kwargs` (variadic keyword arguments) | M-L | Done | [VI](#args--kwargs) |
-| D19 | Recursive type aliases | M | Not started | [I](#recursive-type-aliases) |
+| D19 | Recursive type aliases | M | Done (non-generic) | [I](#recursive-type-aliases) |
 | D20 | Mutual recursion (cross-type cycles) | M-L | Not started | [I](#mutual-recursion) |
 | D21 | TypedDict | M | Done | [VII](#typeddict) |
 | D22 | Multiple inheritance (mixins) | L | Not started | [VII](#multiple-inheritance) |
@@ -598,12 +598,22 @@ Mutual recursion (e.g. `Expr` referencing `BinOp` which contains `Expr` fields)
 is a harder extension requiring forward declarations across types. Can be a
 separate follow-up.
 
-**Current state**: Not started. Type aliases are currently expanded eagerly at
-parse time; recursive aliases would need deferred resolution.
+**Current state**: Done (non-generic). Self-referencing union aliases compile
+to a C++ wrapper struct with a `.data` variant field, forwarding constructor,
+and `operator==`. isinstance narrowing and match/case work through the wrapper.
+Safety validation rejects direct and fixed-size recursion. The alias name is
+callable as a constructor (e.g. `Tree(42)`).
+
+**Not yet supported**:
+- Generic recursive aliases (`type Tree[T] = T | list[Tree[T]]`).
+  The `RecursiveUnionType` has a `type_params` slot reserved for this.
+- Annotation-driven list literal inference for nested construction:
+  `x: Tree = [1, [3, 4]]` doesn't yet infer inner `[3, 4]` as `list[Tree]`.
+  Workaround: use intermediate variables with explicit `list[Tree]` annotations.
 
 **Dependencies**: Union types (done). Match/case (done for unions).
 
-**Effort**: M (parse detection + named type kind + wrapper struct codegen)
+**Effort**: M (done)
 
 ---
 

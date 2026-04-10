@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, BoolType, FixedIntType, NamedType, OptionalType,
-    StrType, StringType, StrViewType, PendingStrType, UnionType, EnumType,
+    StrType, StringType, StrViewType, PendingStrType, UnionType, RecursiveUnionType, EnumType,
     LiteralType,
     unwrap_readonly,
 )
@@ -172,7 +172,9 @@ class MatchGenerator:
         """Generate switch (__match_subject.index()) for union subjects."""
         inner = INDENT * (self.ctx.indent_level + 1)
         is_ptr_var = subject_type.uses_pointer_repr()
-        out.write(f"{indent}switch (__match_subject.index()) {{\n")
+        # Recursive union wrapper: access .data for variant operations
+        data_sfx = ".data" if isinstance(subject_type, RecursiveUnionType) else ""
+        out.write(f"{indent}switch (__match_subject{data_sfx}.index()) {{\n")
 
         for i, case in enumerate(stmt.cases):
             self.ctx.emit_source_comment(out, case.loc, indent)
@@ -185,12 +187,12 @@ class MatchGenerator:
                 case_var: str | None = None
                 if pattern.keywords or case.type_facts:
                     case_var = f"__case_{i}"
-                    get_expr = f"*std::get<{idx}>(__match_subject)" if is_ptr_var else f"std::get<{idx}>(__match_subject)"
+                    get_expr = f"*std::get<{idx}>(__match_subject{data_sfx})" if is_ptr_var else f"std::get<{idx}>(__match_subject{data_sfx})"
                     out.write(f"{inner}auto& {case_var} = {get_expr};\n")
                 if pattern.keywords:
                     self._gen_match_field_bindings(out, pattern, case_var, inner)
-                fallback = (f"*std::get<{idx}>(__match_subject)" if is_ptr_var
-                            else f"std::get<{idx}>(__match_subject)")
+                fallback = (f"*std::get<{idx}>(__match_subject{data_sfx})" if is_ptr_var
+                            else f"std::get<{idx}>(__match_subject{data_sfx})")
                 self._emit_binding(out, as_name, as_raw_name,
                                    case_var or fallback, inner)
                 # Narrowing
@@ -245,7 +247,7 @@ class MatchGenerator:
                         idx = self._variant_index(subject_type, alt.resolved_type)
                         out.write(f"{indent}case {idx}: {{\n")
                         case_var = f"__case_{i}_{j}"
-                        get_expr = f"*std::get<{idx}>(__match_subject)" if is_ptr_var else f"std::get<{idx}>(__match_subject)"
+                        get_expr = f"*std::get<{idx}>(__match_subject{data_sfx})" if is_ptr_var else f"std::get<{idx}>(__match_subject{data_sfx})"
                         out.write(f"{inner}auto& {case_var} = {get_expr};\n")
                         if alt.keywords:
                             self._gen_match_field_bindings(out, alt, case_var, inner)
@@ -543,6 +545,8 @@ class MatchGenerator:
         inner = INDENT * (self.ctx.indent_level + 1)
         inner2 = INDENT * (self.ctx.indent_level + 2)
         is_ptr_var = subject_type.uses_pointer_repr()
+        # Recursive union wrapper: access .data for variant operations
+        data_sfx = ".data" if isinstance(subject_type, RecursiveUnionType) else ""
 
         # Collect arms per variant type index.
         # Each entry: (case, pattern_for_this_type, as_name, as_raw_name)
@@ -606,7 +610,7 @@ class MatchGenerator:
                 if default_arms is None:
                     default_arms = arms
 
-        out.write(f"{indent}switch (__match_subject.index()) {{\n")
+        out.write(f"{indent}switch (__match_subject{data_sfx}.index()) {{\n")
 
         for idx in range(len(subject_type.members)):
             if idx in default_indices:
@@ -625,8 +629,8 @@ class MatchGenerator:
             )
             case_var = f"__case_{idx}"
             if needs_extraction:
-                get_expr = (f"*std::get<{idx}>(__match_subject)" if is_ptr_var
-                            else f"std::get<{idx}>(__match_subject)")
+                get_expr = (f"*std::get<{idx}>(__match_subject{data_sfx})" if is_ptr_var
+                            else f"std::get<{idx}>(__match_subject{data_sfx})")
                 out.write(f"{inner}auto& {case_var} = {get_expr};\n")
 
             use_scope = len(arms) > 1

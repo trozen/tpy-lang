@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import TextIO, TYPE_CHECKING
 import io
 
-from ..typesys import TpyType, NamedType, EnumType, UnionType, OwnType, PendingListType, ListType, ArrayType, PtrType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names
+from ..typesys import TpyType, NamedType, EnumType, UnionType, RecursiveUnionType, OwnType, PendingListType, ListType, ArrayType, PtrType, NoneType, VoidType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
 
@@ -599,8 +599,15 @@ class CodeGenerator:
             for enum in top_enums:
                 self._gen_enum_operator_ostream(hpp, enum)
 
-        # Forward declare remaining records (excluding native records)
+        # Forward declare recursive union wrapper structs (before records,
+        # so that record fields like Box[JsonValue] can reference the name)
         emitted_fwd = False
+        for name, (typ, _loc) in module.type_aliases.items():
+            if isinstance(typ, RecursiveUnionType):
+                hpp.write(f"struct {name};\n")
+                emitted_fwd = True
+
+        # Forward declare remaining records (excluding native records)
         for record in module.records:
             if self._is_native_record(record.name):
                 continue
@@ -777,8 +784,11 @@ class CodeGenerator:
         # so member types are complete for std::variant)
         emitted_alias = False
         for name, (typ, _loc) in sorted(module.type_aliases.items()):
-            cpp_type = self.types.type_to_cpp(typ)
-            hpp.write(f"using {name} = {cpp_type};\n")
+            if isinstance(typ, RecursiveUnionType):
+                self._gen_recursive_union_struct(hpp, name, typ)
+            else:
+                cpp_type = self.types.type_to_cpp(typ)
+                hpp.write(f"using {name} = {cpp_type};\n")
             emitted_alias = True
         if emitted_alias:
             hpp.write("\n")
@@ -878,6 +888,33 @@ class CodeGenerator:
                 hpp.write(f"inline auto& {local_name} = {qualified};\n")
             hpp.write("\n")
 
+
+    def _gen_recursive_union_struct(self, out: TextIO, name: str, typ: RecursiveUnionType) -> None:
+        """Generate a wrapper struct for a recursive union type alias.
+
+        Instead of `using JsonValue = std::variant<...>`, emits:
+          struct JsonValue {
+              using variant_type = std::variant<...>;
+              variant_type data;
+              JsonValue() = default;
+              template<typename T> requires ... JsonValue(T&& v) : data(...) {}
+              bool operator==(const JsonValue&) const = default;
+          };
+        """
+        cpp_members = [
+            "std::monostate" if isinstance(m, (NoneType, VoidType)) else self.types.type_to_cpp(m)
+            for m in typ.members
+        ]
+        variant_type = f"std::variant<{', '.join(cpp_members)}>"
+        out.write(f"struct {name} {{\n")
+        out.write(f"    using variant_type = {variant_type};\n")
+        out.write(f"    variant_type data;\n\n")
+        out.write(f"    {name}() = default;\n")
+        out.write(f"    template<typename T>\n")
+        out.write(f"        requires std::constructible_from<variant_type, T&&>\n")
+        out.write(f"    {name}(T&& v) : data(std::forward<T>(v)) {{}}\n\n")
+        out.write(f"    bool operator==(const {name}&) const = default;\n")
+        out.write(f"}};\n")
 
     def _gen_enum_decl(self, out: TextIO, enum) -> None:
         """Generate C++ enum class declaration (no helpers)."""

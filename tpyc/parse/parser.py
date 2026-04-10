@@ -16,7 +16,8 @@ from typing import Any, Literal, NoReturn, Optional
 from ..typesys import (
     TpyType, NamedType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, FinalType, SelfType,
     strip_auto_readonly, apply_auto_readonly, has_auto_readonly, strip_auto_own, apply_auto_own, ensure_qualified,
-    TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType, FnType, CallableType,
+    TypeParamRef, OptionalType, VoidType, make_union, UnionType, EnumType, TupleType, FnType, CallableType,
+    RecursiveUnionType, _contains_self_reference, validate_recursive_union_paths,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW, BOOL, FLOAT, FLOAT32, BIGINT, SELF, BASIC_SLICE, SLICE, FieldInfo, RecordInfo, TypeRegistry,
     FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, BoolType, StrType, LiteralType, LiteralValue,
     ALL_FIXED_INTS, public_module_name,
@@ -421,6 +422,8 @@ class Parser:
         # Top-level class names pre-scanned from the module body, used to
         # resolve forward references in type annotations.
         self._module_class_names: frozenset[str] = frozenset()
+        # Set during type alias RHS parsing to allow self-references
+        self._pending_alias_name: str | None = None
         # All module-level definitions (def, class, assignment) pre-scanned
         # to detect when local names shadow imports for parser keyword resolution.
         self._local_defs: frozenset[str] = frozenset()
@@ -582,6 +585,11 @@ class Parser:
         Raises ParseError for generic protocols used without type arguments,
         or for completely unknown names.
         """
+        # Self-reference in a recursive type alias (e.g. list[JsonValue] inside
+        # the definition of JsonValue). Return a NamedType placeholder that
+        # survives inside container types and is detected post-parse.
+        if self._pending_alias_name is not None and name == self._pending_alias_name:
+            return NamedType(name)
         # Resolve short nested type names: Kind -> Message.Kind
         if name in self._nested_type_scope:
             dotted = self._nested_type_scope[name]
@@ -719,7 +727,20 @@ class Parser:
         type_aliases: dict[str, tuple[TpyType, SourceLocation | None]]
     ) -> None:
         """Parse a type annotation node and register as a type alias."""
-        alias_type = self._parse_type_annotation(type_node)
+        # Allow self-references during RHS parsing (for recursive type aliases)
+        self._pending_alias_name = name
+        try:
+            alias_type = self._parse_type_annotation(type_node)
+        finally:
+            self._pending_alias_name = None
+
+        # Detect recursive type aliases (self-reference inside the RHS)
+        if isinstance(alias_type, UnionType) and _contains_self_reference(alias_type, name):
+            err = validate_recursive_union_paths(name, alias_type.members)
+            if err is not None:
+                raise ParseError(err, type_node)
+            alias_type = RecursiveUnionType(members=alias_type.members, name=name)
+
         self.registry.register_type_alias(name, alias_type)
         loc = SourceLocation(line=type_node.lineno) if hasattr(type_node, 'lineno') else None
         type_aliases[name] = (alias_type, loc)

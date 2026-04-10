@@ -1,0 +1,1 @@
+main.py:2: error: direct recursion in type alias 'Bad' -- every recursive path must go through a container (list, dict, set, Optional, Box, Ptr)

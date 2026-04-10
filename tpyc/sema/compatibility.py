@@ -13,7 +13,7 @@ from ..typesys import (
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, UnknownElementType,
     SpanType, StrType, StringType, StrViewType, LiteralType, BytesType, ByteArrayType, BytesViewType, FloatType, Float32Type,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
-    NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
+    NamedType, TypeParamRef, NoneType, OptionalType, UnionType, RecursiveUnionType,
     is_protocol_type, unwrap_readonly, unwrap_optional_own,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     FnType, CallableType, RefType, unwrap_ref_type,
@@ -146,6 +146,32 @@ class TypeCompatibility:
             raise SemanticError(result.message, result.loc)
         return result
 
+    def _resolve_recursive_refs(self, typ: TpyType) -> TpyType:
+        """Resolve NamedType self-references to RecursiveUnionType.
+
+        Handles both bare NamedType("Tree") and NamedType nested inside
+        containers (e.g. list[NamedType("Tree")] -> list[RecursiveUnionType]).
+        Safe from infinite recursion: RecursiveUnionType.inner_types() = ().
+        Only walks into inner types if there are recursive union aliases.
+        """
+        if isinstance(typ, NamedType) and not typ.is_protocol and not typ.is_module_type:
+            alias = self.ctx.registry.get_type_alias(typ.name)
+            if isinstance(alias, RecursiveUnionType):
+                return alias
+        # Only recurse into inner types if there are recursive union aliases
+        # registered. Avoids any side effects from map_inner_types on
+        # non-recursive types (e.g. UnionType.with_inner_types calls make_union
+        # which can reorder members).
+        if not any(isinstance(a, RecursiveUnionType) for a in self.ctx.registry.type_aliases.values()):
+            return typ
+        inner = typ.inner_types()
+        if not inner:
+            return typ
+        new_inner = tuple(self._resolve_recursive_refs(t) for t in inner)
+        if all(new is old for new, old in zip(new_inner, inner)):
+            return typ
+        return typ.with_inner_types(new_inner)
+
     def _check_compat(
         self, actual: TpyType, expected: TpyType, context: str,
         loc: SourceLocation | None = None,
@@ -157,6 +183,14 @@ class TypeCompatibility:
 
         Returns Coercion or None on success, CompatError on failure.
         """
+        # Resolve NamedType self-references from recursive union members.
+        # e.g. NamedType("Tree") -> RecursiveUnionType, and also inside
+        # containers: list[NamedType("Tree")] -> list[RecursiveUnionType].
+        # Safe because RecursiveUnionType.inner_types() returns () so
+        # map_inner_types won't recurse into it.
+        actual = self._resolve_recursive_refs(actual)
+        expected = self._resolve_recursive_refs(expected)
+
         # OwnType from name lookup (implicit owned local) should not
         # shortcircuit the Own[T] coercion path -- that path emits copy
         # warnings when storing at non-last-use.

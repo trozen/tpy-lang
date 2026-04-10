@@ -2116,6 +2116,103 @@ class UnionType(TpyType):
 
 
 @dataclass(frozen=True)
+class RecursiveUnionType(UnionType):
+    """A self-referencing union type alias (e.g. type JsonValue = str | list[JsonValue]).
+
+    Compiles to a C++ wrapper struct instead of a using alias.
+    Members may contain NamedType(self.name) as self-references
+    inside indirecting containers (list, dict, set, Optional, Box, Ptr).
+
+    Inherits from UnionType so all existing isinstance(typ, UnionType) checks
+    in sema (isinstance narrowing, match/case dispatch, type compatibility) work
+    automatically.
+
+    inner_types() returns () to prevent infinite recursion in map_inner_types,
+    _resolve_alias, and all other recursive type walkers. The self-referencing
+    NamedType placeholders inside members must not be expanded.
+    """
+    name: str = ""
+    type_params: tuple[str, ...] = ()  # reserved for future generic recursive aliases
+
+    def to_cpp(self) -> str:
+        return self.name
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def uses_pointer_repr(self) -> bool:
+        return False
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return ()
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return self
+
+    def __str__(self) -> str:
+        return self.name
+
+
+def variant_data_expr(var_expr: str, typ: 'TpyType') -> str:
+    """Access the underlying std::variant. Adds '.data' for recursive unions."""
+    if isinstance(typ, RecursiveUnionType):
+        return f"{var_expr}.data"
+    return var_expr
+
+
+def _contains_self_reference(typ: 'TpyType', name: str) -> bool:
+    """Check if a type tree contains a NamedType self-reference to the given name."""
+    if isinstance(typ, NamedType) and typ.name == name and not typ.is_protocol and not typ.is_module_type:
+        return True
+    return any(_contains_self_reference(inner, name) for inner in typ.inner_types())
+
+
+def validate_recursive_union_paths(
+    alias_name: str, members: tuple['TpyType', ...],
+) -> str | None:
+    """Validate that all self-references go through indirecting containers.
+
+    Returns an error message if validation fails, None if OK.
+    Indirecting types: list, dict, set, Optional, Ptr, Own, Box.
+    Fixed-size types (tuple, Array) do NOT provide indirection.
+    """
+
+    def _check(typ: 'TpyType', inside_indirection: bool) -> str | None:
+        if isinstance(typ, NamedType) and typ.name == alias_name and not typ.is_protocol:
+            if not inside_indirection:
+                return (
+                    f"direct recursion in type alias '{alias_name}' -- "
+                    f"every recursive path must go through a container "
+                    f"(list, dict, set, Optional, Box, Ptr)"
+                )
+            return None
+
+        # These types are defined later in this file, so use lazy string checks
+        # for types that are NamedType subclasses. The isinstance checks work
+        # because Python resolves the class at call time, not definition time.
+        type_name = type(typ).__name__
+        is_indirecting = type_name in (
+            'ListType', 'DictType', 'SetType', 'OptionalType', 'PtrType',
+        )
+        # Box is a NamedType with name "Box"
+        if isinstance(typ, NamedType) and typ.name == "Box":
+            is_indirecting = True
+
+        new_indirection = inside_indirection or is_indirecting
+        for inner in typ.inner_types():
+            err = _check(inner, new_indirection)
+            if err is not None:
+                return err
+        return None
+
+    for m in members:
+        err = _check(m, False)
+        if err is not None:
+            return err
+    return None
+
+
+@dataclass(frozen=True)
 class TupleType(TpyType):
     """Fixed-length tuple: tuple[T1, T2, ...] -> std::tuple<T1, T2, ...>."""
     element_types: tuple[TpyType, ...]
