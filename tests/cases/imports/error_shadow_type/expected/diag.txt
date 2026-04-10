@@ -1,0 +1,1 @@
+main.py:7: error: 'Int32' requires: from tpy import Int32

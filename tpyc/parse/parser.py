@@ -49,6 +49,20 @@ from .imports import (
 )
 from .. import qnames
 
+# Modules whose names the parser resolves structurally (base class detection,
+# enum auto(), Unpack).  A local def/class/assignment that shadows one of these
+# names is warned about so the user knows the parser keyword is hidden.
+# Only typing and enum -- tpy/builtins names are resolved via normal sema and
+# shadowing them is routine (e.g. user-defined `copy` replacing tpy.copy).
+_PARSER_KEYWORD_MODULES = frozenset({"typing", "enum"})
+
+# Decorator names that mark stdlib stubs (builtin types, decorators, functions).
+# Definitions with these decorators are excluded from _local_defs because they
+# intentionally re-define imported names (e.g. @builtin_type class Protocol).
+# Checked via raw AST name (_decorator_raw_name) since import resolution hasn't
+# run yet during pre-scan.
+_BUILTIN_DEC_NAMES = frozenset({"builtin_type", "builtin_decorator", "builtin_function"})
+
 # Map of fixed-int type names to their singleton instances (used for expression inference)
 _FIXED_INT_MAP: dict[str, TpyType] = {str(t): t for t in ALL_FIXED_INTS}
 
@@ -407,6 +421,9 @@ class Parser:
         # Top-level class names pre-scanned from the module body, used to
         # resolve forward references in type annotations.
         self._module_class_names: frozenset[str] = frozenset()
+        # All module-level definitions (def, class, assignment) pre-scanned
+        # to detect when local names shadow imports for parser keyword resolution.
+        self._local_defs: frozenset[str] = frozenset()
         # Maps short nested type names to dotted names while inside a class body.
         # E.g., while parsing class Message: class Kind(Enum): ..., maps "Kind" -> "Message.Kind"
         self._nested_type_scope: dict[str, str] = {}
@@ -432,8 +449,11 @@ class Parser:
         """Resolve annotation name -> (module, original_name) or None.
 
         Checks explicit imports, then Python builtins, then local @builtin_type
-        definitions.
+        definitions. Returns None when the name is shadowed by a module-level
+        def/class/assignment (excluding @builtin_type/decorator/function stubs).
         """
+        if local_name in self._local_defs:
+            return None
         source = self._imports.get_import_source(local_name)
         if source:
             return source
@@ -456,15 +476,31 @@ class Parser:
 
         return None
 
+    def _resolve_parser_keyword(self, node: ast.expr) -> tuple[str, str] | None:
+        """Resolve a Name or Attribute node through import resolution.
+
+        Convenience wrapper that dispatches to _resolve_type_name (for bare
+        names) or _resolve_qualified_type_name (for module.attr). Both
+        underlying methods already respect _local_defs shadowing.
+        """
+        if isinstance(node, ast.Name):
+            return self._resolve_type_name(node.id)
+        elif isinstance(node, ast.Attribute):
+            return self._resolve_qualified_type_name(node)
+        return None
+
     def _resolve_qualified_type_name(self, node: ast.Attribute) -> tuple[str, str] | None:
         """Resolve module.Name -> (module, name) or None.
 
         Only resolves if the module was bare-imported (import X or import X as Y).
         'from X import ...' does NOT put the module name in scope.
+        Returns None if the module prefix is shadowed by a local definition.
         """
         if not isinstance(node.value, ast.Name):
             return None
         local_module = node.value.id
+        if local_module in self._local_defs:
+            return None
         canonical = self._reverse_module_aliases.get(local_module, local_module)
         # Verify the module was bare-imported (imports[canonical] is None means
         # whole-module import; the key being absent means no import at all).
@@ -693,6 +729,23 @@ class Parser:
         self._module_class_names = frozenset(
             node.name for node in tree.body if isinstance(node, ast.ClassDef)
         )
+        # Pre-scan all module-level definitions (def, class, assignment) so that
+        # _resolve_type_name returns None for shadowed imports.  This prevents
+        # parser keywords (Enum, Protocol, auto, decorators, type names) from
+        # being misresolved when shadowed by a local name.
+        local_defs: set[str] = set()
+        for node in tree.body:
+            if isinstance(node, (ast.ClassDef, ast.FunctionDef)):
+                if not any(self._decorator_raw_name(d) in _BUILTIN_DEC_NAMES
+                           for d in node.decorator_list):
+                    local_defs.add(node.name)
+            elif isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        local_defs.add(target.id)
+            elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                local_defs.add(node.target.id)
+        self._local_defs = frozenset(local_defs)
         records = []
         functions = []
         protocols = []
@@ -732,7 +785,7 @@ class Parser:
                 has_builtin_type = any(
                     self._decorator_local_name(d) in ("builtin_type", qnames.BUILTIN_TYPE)
                     for d in node.decorator_list)
-                if source and source[0] in _IMPLICIT_MODULES and not has_builtin_type:
+                if source and source[0] in _PARSER_KEYWORD_MODULES and not has_builtin_type:
                     self._warn(f"class '{node.name}' shadows import from '{source[0]}'", node)
                 result = self._parse_class(node)
                 if isinstance(result, TpyProtocol):
@@ -776,6 +829,17 @@ class Parser:
                                     result.builtin_type_key, rt.is_dynamic_protocol)
             elif isinstance(node, ast.FunctionDef):
                 seen_non_import = True
+                # Warn if function shadows an imported parser keyword name
+                # (skip for @builtin_function/builtin_decorator -- shadow is intentional)
+                source = self._imports.get_import_source(node.name)
+                if source and source[0] in _PARSER_KEYWORD_MODULES:
+                    has_builtin_dec = any(
+                        self._decorator_local_name(d) in (
+                            "builtin_function", "builtin_decorator",
+                            qnames.BUILTIN_FUNCTION, qnames.BUILTIN_DECORATOR)
+                        for d in node.decorator_list)
+                    if not has_builtin_dec:
+                        self._warn(f"def '{node.name}' shadows import from '{source[0]}'", node)
                 func = self._parse_function(node)
                 functions.append(func)
                 if func.builtin_decorator_key:
@@ -809,54 +873,25 @@ class Parser:
 
     def _is_protocol_base(self, base: ast.expr) -> bool:
         """Check if a base class expression refers to typing.Protocol."""
-        if isinstance(base, ast.Name):
-            resolved = self._resolve_type_name(base.id)
-            return resolved == ("typing", "Protocol")
-        elif isinstance(base, ast.Attribute):
-            resolved = self._resolve_qualified_type_name(base)
-            return resolved == ("typing", "Protocol")
-        return False
+        return self._resolve_parser_keyword(base) == ("typing", "Protocol")
 
     def _is_enum_base(self, base: ast.expr) -> bool:
         """Check if a base class expression refers to enum.Enum."""
-        if isinstance(base, ast.Name):
-            resolved = self._resolve_type_name(base.id)
-            return resolved == ("enum", "Enum")
-        elif isinstance(base, ast.Attribute):
-            resolved = self._resolve_qualified_type_name(base)
-            return resolved == ("enum", "Enum")
-        return False
+        return self._resolve_parser_keyword(base) == ("enum", "Enum")
 
     def _is_int_enum_base(self, base: ast.expr) -> bool:
         """Check if a base class expression refers to enum.IntEnum."""
-        if isinstance(base, ast.Name):
-            resolved = self._resolve_type_name(base.id)
-            return resolved == ("enum", "IntEnum")
-        elif isinstance(base, ast.Attribute):
-            resolved = self._resolve_qualified_type_name(base)
-            return resolved == ("enum", "IntEnum")
-        return False
+        return self._resolve_parser_keyword(base) == ("enum", "IntEnum")
 
     def _is_typed_dict_base(self, base: ast.expr) -> bool:
         """Check if a base class expression refers to typing.TypedDict."""
-        if isinstance(base, ast.Name):
-            resolved = self._resolve_type_name(base.id)
-            return resolved == ("typing", "TypedDict")
-        elif isinstance(base, ast.Attribute):
-            resolved = self._resolve_qualified_type_name(base)
-            return resolved == ("typing", "TypedDict")
-        return False
+        return self._resolve_parser_keyword(base) == ("typing", "TypedDict")
 
     def _parse_unpack_annotation(self, annotation: ast.expr, type_param_scope, error_node) -> 'TpyType':
         """Parse Unpack[TypedDict] annotation from **kwargs. Returns the inner TypedDict type."""
         if not isinstance(annotation, ast.Subscript):
             raise ParseError("**kwargs must have Unpack[TypedDict] annotation", error_node)
-        func_node = annotation.value
-        resolved = None
-        if isinstance(func_node, ast.Name):
-            resolved = self._resolve_type_name(func_node.id)
-        elif isinstance(func_node, ast.Attribute):
-            resolved = self._resolve_qualified_type_name(func_node)
+        resolved = self._resolve_parser_keyword(annotation.value)
         if resolved != ("typing", "Unpack"):
             raise ParseError("**kwargs must have Unpack[TypedDict] annotation", error_node)
         inner_type = self._parse_type_annotation(annotation.slice, type_param_scope)
@@ -957,6 +992,21 @@ class Parser:
             return func_node.id
         if isinstance(func_node, ast.Attribute):
             return f"{func_node.value.id}.{func_node.attr}" if isinstance(func_node.value, ast.Name) else None
+        return None
+
+    @staticmethod
+    def _decorator_raw_name(dec: ast.expr) -> str | None:
+        """Extract the bare function name from a decorator AST node.
+
+        Returns just the identifier (e.g. 'builtin_type' from both
+        @builtin_type(...) and @mod.builtin_type(...)). Used by pre-scan
+        to detect stdlib builtin decorators before import resolution.
+        """
+        func_node = dec.func if isinstance(dec, ast.Call) else dec
+        if isinstance(func_node, ast.Name):
+            return func_node.id
+        if isinstance(func_node, ast.Attribute):
+            return func_node.attr
         return None
 
     def _require_decorator(self, dec: ast.expr, context: str) -> tuple[str, object]:
@@ -1680,19 +1730,17 @@ class Parser:
 
             # Check for auto() call
             if isinstance(value_node, ast.Call):
-                if isinstance(value_node.func, ast.Name):
-                    resolved = self._resolve_type_name(value_node.func.id)
-                    if resolved == ("enum", "auto"):
-                        if has_explicit:
-                            raise ParseError(
-                                "Mixed auto() and explicit values are not yet supported; "
-                                "use all auto() or all explicit values",
-                                stmt,
-                            )
-                        has_auto = True
-                        members.append((member_name, auto_value, self._loc(stmt)))
-                        auto_value += 1
-                        continue
+                if self._resolve_parser_keyword(value_node.func) == ("enum", "auto"):
+                    if has_explicit:
+                        raise ParseError(
+                            "Mixed auto() and explicit values are not yet supported; "
+                            "use all auto() or all explicit values",
+                            stmt,
+                        )
+                    has_auto = True
+                    members.append((member_name, auto_value, self._loc(stmt)))
+                    auto_value += 1
+                    continue
                 raise ParseError(
                     "Enum member value must be an integer literal or auto()", stmt)
 

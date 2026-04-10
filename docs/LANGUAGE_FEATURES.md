@@ -1523,7 +1523,7 @@ s: UninitHeapStorage[Int32] = UninitHeapStorage(1)  # T inferred as Int32
 - **Working**: Single class inheritance (`class Child(Parent)`)
 - **Working**: Generic inheritance with forwarded type params (`class Child[T](Parent[T])`)
 - **Working**: Explicit protocol implementation (`class MyList(Sequence[Int32])`)
-- **Working**: Enums -> `enum class` (base `Enum` with integer members, `auto()`, `.name`, `.value`, `==`/`!=`/`is`/`not`, truthiness, record field, `list[Enum]`, `Optional[Enum]`, cross-module import, iteration `for c in Color`, value lookup `Color(0)`, name lookup `Color["Red"]`, `try_parse(Color, "Red")` via `from tpy import try_parse`, `IntEnum` with arithmetic/ordering/int comparison, configurable underlying type via mixin `(Int8, Enum)`)
+- **Working**: Enums -> `enum class` (base `Enum` with integer members, `auto()`, `.name`, `.value`, `==`/`!=`/`is`/`not`, truthiness, record field, `list[Enum]`, `Optional[Enum]`, cross-module import, iteration `for c in Color`, value lookup `Color(0)`, name lookup `Color["Red"]`, `try_parse(Color, "Red")` via `from tpy import try_parse`, `IntEnum` with arithmetic/ordering/int comparison, configurable underlying type via mixin `(Int8, Enum)`). Both `from enum import Enum, auto` and `import enum` (qualified `enum.Enum`, `enum.auto()`) are supported.
 
 ### Protocols (Partial)
 
@@ -4111,7 +4111,7 @@ s = repr([1, 2, 3])          # → "[1, 2, 3]" (same as str for containers)
 - **Working**: Package support (dotted imports, `__init__.py`, namespace packages)
 - **Working**: Relative imports (`from . import sibling`, `from ..pkg import func`)
 - **Working**: Re-exports in `__init__.py` (functions, records, protocols, variables)
-- **Working**: Shadowing warnings -- defining a class that shadows an imported special name (e.g., `class Sized` after `from typing import Sized`) emits a warning
+- **Working**: Shadowing detection -- local definitions (def, class, assignment) that shadow imported names are detected. Parser-resolved names (type annotations, decorators, base classes like `Enum`/`Protocol`/`TypedDict`, `auto()`) correctly respect shadowing. Warnings are emitted for `typing` and `enum` module names (e.g., `class Sized` after `from typing import Sized`, or `def auto()` after `from enum import auto`)
 - **Working**: Standard library infrastructure (`tplib`, `stdlib`) with `-L` search paths
 - **Working**: `tplib.Box[T]` -- heap-allocated owning container (via `from tplib import Box`)
 - **Working**: `tplib.ArrayList[T, N]` -- fixed-capacity list with ownership-correct element lifecycle (iterable via `for x in list`)

@@ -1,0 +1,1 @@
+main.py:7: error: 'Protocol' requires: from typing import Protocol

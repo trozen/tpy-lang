@@ -1,0 +1,1 @@
+main.py:7: error: Unsupported qualified type: enum.Enum
