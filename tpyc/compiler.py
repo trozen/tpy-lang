@@ -19,13 +19,12 @@ from typing import TYPE_CHECKING
 
 from .parse import Parser, ParseError, TpyModule, TpyImport, RelativeImportKey, SourceLocation, scan_star_exports
 from .parse.imports import StarImportResolver, NonLiteralAllError
-from .sema import SemanticAnalyzer, SemanticError, DiagnosticLevel
+from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names, get_type_factory as _get_type_factory
 from .modules.type_resolution import _get_type_factories
 from .codegen_cpp import CodeGenerator, CodeGenOptions
 from .codegen_cpp.context import module_to_cpp_namespace, set_namespace_map, set_include_path_map, get_include_path, clear_namespace_map, module_to_include_path
-import warnings
 from .typesys import TpyType, INT32, INT64, BIGINT, clear_all_compilation_state
 from .macro_loader import MacroRegistry, is_macro_module_source
 
@@ -635,6 +634,7 @@ class Compiler:
         self.modules: dict[str, CompiledModule] = {}
         self.compile_order: list[str] = []
         self.shadowed_builtins: dict[str, set[tuple[str, int]]] = {}
+        self.diagnostics: list[Diagnostic] = []
         self._source_input: tuple[str, str] | None = None
         search_dirs = []
         if self.resolver is not None:
@@ -1368,17 +1368,15 @@ class Compiler:
             is_forward = compiled.ast.directives.native_module_forward if compiled else False
             has_own_protocols = bool(compiled.ast.protocols) if compiled else False
             gen_header = is_forward or has_own_protocols
-            if not gen_header and compiled and compiled.ast.directives.includes:
-                warnings.warn(
-                    f"{compiled.path}: native_module has # tpy: include() directives "
-                    f"but no forward=True -- includes won't be emitted")
         else:
             gen_header = True
+        includes = list(compiled.ast.directives.includes) if compiled else []
         return ModuleInfo(
             name=name,
             is_builtin=False,
             is_native_module=is_native,
             generates_header=gen_header,
+            includes=includes,
             functions=functions,
             variables=variables,
             records=exports.records,
@@ -1502,7 +1500,7 @@ class Compiler:
 
         if not hpp_code:
             # Pure native module with no output -- don't write files
-            return hpp_path, None
+            return None, None
         hpp_path.parent.mkdir(parents=True, exist_ok=True)
         hpp_path.write_text(hpp_code)
         if compiled.ast.directives.native_module:
@@ -1588,9 +1586,10 @@ class Compiler:
                 # Warn if a library module has no namespace override
                 compiled = self.modules[name]
                 if self._is_lib_module(compiled):
-                    warnings.warn(
-                        f"{compiled.path}: library module '{name}' has no "
-                        f"# tpy: cpp_namespace directive (will use default '{ns_map[name]}')")
+                    self.diagnostics.append(Diagnostic(
+                        DiagnosticLevel.WARNING,
+                        f"library module '{name}' has no # tpy: cpp_namespace "
+                        f"directive (will use default '{ns_map[name]}')"))
 
         return ns_map
 
@@ -1610,10 +1609,11 @@ class Compiler:
         """Build module_name -> include path mapping.
 
         For modules with cpp_include_path directive, uses the explicit value.
-        For modules with inherited cpp_namespace (from package parent), derives
+        For package __init__ modules with inherited cpp_namespace, derives
         from namespace (e.g. "tpystd::tpy" -> "tpystd/tpy.hpp").
-        Modules with explicit cpp_namespace but no cpp_include_path fall
-        through to the default module-name-based path in codegen.
+        For private (_-prefixed) submodules with explicit cpp_namespace, uses
+        namespace_dir/_leaf.hpp to stay in the same directory tree.
+        All other modules use the default module-name-based path.
         """
         ip_map: dict[str, str] = {}
         for name, compiled in self.modules.items():
@@ -1632,21 +1632,41 @@ class Compiler:
                     ns = ns_map[name]
                     ip_map[name] = ns.replace('::', '/') + '/' + leaf + '.hpp'
                     continue
-            # Derive from inherited namespace if it differs from the default.
+            # Derive from namespace if it differs from the default.
             ns = ns_map[name]
             default_ns = f"tpyapp::{name.replace('.', '::')}"
             if ns != default_ns:
                 ip_map[name] = ns.replace('::', '/') + '.hpp'
 
-        # Check for include path collisions (different modules mapping to the
-        # same header would silently overwrite each other during codegen).
+        # Detect and fix include path collisions: when multiple modules map
+        # to the same header (e.g. shared cpp_namespace), disambiguate by
+        # appending the module leaf name.
+        # Note: module_to_include_path() reads the global _include_path_map
+        # which isn't set yet -- it falls through to the name-based default,
+        # which is the correct fallback for modules not in ip_map.
         seen: dict[str, str] = {}
+        collisions: set[str] = set()
         for name in self.modules:
             path = ip_map.get(name) or module_to_include_path(name)
             if path in seen:
-                warnings.warn(
-                    f"include path collision: '{name}' and '{seen[path]}' both map to '{path}'")
+                collisions.add(path)
             seen[path] = name
+
+        for collision_path in collisions:
+            for name in self.modules:
+                path = ip_map.get(name) or module_to_include_path(name)
+                if path == collision_path and name in ip_map:
+                    leaf = name.rsplit('.', 1)[-1]
+                    base = collision_path.removesuffix('.hpp')
+                    new_path = base + '/' + leaf + '.hpp'
+                    if new_path in seen and seen[new_path] != name:
+                        self.diagnostics.append(Diagnostic(
+                            DiagnosticLevel.WARNING,
+                            f"include path collision: '{name}' maps to "
+                            f"'{new_path}' which is already used by "
+                            f"'{seen[new_path]}' -- use # tpy: "
+                            f"cpp_include_path to resolve"))
+                    ip_map[name] = new_path
 
         return ip_map
 

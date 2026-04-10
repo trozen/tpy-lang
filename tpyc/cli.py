@@ -334,6 +334,9 @@ def main() -> int:
         has_errors = False
         warning_messages: list[str] = []
         n_warnings = 0
+        for diag in compiler.diagnostics:
+            n_warnings += 1
+            warning_messages.append(diag.format("tpyc"))
         for compiled in compiled_modules:
             source_name = "<stdin>" if reading_from_stdin else os.path.relpath(compiled.path)
             if compiled.analyzer:

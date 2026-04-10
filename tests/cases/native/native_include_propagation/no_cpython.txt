@@ -1,0 +1,1 @@
+Calls @native function (stub returns Ellipsis, not the expected value).

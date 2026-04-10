@@ -136,7 +136,9 @@ def test_comp(case_dir, main_src, tmp_path):
     for mod_name, hpp_path, cpp_path, is_local in result.all_modules:
         if not is_local:
             continue
-        pairs = [(".hpp", hpp_path)]
+        pairs = []
+        if hpp_path is not None:  # None for native_module (no .hpp generated)
+            pairs.append((".hpp", hpp_path))
         if cpp_path is not None:  # None for native_module (no .cpp generated)
             pairs.append((".cpp", cpp_path))
         for ext, gen_path in pairs:

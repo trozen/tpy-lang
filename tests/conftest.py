@@ -77,7 +77,8 @@ class CompileResult:
     cpp_path: Path | None = None
     # For multi-module compilation: list of (module_name, hpp_path, cpp_path, is_local) tuples
     # is_local=True for modules from the test's src/ dir, False for library modules
-    all_modules: list[tuple[str, Path, Path, bool]] = field(default_factory=list)
+    # hpp_path/cpp_path are None for native_module (no generated code)
+    all_modules: list[tuple[str, Path | None, Path | None, bool]] = field(default_factory=list)
     # Resolved types for variable declarations (from sema), for # tpyc: type(...) validation
     declared_var_types: dict[tuple[int, str], object] | None = None
     # Ptr dereference facts (from sema), for # tpyc: non_null/nullable validation
@@ -150,9 +151,11 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         compiler = Compiler(src_file, default_int=default_int, lib_dirs=DEFAULT_LIB_DIRS)
         compiled_modules = compiler.compile()
 
-        # Collect diagnostics from all analyzers
+        # Collect diagnostics from compiler and all analyzers
         all_diags = []
         has_errors = False
+        for d in compiler.diagnostics:
+            all_diags.append(d.format("tpyc"))
         for mod in compiled_modules:
             for d in mod.analyzer.diagnostics:
                 all_diags.append(d.format(mod.path.name))
