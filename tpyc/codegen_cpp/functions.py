@@ -1184,7 +1184,8 @@ class FunctionGenerator:
         # Inplace dunders return T& (reference to self) in C++
         is_inplace_dunder = method.name in CONST_PARAMS_METHODS
         if is_inplace_dunder:
-            ret_type = f"{escape_cpp_name(record_name)}&"
+            rec_short = record_name.rsplit(".", 1)[-1] if "." in record_name else record_name
+            ret_type = f"{escape_cpp_name(rec_short)}&"
         elif method.is_property_getter:
             # Property getters return references to fields. For pointer-repr types
             # (Optional[non-value], Union[non-value]), use the storage type

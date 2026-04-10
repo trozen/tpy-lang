@@ -1,0 +1,5 @@
+Kind.TEXT
+42
+Kind.IMAGE
+IMAGE
+2

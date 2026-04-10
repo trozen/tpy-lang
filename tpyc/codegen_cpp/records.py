@@ -5,6 +5,7 @@ Generates C++ structs from TurboPython records.
 """
 
 from __future__ import annotations
+import io
 from collections import defaultdict
 from typing import TextIO, TYPE_CHECKING
 
@@ -15,7 +16,7 @@ from ..typesys import (
     get_covariant_params, FixedIntType, BigIntType, EnumType, PtrType,
 )
 from ..parse import (
-    TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
+    TpyRecord, TpyEnum, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
     TpyMethodCall, TpyFieldAccess, TpyName, TpyCoerce, TpyNestedDef, is_super_del_call,
 )
 from ..namespace import Namespace
@@ -161,11 +162,25 @@ class RecordGenerator:
                 proto_info = self.ctx.analyzer.registry.get_protocol(proto.name)
                 if proto_info and proto_info.is_dynamic:
                     bases.append(self.protocols.get_dynamic_base_name(proto.name))
-        cpp_rec_name = escape_cpp_name(record.name)
+        # Use short name for nested types (e.g., "Inner" not "Outer.Inner")
+        short_name = record.name.rsplit(".", 1)[-1] if "." in record.name else record.name
+        cpp_rec_name = escape_cpp_name(short_name)
         if bases:
             out.write(f"struct {cpp_rec_name} : {', '.join(bases)} {{\n")
         else:
             out.write(f"struct {cpp_rec_name} {{\n")
+
+        # Nested enums (before fields so they can be used as field types)
+        for nested_enum in record.nested_enums:
+            self._gen_nested_enum_decl(out, nested_enum)
+
+        # Nested records (before fields so they can be used as field types)
+        for nested_rec in record.nested_records:
+            buf = io.StringIO()
+            self.gen_record_decl(buf, nested_rec)
+            for line in buf.getvalue().splitlines(True):
+                out.write(INDENT + line if line.strip() else line)
+            out.write("\n")
 
         # Fields
         for fld in record.fields:
@@ -413,11 +428,36 @@ class RecordGenerator:
         self._gen_unary_operators(out, record)
 
         out.write("};\n")
-        self._gen_record_ostream(out, record)
+        # operator<< and nested ostream operators must be at namespace scope,
+        # so skip for nested records (they are emitted by the top-level parent)
+        if "." not in record.name:
+            self._gen_record_ostream(out, record)
+            self._gen_nested_ostream_operators(out, record)
+
+    def _gen_nested_ostream_operators(self, out: TextIO, record: TpyRecord) -> None:
+        """Emit operator<< for all nested records (must be at namespace scope)."""
+        for nested_rec in record.nested_records:
+            if self._is_native(nested_rec):
+                continue
+            self._gen_record_ostream(out, nested_rec)
+            self._gen_nested_ostream_operators(out, nested_rec)
+
+    def _gen_nested_enum_decl(self, out: TextIO, enum: TpyEnum) -> None:
+        """Generate an enum class declaration inside a parent struct."""
+        enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
+        if not enum_type:
+            return
+        underlying = enum_type.underlying_type.to_cpp()
+        short_name = enum.name.rsplit(".", 1)[-1]
+        out.write(f"{INDENT}enum class {short_name} : {underlying} {{\n")
+        for member_name, value, _ in enum.members:
+            out.write(f"{INDENT}{INDENT}{member_name} = {value},\n")
+        out.write(f"{INDENT}}};\n\n")
 
     def _gen_record_ostream(self, out: TextIO, record: TpyRecord) -> None:
         """Generate operator<< overload for printing a record."""
-        name = escape_cpp_name(record.name)
+        # Use :: for nested types (e.g., Outer::Inner)
+        name = escape_cpp_name(record.name.replace(".", "::"))
 
         # Check if record defines its own __str__ or __repr__ -- delegate if so.
         # Only check direct methods (not inherited) so that e.g. BaseException.__str__
@@ -540,7 +580,8 @@ class RecordGenerator:
         if not covariant:
             return
 
-        cpp_name = escape_cpp_name(record.name)
+        short_name = record.name.rsplit(".", 1)[-1] if "." in record.name else record.name
+        cpp_name = escape_cpp_name(short_name)
 
         # Build template params and requires clause
         other_params = []
@@ -935,7 +976,8 @@ class RecordGenerator:
 
             # Generate friend operator that delegates to the dunder method
             # Using friend function allows symmetric operand handling
-            out.write(f"\n{INDENT}friend {ret_cpp} operator{cpp_op}(const {escape_cpp_name(record.name)}& lhs, {param_cpp}) {{\n")
+            rec_short = record.name.rsplit(".", 1)[-1] if "." in record.name else record.name
+            out.write(f"\n{INDENT}friend {ret_cpp} operator{cpp_op}(const {escape_cpp_name(rec_short)}& lhs, {param_cpp}) {{\n")
             out.write(f"{INDENT}{INDENT}return lhs.{method.name}({param_name});\n")
             out.write(f"{INDENT}}}\n")
 
@@ -1025,6 +1067,7 @@ class RecordGenerator:
                 continue  # Unary operators take no params
             cpp_op = DUNDER_TO_UNARY_OP[method.name]
             ret_cpp = method.return_type.to_cpp()
-            out.write(f"\n{INDENT}friend {ret_cpp} operator{cpp_op}(const {escape_cpp_name(record.name)}& operand) {{\n")
+            rec_short = record.name.rsplit(".", 1)[-1] if "." in record.name else record.name
+            out.write(f"\n{INDENT}friend {ret_cpp} operator{cpp_op}(const {escape_cpp_name(rec_short)}& operand) {{\n")
             out.write(f"{INDENT}{INDENT}return operand.{method.name}();\n")
             out.write(f"{INDENT}}}\n")

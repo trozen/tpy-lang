@@ -80,7 +80,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - `tpy.unsafe.unsafe_address_of(x) -> int`: return the memory address of an object as an integer. Useful for identity comparison in tests (proving reference semantics vs silent copy). C++ codegen: `reinterpret_cast<uintptr_t>(&x)`.
 
 ## Python features
-- Nested class definitions: `class Outer: class Inner: ...` is rejected by the parser. Needed both as a language feature and for macro companion type creation (e.g. key enums for JSON field dispatch). C++ codegen: nested struct/class.
+- Enum name lookup: `Kind["TEXT"]` -> `Kind.TEXT`. CPython uses `EnumMeta.__getitem__` with a string key. C++ codegen: `EnumUtil<Kind>::from_name("TEXT")` (already exists in runtime). Needs subscript support on enum types in sema + codegen.
 - Any
 - dynamic attributes
 - properties master

@@ -1,0 +1,1 @@
+main.py:6: error: Nested enums are not supported inside generic classes ('Container' has type parameters)

@@ -2143,6 +2143,22 @@ class ExpressionGenerator:
                     if field_already_optional:
                         return f"{obj}.{cpp_field}"
                     return f"std::make_optional({obj}.{cpp_field})"
+        # Nested record constructor: Outer.Inner(args) -> Outer::Inner(args)
+        if expr.is_nested_constructor and expr.nested_type_name:
+            cpp_name = NamedType(expr.nested_type_name).to_cpp()
+            args = ", ".join(self.gen_expr(a) for a in expr.args)
+            if expr.kwargs:
+                kwarg_parts = [self.gen_expr(v) for v in expr.kwargs.values()]
+                if args:
+                    args = ", ".join([args] + kwarg_parts)
+                else:
+                    args = ", ".join(kwarg_parts)
+            return f"{cpp_name}({args})"
+        # Nested enum from_value: Outer.Kind(v) -> Outer::Kind from_value
+        if expr.is_nested_enum_constructor and expr.nested_type_name:
+            cpp_name = NamedType(expr.nested_type_name).to_cpp()
+            arg = self.gen_expr(expr.args[0])
+            return f"::tpy::EnumUtil<{cpp_name}>::from_value({arg})"
         # Callable-typed field invocation: obj.field(args) -> obj.field(args)
         if expr.is_callable_field:
             obj_code = self.gen_expr_deref(expr.obj)
@@ -2564,6 +2580,27 @@ class ExpressionGenerator:
                         src_mod, original = self.ctx.user_imported_enums[enum_name]
                         enum_name = qualified_cpp_name(src_mod, original)
                     return f"{enum_name}::{cpp_field}"
+
+                # Nested type access on a record: Container.Kind -> Container::Kind
+                if binding and binding.kind in (BindingKind.RECORD, BindingKind.IMPORTED_NAME):
+                    dotted = f"{expr.obj.name}.{expr.field}"
+                    if (self.ctx.analyzer.registry.get_enum(dotted) is not None
+                            or self.ctx.analyzer.registry.get_record(dotted) is not None):
+                        # For cross-module, use qualified C++ name
+                        if dotted in self.ctx.user_imported_enums:
+                            src_mod, original = self.ctx.user_imported_enums[dotted]
+                            return qualified_cpp_name(src_mod, original)
+                        if dotted in self.ctx.user_imported_records:
+                            src_mod, original = self.ctx.user_imported_records[dotted]
+                            return qualified_cpp_name(src_mod, original)
+                        return dotted.replace(".", "::")
+
+        # Chained nested type access: Outer.Mid.Inner -> Outer::Mid::Inner
+        if isinstance(expr.obj, TpyFieldAccess):
+            expr_type = self.ctx.get_expr_type(expr)
+            if isinstance(expr_type, EnumType) and "." in expr_type.name:
+                # Enum member access: Container.Kind.LIST -> Container::Kind::LIST
+                return f"{expr_type.to_cpp()}::{cpp_field}"
 
         obj = self.gen_expr(expr.obj)
         # Assignment narrowing: inline std::get<T> for member access only

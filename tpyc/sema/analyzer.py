@@ -382,10 +382,10 @@ class SemanticAnalyzer:
         if self.ctx.user_imported_enums:
             self._resolve_imported_enums(module)
 
-        # First pass: register all records and enums
-        for record in module.records:
+        # First pass: register all records and enums (including nested)
+        for record in module.all_records():
             self.registrar.register_record(record)
-        for enum in module.enums:
+        for enum in module.all_enums():
             self.registrar.register_enum(enum)
 
         # Populate macro_ns with exports from macro dep modules.
@@ -400,15 +400,15 @@ class SemanticAnalyzer:
             self.registrar.validate_protocol_parents(protocol)
 
         # Validate inheritance relationships (after all records and protocols are registered)
-        for record in module.records:
+        for record in module.all_records():
             self.registrar.validate_record_inheritance(record)
 
         # Validate @error_return(E) on methods (ReturnException markers are now set)
-        for record in module.records:
+        for record in module.all_records():
             self.registrar.validate_method_error_returns(record)
 
         # Validate ValueType fields in a second pass (all ValueType flags are set now)
-        for record in module.records:
+        for record in module.all_records():
             self.registrar.validate_value_type_fields(record)
 
         # Validate default_factory fields conform to Default protocol
@@ -458,8 +458,8 @@ class SemanticAnalyzer:
         if module.top_level_stmts:
             self._analyze_top_level(module.top_level_stmts)
 
-        # Fifth pass: analyze record methods
-        for record in module.records:
+        # Fifth pass: analyze record methods (including nested records)
+        for record in module.all_records():
             self._analyze_record_methods(record)
 
         # Sixth pass: analyze function bodies (skip @overload stubs)
@@ -531,7 +531,7 @@ class SemanticAnalyzer:
         but codegen reads method.is_readonly from the TpyFunction AST nodes.
         This pass syncs the two representations.
         """
-        for record in module.records:
+        for record in module.all_records():
             record_info = self.ctx.registry.get_record(record.name)
             if record_info is None:
                 continue
@@ -604,7 +604,7 @@ class SemanticAnalyzer:
     def _validate_factory_defaults(self, module: TpyModule) -> None:
         """Validate that field(default_factory=X) fields have Default-constructible types."""
         default_proto = NamedType("Default", (), is_protocol=True)
-        for record in module.records:
+        for record in module.all_records():
             for fld in record.fields:
                 if not fld.is_factory_default:
                     continue
@@ -631,7 +631,7 @@ class SemanticAnalyzer:
         the containing record becomes nocopy too. Also checks parent type.
         Skips records that define __copy__ (opt-out escape hatch).
         """
-        for record in module.records:
+        for record in module.all_records():
             info = self.ctx.registry.get_record(record.name)
             if info is None or info.is_nocopy:
                 continue
@@ -1174,7 +1174,7 @@ class SemanticAnalyzer:
         aliases = self.ctx.registry.type_aliases
         for func in module.functions:
             self._resolve_func_aliases(func, aliases)
-        for record in module.records:
+        for record in module.all_records():
             for f in record.fields:
                 f.type = self._resolve_alias(f.type, aliases)
             for method in record.methods:
@@ -1200,7 +1200,7 @@ class SemanticAnalyzer:
                  for name in self.ctx.user_imported_enums}
         for func in module.functions:
             self._resolve_func_enums(func, enums)
-        for record in module.records:
+        for record in module.all_records():
             for f in record.fields:
                 f.type = self._resolve_enum(f.type, enums)
             for method in record.methods:
@@ -1755,6 +1755,17 @@ class SemanticAnalyzer:
             if local_name != original_name:
                 self.ctx.registry.register_record(record_info, original_name)
             self.ctx.user_imported_records[local_name] = (module_name, original_name)
+            # Also register nested types so Outer.Inner resolves in the importing module
+            prefix = original_name + "."
+            for nested_name, nested_info in module_info.records.items():
+                if nested_name.startswith(prefix):
+                    self.ctx.registry.register_record(nested_info, nested_name)
+                    self.ctx.user_imported_records[nested_name] = (module_name, nested_name)
+            if module_info.enums:
+                for nested_name, nested_enum in module_info.enums.items():
+                    if nested_name.startswith(prefix):
+                        self.ctx.registry.register_enum(nested_enum, nested_name)
+                        self.ctx.user_imported_enums[nested_name] = (module_name, nested_name)
             return True
 
         # Check for protocol
@@ -1836,7 +1847,7 @@ class SemanticAnalyzer:
         # Collect all macro dep modules from records that have macros.
         # Maps dep_module -> name_filter (None = all exports, list = specific names).
         dep_modules: dict[str, list[str] | None] = {}
-        for record in module.records:
+        for record in module.all_records():
             if not record.pending_macros:
                 continue
             for qname, _kwargs in record.pending_macros:

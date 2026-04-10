@@ -91,7 +91,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D20 | Mutual recursion (cross-type cycles) | M-L | Not started | [I](#mutual-recursion) |
 | D21 | TypedDict | M | Done | [VII](#typeddict) |
 | D22 | Multiple inheritance (mixins) | L | Not started | [VII](#multiple-inheritance) |
-| D23 | Nested classes | M | Not started | [VII](#nested-classes) |
+| D23 | Nested classes | M | Done | [VII](#nested-classes) |
 
 ### Phase E: Advanced Safety
 
@@ -2535,13 +2535,14 @@ Also a prerequisite for macro companion type creation (`cls.add_companion_type`)
 macros generating helper types (e.g. key enums for O(1) JSON field dispatch) need
 the compiler to support nested type definitions.
 
-**Current state**: Not started. Parser rejects class definitions inside class bodies
-("Unsupported construct in class").
+**Current state**: Done. Arbitrary nesting depth supported (`Outer.Mid.Deep`). Both
+nested classes and enums work. Short names resolve inside the class body (`kind: Kind`
+instead of `kind: Container.Kind`) for CPython compatibility. Nested classes and enums
+inside generic parents are not supported. Nested protocols not supported.
 
 **Dependencies**: None beyond existing class support.
 
-**Effort**: M (parser support for nested class in class body, sema registration with
-qualified names, codegen for nested struct, name resolution for `Outer.Inner` access)
+**Effort**: M (done -- parser, sema, codegen, expression resolution)
 
 ---
 

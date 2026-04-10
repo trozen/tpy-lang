@@ -12,7 +12,7 @@ from ..typesys import (
     DictType, SetType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
-    PendingGenericInstanceType, IntLiteralType, CallableType, unwrap_ref_type,
+    PendingGenericInstanceType, IntLiteralType, FixedIntType, BigIntType, CallableType, unwrap_ref_type,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
@@ -133,6 +133,28 @@ def _collect_unresolved(
     if hasattr(typ, 'members'):
         for m in typ.members:
             _collect_unresolved(m, inferred, param_names, out)
+
+
+def _resolve_dotted_record_chain(expr: TpyFieldAccess, ctx: 'SemanticContext') -> str | None:
+    """Resolve a chain of field accesses to a nested record dotted name.
+
+    Returns the dotted name (e.g., "Outer.Mid") if the chain resolves to a
+    registered nested record, or None otherwise.
+    """
+    if isinstance(expr.obj, TpyName):
+        if ctx.current_ns:
+            binding = ctx.current_ns.lookup(expr.obj.name)
+            if binding and binding.kind in (BindingKind.RECORD, BindingKind.IMPORTED_NAME):
+                dotted = f"{expr.obj.name}.{expr.field}"
+                if ctx.registry.get_record(dotted) is not None:
+                    return dotted
+    elif isinstance(expr.obj, TpyFieldAccess):
+        parent = _resolve_dotted_record_chain(expr.obj, ctx)
+        if parent is not None:
+            dotted = f"{parent}.{expr.field}"
+            if ctx.registry.get_record(dotted) is not None:
+                return dotted
+    return None
 
 
 class MethodAnalyzer:
@@ -517,6 +539,14 @@ class MethodAnalyzer:
             if result is not None:
                 return result
 
+            # Nested type constructor: Container.Inner(...) or Container.Kind(value)
+            if self.ctx.current_ns:
+                binding = self.ctx.current_ns.lookup(expr.obj.name)
+                if binding and binding.kind in (BindingKind.RECORD, BindingKind.IMPORTED_NAME):
+                    nested_result = self._analyze_nested_type_call(expr)
+                    if nested_result is not None:
+                        return nested_result
+
             # Reject method calls on enum types (enums have no class methods)
             if self.ctx.current_ns:
                 binding = self.ctx.current_ns.lookup(expr.obj.name)
@@ -530,6 +560,27 @@ class MethodAnalyzer:
             result = self._analyze_module_method_call(expr)
             if result is not None:
                 return result
+
+        # Nested type constructor via chained access: Outer.Mid.Deep(...)
+        if isinstance(expr.obj, TpyFieldAccess):
+            parent_dotted = _resolve_dotted_record_chain(expr.obj, self.ctx)
+            if parent_dotted is not None:
+                dotted = f"{parent_dotted}.{expr.method}"
+                nested_record = self.ctx.registry.get_record(dotted)
+                if nested_record is not None:
+                    fake_call = TpyCall(
+                        func=TpyName(name=dotted, loc=expr.loc),
+                        args=expr.args,
+                        kwargs=expr.kwargs,
+                        type_args=expr.type_args,
+                        type_args_parse_error=expr.type_args_parse_error,
+                        loc=expr.loc,
+                    )
+                    expr.is_nested_constructor = True
+                    expr.nested_type_name = dotted
+                    result = self.calls._analyze_record_constructor(fake_call, nested_record)
+                    self.ctx.set_expr_type(expr, result)
+                    return result
 
         # Dotted module access: X.Y.func(), X.Y.Z.func(), etc.
         if isinstance(expr.obj, TpyFieldAccess):
@@ -766,6 +817,48 @@ class MethodAnalyzer:
                     )
             # Use-after-consume is already caught by _analyze_name before we get here.
             self.ctx.consumed_vars.add(name)
+
+    def _analyze_nested_type_call(self, expr: TpyMethodCall) -> TpyType | None:
+        """Check for Outer.Inner(...) nested type constructor call. Returns type or None."""
+        assert isinstance(expr.obj, TpyName)
+        dotted = f"{expr.obj.name}.{expr.method}"
+        # Nested record constructor
+        nested_record = self.ctx.registry.get_record(dotted)
+        if nested_record is not None:
+            # Rewrite as a direct constructor call
+            fake_call = TpyCall(
+                func=TpyName(name=dotted, loc=expr.loc),
+                args=expr.args,
+                kwargs=expr.kwargs,
+                type_args=expr.type_args,
+                type_args_parse_error=expr.type_args_parse_error,
+                loc=expr.loc,
+            )
+            # Mark the original expr so codegen knows it's a constructor
+            expr.is_nested_constructor = True
+            expr.nested_type_name = dotted
+            result = self.calls._analyze_record_constructor(fake_call, nested_record)
+            # Copy type info back
+            self.ctx.set_expr_type(expr, result)
+            return result
+        # Nested enum constructor (from_value)
+        nested_enum = self.ctx.registry.get_enum(dotted)
+        if nested_enum is not None:
+            # Container.Kind(1) -> Container::Kind from_value
+            if len(expr.args) != 1 or expr.kwargs:
+                raise self.ctx.error(
+                    f"Nested enum '{dotted}' constructor takes exactly 1 positional argument",
+                    expr)
+            arg_type = self.expr.analyze_expr(expr.args[0])
+            if not isinstance(arg_type, (IntLiteralType, FixedIntType, BigIntType)):
+                raise self.ctx.error(
+                    f"Cannot construct '{dotted}' from '{arg_type}', "
+                    f"expected an integer type",
+                    expr)
+            expr.is_nested_enum_constructor = True
+            expr.nested_type_name = dotted
+            return nested_enum
+        return None
 
     def _analyze_static_method_call(self, expr: TpyMethodCall) -> TpyType | None:
         """Check for ClassName.staticmethod() pattern. Returns type or None if not a static call."""

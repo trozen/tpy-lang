@@ -407,6 +407,9 @@ class Parser:
         # Top-level class names pre-scanned from the module body, used to
         # resolve forward references in type annotations.
         self._module_class_names: frozenset[str] = frozenset()
+        # Maps short nested type names to dotted names while inside a class body.
+        # E.g., while parsing class Message: class Kind(Enum): ..., maps "Kind" -> "Message.Kind"
+        self._nested_type_scope: dict[str, str] = {}
 
     def _loc(self, node: ast.AST) -> SourceLocation | None:
         """Create a SourceLocation from an AST node."""
@@ -477,6 +480,22 @@ class Parser:
             return None
         return (canonical, node.attr)
 
+    def _resolve_dotted_class_name(self, node: ast.Attribute) -> str | None:
+        """Resolve Outer.Inner (or Outer.Mid.Inner) to a dotted name string.
+
+        Returns the dotted name if the root is a known class name, else None.
+        """
+        parts: list[str] = []
+        cur: ast.expr = node
+        while isinstance(cur, ast.Attribute):
+            parts.append(cur.attr)
+            cur = cur.value
+        if isinstance(cur, ast.Name) and cur.id in self._module_class_names:
+            parts.append(cur.id)
+            parts.reverse()
+            return ".".join(parts)
+        return None
+
     def _resolve_primitive_type(self, module: str, original: str, node: ast.expr) -> TpyType | None:
         """Resolve a (module, original_name) pair to a primitive type.
 
@@ -527,6 +546,13 @@ class Parser:
         Raises ParseError for generic protocols used without type arguments,
         or for completely unknown names.
         """
+        # Resolve short nested type names: Kind -> Message.Kind
+        if name in self._nested_type_scope:
+            dotted = self._nested_type_scope[name]
+            if (enum_type := self.registry.get_enum(dotted)) is not None:
+                return enum_type
+            if self.registry.get_record(dotted) is not None:
+                return NamedType(dotted)
         if (user_protocol := self.registry.get_protocol(name)) is not None:
             if user_protocol.type_params:
                 raise ParseError(
@@ -735,6 +761,9 @@ class Parser:
                         has_init=result.init_method is not None,
                         builtin_type_key=result.builtin_type_key,
                     ))
+                    # Prefix nested type names with parent chain and register
+                    self._prefix_nested_names(result, result.name)
+                    self._register_nested_types(result)
                     # Fix up method return types that reference the class by
                     # name but were parsed before the class was registered
                     if result.builtin_type_key:
@@ -1251,7 +1280,12 @@ class Parser:
 
         fields = []
         methods = []
+        nested_records: list[TpyRecord] = []
+        nested_enums: list[TpyEnum] = []
         property_names: set[str] = set()
+        # Save and extend nested type scope so short names resolve inside the class body
+        old_nested_scope = self._nested_type_scope
+        self._nested_type_scope = dict(old_nested_scope)
 
         for item in node.body:
             if isinstance(item, ast.AnnAssign):
@@ -1307,6 +1341,44 @@ class Parser:
                 pass  # Ellipsis for opaque native types
             elif isinstance(item, ast.Expr) and isinstance(item.value, ast.Constant) and isinstance(item.value.value, str):
                 pass  # Docstring
+            elif isinstance(item, ast.ClassDef):
+                if is_typed_dict:
+                    raise ParseError(f"Nested classes are not allowed in TypedDict '{node.name}'", item)
+                if linkage != RecordLinkage.DEFAULT:
+                    raise ParseError(f"Nested classes are not allowed in @{linkage.value} classes", item)
+                nested = self._parse_class(item)
+                if isinstance(nested, TpyProtocol):
+                    raise ParseError("Protocols cannot be nested inside classes", item)
+                elif isinstance(nested, TpyEnum):
+                    if type_params:
+                        raise ParseError(
+                            f"Nested enums are not supported inside generic classes "
+                            f"('{node.name}' has type parameters)", item)
+                    # Register immediately with dotted name so forward references
+                    # within the same class body work (e.g., kind: Container.Kind)
+                    dotted_name = f"{node.name}.{nested.name}"
+                    enum_type = EnumType(
+                        name=dotted_name,
+                        members=tuple(m for m, _, _ in nested.members),
+                        member_values=tuple((m, v) for m, v, _ in nested.members),
+                    )
+                    self.registry.register_enum(enum_type)
+                    self._nested_type_scope[nested.name] = dotted_name
+                    nested_enums.append(nested)
+                else:
+                    if type_params:
+                        raise ParseError(
+                            f"Nested classes are not supported inside generic classes "
+                            f"('{node.name}' has type parameters)", item)
+                    # Register immediately with dotted name for forward references
+                    dotted_name = f"{node.name}.{nested.name}"
+                    self.registry.register_record(RecordInfo(
+                        name=dotted_name,
+                        fields=nested.fields,
+                        has_init=nested.init_method is not None,
+                    ))
+                    self._nested_type_scope[nested.name] = dotted_name
+                    nested_records.append(nested)
             else:
                 raise ParseError(f"Unsupported construct in class '{node.name}'", item)
 
@@ -1345,9 +1417,10 @@ class Parser:
                         f"@native(\"...\") decorator on method '{method.name}' is only allowed "
                         f"on @native/@native_c classes", node)
 
-        # Restore the scope
+        # Restore scopes
         self._type_param_scope = old_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, pending_macros=pending_macros, is_typed_dict=is_typed_dict, is_total_false=is_total_false, loc=self._loc(node))
+        self._nested_type_scope = old_nested_scope
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, loc=self._loc(node))
 
     def _auto_declare_fields_from_init(
         self,
@@ -1423,6 +1496,32 @@ class Parser:
             if f.name not in seen:
                 ordered.append(f)
         return ordered
+
+    @staticmethod
+    def _prefix_nested_names(record: TpyRecord, parent_name: str) -> None:
+        """Prefix immediate nested types with parent_name, then recurse."""
+        for nr in record.nested_records:
+            nr.name = f"{parent_name}.{nr.name}"
+            Parser._prefix_nested_names(nr, nr.name)
+        for ne in record.nested_enums:
+            ne.name = f"{parent_name}.{ne.name}"
+
+    def _register_nested_types(self, record: TpyRecord) -> None:
+        """Register all nested records and enums in the parser registry."""
+        for nr in record.nested_records:
+            self.registry.register_record(RecordInfo(
+                name=nr.name,
+                fields=nr.fields,
+                has_init=nr.init_method is not None,
+            ))
+            self._register_nested_types(nr)
+        for ne in record.nested_enums:
+            enum_type = EnumType(
+                name=ne.name,
+                members=tuple(m for m, _, _ in ne.members),
+                member_values=tuple((m, v) for m, v, _ in ne.members),
+            )
+            self.registry.register_enum(enum_type)
 
     def _parse_protocol(self, node: ast.ClassDef) -> TpyProtocol:
         """Parse a protocol definition."""
@@ -2512,6 +2611,13 @@ class Parser:
                     type_args = self._parse_record_type_args(node, resolved_container, type_param_scope)
                     return NamedType(resolved_container, type_args)
 
+            # Nested generic records (e.g., Outer.Inner[T])
+            if isinstance(node.value, ast.Attribute):
+                dotted = self._resolve_dotted_class_name(node.value)
+                if dotted is not None and self.registry.get_record(dotted) is not None:
+                    type_args = self._parse_record_type_args(node, dotted, type_param_scope)
+                    return NamedType(dotted, type_args)
+
             raise ParseError(f"Unknown generic type: {raw_name}", node)
 
         elif isinstance(node, ast.Attribute):
@@ -2524,6 +2630,14 @@ class Parser:
                 registered = self._resolve_registered_type(resolved[1], node, resolved=True)
                 if registered is not None:
                     return registered
+            # Check for nested class type: Outer.Inner (dotted name)
+            dotted = self._resolve_dotted_class_name(node)
+            if dotted is not None:
+                if self.registry.get_record(dotted) is not None:
+                    return NamedType(dotted)
+                enum_type = self.registry.get_enum(dotted)
+                if enum_type is not None:
+                    return enum_type
             # Not resolved -- check if module exists but wasn't imported
             self._raise_unresolved_qualified_error(node)
             qualified = f"{node.value.id}.{node.attr}" if isinstance(node.value, ast.Name) else ast.dump(node)

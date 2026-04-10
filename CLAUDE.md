@@ -438,6 +438,7 @@ Working but not previously listed:
 - `tplib.json` -- JSON parsing/serialization library with `@model` macro for pydantic-style typed deserialization
 - `del x` -- variable unbinding; early destruction only for sole owners (not aliases, params, or globals)
 - `a = b = c = expr` -- multiple assignment with anchor-based desugaring
+- Nested class and enum definitions (`class Outer: class Inner: ...`) with arbitrary depth, constructor calls, and CPython-compatible short name resolution
 
 ## Type Mappings
 

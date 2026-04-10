@@ -167,8 +167,10 @@ def qualified_cpp_name(module_name: str, name: str) -> str:
     """Build an absolute-qualified C++ name for cross-module references.
 
     Example: ("shapes", "Circle") -> "::tpyapp::shapes::Circle"
+    Example: ("shapes", "Container.Inner") -> "::tpyapp::shapes::Container::Inner"
     """
-    return f"::{module_to_cpp_namespace(module_name)}::{escape_cpp_name(name)}"
+    cpp_name = "::".join(escape_cpp_name(part) for part in name.split("."))
+    return f"::{module_to_cpp_namespace(module_name)}::{cpp_name}"
 
 
 def qualify_native_name(name: str) -> str:

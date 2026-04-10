@@ -1258,8 +1258,8 @@ class Compiler:
                             if not func_infos[0].special_handling:
                                 exports.reexported_functions[local_name] = (source_module, original_name)
 
-        # Export all user-defined records
-        for record in compiled.ast.records:
+        # Export all user-defined records (including nested)
+        for record in compiled.ast.all_records():
             record_info = analyzer.registry.get_record(record.name)
             if record_info:
                 exports.records[record.name] = record_info
@@ -1290,8 +1290,8 @@ class Compiler:
                     if module_info and original_name in module_info.protocols:
                         exports.protocols[local_name] = module_info.protocols[original_name]
 
-        # Export all user-defined enums
-        for enum in compiled.ast.enums:
+        # Export all user-defined enums (including nested)
+        for enum in compiled.ast.all_enums():
             enum_type = analyzer.registry.get_enum(enum.name)
             if enum_type:
                 exports.enums[enum.name] = enum_type

@@ -1325,6 +1325,48 @@ class ExpressionAnalyzer:
 
         return None
 
+    def _resolve_nested_type_access(self, parent_name: str, field: str,
+                                       expr: TpyFieldAccess) -> TpyType | None:
+        """Check if parent_name.field is a nested enum or record. Returns type or None."""
+        dotted = f"{parent_name}.{field}"
+        nested_enum = self.ctx.registry.get_enum(dotted)
+        if nested_enum is not None:
+            return nested_enum
+        nested_record = self.ctx.registry.get_record(dotted)
+        if nested_record is not None:
+            return NamedType(dotted)
+        return None
+
+    def _resolve_nested_chain(self, expr: TpyFieldAccess) -> tuple[str, TpyType] | None:
+        """Resolve a chain of field accesses to a nested type (e.g., Outer.Mid.Inner).
+
+        Returns (dotted_name, resolved_type) or None if not a nested type chain.
+        """
+        if isinstance(expr.obj, TpyName):
+            if self.ctx.current_ns:
+                binding = self.ctx.current_ns.lookup(expr.obj.name)
+                if binding and binding.kind in (BindingKind.RECORD, BindingKind.IMPORTED_NAME):
+                    dotted = f"{expr.obj.name}.{expr.field}"
+                    nested_enum = self.ctx.registry.get_enum(dotted)
+                    if nested_enum is not None:
+                        return (dotted, nested_enum)
+                    nested_record = self.ctx.registry.get_record(dotted)
+                    if nested_record is not None:
+                        return (dotted, NamedType(dotted))
+        elif isinstance(expr.obj, TpyFieldAccess):
+            parent = self._resolve_nested_chain(expr.obj)
+            if parent is not None:
+                dotted_parent, parent_type = parent
+                if isinstance(parent_type, NamedType):
+                    dotted = f"{dotted_parent}.{expr.field}"
+                    nested_enum = self.ctx.registry.get_enum(dotted)
+                    if nested_enum is not None:
+                        return (dotted, nested_enum)
+                    nested_record = self.ctx.registry.get_record(dotted)
+                    if nested_record is not None:
+                        return (dotted, NamedType(dotted))
+        return None
+
     def _analyze_field_access(self, expr: TpyFieldAccess) -> TpyType:
         """Analyze a field access."""
         # Check for module variable access (e.g., sys.argv)
@@ -1347,6 +1389,33 @@ class ExpressionAnalyzer:
                         return enum_type
                     raise self.ctx.error(
                         f"Enum '{enum_type.name}' has no member '{expr.field}'", expr)
+
+                # Nested type access on a record: Container.Kind, Container.Inner
+                # Also check IMPORTED_NAME that resolves to a record (cross-module)
+                if binding and binding.kind in (BindingKind.RECORD, BindingKind.IMPORTED_NAME):
+                    nested = self._resolve_nested_type_access(expr.obj.name, expr.field, expr)
+                    if nested is not None:
+                        return nested
+
+        # Handle chained nested type access: Outer.Mid.Inner.field
+        if isinstance(expr.obj, TpyFieldAccess):
+            chain = self._resolve_nested_chain(expr.obj)
+            if chain is not None:
+                # chain is a (dotted_name, type) for the intermediate nested type
+                dotted_name, chain_type = chain
+                if isinstance(chain_type, EnumType):
+                    if expr.field in chain_type.members:
+                        return chain_type
+                    if expr.field in ("name", "value"):
+                        pass  # fall through to normal field access
+                    else:
+                        raise self.ctx.error(
+                            f"Enum '{chain_type.name}' has no member '{expr.field}'", expr)
+                elif isinstance(chain_type, NamedType):
+                    # Try further nesting
+                    nested = self._resolve_nested_type_access(dotted_name, expr.field, expr)
+                    if nested is not None:
+                        return nested
 
         obj_type = self.analyze_expr(expr.obj)
 

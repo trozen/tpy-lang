@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import TextIO, TYPE_CHECKING
 import io
 
-from ..typesys import TpyType, NamedType, UnionType, OwnType, PendingListType, ListType, ArrayType, PtrType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals
+from ..typesys import TpyType, NamedType, UnionType, OwnType, PendingListType, ListType, ArrayType, PtrType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
 
@@ -115,6 +115,15 @@ class CodeGenerator:
             record_info = self.analyzer.registry.get_record(record.name)
             if record_info and record_info.is_native and record_info.native_name:
                 register_native_cpp_name(record.name, record_info.native_name)
+        # Register nested type names: "Outer.Inner" -> "Outer::Inner" for C++ qualified access.
+        # Use _native_cpp_names directly to avoid ensure_qualified adding "::" prefix
+        # (these are module-local types, not cross-module references).
+        for record in module.all_records():
+            if "." in record.name:
+                _native_cpp_names[record.name] = record.name.replace(".", "::")
+        for enum in module.all_enums():
+            if "." in enum.name:
+                _native_cpp_names[enum.name] = enum.name.replace(".", "::")
         for local_name, (src_mod, original_name) in self.analyzer.ctx.user_imported_records.items():
             record_info = self.analyzer.registry.get_record(local_name)
             if record_info and record_info.is_native and record_info.native_name:
@@ -287,7 +296,7 @@ class CodeGenerator:
             cpp.write("\n")
 
         # Method generator __next__() definitions
-        for record in module.records:
+        for record in module.all_records():
             for method in record.methods:
                 if method.is_generator and not self.gen_generators.is_simple_generator(method):
                     self.gen_generators.gen_generator_next(
@@ -432,7 +441,7 @@ class CodeGenerator:
         if record.type_params or record.builtin_type_key:
             return
         ns = module_to_cpp_namespace(self.ctx.module_name)
-        cpp_name = f"{ns}::{record.name}"
+        cpp_name = f"{ns}::{record.name.replace('.', '::')}"
         hpp.write(f"}} // namespace {ns}\n\n")
         hpp.write(f"template<> struct std::hash<{cpp_name}> {{\n")
         hpp.write(f"    size_t operator()(const {cpp_name}& val) const noexcept {{\n")
@@ -440,6 +449,12 @@ class CodeGenerator:
         hpp.write(f"    }}\n")
         hpp.write(f"}};\n")
         hpp.write(f"\nnamespace {ns} {{\n\n")
+
+    def _emit_nested_hash_specializations(self, hpp: TextIO, record: 'TpyRecord') -> None:
+        """Emit std::hash specializations for nested records (recursively)."""
+        for nested_rec in record.nested_records:
+            self._emit_hash_specialization(hpp, nested_rec)
+            self._emit_nested_hash_specializations(hpp, nested_rec)
 
     def _emit_concept_and_dynamic(self, hpp: TextIO, protocol: 'TpyProtocol') -> None:
         """Emit concept for a protocol, plus base class if @dynamic.
@@ -555,15 +570,18 @@ class CodeGenerator:
         for enum in module.enums:
             self._gen_enum_decl(hpp, enum)
 
-        # Dynamic protocol adapter specs and EnumUtil specs must be at global scope
+        # Dynamic protocol adapter specs and EnumUtil specs must be at global scope.
+        # Only emit EnumUtil for top-level enums here; nested enums need
+        # their parent struct defined first (emitted after record definitions).
         dynamic_protocols = [p for p in module.protocols if p.is_dynamic]
-        if dynamic_protocols or module.enums:
+        top_enums = module.enums
+        if dynamic_protocols or top_enums:
             ns = module_to_cpp_namespace(self.ctx.module_name)
             hpp.write(f"}} // namespace {ns}\n\n")
             self._gen_dynamic_adapter_specs(hpp, module, dynamic_protocols)
-            self._gen_enum_util_decls(hpp, module)
+            self._gen_enum_util_decls_for(hpp, top_enums)
             hpp.write(f"namespace {ns} {{\n\n")
-            for enum in module.enums:
+            for enum in top_enums:
                 self._gen_enum_operator_ostream(hpp, enum)
 
         # Forward declare remaining records (excluding native records)
@@ -626,7 +644,7 @@ class CodeGenerator:
                 self.gen_generators.gen_generator_forward_decl(hpp, func)
                 emitted_gen_fwd = True
         # Method generator struct forward declarations (before records)
-        for record in module.records:
+        for record in module.all_records():
             for method in record.methods:
                 if method.is_generator and not self.gen_generators.is_simple_generator(method):
                     self.gen_generators.gen_generator_forward_decl(
@@ -658,7 +676,18 @@ class CodeGenerator:
                 continue
             self.records.gen_record_decl(hpp, record)
             self._emit_hash_specialization(hpp, record)
+            self._emit_nested_hash_specializations(hpp, record)
             hpp.write("\n")
+
+        # EnumUtil + operator<< for nested enums (must come after parent struct definitions)
+        nested_enums = [e for e in module.all_enums() if "." in e.name]
+        if nested_enums:
+            ns = module_to_cpp_namespace(self.ctx.module_name)
+            hpp.write(f"}} // namespace {ns}\n\n")
+            self._gen_enum_util_decls_for(hpp, nested_enums)
+            hpp.write(f"namespace {ns} {{\n\n")
+            for enum in nested_enums:
+                self._gen_enum_operator_ostream(hpp, enum)
 
         # Generator struct full definitions (after records, so struct fields
         # and inline __next__() can use fully-defined user types).
@@ -667,7 +696,7 @@ class CodeGenerator:
                 self.gen_generators.gen_generator_struct(hpp, func)
                 hpp.write("\n")
         # Method generator struct definitions + out-of-line factory methods
-        for record in module.records:
+        for record in module.all_records():
             for method in record.methods:
                 if method.is_generator and not self.gen_generators.is_simple_generator(method):
                     self.gen_generators.gen_generator_struct(
@@ -676,7 +705,7 @@ class CodeGenerator:
                     # Inline factory method definition (now that struct is complete)
                     from .gen_generators import GeneratorCodegen
                     struct_name = GeneratorCodegen.gen_struct_name(method, record.name)
-                    cpp_record = escape_cpp_name(record.name)
+                    cpp_record = escape_cpp_name(record.name.replace(".", "::"))
                     params = self.functions.gen_params(
                         method.params, method, emit_defaults=False)
                     if method.params:
@@ -690,7 +719,7 @@ class CodeGenerator:
 
         # ValueType specializations: exit namespace, emit, re-enter
         value_type_records = [
-            r for r in module.records
+            r for r in module.all_records()
             if (info := self.analyzer.registry.get_record(r.name)) and info.is_value_type
         ]
         if value_type_records:
@@ -707,9 +736,11 @@ class CodeGenerator:
                         for i, tp in enumerate(record.type_params)
                     )
                     tparams_use = ", ".join(record.type_params)
-                    hpp.write(f"template<{tparams_decl}> struct tpy::is_value_type<{ns}::{record.name}<{tparams_use}>> : std::true_type {{}};\n")
+                    cpp_name = record.name.replace(".", "::")
+                    hpp.write(f"template<{tparams_decl}> struct tpy::is_value_type<{ns}::{cpp_name}<{tparams_use}>> : std::true_type {{}};\n")
                 else:
-                    hpp.write(f"template<> struct tpy::is_value_type<{ns}::{record.name}> : std::true_type {{}};\n")
+                    cpp_name = record.name.replace(".", "::")
+                    hpp.write(f"template<> struct tpy::is_value_type<{ns}::{cpp_name}> : std::true_type {{}};\n")
             hpp.write(f"\nnamespace {ns} {{\n\n")
 
         # std::hash specializations are emitted per-record inline (see
@@ -842,15 +873,16 @@ class CodeGenerator:
             self.protocols.gen_dynamic_adapter_specs(out, protocol, ns)
             out.write("\n")
 
-    def _gen_enum_util_decls(self, out: TextIO, module: TpyModule) -> None:
-        """Generate ::tpy::EnumUtil<E> specialization declarations (global scope)."""
+    def _gen_enum_util_decls_for(self, out: TextIO, enums: list) -> None:
+        """Generate ::tpy::EnumUtil<E> specialization declarations for given enums."""
         ns = module_to_cpp_namespace(self.ctx.module_name)
-        for enum in module.enums:
+        for enum in enums:
             enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
             if not enum_type:
                 continue
             underlying = enum_type.underlying_type.to_cpp()
-            qualified = f"{ns}::{enum.name}"
+            cpp_enum_name = enum.name.replace(".", "::")
+            qualified = f"{ns}::{cpp_enum_name}"
             member_count = len(enum.members)
             out.write(f"template<>\n")
             out.write(f"struct tpy::EnumUtil<{qualified}> {{\n")
@@ -863,20 +895,24 @@ class CodeGenerator:
 
     def _gen_enum_operator_ostream(self, out: TextIO, enum) -> None:
         """Generate inline operator<< inside user namespace."""
-        out.write(f"inline std::ostream& operator<<(std::ostream& __os, {enum.name} __e) {{\n")
-        out.write(f"    return __os << \"{enum.name}.\" << ::tpy::EnumUtil<{enum.name}>::name(__e);\n")
+        cpp_name = enum.name.replace(".", "::")
+        # Use short name for repr to match CPython (Kind.TEXT, not Message.Kind.TEXT)
+        short_name = enum.name.rsplit(".", 1)[-1]
+        out.write(f"inline std::ostream& operator<<(std::ostream& __os, {cpp_name} __e) {{\n")
+        out.write(f"    return __os << \"{short_name}.\" << ::tpy::EnumUtil<{cpp_name}>::name(__e);\n")
         out.write(f"}}\n\n")
 
     def _gen_enum_source_defs(self, out: TextIO, module: TpyModule) -> None:
         """Generate ::tpy::EnumUtil<E> member definitions in namespace tpy."""
         ns = module_to_cpp_namespace(self.ctx.module_name)
         out.write("namespace tpy {\n\n")
-        for enum in module.enums:
+        for enum in module.all_enums():
             enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
             if not enum_type:
                 continue
             underlying = enum_type.underlying_type.to_cpp()
-            qualified = f"{ns}::{enum.name}"
+            cpp_enum_name = enum.name.replace(".", "::")
+            qualified = f"{ns}::{cpp_enum_name}"
             member_count = len(enum.members)
 
             # name()
@@ -1103,7 +1139,7 @@ class CodeGenerator:
         include_path = self._module_to_include_path(self.ctx.module_name)
         out.write(f'#include "{include_path}"\n\n')
         # EnumUtil definitions go before user namespace (they live in namespace tpy)
-        if module.enums:
+        if module.all_enums():
             self._gen_enum_source_defs(out, module)
         ns = module_to_cpp_namespace(self.ctx.module_name)
         out.write(f"namespace {ns} {{\n\n")

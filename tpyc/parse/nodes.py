@@ -266,6 +266,9 @@ class TpyMethodCall(TpyExpr):
     macro_expansion: 'TpyExpr | None' = None  # Set by sema: replacement expr from @call_macro
     typed_dict_get_field: str | None = None  # Set by sema: td.get("key") -> field access
     typed_dict_get_optional: bool = False  # Set by sema: total=False field, absent by default
+    is_nested_constructor: bool = False  # Set by sema: Outer.Inner() nested record constructor
+    is_nested_enum_constructor: bool = False  # Set by sema: Outer.Kind(v) nested enum from_value
+    nested_type_name: str | None = None  # Set by sema: dotted name for nested type calls
 
     def children(self) -> list[TpyExpr]:
         if self.macro_expansion is not None:
@@ -1053,6 +1056,8 @@ class TpyRecord:
     is_total_false: bool = False  # TypedDict(total=False): all fields Optional
     builtin_type_key: str | None = None
     pending_macros: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
+    nested_records: list[TpyRecord] = field(default_factory=list)
+    nested_enums: list[TpyEnum] = field(default_factory=list)
     loc: SourceLocation | None = None
 
     @property
@@ -1145,6 +1150,26 @@ class TpyModule:
     parse_warnings: list[ParseWarning] = field(default_factory=list)
     # Module-level # tpy: directives
     directives: ModuleDirectives = field(default_factory=ModuleDirectives)
+
+    def all_records(self) -> list[TpyRecord]:
+        """All records including nested, in definition order (depth-first)."""
+        result: list[TpyRecord] = []
+        def collect(records: list[TpyRecord]) -> None:
+            for r in records:
+                result.append(r)
+                collect(r.nested_records)
+        collect(self.records)
+        return result
+
+    def all_enums(self) -> list[TpyEnum]:
+        """All enums including those nested inside records, in definition order."""
+        result: list[TpyEnum] = list(self.enums)
+        def collect(records: list[TpyRecord]) -> None:
+            for r in records:
+                result.extend(r.nested_enums)
+                collect(r.nested_records)
+        collect(self.records)
+        return result
 
 
 def is_super_del_call(stmt: TpyStmt) -> bool:
