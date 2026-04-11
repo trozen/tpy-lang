@@ -29,7 +29,7 @@ struct OwnIter {
     // NativeIterable: range-based iteration with move semantics.
     // Do not mix range-based (begin/end) and __next__-based iteration on the
     // same instance -- both advance shared state and the result is undefined.
-    auto begin() { return std::make_move_iterator(data.begin() + pos); }
+    auto begin() { return std::make_move_iterator(data.begin() + static_cast<std::ptrdiff_t>(pos)); }
     auto end()   { return std::make_move_iterator(data.end()); }
 
     // Iterator protocol

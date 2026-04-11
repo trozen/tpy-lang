@@ -160,7 +160,7 @@ inline int32_t bytes_count(BytesView haystack, BytesView needle) {
     int32_t count = 0;
     size_t pos = 0;
     while (pos + needle.size() <= haystack.size()) {
-        auto it = std::search(haystack.begin() + pos, haystack.end(),
+        auto it = std::search(haystack.begin() + static_cast<std::ptrdiff_t>(pos), haystack.end(),
                               needle.begin(), needle.end());
         if (it == haystack.end()) break;
         ++count;
@@ -205,13 +205,13 @@ inline Bytes bytes_replace(BytesView s, BytesView old_sub, BytesView new_sub) {
     Bytes result;
     size_t pos = 0;
     while (pos + old_sub.size() <= s.size()) {
-        auto it = std::search(s.begin() + pos, s.end(), old_sub.begin(), old_sub.end());
-        result.insert(result.end(), s.begin() + pos, it);
+        auto it = std::search(s.begin() + static_cast<std::ptrdiff_t>(pos), s.end(), old_sub.begin(), old_sub.end());
+        result.insert(result.end(), s.begin() + static_cast<std::ptrdiff_t>(pos), it);
         if (it == s.end()) return result;
         result.insert(result.end(), new_sub.begin(), new_sub.end());
         pos = static_cast<size_t>(it - s.begin()) + old_sub.size();
     }
-    result.insert(result.end(), s.begin() + pos, s.end());
+    result.insert(result.end(), s.begin() + static_cast<std::ptrdiff_t>(pos), s.end());
     return result;
 }
 
@@ -220,12 +220,12 @@ inline std::vector<Bytes> bytes_split(BytesView s, BytesView sep) {
     std::vector<Bytes> result;
     size_t pos = 0;
     while (pos + sep.size() <= s.size()) {
-        auto it = std::search(s.begin() + pos, s.end(), sep.begin(), sep.end());
-        result.emplace_back(s.begin() + pos, it);
+        auto it = std::search(s.begin() + static_cast<std::ptrdiff_t>(pos), s.end(), sep.begin(), sep.end());
+        result.emplace_back(s.begin() + static_cast<std::ptrdiff_t>(pos), it);
         if (it == s.end()) return result;
         pos = static_cast<size_t>(it - s.begin()) + sep.size();
     }
-    result.emplace_back(s.begin() + pos, s.end());
+    result.emplace_back(s.begin() + static_cast<std::ptrdiff_t>(pos), s.end());
     return result;
 }
 

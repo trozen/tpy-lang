@@ -505,7 +505,7 @@ public:
         if (s == 0) return "0o0";
         std::vector<uint64_t> limbs = abs_limbs();
         size_t total_bits = (limbs.size() - 1) * 64 +
-            (64 - std::countl_zero(limbs.back()));
+            (64 - static_cast<size_t>(std::countl_zero(limbs.back())));
         std::string digits;
         // Extract 3-bit groups across limb boundaries
         for (size_t bit = 0; bit < total_bits; bit += 3) {

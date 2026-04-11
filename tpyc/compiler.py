@@ -286,6 +286,7 @@ def get_or_build_pch(
     cmd = [
         *config.compiler, f"-std={config.std}",
         *config.extra_flags,
+        *config.warn_flags,
         *opt_flags,
         "-I", str(runtime_include_dir),
         "-x", "c++-header",
@@ -305,6 +306,12 @@ class CppCompilerConfig:
     extra_flags: list[str] = field(default_factory=list)
     link_flags: list[str] = field(default_factory=list)
     ccache: bool = False
+    # TODO: enable stricter warnings once generated code is clean. Blocked on:
+    # - exhaustive match/finally/with codegen not emitting __builtin_unreachable() at end labels (return-type)
+    # - INT64_MIN/UINT64_MAX emitted as bare integer literals (large-integer-constant)
+    # - native global codegen emitting extern + initializer together (extern-initialized)
+    # Candidate set: -Werror -Wall -Wextra -Wsign-conversion -Wnull-dereference
+    warn_flags: list[str] = field(default_factory=list)
 
     @property
     def compiler_name(self) -> str:
@@ -435,6 +442,7 @@ class BuildLayout:
             *config.compiler, f"-std={config.std}",
             *(opt_flags or []),
             *config.extra_flags,
+            *config.warn_flags,
             "-I", str(runtime_include_dir),
             "-I", str(self.include_dir),
             *extra_flags,

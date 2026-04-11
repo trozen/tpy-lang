@@ -27,7 +27,7 @@ struct SpanIter {
     explicit SpanIter(std::span<T> s) : span_(s) {}
 
     // NativeIterable: zero-cost iteration via begin/end.
-    auto begin() const { return span_.begin() + index_; }
+    auto begin() const { return span_.begin() + static_cast<std::ptrdiff_t>(index_); }
     auto end() const { return span_.end(); }
 
     // Iterator protocol
