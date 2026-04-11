@@ -89,7 +89,11 @@ tpyc --cxx list                  # show available C++ compilers
 tpyc -x -j4 examples/hello.py   # parallel compilation (4 jobs)
 ```
 
-A `sources.cmake` file is generated alongside the C++ output for easy CMake integration:
+A `sources.cmake` file is generated alongside the C++ output for easy CMake integration.
+By default, the tpy runtime headers are bundled into the output directory so the
+result is self-contained and can be committed or copied to another machine.
+Use `--no-bundle-runtime` to skip the copy (e.g. during development on the runtime itself).
+
 ```cmake
 include(path/to/__tpyc__/myapp.d/sources.cmake)
 add_executable(myapp ${TPYC_SOURCES})

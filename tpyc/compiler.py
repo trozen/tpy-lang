@@ -351,13 +351,16 @@ class BuildLayout:
 
     Layout:
         output_dir/
-          {entry_module}.d/        # root_dir
+          {entry_module}.d/        # root_dir (flat=False) or output_dir/ (flat=True)
             include/               # headers (shared across variants)
               {module}.hpp
               {pkg}/{mod}.hpp
             src/                   # sources (shared across variants)
               {module}.cpp
               {pkg}/{mod}.cpp
+            runtime/               # bundled tpy runtime headers (when bundle_runtime=True)
+              include/
+                tpy/
             debug/                 # variant-specific build artifacts
               {entry_module}.o
               {entry_module}
@@ -483,14 +486,18 @@ class BuildLayout:
         cpp_files: list[Path],
         link_flags: list[str] | None = None,
         extra_include_dirs: list[Path] | None = None,
+        bundle_runtime: bool = True,
     ) -> Path:
         """Generate a .cmake include file with source/include/link variables.
 
-        Produces tpyc.cmake that sets:
+        Produces sources.cmake that sets:
           TPYC_SOURCES      -- list of generated .cpp files
           TPYC_INCLUDE_DIRS -- include directories (generated headers + runtime)
           TPYC_LIBRARIES    -- link libraries (from # tpy: link() directives)
           TPYC_CXX_STANDARD -- required C++ standard (23)
+
+        When bundle_runtime is True (default), the runtime headers are copied
+        into the output directory so the result is self-contained.
 
         Users include() this from their CMakeLists.txt.
         """
@@ -506,10 +513,19 @@ class BuildLayout:
 
         include_dirs = []
         include_dirs.append(f"{cmake_dir}/{self.include_dir.relative_to(self.root_dir)}")
-        try:
-            include_dirs.append(f"{cmake_dir}/{os.path.relpath(runtime_include_dir, self.root_dir)}")
-        except ValueError:
-            include_dirs.append(str(runtime_include_dir))
+
+        if bundle_runtime:
+            bundled_dir = self.root_dir / "runtime" / "include"
+            if bundled_dir.exists():
+                shutil.rmtree(bundled_dir)
+            shutil.copytree(runtime_include_dir, bundled_dir)
+            include_dirs.append(f"{cmake_dir}/runtime/include")
+        else:
+            try:
+                include_dirs.append(f"{cmake_dir}/{os.path.relpath(runtime_include_dir, self.root_dir)}")
+            except ValueError:
+                include_dirs.append(str(runtime_include_dir))
+
         for d in (extra_include_dirs or []):
             try:
                 include_dirs.append(f"{cmake_dir}/{os.path.relpath(d, self.root_dir)}")

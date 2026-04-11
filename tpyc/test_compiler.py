@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from . import get_lib_dir
+from . import get_lib_dir, get_runtime_dir
 from .compiler import Compiler, BuildLayout
 from .sema.diagnostics import SemanticError
 from .typesys import (
@@ -323,3 +323,89 @@ class TestBuildLayout:
     def test_build_dir_with_variant(self):
         layout = BuildLayout(Path("/out"), "main", build_variant="debug")
         assert layout.build_dir == Path("/out/main.d/debug")
+
+
+class TestGenerateCmake:
+    """Tests for sources.cmake generation and runtime bundling."""
+
+    def _make_layout(self, tmp_path: Path) -> BuildLayout:
+        layout = BuildLayout(tmp_path, "app")
+        layout.include_dir.mkdir(parents=True)
+        layout.src_dir.mkdir(parents=True)
+        return layout
+
+    def _dummy_cpp(self, layout: BuildLayout) -> list[Path]:
+        cpp = layout.src_dir / "app.cpp"
+        cpp.write_text("// generated")
+        return [cpp]
+
+    def test_bundle_runtime_copies_headers(self, tmp_path: Path):
+        layout = self._make_layout(tmp_path)
+        runtime_inc = get_runtime_dir() / "cpp" / "include"
+        layout.generate_cmake(
+            runtime_include_dir=runtime_inc,
+            cpp_files=self._dummy_cpp(layout),
+            bundle_runtime=True,
+        )
+        bundled = layout.root_dir / "runtime" / "include" / "tpy"
+        assert bundled.is_dir()
+        assert (bundled / "tpy.hpp").is_file()
+
+    def test_bundle_runtime_cmake_uses_local_path(self, tmp_path: Path):
+        layout = self._make_layout(tmp_path)
+        runtime_inc = get_runtime_dir() / "cpp" / "include"
+        cmake_path = layout.generate_cmake(
+            runtime_include_dir=runtime_inc,
+            cpp_files=self._dummy_cpp(layout),
+            bundle_runtime=True,
+        )
+        content = cmake_path.read_text()
+        assert "${CMAKE_CURRENT_LIST_DIR}/runtime/include" in content
+        # No absolute or parent-traversal paths to the runtime
+        assert "../../" not in content.split("TPYC_INCLUDE_DIRS")[1].split(")")[0]
+
+    def test_no_bundle_runtime_uses_relative_path(self, tmp_path: Path):
+        layout = self._make_layout(tmp_path)
+        runtime_inc = get_runtime_dir() / "cpp" / "include"
+        cmake_path = layout.generate_cmake(
+            runtime_include_dir=runtime_inc,
+            cpp_files=self._dummy_cpp(layout),
+            bundle_runtime=False,
+        )
+        content = cmake_path.read_text()
+        bundled = layout.root_dir / "runtime" / "include"
+        assert not bundled.exists()
+        assert "runtime/include" not in content
+        # Should reference the runtime via a relative or absolute path
+        lines = content.splitlines()
+        inc_lines = []
+        in_inc = False
+        for line in lines:
+            if line.startswith("set(TPYC_INCLUDE_DIRS"):
+                in_inc = True
+                continue
+            if in_inc:
+                if line.strip() == ")":
+                    break
+                inc_lines.append(line.strip())
+        assert len(inc_lines) == 2
+        assert "../" in inc_lines[1] or str(runtime_inc) in inc_lines[1]
+
+    def test_bundle_runtime_idempotent(self, tmp_path: Path):
+        """Repeated calls with bundle_runtime=True succeed."""
+        layout = self._make_layout(tmp_path)
+        runtime_inc = get_runtime_dir() / "cpp" / "include"
+        cpp_files = self._dummy_cpp(layout)
+        layout.generate_cmake(
+            runtime_include_dir=runtime_inc,
+            cpp_files=cpp_files,
+            bundle_runtime=True,
+        )
+        cmake_path = layout.generate_cmake(
+            runtime_include_dir=runtime_inc,
+            cpp_files=cpp_files,
+            bundle_runtime=True,
+        )
+        content = cmake_path.read_text()
+        assert "${CMAKE_CURRENT_LIST_DIR}/runtime/include" in content
+        assert (layout.root_dir / "runtime" / "include" / "tpy" / "tpy.hpp").is_file()

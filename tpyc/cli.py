@@ -204,6 +204,9 @@ def main() -> int:
                               help="Disable ccache")
     parser.add_argument("--no-pch", dest="pch", action="store_false", default=True,
                         help="Disable precompiled header caching")
+    parser.add_argument("--no-bundle-runtime", dest="bundle_runtime",
+                        action="store_false", default=True,
+                        help="Don't copy runtime headers into the output directory")
     parser.add_argument("-j", "--jobs", type=int, default=None,
                         help="Parallel compile jobs (default: number of CPUs)")
     parser.add_argument("-q", "--quiet", action="store_true",
@@ -418,6 +421,7 @@ def main() -> int:
             runtime_include_dir=runtime_dir / "cpp" / "include",
             cpp_files=all_cpp_paths,
             link_flags=link_flags,
+            bundle_runtime=args.bundle_runtime and not building and explicit_output,
         )
 
         # Build if requested
