@@ -1690,6 +1690,12 @@ class StatementAnalyzer:
         # Param tracking for mutation analysis
         self.ctx.current_param_names = param_names
         self.ctx.current_param_name_to_idx = {p: i for i, (p, _) in enumerate(params)}
+        # For non-static methods, include "self" in the param index map with
+        # sentinel -1 so that _record_mutation_call_edges can track self
+        # flowing through free function calls (e.g., helper(self)).
+        # Phase 2 (_resolve_single) converts caller_idx == -1 to self_mutated.
+        if func.is_method and not func.is_staticmethod:
+            self.ctx.current_param_name_to_idx["self"] = -1
 
         # Prescan for reassigned variables + last-use liveness
         scan = scan_reassigned_vars(func.body, pre_declared=param_names)

@@ -1,0 +1,5 @@
+test: initialized
+Module(test)
+test
+test: initialized
+[42]

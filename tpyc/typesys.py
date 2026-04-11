@@ -3536,7 +3536,7 @@ class ParamInfo:
 class MutationCallEdge:
     """Records parameter flow through a function call (for mutation propagation)."""
     callee_fi: 'FunctionInfo'
-    param_map: dict[int, int]  # callee_param_idx -> caller_param_idx
+    param_map: dict[int, int]  # callee_param_idx -> caller_param_idx; caller -1 = self passed as arg
     receiver_is_self: bool = False  # True when callee is called as self.method()
 
 

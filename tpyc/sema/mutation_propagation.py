@@ -93,9 +93,14 @@ def _resolve_single(fi: FunctionInfo) -> None:
         callee_mp = edge.callee_fi.mutated_params
         callee_smp = edge.callee_fi.structural_mutated_params
         if callee_mp is None:
-            # Unknown callee -- conservative: mark all flowing params as mutated
+            # Unknown callee -- conservative: mark all flowing params as mutated.
+            # Skip sentinel -1 (self passed as arg): unknown callees are often
+            # ephemeral FIs (substituted generics, constructor wrappers) that
+            # lack mutation facts but rarely mutate their args.  Self-mutation
+            # through method receivers is tracked separately via receiver_is_self.
             for _callee_idx, caller_idx in edge.param_map.items():
-                result.add(caller_idx)
+                if caller_idx >= 0:
+                    result.add(caller_idx)
             if edge.receiver_is_self:
                 self_mutated = True
         else:
@@ -114,7 +119,16 @@ def _resolve_single(fi: FunctionInfo) -> None:
         elif callee_mp is None:
             # Unknown callee: conservative -- treat all flowing params as structurally mutated
             for _callee_idx, caller_idx in edge.param_map.items():
-                struct_result.add(caller_idx)
+                if caller_idx >= 0:
+                    struct_result.add(caller_idx)
+    # Sentinel -1 means "self" was passed as a function argument and the
+    # callee mutated that parameter.  Convert to self_mutated flag.
+    if -1 in result:
+        self_mutated = True
+        result.discard(-1)
+    if -1 in struct_result:
+        self_mutated = True
+        struct_result.discard(-1)
     fi.mutated_params = frozenset(result)
     fi.structural_mutated_params = frozenset(struct_result)
     fi.self_mutated = self_mutated
@@ -150,7 +164,8 @@ def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
                 callee_smp = edge.callee_fi.structural_mutated_params
                 if callee_mp is None:
                     for _callee_idx, caller_idx in edge.param_map.items():
-                        result.add(caller_idx)
+                        if caller_idx >= 0:
+                            result.add(caller_idx)
                     if edge.receiver_is_self:
                         self_mutated = True
                 else:
@@ -165,7 +180,15 @@ def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
                             struct_result.add(caller_idx)
                 elif callee_mp is None:
                     for _callee_idx, caller_idx in edge.param_map.items():
-                        struct_result.add(caller_idx)
+                        if caller_idx >= 0:
+                            struct_result.add(caller_idx)
+            # Sentinel -1 means "self" was passed as a function argument
+            if -1 in result:
+                self_mutated = True
+                result.discard(-1)
+            if -1 in struct_result:
+                self_mutated = True
+                struct_result.discard(-1)
             new_mp = frozenset(result)
             new_smp = frozenset(struct_result)
             if new_mp != old_mp or new_smp != old_smp or self_mutated != old_sm:
@@ -184,10 +207,19 @@ def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
             for edge in (fi.call_edges or []):
                 if edge.callee_fi.mutated_params is None:
                     for _callee_idx, caller_idx in edge.param_map.items():
-                        result.add(caller_idx)
-                        struct_result.add(caller_idx)
+                        if caller_idx >= 0:
+                            result.add(caller_idx)
+                            struct_result.add(caller_idx)
                     if edge.receiver_is_self:
                         fi.self_mutated = True
+            # Defensive: -1 shouldn't appear here (filtered by >= 0 above
+            # and cleaned in prior iterations), but handle consistently.
+            if -1 in result:
+                fi.self_mutated = True
+                result.discard(-1)
+            if -1 in struct_result:
+                fi.self_mutated = True
+                struct_result.discard(-1)
             fi.mutated_params = frozenset(result)
             fi.structural_mutated_params = frozenset(struct_result)
 
