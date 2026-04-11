@@ -2713,6 +2713,12 @@ class ExpressionGenerator:
                 et = target_type.get_element_type()
                 if isinstance(et, (OptionalType, UnionType, TupleType, StrType)):
                     elem_target = et
+                # Recursive union element type (NamedType("Tree") -> RecursiveUnionType):
+                # pass it as elem_target so nested array literals trigger union_prefix.
+                elif isinstance(et, NamedType) and not et.is_protocol and not et.is_module_type:
+                    alias = self.ctx.analyzer.registry.get_type_alias(et.name)
+                    if isinstance(alias, RecursiveUnionType):
+                        elem_target = alias
         elements = []
         with self._container_element_context():
             for e in expr.elements:
@@ -2740,6 +2746,17 @@ class ExpressionGenerator:
             expr_type = self.ctx.get_expr_type(expr)
             if isinstance(expr_type, (ArrayType, ListType)):
                 return f"{expr_type.to_cpp()}{literal}"
+        # Recursive union element type: emit explicit std::vector<T> so the
+        # literal is self-describing when assigned to a variant (Tree __tmp = ...).
+        # Bare braced-init-lists can't deduce variant constructor alternatives.
+        if expr.elements:
+            expr_type = self.ctx.get_expr_type(expr)
+            if isinstance(expr_type, ListType):
+                et = expr_type.element_type
+                if isinstance(et, NamedType) and not et.is_protocol and not et.is_module_type:
+                    alias = self.ctx.analyzer.registry.get_type_alias(et.name)
+                    if isinstance(alias, RecursiveUnionType):
+                        return f"{self.types.type_to_cpp(expr_type)}{literal}"
         return literal
 
     @contextlib.contextmanager

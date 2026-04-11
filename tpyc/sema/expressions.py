@@ -12,7 +12,7 @@ from typing import Literal, TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, BoolType, StrType, CharType,
     NamedType, PtrType, OwnType, ListType, DictType, SetType, ArrayType, PendingListType, ListRepeatType, GenExprType, TupleType, SpanType,
-    TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType, VoidType,
+    TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType, RecursiveUnionType, VoidType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType, PendingViewType,
     is_any_bytes_type, BytesType, ByteArrayType, BytesViewType, PendingBytesType,
     FixedIntType, StringType, StrViewType, make_union,
@@ -116,6 +116,22 @@ def _collect_body_local_defs(stmts: list[TpyStmt]) -> set[str]:
 
     _walk_body_stmts(stmts, lambda e: None, on_stmt)
     return defs
+
+
+def _find_list_member(rut: RecursiveUnionType) -> ListType | None:
+    """Find the list[...] member of a recursive union type, if any."""
+    for m in rut.members:
+        if isinstance(m, ListType):
+            return m
+    return None
+
+
+def _find_dict_member(rut: RecursiveUnionType) -> DictType | None:
+    """Find the dict[...] member of a recursive union type, if any."""
+    for m in rut.members:
+        if isinstance(m, DictType):
+            return m
+    return None
 
 
 class ExpressionAnalyzer:
@@ -369,6 +385,22 @@ class ExpressionAnalyzer:
                             info.coerced_element_type = inner_hint.element_type
                 self.ctx.set_expr_type(expr, result)
                 return result
+            # Recursive union type with a list member: propagate the union
+            # as element hint so nested list literals infer as list[Tree]
+            # (e.g. x: Tree = [1, [3, 4]] where type Tree = int | list[Tree])
+            if isinstance(inner_hint, RecursiveUnionType):
+                list_member = _find_list_member(inner_hint)
+                if list_member is not None:
+                    result = self._analyze_array_literal(expr, inner_hint)
+                    if isinstance(result, PendingListType):
+                        info = self.ctx.list_literals.get(result.literal_id)
+                        if info:
+                            info.has_explicit_annotation = True
+                            info.explicit_type = list_member
+                            if info.coerced_element_type is None:
+                                info.coerced_element_type = inner_hint
+                    self.ctx.set_expr_type(expr, result)
+                    return result
 
         # List comprehension with list type hint: propagate element type
         if isinstance(expr, TpyListComprehension):
@@ -415,6 +447,12 @@ class ExpressionAnalyzer:
                 result = self._analyze_dict_literal(expr, inner_hint.key_type, inner_hint.value_type)
                 self.ctx.set_expr_type(expr, result)
                 return result
+            if isinstance(inner_hint, RecursiveUnionType):
+                dict_member = _find_dict_member(inner_hint)
+                if dict_member is not None:
+                    result = self._analyze_dict_literal(expr, dict_member.key_type, inner_hint)
+                    self.ctx.set_expr_type(expr, result)
+                    return result
 
         # Set comprehension with set type hint: propagate element type
         if isinstance(expr, TpySetComprehension):
