@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TextIO, TYPE_CHECKING
 import io
+import sys as _sys
 
 from ..typesys import TpyType, NamedType, EnumType, UnionType, RecursiveUnionType, OwnType, PendingListType, ListType, ArrayType, PtrType, NoneType, VoidType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
@@ -26,6 +27,17 @@ from .string_dispatch import find_best_discriminator, STRING_SWITCH_THRESHOLD
 
 if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
+
+# Maps user-facing platform names to sys.platform prefixes (also in compiler.py)
+_PLATFORM_MAP = {"windows": "win32", "linux": "linux", "macos": "darwin"}
+
+
+def _platform_matches(platform_filter: str | None) -> bool:
+    """Check if a platform filter matches the current platform."""
+    if platform_filter is None:
+        return True
+    mapped = _PLATFORM_MAP.get(platform_filter.lower(), platform_filter)
+    return _sys.platform.startswith(mapped)
 
 
 @dataclass
@@ -1075,7 +1087,9 @@ class CodeGenerator:
         out.write('#include <tpy/tpy.hpp>\n')
         # Emit the module's own include directives
         if module.directives.includes:
-            for inc in module.directives.includes:
+            for inc, platform in module.directives.includes:
+                if not _platform_matches(platform):
+                    continue
                 if inc.startswith('<') and inc.endswith('>'):
                     out.write(f'#include {inc}\n')
                 else:
@@ -1107,7 +1121,9 @@ class CodeGenerator:
         out.write('#include <tpy/tpy.hpp>\n')
         included: set[str] = set()
         if directives and directives.includes:
-            for include_path in directives.includes:
+            for include_path, platform in directives.includes:
+                if not _platform_matches(platform):
+                    continue
                 if include_path.startswith('<') and include_path.endswith('>'):
                     out.write(f'#include {include_path}\n')
                 else:
@@ -1140,7 +1156,9 @@ class CodeGenerator:
             # Native modules that generate no header: propagate their
             # # tpy: include() directives directly to the importing module
             if module_info and not module_info.generates_header:
-                for inc in module_info.includes:
+                for inc, platform in module_info.includes:
+                    if not _platform_matches(platform):
+                        continue
                     if inc not in included:
                         if inc.startswith('<') and inc.endswith('>'):
                             out.write(f'#include {inc}\n')

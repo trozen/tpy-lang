@@ -1,0 +1,1 @@
+Uses @native functions (stubs return Ellipsis under CPython).

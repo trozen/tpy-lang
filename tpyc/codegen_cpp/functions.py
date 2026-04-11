@@ -623,7 +623,8 @@ class FunctionGenerator:
         Returns True if a declaration was emitted.
         """
         from ..parse.nodes import FunctionLinkage
-        if func.linkage in (FunctionLinkage.NATIVE, FunctionLinkage.NATIVE_C, FunctionLinkage.EXTERN_C):
+        if func.linkage in (FunctionLinkage.NATIVE, FunctionLinkage.NATIVE_C,
+                            FunctionLinkage.EXTERN_C, FunctionLinkage.EXPORT_C):
             return False
         if func.cpp_template:
             return False
@@ -727,8 +728,9 @@ class FunctionGenerator:
                 return True
             return False
 
-        # @native_c and @extern_c both use extern "C" linkage
-        if func.linkage in (FunctionLinkage.NATIVE_C, FunctionLinkage.EXTERN_C):
+        # @native_c, @extern_c, and @export(binding="C") all use extern "C" linkage
+        if func.linkage in (FunctionLinkage.NATIVE_C, FunctionLinkage.EXTERN_C,
+                            FunctionLinkage.EXPORT_C):
             c_name = func.native_name or func.name
             ret_type = func.return_type.to_cpp_return()
             params = self.gen_c_params(func.params)
@@ -817,7 +819,7 @@ class FunctionGenerator:
         self.ctx.emit_preceding_comments(out, func.loc)
         self.ctx.emit_source_comment(out, func.loc)
 
-        if func.linkage == FunctionLinkage.EXTERN_C:
+        if func.linkage in (FunctionLinkage.EXTERN_C, FunctionLinkage.EXPORT_C):
             c_name = func.native_name or func.name
             ret_type = func.return_type.to_cpp_return()
             params = self.gen_c_params(func.params)

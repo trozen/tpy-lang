@@ -1,4 +1,5 @@
 # Native module with include directive -- should be propagated to importers
+# tpy: native_module
 # tpy: cpp_namespace("nativelib")
 # tpy: include("native_ops.hpp")
 from tpy import Int32

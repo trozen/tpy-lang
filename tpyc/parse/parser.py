@@ -173,7 +173,7 @@ _DIRECTIVE_LINE_RE = re.compile(r'^#\s*tpy:\s+(\w.+)$')
 _DIRECTIVE_SPECS: dict[str, tuple[list[type], dict[str, type]]] = {
     "native_module":    ([], {"forward": bool}),
     "macro_module":     ([], {}),
-    "include":          ([str], {}),
+    "include":          ([str], {"platform": str}),
     "link":             ([str], {"platform": str}),
     "cpp_namespace":    ([str], {}),
     "cpp_include_path": ([str], {}),
@@ -235,7 +235,7 @@ def _check_directive_args(
 
 def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[ParseWarning]]:
     """Scan all standalone # tpy: comment lines and return parsed directives."""
-    includes: list[str] = []
+    includes: list[tuple[str, str | None]] = []
     link_libs: list[tuple[str, str | None]] = []
     native_module = False
     native_module_forward = False
@@ -278,7 +278,7 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
             if kwargs.get("forward"):
                 native_module_forward = True
         elif name == "include":
-            includes.append(args[0])
+            includes.append((args[0], kwargs.get("platform")))
         elif name == "link":
             link_libs.append((args[0], kwargs.get("platform")))
         elif name == "cpp_namespace":
@@ -1290,6 +1290,14 @@ class Parser:
             if qname in self._RECORD_LINKAGE_MAP:
                 pos, kw = self._validate_decorator_args(qname, arg, dec)
                 new_linkage = self._RECORD_LINKAGE_MAP[qname]
+                # binding="C" overrides linkage to C variant
+                binding = kw.get("binding", "")
+                if binding == "C":
+                    if new_linkage == RecordLinkage.NATIVE:
+                        new_linkage = RecordLinkage.NATIVE_C
+                elif binding and binding != "":
+                    raise ParseError(
+                        f"@{qname.rsplit('.', 1)[-1]}(binding=...) only supports binding=\"C\"", dec)
                 if linkage != RecordLinkage.DEFAULT:
                     raise ParseError(
                         f"Class '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
@@ -1873,6 +1881,13 @@ class Parser:
                         f"@{qname.rsplit('.', 1)[-1]}() decorator kwargs not parsed "
                         f"(schema unavailable -- ensure _bootstrap._extern is imported "
                         f"before modules that use decorator kwargs)", dec)
+                # binding="C" overrides method linkage
+                binding = kw.get("binding", "")
+                if binding == "C" and method_linkage == FunctionLinkage.NATIVE:
+                    method_linkage = FunctionLinkage.NATIVE_C
+                elif binding and binding != "" and binding != "C":
+                    raise ParseError(
+                        f"@{qname.rsplit('.', 1)[-1]}(binding=...) only supports binding=\"C\"", dec)
                 native_name = pos
                 native_function = kw.get("function", False)
             else:
@@ -2230,6 +2245,15 @@ class Parser:
         qnames.NATIVE: FunctionLinkage.NATIVE,
         qnames.NATIVE_C: FunctionLinkage.NATIVE_C,
         qnames.EXTERN_C: FunctionLinkage.EXTERN_C,
+        qnames.EXPORT: FunctionLinkage.EXPORT_C,
+    }
+
+    # User-visible decorator names for error messages
+    _LINKAGE_DISPLAY_NAMES: dict[FunctionLinkage, str] = {
+        FunctionLinkage.NATIVE: "native",
+        FunctionLinkage.NATIVE_C: "native_c",
+        FunctionLinkage.EXTERN_C: "extern_c",
+        FunctionLinkage.EXPORT_C: "export",
     }
 
     def _parse_function(self, node: ast.FunctionDef) -> TpyFunction:
@@ -2276,11 +2300,25 @@ class Parser:
             elif qname in self._FUNCTION_LINKAGE_MAP:
                 new_linkage = self._FUNCTION_LINKAGE_MAP[qname]
                 if linkage != FunctionLinkage.DEFAULT:
+                    old_name = self._LINKAGE_DISPLAY_NAMES.get(linkage, linkage.value)
+                    new_name = self._LINKAGE_DISPLAY_NAMES.get(new_linkage, new_linkage.value)
                     raise ParseError(
-                        f"Function '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
+                        f"Function '{node.name}' cannot have both @{old_name} and @{new_name}", node)
                 if kw.get("function"):
                     dec_name = self._decorator_local_name(dec)
                     raise ParseError(f"@{dec_name}(function=...) is only valid on methods, not free functions", dec)
+                # binding="C" overrides linkage to C variant
+                binding = kw.get("binding", "")
+                if binding == "C":
+                    if new_linkage == FunctionLinkage.NATIVE:
+                        new_linkage = FunctionLinkage.NATIVE_C
+                elif binding and binding != "":
+                    raise ParseError(
+                        f"@{qname.rsplit('.', 1)[-1]}(binding=...) only supports binding=\"C\"", dec)
+                # @export requires binding="C"
+                if qname == qnames.EXPORT and binding != "C":
+                    raise ParseError(
+                        f"@export requires binding=\"C\"", dec)
                 linkage = new_linkage
                 if isinstance(pos, tuple):
                     raise ParseError(
@@ -2423,6 +2461,12 @@ class Parser:
             if is_stub_body:
                 raise ParseError(
                     f"@extern_c function '{node.name}' must have a body (it exports a TPy function)",
+                    node)
+            body = self._parse_body(node.body)
+        elif linkage == FunctionLinkage.EXPORT_C:
+            if is_stub_body:
+                raise ParseError(
+                    f"@export function '{node.name}' must have a body (it exports a TPy function)",
                     node)
             body = self._parse_body(node.body)
         else:

@@ -4469,13 +4469,13 @@ TurboPython can import existing C/C++ functions and export its own functions wit
 
 ### Native Functions (Working)
 
-Three decorators, all imported from `tpy.extern`:
+Two decorators for native interop, imported from `tpy.extern`:
 
 ```python
-from tpy.extern import native, native_c, extern_c
+from tpy.extern import native, export
 from tpy import Int32
 
-# Import a C++ function (forward declaration)
+# Import a C++ function
 @native
 def global_func(x: Int32) -> Int32: ...
 
@@ -4483,36 +4483,38 @@ def global_func(x: Int32) -> Int32: ...
 @native("physics::calculate_force")
 def calc_force(mass: float, accel: float) -> float: ...
 
-# Import a C function (extern "C" linkage)
-@native_c
+# Import a C function (binding="C" for extern "C" linkage)
+@native(binding="C")
 def abs(x: Int32) -> Int32: ...
 
 # Import a C function with renamed symbol
-@native_c("clock")
+@native("clock", binding="C")
 def get_clock() -> Int32: ...
 
 # Export a TPy function with C linkage
-@extern_c
+@export(binding="C")
 def app_init() -> None:
     print("initialized")
 
 # Export with renamed symbol
-@extern_c("app_tick")
+@export("app_tick", binding="C")
 def game_tick(time: Int32) -> None:
     print(time)
 ```
 
-Cross-module imports of native functions work normally — the compiler re-declares extern symbols in each module.
+Legacy aliases `@native_c` and `@extern_c` are still supported but will be removed in a future release.
+
+Cross-module imports of native functions work normally -- the compiler re-declares extern symbols in each module.
 
 ### Native Classes (Working)
 
-Import existing C++ classes and C structs so TPy code can declare their fields, call their methods, and pass them to native functions. No struct definition is generated — the compiler trusts the external type exists.
+Import existing C++ classes and C structs so TPy code can declare their fields, call their methods, and pass them to native functions. No struct definition is generated -- the compiler trusts the external type exists.
 
 ```python
-from tpy.extern import native, native_c
+from tpy.extern import native
 from tpy import Int32, Float
 
-# @native — C++ class import (constructor call syntax)
+# @native -- C++ class import (constructor call syntax)
 @native
 class Vec2:
     x: Int32
@@ -4522,7 +4524,7 @@ class Vec2:
     @staticmethod
     def zero() -> Vec2: ...            # static method
 
-# @native with rename — fully qualified C++ name
+# @native with rename -- fully qualified C++ name
 @native("b2::Vec2")
 class PhysVec:
     x: Float
@@ -4531,15 +4533,15 @@ class PhysVec:
     @native("mag")
     def magnitude(self) -> Float: ...  # method rename
 
-# @native_c — C struct import (aggregate init syntax)
-@native_c
+# C struct import (aggregate init syntax)
+@native(binding="C")
 class Point:
     x: Int32
     y: Int32
     def manhattan(self) -> Int32: ...
 
-# @native_c with rename — C name differs from Python name
-@native_c("SDL_Rect")
+# C struct with rename
+@native("SDL_Rect", binding="C")
 class Rect:
     x: Int32
     y: Int32
@@ -4547,15 +4549,15 @@ class Rect:
     h: Int32
     def area(self) -> Int32: ...
 
-# Opaque handle — no fields
+# Opaque handle -- no fields
 @native("SDL_Window")
 class Window: ...
 ```
 
 Generated C++:
 - `@native` classes use constructor call syntax: `Vec2(1, 2)`
-- `@native_c` classes use aggregate initialization: `Point{5, 6}`
-- Renamed types use the native name everywhere, including composite types like `Ptr[Rect]` → `SDL_Rect*`
+- `@native(binding="C")` classes use aggregate initialization: `Point{5, 6}`
+- Renamed types use the native name everywhere, including composite types like `Ptr[Rect]` -> `SDL_Rect*`
 - Methods on native classes must have `...` body (stub declarations); methods with real bodies produce a parse error
 - `@native("cpp_name")` on methods allows renaming individual methods (generates `obj.cpp_name(args)`)
 - `@native("ns::func", function=True)` on methods generates a free function call with self as first arg: `::ns::func(obj, args)`
@@ -4599,50 +4601,51 @@ BIG: Final[int] = 1000000   # BigInt
 Import extern C/C++ global variables:
 
 ```python
-from tpy.extern import native_c_global, native_c_global_array, native_global
+from tpy.extern import native_global
 from tpy import Int32, Ptr, Int16
 
 # C global (extern "C")
-frame_count: Int32 = native_c_global("DG_FrameCount")
+frame_count: Int32 = native_global("DG_FrameCount", binding="C")
 
 # C global without rename (Python name = C name)
-tick: Int32 = native_c_global()
+tick: Int32 = native_global(binding="C")
 
 # C array global (extern "C" T name[]) -- for C arrays that decay to pointers
-# Use this instead of native_c_global when the C symbol is an array (T name[N]),
-# not a pointer (T* name). The type annotation should be Ptr[T].
-scores: Ptr[Int16] = native_c_global_array("g_scores")
+scores: Ptr[Int16] = native_global("g_scores", binding="C", array=True)
 
 # C++ global (possibly namespaced)
 score: Int32 = native_global("engine::score")
 lives: Int32 = native_global()
 ```
 
-Generated C++ emits `extern` declarations before the module namespace. References use the C/C++ name directly. Must be at module level with a type annotation. For array globals, `native_c_global_array` generates `extern "C" T name[];` (incomplete array type) which correctly links to C arrays and decays to a pointer when used.
+Legacy `native_c_global()` and `native_c_global_array()` are still supported but will be removed in a future release.
+
+Generated C++ emits `extern` declarations before the module namespace. References use the C/C++ name directly. Must be at module level with a type annotation. For array globals, `native_global(..., array=True)` generates `extern "C" T name[];` (incomplete array type) which correctly links to C arrays and decays to a pointer when used.
 
 ### Module-Level Directives (Working)
 
 Compiler directives are special comments that must appear in the file preamble (before any code):
 
 ```python
-# tpy: include("mylib/mylib.h")       # add #include "mylib/mylib.h" to generated header
-# tpy: include("<SDL2/SDL.h>")         # add #include <SDL2/SDL.h> (angle-bracket)
-# tpy: link("SDL2")                    # add -lSDL2 linker flag
-# tpy: link("m", platform="linux")     # platform-filtered: only link on Linux
-# tpy: native_module                   # binding-only module (no .cpp generated)
-# tpy: cpp_namespace("myproject::core") # override C++ namespace
+# tpy: include("mylib/mylib.h")            # add #include "mylib/mylib.h" to generated header
+# tpy: include("<SDL2/SDL.h>")              # add #include <SDL2/SDL.h> (angle-bracket)
+# tpy: include(<sys/time.h>, platform="linux")  # platform-filtered include
+# tpy: link("SDL2")                         # add -lSDL2 linker flag
+# tpy: link("m", platform="linux")          # platform-filtered: only link on Linux
+# tpy: native_module                        # declaration-only module (no .hpp/.cpp generated)
+# tpy: cpp_namespace("myproject::core")      # override C++ namespace
 ```
 
 **Directives:**
-- **`include(path)`** -- adds a C/C++ `#include` to the generated header. Quoted paths use `#include "..."`, angle-bracket paths (`<...>`) use `#include <...>`.
+- **`include(path)`** / **`include(path, platform=name)`** -- adds a C/C++ `#include` to the generated header. Quoted paths use `#include "..."`, angle-bracket paths (`<...>`) use `#include <...>`. Optional `platform` filter: `"linux"`, `"macos"`, `"windows"`. In `native_module` modules, includes are propagated to importing modules' headers.
 - **`link(lib)` / `link(lib, platform=name)`** -- adds `-llib` linker flag. Optional `platform` filter: `"linux"`, `"macos"`, `"windows"`.
-- **`native_module`** -- marks the module as binding-only: only a `.hpp` header is generated (no `.cpp`). Use for modules that only declare `@native_c` function bindings.
+- **`native_module`** -- marks the module as declaration-only: no `.hpp` or `.cpp` is generated. Use for modules that only declare `@native` bindings to existing C/C++ types. Each module must declare this explicitly (it does not propagate from parent packages). When combined with `cpp_namespace`, bare `@native` entities are auto-prefixed with the namespace.
 - **`cpp_namespace(name)`** -- overrides the C++ namespace for the module (replaces the default `tpyapp::module_name`). In `__init__.py`, child modules inherit the namespace with their relative name appended (e.g., `cpp_namespace("mypkg")` in `__init__.py` makes `pkg/foo.py` use `mypkg::foo`).
 
 Unknown directives produce a warning. Directives after the first line of code produce a warning and are ignored.
 
 **Not yet supported:**
-- `@extern_c` class -- export TPy struct for C (planned)
+- `@export(binding="C")` class -- export TPy struct for C (planned)
 - C header generation (`--emit-c-header`) (planned)
 
 ---

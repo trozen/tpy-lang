@@ -1,0 +1,1 @@
+main.py:6: error: @export function 'bad_func' must have a body (it exports a TPy function)

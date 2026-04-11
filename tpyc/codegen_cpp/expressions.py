@@ -2250,10 +2250,17 @@ class ExpressionGenerator:
                     expr.args, [fi], fi=fi, type_args=expr.inferred_type_args)
             if fi and (fi.is_native_import or fi.is_extern_c):
                 func_name = fi.native_name or fi.name
-                # Qualified native names (e.g. "::tpy::math::log_base") are absolute
-                # C++ symbols -- prefix with :: and don't wrap in the user module namespace.
-                if "::" in func_name:
-                    return f"{qualify_native_name(func_name)}({args})"
+                # @native (C++ import): symbol comes from external headers,
+                # use the native name directly (not module-qualified).
+                # Always prefix with :: for absolute lookup since we're
+                # inside a namespace.
+                if fi.is_native:
+                    qualified = qualify_native_name(func_name)
+                    if not qualified.startswith("::"):
+                        qualified = f"::{qualified}"
+                    return f"{qualified}({args})"
+                # @native_c / @extern_c: extern "C" declaration lives in the
+                # module namespace, use module-qualified path
                 return f"{qualified_cpp_name(expr.user_module_call, func_name)}({args})"
             # Emit explicit template args for generic user-module calls
             if fi and fi.is_generic() and expr.inferred_type_args:

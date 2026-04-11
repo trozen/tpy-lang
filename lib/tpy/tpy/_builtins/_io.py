@@ -1,3 +1,4 @@
+# tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
 from .._typing import overload, Literal
 from .._bootstrap._extern import native, builtin_type

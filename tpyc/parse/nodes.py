@@ -945,6 +945,7 @@ class FunctionLinkage(Enum):
     NATIVE = "native"        # C++ import (stub, no body)
     NATIVE_C = "native_c"    # C import (stub, no body)
     EXTERN_C = "extern_c"    # C export (has body)
+    EXPORT_C = "export_c"     # C export (has body) -- new form of extern_c
 
 
 @dataclass
@@ -1013,7 +1014,11 @@ class TpyFunction:
 
     @property
     def is_extern_c(self) -> bool:
-        return self.linkage == FunctionLinkage.EXTERN_C
+        return self.linkage in (FunctionLinkage.EXTERN_C, FunctionLinkage.EXPORT_C)
+
+    @property
+    def is_export(self) -> bool:
+        return self.linkage == FunctionLinkage.EXPORT_C
 
     @property
     def is_extern_cpp(self) -> bool:
@@ -1110,7 +1115,8 @@ class ParseWarning:
 @dataclass
 class ModuleDirectives:
     """Module-level compiler directives from # tpy: comments."""
-    includes: list[str] = field(default_factory=list)
+    # Each entry: (include_path, platform_filter_or_None)
+    includes: list[tuple[str, str | None]] = field(default_factory=list)
     # Each entry: (lib_name, platform_filter_or_None)
     link_libs: list[tuple[str, str | None]] = field(default_factory=list)
     native_module: bool = False

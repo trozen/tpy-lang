@@ -1,3 +1,4 @@
+# tpy: native_module
 # tpy: cpp_namespace("tpystd::tpy")
 from .._typing import overload, Self, Iterator, Iterable
 from tpy import Span, Ptr
@@ -135,4 +136,3 @@ class SpanIter[T](NativeIterable[T], Iterable[T], Iterator[T]):
     @cpp_template("{self}.__iter__()")
     @readonly
     def __iter__(self) -> Self: ...
-

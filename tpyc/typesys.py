@@ -3506,6 +3506,7 @@ class FunctionLinkage(Enum):
     NATIVE = "native"        # C++ import (stub, no body)
     NATIVE_C = "native_c"    # C import (stub, no body)
     EXTERN_C = "extern_c"    # C export (has body)
+    EXPORT_C = "export_c"     # C export (has body) -- new form of extern_c
 
 
 @dataclass
@@ -3614,7 +3615,11 @@ class FunctionInfo:
 
     @property
     def is_extern_c(self) -> bool:
-        return self.linkage == FunctionLinkage.EXTERN_C
+        return self.linkage in (FunctionLinkage.EXTERN_C, FunctionLinkage.EXPORT_C)
+
+    @property
+    def is_export(self) -> bool:
+        return self.linkage == FunctionLinkage.EXPORT_C
 
     @property
     def is_native_c(self) -> bool:
@@ -3756,7 +3761,7 @@ class ModuleInfo:
     is_builtin: bool = True  # True for hardcoded builtin modules (e.g. sys), False for user/.py modules
     is_native_module: bool = False  # True for # tpy: native_module (no __tpy_init, no .cpp)
     generates_header: bool = True  # False for native_modules that produce no C++ output
-    includes: list[str] = field(default_factory=list)  # # tpy: include() directives (for propagation to importers)
+    includes: list[tuple[str, str | None]] = field(default_factory=list)  # # tpy: include() directives (path, platform_filter)
     functions: dict[str, list[FunctionInfo]] = field(default_factory=dict)  # func_name -> overloads
     variables: dict[str, ModuleVarInfo] = field(default_factory=dict)  # var_name -> ModuleVarInfo
     records: dict[str, RecordInfo] = field(default_factory=dict)  # type_name -> RecordInfo (exported types)

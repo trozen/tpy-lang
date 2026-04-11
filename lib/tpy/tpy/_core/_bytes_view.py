@@ -1,3 +1,4 @@
+# tpy: native_module
 # tpy: cpp_namespace("tpystd::tpy")
 from .._typing import overload, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure

@@ -1,0 +1,1 @@
+Uses @native decorator (stub returns wrong value under CPython).

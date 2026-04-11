@@ -2172,10 +2172,25 @@ class StatementAnalyzer:
                         f"{func_name}() takes 0 or 1 arguments",
                         stmt
                     )
+                # Determine linkage from function name and kwargs
                 if func_name == "native_c_global":
                     stmt.linkage = VarLinkage.NATIVE_C
                 elif func_name == "native_c_global_array":
                     stmt.linkage = VarLinkage.NATIVE_C_ARRAY
+                elif func_name == "native_global":
+                    # Check binding="C" and array=True kwargs
+                    kw_binding = stmt.init.kwargs.get("binding")
+                    kw_array = stmt.init.kwargs.get("array")
+                    is_c_binding = (isinstance(kw_binding, TpyStrLiteral)
+                                    and kw_binding.value == "C")
+                    is_array = (isinstance(kw_array, TpyBoolLiteral)
+                                and kw_array.value is True)
+                    if is_c_binding and is_array:
+                        stmt.linkage = VarLinkage.NATIVE_C_ARRAY
+                    elif is_c_binding:
+                        stmt.linkage = VarLinkage.NATIVE_C
+                    else:
+                        stmt.linkage = VarLinkage.NATIVE
                 else:
                     stmt.linkage = VarLinkage.NATIVE
                 stmt.native_name = native_name

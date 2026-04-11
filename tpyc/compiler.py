@@ -718,6 +718,7 @@ class Compiler:
             else:
                 self.compile_order = [entry_name]
 
+            self._apply_native_namespace_prefix()
             ns_map = self._build_namespace_map()
             set_namespace_map(ns_map)
             set_include_path_map(self._build_include_path_map(ns_map))
@@ -742,6 +743,9 @@ class Compiler:
 
         # 3. Propagate native_module from package inits to child modules
         self._propagate_package_directives()
+
+        # 3b. Apply native_namespace auto-prefix to bare @native entities
+        self._apply_native_namespace_prefix()
 
         # 4. Build namespace and include path maps from # tpy: directives
         ns_map = self._build_namespace_map()
@@ -1537,19 +1541,48 @@ class Compiler:
         )
 
     def _propagate_package_directives(self) -> None:
-        """Propagate native_module from package __init__ to child modules.
+        """Reserved for future package-level directive propagation.
 
-        Processes modules sorted by depth so parents propagate before children
-        (e.g., tpy -> tpy._core -> tpy._core._types, tpy -> tpy._builtins -> tpy._builtins._list).
+        native_module is no longer propagated -- each module must declare
+        it explicitly.
         """
-        for name in sorted(self.modules, key=lambda n: n.count('.')):
-            compiled = self.modules[name]
-            if '.' not in name:
+        pass
+
+    def _apply_native_namespace_prefix(self) -> None:
+        """Auto-prefix bare @native entities with cpp_namespace.
+
+        When a native_module has cpp_namespace set and a @native entity has no
+        explicit native_name, sets native_name to "ns::python_name".
+        """
+        from .parse.nodes import FunctionLinkage as FL, RecordLinkage as RL, VarLinkage
+        for compiled in self.modules.values():
+            if not compiled.ast.directives.native_module:
                 continue
-            parent = name.rsplit('.', 1)[0]
-            parent_mod = self.modules.get(parent)
-            if parent_mod and parent_mod.is_package_init and parent_mod.ast.directives.native_module:
-                compiled.ast.directives.native_module = True
+            # Validate: @export not allowed in native_module
+            for func in compiled.ast.functions:
+                if func.linkage == FL.EXPORT_C:
+                    raise CompileError(
+                        f"@export not allowed in native_module "
+                        f"('{compiled.name}' is declaration-only)",
+                        compiled.name, compiled.path,
+                        lineno=func.loc.line if func.loc else None)
+            ns = compiled.ast.directives.cpp_namespace
+            if not ns:
+                continue
+            # Auto-prefix bare @native functions (C++ linkage only --
+            # C-linkage symbols can't have namespace-qualified names)
+            for func in compiled.ast.functions:
+                if func.linkage == FL.NATIVE and not func.native_name:
+                    func.native_name = f"{ns}::{func.name}"
+            # Auto-prefix bare @native records (C++ only)
+            for record in compiled.ast.records:
+                if record.linkage == RL.NATIVE and not record.native_name:
+                    record.native_name = f"{ns}::{record.name}"
+            # Auto-prefix bare native_global() declarations (C++ only)
+            for stmt in (compiled.ast.top_level_stmts or []):
+                if hasattr(stmt, 'linkage') and hasattr(stmt, 'native_name'):
+                    if stmt.linkage == VarLinkage.NATIVE and not stmt.native_name:
+                        stmt.native_name = f"{ns}::{stmt.name}"
 
     def _build_namespace_map(self) -> dict[str, str]:
         """Build module_name -> C++ namespace mapping from # tpy: namespace directives.

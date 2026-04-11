@@ -1,0 +1,1 @@
+main.py:5: error: @export requires binding="C"

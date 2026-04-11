@@ -1,0 +1,1 @@
+Native C struct constructor not available under CPython.

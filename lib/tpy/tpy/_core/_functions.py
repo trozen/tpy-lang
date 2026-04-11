@@ -1,3 +1,4 @@
+# tpy: native_module
 # tpy: cpp_namespace("tpystd::tpy")
 from tpy import Ptr
 from .._bootstrap._decorators import readonly, pure, Own

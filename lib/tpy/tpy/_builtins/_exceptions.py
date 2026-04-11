@@ -1,3 +1,4 @@
+# tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
 from .._bootstrap._extern import native
 from .._core._types import ReturnException, StrView

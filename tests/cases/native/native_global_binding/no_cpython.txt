@@ -1,0 +1,1 @@
+References native globals that don't exist under CPython.

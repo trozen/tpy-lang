@@ -1,3 +1,4 @@
+# tpy: native_module
 # tpy: cpp_namespace("tpystd::tpy")
 from .._typing import overload, Protocol, Self, Iterator, Iterable, Sized
 from tpy import (

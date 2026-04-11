@@ -54,6 +54,7 @@ _LINKAGE_MAP = {
     'NATIVE': FunctionLinkage.NATIVE,
     'NATIVE_C': FunctionLinkage.NATIVE_C,
     'EXTERN_C': FunctionLinkage.EXTERN_C,
+    'EXPORT_C': FunctionLinkage.EXPORT_C,
 }
 
 

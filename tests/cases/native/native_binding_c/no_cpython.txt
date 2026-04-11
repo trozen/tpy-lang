@@ -1,0 +1,1 @@
+Calls @native C functions (stubs return None under CPython).
