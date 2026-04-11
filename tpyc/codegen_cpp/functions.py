@@ -548,7 +548,7 @@ class FunctionGenerator:
 
     def _get_func_mutated_params(self, func: TpyFunction) -> frozenset[int] | None:
         """Return finalized mutated_params for a free function, or None if unavailable."""
-        # Declaration-only stubs (native, extern_c) have no body -- no mutation analysis.
+        # Declaration-only stubs (@native) have no body -- no mutation analysis.
         # @overload stubs share a name with their implementation; overloads[-1] is the
         # implementation's FI, which has the analyzed mutated_params.
         if func.is_stub and not func.is_overload_stub:
@@ -624,7 +624,7 @@ class FunctionGenerator:
         """
         from ..parse.nodes import FunctionLinkage
         if func.linkage in (FunctionLinkage.NATIVE, FunctionLinkage.NATIVE_C,
-                            FunctionLinkage.EXTERN_C, FunctionLinkage.EXPORT_C):
+                            FunctionLinkage.EXPORT_C):
             return False
         if func.cpp_template:
             return False
@@ -728,9 +728,8 @@ class FunctionGenerator:
                 return True
             return False
 
-        # @native_c, @extern_c, and @export(binding="C") all use extern "C" linkage
-        if func.linkage in (FunctionLinkage.NATIVE_C, FunctionLinkage.EXTERN_C,
-                            FunctionLinkage.EXPORT_C):
+        # @native(binding="C") and @export(binding="C") use extern "C" linkage
+        if func.linkage in (FunctionLinkage.NATIVE_C, FunctionLinkage.EXPORT_C):
             c_name = func.native_name or func.name
             ret_type = func.return_type.to_cpp_return()
             params = self.gen_c_params(func.params)
@@ -819,7 +818,7 @@ class FunctionGenerator:
         self.ctx.emit_preceding_comments(out, func.loc)
         self.ctx.emit_source_comment(out, func.loc)
 
-        if func.linkage in (FunctionLinkage.EXTERN_C, FunctionLinkage.EXPORT_C):
+        if func.linkage == FunctionLinkage.EXPORT_C:
             c_name = func.native_name or func.name
             ret_type = func.return_type.to_cpp_return()
             params = self.gen_c_params(func.params)
@@ -1543,41 +1542,6 @@ class FunctionGenerator:
         out.write(f"{INDENT}return 0;\n")
         out.write("}\n")
 
-    def gen_extern_cpp_source_def(self, out: TextIO, func: TpyFunction) -> None:
-        """Generate an extern_cpp export definition outside the tpyapp namespace (in source).
-
-        Wraps the definition in the appropriate namespace and adds a using-directive
-        to access the tpyapp module symbols.
-        """
-        if func.is_stub:
-            return
-        cpp_name = func.native_name or func.name
-        ret_type = func.return_type.to_cpp_return()
-        params = self.gen_params(func.params, func.type_params, func=func)
-        ns, bare_name = self._split_extern_cpp_name(cpp_name)
-
-        self.ctx.emit_preceding_comments(out, func.loc)
-        self.ctx.emit_source_comment(out, func.loc)
-
-        tpy_ns = module_to_cpp_namespace(self.ctx.module_name)
-        if ns:
-            out.write(f"namespace {ns} {{\n")
-            out.write(f"{ret_type} {bare_name}({params}) {{\n")
-            out.write(f"{INDENT}using namespace {tpy_ns};\n")
-        else:
-            out.write(f"{ret_type} {bare_name}({params}) {{\n")
-            out.write(f"{INDENT}using namespace {tpy_ns};\n")
-
-        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-        for pname, ptype in func.params:
-            local_ns.bind_variable(pname, ptype)
-        self.statements.gen_body(out, func.body, func.params, func.return_type,
-                                 func, local_ns)
-
-        out.write("}\n")
-        if ns:
-            out.write(f"}} // namespace {ns}\n")
-
     @staticmethod
     def _split_native_name(name: str) -> tuple[str, str]:
         """Split a qualified C++ name into (namespace, bare_name).
@@ -1591,4 +1555,3 @@ class FunctionGenerator:
             return ("", name)
         return (name[:idx], name[idx + 2:])
 
-    _split_extern_cpp_name = _split_native_name

@@ -1734,7 +1734,7 @@ class SemanticAnalyzer:
         if module_info.functions and original_name in module_info.functions:
             func_infos = module_info.functions[original_name]
             # Skip callable registration for special_handling builtins
-            # (e.g. native_c_global in tpy.extern). Statement interception in
+            # (e.g. native_global in tpy.extern). Statement interception in
             # statements.py looks up the IMPORTED_NAME binding's import_source;
             # registering a function group here would clobber that binding.
             # Still record the import so re-export works.

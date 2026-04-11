@@ -1,4 +1,4 @@
-# Test @export(binding="C") -- equivalent to @extern_c
+# Test @export(binding="C") for C function exports
 from tpy.extern import export
 from tpy import Int32
 

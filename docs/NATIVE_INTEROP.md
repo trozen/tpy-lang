@@ -20,11 +20,11 @@ from tpy.extern import native, export
 |---------|--------|
 | `@native` -- import C++ function | **Done** |
 | `@native("ns::func")` -- qualified C++ name | **Done** |
-| `@native(binding="C")` -- import C function | **Done** (currently `@native_c`) |
-| `@native(binding="C")` -- import C struct | **Done** (currently `@native_c`) |
+| `@native(binding="C")` -- import C function | **Done** |
+| `@native(binding="C")` -- import C struct | **Done** |
 | `@native` class -- import C++ class (fields, stub methods) | **Done** |
-| `@export(binding="C")` -- export TPy function | **Done** (currently `@extern_c`) |
-| `native_global()` -- import C/C++ global variable | **Done** (currently split across 3 functions) |
+| `@export(binding="C")` -- export TPy function | **Done** |
+| `native_global()` -- import C/C++ global variable | **Done** |
 | `# tpy: native_module` | **Done** |
 | `# tpy: include("header")` | **Done** |
 | `# tpy: include("header", platform="linux")` | **Done** |
@@ -41,17 +41,6 @@ from tpy.extern import native, export
 | Native enums / constants | Open |
 | Auto-bindgen from C headers | Open |
 | Variadic C functions | Open |
-
-### Migration from current API
-
-| Current | New |
-|---------|-----|
-| `@native_c` / `@native_c("symbol")` | `@native(binding="C")` / `@native("symbol", binding="C")` |
-| `@extern_c` / `@extern_c("symbol")` | `@export(binding="C")` / `@export("symbol", binding="C")` |
-| `native_c_global("name")` | `native_global("name", binding="C")` |
-| `native_c_global_array("name")` | `native_global("name", binding="C", array=True)` |
-| `# tpy: native_module(forward=True)` | Dropped (include propagation replaces it) |
-| `# tpy: cpp_include_path("path")` | Dropped |
 
 ---
 

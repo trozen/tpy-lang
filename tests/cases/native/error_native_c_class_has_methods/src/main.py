@@ -1,7 +1,7 @@
-from tpy.extern import native_c
+from tpy.extern import native
 from tpy import Int32
 
-@native_c
+@native(binding="C")
 class Point:  # tpyc: error(/must have '...' body/)
     x: Int32
     y: Int32

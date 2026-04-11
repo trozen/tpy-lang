@@ -2147,13 +2147,13 @@ class StatementAnalyzer:
                     stmt
                 )
 
-        # Detect native global import: x: T = native_c_global("name") / native_global("name")
+        # Detect native global import: x: T = native_global("name")
         if isinstance(stmt.init, TpyCall) and isinstance(stmt.init.func, TpyName) and self.ctx.current_ns:
             binding = self.ctx.current_ns.lookup(stmt.init.func_name)
             if (binding and binding.kind == BindingKind.IMPORTED_NAME
                     and binding.import_source
                     and binding.import_source[0] == "tpy.extern"
-                    and binding.import_source[1] in ("native_c_global", "native_global", "native_c_global_array")):
+                    and binding.import_source[1] == "native_global"):
                 func_name = binding.import_source[1]
                 if not self.ctx.is_top_level:
                     raise self.ctx.error(
@@ -2178,25 +2178,17 @@ class StatementAnalyzer:
                         f"{func_name}() takes 0 or 1 arguments",
                         stmt
                     )
-                # Determine linkage from function name and kwargs
-                if func_name == "native_c_global":
-                    stmt.linkage = VarLinkage.NATIVE_C
-                elif func_name == "native_c_global_array":
+                # Determine linkage from kwargs
+                kw_binding = stmt.init.kwargs.get("binding")
+                kw_array = stmt.init.kwargs.get("array")
+                is_c_binding = (isinstance(kw_binding, TpyStrLiteral)
+                                and kw_binding.value == "C")
+                is_array = (isinstance(kw_array, TpyBoolLiteral)
+                            and kw_array.value is True)
+                if is_c_binding and is_array:
                     stmt.linkage = VarLinkage.NATIVE_C_ARRAY
-                elif func_name == "native_global":
-                    # Check binding="C" and array=True kwargs
-                    kw_binding = stmt.init.kwargs.get("binding")
-                    kw_array = stmt.init.kwargs.get("array")
-                    is_c_binding = (isinstance(kw_binding, TpyStrLiteral)
-                                    and kw_binding.value == "C")
-                    is_array = (isinstance(kw_array, TpyBoolLiteral)
-                                and kw_array.value is True)
-                    if is_c_binding and is_array:
-                        stmt.linkage = VarLinkage.NATIVE_C_ARRAY
-                    elif is_c_binding:
-                        stmt.linkage = VarLinkage.NATIVE_C
-                    else:
-                        stmt.linkage = VarLinkage.NATIVE
+                elif is_c_binding:
+                    stmt.linkage = VarLinkage.NATIVE_C
                 else:
                     stmt.linkage = VarLinkage.NATIVE
                 stmt.native_name = native_name

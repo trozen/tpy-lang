@@ -253,9 +253,6 @@ class CodeGenerator:
         }
 
         if module.directives.native_module:
-            if module.directives.native_module_forward:
-                # Umbrella module: generate header with #includes for sub-modules
-                return self._generate_umbrella_header(module), ""
             if module.protocols:
                 # Native module with protocols: generate concept-only header
                 self._write_header_preamble(hpp, directives=module.directives)
@@ -271,9 +268,8 @@ class CodeGenerator:
                 self._generate_protocol_ordering(hpp, module, global_decls, final_decls, seen_globals)
                 self._write_header_epilogue(hpp)
                 return hpp.getvalue(), ""
-            # Non-entry native module: no C++ output.
-            # Use native_module(forward=True) to generate a header with includes.
-            return "", ""
+            # Non-entry native module: umbrella header with #includes for dependencies
+            return self._generate_umbrella_header(module), ""
 
         self._write_header_preamble(hpp, native_funcs, native_globals, directives=module.directives)
 
@@ -350,15 +346,6 @@ class CodeGenerator:
         else:
             # For non-entry-point modules, just close the namespace
             self.functions.gen_namespace_close(cpp)
-
-        # @native function export definitions go after namespace close (source file)
-        # Note: @native is import-only so this is typically empty
-        native_exports = [f for f in native_funcs if not f.is_stub]
-        if native_exports:
-            cpp.write("\n")
-            for func in native_exports:
-                self.functions.gen_extern_cpp_source_def(cpp, func)
-                cpp.write("\n")
 
         self._write_header_epilogue(hpp)
 
@@ -828,7 +815,7 @@ class CodeGenerator:
         # Re-declare imported C-linkage functions in this namespace so they're
         # visible without cross-module namespace qualification. This is legal
         # because extern "C" functions can be declared multiple times.
-        # Applies to @native_c imports and @extern_c exports.
+        # Applies to @native(binding="C") imports and @export(binding="C") exports.
         # Skip functions that are also re-exports (handled below to avoid duplicates).
         for local_name in sorted(self.ctx.user_imported_functions):
             if local_name in self.ctx.reexported_functions:
@@ -846,7 +833,7 @@ class CodeGenerator:
             for local_name, (source_module, original_name) in sorted(self.ctx.reexported_functions.items()):
                 # For C-linkage functions, emit an extern "C" re-declaration.
                 # Using/alias re-exports don't work because the C++ name may
-                # differ from the Python name (e.g., @native_c("SDL_GetTicks") def get_ticks).
+                # differ from the Python name (e.g., @native("SDL_GetTicks", binding="C") def get_ticks).
                 func_infos = self.ctx.analyzer.registry.get_function(local_name)
                 if func_infos and (func_infos[0].is_native_c or func_infos[0].is_extern_c):
                     self.functions.gen_extern_c_redecl(hpp, func_infos[0])

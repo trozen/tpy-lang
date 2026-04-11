@@ -1,8 +1,8 @@
-from tpy.extern import native_c
+from tpy.extern import native
 from tpy import Int32
 
-@native_c
+@native(binding="C")
 def abs(x: Int32) -> Int32: ...
 
-@native_c("tpy_clock")
+@native("tpy_clock", binding="C")
 def get_clock() -> Int32: ...

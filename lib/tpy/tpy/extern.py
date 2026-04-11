@@ -1,8 +1,8 @@
-# tpy: native_module(forward=True)
+# tpy: native_module
 from ._bootstrap._extern import (
     builtin_decorator, builtin_type,
-    native, native_c, extern_c, export, cpp_template,
+    native, export, cpp_template,
     value_ptr_coercion, native_preserves_refs,
-    native_c_global, native_global, native_c_global_array,
+    native_global,
     type_param_default, DefaultInt,
 )

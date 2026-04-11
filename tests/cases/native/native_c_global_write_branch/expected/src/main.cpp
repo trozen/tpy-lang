@@ -49,8 +49,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native_c_global
-    // # Write to native_c_global inside if/else branches (no prior function-scope assignment).
+    // from tpy.extern import native_global
+    // # Write to native C globals inside if/else branches (no prior function-scope assignment).
     // # Must NOT emit a local declaration that shadows the extern global.
     // main()
     main();

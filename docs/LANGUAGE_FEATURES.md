@@ -4502,7 +4502,6 @@ def game_tick(time: Int32) -> None:
     print(time)
 ```
 
-Legacy aliases `@native_c` and `@extern_c` are still supported but will be removed in a future release.
 
 Cross-module imports of native functions work normally -- the compiler re-declares extern symbols in each module.
 
@@ -4618,7 +4617,6 @@ score: Int32 = native_global("engine::score")
 lives: Int32 = native_global()
 ```
 
-Legacy `native_c_global()` and `native_c_global_array()` are still supported but will be removed in a future release.
 
 Generated C++ emits `extern` declarations before the module namespace. References use the C/C++ name directly. Must be at module level with a type annotation. For array globals, `native_global(..., array=True)` generates `extern "C" T name[];` (incomplete array type) which correctly links to C arrays and decays to a pointer when used.
 

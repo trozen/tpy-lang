@@ -1,11 +1,11 @@
-# native_c_global_array for C array globals (extern T name[])
+# native_global(array=True) for C array globals (extern T name[])
 # Generates incomplete array extern, which decays to pointer when used.
-from tpy.extern import native_c_global_array
+from tpy.extern import native_global
 from tpy import Ptr, Int16, Int32, UInt32
 from tpy.unsafe import unsafe_load, unsafe_store
 
-scores: Ptr[Int16] = native_c_global_array("g_scores")
-ids: Ptr[Int32] = native_c_global_array("g_ids")
+scores: Ptr[Int16] = native_global("g_scores", binding="C", array=True)
+ids: Ptr[Int32] = native_global("g_ids", binding="C", array=True)
 
 # Read array elements
 print(unsafe_load(scores, UInt32(0)))

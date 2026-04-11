@@ -7,6 +7,7 @@ extern "C" {
 
 extern int32_t DG_FrameCount;
 extern int32_t shared_data[];
+extern int32_t tick;
 
 #ifdef __cplusplus
 }
@@ -15,3 +16,5 @@ extern int32_t shared_data[];
 namespace engine {
 extern int32_t score;
 }
+
+extern int32_t lives;

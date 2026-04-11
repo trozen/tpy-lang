@@ -1,4 +1,4 @@
-from tpy.extern import native, native_c
+from tpy.extern import native
 from tpy import Int32, Ptr, take_ptr
 from lib import Vec2, MyRect, rect_area
 

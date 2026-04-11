@@ -5,6 +5,7 @@
 #include "tpystd/builtins.hpp"
 #include "tpystd/tpy.hpp"
 #include "tpystd/typing.hpp"
+#include "tpystd/tpy/unsafe.hpp"
 
 namespace tpyapp::main {
 

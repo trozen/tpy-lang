@@ -21,7 +21,7 @@ void __tpy_init() {
     // # Test that # tpy: link directive passes linker flags (uses libm)
     // # tpy: include("<math.h>")
     // # tpy: link("m")
-    // from tpy.extern import native_c
+    // from tpy.extern import native
     // main()
     main();
 }

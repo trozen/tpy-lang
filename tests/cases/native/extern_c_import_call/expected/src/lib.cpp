@@ -11,7 +11,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native_c
+    // from tpy.extern import native
 }
 
 } // namespace tpyapp::lib

@@ -1,1 +1,1 @@
-main.py:3: error: @native("...") decorator on method 'f' is only allowed on @native/@native_c classes
+main.py:3: error: @native("...") decorator on method 'f' is only allowed on @native classes

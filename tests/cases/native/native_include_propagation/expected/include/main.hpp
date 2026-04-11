@@ -5,7 +5,8 @@
 #include "tpystd/builtins.hpp"
 #include "tpystd/tpy.hpp"
 #include "tpystd/typing.hpp"
-#include "native_ops.hpp"
+#include "nativelib/nativelib.hpp"
+#include "nativelib/ops.hpp"
 
 namespace tpyapp::main {
 

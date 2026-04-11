@@ -1,4 +1,4 @@
-# tpy: native_module(forward=True)
+# tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
 from tpy._builtins import (
     BaseException, Exception, ValueError, OSError, FileNotFoundError, StopIteration,

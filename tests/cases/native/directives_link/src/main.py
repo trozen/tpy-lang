@@ -2,10 +2,10 @@
 # tpy: include("<math.h>")
 # tpy: link("m")
 
-from tpy.extern import native_c
+from tpy.extern import native
 from tpy import Float64
 
-@native_c
+@native(binding="C")
 def sqrt(x: Float64) -> Float64: ...
 
 def main() -> None:

@@ -1,4 +1,4 @@
-# Test @native(binding="C") -- equivalent to @native_c
+# Test @native(binding="C") for C function imports with explicit symbol names
 # tpy: include("native_types.hpp")
 from tpy.extern import native
 from tpy import Int32

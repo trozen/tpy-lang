@@ -1,12 +1,12 @@
 # Native C struct declarations for cross-module import
-from tpy.extern import native_c
+from tpy.extern import native
 from tpy import Int32, Ptr
 
-@native_c("thing_t")
+@native("thing_t", binding="C")
 class ThingT:
     id: Int32
 
-@native_c("sector_t")
+@native("sector_t", binding="C")
 class SectorT:
     floor_height: Int32
     thinglist: Ptr[None]

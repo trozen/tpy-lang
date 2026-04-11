@@ -8,8 +8,12 @@ namespace tpyapp::main {
 void main() {
     // print(frame_count)
     std::cout << DG_FrameCount << "\n";
+    // print(tick)
+    std::cout << tick << "\n";
     // print(score)
     std::cout << engine::score << "\n";
+    // print(lives)
+    std::cout << lives << "\n";
     // print(deref(data))
     std::cout << ::tpy::deref_check(shared_data) << "\n";
 }
@@ -20,9 +24,11 @@ void __tpy_init() {
     initialized = true;
 
     // from tpy.extern import native_global
-    // # C global (equivalent to native_c_global)
-    // # C++ global (default, no binding)
-    // # C global array (equivalent to native_c_global_array)
+    // # C global with explicit name
+    // # C global with bare name (Python name = C name)
+    // # C++ global with namespace-qualified name
+    // # C++ global with bare name (Python name = C++ name)
+    // # C global array
     // main()
     main();
 }

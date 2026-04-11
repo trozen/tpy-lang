@@ -743,7 +743,7 @@ Without a directive system, each of these needs its own ad-hoc mechanism. A unif
 - `link(lib)` / `link(lib, platform=name)` -- adds `-llib` linker flag with optional
   platform filter (`"linux"`, `"macos"`, `"windows"`)
 - `native_module` -- marks the module as binding-only (only `.hpp` generated, no `.cpp`);
-  for modules that only declare `@native_c` function bindings
+  for modules that only declare `@native` function bindings
 
 Directives must appear in the file preamble (before any code). Unknown directives and
 malformed arguments produce warnings. The parser uses Python's `ast.literal_eval` for

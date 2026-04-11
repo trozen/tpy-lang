@@ -35,8 +35,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native_c_global
-    // # Write to native_c_global at function scope.
+    // from tpy.extern import native_global
+    // # Write to native C globals at function scope.
     // # Renamed globals must use the C name in the assignment target.
     // main()
     main();

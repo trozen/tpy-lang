@@ -944,8 +944,7 @@ class FunctionLinkage(Enum):
     DEFAULT = "default"
     NATIVE = "native"        # C++ import (stub, no body)
     NATIVE_C = "native_c"    # C import (stub, no body)
-    EXTERN_C = "extern_c"    # C export (has body)
-    EXPORT_C = "export_c"     # C export (has body) -- new form of extern_c
+    EXPORT_C = "export_c"    # C export (has body)
 
 
 @dataclass
@@ -1006,7 +1005,7 @@ class TpyFunction:
     kwarg_type: 'TpyType | None' = None  # TypedDict type from **kwargs: Unpack[TD]
     error_return: str | None = None  # @error_return(E) exception type name
     builtin_decorator_key: str | None = None  # @builtin_decorator("tpy.readonly")
-    builtin_function_key: str | None = None  # @builtin_function("tpy.extern.native_c_global")
+    builtin_function_key: str | None = None  # @builtin_function("tpy.extern.native_global")
     is_generator: bool = False  # Set by parser: body contains yield
     generator_yield_type: 'TpyType | None' = None  # Set by sema: T from Iterator[T]
     generator_locals: 'list[tuple[str, TpyType]] | None' = None  # Set by sema: local vars for struct fields
@@ -1014,15 +1013,11 @@ class TpyFunction:
 
     @property
     def is_extern_c(self) -> bool:
-        return self.linkage in (FunctionLinkage.EXTERN_C, FunctionLinkage.EXPORT_C)
+        return self.linkage == FunctionLinkage.EXPORT_C
 
     @property
     def is_export(self) -> bool:
         return self.linkage == FunctionLinkage.EXPORT_C
-
-    @property
-    def is_extern_cpp(self) -> bool:
-        return self.linkage == FunctionLinkage.NATIVE
 
     @property
     def extern_name(self) -> str | None:
@@ -1120,12 +1115,8 @@ class ModuleDirectives:
     # Each entry: (lib_name, platform_filter_or_None)
     link_libs: list[tuple[str, str | None]] = field(default_factory=list)
     native_module: bool = False
-    # If True, generate umbrella header with #includes for sub-modules
-    native_module_forward: bool = False
     # Override C++ namespace (replaces tpyapp::module_name)
     cpp_namespace: str | None = None
-    # Override C++ include path (default: derived from cpp_namespace or module name)
-    cpp_include_path: str | None = None
 
 
 @dataclass

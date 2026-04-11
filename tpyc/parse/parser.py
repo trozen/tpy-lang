@@ -171,12 +171,11 @@ _DIRECTIVE_LINE_RE = re.compile(r'^#\s*tpy:\s+(\w.+)$')
 # Schema: (positional arg types, allowed keyword arg types)
 # Keys are the known directive names; unknown names produce a warning.
 _DIRECTIVE_SPECS: dict[str, tuple[list[type], dict[str, type]]] = {
-    "native_module":    ([], {"forward": bool}),
+    "native_module":    ([], {}),
     "macro_module":     ([], {}),
     "include":          ([str], {"platform": str}),
     "link":             ([str], {"platform": str}),
     "cpp_namespace":    ([str], {}),
-    "cpp_include_path": ([str], {}),
 }
 
 _CPP_NAMESPACE_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*(::[A-Za-z_][A-Za-z0-9_]*)*$')
@@ -238,9 +237,7 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
     includes: list[tuple[str, str | None]] = []
     link_libs: list[tuple[str, str | None]] = []
     native_module = False
-    native_module_forward = False
     cpp_namespace: str | None = None
-    cpp_include_path: str | None = None
     warnings: list[ParseWarning] = []
 
     preamble_ended = False
@@ -275,8 +272,6 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
 
         if name == "native_module":
             native_module = True
-            if kwargs.get("forward"):
-                native_module_forward = True
         elif name == "include":
             includes.append((args[0], kwargs.get("platform")))
         elif name == "link":
@@ -291,12 +286,9 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
                 warnings.append(ParseWarning(
                     f"duplicate 'cpp_namespace' directive (previous: {cpp_namespace!r})", loc))
             cpp_namespace = ns_value
-        elif name == "cpp_include_path":
-            cpp_include_path = args[0]
 
     return ModuleDirectives(includes=includes, link_libs=link_libs, native_module=native_module,
-                            native_module_forward=native_module_forward,
-                            cpp_namespace=cpp_namespace, cpp_include_path=cpp_include_path), warnings
+                            cpp_namespace=cpp_namespace), warnings
 
 
 def _collect_bitor_arms(node: ast.BinOp) -> list[ast.expr]:
@@ -1279,7 +1271,7 @@ class Parser:
                     f"Class keyword argument '{kw.arg}' is not supported",
                     self._loc(node)))
 
-        # Parse record decorators (@native, @native_c, @nocopy, macro decorators)
+        # Parse record decorators (@native, @nocopy, macro decorators)
         linkage = RecordLinkage.DEFAULT
         native_name: str | None = None
         is_nocopy = False
@@ -1483,18 +1475,18 @@ class Parser:
                 # Native class: methods must be stubs
                 if not method.is_stub:
                     raise ParseError(
-                        f"Methods on @{linkage.value} classes must have '...' body (stub declaration)", node)
+                        f"Methods on @native classes must have '...' body (stub declaration)", node)
             else:
                 # Non-native class: stubs and @native decorators are not allowed
                 # (@overload stubs are exempt -- they declare overload signatures)
                 if method.is_stub and not method.is_overload_stub:
                     raise ParseError(
                         f"Method '{method.name}' cannot have '...' body on a regular class "
-                        f"(only allowed on @native/@native_c classes)", node)
+                        f"(only allowed on @native classes)", node)
                 if method.native_name is not None:
                     raise ParseError(
                         f"@native(\"...\") decorator on method '{method.name}' is only allowed "
-                        f"on @native/@native_c classes", node)
+                        f"on @native classes", node)
 
         # Restore scopes
         self._type_param_scope = old_scope
@@ -1810,12 +1802,10 @@ class Parser:
 
     _RECORD_LINKAGE_MAP: dict[str, RecordLinkage] = {
         qnames.NATIVE: RecordLinkage.NATIVE,
-        qnames.NATIVE_C: RecordLinkage.NATIVE_C,
     }
 
     _METHOD_LINKAGE_MAP: dict[str, FunctionLinkage] = {
         qnames.NATIVE: FunctionLinkage.NATIVE,
-        qnames.NATIVE_C: FunctionLinkage.NATIVE_C,
     }
 
     def _parse_method(self, node: ast.FunctionDef, class_name: str, type_param_scope: dict[str, TypeParamKind] | None = None, property_names: set[str] | None = None) -> TpyFunction:
@@ -2243,16 +2233,13 @@ class Parser:
 
     _FUNCTION_LINKAGE_MAP: dict[str, FunctionLinkage] = {
         qnames.NATIVE: FunctionLinkage.NATIVE,
-        qnames.NATIVE_C: FunctionLinkage.NATIVE_C,
-        qnames.EXTERN_C: FunctionLinkage.EXTERN_C,
         qnames.EXPORT: FunctionLinkage.EXPORT_C,
     }
 
     # User-visible decorator names for error messages
     _LINKAGE_DISPLAY_NAMES: dict[FunctionLinkage, str] = {
         FunctionLinkage.NATIVE: "native",
-        FunctionLinkage.NATIVE_C: "native_c",
-        FunctionLinkage.EXTERN_C: "extern_c",
+        FunctionLinkage.NATIVE_C: 'native(binding="C")',
         FunctionLinkage.EXPORT_C: "export",
     }
 
@@ -2452,17 +2439,12 @@ class Parser:
             body = []
         elif linkage in (FunctionLinkage.NATIVE, FunctionLinkage.NATIVE_C):
             if not (self._is_stub_body(node.body)):
+                display = self._LINKAGE_DISPLAY_NAMES.get(linkage, linkage.value)
                 raise ParseError(
-                    f"@{linkage.value} function '{node.name}' must have `...` body (it declares an external symbol)",
+                    f"@{display} function '{node.name}' must have `...` body (it declares an external symbol)",
                     node)
             is_stub = True
             body = []
-        elif linkage == FunctionLinkage.EXTERN_C:
-            if is_stub_body:
-                raise ParseError(
-                    f"@extern_c function '{node.name}' must have a body (it exports a TPy function)",
-                    node)
-            body = self._parse_body(node.body)
         elif linkage == FunctionLinkage.EXPORT_C:
             if is_stub_body:
                 raise ParseError(

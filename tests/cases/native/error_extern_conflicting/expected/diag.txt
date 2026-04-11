@@ -1,1 +1,1 @@
-main.py:6: error: Function 'bad_func' cannot have both @native and @native_c
+main.py:6: error: Function 'bad_func' cannot have both @native and @native

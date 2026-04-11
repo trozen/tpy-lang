@@ -1,15 +1,15 @@
-from tpy.extern import native_c
+from tpy.extern import native
 from tpy import Int32, Ptr, take_ptr
 
-# @native_c class — C struct import (aggregate init syntax)
-@native_c
+# @native(binding="C") class -- C struct import (aggregate init syntax)
+@native(binding="C")
 class Point:
     x: Int32
     y: Int32
     def manhattan(self) -> Int32: ...
 
-# @native_c with rename — C name differs from Python name
-@native_c("Rect")
+# @native(binding="C") with rename -- C name differs from Python name
+@native("Rect", binding="C")
 class MyRect:
     x: Int32
     y: Int32
@@ -18,10 +18,10 @@ class MyRect:
     def area(self) -> Int32: ...
 
 # Native C functions that use the imported types
-@native_c
+@native(binding="C")
 def point_sum(p: Ptr[Point]) -> Int32: ...
 
-@native_c
+@native(binding="C")
 def rect_area(r: Ptr[MyRect]) -> Int32: ...
 
 def main() -> None:

@@ -3505,8 +3505,7 @@ class FunctionLinkage(Enum):
     DEFAULT = "default"
     NATIVE = "native"        # C++ import (stub, no body)
     NATIVE_C = "native_c"    # C import (stub, no body)
-    EXTERN_C = "extern_c"    # C export (has body)
-    EXPORT_C = "export_c"     # C export (has body) -- new form of extern_c
+    EXPORT_C = "export_c"    # C export (has body)
 
 
 @dataclass
@@ -3615,7 +3614,7 @@ class FunctionInfo:
 
     @property
     def is_extern_c(self) -> bool:
-        return self.linkage in (FunctionLinkage.EXTERN_C, FunctionLinkage.EXPORT_C)
+        return self.linkage == FunctionLinkage.EXPORT_C
 
     @property
     def is_export(self) -> bool:
@@ -3627,11 +3626,6 @@ class FunctionInfo:
 
     @property
     def is_native(self) -> bool:
-        return self.linkage == FunctionLinkage.NATIVE
-
-    @property
-    def is_extern_cpp(self) -> bool:
-        """Backward compat: @native maps to old is_extern_cpp."""
         return self.linkage == FunctionLinkage.NATIVE
 
     @property

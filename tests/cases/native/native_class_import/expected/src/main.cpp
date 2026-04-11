@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native, native_c
+    // from tpy.extern import native
     // from lib import Vec2, MyRect, rect_area
     ::tpyapp::lib::__tpy_init();
     // main()

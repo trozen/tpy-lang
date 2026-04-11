@@ -9,7 +9,9 @@
 #include "tpystd/typing.hpp"
 
 extern "C" int32_t DG_FrameCount;
+extern "C" int32_t tick;
 namespace engine { extern int32_t score; }
+extern int32_t lives;
 extern "C" int32_t shared_data[];
 
 namespace tpyapp::main {

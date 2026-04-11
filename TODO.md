@@ -136,9 +136,8 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - runtime `using` declarations in global namespace (`tpy.hpp`): generated code should use `tpy::` prefix instead of relying on `using tpy::BigInt` etc.
 - refactor: consider merging `gen_module_init()` body generation into `gen_body()` helper (functions and methods already use it, but module init has too many special cases currently)
 - panic show line number?
-- decorator qualified syntax: @tpy.extern.native_c (3-level attribute access not yet supported)
+- decorator qualified syntax: @tpy.extern.native (3-level attribute access not yet supported)
 - "did you mean" import hints for unresolved decorators (needs library resolution)
-- @extern_c/@extern_cpp functions/classes etc
 - `# tpy: range-check=off`
 - extend int type configuration to AddressType/SizeType/PtrDiff (e.g. UInt32, Int32, Int32)
 - diagnostics: trace "float spill" origin across assignments/expressions (e.g. accidental `/` instead of `//`) and surface root cause in downstream type mismatch errors

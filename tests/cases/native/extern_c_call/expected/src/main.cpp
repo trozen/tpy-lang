@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // # Export with explicit C name — verifies renamed call codegen
-// @extern_c("Helper_Add")
+// @export("Helper_Add", binding="C")
 // def helper_add(x: Int32) -> Int32:
 extern "C" int32_t Helper_Add(int32_t x) {
     // return x + Int32(1)
@@ -14,7 +14,7 @@ extern "C" int32_t Helper_Add(int32_t x) {
 
 // # Export that calls the renamed function above.
 // # Calling helper_add() must emit Helper_Add() in C++.
-// @extern_c
+// @export(binding="C")
 // def app_init() -> None:
 extern "C" void app_init() {
     // y: Int32 = helper_add(Int32(42))
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import extern_c
+    // from tpy.extern import export
 }
 
 } // namespace tpyapp::main

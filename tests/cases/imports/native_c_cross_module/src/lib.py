@@ -1,13 +1,13 @@
-# Module defining a @native_c type and a helper function
-from tpy.extern import native_c
+# Module defining a @native(binding="C") type and a helper function
+from tpy.extern import native
 from tpy import Int32, Ptr
 
-@native_c("c_rect")
+@native("c_rect", binding="C")
 class Rect:
     x: Int32
     y: Int32
     w: Int32
     h: Int32
 
-@native_c
+@native(binding="C")
 def rect_area(r: Ptr[Rect]) -> Int32: ...

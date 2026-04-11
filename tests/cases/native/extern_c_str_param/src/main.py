@@ -1,9 +1,9 @@
-from tpy.extern import native_c, extern_c
+from tpy.extern import native, export
 from tpy import Int32
 
-@native_c
+@native(binding="C")
 def puts(s: str) -> Int32: ...
 
-@extern_c
+@export(binding="C")
 def greet(name: str) -> None:
     puts(name)

@@ -399,7 +399,7 @@ Library search roots and CPython stubs:
 | `tpy/tplib/json/` | JSON library: `parser.py` (JsonToken, JsonReader), `writer.py` (JsonWriter), `model.py` (@model macro -- compile-time only) |
 | `tpy/typing.py` | `typing` protocols (`Sized`, `Sequence`, etc.). Re-exports from `tpy._typing`. Implicitly compiled. |
 | `tpy/builtins.py` | Re-export facade for `tpy._builtins`. Implicitly compiled. |
-| `tpy/tpy/extern.py` | Re-exports native, native_c, extern_c, cpp_template from `_bootstrap` |
+| `tpy/tpy/extern.py` | Re-exports native, export, cpp_template, native_global from `_bootstrap` |
 | `tpy/tpy/mem.py` | Memory management: `UninitArrayStorage[T, N]` inline uninitialized storage |
 | `tpy/tpy/unsafe.py` | Unsafe operations: `unsafe_ptr()`, `unsafe_cast()` |
 | `tpy/_macro_helpers.py` | Shared macro helpers: `build_init`, `build_eq`, `build_repr`, `build_hash`, `build_order` (compile-time only) |

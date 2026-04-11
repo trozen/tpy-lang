@@ -9,9 +9,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # native_c_global_array for C array globals (extern T name[])
+    // # native_global(array=True) for C array globals (extern T name[])
     // # Generates incomplete array extern, which decays to pointer when used.
-    // from tpy.extern import native_c_global_array
+    // from tpy.extern import native_global
     // from tpy.unsafe import unsafe_load, unsafe_store
     // # Read array elements
     // print(unsafe_load(scores, UInt32(0)))

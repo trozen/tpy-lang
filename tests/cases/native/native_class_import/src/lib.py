@@ -1,4 +1,4 @@
-from tpy.extern import native, native_c
+from tpy.extern import native
 from tpy import Int32, Ptr
 
 # C++ class with rename
@@ -9,7 +9,7 @@ class Vec2:
     def sum(self) -> Int32: ...
 
 # C struct with rename
-@native_c("Rect")
+@native("Rect", binding="C")
 class MyRect:
     x: Int32
     y: Int32
@@ -18,5 +18,5 @@ class MyRect:
     def area(self) -> Int32: ...
 
 # Native function using native type from this module
-@native_c
+@native(binding="C")
 def rect_area(r: Ptr[MyRect]) -> Int32: ...

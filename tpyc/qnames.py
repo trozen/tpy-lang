@@ -106,8 +106,6 @@ ANY_FIXED_UNSIGNED = "tpy.AnyFixedUnsigned"
 
 # -- tpy.extern decorators --
 NATIVE = "tpy.extern.native"
-NATIVE_C = "tpy.extern.native_c"
-EXTERN_C = "tpy.extern.extern_c"
 EXPORT = "tpy.extern.export"
 CPP_TEMPLATE = "tpy.extern.cpp_template"
 BUILTIN_TYPE = "tpy.extern.builtin_type"

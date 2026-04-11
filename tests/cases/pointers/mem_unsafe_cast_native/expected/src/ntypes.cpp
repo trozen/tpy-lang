@@ -10,7 +10,7 @@ void __tpy_init() {
     initialized = true;
 
     // # Native C struct declarations for cross-module import
-    // from tpy.extern import native_c
+    // from tpy.extern import native
 }
 
 } // namespace tpyapp::ntypes

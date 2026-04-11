@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Test @export(binding="C") -- equivalent to @extern_c
+    // # Test @export(binding="C") for C function exports
     // from tpy.extern import export
     // app_init()
     app_init();

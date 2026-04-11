@@ -1,1 +1,0 @@
-Uses native C stubs that return values; CPython harness returns None.

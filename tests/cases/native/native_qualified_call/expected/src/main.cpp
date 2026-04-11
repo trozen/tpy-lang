@@ -12,7 +12,7 @@ void main() {
     // # @native("bare_add") -> ::bare_add(10, 32)
     // print(lib.bare(Int32(10), Int32(32)))
     std::cout << ::bare_add(10, 32) << "\n";
-    // # @native_c("c_multiply") -> ::tpyapp::lib::c_multiply(6, 7)
+    // # @native("c_multiply", binding="C") -> ::tpyapp::lib::c_multiply(6, 7)
     // print(lib.c_mul(Int32(6), Int32(7)))
     std::cout << ::tpyapp::lib::c_multiply(6, 7) << "\n";
 }
@@ -22,9 +22,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Test module-qualified calls to @native vs @native_c functions
+    // # Test module-qualified calls to @native vs @native(binding="C") functions
     // # @native: use native name directly (::ns::func or ::bare_func)
-    // # @native_c: use module-qualified name (::tpyapp::lib::func)
+    // # @native(binding="C"): use module-qualified name (::tpyapp::lib::func)
     // import lib
     ::tpyapp::lib::__tpy_init();
     // main()

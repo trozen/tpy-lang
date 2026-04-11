@@ -3,8 +3,8 @@
 # tpy: include("<SDL2/SDL.h>")
 # tpy: link("SDL2")
 
-from tpy.extern import native_c
+from tpy.extern import native
 from tpy import Int32
 
-@native_c
+@native(binding="C")
 def SDL_Init(flags: Int32) -> Int32: ...

@@ -1265,7 +1265,7 @@ class Compiler:
                         if func_infos:
                             exports.functions[local_name] = func_infos
                             # Track re-export source for codegen (skip special_handling
-                            # functions like native_c_global -- they're compiler directives,
+                            # functions like native_global -- they're compiler directives,
                             # not real functions that need C++ declarations)
                             if not func_infos[0].special_handling:
                                 exports.reexported_functions[local_name] = (source_module, original_name)
@@ -1371,17 +1371,7 @@ class Compiler:
             variables[k] = ModuleVarInfo(k, v, cpp_expr, is_pointer=is_ptr)
 
         is_native = compiled.ast.directives.native_module if compiled else False
-        # Native modules generate a header only if they define protocols (for
-        # C++ concepts) or are forwarding. Include directives are propagated
-        # to importing modules instead of generating a separate header.
-        # Use AST protocols (own definitions), not exports (which include re-exports
-        # and can change as later modules are analyzed).
-        if is_native:
-            is_forward = compiled.ast.directives.native_module_forward if compiled else False
-            has_own_protocols = bool(compiled.ast.protocols) if compiled else False
-            gen_header = is_forward or has_own_protocols
-        else:
-            gen_header = True
+        gen_header = True
         includes = list(compiled.ast.directives.includes) if compiled else []
         return ModuleInfo(
             name=name,
@@ -1649,7 +1639,6 @@ class Compiler:
     def _build_include_path_map(self, ns_map: dict[str, str]) -> dict[str, str]:
         """Build module_name -> include path mapping.
 
-        For modules with cpp_include_path directive, uses the explicit value.
         For package __init__ modules with inherited cpp_namespace, derives
         from namespace (e.g. "tpystd::tpy" -> "tpystd/tpy.hpp").
         For private (_-prefixed) submodules with explicit cpp_namespace, uses
@@ -1658,11 +1647,6 @@ class Compiler:
         """
         ip_map: dict[str, str] = {}
         for name, compiled in self.modules.items():
-            # Explicit include path override takes priority
-            explicit = compiled.ast.directives.cpp_include_path
-            if explicit is not None:
-                ip_map[name] = explicit
-                continue
             # Private submodules with explicit cpp_namespace (sharing their
             # parent's C++ namespace) use namespace_dir/leaf_name.hpp to avoid
             # colliding with the parent's header while staying in the same
@@ -1705,8 +1689,7 @@ class Compiler:
                             DiagnosticLevel.WARNING,
                             f"include path collision: '{name}' maps to "
                             f"'{new_path}' which is already used by "
-                            f"'{seen[new_path]}' -- use # tpy: "
-                            f"cpp_include_path to resolve"))
+                            f"'{seen[new_path]}'"))
                     ip_map[name] = new_path
 
         return ip_map

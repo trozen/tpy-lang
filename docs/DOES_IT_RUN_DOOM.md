@@ -13,10 +13,10 @@ Write the 6 platform functions in TPy, link with the C DOOM engine.
 
 | #    | Item                              | Effort | Status |
 |------|-----------------------------------|--------|--------|
-| 1.0  | `@extern_c` / `@extern_cpp` decorator | S    | TODO   |
+| 1.0  | `@native(binding="C")` / `@export(binding="C")` | S | DONE |
 | 1.1  | `tpy_sdl2` package (separate project) | S-M  | TODO   |
-| 1.2  | `extern_c` for exporting TPy functions to C | S | TODO |
-| 1.3  | `extern_c` for external globals (`DG_ScreenBuffer`) | S | TODO |
+| 1.2  | `@export(binding="C")` for exporting TPy functions to C | S | DONE |
+| 1.3  | `native_global` for external globals (`DG_ScreenBuffer`) | S | DONE |
 | 1.4  | Write 6 `DG_*` functions in TPy   | S      | TODO   |
 | 1.5  | Build system: link TPy C++ with C objects | S | TODO |
 | 1.6  | Run DOOM with TPy platform layer   | -      | TODO   |
@@ -100,66 +100,69 @@ The engine provides:
 - `doomgeneric_Tick()` — call in a loop (one game frame per call)
 - `DG_ScreenBuffer` — `uint32_t*` pointing to 640x400 pixels in XRGB8888 format
 
-### The `@extern_c` / `@extern_cpp` Mechanism
+### The `@native` / `@export` Mechanism
 
-The key compiler feature enabling all of this. A decorator for declaring foreign
-functions — the compiler emits direct C/C++ calls instead of generating a body.
+The key compiler feature enabling all of this. Decorators for declaring foreign
+functions and exporting TPy functions -- the compiler emits direct C/C++ calls
+instead of generating a body.
 
 ```python
-from tpy.extern import extern_c
+# tpy_sdl2/sdl2.py
+# tpy: include("SDL2/SDL.h")
+# tpy: link("SDL2")
+from tpy.extern import native
+from tpy import Int32, Ptr
 
-# Module-level directives: what to #include and link
-extern_c.include("SDL2/SDL.h")
-extern_c.link("SDL2")
-
-# Bare @extern_c — uses the Python function name as the C symbol
-@extern_c
+# Bare @native(binding="C") -- uses the Python function name as the C symbol
+@native(binding="C")
 def SDL_Init(flags: Int32) -> Int32: ...
 
-@extern_c
+@native(binding="C")
 def SDL_Delay(ms: Int32) -> None: ...
 
-# With explicit C name — for providing a Pythonic API
-@extern_c("SDL_GetTicks")
+# With explicit C name -- for providing a Pythonic API
+@native("SDL_GetTicks", binding="C")
 def get_ticks() -> Int32: ...
 
-@extern_c("SDL_CreateWindow")
+@native("SDL_CreateWindow", binding="C")
 def create_window(title: str, x: Int32, y: Int32, w: Int32, h: Int32, flags: Int32) -> Ptr[SDLWindow]: ...
 ```
 
-- `@extern_c` = C linkage (`extern "C"`, no name mangling)
-- `@extern_cpp` = C++ linkage (name mangling, for C++ libraries)
+- `@native(binding="C")` = C import (`extern "C"`, no name mangling)
+- `@native` = C++ import (name mangling, for C++ libraries)
+- `@export(binding="C")` = C export (TPy function callable from C)
 - Body is `...` (standard Python stub/Protocol convention)
-- The TPy function signature provides type checking — no separate argtypes/restype
-- `extern_c.include(...)` emits `#include` in the generated C++
-- `extern_c.link(...)` passes `-l` to the linker
+- The TPy function signature provides type checking -- no separate argtypes/restype
+- `# tpy: include(...)` emits `#include` in the generated C++
+- `# tpy: link(...)` passes `-l` to the linker
 
 This also works for **exporting** TPy functions to C (needed for the DOOM platform
 functions) and for **declaring external globals**:
 
 ```python
+from tpy.extern import export, native_global
+
 # Export a TPy function with C linkage (callable from C code)
-@extern_c
+@export(binding="C")
 def DG_Init() -> None:
     init_sdl()
     # ... actual TPy implementation ...
 
 # Declare an external C global (defined in doomgeneric.c)
-DG_ScreenBuffer: Ptr[Int32] = extern_c.var("DG_ScreenBuffer")
+DG_ScreenBuffer: Ptr[Int32] = native_global("DG_ScreenBuffer", binding="C")
 ```
 
 ### SDL2 Integration
 
 `tpy_sdl2` is a separate package (its own repo, not part of tpyc) that provides SDL2
-bindings using `@extern_c`. It's pure TurboPython — just function declarations:
+bindings using `@native(binding="C")`. It's pure TurboPython -- just function declarations:
 
 ```python
 # tpy_sdl2/sdl2.py
-from tpy.extern import extern_c
+# tpy: include("SDL2/SDL.h")
+# tpy: link("SDL2")
+from tpy.extern import native
 from tpy import Int32, Ptr
-
-extern_c.include("SDL2/SDL.h")
-extern_c.link("SDL2")
 
 INIT_VIDEO: Int32 = Int32(0x00000020)
 QUIT: Int32 = Int32(0x100)
@@ -167,48 +170,49 @@ KEYDOWN: Int32 = Int32(0x300)
 KEYUP: Int32 = Int32(0x301)
 # ...
 
-@extern_c
+@native(binding="C")
 def SDL_Init(flags: Int32) -> Int32: ...
 
-@extern_c
+@native(binding="C")
 def SDL_Quit() -> None: ...
 
-@extern_c
+@native(binding="C")
 def SDL_CreateWindow(title: str, x: Int32, y: Int32, w: Int32, h: Int32, flags: Int32) -> Ptr[SDLWindow]: ...
 
-@extern_c
+@native(binding="C")
 def SDL_CreateRenderer(window: Ptr[SDLWindow], index: Int32, flags: Int32) -> Ptr[SDLRenderer]: ...
 
-@extern_c
+@native(binding="C")
 def SDL_CreateTexture(renderer: Ptr[SDLRenderer], fmt: Int32, access: Int32, w: Int32, h: Int32) -> Ptr[SDLTexture]: ...
 
-@extern_c
+@native(binding="C")
 def SDL_UpdateTexture(texture: Ptr[SDLTexture], rect: Ptr[SDLRect], pixels: Ptr[Int32], pitch: Int32) -> Int32: ...
 
-@extern_c
+@native(binding="C")
 def SDL_RenderCopy(renderer: Ptr[SDLRenderer], texture: Ptr[SDLTexture], src: Ptr[SDLRect], dst: Ptr[SDLRect]) -> Int32: ...
 
-@extern_c
+@native(binding="C")
 def SDL_RenderPresent(renderer: Ptr[SDLRenderer]) -> None: ...
 
-@extern_c
+@native(binding="C")
 def SDL_PollEvent(event: Ptr[SDLEvent]) -> Int32: ...
 
-@extern_c("SDL_GetTicks")
+@native("SDL_GetTicks", binding="C")
 def get_ticks() -> Int32: ...
 
-@extern_c("SDL_Delay")
+@native("SDL_Delay", binding="C")
 def delay(ms: Int32) -> None: ...
 ```
 
-Anyone can write bindings for any C library using this pattern — no compiler changes
-needed beyond the initial `@extern_c` support.
+Anyone can write bindings for any C library using this pattern -- no compiler changes
+needed beyond `@native(binding="C")`.
 
 ### What the TPy Platform Layer Looks Like
 
 ```python
 # doomgeneric_tpy.py
-from tpy.extern import extern_c
+# tpy: include("doomgeneric.h")
+from tpy.extern import export, native_global
 from tpy import Int32, Ptr, Array
 from tpy_sdl2 import (
     SDL_Init, SDL_CreateWindow, SDL_CreateRenderer, SDL_CreateTexture,
@@ -216,51 +220,49 @@ from tpy_sdl2 import (
     get_ticks, delay, INIT_VIDEO, KEYDOWN, KEYUP
 )
 
-extern_c.include("doomgeneric.h")
-
 # External C global (defined in doomgeneric.c)
-DG_ScreenBuffer: Ptr[Int32] = extern_c.var("DG_ScreenBuffer")
+DG_ScreenBuffer: Ptr[Int32] = native_global("DG_ScreenBuffer", binding="C")
 
 # Keyboard event queue (same pattern as all doomgeneric ports)
 key_queue: Array[Int32, 16]
 key_queue_read: Int32 = Int32(0)
 key_queue_write: Int32 = Int32(0)
 
-@extern_c
+@export(binding="C")
 def DG_Init() -> None:
     SDL_Init(INIT_VIDEO)
     # create window, renderer, texture ...
 
-@extern_c
+@export(binding="C")
 def DG_DrawFrame() -> None:
     # pump SDL events, enqueue keys
     SDL_UpdateTexture(texture, null, DG_ScreenBuffer, Int32(640 * 4))
     SDL_RenderCopy(renderer, texture, null, null)
     SDL_RenderPresent(renderer)
 
-@extern_c
+@export(binding="C")
 def DG_SleepMs(ms: Int32) -> None:
     delay(ms)
 
-@extern_c
+@export(binding="C")
 def DG_GetTicksMs() -> Int32:
     return get_ticks()
 
-@extern_c
+@export(binding="C")
 def DG_GetKey(pressed: Ptr[Int32], key: Ptr[Int32]) -> Int32:
     if key_queue_read == key_queue_write:
         return Int32(0)
     # dequeue and unpack ...
     return Int32(1)
 
-@extern_c
+@export(binding="C")
 def DG_SetWindowTitle(title: str) -> None:
     pass  # no-op for now
 ```
 
-Note: `@extern_c` on `DG_Init` etc. serves double duty — these functions have a TPy
-body (they're implemented in TPy) but are exported with C linkage so the C engine
-can call them.
+Note: `@export(binding="C")` on `DG_Init` etc. means these functions have a TPy
+body (implemented in TPy) but are exported with C linkage so the C engine can call
+them.
 
 ### Build System
 
@@ -522,9 +524,9 @@ everything.
 | Ternary `? :` | `x if cond else y` | XS |
 | Struct self-refs | `Ptr[Self]` in records | S |
 | `sizeof` | `sizeof[T]()` | S |
-| `extern "C"` imports | `@extern_c` decorator | S |
-| `extern "C"` exports | `@extern_c` on TPy functions | S |
-| External globals | `extern_c.var("name")` | S |
+| `extern "C"` imports | `@native(binding="C")` | S |
+| `extern "C"` exports | `@export(binding="C")` | S |
+| External globals | `native_global("name", binding="C")` | S |
 
 ### Needs source refactoring (not compiler features)
 

@@ -1,4 +1,4 @@
-# tpy: native_module(forward=True)
+# tpy: native_module
 from ._types import (
     # Structural protocols
     Truthy, Stringable, Representable, Hashable, Comparable, Equatable,

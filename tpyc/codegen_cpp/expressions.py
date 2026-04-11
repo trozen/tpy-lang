@@ -1953,8 +1953,8 @@ class ExpressionGenerator:
 
             func_cpp_name = escape_cpp_name(mangled)
             if func_info.is_native_import or func_info.is_extern_c:
-                # @native/@native_c/@extern_c: use the C/C++ symbol name directly.
-                # For @native_c, the calling module's header has a local re-declaration
+                # @native/@export: use the C/C++ symbol name directly.
+                # For @native(binding="C"), the calling module's header has a local re-declaration
                 # so no namespace qualification is needed (works for same-module,
                 # cross-module, and package re-export cases).
                 func_cpp_name = qualify_native_name(func_info.native_name or func_info.name)
@@ -2259,7 +2259,7 @@ class ExpressionGenerator:
                     if not qualified.startswith("::"):
                         qualified = f"::{qualified}"
                     return f"{qualified}({args})"
-                # @native_c / @extern_c: extern "C" declaration lives in the
+                # @native(binding="C") / @export: extern "C" declaration lives in the
                 # module namespace, use module-qualified path
                 return f"{qualified_cpp_name(expr.user_module_call, func_name)}({args})"
             # Emit explicit template args for generic user-module calls

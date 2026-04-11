@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// @extern_c
+// @export(binding="C")
 // def app_init() -> None:
 extern "C" void app_init() {
     // abs(Int32(0))
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import extern_c
+    // from tpy.extern import export
     // from lib import abs, get_clock
     ::tpyapp::lib::__tpy_init();
 }

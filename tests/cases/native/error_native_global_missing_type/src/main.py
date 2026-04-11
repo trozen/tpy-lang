@@ -1,6 +1,6 @@
-from tpy.extern import native_c_global
+from tpy.extern import native_global
 
-x = native_c_global("some_var")  # tpyc: error(/requires a type annotation/)
+x = native_global("some_var", binding="C")  # tpyc: error(/requires a type annotation/)
 
 def main() -> None:
     pass
