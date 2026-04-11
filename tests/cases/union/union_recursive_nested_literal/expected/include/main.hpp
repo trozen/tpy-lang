@@ -13,6 +13,9 @@ struct IntTree;
 struct JsonValue;
 struct Leaf;
 
+extern Tree g;
+extern IntTree g_int;
+extern JsonValue g_dict;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t depth(const Tree& t);
@@ -57,6 +60,11 @@ struct IntTree {
     IntTree(T&& v) : data(std::forward<T>(v)) {}
 
     bool operator==(const IntTree&) const = default;
+
+    friend std::ostream& operator<<(std::ostream& os, const IntTree& v) {
+        ::tpy::detail::print_element(os, v.data);
+        return os;
+    }
 };
 struct JsonValue {
     using variant_type = std::variant<::tpy::ordered_map<std::string, JsonValue>, ::tpy::BigInt, std::string>;
@@ -68,6 +76,11 @@ struct JsonValue {
     JsonValue(T&& v) : data(std::forward<T>(v)) {}
 
     bool operator==(const JsonValue&) const = default;
+
+    friend std::ostream& operator<<(std::ostream& os, const JsonValue& v) {
+        ::tpy::detail::print_element(os, v.data);
+        return os;
+    }
 };
 struct Tree {
     using variant_type = std::variant<Leaf, std::vector<Tree>>;
@@ -79,6 +92,11 @@ struct Tree {
     Tree(T&& v) : data(std::forward<T>(v)) {}
 
     bool operator==(const Tree&) const = default;
+
+    friend std::ostream& operator<<(std::ostream& os, const Tree& v) {
+        ::tpy::detail::print_element(os, v.data);
+        return os;
+    }
 };
 
 void __tpy_init();

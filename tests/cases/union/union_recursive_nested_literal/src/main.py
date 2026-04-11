@@ -52,6 +52,12 @@ def json_keys(v: JsonValue) -> int:
         return result
 
 
+# Global scope
+g: Tree = [Leaf(1), [Leaf(2), [Leaf(3)]]]
+g_int: IntTree = [1, [2, [3]]]
+g_dict: JsonValue = {"a": 1, "b": {"c": 2}}
+
+
 def main() -> None:
     # Record variant
     x: Tree = [Leaf(1), [Leaf(2), Leaf(3)]]
@@ -82,5 +88,15 @@ def main() -> None:
     print(json_keys(d))
 
     print(json_keys({"x": 1, "y": {"z": 2}}))
+
+    # Print recursive unions directly
+    print(x)
+    print(a)
+    print(d)
+
+    # Global scope
+    print(depth(g))
+    print(int_depth(g_int))
+    print(json_keys(g_dict))
 
 main()

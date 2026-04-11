@@ -25,6 +25,11 @@ struct Tree {
     Tree(T&& v) : data(std::forward<T>(v)) {}
 
     bool operator==(const Tree&) const = default;
+
+    friend std::ostream& operator<<(std::ostream& os, const Tree& v) {
+        ::tpy::detail::print_element(os, v.data);
+        return os;
+    }
 };
 
 void __tpy_init();

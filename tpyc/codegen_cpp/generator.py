@@ -913,7 +913,11 @@ class CodeGenerator:
         out.write(f"    template<typename T>\n")
         out.write(f"        requires std::constructible_from<variant_type, T&&>\n")
         out.write(f"    {name}(T&& v) : data(std::forward<T>(v)) {{}}\n\n")
-        out.write(f"    bool operator==(const {name}&) const = default;\n")
+        out.write(f"    bool operator==(const {name}&) const = default;\n\n")
+        out.write(f"    friend std::ostream& operator<<(std::ostream& os, const {name}& v) {{\n")
+        out.write(f"        ::tpy::detail::print_element(os, v.data);\n")
+        out.write(f"        return os;\n")
+        out.write(f"    }}\n")
         out.write(f"}};\n")
 
     def _gen_enum_decl(self, out: TextIO, enum) -> None:

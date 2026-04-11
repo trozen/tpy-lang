@@ -3,6 +3,13 @@
 
 namespace tpyapp::main {
 
+// # Global scope
+// g: Tree = [Leaf(1), [Leaf(2), [Leaf(3)]]]
+Tree g;
+// g_int: IntTree = [1, [2, [3]]]
+IntTree g_int;
+// g_dict: JsonValue = {"a": 1, "b": {"c": 2}}
+JsonValue g_dict;
 
 // def depth(t: Tree) -> Int32:
 int32_t depth(const Tree& t) {
@@ -142,6 +149,20 @@ void main() {
     // print(json_keys({"x": 1, "y": {"z": 2}}))
     JsonValue __tmp_6 = ::tpy::ordered_map<std::string, JsonValue>({{"x", 1}, {"y", ::tpy::ordered_map<std::string, JsonValue>({{"z", 2}})}});
     std::cout << json_keys(__tmp_6) << "\n";
+    // # Print recursive unions directly
+    // print(x)
+    std::cout << x << "\n";
+    // print(a)
+    std::cout << a << "\n";
+    // print(d)
+    std::cout << d << "\n";
+    // # Global scope
+    // print(depth(g))
+    std::cout << depth(g) << "\n";
+    // print(int_depth(g_int))
+    std::cout << int_depth(g_int) << "\n";
+    // print(json_keys(g_dict))
+    std::cout << json_keys(g_dict) << "\n";
 }
 
 void __tpy_init() {
@@ -152,6 +173,13 @@ void __tpy_init() {
     // # Annotation-driven literal inference for recursive union types
     // # Nested list/dict literals infer element types from the target annotation
     // from dataclasses import dataclass
+    // # Global scope
+    // g: Tree = [Leaf(1), [Leaf(2), [Leaf(3)]]]
+    g = std::vector<Tree>{Leaf(1), std::vector<Tree>{Leaf(2), std::vector<Tree>{Leaf(3)}}};
+    // g_int: IntTree = [1, [2, [3]]]
+    g_int = std::vector<IntTree>{1, std::vector<IntTree>{2, std::vector<IntTree>{3}}};
+    // g_dict: JsonValue = {"a": 1, "b": {"c": 2}}
+    g_dict = ::tpy::ordered_map<std::string, JsonValue>({{"a", 1}, {"b", ::tpy::ordered_map<std::string, JsonValue>({{"c", 2}})}});
     // main()
     main();
 }
