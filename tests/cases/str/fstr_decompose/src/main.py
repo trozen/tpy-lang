@@ -89,4 +89,13 @@ def main() -> None:
     # Auto-discover get_logger() via free function first param
     log_from_service(svc, 88)
 
+    # Plain string to @inline FStr parameter
+    m.log_inline("plain")
+
+    # Plain string to @inline free function FStr parameter
+    log_free(h, "free_plain")
+
+    # Plain string with braces (must be escaped in format template)
+    m.log_inline("val={}")
+
 main()

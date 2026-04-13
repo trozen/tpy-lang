@@ -2401,12 +2401,15 @@ class CallAnalyzer:
         """Inline an @inline function call: clone body, substitute params, analyze."""
         body = copy.deepcopy(func.inline_body)
 
-        # Validate FStr params receive f-string literals
-        for pi, arg in zip(func.params, expr.args):
+        # Validate FStr params receive f-string literals (or plain strings)
+        for i, (pi, arg) in enumerate(zip(func.params, expr.args)):
             if isinstance(pi.type, FStrType) and not isinstance(arg, TpyFString):
-                raise self.ctx.error(
-                    f"Parameter '{pi.name}' has type FStr -- only f-string "
-                    f"literals are accepted", arg)
+                if isinstance(arg, TpyStrLiteral):
+                    expr.args[i] = TpyFString(parts=[arg.value], loc=arg.loc)
+                else:
+                    raise self.ctx.error(
+                        f"Parameter '{pi.name}' has type FStr -- only f-string "
+                        f"or string literals are accepted", arg)
 
         # Build param name -> call-site arg map and substitute
         param_map: dict[str, TpyExpr] = {}
@@ -2479,13 +2482,6 @@ class CallAnalyzer:
                 raise self.ctx.error(
                     f"Cannot use *unpacking: '{func.name}' does not accept *args", arg)
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
-            # FStr params require an f-string literal at the call site
-            if isinstance(ptype, FStrType) and not isinstance(arg, TpyFString):
-                raise self.ctx.error(
-                    f"Parameter '{pname}' has type FStr -- only f-string literals "
-                    f"are accepted",
-                    arg,
-                )
             arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
             arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 

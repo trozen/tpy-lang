@@ -1368,11 +1368,14 @@ class MethodAnalyzer:
         # @inline: clone body and substitute at call site.
         # For FStr params, validate that f-string literals are passed.
         if method_info.inline_body is not None:
-            for pi, arg in zip(method_info.params, expr.args):
+            for i, (pi, arg) in enumerate(zip(method_info.params, expr.args)):
                 if isinstance(pi.type, FStrType) and not isinstance(arg, TpyFString):
-                    raise self.ctx.error(
-                        f"Parameter '{pi.name}' has type FStr -- only f-string "
-                        f"literals are accepted", arg)
+                    if isinstance(arg, TpyStrLiteral):
+                        expr.args[i] = TpyFString(parts=[arg.value], loc=arg.loc)
+                    else:
+                        raise self.ctx.error(
+                            f"Parameter '{pi.name}' has type FStr -- only f-string "
+                            f"or string literals are accepted", arg)
             return self._inline_method_call(expr, method_info)
 
         # Check if the method has its own type parameters (generic method).

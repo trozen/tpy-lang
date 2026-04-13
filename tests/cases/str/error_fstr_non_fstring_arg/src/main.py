@@ -20,6 +20,6 @@ class Module:
 def main() -> None:
     m = Module("M")
     s = "hello"
-    m.log(s)  # tpyc: error(/FStr.*only f-string/)
+    m.log(s)  # tpyc: error(/FStr.*string literals are accepted/)
 
 main()

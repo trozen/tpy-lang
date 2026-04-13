@@ -61,6 +61,15 @@ void main() {
     // # Auto-discover get_logger() via free function first param
     // log_from_service(svc, 88)
     log_from_service(svc, 88);
+    // # Plain string to @inline FStr parameter
+    // m.log_inline("plain")
+    ::mylog::log_dispatch(m._logger, "plain", std::tuple<>{});
+    // # Plain string to @inline free function FStr parameter
+    // log_free(h, "free_plain")
+    ::mylog::log_dispatch(h, "free_plain", std::tuple<>{});
+    // # Plain string with braces (must be escaped in format template)
+    // m.log_inline("val={}")
+    ::mylog::log_dispatch(m._logger, "val={{}}", std::tuple<>{});
 }
 
 void __tpy_init() {
