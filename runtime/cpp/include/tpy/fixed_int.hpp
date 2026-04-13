@@ -23,7 +23,7 @@ namespace tpy {
 // --- Checked power helper (reusable across all integer types) ---
 
 template<typename T>
-bool try_pow(T base, T exp, T& result) {
+constexpr bool try_pow(T base, T exp, T& result) {
     if (exp < 0) return false;
     if (exp == 0) { result = 1; return true; }
 
@@ -61,7 +61,7 @@ template<> constexpr const char* fixed_int_name<uint64_t>() { return "UInt64"; }
 // --- Checked arithmetic ---
 
 template<typename T>
-T add_check(T a, T b) {
+constexpr T add_check(T a, T b) {
     T result;
     if (__builtin_add_overflow(a, b, &result)) {
         std::string msg = std::string(fixed_int_name<T>()) + " overflow in addition";
@@ -71,7 +71,7 @@ T add_check(T a, T b) {
 }
 
 template<typename T>
-T sub_check(T a, T b) {
+constexpr T sub_check(T a, T b) {
     T result;
     if (__builtin_sub_overflow(a, b, &result)) {
         std::string msg = std::string(fixed_int_name<T>()) + " overflow in subtraction";
@@ -81,7 +81,7 @@ T sub_check(T a, T b) {
 }
 
 template<typename T>
-T mul_check(T a, T b) {
+constexpr T mul_check(T a, T b) {
     T result;
     if (__builtin_mul_overflow(a, b, &result)) {
         std::string msg = std::string(fixed_int_name<T>()) + " overflow in multiplication";
@@ -93,7 +93,7 @@ T mul_check(T a, T b) {
 // Python floor division: round toward negative infinity.
 // Divisor must be non-zero (caller's responsibility).
 template<typename T>
-T div_floor(T a, T b) {
+constexpr T div_floor(T a, T b) {
     if constexpr (std::is_signed_v<T>) {
         if (a == std::numeric_limits<T>::min() && b == static_cast<T>(-1)) [[unlikely]] {
             tpy_panic("integer overflow in division");
@@ -112,7 +112,7 @@ T div_floor(T a, T b) {
 // Python modulo: result has same sign as divisor.
 // Divisor must be non-zero (caller's responsibility).
 template<typename T>
-T mod_floor(T a, T b) {
+constexpr T mod_floor(T a, T b) {
     if constexpr (std::is_signed_v<T>) {
         if (a == std::numeric_limits<T>::min() && b == static_cast<T>(-1)) [[unlikely]] {
             return 0;  // Python: INT_MIN % -1 == 0
@@ -129,7 +129,7 @@ T mod_floor(T a, T b) {
 
 // Checked variants: also check for division by zero.
 template<typename T>
-T div_check(T a, T b) {
+constexpr T div_check(T a, T b) {
     if (b == 0) [[unlikely]] {
         tpy_panic("Division by zero");
     }
@@ -137,7 +137,7 @@ T div_check(T a, T b) {
 }
 
 template<typename T>
-T mod_check(T a, T b) {
+constexpr T mod_check(T a, T b) {
     if (b == 0) [[unlikely]] {
         tpy_panic("Division by zero");
     }
@@ -145,7 +145,7 @@ T mod_check(T a, T b) {
 }
 
 template<typename T>
-T neg_check(T a) {
+constexpr T neg_check(T a) {
     static_assert(std::is_signed_v<T>, "Negation only supported on signed types");
     if (a == std::numeric_limits<T>::min()) {
         std::string msg = std::string(fixed_int_name<T>()) + " overflow in negation";
@@ -155,7 +155,7 @@ T neg_check(T a) {
 }
 
 template<typename T>
-T lshift_check(T a, T b) {
+constexpr T lshift_check(T a, T b) {
     if constexpr (std::is_signed_v<T>) {
         if (b < 0) {
             tpy_panic("Negative shift count");
@@ -176,7 +176,7 @@ T lshift_check(T a, T b) {
 }
 
 template<typename T>
-T rshift_check(T a, T b) {
+constexpr T rshift_check(T a, T b) {
     if constexpr (std::is_signed_v<T>) {
         if (b < 0) {
             tpy_panic("Negative shift count");
@@ -191,7 +191,7 @@ T rshift_check(T a, T b) {
 }
 
 template<typename T>
-T pow_check(T base, T exp) {
+constexpr T pow_check(T base, T exp) {
     if constexpr (std::is_signed_v<T>) {
         if (exp < 0) {
             tpy_panic("Negative exponent not supported (would require float)");
@@ -208,7 +208,7 @@ T pow_check(T base, T exp) {
 // --- Checked cast between fixed-int types ---
 
 template<typename To, typename From>
-To int_cast_check(From v) {
+constexpr To int_cast_check(From v) {
     if constexpr (std::is_signed_v<From> && std::is_unsigned_v<To>) {
         if (v < 0 || static_cast<std::make_unsigned_t<From>>(v) > std::numeric_limits<To>::max()) {
             std::string msg = std::string(fixed_int_name<To>()) + " overflow: value out of range";
