@@ -3296,10 +3296,13 @@ class CallAnalyzer:
             module_info = self.ctx.registry.get_module(dep_mod)
             if module_info is None:
                 continue
-            # Bind the module name so qualified calls (dep_mod.func()) resolve.
-            # Use the short name (last segment) as the local binding.
-            short_name = dep_mod.rsplit(".", 1)[-1]
-            self.ctx.macro_ns.bind_module(dep_mod, alias=short_name)
+            # Bind the module so qualified calls resolve.
+            # For flat modules: bind the name directly (log_infra -> log_infra).
+            # For dotted modules (e.g. "mylog.infra"): bind the root segment
+            # ("mylog") so ast.name("mylog.infra").func() resolves via the
+            # dotted-module chain in _try_resolve_dotted_module.
+            root = dep_mod.split(".")[0]
+            self.ctx.macro_ns.bind_module(dep_mod, alias=root)
 
     def _expand_call_macro(
         self, expr: TpyCall, macro_fn: Callable,

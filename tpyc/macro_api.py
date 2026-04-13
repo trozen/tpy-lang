@@ -752,7 +752,17 @@ class AstBuilder:
     # -- Expressions --
 
     def name(self, n: str) -> Expr:
-        return TpyName(n)
+        """Create a name reference. Dotted names (e.g. 'mylog.infra') are
+        decomposed into a field-access chain so module resolution works."""
+        if not n or ".." in n or n.startswith(".") or n.endswith("."):
+            raise MacroError(f"ast.name(): invalid name {n!r}")
+        if "." not in n:
+            return TpyName(n)
+        parts = n.split(".")
+        result: Expr = TpyName(parts[0])
+        for part in parts[1:]:
+            result = TpyFieldAccess(obj=result, field=part)
+        return result
 
     def call(self, func: str, args: list[Expr] | None = None,
              call_type: TpyType | None = None) -> Expr:

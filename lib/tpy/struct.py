@@ -130,7 +130,7 @@ def unpack_from(
         else:
             off_expr = ast.binop(base_offset, "+", ast.int_lit(byte_pos))
 
-        _unsafe = ast.name("unsafe")
+        _unsafe = ast.name("tpy.unsafe")
         if func_name == 'unsafe_read_bytes':
             call: Expr = ast.method_call(_unsafe, func_name, [data_arg.expr, off_expr, ast.int_lit(size)])
         else:
