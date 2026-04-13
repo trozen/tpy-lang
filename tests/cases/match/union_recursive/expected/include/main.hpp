@@ -33,17 +33,17 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
 
 struct Tree {
     using variant_type = std::variant<Leaf, std::vector<Tree>>;
-    variant_type data;
+    variant_type value;
 
     Tree() = default;
     template<typename T>
         requires std::constructible_from<variant_type, T&&>
-    Tree(T&& v) : data(std::forward<T>(v)) {}
+    Tree(T&& v) : value(std::forward<T>(v)) {}
 
     bool operator==(const Tree&) const = default;
 
     friend std::ostream& operator<<(std::ostream& os, const Tree& v) {
-        ::tpy::detail::print_element(os, v.data);
+        ::tpy::detail::print_element(os, v.value);
         return os;
     }
 };

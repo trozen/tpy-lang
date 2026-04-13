@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, TypeParamRef, NamedType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType,
-    ArrayType, SpanType, ListType, PendingListType, PendingViewType, GenExprType, CopyIterType, OwnIterType, SelfType, OptionalType, UnionType, RecursiveUnionType,
+    ArrayType, SpanType, ListType, PendingListType, PendingViewType, GenExprType, CopyIterType, OwnIterType, SelfType, OptionalType, UnionType,
     TupleType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
     NoneType, VoidType, FnType, CallableType,
@@ -141,8 +141,6 @@ class TypeOperations:
             resolved_inner = self.resolve_type(typ.inner, protocols_only=protocols_only)
             if resolved_inner is not typ.inner:
                 return OptionalType(resolved_inner, force_pointer_repr=typ.uses_pointer_repr())
-        elif isinstance(typ, RecursiveUnionType):
-            return typ  # never walk into self-referencing members
         elif isinstance(typ, UnionType):
             resolved_members = tuple(self.resolve_type(m, protocols_only=protocols_only) for m in typ.members)
             if any(new is not old for new, old in zip(resolved_members, typ.members)):

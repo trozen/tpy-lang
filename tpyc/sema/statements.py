@@ -374,7 +374,8 @@ class StatementAnalyzer:
                     if not self.compat.is_copy_call(elem):
                         if (isinstance(elem_stripped, OptionalType) and not elem_stripped.inner.is_value_type()):
                             should_warn = True
-                        elif isinstance(elem_stripped, UnionType) and elem_stripped.uses_pointer_repr():
+                        elif (isinstance(elem_stripped, UnionType) and elem_stripped.uses_pointer_repr()
+                              and not self.ctx.is_recursive_union(elem_stripped)):
                             should_warn = True
                 if should_warn:
                     self.ctx.warning(
@@ -2021,12 +2022,15 @@ class StatementAnalyzer:
         # Resolve type aliases in annotation (for cross-module imported aliases)
         # Recursive to handle nested types like list[Shape], Optional[Shape]
         if stmt.type and self.ctx.registry.type_aliases:
-            def _resolve(t: TpyType) -> TpyType:
+            def _resolve(t: TpyType, _seen: frozenset[str] = frozenset()) -> TpyType:
                 if isinstance(t, NamedType) and not t.is_protocol and not t.is_module_type:
+                    if t.name in _seen or t.name in self.ctx.recursive_union_names:
+                        return t
                     alias = self.ctx.registry.get_type_alias(t.name)
                     if alias is not None:
-                        return alias
-                return t.map_inner_types(_resolve)
+                        new_seen = _seen | {t.name}
+                        return alias.map_inner_types(lambda inner: _resolve(inner, new_seen))
+                return t.map_inner_types(lambda inner: _resolve(inner, _seen))
             stmt.type = _resolve(stmt.type)
 
         # Resolve enum types in annotation (NamedType -> EnumType).
@@ -2954,7 +2958,8 @@ class StatementAnalyzer:
             stripped_value = self.ctx.get_expr_type(stmt.value)
             is_compound_ref = (
                 (isinstance(stripped_value, OptionalType) and not stripped_value.inner.is_value_type())
-                or (isinstance(stripped_value, UnionType) and stripped_value.uses_pointer_repr())
+                or (isinstance(stripped_value, UnionType) and stripped_value.uses_pointer_repr()
+                    and not self.ctx.is_recursive_union(stripped_value))
             )
             if ((isinstance(value_type, RefType) or is_own_from_name or is_compound_ref)
                     and stmt.loc is not None

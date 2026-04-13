@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 import io
 import sys as _sys
 
-from ..typesys import TpyType, NamedType, EnumType, UnionType, RecursiveUnionType, OwnType, PendingListType, ListType, ArrayType, PtrType, NoneType, VoidType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names
+from ..typesys import TpyType, NamedType, EnumType, UnionType, OwnType, PendingListType, ListType, ArrayType, PtrType, NoneType, VoidType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
 
@@ -205,6 +205,15 @@ class CodeGenerator:
         self.ctx.reexported_variables = reexported_variables or {}
         self.ctx.reexported_enums = reexported_enums or {}
         self.ctx.macro_dep_modules = set(self.analyzer.ctx.macro_dep_modules)
+        self.ctx.init_recursive_unions(module.recursive_union_names, module.type_aliases)
+        # Register recursive union aliases early so that record field rendering
+        # resolves e.g. Box[UnionType(Lit, BinOp)] -> Box<Expr>
+        for name in module.recursive_union_names:
+            entry = module.type_aliases.get(name)
+            if entry is not None:
+                typ = entry[0]
+                if isinstance(typ, UnionType):
+                    register_union_alias(typ.members, name)
         hpp = io.StringIO()
         cpp = io.StringIO()
 
@@ -270,13 +279,14 @@ class CodeGenerator:
         self.ctx.pointer_globals = {
             name for name, typ in seen_globals.items()
             if typ and not typ.is_value_type()
+            and not self.ctx.is_recursive_union(typ)
             and name not in self.ctx.native_global_names
             and name not in self.ctx.final_globals
         }
         # Also include imported non-value-type globals
         for name in self.ctx.user_imported_variables:
             binding = self.ctx.analyzer.global_ns.lookup_local(name)
-            if binding and binding.type and not binding.type.is_value_type():
+            if binding and binding.type and not binding.type.is_value_type() and not self.ctx.is_recursive_union(binding.type):
                 self.ctx.pointer_globals.add(name)
         # Generate protocol ordering and forward declarations
         self._generate_protocol_ordering(hpp, module, global_decls, final_decls, seen_globals)
@@ -589,8 +599,8 @@ class CodeGenerator:
         # Forward declare recursive union wrapper structs (before records,
         # so that record fields like Box[JsonValue] can reference the name)
         emitted_fwd = False
-        for name, (typ, _loc) in module.type_aliases.items():
-            if isinstance(typ, RecursiveUnionType):
+        for name, (_typ, _loc) in module.type_aliases.items():
+            if name in module.recursive_union_names:
                 hpp.write(f"struct {name};\n")
                 emitted_fwd = True
 
@@ -777,7 +787,7 @@ class CodeGenerator:
         # so member types are complete for std::variant)
         emitted_alias = False
         for name, (typ, _loc) in sorted(module.type_aliases.items()):
-            if isinstance(typ, RecursiveUnionType):
+            if name in module.recursive_union_names:
                 self._gen_recursive_union_struct(hpp, name, typ)
             else:
                 cpp_type = self.types.type_to_cpp(typ)
@@ -884,13 +894,13 @@ class CodeGenerator:
             hpp.write("\n")
 
 
-    def _gen_recursive_union_struct(self, out: TextIO, name: str, typ: RecursiveUnionType) -> None:
+    def _gen_recursive_union_struct(self, out: TextIO, name: str, typ: UnionType) -> None:
         """Generate a wrapper struct for a recursive union type alias.
 
         Instead of `using JsonValue = std::variant<...>`, emits:
           struct JsonValue {
               using variant_type = std::variant<...>;
-              variant_type data;
+              variant_type value;
               JsonValue() = default;
               template<typename T> requires ... JsonValue(T&& v) : data(...) {}
               bool operator==(const JsonValue&) const = default;
@@ -903,14 +913,14 @@ class CodeGenerator:
         variant_type = f"std::variant<{', '.join(cpp_members)}>"
         out.write(f"struct {name} {{\n")
         out.write(f"    using variant_type = {variant_type};\n")
-        out.write(f"    variant_type data;\n\n")
+        out.write(f"    variant_type value;\n\n")
         out.write(f"    {name}() = default;\n")
         out.write(f"    template<typename T>\n")
         out.write(f"        requires std::constructible_from<variant_type, T&&>\n")
-        out.write(f"    {name}(T&& v) : data(std::forward<T>(v)) {{}}\n\n")
+        out.write(f"    {name}(T&& v) : value(std::forward<T>(v)) {{}}\n\n")
         out.write(f"    bool operator==(const {name}&) const = default;\n\n")
         out.write(f"    friend std::ostream& operator<<(std::ostream& os, const {name}& v) {{\n")
-        out.write(f"        ::tpy::detail::print_element(os, v.data);\n")
+        out.write(f"        ::tpy::detail::print_element(os, v.value);\n")
         out.write(f"        return os;\n")
         out.write(f"    }}\n")
         out.write(f"}};\n")

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, BoolType,
     PendingListType, PendingDictType, PendingSetType, PendingViewType, ListType, DictType, SetType, ArrayType, TypeParamRef, NamedType,
-    UnionType, RecursiveUnionType, NoneType, VoidType, EnumType, TupleType,
+    UnionType, NoneType, VoidType, EnumType, TupleType,
     unwrap_readonly, is_protocol_type, resolve_int_literals,
     INT32, BIGINT, FLOAT, FLOAT32, STR, BYTES,
     _union_alias_names
@@ -336,9 +336,6 @@ class TypeResolver:
         if isinstance(typ, TupleType):
             args = ", ".join(self.type_to_cpp(t) for t in typ.element_types)
             return f"std::tuple<{args}>"
-        # Recursive union: always use the wrapper struct name
-        if isinstance(typ, RecursiveUnionType):
-            return typ.name
         # Union types: use alias name if registered, otherwise qualify member names
         if isinstance(typ, UnionType):
             alias = _union_alias_names.get(typ.members)

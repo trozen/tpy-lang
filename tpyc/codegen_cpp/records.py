@@ -731,7 +731,7 @@ class RecordGenerator:
                                                 value = f"::tpy::ptr_to_optional({value})"
                                 # Pointer-variant param -> value-variant field: deref+copy.
                                 # The param is variant<T*...> but the field stores variant<T...>.
-                                if isinstance(fld_type, UnionType) and fld_type.uses_pointer_repr():
+                                if self.ctx.is_ptr_variant_union(fld_type):
                                     val_cpp = self.types.type_to_cpp(fld_type)
                                     value = f"::tpy::to_value_variant<{val_cpp}>({value})"
                                 inits.append((field_name, value))

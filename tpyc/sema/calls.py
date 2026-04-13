@@ -15,7 +15,7 @@ from ..typesys import (
     StrType, LiteralType, LiteralValue, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, SpanType, ArrayType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
     UNKNOWN_ELEMENT, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
-    UnionType, RecursiveUnionType, EnumType, VOID, BIGINT, BOOL, STR, INT32, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own,
+    UnionType, EnumType, VOID, BIGINT, BOOL, STR, INT32, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own,
     is_any_str_type, container_to_str_template, error_return_matches,
     is_protocol_union, protocol_union_protocols,
     FStrType,
@@ -661,12 +661,12 @@ class CallAnalyzer:
 
         # Type aliases: builtin type aliases (e.g. Float64 = float) resolve
         # to the underlying type's constructor. Other aliases are not callable.
-        # Exception: RecursiveUnionType aliases are callable as wrapper constructors.
+        # Exception: recursive union aliases are callable as wrapper constructors.
         if expr.call_type is None:
             alias_type = self.ctx.registry.get_type_alias(expr.func_name)
             if alias_type is not None:
                 # Recursive union alias: Tree(value) wraps value in the union
-                if isinstance(alias_type, RecursiveUnionType):
+                if expr.func_name in self.ctx.recursive_union_names:
                     return self._analyze_recursive_union_constructor(expr, alias_type)
                 record = self.ctx.registry.get_record_for_type(alias_type)
                 if record and record.builtin_type_key and record.get_method_overloads("__init__"):
@@ -2793,13 +2793,14 @@ class CallAnalyzer:
             lambda msg: self.ctx.error(msg, expr))
 
     def _analyze_recursive_union_constructor(
-        self, expr: TpyCall, union_type: RecursiveUnionType,
+        self, expr: TpyCall, union_type: UnionType,
     ) -> TpyType:
         """Analyze Tree(value) -- wrapping a value in a recursive union type."""
-        self._reject_kwargs_for_builtin(expr, union_type.name)
+        name = expr.func_name
+        self._reject_kwargs_for_builtin(expr, name)
         if len(expr.args) != 1:
             raise self.ctx.error(
-                f"Recursive union constructor '{union_type.name}' takes exactly 1 argument, "
+                f"Recursive union constructor '{name}' takes exactly 1 argument, "
                 f"got {len(expr.args)}",
                 expr,
             )
@@ -2809,7 +2810,7 @@ class CallAnalyzer:
         # (check_type_compatible raises SemanticError on incompatibility)
         self.compat.check_type_compatible(arg_type, union_type, "argument 'value'", expr)
         expr.resolved_function_info = FunctionInfo(
-            name=union_type.name,
+            name=name,
             params=[("value", union_type)],
             return_type=union_type,
         )

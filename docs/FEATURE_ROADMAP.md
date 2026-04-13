@@ -88,7 +88,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D17 | `*args` (variadic positional arguments) | M | Done (homogeneous) | [VI](#args--kwargs) |
 | D18 | `**kwargs` (variadic keyword arguments) | M-L | Done | [VI](#args--kwargs) |
 | D19 | Recursive type aliases | M | Done (non-generic) | [I](#recursive-type-aliases) |
-| D20 | Mutual recursion (cross-type cycles) | M-L | Not started | [I](#mutual-recursion) |
+| D20 | Mutual recursion (cross-type cycles) | M-L | Done (same-module) | [I](#mutual-recursion) |
 | D21 | TypedDict | M | Done | [VII](#typeddict) |
 | D22 | Multiple inheritance (mixins) | L | Not started | [VII](#multiple-inheritance) |
 | D23 | Nested classes | M | Done | [VII](#nested-classes) |
@@ -582,7 +582,7 @@ struct JsonValue {
 This works because `std::vector<JsonValue>` and `ordered_map<..., JsonValue>` only
 need `JsonValue` complete when they allocate (at runtime), not at type definition
 time. The existing `isinstance` narrowing and `match`/`case` work through the
-wrapper's `.data` member.
+wrapper's `.value` member.
 
 **Safety constraint**: every recursive path must go through at least one container
 or pointer (`list`, `dict`, `set`, `Box`, `Optional`). Direct recursion
@@ -599,17 +599,14 @@ is a harder extension requiring forward declarations across types. Can be a
 separate follow-up.
 
 **Current state**: Done (non-generic). Self-referencing union aliases compile
-to a C++ wrapper struct with a `.data` variant field, forwarding constructor,
+to a C++ wrapper struct with a `.value` variant field, forwarding constructor,
 and `operator==`. isinstance narrowing and match/case work through the wrapper.
 Safety validation rejects direct and fixed-size recursion. The alias name is
-callable as a constructor (e.g. `Tree(42)`).
+callable as a constructor (e.g. `Tree(42)`). Annotation-driven inference works
+for nested list/dict literals (`x: Tree = [1, [3, 4]]` infers as `list[Tree]`).
 
 **Not yet supported**:
 - Generic recursive aliases (`type Tree[T] = T | list[Tree[T]]`).
-  The `RecursiveUnionType` has a `type_params` slot reserved for this.
-- Annotation-driven list literal inference for nested construction:
-  `x: Tree = [1, [3, 4]]` doesn't yet infer inner `[3, 4]` as `list[Tree]`.
-  Workaround: use intermediate variables with explicit `list[Tree]` annotations.
 
 **Dependencies**: Union types (done). Match/case (done for unions).
 
@@ -700,12 +697,22 @@ any tree-structured library: expression evaluators, HTML/XML parsers, configurat
 languages, protocol buffers. Combined with recursive type aliases (D19), this gives
 TPy full algebraic data type support.
 
-**Current state**: Not started.
+**Current state**: Done (same-module). General cycle detection across records
+and type aliases. Recursive union aliases are tagged via metadata
+(`recursive_union_names`); codegen emits wrapper structs and resolves expanded
+unions via member-set mapping. `Box(Lit(1))` auto-coerces to `Box[Expr]` via
+the wrapper's implicit constructor. Works with `isinstance`, `match`/`case`,
+mixed unions (primitives + records), return values, local variables, fields
+(via `Box`), and both source orderings (alias first or classes first).
 
-**Dependencies**: Recursive type aliases (D19). `Box[T]` (done). Union types (done).
+**Not yet supported**:
+- Cross-module mutual recursion (alias and member classes in different modules)
+- `Expr | None` (`Optional` of recursive union -- parser expands alias before Optional simplification)
+- `list[Expr]` brace-init-list when `Expr` contains move-only members (C++ initializer_list requires copy)
 
-**Effort**: M-L (cycle detection + forward declaration ordering + codegen changes
-for incomplete types)
+**Dependencies**: Recursive type aliases (D19, done). `Box[T]` (done). Union types (done).
+
+**Effort**: M-L (done)
 
 ---
 

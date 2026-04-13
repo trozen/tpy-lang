@@ -18,7 +18,6 @@ from ..typesys import (
     EnumType, IntEnumType, TupleType, FnType, CallableType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
-    RecursiveUnionType, variant_data_expr,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -271,7 +270,7 @@ class ExpressionGenerator:
             isinstance(arg_type, UnionType)
             or (cpp_decl is not None and isinstance(cpp_decl, UnionType))
         )
-        if ptype_union.uses_pointer_repr():
+        if self.ctx.is_ptr_variant_union(ptype_union):
             if is_readonly_param:
                 pv_cpp = self.types.type_to_cpp_const_ptr_variant(ptype_union)
             else:
@@ -460,7 +459,7 @@ class ExpressionGenerator:
         # Pointer-variant union locals: visit variant and copy active member
         if isinstance(arg, TpyName) and arg.name in self.ctx.ptr_variant_locals:
             var_type = self.ctx.var_types.get(arg.name)
-            if isinstance(var_type, UnionType) and var_type.uses_pointer_repr():
+            if self.ctx.is_ptr_variant_union(var_type):
                 val_cpp = self.types.type_to_cpp(var_type)
                 return f"::tpy::to_value_variant<{val_cpp}>({arg.name})"
         arg_expr = self.gen_expr_deref(arg)
@@ -1187,7 +1186,7 @@ class ExpressionGenerator:
                     val = f"(*{val})"
                 # Recursive union wrapper: access .data for variant operations
                 union_type = left_type if isinstance(left_type, UnionType) else right_type
-                val = variant_data_expr(val, union_type)
+                val = self.ctx.variant_data_expr(val, union_type)
                 check = f"std::holds_alternative<std::monostate>({val})"
                 if expr.op == "is":
                     return f"({check})"
@@ -1643,7 +1642,7 @@ class ExpressionGenerator:
                 # Skip if already narrowed (narrowed var is concrete, not a wrapper).
                 if var_name not in self.ctx.narrowed_vars:
                     var_decl_type = self.ctx.var_types.get(var_name)
-                    get_ref = variant_data_expr(var_ref, var_decl_type) if var_decl_type else var_ref
+                    get_ref = self.ctx.variant_data_expr(var_ref, var_decl_type) if var_decl_type else var_ref
                 else:
                     get_ref = var_ref
                 result[var_name] = f"std::get<{cpp_type}>({get_ref})"
@@ -1793,7 +1792,7 @@ class ExpressionGenerator:
                 return f"std::holds_alternative<{const_pfx}{cpp_type}*>({var_ref})"
             # Recursive union wrapper: access .data for variant operations
             var_decl_type = self.ctx.var_types.get(orig_var)
-            get_ref = variant_data_expr(var_ref, var_decl_type) if var_decl_type else var_ref
+            get_ref = self.ctx.variant_data_expr(var_ref, var_decl_type) if var_decl_type else var_ref
             return f"std::holds_alternative<{cpp_type}>({get_ref})"
         # Enum value lookup: Color(0) -> ::tpy::EnumUtil<Color>::from_value(0)
         if expr.enum_from_value is not None:
@@ -2571,7 +2570,7 @@ class ExpressionGenerator:
                 return f"std::get<{cpp_type}>((*{expr_obj.name}))", True
             # Recursive union wrapper: access .data for variant operations
             var_decl_type = self.ctx.var_types.get(expr_obj.name)
-            get_ref = variant_data_expr(obj_code, var_decl_type) if var_decl_type else obj_code
+            get_ref = self.ctx.variant_data_expr(obj_code, var_decl_type) if var_decl_type else obj_code
             return f"std::get<{cpp_type}>({get_ref})", True
         return obj_code, False
 
@@ -2722,12 +2721,13 @@ class ExpressionGenerator:
                 et = target_type.get_element_type()
                 if isinstance(et, (OptionalType, UnionType, TupleType, StrType)):
                     elem_target = et
-                # Recursive union element type (NamedType("Tree") -> RecursiveUnionType):
-                # pass it as elem_target so nested array literals trigger union_prefix.
+                # Recursive union element type: pass it as elem_target so nested
+                # array literals trigger union_prefix.
                 elif isinstance(et, NamedType) and not et.is_protocol and not et.is_module_type:
-                    alias = self.ctx.analyzer.registry.get_type_alias(et.name)
-                    if isinstance(alias, RecursiveUnionType):
-                        elem_target = alias
+                    if et.name in self.ctx.recursive_union_names:
+                        alias = self.ctx.analyzer.registry.get_type_alias(et.name)
+                        if alias is not None:
+                            elem_target = alias
         elements = []
         with self._container_element_context():
             for e in expr.elements:
@@ -2763,8 +2763,7 @@ class ExpressionGenerator:
             if isinstance(expr_type, ListType):
                 et = expr_type.element_type
                 if isinstance(et, NamedType) and not et.is_protocol and not et.is_module_type:
-                    alias = self.ctx.analyzer.registry.get_type_alias(et.name)
-                    if isinstance(alias, RecursiveUnionType):
+                    if et.name in self.ctx.recursive_union_names:
                         return f"{self.types.type_to_cpp(expr_type)}{literal}"
         return literal
 

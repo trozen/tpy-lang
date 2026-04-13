@@ -17,7 +17,7 @@ from ..typesys import (
     TpyType, NamedType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, FinalType, SelfType,
     strip_auto_readonly, apply_auto_readonly, has_auto_readonly, strip_auto_own, apply_auto_own, ensure_qualified,
     TypeParamRef, OptionalType, VoidType, make_union, UnionType, EnumType, TupleType, FnType, CallableType,
-    RecursiveUnionType, _contains_self_reference, validate_recursive_union_paths,
+    _contains_self_reference, validate_recursive_union_paths,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW, BOOL, FLOAT, FLOAT32, BIGINT, SELF, BASIC_SLICE, SLICE, FieldInfo, RecordInfo, TypeRegistry,
     FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, BoolType, StrType, LiteralType, LiteralValue,
     ALL_FIXED_INTS, public_module_name,
@@ -414,8 +414,13 @@ class Parser:
         # Top-level class names pre-scanned from the module body, used to
         # resolve forward references in type annotations.
         self._module_class_names: frozenset[str] = frozenset()
+        # Top-level type alias names pre-scanned, for forward references
+        # (e.g. Box[Expr] in a record field before `type Expr = ...` is parsed)
+        self._module_type_alias_names: frozenset[str] = frozenset()
         # Set during type alias RHS parsing to allow self-references
         self._pending_alias_name: str | None = None
+        # Union aliases detected as recursive (self- or mutually-referencing)
+        self._recursive_union_names: set[str] = set()
         # All module-level definitions (def, class, assignment) pre-scanned
         # to detect when local names shadow imports for parser keyword resolution.
         self._local_defs: frozenset[str] = frozenset()
@@ -603,7 +608,9 @@ class Parser:
             return alias
         elif not resolved:
             self._raise_unresolved_import_error(name, node)
-        if resolved or self.registry.is_known_type(name) or name in self._module_class_names:
+        if (resolved or self.registry.is_known_type(name)
+                or name in self._module_class_names
+                or name in self._module_type_alias_names):
             return NamedType(name)
         return None
 
@@ -685,6 +692,7 @@ class Parser:
         decide whether Name[args](...) could be a type instantiation.
         """
         return (name in self._module_class_names
+                or name in self._module_type_alias_names
                 or self.registry.is_known_type(name)
                 or self._resolve_type_name(name) is not None)
 
@@ -710,7 +718,7 @@ class Parser:
                 return False
             if self._is_type_name(arm.id):
                 has_confirmed_type = True
-            elif arm.id not in self._module_class_names:
+            elif arm.id not in self._module_class_names and arm.id not in self._module_type_alias_names:
                 all_module_classes = False
         return has_confirmed_type or all_module_classes
 
@@ -731,7 +739,7 @@ class Parser:
             err = validate_recursive_union_paths(name, alias_type.members)
             if err is not None:
                 raise ParseError(err, type_node)
-            alias_type = RecursiveUnionType(members=alias_type.members, name=name)
+            self._recursive_union_names.add(name)
 
         self.registry.register_type_alias(name, alias_type)
         loc = SourceLocation(line=type_node.lineno) if hasattr(type_node, 'lineno') else None
@@ -741,6 +749,9 @@ class Parser:
         """Parse a module."""
         self._module_class_names = frozenset(
             node.name for node in tree.body if isinstance(node, ast.ClassDef)
+        )
+        self._module_type_alias_names = frozenset(
+            node.name.id for node in tree.body if isinstance(node, ast.TypeAlias)
         )
         # Pre-scan all module-level definitions (def, class, assignment) so that
         # _resolve_type_name returns None for shadowed imports.  This prevents
@@ -882,7 +893,7 @@ class Parser:
                 else:
                     top_level_stmts.append(stmt)
 
-        return TpyModule(records=records, functions=functions, protocols=protocols, enums=enums, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, tpy_star_import=self._imports.tpy_star_import, star_imports=self._imports.star_imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings)
+        return TpyModule(records=records, functions=functions, protocols=protocols, enums=enums, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, tpy_star_import=self._imports.tpy_star_import, star_imports=self._imports.star_imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings, recursive_union_names=self._recursive_union_names)
 
     def _is_protocol_base(self, base: ast.expr) -> bool:
         """Check if a base class expression refers to typing.Protocol."""

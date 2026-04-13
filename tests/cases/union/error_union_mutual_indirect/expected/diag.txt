@@ -1,0 +1,1 @@
+main.py:2: error: Types form an infinite-size cycle: field 'child' in 'Branch' references 'Node' without indirection -- use Box[Node] or another indirecting container

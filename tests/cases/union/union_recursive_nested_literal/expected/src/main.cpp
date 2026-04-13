@@ -14,13 +14,13 @@ JsonValue g_dict;
 // def depth(t: Tree) -> Int32:
 int32_t depth(const Tree& t) {
     // if isinstance(t, Leaf):
-    if (std::holds_alternative<Leaf>(t.data)) {
-        const auto& __t = std::get<Leaf>(t.data);
+    if (std::holds_alternative<Leaf>(t.value)) {
+        const auto& __t = std::get<Leaf>(t.value);
         // return 0
         return 0;
     // else:
     } else {
-        const auto& __t = std::get<std::vector<Tree>>(t.data);
+        const auto& __t = std::get<std::vector<Tree>>(t.value);
         // result = 0
         int32_t result = 0;
         // for child in t:
@@ -28,7 +28,7 @@ int32_t depth(const Tree& t) {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& child = *__beg_0;
+            auto&& child = *__beg_0;
             // d = depth(child)
             Tree __tmp_1 = child;
             int32_t d = depth(__tmp_1);
@@ -46,13 +46,13 @@ int32_t depth(const Tree& t) {
 // def int_depth(t: IntTree) -> int:
 ::tpy::BigInt int_depth(const IntTree& t) {
     // if isinstance(t, int):
-    if (std::holds_alternative<::tpy::BigInt>(t.data)) {
-        const auto& __t = std::get<::tpy::BigInt>(t.data);
+    if (std::holds_alternative<::tpy::BigInt>(t.value)) {
+        const auto& __t = std::get<::tpy::BigInt>(t.value);
         // return 0
         return ::tpy::BigInt(0);
     // else:
     } else {
-        const auto& __t = std::get<std::vector<IntTree>>(t.data);
+        const auto& __t = std::get<std::vector<IntTree>>(t.value);
         // result = 0
         ::tpy::BigInt result = ::tpy::BigInt(0);
         // for child in t:
@@ -60,7 +60,7 @@ int32_t depth(const Tree& t) {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& child = *__beg_0;
+            auto&& child = *__beg_0;
             // d = int_depth(child)
             IntTree __tmp_2 = child;
             ::tpy::BigInt d = int_depth(__tmp_2);
@@ -78,18 +78,18 @@ int32_t depth(const Tree& t) {
 // def json_keys(v: JsonValue) -> int:
 ::tpy::BigInt json_keys(const JsonValue& v) {
     // if isinstance(v, str):
-    if (std::holds_alternative<std::string>(v.data)) {
-        const auto& __v = std::get<std::string>(v.data);
+    if (std::holds_alternative<std::string>(v.value)) {
+        const auto& __v = std::get<std::string>(v.value);
         // return 0
         return ::tpy::BigInt(0);
     // elif isinstance(v, int):
-    } else if (std::holds_alternative<::tpy::BigInt>(v.data)) {
-        const auto& __v = std::get<::tpy::BigInt>(v.data);
+    } else if (std::holds_alternative<::tpy::BigInt>(v.value)) {
+        const auto& __v = std::get<::tpy::BigInt>(v.value);
         // return 0
         return ::tpy::BigInt(0);
     // else:
     } else {
-        const auto& __v = std::get<::tpy::ordered_map<std::string, JsonValue>>(v.data);
+        const auto& __v = std::get<::tpy::ordered_map<std::string, JsonValue>>(v.value);
         // result = 0
         int32_t result = 0;
         // for k in v:

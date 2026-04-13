@@ -9,7 +9,7 @@ from dataclasses import replace as dc_replace
 from typing import Optional
 
 from ..typesys import (
-    TpyType, TypeRegistry, NamedType, UnionType, RecursiveUnionType, FinalType, STR, StrType, StrViewType, LiteralType, VoidType, VOID,
+    TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, StrType, StrViewType, LiteralType, VoidType, VOID,
     INT32, FixedIntType, BigIntType, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
     FunctionInfo, EnumType, SpanType, is_any_str_type,
     make_ref, unwrap_ref_type, RefType,
@@ -418,6 +418,10 @@ class SemanticAnalyzer:
         # Done after inheritance validation so parent types are resolved.
         # Definition order handles transitive propagation naturally.
         self._propagate_nocopy(module)
+
+        # Detect mutual recursion cycles and tag recursive union aliases
+        self._detect_recursive_unions(module)
+        self.ctx.recursive_union_names = module.recursive_union_names
 
         # Transfer type aliases from parser to sema registry, validating members
         for name, (typ, loc) in module.type_aliases.items():
@@ -1142,13 +1146,65 @@ class SemanticAnalyzer:
         # Store the group mapping for codegen
         self.overload_groups[id(impl)] = stubs
 
+    def _detect_recursive_unions(self, module: TpyModule) -> None:
+        """Detect type cycles and tag union aliases as recursive.
+
+        Runs after all records are registered but before type alias registration.
+        Tags aliases in module.recursive_union_names (codegen emits wrapper structs).
+        """
+        from ..cycle_detection import detect_type_cycles
+
+        # Build inputs: record fields and non-recursive union aliases
+        record_fields: dict[str, list[tuple[str, TpyType]]] = {}
+        for record in module.all_records():
+            record_fields[record.name] = [(f.name, f.type) for f in record.fields]
+
+        union_aliases: dict[str, tuple[TpyType, ...]] = {}
+        alias_locs: dict[str, object] = {}
+        for name, (typ, loc) in module.type_aliases.items():
+            if isinstance(typ, UnionType) and name not in module.recursive_union_names:
+                union_aliases[name] = typ.members
+                alias_locs[name] = loc
+
+        if not union_aliases:
+            return
+
+        cycles = detect_type_cycles(record_fields, union_aliases)
+
+        for cycle in cycles:
+            # Validate indirection: cycle must have at least one indirected edge
+            if cycle.is_fully_unindirected():
+                edge = cycle.first_unindirected_edge()
+                assert edge is not None
+                if edge.field_name:
+                    msg = (
+                        f"Types form an infinite-size cycle: "
+                        f"field '{edge.field_name}' in '{edge.source}' references "
+                        f"'{edge.target}' without indirection -- "
+                        f"use Box[{edge.target}] or another indirecting container"
+                    )
+                else:
+                    msg = (
+                        f"Types form an infinite-size cycle through "
+                        f"'{edge.source}' and '{edge.target}' -- "
+                        f"use Box or another indirecting container to break the cycle"
+                    )
+                # At least one node must be an alias (cycles are reachable
+                # from alias nodes only), so loc should never be None here.
+                loc = alias_locs.get(edge.source) or alias_locs.get(edge.target)
+                raise SemanticError(msg, loc)
+
+            # Tag union aliases in this cycle as recursive
+            for alias_name in cycle.alias_names:
+                module.recursive_union_names.add(alias_name)
+
     def _validate_type_alias_members(
         self, alias_name: str, typ: TpyType, loc: 'SourceLocation | None'
     ) -> None:
         """Validate that all NamedType members in a type alias are registered."""
         # Recursive union aliases have self-referencing NamedType placeholders
-        # inside their members -- safety was already validated in the parser.
-        if isinstance(typ, RecursiveUnionType):
+        # inside their members -- safety was already validated.
+        if alias_name in self.ctx.recursive_union_names:
             return
         from ..parse import SourceLocation
         members: list[TpyType] = []
@@ -1165,38 +1221,52 @@ class SemanticAnalyzer:
                     )
 
     @staticmethod
-    def _resolve_alias(typ: TpyType, aliases: dict[str, TpyType]) -> TpyType:
-        """Recursively substitute alias NamedTypes with their resolved types."""
+    def _resolve_alias(typ: TpyType, aliases: dict[str, TpyType],
+                        _seen: frozenset[str] = frozenset(),
+                        _skip: frozenset[str] = frozenset()) -> TpyType:
+        """Recursively substitute alias NamedTypes with their resolved types.
+
+        Uses _seen to prevent infinite recursion on self-referencing aliases.
+        _skip contains recursive union alias names that must not be expanded
+        (their NamedType placeholders are structural).
+        """
         if isinstance(typ, NamedType) and not typ.is_protocol and not typ.is_module_type:
+            if typ.name in _seen or typ.name in _skip:
+                return typ
             resolved = aliases.get(typ.name)
             if resolved is not None:
-                return resolved
+                new_seen = _seen | {typ.name}
+                return resolved.map_inner_types(
+                    lambda t: SemanticAnalyzer._resolve_alias(t, aliases, new_seen, _skip)
+                )
         return typ.map_inner_types(
-            lambda t: SemanticAnalyzer._resolve_alias(t, aliases)
+            lambda t: SemanticAnalyzer._resolve_alias(t, aliases, _seen, _skip)
         )
 
     def _resolve_imported_aliases(self, module: TpyModule) -> None:
         """Substitute imported alias NamedTypes in module AST type annotations."""
         from ..parse.nodes import TpyVarDecl
         aliases = self.ctx.registry.type_aliases
+        skip = frozenset(module.recursive_union_names)
         for func in module.functions:
-            self._resolve_func_aliases(func, aliases)
+            self._resolve_func_aliases(func, aliases, skip)
         for record in module.all_records():
             for f in record.fields:
-                f.type = self._resolve_alias(f.type, aliases)
+                f.type = self._resolve_alias(f.type, aliases, _skip=skip)
             for method in record.methods:
-                self._resolve_func_aliases(method, aliases)
+                self._resolve_func_aliases(method, aliases, skip)
         for stmt in module.top_level_stmts:
             if isinstance(stmt, TpyVarDecl) and stmt.type is not None:
-                stmt.type = self._resolve_alias(stmt.type, aliases)
+                stmt.type = self._resolve_alias(stmt.type, aliases, _skip=skip)
 
     @staticmethod
-    def _resolve_func_aliases(func: TpyFunction, aliases: dict[str, TpyType]) -> None:
+    def _resolve_func_aliases(func: TpyFunction, aliases: dict[str, TpyType],
+                               skip: frozenset[str] = frozenset()) -> None:
         """Resolve alias types in a function's signature."""
         if func.return_type is not None:
-            func.return_type = SemanticAnalyzer._resolve_alias(func.return_type, aliases)
+            func.return_type = SemanticAnalyzer._resolve_alias(func.return_type, aliases, _skip=skip)
         for i, (name, typ) in enumerate(func.params):
-            resolved = SemanticAnalyzer._resolve_alias(typ, aliases)
+            resolved = SemanticAnalyzer._resolve_alias(typ, aliases, _skip=skip)
             if resolved is not typ:
                 func.params[i] = (name, resolved)
 

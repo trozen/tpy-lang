@@ -504,6 +504,24 @@ class SemanticContext:
     # --- Macro dep modules (populated after macros run) ---
     macro_dep_modules: set[str] = field(default_factory=set)
 
+    # --- Recursive union aliases (self- or mutually-referencing) ---
+    recursive_union_names: set[str] = field(default_factory=set)
+    # Reverse map: frozenset(members) -> alias name (built lazily)
+    _recursive_union_members: dict[frozenset, str] | None = None
+
+    def is_recursive_union(self, typ: 'TpyType') -> bool:
+        """Check if a union type is a recursive union alias."""
+        from ..typesys import UnionType
+        if not isinstance(typ, UnionType) or not self.recursive_union_names:
+            return False
+        if self._recursive_union_members is None:
+            self._recursive_union_members = {}
+            for name in self.recursive_union_names:
+                alias = self.registry.get_type_alias(name)
+                if alias is not None and isinstance(alias, UnionType):
+                    self._recursive_union_members[frozenset(alias.members)] = name
+        return frozenset(typ.members) in self._recursive_union_members
+
     # --- Control flow (persistent) ---
     in_comprehension: int = 0
     sc_and_walrus: set[str] = field(default_factory=set)

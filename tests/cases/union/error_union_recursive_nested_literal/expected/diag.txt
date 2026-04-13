@@ -1,1 +1,1 @@
-main.py:12: error: List literal element 1 has type str, incompatible with annotated element type Tree
+main.py:12: error: List literal element 1 has type str, incompatible with annotated element type Leaf | list[Tree]

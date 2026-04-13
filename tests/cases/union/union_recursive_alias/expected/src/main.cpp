@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def depth(t: Tree) -> int:
 ::tpy::BigInt depth(const Tree& t) {
     // if isinstance(t, int):
-    if (std::holds_alternative<::tpy::BigInt>(t.data)) {
-        const auto& __t = std::get<::tpy::BigInt>(t.data);
+    if (std::holds_alternative<::tpy::BigInt>(t.value)) {
+        const auto& __t = std::get<::tpy::BigInt>(t.value);
         // return 0
         return ::tpy::BigInt(0);
     // else:
     } else {
-        const auto& __t = std::get<std::vector<Tree>>(t.data);
+        const auto& __t = std::get<std::vector<Tree>>(t.value);
         // result = 0
         ::tpy::BigInt result = ::tpy::BigInt(0);
         // for child in t:
@@ -21,7 +21,7 @@ namespace tpyapp::main {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& child = *__beg_0;
+            auto&& child = *__beg_0;
             // d = depth(child)
             Tree __tmp_1 = child;
             ::tpy::BigInt d = depth(__tmp_1);

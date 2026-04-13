@@ -51,49 +51,49 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
 
 struct IntTree {
     using variant_type = std::variant<::tpy::BigInt, std::vector<IntTree>>;
-    variant_type data;
+    variant_type value;
 
     IntTree() = default;
     template<typename T>
         requires std::constructible_from<variant_type, T&&>
-    IntTree(T&& v) : data(std::forward<T>(v)) {}
+    IntTree(T&& v) : value(std::forward<T>(v)) {}
 
     bool operator==(const IntTree&) const = default;
 
     friend std::ostream& operator<<(std::ostream& os, const IntTree& v) {
-        ::tpy::detail::print_element(os, v.data);
+        ::tpy::detail::print_element(os, v.value);
         return os;
     }
 };
 struct JsonValue {
     using variant_type = std::variant<::tpy::ordered_map<std::string, JsonValue>, ::tpy::BigInt, std::string>;
-    variant_type data;
+    variant_type value;
 
     JsonValue() = default;
     template<typename T>
         requires std::constructible_from<variant_type, T&&>
-    JsonValue(T&& v) : data(std::forward<T>(v)) {}
+    JsonValue(T&& v) : value(std::forward<T>(v)) {}
 
     bool operator==(const JsonValue&) const = default;
 
     friend std::ostream& operator<<(std::ostream& os, const JsonValue& v) {
-        ::tpy::detail::print_element(os, v.data);
+        ::tpy::detail::print_element(os, v.value);
         return os;
     }
 };
 struct Tree {
     using variant_type = std::variant<Leaf, std::vector<Tree>>;
-    variant_type data;
+    variant_type value;
 
     Tree() = default;
     template<typename T>
         requires std::constructible_from<variant_type, T&&>
-    Tree(T&& v) : data(std::forward<T>(v)) {}
+    Tree(T&& v) : value(std::forward<T>(v)) {}
 
     bool operator==(const Tree&) const = default;
 
     friend std::ostream& operator<<(std::ostream& os, const Tree& v) {
-        ::tpy::detail::print_element(os, v.data);
+        ::tpy::detail::print_element(os, v.value);
         return os;
     }
 };

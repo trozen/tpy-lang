@@ -1,0 +1,1 @@
+main.py:2: error: Types form an infinite-size cycle: field 'left' in 'BinOp' references 'Expr' without indirection -- use Box[Expr] or another indirecting container

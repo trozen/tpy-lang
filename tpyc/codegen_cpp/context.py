@@ -587,6 +587,57 @@ class CodeGenContext:
     reexported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
     reexported_enums: dict[str, tuple[str, str]] = field(default_factory=dict)
 
+    # --- Recursive union metadata (populated from module.recursive_union_names) ---
+    recursive_union_names: set[str] = field(default_factory=set)
+    # Reverse map: frozenset(union members) -> alias name, for recursive aliases only
+    _recursive_union_members: dict[frozenset, str] = field(default_factory=dict)
+
+    def init_recursive_unions(self, names: set[str],
+                              type_aliases: 'dict[str, tuple[TpyType, object]]') -> None:
+        """Build codegen metadata for recursive union aliases."""
+        from ..typesys import UnionType
+        self.recursive_union_names = names
+        self._recursive_union_members = {}
+        for name in names:
+            entry = type_aliases.get(name)
+            if entry is None:
+                continue
+            typ = entry[0]
+            if isinstance(typ, UnionType):
+                self._recursive_union_members[frozenset(typ.members)] = name
+
+    def is_recursive_union(self, typ: 'TpyType') -> bool:
+        """Check if a type is a recursive union (needs wrapper struct in C++)."""
+        from ..typesys import UnionType
+        if not isinstance(typ, UnionType):
+            return False
+        return frozenset(typ.members) in self._recursive_union_members
+
+    def recursive_union_name(self, typ: 'TpyType') -> str | None:
+        """Get the wrapper struct name for a recursive union, or None."""
+        from ..typesys import UnionType
+        if not isinstance(typ, UnionType):
+            return None
+        return self._recursive_union_members.get(frozenset(typ.members))
+
+    def variant_data_expr(self, var_expr: str, typ: 'TpyType | None') -> str:
+        """Add .value suffix for recursive union wrapper structs."""
+        if typ is not None and self.is_recursive_union(typ):
+            return f"{var_expr}.value"
+        return var_expr
+
+    def is_ptr_variant_union(self, typ: 'TpyType') -> bool:
+        """Check if a union type uses pointer-variant representation.
+
+        Returns True for non-value unions (e.g. Dog | Cat with records)
+        that are NOT recursive union aliases. Recursive unions use wrapper
+        structs which are value types, so they skip pointer-variant form.
+        """
+        from ..typesys import UnionType
+        return (isinstance(typ, UnionType)
+                and typ.uses_pointer_repr()
+                and not self.is_recursive_union(typ))
+
     def reset_scope(self) -> None:
         """Reset all per-scope state for a new function/method/module-init body."""
         self.declared_vars = set()

@@ -1,0 +1,1 @@
+isinstance on Box.get() checks against Ptr proxy in CPython, not the stored value

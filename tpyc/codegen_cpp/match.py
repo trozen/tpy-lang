@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, BoolType, FixedIntType, NamedType, OptionalType,
-    StrType, StringType, StrViewType, PendingStrType, UnionType, RecursiveUnionType, EnumType,
+    StrType, StringType, StrViewType, PendingStrType, UnionType, EnumType,
     LiteralType,
     unwrap_readonly,
 )
@@ -171,9 +171,9 @@ class MatchGenerator:
     ) -> None:
         """Generate switch (__match_subject.index()) for union subjects."""
         inner = INDENT * (self.ctx.indent_level + 1)
-        is_ptr_var = subject_type.uses_pointer_repr()
+        is_ptr_var = self.ctx.is_ptr_variant_union(subject_type)
         # Recursive union wrapper: access .data for variant operations
-        data_sfx = ".data" if isinstance(subject_type, RecursiveUnionType) else ""
+        data_sfx = ".value" if self.ctx.is_recursive_union(subject_type) else ""
         out.write(f"{indent}switch (__match_subject{data_sfx}.index()) {{\n")
 
         for i, case in enumerate(stmt.cases):
@@ -544,9 +544,9 @@ class MatchGenerator:
         end_label = f"__match_end_{self.ctx.match_counter}"
         inner = INDENT * (self.ctx.indent_level + 1)
         inner2 = INDENT * (self.ctx.indent_level + 2)
-        is_ptr_var = subject_type.uses_pointer_repr()
+        is_ptr_var = self.ctx.is_ptr_variant_union(subject_type)
         # Recursive union wrapper: access .data for variant operations
-        data_sfx = ".data" if isinstance(subject_type, RecursiveUnionType) else ""
+        data_sfx = ".value" if self.ctx.is_recursive_union(subject_type) else ""
 
         # Collect arms per variant type index.
         # Each entry: (case, pattern_for_this_type, as_name, as_raw_name)

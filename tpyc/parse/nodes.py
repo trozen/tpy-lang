@@ -1152,6 +1152,8 @@ class TpyModule:
     parse_warnings: list[ParseWarning] = field(default_factory=list)
     # Module-level # tpy: directives
     directives: ModuleDirectives = field(default_factory=ModuleDirectives)
+    # Union type aliases that need wrapper-struct representation (self- or mutually-recursive)
+    recursive_union_names: set[str] = field(default_factory=set)
 
     def all_records(self) -> list[TpyRecord]:
         """All records including nested, in definition order (depth-first)."""

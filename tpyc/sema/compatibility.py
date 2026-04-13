@@ -13,7 +13,7 @@ from ..typesys import (
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, UnknownElementType,
     SpanType, StrType, StringType, StrViewType, LiteralType, BytesType, ByteArrayType, BytesViewType, FloatType, Float32Type,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
-    NamedType, TypeParamRef, NoneType, OptionalType, UnionType, RecursiveUnionType,
+    NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
     is_protocol_type, unwrap_readonly, unwrap_optional_own,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     FnType, CallableType, RefType, unwrap_ref_type,
@@ -147,22 +147,23 @@ class TypeCompatibility:
         return result
 
     def _resolve_recursive_refs(self, typ: TpyType) -> TpyType:
-        """Resolve NamedType self-references to RecursiveUnionType.
+        """Resolve NamedType references to recursive union aliases.
 
         Handles both bare NamedType("Tree") and NamedType nested inside
-        containers (e.g. list[NamedType("Tree")] -> list[RecursiveUnionType]).
-        Safe from infinite recursion: RecursiveUnionType.inner_types() = ().
-        Only walks into inner types if there are recursive union aliases.
+        containers (e.g. list[NamedType("Tree")] -> list[UnionType(...)]).
+        Treats recursive union types as opaque (does not recurse into their
+        members) to prevent infinite expansion of self-referencing placeholders.
         """
         if isinstance(typ, NamedType) and not typ.is_protocol and not typ.is_module_type:
-            alias = self.ctx.registry.get_type_alias(typ.name)
-            if isinstance(alias, RecursiveUnionType):
-                return alias
-        # Only recurse into inner types if there are recursive union aliases
-        # registered. Avoids any side effects from map_inner_types on
-        # non-recursive types (e.g. UnionType.with_inner_types calls make_union
-        # which can reorder members).
-        if not any(isinstance(a, RecursiveUnionType) for a in self.ctx.registry.type_aliases.values()):
+            if typ.name in self.ctx.recursive_union_names:
+                alias = self.ctx.registry.get_type_alias(typ.name)
+                if alias is not None:
+                    return alias
+        if not self.ctx.recursive_union_names:
+            return typ
+        # Don't recurse into recursive union aliases -- their NamedType
+        # placeholders are structural and must not be expanded.
+        if isinstance(typ, UnionType) and self.ctx.is_recursive_union(typ):
             return typ
         inner = typ.inner_types()
         if not inner:
@@ -184,10 +185,9 @@ class TypeCompatibility:
         Returns Coercion or None on success, CompatError on failure.
         """
         # Resolve NamedType self-references from recursive union members.
-        # e.g. NamedType("Tree") -> RecursiveUnionType, and also inside
-        # containers: list[NamedType("Tree")] -> list[RecursiveUnionType].
-        # Safe because RecursiveUnionType.inner_types() returns () so
-        # map_inner_types won't recurse into it.
+        # e.g. NamedType("Tree") -> UnionType, and also inside containers:
+        # list[NamedType("Tree")] -> list[UnionType(...)].
+        # Uses seen-set guard to prevent infinite recursion.
         actual = self._resolve_recursive_refs(actual)
         expected = self._resolve_recursive_refs(expected)
 
@@ -465,6 +465,21 @@ class TypeCompatibility:
                     record_info, covariant, actual, expected
                 ):
                     return None
+
+        # Union-member coercion through generic containers:
+        # Container[Lit] -> Container[Expr] when Expr is a recursive union alias
+        # and Lit is a valid member. Works for any generic container.
+        # The C++ Expr wrapper struct's template constructor handles implicit
+        # conversion from Lit to Expr, so Box<Expr>(Lit{...}) compiles.
+        if (isinstance(actual, NamedType) and isinstance(expected, NamedType)
+                and actual.name == expected.name
+                and actual.type_args and expected.type_args
+                and len(actual.type_args) == len(expected.type_args)
+                and actual.type_args != expected.type_args):
+            if self._check_union_member_type_args(
+                actual, expected, context, loc, source_expr, is_return, coercion_ctx
+            ):
+                return None
 
         # Allow T -> Own[T] coercion (ownership transfer)
         if isinstance(expected, OwnType):
@@ -935,6 +950,42 @@ class TypeCompatibility:
             return False
         bound = self.type_ops.get_type_param_bound(typ.name)
         return bound is not None and isinstance(bound, NamedType) and bound.qualified_name() == "tpy.ValueType"
+
+    def _check_union_member_type_args(
+        self, actual: NamedType, expected: NamedType,
+        context: str, loc: object,
+        source_expr: 'TpyExpr | None',
+        is_return: bool, coercion_ctx: str,
+    ) -> bool:
+        """Check Container[Lit] -> Container[Expr] union-member coercion.
+
+        Returns True if all differing type args have expected = recursive union
+        and actual is a valid member of that union.
+        """
+        for a_arg, e_arg in zip(actual.type_args, expected.type_args):
+            if a_arg == e_arg:
+                continue
+            if not isinstance(a_arg, TpyType) or not isinstance(e_arg, TpyType):
+                return False
+            # Resolve NamedType("Expr") -> union type alias (recursive only)
+            e_resolved = self._resolve_recursive_refs(e_arg) if isinstance(e_arg, NamedType) else e_arg
+            if isinstance(e_resolved, UnionType) and self.ctx.is_recursive_union(e_resolved):
+                result = self._check_compat(
+                    a_arg, e_resolved, context, loc, None, is_return, coercion_ctx,
+                )
+                if isinstance(result, CompatError):
+                    return False
+            else:
+                return False
+        # Rewrite expression type so codegen emits correct template args
+        # (e.g. Box<Expr> not Box<Lit>)
+        if source_expr is not None:
+            self.ctx.set_expr_type(source_expr, expected)
+            # Also rewrite call_type on constructor calls (codegen uses this
+            # for template args: Box<Expr> vs Box<Lit>)
+            if isinstance(source_expr, TpyCall) and source_expr.call_type is not None:
+                source_expr.call_type = expected
+        return True
 
     def _check_covariant_args(
         self, record_info: 'RecordInfo', covariant: set[str],

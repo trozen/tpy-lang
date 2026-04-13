@@ -1,0 +1,1 @@
+match/case on Box.get() returns a Ptr proxy in CPython, not the actual value -- isinstance checks in patterns fail

@@ -13,8 +13,8 @@ from ..typesys import (
     ArrayType, ListType, PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
     NoneType, NamedType, StrType, StringType, StrViewType, BytesType, BytesViewType, STR, BYTES, TupleType, VoidType,
     INT32, BIGINT, FLOAT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
-    ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, RecursiveUnionType, LiteralType,
-    variant_data_expr, resolve_int_literals,
+    ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType,
+    resolve_int_literals,
     error_return_to_cpp, qualify_exception_name, is_return_exception,
     unwrap_ref_type, RefType,
 )
@@ -152,7 +152,7 @@ class StatementGenerator:
                 if isinstance(ptype, ReadonlyType):
                     self.ctx.const_indirect_locals.add(pname)
             # Non-value union params are pointer variants (variant<T*...>)
-            elif isinstance(actual, UnionType) and actual.uses_pointer_repr():
+            elif self.ctx.is_ptr_variant_union(actual):
                 self.ctx.ptr_variant_locals.add(pname)
                 if isinstance(ptype, ReadonlyType):
                     self.ctx.const_indirect_locals.add(pname)
@@ -348,8 +348,8 @@ class StatementGenerator:
                 # Property getter with pointer-repr return: return field directly
                 # (C++ return is std::optional<T>& / std::variant<A,B>&, not T* / variant<T*>)
                 if (self.ctx.in_property_getter
-                        and isinstance(ret_type, (OptionalType, UnionType))
-                        and ret_type.uses_pointer_repr()):
+                        and ((isinstance(ret_type, OptionalType) and ret_type.uses_pointer_repr())
+                             or self.ctx.is_ptr_variant_union(ret_type))):
                     ret_expr = self.expressions.gen_expr(ret_value)
                     return self._make_return(indent, ret_expr)
                 if isinstance(ret_type, OptionalType):
@@ -377,7 +377,7 @@ class StatementGenerator:
                     # Take address of lvalue
                     return self._make_return(indent, f"&({ret_expr})")
                 # Pointer-variant union return: return variant<T*...>
-                if isinstance(ret_type, UnionType) and ret_type.uses_pointer_repr():
+                if self.ctx.is_ptr_variant_union(ret_type):
                     if isinstance(ret_value, TpyNoneLiteral):
                         return self._make_return(indent, "std::monostate{}")
                     # Check if source is a ptr-variant AND not currently narrowed.
@@ -487,19 +487,21 @@ class StatementGenerator:
             return ""  # Builtin module - no init needed
         return None
 
-    @staticmethod
-    def _is_plain_nonvalue(t: TpyType) -> bool:
+    def _is_plain_nonvalue(self, t: TpyType) -> bool:
         """True for non-value types that need indirection (list, dict, record, etc.).
 
         Unwraps Own[T] and excludes pointer-repr Optional and Union which
-        have their own codegen paths.
+        have their own codegen paths. Recursive union wrappers are value types.
         """
         check = t.wrapped if isinstance(t, OwnType) else t
         if check.is_value_type():
             return False
         if isinstance(check, OptionalType) and check.uses_pointer_repr():
             return False
-        if isinstance(check, UnionType) and check.uses_pointer_repr():
+        if self.ctx.is_ptr_variant_union(check):
+            return False
+        # Recursive union wrapper structs are value types
+        if self.ctx.is_recursive_union(check):
             return False
         return True
 
@@ -1037,7 +1039,7 @@ class StatementGenerator:
             fi = expr.resolved_function_info
             if fi is not None:
                 rt = fi.return_type
-                if isinstance(rt, UnionType) and rt.uses_pointer_repr():
+                if self.ctx.is_ptr_variant_union(rt):
                     return True
             return False
         return False
@@ -1255,7 +1257,7 @@ class StatementGenerator:
                 return f"{indent}{trait}<{cpp_type}> {cpp_name} = {init_expr};\n"
 
         # Pointer-variant locals for non-value unions
-        if isinstance(target_type, UnionType) and target_type.uses_pointer_repr():
+        if self.ctx.is_ptr_variant_union(target_type):
             return self._gen_ptr_variant_local_init(stmt, target_type, cpp_name, indent)
 
         # Indirection for non-value types in function/method scope
@@ -1425,7 +1427,7 @@ class StatementGenerator:
                 value = self.expressions._maybe_move(stmt.value, value)
                 return f"{indent}{target} = {value};\n"
             # Union field: pointer-variant source -> value-variant field conversion
-            if isinstance(target_type, UnionType) and target_type.uses_pointer_repr():
+            if self.ctx.is_ptr_variant_union(target_type):
                 target = self.expressions.gen_expr(stmt.target)
                 value = self.expressions.gen_expr(stmt.value, target_type)
                 if self._is_ptr_variant_source(stmt.value):
@@ -1736,7 +1738,8 @@ class StatementGenerator:
             # Non-value union params and locals are mutable.
             var_decl_type = self.ctx.var_types.get(var_name)
             is_const = (var_name in self.ctx.current_func_params
-                        and var_decl_type is not None and var_decl_type.is_value_type())
+                        and var_decl_type is not None
+                        and (var_decl_type.is_value_type() or self.ctx.is_recursive_union(var_decl_type)))
             qualifier = "const auto&" if is_const else "auto&"
             # Pointer-variant unions: *std::get<T*>(var) or *std::get<const T*>(var)
             if var_name in self.ctx.ptr_variant_locals:
@@ -1744,7 +1747,7 @@ class StatementGenerator:
                 out.write(f"{inner_indent}{qualifier} {local_name} = *std::get<{const_pfx}{cpp_type}*>({var_ref});\n")
             else:
                 # Recursive union wrapper: access .data for variant operations
-                get_ref = variant_data_expr(var_ref, var_decl_type) if var_decl_type else var_ref
+                get_ref = self.ctx.variant_data_expr(var_ref, var_decl_type) if var_decl_type else var_ref
                 out.write(f"{inner_indent}{qualifier} {local_name} = std::get<{cpp_type}>({get_ref});\n")
             saved[var_name] = self.ctx.narrowed_vars.get(var_name)
             self.ctx.narrowed_vars[var_name] = local_name

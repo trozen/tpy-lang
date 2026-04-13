@@ -2056,6 +2056,9 @@ class UnionType(TpyType):
         return any(isinstance(m, (NoneType, VoidType)) for m in self.members)
 
     def is_value_type(self) -> bool:
+        # Note: recursive union aliases (type Tree = int | list[Tree]) have
+        # non-value members but their C++ wrapper struct IS a value type.
+        # Codegen handles this via ctx.is_recursive_union() overrides.
         return all(m.is_value_type() for m in self.members)
 
     def is_send(self) -> bool:
@@ -2142,51 +2145,6 @@ class UnionType(TpyType):
 
     def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
         return make_union(*types)
-
-
-@dataclass(frozen=True)
-class RecursiveUnionType(UnionType):
-    """A self-referencing union type alias (e.g. type JsonValue = str | list[JsonValue]).
-
-    Compiles to a C++ wrapper struct instead of a using alias.
-    Members may contain NamedType(self.name) as self-references
-    inside indirecting containers (list, dict, set, Optional, Box, Ptr).
-
-    Inherits from UnionType so all existing isinstance(typ, UnionType) checks
-    in sema (isinstance narrowing, match/case dispatch, type compatibility) work
-    automatically.
-
-    inner_types() returns () to prevent infinite recursion in map_inner_types,
-    _resolve_alias, and all other recursive type walkers. The self-referencing
-    NamedType placeholders inside members must not be expanded.
-    """
-    name: str = ""
-    type_params: tuple[str, ...] = ()  # reserved for future generic recursive aliases
-
-    def to_cpp(self) -> str:
-        return self.name
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def uses_pointer_repr(self) -> bool:
-        return False
-
-    def inner_types(self) -> tuple['TpyType', ...]:
-        return ()
-
-    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return self
-
-    def __str__(self) -> str:
-        return self.name
-
-
-def variant_data_expr(var_expr: str, typ: 'TpyType') -> str:
-    """Access the underlying std::variant. Adds '.data' for recursive unions."""
-    if isinstance(typ, RecursiveUnionType):
-        return f"{var_expr}.data"
-    return var_expr
 
 
 def _contains_self_reference(typ: 'TpyType', name: str) -> bool:

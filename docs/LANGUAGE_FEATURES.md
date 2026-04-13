@@ -2777,9 +2777,20 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Emits C++ `using Shape = std::variant<Circle, Rect>;` in the header
   - `isinstance(x, Shape)` where `Shape` is a type alias is not yet supported; isinstance on concrete member types only
   - Type aliases can be imported cross-module: `from shapes import Shape`
-  - **Recursive type aliases**: `type Tree = int | list[Tree]` -- self-referencing union aliases compile to a C++ wrapper struct with a `.data` variant field and a forwarding constructor. Safety: every recursive path must go through an indirecting container (`list`, `dict`, `set`, `Optional`, `Box`, `Ptr`); direct recursion (`type Bad = int | Bad`) and fixed-size recursion (`type Bad = str | tuple[Bad, int]`) are rejected. The alias name is callable as a constructor: `Tree(42)`. isinstance narrowing and match/case work on recursive unions.
+  - **Recursive type aliases**: `type Tree = int | list[Tree]` -- self-referencing union aliases compile to a C++ wrapper struct with a `.value` variant field and a forwarding constructor. Safety: every recursive path must go through an indirecting container (`list`, `dict`, `set`, `Optional`, `Box`, `Ptr`); direct recursion (`type Bad = int | Bad`) and fixed-size recursion (`type Bad = str | tuple[Bad, int]`) are rejected. The alias name is callable as a constructor: `Tree(42)`. isinstance narrowing and match/case work on recursive unions.
   - **Annotation-driven inference**: Nested list and dict literals infer their element types from the target annotation. `x: Tree = [1, [3, 4]]` infers `[3, 4]` as `list[Tree]` rather than `list[int]`; `d: JsonValue = {"a": 1, "b": {"c": 2}}` infers the inner dict as `dict[str, JsonValue]`. Works with variable annotations, `list[Tree]`/`dict[str, JsonValue]` annotations, and function parameter types. Supports arbitrary nesting depth.
-  - **Limitations**: Generic recursive aliases (`type Tree[T] = T | list[Tree[T]]`) are not yet supported. Mutual recursion across type aliases and classes (D20) is not yet supported.
+  - **Mutual recursion** (D20): Union aliases can reference classes whose fields reference back through indirecting containers (`Box`, `list`, `dict`, `set`, `Optional`, `Ptr`). This enables AST-style data structures:
+    ```python
+    from tplib import Box
+    type Expr = Lit | BinOp
+    class Lit:
+        value: int
+    class BinOp:
+        left: Box[Expr]
+        right: Box[Expr]
+    ```
+    The compiler detects cross-type cycles, validates indirection, and generates a C++ wrapper struct that can be forward-declared. `Box(Lit(1))` auto-coerces to `Box[Expr]` via the wrapper's implicit constructor. Works with `isinstance`, `match`/`case`, and mixed unions (primitives + records). Both source orderings supported (alias first or classes first). Cross-module mutual recursion is not yet supported.
+  - **Limitations**: Generic recursive aliases (`type Tree[T] = T | list[Tree[T]]`) are not yet supported.
   - **Not yet supported**: `isinstance(x, (A, B))` tuple form, `isinstance(x, Protocol)` on concrete-typed variables
   - **Working**: `match`/`case` pattern matching on union subjects (see Control Flow > Other)
   - **Working**: `@overload` dispatch flattening -- Python-standard `@overload` stubs generate separate C++ overloads from a single implementation function. Stubs declare the per-type signatures; the implementation body's isinstance/match checks are resolved at compile time via dead branch elimination. Each overload compiles to a clean, specialized function with no runtime dispatch overhead.

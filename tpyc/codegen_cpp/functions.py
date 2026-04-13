@@ -307,7 +307,16 @@ class FunctionGenerator:
                     part += f" = {self.default_to_cpp(defaults[i], ptype)}"
                 parts.append(part)
                 continue
-            if (reassigned_params and pname in reassigned_params
+            # Recursive union wrapper structs are value types -- render as
+            # const ref, bypassing UnionType.to_cpp_param() which would
+            # generate pointer-variant form.
+            if isinstance(own, UnionType) and self.ctx.is_recursive_union(own):
+                cpp_type = self.types.type_to_cpp(own)
+                if isinstance(ptype, OwnType):
+                    part = f"{cpp_type}&& {cpp_pname}"
+                else:
+                    part = f"const {cpp_type}& {cpp_pname}"
+            elif (reassigned_params and pname in reassigned_params
                     and ptype.param_needs_copy_for_reassign()):
                 # Rename param so the body can declare a mutable local with the original name
                 part = ptype.to_cpp_param(f"__param_{cpp_pname}")
@@ -317,13 +326,13 @@ class FunctionGenerator:
                     # non-const even in const methods.
                     part = ptype.to_cpp_param(cpp_pname)
                 elif (use_readonly_params
-                        and isinstance(own, UnionType) and own.uses_pointer_repr()):
+                        and self.ctx.is_ptr_variant_union(own)):
                     part = f"{own.to_cpp_const_ptr_variant()} {cpp_pname}"
                 else:
                     part = ptype.to_cpp_const_param(cpp_pname)
             elif (mutated_params is not None and i not in mutated_params
                     and (ptype.is_ref_param()
-                         or (isinstance(own, UnionType) and own.uses_pointer_repr()))
+                         or self.ctx.is_ptr_variant_union(own))
                     and not isinstance(unwrap_ref_type(ptype), TypeParamRef)
                     and not (reassigned_params and pname in reassigned_params)):
                 # Param is provably not mutated and not rebound -- safe to use const.
@@ -332,7 +341,7 @@ class FunctionGenerator:
                 # to avoid conversion issues at call sites. Deep const
                 # (variant<const T*...>) is used only for @readonly params
                 # where call-site codegen generates the const variant type.
-                if isinstance(own, UnionType) and own.uses_pointer_repr():
+                if self.ctx.is_ptr_variant_union(own):
                     if use_readonly_params:
                         part = f"{own.to_cpp_const_ptr_variant()} {cpp_pname}"
                     else:
@@ -434,9 +443,15 @@ class FunctionGenerator:
                         part = f"{base_type}& {cpp_pname}"
                 else:
                     own = unwrap_readonly(ptype)
-                    if const_params and mutated_params is not None and i in mutated_params:
+                    if isinstance(own, UnionType) and self.ctx.is_recursive_union(own):
+                        cpp_type = self.types.type_to_cpp(own)
+                        if isinstance(ptype, OwnType):
+                            part = f"{cpp_type}&& {cpp_pname}"
+                        else:
+                            part = f"const {cpp_type}& {cpp_pname}"
+                    elif const_params and mutated_params is not None and i in mutated_params:
                         part = ptype.to_cpp_param(cpp_pname)
-                    elif const_params and use_readonly_params and isinstance(own, UnionType) and own.uses_pointer_repr():
+                    elif const_params and use_readonly_params and self.ctx.is_ptr_variant_union(own):
                         part = f"{own.to_cpp_const_ptr_variant()} {cpp_pname}"
                     elif const_params:
                         part = ptype.to_cpp_const_param(cpp_pname)
@@ -496,7 +511,8 @@ class FunctionGenerator:
             # std::expected can't hold references. For non-value types
             # (where ret is T&), use val_or_ref<T> which stores by pointer.
             inner = unwrap_ref_type(return_type).to_cpp()
-            if not return_type.is_value_type() and not isinstance(return_type, VoidType):
+            if (not return_type.is_value_type() and not isinstance(return_type, VoidType)
+                    and not self.ctx.is_recursive_union(return_type)):
                 inner = f"::tpy::val_or_ref<{inner}>"
             return f"std::expected<{inner}, {cpp_error}>"
         return ret
@@ -521,7 +537,7 @@ class FunctionGenerator:
                     continue
                 unwrapped = unwrap_readonly(unwrap_ref_type(ptype))
                 if ((unwrapped.is_ref_param()
-                     or (isinstance(unwrapped, UnionType) and unwrapped.uses_pointer_repr()))
+                     or self.ctx.is_ptr_variant_union(unwrapped))
                         and not isinstance(unwrapped, TypeParamRef)):
                     result.add(pname)
             return result
@@ -531,7 +547,7 @@ class FunctionGenerator:
             inner = unwrap_ref_type(ptype)
             if (i not in mutated_params
                     and (inner.is_ref_param()
-                         or (isinstance(inner, UnionType) and inner.uses_pointer_repr()))
+                         or self.ctx.is_ptr_variant_union(inner))
                     and not isinstance(inner, TypeParamRef)
                     and not (reassigned_params and pname in reassigned_params)):
                 result.add(pname)
@@ -1196,7 +1212,7 @@ class FunctionGenerator:
             if isinstance(inner, OptionalType) and inner.uses_pointer_repr():
                 storage = f"std::optional<{inner.inner.to_cpp()}>"
                 ret_type = f"const {storage}&" if const else f"{storage}&"
-            elif isinstance(inner, UnionType) and inner.uses_pointer_repr():
+            elif self.ctx.is_ptr_variant_union(inner):
                 members_cpp = ", ".join(m.to_cpp() for m in inner.members)
                 ret_type = f"const std::variant<{members_cpp}>&" if const else f"std::variant<{members_cpp}>&"
             else:
@@ -1417,7 +1433,8 @@ class FunctionGenerator:
         self.ctx.emit_source_comment(out, stmt.loc)
         var_type = self._resolve_global_type(stmt)
         cpp_type = self._global_cpp_type(var_type, stmt)
-        if var_type.is_value_type():
+        is_value = var_type.is_value_type() or self.ctx.is_recursive_union(var_type)
+        if is_value:
             # C++ primitives need explicit zero-init; class types (BigInt, string_view) don't
             init = "{}" if isinstance(var_type, (Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType)) else ""
             out.write(f"{cpp_type} {stmt.name}{init};\n")
@@ -1428,7 +1445,8 @@ class FunctionGenerator:
         """Generate an extern declaration for a global variable in header file."""
         var_type = self._resolve_global_type(stmt)
         cpp_type = self._global_cpp_type(var_type, stmt)
-        if var_type.is_value_type():
+        is_value = var_type.is_value_type() or self.ctx.is_recursive_union(var_type)
+        if is_value:
             out.write(f"extern {cpp_type} {stmt.name};\n")
         else:
             out.write(f"extern {cpp_type}* {stmt.name};\n")
@@ -1499,7 +1517,7 @@ class FunctionGenerator:
             self.ctx.var_types = {name: typ for name, typ in global_types.items() if typ is not None}
             self.ctx.pointer_locals = {
                 name for name, typ in global_types.items()
-                if typ and not typ.is_value_type()
+                if typ and not typ.is_value_type() and not self.ctx.is_recursive_union(typ)
             }
         self.ctx.slots.reset(global_scope=True)
         scan = self.ctx.analyzer.top_level_scan_result
