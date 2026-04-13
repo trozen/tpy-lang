@@ -106,6 +106,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Documentation
 - language restriction documentation
+- `tpyc --print-types`: internal modules (`tpy._bootstrap.*`, `tpy._builtins.*`, `tpy._core.*`, `tpy._typing`) are shown as top-level sections because that's where the real class/function bodies live. Users import names like `Int32`, `Own`, `Span` from `tpy` (via re-exports in `tpy/__init__.py`), so seeing them under `tpy._core._types` is both noisy and slightly misleading (the import path is "wrong"). Hiding the `_*` modules outright removes visibility of every builtin type -- fix properly requires walking re-export chains: when `tpy/__init__.py` does `from ._core import Int32`, attribute `Int32` to the `tpy` section (with a note on where it's defined) and hide the underlying `_core/_types` entry. Non-trivial: needs import resolution across the package tree in `tpyc/dump_types.py`.
 
 ## Type System
 - `is_trivially_destructible()`: current approximation uses `is_value_type() and not is_expensive_copy()`, which is conservative for non-value types (e.g. Span, SpanIter are trivially destructible but return False). Proper implementation: primitives/views/pointers always trivial; records trivial if no `__del__` and all fields/bases are trivially destructible; tuples/optionals trivial if elements are. Used by `del` codegen to elide move-sink.

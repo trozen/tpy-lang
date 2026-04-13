@@ -454,7 +454,14 @@ command). A typical form:
 tpyc -x path/to/snippet.py           # compile + run
 tpyc --dump-code path/to/snippet.py  # print generated C++
 tpyc -xO path/to/snippet.py          # release build
+tpyc --print-types                   # list every public type/function from lib/tpy/
 ```
+
+`tpyc --print-types` dumps a markdown reference with a TOC and every
+record/protocol/function signature available in the `tpy`, `tplib`,
+`typing`, and standard-library stubs. Useful when you need to confirm a
+method exists, check a signature, or look up a protocol before writing
+code. Pipe to `glow -p` for a nice terminal view.
 
 Diagnostics are line-precise and usually name the fix. When a type error
 is confusing, inspect the generated C++ with `--dump-code` -- the mapping
@@ -487,6 +494,11 @@ fully-annotated equivalent and leave a comment noting the dependency.
 
 For the full language reference, see `TPY_LANGUAGE_FEATURES.md` (shipped
 alongside this file). Only trust sections marked **Working**.
+
+For the exact list of types, functions, and protocols available from
+`tpy`, `tplib`, `typing`, and the standard-library stubs, run `tpyc
+--print-types`. This is the authoritative surface -- if it's not
+there, it's not exposed.
 
 Topics worth looking up there when you need depth beyond this guide:
 
