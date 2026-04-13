@@ -3,6 +3,14 @@
  *
  * Template-based overflow-checked operations for all fixed-width integer types.
  * Supports Int8/16/32/64 and UInt8/16/32/64 with Python semantics.
+ *
+ * The checked-arith helpers are marked constexpr so that `Final[IntN]`
+ * initializers that reference other Finals can be constant-evaluated. The
+ * overflow/divide-by-zero panic branches construct a std::string and call
+ * tpy_panic (neither constexpr); this is permitted under C++23 P2448 as long
+ * as those branches are not reached during constant evaluation. When they are
+ * reached (e.g. `Final[Int32] = -INT32_MIN`), the compiler rejects the call,
+ * turning a would-be runtime panic into a compile-time error.
  */
 
 #pragma once

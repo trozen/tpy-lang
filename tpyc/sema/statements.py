@@ -1868,25 +1868,41 @@ class StatementAnalyzer:
                             f"name '{name}' is a parameter and cannot be declared global", stmt)
             self.ctx.global_declarations.add(name)
 
-    def _is_constant_expr(self, expr: TpyExpr) -> bool:
+    def _is_constant_expr(self, expr: TpyExpr, target_type: 'TpyType | None' = None) -> bool:
         """Check if an expression is a compile-time constant for Final globals.
 
-        Accepts: literals, unary ops on literals (e.g. -42, not True),
-        references to other Final globals, and @call_macro expansions that
-        themselves reduce to a constant expression.
-        Does not accept arithmetic (checked ops aren't constexpr).
+        Accepts: literals, unary ops on constant operands, references to other
+        Final globals, and @call_macro expansions that themselves reduce to a
+        constant expression.
+
+        When `target_type` is one of FixedIntType, BigIntType, FloatType,
+        Float32Type, BoolType, also accepts TpyBinOp with constant operands.
+        For FixedInt/Float/Bool codegen emits constexpr ops (the initializer
+        lives in an inline constexpr variable). For BigInt the Final is
+        runtime-initialized (extern const), so constexpr is not required --
+        but we still require constant operands so no user input is read.
         """
         # Unwrap compile-time macro expansions: a macro that emits a literal
         # is, by construction, a compile-time constant.
         macro_exp = getattr(expr, "macro_expansion", None)
         if macro_exp is not None:
-            return self._is_constant_expr(macro_exp)
+            return self._is_constant_expr(macro_exp, target_type)
         if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral)):
             return True
         if isinstance(expr, TpyUnaryOp):
-            return self._is_constant_expr(expr.operand)
+            return self._is_constant_expr(expr.operand, target_type)
         if isinstance(expr, TpyName) and expr.name in self.ctx.analyzed_finals:
             return True
+        if isinstance(expr, TpyBinOp) and isinstance(
+                target_type, (FixedIntType, BigIntType, FloatType, Float32Type, BoolType)):
+            # Structural check only: the init expression is type-checked later
+            # (see call to analyze_expr_with_hint in the Final path below), which
+            # rejects type mismatches. For FixedInt/Float/Bool codegen emits
+            # constexpr ops; BigInt Finals are runtime-initialized (extern const)
+            # so constexpr is not required but a constant expression is still
+            # needed to evaluate the initializer without user inputs.
+            return (self._is_constant_expr(expr.left, target_type)
+                    and self._is_constant_expr(expr.right, target_type))
         return False
 
     def _check_nonvalue_rebinding(self, name: str, node: TpyStmt) -> None:
@@ -2125,7 +2141,7 @@ class StatementAnalyzer:
                     f"only primitive types (int, float, bool, str, StrView, Char, IntN) are allowed",
                     stmt
                 )
-            if not self._is_constant_expr(stmt.init):
+            if not self._is_constant_expr(stmt.init, stmt.type):
                 # Give a specific hint for imported names
                 if (isinstance(stmt.init, TpyName)
                         and stmt.init.name in self.ctx.user_imported_variables):

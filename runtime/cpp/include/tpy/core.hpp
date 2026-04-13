@@ -152,33 +152,33 @@ void destroy_at(T* p) {
  * Checked true division for floats -- panics on zero divisor
  * to match Python's ZeroDivisionError semantics.
  */
-inline double truediv(double a, double b) {
+inline constexpr double truediv(double a, double b) {
     if (b == 0.0) tpy_panic("Division by zero");
     return a / b;
 }
 
-inline double floordiv(double a, double b) {
+inline constexpr double floordiv(double a, double b) {
     if (b == 0.0) tpy_panic("Division by zero");
     return std::floor(a / b);
 }
 
-inline double fmod(double a, double b) {
+inline constexpr double fmod(double a, double b) {
     if (b == 0.0) tpy_panic("Division by zero");
     return std::fmod(a, b);
 }
 
 // Float32 arithmetic helpers
-inline float truediv_f32(float a, float b) {
+inline constexpr float truediv_f32(float a, float b) {
     if (b == 0.0f) tpy_panic("Division by zero");
     return a / b;
 }
 
-inline float floordiv_f32(float a, float b) {
+inline constexpr float floordiv_f32(float a, float b) {
     if (b == 0.0f) tpy_panic("Division by zero");
     return std::floor(a / b);
 }
 
-inline float fmod_f32(float a, float b) {
+inline constexpr float fmod_f32(float a, float b) {
     if (b == 0.0f) tpy_panic("Division by zero");
     return std::fmod(a, b);
 }
