@@ -402,10 +402,11 @@ Library search roots and CPython stubs:
 | `tpy/tpy/extern.py` | Re-exports native, export, cpp_template, native_global from `_bootstrap` |
 | `tpy/tpy/mem.py` | Memory management: `UninitArrayStorage[T, N]` inline uninitialized storage |
 | `tpy/tpy/unsafe.py` | Unsafe operations: `unsafe_ptr()`, `unsafe_cast()` |
+| `tpy/tpy/version.py` | Version/implementation identification: `__version__`, `version_info`, `is_compiled`. Values come from `_version.py` (a `# tpy: macro_module` that reads `tpyc.__version__` at compile time). Not re-exported through `tpy/__init__.py` because native_module facades don't propagate variables (see TODO). |
 | `tpy/_macro_helpers.py` | Shared macro helpers: `build_init`, `build_eq`, `build_repr`, `build_hash`, `build_order` (compile-time only) |
 | `tpy/math.py`, `time.py`, `sys.py`, `bisect.py`, `dataclasses.py`, `enum.py` | Python stdlib analogs |
 | `cpy/tpy/` | CPython stubs ONLY (not seen by tpyc): `Int32`, `Ptr`, `Array`, decorators; submodules: `mem`, `unsafe` |
-| `cpy/tpyc/` | CPython stub for macro API: `macro_api.py` raises ImportError -- macro modules run at compile time only and are not available under CPython |
+| `cpy/tpyc/` | CPython stub for tpyc: `__init__.py` exposes `__version__` + `VERSION_INFO` read from the installed distribution via `importlib.metadata`; `macro_api.py` raises ImportError (macro modules run at compile time only, not available under CPython) |
 | `cpy/tplib` | Symlink to `tpy/tplib/` so CPython tests can find tplib |
 
 **Compiler search order** (first match wins):

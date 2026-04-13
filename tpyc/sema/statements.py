@@ -1872,9 +1872,15 @@ class StatementAnalyzer:
         """Check if an expression is a compile-time constant for Final globals.
 
         Accepts: literals, unary ops on literals (e.g. -42, not True),
-        references to other Final globals.
+        references to other Final globals, and @call_macro expansions that
+        themselves reduce to a constant expression.
         Does not accept arithmetic (checked ops aren't constexpr).
         """
+        # Unwrap compile-time macro expansions: a macro that emits a literal
+        # is, by construction, a compile-time constant.
+        macro_exp = getattr(expr, "macro_expansion", None)
+        if macro_exp is not None:
+            return self._is_constant_expr(macro_exp)
         if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral)):
             return True
         if isinstance(expr, TpyUnaryOp):

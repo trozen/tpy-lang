@@ -9,6 +9,10 @@ from __future__ import annotations
 from typing import Generic, TypeVar, Callable, Protocol as _Protocol, runtime_checkable as _runtime_checkable
 import copy as _copy_module
 
+# Version/implementation identification lives in `tpy.version` submodule
+# for API parity with the compiled side (see lib/tpy/tpy/version.py):
+#     from tpy.version import __version__, version_info, is_compiled
+
 T = TypeVar('T')
 
 

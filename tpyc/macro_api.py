@@ -55,6 +55,10 @@ ExceptHandler = TpyExceptHandler
 Pattern = TpyPattern
 ComprehensionGenerator = TpyComprehensionGenerator
 
+# Re-exports from the tpyc package so macro modules only need to import
+# from tpyc.macro_api.
+from . import __version__, VERSION_INFO
+
 if TYPE_CHECKING:
     from .sema.context import SemanticContext
 

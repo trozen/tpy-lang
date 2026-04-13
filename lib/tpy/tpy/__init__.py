@@ -33,6 +33,11 @@ from ._builtins._io import BinaryIO, open_text, open_binary
 
 type Float64 = float
 
+# Version/implementation identification lives in `tpy.version` submodule:
+#     from tpy.version import __version__, version_info, is_compiled
+# Not re-exported here because native_module facades don't propagate
+# variable imports or transitive init chains.
+
 __all__ = [
     # Primitive types
     "Int8", "Int16", "Int32", "Int64",
