@@ -116,6 +116,31 @@ class ClassInfo:
     def error(self, msg: str, loc=None) -> NoReturn: ...
 ```
 
+Call-site macros receive a `CallMacroContext` with call-site context and type
+introspection:
+
+```python
+class CallMacroContext:
+    # Call site context
+    in_method: bool                                     # inside a method body?
+    self_type: TypeInfo | None                          # current class (methods)
+    first_param: tuple[str, TypeInfo] | None            # self for methods, first arg for free functions
+
+    # Type introspection
+    def get_field_type(type_info, name) -> TypeInfo | None: ...        # field type (incl. inherited)
+    def get_method_return_type(type_info, name) -> TypeInfo | None: ...  # method return type (incl. inherited)
+    def get_iterable_element_type(type_info) -> TypeInfo | None: ...
+    def qualified_name(type_info) -> str: ...            # "module.TypeName"
+    def get_record_fields(name: str) -> list[FieldInfo] | None: ...    # for match_args records
+
+    # AST helpers
+    def self_field(name) -> Expr: ...                    # AST for self.<name>
+
+    # Diagnostics
+    def warning(msg, loc=None) -> None: ...
+    def error(msg, loc=None) -> NoReturn: ...
+```
+
 `add_method` injects a `TpyFunction` AST node (power user API). For common patterns,
 use the shared builder functions from `_macro_helpers` (`build_init`, `build_eq`,
 `build_repr`, `build_hash`, `build_order`) to generate complete method bodies.

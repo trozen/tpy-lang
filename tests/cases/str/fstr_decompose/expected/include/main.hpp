@@ -8,11 +8,15 @@
 namespace tpyapp::main {
 
 struct Module;
+struct Service;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+void log_from_module(Module& mod, int32_t val);
+void log_from_service(Service& svc, int32_t val);
 void main();
 
+// # _logger field path
 // class Module:
 struct Module {
     // _logger: LogHandle
@@ -21,10 +25,46 @@ struct Module {
     // def __init__(self, name: str) -> None:
     Module() = default;
     explicit Module(std::string_view name) : _logger(::mylog::LogHandle(name)) {}
+
+    // # Auto-discover via _logger field
+    // def log_auto(self, tag: str, n: Int32) -> None:
+    void log_auto(std::string_view tag, int32_t n) const {
+        // log(f"tag={tag} n={n}")
+        ::mylog::log_dispatch(this->_logger, "tag={} n={}", std::tuple<::mylog::DeferredStr, int32_t>{::mylog::defer_str(tag), n});
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Module& obj) {
     ::tpy::print_object_default(os, "Module", obj);
+    return os;
+}
+
+// # get_logger() method path
+// class Service:
+struct Service {
+    // _handle: LogHandle
+    ::mylog::LogHandle _handle;
+
+    // def __init__(self, name: str) -> None:
+    Service() = default;
+    explicit Service(std::string_view name) : _handle(::mylog::LogHandle(name)) {}
+
+    // def get_logger(self) -> LogHandle:
+    ::mylog::LogHandle& get_logger() {
+        // return self._handle
+        return this->_handle;
+    }
+
+    // # Auto-discover via get_logger() method
+    // def log_auto(self, msg: str) -> None:
+    void log_auto(std::string_view msg) {
+        // log(f"svc={msg}")
+        ::mylog::log_dispatch(this->get_logger(), "svc={}", std::tuple<::mylog::DeferredStr>(::mylog::defer_str(msg)));
+    }
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Service& obj) {
+    ::tpy::print_object_default(os, "Service", obj);
     return os;
 }
 

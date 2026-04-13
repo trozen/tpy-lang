@@ -3,6 +3,7 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
+- CallMacroContext API redesign: current API grew ad-hoc from test cases (get_field_type, get_method_return_type, qualified_name, first_param, self_type, etc.). Needs a principled design pass: call site context (function params, method vs free), type introspection (fields, methods, qualified identity), and diagnostics. Consider whether type introspection belongs on TypeInfo (needs registry access) or stays on ctx. Unify get_record_fields (string name, match_args gated) with the TypeInfo-based path. See MACRO_DESIGN.md future extensions.
 - test time imrovement -- the tests are taking again a lot of time, investigate how to make them shorter; e.g. a set of a few quick tests that cover all/most functionality
 - overload_getitem_both_slices -- overload flattening -- invalid source comments, should show if and note that dead code has been removed
 - Overload implementation arity mismatch: `@overload` stubs with different arities (e.g. `log(x)` and `log(x, base)`) can't have an implementation function with a default param (`def log(x, base=None)`) -- the compiler rejects the param count mismatch. Blocks `math.log(x, base)` overload. Workaround: `log_base(x, base)` as separate function. Low priority.

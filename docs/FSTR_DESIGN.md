@@ -1,5 +1,26 @@
 # F-String Design
 
+## Progress
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Regular f-strings -> `std::format` | **Done** | Format string + args validated at compile time, per-type wrapping, `!s`/`!r`, format specs |
+| `FStr` compile-time-only type | **Done** | Keeps f-string decomposed (format template + typed parts) instead of lowering to `std::format` |
+| Call macro decomposition (`MacroArg.as_fstring()`) | **Done** | `is_static_str` detection for literal/ternary-of-literal optimization |
+| Tuple-based dispatch | **Done** | Heterogeneous `std::tuple` with per-type wrapping to native generic functions |
+| Macro context introspection | **Done** | `first_param`, `get_field_type`, `get_method_return_type`, `qualified_name` -- auto-discover logger by name with qualified type check |
+| `FStr[wrap_fn]` protocol-based wrapping | **Planned** | Per-type wrapping via overload set, eliminates `@inline` requirement. See design below |
+| `StaticStr` type | **Planned** | String literals in FStr context get `const char*` type for zero-cost static storage |
+
+### Future Extensions
+
+| Feature | Notes |
+|---------|-------|
+| Format specs in `FStr[wrap_fn]` | Does `wrap_fn` see the spec? Async logging wants spec at output time, other use cases may need it earlier |
+| `FStr[sql_bind]`, `FStr[html_escape]` | Generic mechanism beyond logging -- SQL parameterization, template auto-escaping |
+
+---
+
 ## Regular F-Strings
 
 ### Overview
@@ -126,7 +147,32 @@ function receives it and uses `std::apply` to expand into the logger call.
 Single-element tuples use parenthesized init `T(expr)` instead of brace init
 `T{expr}` to avoid GCC 14 C++23 ambiguity.
 
+#### Macro context introspection
+
+`CallMacroContext` provides methods for macros to discover the calling
+function's context -- the enclosing class (for methods) or function parameters
+(for free functions):
+
+- `in_method` (bool) -- True when the call site is inside a method body
+- `self_type` (TypeInfo | None) -- the current class, or None
+- `first_param` (tuple[str, TypeInfo] | None) -- first parameter of the
+  current function (self for methods, first declared param for free functions)
+- `self_field(name)` -- returns AST for `self.<name>`
+- `get_field_type(type_info, name)` -- TypeInfo for the named field, or None
+- `get_method_return_type(type_info, name)` -- TypeInfo for the method's
+  return type, or None
+- `qualified_name(type_info)` -- module-qualified type name (e.g.
+  `"log_infra.LogHandle"`)
+
+This enables single-arg macro calls like `log(f"...")` where the macro
+discovers the logger by checking `first_param` for a `_logger` field or
+`get_logger()` method -- same code path for both methods and free functions.
+The qualified name check ensures the field/method returns the right type, not
+just any type with the same short name.
+
 #### Example
+
+Explicit logger (via `@inline` pass-through):
 
 ```python
 from tpy import FStr, Int32, inline
@@ -154,6 +200,34 @@ Generates:
 ```cpp
 ::mylog::log_dispatch(m._logger, "s={} i={}",
     std::tuple<::mylog::DeferredStr, int32_t>{::mylog::defer_str(s), i});
+```
+
+Auto-discovered logger (via context introspection):
+
+```python
+from log_macro import log
+
+class Module:
+    _logger: LogHandle
+
+    # In a method: macro finds self._logger by name
+    def log_auto(self, tag: str, n: Int32) -> None:
+        log(f"tag={tag} n={n}")
+
+# In a free function: macro inspects first param's type for _logger
+def log_from_free(mod: Module, val: Int32) -> None:
+    log(f"free={val}")
+```
+
+Generates:
+```cpp
+void Module::log_auto(std::string_view tag, int32_t n) const {
+    ::mylog::log_dispatch(this->_logger, "tag={} n={}", ...);
+}
+
+void log_from_free(Module& mod, int32_t val) {
+    ::mylog::log_dispatch(mod._logger, "free={}", ...);
+}
 ```
 
 ### Current limitations
@@ -296,18 +370,18 @@ Works for both methods (`self`) and free functions (`module` parameter). But
 still accesses `_logger` from outside the class -- same field access issue as
 `@inline`.
 
-**Macro context introspection**: macro discovers the logger from the calling
-method's class fields:
+**Macro context introspection** (implemented): macro discovers the logger from
+the calling context by field name:
 
 ```python
-log_debug(f"s={s} i={i}")
-# macro calls ctx.find_self_field_by_type("LogHandle")
-# to get self._logger automatically
+log(f"s={s} i={i}")
+# macro checks for _logger field or get_logger() method
+# on self (methods) or first parameter (free functions)
 ```
 
-Would require extending `CallMacroContext` with `in_method`, `self_field(name)`,
-`find_self_field_by_type(type_name)`. Clean for methods but doesn't work in free
-functions.
+`CallMacroContext.first_param` returns self for methods and the first declared
+parameter for free functions. Combined with `get_field_type`, `get_method_return_type`,
+and `qualified_name`, the macro uses one code path for both cases.
 
 ### Format specs in FStr decomposition
 

@@ -4904,6 +4904,7 @@ Send/Sync rules for built-in types:
   - `FStr` compile-time-only type, `@inline` decorator for call-site body inlining
   - `MacroArg.as_fstring()` for call macro decomposition, `MacroFStringPart.is_static_str` for literal detection
   - Tuple-based dispatch to native generic functions via `std::apply`
+  - `CallMacroContext` introspection: `first_param`, `get_field_type`, `get_method_return_type`, `qualified_name` -- macros discover fields/methods by name on first param (self for methods) with qualified type checking
 
 ### Compile-Time Hooks (Extensible Metaprogramming -- Future Design)
 

@@ -263,6 +263,96 @@ class CallMacroContext:
             return TypeInfo.from_tpy_type(elem)
         return None
 
+    @property
+    def in_method(self) -> bool:
+        """True if the call site is inside a method body (self is available)."""
+        record = self._ctx.record_ctx.record
+        if record is None:
+            return False
+        func = self._ctx.current_function
+        return isinstance(func, TpyFunction) and func.is_method
+
+    @property
+    def self_type(self) -> TypeInfo | None:
+        """The current class as TypeInfo, or None if not in a method."""
+        record = self._ctx.record_ctx.record
+        if record is None:
+            return None
+        func = self._ctx.current_function
+        if not isinstance(func, TpyFunction) or not func.is_method:
+            return None
+        return TypeInfo.from_tpy_type(NamedType(record.name))
+
+    @property
+    def first_param(self) -> tuple[str, TypeInfo] | None:
+        """First parameter of the current function (self for methods), or None.
+
+        For methods, returns ("self", <class TypeInfo>).
+        For free functions, returns the first declared parameter.
+        """
+        func = self._ctx.current_function
+        if not isinstance(func, TpyFunction):
+            return None
+        if func.is_method and not func.is_staticmethod:
+            st = self.self_type
+            if st is not None:
+                return ("self", st)
+            return None
+        if not func.params:
+            return None
+        name, tpy_type = func.params[0]
+        return (name, TypeInfo.from_tpy_type(tpy_type))
+
+    def self_field(self, name: str) -> TpyExpr:
+        """Return AST for ``self.<name>``. Only valid when in_method is True."""
+        if not self.in_method:
+            self.error("self_field() called outside a method context")
+        return TpyFieldAccess(obj=TpyName("self"), field=name)
+
+    def _get_record_info(self, type_info: TypeInfo) -> Any:
+        """Look up RecordInfo for a TypeInfo, or None."""
+        if type_info._tpy_type is None:
+            return None
+        return self._ctx.registry.get_record(type_info.name)
+
+    def get_field_type(self, type_info: TypeInfo, name: str) -> TypeInfo | None:
+        """Get the type of a named field on a record (including inherited), or None."""
+        record_info = self._get_record_info(type_info)
+        if record_info is None:
+            return None
+        for f in self._ctx.registry.get_all_fields(record_info):
+            if f.name == name:
+                return TypeInfo.from_tpy_type(f.type)
+        return None
+
+    def get_method_return_type(self, type_info: TypeInfo, name: str) -> TypeInfo | None:
+        """Get the return type of a named method on a record (including inherited), or None."""
+        record_info = self._get_record_info(type_info)
+        if record_info is None:
+            return None
+        overloads = self._ctx.registry.get_method_overloads_with_parents(record_info, name)
+        if not overloads:
+            return None
+        return TypeInfo.from_tpy_type(overloads[0].return_type)
+
+    def qualified_name(self, type_info: TypeInfo) -> str:
+        """Module-qualified type name (e.g. 'log_infra.LogHandle').
+
+        For builtin/module types, uses the type's own qualified name.
+        For user records, searches the registry modules.
+        Falls back to the short name if the module is unknown.
+        """
+        tpy_type = type_info._tpy_type
+        if isinstance(tpy_type, NamedType):
+            qn = tpy_type.qualified_name()
+            if qn is not None:
+                return qn
+            # Search registry modules for user-defined records
+            for mod_name, mod_info in self._ctx.registry.modules.items():
+                if type_info.name in mod_info.records:
+                    return f"{mod_name}.{type_info.name}"
+        return type_info.name
+
     def warning(self, msg: str, loc: Any = None) -> None:
         """Emit a compiler warning."""
         self._ctx.warning_from_loc(msg, loc or self._loc)

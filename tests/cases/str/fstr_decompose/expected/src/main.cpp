@@ -4,6 +4,20 @@
 namespace tpyapp::main {
 
 
+// # Free function: log() inspects first param for _logger field
+// def log_from_module(mod: Module, val: Int32) -> None:
+void log_from_module(Module& mod, int32_t val) {
+    // log(f"free_mod={val}")
+    ::mylog::log_dispatch(mod._logger, "free_mod={}", std::tuple<int32_t>(val));
+}
+
+// # Free function: log() inspects first param for get_logger() method
+// def log_from_service(svc: Service, val: Int32) -> None:
+void log_from_service(Service& svc, int32_t val) {
+    // log(f"free_svc={val}")
+    ::mylog::log_dispatch(svc.get_logger(), "free_svc={}", std::tuple<int32_t>(val));
+}
+
 // def main() -> None:
 void main() {
     // m = Module("M")
@@ -13,26 +27,40 @@ void main() {
     std::string_view s = "hello";
     // i: Int32 = 42
     int32_t i = 42;
-    // m.log(f"s={s} i={i}")
+    // m.log_inline(f"s={s} i={i}")
     ::mylog::log_dispatch(m._logger, "s={} i={}", std::tuple<::mylog::DeferredStr, int32_t>{::mylog::defer_str(s), i});
     // # Method @inline: static string literal
-    // m.log(f"status={"ok"}")
+    // m.log_inline(f"status={"ok"}")
     ::mylog::log_dispatch(m._logger, "status={}", std::tuple<::mylog::StaticStr>(::mylog::static_str("ok")));
     // # Method @inline: ternary of string literals
     // flag = True
     bool flag = true;
-    // m.log(f"result={"yes" if flag else "no"}")
+    // m.log_inline(f"result={"yes" if flag else "no"}")
     ::mylog::log_dispatch(m._logger, "result={}", std::tuple<::mylog::StaticStr>(::mylog::static_str(((flag) ? ("yes") : ("no")))));
     // # Method @inline: dynamic string variable
     // tag = "world"
     std::string_view tag = "world";
-    // m.log(f"tag={tag}")
+    // m.log_inline(f"tag={tag}")
     ::mylog::log_dispatch(m._logger, "tag={}", std::tuple<::mylog::DeferredStr>(::mylog::defer_str(tag)));
     // # Free function @inline
     // h = LogHandle("F")
     ::mylog::LogHandle h = ::mylog::LogHandle("F");
     // log_free(h, f"free={i}")
     ::mylog::log_dispatch(h, "free={}", std::tuple<int32_t>(i));
+    // # Auto-discover _logger field in method
+    // m.log_auto("ctx", 99)
+    m.log_auto("ctx", 99);
+    // # Auto-discover get_logger() method in method
+    // svc = Service("S")
+    Service svc = Service("S");
+    // svc.log_auto("hello")
+    svc.log_auto("hello");
+    // # Auto-discover _logger field via free function first param
+    // log_from_module(m, 77)
+    log_from_module(m, 77);
+    // # Auto-discover get_logger() via free function first param
+    // log_from_service(svc, 88)
+    log_from_service(svc, 88);
 }
 
 void __tpy_init() {
@@ -41,7 +69,7 @@ void __tpy_init() {
     initialized = true;
 
     // from log_infra import LogHandle
-    // from log_macro import log_debug
+    // from log_macro import log_debug, log
     // main()
     main();
 }
