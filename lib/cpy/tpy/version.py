@@ -7,8 +7,9 @@ installed distribution metadata -- so there's a single source of truth
 
     from tpy.version import __version__, version_info, is_compiled
 """
+from tpy import Int32
 from tpyc import __version__ as _tpyc_version, VERSION_INFO as _tpyc_version_info
 
 __version__: str = _tpyc_version
-version_info: tuple[int, int, int, str, int] = _tpyc_version_info
+version_info: tuple[Int32, Int32, Int32, str, Int32] = _tpyc_version_info
 is_compiled: bool = False

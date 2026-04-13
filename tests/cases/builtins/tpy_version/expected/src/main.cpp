@@ -15,11 +15,11 @@ void main() {
     // # and the releaselevel is one of the documented values.
     // major, minor, micro, level, serial = version_info
     const auto& __tup_1 = ::tpystd::tpy::version::version_info;
-    const ::tpy::BigInt& major = std::get<0>(__tup_1);
-    const ::tpy::BigInt& minor = std::get<1>(__tup_1);
-    const ::tpy::BigInt& micro = std::get<2>(__tup_1);
+    int32_t major = std::get<0>(__tup_1);
+    int32_t minor = std::get<1>(__tup_1);
+    int32_t micro = std::get<2>(__tup_1);
     std::string_view level = std::get<3>(__tup_1);
-    const ::tpy::BigInt& serial = std::get<4>(__tup_1);
+    int32_t serial = std::get<4>(__tup_1);
     // assert major >= 0
     if (!((major >= 0))) ::tpy::tpy_panic("assertion failed");
     // assert minor >= 0
