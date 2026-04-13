@@ -202,7 +202,11 @@ class MacroArg:
 
     @property
     def is_fstring(self) -> bool:
-        """True if this argument is an f-string literal."""
+        """True if this argument is an f-string literal (not a plain string).
+
+        Note: as_fstring() also accepts plain string literals -- use it
+        directly when plain strings should be treated as static f-strings.
+        """
         return isinstance(self.expr, TpyFString)
 
     def as_fstring(self) -> tuple[str, list[MacroFStringPart]] | None:
@@ -212,8 +216,14 @@ class MacroArg:
         placeholders (with optional format specs like ``{:.2f}``) and parts
         is a list of MacroFStringPart for each expression.
 
-        Returns None if this argument is not an f-string.
+        Also accepts plain string literals (treated as a static format
+        template with no expression parts).
+
+        Returns None if this argument is not an f-string or string literal.
         """
+        if isinstance(self.expr, TpyStrLiteral):
+            fmt = self.expr.value.replace("{", "{{").replace("}", "}}")
+            return fmt, []
         if not isinstance(self.expr, TpyFString):
             return None
         assert self._fstring_parts is not None, \

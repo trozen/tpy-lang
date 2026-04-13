@@ -70,6 +70,12 @@ void main() {
     // # Plain string with braces (must be escaped in format template)
     // m.log_inline("val={}")
     ::mylog::log_dispatch(m._logger, "val={{}}", std::tuple<>{});
+    // # Plain string to direct call macro (not via @inline)
+    // log_debug(h, "direct_plain")
+    ::mylog::log_dispatch(h, "direct_plain", std::tuple<>{});
+    // # Plain string with braces to direct call macro
+    // log_debug(h, "direct_val={}")
+    ::mylog::log_dispatch(h, "direct_val={{}}", std::tuple<>{});
 }
 
 void __tpy_init() {

@@ -98,4 +98,10 @@ def main() -> None:
     # Plain string with braces (must be escaped in format template)
     m.log_inline("val={}")
 
+    # Plain string to direct call macro (not via @inline)
+    log_debug(h, "direct_plain")
+
+    # Plain string with braces to direct call macro
+    log_debug(h, "direct_val={}")
+
 main()

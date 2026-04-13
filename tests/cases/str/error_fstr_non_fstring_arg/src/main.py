@@ -1,4 +1,4 @@
-# Passing a non-f-string to an FStr parameter should produce a clear error.
+# Passing a string variable (not a literal) to an FStr parameter should error.
 from tpy import FStr, inline
 
 
