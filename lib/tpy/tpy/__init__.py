@@ -5,7 +5,7 @@
 # decorator kwargs (e.g. @native(function=True)) in _core/_types.py.
 from ._bootstrap import (
     # Decorators / type modifiers
-    readonly, noalloc, nocopy, pure, dynamic, error_return,
+    readonly, noalloc, nocopy, pure, inline, dynamic, error_return,
     Own, Fn,
 )
 from ._core import (
@@ -21,7 +21,7 @@ from ._core import (
     Float32,
     Int8, Int16, Int32, Int64,
     UInt8, UInt16, UInt32, UInt64,
-    Char, String, StrView, BytesView,
+    Char, String, StrView, FStr, BytesView,
     # Container types
     Span, Array, Ptr, SpanIter,
     # Functions
@@ -38,7 +38,7 @@ __all__ = [
     "Int8", "Int16", "Int32", "Int64",
     "UInt8", "UInt16", "UInt32", "UInt64",
     "Float32", "Float64",
-    "Char", "String", "StrView", "BytesView",
+    "Char", "String", "StrView", "FStr", "BytesView",
     # Container types
     "Span", "Array", "Ptr", "SpanIter",
     # Slice types
@@ -46,7 +46,7 @@ __all__ = [
     # Pointer / ownership
     "Own", "Fn",
     # Decorators / type modifiers
-    "readonly", "noalloc", "nocopy", "pure", "dynamic", "error_return",
+    "readonly", "noalloc", "nocopy", "pure", "inline", "dynamic", "error_return",
     "auto_readonly", "auto_own",  # parser keywords (no .py stub)
     # Structural protocols
     "Truthy", "Stringable", "Representable",

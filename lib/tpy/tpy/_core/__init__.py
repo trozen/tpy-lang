@@ -12,7 +12,7 @@ from ._types import (
     Float32,
     Int8, Int16, Int32, Int64,
     UInt8, UInt16, UInt32, UInt64,
-    Char, String, StrView,
+    Char, String, StrView, FStr,
 )
 from ._bytes_view import BytesView
 from ._containers import Span, Array, Ptr, SpanIter

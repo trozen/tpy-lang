@@ -5,6 +5,6 @@ from ._extern import (
     value_ptr_coercion, native_preserves_refs,
 )
 from ._decorators import (
-    readonly, noalloc, nocopy, pure, dynamic, error_return,
+    readonly, noalloc, nocopy, pure, inline, dynamic, error_return,
     Own, Fn,
 )

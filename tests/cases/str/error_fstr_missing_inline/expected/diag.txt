@@ -1,0 +1,1 @@
+main.py:11: error: Method 'Module.log' has FStr parameter but is not marked @inline. FStr parameters require @inline.

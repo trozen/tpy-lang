@@ -41,6 +41,7 @@ from .parse import (
     TpySubscript, TpyTupleLiteral, TpyArrayLiteral, TpyDictLiteral,
     TpyListComprehension, TpyComprehensionGenerator, TpyDictComprehension,
     TpySetComprehension, TpyIfExpr,
+    TpyFString, TpyFStringValue,
     TpyPattern,
 )
 
@@ -111,18 +112,18 @@ _pending_macro_deps: dict[str, list[str] | None] | None = None
 def macro_deps(*args: str | tuple[str, ...]) -> None:
     """Declare modules that macro-generated code depends on.
 
-    Called at module level in a macro module. Each argument is either:
-    - A module name string (all exports available): ``"tplib.json.parser"``
-    - A tuple of ``(module, name1, name2, ...)`` for specific names:
-      ``("tpy", "try_parse")``
+    Called at module level in a macro module. The module name is bound
+    in the macro namespace so macro expansions can use qualified calls
+    (e.g. ``ast.method_call(ast.name("mod"), "func", args)``).
+    Individual function names are NOT injected into user scope.
+
+    Each argument is a module name string: ``"tplib.json.parser"``.
+    The tuple form ``("module", "name1", ...)`` is accepted for backward
+    compatibility but the name filter is ignored -- use qualified calls.
 
     Example::
 
-        macro_deps(
-            "tplib.json.parser",
-            "tplib.json.writer",
-            ("tpy", "try_parse"),
-        )
+        macro_deps("log_infra", "tpy.unsafe")
     """
     global _pending_macro_deps
     if _pending_macro_deps is not None:
@@ -144,6 +145,47 @@ def macro_deps(*args: str | tuple[str, ...]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# MacroFStringPart -- typed expression from a decomposed f-string
+# ---------------------------------------------------------------------------
+
+@dataclass
+class MacroFStringPart:
+    """One expression part of a decomposed f-string.
+
+    Provides the original AST expression, its resolved type, and the
+    format spec (if any). Used by call macros to apply per-type wrapping
+    when building logging or serialization calls.
+    """
+    expr: TpyExpr
+    type: TypeInfo
+    format_spec: str | None = None
+    conversion: int = -1  # FSTRING_CONV_NONE
+
+    @property
+    def is_string_literal(self) -> bool:
+        """True if the expression is a string literal (static storage in C++)."""
+        return isinstance(self.expr, TpyStrLiteral)
+
+    @property
+    def is_static_str(self) -> bool:
+        """True if the expression resolves to static string storage at compile time.
+
+        Detects direct string literals and ternary expressions where both
+        branches are static strings (recursively).
+        """
+        return _is_static_str(self.expr)
+
+
+def _is_static_str(expr: TpyExpr) -> bool:
+    """Check if an expression resolves to static string storage at compile time."""
+    if isinstance(expr, TpyStrLiteral):
+        return True
+    if isinstance(expr, TpyIfExpr):
+        return _is_static_str(expr.then_expr) and _is_static_str(expr.else_expr)
+    return False
+
+
+# ---------------------------------------------------------------------------
 # MacroArg -- argument wrapper for call-site macros
 # ---------------------------------------------------------------------------
 
@@ -152,6 +194,37 @@ class MacroArg:
     """Argument passed to a call-site macro: the AST expression + resolved type."""
     expr: TpyExpr
     type: TypeInfo
+    _fstring_parts: list[MacroFStringPart] | None = field(default=None, repr=False)
+
+    @property
+    def is_fstring(self) -> bool:
+        """True if this argument is an f-string literal."""
+        return isinstance(self.expr, TpyFString)
+
+    def as_fstring(self) -> tuple[str, list[MacroFStringPart]] | None:
+        """Decompose an f-string argument into format template + typed parts.
+
+        Returns (format_template, parts) where format_template has ``{}``
+        placeholders (with optional format specs like ``{:.2f}``) and parts
+        is a list of MacroFStringPart for each expression.
+
+        Returns None if this argument is not an f-string.
+        """
+        if not isinstance(self.expr, TpyFString):
+            return None
+        assert self._fstring_parts is not None, \
+            "f-string parts not pre-computed (internal error)"
+        fmt_pieces: list[str] = []
+        for part in self.expr.parts:
+            if isinstance(part, str):
+                fmt_pieces.append(part.replace("{", "{{").replace("}", "}}"))
+            elif isinstance(part, TpyFStringValue):
+                spec = part.format_spec
+                if spec is not None:
+                    fmt_pieces.append("{:" + spec + "}")
+                else:
+                    fmt_pieces.append("{}")
+        return "".join(fmt_pieces), list(self._fstring_parts)
 
 
 # ---------------------------------------------------------------------------

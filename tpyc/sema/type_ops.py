@@ -69,6 +69,12 @@ class TypeOperations:
                     return TypeParamRef(typ.name, bound=bound)
                 if typ.name in (self.ctx.record_ctx.type_params or []):
                     return TypeParamRef(typ.name)
+            # Resolve compile-time-only type aliases (e.g. FStr -> FStrType).
+            # Registered at import time for builtin types with no C++ representation.
+            if not typ.type_args and self.ctx.registry.type_aliases:
+                alias = self.ctx.registry.get_type_alias(typ.name)
+                if alias is not None and alias.is_compile_time_only():
+                    return alias
             # Check if this should have is_protocol set.
             # Only upgrade False -> True, never downgrade (parser may know about
             # same-file protocols not yet in the sema registry).

@@ -4890,7 +4890,12 @@ Send/Sync rules for built-in types:
   - Qualified form (`dataclasses.asdict`), mixed-type dicts via `dict[str, A|B]`
   - CPython compatibility: `lib/cpy/tpyc/macro_api.py` backend -- same macro source works under both tpyc and CPython
   - Source-based authoring: `ast.quote()`, `ast.quote_expr()`, `ast.quote_fun()`, `cls.add_method_from_source()` -- write macro output as TPy source strings instead of AST builder calls
+  - `macro_deps("module")` binds module name in macro namespace for qualified calls (`module.func()`) -- individual names do not spill into user code
   - Remaining: AST splicing in quote (embed computed AST nodes), hygiene
+- **Phase 3 done**: FStr f-string decomposition for zero-copy logging. See `docs/FSTR_DESIGN.md` for full design, limitations, and future direction (`FStr[wrap_fn]`).
+  - `FStr` compile-time-only type, `@inline` decorator for call-site body inlining
+  - `MacroArg.as_fstring()` for call macro decomposition, `MacroFStringPart.is_static_str` for literal detection
+  - Tuple-based dispatch to native generic functions via `std::apply`
 
 ### Compile-Time Hooks (Extensible Metaprogramming -- Future Design)
 

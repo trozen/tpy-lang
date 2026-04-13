@@ -1815,6 +1815,7 @@ class Parser:
         is_readonly = False
         readonly_opt_out = False
         is_pure = False
+        is_inline = False
         is_override = False
         is_overload_stub = False
         auto_readonly = False
@@ -1849,6 +1850,8 @@ class Parser:
                 is_property_getter = True
             elif qname == qnames.PURE:
                 is_pure = True
+            elif qname == qnames.INLINE:
+                is_inline = True
             elif qname == qnames.OVERRIDE:
                 is_override = True
             elif qname == qnames.OVERLOAD:
@@ -2138,6 +2141,7 @@ class Parser:
             is_property_setter=is_property_setter,
             property_name=property_setter_name,
             is_consuming=is_consuming,
+            is_inline=is_inline,
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,
             is_pure=is_pure,
@@ -2246,6 +2250,7 @@ class Parser:
     def _parse_function(self, node: ast.FunctionDef) -> TpyFunction:
         """Parse a function definition."""
         is_noalloc = False
+        is_inline = False
         is_readonly = False
         readonly_opt_out = False
         is_pure = False
@@ -2266,6 +2271,8 @@ class Parser:
             pos, kw = self._validate_decorator_args(qname, arg, dec)
             if qname == qnames.NOALLOC:
                 is_noalloc = True
+            elif qname == qnames.INLINE:
+                is_inline = True
             elif qname == qnames.PURE:
                 is_pure = True
             elif qname == qnames.READONLY:
@@ -2468,6 +2475,7 @@ class Parser:
             return_type=return_type,
             body=body,
             is_noalloc=is_noalloc,
+            is_inline=is_inline,
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,
             is_pure=is_pure,

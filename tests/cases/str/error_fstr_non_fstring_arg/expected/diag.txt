@@ -1,0 +1,1 @@
+main.py:23: error: Parameter 'fs' has type FStr -- only f-string literals are accepted

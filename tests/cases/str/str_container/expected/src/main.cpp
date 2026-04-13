@@ -22,7 +22,7 @@ void main() {
     std::cout << std::format("{}", ::tpy::tuple_to_str(t)) << "\n";
     // # Single-element tuple
     // t1: tuple[int] = (42,)
-    std::tuple<::tpy::BigInt> t1 = std::tuple<::tpy::BigInt>{::tpy::BigInt(42)};
+    std::tuple<::tpy::BigInt> t1 = std::tuple<::tpy::BigInt>(::tpy::BigInt(42));
     // print(str(t1))
     std::cout << ::tpy::tuple_to_str(t1) << "\n";
     // # List

@@ -305,6 +305,8 @@ class CodeGenerator:
 
         # Generate function definitions (skip template functions -- defined in header)
         for func in module.functions:
+            if func.skip_codegen:
+                continue
             if func.is_generator:
                 if not self.gen_generators.is_simple_generator(func):
                     self.gen_generators.gen_generator_next(cpp, func)
@@ -661,6 +663,8 @@ class CodeGenerator:
         # can reference the struct type name).
         emitted_gen_fwd = False
         for func in module.functions:
+            if func.skip_codegen:
+                continue
             if func.is_generator and not self.gen_generators.is_simple_generator(func):
                 self.gen_generators.gen_generator_forward_decl(hpp, func)
                 emitted_gen_fwd = True
@@ -681,6 +685,8 @@ class CodeGenerator:
         deferred_fwd_funcs: list[TpyFunction] = []
         emitted_fwd_func = False
         for func in module.functions:
+            if func.skip_codegen:
+                continue
             if func.is_generator:
                 if self.gen_generators.is_simple_generator(func):
                     continue  # Simple generators are inline -- no forward decl
@@ -724,6 +730,8 @@ class CodeGenerator:
         # Generator struct full definitions (after records, so struct fields
         # and inline __next__() can use fully-defined user types).
         for func in module.functions:
+            if func.skip_codegen:
+                continue
             if func.is_generator and not self.gen_generators.is_simple_generator(func):
                 self.gen_generators.gen_generator_struct(hpp, func)
                 hpp.write("\n")
@@ -802,6 +810,8 @@ class CodeGenerator:
         # non-template signatures are already forward-declared above)
         emitted_func_decl = False
         for func in module.functions:
+            if func.skip_codegen:
+                continue
             if func.is_generator:
                 if self.gen_generators.is_simple_generator(func):
                     # Simple generators: emit inline function definition in header

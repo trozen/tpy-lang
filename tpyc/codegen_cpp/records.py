@@ -370,6 +370,9 @@ class RecordGenerator:
             # Skip @overload stubs -- the implementation emits all overloads
             if method.is_overload_stub:
                 continue
+            # Skip @inline methods -- body is inlined at call sites
+            if method.skip_codegen:
+                continue
             # Generator methods: emit inline (simple) or declaration-only (complex)
             if method.is_generator:
                 from .gen_generators import GeneratorCodegen

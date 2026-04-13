@@ -19,7 +19,8 @@ from ..typesys import (
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
     PendingDictType, PendingSetType, DictLiteralInfo,
     resolve_int_literals, FnType, CallableType,
-    INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, BASIC_SLICE, SLICE, BYTES, BYTESVIEW, UINT8,
+    FStrType,
+    INT32, FLOAT, STR, FSTR, STRVIEW, CHAR, BOOL, BIGINT, NONE, BASIC_SLICE, SLICE, BYTES, BYTESVIEW, UINT8,
     is_protocol_type, container_to_str_template, contains_type_param,
     PendingGenericInstanceType, BasicSliceType, SliceType, unwrap_ref_type, make_ref, RefType,
 )
@@ -290,6 +291,13 @@ class ExpressionAnalyzer:
             typ = self._analyze_if_expr(expr, type_hint=type_hint)
             self.ctx.set_expr_type(expr, typ)
             return typ
+
+        # F-string with FStr hint: keep decomposed for macro consumption.
+        # Skip format-validity checks -- the call macro handles per-type dispatch.
+        if isinstance(expr, TpyFString) and isinstance(type_hint, FStrType):
+            self._analyze_fstring(expr, for_fstr=True)
+            self.ctx.set_expr_type(expr, FSTR)
+            return FSTR
 
         # T() default-construction: resolves to whatever T maps to
         if isinstance(expr, TpyTypeParamConstruct):
@@ -2691,11 +2699,19 @@ class ExpressionAnalyzer:
     _STRINGABLE = NamedType("Stringable", is_protocol=True)
     _REPRESENTABLE = NamedType("Representable", is_protocol=True)
 
-    def _analyze_fstring(self, expr: TpyFString) -> TpyType:
-        """Analyze f-string parts and return STR (owned string)."""
+    def _analyze_fstring(self, expr: TpyFString, *, for_fstr: bool = False) -> TpyType:
+        """Analyze f-string parts and return STR (owned string).
+
+        Args:
+            for_fstr: If True, only analyze expression types without validating
+                formattability. Used for FStr parameters where the call macro
+                handles per-type dispatch (types don't need __str__/__repr__).
+        """
         for part in expr.parts:
             if isinstance(part, TpyFStringValue):
                 part_type = self.analyze_expr(part.expr)
+                if for_fstr:
+                    continue
                 resolved = unwrap_readonly(part_type)
                 if isinstance(resolved, OwnType):
                     resolved = resolved.wrapped

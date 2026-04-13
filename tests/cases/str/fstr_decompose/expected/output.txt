@@ -1,0 +1,11 @@
+M: s={} i={}
+  [C]hello
+  42
+M: status={}
+  [S]ok
+M: result={}
+  [S]yes
+M: tag={}
+  [C]world
+F: free={}
+  42

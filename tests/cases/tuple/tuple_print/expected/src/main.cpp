@@ -12,7 +12,7 @@ void main() {
     std::cout << ::tpy::TuplePrinter(t) << "\n";
     // # Single-element tuple (trailing comma)
     // s: tuple[Int32] = (Int32(42),)
-    std::tuple<int32_t> s = std::tuple<int32_t>{42};
+    std::tuple<int32_t> s = std::tuple<int32_t>(42);
     // print(s)
     std::cout << ::tpy::TuplePrinter(s) << "\n";
     // # Record with tuple field

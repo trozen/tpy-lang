@@ -1,0 +1,1 @@
+main.py:12: error: @inline method 'Module.log' must have a single call expression as its body.

@@ -787,6 +787,8 @@ class ExpressionGenerator:
             return self._maybe_error_return_unwrap(expr, result)
 
         elif isinstance(expr, TpyMethodCall):
+            if expr.fstr_expansion is not None:
+                return self.gen_expr(expr.fstr_expansion)
             if expr.macro_expansion is not None:
                 return self.gen_expr(expr.macro_expansion)
             result = self._gen_method_call(expr)
@@ -3442,6 +3444,10 @@ class ExpressionGenerator:
             cpp_type = self._tuple_literal_cpp_type(resolved_elem_types, expr)
         else:
             cpp_type = self.types.type_to_cpp(TupleType(tuple(resolved_elem_types)))
+        # Single-element tuples use parenthesized init to avoid GCC brace-init
+        # ambiguity with std::tuple constructors in C++23.
+        if len(elem_strs) == 1:
+            return f"{cpp_type}({elem_strs[0]})"
         return f"{cpp_type}{{{', '.join(elem_strs)}}}"
 
     def _tuple_literal_cpp_type(

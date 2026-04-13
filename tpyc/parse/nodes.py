@@ -266,11 +266,14 @@ class TpyMethodCall(TpyExpr):
     macro_expansion: 'TpyExpr | None' = None  # Set by sema: replacement expr from @call_macro
     typed_dict_get_field: str | None = None  # Set by sema: td.get("key") -> field access
     typed_dict_get_optional: bool = False  # Set by sema: total=False field, absent by default
+    fstr_expansion: 'TpyExpr | None' = None  # Set by sema: inlined FStr method body
     is_nested_constructor: bool = False  # Set by sema: Outer.Inner() nested record constructor
     is_nested_enum_constructor: bool = False  # Set by sema: Outer.Kind(v) nested enum from_value
     nested_type_name: str | None = None  # Set by sema: dotted name for nested type calls
 
     def children(self) -> list[TpyExpr]:
+        if self.fstr_expansion is not None:
+            return [self.fstr_expansion]
         if self.macro_expansion is not None:
             return [self.macro_expansion]
         return [self.obj] + list(self.args) + list(self.kwargs.values())
@@ -960,6 +963,7 @@ class TpyFunction:
     return_type: TpyType
     body: list[TpyStmt]
     is_noalloc: bool = False
+    is_inline: bool = False
     is_readonly: bool = False
     readonly_opt_out: bool = False
     is_pure: bool = False
@@ -1009,6 +1013,7 @@ class TpyFunction:
     is_generator: bool = False  # Set by parser: body contains yield
     generator_yield_type: 'TpyType | None' = None  # Set by sema: T from Iterator[T]
     generator_locals: 'list[tuple[str, TpyType]] | None' = None  # Set by sema: local vars for struct fields
+    skip_codegen: bool = False  # Set by sema: @inline function, body inlined at call sites
     loc: SourceLocation | None = None
 
     @property

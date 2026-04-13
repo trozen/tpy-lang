@@ -1,0 +1,1 @@
+FStr is a compile-time type with no CPython equivalent

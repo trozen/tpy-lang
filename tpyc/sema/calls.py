@@ -5,6 +5,7 @@ Function and constructor call analysis.
 """
 
 from __future__ import annotations
+import copy
 from dataclasses import replace as dc_replace
 from typing import Callable, TYPE_CHECKING
 
@@ -17,6 +18,7 @@ from ..typesys import (
     UnionType, RecursiveUnionType, EnumType, VOID, BIGINT, BOOL, STR, INT32, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own,
     is_any_str_type, container_to_str_template, error_return_matches,
     is_protocol_union, protocol_union_protocols,
+    FStrType,
     StrViewType, STRVIEW, MutationCallEdge,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     FnType, CallableType, unwrap_ref_type,
@@ -26,7 +28,7 @@ from ..parse import (
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
     TpyTypeParamConstruct, TpyCoerce, TpyLambda,
     TpyDictLiteral, TpySetLiteral,
-    TpyVarargPack, TpyStarUnpack,
+    TpyVarargPack, TpyStarUnpack, TpyFString, TpyFStringValue,
 )
 from ..modules import extract_type_params
 from ..namespace import BindingKind
@@ -34,7 +36,7 @@ from ..coercions import CoercionContext, VALUE_TO_PTR
 from .context import PENDING_CONTAINER_TYPES, addr_taken_roots
 from .diagnostics import SemanticError
 from .overloads import type_matches_numeric, resolve_overload
-from ..macro_api import MacroArg, CallMacroContext, TypeInfo
+from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo
 from ..macro_loader import expand_call_macro
 
 if TYPE_CHECKING:
@@ -2395,8 +2397,37 @@ class CallAnalyzer:
             "unsafe_cast() requires a type argument or target type annotation "
             "(e.g., unsafe_cast[UInt32](p) or q: Ptr[UInt32] = unsafe_cast(p))", expr)
 
+    def _inline_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
+        """Inline an @inline function call: clone body, substitute params, analyze."""
+        body = copy.deepcopy(func.inline_body)
+
+        # Validate FStr params receive f-string literals
+        for pi, arg in zip(func.params, expr.args):
+            if isinstance(pi.type, FStrType) and not isinstance(arg, TpyFString):
+                raise self.ctx.error(
+                    f"Parameter '{pi.name}' has type FStr -- only f-string "
+                    f"literals are accepted", arg)
+
+        # Build param name -> call-site arg map and substitute
+        param_map: dict[str, TpyExpr] = {}
+        for pi, arg in zip(func.params, expr.args):
+            param_map[pi.name] = arg
+        from .methods import MethodAnalyzer
+        MethodAnalyzer._substitute_inline_body(body, None, param_map)
+
+        # Store expansion for codegen
+        expr.macro_expansion = body
+
+        # Analyze the substituted expression
+        self.expr.analyze_expr(body)
+        return VOID
+
     def _analyze_single_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
         """Analyze a call to a single user-defined function."""
+        # @inline: clone body and substitute at call site
+        if func.inline_body is not None:
+            return self._inline_function_call(expr, func)
+
         # Handle generic functions
         if func.is_generic():
             return self._analyze_generic_function_call(expr, func)
@@ -2448,6 +2479,13 @@ class CallAnalyzer:
                 raise self.ctx.error(
                     f"Cannot use *unpacking: '{func.name}' does not accept *args", arg)
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
+            # FStr params require an f-string literal at the call site
+            if isinstance(ptype, FStrType) and not isinstance(arg, TpyFString):
+                raise self.ctx.error(
+                    f"Parameter '{pname}' has type FStr -- only f-string literals "
+                    f"are accepted",
+                    arg,
+                )
             arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
             arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 
@@ -3189,64 +3227,79 @@ class CallAnalyzer:
         # Ensure macro_deps for this call macro's module are populated
         self._ensure_call_macro_deps(module_name)
 
-        macro_args = [
-            MacroArg(expr=a, type=TypeInfo.from_tpy_type(self.expr.analyze_expr(a)))
-            for a in args
-        ]
-        macro_kwargs = {
-            k: MacroArg(expr=v, type=TypeInfo.from_tpy_type(self.expr.analyze_expr(v)))
-            for k, v in kwargs.items()
-        }
+        macro_args = []
+        for a in args:
+            arg_type = self.expr.analyze_expr(a)
+            fstring_parts = None
+            if isinstance(a, TpyFString):
+                fstring_parts = self._build_fstring_parts(a)
+            macro_args.append(MacroArg(
+                expr=a,
+                type=TypeInfo.from_tpy_type(arg_type),
+                _fstring_parts=fstring_parts,
+            ))
+        macro_kwargs = {}
+        for k, v in kwargs.items():
+            kwarg_type = self.expr.analyze_expr(v)
+            kw_fstring_parts = None
+            if isinstance(v, TpyFString):
+                kw_fstring_parts = self._build_fstring_parts(v)
+            macro_kwargs[k] = MacroArg(
+                expr=v,
+                type=TypeInfo.from_tpy_type(kwarg_type),
+                _fstring_parts=kw_fstring_parts,
+            )
         ctx = CallMacroContext(self.ctx, loc=loc)
         qname = f"{module_name}.{func_name}"
         expansion = expand_call_macro(
             macro_fn, ctx, macro_args, macro_kwargs, qname, loc)
         return expansion, self.expr.analyze_expr(expansion)
 
+    def _build_fstring_parts(self, fstr: TpyFString) -> list[MacroFStringPart]:
+        """Pre-compute typed parts for an f-string macro argument.
+
+        Each expression in the f-string has already been analyzed by sema,
+        so we look up its type from the expression type cache.
+        """
+        parts: list[MacroFStringPart] = []
+        for part in fstr.parts:
+            if isinstance(part, TpyFStringValue):
+                expr_type = self.ctx.get_expr_type(part.expr)
+                if expr_type is None:
+                    expr_type = self.expr.analyze_expr(part.expr)
+                parts.append(MacroFStringPart(
+                    expr=part.expr,
+                    type=TypeInfo.from_tpy_type(expr_type),
+                    format_spec=part.format_spec,
+                    conversion=part.conversion,
+                ))
+        return parts
+
     def _ensure_call_macro_deps(self, module_name: str) -> None:
-        """Populate macro_ns with deps from a call macro's module (if not already done)."""
+        """Register macro dep modules so qualified calls (mod.func) resolve.
+
+        Binds the module name in macro_ns with BindingKind.MODULE. Individual
+        function/record names are NOT injected -- macros should use qualified
+        calls (e.g. ast.method_call(ast.name("mod"), "func", args)) to avoid
+        leaking names into user code.
+        """
         macro_reg = self.ctx.macro_registry
         if macro_reg is None:
             return
         deps = macro_reg.get_deps(module_name)
         if not deps:
             return
-        for dep_mod, name_filter in deps.items():
+        for dep_mod, _ in deps.items():
             if dep_mod in self.ctx.macro_dep_modules:
                 continue
             self.ctx.macro_dep_modules.add(dep_mod)
             module_info = self.ctx.registry.get_module(dep_mod)
             if module_info is None:
                 continue
-            if module_info.records:
-                for name, record_info in module_info.records.items():
-                    if name_filter is not None and name not in name_filter:
-                        continue
-                    if self.ctx.registry.get_record(name) is None:
-                        self.ctx.registry.register_record(record_info, name)
-                    self.ctx.macro_ns.bind_imported_name(name, dep_mod, name)
-                    self.ctx.imported_names.setdefault(name, (dep_mod, name))
-                    self.ctx.user_imported_records.setdefault(name, (dep_mod, name))
-            if module_info.functions:
-                for name, func_infos in module_info.functions.items():
-                    if name_filter is not None and name not in name_filter:
-                        continue
-                    is_special = func_infos and func_infos[0].special_handling
-                    if not is_special:
-                        if self.ctx.registry.get_function(name) is None:
-                            self.ctx.registry.register_function_group(name, func_infos)
-                        self.ctx.user_imported_functions.setdefault(name, (dep_mod, name))
-                    self.ctx.macro_ns.bind_imported_name(name, dep_mod, name)
-                    self.ctx.imported_names.setdefault(name, (dep_mod, name))
-            if module_info.enums:
-                for name, enum_type in module_info.enums.items():
-                    if name_filter is not None and name not in name_filter:
-                        continue
-                    if self.ctx.registry.get_enum(name) is None:
-                        self.ctx.registry.register_enum(enum_type, name)
-                    self.ctx.macro_ns.bind_enum(enum_type, name=name)
-                    self.ctx.imported_names.setdefault(name, (dep_mod, name))
-                    self.ctx.user_imported_enums.setdefault(name, (dep_mod, name))
+            # Bind the module name so qualified calls (dep_mod.func()) resolve.
+            # Use the short name (last segment) as the local binding.
+            short_name = dep_mod.rsplit(".", 1)[-1]
+            self.ctx.macro_ns.bind_module(dep_mod, alias=short_name)
 
     def _expand_call_macro(
         self, expr: TpyCall, macro_fn: Callable,

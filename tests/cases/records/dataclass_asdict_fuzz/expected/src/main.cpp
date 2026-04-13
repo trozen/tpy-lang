@@ -124,7 +124,7 @@ void main() {
         return __result;
     }()}})) << "\n";
     // print(astuple(dd))
-    std::cout << ::tpy::TuplePrinter(std::tuple<::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>>>{[&]() {
+    std::cout << ::tpy::TuplePrinter(std::tuple<::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>>>([&]() {
         ::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>> __result;
         auto __obj_5 = ::tpy::dict_items(dd.items);
         auto __beg_5 = __obj_5.begin();
@@ -136,21 +136,21 @@ void main() {
             __result.insert_or_assign(__macro_1, std::tuple<int32_t, int32_t>{__macro_2.x, __macro_2.y});
         }
         return __result;
-    }()}) << "\n";
+    }())) << "\n";
     // # 12. Tuple with mixed types (DC + scalar)
     // tm = TupleMixed((Point(Int32(1), Int32(2)), Int32(42)))
     TupleMixed tm = TupleMixed(std::tuple<Point, int32_t>{Point(1, 2), 42});
     // print(asdict(tm))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>>({{"pair", std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(tm.pair).x}, {"y", std::get<0>(tm.pair).y}}), std::get<1>(tm.pair)}}})) << "\n";
     // print(astuple(tm))
-    std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<std::tuple<int32_t, int32_t>, int32_t>>{std::tuple<std::tuple<int32_t, int32_t>, int32_t>{std::tuple<int32_t, int32_t>{std::get<0>(tm.pair).x, std::get<0>(tm.pair).y}, std::get<1>(tm.pair)}}) << "\n";
+    std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<std::tuple<int32_t, int32_t>, int32_t>>(std::tuple<std::tuple<int32_t, int32_t>, int32_t>{std::tuple<int32_t, int32_t>{std::get<0>(tm.pair).x, std::get<0>(tm.pair).y}, std::get<1>(tm.pair)})) << "\n";
     // # 13. Tuple with all dataclass elements
     // ta = TupleAllDC((Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))))
     TupleAllDC ta = TupleAllDC(std::tuple<Point, Point>{Point(1, 2), Point(3, 4)});
     // print(asdict(ta))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>>({{"pair", std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(ta.pair).x}, {"y", std::get<0>(ta.pair).y}}), ::tpy::ordered_map<std::string, int32_t>({{"x", std::get<1>(ta.pair).x}, {"y", std::get<1>(ta.pair).y}})}}})) << "\n";
     // print(astuple(ta))
-    std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>{std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{std::get<0>(ta.pair).x, std::get<0>(ta.pair).y}, std::tuple<int32_t, int32_t>{std::get<1>(ta.pair).x, std::get<1>(ta.pair).y}}}) << "\n";
+    std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>(std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{std::get<0>(ta.pair).x, std::get<0>(ta.pair).y}, std::tuple<int32_t, int32_t>{std::get<1>(ta.pair).x, std::get<1>(ta.pair).y}})) << "\n";
 }
 
 void __tpy_init() {

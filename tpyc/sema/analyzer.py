@@ -462,8 +462,11 @@ class SemanticAnalyzer:
         for record in module.all_records():
             self._analyze_record_methods(record)
 
-        # Sixth pass: analyze function bodies (skip @overload stubs)
+        # Sixth pass: analyze function bodies (skip @overload stubs and @inline)
         for func in module.functions:
+            if func.is_inline and not func.is_stub:
+                func.skip_codegen = True
+                continue
             if not func.is_overload_stub:
                 self._analyze_function(func)
 
@@ -1314,6 +1317,13 @@ class SemanticAnalyzer:
                     method
                 )
 
+            # @inline methods: skip body analysis. The body is a template that
+            # gets cloned and substituted at each call site (see methods.py
+            # _inline_method_call).
+            if method.is_inline and not method.is_stub:
+                method.skip_codegen = True
+                continue
+
             # Track consuming method for ownership propagation through fields
             prev_consuming = self.ctx.in_consuming_method
             self.ctx.in_consuming_method = method.is_consuming
@@ -1668,6 +1678,10 @@ class SemanticAnalyzer:
 
     def _register_tpy_type_alias(self, original_name: str, local_name: str) -> None:
         """Register a single tpy type alias from the compiled tpy module_info."""
+        # Compile-time-only types (e.g. FStr) take priority
+        self.registrar._register_compile_time_type_alias(local_name, "tpy", original_name)
+
+        # AST-level type aliases (e.g. Float64 = float)
         tpy_info = self.ctx.registry.get_module("tpy")
         if not tpy_info or not tpy_info.type_aliases:
             return
@@ -1675,8 +1689,6 @@ class SemanticAnalyzer:
         if alias_type is not None:
             self.ctx.registry.register_type_alias(local_name, alias_type)
             self.ctx.user_imported_type_aliases[local_name] = ("tpy", original_name)
-            # Also register under original name so _resolve_imported_aliases
-            # can substitute NamedType(original_name) nodes in the AST
             if local_name != original_name:
                 self.ctx.registry.register_type_alias(original_name, alias_type)
 

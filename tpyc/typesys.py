@@ -280,6 +280,10 @@ class TpyType:
         """Return the fully qualified type name for module lookup, or None if not a module type."""
         return None
 
+    def is_compile_time_only(self) -> bool:
+        """Return True if this type exists only at compile time (no C++ representation)."""
+        return False
+
     def is_value_type(self) -> bool:
         """Return True if this is a value type (copy semantics).
 
@@ -605,6 +609,31 @@ class StrViewType(TpyType):
     def get_element_type(self) -> Optional['TpyType']:
         from tpyc.typesys import CHAR
         return CHAR
+
+
+@dataclass(frozen=True)
+class FStrType(TpyType):
+    """Compile-time f-string decomposition marker.
+
+    Only valid as a function parameter type. When an f-string is passed to
+    an FStr parameter, the compiler keeps the f-string decomposed (format
+    template + individual expressions) instead of lowering to std::format.
+    FStr values never exist at runtime.
+    """
+    def is_compile_time_only(self) -> bool:
+        return True
+
+    def to_cpp(self) -> str:
+        raise TypeError("FStr is compile-time only and has no C++ representation")
+
+    def __str__(self) -> str:
+        return "FStr"
+
+    def qualified_name(self) -> Optional[str]:
+        return "tpy.FStr"
+
+    def is_value_type(self) -> bool:
+        return True
 
 
 @dataclass(frozen=True)
@@ -3324,6 +3353,7 @@ VOID = VoidType()
 STR = StrType()
 STRING = StringType()
 STRVIEW = StrViewType()
+FSTR = FStrType()
 CHAR = CharType()
 BYTES = BytesType()
 BYTEARRAY = ByteArrayType()
@@ -3560,6 +3590,7 @@ class FunctionInfo:
     is_noalloc: bool = False
     is_readonly: bool = False
     is_pure: bool = False
+    is_inline: bool = False
     is_consuming: bool = False
     is_method: bool = False
     is_staticmethod: bool = False
@@ -3598,6 +3629,14 @@ class FunctionInfo:
     direct_self_mutated: Optional[bool] = None
     self_mutated: bool = True  # conservative default until Phase 2 resolves
     kwarg_name: Optional[str] = None  # name of **kwargs param (TypedDict type)
+    # FStr inlining: body expression to inline at call sites.
+    # Set during method body analysis for methods with FStr params.
+    inline_body: Optional[Any] = None  # TpyExpr: body expression for @inline functions
+
+    @property
+    def has_fstr_param(self) -> bool:
+        """True if any parameter has FStr type."""
+        return any(isinstance(p.type, FStrType) for p in self.params)
 
     @property
     def is_decorator_stub(self) -> bool:

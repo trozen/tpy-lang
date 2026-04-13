@@ -278,7 +278,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `dump_types.py` | Type documentation generation (`--print-types`) |
 | `repl.py` | Interactive REPL implementation |
 | `qnames.py` | Qualified name constants for compiler-known types, decorators, and protocols |
-| `macro_api.py` | Public API for compile-time macro modules: metadata (`ClassInfo`, `FieldInfo`, `TypeInfo`), AST builder (`ast`), type builder (`types`), type aliases (`Expr`, `Stmt`, `Function`, `Type`), source-based authoring (`ast.quote`, `ast.quote_expr`, `ast.quote_fun`, `cls.add_method_from_source`) |
+| `macro_api.py` | Public API for compile-time macro modules: metadata (`ClassInfo`, `FieldInfo`, `TypeInfo`), AST builder (`ast`), type builder (`types`), type aliases (`Expr`, `Stmt`, `Function`, `Type`), source-based authoring (`ast.quote`, `ast.quote_expr`, `ast.quote_fun`, `cls.add_method_from_source`), f-string decomposition (`MacroArg.as_fstring()`, `MacroFStringPart`) |
 | `macro_loader.py` | Discovers and loads `# tpy: macro_module` files via CPython at compile time. Supports macro-to-macro imports from lib search paths |
 | `repl_backends.py` | REPL execution backends (clang-repl JIT, g++/clang++ compile) |
 
@@ -391,7 +391,7 @@ Library search roots and CPython stubs:
 |-----------|---------|
 | `tpy/` | Single search root for all library modules |
 | `tpy/tpy/` | TPy package: `__init__.py` re-exports from `_core/` and `_bootstrap/`. Implicitly compiled. |
-| `tpy/tpy/_bootstrap/` | Bootstrap layer: `_extern.py` (native, cpp_template, etc. -- compiler intrinsic stubs), `_decorators.py` (readonly, pure, Own, etc. -- decorator stubs) |
+| `tpy/tpy/_bootstrap/` | Bootstrap layer: `_extern.py` (native, cpp_template, etc. -- compiler intrinsic stubs), `_decorators.py` (readonly, pure, inline, Own, etc. -- decorator stubs) |
 | `tpy/tpy/_typing/` | Typing layer: `__init__.py` (Protocol, Self, Sized, Sequence, Iterator, Iterable) |
 | `tpy/tpy/_core/` | Core types: `_types.py` (protocols, primitives), `_containers.py` (Span, Array, Ptr), `_functions.py` (span, deref, copy, copy_iter, own_iter, try_parse), `_bytes_view.py` (BytesView) |
 | `tpy/tpy/_builtins/` | Builtin types and functions: `_types.py` (bool, int, float, str), `_funcs.py` (len, hash, print, isinstance, etc.), `_list.py`, `_dict.py`, `_set.py`, `_range.py`, `_bytes.py`, `_exceptions.py`, `_io.py` (TextIO, BinaryIO, open, open_text, open_binary) |

@@ -19,13 +19,7 @@ from tpyc.macro_api import (
     TpyStrLiteral, TpyIntLiteral,
 )
 
-macro_deps(("tpy.unsafe",
-    "unsafe_read_i8", "unsafe_read_u8",
-    "unsafe_read_i16", "unsafe_read_u16",
-    "unsafe_read_i32", "unsafe_read_u32",
-    "unsafe_read_i64", "unsafe_read_u64",
-    "unsafe_read_f32", "unsafe_read_f64",
-    "unsafe_read_bytes"))
+macro_deps("tpy.unsafe")
 
 # Format code -> (byte_size, read_function_name)
 _FORMAT_CODES: dict[str, tuple[int, str]] = {
@@ -136,10 +130,11 @@ def unpack_from(
         else:
             off_expr = ast.binop(base_offset, "+", ast.int_lit(byte_pos))
 
+        _unsafe = ast.name("unsafe")
         if func_name == 'unsafe_read_bytes':
-            call: Expr = ast.call(func_name, [data_arg.expr, off_expr, ast.int_lit(size)])
+            call: Expr = ast.method_call(_unsafe, func_name, [data_arg.expr, off_expr, ast.int_lit(size)])
         else:
-            call = ast.call(func_name, [data_arg.expr, off_expr])
+            call = ast.method_call(_unsafe, func_name, [data_arg.expr, off_expr])
 
         if is_bool:
             call = ast.call("bool", [ast.binop(call, "!=", ast.int_lit(0))])

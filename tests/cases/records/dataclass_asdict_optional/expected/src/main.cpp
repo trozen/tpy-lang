@@ -37,7 +37,7 @@ void main() {
         return __result;
     }()}})) << "\n";
     // print(astuple(pl))
-    std::cout << ::tpy::TuplePrinter(std::tuple<std::vector<std::optional<std::tuple<int32_t, int32_t>>>>{[&]() {
+    std::cout << ::tpy::TuplePrinter(std::tuple<std::vector<std::optional<std::tuple<int32_t, int32_t>>>>([&]() {
         std::vector<std::optional<std::tuple<int32_t, int32_t>>> __result;
         auto& __obj_1 = pl.items;
         __result.reserve(__obj_1.size());
@@ -48,20 +48,20 @@ void main() {
             __result.push_back((((__macro_1.has_value())) ? (std::optional<std::tuple<int32_t, int32_t>>(std::tuple<int32_t, int32_t>{(*__macro_1).x, (*__macro_1).y})) : (std::optional<std::tuple<int32_t, int32_t>>(std::nullopt))));
         }
         return __result;
-    }()}) << "\n";
+    }())) << "\n";
     // # 4. Deeply nested Optional
     // ml1 = MaybeLine(Line(Point(0, 0), Point(1, 1)))
     MaybeLine ml1 = MaybeLine(Line(Point(0, 0), Point(1, 1)));
     // print(asdict(ml1))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::optional<::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>>({{"line", (((ml1.line.has_value())) ? (std::optional<::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"start", ::tpy::ordered_map<std::string, int32_t>({{"x", (*ml1.line).start.x}, {"y", (*ml1.line).start.y}})}, {"end", ::tpy::ordered_map<std::string, int32_t>({{"x", (*ml1.line).end.x}, {"y", (*ml1.line).end.y}})}}))) : (std::optional<::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>(std::nullopt)))}})) << "\n";
     // print(astuple(ml1))
-    std::cout << ::tpy::TuplePrinter(std::tuple<std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>>{(((ml1.line.has_value())) ? (std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>(std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{(*ml1.line).start.x, (*ml1.line).start.y}, std::tuple<int32_t, int32_t>{(*ml1.line).end.x, (*ml1.line).end.y}})) : (std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>(std::nullopt)))}) << "\n";
+    std::cout << ::tpy::TuplePrinter(std::tuple<std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>>((((ml1.line.has_value())) ? (std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>(std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{(*ml1.line).start.x, (*ml1.line).start.y}, std::tuple<int32_t, int32_t>{(*ml1.line).end.x, (*ml1.line).end.y}})) : (std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>(std::nullopt))))) << "\n";
     // ml2 = MaybeLine(None)
     MaybeLine ml2 = MaybeLine(std::nullopt);
     // print(asdict(ml2))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::optional<::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>>({{"line", (((ml2.line.has_value())) ? (std::optional<::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"start", ::tpy::ordered_map<std::string, int32_t>({{"x", (*ml2.line).start.x}, {"y", (*ml2.line).start.y}})}, {"end", ::tpy::ordered_map<std::string, int32_t>({{"x", (*ml2.line).end.x}, {"y", (*ml2.line).end.y}})}}))) : (std::optional<::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>(std::nullopt)))}})) << "\n";
     // print(astuple(ml2))
-    std::cout << ::tpy::TuplePrinter(std::tuple<std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>>{(((ml2.line.has_value())) ? (std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>(std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{(*ml2.line).start.x, (*ml2.line).start.y}, std::tuple<int32_t, int32_t>{(*ml2.line).end.x, (*ml2.line).end.y}})) : (std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>(std::nullopt)))}) << "\n";
+    std::cout << ::tpy::TuplePrinter(std::tuple<std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>>((((ml2.line.has_value())) ? (std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>(std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{(*ml2.line).start.x, (*ml2.line).start.y}, std::tuple<int32_t, int32_t>{(*ml2.line).end.x, (*ml2.line).end.y}})) : (std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>(std::nullopt))))) << "\n";
     // # 5. Mixed required + optional
     // m1 = Mixed("both", Point(1, 2), Point(3, 4))
     Mixed m1 = Mixed("both", Point(1, 2), Point(3, 4));
