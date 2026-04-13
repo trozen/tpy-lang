@@ -2,11 +2,9 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpystd/builtins.hpp"
-#include "tpystd/tpy.hpp"
-#include "tpystd/typing.hpp"
-#include "mypkg/mypkg.hpp"
-#include "mypkg/types.hpp"
+#include "tpystd/tpy/_types.hpp"
+#include "tpystd/typing/_typing.hpp"
+#include "native_types.hpp"
 
 namespace tpyapp::main {
 

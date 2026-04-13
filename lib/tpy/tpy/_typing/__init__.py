@@ -1,4 +1,3 @@
-# tpy: native_module
 # tpy: cpp_namespace("tpystd::typing")
 from tpy import Int32
 from .._bootstrap._decorators import readonly

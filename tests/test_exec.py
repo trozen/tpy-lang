@@ -44,11 +44,15 @@ def test_exec(case_dir, main_src):
     if not result.success:
         pytest.skip("Compilation failed")
 
+    # Skip when the entry module is native_module -- nothing to link into a binary
+    entry_cpp = next((cpp_path for name, _, cpp_path, _ in result.all_modules
+                      if name == module_name), None)
+    if entry_cpp is None:
+        pytest.skip("Entry module is native_module -- nothing to execute")
+
     # Build and run C++ (pass all cpp files for multi-module support)
     all_cpp_files = [cpp_path for _, _, cpp_path, _ in result.all_modules
                      if cpp_path is not None] if result.all_modules else None
-    if not all_cpp_files:
-        pytest.skip("No C++ files to build (native_module)")
 
     extra_src = find_extra_src_files(case_dir)
     extra_includes = find_extra_include_dirs(case_dir)

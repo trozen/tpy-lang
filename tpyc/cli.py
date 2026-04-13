@@ -372,8 +372,9 @@ def main() -> int:
                     if e.filename is None and not compiled.is_entry_point:
                         e.filename = source_name
                     raise
-                print(f"// === include/{compiled.name}.hpp ===")
-                print(hpp_code)
+                if hpp_code:
+                    print(f"// === include/{compiled.name}.hpp ===")
+                    print(hpp_code)
                 if cpp_code:
                     print(f"// === src/{compiled.name}.cpp ===")
                     print(cpp_code)

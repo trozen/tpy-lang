@@ -122,7 +122,10 @@ def test_comp(case_dir, main_src, tmp_path):
     is_error = case_dir.name.startswith("error_")
     is_panic = case_dir.name.startswith("panic_")
     is_warn = case_dir.name.startswith("warn_")
-    has_cpp = any(cpp_path is not None for _, _, cpp_path, _ in result.all_modules)
+    # Entry module produces cpp = there's something to execute
+    entry_cpp = next((cpp_path for name, _, cpp_path, _ in result.all_modules
+                      if name == module_name), None)
+    has_cpp = entry_cpp is not None
     if not UPDATE_EXPECTED and not is_error and not is_panic and not is_warn and has_cpp:
         has_output = (expected_dir / "output.txt").exists()
         if not has_output:

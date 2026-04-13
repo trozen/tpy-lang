@@ -1,0 +1,1 @@
+main.py:5: error: non-native class 'Point' not allowed in native_module ('main' is declaration-only)

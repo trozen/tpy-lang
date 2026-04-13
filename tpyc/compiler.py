@@ -1387,7 +1387,7 @@ class Compiler:
             variables[k] = ModuleVarInfo(k, v, cpp_expr, is_pointer=is_ptr)
 
         is_native = compiled.ast.directives.native_module if compiled else False
-        gen_header = True
+        gen_header = not is_native
         includes = list(compiled.ast.directives.includes) if compiled else []
         return ModuleInfo(
             name=name,
@@ -1517,12 +1517,9 @@ class Compiler:
         )
 
         if not hpp_code:
-            # Pure native module with no output -- don't write files
             return None, None
         hpp_path.parent.mkdir(parents=True, exist_ok=True)
         hpp_path.write_text(hpp_code)
-        if compiled.ast.directives.native_module:
-            return hpp_path, None
         cpp_path.parent.mkdir(parents=True, exist_ok=True)
         cpp_path.write_text(cpp_code)
 
@@ -1564,7 +1561,7 @@ class Compiler:
         for compiled in self.modules.values():
             if not compiled.ast.directives.native_module:
                 continue
-            # Validate: @export not allowed in native_module
+            # Validate: only @native/@builtin entities allowed in native_module
             for func in compiled.ast.functions:
                 if func.linkage == FL.EXPORT_C:
                     raise CompileError(
@@ -1572,6 +1569,28 @@ class Compiler:
                         f"('{compiled.name}' is declaration-only)",
                         compiled.name, compiled.path,
                         lineno=func.loc.line if func.loc else None)
+                if (func.linkage == FL.DEFAULT
+                        and not func.builtin_function_key
+                        and not func.builtin_decorator_key
+                        and not func.cpp_template):
+                    raise CompileError(
+                        f"non-native function '{func.name}' not allowed "
+                        f"in native_module ('{compiled.name}' is declaration-only)",
+                        compiled.name, compiled.path,
+                        lineno=func.loc.line if func.loc else None)
+            for record in compiled.ast.records:
+                if record.linkage == RL.DEFAULT and not record.builtin_type_key:
+                    raise CompileError(
+                        f"non-native class '{record.name}' not allowed "
+                        f"in native_module ('{compiled.name}' is declaration-only)",
+                        compiled.name, compiled.path,
+                        lineno=record.loc.line if record.loc else None)
+            for proto in compiled.ast.protocols:
+                raise CompileError(
+                    f"protocol '{proto.name}' not allowed in "
+                    f"native_module ('{compiled.name}' is declaration-only)",
+                    compiled.name, compiled.path,
+                    lineno=proto.loc.line if proto.loc else None)
             ns = compiled.ast.directives.cpp_namespace
             if not ns:
                 continue

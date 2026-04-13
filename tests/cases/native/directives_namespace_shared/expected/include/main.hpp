@@ -2,12 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpystd/builtins.hpp"
-#include "tpystd/tpy.hpp"
-#include "tpystd/typing.hpp"
-#include "mypkg/mypkg.hpp"
-#include "mypkg/math.hpp"
-#include "mypkg/text.hpp"
+#include "tpystd/tpy/_types.hpp"
+#include "tpystd/typing/_typing.hpp"
 
 namespace tpyapp::main {
 

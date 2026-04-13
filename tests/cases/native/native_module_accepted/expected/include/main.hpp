@@ -2,16 +2,17 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include <SDL2/SDL.h>
-
-#include "tpystd/builtins.hpp"
-#include "tpystd/tpy.hpp"
-#include "tpystd/typing.hpp"
+#include "tpystd/tpy/_types.hpp"
+#include "tpystd/typing/_typing.hpp"
+#include "native_impl.hpp"
 
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-extern "C" int32_t SDL_Init(int32_t flags);
+void main();
 
+extern "C" int32_t native_c_func(int32_t x);
+
+void __tpy_init();
 } // namespace tpyapp::main

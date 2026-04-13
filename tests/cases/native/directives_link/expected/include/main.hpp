@@ -4,9 +4,8 @@
 #include <tpy/tpy.hpp>
 #include <math.h>
 
-#include "tpystd/builtins.hpp"
-#include "tpystd/tpy.hpp"
-#include "tpystd/typing.hpp"
+#include "tpystd/tpy/_types.hpp"
+#include "tpystd/typing/_typing.hpp"
 
 namespace tpyapp::main {
 
