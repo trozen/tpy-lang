@@ -87,6 +87,7 @@ tpyc -i                          # interactive REPL
 tpyc --dump-code file.py         # inspect generated C++
 tpyc --cxx list                  # show available C++ compilers
 tpyc -x -j4 examples/hello.py   # parallel compilation (4 jobs)
+tpyc --install-agent-docs docs/ # install TPy agent docs into your project
 ```
 
 A `sources.cmake` file is generated alongside the C++ output for easy CMake integration.
@@ -124,3 +125,5 @@ uv run tpyc --print-types | glow -p
 
 See `CLAUDE.md` for architecture, test structure, and development guidelines.
 See `docs/LANGUAGE_FEATURES.md` for comprehensive language documentation.
+See `docs/TPY_FOR_AGENTS.md` for the agent-facing bootstrap (also installable
+into downstream projects via `tpyc --install-agent-docs`).

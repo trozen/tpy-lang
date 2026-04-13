@@ -727,7 +727,7 @@ Per-module configuration via source comments in the file preamble (before any co
 # tpy: include("<SDL2/SDL.h>")         # add #include <SDL2/SDL.h> (angle-bracket)
 # tpy: link("SDL2")                    # add -lSDL2 linker flag
 # tpy: link("m", platform="linux")     # platform-filtered: only link on Linux
-# tpy: native_module                   # binding-only module (no .cpp generated)
+# tpy: native_module                   # declaration-only module (no .hpp/.cpp generated)
 ```
 
 **Why it matters**: Multiple features depend on this infrastructure -- `default-int`
@@ -742,8 +742,9 @@ Without a directive system, each of these needs its own ad-hoc mechanism. A unif
 - `include(path)` -- emits `#include` in the generated header (quoted or angle-bracket)
 - `link(lib)` / `link(lib, platform=name)` -- adds `-llib` linker flag with optional
   platform filter (`"linux"`, `"macos"`, `"windows"`)
-- `native_module` -- marks the module as binding-only (only `.hpp` generated, no `.cpp`);
-  for modules that only declare `@native` function bindings
+- `native_module` -- marks the module as declaration-only (no `.hpp` or `.cpp`
+  generated); for modules that only declare `@native` bindings to existing
+  C/C++ entities. Includes are propagated to importing modules.
 
 Directives must appear in the file preamble (before any code). Unknown directives and
 malformed arguments produce warnings. The parser uses Python's `ast.literal_eval` for

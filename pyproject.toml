@@ -33,6 +33,8 @@ path = "tpyc/_build_hook.py"
 [tool.hatch.build.targets.wheel.force-include]
 "runtime" = "tpyc/_data/runtime"
 "lib/tpy" = "tpyc/_data/lib/tpy"
+"docs/TPY_FOR_AGENTS.md" = "tpyc/_data/docs/TPY_FOR_AGENTS.md"
+"docs/LANGUAGE_FEATURES.md" = "tpyc/_data/docs/LANGUAGE_FEATURES.md"
 "tpyc/_buildinfo.py" = "tpyc/_buildinfo.py"
 
 [tool.pyright]

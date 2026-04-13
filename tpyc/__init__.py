@@ -26,6 +26,10 @@ def get_lib_dir() -> Path:
     return _resolve_data_dir("lib")
 
 
+def get_docs_dir() -> Path:
+    return _resolve_data_dir("docs")
+
+
 from .typesys import (
     TpyType, Int32Type, FixedIntType, VoidType, NamedType, PtrType, is_readonly_ptr,
     INT32, VOID, TypeRegistry

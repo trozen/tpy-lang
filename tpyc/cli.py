@@ -32,7 +32,7 @@ from .compiler import (
     Compiler, CompileError, CompilerNotFoundError, BuildLayout, CppCompilerConfig,
     DEFAULT_INT_CHOICES, list_compilers, get_or_build_pch,
 )
-from . import __version__, get_git_commit, get_runtime_dir, get_lib_dir
+from . import __version__, get_git_commit, get_runtime_dir, get_lib_dir, get_docs_dir
 
 
 def _fmt_ms(seconds: float) -> str:
@@ -53,9 +53,11 @@ def _print_info() -> None:
     pkg_dir = Path(__file__).parent
     lib_dir = get_lib_dir()
     runtime_dir = get_runtime_dir()
+    docs_dir = get_docs_dir()
     print(f"compiler:  {pkg_dir}")
     print(f"lib:       {lib_dir / 'tpy'}")
     print(f"runtime:   {runtime_dir}")
+    print(f"docs:      {docs_dir}")
     print()
 
     # C++ compiler
@@ -178,6 +180,9 @@ def main() -> int:
     parser.add_argument("--emit-source", action="store_true", help="Embed Python source as comments in generated C++")
     parser.add_argument("-i", "--repl", action="store_true", help="Start interactive REPL")
     parser.add_argument("--print-types", action="store_true", help="Print documentation for all builtin types")
+    parser.add_argument("--install-agent-docs", metavar="DIR",
+                        help="Install TPy agent docs (TPY_FOR_AGENTS.md, TPY_LANGUAGE_FEATURES.md) "
+                             "into DIR and print an AGENTS.md snippet to stdout")
     parser.add_argument("--dump-code", action="store_true", help="Print generated C++ to stdout")
     parser.add_argument(
         "--default-int",
@@ -243,6 +248,20 @@ def main() -> int:
             preload_files = [Path(args.input).resolve()]
         return REPLSession(verbose=args.verbose, preload_files=preload_files,
                            lib_dirs=lib_dirs, cxx=args.cxx).run()
+
+    # Handle --install-agent-docs (before --print-types so it's not silently dropped)
+    if args.install_agent_docs is not None:
+        from .install_docs import install_agent_docs, agents_md_snippet
+        target = Path(args.install_agent_docs).resolve()
+        try:
+            written = install_agent_docs(target)
+        except (NotADirectoryError, OSError) as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
+        for p in written:
+            print(f"Wrote {p}", file=sys.stderr)
+        print(agents_md_snippet(Path(args.install_agent_docs)))
+        return 0
 
     # Handle --print-types
     if args.print_types:

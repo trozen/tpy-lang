@@ -1,5 +1,13 @@
 # TurboPython Language Features
 
+> **For coding agents**: when this file is installed in a downstream
+> project (via `tpyc --install-agent-docs`), it ships alongside
+> `TPY_FOR_AGENTS.md` -- a concise bootstrap covering the Python-to-TPy
+> delta, ownership rules, and idiomatic patterns. Start there; use this
+> file for depth on specific features. Only trust sections marked
+> **Working** -- treat **Planned** and **Open** as design notes, not
+> available features.
+
 Status legend:
 - **Working** - Implemented now
 - **Planned** - Will add
