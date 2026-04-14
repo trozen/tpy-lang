@@ -1,0 +1,8 @@
+is True
+is not False
+---
+is False
+is not True
+---
+True is x
+False is not x

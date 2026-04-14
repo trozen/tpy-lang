@@ -20,7 +20,12 @@ T = TypeVar('T')
 # Char
 # ---------------------------------------------------------------------------
 
-Char = str
+class Char(str):
+    """CPython stub: Char(int) -> chr(int), Char(str) -> str."""
+    def __new__(cls, val):
+        if isinstance(val, int):
+            return str.__new__(cls, chr(val))
+        return str.__new__(cls, val)
 String = str
 StrView = str
 BytesView = bytes

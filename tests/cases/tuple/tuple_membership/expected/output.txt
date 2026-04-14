@@ -1,0 +1,8 @@
+found 17
+17 not in small set
+found hello
+hello not in foo/bar
+single match
+single non-match
+call found
+1

@@ -783,6 +783,13 @@ class ExpressionAnalyzer:
                     f"Cannot compare enum types '{left_check.name}' and '{right_check.name}'",
                     expr,
                 )
+            # Bool literal identity: lower to ==/!=
+            if isinstance(left_check, BoolType) and isinstance(expr.right, TpyBoolLiteral):
+                expr.op = "==" if expr.op == "is" else "!="
+                return BOOL
+            if isinstance(right_check, BoolType) and isinstance(expr.left, TpyBoolLiteral):
+                expr.op = "==" if expr.op == "is" else "!="
+                return BOOL
             nullable_types = (OptionalType, PtrType)
             if isinstance(left_check, NoneType) and isinstance(right_check, nullable_types):
                 return BOOL
@@ -850,7 +857,10 @@ class ExpressionAnalyzer:
 
         # Tuple comparison: ==, !=, <, <=, >, >= with element-wise validation
         if isinstance(left_effective, TupleType) or isinstance(right_effective, TupleType):
-            if expr.op in ("==", "!=", "<", "<=", ">", ">="):
+            # Tuple membership is handled below in the 'in'/'not in' section
+            if expr.op in ("in", "not in") and isinstance(right_effective, TupleType):
+                pass  # fall through to membership handling
+            elif expr.op in ("==", "!=", "<", "<=", ">", ">="):
                 if not (isinstance(left_effective, TupleType) and isinstance(right_effective, TupleType)):
                     raise self.ctx.error(
                         f"Cannot compare {left_effective} with {right_effective}",
@@ -881,10 +891,11 @@ class ExpressionAnalyzer:
                     if expr.op in ("<", "<=", ">", ">="):
                         self._validate_comparison(expr, lt, rt)
                 return BOOL
-            raise self.ctx.error(
-                f"Operator '{expr.op}' is not supported for tuple types",
-                expr,
-            )
+            else:
+                raise self.ctx.error(
+                    f"Operator '{expr.op}' is not supported for tuple types",
+                    expr,
+                )
 
         # Comparison operators return Bool
         if expr.op in ("==", "!=", "<", ">", "<=", ">="):
@@ -962,6 +973,16 @@ class ExpressionAnalyzer:
                         f"membership test (expected {param_type})",
                         loc=expr.loc,
                     )
+            # Tuple literal membership: x in (1, 2, 3) -> x == 1 || x == 2 || x == 3
+            if isinstance(right_type, TupleType) and isinstance(expr.right, TpyTupleLiteral):
+                for et in right_type.element_types:
+                    if not self.compat.is_type_compatible(left_type, et) \
+                       and not self.compat.is_type_compatible(et, left_type):
+                        raise self.ctx.error(
+                            f"Tuple element type '{et}' is not compatible "
+                            f"with membership test type '{left_type}'",
+                            expr)
+                return BOOL
             # Right side must be iterable (intrinsically or via NativeIterable protocol)
             helper = IterableHelper(self.ctx)
             if helper.is_type_iterable(right_type):

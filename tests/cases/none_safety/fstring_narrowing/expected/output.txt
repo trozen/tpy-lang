@@ -1,0 +1,4 @@
+hello, world
+value is 42
+got: test
+nothing

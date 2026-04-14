@@ -2882,11 +2882,11 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 ### Comparison
 - **Working**: `==`, `!=`, `<`, `<=`, `>`, `>=`
 - **Working**: Chained comparisons (`a < b < c`, `a <= b <= c`, `1 < x < 10`, etc.) -- each operand evaluated exactly once
-- **Working**: `is`, `is not` (identity comparison with `None` only)
+- **Working**: `is`, `is not` (identity comparison with `None`, enum values, and bool literals `True`/`False`)
 - **Working**: Mixed `int`/`float` comparisons (BigInt promoted to double)
 
 ### Membership
-- **Working**: `in`, `not in` (for list, Array, Span, str)
+- **Working**: `in`, `not in` (for list, Array, Span, str, tuple literals)
 
 ### Logical
 - **Working**: `and`, `or`, `not`
@@ -4606,7 +4606,7 @@ VERSION: Final[tuple[Int32, Int32, Int32]] = (1, 2, 3)
 - Frozen binding: cannot be reassigned at module level, cannot use `global X` in functions
 - Immutable value: treated as readonly (no mutation through the binding)
 - Local shadowing allowed: functions can declare local variables with the same name
-- Initializer must be a compile-time constant: literal, reference to a previously declared Final, constant arithmetic, tuple of constants, or `@call_macro` expansion that reduces to a constant (no forward references)
+- Initializer must be a compile-time constant: literal, reference to a previously declared Final, constant arithmetic, primitive type constructor (`Int32(x)`, `Float32(x)`, etc.) with a constant argument, tuple of constants, or `@call_macro` expansion that reduces to a constant (no forward references)
 
 **C++ mapping:**
 - Constexpr-eligible types (fixed-width integers, float, bool, char, str): `inline constexpr T NAME = VALUE;` in header

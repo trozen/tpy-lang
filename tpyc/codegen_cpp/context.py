@@ -1061,10 +1061,10 @@ class CodeGenContext:
         if isinstance(expr, TpyFieldAccess):
             return self.is_rvalue_source(expr.obj)
         # Subscript into containers is an lvalue (returns T&).
-        # NOTE: user-record __getitem__ currently returns const T&, so
-        # &(obj[i]) would give const T* (won't assign to T*). This will
-        # be fixed when non-const __getitem__ overloads are added.
+        # Exception: slice calls (e.g. list_stepped_slice) may return by value.
         if isinstance(expr, TpySubscript):
+            if expr.slice_function_info is not None:
+                return not self._call_returns_cpp_ref(expr.slice_function_info)
             return False
         # Ternary: lvalue iff both arms are lvalues (C++ ternary with two lvalue
         # arms is itself an lvalue). Uses OR semantics: rvalue if either arm is

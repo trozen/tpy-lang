@@ -14,6 +14,7 @@ from ..typesys import (
     TypeParamRef, TypeParamKind, RecordInfo, TupleType, UnionType,
     ArrayType, SpanType, SpanIterType, unwrap_readonly, unwrap_optional_own,
     get_covariant_params, FixedIntType, BigIntType, EnumType, PtrType,
+    BytesType,
 )
 from ..parse import (
     TpyRecord, TpyEnum, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -701,6 +702,15 @@ class RecordGenerator:
                                 # Unwrap copy() in member init -- init list copies implicitly
                                 source = self.ctx.unwrap_copy(stmt.value)
                                 value = self.expressions.gen_expr(source, fld_type)
+                                # bytes param (span<const uint8_t>) -> field (vector<uint8_t>):
+                                # construct from iterators since vector has no span constructor.
+                                if (isinstance(fld_type, BytesType)
+                                        and isinstance(source_expr, TpyName)
+                                        and source_expr.name in param_names):
+                                    for pname, ptype in init_method.params:
+                                        if pname == source_expr.name and isinstance(ptype, BytesType):
+                                            value = f"std::vector<uint8_t>({value}.begin(), {value}.end())"
+                                            break
                                 # Auto-move Own[T] params at last use in member init list.
                                 inner = source
                                 while isinstance(inner, TpyCoerce):

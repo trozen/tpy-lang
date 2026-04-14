@@ -392,12 +392,34 @@ class ExpressionGenerator:
             return self._resolve_field_declared_type(expr)
         return None
 
+    def gen_expr_narrowed(self, expr: TpyExpr) -> tuple[str, TpyType]:
+        """Generate expression and type with narrowing applied.
+
+        Returns (cpp_expr, effective_type) where both reflect narrowing state.
+        - Optional narrowing: unwraps std::optional<T> to T with (*expr)
+        - Union narrowing: uses the narrowed variant type from sema
+
+        Use this instead of separate gen_expr_deref + get_resolved_type when
+        the caller needs the expression and type to agree on narrowing (e.g.
+        f-string interpolation, any context feeding std::format or similar).
+        Callers that intentionally handle optionals (print_optional_val, etc.)
+        should use gen_expr_deref directly.
+        """
+        gen = self.gen_expr_deref(expr)
+        base = unwrap_readonly(self.types.get_resolved_type(expr))
+        if isinstance(base, OptionalType) and self._is_narrowed_value_optional(expr):
+            return f"(*{gen})", base.inner
+        if isinstance(expr, TpyName) and expr.name in self.ctx.narrowed_vars:
+            analyzed = self.ctx.get_expr_type(expr)
+            if analyzed is not None:
+                return gen, unwrap_readonly(analyzed)
+        return gen, base
+
     def _is_narrowed_value_optional(self, expr: TpyExpr) -> bool:
         """True if expr is an optional whose sema type was narrowed to non-Optional.
 
         The C++ storage is still std::optional<T> but sema proved it holds a value
-        (e.g. inside `if x is not None:`). Callers use this to pass target_type
-        to gen_expr_deref so it emits the (*x) unwrap.
+        (e.g. inside `if x is not None:`).
         """
         cpp_type = self._get_cpp_declared_type(expr)
         if (cpp_type is not None
@@ -1099,6 +1121,27 @@ class ExpressionGenerator:
                 folded = self._try_fold_literal_in(expr)
                 if folded is not None:
                     return folded
+            # Tuple literal membership: x in (1, 2, 3) -> (x == 1 || x == 2 || x == 3)
+            if isinstance(expr.right, TpyTupleLiteral):
+                left = self.gen_expr(expr.left)
+                elems = [self.gen_expr(e) for e in expr.right.elements]
+                # For multi-element tuples with non-trivial LHS, bind LHS to a
+                # temp to avoid evaluating it multiple times (side effects).
+                need_temp = (len(elems) > 1
+                             and not isinstance(expr.left, (TpyName, TpyIntLiteral,
+                                                            TpyFloatLiteral, TpyStrLiteral,
+                                                            TpyBoolLiteral)))
+                if need_temp:
+                    conditions = [f"(__in_lhs == {e})" for e in elems]
+                    joined = " || ".join(conditions)
+                    negate = expr.op == "not in"
+                    body = f"!({joined})" if negate else joined
+                    return f"[&]() -> bool {{ auto&& __in_lhs = {left}; return {body}; }}()"
+                conditions = [f"({left} == {e})" for e in elems]
+                joined = " || ".join(conditions) if conditions else "false"
+                if expr.op == "not in":
+                    return f"(!({joined}))" if len(conditions) > 1 else f"(!{conditions[0]})"
+                return f"({joined})"
             left = self.gen_expr(expr.left)
             right = self.gen_expr(expr.right)
             # Dereference globals for .begin()/.end() calls
@@ -1826,6 +1869,11 @@ class ExpressionGenerator:
         # print() maps to std::printf
         if expr.func_name == "print":
             return self.builtins.gen_print(expr.args, expr.kwargs)
+        # ord("X") with single-char string literal -> int constant
+        if expr.func_name == "ord" and len(expr.args) == 1:
+            arg = expr.args[0]
+            if isinstance(arg, TpyStrLiteral) and len(arg.value) == 1:
+                return str(ord(arg.value))
         # Check for imported function (builtins or from X import Y -> Y())
         # Builtins (len, pow, etc.) are registered in imported_names by the analyzer.
         if expr.func_name in self.ctx.analyzer.imported_names:
@@ -3738,8 +3786,7 @@ class ExpressionGenerator:
                 fmt_parts.append(escaped.replace("{", "{{").replace("}", "}}"))
             else:
                 all_literal = False
-                gen_arg = self.gen_expr_deref(part.expr)
-                arg_type = unwrap_readonly(self.types.get_resolved_type(part.expr))
+                gen_arg, arg_type = self.gen_expr_narrowed(part.expr)
                 has_spec = part.format_spec is not None
                 conv = part.conversion
 
