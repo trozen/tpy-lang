@@ -5,9 +5,12 @@ import difflib
 import functools
 import json
 import os
+import atexit
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from dataclasses import dataclass, field
 
@@ -39,6 +42,105 @@ CPY_LIB_DIR = LIB_DIR / "cpy"
 TPY_LIB_DIR = LIB_DIR / "tpy"
 DEFAULT_LIB_DIRS = [TPY_LIB_DIR]
 RUNTIME_DIR = PROJECT_ROOT / "runtime" / "cpp" / "include"
+
+
+# ---------------------------------------------------------------------------
+# Pre-compiled stdlib cache
+# ---------------------------------------------------------------------------
+# Compiles the 2 implicit stdlib .o files once per session so that test_exec
+# only needs to compile each test's unique main.cpp.
+
+@dataclass
+class _StdlibCache:
+    """Pre-compiled stdlib object files shared across all test_exec cases."""
+    objects: list[str]          # absolute paths to .o files
+    cpp_relpaths: set[str]      # relative paths (under src/) to exclude from per-test compile
+
+
+_stdlib_cache: _StdlibCache | None = None
+_stdlib_cache_initialized = False
+
+
+def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
+    """Generate and compile stdlib .o files into *cache_dir*."""
+    # Write a trivial program that triggers all implicit stdlib modules
+    stub_src = cache_dir / "_stub.py"
+    stub_src.write_text("pass\n")
+
+    compiler = Compiler(stub_src, default_int="Int32", lib_dirs=DEFAULT_LIB_DIRS)
+    compiled_modules = compiler.compile()
+    entry = next(m for m in compiled_modules if m.is_entry_point)
+
+    build_dir = cache_dir / "build"
+    build_dir.mkdir()
+    for mod in compiled_modules:
+        compiler.generate_code(mod, build_dir, entry_module_name=entry.name,
+                               options=TEST_CODEGEN_OPTIONS)
+
+    layout = BuildLayout(build_dir, entry.name, build_variant="debug")
+
+    # Collect non-local (stdlib) .cpp files
+    stdlib_cpps: list[Path] = []
+    for mod in compiled_modules:
+        if mod.is_entry_point:
+            continue
+        cpp = layout.cpp_path(mod.name)
+        if cpp.exists():
+            stdlib_cpps.append(cpp)
+
+    if not stdlib_cpps:
+        return _StdlibCache(objects=[], cpp_relpaths=set())
+
+    # Compile each stdlib .cpp -> .o
+    obj_dir = cache_dir / "obj"
+    obj_dir.mkdir()
+
+    objects: list[str] = []
+    relpaths: set[str] = set()
+    common = [
+        *CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}",
+        *CPP_CONFIG.extra_flags,
+        *CPP_CONFIG.warn_flags,
+        "-I", str(RUNTIME_DIR),
+        "-I", str(layout.include_dir),
+    ]
+
+    for cpp in stdlib_cpps:
+        rel = str(cpp.relative_to(layout.src_dir))
+        relpaths.add(rel)
+        obj_name = rel.replace(os.sep, "_").removesuffix(".cpp") + ".o"
+        obj_path = obj_dir / obj_name
+        prefix = ["ccache"] if CPP_CONFIG.ccache else []
+        cmd = [*prefix, *common, "-c", "-o", str(obj_path), str(cpp)]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"WARNING: stdlib pre-compilation failed for {rel}:\n{result.stderr}",
+                  file=sys.stderr)
+            return _StdlibCache(objects=[], cpp_relpaths=set())
+        objects.append(str(obj_path))
+
+    return _StdlibCache(objects=objects, cpp_relpaths=relpaths)
+
+
+def get_stdlib_cache() -> _StdlibCache | None:
+    """Return the pre-compiled stdlib cache, compiling on first call.
+
+    Lazy so that non-exec test runs (test_comp, test_cpy, unit tests) pay
+    zero startup cost.  Each xdist worker initializes independently; ccache
+    makes the duplicate compilations near-instant.
+    """
+    global _stdlib_cache, _stdlib_cache_initialized
+    if _stdlib_cache_initialized:
+        return _stdlib_cache
+    _stdlib_cache_initialized = True
+    cache_dir = Path(tempfile.mkdtemp(prefix="tpyc_stdlib_"))
+    atexit.register(shutil.rmtree, str(cache_dir), True)
+    try:
+        _stdlib_cache = _setup_stdlib_cache(cache_dir)
+    except Exception as exc:
+        print(f"WARNING: stdlib pre-compilation failed: {exc}", file=sys.stderr)
+        _stdlib_cache = None
+    return _stdlib_cache
 
 
 def run_cpython(src_file: Path) -> str:
@@ -274,7 +376,9 @@ def build_and_run(build_dir: Path, module_name: str,
                   extra_include_dirs: list[Path] | None = None,
                   force_includes: list[Path] | None = None,
                   link_flags: list[str] | None = None,
-                  build_variant: str = "debug") -> RunResult:
+                  build_variant: str = "debug",
+                  precompiled_objects: list[str] | None = None,
+                  exclude_cpp_relpaths: set[str] | None = None) -> RunResult:
     """Compile generated C++ and run, capturing all output (including panics).
 
     Args:
@@ -290,6 +394,9 @@ def build_and_run(build_dir: Path, module_name: str,
                         (e.g., native type definitions for interop tests).
         link_flags: Extra linker flags from # tpy: link() directives.
         build_variant: Build variant ("debug" or "release").
+        precompiled_objects: Pre-compiled .o files to link (e.g. stdlib objects).
+        exclude_cpp_relpaths: Relative paths (under src/) to skip compiling
+                              when using precompiled_objects.
     """
     layout = BuildLayout(build_dir, module_name, build_variant=build_variant)
 
@@ -302,6 +409,11 @@ def build_and_run(build_dir: Path, module_name: str,
     if extra_src_files:
         cpp_files.extend(extra_src_files)
 
+    # Filter out pre-compiled stdlib .cpp files
+    if exclude_cpp_relpaths and precompiled_objects:
+        cpp_files = [f for f in cpp_files
+                     if not _matches_stdlib_relpath(f, layout.src_dir, exclude_cpp_relpaths)]
+
     # Apply per-test link flags if provided
     config = CPP_CONFIG
     if link_flags:
@@ -312,6 +424,7 @@ def build_and_run(build_dir: Path, module_name: str,
         runtime_include_dir=RUNTIME_DIR,
         cpp_files=cpp_files,
         config=config,
+        extra_objects=precompiled_objects,
         extra_include_dirs=extra_include_dirs or None,
         force_includes=force_includes or None,
     )
@@ -335,6 +448,15 @@ def build_and_run(build_dir: Path, module_name: str,
         stderr=result.stderr,
         returncode=result.returncode
     )
+
+
+def _matches_stdlib_relpath(cpp_file: Path, src_dir: Path, relpaths: set[str]) -> bool:
+    """Check if cpp_file's path relative to src_dir is in the stdlib set."""
+    try:
+        rel = str(cpp_file.relative_to(src_dir))
+        return rel in relpaths
+    except ValueError:
+        return False
 
 
 @dataclass

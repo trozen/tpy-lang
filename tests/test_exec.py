@@ -19,9 +19,11 @@ from conftest import (
     find_force_includes,
     check_or_update,
     discover_cases,
+    get_stdlib_cache,
 )
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("case_dir, main_src", [
     pytest.param(case_dir, main_src, id=name)
     for name, case_dir, main_src in discover_cases()
@@ -57,11 +59,14 @@ def test_exec(case_dir, main_src):
     extra_src = find_extra_src_files(case_dir)
     extra_includes = find_extra_include_dirs(case_dir)
     force_includes = find_force_includes(case_dir)
+    cache = get_stdlib_cache()
     run_result = build_and_run(build_dir, module_name, all_cpp_files=all_cpp_files,
                                extra_src_files=extra_src or None,
                                extra_include_dirs=extra_includes or None,
                                force_includes=force_includes or None,
-                               link_flags=result.link_flags or None)
+                               link_flags=result.link_flags or None,
+                               precompiled_objects=cache.objects if cache else None,
+                               exclude_cpp_relpaths=cache.cpp_relpaths if cache else None)
 
     if run_result.cpp_build_failed:
         pytest.fail(

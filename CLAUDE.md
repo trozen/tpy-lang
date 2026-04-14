@@ -68,6 +68,8 @@ Always use `uv run` to invoke Python/tpyc (never bare `python` or `tpyc`). Use t
 
 **For snippets**, write to a file under `/tmp/agents/` (any filename or subdirectory) and run from there. Do NOT use heredocs (`<<EOF`) as they trigger permission prompts for multi-line commands.
 
+**For testing**, see the "Agent testing workflow" section below. Key rules: run only targeted test subsets during development (`-k pattern`), run the full suite only once at the end, and never start a new test run while another is still running.
+
 To inspect generated C++:
 
 ```bash
@@ -84,11 +86,16 @@ uv run tpyc -x /tmp/agents/scratch.py
 
 ## Testing
 
-Parallel execution (`-n auto`) is configured in `pyproject.toml` via `addopts`.
+Parallel execution (`-n auto`) is configured in `pyproject.toml` via `addopts`. The `test_exec` suite (C++ compilation + execution) is marked `@pytest.mark.slow` and uses pre-compiled stdlib object files to avoid redundant recompilation.
+
+### Test commands
 
 ```bash
-# Run all tests
+# Run all tests (full suite -- use for final verification)
 uv run pytest
+
+# Skip C++ build/execution tests (fast: ~4 min)
+uv run pytest -m "not slow"
 
 # Run fast compilation tests only (diagnostics, codegen)
 uv run pytest tests/test_comp.py
@@ -102,8 +109,9 @@ uv run pytest tests/test_cpy.py
 # Run unit tests only (no C++ toolchain needed)
 uv run pytest tpyc/
 
-# Run tests for one case (pattern matching)
+# Run tests for specific cases (pattern matching)
 uv run pytest -k hello
+uv run pytest -k "bool_type or bool_conversion"
 
 # Update expected snapshots after intentional changes
 uv run python tests/update_snapshots.py                    # all cases
@@ -113,6 +121,34 @@ uv run python tests/update_snapshots.py --exec             # execution tests onl
 uv run python tests/update_snapshots.py --cpy              # CPython compatibility checks (read-only)
 uv run python tests/update_snapshots.py --comp -k hello    # specific case, comp only
 ```
+
+### Agent testing workflow
+
+**CPU awareness**: Never start a new test run while a previous one is still running. Either wait for it to finish, or kill it first (`pkill -f pytest`). Running concurrent test suites saturates all cores and makes everything slower for all agents and the user.
+
+**During development**, run targeted subsets only -- the new tests you are adding, or tests in categories likely affected by your changes. Use `-k pattern` to select specific tests. Both `test_comp` and `test_exec` are fine for targeted runs:
+
+```bash
+# Test a specific feature area you changed
+uv run pytest -k "bool_type or bool_conversion"
+
+# Test new cases you just added
+uv run pytest -k my_new_test_name
+```
+
+**Final verification**: Run the full suite once, after all changes are done, before reporting work as complete:
+
+```bash
+uv run pytest
+```
+
+If you only changed the Python compiler and want to verify generated C++ without running C++ builds:
+
+```bash
+uv run pytest -m "not slow"
+```
+
+### Snapshot policy
 
 **Important**: If a change would modify expected output for *existing* tests (not new tests you're adding), consult with the user before running `update_snapshots.py`. Explain what generated code will change and confirm the change is desired.
 

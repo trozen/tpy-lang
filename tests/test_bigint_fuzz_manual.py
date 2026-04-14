@@ -179,7 +179,7 @@ def test_bigint_differential_fuzz_manual(tmp_path):
         pytest.fail(f"Compilation failed.\nDiagnostics:\n{result.diagnostics}", pytrace=False)
 
     module_name = get_module_name(src_file)
-    all_cpp_files = [cpp_path for _, _, cpp_path in result.all_modules] if result.all_modules else None
+    all_cpp_files = [cpp_path for _, _, cpp_path, _ in result.all_modules if cpp_path is not None] if result.all_modules else None
     run_result = build_and_run(build_dir, module_name, all_cpp_files=all_cpp_files)
     if run_result.cpp_build_failed:
         pytest.fail(f"C++ build failed.\nStderr:\n{run_result.stderr}", pytrace=False)
