@@ -669,6 +669,13 @@ class Compiler:
         self._decorator_schemas: dict = {}
         # REPL mode: allow @error_return calls at top level (unwrap with panic)
         self.allow_top_level_error_unwrap: bool = False
+        # Records whose builtin self-refs have already been resolved (perf cache).
+        # Keyed by record object identity: _exports_to_module_info passes
+        # exports.records by reference, so the same RecordInfo appears in
+        # multiple ModuleInfo.records dicts. id() reuse is not a concern
+        # because RecordInfo objects live in Compiler.modules for the full
+        # compiler lifetime.
+        self._resolved_self_ref_records: set[int] = set()
 
     @classmethod
     def from_source(
@@ -1448,7 +1455,12 @@ class Compiler:
             if isinstance(t, NamedType) and not t.type_args and t.name in name_to_factory:
                 return name_to_factory[t.name]()
             return t.map_inner_types(resolve)
+        cache = self._resolved_self_ref_records
         for rec in module_info.records.values():
+            rec_id = id(rec)
+            if rec_id in cache:
+                continue
+            cache.add(rec_id)
             for methods in rec.methods.values():
                 for method in methods:
                     for i, p in enumerate(method.params):

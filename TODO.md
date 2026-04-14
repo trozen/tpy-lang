@@ -4,7 +4,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
 - CallMacroContext API redesign: current API grew ad-hoc from test cases (get_field_type, get_method_return_type, qualified_name, first_param, self_type, etc.). Needs a principled design pass: call site context (function params, method vs free), type introspection (fields, methods, qualified identity), and diagnostics. Consider whether type introspection belongs on TypeInfo (needs registry access) or stays on ctx. Unify get_record_fields (string name, match_args gated) with the TypeInfo-based path. See MACRO_DESIGN.md future extensions.
-- test time imrovement -- the tests are taking again a lot of time, investigate how to make them shorter; e.g. a set of a few quick tests that cover all/most functionality
+- test time improvement -- see "Compiler Performance / mypyc" section below for profiled hotspots and action plan
 - overload_getitem_both_slices -- overload flattening -- invalid source comments, should show if and note that dead code has been removed
 - Overload implementation arity mismatch: `@overload` stubs with different arities (e.g. `log(x)` and `log(x, base)`) can't have an implementation function with a default param (`def log(x, base=None)`) -- the compiler rejects the param count mismatch. Blocks `math.log(x, base)` overload. Workaround: `log_base(x, base)` as separate function. Low priority.
 - range function/type defined in .py and generic
@@ -72,6 +72,57 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 ## Build pipeline
 - when a module forwards imports only, those imports should not generate headers if the symbols are not used
 - do not compile .cpp files that are not needed, e.g. no function is called etc
+
+## Compiler Performance / mypyc
+
+Goal: speed up test runs (currently ~3 min parallel, ~6 min single-threaded for non-slow tests) and prepare for self-hosting. These optimizations are worth doing independently but also remove mypyc blockers.
+
+### Hotspot fixes (ordered by impact)
+
+1. ~~**Cache `_resolve_builtin_self_refs` across modules**~~ **DONE** -- cached at record level (`_resolved_self_ref_records: set[int]` keyed by record object identity). Can't cache by module name because exports are populated lazily during compilation. Combined with item 2, gives ~30% compilation speedup.
+
+2. ~~**`map_inner_types` identity short-circuit**~~ **DONE** -- compares mapped tuple to original, returns `self` if identical. Eliminates redundant frozen dataclass construction.
+
+3. **Inline `SemanticContext` forwarded fields** (mypyc blocker + overhead):
+   `SemanticContext.__getattr__/__setattr__` dynamically forwards 69 fields to a composed `FunctionTrackingState` via `_FUNC_STATE_FIELDS` set lookup. This was a refactoring shortcut to limit area of changes. Adds overhead on every field access (~276 access sites across 12+ sema files) and is incompatible with mypyc. Fix: inline all fields directly onto `SemanticContext`, keep `FunctionTrackingState` as a grouping for save/restore only. Mechanical refactor -- large diff, low risk.
+
+4. **Merge sequential `map_inner_types` passes** (redundant tree walks):
+   `statements.py` does alias resolution, enum resolution, and type resolution as 3 separate recursive tree walks over the same type. Each pass calls `map_inner_types` independently. Fix: merge into a single combined pass that handles all three in one walk.
+
+5. **Memoize type transformations in `map_inner_types`** (no caching):
+   The same types get re-transformed repeatedly across different call sites with the same transformation function (e.g. `substitute_type_params` with identical bindings). Frozen dataclasses are hashable, so results can be cached per (type, transformation) pair. Especially valuable in `_resolve_builtin_self_refs` where the same builtin method signatures are walked repeatedly.
+
+6. **Type kind tags to reduce `isinstance` overhead** (931k calls, 74ms):
+   Add a `kind: TypeKind` enum field to `TpyType` base class. Replace multi-type isinstance tuples (e.g. `isinstance(t, (StrType, StringType, StrViewType, PendingStrType))`) with tag checks. Also benefits self-hosting (maps cleanly to C++ tagged unions). Longer-term change; related to the existing "eliminate concrete type classes" item.
+
+### mypyc integration (after hotspot fixes)
+
+- **Build system**: switch from hatchling to setuptools with mypyc build step (or mypycify)
+- **Macro loader**: keep as pure Python, exclude from mypyc compilation. mypyc supports mixed compiled/interpreted packages
+- **Frozen dataclass `object.__setattr__`**: 2 spots in typesys.py, refactor to avoid
+
+### Profiling data (json_model_inherit, 33 modules, single compilation)
+
+Before (items 1-2):
+```
+_resolve_builtin_self_refs  242ms  30%  (832 calls, each doing recursive type walks)
+sema total                  345ms  42%
+map_inner_types             102ms  12%  (193k calls, 176k primitive)
+codegen                     102ms  12%
+parsing                     102ms  12%
+isinstance (builtin)         74ms   9%  (931k calls)
+total function calls        2.76M
+```
+
+After items 1-2 (~30% faster, 2.76M -> 1.81M function calls):
+```
+sema total                  355ms  62%  (now the dominant phase)
+codegen                     102ms  18%
+parsing                     102ms  18%
+isinstance (builtin)         56ms  10%  (931k -> 714k calls)
+_resolve_builtin_self_refs  eliminated from top 30
+map_inner_types             eliminated from top 30
+```
 
 ## Investigate
 - CPython native (C) module for tpy stubs: the `lib/cpy/tpy/` stubs are pure Python. A C extension module could improve CPython performance for programs that use tpy types (Int32, Array, Span, etc.) heavily.

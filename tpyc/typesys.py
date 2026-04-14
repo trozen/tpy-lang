@@ -446,7 +446,12 @@ class TpyType:
         inner = self.inner_types()
         if not inner:
             return self
-        return self.with_inner_types(tuple(fn(t) for t in inner))
+        mapped = tuple(fn(t) for t in inner)
+        # Identity check: NamedType has compare=False fields (_module_qname,
+        # is_dynamic_protocol) that == would miss. Use `is` to be safe.
+        if all(new is old for new, old in zip(mapped, inner)):
+            return self
+        return self.with_inner_types(mapped)
 
 
 @dataclass(frozen=True)
