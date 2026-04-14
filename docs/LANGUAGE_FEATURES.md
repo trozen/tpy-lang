@@ -4596,22 +4596,23 @@ LETTER: Final[Char] = "A"
 BASE: Final[Int32] = 10
 ALIAS: Final[Int32] = BASE  # cross-reference to another Final
 BIG: Final[int] = 1000000   # BigInt
+OFFSET: Final[Int32] = BASE + 5  # arithmetic on constants
+VERSION: Final[tuple[Int32, Int32, Int32]] = (1, 2, 3)
 ```
 
 **Semantics** (stricter than Python's `Final`):
 - Frozen binding: cannot be reassigned at module level, cannot use `global X` in functions
 - Immutable value: treated as readonly (no mutation through the binding)
 - Local shadowing allowed: functions can declare local variables with the same name
-- Initializer must be a compile-time constant: literal or reference to a previously declared Final (no forward references)
+- Initializer must be a compile-time constant: literal, reference to a previously declared Final, constant arithmetic, tuple of constants, or `@call_macro` expansion that reduces to a constant (no forward references)
 
 **C++ mapping:**
 - Constexpr-eligible types (fixed-width integers, float, bool, char, str): `inline constexpr T NAME = VALUE;` in header
-- BigInt (`int`): `const tpy::BigInt NAME = VALUE;` in source, `extern const` in header
+- BigInt (`int`), tuple: `const T NAME = VALUE;` in source, `extern const` in header
 
 **Restrictions (v1):**
 - Module-level only (not in functions or classes)
-- Primitive types only (no `Final[list[T]]`, `Final[SomeRecord]`)
-- No arithmetic in initializers (`Final[Int32] = A + 1` not supported yet)
+- Supported types: primitives (int, float, bool, str, StrView, Char, IntN) and tuple (no `Final[list[T]]`, `Final[SomeRecord]`)
 - Must use explicit type: `Final[T]` (bare `Final` not yet supported)
 
 ### Native Global Variables (Working)

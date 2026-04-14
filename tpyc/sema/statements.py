@@ -1903,6 +1903,10 @@ class StatementAnalyzer:
             # needed to evaluate the initializer without user inputs.
             return (self._is_constant_expr(expr.left, target_type)
                     and self._is_constant_expr(expr.right, target_type))
+        if isinstance(expr, TpyTupleLiteral):
+            if isinstance(target_type, TupleType) and len(target_type.element_types) == len(expr.elements):
+                return all(self._is_constant_expr(e, t) for e, t in zip(expr.elements, target_type.element_types))
+            return all(self._is_constant_expr(e) for e in expr.elements)
         return False
 
     def _check_nonvalue_rebinding(self, name: str, node: TpyStmt) -> None:
@@ -2135,28 +2139,13 @@ class StatementAnalyzer:
                     stmt
                 )
             inner = stmt.type
-            if not isinstance(inner, (FixedIntType, BigIntType, FloatType, Float32Type, BoolType, StrViewType, CharType)):
+            if not isinstance(inner, (FixedIntType, BigIntType, FloatType, Float32Type, BoolType, StrViewType, CharType, TupleType)):
                 raise self.ctx.error(
                     f"Final[{inner}] is not supported; "
-                    f"only primitive types (int, float, bool, str, StrView, Char, IntN) are allowed",
+                    f"only primitive types (int, float, bool, str, StrView, Char, IntN) "
+                    f"and tuple are allowed",
                     stmt
                 )
-            if not self._is_constant_expr(stmt.init, stmt.type):
-                # Give a specific hint for imported names
-                if (isinstance(stmt.init, TpyName)
-                        and stmt.init.name in self.ctx.user_imported_variables):
-                    src_mod, _ = self.ctx.user_imported_variables[stmt.init.name]
-                    raise self.ctx.error(
-                        f"Final variable '{stmt.name}' requires a compile-time constant initializer; "
-                        f"cross-module Final references are not yet supported "
-                        f"('{stmt.init.name}' is imported from '{src_mod}')",
-                        stmt
-                    )
-                raise self.ctx.error(
-                    f"Final variable '{stmt.name}' requires a compile-time constant initializer",
-                    stmt
-                )
-            self.ctx.analyzed_finals.add(stmt.name)
 
         if self.ctx.is_top_level and not stmt.is_final:
             type_hint = str(stmt.type) if stmt.type else "<type>"
@@ -2338,6 +2327,24 @@ class StatementAnalyzer:
                 type_hint = stmt.type if stmt.type else existing_type
                 init_type = self.expr.analyze_expr_with_hint(stmt.init, type_hint)
 
+            # Deferred Final constant check: runs after init analysis so that
+            # @call_macro expansions are available via macro_expansion attr.
+            if stmt.is_final:
+                if not self._is_constant_expr(stmt.init, stmt.type):
+                    if (isinstance(stmt.init, TpyName)
+                            and stmt.init.name in self.ctx.user_imported_variables):
+                        src_mod, _ = self.ctx.user_imported_variables[stmt.init.name]
+                        raise self.ctx.error(
+                            f"Final variable '{stmt.name}' requires a compile-time constant initializer; "
+                            f"cross-module Final references are not yet supported "
+                            f"('{stmt.init.name}' is imported from '{src_mod}')",
+                            stmt
+                        )
+                    raise self.ctx.error(
+                        f"Final variable '{stmt.name}' requires a compile-time constant initializer",
+                        stmt
+                    )
+                self.ctx.analyzed_finals.add(stmt.name)
 
             # Track container literal to variable mapping for mutation/type inference.
             # Only bind when the init is an actual literal or empty constructor,

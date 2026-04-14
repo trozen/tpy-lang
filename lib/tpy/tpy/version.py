@@ -10,11 +10,12 @@ init-chain propagation through them are not currently supported. Values
 come from the _version.py macros, which read tpyc.__version__ and
 tpyc.VERSION_INFO at compile time.
 """
+from typing import Final
 from tpy import Int32
 from ._version import version as _version, version_info as _version_info
 
-__version__: str = _version()
+__version__: Final[str] = _version()
 # Int32 components rather than `int` (BigInt): version numbers are small
 # and BigInt would waste heap allocations on every access.
-version_info: tuple[Int32, Int32, Int32, str, Int32] = _version_info()
-is_compiled: bool = True
+version_info: Final[tuple[Int32, Int32, Int32, str, Int32]] = _version_info()
+is_compiled: Final[bool] = True

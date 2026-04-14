@@ -203,8 +203,8 @@ def test_dump_builtin_types_emits_toc_and_modules():
         assert f"[`{mod}`]" in out, f"missing TOC entry for {mod}"
         assert f"## `{mod}`" in out, f"missing section for {mod}"
     # tpy.version surfaces its typed constants (AnnAssign handling).
-    assert "`__version__: str`" in out
-    assert "`is_compiled: bool`" in out
+    assert "`__version__: Final[str]`" in out
+    assert "`is_compiled: Final[bool]`" in out
 
 
 def test_gfm_anchor():
