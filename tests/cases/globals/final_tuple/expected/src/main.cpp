@@ -4,8 +4,9 @@
 namespace tpyapp::main {
 
 const std::tuple<int32_t, int32_t, int32_t> VERSION = std::tuple<int32_t, int32_t, int32_t>{1, 2, 3};
-const std::tuple<std::string, bool> PAIR = std::tuple<std::string, bool>{"hello", true};
+const std::tuple<std::string_view, bool> PAIR = std::tuple<std::string_view, bool>{"hello", true};
 const std::tuple<int32_t, int32_t> ARITH = std::tuple<int32_t, int32_t>{::tpy::add_check<int32_t>(10, 20), ::tpy::sub_check<int32_t>(100, 1)};
+const std::tuple<std::tuple<std::string_view, int32_t>, std::string_view> NESTED = std::tuple<std::tuple<std::string_view, int32_t>, std::string_view>{std::tuple<std::string_view, int32_t>{"inner", 42}, "outer"};
 
 // def main() -> None:
 void main() {
@@ -36,6 +37,20 @@ void main() {
     std::cout << a << "\n";
     // print(b)
     std::cout << b << "\n";
+    // inner, outer = NESTED
+    const auto& __tup_4 = NESTED;
+    std::tuple<std::string_view, int32_t> inner = std::get<0>(__tup_4);
+    std::string_view outer = std::get<1>(__tup_4);
+    // name, val = inner
+    const auto& __tup_5 = inner;
+    std::string_view name = std::get<0>(__tup_5);
+    int32_t val = std::get<1>(__tup_5);
+    // print(name)
+    std::cout << name << "\n";
+    // print(val)
+    std::cout << val << "\n";
+    // print(outer)
+    std::cout << outer << "\n";
 }
 
 void __tpy_init() {

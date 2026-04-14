@@ -1,1 +1,1 @@
-main.py:8: error: Final variable 'BAD' requires a compile-time constant initializer
+main.py:8: error: Final variable 'BAD' requires a compile-time constant initializer; 'X' is not a Final constant

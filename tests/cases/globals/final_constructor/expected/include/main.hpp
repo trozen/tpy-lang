@@ -8,10 +8,10 @@
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
-extern const std::tuple<int32_t, int32_t, int32_t> VERSION;
-extern const std::tuple<std::string_view, bool> PAIR;
-extern const std::tuple<int32_t, int32_t> ARITH;
-extern const std::tuple<std::tuple<std::string_view, int32_t>, std::string_view> NESTED;
+inline constexpr float X = 0.5f;
+inline constexpr int64_t Y = 42;
+inline constexpr int32_t BASE = 10;
+inline constexpr int64_t Z = ::tpy::int_cast_check<int64_t>(BASE);
 
 void main();
 

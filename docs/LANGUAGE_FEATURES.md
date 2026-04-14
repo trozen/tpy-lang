@@ -4586,7 +4586,7 @@ Compile-time constant globals using `Final[T]` from Python's `typing` module:
 
 ```python
 from typing import Final
-from tpy import Int32, Char
+from tpy import Int32, Int64, Float32, Char
 
 MAX_SIZE: Final[Int32] = 100
 PI: Final[float] = 3.14159
@@ -4597,6 +4597,8 @@ BASE: Final[Int32] = 10
 ALIAS: Final[Int32] = BASE  # cross-reference to another Final
 BIG: Final[int] = 1000000   # BigInt
 OFFSET: Final[Int32] = BASE + 5  # arithmetic on constants
+HALF: Final[Float32] = Float32(0.5)  # type constructor
+WIDE: Final[Int64] = Int64(BASE)  # cross-type cast
 VERSION: Final[tuple[Int32, Int32, Int32]] = (1, 2, 3)
 ```
 

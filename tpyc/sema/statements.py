@@ -16,7 +16,7 @@ from ..typesys import (
     BytesType, ByteArrayType, BytesViewType, LiteralType,
     ViewTypeFamily, VIEW_TYPE_FAMILIES, STR_FAMILY, BYTES_FAMILY,
     PendingGenericInstanceType, FnType, contains_fn_type,
-    INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, is_protocol_type, is_protocol_union,
+    INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, is_protocol_type, is_protocol_union, final_type_str_to_strview,
     qualify_exception_name, is_return_exception, is_exception_type,
     FunctionInfo, ParamInfo,
     make_ref, unwrap_ref_type, RefType,
@@ -1868,46 +1868,53 @@ class StatementAnalyzer:
                             f"name '{name}' is a parameter and cannot be declared global", stmt)
             self.ctx.global_declarations.add(name)
 
-    def _is_constant_expr(self, expr: TpyExpr, target_type: 'TpyType | None' = None) -> bool:
-        """Check if an expression is a compile-time constant for Final globals.
+    def _find_nonconstant_leaf(self, expr: TpyExpr, target_type: 'TpyType | None' = None) -> 'TpyExpr | None':
+        """Find the first non-constant sub-expression in a Final initializer.
+
+        Returns None if the expression is a valid compile-time constant,
+        or the offending sub-expression otherwise.
 
         Accepts: literals, unary ops on constant operands, references to other
-        Final globals, and @call_macro expansions that themselves reduce to a
-        constant expression.
-
-        When `target_type` is one of FixedIntType, BigIntType, FloatType,
-        Float32Type, BoolType, also accepts TpyBinOp with constant operands.
-        For FixedInt/Float/Bool codegen emits constexpr ops (the initializer
-        lives in an inline constexpr variable). For BigInt the Final is
-        runtime-initialized (extern const), so constexpr is not required --
-        but we still require constant operands so no user input is read.
+        Final globals, @call_macro expansions that reduce to a constant,
+        primitive type constructor calls with constant args, binary ops on
+        constant operands (when target_type is numeric/bool), and tuple
+        literals with all-constant elements.
         """
-        # Unwrap compile-time macro expansions: a macro that emits a literal
-        # is, by construction, a compile-time constant.
+        # Unwrap compile-time macro expansions
         macro_exp = getattr(expr, "macro_expansion", None)
         if macro_exp is not None:
-            return self._is_constant_expr(macro_exp, target_type)
+            return self._find_nonconstant_leaf(macro_exp, target_type)
         if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral)):
-            return True
+            return None
         if isinstance(expr, TpyUnaryOp):
-            return self._is_constant_expr(expr.operand, target_type)
+            return self._find_nonconstant_leaf(expr.operand, target_type)
         if isinstance(expr, TpyName) and expr.name in self.ctx.analyzed_finals:
-            return True
+            return None
         if isinstance(expr, TpyBinOp) and isinstance(
                 target_type, (FixedIntType, BigIntType, FloatType, Float32Type, BoolType)):
-            # Structural check only: the init expression is type-checked later
-            # (see call to analyze_expr_with_hint in the Final path below), which
-            # rejects type mismatches. For FixedInt/Float/Bool codegen emits
-            # constexpr ops; BigInt Finals are runtime-initialized (extern const)
-            # so constexpr is not required but a constant expression is still
-            # needed to evaluate the initializer without user inputs.
-            return (self._is_constant_expr(expr.left, target_type)
-                    and self._is_constant_expr(expr.right, target_type))
+            return (self._find_nonconstant_leaf(expr.left, target_type)
+                    or self._find_nonconstant_leaf(expr.right, target_type))
+        # Primitive type constructor: Float32(0.5), Int64(SOME_FINAL), etc.
+        # Identified by: resolved to an __init__ method, result is a primitive.
+        if isinstance(expr, TpyCall) and len(expr.args) == 1:
+            fi = expr.resolved_function_info
+            if fi is not None and fi.name == '__init__':
+                result_type = expr.call_type or self.ctx.get_expr_type(expr)
+                if isinstance(result_type, (FixedIntType, BigIntType, FloatType, Float32Type, BoolType, CharType)):
+                    return self._find_nonconstant_leaf(expr.args[0], result_type)
         if isinstance(expr, TpyTupleLiteral):
             if isinstance(target_type, TupleType) and len(target_type.element_types) == len(expr.elements):
-                return all(self._is_constant_expr(e, t) for e, t in zip(expr.elements, target_type.element_types))
-            return all(self._is_constant_expr(e) for e in expr.elements)
-        return False
+                for e, t in zip(expr.elements, target_type.element_types):
+                    bad = self._find_nonconstant_leaf(e, t)
+                    if bad is not None:
+                        return bad
+                return None
+            for e in expr.elements:
+                bad = self._find_nonconstant_leaf(e)
+                if bad is not None:
+                    return bad
+            return None
+        return expr
 
     def _check_nonvalue_rebinding(self, name: str, node: TpyStmt) -> None:
         """Error if reassigning a non-value-type param, loop variable, or global."""
@@ -2118,9 +2125,7 @@ class StatementAnalyzer:
         # Final[T] validation
         # Detect FinalType from annotation (covers function-level where register_globals didn't run)
         if stmt.type and isinstance(stmt.type, FinalType):
-            stmt.type = stmt.type.wrapped
-            if isinstance(stmt.type, StrType):
-                stmt.type = STRVIEW
+            stmt.type = final_type_str_to_strview(stmt.type.wrapped)
             stmt.is_final = True
         if stmt.is_final:
             if not self.ctx.is_top_level:
@@ -2330,14 +2335,23 @@ class StatementAnalyzer:
             # Deferred Final constant check: runs after init analysis so that
             # @call_macro expansions are available via macro_expansion attr.
             if stmt.is_final:
-                if not self._is_constant_expr(stmt.init, stmt.type):
-                    if (isinstance(stmt.init, TpyName)
-                            and stmt.init.name in self.ctx.user_imported_variables):
-                        src_mod, _ = self.ctx.user_imported_variables[stmt.init.name]
+                bad_leaf = self._find_nonconstant_leaf(stmt.init, stmt.type)
+                if bad_leaf is not None:
+                    if (isinstance(bad_leaf, TpyName)
+                            and bad_leaf.name in self.ctx.user_imported_variables):
+                        src_mod, _ = self.ctx.user_imported_variables[bad_leaf.name]
                         raise self.ctx.error(
                             f"Final variable '{stmt.name}' requires a compile-time constant initializer; "
                             f"cross-module Final references are not yet supported "
-                            f"('{stmt.init.name}' is imported from '{src_mod}')",
+                            f"('{bad_leaf.name}' is imported from '{src_mod}')",
+                            stmt
+                        )
+                    # Name the offending sub-expression when it differs from
+                    # the top-level init (e.g. one operand in A + X + Y).
+                    if bad_leaf is not stmt.init and isinstance(bad_leaf, TpyName):
+                        raise self.ctx.error(
+                            f"Final variable '{stmt.name}' requires a compile-time constant initializer; "
+                            f"'{bad_leaf.name}' is not a Final constant",
                             stmt
                         )
                     raise self.ctx.error(

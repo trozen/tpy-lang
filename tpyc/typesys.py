@@ -1890,6 +1890,23 @@ def is_constexpr_eligible(typ: 'TpyType') -> bool:
     return isinstance(typ, (FixedIntType, FloatType, Float32Type, BoolType, CharType, StrType, StrViewType))
 
 
+def final_type_str_to_strview(t: 'TpyType') -> 'TpyType':
+    """Optimize str to StrView in Final type annotations.
+
+    String literals have static lifetime, so Final globals can use
+    string_view instead of std::string. Applies to scalar str and
+    recurses into tuple element types.
+    """
+    if isinstance(t, StrType):
+        return STRVIEW
+    if isinstance(t, TupleType):
+        new_elems = tuple(final_type_str_to_strview(et) for et in t.element_types)
+        if new_elems == t.element_types:
+            return t
+        return TupleType(new_elems)
+    return t
+
+
 def unwrap_optional_own(t: 'TpyType') -> 'OwnType | None':
     """Extract OwnType from Own[T] or Own[T] | None."""
     if isinstance(t, OwnType):

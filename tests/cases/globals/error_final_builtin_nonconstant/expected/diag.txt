@@ -1,0 +1,1 @@
+main.py:5: error: Final variable 'BAD' requires a compile-time constant initializer

@@ -781,7 +781,7 @@ class ExpressionGenerator:
 
         elif isinstance(expr, TpyCall):
             if expr.macro_expansion is not None:
-                return self.gen_expr(expr.macro_expansion)
+                return self.gen_expr(expr.macro_expansion, target_type)
             result = self._gen_call(expr)
             return self._maybe_error_return_unwrap(expr, result)
 
@@ -789,7 +789,7 @@ class ExpressionGenerator:
             if expr.fstr_expansion is not None:
                 return self.gen_expr(expr.fstr_expansion)
             if expr.macro_expansion is not None:
-                return self.gen_expr(expr.macro_expansion)
+                return self.gen_expr(expr.macro_expansion, target_type)
             result = self._gen_method_call(expr)
             return self._maybe_error_return_unwrap(expr, result)
 

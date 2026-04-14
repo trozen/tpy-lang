@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
     IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, EnumType, IntEnumType, BoolType, SpanType, SpanIterType,
-    FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64,
+    FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64, TupleType, final_type_str_to_strview,
     register_value_type_record, register_send_record, register_sync_record,
     register_return_exception, is_return_exception,
     attach_type_param_bounds,
@@ -1632,11 +1632,7 @@ class TypeRegistrar:
                 actual_type = stmt.type
                 # Detect Final[T]: unwrap, record finality, register inner type
                 if isinstance(actual_type, FinalType):
-                    actual_type = actual_type.wrapped
-                    # Final[str] generates constexpr string_view, so the effective
-                    # type is StrView (enables coercion when used as std::string)
-                    if isinstance(actual_type, StrType):
-                        actual_type = STRVIEW
+                    actual_type = final_type_str_to_strview(actual_type.wrapped)
                     stmt.is_final = True
                     self.ctx.final_globals.add(stmt.name)
                 self.ctx.global_scope.define(stmt.name, actual_type)
