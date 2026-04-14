@@ -214,6 +214,8 @@ def main() -> int:
                         help="Don't copy runtime headers into the output directory")
     parser.add_argument("-j", "--jobs", type=int, default=None,
                         help="Parallel compile jobs (default: number of CPUs)")
+    parser.add_argument("--no-main", dest="no_main", action="store_true",
+                        help="Skip main() generation (emit __tpy_main instead, for linking with external C++)")
     parser.add_argument("-q", "--quiet", action="store_true",
                         help="Suppress progress lines (show only errors and program output)")
     parser.add_argument("--info", action="store_true",
@@ -325,7 +327,8 @@ def main() -> int:
     progress = ProgressPrinter(enabled=not quiet)
 
     try:
-        options = CodeGenOptions(emit_source_comments=args.emit_source)
+        options = CodeGenOptions(emit_source_comments=args.emit_source,
+                                 no_main=args.no_main)
         all_cpp_paths = []
 
         cpp_config: CppCompilerConfig | None = None

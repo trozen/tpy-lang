@@ -361,6 +361,7 @@ class CodeGenOptions:
     """Options for C++ code generation."""
     emit_source_comments: bool = False  # Embed Python source as comments in generated C++
     comment_line_numbers: bool = True   # Include .py line numbers in source comments
+    no_main: bool = False               # Skip main() generation, emit __tpy_main() only
 
 
 @dataclass

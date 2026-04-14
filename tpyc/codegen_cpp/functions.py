@@ -1546,19 +1546,24 @@ class FunctionGenerator:
         ns = module_to_cpp_namespace(self.ctx.module_name)
         out.write(f"}} // namespace {ns}\n")
 
-    def gen_main(self, out: TextIO) -> None:
-        """Generate C++ main() that calls module init.
+    def gen_main(self, out: TextIO, no_main: bool = False) -> None:
+        """Generate __tpy_main() and optionally C++ main().
 
-        The namespace is closed before main() so main is in global namespace.
-        Accepts argc/argv and initializes ::tpy::sys_argv for sys.argv support.
+        Always emits __tpy_main(argc, argv) at global scope which initializes
+        sys_argv and calls the entry module's __tpy_init().
+        When no_main is False (default), also emits a main() wrapper.
         """
         ns = module_to_cpp_namespace(self.ctx.module_name)
         out.write(f"}} // namespace {ns}\n\n")
-        out.write("int main(int argc, char* argv[]) {\n")
+        out.write("int __tpy_main(int argc, char* argv[]) {\n")
         out.write(f"{INDENT}::tpy::init_sys_argv(argc, argv);\n")
         out.write(f"{INDENT}{ns}::__tpy_init();\n")
         out.write(f"{INDENT}return 0;\n")
         out.write("}\n")
+        if not no_main:
+            out.write("\nint main(int argc, char* argv[]) {\n")
+            out.write(f"{INDENT}return __tpy_main(argc, argv);\n")
+            out.write("}\n")
 
     @staticmethod
     def _split_native_name(name: str) -> tuple[str, str]:

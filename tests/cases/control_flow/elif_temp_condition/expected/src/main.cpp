@@ -51,8 +51,12 @@ void __tpy_init() {
 
 } // namespace tpyapp::main
 
-int main(int argc, char* argv[]) {
+int __tpy_main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
     tpyapp::main::__tpy_init();
     return 0;
+}
+
+int main(int argc, char* argv[]) {
+    return __tpy_main(argc, argv);
 }

@@ -130,7 +130,8 @@ class REPLSession:
         self._backend = detect_backend(
             self._cxx, self.temp_dir, self._module_name, verbose=self.verbose,
         )
-        print(f"TurboPython REPL v0.1 (backend: {self._backend.name})")
+        from . import __version__
+        print(f"TurboPython REPL v{__version__} (backend: {self._backend.name})")
         print("Variables, functions, and classes are remembered between inputs.")
         print("Empty line unindents (or ends block at col 0). Trailing \\ continues input. Ctrl+D to exit.")
         print("Type .paste (or .p) for multiline input mode.")

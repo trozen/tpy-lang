@@ -340,7 +340,7 @@ class CodeGenerator:
                                        has_user_main=False, module_name=tpy_module_name)
         # Only generate C++ main() for entry point module
         if is_entry_point:
-            self.functions.gen_main(cpp)
+            self.functions.gen_main(cpp, no_main=self.options.no_main)
         else:
             # For non-entry-point modules, just close the namespace
             self.functions.gen_namespace_close(cpp)
