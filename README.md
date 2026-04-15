@@ -14,9 +14,17 @@ A proof-of-concept compiler (tpyc) that translates Python to C++.
 
 ## Example
 
+Main differences from CPython:
+
+- Type annotations on functions required
+- `Int32` for integer literals (overrideable), `Int32`/`Int64` for explicit fixed-width, `int` = `BigInt` for arbitrary precision
+- Inline field storage in classes and collections; explicit ownership (`Own[T]`) at boundaries
+- No GIL, no refcounting, no GC -- deterministic destruction via RAII
+
 ```python
-# Regular Python -- also valid TurboPython
-def fib(n: int) -> int:
+from tpy import Int32
+
+def fib(n: Int32) -> Int32:
     if n <= 1:
         return n
     return fib(n - 1) + fib(n - 2)
@@ -30,21 +38,26 @@ $ tpyc -xO fib.py        # compile to C++ and run (optimized)
 $ tpyc --dump-code fib.py # inspect generated C++
 ```
 
-For performance-sensitive code, opt into fixed-width types:
+Fields are declared inline on the class; `Own[T]` marks heap ownership transfer:
 
 ```python
-from tpy import Int32
+from dataclasses import dataclass
+from tpy import Own, Int32
 
-class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
-        self.x = x
-        self.y = y
+@dataclass
+class Event:
+    timestamp: Int32
+    code: Int32
 
-def manhattan(a: Point, b: Point) -> Int32:
-    return abs(a.x - b.x) + abs(a.y - b.y)
+def make_batch(n: Int32) -> Own[list[Event]]:
+    return [Event(i, i * 2) for i in range(n)]
+
+batch = make_batch(3)
+for e in batch:
+    print(e.timestamp, e.code)
 ```
+
+Where TurboPython would silently copy what CPython shares by reference (e.g. storing a parameter into a field or container), the compiler warns and suggests an explicit `copy()` -- so dual-target code behaves identically under both runtimes.
 
 Source files are valid Python -- your IDE, linter, and type checker work as-is.
 

@@ -846,4 +846,4 @@ Tests go in `tests/cases/match/` (new directory).
 | `nonexhaustive_union` | missing member -- warning emitted |
 | `nonexhaustive_enum` | missing enum member -- warning emitted |
 
-All tests should also pass `test_cpy.py` (CPython compatibility).
+All tests should also pass the CPython compatibility phase of `test_case` (unless marked with `no_cpython.txt`).

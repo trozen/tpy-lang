@@ -4579,6 +4579,7 @@ Generated C++:
 - Methods on native classes must have `...` body (stub declarations); methods with real bodies produce a parse error
 - `@native("cpp_name")` on methods allows renaming individual methods (generates `obj.cpp_name(args)`)
 - `@native("ns::func", function=True)` on methods generates a free function call with self as first arg: `::ns::func(obj, args)`
+- `@property` composes with `@native`/`@cpp_template` on native class methods -- property access syntax (`obj.prop`, `obj.prop = x`) desugars to the native/template method call
 
 ### Final Constants (Working)
 

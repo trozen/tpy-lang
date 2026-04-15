@@ -18,6 +18,8 @@ from ..typesys import (
     NamedType, PtrType, OwnType, FnType, CallableType, VoidType, NoneType,
     OptionalType,
     unwrap_ref_type,
+    is_callable_type, is_float_type, is_integer_type, is_any_float_type,
+
 )
 from ..coercions import resolve_coercion, CoercionContext
 
@@ -96,8 +98,8 @@ def type_matches_strict(
     # The arg FnType may have Own/Ref on param/return types from FI, while the
     # resolved overload's Fn type has bare types from substitution.
     from ..typesys import FnType, CallableType, OwnType as _Own
-    if (isinstance(arg_inner, (FnType, CallableType))
-            and isinstance(param_inner, (FnType, CallableType))
+    if (is_callable_type(arg_inner)
+            and is_callable_type(param_inner)
             and len(arg_inner.param_types) == len(param_inner.param_types)):
         def _strip(t: TpyType) -> TpyType:
             t = unwrap_ref_type(t)
@@ -191,13 +193,13 @@ def type_matches_numeric(
             return param_type.min_value <= arg_type.value <= param_type.max_value
         if isinstance(param_type, (BigIntType, IntLiteralType)):
             return True
-        if isinstance(param_type, (FloatType, Float32Type)):
+        if is_float_type(param_type):
             return True
     if isinstance(arg_type, FloatLiteralType):
-        if isinstance(param_type, (FloatType, Float32Type, FloatLiteralType)):
+        if is_any_float_type(param_type):
             return True
     if isinstance(arg_type, TypeParamRef) and arg_type.kind == TypeParamKind.INT:
-        if isinstance(param_type, (Int32Type, BigIntType)):
+        if is_integer_type(param_type):
             return True
     # T -> Optional[T]: unwrap Optional param and match inner type
     if isinstance(param_type, OptionalType):
@@ -246,7 +248,7 @@ def type_matches_with_coercion(
     if isinstance(arg_inner, LiteralType):
         if arg_inner.is_str_base() and isinstance(param_inner, (StrType, StringType, StrViewType)):
             return True
-        if arg_inner.is_int_base() and isinstance(param_inner, (FixedIntType, BigIntType)):
+        if arg_inner.is_int_base() and is_integer_type(param_inner):
             return True
         if arg_inner.is_bool_base() and isinstance(param_inner, BoolType):
             return True

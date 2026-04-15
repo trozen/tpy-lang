@@ -13,6 +13,7 @@ from .typesys import (
     BytesType, ByteArrayType, BytesViewType,
     SpanType, is_readonly_span, PendingListType, TypeParamRef, TypeParamKind, ReadonlyType,
     ListType, ArrayType, BasicSliceType, SliceType,
+    is_integer_type,
 )
 
 
@@ -67,7 +68,7 @@ def _spanlike_to_span_match(actual: TpyType, expected: TpyType) -> bool:
         if actual_elem == expected_elem:
             return True
         # IntLiteral elements coerce to any FixedIntType or BigInt
-        if isinstance(actual_elem, IntLiteralType) and isinstance(expected_elem, (FixedIntType, BigIntType)):
+        if isinstance(actual_elem, IntLiteralType) and is_integer_type(expected_elem):
             return True
         return False
 
@@ -77,7 +78,7 @@ def _spanlike_to_span_match(actual: TpyType, expected: TpyType) -> bool:
         return False
     if actual_elem == expected_elem:
         return True
-    if isinstance(actual_elem, IntLiteralType) and isinstance(expected_elem, (FixedIntType, BigIntType)):
+    if isinstance(actual_elem, IntLiteralType) and is_integer_type(expected_elem):
         return True
     return False
 

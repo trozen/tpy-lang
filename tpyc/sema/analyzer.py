@@ -13,6 +13,7 @@ from ..typesys import (
     NoneType, INT32, FixedIntType, BigIntType, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
     FunctionInfo, EnumType, SpanType, is_any_str_type,
     make_ref, unwrap_ref_type, RefType,
+    is_integer_type, is_void_like_type,
 )
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call
@@ -994,7 +995,7 @@ class SemanticAnalyzer:
                         if isinstance(stub_ptype, LiteralType):
                             if stub_ptype.base_type == resolved:
                                 continue
-                            if stub_ptype.is_int_base() and isinstance(resolved, (FixedIntType, BigIntType)):
+                            if stub_ptype.is_int_base() and is_integer_type(resolved):
                                 continue
                         raise SemanticError(
                             f"@overload stub type '{stub_ptype}' for parameter '{pname}' "
@@ -1106,7 +1107,7 @@ class SemanticAnalyzer:
                         if isinstance(stub_ptype, LiteralType):
                             if stub_ptype.base_type == resolved:
                                 continue
-                            if stub_ptype.is_int_base() and isinstance(resolved, (FixedIntType, BigIntType)):
+                            if stub_ptype.is_int_base() and is_integer_type(resolved):
                                 continue
                         raise SemanticError(
                             f"@overload stub type '{stub_ptype}' for parameter '{pname}' "
@@ -1227,7 +1228,7 @@ class SemanticAnalyzer:
                 if isinstance(typ, UnionType):
                     non_none = frozenset(
                         m for m in typ.members
-                        if not isinstance(m, (NoneType, VoidType))
+                        if not is_void_like_type(m)
                     )
                     alias_by_members[non_none] = name
 
@@ -1237,7 +1238,7 @@ class SemanticAnalyzer:
         def _fix(typ: TpyType) -> TpyType:
             if isinstance(typ, UnionType):
                 non_none = [m for m in typ.members
-                            if not isinstance(m, (NoneType, VoidType))]
+                            if not is_void_like_type(m)]
                 if len(non_none) < len(typ.members):
                     key = frozenset(non_none)
                     alias_name = alias_by_members.get(key)

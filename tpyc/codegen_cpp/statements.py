@@ -17,6 +17,7 @@ from ..typesys import (
     resolve_int_literals,
     error_return_to_cpp, qualify_exception_name, is_return_exception,
     unwrap_ref_type, RefType,
+    is_void_like_type,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyExprStmt, TpyReturn, TpyYield,
@@ -2090,7 +2091,7 @@ class StatementGenerator:
         # Declare shared retval at the outermost finally level
         if not self.ctx.finally_retval_declared:
             ret_type = self.ctx.current_return_type
-            is_void = not ret_type or isinstance(ret_type, (VoidType, NoneType))
+            is_void = not ret_type or is_void_like_type(ret_type)
             needs_retval = not is_void or self.ctx.current_error_return
             if needs_retval:
                 self.ctx.try_except_counter += 1

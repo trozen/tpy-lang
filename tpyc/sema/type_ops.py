@@ -16,6 +16,7 @@ from ..typesys import (
     NoneType, VoidType, FnType, CallableType,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
     public_module_name, unwrap_ref_type, RefType,
+    is_callable_type, is_integer_type, is_void_like_type,
 )
 from ..coercions import resolve_coercion, CoercionContext
 from .diagnostics import SemanticError
@@ -214,7 +215,7 @@ class TypeOperations:
                         loc,
                     )
         elif isinstance(typ, UnionType):
-            non_none = [m for m in typ.members if not isinstance(m, (NoneType, VoidType))]
+            non_none = [m for m in typ.members if not is_void_like_type(m)]
             protocols = [m for m in non_none if is_protocol_type(m)]
             concrete = [m for m in non_none if not is_protocol_type(m)]
             if protocols and concrete:
@@ -511,7 +512,7 @@ class TypeOperations:
         if isinstance(param_type, TypeParamRef):
             if param_type.name in inferred:
                 existing = inferred[param_type.name]
-                if isinstance(existing, IntLiteralType) and isinstance(arg_type, (Int32Type, BigIntType)):
+                if isinstance(existing, IntLiteralType) and is_integer_type(arg_type):
                     inferred[param_type.name] = arg_type
                     return True
                 # Ref[T] matches bare T: the same type param can be inferred
@@ -589,8 +590,8 @@ class TypeOperations:
             )
 
         # FnType/CallableType with TypeParamRef in param/return (e.g. Fn[[T], U])
-        if isinstance(param_type, (FnType, CallableType)):
-            if not isinstance(arg_type, (FnType, CallableType)):
+        if is_callable_type(param_type):
+            if not is_callable_type(arg_type):
                 return False
             if len(param_type.param_types) != len(arg_type.param_types):
                 return False
@@ -841,9 +842,9 @@ class TypeOperations:
         if type_a == type_b:
             return True
         # IntLiteralType matches any integer type
-        if isinstance(type_a, IntLiteralType) and isinstance(type_b, (BigIntType, Int32Type)):
+        if isinstance(type_a, IntLiteralType) and is_integer_type(type_b):
             return True
-        if isinstance(type_b, IntLiteralType) and isinstance(type_a, (BigIntType, Int32Type)):
+        if isinstance(type_b, IntLiteralType) and is_integer_type(type_a):
             return True
         # Both IntLiteralType - they're compatible
         if isinstance(type_a, IntLiteralType) and isinstance(type_b, IntLiteralType):
@@ -1044,7 +1045,7 @@ class TypeOperations:
         if actual_elem == expected_elem:
             return True
 
-        if isinstance(actual_elem, IntLiteralType) and isinstance(expected_elem, (Int32Type, BigIntType)):
+        if isinstance(actual_elem, IntLiteralType) and is_integer_type(expected_elem):
             info = self.ctx.list_literals.get(actual.literal_id)
             if info:
                 info.coerced_element_type = expected_elem

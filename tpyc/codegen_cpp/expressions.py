@@ -18,6 +18,7 @@ from ..typesys import (
     EnumType, IntEnumType, TupleType, FnType, CallableType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
+    is_float_type,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -1287,9 +1288,9 @@ class ExpressionGenerator:
             # Python's int-to-float promotion for comparisons).
             left_cmp = left_target if left_target is not None else left_type
             right_cmp = right_target if right_target is not None else right_type
-            if isinstance(left_cmp, BigIntType) and isinstance(right_cmp, (FloatType, Float32Type)):
+            if isinstance(left_cmp, BigIntType) and is_float_type(right_cmp):
                 left = f"static_cast<{right_cmp.to_cpp()}>({left})"
-            elif isinstance(right_cmp, BigIntType) and isinstance(left_cmp, (FloatType, Float32Type)):
+            elif isinstance(right_cmp, BigIntType) and is_float_type(left_cmp):
                 right = f"static_cast<{left_cmp.to_cpp()}>({right})"
 
             # IntEnum coercion: cast enum operand(s) to underlying type
@@ -1423,9 +1424,9 @@ class ExpressionGenerator:
             left_cmp = left_type.inner
         if isinstance(right_type, OptionalType):
             right_cmp = right_type.inner
-        if isinstance(left_cmp, BigIntType) and isinstance(right_cmp, (FloatType, Float32Type)):
+        if isinstance(left_cmp, BigIntType) and is_float_type(right_cmp):
             left_str = f"static_cast<{right_cmp.to_cpp()}>({left_str})"
-        elif isinstance(right_cmp, BigIntType) and isinstance(left_cmp, (FloatType, Float32Type)):
+        elif isinstance(right_cmp, BigIntType) and is_float_type(left_cmp):
             right_str = f"static_cast<{left_cmp.to_cpp()}>({right_str})"
 
         # IntEnum coercion
@@ -2785,6 +2786,19 @@ class ExpressionGenerator:
                 code = self.gen_expr_deref(e, elem_target)
                 resolved = self.types.get_resolved_type(e, elem_target)
                 elements.append(self._wrap_for_owned_slot(code, resolved, elem_target))
+        # Non-copyable element types in list (not Array) targets: use
+        # make_vector instead of brace-init (std::initializer_list copies).
+        # std::array uses aggregate init which handles move-only types fine.
+        if elements and not isinstance(target_type, ArrayType):
+            check_type = elem_target or (target_type.get_element_type() if target_type else None)
+            if check_type is None:
+                check_type = self.ctx.get_expr_type(expr)
+                if isinstance(check_type, ListType):
+                    check_type = check_type.element_type
+            if self._is_nocopy_container_element(check_type):
+                cpp_elem = self.types.type_to_cpp(check_type)
+                return self._gen_nocopy_vector(elements, cpp_elem)
+
         literal = f"{{{', '.join(elements)}}}"
         # std::array of std::array needs an extra brace level
         if isinstance(elem_target, ArrayType):
@@ -2814,6 +2828,60 @@ class ExpressionGenerator:
                     if et.name in self.ctx.recursive_union_names:
                         return f"{self.types.type_to_cpp(expr_type)}{literal}"
         return literal
+
+    def _is_nocopy_container_element(self, typ: TpyType | None) -> bool:
+        """Check if a container element type is non-copyable in C++.
+
+        A type is non-copyable if the record is @nocopy, has __del__
+        (which deletes copy ops), or contains nocopy type arguments.
+        Also checks union members and recursive union aliases.
+        """
+        if typ is None:
+            return False
+        if self._is_cpp_noncopyable(typ):
+            return True
+        if isinstance(typ, UnionType):
+            return any(self._is_cpp_noncopyable(m) for m in typ.members
+                       if not isinstance(m, (NoneType, VoidType)))
+        if (isinstance(typ, NamedType) and not typ.is_protocol
+                and not typ.is_module_type
+                and typ.name in self.ctx.recursive_union_names):
+            alias = self.ctx.analyzer.registry.get_type_alias(typ.name)
+            if isinstance(alias, UnionType):
+                return any(self._is_cpp_noncopyable(m) for m in alias.members
+                           if not isinstance(m, (NoneType, VoidType)))
+        return False
+
+    def _is_cpp_noncopyable(self, typ: TpyType) -> bool:
+        """Check if a single type is non-copyable in C++.
+
+        Extends sema's is_type_nocopy with __del__ (which deletes copy ops
+        in C++ but isn't tracked by the sema nocopy system) and field
+        propagation. Respects __copy__ escape hatch.
+        """
+        sema_ctx = self.ctx.analyzer.ctx
+        if sema_ctx.is_type_nocopy(typ):
+            return True
+        record = sema_ctx.registry.get_record_for_type(typ)
+        if record is None:
+            return False
+        if record.has_copy:
+            return False
+        if record.has_del:
+            return True
+        # Propagate through fields (e.g. BinOp with Box[Expr] field)
+        for f in record.fields:
+            if self._is_cpp_noncopyable(f.type):
+                return True
+        return False
+
+    def _gen_nocopy_vector(self, elements: list[str], cpp_elem_type: str) -> str:
+        """Emit a vector construction call for nocopy element types.
+
+        Uses ::tpy::make_vector<T>(...) which does reserve + emplace_back
+        via fold expression, avoiding std::initializer_list (which copies).
+        """
+        return f"::tpy::make_vector<{cpp_elem_type}>({', '.join(elements)})"
 
     @contextlib.contextmanager
     def _container_element_context(self):

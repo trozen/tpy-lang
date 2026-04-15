@@ -4,6 +4,7 @@ from .typesys import (
     UnionType, make_union, OptionalType, VoidType, NoneType,
     INT32, STR, BOOL, VOID,
     ReadonlyType,
+    is_void_like_type,
 )
 
 
@@ -38,7 +39,7 @@ class TestMakeUnion:
         # None member should be first (std::monostate at index 0)
         assert isinstance(result.members[0], NoneType)
         # Non-None members sorted by str()
-        non_none = [m for m in result.members if not isinstance(m, (NoneType, VoidType))]
+        non_none = [m for m in result.members if not is_void_like_type(m)]
         assert len(non_none) == 2
 
     def test_canonical_order(self):
@@ -64,7 +65,7 @@ class TestMakeUnion:
         assert isinstance(result, UnionType)
         # NoneType, INT32, STR (from unwrapped optional)
         assert isinstance(result.members[0], NoneType)
-        non_none = [m for m in result.members if not isinstance(m, (NoneType, VoidType))]
+        non_none = [m for m in result.members if not is_void_like_type(m)]
         assert len(non_none) == 2
 
     def test_only_none_returns_void(self):

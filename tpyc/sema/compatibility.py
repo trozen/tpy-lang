@@ -17,6 +17,8 @@ from ..typesys import (
     is_protocol_type, unwrap_readonly, unwrap_optional_own,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     FnType, CallableType, RefType, unwrap_ref_type,
+    is_callable_type, is_integer_type, is_any_float_type,
+
 )
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
@@ -199,8 +201,8 @@ class TypeCompatibility:
                 return None
         # FnType/CallableType: inner param/return types may carry Own/Ref
         # qualifiers from FI that don't affect callable contract compatibility.
-        if (isinstance(actual, (FnType, CallableType))
-                and isinstance(expected, (FnType, CallableType))
+        if (is_callable_type(actual)
+                and is_callable_type(expected)
                 and len(actual.param_types) == len(expected.param_types)):
             from ..typesys import unwrap_own
             stripped_actual = type(actual)(
@@ -407,7 +409,7 @@ class TypeCompatibility:
             )
 
         # Callable object -> Fn/Callable: record with __call__ matching the signature
-        if isinstance(actual, NamedType) and isinstance(expected, (FnType, CallableType)):
+        if isinstance(actual, NamedType) and is_callable_type(expected):
             record = self.ctx.registry.get_record_for_type(actual)
             if record:
                 overloads = self.ctx.registry.get_method_overloads_with_parents(record, "__call__")
@@ -559,18 +561,18 @@ class TypeCompatibility:
 
         # FloatLiteral can coerce to float/Float32 or stay unresolved
         if isinstance(actual, FloatLiteralType):
-            if isinstance(expected, (FloatType, Float32Type, FloatLiteralType)):
+            if is_any_float_type(expected):
                 return None
 
         # Allow Array element type coercion if sizes match
         if isinstance(actual, ArrayType) and isinstance(expected, ArrayType):
             if actual.size == expected.size:
-                if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
+                if isinstance(actual.element_type, IntLiteralType) and is_integer_type(expected.element_type):
                     return None
 
         # Allow list element type coercion
         if isinstance(actual, ListType) and isinstance(expected, ListType):
-            if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
+            if isinstance(actual.element_type, IntLiteralType) and is_integer_type(expected.element_type):
                 return None
 
         # Allow ListType -> ArrayType only for literal expressions
@@ -588,7 +590,7 @@ class TypeCompatibility:
                         )
                 if actual.element_type == expected.element_type:
                     return None
-                if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
+                if isinstance(actual.element_type, IntLiteralType) and is_integer_type(expected.element_type):
                     return None
 
         # Allow PendingListType compatibility during first phase (before resolution)
@@ -597,7 +599,7 @@ class TypeCompatibility:
             if isinstance(expected, ListType):
                 if actual.element_type == expected.element_type:
                     return None
-                if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
+                if isinstance(actual.element_type, IntLiteralType) and is_integer_type(expected.element_type):
                     return None
                 # Element type widening (e.g. Int32 -> Int32|None, Int32 -> Int64).
                 # Subclass coercion excluded: storing Child in list[Base] silently
@@ -643,12 +645,12 @@ class TypeCompatibility:
             if isinstance(expected, ListType):
                 if actual.element_type == expected.element_type:
                     return None
-                if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
+                if isinstance(actual.element_type, IntLiteralType) and is_integer_type(expected.element_type):
                     return None
             if isinstance(expected, ArrayType):
                 if actual.element_type == expected.element_type:
                     return None
-                if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
+                if isinstance(actual.element_type, IntLiteralType) and is_integer_type(expected.element_type):
                     return None
 
         # Allow PendingDictType compatibility during first phase (before resolution)
@@ -693,7 +695,7 @@ class TypeCompatibility:
 
         # Allow PendingStrType compatibility during first phase (before resolution)
         if isinstance(actual, PendingStrType):
-            if isinstance(expected, (StrType, StringType, StrViewType, PendingStrType)):
+            if is_any_str_type(expected):
                 return None
             if isinstance(expected, LiteralType) and expected.is_str_base():
                 return None
@@ -716,7 +718,7 @@ class TypeCompatibility:
                 return None
             if actual.base_type == expected:
                 return None
-            if actual.is_int_base() and isinstance(expected, (FixedIntType, BigIntType)):
+            if actual.is_int_base() and is_integer_type(expected):
                 return None
         # Allow PendingBytesType compatibility during first phase (before resolution)
         if isinstance(actual, PendingBytesType):

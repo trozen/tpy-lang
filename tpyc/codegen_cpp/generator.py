@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 import io
 import sys as _sys
 
-from ..typesys import TpyType, NamedType, EnumType, UnionType, OwnType, PendingListType, ListType, ArrayType, PtrType, NoneType, VoidType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names
+from ..typesys import TpyType, NamedType, EnumType, UnionType, OwnType, PendingListType, ListType, ArrayType, PtrType, NoneType, VoidType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names, is_void_like_type
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
 
@@ -907,7 +907,7 @@ class CodeGenerator:
           };
         """
         cpp_members = [
-            "std::monostate" if isinstance(m, (NoneType, VoidType)) else self.types.type_to_cpp(m)
+            "std::monostate" if is_void_like_type(m) else self.types.type_to_cpp(m)
             for m in typ.members
         ]
         variant_type = f"std::variant<{', '.join(cpp_members)}>"
