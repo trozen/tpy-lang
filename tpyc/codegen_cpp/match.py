@@ -12,7 +12,8 @@ from ..typesys import (
     TpyType, BoolType, FixedIntType, NamedType, OptionalType,
     StrType, StringType, StrViewType, PendingStrType, UnionType, EnumType,
     LiteralType,
-    unwrap_readonly,
+    unwrap_readonly, is_any_str_type,
+
 )
 from ..parse import (
     TpyStmt, TpyExpr, TpyName, TpyMatch, TpyMatchCase, TpyPattern,
@@ -79,7 +80,7 @@ class MatchGenerator:
             self._gen_match_switch_enum(out, stmt, indent)
         elif isinstance(subject_type, LiteralType):
             base = subject_type.base_type
-            if isinstance(base, (StrType, StringType, StrViewType, PendingStrType)):
+            if is_any_str_type(base):
                 if self._should_switch_str(stmt):
                     self._gen_match_switch_str(out, stmt, indent)
                 else:
@@ -105,7 +106,7 @@ class MatchGenerator:
                 )
             else:
                 self._gen_match_if_elif_optional(out, stmt, subject_type, indent)
-        elif isinstance(subject_type, (StrType, StringType, StrViewType, PendingStrType)):
+        elif is_any_str_type(subject_type):
             if self._should_switch_str(stmt):
                 self._gen_match_switch_str(out, stmt, indent)
             else:

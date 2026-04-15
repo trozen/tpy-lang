@@ -12,14 +12,41 @@ Defines the core types available in TurboPython:
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Callable, Optional
+from enum import Enum, auto
+from typing import Callable, ClassVar, Optional
 
 
 class TypeParamKind(Enum):
     """Kind of type parameter in a generic type."""
     TYPE = "type"  # A type parameter like T
     INT = "int"    # An integer literal like N
+
+
+class TypeKind(Enum):
+    """Discriminator tag for TpyType subclasses. Used by predicate helpers
+    (is_integer_type, is_float_type, etc.) to avoid isinstance calls on the
+    hot path. Each concrete subclass sets a unique ``tag`` ClassVar.
+    Types that don't participate in tag checks default to OTHER."""
+    OTHER = auto()
+    FIXED_INT = auto()
+    BIG_INT = auto()
+    INT_LITERAL = auto()
+    FLOAT = auto()
+    FLOAT32 = auto()
+    FLOAT_LITERAL = auto()
+    BOOL = auto()
+    CHAR = auto()
+    NONE = auto()
+    VOID = auto()
+    FN = auto()
+    CALLABLE = auto()
+    UNION = auto()
+    OPTIONAL = auto()
+    STR = auto()
+    STRING = auto()
+    STR_VIEW = auto()
+    PENDING_STR = auto()
+    LITERAL = auto()
 
 
 def qualify_exception_name(name: str, registry: 'TypeRegistry') -> str:
@@ -268,6 +295,11 @@ def clear_all_compilation_state() -> None:
 class TpyType:
     """Base class for all TurboPython types."""
 
+    # Discriminator tag. Concrete subclasses override with a unique TypeKind
+    # value when they participate in predicate-helper tag checks. ClassVar
+    # so dataclass doesn't treat it as an instance field.
+    tag: ClassVar[TypeKind] = TypeKind.OTHER
+
     def to_cpp(self) -> str:
         """Return the C++ representation of this type."""
         raise NotImplementedError
@@ -457,6 +489,7 @@ class TpyType:
 @dataclass(frozen=True)
 class FixedIntType(TpyType):
     """Fixed-width integer type (Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64)."""
+    tag: ClassVar[TypeKind] = TypeKind.FIXED_INT
     bits: int = 32
     signed: bool = True
 
@@ -494,6 +527,7 @@ Int32Type = FixedIntType
 @dataclass(frozen=True)
 class VoidType(TpyType):
     """Void type (for functions returning nothing)."""
+    tag: ClassVar[TypeKind] = TypeKind.VOID
 
     def to_cpp(self) -> str:
         return "void"
@@ -518,6 +552,7 @@ class StrType(TpyType):
     Default (locals, fields, returns, type args): std::string (owned).
     Parameters: std::string_view (zero-copy).
     """
+    tag: ClassVar[TypeKind] = TypeKind.STR
 
     def to_cpp(self) -> str:
         return "std::string"
@@ -554,6 +589,7 @@ class StrType(TpyType):
 @dataclass(frozen=True)
 class StringType(TpyType):
     """Explicit owned string type: tpy.String -> std::string."""
+    tag: ClassVar[TypeKind] = TypeKind.STRING
 
     def to_cpp(self) -> str:
         return "std::string"
@@ -590,6 +626,7 @@ class StringType(TpyType):
 @dataclass(frozen=True)
 class StrViewType(TpyType):
     """Explicit string view type: tpy.StrView -> std::string_view."""
+    tag: ClassVar[TypeKind] = TypeKind.STR_VIEW
 
     def to_cpp(self) -> str:
         return "std::string_view"
@@ -644,6 +681,7 @@ class FStrType(TpyType):
 @dataclass(frozen=True)
 class CharType(TpyType):
     """Character type (single character)."""
+    tag: ClassVar[TypeKind] = TypeKind.CHAR
 
     def to_cpp(self) -> str:
         return "char"
@@ -768,6 +806,7 @@ class BytesViewType(TpyType):
 @dataclass(frozen=True)
 class BoolType(TpyType):
     """Boolean type."""
+    tag: ClassVar[TypeKind] = TypeKind.BOOL
 
     def to_cpp(self) -> str:
         return "bool"
@@ -785,6 +824,7 @@ class BoolType(TpyType):
 @dataclass(frozen=True)
 class FloatType(TpyType):
     """64-bit floating point type (IEEE 754 double precision)."""
+    tag: ClassVar[TypeKind] = TypeKind.FLOAT
 
     def to_cpp(self) -> str:
         return "double"
@@ -802,6 +842,7 @@ class FloatType(TpyType):
 @dataclass(frozen=True)
 class Float32Type(TpyType):
     """32-bit floating point type (IEEE 754 single precision)."""
+    tag: ClassVar[TypeKind] = TypeKind.FLOAT32
 
     def to_cpp(self) -> str:
         return "float"
@@ -819,6 +860,7 @@ class Float32Type(TpyType):
 @dataclass(frozen=True)
 class BigIntType(TpyType):
     """Arbitrary precision integer: int -> ::tpy::BigInt"""
+    tag: ClassVar[TypeKind] = TypeKind.BIG_INT
 
     def to_cpp(self) -> str:
         return "::tpy::BigInt"
@@ -980,6 +1022,7 @@ class IntLiteralType(TpyType):
     value tracks the known literal value (including computed results from
     constant-folded binops like 2+3). None means the value is unknown.
     """
+    tag: ClassVar[TypeKind] = TypeKind.INT_LITERAL
     value: int | None = None
 
     def to_cpp(self) -> str:
@@ -1019,6 +1062,7 @@ class LiteralType(TpyType):
     Delegates all C++ codegen methods to base_type, so Literal["r", "w"]
     behaves identically to str for code generation.
     """
+    tag: ClassVar[TypeKind] = TypeKind.LITERAL
     base_type: TpyType
     values: tuple[LiteralValue, ...]
 
@@ -1055,8 +1099,12 @@ class LiteralType(TpyType):
         return isinstance(self.base_type, StrType)
 
     def is_int_base(self) -> bool:
-        """True when this Literal is over integer values."""
-        return isinstance(self.base_type, (FixedIntType, BigIntType))
+        """True when this Literal is over integer values.
+
+        base_type is always a resolved concrete int type (FixedIntType or
+        BigIntType), never IntLiteralType -- so is_integer_type suffices.
+        """
+        return is_integer_type(self.base_type)
 
     def is_bool_base(self) -> bool:
         """True when this Literal is over bool values."""
@@ -1078,6 +1126,7 @@ class FloatLiteralType(TpyType):
     - float * FloatLiteral -> float
     - FloatLiteral * FloatLiteral -> float (default)
     """
+    tag: ClassVar[TypeKind] = TypeKind.FLOAT_LITERAL
     value: float | None = None
 
     def to_cpp(self) -> str:
@@ -1869,15 +1918,82 @@ def unwrap_final(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
+# --- Type-kind predicate helpers (None-safe) ---
+# O(1) tag comparisons using TpyType.tag (set on each concrete subclass).
+# None-safe: short-circuits on `t is not None`.
+
+_INT_TAGS = frozenset({TypeKind.FIXED_INT, TypeKind.BIG_INT})
+_ANY_INT_TAGS = frozenset({TypeKind.FIXED_INT, TypeKind.BIG_INT, TypeKind.INT_LITERAL})
+_FLOAT_TAGS = frozenset({TypeKind.FLOAT, TypeKind.FLOAT32})
+_ANY_FLOAT_TAGS = frozenset({TypeKind.FLOAT, TypeKind.FLOAT32, TypeKind.FLOAT_LITERAL})
+_NUMERIC_TAGS = frozenset({TypeKind.FIXED_INT, TypeKind.BIG_INT,
+                           TypeKind.FLOAT, TypeKind.FLOAT32, TypeKind.BOOL})
+_PRIMITIVE_TAGS = frozenset({TypeKind.BOOL, TypeKind.CHAR,
+                             TypeKind.FIXED_INT, TypeKind.FLOAT, TypeKind.FLOAT32})
+_VOID_LIKE_TAGS = frozenset({TypeKind.NONE, TypeKind.VOID})
+_CALLABLE_TAGS = frozenset({TypeKind.FN, TypeKind.CALLABLE})
+_UNION_OR_OPTIONAL_TAGS = frozenset({TypeKind.UNION, TypeKind.OPTIONAL})
+_ANY_STR_TAGS = frozenset({TypeKind.STR, TypeKind.STRING, TypeKind.STR_VIEW, TypeKind.PENDING_STR})
+
+
 def is_any_str_type(typ: 'TpyType') -> bool:
     """Check if a type is any string type (str, String, StrView, PendingStr, Literal[str]).
 
     Includes LiteralType with str base (the Literal["r", "w"] annotation type).
     Single-value LiteralType instances from enrichment never reach storage/codegen.
     """
-    if isinstance(typ, (StrType, StringType, StrViewType, PendingStrType)):
+    if typ.tag in _ANY_STR_TAGS:
         return True
+    # Cold path: Literal[str] annotations. Keep isinstance so mypy can narrow
+    # to LiteralType (tag comparisons don't narrow on TpyType alone).
     return isinstance(typ, LiteralType) and typ.is_str_base()
+
+
+def is_integer_type(t: 'TpyType | None') -> bool:
+    """True for concrete integer types (FixedIntType/Int32Type, BigIntType). Excludes literals and bool."""
+    return t is not None and t.tag in _INT_TAGS
+
+
+def is_any_int_type(t: 'TpyType | None') -> bool:
+    """True for any integer-family type including IntLiteralType (unresolved literals)."""
+    return t is not None and t.tag in _ANY_INT_TAGS
+
+
+def is_float_type(t: 'TpyType | None') -> bool:
+    """True for concrete float types (FloatType, Float32Type). Excludes FloatLiteralType."""
+    return t is not None and t.tag in _FLOAT_TAGS
+
+
+def is_any_float_type(t: 'TpyType | None') -> bool:
+    """True for any float-family type including FloatLiteralType (unresolved literals)."""
+    return t is not None and t.tag in _ANY_FLOAT_TAGS
+
+
+def is_numeric_type(t: 'TpyType | None') -> bool:
+    """True for types that participate in arithmetic: integers + floats + bool.
+    Follows Python/C++ convention where bool is an integral numeric. Excludes literals."""
+    return t is not None and t.tag in _NUMERIC_TAGS
+
+
+def is_primitive_type(t: 'TpyType | None') -> bool:
+    """True for fundamental C++ scalar types: Bool, Char, FixedInt, Float, Float32.
+    Register-sized, trivially copyable, no heap. Excludes BigInt (heap) and StrView (internal pointer)."""
+    return t is not None and t.tag in _PRIMITIVE_TAGS
+
+
+def is_void_like_type(t: 'TpyType | None') -> bool:
+    """True for NoneType or VoidType (Python None and C++ void return)."""
+    return t is not None and t.tag in _VOID_LIKE_TAGS
+
+
+def is_callable_type(t: 'TpyType | None') -> bool:
+    """True for callable function-type aliases (FnType, CallableType)."""
+    return t is not None and t.tag in _CALLABLE_TAGS
+
+
+def is_union_or_optional_type(t: 'TpyType | None') -> bool:
+    """True for UnionType or OptionalType (both carry a 'maybe-None' shape)."""
+    return t is not None and t.tag in _UNION_OR_OPTIONAL_TAGS
 
 
 def is_any_bytes_type(typ: 'TpyType') -> bool:
@@ -1892,7 +2008,7 @@ def is_constexpr_eligible(typ: 'TpyType') -> bool:
     Non-constexpr (needs const): BigInt (non-trivial constructor), String (std::string).
     Note: StrType uses std::string_view for Final[str] (overridden in codegen).
     """
-    return isinstance(typ, (FixedIntType, FloatType, Float32Type, BoolType, CharType, StrType, StrViewType))
+    return is_primitive_type(typ) or typ.tag in (TypeKind.STR, TypeKind.STR_VIEW)
 
 
 def final_type_str_to_strview(t: 'TpyType') -> 'TpyType':
@@ -1924,6 +2040,7 @@ def unwrap_optional_own(t: 'TpyType') -> 'OwnType | None':
 @dataclass(frozen=True)
 class NoneType(TpyType):
     """The type of the None literal (distinct from VoidType which is for return types)."""
+    tag: ClassVar[TypeKind] = TypeKind.NONE
 
     def to_cpp(self) -> str:
         return "std::nullptr_t"
@@ -1972,6 +2089,7 @@ class OptionalType(TpyType):
     For non-value inner types, maps to T* (nullable pointer) in locals/params/returns.
     The canonical storage form (std::optional<T>) is reserved for future class members.
     """
+    tag: ClassVar[TypeKind] = TypeKind.OPTIONAL
     inner: TpyType
     # Locks representation to T* even when the concrete inner type is a value type.
     # Set during generic type substitution when the template used T* (unbounded
@@ -2062,6 +2180,7 @@ class UnionType(TpyType):
     Members are stored in canonical sorted order for deterministic eq/hash.
     NoneType is always last if present (maps to std::monostate).
     """
+    tag: ClassVar[TypeKind] = TypeKind.UNION
     members: tuple[TpyType, ...]
 
     def to_cpp(self) -> str:
@@ -2069,13 +2188,13 @@ class UnionType(TpyType):
         if alias is not None:
             return alias
         cpp_members = [
-            "std::monostate" if isinstance(m, (NoneType, VoidType)) else m.to_cpp()
+            "std::monostate" if is_void_like_type(m) else m.to_cpp()
             for m in self.members
         ]
         return f"std::variant<{', '.join(cpp_members)}>"
 
     def has_none_member(self) -> bool:
-        return any(isinstance(m, (NoneType, VoidType)) for m in self.members)
+        return any(is_void_like_type(m) for m in self.members)
 
     def is_value_type(self) -> bool:
         # Note: recursive union aliases (type Tree = int | list[Tree]) have
@@ -2104,7 +2223,7 @@ class UnionType(TpyType):
         Does not use type aliases (aliases are for value variants only).
         """
         cpp_members = [
-            "std::monostate" if isinstance(m, (NoneType, VoidType))
+            "std::monostate" if is_void_like_type(m)
             else f"{m.to_cpp()}*"
             for m in self.members
         ]
@@ -2113,7 +2232,7 @@ class UnionType(TpyType):
     def to_cpp_const_ptr_variant(self) -> str:
         """Return the const pointer-variant type: std::variant<const Dog*, const Cat*>."""
         cpp_members = [
-            "std::monostate" if isinstance(m, (NoneType, VoidType))
+            "std::monostate" if is_void_like_type(m)
             else f"const {m.to_cpp()}*"
             for m in self.members
         ]
@@ -2157,7 +2276,7 @@ class UnionType(TpyType):
 
     def __str__(self) -> str:
         parts = [
-            "None" if isinstance(m, (NoneType, VoidType)) else str(m)
+            "None" if is_void_like_type(m) else str(m)
             for m in self.members
         ]
         return " | ".join(parts)
@@ -2341,14 +2460,14 @@ def make_union(*types: TpyType) -> TpyType:
     for t in types:
         if isinstance(t, UnionType):
             for m in t.members:
-                if isinstance(m, (NoneType, VoidType)):
+                if is_void_like_type(m):
                     has_none = True
                 else:
                     flat.append(m)
         elif isinstance(t, OptionalType):
             has_none = True
             flat.append(t.inner)
-        elif isinstance(t, (NoneType, VoidType)):
+        elif is_void_like_type(t):
             has_none = True
         else:
             flat.append(t)
@@ -2382,7 +2501,7 @@ def union_none_narrow(union: UnionType) -> tuple[TpyType, TpyType]:
     Returns (non_none_type, none_type) where non_none_type is the union
     with NoneType/VoidType members removed.
     """
-    non_none = [m for m in union.members if not isinstance(m, (NoneType, VoidType))]
+    non_none = [m for m in union.members if not is_void_like_type(m)]
     return make_union(*non_none), NoneType()
 
 
@@ -3007,6 +3126,7 @@ class FnType(TpyType):
     Valid only in function parameter position. Generates a C++ template parameter
     with a requires clause constraining the call signature.
     """
+    tag: ClassVar[TypeKind] = TypeKind.FN
     param_types: tuple[TpyType, ...]
     return_type: TpyType
 
@@ -3046,6 +3166,7 @@ class CallableType(TpyType):
 
     Valid in all positions: params, fields, returns, containers, locals.
     """
+    tag: ClassVar[TypeKind] = TypeKind.CALLABLE
     param_types: tuple[TpyType, ...]
     return_type: TpyType
 
@@ -3287,6 +3408,7 @@ class PendingViewType(TpyType):
 @dataclass(frozen=True)
 class PendingStrType(PendingViewType):
     """Unresolved string local -- becomes StrView or str based on usage."""
+    tag: ClassVar[TypeKind] = TypeKind.PENDING_STR
 
     @property
     def family(self) -> ViewTypeFamily:
@@ -3378,18 +3500,18 @@ def is_protocol_union(typ: TpyType) -> bool:
     """
     if not isinstance(typ, UnionType):
         return False
-    non_none = [m for m in typ.members if not isinstance(m, (NoneType, VoidType))]
+    non_none = [m for m in typ.members if not is_void_like_type(m)]
     return len(non_none) >= 2 and all(is_protocol_type(m) for m in non_none)
 
 
 def protocol_union_protocols(typ: UnionType) -> list[TpyType]:
     """Get non-None protocol members from a protocol union."""
-    return [m for m in typ.members if not isinstance(m, (NoneType, VoidType))]
+    return [m for m in typ.members if not is_void_like_type(m)]
 
 
 def protocol_union_has_none(typ: UnionType) -> bool:
     """Check if a protocol union includes None."""
-    return any(isinstance(m, (NoneType, VoidType)) for m in typ.members)
+    return any(is_void_like_type(m) for m in typ.members)
 
 
 def container_to_str_template(typ: TpyType) -> str | None:

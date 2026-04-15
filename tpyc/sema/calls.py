@@ -22,6 +22,8 @@ from ..typesys import (
     StrViewType, STRVIEW, MutationCallEdge,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     FnType, CallableType, unwrap_ref_type,
+    is_integer_type, is_any_int_type,
+    is_callable_type, is_float_type,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
@@ -347,7 +349,7 @@ def _default_compatible_with_type(default_expr: TpyExpr, resolved_type: TpyType)
         case TpyIntLiteral():
             return isinstance(resolved_type, _NUMERIC_TYPES) or isinstance(resolved_type, BoolType)
         case TpyFloatLiteral():
-            return isinstance(resolved_type, (FloatType, Float32Type))
+            return is_float_type(resolved_type)
         case TpyStrLiteral():
             return is_any_str_type(resolved_type) or isinstance(resolved_type, CharType)
         case TpyUnaryOp(op="-"):
@@ -409,9 +411,9 @@ def _repr_fallback_template(typ: TpyType) -> str | None:
     """
     if isinstance(typ, BoolType):
         return _REPR_TEMPLATE
-    if isinstance(typ, (FixedIntType, BigIntType)):
+    if is_integer_type(typ):
         return _REPR_TEMPLATE
-    if isinstance(typ, (FloatType, Float32Type)):
+    if is_float_type(typ):
         return _REPR_TEMPLATE
     if is_any_str_type(typ):
         return _REPR_TEMPLATE
@@ -1424,7 +1426,7 @@ class CallAnalyzer:
                 expr
             )
         arg_type = self.expr.analyze_expr(expr.args[0])
-        if not isinstance(arg_type, (IntLiteralType, FixedIntType, BigIntType)):
+        if not is_any_int_type(arg_type):
             raise self.ctx.error(
                 f"Cannot construct '{enum_type.name}' from '{arg_type}', "
                 f"expected an integer type",
@@ -2060,7 +2062,7 @@ class CallAnalyzer:
         # Quick check: if no Fn/Callable params, analyze all args directly
         fn_positions: set[int] = set()
         for i, (_, ptype) in enumerate(func.params):
-            if isinstance(unwrap_ref_type(ptype), (FnType, CallableType)):
+            if is_callable_type(unwrap_ref_type(ptype)):
                 fn_positions.add(i)
         if not fn_positions:
             return [self.expr.analyze_expr(arg) for arg in expr.args]
@@ -2089,7 +2091,7 @@ class CallAnalyzer:
                     continue
                 ptype = unwrap_ref_type(func.params[i].type)
                 concrete_hint = _partial_substitute(ptype, partial_inferred)
-                if isinstance(concrete_hint, (FnType, CallableType)):
+                if is_callable_type(concrete_hint):
                     has_unresolved = any(
                         _has_type_param_ref(p) for p in concrete_hint.param_types
                     )
@@ -2139,7 +2141,7 @@ class CallAnalyzer:
         # For generic overloads with Fn/Callable params, use two-phase arg analysis
         # so function refs and lambdas can be resolved with concrete type hints.
         fn_generic = next((o for o in generic
-                           if any(isinstance(unwrap_ref_type(p.type), (FnType, CallableType)) for p in o.params)
+                           if any(is_callable_type(unwrap_ref_type(p.type)) for p in o.params)
                            and len(expr.args) >= o.min_args and len(expr.args) <= o.max_args),
                           None)
         if fn_generic is not None:
@@ -2321,7 +2323,7 @@ class CallAnalyzer:
             # For generic overloads with Fn/Callable params, use two-phase analysis.
             fn_generic = next((f for f in func_infos
                                if f.is_generic()
-                               and any(isinstance(p.type, (FnType, CallableType)) for p in f.params)),
+                               and any(is_callable_type(p.type) for p in f.params)),
                               None)
             if fn_generic is not None:
                 arg_types = self._infer_arg_types(expr, fn_generic)

@@ -85,8 +85,7 @@ Goal: speed up test runs (currently ~3 min parallel, ~6 min single-threaded for 
 5. **Memoize type transformations in `map_inner_types`** (no caching):
    The same types get re-transformed repeatedly across different call sites with the same transformation function (e.g. `substitute_type_params` with identical bindings). Frozen dataclasses are hashable, so results can be cached per (type, transformation) pair. Especially valuable in `_resolve_builtin_self_refs` where the same builtin method signatures are walked repeatedly.
 
-6. **Type kind tags to reduce `isinstance` overhead** (931k calls, 74ms):
-   Add a `kind: TypeKind` enum field to `TpyType` base class. Replace multi-type isinstance tuples (e.g. `isinstance(t, (StrType, StringType, StrViewType, PendingStrType))`) with tag checks. Also benefits self-hosting (maps cleanly to C++ tagged unions). Longer-term change; related to the existing "eliminate concrete type classes" item.
+6. ~~**Type kind tags to reduce `isinstance` overhead**~~ **DONE** -- `TypeKind` enum on `TpyType.tag` (ClassVar); predicates use frozenset tag lookup: `is_integer_type`, `is_any_int_type`, `is_float_type`, `is_any_float_type`, `is_numeric_type`, `is_primitive_type`, `is_void_like_type`, `is_callable_type`, `is_union_or_optional_type`, `is_any_str_type`. Multi-type isinstance tuples migrated. Real win lands under mypyc.
 
 ### mypyc integration (after hotspot fixes)
 

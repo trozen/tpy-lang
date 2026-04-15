@@ -20,6 +20,8 @@ from ..typesys import (
     qualify_exception_name, is_return_exception, is_exception_type,
     FunctionInfo, ParamInfo,
     make_ref, unwrap_ref_type, RefType,
+    is_integer_type, is_any_int_type, is_numeric_type,
+
 )
 from ..parse import (
     TpyExpr,
@@ -1892,8 +1894,7 @@ class StatementAnalyzer:
             return self._find_nonconstant_leaf(expr.operand, target_type)
         if isinstance(expr, TpyName) and expr.name in self.ctx.analyzed_finals:
             return None
-        if isinstance(expr, TpyBinOp) and isinstance(
-                target_type, (FixedIntType, BigIntType, FloatType, Float32Type, BoolType)):
+        if isinstance(expr, TpyBinOp) and is_numeric_type(target_type):
             return (self._find_nonconstant_leaf(expr.left, target_type)
                     or self._find_nonconstant_leaf(expr.right, target_type))
         # Primitive type constructor: Float32(0.5), Int64(SOME_FINAL), etc.
@@ -2450,7 +2451,7 @@ class StatementAnalyzer:
                         stmt.name, inner_existing, inner_init, init_expr=stmt.init
                     )
                     # Reassignment: check if we need to upgrade IntLiteralType
-                    if isinstance(inner_existing, IntLiteralType) and isinstance(var_type, (Int32Type, BigIntType)):
+                    if isinstance(inner_existing, IntLiteralType) and is_integer_type(var_type):
                         # Upgrade from IntLiteralType to concrete type
                         # Update var_types so codegen knows the resolved type
                         orig_decl = self.ctx.func.var_decl_by_name.get(stmt.name)
@@ -2910,7 +2911,7 @@ class StatementAnalyzer:
         for bound in (sl.lower, sl.upper, sl.step):
             if bound is not None:
                 bound_type = self.expr.analyze_expr(bound)
-                if not isinstance(bound_type, (FixedIntType, BigIntType, IntLiteralType)):
+                if not is_any_int_type(bound_type):
                     raise self.ctx.error(
                         f"Slice bound must be an integer, got '{bound_type}'", bound)
 

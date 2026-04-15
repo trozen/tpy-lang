@@ -11,7 +11,8 @@ from ..typesys import (
     TpyType, OptionalType, NoneType, VoidType, PtrType, OwnType, NamedType,
     TypeParamRef, FixedIntType, BigIntType, IntLiteralType,
     ReadonlyType, UnionType, unwrap_readonly, unwrap_ref_type, make_union, union_none_narrow,
-    is_protocol_type, LiteralType, LiteralValue,
+    is_protocol_type, LiteralType, LiteralValue, is_any_int_type,
+
 )
 from ..parse import (
     TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyFieldAccess,
@@ -504,7 +505,7 @@ class NarrowingTracker:
         typ = self.ctx.get_expr_type(expr)
         if typ is None:
             return False
-        return isinstance(typ, (FixedIntType, BigIntType, IntLiteralType))
+        return is_any_int_type(typ)
 
     def _comparison_range_facts(
         self, expr: TpyBinOp,

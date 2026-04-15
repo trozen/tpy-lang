@@ -514,7 +514,7 @@ support classes that the generated code calls. The macro logic is shared.
 6. **`@class_macro` decorator** -- intercept class definition, construct
    `ClassInfo`, invoke macro, apply results.
 7. **Runtime stubs** -- `JsonReader`/`JsonWriter` CPython implementations.
-8. **Remove `no_cpython.txt`** from `@model` tests, verify `test_cpy` passes.
+8. **Remove `no_cpython.txt`** from `@model` tests, verify the CPython compatibility phase in `test_case` passes.
 
 ### Design constraints
 

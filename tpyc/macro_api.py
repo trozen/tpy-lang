@@ -23,6 +23,7 @@ from .typesys import (
     FieldInfo as InternalFieldInfo,
     INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64,
     ALL_FIXED_INTS,
+    is_float_type,
 )
 from .typesys import (
     VOID as _VOID, STR as _STR, STRVIEW as _STRVIEW, BOOL as _BOOL,
@@ -415,7 +416,7 @@ class TypeInfo:
 
     @property
     def is_float(self) -> bool:
-        return isinstance(self._tpy_type, (FloatType, Float32Type))
+        return is_float_type(self._tpy_type)
 
     @property
     def is_float32(self) -> bool:

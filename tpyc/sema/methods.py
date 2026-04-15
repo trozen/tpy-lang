@@ -13,7 +13,8 @@ from ..typesys import (
     DictType, SetType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
-    PendingGenericInstanceType, IntLiteralType, FixedIntType, BigIntType, CallableType, unwrap_ref_type, FStrType,
+    PendingGenericInstanceType, IntLiteralType, FixedIntType, BigIntType, CallableType, unwrap_ref_type, FStrType, is_any_int_type,
+
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
@@ -853,7 +854,7 @@ class MethodAnalyzer:
                     f"Nested enum '{dotted}' constructor takes exactly 1 positional argument",
                     expr)
             arg_type = self.expr.analyze_expr(expr.args[0])
-            if not isinstance(arg_type, (IntLiteralType, FixedIntType, BigIntType)):
+            if not is_any_int_type(arg_type):
                 raise self.ctx.error(
                     f"Cannot construct '{dotted}' from '{arg_type}', "
                     f"expected an integer type",

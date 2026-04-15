@@ -23,6 +23,9 @@ from ..typesys import (
     INT32, FLOAT, STR, FSTR, STRVIEW, CHAR, BOOL, BIGINT, NONE, BASIC_SLICE, SLICE, BYTES, BYTESVIEW, UINT8,
     is_protocol_type, container_to_str_template, contains_type_param,
     PendingGenericInstanceType, BasicSliceType, SliceType, unwrap_ref_type, make_ref, RefType,
+    is_integer_type, is_any_int_type, is_union_or_optional_type,
+    is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
+
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -272,7 +275,7 @@ class ExpressionAnalyzer:
         type_hint = unwrap_ref_type(type_hint)
 
         # Lambda with Fn/Callable type hint: infer param types from the hint
-        if isinstance(expr, TpyLambda) and isinstance(type_hint, (FnType, CallableType)):
+        if isinstance(expr, TpyLambda) and is_callable_type(type_hint):
             typ = self._analyze_lambda_with_fn_hint(expr, type_hint)
             self.ctx.set_expr_type(expr, typ)
             return typ
@@ -280,7 +283,7 @@ class ExpressionAnalyzer:
         # Named function reference with Fn/Callable hint: resolve as function value.
         # Unwrap OwnType so that e.g. list.append(Own[Callable[...]]) works.
         fn_hint = type_hint.wrapped if isinstance(type_hint, OwnType) else type_hint
-        if isinstance(expr, TpyName) and isinstance(fn_hint, (FnType, CallableType)):
+        if isinstance(expr, TpyName) and is_callable_type(fn_hint):
             result = self._try_resolve_function_ref(expr, fn_hint)
             if result is not None:
                 self.ctx.set_expr_type(expr, result)
@@ -635,14 +638,14 @@ class ExpressionAnalyzer:
             return BOOL
         # Resolve int literals to match concrete int type on the other side
         if isinstance(left, IntLiteralType):
-            if isinstance(right, (FixedIntType, BigIntType)):
+            if is_integer_type(right):
                 left = right
             elif isinstance(right, IntLiteralType):
                 return self.ctx.default_int_type
             else:
                 return BOOL
         elif isinstance(right, IntLiteralType):
-            if isinstance(left, (FixedIntType, BigIntType)):
+            if is_integer_type(left):
                 right = left
             else:
                 return BOOL
@@ -697,10 +700,10 @@ class ExpressionAnalyzer:
         # narrowing resolved an expression to its inner type.
         if expr.op in ("is", "is not"):
             declared_left = self.narrowing.declared_type_for_expr(expr.left)
-            if isinstance(declared_left, (OptionalType, UnionType)):
+            if is_union_or_optional_type(declared_left):
                 left_type = declared_left
             declared_right = self.narrowing.declared_type_for_expr(expr.right)
-            if isinstance(declared_right, (OptionalType, UnionType)):
+            if is_union_or_optional_type(declared_right):
                 right_type = declared_right
 
         # Enforce Pythonic None identity checks for Optional values.
@@ -817,10 +820,10 @@ class ExpressionAnalyzer:
 
             if is_comparison:
                 # IntEnum vs integer: coerce enum to underlying type
-                if left_is_int_enum and isinstance(right_effective, (IntLiteralType, FixedIntType, BigIntType)):
+                if left_is_int_enum and is_any_int_type(right_effective):
                     expr.int_enum_coercion = left_effective
                     return BOOL
-                if right_is_int_enum and isinstance(left_effective, (IntLiteralType, FixedIntType, BigIntType)):
+                if right_is_int_enum and is_any_int_type(left_effective):
                     expr.int_enum_coercion = right_effective
                     return BOOL
                 if isinstance(left_effective, EnumType) and isinstance(right_effective, EnumType):
@@ -1262,7 +1265,7 @@ class ExpressionAnalyzer:
             raise self.ctx.error(f"Invalid operand type for 'not': {effective_type} (expected bool, numeric, or type with __bool__/__len__)", expr)
 
         # Float types support unary negation and plus
-        if isinstance(effective_type, (FloatType, Float32Type, FloatLiteralType)):
+        if is_any_float_type(effective_type):
             if expr.op in ("-", "+"):
                 if result := self.operators.resolve_unaryop(effective_type, expr.op):
                     expr.resolved_unaryop = result
@@ -1652,9 +1655,9 @@ class ExpressionAnalyzer:
                 if isinstance(first_type, IntLiteralType) and isinstance(elem_type, IntLiteralType):
                     continue
                 # IntLiteral coerces to concrete integer types
-                if isinstance(elem_type, IntLiteralType) and isinstance(first_type, (Int32Type, BigIntType)):
+                if isinstance(elem_type, IntLiteralType) and is_integer_type(first_type):
                     continue
-                if isinstance(first_type, IntLiteralType) and isinstance(elem_type, (Int32Type, BigIntType)):
+                if isinstance(first_type, IntLiteralType) and is_integer_type(elem_type):
                     # First was literal, but later element is concrete - update first_type
                     first_type = elem_type
                     continue
@@ -1662,9 +1665,9 @@ class ExpressionAnalyzer:
                 if isinstance(first_type, FloatLiteralType) and isinstance(elem_type, FloatLiteralType):
                     continue
                 # FloatLiteral coerces to concrete float types
-                if isinstance(elem_type, FloatLiteralType) and isinstance(first_type, (FloatType, Float32Type)):
+                if isinstance(elem_type, FloatLiteralType) and is_float_type(first_type):
                     continue
-                if isinstance(first_type, FloatLiteralType) and isinstance(elem_type, (FloatType, Float32Type)):
+                if isinstance(first_type, FloatLiteralType) and is_float_type(elem_type):
                     first_type = elem_type
                     continue
                 # Nested lists with IntLiteralType elements are compatible
@@ -1880,11 +1883,11 @@ class ExpressionAnalyzer:
         if isinstance(t, FloatLiteralType) and isinstance(e, FloatLiteralType):
             return FLOAT
         if isinstance(t, FloatLiteralType):
-            if isinstance(e, (FloatType, Float32Type)):
+            if is_float_type(e):
                 return e
             t = FLOAT
         if isinstance(e, FloatLiteralType):
-            if isinstance(t, (FloatType, Float32Type)):
+            if is_float_type(t):
                 return t
             e = FLOAT
 
@@ -1954,7 +1957,7 @@ class ExpressionAnalyzer:
             value_types = [self._analyze_and_strip(v) for v in expr.values]
 
         # Unify key types
-        if isinstance(expected_key, (UnionType, OptionalType)):
+        if is_union_or_optional_type(expected_key):
             key_type = expected_key
             for i, kt in enumerate(key_types, 1):
                 if kt == expected_key:
@@ -1971,16 +1974,16 @@ class ExpressionAnalyzer:
             for i, kt in enumerate(key_types[1:], 2):
                 if isinstance(key_type, IntLiteralType) and isinstance(kt, IntLiteralType):
                     continue
-                if isinstance(kt, IntLiteralType) and isinstance(key_type, (Int32Type, BigIntType)):
+                if isinstance(kt, IntLiteralType) and is_integer_type(key_type):
                     continue
-                if isinstance(key_type, IntLiteralType) and isinstance(kt, (Int32Type, BigIntType)):
+                if isinstance(key_type, IntLiteralType) and is_integer_type(kt):
                     key_type = kt
                     continue
                 if isinstance(key_type, FloatLiteralType) and isinstance(kt, FloatLiteralType):
                     continue
-                if isinstance(kt, FloatLiteralType) and isinstance(key_type, (FloatType, Float32Type)):
+                if isinstance(kt, FloatLiteralType) and is_float_type(key_type):
                     continue
-                if isinstance(key_type, FloatLiteralType) and isinstance(kt, (FloatType, Float32Type)):
+                if isinstance(key_type, FloatLiteralType) and is_float_type(kt):
                     key_type = kt
                     continue
                 if kt != key_type:
@@ -1990,7 +1993,7 @@ class ExpressionAnalyzer:
                     )
 
         # Unify value types
-        if isinstance(expected_value, (UnionType, OptionalType)):
+        if is_union_or_optional_type(expected_value):
             # Annotation provides a union/optional -- validate each value against it
             value_type = expected_value
             for i, vt in enumerate(value_types, 1):
@@ -2008,16 +2011,16 @@ class ExpressionAnalyzer:
             for i, vt in enumerate(value_types[1:], 2):
                 if isinstance(value_type, IntLiteralType) and isinstance(vt, IntLiteralType):
                     continue
-                if isinstance(vt, IntLiteralType) and isinstance(value_type, (Int32Type, BigIntType)):
+                if isinstance(vt, IntLiteralType) and is_integer_type(value_type):
                     continue
-                if isinstance(value_type, IntLiteralType) and isinstance(vt, (Int32Type, BigIntType)):
+                if isinstance(value_type, IntLiteralType) and is_integer_type(vt):
                     value_type = vt
                     continue
                 if isinstance(value_type, FloatLiteralType) and isinstance(vt, FloatLiteralType):
                     continue
-                if isinstance(vt, FloatLiteralType) and isinstance(value_type, (FloatType, Float32Type)):
+                if isinstance(vt, FloatLiteralType) and is_float_type(value_type):
                     continue
-                if isinstance(value_type, FloatLiteralType) and isinstance(vt, (FloatType, Float32Type)):
+                if isinstance(value_type, FloatLiteralType) and is_float_type(vt):
                     value_type = vt
                     continue
                 if vt != value_type:
@@ -2032,9 +2035,9 @@ class ExpressionAnalyzer:
         if isinstance(value_type, IntLiteralType):
             value_type = expected_value if expected_value else self.ctx.default_int_for_literal(value_type)
         if isinstance(key_type, FloatLiteralType):
-            key_type = expected_key if isinstance(expected_key, (FloatType, Float32Type)) else FLOAT
+            key_type = expected_key if is_float_type(expected_key) else FLOAT
         if isinstance(value_type, FloatLiteralType):
-            value_type = expected_value if isinstance(expected_value, (FloatType, Float32Type)) else FLOAT
+            value_type = expected_value if is_float_type(expected_value) else FLOAT
         # Container elements must be owned -- views can't be stored in a dict.
         if isinstance(key_type, PendingViewType):
             key_type = key_type.family.owned_type
@@ -2061,7 +2064,7 @@ class ExpressionAnalyzer:
             elem_types = [self._analyze_and_strip(e) for e in expr.elements]
 
         # Unify element types
-        if isinstance(expected_elem, (UnionType, OptionalType)):
+        if is_union_or_optional_type(expected_elem):
             elem_type = expected_elem
             for i, et in enumerate(elem_types, 1):
                 if et == expected_elem:
@@ -2079,16 +2082,16 @@ class ExpressionAnalyzer:
             for i, et in enumerate(elem_types[1:], 2):
                 if isinstance(elem_type, IntLiteralType) and isinstance(et, IntLiteralType):
                     continue
-                if isinstance(et, IntLiteralType) and isinstance(elem_type, (Int32Type, BigIntType)):
+                if isinstance(et, IntLiteralType) and is_integer_type(elem_type):
                     continue
-                if isinstance(elem_type, IntLiteralType) and isinstance(et, (Int32Type, BigIntType)):
+                if isinstance(elem_type, IntLiteralType) and is_integer_type(et):
                     elem_type = et
                     continue
                 if isinstance(elem_type, FloatLiteralType) and isinstance(et, FloatLiteralType):
                     continue
-                if isinstance(et, FloatLiteralType) and isinstance(elem_type, (FloatType, Float32Type)):
+                if isinstance(et, FloatLiteralType) and is_float_type(elem_type):
                     continue
-                if isinstance(elem_type, FloatLiteralType) and isinstance(et, (FloatType, Float32Type)):
+                if isinstance(elem_type, FloatLiteralType) and is_float_type(et):
                     elem_type = et
                     continue
                 if et != elem_type:
@@ -2100,7 +2103,7 @@ class ExpressionAnalyzer:
         if isinstance(elem_type, IntLiteralType):
             elem_type = expected_elem if expected_elem else self.ctx.default_int_for_literal(elem_type)
         if isinstance(elem_type, FloatLiteralType):
-            elem_type = expected_elem if isinstance(expected_elem, (FloatType, Float32Type)) else FLOAT
+            elem_type = expected_elem if is_float_type(expected_elem) else FLOAT
         # Container elements must be owned -- views can't be stored in a set.
         if isinstance(elem_type, PendingViewType):
             elem_type = elem_type.family.owned_type
@@ -2112,7 +2115,7 @@ class ExpressionAnalyzer:
         """Analyze a list repetition: [elements...] * count"""
         count_type = self.analyze_expr(expr.count)
 
-        if not isinstance(count_type, (Int32Type, BigIntType, IntLiteralType)):
+        if not is_any_int_type(count_type):
             raise self.ctx.error(f"List repetition count must be an integer type, got {count_type}", expr)
 
         # Note: Empty list repetition [] * N is collapsed to [] in the parser
@@ -2125,16 +2128,16 @@ class ExpressionAnalyzer:
         for i, elem_type in enumerate(elem_types[1:], 2):
             if isinstance(first_type, IntLiteralType) and isinstance(elem_type, IntLiteralType):
                 continue
-            if isinstance(elem_type, IntLiteralType) and isinstance(first_type, (Int32Type, BigIntType)):
+            if isinstance(elem_type, IntLiteralType) and is_integer_type(first_type):
                 continue
-            if isinstance(first_type, IntLiteralType) and isinstance(elem_type, (Int32Type, BigIntType)):
+            if isinstance(first_type, IntLiteralType) and is_integer_type(elem_type):
                 first_type = elem_type
                 continue
             if isinstance(first_type, FloatLiteralType) and isinstance(elem_type, FloatLiteralType):
                 continue
-            if isinstance(elem_type, FloatLiteralType) and isinstance(first_type, (FloatType, Float32Type)):
+            if isinstance(elem_type, FloatLiteralType) and is_float_type(first_type):
                 continue
-            if isinstance(first_type, FloatLiteralType) and isinstance(elem_type, (FloatType, Float32Type)):
+            if isinstance(first_type, FloatLiteralType) and is_float_type(elem_type):
                 first_type = elem_type
                 continue
             if first_type != elem_type:
@@ -2210,7 +2213,7 @@ class ExpressionAnalyzer:
         if isinstance(result_elem_type, IntLiteralType):
             result_elem_type = expected_elem if expected_elem is not None else self.ctx.default_int_type
         if isinstance(result_elem_type, FloatLiteralType):
-            result_elem_type = expected_elem if isinstance(expected_elem, (FloatType, Float32Type)) else FLOAT
+            result_elem_type = expected_elem if is_float_type(expected_elem) else FLOAT
 
         if expected_elem is not None and result_elem_type != expected_elem:
             # Subclass coercion excluded: storing Child in list/set[Base] silently
@@ -2321,9 +2324,9 @@ class ExpressionAnalyzer:
         if isinstance(value_type, IntLiteralType):
             value_type = expected_value if expected_value is not None else self.ctx.default_int_type
         if isinstance(key_type, FloatLiteralType):
-            key_type = expected_key if isinstance(expected_key, (FloatType, Float32Type)) else FLOAT
+            key_type = expected_key if is_float_type(expected_key) else FLOAT
         if isinstance(value_type, FloatLiteralType):
-            value_type = expected_value if isinstance(expected_value, (FloatType, Float32Type)) else FLOAT
+            value_type = expected_value if is_float_type(expected_value) else FLOAT
 
         if expected_key is not None and key_type != expected_key:
             expr.key_expr = self.compat.coerce_expr(
@@ -2561,7 +2564,7 @@ class ExpressionAnalyzer:
                 return ret
             raise self.ctx.error(f"Slicing is not supported for {inner_obj_type}", expr)
 
-        if not isinstance(index_type, (Int32Type, BigIntType, IntLiteralType)):
+        if not is_any_int_type(index_type):
             raise self.ctx.error(f"Subscript index must be an integer type, got {index_type}", expr)
 
         # Check if index is provably in-bounds for bounds check elision
@@ -2625,7 +2628,7 @@ class ExpressionAnalyzer:
         for bound, label in ((sl.lower, "start"), (sl.upper, "stop"), (sl.step, "step")):
             if bound is not None:
                 bound_type = self.analyze_expr(bound)
-                if not isinstance(bound_type, (Int32Type, BigIntType, IntLiteralType)):
+                if not is_any_int_type(bound_type):
                     raise self.ctx.error(
                         f"Slice {label} must be an integer type, got {bound_type}", bound
                     )

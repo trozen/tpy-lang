@@ -14,6 +14,8 @@ from ..typesys import (
     NoneType, OptionalType, UnionType, EnumType, PendingStrType,
     LiteralType, LiteralValue,
     unwrap_readonly, unwrap_ref_type,
+    is_float_type, is_any_str_type,
+
 )
 from ..parse import (
     TpyName, TpyFieldAccess,
@@ -679,13 +681,13 @@ class MatchAnalyzer:
                     pattern,
                 )
         elif isinstance(val, float):
-            if not isinstance(check_type, (FloatType, Float32Type)):
+            if not is_float_type(check_type):
                 raise self.ctx.error(
                     f"float literal pattern not valid for subject type '{subject_type}'",
                     pattern,
                 )
         elif isinstance(val, str):
-            if not isinstance(check_type, (StrType, StrViewType, StringType, PendingStrType)):
+            if not is_any_str_type(check_type):
                 raise self.ctx.error(
                     f"str literal pattern not valid for subject type '{subject_type}'",
                     pattern,

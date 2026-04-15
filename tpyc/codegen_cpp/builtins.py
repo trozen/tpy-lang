@@ -13,6 +13,7 @@ from ..typesys import (
     ListType, ListRepeatType, DictType, SetType, DictKeysViewType, DictValuesViewType, DictItemsViewType,
     ArrayType, SpanType, TupleType, OwnType, is_protocol_type, unwrap_readonly, is_any_str_type, is_any_bytes_type,
     BytesType, ByteArrayType, BytesViewType, make_ref,
+    is_float_type, is_integer_type,
 )
 from ..parse import (
     TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyNoneLiteral, TpyCoerce,
@@ -99,7 +100,7 @@ class BuiltinGenerator:
                     # Multi-overload __getitem__: find the integer-index overload
                     for fi in overloads:
                         if (len(fi.params) == 1
-                                and isinstance(fi.params[0].type, (FixedIntType, BigIntType))
+                                and is_integer_type(fi.params[0].type)
                                 and (fi.cpp_template or fi.native_function or fi.native_name)):
                             return fi
                     return None
@@ -107,7 +108,7 @@ class BuiltinGenerator:
                     # Multi-overload __setitem__: find the integer-index overload
                     for fi in overloads:
                         if (len(fi.params) == 2
-                                and isinstance(fi.params[0].type, (FixedIntType, BigIntType))
+                                and is_integer_type(fi.params[0].type)
                                 and (fi.cpp_template or fi.native_function or fi.native_name)):
                             return fi
                     return None
@@ -209,7 +210,7 @@ class BuiltinGenerator:
                 return not self.types.is_runtime_bigint(arg, arg_type)
         # INT TypeParamRef can match Int32 or BigInt (it's a compile-time constant)
         if isinstance(arg_type, TypeParamRef) and arg_type.kind == TypeParamKind.INT:
-            return isinstance(param_type, (Int32Type, BigIntType))
+            return is_integer_type(param_type)
         # TpyCoerce nodes match their expected type
         if isinstance(arg, TpyCoerce):
             return arg.expected_type == param_type
@@ -284,7 +285,7 @@ class BuiltinGenerator:
                 inner_cpp = inner.to_cpp()
                 if isinstance(inner, BoolType):
                     parts.append(f'::tpy::print_optional_val<::tpy::print_bool, {inner_cpp}>({gen})')
-                elif isinstance(inner, (FloatType, Float32Type)):
+                elif is_float_type(inner):
                     parts.append(f'::tpy::print_optional_val<::tpy::print_float, {inner_cpp}>({gen})')
                 else:
                     parts.append(f'::tpy::print_optional_val({gen})')

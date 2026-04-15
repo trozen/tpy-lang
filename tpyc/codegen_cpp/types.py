@@ -12,8 +12,9 @@ from ..typesys import (
     PendingListType, PendingDictType, PendingSetType, PendingViewType, ListType, DictType, SetType, ArrayType, TypeParamRef, NamedType,
     UnionType, NoneType, VoidType, EnumType, TupleType,
     unwrap_readonly, is_protocol_type, resolve_int_literals,
+    is_integer_type, is_float_type, is_void_like_type,
     INT32, BIGINT, FLOAT, FLOAT32, STR, BYTES,
-    _union_alias_names
+    _union_alias_names,
 )
 from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral, TpyIfExpr
 from ..sema.context import PENDING_CONTAINER_TYPES
@@ -103,7 +104,7 @@ class TypeResolver:
             right_is_literal = isinstance(right_analyzer_type, IntLiteralType) and not isinstance(expr.right, TpyName)
 
             # If either operand is float-family, result is float (float takes precedence)
-            if isinstance(left_raw, (FloatType, Float32Type)) or isinstance(right_raw, (FloatType, Float32Type)):
+            if is_float_type(left_raw) or is_float_type(right_raw):
                 if expr.op == "div" or expr.op in ("+", "-", "*", "//", "%", "**"):
                     # Float64 wins over Float32
                     if isinstance(left_raw, FloatType) or isinstance(right_raw, FloatType):
@@ -168,7 +169,7 @@ class TypeResolver:
         # Resolve IntLiteralType based on context (FixedInt/BigInt if target, else
         # configured default int type).
         if isinstance(typ, IntLiteralType):
-            if isinstance(target_type, (FixedIntType, BigIntType)):
+            if is_integer_type(target_type):
                 return target_type
             return self.ctx.analyzer.ctx.default_int_for_literal(typ)
         # Resolve FloatLiteralType based on context (Float32 if target, else float64).
@@ -191,7 +192,7 @@ class TypeResolver:
                     tt_elem = None
                     if isinstance(target_type, TupleType) and i < len(target_type.element_types):
                         tt_elem = target_type.element_types[i]
-                    if isinstance(tt_elem, (FixedIntType, BigIntType)):
+                    if is_integer_type(tt_elem):
                         resolved_elems.append(tt_elem)
                     else:
                         resolved_elems.append(resolve_lit(et))
@@ -342,7 +343,7 @@ class TypeResolver:
             if alias is not None:
                 return alias
             cpp_members = [
-                "std::monostate" if isinstance(m, (NoneType, VoidType)) else self.type_to_cpp(m)
+                "std::monostate" if is_void_like_type(m) else self.type_to_cpp(m)
                 for m in typ.members
             ]
             return f"std::variant<{', '.join(cpp_members)}>"
@@ -378,7 +379,7 @@ class TypeResolver:
         qualification on member types. Monostate members pass through.
         """
         cpp_members = [
-            "std::monostate" if isinstance(m, (NoneType, VoidType))
+            "std::monostate" if is_void_like_type(m)
             else f"{self.type_to_cpp(m)}*"
             for m in typ.members
         ]
@@ -387,7 +388,7 @@ class TypeResolver:
     def type_to_cpp_const_ptr_variant(self, typ: 'UnionType') -> str:
         """Return the const pointer-variant type with qualified member names."""
         cpp_members = [
-            "std::monostate" if isinstance(m, (NoneType, VoidType))
+            "std::monostate" if is_void_like_type(m)
             else f"const {self.type_to_cpp(m)}*"
             for m in typ.members
         ]

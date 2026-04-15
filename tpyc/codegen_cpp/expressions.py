@@ -18,6 +18,7 @@ from ..typesys import (
     EnumType, IntEnumType, TupleType, FnType, CallableType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
+    is_float_type,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -1287,9 +1288,9 @@ class ExpressionGenerator:
             # Python's int-to-float promotion for comparisons).
             left_cmp = left_target if left_target is not None else left_type
             right_cmp = right_target if right_target is not None else right_type
-            if isinstance(left_cmp, BigIntType) and isinstance(right_cmp, (FloatType, Float32Type)):
+            if isinstance(left_cmp, BigIntType) and is_float_type(right_cmp):
                 left = f"static_cast<{right_cmp.to_cpp()}>({left})"
-            elif isinstance(right_cmp, BigIntType) and isinstance(left_cmp, (FloatType, Float32Type)):
+            elif isinstance(right_cmp, BigIntType) and is_float_type(left_cmp):
                 right = f"static_cast<{left_cmp.to_cpp()}>({right})"
 
             # IntEnum coercion: cast enum operand(s) to underlying type
@@ -1423,9 +1424,9 @@ class ExpressionGenerator:
             left_cmp = left_type.inner
         if isinstance(right_type, OptionalType):
             right_cmp = right_type.inner
-        if isinstance(left_cmp, BigIntType) and isinstance(right_cmp, (FloatType, Float32Type)):
+        if isinstance(left_cmp, BigIntType) and is_float_type(right_cmp):
             left_str = f"static_cast<{right_cmp.to_cpp()}>({left_str})"
-        elif isinstance(right_cmp, BigIntType) and isinstance(left_cmp, (FloatType, Float32Type)):
+        elif isinstance(right_cmp, BigIntType) and is_float_type(left_cmp):
             right_str = f"static_cast<{left_cmp.to_cpp()}>({right_str})"
 
         # IntEnum coercion

@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from ..typesys import (
     TpyType, IntLiteralType, FixedIntType, BigIntType, FloatType, Float32Type, BoolType,
     BIGINT, FLOAT, FLOAT32,
+    is_float_type,
 )
 
 
@@ -99,16 +100,16 @@ def widen_numeric_types(a: TpyType, b: TpyType) -> TpyType | None:
         return None
 
     # Both float-family -> widen to the higher-rank float
-    if isinstance(a, (FloatType, Float32Type)) and isinstance(b, (FloatType, Float32Type)):
+    if is_float_type(a) and is_float_type(b):
         if type(a) is type(b):
             return None
         # Float64 wins over Float32
         return a if isinstance(a, FloatType) else b
 
     # Either is float-family -> float-family wins over int
-    if isinstance(a, (FloatType, Float32Type)):
+    if is_float_type(a):
         return a
-    if isinstance(b, (FloatType, Float32Type)):
+    if is_float_type(b):
         return b
 
     # Both BigInt -> same type, no widening

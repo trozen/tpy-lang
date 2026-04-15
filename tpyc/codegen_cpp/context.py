@@ -12,7 +12,8 @@ from typing import Callable, Literal, TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NamedType, SelfType,
     BigIntType, BoolType, IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo,
-    is_protocol_type, unwrap_readonly, ensure_qualified, unwrap_ref_type,
+    is_protocol_type, unwrap_readonly, ensure_qualified, unwrap_ref_type, is_union_or_optional_type,
+
 )
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -254,7 +255,7 @@ def is_lvalue_iterable(
         if is_protocol_type(ret_type):
             return False
         return (not ret_type.is_value_type()
-                and not isinstance(ret_type, (OptionalType, UnionType)))
+                and not is_union_or_optional_type(ret_type))
     return False
 
 
