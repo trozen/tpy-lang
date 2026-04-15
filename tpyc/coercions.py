@@ -123,7 +123,7 @@ COERCIONS: list[Coercion] = [
         name="int_literal_to_fixed_int",
         from_type=IntLiteralType,
         to_type=FixedIntType,
-        check_range=lambda lit, target: lit.value is None or (target.min_value <= lit.value <= target.max_value),
+        check_range=lambda lit, target: isinstance(lit, IntLiteralType) and isinstance(target, FixedIntType) and (lit.value is None or (target.min_value <= lit.value <= target.max_value)),
     ),
 
     # Integer literal to BigInt (always valid)
@@ -337,7 +337,7 @@ COERCIONS: list[Coercion] = [
         from_type=NamedType,
         to_type=PtrType,
         type_match=lambda rec, ptr: (
-            rec.is_user_record and isinstance(ptr, PtrType) and isinstance(ptr.pointee, NamedType) and ptr.pointee.is_user_record and rec.name == ptr.pointee.name
+            isinstance(rec, NamedType) and rec.is_user_record and isinstance(ptr, PtrType) and isinstance(ptr.pointee, NamedType) and ptr.pointee.is_user_record and rec.name == ptr.pointee.name
         ),
         requires_lvalue=True,
         requires_mutable_lvalue=True,
@@ -349,7 +349,7 @@ COERCIONS: list[Coercion] = [
         from_type=NamedType,
         to_type=PtrType,
         type_match=lambda rec, ptr: (
-            rec.is_user_record and is_readonly_ptr(ptr) and isinstance(ptr.inner_pointee, NamedType) and ptr.inner_pointee.is_user_record and rec.name == ptr.inner_pointee.name
+            isinstance(rec, NamedType) and rec.is_user_record and isinstance(ptr, PtrType) and is_readonly_ptr(ptr) and isinstance(ptr.inner_pointee, NamedType) and ptr.inner_pointee.is_user_record and rec.name == ptr.inner_pointee.name
         ),
         requires_lvalue=True,
         forbid_return_local=True,
@@ -359,13 +359,13 @@ COERCIONS: list[Coercion] = [
         name="ptr_to_const_ptr",
         from_type=PtrType,
         to_type=PtrType,
-        type_match=lambda p1, p2: isinstance(p1, PtrType) and not p1.is_readonly and is_readonly_ptr(p2) and p1.inner_pointee == p2.inner_pointee,
+        type_match=lambda p1, p2: isinstance(p1, PtrType) and isinstance(p2, PtrType) and not p1.is_readonly and is_readonly_ptr(p2) and p1.inner_pointee == p2.inner_pointee,
     ),
     Coercion(
         name="span_to_readonly_span",
         from_type=SpanType,
         to_type=SpanType,
-        type_match=lambda s1, s2: isinstance(s1, SpanType) and not s1.is_readonly and is_readonly_span(s2) and s1.inner_element_type == s2.inner_element_type,
+        type_match=lambda s1, s2: isinstance(s1, SpanType) and isinstance(s2, SpanType) and not s1.is_readonly and is_readonly_span(s2) and s1.inner_element_type == s2.inner_element_type,
         protocol_safe=True,
     ),
     # basic_slice -> slice (adds step=nullopt). C++ implicit via Slice(BasicSlice) ctor.
@@ -421,7 +421,7 @@ def is_protocol_safe_coercion(actual: TpyType, expected: TpyType) -> bool:
     return False
 
 
-def _deref_codegen(e: str, actual: TpyType, _expected: TpyType, _ctx: str) -> str:
+def _deref_codegen(e: str, actual: TpyType, _expected: TpyType, _ctx: CoercionContext) -> str:
     if isinstance(actual, PtrType):
         return f"::tpy::deref_check({e})"
     return f"{e}.__deref__()"

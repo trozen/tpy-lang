@@ -45,8 +45,13 @@ addopts = "-n auto"
 testpaths = ["tests", "tpyc"]
 norecursedirs = ["tests/cases", "__tpyc__"]
 
+[tool.mypy]
+ignore_missing_imports = true
+warn_unused_configs = true
+
 [dependency-groups]
 dev = [
+    "mypy>=1.15",
     "pytest>=9.0.2",
     "pytest-xdist>=3.5",
 ]

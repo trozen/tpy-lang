@@ -176,6 +176,7 @@ class StatementAnalyzer:
         iterable: IterableHelper,
         protocols: ProtocolChecker,
         narrowing: NarrowingTracker,
+        expr: ExpressionAnalyzer,
     ):
         self.ctx = ctx
         self.type_ops = type_ops
@@ -186,14 +187,8 @@ class StatementAnalyzer:
         self.narrowing = narrowing
         self.scopes = ScopeTracker(ctx, compat)
         self.init = InitTracker(ctx)
-        self.match = MatchAnalyzer(ctx)
-        # Set via set_cross_deps() to break circular dependency
-        self.expr: ExpressionAnalyzer | None = None
-
-    def set_cross_deps(self, expr: ExpressionAnalyzer) -> None:
-        """Wire circular dependencies (must be called before analyze_stmt)."""
         self.expr = expr
-        self.match.set_dependencies(self, expr)
+        self.match = MatchAnalyzer(ctx, self, expr)
 
     def _resolve_obj_storage(self, obj: TpyExpr) -> str | None:
         """Resolve the borrow-tracker storage key for a mutation target's object.

@@ -56,20 +56,15 @@ class StatementGenerator:
         types: TypeResolver,
         builtins: BuiltinGenerator,
         protocols: ProtocolGenerator,
+        expressions: ExpressionGenerator,
     ):
         self.ctx = ctx
         self.types = types
         self.builtins = builtins
         self.protocols = protocols
-        self.match = MatchGenerator(ctx, types)
-        # Will be set after expressions is created
-        self.expressions: ExpressionGenerator | None = None
-        self._reassigned_param_copies: list[tuple[str, TpyType]] = []
-
-    def set_expressions(self, expressions: ExpressionGenerator):
-        """Set expressions generator (to break circular dependency)."""
         self.expressions = expressions
-        self.match.set_dependencies(expressions, self)
+        self.match = MatchGenerator(ctx, types, expressions, self)
+        self._reassigned_param_copies: list[tuple[str, TpyType]] = []
 
     def _gen_buffered_body(self, out: TextIO, stmts: list[TpyStmt],
                            track_stmt_line: bool = False) -> None:

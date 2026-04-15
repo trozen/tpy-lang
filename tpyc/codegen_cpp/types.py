@@ -28,13 +28,8 @@ if TYPE_CHECKING:
 class TypeResolver:
     """Type resolution and C++ type mapping utilities."""
 
-    def __init__(self, ctx: CodeGenContext):
+    def __init__(self, ctx: CodeGenContext, protocols: ProtocolGenerator):
         self.ctx = ctx
-        # Will be set after protocols is created
-        self.protocols: ProtocolGenerator | None = None
-
-    def set_protocols(self, protocols: ProtocolGenerator):
-        """Set protocols generator (created after TypeResolver)."""
         self.protocols = protocols
 
     def get_resolved_type(self, expr: TpyExpr, target_type: TpyType | None = None) -> TpyType:
@@ -82,7 +77,7 @@ class TypeResolver:
             if expr.op in ("&&", "||"):
                 typ = self.ctx.analyzer.get_expr_type(expr)
                 if isinstance(typ, BoolType):
-                    return unwrap_readonly(typ) if typ else typ
+                    return unwrap_readonly(typ)
                 left_resolved = self.get_resolved_type(expr.left)
                 right_resolved = self.get_resolved_type(expr.right)
                 if left_resolved == right_resolved:
@@ -161,7 +156,7 @@ class TypeResolver:
         typ = self.ctx.analyzer.get_expr_type(expr)
         # Strip ReadonlyType -- C++ doesn't use it
         typ = unwrap_readonly(typ) if typ else typ
-        resolved = self._resolve_pending_container(typ)
+        resolved = self._resolve_pending_container(typ) if typ else None
         if resolved is not None:
             return resolved
         if isinstance(typ, PendingViewType):
@@ -169,7 +164,7 @@ class TypeResolver:
         # Resolve IntLiteralType based on context (FixedInt/BigInt if target, else
         # configured default int type).
         if isinstance(typ, IntLiteralType):
-            if is_integer_type(target_type):
+            if target_type is not None and is_integer_type(target_type):
                 return target_type
             return self.ctx.analyzer.ctx.default_int_for_literal(typ)
         # Resolve FloatLiteralType based on context (Float32 if target, else float64).
@@ -192,7 +187,7 @@ class TypeResolver:
                     tt_elem = None
                     if isinstance(target_type, TupleType) and i < len(target_type.element_types):
                         tt_elem = target_type.element_types[i]
-                    if is_integer_type(tt_elem):
+                    if tt_elem is not None and is_integer_type(tt_elem):
                         resolved_elems.append(tt_elem)
                     else:
                         resolved_elems.append(resolve_lit(et))
@@ -308,7 +303,7 @@ class TypeResolver:
         Native records use their native C++ name directly (no namespace qualification).
         @dynamic protocol types map to the base class name.
         """
-        if is_protocol_type(typ):
+        if isinstance(typ, NamedType) and is_protocol_type(typ):
             protocol_info = self.ctx.analyzer.registry.get_protocol(typ.name)
             if protocol_info and protocol_info.is_dynamic:
                 return self.protocols.get_dynamic_base_name(typ.name)

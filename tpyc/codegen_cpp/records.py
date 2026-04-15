@@ -41,19 +41,15 @@ class RecordGenerator:
         ctx: CodeGenContext,
         types: TypeResolver,
         protocols: ProtocolGenerator,
+        expressions: ExpressionGenerator,
+        functions: FunctionGenerator,
     ):
         self.ctx = ctx
         self.types = types
         self.protocols = protocols
-        # Will be set after dependencies are created
-        self.expressions: ExpressionGenerator | None = None
-        self.functions: FunctionGenerator | None = None
-        self.gen_generators = None  # Set by CodeGenerator after init
-
-    def set_dependencies(self, expressions: ExpressionGenerator, functions: FunctionGenerator):
-        """Set expression and function generators (to break circular dependency)."""
         self.expressions = expressions
         self.functions = functions
+        self.gen_generators = None  # Set by CodeGenerator after init
 
     def sort_records_by_inheritance(self, records: list[TpyRecord]) -> list[TpyRecord]:
         """Sort records so parent classes come before children.

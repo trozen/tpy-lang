@@ -15,7 +15,7 @@ import shutil
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Callable, Iterable, TYPE_CHECKING
 
 from .parse import Parser, ParseError, TpyModule, TpyImport, RelativeImportKey, SourceLocation, scan_star_exports
 from .parse.imports import StarImportResolver, NonLiteralAllError
@@ -526,11 +526,11 @@ class BuildLayout:
             except ValueError:
                 include_dirs.append(str(runtime_include_dir))
 
-        for d in (extra_include_dirs or []):
+        for extra_d in (extra_include_dirs or []):
             try:
-                include_dirs.append(f"{cmake_dir}/{os.path.relpath(d, self.root_dir)}")
+                include_dirs.append(f"{cmake_dir}/{os.path.relpath(extra_d, self.root_dir)}")
             except ValueError:
-                include_dirs.append(str(d))
+                include_dirs.append(str(extra_d))
 
         libraries = []
         for flag in (link_flags or []):
@@ -648,8 +648,8 @@ class Compiler:
             lib_dirs: Extra directories to search for library modules.
         """
         self.entry_point = entry_point.resolve()
-        self.resolver = ModuleResolver(self.entry_point.parent,
-                                       extra_dirs=lib_dirs or [])
+        self.resolver: ModuleResolver | None = ModuleResolver(self.entry_point.parent,
+                                                               extra_dirs=lib_dirs or [])
         self.default_int_type = parse_default_int_type(default_int)
         self._init_shared()
 
@@ -657,7 +657,7 @@ class Compiler:
         """Initialize state shared by both file and stdin compilation paths."""
         self.modules: dict[str, CompiledModule] = {}
         self.compile_order: list[str] = []
-        self.shadowed_builtins: dict[str, set[tuple[str, int]]] = {}
+        self.shadowed_builtins: dict[str, set[tuple[str, int | None]]] = {}
         self.diagnostics: list[Diagnostic] = []
         self._source_input: tuple[str, str] | None = None
         search_dirs = []
@@ -792,7 +792,7 @@ class Compiler:
         return self._expand_implicit_prefixes(self.modules)
 
     @classmethod
-    def _expand_implicit_prefixes(cls, names: dict[str, object] | set[str]) -> set[str]:
+    def _expand_implicit_prefixes(cls, names: Iterable[str]) -> set[str]:
         prefixes = tuple(f"{m}." for m in cls._IMPLICIT_STDLIB)
         return {m for m in names
                 if m in cls._IMPLICIT_STDLIB or m.startswith(prefixes)}
@@ -954,6 +954,7 @@ class Compiler:
         Returns the resolved module name, or None if the import was fully converted
         to submodule imports (and should be skipped by the caller).
         """
+        assert self.resolver is not None
         rel_key = RelativeImportKey.decode(imported_name)
         level = rel_key.level
         partial = rel_key.partial or None
@@ -1027,7 +1028,7 @@ class Compiler:
     def _process_user_import(
         self,
         imported_name: str,
-        import_lineno: int,
+        import_lineno: int | None,
         module_name: str,
         path: Path,
         builtin_names: set[str],
@@ -1035,6 +1036,7 @@ class Compiler:
         parent_ast: TpyModule | None = None,
     ) -> None:
         """Resolve a user module import, checking for not-found and builtin shadowing."""
+        assert self.resolver is not None
         resolved = self.resolver.resolve(imported_name)
         if resolved is None:
             if imported_name in builtin_names:
@@ -1090,6 +1092,7 @@ class Compiler:
             import_chain: Current import chain for cycle detection.
             import_lineno: Line number of the import.
         """
+        assert self.resolver is not None
         parts = dotted_name.split('.')
         for i in range(1, len(parts)):
             package = '.'.join(parts[:i])
@@ -1236,7 +1239,7 @@ class Compiler:
                     analyzer.ctx.diagnostics.append(Diagnostic(
                         DiagnosticLevel.WARNING,
                         f"import '{shadowed_name}' shadows builtin module",
-                        SourceLocation(lineno, 0)
+                        SourceLocation(lineno or 0, 0)
                     ))
 
         # Store analyzer for codegen
@@ -1484,7 +1487,7 @@ class Compiler:
     def generate_code(self, compiled: CompiledModule, output_dir: Path,
                       entry_module_name: str | None = None,
                       options: CodeGenOptions | None = None,
-                      flat: bool = False) -> tuple[Path, Path | None]:
+                      flat: bool = False) -> tuple[Path, Path | None] | tuple[None, None]:
         """Generate C++ code for a compiled module.
 
         Args:
@@ -1513,6 +1516,7 @@ class Compiler:
         hpp_path = layout.hpp_path(mod_name)
         cpp_path = layout.cpp_path(mod_name)
 
+        assert compiled.analyzer is not None
         codegen = CodeGenerator(compiled.analyzer, options)
         # Pass actual user modules (those in self.modules, not builtins without user files)
         actual_user_modules = set(self.modules.keys())
@@ -1541,6 +1545,7 @@ class Compiler:
                                   options: CodeGenOptions | None = None) -> tuple[str, str]:
         """Generate C++ code and return as strings (no file I/O)."""
         self._check_no_errors(compiled)
+        assert compiled.analyzer is not None
         codegen = CodeGenerator(compiled.analyzer, options)
         actual_user_modules = set(self.modules.keys())
         implicit_stdlib = self._implicit_stdlib_set()
@@ -1569,7 +1574,7 @@ class Compiler:
         When a native_module has cpp_namespace set and a @native entity has no
         explicit native_name, sets native_name to "ns::python_name".
         """
-        from .parse.nodes import FunctionLinkage as FL, RecordLinkage as RL, VarLinkage
+        from .parse.nodes import FunctionLinkage as FL, RecordLinkage as RL, VarLinkage, TpyVarDecl
         for compiled in self.modules.values():
             if not compiled.ast.directives.native_module:
                 continue
@@ -1617,7 +1622,7 @@ class Compiler:
                     record.native_name = f"{ns}::{record.name}"
             # Auto-prefix bare native_global() declarations (C++ only)
             for stmt in (compiled.ast.top_level_stmts or []):
-                if hasattr(stmt, 'linkage') and hasattr(stmt, 'native_name'):
+                if isinstance(stmt, TpyVarDecl):
                     if stmt.linkage == VarLinkage.NATIVE and not stmt.native_name:
                         stmt.native_name = f"{ns}::{stmt.name}"
 

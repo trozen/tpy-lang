@@ -176,14 +176,9 @@ class MethodAnalyzer:
         self.protocols = protocols
         self.compat = compat
         self.deduction = deduction
-        # Set via set_cross_deps() to break circular dependency
-        self.expr: ExpressionAnalyzer | None = None
-        self.calls: CallAnalyzer | None = None
-
-    def set_cross_deps(self, expr: ExpressionAnalyzer, calls: CallAnalyzer) -> None:
-        """Wire circular dependencies (must be called before analyze_method_call)."""
-        self.expr = expr
-        self.calls = calls
+        # Set after construction to break circular dep (expr <-> calls <-> methods)
+        self.expr: ExpressionAnalyzer
+        self.calls: CallAnalyzer
 
     def _is_readonly_method(self, obj_type: TpyType, method_name: str) -> bool:
         """Check if a method is readonly on the given type (via RecordInfo)."""
@@ -408,11 +403,10 @@ class MethodAnalyzer:
                     expr.args, overloads[idx], type_subst, self.type_ops,
                     lambda msg: self.ctx.error(msg, expr))
 
-        if self.calls is not None:
-            self.calls._check_borrow_arg_conflicts(expr)
-            self.calls._check_loop_var_arg_mutation(expr)
-            self.calls._record_mutation_call_edges(expr)
-            self.calls._check_error_return_handled(expr, resolved)
+        self.calls._check_borrow_arg_conflicts(expr)
+        self.calls._check_loop_var_arg_mutation(expr)
+        self.calls._record_mutation_call_edges(expr)
+        self.calls._check_error_return_handled(expr, resolved)
         return resolved.return_type
 
     @staticmethod

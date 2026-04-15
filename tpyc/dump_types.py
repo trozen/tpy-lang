@@ -95,7 +95,7 @@ def _render_module(path: Path, lib_dir: Path) -> tuple[str, str] | None:
     type_aliases = [t for t in type_aliases
                     if isinstance(t.name, pyast.Name) and _is_public(t.name.id, allow)]
     ann_constants = [a for a in ann_constants
-                     if _is_public(a.target.id, allow)]
+                     if isinstance(a.target, pyast.Name) and _is_public(a.target.id, allow)]
 
     if not (classes or functions or type_aliases or ann_constants):
         return None

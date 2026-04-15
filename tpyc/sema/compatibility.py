@@ -107,19 +107,10 @@ class TypeCompatibility:
 
     def __init__(self, ctx: SemanticContext):
         self.ctx = ctx
-        # Set via set_deps() / set_methods() to break circular dependencies
-        self.type_ops: TypeOperations | None = None
-        self.protocols: ProtocolChecker | None = None
-        self.methods: MethodAnalyzer | None = None
-
-    def set_deps(self, type_ops: TypeOperations, protocols: ProtocolChecker) -> None:
-        """Wire deferred dependencies (must be called before use)."""
-        self.type_ops = type_ops
-        self.protocols = protocols
-
-    def set_methods(self, methods: MethodAnalyzer) -> None:
-        """Wire methods dependency (created after compat, wired later)."""
-        self.methods = methods
+        # Set after construction (compat is created before these exist)
+        self.type_ops: TypeOperations
+        self.protocols: ProtocolChecker
+        self.methods: MethodAnalyzer
 
     def _mark_addr_taken(self, expr: TpyExpr) -> None:
         """Mark all param roots of expr as mutated because their address is taken."""
@@ -219,15 +210,14 @@ class TypeCompatibility:
 
         # Pending generic instance: try to resolve from the expected type
         if isinstance(actual, PendingGenericInstanceType):
-            if self.methods is not None:
-                resolved = self.methods.try_resolve_pending_from_expected_type(
-                    actual, expected, loc)
-                if resolved is not None:
-                    if source_expr is not None:
-                        self.ctx.set_expr_type(source_expr, resolved)
-                    return self._check_compat(
-                        resolved, expected, context, loc, source_expr,
-                        is_return, coercion_ctx)
+            resolved = self.methods.try_resolve_pending_from_expected_type(
+                actual, expected, loc)
+            if resolved is not None:
+                if source_expr is not None:
+                    self.ctx.set_expr_type(source_expr, resolved)
+                return self._check_compat(
+                    resolved, expected, context, loc, source_expr,
+                    is_return, coercion_ctx)
             return CompatError(
                 f"Type mismatch in {context}: '{actual.record_name}' has unresolved type "
                 f"arguments; call a constraining method first or add explicit type arguments",
@@ -947,8 +937,6 @@ class TypeCompatibility:
     def _is_value_type_param(self, typ: TpyType) -> bool:
         """Check if a TypeParamRef has a ValueType bound in the current context."""
         if not isinstance(typ, TypeParamRef):
-            return False
-        if not self.type_ops:
             return False
         bound = self.type_ops.get_type_param_bound(typ.name)
         return bound is not None and isinstance(bound, NamedType) and bound.qualified_name() == "tpy.ValueType"

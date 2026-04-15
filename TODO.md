@@ -84,11 +84,17 @@ Goal: speed up test runs (currently ~3 min parallel, ~6 min single-threaded for 
 
 6. ~~**Type kind tags to reduce `isinstance` overhead**~~ **DONE** -- `TypeKind` enum on `TpyType.tag` (ClassVar); predicates use frozenset tag lookup: `is_integer_type`, `is_any_int_type`, `is_float_type`, `is_any_float_type`, `is_numeric_type`, `is_primitive_type`, `is_void_like_type`, `is_callable_type`, `is_union_or_optional_type`, `is_any_str_type`. Multi-type isinstance tuples migrated. Real win lands under mypyc.
 
-### mypyc integration (after hotspot fixes)
+### mypy compliance (~1086 errors remaining)
 
-- **Build system**: switch from hatchling to setuptools with mypyc build step (or mypycify)
-- **Macro loader**: keep as pure Python, exclude from mypyc compilation. mypyc supports mixed compiled/interpreted packages
-- **Frozen dataclass `object.__setattr__`**: 2 spots in typesys.py, refactor to avoid
+- `TypeGuard` on predicate helpers (`is_protocol_type` -> `TypeGuard[NamedType]`, etc.) -- ~86 `attr-defined` errors
+- `Scope | None` union-attr errors (67) -- genuinely optional, needs per-site narrowing
+- `arg-type` (448), `assignment` (175) -- scattered, per-file mechanical work
+- `object.__setattr__` in `EnumType.__post_init__`, `PtrType.__post_init__` -- refactor to avoid
+
+### mypyc integration (after mypy compliance)
+
+- switch from hatchling to setuptools with mypyc build step (or mypycify)
+- keep macro loader as pure Python, exclude from mypyc compilation
 
 ### Profiling data (json_model_inherit, 33 modules, single compilation)
 

@@ -149,6 +149,8 @@ class ExpressionAnalyzer:
         protocols: ProtocolChecker,
         compat: TypeCompatibility,
         narrowing: NarrowingTracker,
+        calls: CallAnalyzer,
+        methods: MethodAnalyzer,
     ):
         self.ctx = ctx
         self.type_ops = type_ops
@@ -156,10 +158,13 @@ class ExpressionAnalyzer:
         self.protocols = protocols
         self.compat = compat
         self.narrowing = narrowing
-        # Set via set_cross_deps() to break circular dependency
-        self.calls: CallAnalyzer | None = None
-        self.methods: MethodAnalyzer | None = None
+        self.calls = calls
+        self.methods = methods
         self.scopes: ScopeTracker | None = None
+
+    def set_scopes(self, scopes: ScopeTracker) -> None:
+        """Set scope tracker (available once StatementAnalyzer is created)."""
+        self.scopes = scopes
 
     def _resolve_literal_type(self, t: TpyType) -> TpyType:
         """Replace IntLiteralType/FloatLiteralType with concrete types for display."""
@@ -180,14 +185,6 @@ class ExpressionAnalyzer:
     def _user_type_name(self, t: TpyType) -> str:
         """User-facing type name for error messages (resolves literal types)."""
         return str(self._resolve_literal_type(t))
-
-    def set_cross_deps(self, calls: CallAnalyzer, methods: MethodAnalyzer,
-                       scopes: ScopeTracker | None = None) -> None:
-        """Wire circular dependencies (must be called before analyze_expr)."""
-        self.calls = calls
-        self.methods = methods
-        if scopes is not None:
-            self.scopes = scopes
 
     def analyze_expr(self, expr: TpyExpr) -> TpyType:
         """Analyze an expression and return its type."""

@@ -40,13 +40,9 @@ class OrPatternKind(Enum):
 class MatchAnalyzer:
     """Semantic analysis for match/case statements."""
 
-    def __init__(self, ctx: SemanticContext):
+    def __init__(self, ctx: SemanticContext, stmts: StatementAnalyzer,
+                 expr: ExpressionAnalyzer):
         self.ctx = ctx
-        # Set via set_dependencies()
-        self.stmts: StatementAnalyzer | None = None
-        self.expr: ExpressionAnalyzer | None = None
-
-    def set_dependencies(self, stmts: StatementAnalyzer, expr: ExpressionAnalyzer) -> None:
         self.stmts = stmts
         self.expr = expr
 
