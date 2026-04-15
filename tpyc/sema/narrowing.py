@@ -95,6 +95,14 @@ class NarrowingTracker:
                     inner = inner.wrapped
                 if isinstance(inner, UnionType):
                     return inner
+        # Expand recursive union alias NamedType to underlying UnionType
+        # (e.g. after Optional narrowing: Tree | None -> Tree -> int | list[Tree])
+        if (isinstance(effective, NamedType)
+                and not effective.is_protocol and not effective.is_module_type
+                and effective.name in self.ctx.recursive_union_names):
+            alias = self.ctx.registry.get_type_alias(effective.name)
+            if alias is not None:
+                return alias
         return effective
 
     # -- Declared type resolution for expressions ------------------------

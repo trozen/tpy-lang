@@ -622,9 +622,18 @@ class CodeGenContext:
         return self._recursive_union_members.get(frozenset(typ.members))
 
     def variant_data_expr(self, var_expr: str, typ: 'TpyType | None') -> str:
-        """Add .value suffix for recursive union wrapper structs."""
-        if typ is not None and self.is_recursive_union(typ):
-            return f"{var_expr}.value"
+        """Add .value suffix for recursive union wrapper structs.
+
+        Also handles OptionalType wrapping a recursive union: after
+        narrowing, the deref'd value is a wrapper struct.
+        """
+        if typ is not None:
+            if self.is_recursive_union(typ):
+                return f"{var_expr}.value"
+            if (isinstance(typ, OptionalType)
+                    and isinstance(typ.inner, NamedType)
+                    and typ.inner.name in self.recursive_union_names):
+                return f"{var_expr}.value"
         return var_expr
 
     def is_ptr_variant_union(self, typ: 'TpyType') -> bool:
