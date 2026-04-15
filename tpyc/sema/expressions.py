@@ -382,7 +382,7 @@ class ExpressionAnalyzer:
             inner_hint = unwrap_readonly(type_hint)
             if isinstance(inner_hint, OwnType):
                 inner_hint = inner_hint.wrapped
-            if isinstance(inner_hint, ListType):
+            if isinstance(inner_hint, (ListType, ArrayType)):
                 result = self._analyze_array_literal(expr, inner_hint.element_type)
                 if isinstance(result, PendingListType):
                     info = self.ctx.list_literals.get(result.literal_id)

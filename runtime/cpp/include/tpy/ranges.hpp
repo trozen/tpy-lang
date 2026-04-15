@@ -98,6 +98,18 @@ std::vector<T> to_vector(R&& range) {
     return result;
 }
 
+/**
+ * Construct a vector from move-only elements (avoids std::initializer_list copy).
+ * Uses a C++17 fold expression to emplace each element.
+ */
+template<typename T, typename... Args>
+std::vector<T> make_vector(Args&&... args) {
+    std::vector<T> v;
+    v.reserve(sizeof...(args));
+    (v.emplace_back(std::forward<Args>(args)), ...);
+    return v;
+}
+
 // Trait to detect std::array specializations
 template<typename T> struct is_std_array : std::false_type {};
 template<typename T, std::size_t N> struct is_std_array<std::array<T, N>> : std::true_type {};
