@@ -6,6 +6,6 @@ class Printable(Protocol):
         ...
 
 
-class BadPerson(Printable):  # tpyc: error(/missing required methods/)
+class BadPerson(Printable):  # tpyc: error(/missing method/)
     name: str
     # Missing __str__ method!

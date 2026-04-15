@@ -925,16 +925,17 @@ class TypeRegistrar:
             if record_info.builtin_type_key:
                 record_type = builtin_modules.get_builtin_type_obj(record_info.builtin_type_key) or record_type
             if not self.protocols.type_conforms_to_protocol(record_type, protocol):
-                # Generate helpful error message listing missing methods
-                missing = self.protocols.get_missing_protocol_methods(record_type, protocol)
-                if missing:
-                    methods_str = ", ".join(missing)
+                # Generate helpful error message describing each conformance issue
+                issues = self.protocols.get_protocol_conformance_issues(record_type, protocol)
+                if issues:
+                    detail = "; ".join(issues)
                     raise SemanticError(
-                        f"Class '{record.name}' declares implementation of protocol '{protocol}' "
-                        f"but is missing required methods: {methods_str}",
+                        f"Class '{record.name}' does not conform to protocol "
+                        f"'{protocol}': {detail}",
                         record.loc
                     )
-                # If no missing methods, it might be a field or signature issue
+                # Fallback when the detailed scan didn't surface a reason
+                # (e.g. marker-protocol / extends gaps checked elsewhere).
                 raise SemanticError(
                     f"Class '{record.name}' declares implementation of protocol '{protocol}' "
                     f"but does not satisfy the protocol requirements",
@@ -1198,16 +1199,25 @@ class TypeRegistrar:
     def register_protocol(self, protocol: TpyProtocol) -> None:
         """Register a protocol type (without validating parents yet)."""
         from ..typesys import MethodSignature, ProtocolInfo
-        # Resolve implicit readonly on protocol methods (same logic as records)
+        # Resolve implicit readonly and cross-module protocol flags on method
+        # signatures. resolve_type backfills is_protocol / _module_qname on
+        # NamedType references to other protocols (e.g. Iterator[T] in
+        # Iterable[T].__iter__) so that later signature matches can detect
+        # protocol returns.
         resolved_methods = []
         for msig in protocol.methods:
             resolved_readonly = msig.is_readonly or (
                 msig.name in IMPLICIT_READONLY_METHODS and not msig.readonly_opt_out
             )
+            resolved_params = [
+                (n, self.type_ops.resolve_type(t, protocols_only=True))
+                for n, t in msig.params
+            ]
+            resolved_return = self.type_ops.resolve_type(msig.return_type, protocols_only=True)
             resolved_methods.append(MethodSignature(
                 name=msig.name,
-                params=msig.params,
-                return_type=msig.return_type,
+                params=resolved_params,
+                return_type=resolved_return,
                 is_readonly=resolved_readonly,
             ))
         info = ProtocolInfo(

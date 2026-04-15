@@ -399,22 +399,30 @@ def get_iter_info(tpy_type: "TpyType", registry: "TypeRegistry") -> "IterInfo | 
     if isinstance(tpy_type, NamedType) and tpy_type.is_user_record:
         record = registry.get_record(tpy_type.name)
         if record is not None:
-            type_subst: dict[str, "TpyType"] = {}
+            type_subst: dict[str, "TpyType"] = {"Self": tpy_type}
             if record.type_params and tpy_type.type_args:
-                type_subst = dict(zip(record.type_params, tpy_type.type_args))
+                type_subst.update(zip(record.type_params, tpy_type.type_args))
             result = _find_record_iter_info(record, type_subst, registry,
                                             allow_protocol_return=True)
             if result is not None:
                 return result
 
     # Try builtin types via registry.
-    # allow_protocol_return=False: builtins use their own iteration dispatch.
+    # allow_protocol_return=True: builtin __iter__() stubs return Iterator[T]
+    # (e.g. list, dict, set, Span, Array, Range, str) and sema recognizes them
+    # structurally -- this is the single iteration-protocol entry point under
+    # the iterator overhaul (see docs/ITERATOR_OVERHAUL.md).
     record = registry.get_record_for_type(tpy_type)
     if record is not None:
-        type_subst_b: dict[str, "TpyType"] = {}
-        if record.type_params and hasattr(tpy_type, 'type_args') and tpy_type.type_args:
-            type_subst_b = dict(zip(record.type_params, tpy_type.type_args))
-        result = _find_record_iter_info(record, type_subst_b, registry)
+        # extract_type_params handles NamedType.type_args as well as
+        # specialized subclasses (RangeType.elem, DictType.key_type/value_type,
+        # PtrType.pointee, etc.) via each type's get_element_type() hook.
+        # Include Self so that __iter__(self) -> Self substitutes to the
+        # record's own type (used by SpanIter and similar self-iterator types).
+        type_subst_b = extract_type_params(tpy_type)
+        type_subst_b["Self"] = tpy_type
+        result = _find_record_iter_info(record, type_subst_b, registry,
+                                        allow_protocol_return=True)
         if result is not None:
             return result
 
@@ -461,7 +469,7 @@ def _find_iter_method_info(
     *, allow_protocol_return: bool = False,
 ) -> "IterInfo | None":
     """Check __iter__() methods for a concrete iterator return type and extract element type."""
-    from tpyc.typesys import FunctionInfo, NamedType, OwnType, SpanIterType, TypeParamRef, is_protocol_type, unwrap_ref_type
+    from tpyc.typesys import FunctionInfo, NamedType, OwnType, SelfType, SpanIterType, TypeParamRef, is_protocol_type, unwrap_ref_type
 
     for method in methods:
         if len(method.params) != 0:
@@ -470,6 +478,17 @@ def _find_iter_method_info(
             ret = unwrap_ref_type(method.return_type)
         else:
             ret = method.returns
+        # __iter__(self) -> Self handling. SelfType returns substitute
+        # to the record's own type. User iterators with Self return
+        # resolve to their NamedType (is_user_record=True) and are
+        # handled by the error_return __next__ branch below.
+        # Note: builtins like SpanIter whose __iter__ returns Self end
+        # up as plain NamedType("SpanIter", ...) after parser resolution
+        # and are NOT matched here; they rely on the compiler-internal
+        # adapter list in IterableHelper. See ITERATOR_OVERHAUL.md
+        # follow-up "Parser produces plain NamedType for Self ...".
+        if isinstance(ret, SelfType) and "Self" in type_subst:
+            ret = type_subst["Self"]
         if isinstance(ret, TypeParamRef) and ret.name in type_subst:
             ret = type_subst[ret.name]
         if isinstance(ret, OwnType):
@@ -484,15 +503,21 @@ def _find_iter_method_info(
 
         # Iterator[T] protocol return type (not Iterable -- codegen emits
         # .__next__() directly, which requires Iterator, not Iterable).
-        # Only for user records -- builtin types have their own iteration
-        # handling (NativeIterable, get_iteration_element_type) that would
-        # be bypassed if we intercepted their __iter__ here.
+        # Recursively substitute type params in compound element types so
+        # that e.g. dict_items.__iter__() -> Iterator[tuple[K, V]] yields
+        # tuple[str, Point] when instantiated as dict_items[str, Point].
         if (allow_protocol_return
                 and is_protocol_type(ret) and isinstance(ret, NamedType)
                 and ret.qualified_name() == "typing.Iterator" and ret.type_args):
             elem = ret.type_args[0]
-            if isinstance(elem, TypeParamRef) and elem.name in type_subst:
-                elem = type_subst[elem.name]
+            if type_subst:
+                try:
+                    elem = _resolve_type_or_param(elem, type_subst)
+                except ValueError:
+                    # Unresolved TypeParamRef (top-level or nested via
+                    # map_inner_types). Skip this branch -- elem is still
+                    # a TypeParamRef and the guard below rejects it.
+                    pass
             if not isinstance(elem, TypeParamRef):
                 return IterInfo(elem, iter_is_native=False)
 

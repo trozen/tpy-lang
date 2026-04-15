@@ -1,1 +1,1 @@
-main.py:9: error: Class 'BadPerson' declares implementation of protocol 'Printable' but is missing required methods: __str__
+main.py:9: error: Class 'BadPerson' does not conform to protocol 'Printable': missing method '@readonly def __str__(self) -> str'

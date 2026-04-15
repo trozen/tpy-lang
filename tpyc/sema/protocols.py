@@ -778,8 +778,14 @@ class ProtocolChecker:
             return dict(zip(parent_info.type_params, parent_type.type_args))
         return builtin_modules.extract_type_params(parent_type)
 
-    def get_missing_protocol_methods(self, record_type: NamedType, protocol: NamedType) -> list[str]:
-        """Get list of protocol methods missing from record."""
+    def get_protocol_conformance_issues(self, record_type: NamedType, protocol: NamedType) -> list[str]:
+        """Get human-readable list of conformance issues for a record against a protocol.
+
+        Distinguishes genuinely-absent methods from methods that exist with a
+        wrong signature (wrong return type, wrong params, or missing @readonly).
+        Each entry is a short phrase describing one reason the record does not
+        conform.
+        """
         record_info = self.ctx.registry.get_record_for_type(record_type)
         if record_info is None:
             return []
@@ -788,7 +794,7 @@ class ProtocolChecker:
         if protocol_info is None:
             return []
 
-        missing = []
+        issues: list[str] = []
         # Build type substitution map
         type_subst: dict[str, TpyType] = {"Self": record_type}
         if protocol_info.type_params and protocol.type_args:
@@ -804,10 +810,67 @@ class ProtocolChecker:
             expected_return = self.type_ops.substitute_types(method_sig.return_type, type_subst)
             method_readonly = method_sig.is_readonly or protocol_info.is_readonly
 
-            if not self.type_has_method_with_signature(
+            if self.type_has_method_with_signature(
                 record_type, method_sig.name, expected_params, expected_return,
                 require_readonly=method_readonly,
             ):
-                missing.append(method_sig.name)
+                continue
+            issues.append(self._describe_method_mismatch(
+                record_type, method_sig.name, expected_params, expected_return,
+                method_readonly,
+            ))
 
-        return missing
+        # Check fields
+        all_fields = self.collect_protocol_fields(protocol.name)
+        for field_name, field_type in all_fields:
+            expected_type = self.type_ops.substitute_types(field_type, type_subst)
+            if not self.type_has_field_with_type(record_type, field_name, expected_type):
+                issues.append(f"field '{field_name}: {expected_type}' missing or has wrong type")
+
+        return issues
+
+    def _describe_method_mismatch(
+        self, actual: TpyType, method_name: str,
+        expected_params: list[TpyType], expected_return: TpyType,
+        require_readonly: bool,
+    ) -> str:
+        """Explain why type_has_method_with_signature returned False for one method."""
+        expected_sig = self._format_method_signature(
+            method_name, expected_params, expected_return, require_readonly)
+
+        record_info = self.ctx.registry.get_record_for_type(actual)
+        if record_info is None:
+            return f"missing method '{expected_sig}'"
+        overloads, inherited_subst = self.lookup_record_method_overloads(record_info, method_name)
+        if not overloads:
+            return f"missing method '{expected_sig}'"
+
+        # Apply inherited-method substitution so that overloads inherited
+        # from a generic parent (e.g. `Container[Int32]` giving a method
+        # returning `T`) render the concrete `Int32` rather than the raw
+        # `T` placeholder in the diagnostic.
+        def _render(m: 'FunctionInfo') -> str:
+            params = [
+                self.type_ops.substitute_types(p.type, inherited_subst)
+                if inherited_subst else p.type
+                for p in m.params
+            ]
+            ret = (self.type_ops.substitute_types(m.return_type, inherited_subst)
+                   if inherited_subst else m.return_type)
+            return self._format_method_signature(method_name, params, ret, m.is_readonly)
+
+        actual_sigs = [_render(m) for m in overloads]
+        actual_desc = " / ".join(f"'{s}'" for s in actual_sigs)
+        return (
+            f"method '{method_name}' has wrong signature: expected '{expected_sig}', "
+            f"got {actual_desc}"
+        )
+
+    def _format_method_signature(
+        self, name: str, params: list[TpyType], return_type: TpyType, readonly: bool,
+    ) -> str:
+        """Short signature string for diagnostic messages."""
+        prefix = "@readonly " if readonly else ""
+        param_strs = ", ".join(str(p) for p in params)
+        param_part = f"self, {param_strs}" if params else "self"
+        return f"{prefix}def {name}({param_part}) -> {return_type}"

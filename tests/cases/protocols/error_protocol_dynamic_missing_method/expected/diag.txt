@@ -1,1 +1,1 @@
-main.py:12: error: Class 'Dog' declares implementation of protocol 'Pet' but is missing required methods: name
+main.py:12: error: Class 'Dog' does not conform to protocol 'Pet': missing method 'def name(self) -> str'

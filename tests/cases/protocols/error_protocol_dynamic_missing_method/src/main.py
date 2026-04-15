@@ -9,6 +9,6 @@ class Pet(Protocol):
     def name(self) -> str:
         ...
 
-class Dog(Pet):  # tpyc: error(/missing required methods: name/)
+class Dog(Pet):  # tpyc: error(/missing method.*name/)
     def make_noise(self) -> str:
         return "Woof"

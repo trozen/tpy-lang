@@ -936,10 +936,18 @@ class StatementAnalyzer:
                     if is_direct_next_iter or is_protocol_iter:
                         iter_depth = inner_scope.depth
                     elif is_iter_based:
-                        # __iter__() returning NativeIterable (e.g. SpanIter) references
-                        # the container's storage; user-defined iterators create fresh values.
+                        # __iter__() either references the container's storage
+                        # (NativeIterable types -- builtins like list/dict/str
+                        # and span-backed types like SpanIter) or creates a
+                        # fresh owned iterator (user-defined iterators).
+                        # For the former, the loop-var lifetime is the
+                        # container's; for the latter, it's loop-body scope.
                         iter_info_result = builtin_modules.get_iter_info(inner_iterable_type, registry=self.ctx.registry)
-                        if iter_info_result and iter_info_result.iter_is_native:
+                        references_container = (
+                            (iter_info_result and iter_info_result.iter_is_native)
+                            or builtin_modules.is_native_iterable(inner_iterable_type, registry=self.ctx.registry)
+                        )
+                        if references_container:
                             if self.compat.is_lvalue(stmt.iterable):
                                 iter_depth = self.scopes.get_expr_scope_depth(stmt.iterable)
                             else:

@@ -12,7 +12,7 @@ class Measurable(Protocol):
 
 
 # Missing size() method from Measurable
-class BadBox(Printable, Measurable):  # tpyc: error(/missing required methods.*size/)
+class BadBox(Printable, Measurable):  # tpyc: error(/missing method.*size/)
     width: Int32
 
     def __init__(self, width: Int32) -> None:
