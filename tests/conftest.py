@@ -1,5 +1,6 @@
 """Shared fixtures and utilities for TurboPython tests."""
 
+import concurrent.futures
 import dataclasses
 import difflib
 import fcntl
@@ -13,6 +14,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 from dataclasses import dataclass, field
 
@@ -65,11 +67,57 @@ _stdlib_cache: _StdlibCache | None = None
 _stdlib_cache_initialized = False
 
 
+def _is_macro_module(path: Path) -> bool:
+    """True when a .py file has a '# tpy: macro_module' directive near the top."""
+    try:
+        with open(path, encoding="utf-8", errors="ignore") as f:
+            for i, line in enumerate(f):
+                if i >= 20:
+                    break
+                if "tpy: macro_module" in line:
+                    return True
+    except OSError:
+        pass
+    return False
+
+
+def _discover_stdlib_imports() -> list[str]:
+    """Enumerate every importable runtime module under lib/tpy/ for the stub.
+
+    Walks lib/tpy/ and returns dotted module names for files that produce
+    runtime code. Skips:
+      - __init__.py (parent package import brings these in)
+      - _-prefixed path components (private; e.g. _macro_helpers, tpy._bootstrap)
+      - __pycache__ directories
+      - modules marked '# tpy: macro_module' (compile-time only, no runtime code)
+
+    Output is deterministic (sorted) so the stub hashes stably.
+    """
+    modules: list[str] = []
+    for p in sorted(TPY_LIB_DIR.rglob("*.py")):
+        if p.name == "__init__.py":
+            continue
+        rel = p.relative_to(TPY_LIB_DIR)
+        parts = rel.with_suffix("").parts
+        if any(part.startswith("_") or part == "__pycache__" for part in parts):
+            continue
+        if _is_macro_module(p):
+            continue
+        modules.append(".".join(parts))
+    return modules
+
+
 def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
-    """Generate and compile stdlib .o files into *cache_dir*."""
-    # Write a trivial program that triggers all implicit stdlib modules
+    """Generate and compile stdlib .o files into *cache_dir*.
+
+    Stub imports every runtime module discovered under lib/tpy/ so the
+    compiler emits .hpp/.cpp for each, which we then precompile into .o
+    files that per-case builds link against instead of recompiling per
+    test. Macro-only modules are filtered out during discovery.
+    """
     stub_src = cache_dir / "_stub.py"
-    stub_src.write_text("pass\n")
+    imports = _discover_stdlib_imports()
+    stub_src.write_text("\n".join(f"import {m}" for m in imports) + "\n")
 
     compiler = Compiler(stub_src, default_int="Int32", lib_dirs=DEFAULT_LIB_DIRS)
     compiled_modules = compiler.compile()
@@ -95,34 +143,53 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
     if not stdlib_cpps:
         return _StdlibCache(objects=[], cpp_relpaths=set())
 
-    # Compile each stdlib .cpp -> .o
+    # Compile each stdlib .cpp -> .o.
+    # Parallelized across CPU cores; uses PCH (when available) so each
+    # compile skips re-parsing the runtime headers.
     obj_dir = cache_dir / "obj"
     obj_dir.mkdir()
 
-    objects: list[str] = []
-    relpaths: set[str] = set()
+    pch_header = get_pch_header()
+    pch_include = [] if pch_header is None else ["-include", str(pch_header)]
+
     common = [
         *CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}",
         *CPP_CONFIG.extra_flags,
         *CPP_CONFIG.warn_flags,
         "-I", str(RUNTIME_DIR),
         "-I", str(layout.include_dir),
+        *pch_include,
     ]
 
-    for cpp in stdlib_cpps:
+    def _compile_one(cpp: Path) -> tuple[str, str]:
+        """Compile a single stdlib .cpp to .o; raise on failure."""
         rel = str(cpp.relative_to(layout.src_dir))
-        relpaths.add(rel)
         obj_name = rel.replace(os.sep, "_").removesuffix(".cpp") + ".o"
         obj_path = obj_dir / obj_name
         prefix = ["ccache"] if CPP_CONFIG.ccache else []
         cmd = [*prefix, *common, "-c", "-o", str(obj_path), str(cpp)]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            print(f"WARNING: stdlib pre-compilation failed for {rel}:\n{result.stderr}",
-                  file=sys.stderr)
-            return _StdlibCache(objects=[], cpp_relpaths=set())
-        objects.append(str(obj_path))
+            raise RuntimeError(
+                f"stdlib pre-compilation failed for {rel}:\n{result.stderr}"
+            )
+        return rel, str(obj_path)
 
+    # Cap thread count to the cgroup CPU quota so we don't over-subscribe
+    # when run inside Docker --cpus=N.
+    max_workers = _cgroup_cpu_quota() or os.cpu_count() or 8
+    max_workers = max(1, min(max_workers, len(stdlib_cpps)))
+
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as ex:
+            # list() forces evaluation and propagates the first exception
+            results = list(ex.map(_compile_one, stdlib_cpps))
+    except RuntimeError as exc:
+        print(f"WARNING: {exc}", file=sys.stderr)
+        return _StdlibCache(objects=[], cpp_relpaths=set())
+
+    relpaths = {rel for rel, _ in results}
+    objects = [obj for _, obj in results]
     return _StdlibCache(objects=objects, cpp_relpaths=relpaths)
 
 
@@ -242,7 +309,14 @@ def _get_or_build_persistent_stdlib_cache(root: Path) -> _StdlibCache | None:
             loaded = _load_persistent_stdlib_cache(cache_dir)
             if loaded is not None:
                 return loaded
-        return _build_persistent_stdlib_cache(cache_dir)
+        t0 = time.monotonic()
+        cache = _build_persistent_stdlib_cache(cache_dir)
+        if cache is not None:
+            print(
+                f"stdlib cache: built {len(cache.objects)} .o "
+                f"({time.monotonic() - t0:.1f}s)"
+            )
+        return cache
 
 
 # ---------------------------------------------------------------------------
@@ -326,9 +400,12 @@ def get_pch_header() -> Path | None:
             if pch_gch.exists() and pch_header.exists():
                 _pch_path = pch_header
             else:
+                t0 = time.monotonic()
                 _pch_path = get_or_build_pch(
                     CPP_CONFIG, RUNTIME_DIR, opt_flags=[], pch_dir=pch_dir,
                 )
+                if _pch_path is not None:
+                    print(f"PCH: built tpy_pch.hpp.gch ({time.monotonic() - t0:.1f}s)")
             if _pch_path is not None:
                 _set_pch_ccache_sloppiness()
     except Exception as exc:
@@ -622,16 +699,23 @@ def pytest_configure(config):
     # re-running on every invocation. Skipped silently when no session file
     # exists (first-ever bootstrap).
     recorded = read_session_fingerprints()
-    if not recorded:
-        return
-    current = compute_session_fingerprints()
-    stale = [k for k in ("runtime", "cpy_stubs") if current[k] != recorded.get(k)]
-    if stale:
-        print(
-            f"WARNING: session fingerprint stale ({', '.join(stale)}); "
-            f"runtime phase{'s' if len(stale) > 1 else ''} will re-run for "
-            f"every applicable case. Refresh via update_snapshots.py."
-        )
+    if recorded:
+        current = compute_session_fingerprints()
+        stale = [k for k in ("runtime", "cpy_stubs") if current[k] != recorded.get(k)]
+        if stale:
+            print(
+                f"WARNING: session fingerprint stale ({', '.join(stale)}); "
+                f"runtime phase{'s' if len(stale) > 1 else ''} will re-run for "
+                f"every applicable case. Refresh via update_snapshots.py."
+            )
+
+    # Pre-warm persistent caches on master before workers spawn so each
+    # worker hits the on-disk fast path immediately rather than serializing
+    # on LOCK_EX. Without this, the first exec-phase test in each worker
+    # would appear to take ~cache-build-time (~20s cold) even though the
+    # actual test is quick.
+    get_pch_header()
+    get_stdlib_cache()
 
 
 def pytest_xdist_auto_num_workers(config):
