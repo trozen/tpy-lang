@@ -25,7 +25,7 @@ from ..typesys import (
     PendingGenericInstanceType, BasicSliceType, SliceType, unwrap_ref_type, make_ref, RefType,
     is_integer_type, is_any_int_type, is_union_or_optional_type,
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
-
+    unwrap_own,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -1620,6 +1620,11 @@ class ExpressionAnalyzer:
         else:
             elem_types = [self.analyze_expr(e) for e in expr.elements]
 
+        # Strip OwnType wrappers -- _apply_own_wrapper marks non-last-use
+        # refs as Own[T], but element type compatibility must compare the
+        # underlying types (codegen handles the move/copy distinction).
+        elem_types = [unwrap_own(t) for t in elem_types]
+
         if expected_elem is not None:
             # Contextual mode: check each element against expected element type
             first_type = expected_elem
@@ -2898,7 +2903,7 @@ class ExpressionAnalyzer:
         # the logical callable contract. Ref on return type IS preserved so type
         # inference can track reference semantics through combinators
         # (e.g. map(identity, pts) infers U=Ref[Point] -> val_or_ref<Point>).
-        from ..typesys import unwrap_own
+
         param_types = tuple(unwrap_ref_type(ptype) for _, ptype in fi.params)
         return_type = unwrap_own(fi.return_type)
         if fi.is_generic() and expr.function_ref_type_args:
