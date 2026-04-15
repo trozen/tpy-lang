@@ -44,7 +44,6 @@ extraPaths = ["lib/cpy"]
 addopts = "-n auto"
 testpaths = ["tests", "tpyc"]
 norecursedirs = ["tests/cases", "__tpyc__"]
-markers = ["slow: C++ compilation and execution tests (test_exec)"]
 
 [dependency-groups]
 dev = [

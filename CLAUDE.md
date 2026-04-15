@@ -86,25 +86,27 @@ uv run tpyc -x /tmp/agents/scratch.py
 
 ## Testing
 
-Parallel execution (`-n auto`) is configured in `pyproject.toml` via `addopts`. The `test_exec` suite (C++ compilation + execution) is marked `@pytest.mark.slow` and uses pre-compiled stdlib object files to avoid redundant recompilation.
+Each folder under `tests/cases/` becomes one parametrized item of `test_case` with three phases: **comp** (compile + diagnostics + snapshot check + annotation validation), **exec** (build + run C++), and **cpy** (run with CPython, compare to `output.txt`).
+
+The exec and cpy phases auto-skip when the compiler produces byte-identical generated code AND the recorded fingerprints match the current sources. Fingerprints split into:
+
+- **Session-level** (`tests/.session_fingerprints.json`, single file): hash of `runtime/cpp/include/**` and hash of `lib/cpy/tpy/**`. When either changes, all per-case skips are invalidated by a single-file diff.
+- **Per-case** (`tests/cases/<case>/expected/.fingerprints`, optional keys): hash of the case's `main.py` (`main`) and hash of any hand-written C++ companion files in `src/` (`extra_src`, e.g. native-interop tests). Cases with neither companions nor a CPython phase end up with no file.
+
+This makes typical iterative work nearly free for cases the change didn't touch -- only cases whose generated code changes get rebuilt and re-run.
+
+Parallel execution (`-n auto`) is configured in `pyproject.toml` via `addopts`. Worker count auto-caps to the cgroup v2 CPU quota (so `-n auto` in a Docker container with `--cpus=N` gets N workers, not the host's `os.cpu_count()`).
+
+The exec phase reuses pre-compiled stdlib object files via a content-addressed persistent cache at `/tmp/tpyc-cache/stdlib-objs/<key>/` (override root with `TPYC_SHARED_CACHE_DIR`). The cache key invalidates when `runtime/cpp/include/`, `lib/tpy/`, or C++ build config changes; old keys remain on disk and are not auto-GC'd, so periodically prune `/tmp/tpyc-cache/stdlib-objs/` if it grows.
 
 ### Test commands
 
 ```bash
-# Run all tests (full suite -- use for final verification)
+# Run all tests (full suite -- exec/cpy auto-skip per case when nothing relevant changed)
 uv run pytest
 
-# Skip C++ build/execution tests (fast: ~4 min)
-uv run pytest -m "not slow"
-
-# Run fast compilation tests only (diagnostics, codegen)
-uv run pytest tests/test_comp.py
-
-# Run execution tests only (C++ build, run)
-uv run pytest tests/test_exec.py
-
-# Run CPython compatibility tests only
-uv run pytest tests/test_cpy.py
+# Force exec + cpy phases unconditionally (CI-style full verification)
+uv run pytest --force-exec
 
 # Run unit tests only (no C++ toolchain needed)
 uv run pytest tpyc/
@@ -113,20 +115,18 @@ uv run pytest tpyc/
 uv run pytest -k hello
 uv run pytest -k "bool_type or bool_conversion"
 
-# Update expected snapshots after intentional changes
+# Update expected snapshots + fingerprints after intentional changes
 uv run python tests/update_snapshots.py                    # all cases
-uv run python tests/update_snapshots.py -k hello           # specific case
-uv run python tests/update_snapshots.py --comp             # compilation tests only
-uv run python tests/update_snapshots.py --exec             # execution tests only
-uv run python tests/update_snapshots.py --cpy              # CPython compatibility checks (read-only)
-uv run python tests/update_snapshots.py --comp -k hello    # specific case, comp only
+uv run python tests/update_snapshots.py -k hello           # specific case(s)
 ```
+
+`UPDATE_EXPECTED=1` (set by `update_snapshots.py`) implies `--force-exec` so output.txt, panic.txt, generated code, and `.fingerprints` are all regenerated in one pass.
 
 ### Agent testing workflow
 
 **CPU awareness**: Never start a new test run while a previous one is still running. Either wait for it to finish, or kill it first (`pkill -f pytest`). Running concurrent test suites saturates all cores and makes everything slower for all agents and the user.
 
-**During development**, run targeted subsets only -- the new tests you are adding, or tests in categories likely affected by your changes. Use `-k pattern` to select specific tests. Both `test_comp` and `test_exec` are fine for targeted runs:
+**During development**, run targeted subsets -- the new tests you are adding, or tests in categories likely affected by your changes. Use `-k pattern` to select specific tests:
 
 ```bash
 # Test a specific feature area you changed
@@ -142,17 +142,13 @@ uv run pytest -k my_new_test_name
 uv run pytest
 ```
 
-If you only changed the Python compiler and want to verify generated C++ without running C++ builds:
-
-```bash
-uv run pytest -m "not slow"
-```
+If you want to be paranoid and re-verify runtime output for every case (ignoring fingerprint-based skips), use `--force-exec`.
 
 ### Snapshot policy
 
 **Important**: If a change would modify expected output for *existing* tests (not new tests you're adding), consult with the user before running `update_snapshots.py`. Explain what generated code will change and confirm the change is desired.
 
-**Important**: When adding new test cases, always run `update_snapshots.py` without `--comp`/`--exec` flags (or run both separately) so that both compilation snapshots and execution snapshots (`output.txt`) are generated. Running only `--comp` will miss `output.txt`.
+**Important**: When adding new test cases, run `update_snapshots.py -k {name}` so that all expected files (`diag.txt`, generated `.hpp`/`.cpp`, `output.txt`, and `.fingerprints`) are generated together.
 
 ### Test Structure
 
@@ -227,11 +223,11 @@ tests/
 │               ├── diag.txt           # Compiler diagnostics
 │               ├── include/main.hpp   # Generated header (if compiles)
 │               ├── src/main.cpp       # Generated source (if compiles)
-│               └── output.txt         # Runtime output (or panic.txt)
+│               ├── output.txt         # Runtime output (or panic.txt)
+│               └── .fingerprints      # (optional) per-case input hashes for auto-skip
+├── .session_fingerprints.json # Session-level input hashes (runtime + cpy stubs)
 ├── conftest.py               # Pytest fixtures and shared utilities
-├── test_comp.py              # Fast compilation tests (diagnostics, codegen)
-├── test_exec.py              # Execution tests (C++ build, run, compare to output.txt)
-├── test_cpy.py               # CPython compatibility tests (run with CPython, compare to output.txt)
+├── test_case.py              # Unified test (compile + optional exec + optional CPython)
 └── update_snapshots.py       # Snapshot update utility
 ```
 
@@ -247,9 +243,9 @@ tests/
    - `# tpyc: ok` - line should compile without error or warning
    - `# tpyc: error(/regex/)` - line should produce an error matching the regex
    - `# tpyc: warning(/regex/)` - line should produce a warning matching the regex
-   - `# tpyc: type(TypeName)` - assert the compiler-inferred type of the variable declared on this line (e.g. `s = "hello"  # tpyc: type(StrView)`). Supports regex with `/pattern/` syntax. Validated in `test_comp` only (not in update mode).
-   - `# tpyc: non_null(var)` - assert that `var` is proven non-null at this ptr dereference (skips `deref_check`). Validated in `test_comp` only.
-   - `# tpyc: nullable(var)` - assert that `var` is NOT proven non-null at this ptr dereference (uses `deref_check`). Validated in `test_comp` only.
+   - `# tpyc: type(TypeName)` - assert the compiler-inferred type of the variable declared on this line (e.g. `s = "hello"  # tpyc: type(StrView)`). Supports regex with `/pattern/` syntax. Validated in the comp phase only (not in update mode).
+   - `# tpyc: non_null(var)` - assert that `var` is proven non-null at this ptr dereference (skips `deref_check`). Validated in the comp phase only.
+   - `# tpyc: nullable(var)` - assert that `var` is NOT proven non-null at this ptr dereference (uses `deref_check`). Validated in the comp phase only.
 4. Run `uv run python tests/update_snapshots.py {name}` to generate expected outputs
 5. Run `uv run pytest -k {name}` to verify (parallel execution is automatic via `addopts`)
 
@@ -450,7 +446,7 @@ Library search roots and CPython stubs:
 2. `-L` paths (user-specified, in order)
 3. `lib/tpy/` (tplib, stdlib modules, tpy protocols)
 
-CPython tests (`test_cpy.py`) use PYTHONPATH `lib/cpy/:src_dir`.
+The CPY phase of `test_case` uses PYTHONPATH `lib/cpy/:src_dir`.
 
 ## Performance Profiles (Planned)
 

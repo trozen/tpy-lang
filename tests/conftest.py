@@ -2,7 +2,9 @@
 
 import dataclasses
 import difflib
+import fcntl
 import functools
+import hashlib
 import json
 import os
 import atexit
@@ -47,12 +49,12 @@ RUNTIME_DIR = PROJECT_ROOT / "runtime" / "cpp" / "include"
 # ---------------------------------------------------------------------------
 # Pre-compiled stdlib cache
 # ---------------------------------------------------------------------------
-# Compiles the 2 implicit stdlib .o files once per session so that test_exec
-# only needs to compile each test's unique main.cpp.
+# Compiles the implicit stdlib .o files once per session so that the exec
+# phase only needs to compile each test's unique main.cpp.
 
 @dataclass
 class _StdlibCache:
-    """Pre-compiled stdlib object files shared across all test_exec cases."""
+    """Pre-compiled stdlib object files shared across all exec-phase runs."""
     objects: list[str]          # absolute paths to .o files
     cpp_relpaths: set[str]      # relative paths (under src/) to exclude from per-test compile
 
@@ -122,17 +124,151 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
     return _StdlibCache(objects=objects, cpp_relpaths=relpaths)
 
 
-def get_stdlib_cache() -> _StdlibCache | None:
-    """Return the pre-compiled stdlib cache, compiling on first call.
+_SHARED_CACHE_ROOT_ENV = "TPYC_SHARED_CACHE_DIR"
+_DEFAULT_SHARED_CACHE_ROOT = Path("/tmp/tpyc-cache")
 
-    Lazy so that non-exec test runs (test_comp, test_cpy, unit tests) pay
-    zero startup cost.  Each xdist worker initializes independently; ccache
-    makes the duplicate compilations near-instant.
+
+def _shared_cache_root() -> Path:
+    """Root dir for shared caches (overridable via TPYC_SHARED_CACHE_DIR)."""
+    override = os.environ.get(_SHARED_CACHE_ROOT_ENV)
+    return Path(override) if override else _DEFAULT_SHARED_CACHE_ROOT
+
+
+@functools.cache
+def _libtpy_hash() -> str:
+    """Hash of all .py files under lib/tpy/ (the stdlib source). Session-cached."""
+    files = sorted(TPY_LIB_DIR.rglob("*.py"))
+    return _hash_files(files)
+
+
+@functools.cache
+def _stdlib_cache_key() -> str:
+    """Content-addressed key for the persistent stdlib .o cache.
+
+    Captures everything that affects the produced .o files: runtime headers,
+    stdlib Python source (compiled into the .o files), and C++ build config.
+    """
+    h = hashlib.sha256()
+    h.update(_runtime_hash().encode())
+    h.update(b"\0")
+    h.update(_libtpy_hash().encode())
+    h.update(b"\0")
+    h.update(repr((
+        CPP_CONFIG.compiler,
+        CPP_CONFIG.std,
+        CPP_CONFIG.extra_flags,
+        CPP_CONFIG.warn_flags,
+    )).encode())
+    return h.hexdigest()
+
+
+def _load_persistent_stdlib_cache(cache_dir: Path) -> _StdlibCache | None:
+    """Read a previously-built persistent cache from disk.
+
+    Returns None when metadata is missing/corrupt OR when any referenced .o
+    file is missing on disk (e.g. an aggressive /tmp cleaner removed individual
+    files but left the directory). In that case the caller rebuilds.
+    """
+    metadata = cache_dir / "metadata.json"
+    try:
+        data = json.loads(metadata.read_text())
+        objects = list(data["objects"])
+        if not all(Path(p).is_file() for p in objects):
+            return None
+        return _StdlibCache(
+            objects=objects,
+            cpp_relpaths=set(data["cpp_relpaths"]),
+        )
+    except (OSError, KeyError, json.JSONDecodeError, TypeError):
+        return None
+
+
+def _build_persistent_stdlib_cache(cache_dir: Path) -> _StdlibCache | None:
+    """Build the stdlib .o cache atomically into cache_dir.
+
+    Compiles into a sibling tempdir, then renames the produced obj/ dir into
+    place. Writes metadata.json with the path/relpath info. Touches .ready
+    when complete -- readers gate on this marker.
+    """
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    build_tmp = Path(tempfile.mkdtemp(prefix=".build_", dir=cache_dir))
+    try:
+        cache = _setup_stdlib_cache(build_tmp)
+        if cache is None or not cache.objects:
+            return None
+
+        # Move .o files into place. _setup_stdlib_cache writes them into
+        # build_tmp/obj/. Rename obj/ into cache_dir/obj/ atomically.
+        obj_src = build_tmp / "obj"
+        obj_dst = cache_dir / "obj"
+        if obj_dst.exists():
+            shutil.rmtree(obj_dst)
+        obj_src.rename(obj_dst)
+
+        # Rewrite paths to point at the final location
+        rebased_objects = [str(obj_dst / Path(p).name) for p in cache.objects]
+
+        metadata = {
+            "objects": rebased_objects,
+            "cpp_relpaths": sorted(cache.cpp_relpaths),
+        }
+        (cache_dir / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
+        (cache_dir / ".ready").touch()
+        return _StdlibCache(objects=rebased_objects, cpp_relpaths=cache.cpp_relpaths)
+    finally:
+        if build_tmp.exists():
+            shutil.rmtree(build_tmp, ignore_errors=True)
+
+
+def _get_or_build_persistent_stdlib_cache(root: Path) -> _StdlibCache | None:
+    """Get-or-build the shared stdlib cache. Coordinated via fcntl.flock."""
+    cache_dir = root / "stdlib-objs" / _stdlib_cache_key()
+    ready_marker = cache_dir / ".ready"
+
+    # Fast path: already built
+    if ready_marker.exists():
+        loaded = _load_persistent_stdlib_cache(cache_dir)
+        if loaded is not None:
+            return loaded
+
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    lock_path = cache_dir / ".lock"
+    with open(lock_path, "w") as lf:
+        fcntl.flock(lf.fileno(), fcntl.LOCK_EX)
+        # Re-check: another worker/process may have built while we waited
+        if ready_marker.exists():
+            loaded = _load_persistent_stdlib_cache(cache_dir)
+            if loaded is not None:
+                return loaded
+        return _build_persistent_stdlib_cache(cache_dir)
+
+
+def get_stdlib_cache() -> _StdlibCache | None:
+    """Return the pre-compiled stdlib cache, building or reusing as needed.
+
+    Persists across pytest invocations and is shared across xdist workers via
+    a content-addressed dir under $TPYC_SHARED_CACHE_DIR/stdlib-objs/<key>/
+    (default /tmp/tpyc-cache/stdlib-objs/<key>/). Cache key invalidates when
+    runtime headers, lib/tpy stdlib, or C++ build config change. Falls back
+    to a per-process tempdir if the shared root is unwritable.
     """
     global _stdlib_cache, _stdlib_cache_initialized
     if _stdlib_cache_initialized:
         return _stdlib_cache
     _stdlib_cache_initialized = True
+
+    try:
+        _stdlib_cache = _get_or_build_persistent_stdlib_cache(_shared_cache_root())
+        if _stdlib_cache is not None:
+            return _stdlib_cache
+    except OSError as exc:
+        print(
+            f"WARNING: persistent stdlib cache unavailable ({exc}); "
+            f"falling back to ephemeral",
+            file=sys.stderr,
+        )
+
+    # Fallback: ephemeral per-process build
     cache_dir = Path(tempfile.mkdtemp(prefix="tpyc_stdlib_"))
     atexit.register(shutil.rmtree, str(cache_dir), True)
     try:
@@ -329,12 +465,95 @@ class RunResult:
     cpp_build_failed: bool = False
 
 
+def pytest_addoption(parser):
+    """Register custom pytest options."""
+    parser.addoption(
+        "--force-exec",
+        action="store_true",
+        default=False,
+        help="Run exec and cpython phases unconditionally, bypassing fingerprint-based auto-skip.",
+    )
+
+
+def _cgroup_cpu_quota() -> int | None:
+    """Return the effective CPU quota from cgroup v2, or None if unlimited/unavailable.
+
+    Docker --cpus=N sets /sys/fs/cgroup/cpu.max to "<quota> <period>" where
+    quota / period is the fractional CPU allowance. os.cpu_count() ignores
+    this, so pytest-xdist's "-n auto" over-provisions workers in containers.
+    """
+    try:
+        content = Path("/sys/fs/cgroup/cpu.max").read_text().strip()
+    except OSError:
+        return None
+    parts = content.split()
+    if len(parts) != 2 or parts[0] == "max":
+        return None
+    try:
+        quota = int(parts[0])
+        period = int(parts[1])
+    except ValueError:
+        return None
+    if quota <= 0 or period <= 0:
+        return None
+    # Round up: e.g. quota=150000, period=100000 -> 2 CPUs
+    return max(1, (quota + period - 1) // period)
+
+
 def pytest_configure(config):
-    """Print ccache status at session start."""
+    """Print ccache status; manage session fingerprint file."""
+    is_master = os.environ.get("PYTEST_XDIST_WORKER") is None
+    if not is_master:
+        return
+
     if CPP_CONFIG.ccache:
         print("C++ compilation: using ccache")
     else:
         print("C++ compilation: ccache not found (install for faster re-runs)")
+
+    if UPDATE_EXPECTED:
+        # Refresh the single source-of-truth session fingerprint file once on
+        # the master process. Workers see it via the file system.
+        write_session_fingerprints(compute_session_fingerprints())
+        return
+
+    # Normal mode: warn when the recorded session fingerprints are stale so
+    # users notice and refresh -- otherwise the affected runtime phases keep
+    # re-running on every invocation. Skipped silently when no session file
+    # exists (first-ever bootstrap).
+    recorded = read_session_fingerprints()
+    if not recorded:
+        return
+    current = compute_session_fingerprints()
+    stale = [k for k in ("runtime", "cpy_stubs") if current[k] != recorded.get(k)]
+    if stale:
+        print(
+            f"WARNING: session fingerprint stale ({', '.join(stale)}); "
+            f"runtime phase{'s' if len(stale) > 1 else ''} will re-run for "
+            f"every applicable case. Refresh via update_snapshots.py."
+        )
+
+
+def pytest_xdist_auto_num_workers(config):
+    """Cap '-n auto' to the cgroup v2 CPU quota.
+
+    Under Docker --cpus=N, /sys/fs/cgroup/cpu.max enforces fractional CPU
+    allowance but os.cpu_count() (which xdist uses by default) ignores it.
+    Without this cap, xdist spawns one worker per visible core and they
+    fight over the smaller quota, adding context-switch overhead.
+    Returning None falls back to xdist's default behavior.
+    """
+    quota_cpus = _cgroup_cpu_quota()
+    if quota_cpus is None:
+        return None
+    visible = os.cpu_count() or 1
+    if quota_cpus < visible:
+        print(
+            f"xdist: capping workers to {quota_cpus} "
+            f"(cgroup v2 CPU quota; {visible} cores visible)"
+        )
+        return quota_cpus
+    return None
 
 
 def find_extra_src_files(case_dir: Path) -> list[Path]:
@@ -368,6 +587,132 @@ def find_force_includes(case_dir: Path) -> list[Path]:
     """
     src_dir = case_dir / "src"
     return sorted(src_dir.glob("*.hpp"))
+
+
+# ---------------------------------------------------------------------------
+# Fingerprint helpers
+# ---------------------------------------------------------------------------
+# Fingerprints record what inputs produced the expected runtime output. They
+# split into two layers:
+#
+# Session-level (tests/.session_fingerprints.json, single source of truth):
+#   - runtime    -- hash of runtime/cpp/include/** (affects every binary)
+#   - cpy_stubs  -- hash of lib/cpy/tpy/**         (affects every CPython run)
+#
+# Per-case (tests/cases/<case>/expected/.fingerprints, optional keys):
+#   - extra_src  -- hash of hand-written case_dir/src/*.{cpp,hpp,h} files
+#                   (native-interop companion sources; omitted when there are none)
+#   - main       -- hash of main.py
+#
+# Skip exec when: runtime + extra_src both match recorded AND output exists.
+# Skip cpy  when: cpy_stubs + main both match recorded AND output.txt exists.
+# Generated code is verified to match expected/include + expected/src in the
+# comp phase, so the binary derived from those would be identical too.
+
+_FINGERPRINT_FILE = ".fingerprints"
+SESSION_FINGERPRINT_FILE = TESTS_DIR / ".session_fingerprints.json"
+
+
+def _hash_files(paths: list[Path]) -> str:
+    """Hash a sequence of files by (project-relative path, content).
+
+    Paths are made relative to PROJECT_ROOT so the hash is stable across
+    worktrees / clone locations. Files outside PROJECT_ROOT (rare) fall
+    back to their absolute path.
+    """
+    h = hashlib.sha256()
+    for p in paths:
+        try:
+            key = str(p.relative_to(PROJECT_ROOT))
+        except ValueError:
+            key = str(p)
+        h.update(key.encode())
+        h.update(b"\0")
+        h.update(p.read_bytes())
+        h.update(b"\0")
+    return h.hexdigest()
+
+
+@functools.cache
+def _runtime_hash() -> str:
+    """Hash of all runtime headers under runtime/cpp/include/. Session-cached."""
+    files = sorted(p for p in RUNTIME_DIR.rglob("*") if p.is_file())
+    return _hash_files(files)
+
+
+@functools.cache
+def _cpy_stubs_hash() -> str:
+    """Hash of all CPython stub files under lib/cpy/tpy/. Session-cached."""
+    stubs = sorted((CPY_LIB_DIR / "tpy").rglob("*.py"))
+    return _hash_files(stubs)
+
+
+def compute_session_fingerprints() -> dict[str, str]:
+    """Compute current session-level fingerprints (runtime + cpy stubs)."""
+    return {"runtime": _runtime_hash(), "cpy_stubs": _cpy_stubs_hash()}
+
+
+def read_session_fingerprints() -> dict[str, str]:
+    """Read tests/.session_fingerprints.json. Returns empty dict when missing/malformed."""
+    if not SESSION_FINGERPRINT_FILE.exists():
+        return {}
+    try:
+        data = json.loads(SESSION_FINGERPRINT_FILE.read_text())
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def write_session_fingerprints(fingerprints: dict[str, str]) -> None:
+    """Atomically write the session fingerprint file."""
+    payload = json.dumps(fingerprints, indent=2, sort_keys=True) + "\n"
+    tmp = SESSION_FINGERPRINT_FILE.with_suffix(".json.tmp")
+    tmp.write_text(payload)
+    tmp.replace(SESSION_FINGERPRINT_FILE)
+
+
+def compute_extra_src_fingerprint(case_dir: Path) -> str | None:
+    """Hash of hand-written C++ files in case_dir/src/ (native-interop companions).
+
+    Picks up the same .cpp/.hpp/.h files as find_extra_src_files / find_force_includes.
+    Returns None when there are no such files (most cases).
+    """
+    src_dir = case_dir / "src"
+    inputs: list[Path] = []
+    for pattern in ("*.cpp", "*.hpp", "*.h"):
+        inputs.extend(src_dir.glob(pattern))
+    if not inputs:
+        return None
+    inputs.sort()
+    return _hash_files(inputs)
+
+
+def compute_main_fingerprint(main_src: Path) -> str:
+    """Hash of main.py content alone."""
+    return hashlib.sha256(main_src.read_bytes()).hexdigest()
+
+
+def read_fingerprints(case_dir: Path) -> dict[str, str]:
+    """Read expected/.fingerprints. Returns empty dict when missing/malformed."""
+    path = case_dir / "expected" / _FINGERPRINT_FILE
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def write_fingerprints(case_dir: Path, fingerprints: dict[str, str]) -> None:
+    """Write expected/.fingerprints as JSON, or remove it when empty."""
+    path = case_dir / "expected" / _FINGERPRINT_FILE
+    if not fingerprints:
+        if path.exists():
+            path.unlink()
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(fingerprints, indent=2, sort_keys=True) + "\n")
 
 
 def build_and_run(build_dir: Path, module_name: str,
@@ -884,13 +1229,18 @@ def validate_cast_annotations(
     return errors
 
 
-def check_or_update(actual: str, expected_file: Path, description: str) -> None:
+def check_or_update(actual: str, expected_file: Path, description: str,
+                    *, compare_only: bool = False) -> None:
     """Compare actual with expected, or update expected if UPDATE_EXPECTED is set.
 
     In update mode, creates parent directories and writes the file.
     In test mode, asserts that actual matches expected (missing file = empty expected).
+
+    Pass ``compare_only=True`` to always compare and never write -- used by the
+    cpy phase to verify CPython output against the canonical output.txt
+    produced by the exec phase, even in update mode.
     """
-    if UPDATE_EXPECTED:
+    if UPDATE_EXPECTED and not compare_only:
         expected_file.parent.mkdir(parents=True, exist_ok=True)
         expected_file.write_text(actual)
     else:
