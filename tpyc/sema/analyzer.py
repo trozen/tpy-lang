@@ -10,7 +10,7 @@ from typing import Optional
 
 from ..typesys import (
     TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, StrType, StrViewType, LiteralType, VoidType, VOID,
-    INT32, FixedIntType, BigIntType, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
+    NoneType, INT32, FixedIntType, BigIntType, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
     FunctionInfo, EnumType, SpanType, is_any_str_type,
     make_ref, unwrap_ref_type, RefType,
 )
@@ -422,6 +422,13 @@ class SemanticAnalyzer:
         # Detect mutual recursion cycles and tag recursive union aliases
         self._detect_recursive_unions(module)
         self.ctx.recursive_union_names = module.recursive_union_names
+
+        # The parser eagerly expands same-module union aliases, so
+        # RecursiveAlias | None becomes UnionType(NoneType, member1, member2, ...)
+        # instead of OptionalType(NamedType("RecursiveAlias")).
+        # Now that recursive aliases are identified, fix up those annotations.
+        if module.recursive_union_names:
+            self._fix_recursive_optional_annotations(module)
 
         # Transfer type aliases from parser to sema registry, validating members
         for name, (typ, loc) in module.type_aliases.items():
@@ -1197,6 +1204,72 @@ class SemanticAnalyzer:
             # Tag union aliases in this cycle as recursive
             for alias_name in cycle.alias_names:
                 module.recursive_union_names.add(alias_name)
+
+    def _fix_recursive_optional_annotations(self, module: TpyModule) -> None:
+        """Fix annotations where a recursive union alias + None was flattened.
+
+        The parser eagerly expands same-module aliases, so `Expr | None`
+        (where Expr = Lit | BinOp) becomes UnionType(NoneType, BinOp, Lit)
+        -- a 3-member pointer-variant. This method converts those back to
+        OptionalType(NamedType("Expr")) by matching the non-None members
+        against the recursive union alias definitions.
+
+        Note: only covers module-level declarations (function signatures,
+        record fields, top-level vars). Local variable annotations inside
+        function bodies are resolved later during body analysis.
+        """
+        # Build reverse map: frozenset(alias members) -> alias name
+        alias_by_members: dict[frozenset, str] = {}
+        for name in module.recursive_union_names:
+            entry = module.type_aliases.get(name)
+            if entry is not None:
+                typ = entry[0]
+                if isinstance(typ, UnionType):
+                    non_none = frozenset(
+                        m for m in typ.members
+                        if not isinstance(m, (NoneType, VoidType))
+                    )
+                    alias_by_members[non_none] = name
+
+        if not alias_by_members:
+            return
+
+        def _fix(typ: TpyType) -> TpyType:
+            if isinstance(typ, UnionType):
+                non_none = [m for m in typ.members
+                            if not isinstance(m, (NoneType, VoidType))]
+                if len(non_none) < len(typ.members):
+                    key = frozenset(non_none)
+                    alias_name = alias_by_members.get(key)
+                    if alias_name is not None:
+                        return OptionalType(NamedType(alias_name))
+            return typ.map_inner_types(lambda t: _fix(t))
+
+        def _fix_func(func: TpyFunction) -> None:
+            for i, (pname, typ) in enumerate(func.params):
+                fixed = _fix(typ)
+                if fixed is not typ:
+                    func.params[i] = (pname, fixed)
+            if func.return_type is not None:
+                fixed = _fix(func.return_type)
+                if fixed is not func.return_type:
+                    func.return_type = fixed
+
+        for func in module.functions:
+            _fix_func(func)
+        for record in module.all_records():
+            for f in record.fields:
+                fixed = _fix(f.type)
+                if fixed is not f.type:
+                    f.type = fixed
+            for method in record.methods:
+                _fix_func(method)
+        if module.top_level_stmts:
+            for stmt in module.top_level_stmts:
+                if isinstance(stmt, TpyVarDecl) and stmt.type is not None:
+                    fixed = _fix(stmt.type)
+                    if fixed is not stmt.type:
+                        stmt.type = fixed
 
     def _validate_type_alias_members(
         self, alias_name: str, typ: TpyType, loc: 'SourceLocation | None'
