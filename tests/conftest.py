@@ -27,7 +27,9 @@ from tpyc.cli import get_module_name
 from tpyc.codegen_cpp import CodeGenOptions, CodeGenError
 from tpyc.parse import Parser, ParseError
 from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
-from tpyc.compiler import Compiler, CompileError, BuildLayout, CppCompilerConfig
+from tpyc.compiler import (
+    Compiler, CompileError, BuildLayout, CppCompilerConfig, get_or_build_pch,
+)
 
 # Default options for tests: emit source comments for easier debugging
 TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True, comment_line_numbers=False)
@@ -241,6 +243,104 @@ def _get_or_build_persistent_stdlib_cache(root: Path) -> _StdlibCache | None:
             if loaded is not None:
                 return loaded
         return _build_persistent_stdlib_cache(cache_dir)
+
+
+# ---------------------------------------------------------------------------
+# Persistent PCH (precompiled header) cache
+# ---------------------------------------------------------------------------
+# Builds tpy_pch.hpp.gch once per session (per content key) so that every
+# per-case main.cpp compile reuses the precompiled runtime headers instead
+# of re-parsing the entire tpy.hpp template chain. Major win on cold ccache.
+
+_pch_path: Path | None = None
+_pch_initialized: bool = False
+
+
+@functools.cache
+def _pch_cache_key() -> str:
+    """Content-addressed key for the PCH cache (runtime headers + compiler config).
+
+    opt_flags is intentionally NOT in the key: tests always invoke
+    build_cpp_commands without opt_flags, so the PCH is always built with
+    opt_flags=[] and is valid for any test compile. If a future test variant
+    starts passing opt_flags, this key must grow or PCHs will be incompatible.
+    """
+    h = hashlib.sha256()
+    h.update(_runtime_hash().encode())
+    h.update(b"\0")
+    h.update(repr((
+        CPP_CONFIG.compiler,
+        CPP_CONFIG.std,
+        CPP_CONFIG.extra_flags,
+        CPP_CONFIG.warn_flags,
+    )).encode())
+    return h.hexdigest()
+
+
+def _set_pch_ccache_sloppiness() -> None:
+    """Set CCACHE_SLOPPINESS to allow PCH-using compiles to hit the cache.
+
+    Without these flags ccache treats every PCH-using compile as a miss
+    (cli.py:478 does the same when building with PCH).
+    """
+    if not CPP_CONFIG.ccache:
+        return
+    slop = os.environ.get("CCACHE_SLOPPINESS", "")
+    parts = {s.strip() for s in slop.split(",") if s.strip()}
+    parts.update(("pch_defines", "time_macros"))
+    os.environ["CCACHE_SLOPPINESS"] = ",".join(sorted(parts))
+
+
+def get_pch_header() -> Path | None:
+    """Return path to the cached PCH header for tests, building or reusing as needed.
+
+    The .gch file lives next to the .hpp; passing the .hpp via -include lets
+    the compiler discover the .gch automatically. Persists across pytest
+    invocations under $TPYC_SHARED_CACHE_DIR/pch/<key>/. Returns None if
+    PCH building fails or the shared cache root is unwritable -- per-case
+    compiles then fall back to parsing the runtime headers from scratch.
+    """
+    global _pch_path, _pch_initialized
+    if _pch_initialized:
+        return _pch_path
+    _pch_initialized = True
+
+    try:
+        pch_dir = _shared_cache_root() / "pch" / _pch_cache_key()
+        pch_header = pch_dir / "tpy_pch.hpp"
+        pch_gch = pch_dir / "tpy_pch.hpp.gch"
+
+        # Fast path: PCH already built for this content key. Skip locking
+        # entirely so warm-cache workers don't queue on LOCK_EX at startup.
+        if pch_gch.exists() and pch_header.exists():
+            _pch_path = pch_header
+            _set_pch_ccache_sloppiness()
+            return _pch_path
+
+        pch_dir.mkdir(parents=True, exist_ok=True)
+        lock_path = pch_dir / ".lock"
+        with open(lock_path, "w") as lf:
+            fcntl.flock(lf.fileno(), fcntl.LOCK_EX)
+            # Re-check after acquiring the lock: another worker may have
+            # built the PCH while we waited.
+            if pch_gch.exists() and pch_header.exists():
+                _pch_path = pch_header
+            else:
+                _pch_path = get_or_build_pch(
+                    CPP_CONFIG, RUNTIME_DIR, opt_flags=[], pch_dir=pch_dir,
+                )
+            if _pch_path is not None:
+                _set_pch_ccache_sloppiness()
+    except Exception as exc:
+        # Catch broadly (matches get_stdlib_cache): a PCH failure must not
+        # abort the worker -- per-case compiles will fall back to parsing
+        # the runtime headers from scratch.
+        print(
+            f"WARNING: PCH cache unavailable ({exc}); compiling without PCH",
+            file=sys.stderr,
+        )
+        _pch_path = None
+    return _pch_path
 
 
 def get_stdlib_cache() -> _StdlibCache | None:
@@ -764,6 +864,15 @@ def build_and_run(build_dir: Path, module_name: str,
     if link_flags:
         config = dataclasses.replace(config, link_flags=link_flags)
 
+    # Prepend the cached PCH header (if available) so each per-case main.cpp
+    # picks up tpy_pch.hpp.gch via -include rather than re-parsing tpy.hpp.
+    pch_header = get_pch_header()
+    all_force_includes: list[Path] = []
+    if pch_header is not None:
+        all_force_includes.append(pch_header)
+    if force_includes:
+        all_force_includes.extend(force_includes)
+
     # Compile C++ with include path for cross-module references
     compile_cmds = layout.build_cpp_commands(
         runtime_include_dir=RUNTIME_DIR,
@@ -771,7 +880,7 @@ def build_and_run(build_dir: Path, module_name: str,
         config=config,
         extra_objects=precompiled_objects,
         extra_include_dirs=extra_include_dirs or None,
-        force_includes=force_includes or None,
+        force_includes=all_force_includes or None,
     )
     for cmd in compile_cmds:
         result = subprocess.run(cmd, capture_output=True, text=True)
