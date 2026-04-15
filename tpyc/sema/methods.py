@@ -144,8 +144,8 @@ def _resolve_dotted_record_chain(expr: TpyFieldAccess, ctx: 'SemanticContext') -
     registered nested record, or None otherwise.
     """
     if isinstance(expr.obj, TpyName):
-        if ctx.current_ns:
-            binding = ctx.current_ns.lookup(expr.obj.name)
+        if ctx.func.current_ns:
+            binding = ctx.func.current_ns.lookup(expr.obj.name)
             if binding and binding.kind in (BindingKind.RECORD, BindingKind.IMPORTED_NAME):
                 dotted = f"{expr.obj.name}.{expr.field}"
                 if ctx.registry.get_record(dotted) is not None:
@@ -293,11 +293,11 @@ class MethodAnalyzer:
                     obj_type = make_pending(info.element_type, literal_id)
                     self.ctx.set_expr_type(expr.obj, obj_type)
                     if isinstance(expr.obj, TpyName):
-                        if self.ctx.current_scope:
-                            self.ctx.current_scope.define(expr.obj.name, obj_type)
-                        if self.ctx.current_ns:
-                            self.ctx.current_ns.bind_variable(expr.obj.name, obj_type)
-            self.ctx.pre_analyzed_method_args[id(expr)] = pre_analyzed
+                        if self.ctx.func.current_scope:
+                            self.ctx.func.current_scope.define(expr.obj.name, obj_type)
+                        if self.ctx.func.current_ns:
+                            self.ctx.func.current_ns.bind_variable(expr.obj.name, obj_type)
+            self.ctx.func.pre_analyzed_method_args[id(expr)] = pre_analyzed
             return obj_type
         return None
 
@@ -313,7 +313,7 @@ class MethodAnalyzer:
         corresponding param (using pre-analyzed types from empty list inference
         when available). Otherwise pre-analyzed arg_types are used.
         """
-        pre = self.ctx.pre_analyzed_method_args.pop(id(expr), None)
+        pre = self.ctx.func.pre_analyzed_method_args.pop(id(expr), None)
         for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, params)):
             if arg_types is not None:
                 at = arg_types[i]
@@ -426,13 +426,13 @@ class MethodAnalyzer:
         Returns a SuperType that wraps the parent class type.
         """
         # Validate context: must be in a method
-        if ctx.current_function is None or not isinstance(ctx.current_function, TpyFunction):
+        if ctx.func.current_function is None or not isinstance(ctx.func.current_function, TpyFunction):
             raise ctx.error("super() can only be used inside a method", expr)
 
-        if not ctx.current_function.is_method:
+        if not ctx.func.current_function.is_method:
             raise ctx.error("super() can only be used inside a method", expr)
 
-        if ctx.current_function.is_staticmethod:
+        if ctx.func.current_function.is_staticmethod:
             raise ctx.error("super() cannot be used in a static method", expr)
 
         # Validate context: must have a current record
@@ -494,7 +494,7 @@ class MethodAnalyzer:
             narrowing_key = _expr_to_narrowing_key(expr.obj)
             if narrowing_key is not None:
                 narrowing_key = f"{narrowing_key}.{expr.method}"
-            if narrowing_key is None or narrowing_key not in self.ctx.narrowed_types:
+            if narrowing_key is None or narrowing_key not in self.ctx.func.narrowed_types:
                 self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
                 expr.needs_optional_runtime_check = True
         if expr.kwargs:
@@ -542,16 +542,16 @@ class MethodAnalyzer:
                 return result
 
             # Nested type constructor: Container.Inner(...) or Container.Kind(value)
-            if self.ctx.current_ns:
-                binding = self.ctx.current_ns.lookup(expr.obj.name)
+            if self.ctx.func.current_ns:
+                binding = self.ctx.func.current_ns.lookup(expr.obj.name)
                 if binding and binding.kind in (BindingKind.RECORD, BindingKind.IMPORTED_NAME):
                     nested_result = self._analyze_nested_type_call(expr)
                     if nested_result is not None:
                         return nested_result
 
             # Reject method calls on enum types (enums have no class methods)
-            if self.ctx.current_ns:
-                binding = self.ctx.current_ns.lookup(expr.obj.name)
+            if self.ctx.func.current_ns:
+                binding = self.ctx.func.current_ns.lookup(expr.obj.name)
                 if binding and binding.kind == BindingKind.ENUM:
                     raise self.ctx.error(
                         f"Enum type '{expr.obj.name}' has no method '{expr.method}'",
@@ -663,15 +663,16 @@ class MethodAnalyzer:
         # Borrow conflict: structural mutation on a container with element-level borrows.
         # Resolves aliases so that alias.append() warns when items has element borrows.
         # Also handles field-path receivers (self.items.append()) via _storage_key.
+        bt = self.ctx.func.borrow_tracker
         if isinstance(expr.obj, TpyName):
-            storage = self.ctx.borrow_tracker.effective_storage(expr.obj.name)
+            storage = bt.effective_storage(expr.obj.name)
         else:
             storage = _storage_key(expr.obj)
         if storage is not None:
-            if self.ctx.borrow_tracker.has_element_borrow(storage):
+            if bt.has_element_borrow(storage):
                 is_mutation = self._is_invalidating_method(obj_type, expr.method)
                 if is_mutation:
-                    if self.ctx.borrow_tracker.has_iter_borrow(storage):
+                    if bt.has_iter_borrow(storage):
                         msg = (f"Mutation of '{storage}' while iterating over it"
                                f" ('{expr.method}' invalidates the iterator)")
                     else:
@@ -690,7 +691,7 @@ class MethodAnalyzer:
                 if deref_depth > 0 and isinstance(original_type, PtrType):
                     obj_key = _expr_to_narrowing_key(expr.obj)
                     if obj_key is not None:
-                        if obj_key in self.ctx.non_null_ptr_vars:
+                        if obj_key in self.ctx.func.non_null_ptr_vars:
                             expr.ptr_non_null = True
                         if expr.loc:
                             self.ctx.ptr_deref_facts[
@@ -734,14 +735,14 @@ class MethodAnalyzer:
                             # enabling readonly inference for methods like __json_encode__
                             # that call non-mutating methods on fields.
                             self_deferred = _is_self_call_deferred(
-                                expr.obj, obj_root, self.ctx.loop_var_iterable)
+                                expr.obj, obj_root, self.ctx.func.loop_var_iterable)
                             if not self_deferred:
                                 self.ctx.mark_param_mutated(obj_root)
                             # Structural mutation tracked directly (Phase 2 doesn't
                             # propagate structural self-mutation through call edges).
                             if self._is_invalidating_method(obj_type, expr.method):
                                 self.ctx.mark_param_structurally_mutated(obj_root)
-                        storage = self.ctx.borrow_tracker.effective_storage(obj_root)
+                        storage = self.ctx.func.borrow_tracker.effective_storage(obj_root)
                         self.ctx.mark_all_view_borrowers_mutated(storage)
                     else:
                         # Check for chained method calls rooted at self:
@@ -798,7 +799,7 @@ class MethodAnalyzer:
                     expr,
                 )
             # Reject consuming through pointers -- pointer doesn't own the pointee
-            obj_type = self.ctx.current_scope.lookup(name)
+            obj_type = self.ctx.func.current_scope.lookup(name)
             if obj_type is not None and (isinstance(obj_type, PtrType)
                                          or isinstance(unwrap_readonly(obj_type), PtrType)):
                 raise self.ctx.error(
@@ -808,9 +809,9 @@ class MethodAnalyzer:
                 )
             # Reject consuming outer variables inside a loop -- the variable
             # won't be re-bound on the next iteration, causing use-after-move.
-            if self.ctx.loop_depth > 0:
-                var_depth = self.ctx.var_scope_depth.get(name, 0)
-                loop_scope_depth = self.ctx.current_scope.depth
+            if self.ctx.func.loop_depth > 0:
+                var_depth = self.ctx.func.var_scope_depth.get(name, 0)
+                loop_scope_depth = self.ctx.func.current_scope.depth
                 if var_depth < loop_scope_depth:
                     raise self.ctx.error(
                         f"Cannot consume '{name}' inside a loop; "
@@ -818,7 +819,7 @@ class MethodAnalyzer:
                         expr,
                     )
             # Use-after-consume is already caught by _analyze_name before we get here.
-            self.ctx.consumed_vars.add(name)
+            self.ctx.func.consumed_vars.add(name)
 
     def _analyze_nested_type_call(self, expr: TpyMethodCall) -> TpyType | None:
         """Check for Outer.Inner(...) nested type constructor call. Returns type or None."""
@@ -865,11 +866,11 @@ class MethodAnalyzer:
     def _analyze_static_method_call(self, expr: TpyMethodCall) -> TpyType | None:
         """Check for ClassName.staticmethod() pattern. Returns type or None if not a static call."""
         assert isinstance(expr.obj, TpyName)
-        if self.ctx.current_ns is None:
+        if self.ctx.func.current_ns is None:
             return None
 
         record_info = None
-        binding = self.ctx.current_ns.lookup(expr.obj.name)
+        binding = self.ctx.func.current_ns.lookup(expr.obj.name)
         if binding and binding.kind == BindingKind.RECORD:
             record_info = self.ctx.registry.get_record(expr.obj.name)
         elif binding and binding.kind == BindingKind.IMPORTED_NAME:
@@ -1056,8 +1057,8 @@ class MethodAnalyzer:
             return None
 
         # Only resolve as module if base name is unbound or bound as MODULE
-        if self.ctx.current_ns:
-            binding = self.ctx.current_ns.lookup(current.name)
+        if self.ctx.func.current_ns:
+            binding = self.ctx.func.current_ns.lookup(current.name)
             if binding and binding.kind != BindingKind.MODULE:
                 return None
 
@@ -1070,9 +1071,9 @@ class MethodAnalyzer:
 
     def _resolve_module_name(self, name: str) -> str | None:
         """Resolve a name to a module name if it refers to a module. Returns None otherwise."""
-        if self.ctx.current_ns is None:
+        if self.ctx.func.current_ns is None:
             return None
-        binding = self.ctx.current_ns.lookup(name)
+        binding = self.ctx.func.current_ns.lookup(name)
         if binding and binding.kind == BindingKind.MODULE:
             return binding.import_source[0] if binding.import_source else name
         return None
@@ -1089,7 +1090,7 @@ class MethodAnalyzer:
         Accumulates type parameter constraints from method arguments.
         Eagerly resolves the generic instance once all type params are known.
         """
-        info = self.ctx.pending_generic_instances.get(obj_type.instance_id)
+        info = self.ctx.func.pending_generic_instances.get(obj_type.instance_id)
         if info is None:
             raise self.ctx.error(
                 f"Internal error: pending generic instance {obj_type.instance_id} not found", expr)
@@ -1155,8 +1156,8 @@ class MethodAnalyzer:
             resolved_type = self._eagerly_resolve_pending_generic(info)
             # Re-dispatch: analyze the method call on the now-concrete type
             self.ctx.set_expr_type(expr.obj, resolved_type)
-            if isinstance(expr.obj, TpyName) and self.ctx.current_scope:
-                self.ctx.current_scope.define(expr.obj.name, resolved_type)
+            if isinstance(expr.obj, TpyName) and self.ctx.func.current_scope:
+                self.ctx.func.current_scope.define(expr.obj.name, resolved_type)
             result = self._try_resolve_method(expr, resolved_type)
             if result is None:
                 raise self.ctx.error(
@@ -1197,7 +1198,7 @@ class MethodAnalyzer:
         returned where the function return type is known. Returns the resolved
         concrete type, or None if the expected type doesn't match.
         """
-        info = self.ctx.pending_generic_instances.get(pending.instance_id)
+        info = self.ctx.func.pending_generic_instances.get(pending.instance_id)
         if info is None:
             return None
 
@@ -1273,11 +1274,11 @@ class MethodAnalyzer:
         # not for inline expressions like Container().set(...) which would
         # corrupt the class binding in scope)
         if info.decl_line is not None:
-            if self.ctx.current_scope:
-                self.ctx.current_scope.define(info.variable_name, resolved_type)
-            if self.ctx.current_ns:
-                self.ctx.current_ns.bind_variable(info.variable_name, resolved_type)
-            var_decl = self.ctx.var_decl_by_name.get(info.variable_name)
+            if self.ctx.func.current_scope:
+                self.ctx.func.current_scope.define(info.variable_name, resolved_type)
+            if self.ctx.func.current_ns:
+                self.ctx.func.current_ns.bind_variable(info.variable_name, resolved_type)
+            var_decl = self.ctx.func.var_decl_by_name.get(info.variable_name)
             if var_decl:
                 self.ctx.var_types[id(var_decl)] = resolved_type
             self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved_type
@@ -1287,8 +1288,8 @@ class MethodAnalyzer:
         self.calls._set_record_constructor_info(info.expr, info.record_info, resolved_type, type_subst)
 
         # Clean up tracking
-        del self.ctx.pending_generic_instances[info.instance_id]
-        self.ctx.variable_to_generic_instance.pop(info.variable_name, None)
+        del self.ctx.func.pending_generic_instances[info.instance_id]
+        self.ctx.func.variable_to_generic_instance.pop(info.variable_name, None)
 
         return resolved_type
 
@@ -1660,19 +1661,19 @@ class MethodAnalyzer:
         # Special handling for super().__init__()
         if expr.method == "__init__":
             # super().__init__() can only be called inside __init__
-            if self.ctx.current_function is None or self.ctx.current_function.name != "__init__":
+            if self.ctx.func.current_function is None or self.ctx.func.current_function.name != "__init__":
                 raise self.ctx.error(
                     "super().__init__() can only be called inside __init__",
                     expr
                 )
             # Check for duplicate super().__init__() calls
-            if self.ctx.super_init_call is not None:
+            if self.ctx.func.super_init_call is not None:
                 raise self.ctx.error(
                     "super().__init__() can only be called once",
                     expr
                 )
             # Track this call for later validation (must be first statement)
-            self.ctx.super_init_call = expr
+            self.ctx.func.super_init_call = expr
 
             init_overloads = parent_info.get_method_overloads("__init__")
             if not init_overloads:
@@ -1690,19 +1691,19 @@ class MethodAnalyzer:
         # Special handling for super().__del__()
         if expr.method == "__del__":
             # super().__del__() can only be called inside __del__
-            if self.ctx.current_function is None or self.ctx.current_function.name != "__del__":
+            if self.ctx.func.current_function is None or self.ctx.func.current_function.name != "__del__":
                 raise self.ctx.error(
                     "super().__del__() can only be called inside __del__",
                     expr
                 )
             # Check for duplicate super().__del__() calls
-            if self.ctx.super_del_call is not None:
+            if self.ctx.func.super_del_call is not None:
                 raise self.ctx.error(
                     "super().__del__() can only be called once",
                     expr
                 )
             # Track this call for later validation (must be last statement)
-            self.ctx.super_del_call = expr
+            self.ctx.func.super_del_call = expr
             # No arguments allowed
             if expr.args:
                 raise self.ctx.error(
@@ -1714,8 +1715,8 @@ class MethodAnalyzer:
 
         # Check readonly constraint: super() in @readonly method inherits readonly
         is_readonly_context = (
-            isinstance(self.ctx.current_function, TpyFunction)
-            and self.ctx.current_function.is_readonly
+            isinstance(self.ctx.func.current_function, TpyFunction)
+            and self.ctx.func.current_function.is_readonly
         )
 
         # Look up the method in the parent class

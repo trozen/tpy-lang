@@ -77,8 +77,7 @@ Goal: speed up test runs (currently ~3 min parallel, ~6 min single-threaded for 
 
 2. ~~**`map_inner_types` identity short-circuit**~~ **DONE** -- compares mapped tuple to original, returns `self` if identical. Eliminates redundant frozen dataclass construction.
 
-3. **Inline `SemanticContext` forwarded fields** (mypyc blocker + overhead):
-   `SemanticContext.__getattr__/__setattr__` dynamically forwards 69 fields to a composed `FunctionTrackingState` via `_FUNC_STATE_FIELDS` set lookup. This was a refactoring shortcut to limit area of changes. Adds overhead on every field access (~276 access sites across 12+ sema files) and is incompatible with mypyc. Fix: inline all fields directly onto `SemanticContext`, keep `FunctionTrackingState` as a grouping for save/restore only. Mechanical refactor -- large diff, low risk.
+3. ~~**Remove `SemanticContext` forwarding shortcut**~~ **DONE** -- `FunctionTrackingState` was extracted to keep `SemanticContext` from growing unbounded, and `__getattr__`/`__setattr__` were added as a refactoring shortcut to avoid touching callsites. Fix: made callsites explicit via `ctx.func.<field>` (740+ substitutions across 13 sema files + `macro_api.py`), renamed `_func` to `func`, deleted `__getattr__`/`__setattr__` and `_FUNC_STATE_FIELDS`. Unblocks mypyc and makes the module-wide vs per-function state boundary visible at every use site. ~6-8% compile-time improvement on `json_model_inherit`.
 
 4. **Merge sequential `map_inner_types` passes** (redundant tree walks):
    `statements.py` does alias resolution, enum resolution, and type resolution as 3 separate recursive tree walks over the same type. Each pass calls `map_inner_types` independently. Fix: merge into a single combined pass that handles all three in one walk.

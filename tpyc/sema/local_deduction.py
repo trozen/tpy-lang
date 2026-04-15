@@ -122,12 +122,12 @@ class LocalTypeDeduction:
 
     def record_write(self, name: str, rhs_expr: TpyExpr, rhs_type: TpyType) -> None:
         """Record assignment history for potential later retro-validation."""
-        self.ctx.write_history.setdefault(name, []).append((rhs_type, rhs_expr))
+        self.ctx.func.write_history.setdefault(name, []).append((rhs_type, rhs_expr))
         if isinstance(rhs_type, IntLiteralType) and rhs_type.value is not None:
-            self.ctx.literal_values.setdefault(name, []).append(rhs_type.value)
-        elif name in self.ctx.literal_values:
+            self.ctx.func.literal_values.setdefault(name, []).append(rhs_type.value)
+        elif name in self.ctx.func.literal_values:
             # Non-literal write ends literal-only tracking for narrowing decisions.
-            self.ctx.literal_values.pop(name, None)
+            self.ctx.func.literal_values.pop(name, None)
 
     def retro_validate_against_annotation(
         self,
@@ -136,7 +136,7 @@ class LocalTypeDeduction:
         annotation_line: int | None = None,
     ) -> None:
         """Validate earlier writes against a newly provided explicit annotation."""
-        for prev_type, prev_expr in self.ctx.write_history.get(name, []):
+        for prev_type, prev_expr in self.ctx.func.write_history.get(name, []):
             try:
                 self.compat.check_type_compatible(
                     prev_type,
@@ -171,8 +171,8 @@ class LocalTypeDeduction:
         init_expr: TpyExpr | None = None,
     ) -> TpyType:
         """Resolve target type for an unannotated reassignment write."""
-        if name in self.ctx.authoritative_types:
-            return self.ctx.authoritative_types[name]
+        if name in self.ctx.func.authoritative_types:
+            return self.ctx.func.authoritative_types[name]
 
         # Resolve float literals to float64 before any widening logic
         if isinstance(init_type, FloatLiteralType):
@@ -185,7 +185,7 @@ class LocalTypeDeduction:
                 base = self.ctx.default_int_for_literal(base, warn_node=init_expr)
             if isinstance(base, NoneType):
                 return existing_type
-            self.ctx.unresolved_none_vars.discard(name)
+            self.ctx.func.unresolved_none_vars.discard(name)
             return OptionalType(base)
 
         # If this var was seeded by None and already optional, keep it.
@@ -194,8 +194,8 @@ class LocalTypeDeduction:
 
         # Literal-seeded default (ctx.default_int_type) may be refined by
         # explicit later writes (e.g., BigInt/Int64/Float anchors).
-        if name in self.ctx.literal_default_vars:
-            merged = merge_literal_seed_target(existing_type, init_type, self.ctx.literal_values.get(name, []))
+        if name in self.ctx.func.literal_default_vars:
+            merged = merge_literal_seed_target(existing_type, init_type, self.ctx.func.literal_values.get(name, []))
             if merged is not None:
                 if (
                     isinstance(existing_type, FixedIntType)
@@ -210,9 +210,9 @@ class LocalTypeDeduction:
                         init_expr,
                     )
                 if not isinstance(init_type, IntLiteralType):
-                    self.ctx.literal_default_vars.discard(name)
+                    self.ctx.func.literal_default_vars.discard(name)
                 return merged
-            self.ctx.literal_default_vars.discard(name)
+            self.ctx.func.literal_default_vars.discard(name)
             return existing_type
 
         # Numeric widening: different numeric types widen to the wider type.
@@ -230,10 +230,10 @@ class LocalTypeDeduction:
         new_line: int | None = None,
     ) -> None:
         """Reject conflicting explicit annotation writes for the same variable."""
-        prev_annot = self.ctx.authoritative_types.get(name)
+        prev_annot = self.ctx.func.authoritative_types.get(name)
         if prev_annot is None or prev_annot == new_type:
             return
-        prev_line = self.ctx.authoritative_type_lines.get(name)
+        prev_line = self.ctx.func.authoritative_type_lines.get(name)
         if prev_line is not None and new_line is not None:
             conflict_msg = (
                 f"Conflicting explicit annotations for '{name}': "
@@ -258,11 +258,11 @@ class LocalTypeDeduction:
 
     def set_authoritative_annotation(self, name: str, typ: TpyType, line: int | None = None) -> None:
         """Store explicit annotation as authoritative and clear pending inference seeds."""
-        self.ctx.authoritative_types[name] = typ
+        self.ctx.func.authoritative_types[name] = typ
         if line is not None:
-            self.ctx.authoritative_type_lines[name] = line
-        self.ctx.unresolved_none_vars.discard(name)
-        self.ctx.literal_default_vars.discard(name)
+            self.ctx.func.authoritative_type_lines[name] = line
+        self.ctx.func.unresolved_none_vars.discard(name)
+        self.ctx.func.literal_default_vars.discard(name)
 
     # ------------------------------------------------------------------
     # List literal deduction (moved from ListLiteralTracker)
@@ -272,8 +272,8 @@ class LocalTypeDeduction:
         """Mark a list literal as mutated if it can be traced to one."""
         if isinstance(obj_expr, TpyName):
             var_name = obj_expr.name
-            if var_name in self.ctx.variable_to_literal:
-                literal_id = self.ctx.variable_to_literal[var_name]
+            if var_name in self.ctx.func.variable_to_literal:
+                literal_id = self.ctx.func.variable_to_literal[var_name]
                 if literal_id in self.ctx.list_literals:
                     self.ctx.list_literals[literal_id].is_mutated = True
 
@@ -287,7 +287,7 @@ class LocalTypeDeduction:
         if not isinstance(obj_expr, TpyName):
             return
         var_name = obj_expr.name
-        literal_id = self.ctx.variable_to_literal.get(var_name)
+        literal_id = self.ctx.func.variable_to_literal.get(var_name)
         if literal_id is None:
             return
         info = self.ctx.list_literals.get(literal_id)
@@ -352,7 +352,7 @@ class LocalTypeDeduction:
         param_type = unwrap_ref_type(param_type)
 
         if isinstance(arg_type, PendingListType):
-            literal_id = self.ctx.variable_to_literal.get(arg_expr.name)
+            literal_id = self.ctx.func.variable_to_literal.get(arg_expr.name)
             if literal_id is not None and literal_id in self.ctx.list_literals:
                 info = self.ctx.list_literals[literal_id]
                 if isinstance(param_type, ListType):
@@ -363,7 +363,7 @@ class LocalTypeDeduction:
                     info.coerced_element_type = param_type.element_type
 
         elif isinstance(arg_type, PendingDictType) and isinstance(param_type, DictType):
-            literal_id = self.ctx.variable_to_dict_literal.get(arg_expr.name)
+            literal_id = self.ctx.func.variable_to_dict_literal.get(arg_expr.name)
             if literal_id is not None:
                 info = self.ctx.dict_literals.get(literal_id)
                 if info:
@@ -375,7 +375,7 @@ class LocalTypeDeduction:
                         info.value_type = result
 
         elif isinstance(arg_type, PendingSetType) and isinstance(param_type, SetType):
-            literal_id = self.ctx.variable_to_set_literal.get(arg_expr.name)
+            literal_id = self.ctx.func.variable_to_set_literal.get(arg_expr.name)
             if literal_id is not None:
                 info = self.ctx.set_literals.get(literal_id)
                 if info:
@@ -419,7 +419,7 @@ class LocalTypeDeduction:
 
         if isinstance(return_expr, TpyName):
             var_name = return_expr.name
-            literal_id = self.ctx.variable_to_literal.get(var_name)
+            literal_id = self.ctx.func.variable_to_literal.get(var_name)
             if literal_id is not None and literal_id in self.ctx.list_literals:
                 info = self.ctx.list_literals[literal_id]
                 if isinstance(return_type, ListType):
@@ -449,8 +449,8 @@ class LocalTypeDeduction:
             source_literal_id=source_literal_id,
         )
         self.ctx.list_literals[new_id] = info
-        self.ctx.pending_resolutions.append(new_id)
-        self.ctx.variable_to_literal[var_name] = new_id
+        self.ctx.func.pending_resolutions.append(new_id)
+        self.ctx.func.variable_to_literal[var_name] = new_id
         return PendingListType(init_type.element_type, init_type.size, new_id)
 
     def _resolve_alias_element_type(self, info: ListLiteralInfo) -> TpyType | None:
@@ -486,10 +486,10 @@ class LocalTypeDeduction:
         if isinstance(info.expr, TpyCall):
             info.expr.call_type = resolved
 
-        if info.variable_name and self.ctx.current_scope:
-            current_type = self.ctx.current_scope.lookup(info.variable_name)
+        if info.variable_name and self.ctx.func.current_scope:
+            current_type = self.ctx.func.current_scope.lookup(info.variable_name)
             if isinstance(current_type, PENDING_CONTAINER_TYPES):
-                self.ctx.current_scope.define(info.variable_name, resolved)
+                self.ctx.func.current_scope.define(info.variable_name, resolved)
 
         if info.variable_name and info.decl_line is not None:
             self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved
@@ -507,7 +507,7 @@ class LocalTypeDeduction:
         - If passed to typed param (list[T] or Span[T]), use T
         - IntLiteralType defaults to ctx.default_int_type for containers
         """
-        for literal_id in self.ctx.pending_resolutions:
+        for literal_id in self.ctx.func.pending_resolutions:
             if literal_id not in self.ctx.list_literals:
                 continue
 
@@ -591,7 +591,7 @@ class LocalTypeDeduction:
         changed = True
         while changed:
             changed = False
-            for literal_id in self.ctx.pending_resolutions:
+            for literal_id in self.ctx.func.pending_resolutions:
                 info = self.ctx.list_literals.get(literal_id)
                 if info is None or info.source_literal_id is None:
                     continue
@@ -615,14 +615,14 @@ class LocalTypeDeduction:
         if resolved is None:
             return
         self.ctx.set_expr_type(info.expr, resolved)
-        if info.variable_name and self.ctx.current_scope:
-            current_type = self.ctx.current_scope.lookup(info.variable_name)
+        if info.variable_name and self.ctx.func.current_scope:
+            current_type = self.ctx.func.current_scope.lookup(info.variable_name)
             if current_type is not None:
-                self.ctx.current_scope.define(info.variable_name, resolved)
+                self.ctx.func.current_scope.define(info.variable_name, resolved)
         if info.variable_name and info.decl_line is not None:
             self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved
         if info.variable_name:
-            var_decl = self.ctx.var_decl_by_name.get(info.variable_name)
+            var_decl = self.ctx.func.var_decl_by_name.get(info.variable_name)
             if var_decl:
                 self.ctx.var_types[id(var_decl)] = resolved
 
@@ -635,7 +635,7 @@ class LocalTypeDeduction:
         if not isinstance(obj_expr, TpyName):
             return
         var_name = obj_expr.name
-        literal_id = self.ctx.variable_to_dict_literal.get(var_name)
+        literal_id = self.ctx.func.variable_to_dict_literal.get(var_name)
         if literal_id is None:
             return
         info = self.ctx.dict_literals.get(literal_id)
@@ -662,7 +662,7 @@ class LocalTypeDeduction:
         Merged into a single method to guarantee identical handling.
         """
         # Process dicts
-        for literal_id in self.ctx.pending_dict_resolutions:
+        for literal_id in self.ctx.func.pending_dict_resolutions:
             info = self.ctx.dict_literals.get(literal_id)
             if info is None:
                 continue
@@ -691,7 +691,7 @@ class LocalTypeDeduction:
             self._apply_container_resolution(info, DictType(key_type, value_type))
 
         # Process sets
-        for literal_id in self.ctx.pending_set_resolutions:
+        for literal_id in self.ctx.func.pending_set_resolutions:
             info = self.ctx.set_literals.get(literal_id)
             if info is None:
                 continue
@@ -723,7 +723,7 @@ class LocalTypeDeduction:
         if not isinstance(obj_expr, TpyName):
             return
         var_name = obj_expr.name
-        literal_id = self.ctx.variable_to_set_literal.get(var_name)
+        literal_id = self.ctx.func.variable_to_set_literal.get(var_name)
         if literal_id is None:
             return
         info = self.ctx.set_literals.get(literal_id)
@@ -769,7 +769,7 @@ class LocalTypeDeduction:
         if isinstance(init_expr, TpyName):
             name = init_expr.name
             # Check if it's a str/bytes parameter (C++ already passes as view)
-            func = self.ctx.current_function
+            func = self.ctx.func.current_function
             if isinstance(func, TpyFunction):
                 for pname, ptype in func.params:
                     if pname == name:
@@ -779,7 +779,7 @@ class LocalTypeDeduction:
                             return True
 
             # Another pending or view local (must match the same family)
-            scope_type = self.ctx.current_scope.lookup(name) if self.ctx.current_scope else None
+            scope_type = self.ctx.func.current_scope.lookup(name) if self.ctx.func.current_scope else None
             if is_str and isinstance(scope_type, (PendingStrType, StrViewType)):
                 return True
             if is_bytes and isinstance(scope_type, (PendingBytesType, BytesViewType)):
@@ -927,12 +927,12 @@ class LocalTypeDeduction:
                 continue
             resolved = info.resolved_type
 
-            if info.variable_name and self.ctx.current_scope:
-                current_type = self.ctx.current_scope.lookup(info.variable_name)
+            if info.variable_name and self.ctx.func.current_scope:
+                current_type = self.ctx.func.current_scope.lookup(info.variable_name)
                 if isinstance(current_type, family.pending_type_class):
-                    self.ctx.current_scope.define(info.variable_name, resolved)
+                    self.ctx.func.current_scope.define(info.variable_name, resolved)
 
-            var_decl = self.ctx.var_decl_by_name.get(info.variable_name)
+            var_decl = self.ctx.func.var_decl_by_name.get(info.variable_name)
             if var_decl:
                 self.ctx.var_types[id(var_decl)] = resolved
             if info.decl_line is not None:
@@ -944,11 +944,11 @@ class LocalTypeDeduction:
 
     def _check_unresolved_none_inference(self) -> None:
         """Reject variables left as bare None without an inferred or annotated type."""
-        if not self.ctx.unresolved_none_vars:
+        if not self.ctx.func.unresolved_none_vars:
             return
-        name = sorted(self.ctx.unresolved_none_vars)[0]
+        name = sorted(self.ctx.func.unresolved_none_vars)[0]
         # Emit at the first None write location.
-        for typ, expr in self.ctx.write_history.get(name, []):
+        for typ, expr in self.ctx.func.write_history.get(name, []):
             if isinstance(typ, NoneType):
                 raise self.ctx.error(
                     f"Cannot infer type for '{name}': assigned None but never assigned a concrete value; "
@@ -962,10 +962,10 @@ class LocalTypeDeduction:
 
     def _check_unresolved_pending_generics(self) -> None:
         """Reject pending generic instances that were never fully resolved."""
-        if not self.ctx.pending_generic_instances:
+        if not self.ctx.func.pending_generic_instances:
             return
         # Report the first unresolved instance.
-        info = next(iter(self.ctx.pending_generic_instances.values()))
+        info = next(iter(self.ctx.func.pending_generic_instances.values()))
         unresolved = [tp for tp in info.type_params if tp not in info.inferred]
         raise self.ctx.error(
             f"Cannot infer type argument{'s' if len(unresolved) != 1 else ''} "

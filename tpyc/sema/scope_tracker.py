@@ -31,46 +31,46 @@ class ScopeTracker:
     @contextmanager
     def loop_scope(self) -> Iterator[Scope]:
         """Create an inner scope for a loop body and bump loop_depth."""
-        inner_scope = Scope(self.ctx.current_scope)
-        old_scope = self.ctx.current_scope
-        self.ctx.current_scope = inner_scope
-        self.ctx.loop_depth += 1
+        inner_scope = Scope(self.ctx.func.current_scope)
+        old_scope = self.ctx.func.current_scope
+        self.ctx.func.current_scope = inner_scope
+        self.ctx.func.loop_depth += 1
         try:
             yield inner_scope
         finally:
-            self.ctx.loop_depth -= 1
-            self.ctx.current_scope = old_scope
+            self.ctx.func.loop_depth -= 1
+            self.ctx.func.current_scope = old_scope
 
     @contextmanager
     def comprehension_scope(self) -> Iterator[Scope]:
         """Create an inner scope for a comprehension (no loop_depth bump)."""
-        inner_scope = Scope(self.ctx.current_scope)
-        old_scope = self.ctx.current_scope
-        self.ctx.current_scope = inner_scope
+        inner_scope = Scope(self.ctx.func.current_scope)
+        old_scope = self.ctx.func.current_scope
+        self.ctx.func.current_scope = inner_scope
         self.ctx.in_comprehension += 1
         try:
             yield inner_scope
         finally:
             self.ctx.in_comprehension -= 1
-            self.ctx.current_scope = old_scope
+            self.ctx.func.current_scope = old_scope
 
     @contextmanager
     def lambda_scope(self) -> Iterator[Scope]:
         """Create an inner scope for a lambda body."""
-        inner_scope = Scope(self.ctx.current_scope)
-        old_scope = self.ctx.current_scope
-        old_ns = self.ctx.current_ns
-        old_assigned = self.ctx.definitely_assigned.copy()
-        self.ctx.current_scope = inner_scope
-        if self.ctx.current_ns:
-            inner_ns = Namespace(parent=self.ctx.current_ns)
-            self.ctx.current_ns = inner_ns
+        inner_scope = Scope(self.ctx.func.current_scope)
+        old_scope = self.ctx.func.current_scope
+        old_ns = self.ctx.func.current_ns
+        old_assigned = self.ctx.func.definitely_assigned.copy()
+        self.ctx.func.current_scope = inner_scope
+        if self.ctx.func.current_ns:
+            inner_ns = Namespace(parent=self.ctx.func.current_ns)
+            self.ctx.func.current_ns = inner_ns
         try:
             yield inner_scope
         finally:
-            self.ctx.definitely_assigned = old_assigned
-            self.ctx.current_scope = old_scope
-            self.ctx.current_ns = old_ns
+            self.ctx.func.definitely_assigned = old_assigned
+            self.ctx.func.current_scope = old_scope
+            self.ctx.func.current_ns = old_ns
 
     @contextmanager
     def nested_def_scope(self, func_node: object) -> Iterator[Scope]:
@@ -80,15 +80,15 @@ class ScopeTracker:
         doesn't interfere with the enclosing function.
         """
         saved = self.ctx.save_function_state()
-        inner_scope = Scope(self.ctx.current_scope)
-        inner_ns = Namespace(parent=self.ctx.current_ns) if self.ctx.current_ns else None
+        inner_scope = Scope(self.ctx.func.current_scope)
+        inner_ns = Namespace(parent=self.ctx.func.current_ns) if self.ctx.func.current_ns else None
 
         self.ctx.reset_function_tracking()
-        self.ctx.current_scope = inner_scope
-        self.ctx.current_ns = inner_ns
-        self.ctx.current_function = func_node
-        self.ctx.in_nested_def = True
-        self.ctx.nested_def_name = func_node.name
+        self.ctx.func.current_scope = inner_scope
+        self.ctx.func.current_ns = inner_ns
+        self.ctx.func.current_function = func_node
+        self.ctx.func.in_nested_def = True
+        self.ctx.func.nested_def_name = func_node.name
         try:
             yield inner_scope
         finally:
@@ -99,29 +99,29 @@ class ScopeTracker:
                  depth: int, is_foreach: bool = False) -> Iterator[None]:
         """Bind a loop variable in scope/namespace and track its depth."""
         scope.define(name, var_type)
-        old_depth = self.ctx.var_scope_depth.get(name)
-        self.ctx.var_scope_depth[name] = depth
-        old_ns = self.ctx.current_ns
-        if self.ctx.current_ns:
-            inner_ns = Namespace(parent=self.ctx.current_ns)
+        old_depth = self.ctx.func.var_scope_depth.get(name)
+        self.ctx.func.var_scope_depth[name] = depth
+        old_ns = self.ctx.func.current_ns
+        if self.ctx.func.current_ns:
+            inner_ns = Namespace(parent=self.ctx.func.current_ns)
             inner_ns.bind_variable(name, var_type)
-            self.ctx.current_ns = inner_ns
+            self.ctx.func.current_ns = inner_ns
         if is_foreach:
-            self.ctx.loop_vars.add(name)
-        was_assigned = name in self.ctx.definitely_assigned
-        self.ctx.definitely_assigned.add(name)
+            self.ctx.func.loop_vars.add(name)
+        was_assigned = name in self.ctx.func.definitely_assigned
+        self.ctx.func.definitely_assigned.add(name)
         try:
             yield
         finally:
             if is_foreach:
-                self.ctx.loop_vars.discard(name)
+                self.ctx.func.loop_vars.discard(name)
             if not was_assigned:
-                self.ctx.definitely_assigned.discard(name)
-            self.ctx.current_ns = old_ns
+                self.ctx.func.definitely_assigned.discard(name)
+            self.ctx.func.current_ns = old_ns
             if old_depth is not None:
-                self.ctx.var_scope_depth[name] = old_depth
+                self.ctx.func.var_scope_depth[name] = old_depth
             else:
-                self.ctx.var_scope_depth.pop(name, None)
+                self.ctx.func.var_scope_depth.pop(name, None)
 
     # --- Escape detection ---
 
@@ -130,7 +130,7 @@ class ScopeTracker:
         if isinstance(expr, TpyCoerce):
             return self.get_expr_scope_depth(expr.expr)
         if isinstance(expr, TpyName):
-            return self.ctx.var_scope_depth.get(expr.name, 0)
+            return self.ctx.func.var_scope_depth.get(expr.name, 0)
         if isinstance(expr, TpyFieldAccess):
             return self.get_expr_scope_depth(expr.obj)
         if isinstance(expr, TpySubscript):
@@ -144,7 +144,7 @@ class ScopeTracker:
             return False
         if not self.compat.is_lvalue(source_expr):
             return False
-        target_depth = self.ctx.var_scope_depth.get(target_name, 0)
+        target_depth = self.ctx.func.var_scope_depth.get(target_name, 0)
         source_depth = self.get_expr_scope_depth(source_expr)
         return source_depth > target_depth
 
@@ -159,8 +159,8 @@ class ScopeTracker:
         """
         if self.is_scope_escape(target_name, source_expr):
             source_name = self._get_source_name(source_expr)
-            can_hoist = (source_name not in self.ctx.loop_vars
-                         and source_name in self.ctx.rvalue_vars)
+            can_hoist = (source_name not in self.ctx.func.loop_vars
+                         and source_name in self.ctx.func.rvalue_vars)
             if not can_hoist:
                 raise self.ctx.error(
                     f"reference to '{source_name}' may outlive its storage; "
@@ -172,13 +172,13 @@ class ScopeTracker:
                 f"storage hoisted to function scope",
                 node
             )
-            self.ctx.hoisted_vars.add(source_name)
+            self.ctx.func.hoisted_vars.add(source_name)
             # Hoisted vars become pointer-locals -- strip Own[T] wrapper
             # since they can no longer own their storage.
-            if self.ctx.current_scope:
-                scope_type = self.ctx.current_scope.lookup(source_name)
+            if self.ctx.func.current_scope:
+                scope_type = self.ctx.func.current_scope.lookup(source_name)
                 if isinstance(scope_type, OwnType):
-                    self.ctx.current_scope.define(source_name, scope_type.wrapped)
+                    self.ctx.func.current_scope.define(source_name, scope_type.wrapped)
 
     def _get_source_name(self, expr: TpyExpr) -> str:
         """Extract the root variable name from an expression for error messages."""

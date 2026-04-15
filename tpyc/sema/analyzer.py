@@ -224,11 +224,11 @@ class SemanticAnalyzer:
     # Public API compatibility properties
     @property
     def current_scope(self) -> Optional[Scope]:
-        return self.ctx.current_scope
+        return self.ctx.func.current_scope
 
     @property
     def current_function(self) -> Optional[TpyFunction]:
-        return self.ctx.current_function
+        return self.ctx.func.current_function
 
     @property
     def expr_types(self) -> dict[int, TpyType]:
@@ -676,7 +676,7 @@ class SemanticAnalyzer:
             own = unwrap_optional_own(unwrap_readonly(ptype))
             if own is None:
                 continue
-            if pname in self.ctx.current_consumed_own_params:
+            if pname in self.ctx.func.current_consumed_own_params:
                 continue
             # Optional[Own[T]]: None branch has nothing to consume, making
             # flow-sensitive intersection unreliable
@@ -708,18 +708,18 @@ class SemanticAnalyzer:
 
         self.ctx.reset_function_tracking()
 
-        self.ctx.current_function = func
+        self.ctx.func.current_function = func
         if func.is_generator:
             self.ctx._yield_counter = 0
         # Resolve return type (sets is_protocol for cross-module imports)
         func.return_type = make_ref(self.type_ops.resolve_type(func.return_type))
         scope = Scope(parent=self.ctx.global_scope)
-        self.ctx.current_scope = scope
+        self.ctx.func.current_scope = scope
 
         # Resolve and normalize params (@readonly wraps all non-value params).
         # Write back to AST so codegen sees Ref/ReadonlyType (codegen reads func.params directly, not FI).
         local_ns = Namespace(parent=self.ctx.global_ns)
-        self.ctx.current_ns = local_ns
+        self.ctx.func.current_ns = local_ns
         resolved_params: list[tuple[str, TpyType]] = []
         for i, (pname, ptype) in enumerate(func.params):
             resolved_ptype = self._normalize_param_type(
@@ -774,7 +774,7 @@ class SemanticAnalyzer:
             for name, binding in local_ns.all_bindings().items():
                 if name not in param_names and binding.type is not None:
                     locals_dict[name] = binding.type
-            for name, (vtype, _, _) in self.ctx.pending_loop_vars.items():
+            for name, (vtype, _, _) in self.ctx.func.pending_loop_vars.items():
                 if name not in param_names and vtype is not None:
                     locals_dict[name] = vtype
             func.generator_locals = list(locals_dict.items())
@@ -789,24 +789,24 @@ class SemanticAnalyzer:
             param_list = [pname for pname, _ in func.params]
             direct = frozenset(
                 i for i, pname in enumerate(param_list)
-                if pname in self.ctx.current_mutated_param_names
+                if pname in self.ctx.func.current_mutated_param_names
             )
             func_info.direct_mutated_params = direct
-            func_info.call_edges = list(self.ctx.current_call_edges)
+            func_info.call_edges = list(self.ctx.func.current_call_edges)
             # Set mutated_params to direct facts as initial estimate;
             # Phase 2 propagation will replace with the complete transitive set.
             func_info.mutated_params = direct
             # Structural mutation facts (append/insert/clear/del/etc.)
             direct_struct = frozenset(
                 i for i, pname in enumerate(param_list)
-                if pname in self.ctx.current_struct_mutated_param_names
+                if pname in self.ctx.func.current_struct_mutated_param_names
             )
             func_info.direct_structural_mutated_params = direct_struct
             func_info.structural_mutated_params = direct_struct
             # 8b: Return borrow facts -- which params does the return value borrow from?
             func_info.return_borrows_from = frozenset(
                 i for i, pname in enumerate(param_list)
-                if pname in self.ctx.current_returned_param_names
+                if pname in self.ctx.func.current_returned_param_names
             )
             # Generator functions: the returned struct stores non-value params
             # as T& references (or &ref lambda captures), and str params as
@@ -823,43 +823,43 @@ class SemanticAnalyzer:
         self._store_analysis_results(func, scan)
 
         self.ctx.in_consuming_method = prev_consuming
-        self.ctx.current_function = None
-        self.ctx.current_scope = None
-        self.ctx.current_ns = None
+        self.ctx.func.current_function = None
+        self.ctx.func.current_scope = None
+        self.ctx.func.current_ns = None
 
     def _store_analysis_results(self, func: TpyFunction, scan: ScanResult) -> None:
         """Store prescan/liveness results for codegen consumption."""
         self.function_scan_results[id(func)] = scan
-        if self.ctx.hoisted_vars:
-            self.function_hoisted_vars[id(func)] = self.ctx.hoisted_vars.copy()
-        if self.ctx.move_through_vars:
-            self.function_move_through_vars[id(func)] = self.ctx.move_through_vars.copy()
+        if self.ctx.func.hoisted_vars:
+            self.function_hoisted_vars[id(func)] = self.ctx.func.hoisted_vars.copy()
+        if self.ctx.func.move_through_vars:
+            self.function_move_through_vars[id(func)] = self.ctx.func.move_through_vars.copy()
         # Compute movable locals from ever_owned_locals (survives FlowFacts restores)
         movable = set()
-        for name in self.ctx.ever_owned_locals:
-            if name in self.ctx.hoisted_vars:
+        for name in self.ctx.func.ever_owned_locals:
+            if name in self.ctx.func.hoisted_vars:
                 continue
-            if name in self.ctx.current_reassigned_vars and name in self.ctx.current_lvalue_reassigned:
+            if name in self.ctx.func.current_reassigned_vars and name in self.ctx.func.current_lvalue_reassigned:
                 continue
             movable.add(name)
         if movable:
             self.function_movable_locals[id(func)] = movable
-        if self.ctx.global_declarations:
-            self.function_global_decls[id(func)] = self.ctx.global_declarations.copy()
+        if self.ctx.func.global_declarations:
+            self.function_global_decls[id(func)] = self.ctx.func.global_declarations.copy()
         self.if_branch_decls.update(self.ctx.if_branch_decls)
 
     def _finalize_nested_def_escapes(self) -> None:
         """Finalize escape analysis for nested defs after the enclosing function is analyzed."""
         # Outer function's parameter names and types
         outer_params: dict[str, TpyType] = {}
-        if self.ctx.current_function:
-            for pname, ptype in self.ctx.current_function.params:
+        if self.ctx.func.current_function:
+            for pname, ptype in self.ctx.func.current_function.params:
                 outer_params[pname] = ptype
         outer_param_names = set(outer_params.keys())
         # Get the enclosing function body for "used after" analysis
-        body = self.ctx.current_function.body if self.ctx.current_function else []
-        for name in self.ctx.nested_def_escapes:
-            node = self.ctx.nested_def_nodes.get(name)
+        body = self.ctx.func.current_function.body if self.ctx.func.current_function else []
+        for name in self.ctx.func.nested_def_escapes:
+            node = self.ctx.func.nested_def_nodes.get(name)
             if node is None:
                 continue
             node.escapes = True
@@ -874,7 +874,7 @@ class SemanticAnalyzer:
             names_used_after = self._names_used_after(body, node)
             # Per-capture analysis: determine ref vs value vs move capture mode
             for cap_name in node.captured_names:
-                cap_type = self.ctx.current_scope.lookup(cap_name) if self.ctx.current_scope else None
+                cap_type = self.ctx.func.current_scope.lookup(cap_name) if self.ctx.func.current_scope else None
                 if cap_type is None:
                     continue
                 raw_type = unwrap_readonly(cap_type)
@@ -1324,22 +1324,22 @@ class SemanticAnalyzer:
                 continue
 
             self.ctx.reset_function_tracking()
-            self.ctx.current_function = method
+            self.ctx.func.current_function = method
             if method.is_generator:
                 self.ctx._yield_counter = 0
             # Resolve return type (sets is_protocol for cross-module imports)
             method.return_type = make_ref(self.type_ops.resolve_type(method.return_type))
             scope = Scope(parent=self.ctx.global_scope)
-            self.ctx.current_scope = scope
+            self.ctx.func.current_scope = scope
 
             local_ns = Namespace(parent=self.ctx.global_ns)
-            self.ctx.current_ns = local_ns
+            self.ctx.func.current_ns = local_ns
             if not method.is_staticmethod:
                 self_named = build_record_self_type(record)
                 self_type = self._normalize_param_type(self_named, method.is_readonly)
                 scope.define("self", self_type)
-                self.ctx.var_scope_depth["self"] = scope.depth
-                self.ctx.definitely_assigned.add("self")
+                self.ctx.func.var_scope_depth["self"] = scope.depth
+                self.ctx.func.definitely_assigned.add("self")
                 local_ns.bind_variable("self", self_type)
 
             # Resolve and normalize params (@readonly wraps all non-value params).
@@ -1408,7 +1408,7 @@ class SemanticAnalyzer:
                 for name, binding in local_ns.all_bindings().items():
                     if name not in param_names and name != "self" and binding.type is not None:
                         locals_dict[name] = binding.type
-                for name, (vtype, _, _) in self.ctx.pending_loop_vars.items():
+                for name, (vtype, _, _) in self.ctx.func.pending_loop_vars.items():
                     if name not in param_names and name != "self" and vtype is not None:
                         locals_dict[name] = vtype
                 method.generator_locals = list(locals_dict.items())
@@ -1433,27 +1433,27 @@ class SemanticAnalyzer:
                 self._check_init_field_assignments(method, record)
 
             # Validate super().__init__() position in __init__ methods
-            if method.name == "__init__" and self.ctx.super_init_call is not None:
+            if method.name == "__init__" and self.ctx.func.super_init_call is not None:
                 # super().__init__() must be the first non-docstring statement
                 first_real_stmt = MethodAnalyzer.find_first_non_docstring_stmt(method.body)
                 if first_real_stmt is not None:
                     # Check if first real statement contains the super().__init__() call
-                    if not MethodAnalyzer.stmt_contains_super_init(first_real_stmt, self.ctx.super_init_call):
+                    if not MethodAnalyzer.stmt_contains_super_init(first_real_stmt, self.ctx.func.super_init_call):
                         raise self._error(
                             "super().__init__() must be the first statement in __init__",
-                            self.ctx.super_init_call
+                            self.ctx.func.super_init_call
                         )
 
             # Validate __del__ methods
             if method.name == "__del__":
                 record_info = self.ctx.registry.get_record(record.name)
-                if self.ctx.super_del_call is not None:
+                if self.ctx.func.super_del_call is not None:
                     # super().__del__() must be the last non-docstring statement
                     last_real_stmt = MethodAnalyzer.find_last_non_docstring_stmt(method.body)
                     if last_real_stmt is not None and not is_super_del_call(last_real_stmt):
                         raise self._error(
                             "super().__del__() must be the last statement in __del__",
-                            self.ctx.super_del_call
+                            self.ctx.func.super_del_call
                         )
                 elif record_info and record_info.parent:
                     # No super().__del__() but there is a parent class - check if parent has __del__
@@ -1493,36 +1493,36 @@ class SemanticAnalyzer:
                     param_list = [pname for pname, _ in method.params]
                     direct = frozenset(
                         i for i, pname in enumerate(param_list)
-                        if pname in self.ctx.current_mutated_param_names
+                        if pname in self.ctx.func.current_mutated_param_names
                     )
                     method_fi.direct_mutated_params = direct
-                    method_fi.direct_self_mutated = self.ctx.current_self_mutated
-                    method_fi.call_edges = list(self.ctx.current_call_edges)
+                    method_fi.direct_self_mutated = self.ctx.func.current_self_mutated
+                    method_fi.call_edges = list(self.ctx.func.current_call_edges)
                     method_fi.mutated_params = direct
                     # Structural mutation facts (append/insert/clear/del/etc.)
                     direct_struct = frozenset(
                         i for i, pname in enumerate(param_list)
-                        if pname in self.ctx.current_struct_mutated_param_names
+                        if pname in self.ctx.func.current_struct_mutated_param_names
                     )
-                    if self.ctx.current_self_struct_mutated:
+                    if self.ctx.func.current_self_struct_mutated:
                         direct_struct = direct_struct | frozenset({-1})
                     method_fi.direct_structural_mutated_params = direct_struct
                     method_fi.structural_mutated_params = direct_struct
                     # 8b: Return borrow facts
                     returned = frozenset(
                         i for i, pname in enumerate(param_list)
-                        if pname in self.ctx.current_returned_param_names
+                        if pname in self.ctx.func.current_returned_param_names
                     )
-                    if "self" in self.ctx.current_returned_param_names:
+                    if "self" in self.ctx.func.current_returned_param_names:
                         returned = returned | frozenset([-1])
                     method_fi.return_borrows_from = returned
 
             self._warn_unconsumed_own_params(method)
             self._store_analysis_results(method, scan)
 
-            self.ctx.current_scope = None
-            self.ctx.current_function = None
-            self.ctx.current_ns = None
+            self.ctx.func.current_scope = None
+            self.ctx.func.current_function = None
+            self.ctx.func.current_ns = None
 
         self.ctx.record_ctx = RecordContext()
 
@@ -1710,36 +1710,36 @@ class SemanticAnalyzer:
         constructs go through the same analysis path.
         """
         self.ctx.reset_function_tracking()
-        self.ctx.current_function = MODULE_INIT_CONTEXT
-        self.ctx.current_scope = Scope(parent=self.ctx.global_scope)
+        self.ctx.func.current_function = MODULE_INIT_CONTEXT
+        self.ctx.func.current_scope = Scope(parent=self.ctx.global_scope)
         self.ctx.is_top_level = True
 
         # Set up namespace - use global_ns for top-level (globals are visible)
         # New local variables will be added to global_ns as they're declared
-        self.ctx.current_ns = self.ctx.global_ns
+        self.ctx.func.current_ns = self.ctx.global_ns
 
         # Pre-scan for codegen
         self.top_level_scan_result = scan_reassigned_vars(stmts)
         # Last-use analysis for auto-move (shared with codegen)
         self.ctx.all_last_uses |= analyze_last_uses(
             stmts, self.top_level_scan_result.alias_sources)
-        self.ctx.current_reassigned_vars = self.top_level_scan_result.reassigned.copy()
-        self.ctx.current_lvalue_reassigned = self.top_level_scan_result.lvalue_reassigned.copy()
-        self.ctx.current_aug_assigned_vars = self.top_level_scan_result.aug_assigned.copy()
+        self.ctx.func.current_reassigned_vars = self.top_level_scan_result.reassigned.copy()
+        self.ctx.func.current_lvalue_reassigned = self.top_level_scan_result.lvalue_reassigned.copy()
+        self.ctx.func.current_aug_assigned_vars = self.top_level_scan_result.aug_assigned.copy()
 
         for stmt in stmts:
             self.stmts.analyze_stmt(stmt)
         self.deduction.resolve_all()
 
-        if self.ctx.hoisted_vars:
-            self.top_level_hoisted_vars = self.ctx.hoisted_vars.copy()
-        if self.ctx.move_through_vars:
-            self.top_level_move_through_vars = self.ctx.move_through_vars.copy()
+        if self.ctx.func.hoisted_vars:
+            self.top_level_hoisted_vars = self.ctx.func.hoisted_vars.copy()
+        if self.ctx.func.move_through_vars:
+            self.top_level_move_through_vars = self.ctx.func.move_through_vars.copy()
         self.if_branch_decls.update(self.ctx.if_branch_decls)
 
-        self.ctx.current_function = None
-        self.ctx.current_scope = None
-        self.ctx.current_ns = None
+        self.ctx.func.current_function = None
+        self.ctx.func.current_scope = None
+        self.ctx.func.current_ns = None
         self.ctx.is_top_level = False
 
     def get_expr_type(self, expr: TpyExpr) -> Optional[TpyType]:

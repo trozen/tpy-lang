@@ -63,7 +63,7 @@ class TypeOperations:
             # are parsed as NamedType but should be TypeParamRef).
             if not protocols_only and not typ.type_args and not typ.is_protocol:
                 from ..parse import TpyFunction
-                func = self.ctx.current_function
+                func = self.ctx.func.current_function
                 if isinstance(func, TpyFunction) and typ.name in func.type_params:
                     bound = func.type_param_bounds.get(typ.name)
                     return TypeParamRef(typ.name, bound=bound)
@@ -469,9 +469,9 @@ class TypeOperations:
         """
         from ..parse import TpyFunction
         # Check current function's type param bounds
-        if (self.ctx.current_function and isinstance(self.ctx.current_function, TpyFunction)
-                and type_param_name in self.ctx.current_function.type_param_bounds):
-            return self.ctx.current_function.type_param_bounds[type_param_name]
+        if (self.ctx.func.current_function and isinstance(self.ctx.func.current_function, TpyFunction)
+                and type_param_name in self.ctx.func.current_function.type_param_bounds):
+            return self.ctx.func.current_function.type_param_bounds[type_param_name]
         # Check current record's type param bounds (for methods in generic classes)
         if (self.ctx.record_ctx.type_param_bounds
                 and type_param_name in self.ctx.record_ctx.type_param_bounds):

@@ -349,7 +349,7 @@ class ExpressionAnalyzer:
                     # Set call_type so codegen generates explicit type (e.g., std::vector<int>())
                     if is_generic_constructor:
                         expr.call_type = inner_hint  # type: ignore
-                    if self.ctx.current_function is None:
+                    if self.ctx.func.current_function is None:
                         typ = ListType(elem_type)
                     else:
                         literal_id = self.ctx.literal_counter
@@ -364,7 +364,7 @@ class ExpressionAnalyzer:
                             explicit_type=inner_hint
                         )
                         self.ctx.list_literals[literal_id] = info
-                        self.ctx.pending_resolutions.append(literal_id)
+                        self.ctx.func.pending_resolutions.append(literal_id)
                         typ = PendingListType(elem_type, 0, literal_id)
                     self.ctx.set_expr_type(expr, typ)
                     return typ
@@ -495,7 +495,7 @@ class ExpressionAnalyzer:
     def _analyze_name(self, expr: TpyName) -> TpyType:
         """Analyze a name reference."""
         # Use-after-consume: variable was consumed by a consuming method call
-        if expr.name in self.ctx.consumed_vars:
+        if expr.name in self.ctx.func.consumed_vars:
             raise self.ctx.error(
                 f"Cannot use '{expr.name}' after it was consumed by a consuming method call",
                 expr,
@@ -514,8 +514,8 @@ class ExpressionAnalyzer:
                 pass  # Not a type parameter
 
         # Use namespace for unified lookup (includes builtins)
-        if self.ctx.current_ns:
-            binding = self.ctx.current_ns.lookup(expr.name)
+        if self.ctx.func.current_ns:
+            binding = self.ctx.func.current_ns.lookup(expr.name)
             if binding:
                 if binding.kind == BindingKind.VARIABLE:
                     self._check_definitely_assigned(expr)
@@ -530,14 +530,14 @@ class ExpressionAnalyzer:
         # Migration bridge: scope may contain names not yet in namespace
         # (e.g., during incremental namespace adoption). Remove once all
         # name registration flows go through Namespace.
-        typ = self.ctx.current_scope.lookup(expr.name)
+        typ = self.ctx.func.current_scope.lookup(expr.name)
         if typ is None:
             # Check built-in names (like __name__)
             if expr.name in self.ctx.builtin_names:
                 return self.ctx.builtin_names[expr.name]
             # Lazy promotion of loop-scoped variables referenced after the loop
             if self._promote_pending_loop_var(expr.name):
-                typ = self.ctx.current_scope.lookup(expr.name)
+                typ = self.ctx.func.current_scope.lookup(expr.name)
             else:
                 raise self.ctx.error(f"Undefined variable: '{expr.name}'", expr)
         self._check_definitely_assigned(expr)
@@ -554,8 +554,8 @@ class ExpressionAnalyzer:
         name = expr.name
         # Params: FunctionInfo type already carries Ref/Own.
         # Reassigned params fall through to local derivation.
-        if name in self.ctx.current_param_names:
-            if name not in self.ctx.current_reassigned_vars:
+        if name in self.ctx.func.current_param_names:
+            if name not in self.ctx.func.current_reassigned_vars:
                 # Strip Own at last-use for auto-move (same as before)
                 if isinstance(result, OwnType) and id(expr) in self.ctx.all_last_uses:
                     return result.wrapped
@@ -566,19 +566,19 @@ class ExpressionAnalyzer:
                 and not isinstance(result, (OwnType, RefType, NoneType,
                                             PendingListType, PendingDictType, PendingSetType,
                                             PendingViewType, PendingGenericInstanceType))
-                and name in self.ctx.owned_locals
-                and name not in self.ctx.hoisted_vars
-                and name not in self.ctx.loop_vars):
+                and name in self.ctx.func.owned_locals
+                and name not in self.ctx.func.hoisted_vars
+                and name not in self.ctx.func.loop_vars):
             if id(expr) not in self.ctx.all_last_uses:
                 return OwnType(result)
         return result
 
     def _check_definitely_assigned(self, expr: TpyName) -> None:
         """Check that a local variable is definitely assigned before use."""
-        if (not self.ctx.init_terminated
-                and expr.name in self.ctx.var_scope_depth
-                and self.ctx.var_scope_depth[expr.name] >= 1
-                and expr.name not in self.ctx.definitely_assigned):
+        if (not self.ctx.func.init_terminated
+                and expr.name in self.ctx.func.var_scope_depth
+                and self.ctx.func.var_scope_depth[expr.name] >= 1
+                and expr.name not in self.ctx.func.definitely_assigned):
             raise self.ctx.error(
                 f"variable '{expr.name}' may not be assigned at this point", expr)
 
@@ -588,12 +588,12 @@ class ExpressionAnalyzer:
         Returns True if the variable was promoted (added to scope and
         definitely_assigned, registered for codegen pre-declaration).
         """
-        pending = self.ctx.pending_loop_vars.pop(name, None)
+        pending = self.ctx.func.pending_loop_vars.pop(name, None)
         if pending is None:
             return False
         var_type, loop_stmt, orig_stmt = pending
-        self.ctx.current_scope.define(name, var_type)
-        self.ctx.definitely_assigned.add(name)
+        self.ctx.func.current_scope.define(name, var_type)
+        self.ctx.func.definitely_assigned.add(name)
         # Register for codegen pre-declaration
         decls = self.ctx.if_branch_decls.setdefault(id(loop_stmt), {})
         decls[name] = var_type
@@ -670,26 +670,26 @@ class ExpressionAnalyzer:
         left_type = self.analyze_expr(expr.left)
         if expr.op in ("&&", "||"):
             type_true, type_false = self.narrowing.condition_type_facts(expr.left)
-            saved_types = dict(self.ctx.narrowed_types)
+            saved_types = dict(self.ctx.func.narrowed_types)
             # Save definitely_assigned: RHS may not execute due to short-circuit
-            saved_assigned = frozenset(self.ctx.definitely_assigned)
+            saved_assigned = frozenset(self.ctx.func.definitely_assigned)
             if expr.op == "&&":
-                self.ctx.narrowed_types.update(type_true)
+                self.ctx.func.narrowed_types.update(type_true)
             else:
-                self.ctx.narrowed_types.update(type_false)
+                self.ctx.func.narrowed_types.update(type_false)
             try:
                 right_type = self.analyze_expr(expr.right)
             finally:
-                self.ctx.narrowed_types = saved_types
+                self.ctx.func.narrowed_types = saved_types
                 # Track walrus vars introduced in RHS (short-circuit conditional)
-                rhs_walrus = self.ctx.definitely_assigned - saved_assigned
+                rhs_walrus = self.ctx.func.definitely_assigned - saved_assigned
                 if rhs_walrus:
                     if expr.op == "&&":
                         self.ctx.sc_and_walrus |= rhs_walrus
                     else:
                         self.ctx.sc_or_walrus |= rhs_walrus
                 # Rollback: RHS walrus vars are not definitely assigned
-                self.ctx.definitely_assigned = set(saved_assigned)
+                self.ctx.func.definitely_assigned = set(saved_assigned)
         else:
             right_type = self.analyze_expr(expr.right)
 
@@ -1143,7 +1143,7 @@ class ExpressionAnalyzer:
         obj = expr.obj
         if not isinstance(index, TpyName) or not isinstance(obj, TpyName):
             return
-        index_range = self.ctx.value_ranges.get(index.name)
+        index_range = self.ctx.func.value_ranges.get(index.name)
         is_safe = (
             index_range is not None
             and index_range.is_non_negative()
@@ -1162,7 +1162,7 @@ class ExpressionAnalyzer:
             return
         if not isinstance(right, TpyName):
             return
-        divisor_range = self.ctx.value_ranges.get(right.name)
+        divisor_range = self.ctx.func.value_ranges.get(right.name)
         is_safe = divisor_range is not None and divisor_range.non_zero
         expr.divisor_non_zero = is_safe
         if expr.loc:
@@ -1179,8 +1179,8 @@ class ExpressionAnalyzer:
                     info.is_mutated = True
             elif isinstance(sub_expr, TpyName):
                 var_name = sub_expr.name
-                if var_name in self.ctx.variable_to_literal:
-                    lit_id = self.ctx.variable_to_literal[var_name]
+                if var_name in self.ctx.func.variable_to_literal:
+                    lit_id = self.ctx.func.variable_to_literal[var_name]
                     info = self.ctx.list_literals.get(lit_id)
                     if info:
                         info.is_mutated = True
@@ -1410,8 +1410,8 @@ class ExpressionAnalyzer:
         Returns (dotted_name, resolved_type) or None if not a nested type chain.
         """
         if isinstance(expr.obj, TpyName):
-            if self.ctx.current_ns:
-                binding = self.ctx.current_ns.lookup(expr.obj.name)
+            if self.ctx.func.current_ns:
+                binding = self.ctx.func.current_ns.lookup(expr.obj.name)
                 if binding and binding.kind in (BindingKind.RECORD, BindingKind.IMPORTED_NAME):
                     dotted = f"{expr.obj.name}.{expr.field}"
                     nested_enum = self.ctx.registry.get_enum(dotted)
@@ -1438,8 +1438,8 @@ class ExpressionAnalyzer:
         """Analyze a field access."""
         # Check for module variable access (e.g., sys.argv)
         if isinstance(expr.obj, TpyName):
-            if self.ctx.current_ns:
-                binding = self.ctx.current_ns.lookup(expr.obj.name)
+            if self.ctx.func.current_ns:
+                binding = self.ctx.func.current_ns.lookup(expr.obj.name)
                 if binding and binding.kind == BindingKind.MODULE:
                     # Get actual module name (may differ from local name for aliased imports)
                     module_name = binding.import_source[0] if binding.import_source else expr.obj.name
@@ -1529,7 +1529,7 @@ class ExpressionAnalyzer:
                 if deref_depth > 0 and isinstance(actual_type, PtrType):
                     obj_key = _expr_to_narrowing_key(expr.obj)
                     if obj_key is not None:
-                        if obj_key in self.ctx.non_null_ptr_vars:
+                        if obj_key in self.ctx.func.non_null_ptr_vars:
                             expr.ptr_non_null = True
                         if expr.loc:
                             self.ctx.ptr_deref_facts[
@@ -1555,7 +1555,7 @@ class ExpressionAnalyzer:
                 # Apply field path narrowing (e.g. after `if obj.field is not None:`)
                 field_key = _expr_to_narrowing_key(expr)
                 if field_key is not None:
-                    narrowed = self.ctx.narrowed_types.get(field_key)
+                    narrowed = self.ctx.func.narrowed_types.get(field_key)
                     if narrowed is not None:
                         result = narrowed
                 return make_ref(result)
@@ -1592,7 +1592,7 @@ class ExpressionAnalyzer:
                 annotation is list[Int32 | None].
         """
         if not expr.elements:
-            if not isinstance(self.ctx.current_function, TpyFunction):
+            if not isinstance(self.ctx.func.current_function, TpyFunction):
                 raise self.ctx.error("Empty array literal requires explicit type annotation", expr)
             # Empty list with no annotation -- create PendingListType with unknown
             # element type. The element type will be inferred from subsequent usage
@@ -1608,7 +1608,7 @@ class ExpressionAnalyzer:
                 is_mutated=True,  # empty list is always list, never Array
             )
             self.ctx.list_literals[literal_id] = info
-            self.ctx.pending_resolutions.append(literal_id)
+            self.ctx.func.pending_resolutions.append(literal_id)
             return PendingListType(UNKNOWN_ELEMENT, 0, literal_id)
 
         # Analyze all elements, propagating expected type as hint when available
@@ -1703,7 +1703,7 @@ class ExpressionAnalyzer:
 
         # Global context (no current function) -> ListType (std::vector)
         # Keep IntLiteralType to allow coercion to Int32 when annotation is present
-        if self.ctx.current_function is None:
+        if self.ctx.func.current_function is None:
             return ListType(first_type)
 
         # Function-local context -> create PendingListType for deferred resolution
@@ -1718,7 +1718,7 @@ class ExpressionAnalyzer:
             is_global=self.ctx.is_top_level
         )
         self.ctx.list_literals[literal_id] = info
-        self.ctx.pending_resolutions.append(literal_id)
+        self.ctx.func.pending_resolutions.append(literal_id)
 
         return PendingListType(first_type, size, literal_id)
 
@@ -1767,7 +1767,7 @@ class ExpressionAnalyzer:
             resolved = resolved.family.owned_type
 
         # PEP 572: walrus in comprehension leaks to enclosing function scope
-        target_scope = self.ctx.current_scope
+        target_scope = self.ctx.func.current_scope
         levels = self.ctx.in_comprehension
         while levels > 0 and target_scope.parent is not None:
             target_scope = target_scope.parent
@@ -1780,13 +1780,13 @@ class ExpressionAnalyzer:
         else:
             # New binding
             target_scope.define(name, resolved)
-            if self.ctx.current_ns:
-                self.ctx.current_ns.bind_variable(name, resolved)
+            if self.ctx.func.current_ns:
+                self.ctx.func.current_ns.bind_variable(name, resolved)
 
-        self.ctx.definitely_assigned.add(name)
-        self.ctx.rvalue_vars.add(name)
-        if name not in self.ctx.var_scope_depth:
-            self.ctx.var_scope_depth[name] = target_scope.depth
+        self.ctx.func.definitely_assigned.add(name)
+        self.ctx.func.rvalue_vars.add(name)
+        if name not in self.ctx.func.var_scope_depth:
+            self.ctx.func.var_scope_depth[name] = target_scope.depth
 
         return value_type
 
@@ -1802,22 +1802,22 @@ class ExpressionAnalyzer:
 
         # Save narrowed_types (ternary doesn't create vars, so we only
         # need to save/restore narrowing, not the full InitTracker state).
-        saved_narrowed = dict(self.ctx.narrowed_types)
+        saved_narrowed = dict(self.ctx.func.narrowed_types)
 
-        self.ctx.narrowed_types.update(then_facts)
+        self.ctx.func.narrowed_types.update(then_facts)
         if type_hint is not None:
             then_type = self.analyze_expr_with_hint(expr.then_expr, type_hint)
         else:
             then_type = self.analyze_expr(expr.then_expr)
 
-        self.ctx.narrowed_types = dict(saved_narrowed)
-        self.ctx.narrowed_types.update(else_facts)
+        self.ctx.func.narrowed_types = dict(saved_narrowed)
+        self.ctx.func.narrowed_types.update(else_facts)
         if type_hint is not None:
             else_type = self.analyze_expr_with_hint(expr.else_expr, type_hint)
         else:
             else_type = self.analyze_expr(expr.else_expr)
 
-        self.ctx.narrowed_types = saved_narrowed
+        self.ctx.func.narrowed_types = saved_narrowed
 
         # Strip Ref/Own from branch types -- these are provenance qualifiers,
         # not part of the result type.  The ternary produces a value.
@@ -1929,7 +1929,7 @@ class ExpressionAnalyzer:
     ) -> TpyType:
         """Analyze a dict literal {key: value, ...}"""
         if not expr.keys:
-            if not isinstance(self.ctx.current_function, TpyFunction):
+            if not isinstance(self.ctx.func.current_function, TpyFunction):
                 raise self.ctx.error(
                     "Empty dict literal requires explicit type annotation", expr)
             literal_id = self.ctx.literal_counter
@@ -1941,7 +1941,7 @@ class ExpressionAnalyzer:
                 value_type=UNKNOWN_ELEMENT,
             )
             self.ctx.dict_literals[literal_id] = info
-            self.ctx.pending_dict_resolutions.append(literal_id)
+            self.ctx.func.pending_dict_resolutions.append(literal_id)
             return PendingDictType(UNKNOWN_ELEMENT, UNKNOWN_ELEMENT, literal_id)
 
         if expected_key:
@@ -2141,7 +2141,7 @@ class ExpressionAnalyzer:
                 raise self.ctx.error(f"List repetition element {i} has type {elem_type}, expected {first_type}", expr)
 
         # Global context -> ListType (no deferred resolution)
-        if self.ctx.current_function is None:
+        if self.ctx.func.current_function is None:
             return ListType(first_type)
 
         # Function-local context -> PendingListType for deferred resolution
@@ -2162,7 +2162,7 @@ class ExpressionAnalyzer:
             is_global=self.ctx.is_top_level,
         )
         self.ctx.list_literals[literal_id] = info
-        self.ctx.pending_resolutions.append(literal_id)
+        self.ctx.func.pending_resolutions.append(literal_id)
 
         return PendingListType(first_type, size, literal_id)
 
@@ -2233,7 +2233,7 @@ class ExpressionAnalyzer:
 
         if kind == "list":
             array_size = self._try_comp_array_size(expr)
-            if array_size is not None and self.ctx.current_function is not None:
+            if array_size is not None and self.ctx.func.current_function is not None:
                 literal_id = self.ctx.literal_counter
                 self.ctx.literal_counter += 1
                 info = ListLiteralInfo(
@@ -2244,7 +2244,7 @@ class ExpressionAnalyzer:
                     is_global=self.ctx.is_top_level,
                 )
                 self.ctx.list_literals[literal_id] = info
-                self.ctx.pending_resolutions.append(literal_id)
+                self.ctx.func.pending_resolutions.append(literal_id)
                 return PendingListType(result_elem_type, array_size, literal_id)
 
         return SetType(result_elem_type) if kind == "set" else ListType(result_elem_type)
@@ -2473,8 +2473,8 @@ class ExpressionAnalyzer:
     def _analyze_subscript(self, expr: TpySubscript) -> TpyType:
         """Analyze subscript indexing: obj[index] or slicing: obj[start:stop]"""
         # Enum name lookup: Color["Red"] -> Color (panics on invalid)
-        if isinstance(expr.obj, TpyName) and self.ctx.current_ns:
-            binding = self.ctx.current_ns.lookup(expr.obj.name)
+        if isinstance(expr.obj, TpyName) and self.ctx.func.current_ns:
+            binding = self.ctx.func.current_ns.lookup(expr.obj.name)
             if binding and binding.kind == BindingKind.ENUM:
                 index_type = self.analyze_expr(expr.index)
                 if not is_any_str_type(index_type):
@@ -2793,14 +2793,14 @@ class ExpressionAnalyzer:
         expr.inferred_param_types = list(fn_type.param_types)
 
         # Save outer scope locals for capture filtering
-        outer_locals = set(self.ctx.definitely_assigned)
+        outer_locals = set(self.ctx.func.definitely_assigned)
 
         with self.scopes.lambda_scope() as scope:
             for pname, ptype in zip(expr.param_names, fn_type.param_types):
                 scope.define(pname, ptype)
-                if self.ctx.current_ns:
-                    self.ctx.current_ns.bind_variable(pname, ptype)
-                self.ctx.definitely_assigned.add(pname)
+                if self.ctx.func.current_ns:
+                    self.ctx.func.current_ns.bind_variable(pname, ptype)
+                self.ctx.func.definitely_assigned.add(pname)
 
             body_type = self.analyze_expr(expr.body)
 
@@ -2852,8 +2852,8 @@ class ExpressionAnalyzer:
         None to fall through to normal name analysis.
         """
         # Look up in namespace -- variables shadow functions
-        if self.ctx.current_ns:
-            binding = self.ctx.current_ns.lookup(expr.name)
+        if self.ctx.func.current_ns:
+            binding = self.ctx.func.current_ns.lookup(expr.name)
             if binding:
                 if binding.kind == BindingKind.VARIABLE:
                     return None  # local variable shadows any function
@@ -2864,8 +2864,8 @@ class ExpressionAnalyzer:
                         expr.function_ref_info = matched
                         # Escape tracking: passing nested def to Callable marks it as escaping
                         if (isinstance(hint, CallableType)
-                                and expr.name in self.ctx.nested_def_names):
-                            self.ctx.nested_def_escapes.add(expr.name)
+                                and expr.name in self.ctx.func.nested_def_names):
+                            self.ctx.func.nested_def_escapes.add(expr.name)
                         return self._concrete_fn_type(matched, expr, hint)
 
         # Check registry (covers imported functions not yet in namespace)

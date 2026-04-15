@@ -100,11 +100,12 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
         return
     if fi is None or fi.return_borrows_from is None:
         return
+    bt = ctx.func.borrow_tracker
     for idx in fi.return_borrows_from:
         if idx == -1 and obj is not None:
             root = _borrow_storage_root(obj)
             if root is not None:
-                ctx.borrow_tracker.add_borrow(root, borrower, BorrowKind.ELEMENT)
+                bt.add_borrow(root, borrower, BorrowKind.ELEMENT)
             elif _is_dangling_temporary_arg(obj):
                 ctx.warning(
                     f"Result borrows from temporary receiver object; "
@@ -114,7 +115,7 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
         elif idx >= 0 and idx < len(args):
             root = _borrow_storage_root(args[idx])
             if root is not None:
-                ctx.borrow_tracker.add_borrow(root, borrower, BorrowKind.ELEMENT)
+                bt.add_borrow(root, borrower, BorrowKind.ELEMENT)
             elif _is_dangling_temporary_arg(args[idx]):
                 ctx.warning(
                     f"Result borrows from temporary argument '{fi.params[idx].name}'; "
@@ -200,7 +201,7 @@ class StatementAnalyzer:
         (no alias resolution -- field paths are not aliased in the tracker).
         """
         if isinstance(obj, TpyName):
-            return self.ctx.borrow_tracker.effective_storage(obj.name)
+            return self.ctx.func.borrow_tracker.effective_storage(obj.name)
         return _storage_key(obj)
 
     def _warn_all_caps_without_final(self, name: str, type_hint: str, node: TpyStmt) -> None:
@@ -239,7 +240,7 @@ class StatementAnalyzer:
         """
         if not isinstance(expected, StrType):
             return
-        func = self.ctx.current_function
+        func = self.ctx.func.current_function
         if func is None or not func.is_method:
             return
         # Dunder methods (__str__, __repr__) have a fixed str contract
@@ -323,7 +324,7 @@ class StatementAnalyzer:
 
     def _is_in_constructor(self) -> bool:
         """Check if currently analyzing an __init__ method body."""
-        func = self.ctx.current_function
+        func = self.ctx.func.current_function
         return (func is not None
                 and getattr(func, 'name', None) == "__init__"
                 and getattr(func, 'is_method', False))
@@ -344,8 +345,8 @@ class StatementAnalyzer:
         R = TupleElemCapture.REF
         CR = TupleElemCapture.CONST_REF
 
-        is_readonly = (self.ctx.current_function is not None
-                       and getattr(self.ctx.current_function, 'is_readonly', False))
+        is_readonly = (self.ctx.func.current_function is not None
+                       and getattr(self.ctx.func.current_function, 'is_readonly', False))
 
         literal.elem_capture = []
         for i, et in enumerate(tuple_type.element_types):
@@ -424,22 +425,22 @@ class StatementAnalyzer:
     def _save_ns_var_types(self) -> dict[str, TpyType]:
         """Save namespace variable types for later restoration."""
         result: dict[str, TpyType] = {}
-        if self.ctx.current_ns:
-            for name, binding in self.ctx.current_ns.all_bindings().items():
+        if self.ctx.func.current_ns:
+            for name, binding in self.ctx.func.current_ns.all_bindings().items():
                 if binding.kind == BindingKind.VARIABLE:
                     result[name] = binding.type
         return result
 
     def _restore_ns_var_types(self, saved: dict[str, TpyType]) -> None:
         """Restore namespace variable types from a saved snapshot."""
-        if self.ctx.current_ns:
+        if self.ctx.func.current_ns:
             for name, typ in saved.items():
-                self.ctx.current_ns.update_variable_type(name, typ)
+                self.ctx.func.current_ns.update_variable_type(name, typ)
 
     def _sync_ns_var_type(self, name: str, typ: TpyType) -> None:
         """Sync a single variable's namespace type to match scope."""
-        if self.ctx.current_ns:
-            self.ctx.current_ns.update_variable_type(name, typ)
+        if self.ctx.func.current_ns:
+            self.ctx.func.current_ns.update_variable_type(name, typ)
 
     def _sync_promoted_var_types(self, names: set[str] | None = None) -> None:
         """Sync scope and namespace with var_types after a control-flow restore.
@@ -455,14 +456,14 @@ class StatementAnalyzer:
                    variable declarations in the current function.
         """
         items = (
-            self.ctx.var_decl_by_name.items() if names is None
-            else ((n, self.ctx.var_decl_by_name[n]) for n in names if n in self.ctx.var_decl_by_name)
+            self.ctx.func.var_decl_by_name.items() if names is None
+            else ((n, self.ctx.func.var_decl_by_name[n]) for n in names if n in self.ctx.func.var_decl_by_name)
         )
         for name, var_decl in items:
             canonical = self.ctx.var_types.get(id(var_decl))
             if canonical is None:
                 continue
-            current = self.ctx.current_scope.lookup(name)
+            current = self.ctx.func.current_scope.lookup(name)
             # Preserve ReadonlyType from branch merge: var_types stores
             # unwrapped types, so re-wrap with ReadonlyType if the merge
             # determined this variable should be readonly.
@@ -473,7 +474,7 @@ class StatementAnalyzer:
             else:
                 target = canonical
             if target != current:
-                self.ctx.current_scope.define(name, target)
+                self.ctx.func.current_scope.define(name, target)
             self._sync_ns_var_type(name, target)
 
     def _enforce_readonly_assignment_target(self, target: TpyExpr) -> None:
@@ -496,7 +497,7 @@ class StatementAnalyzer:
                     if isinstance(actual, NamedType):
                         info = self.ctx.registry.get_record(actual.name)
                         if info is not None:
-                            cur = self.ctx.current_function
+                            cur = self.ctx.func.current_function
                             rec = self.ctx.record_ctx.record
                             in_own_init = (
                                 isinstance(cur, TpyFunction) and cur.name == "__init__"
@@ -563,7 +564,7 @@ class StatementAnalyzer:
         iterable = stmt.iterable
         if not isinstance(iterable, TpyName):
             return None
-        binding = self.ctx.current_ns.lookup(iterable.name) if self.ctx.current_ns else None
+        binding = self.ctx.func.current_ns.lookup(iterable.name) if self.ctx.func.current_ns else None
         if binding is None:
             return None
         if binding.kind == BindingKind.ENUM and binding.enum_type is not None:
@@ -593,7 +594,7 @@ class StatementAnalyzer:
             self.expr.analyze_expr(stmt.expr)
         elif isinstance(stmt, TpyReturn):
             if stmt.value:
-                expected = unwrap_ref_type(self.ctx.current_function.return_type) if self.ctx.current_function else VOID
+                expected = unwrap_ref_type(self.ctx.func.current_function.return_type) if self.ctx.func.current_function else VOID
                 ret_type = self.expr.analyze_expr_with_hint(stmt.value, expected)
                 stmt.value_type = ret_type
                 stmt.value = self.compat.coerce_expr(stmt.value, ret_type, expected, "return value",
@@ -625,8 +626,8 @@ class StatementAnalyzer:
                 if isinstance(stmt.value, TpyName):
                     self.ctx.mark_loop_var_mutated(stmt.value.name)
                     # Escape tracking: returning a nested def marks it as escaping
-                    if stmt.value.name in self.ctx.nested_def_names:
-                        self.ctx.nested_def_escapes.add(stmt.value.name)
+                    if stmt.value.name in self.ctx.func.nested_def_names:
+                        self.ctx.func.nested_def_escapes.add(stmt.value.name)
                 if expected is not None and not expected.is_value_type():
                     for ret_root in addr_taken_roots(stmt.value):
                         self.ctx.mark_param_mutated(ret_root)
@@ -657,13 +658,13 @@ class StatementAnalyzer:
         elif isinstance(stmt, TpyYield):
             self._analyze_yield(stmt)
         elif isinstance(stmt, TpyIf):
-            assigned_before_cond = frozenset(self.ctx.definitely_assigned)
+            assigned_before_cond = frozenset(self.ctx.func.definitely_assigned)
             saved_sc_and = self.ctx.sc_and_walrus.copy()
             saved_sc_or = self.ctx.sc_or_walrus.copy()
             self.ctx.sc_and_walrus = set()
             self.ctx.sc_or_walrus = set()
             self.expr.analyze_expr(stmt.condition)
-            always_walrus = self.ctx.definitely_assigned - assigned_before_cond
+            always_walrus = self.ctx.func.definitely_assigned - assigned_before_cond
             sc_and = self.ctx.sc_and_walrus   # safe in then-body
             sc_or = self.ctx.sc_or_walrus     # safe in else-body
             self.ctx.sc_and_walrus = saved_sc_and
@@ -674,52 +675,52 @@ class StatementAnalyzer:
             range_true, range_false = self.narrowing.condition_range_facts(stmt.condition)
             stmt.then_type_facts = self._filter_union_codegen_facts(then_type_facts)
             stmt.else_type_facts = self._filter_union_codegen_facts(else_type_facts)
-            scope_before = set(self.ctx.current_scope.bindings.keys())
-            assigned_before = frozenset(self.ctx.definitely_assigned)
+            scope_before = set(self.ctx.func.current_scope.bindings.keys())
+            assigned_before = frozenset(self.ctx.func.definitely_assigned)
             before = self.init.save()
-            consumed_before = self.ctx.current_consumed_own_params.copy()
+            consumed_before = self.ctx.func.current_consumed_own_params.copy()
             # Save binding types for ReadonlyType merge after branches
-            bindings_before = dict(self.ctx.current_scope.bindings)
+            bindings_before = dict(self.ctx.func.current_scope.bindings)
             ns_types_before = self._save_ns_var_types()
             # Then-body: condition was true -> && operands all evaluated,
             # but || RHS may have been skipped (LHS alone was truthy)
-            self.ctx.definitely_assigned |= always_walrus | sc_and
-            self.ctx.narrowed_types.update(then_type_facts)
-            self.ctx.non_null_ptr_vars |= ptr_nn_then
+            self.ctx.func.definitely_assigned |= always_walrus | sc_and
+            self.ctx.func.narrowed_types.update(then_type_facts)
+            self.ctx.func.non_null_ptr_vars |= ptr_nn_then
             self._apply_range_facts(range_true)
             for s in stmt.then_body:
                 self.analyze_stmt(s)
             then_state = self.init.save()
-            consumed_after_then = self.ctx.current_consumed_own_params.copy()
-            then_terminated = self.ctx.init_terminated
-            bindings_after_then = dict(self.ctx.current_scope.bindings)
+            consumed_after_then = self.ctx.func.current_consumed_own_params.copy()
+            then_terminated = self.ctx.func.init_terminated
+            bindings_after_then = dict(self.ctx.func.current_scope.bindings)
             # Restore bindings for else branch
-            self.ctx.current_scope.bindings.update(bindings_before)
+            self.ctx.func.current_scope.bindings.update(bindings_before)
             self._restore_ns_var_types(ns_types_before)
             self.init.restore(before)
             # Else-body: condition was false -> || operands all evaluated,
             # but && RHS may have been skipped (LHS alone was falsy)
-            self.ctx.definitely_assigned |= always_walrus | sc_or
-            self.ctx.current_consumed_own_params = consumed_before.copy()
-            self.ctx.narrowed_types.update(else_type_facts)
-            self.ctx.non_null_ptr_vars |= ptr_nn_else
+            self.ctx.func.definitely_assigned |= always_walrus | sc_or
+            self.ctx.func.current_consumed_own_params = consumed_before.copy()
+            self.ctx.func.narrowed_types.update(else_type_facts)
+            self.ctx.func.non_null_ptr_vars |= ptr_nn_else
             self._apply_range_facts(range_false)
             for s in stmt.else_body:
                 self.analyze_stmt(s)
             else_state = self.init.save()
-            consumed_after_else = self.ctx.current_consumed_own_params.copy()
-            else_terminated = self.ctx.init_terminated
-            bindings_after_else = dict(self.ctx.current_scope.bindings)
+            consumed_after_else = self.ctx.func.current_consumed_own_params.copy()
+            else_terminated = self.ctx.func.init_terminated
+            bindings_after_else = dict(self.ctx.func.current_scope.bindings)
             self.init.merge_branches(then_state, else_state)
             # Merge consumed Own[T] params: must be consumed on ALL non-terminated paths
             if then_terminated and else_terminated:
-                self.ctx.current_consumed_own_params = consumed_after_then | consumed_after_else
+                self.ctx.func.current_consumed_own_params = consumed_after_then | consumed_after_else
             elif then_terminated:
-                self.ctx.current_consumed_own_params = consumed_after_else
+                self.ctx.func.current_consumed_own_params = consumed_after_else
             elif else_terminated:
-                self.ctx.current_consumed_own_params = consumed_after_then
+                self.ctx.func.current_consumed_own_params = consumed_after_then
             else:
-                self.ctx.current_consumed_own_params = consumed_after_then & consumed_after_else
+                self.ctx.func.current_consumed_own_params = consumed_after_then & consumed_after_else
             # Merge ReadonlyType: if readonly on EITHER branch, keep readonly
             for name in set(bindings_after_then) | set(bindings_after_else):
                 then_type = bindings_after_then.get(name)
@@ -729,11 +730,11 @@ class StatementAnalyzer:
                     else_is_ro = isinstance(else_type, ReadonlyType)
                     if then_is_ro and not else_is_ro:
                         merged = ReadonlyType(unwrap_readonly(else_type))
-                        self.ctx.current_scope.define(name, merged)
+                        self.ctx.func.current_scope.define(name, merged)
                         self._sync_ns_var_type(name, merged)
                     elif else_is_ro and not then_is_ro:
                         merged = ReadonlyType(unwrap_readonly(then_type))
-                        self.ctx.current_scope.define(name, merged)
+                        self.ctx.func.current_scope.define(name, merged)
                         self._sync_ns_var_type(name, merged)
             # Sync scope/namespace with var_types for variables whose
             # declaration type was promoted inside a branch.
@@ -743,25 +744,25 @@ class StatementAnalyzer:
             # Detect variables first declared inside branches that need
             # pre-declaration. Skip when both branches terminate (no code
             # after the if needs the variable).
-            if not self.ctx.init_terminated:
-                branch_new = set(self.ctx.current_scope.bindings.keys()) - scope_before
-                newly_assigned = self.ctx.definitely_assigned - assigned_before
-                predecl = (branch_new & newly_assigned) - self.ctx.global_declarations
+            if not self.ctx.func.init_terminated:
+                branch_new = set(self.ctx.func.current_scope.bindings.keys()) - scope_before
+                newly_assigned = self.ctx.func.definitely_assigned - assigned_before
+                predecl = (branch_new & newly_assigned) - self.ctx.func.global_declarations
             else:
                 predecl = set()
             if predecl:
                 self.ctx.if_branch_decls[id(stmt)] = {
-                    name: self.ctx.current_scope.lookup(name)
+                    name: self.ctx.func.current_scope.lookup(name)
                     for name in sorted(predecl)
                 }
         elif isinstance(stmt, TpyWhile):
-            assigned_before_cond = frozenset(self.ctx.definitely_assigned)
+            assigned_before_cond = frozenset(self.ctx.func.definitely_assigned)
             saved_sc_and = self.ctx.sc_and_walrus.copy()
             saved_sc_or = self.ctx.sc_or_walrus.copy()
             self.ctx.sc_and_walrus = set()
             self.ctx.sc_or_walrus = set()
             self.expr.analyze_expr(stmt.condition)
-            always_walrus_w = self.ctx.definitely_assigned - assigned_before_cond
+            always_walrus_w = self.ctx.func.definitely_assigned - assigned_before_cond
             all_walrus_w = always_walrus_w | self.ctx.sc_and_walrus | self.ctx.sc_or_walrus
             self.ctx.sc_and_walrus = saved_sc_and
             self.ctx.sc_or_walrus = saved_sc_or
@@ -771,7 +772,7 @@ class StatementAnalyzer:
             range_true, _ = self.narrowing.condition_range_facts(stmt.condition)
             stmt.then_type_facts = self._filter_union_codegen_facts(then_type_facts)
             before = self.init.save()
-            consumed_before_loop = self.ctx.current_consumed_own_params.copy()
+            consumed_before_loop = self.ctx.func.current_consumed_own_params.copy()
             # Save namespace types -- loop_scope() restores scope bindings
             # automatically, but namespace mutations inside the loop persist.
             ns_types_before_while = self._save_ns_var_types()
@@ -782,18 +783,18 @@ class StatementAnalyzer:
                 )
                 # Applied separately from apply_loop_entry_facts because
                 # that method only handles type narrowing, not ptr non-null.
-                self.ctx.non_null_ptr_vars |= ptr_nn
+                self.ctx.func.non_null_ptr_vars |= ptr_nn
                 self._apply_range_facts(range_true)
                 for s in stmt.body:
                     self.analyze_stmt(s)
             # Vars reassigned from unknown inside the body lose non-null provenance
-            body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
+            body_end_nn_ptr = frozenset(self.ctx.func.non_null_ptr_vars)
             self.init.restore(before)
             # Re-add all walrus vars (condition always evaluates fully)
-            self.ctx.definitely_assigned |= all_walrus_w
+            self.ctx.func.definitely_assigned |= all_walrus_w
             # Loop might not execute — consumption inside is not definite
-            self.ctx.current_consumed_own_params = consumed_before_loop
-            self.ctx.non_null_ptr_vars &= body_end_nn_ptr
+            self.ctx.func.current_consumed_own_params = consumed_before_loop
+            self.ctx.func.non_null_ptr_vars &= body_end_nn_ptr
             # Restore namespace to pre-loop state (scope was already restored
             # by loop_scope context manager)
             self._restore_ns_var_types(ns_types_before_while)
@@ -807,17 +808,17 @@ class StatementAnalyzer:
                 stmt.enum_iterable = enum_type
                 elem_type = enum_type
                 before = self.init.save()
-                consumed_before_loop = self.ctx.current_consumed_own_params.copy()
+                consumed_before_loop = self.ctx.func.current_consumed_own_params.copy()
                 ns_types_before_foreach = self._save_ns_var_types()
                 with self.scopes.loop_scope() as inner_scope:
                     self.init.apply_loop_entry_facts(before)
                     with self.scopes.loop_var(inner_scope, stmt.var, elem_type, inner_scope.depth, is_foreach=True):
                         for s in stmt.body:
                             self.analyze_stmt(s)
-                body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
+                body_end_nn_ptr = frozenset(self.ctx.func.non_null_ptr_vars)
                 self.init.restore(before)
-                self.ctx.current_consumed_own_params = consumed_before_loop
-                self.ctx.non_null_ptr_vars &= body_end_nn_ptr
+                self.ctx.func.current_consumed_own_params = consumed_before_loop
+                self.ctx.func.non_null_ptr_vars &= body_end_nn_ptr
                 self._restore_ns_var_types(ns_types_before_foreach)
                 self._sync_promoted_var_types()
                 self._propagate_for_loop_scope(stmt, inner_scope, elem_type)
@@ -850,15 +851,16 @@ class StatementAnalyzer:
                 is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
                 is_protocol_iter = is_protocol_type(resolved_for_iter) and resolved_for_iter.qualified_name() in ("typing.Iterator", "typing.Iterable")
                 before = self.init.save()
-                consumed_before_loop = self.ctx.current_consumed_own_params.copy()
+                consumed_before_loop = self.ctx.func.current_consumed_own_params.copy()
                 ns_types_before_foreach = self._save_ns_var_types()
                 with self.scopes.loop_scope() as inner_scope:
                     self.init.apply_loop_entry_facts(before)
                     # Track range facts for loop variable from range() calls
                     self._track_for_range_facts(stmt)
+                    bt = self.ctx.func.borrow_tracker
                     if isinstance(stmt.iterable, TpyName):
-                        self.ctx.borrow_tracker.add_borrow(stmt.iterable.name, "__for_iter", BorrowKind.ITER)
-                        self.ctx.loop_var_iterable[stmt.var] = stmt.iterable.name
+                        bt.add_borrow(stmt.iterable.name, "__for_iter", BorrowKind.ITER)
+                        self.ctx.func.loop_var_iterable[stmt.var] = stmt.iterable.name
                         # Protocol-typed and TypeParamRef params used as for-loop iterables
                         # require mutable access: .__next__() mutates iterator state.
                         # Mark them mutated so the generated param gets T& not const T&.
@@ -876,18 +878,18 @@ class StatementAnalyzer:
                                     if idx == -1 and gc.obj is not None:
                                         src = _borrow_storage_root(gc.obj)
                                         if src is not None:
-                                            self.ctx.borrow_tracker.add_borrow(src, "__for_iter", BorrowKind.ITER)
-                                            self.ctx.loop_var_iterable[stmt.var] = src
+                                            bt.add_borrow(src, "__for_iter", BorrowKind.ITER)
+                                            self.ctx.func.loop_var_iterable[stmt.var] = src
                                     elif idx >= 0 and idx < len(gc.args):
                                         src = _borrow_storage_root(gc.args[idx])
                                         if src is not None:
-                                            self.ctx.borrow_tracker.add_borrow(src, "__for_iter", BorrowKind.ITER)
-                                            self.ctx.loop_var_iterable[stmt.var] = src
+                                            bt.add_borrow(src, "__for_iter", BorrowKind.ITER)
+                                            self.ctx.func.loop_var_iterable[stmt.var] = src
                         else:
                             key = _storage_key(stmt.iterable)
                             if key is not None:
-                                self.ctx.borrow_tracker.add_borrow(key, "__for_iter", BorrowKind.ITER)
-                                self.ctx.loop_var_iterable[stmt.var] = key
+                                bt.add_borrow(key, "__for_iter", BorrowKind.ITER)
+                                self.ctx.func.loop_var_iterable[stmt.var] = key
                     elif isinstance(stmt.iterable, (TpyCall, TpyMethodCall)):
                         # 8b: iterable is a call whose return borrows from source arg(s).
                         # Register ITER borrow directly on those source containers so that
@@ -907,8 +909,8 @@ class StatementAnalyzer:
                                 else:
                                     src = None
                                 if src is not None:
-                                    self.ctx.borrow_tracker.add_borrow(src, "__for_iter", BorrowKind.ITER)
-                                    self.ctx.loop_var_iterable[stmt.var] = src
+                                    bt.add_borrow(src, "__for_iter", BorrowKind.ITER)
+                                    self.ctx.func.loop_var_iterable[stmt.var] = src
                                 elif arg is not None and _is_dangling_temporary_arg(arg):
                                     # Call results returning non-value types are
                                     # materialized into named variables by codegen
@@ -959,9 +961,9 @@ class StatementAnalyzer:
                     )
                     if track_loop_prov:
                         self.init.add_loop_var_provenance(stmt.var)
-                    self.ctx.mutated_loop_vars.discard(stmt.var)
-                    self.ctx.consumed_loop_vars.discard(stmt.var)
-                    self.ctx.deferred_loop_copy_warnings.pop(stmt.var, None)
+                    self.ctx.func.mutated_loop_vars.discard(stmt.var)
+                    self.ctx.func.consumed_loop_vars.discard(stmt.var)
+                    self.ctx.func.deferred_loop_copy_warnings.pop(stmt.var, None)
                     with self.scopes.loop_var(inner_scope, stmt.var, elem_type, iter_depth, is_foreach=True):
                         for s in stmt.body:
                             self.analyze_stmt(s)
@@ -986,8 +988,8 @@ class StatementAnalyzer:
                     if isinstance(first, TpyTupleUnpack) and any(first.is_ref):
                         needs_mut_unpack = True
                 if (worth_const_ref
-                        and stmt.var not in self.ctx.mutated_loop_vars
-                        and stmt.var not in self.ctx.consumed_loop_vars
+                        and stmt.var not in self.ctx.func.mutated_loop_vars
+                        and stmt.var not in self.ctx.func.consumed_loop_vars
                         and not needs_mut_unpack):
                     stmt.const_loop_var = True
                 # Auto-consuming iteration: use consuming __iter__ when the
@@ -997,8 +999,8 @@ class StatementAnalyzer:
                 # moving it into OwnIter is free (pointer swap). Consumed
                 # elements become movable at last use, avoiding copies.
                 loop_var_needs_ownership = (
-                    stmt.var in self.ctx.mutated_loop_vars
-                    or stmt.var in self.ctx.consumed_loop_vars
+                    stmt.var in self.ctx.func.mutated_loop_vars
+                    or stmt.var in self.ctx.func.consumed_loop_vars
                 )
                 if (loop_var_needs_ownership
                         and not stmt.hoist_loop_var
@@ -1011,7 +1013,7 @@ class StatementAnalyzer:
                         stmt.consuming_iter_fi = consuming_fi
                         # Suppress copy warnings for the loop variable --
                         # elements will be moved, not copied.
-                        deferred = self.ctx.deferred_loop_copy_warnings.pop(stmt.var, None)
+                        deferred = self.ctx.func.deferred_loop_copy_warnings.pop(stmt.var, None)
                         if deferred:
                             for idx in sorted(deferred, reverse=True):
                                 del self.ctx.diagnostics[idx]
@@ -1019,26 +1021,26 @@ class StatementAnalyzer:
                 # (e.g. Iterable[Own[T]] params) -- elements will be moved.
                 if (stmt.consuming_iter_fi is None
                         and isinstance(elem_type, OwnType)):
-                    deferred = self.ctx.deferred_loop_copy_warnings.pop(stmt.var, None)
+                    deferred = self.ctx.func.deferred_loop_copy_warnings.pop(stmt.var, None)
                     if deferred:
                         for idx in sorted(deferred, reverse=True):
                             del self.ctx.diagnostics[idx]
-                body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
+                body_end_nn_ptr = frozenset(self.ctx.func.non_null_ptr_vars)
                 self.init.restore(before)
                 # Loop might not execute — consumption inside is not definite
-                self.ctx.current_consumed_own_params = consumed_before_loop
-                self.ctx.non_null_ptr_vars &= body_end_nn_ptr
+                self.ctx.func.current_consumed_own_params = consumed_before_loop
+                self.ctx.func.non_null_ptr_vars &= body_end_nn_ptr
                 self._restore_ns_var_types(ns_types_before_foreach)
                 self._sync_promoted_var_types()
                 self._propagate_for_loop_scope(stmt, inner_scope, elem_type)
                 for s in stmt.orelse:
                     self.analyze_stmt(s)
         elif isinstance(stmt, TpyBreak):
-            if self.ctx.loop_depth == 0:
+            if self.ctx.func.loop_depth == 0:
                 raise self.ctx.error("'break' outside loop", stmt)
             self.init.mark_terminated()
         elif isinstance(stmt, TpyContinue):
-            if self.ctx.loop_depth == 0:
+            if self.ctx.func.loop_depth == 0:
                 raise self.ctx.error("'continue' outside loop", stmt)
             self.init.mark_terminated()
         elif isinstance(stmt, TpyAssert):
@@ -1052,8 +1054,8 @@ class StatementAnalyzer:
             ptr_nn, _ = self.narrowing.condition_ptr_null_facts(stmt.condition)
             range_true, _ = self.narrowing.condition_range_facts(stmt.condition)
             stmt.then_type_facts = self._filter_union_codegen_facts(then_type_facts)
-            self.ctx.narrowed_types.update(then_type_facts)
-            self.ctx.non_null_ptr_vars |= ptr_nn
+            self.ctx.func.narrowed_types.update(then_type_facts)
+            self.ctx.func.non_null_ptr_vars |= ptr_nn
             self._apply_range_facts(range_true)
         elif isinstance(stmt, TpyGlobal):
             self._analyze_global_stmt(stmt)
@@ -1074,11 +1076,11 @@ class StatementAnalyzer:
         """Apply integer range facts, intersecting with any existing ranges."""
         from .value_range import ValueRange
         for name, new_range in facts.items():
-            existing = self.ctx.value_ranges.get(name)
+            existing = self.ctx.func.value_ranges.get(name)
             if existing is not None:
-                self.ctx.value_ranges[name] = ValueRange.intersect(existing, new_range)
+                self.ctx.func.value_ranges[name] = ValueRange.intersect(existing, new_range)
             else:
-                self.ctx.value_ranges[name] = new_range
+                self.ctx.func.value_ranges[name] = new_range
 
     def _track_for_range_facts(self, stmt: TpyForEach) -> None:
         """Set range facts for loop variable when iterating over range().
@@ -1096,18 +1098,18 @@ class StatementAnalyzer:
             # range(len(arr)) -- symbolic bound
             if (isinstance(arg, TpyCall) and arg.func_name == "len"
                     and len(arg.args) == 1 and isinstance(arg.args[0], TpyName)):
-                self.ctx.value_ranges[stmt.var] = ValueRange.for_range_index(
+                self.ctx.func.value_ranges[stmt.var] = ValueRange.for_range_index(
                     stop_len_of=arg.args[0].name,
                 )
                 return
             # range(N) -- literal bound
             if isinstance(arg, TpyIntLiteral):
-                self.ctx.value_ranges[stmt.var] = ValueRange.for_range_index(
+                self.ctx.func.value_ranges[stmt.var] = ValueRange.for_range_index(
                     stop_literal=arg.value,
                 )
                 return
             # range(n) -- unknown bound, but still non-negative
-            self.ctx.value_ranges[stmt.var] = ValueRange.for_range_index()
+            self.ctx.func.value_ranges[stmt.var] = ValueRange.for_range_index()
 
     def _filter_union_codegen_facts(
         self, facts: dict[str, TpyType],
@@ -1144,7 +1146,7 @@ class StatementAnalyzer:
             self._analyze_raise_expr(stmt)
             return
 
-        func = self.ctx.current_function
+        func = self.ctx.func.current_function
         if not isinstance(func, TpyFunction):
             raise self.ctx.error(
                 f"'raise {stmt.exception_type}' can only be used inside a function", stmt)
@@ -1212,7 +1214,7 @@ class StatementAnalyzer:
 
     def _analyze_raise_expr(self, stmt: TpyRaise) -> None:
         """Analyze 'raise <expr>' where expr is a general expression."""
-        func = self.ctx.current_function
+        func = self.ctx.func.current_function
         if not isinstance(func, TpyFunction):
             raise self.ctx.error(
                 "'raise' can only be used inside a function", stmt)
@@ -1316,10 +1318,10 @@ class StatementAnalyzer:
 
     def _analyze_try_finally_only(self, stmt: TpyTry) -> None:
         """Analyze try/finally with no except handlers."""
-        scope_before = set(self.ctx.current_scope.bindings.keys())
+        scope_before = set(self.ctx.func.current_scope.bindings.keys())
         for s in stmt.try_body:
             self.analyze_stmt(s)
-        try_bindings = dict(self.ctx.current_scope.bindings)
+        try_bindings = dict(self.ctx.func.current_scope.bindings)
         prev_in_finally = self.ctx.in_finally
         self.ctx.in_finally = True
         for s in stmt.finally_body:
@@ -1328,14 +1330,14 @@ class StatementAnalyzer:
         # Hoist try-body variables so they're accessible in the finally body.
         # Mark as hoisted so non-value types use pointer indirection.
         branch_new = set(try_bindings.keys()) - scope_before
-        predecl = branch_new - self.ctx.global_declarations
+        predecl = branch_new - self.ctx.func.global_declarations
         if predecl:
             self.ctx.if_branch_decls[id(stmt)] = {
                 name: try_bindings[name]
                 for name in sorted(predecl)
                 if name in try_bindings
             }
-            self.ctx.hoisted_vars |= predecl
+            self.ctx.func.hoisted_vars |= predecl
 
     def _analyze_try_return(self, stmt: TpyTry) -> None:
         """Analyze return-tier try/except (ReturnException, goto-based)."""
@@ -1345,10 +1347,10 @@ class StatementAnalyzer:
                 "return-tier (ReturnException) try/except supports only a single handler", stmt)
         handler = stmt.handlers[0]
 
-        scope_before = set(self.ctx.current_scope.bindings.keys())
+        scope_before = set(self.ctx.func.current_scope.bindings.keys())
         before = self.init.save()
-        consumed_before = self.ctx.current_consumed_own_params.copy()
-        bindings_before = dict(self.ctx.current_scope.bindings)
+        consumed_before = self.ctx.func.current_consumed_own_params.copy()
+        bindings_before = dict(self.ctx.func.current_scope.bindings)
         ns_types_before = self._save_ns_var_types()
 
         # Detect except ReturnException catch-all
@@ -1384,15 +1386,15 @@ class StatementAnalyzer:
         for s in stmt.else_body:
             self.analyze_stmt(s)
         then_state = self.init.save()
-        consumed_after_then = self.ctx.current_consumed_own_params.copy()
-        then_terminated = self.ctx.init_terminated
-        try_bindings = dict(self.ctx.current_scope.bindings)
+        consumed_after_then = self.ctx.func.current_consumed_own_params.copy()
+        then_terminated = self.ctx.func.init_terminated
+        try_bindings = dict(self.ctx.func.current_scope.bindings)
 
         # Restore to pre-try state for except branch
-        self.ctx.current_scope.bindings = dict(bindings_before)
+        self.ctx.func.current_scope.bindings = dict(bindings_before)
         self._restore_ns_var_types(ns_types_before)
         self.init.restore(before)
-        self.ctx.current_consumed_own_params = consumed_before.copy()
+        self.ctx.func.current_consumed_own_params = consumed_before.copy()
 
         # Register except binding -- use find_record_by_qname because
         # handler.exception_type may be module-qualified (e.g. from macros).
@@ -1400,7 +1402,7 @@ class StatementAnalyzer:
             exc_record = self.ctx.registry.find_record_by_qname(handler.exception_type)
             if exc_record:
                 exc_type = NamedType(exc_record.name)
-                self.ctx.current_scope.bindings[handler.binding] = exc_type
+                self.ctx.func.current_scope.bindings[handler.binding] = exc_type
                 self.init.mark_assigned(handler.binding)
 
         # Set in_except_tier for bare raise validation
@@ -1413,11 +1415,11 @@ class StatementAnalyzer:
         self.ctx.in_except_tier = prev_except_tier
         self.ctx.in_except_has_binding = prev_has_binding
 
-        if handler.binding and handler.binding in self.ctx.current_scope.bindings:
-            del self.ctx.current_scope.bindings[handler.binding]
+        if handler.binding and handler.binding in self.ctx.func.current_scope.bindings:
+            del self.ctx.func.current_scope.bindings[handler.binding]
         else_state = self.init.save()
-        consumed_after_else = self.ctx.current_consumed_own_params.copy()
-        else_terminated = self.ctx.init_terminated
+        consumed_after_else = self.ctx.func.current_consumed_own_params.copy()
+        else_terminated = self.ctx.func.init_terminated
 
         self.init.merge_branches(then_state, else_state)
         self._merge_consumed_own(
@@ -1433,11 +1435,11 @@ class StatementAnalyzer:
 
         # Hoist all declarations for goto-based dispatch
         all_bindings = dict(try_bindings)
-        all_bindings.update(self.ctx.current_scope.bindings)
+        all_bindings.update(self.ctx.func.current_scope.bindings)
         branch_new = set(all_bindings.keys()) - scope_before
         if handler.binding:
             branch_new.discard(handler.binding)
-        predecl = branch_new - self.ctx.global_declarations
+        predecl = branch_new - self.ctx.func.global_declarations
         if predecl:
             self.ctx.if_branch_decls[id(stmt)] = {
                 name: all_bindings[name]
@@ -1447,10 +1449,10 @@ class StatementAnalyzer:
 
     def _analyze_try_throw(self, stmt: TpyTry) -> None:
         """Analyze throw-tier try/except (C++ try/catch)."""
-        scope_before = set(self.ctx.current_scope.bindings.keys())
+        scope_before = set(self.ctx.func.current_scope.bindings.keys())
         before = self.init.save()
-        consumed_before = self.ctx.current_consumed_own_params.copy()
-        bindings_before = dict(self.ctx.current_scope.bindings)
+        consumed_before = self.ctx.func.current_consumed_own_params.copy()
+        bindings_before = dict(self.ctx.func.current_scope.bindings)
         ns_types_before = self._save_ns_var_types()
 
         # Validate all handlers and save bare names for binding
@@ -1477,27 +1479,27 @@ class StatementAnalyzer:
             self.analyze_stmt(s)
         # Capture try-body bindings BEFORE else (else vars are scoped to the
         # if(__ok) block in C++ and must not leak into post-try scope)
-        try_bindings = dict(self.ctx.current_scope.bindings)
+        try_bindings = dict(self.ctx.func.current_scope.bindings)
 
         # Analyze else body
         for s in stmt.else_body:
             self.analyze_stmt(s)
         then_state = self.init.save()
-        consumed_after_then = self.ctx.current_consumed_own_params.copy()
-        then_terminated = self.ctx.init_terminated
+        consumed_after_then = self.ctx.func.current_consumed_own_params.copy()
+        then_terminated = self.ctx.func.init_terminated
 
         # Analyze each except handler as a separate branch from pre-try state
         handler_states: list[tuple] = []
         for i, h in enumerate(stmt.handlers):
-            self.ctx.current_scope.bindings = dict(bindings_before)
+            self.ctx.func.current_scope.bindings = dict(bindings_before)
             self._restore_ns_var_types(ns_types_before)
             self.init.restore(before)
-            self.ctx.current_consumed_own_params = consumed_before.copy()
+            self.ctx.func.current_consumed_own_params = consumed_before.copy()
 
             bare_name = handler_bare_names[i]
             if h.binding and bare_name:
                 exc_type = NamedType(bare_name)
-                self.ctx.current_scope.bindings[h.binding] = exc_type
+                self.ctx.func.current_scope.bindings[h.binding] = exc_type
                 self.init.mark_assigned(h.binding)
 
             prev_except_tier = self.ctx.in_except_tier
@@ -1506,13 +1508,13 @@ class StatementAnalyzer:
                 self.analyze_stmt(s)
             self.ctx.in_except_tier = prev_except_tier
 
-            if h.binding and h.binding in self.ctx.current_scope.bindings:
-                del self.ctx.current_scope.bindings[h.binding]
+            if h.binding and h.binding in self.ctx.func.current_scope.bindings:
+                del self.ctx.func.current_scope.bindings[h.binding]
 
             handler_states.append((
                 self.init.save(),
-                self.ctx.current_consumed_own_params.copy(),
-                self.ctx.init_terminated,
+                self.ctx.func.current_consumed_own_params.copy(),
+                self.ctx.func.init_terminated,
             ))
 
         # Merge all branches: success path + all handler paths
@@ -1540,7 +1542,7 @@ class StatementAnalyzer:
             result_consumed = all_consumed[0].copy()
             for c in all_consumed[1:]:
                 result_consumed &= c
-        self.ctx.current_consumed_own_params = result_consumed
+        self.ctx.func.current_consumed_own_params = result_consumed
 
         # Analyze finally body
         prev_in_finally = self.ctx.in_finally
@@ -1557,33 +1559,33 @@ class StatementAnalyzer:
         #   (all handlers terminate, so post-try code uses try-body vars)
         all_handlers_terminate = all(t for _, _, t in handler_states)
         needs_hoist = (stmt.finally_body or stmt.else_body
-                       or (all_handlers_terminate and not self.ctx.init_terminated))
-        self.ctx.current_scope.bindings = dict(try_bindings)
+                       or (all_handlers_terminate and not self.ctx.func.init_terminated))
+        self.ctx.func.current_scope.bindings = dict(try_bindings)
         if needs_hoist:
             branch_new = set(try_bindings.keys()) - scope_before
             for h in stmt.handlers:
                 if h.binding:
                     branch_new.discard(h.binding)
-            predecl = branch_new - self.ctx.global_declarations
+            predecl = branch_new - self.ctx.func.global_declarations
             if predecl:
                 self.ctx.if_branch_decls[id(stmt)] = {
                     name: try_bindings[name]
                     for name in sorted(predecl)
                     if name in try_bindings
                 }
-                self.ctx.hoisted_vars |= predecl
+                self.ctx.func.hoisted_vars |= predecl
 
     def _merge_consumed_own(self, then_terminated: bool, else_terminated: bool,
                             consumed_then: set[str], consumed_else: set[str]) -> None:
         """Merge consumed Own[T] params from two branches."""
         if then_terminated and else_terminated:
-            self.ctx.current_consumed_own_params = consumed_then | consumed_else
+            self.ctx.func.current_consumed_own_params = consumed_then | consumed_else
         elif then_terminated:
-            self.ctx.current_consumed_own_params = consumed_else
+            self.ctx.func.current_consumed_own_params = consumed_else
         elif else_terminated:
-            self.ctx.current_consumed_own_params = consumed_then
+            self.ctx.func.current_consumed_own_params = consumed_then
         else:
-            self.ctx.current_consumed_own_params = consumed_then & consumed_else
+            self.ctx.func.current_consumed_own_params = consumed_then & consumed_else
 
     def _analyze_with(self, stmt: TpyWith) -> None:
         """Analyze a with statement (context managers).
@@ -1627,40 +1629,40 @@ class StatementAnalyzer:
                     line=(stmt.loc.line if stmt.loc else None),
                 )
                 item.enter_type = resolved
-                self.ctx.current_scope.define(item.target, resolved)
+                self.ctx.func.current_scope.define(item.target, resolved)
                 self.init.mark_assigned(item.target)
 
         # Analyze the body -- track new variable declarations so codegen
         # can pre-declare them outside the guard {} scope (C++ scoping).
-        scope_before = set(self.ctx.current_scope.bindings.keys())
+        scope_before = set(self.ctx.func.current_scope.bindings.keys())
 
         for s in stmt.body:
             self.analyze_stmt(s)
 
         # All variables first declared inside the body need pre-declaration
         # since codegen wraps the body in try {} for the with's cleanup pattern.
-        branch_new = set(self.ctx.current_scope.bindings.keys()) - scope_before
-        predecl = branch_new - self.ctx.global_declarations
+        branch_new = set(self.ctx.func.current_scope.bindings.keys()) - scope_before
+        predecl = branch_new - self.ctx.func.global_declarations
         if predecl:
             self.ctx.if_branch_decls[id(stmt)] = {
-                name: self.ctx.current_scope.lookup(name)
+                name: self.ctx.func.current_scope.lookup(name)
                 for name in sorted(predecl)
-                if name in self.ctx.current_scope.bindings
+                if name in self.ctx.func.current_scope.bindings
             }
 
     # --- Nested def / nonlocal ---
 
     def _analyze_nonlocal(self, stmt: TpyNonlocal) -> None:
         """Analyze a nonlocal declaration."""
-        if not self.ctx.in_nested_def:
+        if not self.ctx.func.in_nested_def:
             raise self.ctx.error(
                 "'nonlocal' is only valid inside a nested function", stmt)
         for name in stmt.names:
-            if name not in self.ctx.outer_scope_locals:
+            if name not in self.ctx.func.outer_scope_locals:
                 raise self.ctx.error(
                     f"No binding for nonlocal '{name}' found in enclosing scope",
                     stmt)
-            self.ctx.current_nonlocal_names.add(name)
+            self.ctx.func.current_nonlocal_names.add(name)
 
     def _prescan_and_analyze_body(
         self,
@@ -1683,27 +1685,27 @@ class StatementAnalyzer:
             param_names.add(pname)
             scope_type = make_ref(ptype)
             scope.define(pname, scope_type)
-            self.ctx.var_scope_depth[pname] = scope.depth
-            self.ctx.definitely_assigned.add(pname)
+            self.ctx.func.var_scope_depth[pname] = scope.depth
+            self.ctx.func.definitely_assigned.add(pname)
             if ns:
                 ns.bind_variable(pname, scope_type)
 
         # Param tracking for mutation analysis
-        self.ctx.current_param_names = param_names
-        self.ctx.current_param_name_to_idx = {p: i for i, (p, _) in enumerate(params)}
+        self.ctx.func.current_param_names = param_names
+        self.ctx.func.current_param_name_to_idx = {p: i for i, (p, _) in enumerate(params)}
         # For non-static methods, include "self" in the param index map with
         # sentinel -1 so that _record_mutation_call_edges can track self
         # flowing through free function calls (e.g., helper(self)).
         # Phase 2 (_resolve_single) converts caller_idx == -1 to self_mutated.
         if func.is_method and not func.is_staticmethod:
-            self.ctx.current_param_name_to_idx["self"] = -1
+            self.ctx.func.current_param_name_to_idx["self"] = -1
 
         # Prescan for reassigned variables + last-use liveness
         scan = scan_reassigned_vars(func.body, pre_declared=param_names)
         self.ctx.all_last_uses |= analyze_last_uses(func.body, scan.alias_sources)
-        self.ctx.current_reassigned_vars = scan.reassigned.copy()
-        self.ctx.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
-        self.ctx.current_aug_assigned_vars = scan.aug_assigned.copy()
+        self.ctx.func.current_reassigned_vars = scan.reassigned.copy()
+        self.ctx.func.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
+        self.ctx.func.current_aug_assigned_vars = scan.aug_assigned.copy()
 
         # Analyze body
         for stmt in func.body:
@@ -1717,13 +1719,13 @@ class StatementAnalyzer:
 
         func = stmt.func
 
-        if self.ctx.in_nested_def:
+        if self.ctx.func.in_nested_def:
             raise self.ctx.error(
                 "Nested functions cannot contain further nested functions",
                 stmt)
 
         # Collect outer locals available for capture
-        outer_locals = self.ctx.definitely_assigned.copy()
+        outer_locals = self.ctx.func.definitely_assigned.copy()
 
         # Pre-scan nonlocal declarations (at any nesting depth) to bind
         # them in the inner scope before body analysis begins.
@@ -1740,22 +1742,22 @@ class StatementAnalyzer:
 
         # Analyze body in isolated scope
         with self.scopes.nested_def_scope(func) as inner_scope:
-            self.ctx.outer_scope_locals = outer_locals
+            self.ctx.func.outer_scope_locals = outer_locals
 
             # Add nonlocal names to inner scope with types from outer
             for name in nonlocal_names:
                 outer_type = inner_scope.parent.lookup(name) if inner_scope.parent else None
                 if outer_type is not None:
                     inner_scope.define(name, outer_type)
-                    self.ctx.definitely_assigned.add(name)
-                    if self.ctx.current_ns:
-                        self.ctx.current_ns.bind_variable(name, outer_type)
+                    self.ctx.func.definitely_assigned.add(name)
+                    if self.ctx.func.current_ns:
+                        self.ctx.func.current_ns.bind_variable(name, outer_type)
 
-            self._prescan_and_analyze_body(func, params, inner_scope, self.ctx.current_ns)
+            self._prescan_and_analyze_body(func, params, inner_scope, self.ctx.func.current_ns)
 
             # Use the authoritative nonlocal set from body analysis
             # (covers nonlocal declarations at any nesting depth)
-            nonlocal_names = self.ctx.current_nonlocal_names.copy()
+            nonlocal_names = self.ctx.func.current_nonlocal_names.copy()
         stmt.nonlocal_names = nonlocal_names
 
         # Compute captures: free variables that come from outer scope
@@ -1779,13 +1781,13 @@ class StatementAnalyzer:
         )
 
         # Bind as FUNCTION in the local namespace
-        if self.ctx.current_ns:
-            self.ctx.current_ns.bind_function(fi)
-        self.ctx.definitely_assigned.add(func.name)
+        if self.ctx.func.current_ns:
+            self.ctx.func.current_ns.bind_function(fi)
+        self.ctx.func.definitely_assigned.add(func.name)
 
         # Track for escape analysis
-        self.ctx.nested_def_names.add(func.name)
-        self.ctx.nested_def_nodes[func.name] = stmt
+        self.ctx.func.nested_def_names.add(func.name)
+        self.ctx.func.nested_def_nodes[func.name] = stmt
 
     def _collect_nonlocal_names(self, stmts: list, names: set[str]) -> None:
         """Recursively collect nonlocal declarations from all nesting depths."""
@@ -1817,16 +1819,16 @@ class StatementAnalyzer:
         for name, var_type in inner_scope.bindings.items():
             if name == skip_var:
                 continue
-            if name in self.ctx.global_declarations:
+            if name in self.ctx.func.global_declarations:
                 continue
             resolved = self._resolve_literal_type(var_type)
-            self.ctx.pending_loop_vars[name] = (resolved, stmt, None)
+            self.ctx.func.pending_loop_vars[name] = (resolved, stmt, None)
 
         # Re-parent any pending vars from nested loops to this (outer) loop,
         # so they get pre-declared before this loop if referenced after it.
-        for name, (vtype, loop_stmt, orig_stmt) in list(self.ctx.pending_loop_vars.items()):
+        for name, (vtype, loop_stmt, orig_stmt) in list(self.ctx.func.pending_loop_vars.items()):
             if loop_stmt is not stmt and name not in inner_scope.bindings:
-                self.ctx.pending_loop_vars[name] = (vtype, stmt, orig_stmt)
+                self.ctx.func.pending_loop_vars[name] = (vtype, stmt, orig_stmt)
 
     def _propagate_for_loop_scope(self, stmt: TpyForEach,
                                    inner_scope: 'Scope',
@@ -1835,12 +1837,12 @@ class StatementAnalyzer:
         # Loop variable (skip synthetic tuple-unpack vars in non-generators;
         # generators need the synthetic var as a struct field)
         var_name = stmt.var
-        is_generator = (isinstance(self.ctx.current_function, TpyFunction)
-                        and self.ctx.current_function.is_generator)
+        is_generator = (isinstance(self.ctx.func.current_function, TpyFunction)
+                        and self.ctx.func.current_function.is_generator)
         if ((not stmt.is_tuple_unpack or is_generator)
-                and var_name not in self.ctx.global_declarations):
+                and var_name not in self.ctx.func.global_declarations):
             resolved = self._resolve_literal_type(elem_type)
-            self.ctx.pending_loop_vars[var_name] = (resolved, stmt, stmt)
+            self.ctx.func.pending_loop_vars[var_name] = (resolved, stmt, stmt)
 
         self._propagate_loop_body_vars(stmt, inner_scope, skip_var=var_name)
 
@@ -1848,7 +1850,7 @@ class StatementAnalyzer:
         """Analyze a `global x, y` statement."""
         from .context import MODULE_INIT_CONTEXT
         # Must be inside a function, not at module level
-        if self.ctx.is_top_level or isinstance(self.ctx.current_function, type(MODULE_INIT_CONTEXT)):
+        if self.ctx.is_top_level or isinstance(self.ctx.func.current_function, type(MODULE_INIT_CONTEXT)):
             raise self.ctx.error("'global' declaration is only allowed inside a function", stmt)
         for name in stmt.names:
             # Cannot use 'global' with Final variables
@@ -1860,13 +1862,13 @@ class StatementAnalyzer:
             if global_type is None:
                 raise self.ctx.error(f"name '{name}' is not defined at module level", stmt)
             # Must not shadow a function parameter
-            func = self.ctx.current_function
+            func = self.ctx.func.current_function
             if isinstance(func, TpyFunction):
                 for pname, _ in func.params:
                     if pname == name:
                         raise self.ctx.error(
                             f"name '{name}' is a parameter and cannot be declared global", stmt)
-            self.ctx.global_declarations.add(name)
+            self.ctx.func.global_declarations.add(name)
 
     def _find_nonconstant_leaf(self, expr: TpyExpr, target_type: 'TpyType | None' = None) -> 'TpyExpr | None':
         """Find the first non-constant sub-expression in a Final initializer.
@@ -1918,11 +1920,11 @@ class StatementAnalyzer:
 
     def _check_nonvalue_rebinding(self, name: str, node: TpyStmt) -> None:
         """Error if reassigning a non-value-type param, loop variable, or global."""
-        existing_type = self.ctx.current_scope.lookup(name)
+        existing_type = self.ctx.func.current_scope.lookup(name)
         if existing_type is None or unwrap_readonly(existing_type).is_value_type():
             return
         # Check function parameters
-        func = self.ctx.current_function
+        func = self.ctx.func.current_function
         if isinstance(func, TpyFunction):
             for pname, ptype in func.params:
                 ptype_bare = unwrap_ref_type(ptype)
@@ -1933,14 +1935,14 @@ class StatementAnalyzer:
                         node
                     )
         # Check for-each loop variables
-        if name in self.ctx.loop_vars:
+        if name in self.ctx.func.loop_vars:
             raise self.ctx.error(
                 f"Cannot reassign loop variable '{name}' of type '{existing_type}'; "
                 f"assign to a new local variable instead",
                 node
             )
         # Check global-declared non-value-type variables
-        if name in self.ctx.global_declarations:
+        if name in self.ctx.func.global_declarations:
             raise self.ctx.error(
                 f"Cannot reassign global variable '{name}' of non-value type '{existing_type}'",
                 node
@@ -1982,7 +1984,7 @@ class StatementAnalyzer:
                 if isinstance(unwrapped_init, (TpySubscript, TpyFieldAccess)):
                     root = _borrow_storage_root(unwrapped_init)
                     if root is not None:
-                        source_storage = self.ctx.borrow_tracker.effective_storage(root)
+                        source_storage = self.ctx.func.borrow_tracker.effective_storage(root)
             info = ViewVarInfo(var_id=var_id, variable_name=name,
                                decl_line=line, initialized_from_owned=is_owned,
                                source_storage=source_storage)
@@ -2029,7 +2031,7 @@ class StatementAnalyzer:
 
     def _analyze_yield(self, stmt: TpyYield) -> None:
         """Analyze a yield statement in a generator function."""
-        func = self.ctx.current_function
+        func = self.ctx.func.current_function
         if func is None or not func.is_generator:
             raise self.ctx.error("'yield' can only be used inside a generator function", stmt)
         elem_type = func.generator_yield_type
@@ -2045,9 +2047,9 @@ class StatementAnalyzer:
     def _analyze_var_decl(self, stmt: TpyVarDecl) -> None:
         """Analyze a variable declaration."""
         # In nested defs, assigning to an outer variable requires nonlocal
-        if (self.ctx.in_nested_def
-                and stmt.name in self.ctx.outer_scope_locals
-                and stmt.name not in self.ctx.current_nonlocal_names):
+        if (self.ctx.func.in_nested_def
+                and stmt.name in self.ctx.func.outer_scope_locals
+                and stmt.name not in self.ctx.func.current_nonlocal_names):
             raise self.ctx.error(
                 f"Cannot assign to '{stmt.name}' in nested function"
                 f" without 'nonlocal' declaration",
@@ -2091,7 +2093,7 @@ class StatementAnalyzer:
         if stmt.type:
             try:
                 in_generic = bool(
-                    (isinstance(self.ctx.current_function, TpyFunction) and self.ctx.current_function.type_params)
+                    (isinstance(self.ctx.func.current_function, TpyFunction) and self.ctx.func.current_function.type_params)
                     or self.ctx.record_ctx.type_params
                 )
                 self.type_ops.validate_type(stmt.type, allow_type_param_ref=in_generic, loc=stmt.loc, allow_forward_ref=False)
@@ -2168,8 +2170,8 @@ class StatementAnalyzer:
                 )
 
         # Detect native global import: x: T = native_global("name")
-        if isinstance(stmt.init, TpyCall) and isinstance(stmt.init.func, TpyName) and self.ctx.current_ns:
-            binding = self.ctx.current_ns.lookup(stmt.init.func_name)
+        if isinstance(stmt.init, TpyCall) and isinstance(stmt.init.func, TpyName) and self.ctx.func.current_ns:
+            binding = self.ctx.func.current_ns.lookup(stmt.init.func_name)
             if (binding and binding.kind == BindingKind.IMPORTED_NAME
                     and binding.import_source
                     and binding.import_source[0] == "tpy.extern"
@@ -2216,7 +2218,7 @@ class StatementAnalyzer:
                 return
 
         # Handle `global x` declarations: treat as reassignment of the global variable
-        is_global_declared = stmt.name in self.ctx.global_declarations
+        is_global_declared = stmt.name in self.ctx.func.global_declarations
         if is_global_declared:
             existing_type = self.ctx.global_scope.lookup(stmt.name)
             if stmt.type is not None:
@@ -2226,7 +2228,7 @@ class StatementAnalyzer:
                 )
         else:
             # Check if this is a reassignment (variable already exists in scope)
-            existing_type = self.ctx.current_scope.lookup(stmt.name)
+            existing_type = self.ctx.func.current_scope.lookup(stmt.name)
             # Top-level typed globals are pre-registered before statement analysis.
             # For an earlier unannotated write to the same name, treat this as a
             # fresh local write and let a later annotation retro-validate history.
@@ -2234,9 +2236,9 @@ class StatementAnalyzer:
                 self.ctx.is_top_level
                 and stmt.type is None
                 and stmt.init is not None
-                and stmt.name not in self.ctx.current_scope.bindings
+                and stmt.name not in self.ctx.func.current_scope.bindings
                 and stmt.name in self.ctx.global_scope.bindings
-                and stmt.name not in self.ctx.authoritative_types
+                and stmt.name not in self.ctx.func.authoritative_types
             )
             if is_preregistered_global_write:
                 existing_type = None
@@ -2295,7 +2297,7 @@ class StatementAnalyzer:
                         # Set call_type so codegen generates explicit type (e.g., std::vector<int>())
                         if is_generic_constructor:
                             stmt.init.call_type = stmt.type  # type: ignore
-                        if self.ctx.current_function is None:
+                        if self.ctx.func.current_function is None:
                             # Global context: return ListType directly
                             init_type = ListType(elem_type)
                         else:
@@ -2312,7 +2314,7 @@ class StatementAnalyzer:
                                 explicit_type=stmt.type
                             )
                             self.ctx.list_literals[literal_id] = info
-                            self.ctx.pending_resolutions.append(literal_id)
+                            self.ctx.func.pending_resolutions.append(literal_id)
                             init_type = PendingListType(elem_type, 0, literal_id)
                     else:
                         # Other generic types (Array, etc.): use annotation directly
@@ -2376,8 +2378,8 @@ class StatementAnalyzer:
 
             # Track pending generic instance to variable mapping
             if isinstance(init_type, PendingGenericInstanceType):
-                self.ctx.variable_to_generic_instance[stmt.name] = init_type.instance_id
-                info = self.ctx.pending_generic_instances.get(init_type.instance_id)
+                self.ctx.func.variable_to_generic_instance[stmt.name] = init_type.instance_id
+                info = self.ctx.func.pending_generic_instances.get(init_type.instance_id)
                 if info is not None:
                     info.variable_name = stmt.name
                     info.decl_line = stmt.loc.line if stmt.loc else None
@@ -2451,7 +2453,7 @@ class StatementAnalyzer:
                     if isinstance(inner_existing, IntLiteralType) and isinstance(var_type, (Int32Type, BigIntType)):
                         # Upgrade from IntLiteralType to concrete type
                         # Update var_types so codegen knows the resolved type
-                        orig_decl = self.ctx.var_decl_by_name.get(stmt.name)
+                        orig_decl = self.ctx.func.var_decl_by_name.get(stmt.name)
                         if orig_decl:
                             self.ctx.var_types[id(orig_decl)] = var_type
                     else:
@@ -2468,7 +2470,7 @@ class StatementAnalyzer:
                     if var_type != existing_type:
                         # Keep original declaration's resolved type in sync for codegen.
                         resolved = unwrap_readonly(var_type)
-                        orig_decl = self.ctx.var_decl_by_name.get(stmt.name)
+                        orig_decl = self.ctx.func.var_decl_by_name.get(stmt.name)
                         if orig_decl:
                             self.ctx.var_types[id(orig_decl)] = resolved
                         # Retroactively update declared_var_types for earlier lines
@@ -2480,7 +2482,7 @@ class StatementAnalyzer:
                 # New variable: resolve IntLiteralType/FloatLiteralType.
                 if isinstance(init_type, IntLiteralType):
                     var_type = self.ctx.default_int_for_literal(init_type, warn_node=stmt.init)
-                    self.ctx.literal_default_vars.add(stmt.name)
+                    self.ctx.func.literal_default_vars.add(stmt.name)
                 elif isinstance(init_type, FloatLiteralType):
                     var_type = FLOAT  # float literals always default to float64
                 # Preserve OwnType on variables -- Own[T] indicates the variable
@@ -2497,7 +2499,7 @@ class StatementAnalyzer:
                 # None literal without annotation -- can't infer the Optional type
                 elif isinstance(init_type, NoneType):
                     var_type = init_type
-                    self.ctx.unresolved_none_vars.add(stmt.name)
+                    self.ctx.func.unresolved_none_vars.add(stmt.name)
                 else:
                     var_type = init_type
             # Strip OwnType from init_type: ownership of the source variable
@@ -2508,7 +2510,7 @@ class StatementAnalyzer:
             # Preserve Ref on non-reassigned function locals from reference
             # sources (call returns, field access, subscript, params).
             # Strip for: reassigned locals (T* codegen), top-level globals.
-            if (stmt.name in self.ctx.current_reassigned_vars
+            if (stmt.name in self.ctx.func.current_reassigned_vars
                     or self.ctx.is_top_level):
                 var_type = unwrap_ref_type(var_type)
             # Track inferred writes for potential future retro-validation.
@@ -2547,11 +2549,11 @@ class StatementAnalyzer:
         if is_global_declared:
             # Update global scope type; bind in current scope for local reads
             self.ctx.global_scope.define(stmt.name, var_type)
-            self.ctx.current_scope.define(stmt.name, var_type)
+            self.ctx.func.current_scope.define(stmt.name, var_type)
         else:
-            self.ctx.current_scope.define(stmt.name, var_type)
+            self.ctx.func.current_scope.define(stmt.name, var_type)
         # Reassignment revives a consumed variable
-        self.ctx.consumed_vars.discard(stmt.name)
+        self.ctx.func.consumed_vars.discard(stmt.name)
         # Reassigning a loop variable prevents const-ref binding
         if existing_type is not None:
             self.ctx.mark_loop_var_mutated(stmt.name)
@@ -2561,13 +2563,14 @@ class StatementAnalyzer:
             self.ctx.mark_loop_var_mutated(stmt.init.name)
         # Borrow tracking: reassignment breaks aliases in both directions
         self.ctx.mark_all_view_borrowers_mutated(stmt.name)
-        self.ctx.borrow_tracker.remove_borrower(stmt.name)
-        self.ctx.borrow_tracker.remove_storage_borrows(stmt.name)
+        bt = self.ctx.func.borrow_tracker
+        bt.remove_borrower(stmt.name)
+        bt.remove_storage_borrows(stmt.name)
         # Create borrow when the target aliases another variable's storage.
         # Skipped for reassigned vars (they use T* pointer-locals in codegen;
         # general alias tracking would require pointer-alias analysis).
         if (stmt.init is not None
-                and stmt.name not in self.ctx.current_reassigned_vars
+                and stmt.name not in self.ctx.func.current_reassigned_vars
                 and var_type is not None):
             if not var_type.is_value_type():
                 # Non-value lvalue: y = x, v = items[i], v = obj.field
@@ -2580,7 +2583,7 @@ class StatementAnalyzer:
                         kind = BorrowKind.FIELD
                     else:
                         kind = BorrowKind.ALIAS
-                    self.ctx.borrow_tracker.add_borrow(root, stmt.name, kind)
+                    bt.add_borrow(root, stmt.name, kind)
                     # 8a.5: defer marking the source as mutated until the borrower is
                     # actually written through. Deferral applies to:
                     # - ELEMENT borrows (v = items[i])
@@ -2588,7 +2591,7 @@ class StatementAnalyzer:
                     #   (w = v, x = w where v = items[i]) -- checked transitively.
                     # PTR/ITER borrows and chains not rooted at an ELEMENT mark immediately.
                     if not (kind == BorrowKind.ELEMENT
-                            or self.ctx.borrow_tracker.is_deferred_borrow(root)):
+                            or bt.is_deferred_borrow(root)):
                         self.ctx.mark_param_mutated(root)
                 else:
                     # _borrow_storage_root returned None: init is not a simple name/
@@ -2608,7 +2611,7 @@ class StatementAnalyzer:
                     if is_ptr_ctor or is_vpc:
                         root = _borrow_storage_root(init_inner.args[0])
                         if root is not None:
-                            self.ctx.borrow_tracker.add_borrow(root, stmt.name, BorrowKind.PTR)
+                            bt.add_borrow(root, stmt.name, BorrowKind.PTR)
             elif isinstance(var_type, SpanType):
                 # Span from slicing borrows the source container
                 # (StrView excluded: str is immutable, no mutations to warn about)
@@ -2616,7 +2619,7 @@ class StatementAnalyzer:
                 if isinstance(init_inner, TpySubscript) and isinstance(init_inner.index, TpySlice):
                     root = _borrow_storage_root(init_inner)
                     if root is not None:
-                        self.ctx.borrow_tracker.add_borrow(root, stmt.name, BorrowKind.ELEMENT)
+                        bt.add_borrow(root, stmt.name, BorrowKind.ELEMENT)
         # 8b: Register call result borrow for ALL assignments (including reassignments).
         # Unlike general alias tracking, borrow contracts use precise return_borrows_from
         # facts and don't need pointer-alias analysis -- safe to apply to reassigned vars.
@@ -2629,7 +2632,7 @@ class StatementAnalyzer:
         # Mark source param as mutated so it stays T& (not const T&), regardless
         # of whether the borrow-tracking block above ran.
         if (stmt.init is not None
-                and stmt.name in self.ctx.current_reassigned_vars
+                and stmt.name in self.ctx.func.current_reassigned_vars
                 and var_type is not None
                 and not var_type.is_value_type()):
             for alias_root in addr_taken_roots(stmt.init):
@@ -2642,7 +2645,7 @@ class StatementAnalyzer:
             inner_var = unwrap_readonly(var_type)
             if (isinstance(inner_var, UnionType) and init_type is not None
                     and init_type in inner_var.members):
-                self.ctx.narrowed_types[stmt.name] = init_type
+                self.ctx.func.narrowed_types[stmt.name] = init_type
                 facts = {stmt.name: init_type}
                 stmt.then_type_facts = self._filter_union_codegen_facts(facts)
         # Record scope depth for new variables (not reassignments of outer-scope
@@ -2654,7 +2657,7 @@ class StatementAnalyzer:
         # outside), the depth stays at the outer scope. This is safe because the
         # codegen uses a rebind slot at the declaration scope for rvalue rebinds.
         if existing_type is None:
-            self.ctx.var_scope_depth[stmt.name] = self.ctx.current_scope.depth
+            self.ctx.func.var_scope_depth[stmt.name] = self.ctx.func.current_scope.depth
         # Update rvalue status for hoist eligibility (both new vars and reassignments)
         if stmt.init:
             if self.compat.is_lvalue(stmt.init):
@@ -2663,30 +2666,30 @@ class StatementAnalyzer:
                 # (reassigned vars become T* pointer-locals in codegen).
                 if (isinstance(stmt.init, TpyName)
                         and existing_type is None
-                        and stmt.name not in self.ctx.current_reassigned_vars
-                        and stmt.init.name not in self.ctx.current_reassigned_vars
+                        and stmt.name not in self.ctx.func.current_reassigned_vars
+                        and stmt.init.name not in self.ctx.func.current_reassigned_vars
                         and id(stmt.init) in self.ctx.all_last_uses
                         and self.compat._is_owned_var(stmt.init.name)
                         and var_type is not None
                         and not var_type.is_value_type()
                         and not (isinstance(var_type, OptionalType) and var_type.uses_pointer_repr())
                         and not is_protocol_union(var_type)):
-                    self.ctx.rvalue_vars.add(stmt.name)
-                    self.ctx.owned_locals.add(stmt.name)
-                    self.ctx.ever_owned_locals.add(stmt.name)
-                    self.ctx.move_through_vars.add(stmt.name)
+                    self.ctx.func.rvalue_vars.add(stmt.name)
+                    self.ctx.func.owned_locals.add(stmt.name)
+                    self.ctx.func.ever_owned_locals.add(stmt.name)
+                    self.ctx.func.move_through_vars.add(stmt.name)
                 else:
-                    self.ctx.rvalue_vars.discard(stmt.name)
-                    self.ctx.owned_locals.discard(stmt.name)
+                    self.ctx.func.rvalue_vars.discard(stmt.name)
+                    self.ctx.func.owned_locals.discard(stmt.name)
             else:
-                self.ctx.rvalue_vars.add(stmt.name)
+                self.ctx.func.rvalue_vars.add(stmt.name)
                 # Track ownership: rvalue-init from value-creating expression
                 # (constructor, Own return) vs reference-returning call.
                 if not self._is_reference_returning_call(stmt.init):
-                    self.ctx.owned_locals.add(stmt.name)
-                    self.ctx.ever_owned_locals.add(stmt.name)
+                    self.ctx.func.owned_locals.add(stmt.name)
+                    self.ctx.func.ever_owned_locals.add(stmt.name)
                 else:
-                    self.ctx.owned_locals.discard(stmt.name)
+                    self.ctx.func.owned_locals.discard(stmt.name)
         # Track provenance for non-value types and pointer types
         # (pointers are value types but carry address provenance)
         provenance_type = var_type
@@ -2703,14 +2706,14 @@ class StatementAnalyzer:
                                  and init_inner.call_type.is_pointer())
                                 or (_fi is not None and _fi.value_ptr_coercion)))
             if not is_non_null and isinstance(init_inner, TpyName):
-                is_non_null = init_inner.name in self.ctx.non_null_ptr_vars
+                is_non_null = init_inner.name in self.ctx.func.non_null_ptr_vars
             self.init.mark_non_null_ptr(stmt.name, is_non_null)
 
         # Scope escape check for variable declarations (new and reassignment)
         if stmt.init and not var_type.is_value_type():
             self.scopes.check_escape(stmt.name, stmt.init, stmt)
-        if self.ctx.current_ns:
-            self.ctx.current_ns.bind_variable(stmt.name, var_type)
+        if self.ctx.func.current_ns:
+            self.ctx.func.current_ns.bind_variable(stmt.name, var_type)
         # Track top-level declarations with line number for order-aware codegen
         # Use earliest declaration line (min) so uses between redeclarations work
         if self.ctx.is_top_level:
@@ -2721,7 +2724,7 @@ class StatementAnalyzer:
                 self.ctx.top_level_decls[stmt.name] = min(self.ctx.top_level_decls[stmt.name], decl_line)
         # Track first var_decl for later type updates on reassignment-driven inference.
         if existing_type is None:
-            self.ctx.var_decl_by_name[stmt.name] = stmt
+            self.ctx.func.var_decl_by_name[stmt.name] = stmt
         # Record declared type for test type-annotation validation.
         # Strip Own[T] and Ref[T] for display -- internal annotations, not user-facing.
         if stmt.loc:
@@ -2811,11 +2814,11 @@ class StatementAnalyzer:
                 # definitions. Mark is_new=False so codegen emits assignment
                 # (the declaration is handled by gen_global_decl).
                 self.ctx.global_scope.define(name, elem_type)
-                self.ctx.current_scope.define(name, elem_type)
+                self.ctx.func.current_scope.define(name, elem_type)
                 self.init.mark_assigned(name)
                 self.narrowing.update_after_write(name, elem_type, elem_type, elem_expr)
-                if self.ctx.current_ns:
-                    self.ctx.current_ns.bind_variable(name, elem_type)
+                if self.ctx.func.current_ns:
+                    self.ctx.func.current_ns.bind_variable(name, elem_type)
                 decl_line = stmt.loc.line if stmt.loc else 0
                 if name not in self.ctx.top_level_decls:
                     self.ctx.top_level_decls[name] = decl_line
@@ -2826,12 +2829,12 @@ class StatementAnalyzer:
                 stmt.is_new.append(False)
                 continue
 
-            existing = self.ctx.current_scope.lookup(name)
+            existing = self.ctx.func.current_scope.lookup(name)
             # Don't treat globals as existing unless explicitly declared
             # with 'global' -- unpack should create locals by default
             if (existing is not None
-                    and name not in self.ctx.global_declarations
-                    and name not in self.ctx.current_scope.bindings
+                    and name not in self.ctx.func.global_declarations
+                    and name not in self.ctx.func.current_scope.bindings
                     and name in self.ctx.global_scope.bindings):
                 existing = None
             if existing is not None:
@@ -2846,7 +2849,7 @@ class StatementAnalyzer:
                     line=(stmt.loc.line if stmt.loc else None),
                 )
                 stmt.target_types[i] = elem_type
-                self.ctx.current_scope.define(name, elem_type)
+                self.ctx.func.current_scope.define(name, elem_type)
                 self.init.mark_assigned(name)
                 self.narrowing.update_after_write(name, elem_type, elem_type, elem_expr)
                 stmt.is_new.append(True)
@@ -2861,7 +2864,7 @@ class StatementAnalyzer:
             source_safe = True
             if source_is_lvalue:
                 source_name = stmt.value.name
-                source_safe = (source_name not in self.ctx.current_reassigned_vars)
+                source_safe = (source_name not in self.ctx.func.current_reassigned_vars)
             for i, name in enumerate(stmt.targets):
                 if name is None:
                     stmt.is_const_ref.append(False)
@@ -2874,8 +2877,8 @@ class StatementAnalyzer:
                     and not isinstance(target_type, PendingViewType)
                     and target_type.is_value_type()
                     and target_type.is_expensive_copy()
-                    and name not in self.ctx.current_reassigned_vars
-                    and name not in self.ctx.current_aug_assigned_vars
+                    and name not in self.ctx.func.current_reassigned_vars
+                    and name not in self.ctx.func.current_aug_assigned_vars
                     and source_safe
                 )
                 stmt.is_const_ref.append(eligible)
@@ -2931,7 +2934,7 @@ class StatementAnalyzer:
             self.ctx.mark_param_structurally_mutated(root)
         storage = self._resolve_obj_storage(stmt.target.obj)
         if storage is not None:
-            if self.ctx.borrow_tracker.has_borrow_of_kinds(storage, (BorrowKind.ELEMENT, BorrowKind.PTR, BorrowKind.ITER)):
+            if self.ctx.func.borrow_tracker.has_borrow_of_kinds(storage, (BorrowKind.ELEMENT, BorrowKind.PTR, BorrowKind.ITER)):
                 self.ctx.warning(
                     f"Mutation of '{storage}' while borrowed"
                     " (slice assignment may invalidate references)", stmt)
@@ -2940,10 +2943,10 @@ class StatementAnalyzer:
     def _analyze_assign(self, stmt: TpyAssign) -> None:
         """Analyze an assignment."""
         # In nested defs, assigning to an outer variable requires nonlocal
-        if (self.ctx.in_nested_def
+        if (self.ctx.func.in_nested_def
                 and isinstance(stmt.target, TpyName)
-                and stmt.target.name in self.ctx.outer_scope_locals
-                and stmt.target.name not in self.ctx.current_nonlocal_names):
+                and stmt.target.name in self.ctx.func.outer_scope_locals
+                and stmt.target.name not in self.ctx.func.current_nonlocal_names):
             raise self.ctx.error(
                 f"Cannot assign to '{stmt.target.name}' in nested function"
                 f" without 'nonlocal' declaration",
@@ -3016,12 +3019,12 @@ class StatementAnalyzer:
                 self.ctx.warning(msg, stmt)
                 copy_warning_fired = True
             # Own[T] param stored in a field/container — mark as consumed
-            if isinstance(stmt.value, TpyName) and stmt.value.name in self.ctx.current_param_names:
+            if isinstance(stmt.value, TpyName) and stmt.value.name in self.ctx.func.current_param_names:
                 self.ctx.mark_own_param_consumed(stmt.value.name)
         if isinstance(stmt.target, TpyName):
             # Track param rebinding (subsequent mutations target the new local, not the arg)
-            if stmt.target.name in self.ctx.current_param_names:
-                self.ctx.current_rebound_params.add(stmt.target.name)
+            if stmt.target.name in self.ctx.func.current_param_names:
+                self.ctx.func.current_rebound_params.add(stmt.target.name)
             # Block reassignment of Final globals at module level
             if self.ctx.is_top_level and stmt.target.name in self.ctx.final_globals:
                 raise self.ctx.error(
@@ -3030,7 +3033,7 @@ class StatementAnalyzer:
                 )
             # Match var-decl flow: reject forbidden rebinding before any type mutation.
             self._check_nonvalue_rebinding(stmt.target.name, stmt)
-            declared_target_type = self.ctx.current_scope.lookup(stmt.target.name)
+            declared_target_type = self.ctx.func.current_scope.lookup(stmt.target.name)
             if declared_target_type is not None:
                 target_type = declared_target_type
             # Unwrap Ref, Own, and ReadonlyType for reassignment type resolution --
@@ -3066,28 +3069,29 @@ class StatementAnalyzer:
                 # Readonly status flows from the value expression
                 if isinstance(value_type, ReadonlyType) and not target_type.is_value_type():
                     target_type = ReadonlyType(target_type)
-            self.ctx.current_scope.define(stmt.target.name, target_type)
+            self.ctx.func.current_scope.define(stmt.target.name, target_type)
             # Reassignment revives a consumed variable
-            self.ctx.consumed_vars.discard(stmt.target.name)
+            self.ctx.func.consumed_vars.discard(stmt.target.name)
             # Borrow tracking: reassignment breaks aliases in both directions.
             # Note: borrow creation is skipped for reassigned vars (they use T*
             # pointer-locals in codegen); tracking borrows for them would require
             # pointer-alias analysis beyond the current design scope.
             self.ctx.mark_all_view_borrowers_mutated(stmt.target.name)
-            self.ctx.borrow_tracker.remove_borrower(stmt.target.name)
-            self.ctx.borrow_tracker.remove_storage_borrows(stmt.target.name)
+            bt = self.ctx.func.borrow_tracker
+            bt.remove_borrower(stmt.target.name)
+            bt.remove_storage_borrows(stmt.target.name)
             # Rebinding a non-value pointer-local generates local = &(source) in C++,
             # requiring source param to be T& (not const T&).
             if not inner_target.is_value_type() and self.compat.is_lvalue(stmt.value):
                 for rebind_root in addr_taken_roots(stmt.value):
                     self.ctx.mark_param_mutated(rebind_root)
-            if self.ctx.current_ns:
-                self.ctx.current_ns.update_variable_type(stmt.target.name, target_type)
+            if self.ctx.func.current_ns:
+                self.ctx.func.current_ns.update_variable_type(stmt.target.name, target_type)
             self.ctx.set_expr_type(stmt.target, target_type)
             self.deduction.record_write(stmt.target.name, stmt.value, inner_value)
             if not isinstance(inner_target, (*PENDING_CONTAINER_TYPES, PendingViewType)):
                 resolved = unwrap_readonly(target_type)
-                var_decl = self.ctx.var_decl_by_name.get(stmt.target.name)
+                var_decl = self.ctx.func.var_decl_by_name.get(stmt.target.name)
                 if var_decl:
                     self.ctx.var_types[id(var_decl)] = resolved
                 # Retroactively update declared_var_types for earlier lines
@@ -3101,15 +3105,15 @@ class StatementAnalyzer:
         if isinstance(stmt.target, TpyName):
             # Update rvalue/ownership status for hoist eligibility and copy detection
             if self.compat.is_lvalue(stmt.value):
-                self.ctx.rvalue_vars.discard(stmt.target.name)
-                self.ctx.owned_locals.discard(stmt.target.name)
+                self.ctx.func.rvalue_vars.discard(stmt.target.name)
+                self.ctx.func.owned_locals.discard(stmt.target.name)
             else:
-                self.ctx.rvalue_vars.add(stmt.target.name)
+                self.ctx.func.rvalue_vars.add(stmt.target.name)
                 if not self._is_reference_returning_call(stmt.value):
-                    self.ctx.owned_locals.add(stmt.target.name)
-                    self.ctx.ever_owned_locals.add(stmt.target.name)
+                    self.ctx.func.owned_locals.add(stmt.target.name)
+                    self.ctx.func.ever_owned_locals.add(stmt.target.name)
                 else:
-                    self.ctx.owned_locals.discard(stmt.target.name)
+                    self.ctx.func.owned_locals.discard(stmt.target.name)
 
         # Tuples are immutable -- reject element assignment
         if isinstance(stmt.target, TpySubscript):
@@ -3160,9 +3164,10 @@ class StatementAnalyzer:
             field_storage = _storage_key(stmt.target)
             _BORROW_KINDS = (BorrowKind.FIELD, BorrowKind.ELEMENT, BorrowKind.PTR, BorrowKind.ITER)
             has_conflict = False
-            if storage is not None and self.ctx.borrow_tracker.has_borrow_of_kinds(storage, _BORROW_KINDS):
+            bt = self.ctx.func.borrow_tracker
+            if storage is not None and bt.has_borrow_of_kinds(storage, _BORROW_KINDS):
                 has_conflict = True
-            if not has_conflict and field_storage is not None and self.ctx.borrow_tracker.has_borrow_of_kinds(field_storage, _BORROW_KINDS):
+            if not has_conflict and field_storage is not None and bt.has_borrow_of_kinds(field_storage, _BORROW_KINDS):
                 storage = field_storage
                 has_conflict = True
             if has_conflict:
@@ -3188,10 +3193,10 @@ class StatementAnalyzer:
                     if new_pending.key_type != obj_type_for_dict.key_type or new_pending.value_type != obj_type_for_dict.value_type:
                         self.ctx.set_expr_type(stmt.target.obj, new_pending)
                         if isinstance(stmt.target.obj, TpyName):
-                            if self.ctx.current_scope:
-                                self.ctx.current_scope.define(stmt.target.obj.name, new_pending)
-                            if self.ctx.current_ns:
-                                self.ctx.current_ns.bind_variable(stmt.target.obj.name, new_pending)
+                            if self.ctx.func.current_scope:
+                                self.ctx.func.current_scope.define(stmt.target.obj.name, new_pending)
+                            if self.ctx.func.current_ns:
+                                self.ctx.func.current_ns.bind_variable(stmt.target.obj.name, new_pending)
                     target_type = dict_info.value_type
                     self.ctx.set_expr_type(stmt.target, target_type)
 
@@ -3234,7 +3239,7 @@ class StatementAnalyzer:
                                  and val_inner.call_type.is_pointer())
                                 or (_fi is not None and _fi.value_ptr_coercion)))
             if not is_non_null and isinstance(val_inner, TpyName):
-                is_non_null = val_inner.name in self.ctx.non_null_ptr_vars
+                is_non_null = val_inner.name in self.ctx.func.non_null_ptr_vars
             self.init.mark_non_null_ptr(stmt.target.name, is_non_null)
 
         # Mark as definitely assigned for plain name targets
@@ -3260,8 +3265,9 @@ class StatementAnalyzer:
             # Borrow conflict: del on a container with element-level borrows
             storage = self._resolve_obj_storage(subscript.obj)
             if storage is not None:
-                if self.ctx.borrow_tracker.has_element_borrow(storage):
-                    if self.ctx.borrow_tracker.has_iter_borrow(storage):
+                bt = self.ctx.func.borrow_tracker
+                if bt.has_element_borrow(storage):
+                    if bt.has_iter_borrow(storage):
                         msg = (f"Mutation of '{storage}' while iterating over it"
                                " ('del' invalidates the iterator)")
                     else:
@@ -3301,16 +3307,16 @@ class StatementAnalyzer:
         for name in stmt.names:
             # Global-declared and nonlocal vars are always reachable;
             # locals/params must be definitely assigned.
-            is_external = (name in self.ctx.global_declarations
-                           or name in self.ctx.current_nonlocal_names)
-            if not is_external and name not in self.ctx.definitely_assigned:
+            is_external = (name in self.ctx.func.global_declarations
+                           or name in self.ctx.func.current_nonlocal_names)
+            if not is_external and name not in self.ctx.func.definitely_assigned:
                 raise self.ctx.error(
                     f"variable '{name}' may not be assigned at this point", stmt)
             # Remove from definitely_assigned so use-after-del is caught
-            self.ctx.definitely_assigned.discard(name)
+            self.ctx.func.definitely_assigned.discard(name)
             # Clear narrowing facts
-            self.ctx.narrowed_types.pop(name, None)
-            self.ctx.non_null_ptr_vars.discard(name)
+            self.ctx.func.narrowed_types.pop(name, None)
+            self.ctx.func.non_null_ptr_vars.discard(name)
 
     def _apply_aug_assign_writeback(
         self,
@@ -3341,9 +3347,9 @@ class StatementAnalyzer:
                 result_type, effective_type, f"'{op}=' to '{name}'", loc=stmt.loc,
             )
             if effective_type != target_type:
-                if self.ctx.current_scope:
-                    self.ctx.current_scope.define(name, effective_type)
-                var_decl = self.ctx.var_decl_by_name.get(name)
+                if self.ctx.func.current_scope:
+                    self.ctx.func.current_scope.define(name, effective_type)
+                var_decl = self.ctx.func.var_decl_by_name.get(name)
                 if var_decl:
                     self.ctx.var_types[id(var_decl)] = effective_type
                 for key in self.ctx.declared_var_types:
@@ -3371,7 +3377,7 @@ class StatementAnalyzer:
             return False
         if not isinstance(expr, TpyName):
             return False
-        scope_type = self.ctx.current_scope.lookup(expr.name) if self.ctx.current_scope else None
+        scope_type = self.ctx.func.current_scope.lookup(expr.name) if self.ctx.func.current_scope else None
         if scope_type is not None and isinstance(scope_type, (RefType, OwnType)):
             return False  # already caught by the Ref/Own check
         if scope_type is not None and scope_type.is_value_type():
@@ -3386,10 +3392,10 @@ class StatementAnalyzer:
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
         # In nested defs, aug-assign to an outer variable requires nonlocal
-        if (self.ctx.in_nested_def
+        if (self.ctx.func.in_nested_def
                 and isinstance(stmt.target, TpyName)
-                and stmt.target.name in self.ctx.outer_scope_locals
-                and stmt.target.name not in self.ctx.current_nonlocal_names):
+                and stmt.target.name in self.ctx.func.outer_scope_locals
+                and stmt.target.name not in self.ctx.func.current_nonlocal_names):
             raise self.ctx.error(
                 f"Cannot modify '{stmt.target.name}' in nested function"
                 f" without 'nonlocal' declaration",
@@ -3431,9 +3437,10 @@ class StatementAnalyzer:
             field_storage = _storage_key(stmt.target)
             _BORROW_KINDS = (BorrowKind.FIELD, BorrowKind.ELEMENT, BorrowKind.PTR, BorrowKind.ITER)
             has_conflict = False
-            if storage is not None and self.ctx.borrow_tracker.has_borrow_of_kinds(storage, _BORROW_KINDS):
+            bt = self.ctx.func.borrow_tracker
+            if storage is not None and bt.has_borrow_of_kinds(storage, _BORROW_KINDS):
                 has_conflict = True
-            if not has_conflict and field_storage is not None and self.ctx.borrow_tracker.has_borrow_of_kinds(field_storage, _BORROW_KINDS):
+            if not has_conflict and field_storage is not None and bt.has_borrow_of_kinds(field_storage, _BORROW_KINDS):
                 storage = field_storage
                 has_conflict = True
             if has_conflict:
@@ -3450,9 +3457,10 @@ class StatementAnalyzer:
         # Any structural aug-assign (list +=, set |=, user-defined __iadd__ that
         # reallocates) is a mutation -- check the borrow state, not the container type.
         elif isinstance(stmt.target, TpyName):
-            storage = self.ctx.borrow_tracker.effective_storage(stmt.target.name)
-            if self.ctx.borrow_tracker.has_element_borrow(storage):
-                if self.ctx.borrow_tracker.has_iter_borrow(storage):
+            bt = self.ctx.func.borrow_tracker
+            storage = bt.effective_storage(stmt.target.name)
+            if bt.has_element_borrow(storage):
+                if bt.has_iter_borrow(storage):
                     self.ctx.warning(
                         f"Mutation of '{storage}' while iterating over it"
                         f" ('{stmt.op}=' invalidates the iterator)",
@@ -3469,7 +3477,7 @@ class StatementAnalyzer:
             isinstance(stmt.target, TpyName)
             and isinstance(target_type, BigIntType)
             and isinstance(value_type, Int32Type)
-            and stmt.target.name in self.ctx.literal_default_vars
+            and stmt.target.name in self.ctx.func.literal_default_vars
         ):
             type_name = str(value_type)
             self.ctx.warning(
@@ -3543,7 +3551,7 @@ class StatementAnalyzer:
             resolve_value_type = target_type
         # Invalidate range facts for the target (value has changed)
         if isinstance(stmt.target, TpyName):
-            self.ctx.value_ranges.pop(stmt.target.name, None)
+            self.ctx.func.value_ranges.pop(stmt.target.name, None)
         # Resolve the binary operation for codegen
         operators = OperatorResolver(self.ctx)
         if result := operators.resolve_binop(target_type, stmt.op, resolve_value_type):

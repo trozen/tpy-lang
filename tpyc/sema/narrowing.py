@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 class NarrowingTracker:
     """Centralized type narrowing flow analysis.
 
-    Operates on ctx.narrowed_types without owning it.
+    Operates on ctx.func.narrowed_types without owning it.
     """
 
     def __init__(
@@ -49,7 +49,7 @@ class NarrowingTracker:
 
     def narrow_name_type(self, name: str, typ: TpyType) -> TpyType:
         """Narrow Optional/Union name type using flow facts."""
-        return self.ctx.narrowed_types.get(name, typ)
+        return self.ctx.func.narrowed_types.get(name, typ)
 
     def declared_type_for_name(self, name: str) -> TpyType | None:
         """Get a variable's declared type (without applying flow narrowing).
@@ -57,11 +57,11 @@ class NarrowingTracker:
         Strips Ref -- declared types reflect the user's annotation, not
         the internal reference-provenance wrapper.
         """
-        if self.ctx.current_ns:
-            binding = self.ctx.current_ns.lookup(name)
+        if self.ctx.func.current_ns:
+            binding = self.ctx.func.current_ns.lookup(name)
             if binding and binding.kind == BindingKind.VARIABLE:
                 return unwrap_ref_type(binding.type)
-        typ = self.ctx.current_scope.lookup(name)
+        typ = self.ctx.func.current_scope.lookup(name)
         return unwrap_ref_type(typ) if typ is not None else None
 
     def _resolve_field_path_type(self, key: str) -> TpyType | None:
@@ -81,7 +81,7 @@ class NarrowingTracker:
         narrowing, returns the declared union type instead, since isinstance and
         condition_type_facts need the full union to compute branch facts.
         """
-        effective = self.ctx.narrowed_types.get(name)
+        effective = self.ctx.func.narrowed_types.get(name)
         if effective is None:
             effective = self.declared_type_for_name(name)
         # Strip Own[T] -- narrowing operates on the underlying type
@@ -213,7 +213,7 @@ class NarrowingTracker:
 
     def _effective_type_for_key(self, key: str) -> TpyType | None:
         """Get the effective type for a narrowing key (name or dotted path)."""
-        effective = self.ctx.narrowed_types.get(key)
+        effective = self.ctx.func.narrowed_types.get(key)
         if effective is not None:
             return effective
         if "." in key:
@@ -529,7 +529,7 @@ class NarrowingTracker:
         literal_val = self._extract_int_literal(other)
         len_of = self._extract_len_of(other)
 
-        existing = self.ctx.value_ranges.get(name, ValueRange())
+        existing = self.ctx.func.value_ranges.get(name, ValueRange())
 
         if op == "!=":
             if literal_val == 0:
@@ -653,18 +653,18 @@ class NarrowingTracker:
         rhs_expr: TpyExpr | None = None,
     ) -> None:
         """Update flow facts after assigning/writing a variable."""
-        self.ctx.narrowed_types.pop(name, None)
+        self.ctx.func.narrowed_types.pop(name, None)
         # Invalidate field narrowing facts rooted at this variable
         self._invalidate_field_facts(name)
         # Invalidate integer range facts for this variable
-        self.ctx.value_ranges.pop(name, None)
+        self.ctx.func.value_ranges.pop(name, None)
         # Invalidate symbolic bounds referencing this variable's length
         self._invalidate_len_ranges(name)
         # Set range fact for integer literal assignments (e.g. i = 0, i: Int32 = 0).
         # Unwrap one level of TpyCoerce (typed annotations wrap the literal in a coerce node).
         rhs_inner = rhs_expr.expr if isinstance(rhs_expr, TpyCoerce) else rhs_expr
         if isinstance(rhs_inner, TpyIntLiteral):
-            self.ctx.value_ranges[name] = ValueRange.from_literal(rhs_inner.value)
+            self.ctx.func.value_ranges[name] = ValueRange.from_literal(rhs_inner.value)
         # For Optional targets, re-narrow if RHS is provably non-None
         inner_target = unwrap_readonly(target_type)
         if isinstance(inner_target, OwnType):
@@ -675,17 +675,17 @@ class NarrowingTracker:
             return
         if rhs_type is None:
             return
-        self.ctx.narrowed_types[name] = self._optional_inner_type(target_type)
+        self.ctx.func.narrowed_types[name] = self._optional_inner_type(target_type)
 
     def _invalidate_field_facts(self, name: str) -> None:
         """Remove all field narrowing facts rooted at the given variable name."""
         prefix = name + "."
-        stale = [k for k in self.ctx.narrowed_types if k.startswith(prefix)]
+        stale = [k for k in self.ctx.func.narrowed_types if k.startswith(prefix)]
         for k in stale:
-            del self.ctx.narrowed_types[k]
-        stale_ptr = [k for k in self.ctx.non_null_ptr_vars if k.startswith(prefix)]
+            del self.ctx.func.narrowed_types[k]
+        stale_ptr = [k for k in self.ctx.func.non_null_ptr_vars if k.startswith(prefix)]
         for k in stale_ptr:
-            self.ctx.non_null_ptr_vars.discard(k)
+            self.ctx.func.non_null_ptr_vars.discard(k)
 
     def invalidate_for_field_write(self, target: TpyExpr) -> None:
         """Invalidate narrowing facts for sub-paths when a field is written.
@@ -701,20 +701,20 @@ class NarrowingTracker:
         if key is None or "." not in key:
             return
         prefix = key + "."
-        stale = [k for k in self.ctx.narrowed_types if k.startswith(prefix)]
+        stale = [k for k in self.ctx.func.narrowed_types if k.startswith(prefix)]
         for k in stale:
-            del self.ctx.narrowed_types[k]
-        self.ctx.non_null_ptr_vars.discard(key)
-        stale_ptr = [k for k in self.ctx.non_null_ptr_vars if k.startswith(prefix)]
+            del self.ctx.func.narrowed_types[k]
+        self.ctx.func.non_null_ptr_vars.discard(key)
+        stale_ptr = [k for k in self.ctx.func.non_null_ptr_vars if k.startswith(prefix)]
         for k in stale_ptr:
-            self.ctx.non_null_ptr_vars.discard(k)
+            self.ctx.func.non_null_ptr_vars.discard(k)
 
     def _invalidate_len_ranges(self, name: str) -> None:
         """Remove range facts whose symbolic bound references len(name)."""
-        stale = [k for k, v in self.ctx.value_ranges.items()
+        stale = [k for k, v in self.ctx.func.value_ranges.items()
                  if v.hi_len_of == name]
         for k in stale:
-            del self.ctx.value_ranges[k]
+            del self.ctx.func.value_ranges[k]
 
     def invalidate_field_facts_for_call(self, call: TpyCall) -> None:
         """Invalidate field narrowing facts for name arguments passed by mutable reference.

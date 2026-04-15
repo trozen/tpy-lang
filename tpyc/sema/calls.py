@@ -684,8 +684,8 @@ class CallAnalyzer:
             # Check if this is actually a function -- the parser speculatively
             # sets call_type for any imported name, so we need to verify
             is_known_function = self.ctx.registry.get_function(expr.func_name) is not None
-            if not is_known_function and self.ctx.current_ns:
-                binding = self.ctx.current_ns.lookup(expr.func_name)
+            if not is_known_function and self.ctx.func.current_ns:
+                binding = self.ctx.func.current_ns.lookup(expr.func_name)
                 if binding and binding.kind == BindingKind.FUNCTION:
                     is_known_function = True
                 elif binding and binding.kind == BindingKind.IMPORTED_NAME and binding.import_source:
@@ -748,11 +748,11 @@ class CallAnalyzer:
         imported_generic_module: str | None = None
 
         # Use namespace for unified lookup - handles shadowing automatically
-        if self.ctx.current_ns:
-            binding = self.ctx.current_ns.lookup(expr.func_name)
+        if self.ctx.func.current_ns:
+            binding = self.ctx.func.current_ns.lookup(expr.func_name)
             if binding:
                 if binding.kind == BindingKind.VARIABLE:
-                    var_type = self.ctx.narrowed_types.get(expr.func_name, binding.type)
+                    var_type = self.ctx.func.narrowed_types.get(expr.func_name, binding.type)
                     # Strip Own[T] -- Own is a storage property, not a type distinction
                     if isinstance(var_type, OwnType):
                         var_type = var_type.wrapped
@@ -970,7 +970,7 @@ class CallAnalyzer:
             # list() with no args and no context hint -- create empty list with
             # unknown element type (same as []) if in function scope.
             if (expr.func_name == "list"
-                    and isinstance(self.ctx.current_function, TpyFunction)
+                    and isinstance(self.ctx.func.current_function, TpyFunction)
                     and record_info.type_factory):
                 literal_id = self.ctx.literal_counter
                 self.ctx.literal_counter += 1
@@ -982,13 +982,13 @@ class CallAnalyzer:
                     is_mutated=True,
                 )
                 self.ctx.list_literals[literal_id] = info
-                self.ctx.pending_resolutions.append(literal_id)
+                self.ctx.func.pending_resolutions.append(literal_id)
                 result_type = PendingListType(UNKNOWN_ELEMENT, 0, literal_id)
                 expr.call_type = result_type
                 return result_type
             # dict() with no args -- create empty dict with unknown key/value types.
             if (expr.func_name == "dict"
-                    and isinstance(self.ctx.current_function, TpyFunction)
+                    and isinstance(self.ctx.func.current_function, TpyFunction)
                     and record_info.type_factory):
                 literal_id = self.ctx.literal_counter
                 self.ctx.literal_counter += 1
@@ -999,13 +999,13 @@ class CallAnalyzer:
                     value_type=UNKNOWN_ELEMENT,
                 )
                 self.ctx.dict_literals[literal_id] = info
-                self.ctx.pending_dict_resolutions.append(literal_id)
+                self.ctx.func.pending_dict_resolutions.append(literal_id)
                 result_type = PendingDictType(UNKNOWN_ELEMENT, UNKNOWN_ELEMENT, literal_id)
                 expr.call_type = result_type
                 return result_type
             # set() with no args -- create empty set with unknown element type.
             if (expr.func_name == "set"
-                    and isinstance(self.ctx.current_function, TpyFunction)
+                    and isinstance(self.ctx.func.current_function, TpyFunction)
                     and record_info.type_factory):
                 literal_id = self.ctx.literal_counter
                 self.ctx.literal_counter += 1
@@ -1015,7 +1015,7 @@ class CallAnalyzer:
                     element_type=UNKNOWN_ELEMENT,
                 )
                 self.ctx.set_literals[literal_id] = info
-                self.ctx.pending_set_resolutions.append(literal_id)
+                self.ctx.func.pending_set_resolutions.append(literal_id)
                 result_type = PendingSetType(UNKNOWN_ELEMENT, literal_id)
                 expr.call_type = result_type
                 return result_type
@@ -1025,7 +1025,7 @@ class CallAnalyzer:
                 expr
             )
 
-        if self.ctx.in_nested_def and expr.func_name == self.ctx.nested_def_name:
+        if self.ctx.func.in_nested_def and expr.func_name == self.ctx.func.nested_def_name:
             raise self.ctx.error(
                 f"Recursive nested functions are not supported. "
                 f"'{expr.func_name}' cannot call itself",
@@ -1102,8 +1102,8 @@ class CallAnalyzer:
         # preserves the full union (e.g. copy(pet) where pet: Dog | Cat is
         # narrowed to Dog still returns Own[Dog | Cat])
         arg = expr.args[0]
-        if isinstance(arg, TpyName) and self.ctx.current_scope:
-            binding_type = self.ctx.current_scope.lookup(arg.name)
+        if isinstance(arg, TpyName) and self.ctx.func.current_scope:
+            binding_type = self.ctx.func.current_scope.lookup(arg.name)
             if binding_type is not None:
                 bt = binding_type.wrapped if isinstance(binding_type, OwnType) else binding_type
                 if isinstance(bt, UnionType) and not isinstance(arg_type, UnionType):
@@ -1217,12 +1217,12 @@ class CallAnalyzer:
                 expr,
             )
         # Resolve the name to an enum type
-        if self.ctx.current_ns is None:
+        if self.ctx.func.current_ns is None:
             raise self.ctx.error(
                 "try_parse() first argument must be an enum type name",
                 expr,
             )
-        binding = self.ctx.current_ns.lookup(first_arg.name)
+        binding = self.ctx.func.current_ns.lookup(first_arg.name)
         if binding is None or binding.kind != BindingKind.ENUM:
             raise self.ctx.error(
                 f"try_parse() first argument must be an enum type, "
@@ -1707,7 +1707,7 @@ class CallAnalyzer:
                         f"argument '{param.name}' must be a mutable lvalue", expr)
                 # Address-taking requires T& -- mark params and loop vars as mutated.
                 for name in addr_taken_roots(expr.args[i]):
-                    root = self.ctx.borrow_tracker.effective_storage(name)
+                    root = self.ctx.func.borrow_tracker.effective_storage(name)
                     self.ctx.mark_param_mutated(root)
                     self.ctx.mark_loop_var_mutated(root)
 
@@ -1747,8 +1747,9 @@ class CallAnalyzer:
             # readonly[T] param -- function promises not to mutate
             if isinstance(param.type, ReadonlyType):
                 continue
-            storage = self.ctx.borrow_tracker.effective_storage(arg.name)
-            needs_check = self.ctx.borrow_tracker.has_element_borrow(storage)
+            bt = self.ctx.func.borrow_tracker
+            storage = bt.effective_storage(arg.name)
+            needs_check = bt.has_element_borrow(storage)
             if effective_mp is not None and i not in effective_mp:
                 # Direct facts say "not structurally mutated". If callee has call edges
                 # and Phase 2 hasn't finalized yet, transitive propagation
@@ -1800,8 +1801,8 @@ class CallAnalyzer:
         if fi is None or fi.is_readonly or fi.is_pure:
             return
         from .statements import _root_name_of_expr
-        name_to_idx = self.ctx.current_param_name_to_idx
-        rebound = self.ctx.current_rebound_params
+        name_to_idx = self.ctx.func.current_param_name_to_idx
+        rebound = self.ctx.func.current_rebound_params
 
         # Detect receivers rooted at self so Phase 2 can propagate self-mutation.
         # Covers: self.method(), self.field.method(), and loop_var.method()
@@ -1817,7 +1818,7 @@ class CallAnalyzer:
                     receiver_is_self = True
                 else:
                     # Loop variable iterating over self.field
-                    iterable = self.ctx.loop_var_iterable.get(obj.name)
+                    iterable = self.ctx.func.loop_var_iterable.get(obj.name)
                     if iterable is not None:
                         root = iterable.split(".")[0] if "." in iterable else iterable
                         if root == "self":
@@ -1843,11 +1844,11 @@ class CallAnalyzer:
             # 8a.5: effective_storage_through_borrows also follows element/field/ptr
             # borrows so that mutating a call arg that element-borrows from a param
             # correctly traces back to the source param.
-            resolved = self.ctx.borrow_tracker.effective_storage_through_borrows(arg_root)
+            resolved = self.ctx.func.borrow_tracker.effective_storage_through_borrows(arg_root)
             if resolved in name_to_idx and resolved not in rebound:
                 param_map[i] = name_to_idx[resolved]
         if param_map or receiver_is_self:
-            self.ctx.current_call_edges.append(
+            self.ctx.func.current_call_edges.append(
                 MutationCallEdge(callee_fi=fi, param_map=param_map,
                                  receiver_is_self=receiver_is_self)
             )
@@ -2005,7 +2006,7 @@ class CallAnalyzer:
         is_safe = (
             source.signed and not target.signed
             and target.bits >= source.bits
-            and (rng := self.ctx.value_ranges.get(arg.name)) is not None
+            and (rng := self.ctx.func.value_ranges.get(arg.name)) is not None
             and rng.is_non_negative()
         )
         if is_safe:
@@ -2042,7 +2043,7 @@ class CallAnalyzer:
                 if self.ctx.registry.get_record_for_type(type_arg) is None:
                     raise self.ctx.error(f"Unknown type: {type_arg.name}", expr)
             in_generic = bool(
-                (isinstance(self.ctx.current_function, TpyFunction) and self.ctx.current_function.type_params)
+                (isinstance(self.ctx.func.current_function, TpyFunction) and self.ctx.func.current_function.type_params)
                 or self.ctx.record_ctx.type_params
             )
             self.type_ops.validate_type(type_arg, allow_type_param_ref=in_generic, loc=expr.loc, allow_forward_ref=False)
@@ -2583,7 +2584,7 @@ class CallAnalyzer:
             return
         # Auto-propagation: caller has matching @error_return(E), not inside a try/except
         # (inside try/except, the goto-based dispatch handles it instead)
-        current = self.ctx.current_function
+        current = self.ctx.func.current_function
         if (ctx_error_type is None
                 and isinstance(current, TpyFunction)
                 and error_return_matches(current.error_return, func.error_return_type)):
@@ -2732,7 +2733,7 @@ class CallAnalyzer:
                         raise self.ctx.error(
                             f"argument '{pname}' must be a mutable lvalue", expr)
                     for name in addr_taken_roots(source):
-                        root = self.ctx.borrow_tracker.effective_storage(name)
+                        root = self.ctx.func.borrow_tracker.effective_storage(name)
                         self.ctx.mark_param_mutated(root)
                         self.ctx.mark_loop_var_mutated(root)
                     inner_type = self.ctx.get_expr_type(source)
@@ -2901,7 +2902,7 @@ class CallAnalyzer:
                     )
                 # Validate non-wildcard entries
                 in_generic = bool(
-                    (isinstance(self.ctx.current_function, TpyFunction) and self.ctx.current_function.type_params)
+                    (isinstance(self.ctx.func.current_function, TpyFunction) and self.ctx.func.current_function.type_params)
                     or self.ctx.record_ctx.type_params
                 )
                 for type_arg in expr.type_args:
@@ -3037,7 +3038,7 @@ class CallAnalyzer:
     def _can_defer_generic_inference(self, record: RecordInfo, expr: TpyCall) -> bool:
         """Check whether a generic constructor can use deferred type inference."""
         # Only in function bodies (resolve_all runs there)
-        if not isinstance(self.ctx.current_function, TpyFunction):
+        if not isinstance(self.ctx.func.current_function, TpyFunction):
             return False
         # Not inside a class body (field types must be concrete)
         if self.ctx.record_ctx.record is not None:
@@ -3093,7 +3094,7 @@ class CallAnalyzer:
             inferred=inferred,
             expr=expr,
         )
-        self.ctx.pending_generic_instances[instance_id] = info
+        self.ctx.func.pending_generic_instances[instance_id] = info
         return PendingGenericInstanceType(record_name=expr.func_name, instance_id=instance_id)
 
     def _analyze_legacy_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:

@@ -6,7 +6,7 @@ Contains the shared state that is passed to all semantic analysis components.
 
 from __future__ import annotations
 from copy import deepcopy
-from dataclasses import dataclass, field, fields as dc_fields
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Literal, TYPE_CHECKING
 
@@ -284,8 +284,8 @@ class BorrowTracker:
 class _ModuleInitSentinel:
     """Sentinel for module-level init context (not a real function, but not None either).
 
-    Truthy so that `if ctx.current_function:` passes, but fails
-    `isinstance(ctx.current_function, TpyFunction)` checks.
+    Truthy so that `if ctx.func.current_function:` passes, but fails
+    `isinstance(ctx.func.current_function, TpyFunction)` checks.
     """
     __slots__ = ()
     def __bool__(self) -> bool:
@@ -308,12 +308,11 @@ class RecordContext:
 
 @dataclass
 class FunctionTrackingState:
-    """Per-function analysis state that is reset between functions and
-    saved/restored for nested def isolation.
+    """Per-function analysis state.
 
-    SemanticContext delegates attribute access to an instance of this class
-    via __getattr__/__setattr__, so all fields are accessible directly on
-    ctx without callsite changes.
+    Extracted from SemanticContext to keep that class from growing unbounded.
+    Reset between functions and saved/restored for nested-def isolation.
+    Accessed explicitly by callers via ``ctx.func.<field>``.
     """
 
     # --- Analysis state (per-function) ---
@@ -425,18 +424,13 @@ class FunctionTrackingState:
     current_consumed_own_params: set[str] = field(default_factory=set)
 
 
-# Field names on FunctionTrackingState, cached for __getattr__/__setattr__.
-_FUNC_STATE_FIELDS: frozenset[str] = frozenset(
-    f.name for f in dc_fields(FunctionTrackingState)
-)
-
-
 @dataclass
 class SemanticContext:
     """Shared state for all semantic analysis components.
 
-    Per-function state lives in _func (FunctionTrackingState). Attribute access
-    is forwarded transparently so callers use ctx.definitely_assigned etc.
+    Per-function tracking state is held in ``func`` (FunctionTrackingState).
+    Callers access it explicitly as ``ctx.func.<field>`` so the split between
+    module-wide state and per-function state is visible at every use site.
     """
 
     # --- Core ---
@@ -445,8 +439,9 @@ class SemanticContext:
     default_int_type: TpyType = field(default_factory=lambda: INT32)
     macro_registry: MacroRegistry | None = None
 
-    # --- Per-function state (composed, forwarded via __getattr__/__setattr__) ---
-    _func: FunctionTrackingState = field(default_factory=FunctionTrackingState)
+    # --- Per-function state ---
+    # Accessed explicitly by callers as ``ctx.func.<field>``.
+    func: FunctionTrackingState = field(default_factory=FunctionTrackingState)
 
     # --- Record context ---
     record_ctx: RecordContext = field(default_factory=RecordContext)
@@ -558,17 +553,6 @@ class SemanticContext:
     # --- Diagnostics ---
     diagnostics: list[Diagnostic] = field(default_factory=list)
 
-    def __getattr__(self, name: str) -> object:
-        if name in _FUNC_STATE_FIELDS:
-            return getattr(self._func, name)
-        raise AttributeError(f"'{type(self).__name__}' has no attribute '{name}'")
-
-    def __setattr__(self, name: str, value: object) -> None:
-        if name in _FUNC_STATE_FIELDS:
-            setattr(self._func, name, value)
-        else:
-            super().__setattr__(name, value)
-
     def is_readonly_name(self, name: str) -> bool:
         """Check if a variable has readonly provenance in its declared scope type.
 
@@ -577,16 +561,16 @@ class SemanticContext:
         to a concrete member. Reassignment updates the scope binding, so a
         non-readonly reassignment correctly clears this.
         """
-        if self.current_scope is None:
+        if self.func.current_scope is None:
             return False
-        declared = self.current_scope.lookup(name)
+        declared = self.func.current_scope.lookup(name)
         return declared is not None and isinstance(declared, ReadonlyType)
 
     def _resolve_loc(self, node: TpyExpr | TpyStmt | TpyRecord | None) -> SourceLocation | None:
         """Resolve source location from a node, with fallback to current function/record."""
         loc = getattr(node, 'loc', None) if node else None
-        if loc is None and isinstance(self.current_function, TpyFunction):
-            loc = self.current_function.loc
+        if loc is None and isinstance(self.func.current_function, TpyFunction):
+            loc = self.func.current_function.loc
         if loc is None and self.record_ctx.record is not None:
             loc = self.record_ctx.record.loc
         return loc
@@ -724,20 +708,20 @@ class SemanticContext:
 
     def reset_function_tracking(self) -> None:
         """Reset all per-function tracking state."""
-        self._func = FunctionTrackingState()
+        self.func = FunctionTrackingState()
 
     def save_function_state(self) -> FunctionTrackingState:
         """Snapshot per-function state (for nested def isolation)."""
-        return deepcopy(self._func)
+        return deepcopy(self.func)
 
     def restore_function_state(self, saved: FunctionTrackingState) -> None:
         """Restore per-function state from a snapshot."""
-        self._func = saved
+        self.func = saved
 
     def mark_loop_var_mutated(self, name: str) -> None:
         """Mark a for-each loop variable as mutated (prevents const-ref binding)."""
-        if name in self.loop_vars:
-            self.mutated_loop_vars.add(name)
+        if name in self.func.loop_vars:
+            self.func.mutated_loop_vars.add(name)
 
     def mark_loop_var_consumed(self, name: str) -> None:
         """Mark a for-each loop variable as consumed (copied into owned storage).
@@ -745,8 +729,8 @@ class SemanticContext:
         This triggers auto-consuming iteration when the container is at last
         use, so elements are moved instead of copied.
         """
-        if name in self.loop_vars:
-            self.consumed_loop_vars.add(name)
+        if name in self.func.loop_vars:
+            self.func.consumed_loop_vars.add(name)
 
     def mark_param_mutated(self, name: str) -> None:
         """Mark a function parameter as directly mutated (Phase 1 of mutation inference).
@@ -759,11 +743,11 @@ class SemanticContext:
         the write propagates back to items).
         """
         if name == "self":
-            self.current_self_mutated = True
+            self.func.current_self_mutated = True
             return
-        if name in self.current_param_names and name not in self.current_rebound_params:
-            self.current_mutated_param_names.add(name)
-        iterable = self.loop_var_iterable.get(name)
+        if name in self.func.current_param_names and name not in self.func.current_rebound_params:
+            self.func.current_mutated_param_names.add(name)
+        iterable = self.func.loop_var_iterable.get(name)
         if iterable is not None:
             # Field-path iterables ("c.items") need root extraction for param lookup
             root = iterable.split(".")[0] if "." in iterable else iterable
@@ -773,7 +757,7 @@ class SemanticContext:
         # mark the ultimate storage root (e.g. items) as mutated.
         # The recursive call terminates because effective_storage_through_borrows
         # on the ultimate root returns itself (no upstream borrow points to it).
-        ultimate = self.borrow_tracker.effective_storage_through_borrows(name)
+        ultimate = self.func.borrow_tracker.effective_storage_through_borrows(name)
         if ultimate != name:
             self.mark_param_mutated(ultimate)
 
@@ -785,11 +769,11 @@ class SemanticContext:
         Traces loop variables back to their source iterables transitively.
         """
         if name == "self":
-            self.current_self_struct_mutated = True
+            self.func.current_self_struct_mutated = True
             return
-        if name in self.current_param_names and name not in self.current_rebound_params:
-            self.current_struct_mutated_param_names.add(name)
-        iterable = self.loop_var_iterable.get(name)
+        if name in self.func.current_param_names and name not in self.func.current_rebound_params:
+            self.func.current_struct_mutated_param_names.add(name)
+        iterable = self.func.loop_var_iterable.get(name)
         if iterable is not None:
             root = iterable.split(".")[0] if "." in iterable else iterable
             self.mark_param_structurally_mutated(root)
@@ -803,19 +787,19 @@ class SemanticContext:
         Traces loop variables back to their source iterables transitively.
         """
         if name == "self":
-            self.current_returned_param_names.add("self")
+            self.func.current_returned_param_names.add("self")
             return
-        if name in self.current_param_names and name not in self.current_rebound_params:
-            self.current_returned_param_names.add(name)
-        iterable = self.loop_var_iterable.get(name)
+        if name in self.func.current_param_names and name not in self.func.current_rebound_params:
+            self.func.current_returned_param_names.add(name)
+        iterable = self.func.loop_var_iterable.get(name)
         if iterable is not None:
             root = iterable.split(".")[0] if "." in iterable else iterable
             self.mark_param_returned(root)
 
     def mark_own_param_consumed(self, name: str) -> None:
         """Mark an Own[T] param as consumed (stored, forwarded, or returned)."""
-        if name in self.current_param_names:
-            self.current_consumed_own_params.add(name)
+        if name in self.func.current_param_names:
+            self.func.current_consumed_own_params.add(name)
 
     # ------------------------------------------------------------------
     # View-type family generic accessors
@@ -824,20 +808,20 @@ class SemanticContext:
     def view_var_map(self, family: ViewTypeFamily) -> dict[str, int]:
         """Variable-name -> var_id mapping for the given family."""
         if family.pending_type_class is PendingStrType:
-            return self.variable_to_str_var
-        return self.variable_to_bytes_var
+            return self.func.variable_to_str_var
+        return self.func.variable_to_bytes_var
 
     def view_source_borrows_map(self, family: ViewTypeFamily) -> dict[str, set[int]]:
         """Source-storage -> set of borrowing var_ids for the given family."""
         if family.pending_type_class is PendingStrType:
-            return self.str_source_borrows
-        return self.bytes_source_borrows
+            return self.func.str_source_borrows
+        return self.func.bytes_source_borrows
 
     def view_pending_resolutions(self, family: ViewTypeFamily) -> list[int]:
         """Pending resolution list for the given family."""
         if family.pending_type_class is PendingStrType:
-            return self.pending_str_resolutions
-        return self.pending_bytes_resolutions
+            return self.func.pending_str_resolutions
+        return self.func.pending_bytes_resolutions
 
     def view_vars(self, family: ViewTypeFamily) -> dict[int, ViewVarInfo]:
         """Var-id -> ViewVarInfo registry for the given family."""
@@ -910,13 +894,13 @@ class SemanticContext:
         """
         literal_id = pending_type.literal_id
         if isinstance(pending_type, PendingListType):
-            self.variable_to_literal[var_name] = literal_id
+            self.func.variable_to_literal[var_name] = literal_id
             info = self.list_literals[literal_id]
         elif isinstance(pending_type, PendingDictType):
-            self.variable_to_dict_literal[var_name] = literal_id
+            self.func.variable_to_dict_literal[var_name] = literal_id
             info = self.dict_literals[literal_id]
         elif isinstance(pending_type, PendingSetType):
-            self.variable_to_set_literal[var_name] = literal_id
+            self.func.variable_to_set_literal[var_name] = literal_id
             info = self.set_literals[literal_id]
         else:
             return

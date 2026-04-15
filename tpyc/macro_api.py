@@ -283,7 +283,7 @@ class CallMacroContext:
         record = self._ctx.record_ctx.record
         if record is None:
             return False
-        func = self._ctx.current_function
+        func = self._ctx.func.current_function
         return isinstance(func, TpyFunction) and func.is_method
 
     @property
@@ -292,7 +292,7 @@ class CallMacroContext:
         record = self._ctx.record_ctx.record
         if record is None:
             return None
-        func = self._ctx.current_function
+        func = self._ctx.func.current_function
         if not isinstance(func, TpyFunction) or not func.is_method:
             return None
         return TypeInfo.from_tpy_type(NamedType(record.name))
@@ -304,7 +304,7 @@ class CallMacroContext:
         For methods, returns ("self", <class TypeInfo>).
         For free functions, returns the first declared parameter.
         """
-        func = self._ctx.current_function
+        func = self._ctx.func.current_function
         if not isinstance(func, TpyFunction):
             return None
         if func.is_method and not func.is_staticmethod:

@@ -84,15 +84,15 @@ class MatchAnalyzer:
         seen_types: set[str] = set()
         seen_values: set[object] = set()
 
-        scope_before = set(self.ctx.current_scope.bindings.keys())
-        assigned_before = frozenset(self.ctx.definitely_assigned)
-        bindings_before = dict(self.ctx.current_scope.bindings)
+        scope_before = set(self.ctx.func.current_scope.bindings.keys())
+        assigned_before = frozenset(self.ctx.func.definitely_assigned)
+        bindings_before = dict(self.ctx.func.current_scope.bindings)
         ns_types_before = self.stmts._save_ns_var_types()
         before = self.stmts.init.save()
 
         arm_states: list[FlowFacts] = []
         arm_bindings: list[dict[str, TpyType]] = []
-        consumed_before = self.ctx.current_consumed_own_params.copy()
+        consumed_before = self.ctx.func.current_consumed_own_params.copy()
         arm_consumed: list[tuple[set[str], bool]] = []  # (consumed_set, terminated)
 
         for case in stmt.cases:
@@ -102,8 +102,8 @@ class MatchAnalyzer:
                 )
             # Restore state to pre-match for each arm
             self.stmts.init.restore(before)
-            self.ctx.current_consumed_own_params = consumed_before.copy()
-            self.ctx.current_scope.bindings = dict(bindings_before)
+            self.ctx.func.current_consumed_own_params = consumed_before.copy()
+            self.ctx.func.current_scope.bindings = dict(bindings_before)
             self.stmts._restore_ns_var_types(ns_types_before)
 
             pattern_bindings: dict[str, TpyType] = {}
@@ -133,10 +133,10 @@ class MatchAnalyzer:
                 seen_values.update(saved_seen_values)  # type: ignore[arg-type]
 
             for name, ty in pattern_bindings.items():
-                self.ctx.current_scope.define(name, ty)
+                self.ctx.func.current_scope.define(name, ty)
                 self.stmts.init.mark_assigned(name)
-                if name not in self.ctx.var_scope_depth:
-                    self.ctx.var_scope_depth[name] = self.ctx.current_scope.depth
+                if name not in self.ctx.func.var_scope_depth:
+                    self.ctx.func.var_scope_depth[name] = self.ctx.func.current_scope.depth
 
             # Narrow subject variable for class patterns (union only)
             narrowing_facts = self._match_case_narrowing_facts(
@@ -144,7 +144,7 @@ class MatchAnalyzer:
             ) if is_union else {}
             if narrowing_facts:
                 case.type_facts = self.stmts._filter_union_codegen_facts(narrowing_facts)
-                self.ctx.narrowed_types.update(narrowing_facts)
+                self.ctx.func.narrowed_types.update(narrowing_facts)
 
             # Narrow Optional subject to inner type in non-None arms
             if is_optional and subject_name is not None:
@@ -153,14 +153,14 @@ class MatchAnalyzer:
                     pat = pat.pattern
                 is_none_arm = isinstance(pat, TpyLiteralPattern) and pat.value is None
                 if not is_none_arm:
-                    self.ctx.narrowed_types[subject_name] = effective_type.inner
+                    self.ctx.func.narrowed_types[subject_name] = effective_type.inner
 
             # Narrow Literal subject to matched value(s)
             if is_literal and subject_name is not None:
                 matched = self._extract_literal_pattern_values(case.pattern, effective_type)
                 if matched is not None:
                     narrowed = LiteralType(effective_type.base_type, tuple(matched))
-                    self.ctx.narrowed_types[subject_name] = narrowed
+                    self.ctx.func.narrowed_types[subject_name] = narrowed
                     facts = {subject_name: narrowed}
                     case.type_facts = self.stmts._filter_union_codegen_facts(facts)
 
@@ -172,8 +172,8 @@ class MatchAnalyzer:
                 self.stmts.analyze_stmt(s)
 
             arm_states.append(self.stmts.init.save())
-            arm_consumed.append((self.ctx.current_consumed_own_params.copy(), self.ctx.init_terminated))
-            arm_bindings.append(dict(self.ctx.current_scope.bindings))
+            arm_consumed.append((self.ctx.func.current_consumed_own_params.copy(), self.ctx.func.init_terminated))
+            arm_bindings.append(dict(self.ctx.func.current_scope.bindings))
 
             pat = case.pattern
             if isinstance(pat, TpyAsPattern):
@@ -219,34 +219,34 @@ class MatchAnalyzer:
                 merged_consumed = live_sets[0]
                 for s in live_sets[1:]:
                     merged_consumed = merged_consumed & s
-                self.ctx.current_consumed_own_params = merged_consumed
+                self.ctx.func.current_consumed_own_params = merged_consumed
             elif dead_sets:
-                self.ctx.current_consumed_own_params = set().union(*dead_sets)
+                self.ctx.func.current_consumed_own_params = set().union(*dead_sets)
             else:
-                self.ctx.current_consumed_own_params = consumed_before
+                self.ctx.func.current_consumed_own_params = consumed_before
 
         # Restore scope bindings, merging types from arms
-        self.ctx.current_scope.bindings = dict(bindings_before)
+        self.ctx.func.current_scope.bindings = dict(bindings_before)
         self.stmts._restore_ns_var_types(ns_types_before)
         for arm_b in arm_bindings:
             for name, ty in arm_b.items():
                 if name not in bindings_before:
-                    self.ctx.current_scope.define(name, ty)
+                    self.ctx.func.current_scope.define(name, ty)
 
         self.stmts._sync_promoted_var_types(
             set().union(*(set(b) for b in arm_bindings))
         )
 
         # Pre-declare variables first declared inside match arms
-        if not self.ctx.init_terminated:
-            branch_new = set(self.ctx.current_scope.bindings.keys()) - scope_before
-            newly_assigned = self.ctx.definitely_assigned - assigned_before
-            predecl = (branch_new & newly_assigned) - self.ctx.global_declarations
+        if not self.ctx.func.init_terminated:
+            branch_new = set(self.ctx.func.current_scope.bindings.keys()) - scope_before
+            newly_assigned = self.ctx.func.definitely_assigned - assigned_before
+            predecl = (branch_new & newly_assigned) - self.ctx.func.global_declarations
         else:
             predecl = set()
         if predecl:
             self.ctx.if_branch_decls[id(stmt)] = {
-                name: self.ctx.current_scope.lookup(name)
+                name: self.ctx.func.current_scope.lookup(name)
                 for name in sorted(predecl)
             }
 

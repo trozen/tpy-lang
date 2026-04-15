@@ -516,10 +516,10 @@ class TypeCompatibility:
                 # suppressed if the loop activates consuming iteration
                 # (elements at last use will be moved, not copied).
                 if (isinstance(source_expr, TpyName)
-                        and source_expr.name in self.ctx.loop_vars
+                        and source_expr.name in self.ctx.func.loop_vars
                         and id(source_expr) in self.ctx.all_last_uses):
                     diag_idx = len(self.ctx.diagnostics) - 1
-                    self.ctx.deferred_loop_copy_warnings.setdefault(
+                    self.ctx.func.deferred_loop_copy_warnings.setdefault(
                         source_expr.name, []).append(diag_idx)
             # Subclass coercion excluded: Child -> Own[Base] stores Child by value as
             # Base, silently slicing the object. Same invariance as container elements.
@@ -797,7 +797,7 @@ class TypeCompatibility:
             # Address-taking coercion (record -> Ptr[Record]) requires T& binding.
             # Track so that codegen can't safely emit const T& for this param.
             if isinstance(source_expr, TpyName):
-                root = self.ctx.borrow_tracker.effective_storage(source_expr.name)
+                root = self.ctx.func.borrow_tracker.effective_storage(source_expr.name)
                 self.ctx.mark_param_mutated(root)
         elif coercion.requires_lvalue:
             if source_expr is None or not self.is_lvalue(source_expr):
@@ -1030,7 +1030,7 @@ class TypeCompatibility:
 
     def _is_local_shadow(self, name: str) -> bool:
         """Check if a name is bound in a local scope, shadowing a global."""
-        scope = self.ctx.current_scope
+        scope = self.ctx.func.current_scope
         while scope and scope is not self.ctx.global_scope:
             if name in scope.bindings:
                 return True
@@ -1044,7 +1044,7 @@ class TypeCompatibility:
         rvalue_vars for variables excluded from OwnType wrapping
         (reassigned vars, move-through vars).
         """
-        func = self.ctx.current_function
+        func = self.ctx.func.current_function
         if isinstance(func, TpyFunction):
             # Own[T] params
             for pname, ptype in func.params:
@@ -1055,19 +1055,19 @@ class TypeCompatibility:
             # element types but are not "rvalue-initialized" in the same sense
             # as constructor calls. Their movability is handled by the
             # consuming iteration system (consumed_loop_vars).
-            scope_type = self.ctx.current_scope.lookup(name) if self.ctx.current_scope else None
-            if scope_type and isinstance(scope_type, OwnType) and name not in self.ctx.loop_vars:
+            scope_type = self.ctx.func.current_scope.lookup(name) if self.ctx.func.current_scope else None
+            if scope_type and isinstance(scope_type, OwnType) and name not in self.ctx.func.loop_vars:
                 return True
             # Fallback: rvalue_vars covers move-through vars and
             # reassigned-but-all-rvalue vars not wrapped with OwnType.
             # Hoisted vars are not movable (T* pointer-locals).
-            if name in self.ctx.rvalue_vars and name not in self.ctx.hoisted_vars:
-                if name in self.ctx.current_reassigned_vars:
-                    return name not in self.ctx.current_lvalue_reassigned
+            if name in self.ctx.func.rvalue_vars and name not in self.ctx.func.hoisted_vars:
+                if name in self.ctx.func.current_reassigned_vars:
+                    return name not in self.ctx.func.current_lvalue_reassigned
                 return True
             return False
         # Top-level: non-value-type vars become pointer-globals, can't be moved
-        var_type = self.ctx.current_scope.lookup(name) if self.ctx.current_scope else None
+        var_type = self.ctx.func.current_scope.lookup(name) if self.ctx.func.current_scope else None
         if var_type:
             inner = var_type.wrapped if isinstance(var_type, OwnType) else var_type
             if not inner.is_value_type():
@@ -1080,7 +1080,7 @@ class TypeCompatibility:
             return self.is_param_derived_expr(expr.expr)
         if isinstance(expr, TpyName):
             # Parameters are param-derived
-            func = self.ctx.current_function
+            func = self.ctx.func.current_function
             if isinstance(func, TpyFunction):
                 for pname, _ptype in func.params:
                     if pname == expr.name:
@@ -1091,7 +1091,7 @@ class TypeCompatibility:
                 if not self._is_local_shadow(expr.name):
                     return True
             # Variables tracked as param-derived
-            if expr.name in self.ctx.param_provenance_vars:
+            if expr.name in self.ctx.func.param_provenance_vars:
                 return True
             return False
         if isinstance(expr, TpyFieldAccess):
@@ -1214,8 +1214,8 @@ class TypeCompatibility:
                 return False
 
             # Check if it's a parameter (safe)
-            if self.ctx.current_function:
-                for pname, ptype in self.ctx.current_function.params:
+            if self.ctx.func.current_function:
+                for pname, ptype in self.ctx.func.current_function.params:
                     if pname == expr.name:
                         return False  # Parameter - safe to return reference
 
@@ -1226,7 +1226,7 @@ class TypeCompatibility:
                     return False
 
             # Storage derives from parameter/global -- safe
-            if expr.name in self.ctx.param_provenance_vars:
+            if expr.name in self.ctx.func.param_provenance_vars:
                 return False
 
             # Local variable - dangling
