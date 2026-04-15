@@ -2055,37 +2055,60 @@ class StatementAnalyzer:
                 f"Cannot assign to '{stmt.name}' in nested function"
                 f" without 'nonlocal' declaration",
                 stmt)
-        # Resolve type aliases in annotation (for cross-module imported aliases)
-        # Recursive to handle nested types like list[Shape], Optional[Shape]
-        if stmt.type and self.ctx.registry.type_aliases:
+        # Resolve type aliases + enums in annotation (single tree walk).
+        # - NamedType with a registered type alias -> alias target
+        #   (one level; recurses into alias's inner types; _seen guards self-referential aliases)
+        # - NamedType matching an enum name -> EnumType from sema registry
+        # - Stale EnumType (from parser) -> sema registry's EnumType (may be IntEnumType)
+        # Then resolve_type handles protocol flags, TypeParamRef upgrades, and
+        # compile-time-only aliases (FStr etc.) in a second walk.
+        if stmt.type and (self.ctx.registry.type_aliases or self.ctx.registry.enums):
+            registry = self.ctx.registry
+            has_aliases = bool(registry.type_aliases)
+            has_enums = bool(registry.enums)
+            recursive_names = self.ctx.recursive_union_names
+
+            def _enum_lookup(t: TpyType) -> TpyType:
+                if not has_enums:
+                    return t
+                if isinstance(t, NamedType) and not t.is_protocol:
+                    enum = registry.get_enum(t.name)
+                    if enum is not None:
+                        return enum
+                elif isinstance(t, EnumType):
+                    enum = registry.get_enum(t.name)
+                    if enum is not None:
+                        return enum
+                return t
+
             def _resolve(t: TpyType, _seen: frozenset[str] = frozenset()) -> TpyType:
-                if isinstance(t, NamedType) and not t.is_protocol and not t.is_module_type:
-                    if t.name in _seen or t.name in self.ctx.recursive_union_names:
-                        return t
-                    alias = self.ctx.registry.get_type_alias(t.name)
+                # Alias resolution: replace NamedType with registered alias target.
+                # After resolving, apply enum lookup on the target (matches the
+                # original alias-then-enum pipeline so aliases-to-enums resolve).
+                if (has_aliases
+                        and isinstance(t, NamedType)
+                        and not t.is_protocol
+                        and not t.is_module_type
+                        and t.name not in _seen
+                        and t.name not in recursive_names):
+                    alias = registry.get_type_alias(t.name)
                     if alias is not None:
                         new_seen = _seen | {t.name}
-                        return alias.map_inner_types(lambda inner: _resolve(inner, new_seen))
+                        resolved = alias.map_inner_types(
+                            lambda inner: _resolve(inner, new_seen)
+                        )
+                        return _enum_lookup(resolved)
+                # No alias hit: try enum on this node directly.
+                after_enum = _enum_lookup(t)
+                if after_enum is not t:
+                    return after_enum
+                # Recurse into inner types.
                 return t.map_inner_types(lambda inner: _resolve(inner, _seen))
+
             stmt.type = _resolve(stmt.type)
 
-        # Resolve enum types in annotation (NamedType -> EnumType).
-        # Also replaces stale EnumType from the parser registry with the
-        # sema registry's version (which may be IntEnumType).
-        if stmt.type and self.ctx.registry.enums:
-            def _resolve_enum(t: TpyType) -> TpyType:
-                if isinstance(t, NamedType) and not t.is_protocol:
-                    enum = self.ctx.registry.get_enum(t.name)
-                    if enum is not None:
-                        return enum
-                if isinstance(t, EnumType):
-                    enum = self.ctx.registry.get_enum(t.name)
-                    if enum is not None:
-                        return enum
-                return t.map_inner_types(_resolve_enum)
-            stmt.type = _resolve_enum(stmt.type)
-
-        # Resolve type to set is_protocol flag on imported protocol NamedTypes
+        # Resolve type to set is_protocol flag, upgrade NamedType -> TypeParamRef
+        # in generic scopes, and handle compile-time-only aliases (FStr).
         if stmt.type:
             stmt.type = self.type_ops.resolve_type(stmt.type)
 

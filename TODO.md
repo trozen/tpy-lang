@@ -79,11 +79,9 @@ Goal: speed up test runs (currently ~3 min parallel, ~6 min single-threaded for 
 
 3. ~~**Remove `SemanticContext` forwarding shortcut**~~ **DONE** -- `FunctionTrackingState` was extracted to keep `SemanticContext` from growing unbounded, and `__getattr__`/`__setattr__` were added as a refactoring shortcut to avoid touching callsites. Fix: made callsites explicit via `ctx.func.<field>` (740+ substitutions across 13 sema files + `macro_api.py`), renamed `_func` to `func`, deleted `__getattr__`/`__setattr__` and `_FUNC_STATE_FIELDS`. Unblocks mypyc and makes the module-wide vs per-function state boundary visible at every use site. ~6-8% compile-time improvement on `json_model_inherit`.
 
-4. **Merge sequential `map_inner_types` passes** (redundant tree walks):
-   `statements.py` does alias resolution, enum resolution, and type resolution as 3 separate recursive tree walks over the same type. Each pass calls `map_inner_types` independently. Fix: merge into a single combined pass that handles all three in one walk.
+4. ~~**Merge sequential `map_inner_types` passes**~~ **DONE** -- `_analyze_var_decl` alias+enum resolution merged into one tree walk; `resolve_type` (protocol flags, TypeParamRef, compile-time-only aliases) still runs as a second pass since it has distinct logic. 3 walks -> 2 walks.
 
-5. **Memoize type transformations in `map_inner_types`** (no caching):
-   The same types get re-transformed repeatedly across different call sites with the same transformation function (e.g. `substitute_type_params` with identical bindings). Frozen dataclasses are hashable, so results can be cached per (type, transformation) pair. Especially valuable in `_resolve_builtin_self_refs` where the same builtin method signatures are walked repeatedly.
+5. ~~**Memoize type transformations**~~ parked -- motivating case (`_resolve_builtin_self_refs`) already cached in item #1. PERF TODO note left at `substitute_type_params` in `sema/type_ops.py` for the next candidate; needs profiling data post-mypyc before acting.
 
 6. ~~**Type kind tags to reduce `isinstance` overhead**~~ **DONE** -- `TypeKind` enum on `TpyType.tag` (ClassVar); predicates use frozenset tag lookup: `is_integer_type`, `is_any_int_type`, `is_float_type`, `is_any_float_type`, `is_numeric_type`, `is_primitive_type`, `is_void_like_type`, `is_callable_type`, `is_union_or_optional_type`, `is_any_str_type`. Multi-type isinstance tuples migrated. Real win lands under mypyc.
 
