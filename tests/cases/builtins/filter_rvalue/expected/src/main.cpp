@@ -20,11 +20,12 @@ bool is_even(int32_t x) {
 void main() {
     // # rvalue: filter over a temporary
     // for x in filter(is_even, make_nums()):
-    auto __iter_0 = ::tpy::builtin_filter<int32_t>(is_even, make_nums());
+    auto __src_0 = ::tpy::builtin_filter<int32_t>(is_even, make_nums());
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
     }

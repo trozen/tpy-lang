@@ -13,11 +13,12 @@ void test_last_use() {
     // total: Int32 = 0
     int32_t total = 0;
     // for x in it:
-    auto& __iter_0 = it;
+    auto& __src_0 = it;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        const auto& x = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        const auto& x = ::tpy::unwrap_ref(*__r_1);
         // total += x.val
         total = ::tpy::add_check<int32_t>(total, x.val);
     }
@@ -34,11 +35,12 @@ void test_borrowing_not_last_use() {
     // total: Int32 = 0
     int32_t total = 0;
     // for x in it:
-    auto& __iter_0 = it;
+    auto& __src_0 = it;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        const auto& x = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        const auto& x = ::tpy::unwrap_ref(*__r_1);
         // total += x.val
         total = ::tpy::add_check<int32_t>(total, x.val);
     }

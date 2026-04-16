@@ -24,11 +24,12 @@ void main() {
     std::vector<int32_t> vals = {10, 20};
     // # Non-value type through map: val_or_ref<Point> in tuple
     // for i, p in enumerate(map(identity, pts)):
-    auto __iter_0 = ::tpy::builtin_enumerate<::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
+    auto __src_0 = ::tpy::builtin_enumerate<::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // # Non-value type through map: val_or_ref<Point> in tuple
         // for i, p in enumerate(map(identity, pts)):
         auto& __tup_1 = __for_tup_0;
@@ -39,11 +40,12 @@ void main() {
     }
     // # Value type through map: no val_or_ref wrapping
     // for j, v in enumerate(map(double, vals)):
-    auto __iter_1 = ::tpy::builtin_enumerate<int32_t>(::tpy::builtin_map<int32_t, int32_t>(double_, vals));
+    auto __src_2 = ::tpy::builtin_enumerate<int32_t>(::tpy::builtin_map<int32_t, int32_t>(double_, vals));
+    auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
-        auto __r_1 = __iter_1.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
+        auto __r_3 = __itr_2.__next__();
+        if (!__r_3.has_value()) break;
+        auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
         // # Value type through map: no val_or_ref wrapping
         // for j, v in enumerate(map(double, vals)):
         const auto& __tup_2 = __for_tup_1;
@@ -54,11 +56,12 @@ void main() {
     }
     // # Mutation through composed reference proves no copy
     // for k, q in enumerate(map(identity, pts)):
-    auto __iter_2 = ::tpy::builtin_enumerate<::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
+    auto __src_4 = ::tpy::builtin_enumerate<::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
+    auto&& __itr_4 = ::tpy::__iter__(__src_4);
     for (;;) {
-        auto __r_2 = __iter_2.__next__();
-        if (!__r_2.has_value()) break;
-        auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_2);
+        auto __r_5 = __itr_4.__next__();
+        if (!__r_5.has_value()) break;
+        auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
         // # Mutation through composed reference proves no copy
         // for k, q in enumerate(map(identity, pts)):
         auto& __tup_3 = __for_tup_2;
@@ -68,11 +71,11 @@ void main() {
         q.x = ::tpy::add_check<int32_t>(q.x, 100);
     }
     // for pt in pts:
-    auto& __obj_3 = pts;
-    auto __beg_3 = __obj_3.begin();
-    auto __end_3 = __obj_3.end();
-    for (; __beg_3 != __end_3; ++__beg_3) {
-        const auto& pt = *__beg_3;
+    auto& __obj_6 = pts;
+    auto __beg_6 = __obj_6.begin();
+    auto __end_6 = __obj_6.end();
+    for (; __beg_6 != __end_6; ++__beg_6) {
+        const auto& pt = *__beg_6;
         // print(pt)
         std::cout << pt << "\n";
     }

@@ -22,7 +22,7 @@ template<::tpystd::typing::Iterable<std::string> T_items>
 void collect_items(T_items& items) {
     // for x in items:
     auto& __src_0 = items;
-    auto __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -36,7 +36,7 @@ template<::tpystd::typing::Iterable<int32_t> T_items>
 void collect_ints(T_items& items) {
     // for x in items:
     auto& __src_0 = items;
-    auto __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -50,7 +50,7 @@ template<::tpystd::typing::Iterable<std::tuple<std::string, int32_t>> T_items>
 void collect_pairs(T_items& items) {
     // for pair in items:
     auto& __src_0 = items;
-    auto __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;

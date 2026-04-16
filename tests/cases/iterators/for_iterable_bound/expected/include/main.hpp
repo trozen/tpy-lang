@@ -80,7 +80,7 @@ int32_t sum_all(::tpy::param_val_or_ref_t<T> items) {
     int32_t total = 0;
     // for x in items:
     auto& __src_0 = items;
-    auto __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;

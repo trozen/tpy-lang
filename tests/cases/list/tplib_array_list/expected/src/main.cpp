@@ -94,22 +94,22 @@ void main() {
     c.append(3);
     // for x in c:
     auto& __src_0 = c;
-    auto __obj_0 = __src_0.__iter__();
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t x = *__beg_0;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
     }
     // # iterate again (fresh iterator each time)
     // for x in c:
-    auto& __src_1 = c;
-    auto __obj_1 = __src_1.__iter__();
-    auto __beg_1 = __obj_1.begin();
-    auto __end_1 = __obj_1.end();
-    for (; __beg_1 != __end_1; ++__beg_1) {
-        int32_t x = *__beg_1;
+    auto& __src_2 = c;
+    auto&& __itr_2 = ::tpy::__iter__(__src_2);
+    for (;;) {
+        auto __r_3 = __itr_2.__next__();
+        if (!__r_3.has_value()) break;
+        int32_t x = ::tpy::unwrap_ref(*__r_3);
         // print(x)
         std::cout << x << "\n";
     }

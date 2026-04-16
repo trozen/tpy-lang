@@ -21,11 +21,12 @@ decltype(::tpy::__iter__((*nums)))* it2{};
 // def use_global_iter() -> None:
 void use_global_iter() {
     // for k in it:
-    auto& __iter_0 = (*it);
+    auto& __src_0 = (*it);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        std::string_view k = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        std::string_view k = ::tpy::unwrap_ref(*__r_1);
         // print(k)
         std::cout << k << "\n";
     }
@@ -54,11 +55,12 @@ void __tpy_init() {
     static auto __global_slot_4 = ::tpy::__iter__((*nums));
     it2 = &__global_slot_4;
     // for v in it2:
-    auto& __iter_0 = (*it2);
+    auto& __src_0 = (*it2);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
     }
@@ -69,11 +71,12 @@ void __tpy_init() {
     // it = iter(d2)
     it = &(__global_slot_2 = ::tpy::__iter__((*d2)));
     // for k in it:
-    auto& __iter_1 = (*it);
+    auto& __src_2 = (*it);
+    auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
-        auto __r_1 = __iter_1.__next__();
-        if (!__r_1.has_value()) break;
-        const std::string& k = ::tpy::unwrap_ref(*__r_1);
+        auto __r_3 = __itr_2.__next__();
+        if (!__r_3.has_value()) break;
+        const std::string& k = ::tpy::unwrap_ref(*__r_3);
         // print(k)
         std::cout << k << "\n";
     }

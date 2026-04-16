@@ -88,7 +88,7 @@ struct Summer {
         int32_t result = 0;
         // for x in self.items:
         auto& __src_0 = this->items;
-        auto __itr_0 = ::tpy::__iter__(__src_0);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;

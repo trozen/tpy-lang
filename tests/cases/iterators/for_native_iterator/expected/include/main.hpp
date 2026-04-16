@@ -62,11 +62,12 @@ int32_t sum_iter(T_it& it) {
     // total: Int32 = 0
     int32_t total = 0;
     // for x in it:
-    auto& __iter_0 = it;
+    auto& __src_0 = it;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t x = ::tpy::unwrap_ref(*__r_1);
         // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
@@ -79,11 +80,12 @@ int32_t count_iter(T_it& it) {
     // n: Int32 = 0
     int32_t n = 0;
     // for x in it:
-    auto& __iter_0 = it;
+    auto& __src_0 = it;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t x = ::tpy::unwrap_ref(*__r_1);
         // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
     }
@@ -94,11 +96,12 @@ int32_t count_iter(T_it& it) {
 template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t first_or_fallback(T_it& it, int32_t fallback) {
     // for x in it:
-    auto& __iter_0 = it;
+    auto& __src_0 = it;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t x = ::tpy::unwrap_ref(*__r_1);
         // return x
         return x;
     }

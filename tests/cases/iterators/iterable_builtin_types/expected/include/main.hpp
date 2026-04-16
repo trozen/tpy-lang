@@ -31,7 +31,7 @@ int32_t sum_items(T_items& items) {
     int32_t total = 0;
     // for x in items:
     auto& __src_0 = items;
-    auto __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -49,7 +49,7 @@ int32_t count_chars(T_items& items) {
     int32_t n = 0;
     // for c in items:
     auto& __src_0 = items;
-    auto __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -67,7 +67,7 @@ std::string sum_strs(T_items& items) {
     std::string result = "";
     // for s in items:
     auto& __src_0 = items;
-    auto __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -87,11 +87,12 @@ void test_iter_on_protocol(T_items& items) {
     // total: Int32 = 0
     int32_t total = 0;
     // for x in it:
-    auto& __iter_0 = it;
+    auto& __src_0 = it;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t x = ::tpy::unwrap_ref(*__r_1);
         // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
@@ -106,7 +107,7 @@ template<::tpystd::typing::Iterable<::tpy::BigInt> T_items>
     ::tpy::BigInt total = ::tpy::BigInt(0);
     // for x in items:
     auto& __src_0 = items;
-    auto __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;

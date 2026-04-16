@@ -36,7 +36,7 @@ struct SpanIter {
         return span_[index_++];
     }
 
-    const SpanIter& __iter__() const { return *this; }
+    SpanIter& __iter__() { return *this; }
 };
 
 } // namespace tpy

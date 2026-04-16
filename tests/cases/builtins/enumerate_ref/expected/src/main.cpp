@@ -9,11 +9,12 @@ void main() {
     // points = [Point(1, 2), Point(3, 4), Point(5, 6)]
     std::array<Point, 3> points = {Point(1, 2), Point(3, 4), Point(5, 6)};
     // for i, p in enumerate(points):
-    auto __iter_0 = ::tpy::builtin_enumerate<Point>(points);
+    auto __src_0 = ::tpy::builtin_enumerate<Point>(points);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // for i, p in enumerate(points):
         auto& __tup_1 = __for_tup_0;
         int32_t i = std::get<0>(__tup_1);
@@ -22,11 +23,11 @@ void main() {
         p.x = (::tpy::mul_check<int32_t>((::tpy::add_check<int32_t>(i, 1)), 10));
     }
     // for p in points:
-    auto& __obj_1 = points;
-    auto __beg_1 = __obj_1.begin();
-    auto __end_1 = __obj_1.end();
-    for (; __beg_1 != __end_1; ++__beg_1) {
-        const auto& p = *__beg_1;
+    auto& __obj_2 = points;
+    auto __beg_2 = __obj_2.begin();
+    auto __end_2 = __obj_2.end();
+    for (; __beg_2 != __end_2; ++__beg_2) {
+        const auto& p = *__beg_2;
         // print(p.x, p.y)
         std::cout << p.x << " " << p.y << "\n";
     }

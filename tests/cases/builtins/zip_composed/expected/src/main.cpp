@@ -26,11 +26,12 @@ void main() {
     std::vector<int32_t> vals = {10, 20};
     // # Non-value types through map
     // for a, b in zip(map(identity, pts1), map(identity, pts2)):
-    auto __iter_0 = ::tpy::builtin_zip<::tpy::val_or_ref<Point>, ::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts1), ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts2));
+    auto __src_0 = ::tpy::builtin_zip<::tpy::val_or_ref<Point>, ::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts1), ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts2));
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // # Non-value types through map
         // for a, b in zip(map(identity, pts1), map(identity, pts2)):
         auto& __tup_1 = __for_tup_0;
@@ -41,11 +42,12 @@ void main() {
     }
     // # Mixed: non-value and value types
     // for p, v in zip(map(identity, pts1), map(double, vals)):
-    auto __iter_1 = ::tpy::builtin_zip<::tpy::val_or_ref<Point>, int32_t>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts1), ::tpy::builtin_map<int32_t, int32_t>(double_, vals));
+    auto __src_2 = ::tpy::builtin_zip<::tpy::val_or_ref<Point>, int32_t>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts1), ::tpy::builtin_map<int32_t, int32_t>(double_, vals));
+    auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
-        auto __r_1 = __iter_1.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
+        auto __r_3 = __itr_2.__next__();
+        if (!__r_3.has_value()) break;
+        auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
         // # Mixed: non-value and value types
         // for p, v in zip(map(identity, pts1), map(double, vals)):
         auto& __tup_2 = __for_tup_1;
@@ -56,11 +58,12 @@ void main() {
     }
     // # Mutation through composed references proves no copy
     // for a, b in zip(map(identity, pts1), map(identity, pts2)):
-    auto __iter_2 = ::tpy::builtin_zip<::tpy::val_or_ref<Point>, ::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts1), ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts2));
+    auto __src_4 = ::tpy::builtin_zip<::tpy::val_or_ref<Point>, ::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts1), ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts2));
+    auto&& __itr_4 = ::tpy::__iter__(__src_4);
     for (;;) {
-        auto __r_2 = __iter_2.__next__();
-        if (!__r_2.has_value()) break;
-        auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_2);
+        auto __r_5 = __itr_4.__next__();
+        if (!__r_5.has_value()) break;
+        auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
         // # Mutation through composed references proves no copy
         // for a, b in zip(map(identity, pts1), map(identity, pts2)):
         auto& __tup_3 = __for_tup_2;
@@ -72,20 +75,20 @@ void main() {
         b->y = ::tpy::add_check<int32_t>(b->y, 200);
     }
     // for pt in pts1:
-    auto& __obj_3 = pts1;
-    auto __beg_3 = __obj_3.begin();
-    auto __end_3 = __obj_3.end();
-    for (; __beg_3 != __end_3; ++__beg_3) {
-        const auto& pt = *__beg_3;
+    auto& __obj_6 = pts1;
+    auto __beg_6 = __obj_6.begin();
+    auto __end_6 = __obj_6.end();
+    for (; __beg_6 != __end_6; ++__beg_6) {
+        const auto& pt = *__beg_6;
         // print(pt)
         std::cout << pt << "\n";
     }
     // for pt in pts2:
-    auto& __obj_4 = pts2;
-    auto __beg_4 = __obj_4.begin();
-    auto __end_4 = __obj_4.end();
-    for (; __beg_4 != __end_4; ++__beg_4) {
-        const auto& pt = *__beg_4;
+    auto& __obj_7 = pts2;
+    auto __beg_7 = __obj_7.begin();
+    auto __end_7 = __obj_7.end();
+    for (; __beg_7 != __end_7; ++__beg_7) {
+        const auto& pt = *__beg_7;
         // print(pt)
         std::cout << pt << "\n";
     }

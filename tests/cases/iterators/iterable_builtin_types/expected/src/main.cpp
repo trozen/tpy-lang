@@ -66,11 +66,12 @@ void test_manual_iter() {
     // total: Int32 = 0
     int32_t total = 0;
     // for x in it:
-    auto& __iter_0 = it;
+    auto& __src_0 = it;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t x = ::tpy::unwrap_ref(*__r_1);
         // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
@@ -82,11 +83,12 @@ void test_manual_iter() {
     // char_it = chars.__iter__()
     auto char_it = ::tpy::__iter__(chars);
     // for c in char_it:
-    auto& __iter_1 = char_it;
+    auto& __src_2 = char_it;
+    auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
-        auto __r_1 = __iter_1.__next__();
-        if (!__r_1.has_value()) break;
-        char c = ::tpy::unwrap_ref(*__r_1);
+        auto __r_3 = __itr_2.__next__();
+        if (!__r_3.has_value()) break;
+        char c = ::tpy::unwrap_ref(*__r_3);
         // print(c)
         std::cout << c << "\n";
     }
@@ -96,11 +98,12 @@ void test_manual_iter() {
     // arr_it = arr.__iter__()
     auto arr_it = ::tpy::__iter__(arr);
     // for v in arr_it:
-    auto& __iter_2 = arr_it;
+    auto& __src_4 = arr_it;
+    auto&& __itr_4 = ::tpy::__iter__(__src_4);
     for (;;) {
-        auto __r_2 = __iter_2.__next__();
-        if (!__r_2.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_2);
+        auto __r_5 = __itr_4.__next__();
+        if (!__r_5.has_value()) break;
+        int32_t v = ::tpy::unwrap_ref(*__r_5);
         // print(v)
         std::cout << v << "\n";
     }
@@ -110,11 +113,12 @@ void test_manual_iter() {
     // d_it = d.__iter__()
     auto d_it = ::tpy::__iter__(d);
     // for k in d_it:
-    auto& __iter_3 = d_it;
+    auto& __src_6 = d_it;
+    auto&& __itr_6 = ::tpy::__iter__(__src_6);
     for (;;) {
-        auto __r_3 = __iter_3.__next__();
-        if (!__r_3.has_value()) break;
-        std::string_view k = ::tpy::unwrap_ref(*__r_3);
+        auto __r_7 = __itr_6.__next__();
+        if (!__r_7.has_value()) break;
+        std::string_view k = ::tpy::unwrap_ref(*__r_7);
         // print(k)
         std::cout << k << "\n";
     }
@@ -130,11 +134,12 @@ void test_iter_builtin() {
     // total: Int32 = 0
     int32_t total = 0;
     // for x in it:
-    auto& __iter_0 = it;
+    auto& __src_0 = it;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t x = ::tpy::unwrap_ref(*__r_1);
         // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
@@ -146,11 +151,12 @@ void test_iter_builtin() {
     // d_it = iter(d)
     auto d_it = ::tpy::__iter__(d);
     // for k in d_it:
-    auto& __iter_1 = d_it;
+    auto& __src_2 = d_it;
+    auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
-        auto __r_1 = __iter_1.__next__();
-        if (!__r_1.has_value()) break;
-        std::string_view k = ::tpy::unwrap_ref(*__r_1);
+        auto __r_3 = __itr_2.__next__();
+        if (!__r_3.has_value()) break;
+        std::string_view k = ::tpy::unwrap_ref(*__r_3);
         // print(k)
         std::cout << k << "\n";
     }

@@ -23,11 +23,12 @@ void test_lazy_for_loop() {
     // r = [10] * n  # tpyc: type(/repeat\[/)
     ::tpy::repeat_range<int32_t> r = ::tpy::repeat_range<int32_t>(n, {10});
     // for v in r:
-    auto& __obj_0 = r;
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t v = *__beg_0;
+    auto& __src_0 = r;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
     }

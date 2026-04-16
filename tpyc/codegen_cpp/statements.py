@@ -3600,10 +3600,14 @@ class StatementGenerator:
 
         self.ctx.temps.flush(out, indent)
         out.write(f"{indent}{src_binding} {src_name} = {iterable_expr};\n")
+        # auto&& preserves reference returns from __iter__ (iterator-shaped
+        # sources return self& -- needed for move-only owning iterators and
+        # in-place consumption of user iterators) and lifetime-extends value
+        # returns (container -> native_iterator fallback).
         if iter_call.startswith("."):
-            out.write(f"{indent}auto {iter_name} = {src_name}{iter_call}();\n")
+            out.write(f"{indent}auto&& {iter_name} = {src_name}{iter_call}();\n")
         else:
-            out.write(f"{indent}auto {iter_name} = {iter_call}({src_name});\n")
+            out.write(f"{indent}auto&& {iter_name} = {iter_call}({src_name});\n")
 
         self._gen_direct_next_loop(out, stmt, indent, iterable_expr, elem_type,
                                    call=next_call, iter_name=iter_name)
@@ -3864,12 +3868,18 @@ class StatementGenerator:
     def _gen_for_each_loop(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
         """Generate the loop part of a for-each (without else handling).
 
-        Dispatch order:
-        - Protocol Iterator[T]: direct for(;;) with .__next__()
-        - Protocol Iterable[T]: __iter__() then direct for(;;) with .__next__()
-        - error_return __next__ types: direct for(;;) with .__next__()
-        - __iter__()-based types: __iter__() then direct for(;;) with .__next__()
-        - Native C++ ranges: begin/end loop
+        Dispatch order (peepholes first, then universal default):
+        - Enum iteration: range over EnumUtil::members (begin/end).
+        - OwnIter[T] / CopyIter[T]: begin/end (already exposes begin/end).
+        - Auto-consuming iteration (`consuming_iter_fi`): native or user path.
+        - ReadOnlySpanLike[T] protocol param: ::tpy::as_span + begin/end.
+        - range(...) call: C-style counter loop (or Range<T> begin/end fallback).
+        - Concrete NativeIterable type (or NativeIterable[T] protocol param):
+          plain C++ begin/end range-for, skipping the native_iterator adapter.
+        - Universal default: auto&& __itr = ::tpy::__iter__(src); for(;;) __itr.__next__().
+          Handles all remaining shapes uniformly -- protocol Iterator/Iterable,
+          error_return __next__ iterators, user __iter__() methods, and
+          move-only owning iterators (map/filter/zip results).
         """
         # Enum iteration: `for c in Color` -> range over EnumUtil<Color>::members
         if stmt.enum_iterable is not None:
@@ -3879,8 +3889,7 @@ class StatementGenerator:
             self._gen_begin_end_loop(out, stmt, indent, iterable, enum_type)
             return
 
-        from tpyc.modules import (get_iter_info,
-                                   get_error_return_next_element_type)
+        from tpyc.modules import is_native_iterable
         iterable_type = unwrap_ref_type(self.types.get_resolved_type(stmt.iterable))
 
         # Resolve sema-stored elem_type (handles PendingViewType -> concrete).
@@ -3935,20 +3944,6 @@ class StatementGenerator:
             if bound is not None and is_protocol_type(bound):
                 resolved_type = bound
 
-        # Handle protocol-typed iterables (Iterator[T], Iterable[T])
-        if is_protocol_type(resolved_type) and resolved_type.qualified_name() in ("typing.Iterator", "typing.Iterable"):
-            elem_type = sema_elem
-            iterable = self.expressions.gen_expr_deref(stmt.iterable)
-            if resolved_type.qualified_name() == "typing.Iterator":
-                self._gen_direct_next_loop(out, stmt, indent, iterable, elem_type,
-                                            call=".__next__()")
-            else:
-                # Iterable[T]: call __iter__(), then direct __next__() loop
-                self._gen_direct_next_loop_with_iter(out, stmt, indent, iterable, elem_type,
-                                                      iter_call="::tpy::__iter__",
-                                                      next_call=".__next__()")
-            return
-
         # Handle ReadOnlySpanLike[T] protocol-typed iterables (uses ::tpy::as_span)
         if is_protocol_type(resolved_type) and resolved_type.qualified_name() == "tpy.ReadOnlySpanLike":
             elem_type = sema_elem
@@ -3968,45 +3963,58 @@ class StatementGenerator:
                 self._gen_begin_end_loop(out, stmt, indent, iterable, elem_type, is_lvalue=False)
                 return
 
-        # Check for error_return __next__ iterators -- direct loop
-        er_elem = get_error_return_next_element_type(iterable_type, registry=self.ctx.analyzer.registry)
-        if er_elem is not None:
+        # Concrete NativeIterable -> plain C++ begin/end range-for.
+        # Covers built-in containers (list, dict, set, Span, Array, str, bytes,
+        # SpanIter, ...). User records that auto-derive NativeIterable (via
+        # `__span__` or an `__iter__` returning a NativeIterable) are
+        # *excluded* -- their begin()/end() are codegen-synthesized as
+        # `this->__iter__().begin()`, which calls begin() on a temporary
+        # iterator. Currently safe for SpanIter (its begin() returns a raw
+        # span iterator into the container, no self-pointer), but fragile
+        # if __iter__() ever returns a next_iter_mixin-derived type whose
+        # begin() stores a parent back-pointer. Such user records fall
+        # through to the universal default, where `auto&& __itr =
+        # ::tpy::__iter__(__src)` safely captures the returned iterator
+        # value. The protocol clause covers NativeIterable[T] parameter
+        # types whose C++ form is a template with NativeIterable<T> concept
+        # constraint -- begin/end are guaranteed by the concept.
+        record = self.ctx.analyzer.registry.get_record_for_type(iterable_type)
+        is_user_native = (
+            record is not None and not record.is_native
+            and is_native_iterable(iterable_type, registry=self.ctx.analyzer.registry)
+        )
+        is_native = (
+            (is_native_iterable(iterable_type, registry=self.ctx.analyzer.registry)
+             and not is_user_native)
+            or (is_protocol_type(resolved_type)
+                and resolved_type.qualified_name() == "tpy.NativeIterable")
+        )
+        if is_native:
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
-            self._gen_direct_next_loop(out, stmt, indent, iterable, sema_elem or er_elem,
-                                        call=".__next__()")
-            return
-
-        # Check for __iter__()-based types (preferred over __span__).
-        # get_iteration_element_type() is non-None for builtin containers (list, Array,
-        # Span, etc.) that have native C++ begin/end -- skip those to preserve mutability.
-        iter_info = get_iter_info(iterable_type, registry=self.ctx.analyzer.registry)
-        if iter_info is not None and iterable_type.get_iteration_element_type() is None:
-            iterable = self.expressions.gen_expr_deref(stmt.iterable)
+            if isinstance(stmt.iterable, TpyStrLiteral):
+                # C string literals include the null terminator, so wrap in string_view
+                iterable = f"std::string_view({iterable})"
+            assert sema_elem is not None, "sema should always resolve for-loop element type"
             elem_type = sema_elem
-            if iter_info.iter_is_native:
-                # NativeIterable iterator (e.g. SpanIter) -- call __iter__() and iterate directly
-                self._gen_captured_call_loop(out, stmt, indent, iterable, elem_type,
-                                             lambda src: f"{src}.__iter__()")
-            else:
-                # Call __iter__(), then direct __next__() loop
-                self._gen_direct_next_loop_with_iter(out, stmt, indent, iterable, elem_type,
-                                                      iter_call=".__iter__",
-                                                      next_call=".__next__()")
+            if isinstance(elem_type, IntLiteralType):
+                elem_type = self.ctx.analyzer.ctx.default_int_type
+            self._gen_begin_end_loop(out, stmt, indent, iterable, elem_type)
             return
 
-        # Native C++ range fallback (list, dict, str, Array, Span, __span__-only types, etc.)
+        # Universal default: ::tpy::__iter__(src) + .__next__() loop.
+        # Covers protocol-typed Iterator[T] and Iterable[T], error_return
+        # __next__ iterators, user records with __iter__() returning a
+        # separate iterator type, and iterator-shaped sources (map/filter/
+        # zip results, user iterator records). The runtime's ::tpy::__iter__
+        # dispatches to the user's __iter__() method (or the auto-synthesized
+        # one for pure iterators). `auto&&` binding in _gen_direct_next_loop_with_iter
+        # preserves reference returns so move-only owning iterators work and
+        # user iterator consumption semantics are preserved.
         iterable = self.expressions.gen_expr_deref(stmt.iterable)
-
-        # C string literals include the null terminator, so wrap in string_view
-        if isinstance(stmt.iterable, TpyStrLiteral):
-            iterable = f"std::string_view({iterable})"
-
-        # Element type is always resolved by sema (stmt.elem_type)
         assert sema_elem is not None, "sema should always resolve for-loop element type"
         elem_type = sema_elem
-
-        # Resolve IntLiteralType to configured default integer type.
         if isinstance(elem_type, IntLiteralType):
             elem_type = self.ctx.analyzer.ctx.default_int_type
-
-        self._gen_begin_end_loop(out, stmt, indent, iterable, elem_type)
+        self._gen_direct_next_loop_with_iter(out, stmt, indent, iterable, elem_type,
+                                              iter_call="::tpy::__iter__",
+                                              next_call=".__next__()")

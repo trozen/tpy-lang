@@ -19,11 +19,12 @@ void main();
 template<typename T, ::tpystd::typing::Iterable<T> T_items>
 ::tpy::val_or_ref_t<T> first(T_items&& items) {
     // for x in items:
-    auto& __obj_0 = items;
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& x = *__beg_0;
+    auto& __src_0 = items;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        auto&& x = ::tpy::unwrap_ref(*__r_1);
         // return x
         return x;
     }
@@ -36,11 +37,12 @@ std::vector<T> to_list(T_items&& items) {
     // result: list[T] = []
     std::vector<T> result = std::vector<T>{};
     // for x in items:
-    auto& __obj_0 = items;
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& x = *__beg_0;
+    auto& __src_0 = items;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        auto&& x = ::tpy::unwrap_ref(*__r_1);
         // result.append(x)
         result.push_back(x);
     }

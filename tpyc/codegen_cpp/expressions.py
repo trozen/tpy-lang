@@ -1159,8 +1159,17 @@ class ExpressionGenerator:
                 op = "==" if negate else "!="
                 return f"({rhs}.find({left}) {op} std::string::npos)"
             else:
-                # Collection: use std::find
+                # Collection: use std::find.
+                # User NativeIterables have codegen-synthesized begin/end that
+                # call begin() on a temporary iterator; fragile if the
+                # iterator type stores a self-pointer. Wrap the find in an
+                # IIFE that captures __iter__() into a stable local first.
                 op = "==" if negate else "!="
+                right_type = self.types.get_resolved_type(expr.right)
+                if self._is_user_native_iterable(right_type):
+                    return (f"([&](){{ auto __fi = ({right}).__iter__(); "
+                            f"return (std::find(__fi.begin(), __fi.end(), {left}) "
+                            f"{op} __fi.end()); }})()")
                 return f"(std::find({right}.begin(), {right}.end(), {left}) {op} {right}.end())"
 
         # Identity operators (is / is not) -- nullable comparison
@@ -3049,7 +3058,15 @@ class ExpressionGenerator:
                 if sema_elem is None:
                     sema_elem = self.ctx.analyzer.ctx.default_int_type
 
-                buf.write(f"{ind1}{obj_binding} __obj_{n} = {iterable_code};\n")
+                # User NativeIterables have codegen-synthesized begin/end
+                # that call begin() on a temporary iterator; fragile if the
+                # iterator type stores a self-pointer (see ITERATOR_OVERHAUL.md
+                # Phase 3). Capture __iter__() first for safety.
+                if self._is_user_native_iterable(self.types.get_resolved_type(gen.iterable)):
+                    buf.write(f"{ind1}{obj_binding} __src_{n} = {iterable_code};\n")
+                    buf.write(f"{ind1}auto __obj_{n} = __src_{n}.__iter__();\n")
+                else:
+                    buf.write(f"{ind1}{obj_binding} __obj_{n} = {iterable_code};\n")
                 buf.write(f"{ind1}auto __beg_{n} = __obj_{n}.begin();\n")
                 buf.write(f"{ind1}auto __end_{n} = __obj_{n}.end();\n")
                 buf.write(f"{ind1}for (size_t __idx_{n} = 0; __beg_{n} != __end_{n}; ++__beg_{n}, ++__idx_{n}) {{\n")
@@ -3139,6 +3156,17 @@ class ExpressionGenerator:
                 return buf.getvalue()
 
             # Container iterables: capture begin/end iterators into the lambda.
+            # NOTE: for user NativeIterables with synthesized begin()/end()
+            # that call `this->__iter__().begin()` on a temporary iterator,
+            # this is fragile if the iterator type stores a self-pointer
+            # (currently safe for SpanIter whose begin() returns a raw span
+            # iterator, no self-ref). Same concern is contained in
+            # _gen_for_each_loop and comprehensions by capturing __iter__()
+            # first. The lambda-capture structure here makes the same fix
+            # structurally heavier (requires stashing __iter__ into the
+            # lambda itself + lazy begin/end init with decltype gymnastics).
+            # Deferred to Phase 3 (option B): removing synthesized begin/end
+            # from codegen_cpp/records.py eliminates this concern globally.
             is_lvalue = self._comp_is_lvalue(gen.iterable)
 
             if is_lvalue:
@@ -3345,8 +3373,15 @@ class ExpressionGenerator:
         is_lvalue = self._comp_is_lvalue(gen.iterable)
         obj_binding = "auto&" if is_lvalue else "auto"
 
-        buf.write(f"{ind1}{obj_binding} __obj_{n} = {iterable_code};\n")
         iterable_type = self.types.get_resolved_type(gen.iterable)
+        # User NativeIterables have codegen-synthesized begin/end that
+        # call begin() on a temporary iterator; fragile if the iterator
+        # type stores a self-pointer. Capture __iter__() first.
+        if self._is_user_native_iterable(iterable_type):
+            buf.write(f"{ind1}{obj_binding} __src_{n} = {iterable_code};\n")
+            buf.write(f"{ind1}auto __obj_{n} = __src_{n}.__iter__();\n")
+        else:
+            buf.write(f"{ind1}{obj_binding} __obj_{n} = {iterable_code};\n")
         if not skip_reserve and self._is_sized_type(iterable_type):
             buf.write(f"{ind1}__result.reserve(__obj_{n}.size());\n")
         buf.write(f"{ind1}auto __beg_{n} = __obj_{n}.begin();\n")
@@ -3470,6 +3505,22 @@ class ExpressionGenerator:
         return is_lvalue_iterable(
             expr, self.ctx.analyzer.registry.get_record,
             self.types.get_resolved_type)
+
+    def _is_user_native_iterable(self, iter_type: TpyType) -> bool:
+        """True if `iter_type` is a user record (non-@native) that auto-derives
+        NativeIterable. Such records have codegen-synthesized begin()/end()
+        that call `this->__iter__().begin()` on a temporary iterator --
+        currently safe for SpanIter (no self-pointer), but fragile if
+        __iter__() ever returns a next_iter_mixin-derived type. Callers
+        iterating such types via begin/end should capture `__iter__()` into
+        a stable local first as a forward-safety measure.
+        See docs/ITERATOR_OVERHAUL.md Phase 2/3 notes.
+        """
+        iter_type = unwrap_ref_type(iter_type)
+        record = self.ctx.analyzer.registry.get_record_for_type(iter_type)
+        if record is None or record.is_native:
+            return False
+        return builtin_modules.is_native_iterable(iter_type, registry=self.ctx.analyzer.registry)
 
     def _genexpr_outer_captures(self, expr: TpyGeneratorExpression,
                                 gen: TpyComprehensionGenerator,

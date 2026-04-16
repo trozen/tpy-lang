@@ -30,11 +30,12 @@ void main() {
     std::array<Point, 2> pts = {Point(1, 2), Point(3, 4)};
     // # Ref return: mutations propagate to original
     // for p in map(identity, pts):
-    auto __iter_0 = ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
+    auto __src_0 = ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        auto&& p = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        auto&& p = ::tpy::unwrap_ref(*__r_1);
         // p.x = p.x + 100
         p.x = (::tpy::add_check<int32_t>(p.x, 100));
     }
@@ -44,11 +45,12 @@ void main() {
     std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
     // # Own return: independent copies, originals unchanged
     // for p in map(make_new, pts):
-    auto __iter_1 = ::tpy::builtin_map<Point, Point>(make_new, pts);
+    auto __src_2 = ::tpy::builtin_map<Point, Point>(make_new, pts);
+    auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
-        auto __r_1 = __iter_1.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& p = ::tpy::unwrap_ref(*__r_1);
+        auto __r_3 = __itr_2.__next__();
+        if (!__r_3.has_value()) break;
+        auto&& p = ::tpy::unwrap_ref(*__r_3);
         // p.x = 999  # modifies copy only
         p.x = 999;
     }
@@ -60,11 +62,12 @@ void main() {
     // vals = [10, 20]
     std::array<int32_t, 2> vals = {10, 20};
     // for p in map(set_x, pts, vals):
-    auto __iter_2 = ::tpy::builtin_map_n<::tpy::val_or_ref<Point>>(set_x, pts, vals);
+    auto __src_4 = ::tpy::builtin_map_n<::tpy::val_or_ref<Point>>(set_x, pts, vals);
+    auto&& __itr_4 = ::tpy::__iter__(__src_4);
     for (;;) {
-        auto __r_2 = __iter_2.__next__();
-        if (!__r_2.has_value()) break;
-        const auto& p = ::tpy::unwrap_ref(*__r_2);
+        auto __r_5 = __itr_4.__next__();
+        if (!__r_5.has_value()) break;
+        const auto& p = ::tpy::unwrap_ref(*__r_5);
         // pass
     }
     // print(pts[0].x)  # 10 (set through reference)

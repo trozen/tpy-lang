@@ -384,7 +384,15 @@ def _find_error_return_next_element(
 
 @dataclass
 class IterInfo:
-    """Result of checking __iter__() on a type."""
+    """Result of checking __iter__() on a type.
+
+    After the iterator overhaul (Phase 2), `iter_is_native` no longer
+    influences `_gen_for_each_loop` dispatch -- the NativeIterable peephole
+    on the iterable itself drives that choice. `iter_is_native` is still
+    used by sema (iter-depth lifetime tracking in statements.py) and by
+    generator-function for-loop lowering (gen_generators.py). Phase 3/4
+    may collapse it entirely.
+    """
     element_type: "TpyType"
     iter_is_native: bool  # True if __iter__ returns a NativeIterable (can use begin/end directly)
 

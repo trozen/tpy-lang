@@ -12,7 +12,7 @@ void main() {
     int32_t total = 0;
     // for x in s:
     auto& __src_0 = s;
-    auto __itr_0 = __src_0.__iter__();
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;

@@ -14,21 +14,23 @@ std::vector<::tpy::BigInt> make_nums() {
 void main() {
     // # rvalue: function call result passed directly
     // for x in reversed(make_nums()):
-    auto __iter_0 = ::tpy::builtin_reversed<::tpy::BigInt>(make_nums());
+    auto __src_0 = ::tpy::builtin_reversed<::tpy::BigInt>(make_nums());
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
     }
     // # rvalue: sorted() returns Own[list[T]]
     // for x in reversed(sorted(make_nums())):
-    auto __iter_1 = ::tpy::builtin_reversed<::tpy::BigInt>(::tpy::builtin_sorted<::tpy::BigInt>(make_nums()));
+    auto __src_2 = ::tpy::builtin_reversed<::tpy::BigInt>(::tpy::builtin_sorted<::tpy::BigInt>(make_nums()));
+    auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
-        auto __r_1 = __iter_1.__next__();
-        if (!__r_1.has_value()) break;
-        const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
+        auto __r_3 = __itr_2.__next__();
+        if (!__r_3.has_value()) break;
+        const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_3);
         // print(x)
         std::cout << x << "\n";
     }

@@ -38,22 +38,24 @@ __gen_maybe_count maybe_count(int32_t n) {
 // def main():
 void main() {
     // for x in maybe_count(0):
-    auto __iter_0 = maybe_count(0);
+    auto __src_0 = maybe_count(0);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
     }
     // print("empty done")
     std::cout << "empty done" << "\n";
     // for x in maybe_count(3):
-    auto __iter_1 = maybe_count(3);
+    auto __src_2 = maybe_count(3);
+    auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
-        auto __r_1 = __iter_1.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+        auto __r_3 = __itr_2.__next__();
+        if (!__r_3.has_value()) break;
+        int32_t x = ::tpy::unwrap_ref(*__r_3);
         // print(x)
         std::cout << x << "\n";
     }

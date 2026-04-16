@@ -10,7 +10,7 @@ void main() {
     Counter c = Counter(5);
     // for x in c:
     auto& __src_0 = c;
-    auto __itr_0 = __src_0.__iter__();
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;

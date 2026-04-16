@@ -43,11 +43,12 @@ int32_t total(T_items& items) {
         // result2: Int32 = 0
         int32_t result2 = 0;
         // for x2 in items:
-        auto& __obj_1 = items;
-        auto __beg_1 = __obj_1.begin();
-        auto __end_1 = __obj_1.end();
-        for (; __beg_1 != __end_1; ++__beg_1) {
-            int32_t x2 = *__beg_1;
+        auto& __src_1 = items;
+        auto&& __itr_1 = ::tpy::__iter__(__src_1);
+        for (;;) {
+            auto __r_2 = __itr_1.__next__();
+            if (!__r_2.has_value()) break;
+            int32_t x2 = ::tpy::unwrap_ref(*__r_2);
             // result2 += x2
             result2 = ::tpy::add_check<int32_t>(result2, x2);
         }

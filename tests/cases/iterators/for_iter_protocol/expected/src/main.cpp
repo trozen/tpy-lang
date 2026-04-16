@@ -15,7 +15,7 @@ void __tpy_init() {
     // # 1. Container with __iter__ in for-loop
     // for x in NumberRange(0, 5):
     auto __src_0 = NumberRange(0, 5);
-    auto __itr_0 = __src_0.__iter__();
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -29,7 +29,7 @@ void __tpy_init() {
     nums = &__global_slot_1;
     // for x in nums:
     auto& __src_2 = (*nums);
-    auto __itr_2 = __src_2.__iter__();
+    auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
@@ -39,7 +39,7 @@ void __tpy_init() {
     }
     // for x in nums:
     auto& __src_4 = (*nums);
-    auto __itr_4 = __src_4.__iter__();
+    auto&& __itr_4 = ::tpy::__iter__(__src_4);
     for (;;) {
         auto __r_5 = __itr_4.__next__();
         if (!__r_5.has_value()) break;

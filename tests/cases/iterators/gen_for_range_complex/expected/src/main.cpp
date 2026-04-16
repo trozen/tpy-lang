@@ -37,11 +37,12 @@ __gen_squares_plus squares_plus(int32_t n) {
 // def main():
 void main() {
     // for x in squares_plus(5):
-    auto __iter_0 = squares_plus(5);
+    auto __src_0 = squares_plus(5);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
     }

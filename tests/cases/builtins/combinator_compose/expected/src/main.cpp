@@ -22,11 +22,12 @@ void main() {
     std::array<int32_t, 5> xs = {1, 2, 3, 4, 5};
     // # enumerate(map(...))
     // for i, v in enumerate(map(double, xs)):
-    auto __iter_0 = ::tpy::builtin_enumerate<int32_t>(::tpy::builtin_map<int32_t, int32_t>(double_, xs));
+    auto __src_0 = ::tpy::builtin_enumerate<int32_t>(::tpy::builtin_map<int32_t, int32_t>(double_, xs));
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // # enumerate(map(...))
         // for i, v in enumerate(map(double, xs)):
         const auto& __tup_1 = __for_tup_0;
@@ -42,11 +43,12 @@ void main() {
     // nums = [-1, 2, -3, 4, -5]
     std::array<int32_t, 5> nums = {-1, 2, -3, 4, -5};
     // for v in filter(is_positive, nums):
-    auto __iter_1 = ::tpy::builtin_filter<int32_t>(is_positive, nums);
+    auto __src_2 = ::tpy::builtin_filter<int32_t>(is_positive, nums);
+    auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
-        auto __r_1 = __iter_1.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_1);
+        auto __r_3 = __itr_2.__next__();
+        if (!__r_3.has_value()) break;
+        int32_t v = ::tpy::unwrap_ref(*__r_3);
         // print(v)  # 2, 4
         std::cout << v << "\n";
     }
@@ -54,11 +56,12 @@ void main() {
     // total = 0
     int32_t total = 0;
     // for i, v in enumerate(filter(is_positive, nums)):
-    auto __iter_2 = ::tpy::builtin_enumerate<int32_t>(::tpy::builtin_filter<int32_t>(is_positive, nums));
+    auto __src_4 = ::tpy::builtin_enumerate<int32_t>(::tpy::builtin_filter<int32_t>(is_positive, nums));
+    auto&& __itr_4 = ::tpy::__iter__(__src_4);
     for (;;) {
-        auto __r_2 = __iter_2.__next__();
-        if (!__r_2.has_value()) break;
-        auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_2);
+        auto __r_5 = __itr_4.__next__();
+        if (!__r_5.has_value()) break;
+        auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_5);
         // for i, v in enumerate(filter(is_positive, nums)):
         const auto& __tup_2 = __for_tup_1;
         int32_t i = std::get<0>(__tup_2);
@@ -70,21 +73,23 @@ void main() {
     std::cout << total << "\n";
     // # map(filter(...))
     // for v in map(double, filter(is_positive, nums)):
-    auto __iter_3 = ::tpy::builtin_map<int32_t, int32_t>(double_, ::tpy::builtin_filter<int32_t>(is_positive, nums));
+    auto __src_6 = ::tpy::builtin_map<int32_t, int32_t>(double_, ::tpy::builtin_filter<int32_t>(is_positive, nums));
+    auto&& __itr_6 = ::tpy::__iter__(__src_6);
     for (;;) {
-        auto __r_3 = __iter_3.__next__();
-        if (!__r_3.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_3);
+        auto __r_7 = __itr_6.__next__();
+        if (!__r_7.has_value()) break;
+        int32_t v = ::tpy::unwrap_ref(*__r_7);
         // print(v)  # 4, 8
         std::cout << v << "\n";
     }
     // # User-defined generator composed with enumerate
     // for i, v in enumerate(triple_gen(xs)):
-    auto __iter_4 = ::tpy::builtin_enumerate<int32_t>(triple_gen(::tpy::as_mut_span(xs)));
+    auto __src_8 = ::tpy::builtin_enumerate<int32_t>(triple_gen(::tpy::as_mut_span(xs)));
+    auto&& __itr_8 = ::tpy::__iter__(__src_8);
     for (;;) {
-        auto __r_4 = __iter_4.__next__();
-        if (!__r_4.has_value()) break;
-        auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_4);
+        auto __r_9 = __itr_8.__next__();
+        if (!__r_9.has_value()) break;
+        auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_9);
         // # User-defined generator composed with enumerate
         // for i, v in enumerate(triple_gen(xs)):
         const auto& __tup_3 = __for_tup_2;

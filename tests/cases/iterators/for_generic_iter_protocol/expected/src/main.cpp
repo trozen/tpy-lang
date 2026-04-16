@@ -16,7 +16,7 @@ void main() {
     s.add(30);
     // for x in s:
     auto& __src_0 = s;
-    auto __itr_0 = __src_0.__iter__();
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -27,7 +27,7 @@ void main() {
     // # iterate again
     // for x in s:
     auto& __src_2 = s;
-    auto __itr_2 = __src_2.__iter__();
+    auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;

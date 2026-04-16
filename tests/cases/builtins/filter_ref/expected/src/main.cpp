@@ -16,21 +16,22 @@ void main() {
     std::array<Point, 4> pts = {Point(-1, 0), Point(2, 3), Point(-5, 1), Point(4, 5)};
     // # filter preserves references: mutate through loop variable
     // for p in filter(positive_x, pts):
-    auto __iter_0 = ::tpy::builtin_filter<Point>(positive_x, pts);
+    auto __src_0 = ::tpy::builtin_filter<Point>(positive_x, pts);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        auto&& p = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        auto&& p = ::tpy::unwrap_ref(*__r_1);
         // p.y = p.y + 100
         p.y = (::tpy::add_check<int32_t>(p.y, 100));
     }
     // # verify original list was mutated
     // for p in pts:
-    auto& __obj_1 = pts;
-    auto __beg_1 = __obj_1.begin();
-    auto __end_1 = __obj_1.end();
-    for (; __beg_1 != __end_1; ++__beg_1) {
-        const auto& p = *__beg_1;
+    auto& __obj_2 = pts;
+    auto __beg_2 = __obj_2.begin();
+    auto __end_2 = __obj_2.end();
+    for (; __beg_2 != __end_2; ++__beg_2) {
+        const auto& p = *__beg_2;
         // print(p.x, p.y)
         std::cout << p.x << " " << p.y << "\n";
     }

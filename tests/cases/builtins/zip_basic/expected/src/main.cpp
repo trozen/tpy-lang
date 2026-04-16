@@ -13,11 +13,12 @@ void main() {
     // ages = [30, 25, 35]
     std::array<int32_t, 3> ages = {30, 25, 35};
     // for name, age in zip(names, ages):
-    auto __iter_0 = ::tpy::builtin_zip<std::string, int32_t>(names, ages);
+    auto __src_0 = ::tpy::builtin_zip<std::string, int32_t>(names, ages);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // for name, age in zip(names, ages):
         const auto& __tup_1 = __for_tup_0;
         std::string_view name = std::get<0>(__tup_1);
@@ -31,11 +32,12 @@ void main() {
     // short = ["x", "y"]
     std::array<std::string, 2> short_ = {"x", "y"};
     // for n, s in zip(long, short):
-    auto __iter_1 = ::tpy::builtin_zip<int32_t, std::string>(long_, short_);
+    auto __src_2 = ::tpy::builtin_zip<int32_t, std::string>(long_, short_);
+    auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
-        auto __r_1 = __iter_1.__next__();
-        if (!__r_1.has_value()) break;
-        const auto& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
+        auto __r_3 = __itr_2.__next__();
+        if (!__r_3.has_value()) break;
+        const auto& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
         // for n, s in zip(long, short):
         const auto& __tup_2 = __for_tup_1;
         int32_t n = std::get<0>(__tup_2);
@@ -49,11 +51,12 @@ void main() {
     // nums = [1, 2, 3]
     std::array<int32_t, 3> nums = {1, 2, 3};
     // for s, n in zip(empty, nums):
-    auto __iter_2 = ::tpy::builtin_zip<std::string, int32_t>(empty, nums);
+    auto __src_4 = ::tpy::builtin_zip<std::string, int32_t>(empty, nums);
+    auto&& __itr_4 = ::tpy::__iter__(__src_4);
     for (;;) {
-        auto __r_2 = __iter_2.__next__();
-        if (!__r_2.has_value()) break;
-        const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_2);
+        auto __r_5 = __itr_4.__next__();
+        if (!__r_5.has_value()) break;
+        const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
         // for s, n in zip(empty, nums):
         const auto& __tup_3 = __for_tup_2;
         std::string_view s = std::get<0>(__tup_3);
@@ -69,11 +72,12 @@ void main() {
     // zs = [True, False, True]
     std::array<bool, 3> zs = {true, false, true};
     // for x, y, z in zip(xs, ys, zs):
-    auto __iter_3 = ::tpy::builtin_zip<int32_t, std::string, bool>(xs, ys, zs);
+    auto __src_6 = ::tpy::builtin_zip<int32_t, std::string, bool>(xs, ys, zs);
+    auto&& __itr_6 = ::tpy::__iter__(__src_6);
     for (;;) {
-        auto __r_3 = __iter_3.__next__();
-        if (!__r_3.has_value()) break;
-        const auto& __for_tup_3 = ::tpy::unwrap_ref(*__r_3);
+        auto __r_7 = __itr_6.__next__();
+        if (!__r_7.has_value()) break;
+        const auto& __for_tup_3 = ::tpy::unwrap_ref(*__r_7);
         // for x, y, z in zip(xs, ys, zs):
         const auto& __tup_4 = __for_tup_3;
         int32_t x = std::get<0>(__tup_4);
@@ -86,11 +90,12 @@ void main() {
     // ws = [0.5, 1.5]
     std::array<double, 2> ws = {0.5, 1.5};
     // for x, y, z, w in zip(xs, ys, zs, ws):
-    auto __iter_4 = ::tpy::builtin_zip<int32_t, std::string, bool, double>(xs, ys, zs, ws);
+    auto __src_8 = ::tpy::builtin_zip<int32_t, std::string, bool, double>(xs, ys, zs, ws);
+    auto&& __itr_8 = ::tpy::__iter__(__src_8);
     for (;;) {
-        auto __r_4 = __iter_4.__next__();
-        if (!__r_4.has_value()) break;
-        const auto& __for_tup_4 = ::tpy::unwrap_ref(*__r_4);
+        auto __r_9 = __itr_8.__next__();
+        if (!__r_9.has_value()) break;
+        const auto& __for_tup_4 = ::tpy::unwrap_ref(*__r_9);
         // for x, y, z, w in zip(xs, ys, zs, ws):
         const auto& __tup_5 = __for_tup_4;
         int32_t x = std::get<0>(__tup_5);
@@ -104,11 +109,12 @@ void main() {
     // vs = ["p", "q"]
     std::array<std::string, 2> vs = {"p", "q"};
     // for x, y, z, w, v in zip(xs, ys, zs, ws, vs):
-    auto __iter_5 = ::tpy::builtin_zip<int32_t, std::string, bool, double, std::string>(xs, ys, zs, ws, vs);
+    auto __src_10 = ::tpy::builtin_zip<int32_t, std::string, bool, double, std::string>(xs, ys, zs, ws, vs);
+    auto&& __itr_10 = ::tpy::__iter__(__src_10);
     for (;;) {
-        auto __r_5 = __iter_5.__next__();
-        if (!__r_5.has_value()) break;
-        const auto& __for_tup_5 = ::tpy::unwrap_ref(*__r_5);
+        auto __r_11 = __itr_10.__next__();
+        if (!__r_11.has_value()) break;
+        const auto& __for_tup_5 = ::tpy::unwrap_ref(*__r_11);
         // for x, y, z, w, v in zip(xs, ys, zs, ws, vs):
         const auto& __tup_6 = __for_tup_5;
         int32_t x = std::get<0>(__tup_6);

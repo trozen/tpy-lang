@@ -19,11 +19,12 @@ void main() {
     // extras = [Point(10, 0), Point(20, 0)]
     std::array<Point, 2> extras = {Point(10, 0), Point(20, 0)};
     // for p in map(combine, pts, extras):
-    auto __iter_0 = ::tpy::builtin_map_n<::tpy::val_or_ref<Point>>(combine, pts, extras);
+    auto __src_0 = ::tpy::builtin_map_n<::tpy::val_or_ref<Point>>(combine, pts, extras);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        const auto& p = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        const auto& p = ::tpy::unwrap_ref(*__r_1);
         // pass
     }
     // print(pts[0].x)  # 11 (1 + 10, modified through reference)

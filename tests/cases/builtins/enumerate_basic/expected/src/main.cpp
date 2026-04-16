@@ -11,11 +11,12 @@ void main() {
     // words = ["a", "b", "c"]
     std::array<std::string, 3> words = {"a", "b", "c"};
     // for i, s in enumerate(words):
-    auto __iter_0 = ::tpy::builtin_enumerate<std::string>(words);
+    auto __src_0 = ::tpy::builtin_enumerate<std::string>(words);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // for i, s in enumerate(words):
         const auto& __tup_1 = __for_tup_0;
         int32_t i = std::get<0>(__tup_1);
@@ -27,11 +28,12 @@ void main() {
     // nums = [10, 20, 30]
     std::array<int32_t, 3> nums = {10, 20, 30};
     // for i, n in enumerate(nums):
-    auto __iter_1 = ::tpy::builtin_enumerate<int32_t>(nums);
+    auto __src_2 = ::tpy::builtin_enumerate<int32_t>(nums);
+    auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
-        auto __r_1 = __iter_1.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
+        auto __r_3 = __itr_2.__next__();
+        if (!__r_3.has_value()) break;
+        auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
         // for i, n in enumerate(nums):
         const auto& __tup_2 = __for_tup_1;
         int32_t i = std::get<0>(__tup_2);
@@ -43,11 +45,12 @@ void main() {
     // empty: list[int] = []
     std::vector<::tpy::BigInt> empty = std::vector<::tpy::BigInt>{};
     // for i, n in enumerate(empty):
-    auto __iter_2 = ::tpy::builtin_enumerate<::tpy::BigInt>(empty);
+    auto __src_4 = ::tpy::builtin_enumerate<::tpy::BigInt>(empty);
+    auto&& __itr_4 = ::tpy::__iter__(__src_4);
     for (;;) {
-        auto __r_2 = __iter_2.__next__();
-        if (!__r_2.has_value()) break;
-        const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_2);
+        auto __r_5 = __itr_4.__next__();
+        if (!__r_5.has_value()) break;
+        const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
         // for i, n in enumerate(empty):
         const auto& __tup_3 = __for_tup_2;
         int32_t i = std::get<0>(__tup_3);
@@ -59,11 +62,12 @@ void main() {
     // one = ["only"]
     std::array<std::string, 1> one = {"only"};
     // for i, s in enumerate(one):
-    auto __iter_3 = ::tpy::builtin_enumerate<std::string>(one);
+    auto __src_6 = ::tpy::builtin_enumerate<std::string>(one);
+    auto&& __itr_6 = ::tpy::__iter__(__src_6);
     for (;;) {
-        auto __r_3 = __iter_3.__next__();
-        if (!__r_3.has_value()) break;
-        const auto& __for_tup_3 = ::tpy::unwrap_ref(*__r_3);
+        auto __r_7 = __itr_6.__next__();
+        if (!__r_7.has_value()) break;
+        const auto& __for_tup_3 = ::tpy::unwrap_ref(*__r_7);
         // for i, s in enumerate(one):
         const auto& __tup_4 = __for_tup_3;
         int32_t i = std::get<0>(__tup_4);
@@ -75,11 +79,12 @@ void main() {
     // letters = ["x", "y", "z"]
     std::array<std::string, 3> letters = {"x", "y", "z"};
     // for i, s in enumerate(letters, 10):
-    auto __iter_4 = ::tpy::builtin_enumerate_start<std::string>(letters, 10);
+    auto __src_8 = ::tpy::builtin_enumerate_start<std::string>(letters, 10);
+    auto&& __itr_8 = ::tpy::__iter__(__src_8);
     for (;;) {
-        auto __r_4 = __iter_4.__next__();
-        if (!__r_4.has_value()) break;
-        const auto& __for_tup_4 = ::tpy::unwrap_ref(*__r_4);
+        auto __r_9 = __itr_8.__next__();
+        if (!__r_9.has_value()) break;
+        const auto& __for_tup_4 = ::tpy::unwrap_ref(*__r_9);
         // for i, s in enumerate(letters, 10):
         const auto& __tup_5 = __for_tup_4;
         int32_t i = std::get<0>(__tup_5);

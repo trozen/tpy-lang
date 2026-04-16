@@ -24,11 +24,12 @@ int32_t depth(const Tree& t) {
         // result = 0
         int32_t result = 0;
         // for child in t:
-        auto& __obj_0 = __t;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& child = *__beg_0;
+        auto& __src_0 = __t;
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& child = ::tpy::unwrap_ref(*__r_1);
             // d = depth(child)
             Tree __tmp_1 = child;
             int32_t d = depth(__tmp_1);
@@ -56,11 +57,12 @@ int32_t depth(const Tree& t) {
         // result = 0
         ::tpy::BigInt result = ::tpy::BigInt(0);
         // for child in t:
-        auto& __obj_0 = __t;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& child = *__beg_0;
+        auto& __src_0 = __t;
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& child = ::tpy::unwrap_ref(*__r_1);
             // d = int_depth(child)
             IntTree __tmp_2 = child;
             ::tpy::BigInt d = int_depth(__tmp_2);
@@ -93,11 +95,12 @@ int32_t depth(const Tree& t) {
         // result = 0
         int32_t result = 0;
         // for k in v:
-        auto& __obj_0 = __v;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            std::string_view k = *__beg_0;
+        auto& __src_0 = __v;
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::string_view k = ::tpy::unwrap_ref(*__r_1);
             // result = result + 1
             result = (::tpy::add_check<int32_t>(result, 1));
         }

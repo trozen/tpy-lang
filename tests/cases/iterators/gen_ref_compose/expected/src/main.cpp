@@ -24,31 +24,34 @@ void main() {
     std::vector<int32_t> vals = {10, 20};
     // # my_map: non-value type
     // for p in my_map(identity, pts):
-    auto __iter_0 = my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
+    auto __src_0 = my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        const auto& p = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        const auto& p = ::tpy::unwrap_ref(*__r_1);
         // print(p)
         std::cout << p << "\n";
     }
     // # my_map: value type
     // for v in my_map(double, vals):
-    auto __iter_1 = my_map<int32_t, int32_t>(double_, vals);
+    auto __src_2 = my_map<int32_t, int32_t>(double_, vals);
+    auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
-        auto __r_1 = __iter_1.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_1);
+        auto __r_3 = __itr_2.__next__();
+        if (!__r_3.has_value()) break;
+        int32_t v = ::tpy::unwrap_ref(*__r_3);
         // print(v)
         std::cout << v << "\n";
     }
     // # my_enumerate over list
     // for i, p in my_enumerate(pts):
-    auto __iter_2 = my_enumerate<Point>(pts);
+    auto __src_4 = my_enumerate<Point>(pts);
+    auto&& __itr_4 = ::tpy::__iter__(__src_4);
     for (;;) {
-        auto __r_2 = __iter_2.__next__();
-        if (!__r_2.has_value()) break;
-        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_2);
+        auto __r_5 = __itr_4.__next__();
+        if (!__r_5.has_value()) break;
+        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_5);
         // # my_enumerate over list
         // for i, p in my_enumerate(pts):
         auto& __tup_1 = __for_tup_0;
@@ -60,11 +63,12 @@ void main() {
     // # Composition: my_enumerate(my_map(...))
     // for i, p in my_enumerate(my_map(identity, pts)):
     auto __tmp_1 = my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
-    auto __iter_3 = my_enumerate<::tpy::val_or_ref<Point>>(__tmp_1);
+    auto __src_6 = my_enumerate<::tpy::val_or_ref<Point>>(__tmp_1);
+    auto&& __itr_6 = ::tpy::__iter__(__src_6);
     for (;;) {
-        auto __r_3 = __iter_3.__next__();
-        if (!__r_3.has_value()) break;
-        auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
+        auto __r_7 = __itr_6.__next__();
+        if (!__r_7.has_value()) break;
+        auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_7);
         // # Composition: my_enumerate(my_map(...))
         // for i, p in my_enumerate(my_map(identity, pts)):
         auto& __tup_2 = __for_tup_1;
@@ -75,11 +79,12 @@ void main() {
     }
     // # Composition: builtin enumerate(my_map(...))
     // for j, q in enumerate(my_map(identity, pts)):
-    auto __iter_4 = ::tpy::builtin_enumerate<::tpy::val_or_ref<Point>>(my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
+    auto __src_8 = ::tpy::builtin_enumerate<::tpy::val_or_ref<Point>>(my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
+    auto&& __itr_8 = ::tpy::__iter__(__src_8);
     for (;;) {
-        auto __r_4 = __iter_4.__next__();
-        if (!__r_4.has_value()) break;
-        auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_4);
+        auto __r_9 = __itr_8.__next__();
+        if (!__r_9.has_value()) break;
+        auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_9);
         // # Composition: builtin enumerate(my_map(...))
         // for j, q in enumerate(my_map(identity, pts)):
         auto& __tup_3 = __for_tup_2;
@@ -91,11 +96,12 @@ void main() {
     // # Mutation through composed user generators proves reference preservation
     // for k, r in my_enumerate(my_map(identity, pts)):
     auto __tmp_2 = my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
-    auto __iter_5 = my_enumerate<::tpy::val_or_ref<Point>>(__tmp_2);
+    auto __src_10 = my_enumerate<::tpy::val_or_ref<Point>>(__tmp_2);
+    auto&& __itr_10 = ::tpy::__iter__(__src_10);
     for (;;) {
-        auto __r_5 = __iter_5.__next__();
-        if (!__r_5.has_value()) break;
-        auto&& __for_tup_3 = ::tpy::unwrap_ref(*__r_5);
+        auto __r_11 = __itr_10.__next__();
+        if (!__r_11.has_value()) break;
+        auto&& __for_tup_3 = ::tpy::unwrap_ref(*__r_11);
         // # Mutation through composed user generators proves reference preservation
         // for k, r in my_enumerate(my_map(identity, pts)):
         auto& __tup_4 = __for_tup_3;
@@ -105,11 +111,11 @@ void main() {
         r.x = ::tpy::add_check<int32_t>(r.x, 100);
     }
     // for pt in pts:
-    auto& __obj_6 = pts;
-    auto __beg_6 = __obj_6.begin();
-    auto __end_6 = __obj_6.end();
-    for (; __beg_6 != __end_6; ++__beg_6) {
-        const auto& pt = *__beg_6;
+    auto& __obj_12 = pts;
+    auto __beg_12 = __obj_12.begin();
+    auto __end_12 = __obj_12.end();
+    for (; __beg_12 != __end_12; ++__beg_12) {
+        const auto& pt = *__beg_12;
         // print(pt)
         std::cout << pt << "\n";
     }

@@ -1,0 +1,7 @@
+True
+False
+True
+False
+[20, 40, 60]
+3
+60

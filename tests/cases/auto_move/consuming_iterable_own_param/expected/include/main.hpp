@@ -37,7 +37,7 @@ std::vector<Item> collect(T_source&& source) {
     std::vector<Item> result = std::vector<Item>{};
     // for x in source:
     auto& __src_0 = source;
-    auto __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;

@@ -39,7 +39,7 @@ template<::tpystd::typing::Iterable<Point> T_items>
 void mutate_via_iterable(T_items& items) {
     // for p in items:
     auto& __src_0 = items;
-    auto __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -52,11 +52,12 @@ void mutate_via_iterable(T_items& items) {
 template<::tpystd::typing::Iterator<Point> T_it>
 void mutate_via_iterator(T_it& it) {
     // for p in it:
-    auto& __iter_0 = it;
+    auto& __src_0 = it;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        auto&& p = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        auto&& p = ::tpy::unwrap_ref(*__r_1);
         // p.y += 200
         p.y = (p.y) + (::tpy::BigInt(200));
     }

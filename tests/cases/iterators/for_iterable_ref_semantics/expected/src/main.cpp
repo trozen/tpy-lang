@@ -29,11 +29,12 @@ void main() {
     // pts3: list[Point] = [Point(5, 6)]
     std::vector<Point> pts3 = {Point(::tpy::BigInt(5), ::tpy::BigInt(6))};
     // for v in gen_double_x(pts3):
-    auto __iter_0 = gen_double_x(pts3);
+    auto __src_0 = gen_double_x(pts3);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
-        auto __r_0 = __iter_0.__next__();
-        if (!__r_0.has_value()) break;
-        const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_0);
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
     }
@@ -45,11 +46,11 @@ void main() {
     // keys: list[str] = []
     std::vector<std::string> keys = std::vector<std::string>{};
     // for k in d:
-    auto& __obj_1 = d;
-    auto __beg_1 = __obj_1.begin();
-    auto __end_1 = __obj_1.end();
-    for (; __beg_1 != __end_1; ++__beg_1) {
-        std::string_view k = *__beg_1;
+    auto& __obj_2 = d;
+    auto __beg_2 = __obj_2.begin();
+    auto __end_2 = __obj_2.end();
+    for (; __beg_2 != __end_2; ++__beg_2) {
+        std::string_view k = *__beg_2;
         // keys.append(k)
         std::string __tmp_2{k};
         keys.push_back(std::move(__tmp_2));
