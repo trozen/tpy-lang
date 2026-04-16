@@ -52,8 +52,8 @@ std::string or_nested(const std::variant<Tag*, Wrapper*> x) {
         // case Wrapper(pet=Cat(name=n)) | Wrapper(pet=Dog(name=n)):
         {
             if (std::holds_alternative<Cat>(__case_1.pet)) {
-                auto& __field_pet = std::get<Cat>(__case_1.pet);
-                auto& n = __field_pet.name;
+                auto& __field_case_1_pet = std::get<Cat>(__case_1.pet);
+                auto& n = __field_case_1_pet.name;
                 // return "pet: " + n
                 return (::tpy::str_concat("pet: ", n));
                 goto __match_end_1;
@@ -62,8 +62,8 @@ std::string or_nested(const std::variant<Tag*, Wrapper*> x) {
         // case Wrapper(pet=Cat(name=n)) | Wrapper(pet=Dog(name=n)):
         {
             if (std::holds_alternative<Dog>(__case_1.pet)) {
-                auto& __field_pet = std::get<Dog>(__case_1.pet);
-                auto& n = __field_pet.name;
+                auto& __field_case_1_pet = std::get<Dog>(__case_1.pet);
+                auto& n = __field_case_1_pet.name;
                 // return "pet: " + n
                 return (::tpy::str_concat("pet: ", n));
                 goto __match_end_1;
@@ -132,14 +132,14 @@ std::string nested_pos_extract(const Wrapper& w) {
     auto& __match_subject = w;
     // case Wrapper(pet=Cat(n)):
     if (std::holds_alternative<Cat>(__match_subject.pet)) {
-        auto& __field_pet = std::get<Cat>(__match_subject.pet);
-        auto& n = __field_pet.name;
+        auto& __field_match_subject_pet = std::get<Cat>(__match_subject.pet);
+        auto& n = __field_match_subject_pet.name;
         // return "cat: " + n
         return (::tpy::str_concat("cat: ", n));
     // case Wrapper(pet=Dog(n)):
     } else if (std::holds_alternative<Dog>(__match_subject.pet)) {
-        auto& __field_pet = std::get<Dog>(__match_subject.pet);
-        auto& n = __field_pet.name;
+        auto& __field_match_subject_pet = std::get<Dog>(__match_subject.pet);
+        auto& n = __field_match_subject_pet.name;
         // return "dog: " + n
         return (::tpy::str_concat("dog: ", n));
     // case _:
@@ -156,8 +156,8 @@ std::string guard_combo(const Wrapper& w) {
     auto& __match_subject = w;
     // case Wrapper(pet=Cat(name=n)) if n == "Luna":
     if (std::holds_alternative<Cat>(__match_subject.pet)) {
-        auto& __field_pet = std::get<Cat>(__match_subject.pet);
-        auto& n = __field_pet.name;
+        auto& __field_match_subject_pet = std::get<Cat>(__match_subject.pet);
+        auto& n = __field_match_subject_pet.name;
         if ((n == "Luna")) {
             // return "special cat"
             return "special cat";
@@ -166,16 +166,16 @@ std::string guard_combo(const Wrapper& w) {
     }
     // case Wrapper(pet=Cat(name=n)):
     if (std::holds_alternative<Cat>(__match_subject.pet)) {
-        auto& __field_pet = std::get<Cat>(__match_subject.pet);
-        auto& n = __field_pet.name;
+        auto& __field_match_subject_pet = std::get<Cat>(__match_subject.pet);
+        auto& n = __field_match_subject_pet.name;
         // return "cat: " + n
         return (::tpy::str_concat("cat: ", n));
         goto __match_end_1;
     }
     // case Wrapper(pet=Dog(name=n)):
     if (std::holds_alternative<Dog>(__match_subject.pet)) {
-        auto& __field_pet = std::get<Dog>(__match_subject.pet);
-        auto& n = __field_pet.name;
+        auto& __field_match_subject_pet = std::get<Dog>(__match_subject.pet);
+        auto& n = __field_match_subject_pet.name;
         // return "dog: " + n
         return (::tpy::str_concat("dog: ", n));
         goto __match_end_1;

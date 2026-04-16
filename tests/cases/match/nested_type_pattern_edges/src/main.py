@@ -15,7 +15,7 @@ class Dog:
 class Wrapper:
     pet: Cat | Dog
     def __init__(self, pet: Cat | Dog) -> None:
-        self.pet = pet  # tpyc: warning(/copies/)
+        self.pet = pet
 
 
 class Box[T]:

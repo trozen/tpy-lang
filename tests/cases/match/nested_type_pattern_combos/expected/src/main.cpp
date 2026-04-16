@@ -75,14 +75,14 @@ std::string union_field_param(const Outer& o) {
     auto& __match_subject = o;
     // case Outer(item=Box(value=str() as v)):
     if (std::holds_alternative<Box<std::string>>(__match_subject.item)) {
-        auto& __field_item = std::get<Box<std::string>>(__match_subject.item);
-        auto& v = __field_item.value;
+        auto& __field_match_subject_item = std::get<Box<std::string>>(__match_subject.item);
+        auto& v = __field_match_subject_item.value;
         // return "string: " + v
         return (::tpy::str_concat("string: ", v));
     // case Outer(item=Box(value=Int32() as n)):
     } else if (std::holds_alternative<Box<int32_t>>(__match_subject.item)) {
-        auto& __field_item = std::get<Box<int32_t>>(__match_subject.item);
-        auto& n = __field_item.value;
+        auto& __field_match_subject_item = std::get<Box<int32_t>>(__match_subject.item);
+        auto& n = __field_match_subject_item.value;
         // return "number: " + str(n)
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
     // case _:

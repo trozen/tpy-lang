@@ -1749,6 +1749,10 @@ class MatchGenerator:
                     get_expr = f"std::get<{cpp_type}>({subject_expr}.{field_name})"
                     nested = self._record_field_conditions(inner, get_expr)
                     conds.extend(nested)
+            elif isinstance(inner, TpyClassPattern) and not inner.is_union_field_guard and inner.keywords:
+                # Non-union record field with nested sub-patterns: recurse through it
+                nested = self._record_field_conditions(inner, f"{subject_expr}.{field_name}")
+                conds.extend(nested)
         return conds
 
     @staticmethod
@@ -1811,7 +1815,10 @@ class MatchGenerator:
                 if sub_pattern.is_union_field_guard and sub_pattern.keywords:
                     # Union field with nested record patterns: extract variant, bind sub-fields
                     cpp_type = self.types.type_to_cpp(sub_pattern.resolved_type)
-                    temp = f"__field_{field_name}"
+                    # Include parent var in temp name to avoid collisions when
+                    # sibling fields share a sub-field name
+                    parent_sfx = case_var.replace(".", "_").replace("*", "").lstrip("_")
+                    temp = f"__field_{parent_sfx}_{field_name}"
                     out.write(f"{indent}auto& {temp} = std::get<{cpp_type}>({case_var}.{field_name});\n")
                     self._gen_match_field_bindings(out, sub_pattern, temp, indent)
                 elif not sub_pattern.is_union_field_guard and sub_pattern.keywords:

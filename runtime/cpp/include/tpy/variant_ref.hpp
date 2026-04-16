@@ -95,24 +95,16 @@ Result ptr_variant_to_const(const std::variant<Alts...>& v) {
 // PtrVariant = source type (e.g. std::variant<Dog*, Cat*>)
 namespace detail {
 
-template<std::size_t I, typename Result, typename PtrVariant>
-bool try_deref_emplace(Result& r, const PtrVariant& v) {
-    if (v.index() != I) return false;
-    using Alt = std::variant_alternative_t<I, PtrVariant>;
-    if constexpr (std::is_same_v<Alt, std::monostate>) {
-        r.template emplace<I>(std::monostate{});
-    } else {
-        r.template emplace<I>(*std::get<I>(v));
-    }
-    return true;
-}
+// Visitor that converts each pointer alternative to its value type.
+// Constructs the Result variant directly, avoiding default-construction
+// (which would require the first alternative to be default-constructible).
+template<typename Result>
+struct deref_visitor {
+    template<typename T>
+    Result operator()(T* p) const { return Result{*p}; }
 
-template<typename Result, typename PtrVariant, std::size_t... Is>
-Result to_value_variant_impl(const PtrVariant& v, std::index_sequence<Is...>) {
-    Result r;
-    (try_deref_emplace<Is>(r, v) || ...);
-    return r;
-}
+    Result operator()(std::monostate) const { return Result{std::monostate{}}; }
+};
 
 } // namespace detail
 
@@ -120,7 +112,7 @@ Result to_value_variant_impl(const PtrVariant& v, std::index_sequence<Is...>) {
 // Caller must specify the target value-variant type explicitly.
 template<typename ValueVariant, typename... PtrAlts>
 ValueVariant to_value_variant(const std::variant<PtrAlts...>& v) {
-    return detail::to_value_variant_impl<ValueVariant>(v, std::index_sequence_for<PtrAlts...>{});
+    return std::visit(detail::deref_visitor<ValueVariant>{}, v);
 }
 
 } // namespace tpy

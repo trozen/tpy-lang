@@ -38,7 +38,7 @@ def union_subj_union_field(x: Int32 | Container) -> str:
 class Outer:
     item: Box[str] | Box[Int32]
     def __init__(self, item: Box[str] | Box[Int32]) -> None:
-        self.item = item  # tpyc: warning(/copies/)
+        self.item = item
 
 
 def union_field_param(o: Outer) -> str:
