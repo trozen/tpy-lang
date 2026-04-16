@@ -1260,9 +1260,6 @@ class CallAnalyzer:
         resolved = _resolve_concrete_type_name(name)
         if resolved is not None:
             return resolved
-        # bool is not in _resolve_concrete_type_name -- check directly
-        if name == "bool":
-            return BOOL
         raise self.ctx.error(f"isinstance() second argument must be a type, got '{name}'", expr)
 
     def _analyze_isinstance(self, expr: TpyCall) -> TpyType:

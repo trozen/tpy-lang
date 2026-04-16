@@ -15,8 +15,8 @@ from ..typesys import (
     LiteralType, LiteralValue,
     unwrap_readonly, unwrap_ref_type,
     is_float_type, is_any_str_type,
-
 )
+from ..modules import _resolve_concrete_type_name
 from ..parse import (
     TpyName, TpyFieldAccess,
     TpyMatch, TpyMatchCase, TpyPattern, TpyWildcardPattern, TpyCapturePattern,
@@ -379,25 +379,65 @@ class MatchAnalyzer:
             )
         cls_name = pattern.cls.name
 
-        # Resolve to a NamedType and check union membership
+        # Resolve to a type and find matching union member.
+        # Try exact match first (records, primitives), then fall back to
+        # searching union members by base name (handles parameterized types
+        # like list[Tree], Box[str] matched by bare list(), Box()).
         record = self.ctx.registry.get_record(cls_name)
-        if record is None:
-            raise self.ctx.error(f"unknown type '{cls_name}' in match pattern", pattern)
+        resolved_type = self._resolve_pattern_type(
+            cls_name, subject_type, record is not None, pattern)
 
-        named_type = NamedType(cls_name)
-        if not any(m == named_type for m in subject_type.members):
-            raise self.ctx.error(
-                f"'{cls_name}' is not a member of union '{subject_type}'", pattern
-            )
-
-        if cls_name in seen_types:
+        type_key = str(resolved_type)
+        if type_key in seen_types:
             raise self.ctx.error(
                 f"duplicate case for '{cls_name}' in match statement", pattern
             )
-        seen_types.add(cls_name)
-        pattern.resolved_type = named_type
+        seen_types.add(type_key)
+        pattern.resolved_type = resolved_type
 
-        self._resolve_class_pattern_fields(pattern, record, bindings)
+        if record is not None:
+            self._resolve_class_pattern_fields(pattern, record, bindings)
+        elif pattern.keywords:
+            raise self.ctx.error(
+                f"type '{cls_name}' does not support field patterns", pattern
+            )
+
+    def _resolve_pattern_type(
+        self, name: str, subject_type: UnionType,
+        is_record: bool, pattern: TpyClassPattern,
+    ) -> TpyType:
+        """Resolve a type name in a match class pattern against a union subject.
+
+        Resolution order:
+        1. Exact match: record NamedType or primitive (Int32, str, bool, ...)
+        2. Name-based member search: find the union member whose base name
+           matches (handles parameterized types like list[T], Box[str])
+        """
+        resolved = _resolve_concrete_type_name(name)
+        if resolved is None and is_record:
+            resolved = NamedType(name)
+        # Check exact match against union members
+        if resolved is not None:
+            if any(m == resolved for m in subject_type.members):
+                return resolved
+            # Known type but not a union member -- give specific error,
+            # unless it could match as a parameterized type (fall through)
+            if not any(getattr(m, 'name', None) == name for m in subject_type.members):
+                raise self.ctx.error(
+                    f"'{name}' is not a member of union '{subject_type}'", pattern
+                )
+
+        # Fall back: search union members by base name (for parameterized types)
+        matches = [m for m in subject_type.members
+                   if getattr(m, 'name', None) == name]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            raise self.ctx.error(
+                f"ambiguous '{name}' pattern: union has multiple {name} members",
+                pattern,
+            )
+        raise self.ctx.error(f"unknown type '{name}' in match pattern", pattern)
 
     def _analyze_class_pattern_record(
         self, pattern: TpyClassPattern, subject_type: NamedType,
