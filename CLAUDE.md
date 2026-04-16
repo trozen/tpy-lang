@@ -184,6 +184,7 @@ tests/
 │   ├── set/                  # Set type, methods, operators, algebra
 │   ├── enum/                 # Enum types, auto(), cross-module, comparison
 │   ├── error_return/         # @error_return(E) zero-cost error handling via std::expected
+│   ├── exceptions/           # try/except/finally, raise, exception types
 │   ├── float/                # Float operations
 │   ├── generic_bounded_*/    # Bounded generics (basic, func_user_protocol, func_user_type, generic_protocol, nested_type, user_protocol)
 │   ├── generics/             # Generic types, functions, inference, bounds
@@ -196,6 +197,7 @@ tests/
 │   ├── iterators/            # Iterators, range, __iter__/__next__, NativeIterable
 │   ├── kwargs/               # Keyword arguments
 │   ├── list/                 # List, container methods
+│   ├── macros/               # Compile-time macro modules, @dataclass macro, AST building
 │   ├── match/                # match/case pattern matching statements
 │   ├── native/               # Native C++ interop (@native decorator)
 │   ├── none_safety/          # Optional types, narrowing
@@ -210,6 +212,7 @@ tests/
 │   ├── str/                  # str, Char, string operations
 │   ├── tplib/                # TPy standard library modules (Box, JSON, etc.)
 │   ├── tuple/                # Tuple types, access, generics
+│   ├── typed_dict/           # TypedDict definitions, field validation, **kwargs
 │   └── union/                # Union types (A | B), variant codegen
 │       ├── {name}/           # Success test
 │       ├── error_{name}/     # Compilation error test
@@ -270,6 +273,10 @@ For `tpyc/` compiler modules:
 For test snippets (`tests/cases/*/src/main.py`):
 - Prefer plain literals (`1`, `"hello"`, `{1, 2}`) over explicit constructors (`Int32(1)`, `{"a": Int32(1)}`) and variable type annotations (`x: list[Int32] = ...`) when the compiler can infer the type from context. Only use explicit constructors or annotations when the test is specifically exercising constructor syntax, type annotations, or a case where inference would be ambiguous.
 
+## Terminology
+
+TurboPython distinguishes **value types** (primitives, `bool`, `Char`, views like `str`/`Span[T]`, tuples, user types implementing `ValueType` -- copied when passed around) from **reference types** (classes/records, `list`, `dict`, `set`, `bytes`/`bytearray` -- passed by reference to functions, stored inline in fields and containers). Always use "reference types" for the latter, never "object types". `Own[T]` means ownership transfer (move), not heap allocation.
+
 ## Architecture
 
 The compiler follows a multi-stage pipeline:
@@ -310,6 +317,8 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `dump_types.py` | Type documentation generation (`--print-types`) |
 | `repl.py` | Interactive REPL implementation |
 | `qnames.py` | Qualified name constants for compiler-known types, decorators, and protocols |
+| `cycle_detection.py` | Type dependency cycle detection for mutual recursion (DFS on type-reference graph) |
+| `install_docs.py` | `--install-agent-docs` implementation (copies agent docs to downstream projects) |
 | `macro_api.py` | Public API for compile-time macro modules: metadata (`ClassInfo`, `FieldInfo`, `TypeInfo`), AST builder (`ast`), type builder (`types`), type aliases (`Expr`, `Stmt`, `Function`, `Type`), source-based authoring (`ast.quote`, `ast.quote_expr`, `ast.quote_fun`, `cls.add_method_from_source`), f-string decomposition (`MacroArg.as_fstring()`, `MacroFStringPart`) |
 | `macro_loader.py` | Discovers and loads `# tpy: macro_module` files via CPython at compile time. Supports macro-to-macro imports from lib search paths |
 | `repl_backends.py` | REPL execution backends (clang-repl JIT, g++/clang++ compile) |
@@ -381,7 +390,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `core.hpp` | `tpy_panic`, `deref_check`, exception sentinels (`StopIteration`, etc.) |
 | `format.hpp` | Python-style printing (`print_bool`, `print_float`, `char_to_str`) |
 | `fixed_int.hpp` | Template-based checked arithmetic for all fixed-width integer types |
-| `type_traits.hpp` | `is_value_type` trait for value/reference semantics |
+| `type_traits.hpp` | `is_value_type` trait distinguishing value types from reference types |
 | `ranges.hpp` | `repeat_range`, `to_vector`, `from_range`, `collect`, `construct` utilities |
 | `range.hpp` | `Range<T>` Python-style range with upfront overflow checking |
 | `bigint.hpp` | `BigInt` arbitrary precision integer (custom runtime implementation) |
@@ -410,7 +419,6 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `own_iter.hpp` | `OwnIter<C>` drain iterator for consuming iteration over heap-backed containers |
 | `varargs.hpp` | `varargs<T>` dual-mode span for `*args` (direct storage or pointer indirection) |
 | `slice.hpp` | `BasicSlice` (start, stop) and `Slice` (start, stop, step) types |
-| `math_ops.hpp` | Wrapper for two-argument `math.log(x, base)` |
 | `file.hpp` | `TextFile`, `BinaryFile` for `open()` builtin, `FileFlags` mode parsing |
 
 Generated code requires C++23 (for `std::ranges` concepts) and uses the GCC statement expression extension (`({ ... })`) for expression-level `@error_return` unwrapping. This extension is supported by GCC, Clang, and all LLVM-based compilers (Intel ICX, ARM armclang, IBM Open XL). It is not supported by MSVC.
@@ -427,7 +435,7 @@ Library search roots and CPython stubs:
 | `tpy/tpy/_typing/` | Typing layer: `__init__.py` (Protocol, Self, Sized, Sequence, Iterator, Iterable) |
 | `tpy/tpy/_core/` | Core types: `_types.py` (protocols, primitives), `_containers.py` (Span, Array, Ptr), `_functions.py` (span, deref, copy, copy_iter, own_iter, try_parse), `_bytes_view.py` (BytesView) |
 | `tpy/tpy/_builtins/` | Builtin types and functions: `_types.py` (bool, int, float, str), `_funcs.py` (len, hash, print, isinstance, etc.), `_list.py`, `_dict.py`, `_set.py`, `_range.py`, `_bytes.py`, `_exceptions.py`, `_io.py` (TextIO, BinaryIO, open, open_text, open_binary) |
-| `tpy/tplib/` | TPy standard library: `Box[T]`, custom collections, JSON library |
+| `tpy/tplib/` | TPy standard library: `Box[T]` (`box.py`), `ArrayList[T, N]` (`array_list.py`), `FixStr[N]` (`fix_str.py`), JSON library |
 | `tpy/tplib/json/` | JSON library: `parser.py` (JsonToken, JsonReader), `writer.py` (JsonWriter), `model.py` (@model macro -- compile-time only) |
 | `tpy/typing.py` | `typing` protocols (`Sized`, `Sequence`, etc.). Re-exports from `tpy._typing`. Implicitly compiled. |
 | `tpy/builtins.py` | Re-export facade for `tpy._builtins`. Implicitly compiled. |
@@ -436,7 +444,7 @@ Library search roots and CPython stubs:
 | `tpy/tpy/unsafe.py` | Unsafe operations: `unsafe_ptr()`, `unsafe_cast()` |
 | `tpy/tpy/version.py` | Version/implementation identification: `__version__`, `version_info`, `is_compiled`. Values come from `_version.py` (a `# tpy: macro_module` that reads `tpyc.__version__` at compile time). Not re-exported through `tpy/__init__.py` because native_module facades don't propagate variables (see TODO). |
 | `tpy/_macro_helpers.py` | Shared macro helpers: `build_init`, `build_eq`, `build_repr`, `build_hash`, `build_order` (compile-time only) |
-| `tpy/math.py`, `time.py`, `sys.py`, `bisect.py`, `dataclasses.py`, `enum.py` | Python stdlib analogs |
+| `tpy/math.py`, `time.py`, `sys.py`, `bisect.py`, `dataclasses.py`, `enum.py`, `random.py`, `struct.py` | Python stdlib analogs |
 | `cpy/tpy/` | CPython stubs ONLY (not seen by tpyc): `Int32`, `Ptr`, `Array`, decorators; submodules: `mem`, `unsafe` |
 | `cpy/tpyc/` | CPython stub for tpyc: `__init__.py` exposes `__version__` + `VERSION_INFO` read from the installed distribution via `importlib.metadata`; `macro_api.py` raises ImportError (macro modules run at compile time only, not available under CPython) |
 | `cpy/tplib` | Symlink to `tpy/tplib/` so CPython tests can find tplib |
@@ -464,14 +472,17 @@ The compiler is a proof-of-concept. Not yet implemented:
 - Stepped slice assignment (`items[::2] = [...]`)
 
 Working but not previously listed:
+- `try`/`except`/`else`/`finally` -- two-tier exception model (C++ throw/catch + `@error_return` zero-cost via `std::expected`)
 - `match`/`case` pattern matching (union, literal, record, optional, enum, guard, or-pattern, positional)
 - `bytes`/`bytearray`/`BytesView` types
 - Generator functions (yield -> state machine codegen)
 - Compile-time macro modules (`# tpy: macro_module`)
 - `tplib.json` -- JSON parsing/serialization library with `@model` macro for pydantic-style typed deserialization
-- `del x` -- variable unbinding; early destruction only for sole owners (not aliases, params, or globals)
+- `del x` -- variable unbinding and early destruction
 - `a = b = c = expr` -- multiple assignment with anchor-based desugaring
 - Nested class and enum definitions (`class Outer: class Inner: ...`) with arbitrary depth, constructor calls, and CPython-compatible short name resolution
+- `TypedDict` -- typed dictionary with per-key types, used for `**kwargs` parameter passing
+- `*args` (homogeneous) and `**kwargs: Unpack[TypedDict]` -- variadic arguments
 
 ## Type Mappings
 

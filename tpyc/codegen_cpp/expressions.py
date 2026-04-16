@@ -307,6 +307,13 @@ class ExpressionGenerator:
         operators, function arguments). For assignment targets, use gen_expr.
         """
         result = self.gen_expr(expr, target_type)
+        # @overload specialization: name narrowed to a non-Optional concrete type.
+        # The physical C++ param already IS that concrete type; skip the Optional
+        # auto-deref that would otherwise kick in for a declared Optional[T].
+        if isinstance(expr, TpyName) and expr.name in self.ctx.overload_param_types:
+            narrowed = self.ctx.overload_param_types[expr.name]
+            if not isinstance(narrowed, OptionalType):
+                return result
         is_narrowed = isinstance(expr, TpyName) and expr.name in self.ctx.narrowed_vars
         if self.ctx.is_indirect_name(expr) and not is_narrowed:
             # Pointer-repr Optional[T] (T*) passed to OwnType(OptionalType(T)):
@@ -1197,6 +1204,17 @@ class ExpressionGenerator:
             elif isinstance(right_type, OptionalType) and isinstance(expr.left, TpyNoneLiteral):
                 opt_expr = expr.right
             if opt_expr is not None:
+                # @overload context: the specialization narrowed this Optional
+                # param to a concrete type (its inner T or None). Fold the test
+                # so dead-branch elim can strip the losing branch.
+                if (isinstance(opt_expr, TpyName)
+                        and opt_expr.name in self.ctx.overload_param_types):
+                    concrete = self.ctx.overload_param_types[opt_expr.name]
+                    is_none = isinstance(concrete, NoneType)
+                    if expr.op == "is":
+                        return "true" if is_none else "false"
+                    else:
+                        return "false" if is_none else "true"
                 # Static protocol params (single optional or union with None)
                 # always use pointer comparison
                 opt_type = left_type if opt_expr is expr.left else right_type
@@ -2508,7 +2526,20 @@ class ExpressionGenerator:
                             type_subst[tp] = ta
                     gen_args = []
                     resolved_params = expr.resolved_function_info.params if expr.resolved_function_info else []
-                    for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, method_info.params)):
+                    # Prefer method_info.params (which keeps TypeParamRef for
+                    # generic methods) to preserve the temp-for-TypeParamRef
+                    # check below. When the resolved overload has more params
+                    # than method_info (arity-variant stubs), extend with
+                    # resolved_params entries.
+                    iter_params: list[tuple[str, TpyType]] = [
+                        (p[0] if isinstance(p, tuple) else p.name,
+                         p[1] if isinstance(p, tuple) else p.type)
+                        for p in method_info.params
+                    ]
+                    if len(resolved_params) > len(iter_params):
+                        for p in resolved_params[len(iter_params):]:
+                            iter_params.append((p.name, p.type))
+                    for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, iter_params)):
                         ptype_bare = unwrap_ref_type(ptype)
                         if isinstance(ptype_bare, TypeParamRef) and self.ctx.is_temporary_expr(arg):
                             # Resolve TypeParamRef to actual type

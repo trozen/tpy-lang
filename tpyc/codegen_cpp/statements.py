@@ -184,6 +184,54 @@ class StatementGenerator:
                 if pname in scan.reassigned and ptype.param_needs_copy_for_reassign():
                     self._reassigned_param_copies.append((pname, ptype))
 
+        # @overload short-arity stub: emit the impl params that the stub
+        # omitted as locals initialized to the impl's defaults.
+        missing_locals = self.ctx.overload_missing_param_locals
+        if missing_locals:
+            from .functions import FunctionGenerator
+            from ..typesys import NoneType as _NoneType
+            self.ctx.overload_missing_param_locals = []
+            reassigned = scan.reassigned if scan else set()
+            indent = self.ctx.indent()
+            for pname, ptype, default_expr in missing_locals:
+                # NoneType narrowing: accessing an Optional[T] value always
+                # requires a guard (if x is not None). When narrowed to None
+                # the guard folds to False, dead-branch elim strips the
+                # value-access path, so the local is guaranteed unused.
+                # Literal narrowing does NOT get this treatment -- the body
+                # may use the param directly without any conditional.
+                narrowed = self.ctx.overload_param_types.get(pname)
+                if isinstance(narrowed, _NoneType) and pname not in reassigned:
+                    continue
+                cpp_default = FunctionGenerator.default_to_cpp(default_expr, ptype)
+                # default_to_cpp falls back to "0" for unrecognized exprs.
+                # Use C++ value-initialization ({}) instead -- valid for any
+                # default-constructible type (empty vector, 0 for ints, etc.).
+                if cpp_default == "0" and not isinstance(default_expr, (TpyIntLiteral, TpyCall)):
+                    cpp_default = "{}"
+                # Use the storage type (to_cpp), not the param-passing type
+                # (to_cpp_param_type) which may be a const reference.
+                cpp_type = ptype.to_cpp()
+                cpp_name = escape_cpp_name(pname)
+                out.write(f"{indent}{cpp_type} {cpp_name} = {cpp_default};\n")
+                self.ctx.declared_vars.add(pname)
+                self.ctx.local_scope_names.add(pname)
+                self.ctx.var_types[pname] = unwrap_ref_type(ptype)
+                local_ns.bind_variable(pname, ptype)
+                # Mirror the pointer-local / ptr-variant registration that
+                # gen_body does for real params of the same shapes, so the
+                # body's access-path codegen (-> vs ., variant extraction,
+                # move semantics) treats the missing-param local correctly.
+                actual = unwrap_readonly(ptype)
+                if isinstance(actual, OptionalType) and actual.uses_pointer_repr():
+                    self.ctx.pointer_locals.add(pname)
+                    if isinstance(ptype, ReadonlyType):
+                        self.ctx.const_indirect_locals.add(pname)
+                elif self.ctx.is_ptr_variant_union(actual):
+                    self.ctx.ptr_variant_locals.add(pname)
+                    if isinstance(ptype, ReadonlyType):
+                        self.ctx.const_indirect_locals.add(pname)
+
         self._gen_buffered_body(out, body)
 
         # Void @error_return functions need explicit success return to avoid UB
@@ -3240,6 +3288,18 @@ class StatementGenerator:
                     if isinstance(check_type, UnionType) and concrete in check_type.members:
                         return True
                     return False
+            # `x is None` / `x is not None` where x is a narrowed param
+            if isinstance(condition, TpyBinOp) and condition.op in ("is", "is not"):
+                for var_side, none_side in [
+                    (condition.left, condition.right),
+                    (condition.right, condition.left),
+                ]:
+                    if (isinstance(var_side, TpyName)
+                            and isinstance(none_side, TpyNoneLiteral)
+                            and var_side.name in self.ctx.overload_param_types):
+                        concrete = self.ctx.overload_param_types[var_side.name]
+                        is_none = isinstance(concrete, NoneType)
+                        return is_none if condition.op == "is" else not is_none
 
         # Literal flattening: equality checks and bool truthiness
         if self.ctx.literal_facts:

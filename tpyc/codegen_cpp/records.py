@@ -365,8 +365,10 @@ class RecordGenerator:
         for method in record.methods:
             if method.name in ("__init__", "__del__"):
                 continue
-            # Skip @overload stubs -- the implementation emits all overloads
-            if method.is_overload_stub:
+            # Skip bodyless @overload stubs -- their trailing impl emits all
+            # overloads. Bodied @overload stubs (mode b) are self-contained and
+            # emit their own method definitions below.
+            if method.is_overload_stub and method.is_stub:
                 continue
             # Skip @inline methods -- body is inlined at call sites
             if method.skip_codegen:

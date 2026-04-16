@@ -513,6 +513,12 @@ class CodeGenContext:
     # to their concrete (non-union) types. Used for dead branch elimination:
     # isinstance checks on specialized params resolve statically.
     overload_param_types: dict[str, 'TpyType'] = field(default_factory=dict)
+    # For short-arity stubs, the missing impl params that must be emitted as
+    # locals (with their default expressions) at the start of the body.
+    # Each entry: (param_name, param_type, default_expr). Consumed by
+    # StatementGenerator.gen_body right after the opening brace and then
+    # cleared so inner bodies don't re-emit them.
+    overload_missing_param_locals: list[tuple[str, 'TpyType', object]] = field(default_factory=list)
 
     # --- Iterator loop counter ---
     iter_counter: int = 0

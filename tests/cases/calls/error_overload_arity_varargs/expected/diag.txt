@@ -1,0 +1,1 @@
+main.py:11: error: @overload implementation 'f' cannot have *args when stubs have different arities
