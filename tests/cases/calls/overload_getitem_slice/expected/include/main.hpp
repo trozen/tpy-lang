@@ -24,7 +24,6 @@ struct MyList {
     // @overload
     // def __getitem__(self, index: Int32) -> Int32: ...  # tpyc: ok
     int32_t __getitem__(int32_t index) const {
-        // if isinstance(index, slice):
         // return self._data[index]
         return ::tpy::__getitem__(this->_data, index);
     }
@@ -32,7 +31,6 @@ struct MyList {
     // @overload
     // def __getitem__(self, index: slice) -> Span[readonly[Int32]]: ...  # tpyc: ok
     std::span<const int32_t> __getitem__(::tpy::Slice index) const {
-        // if isinstance(index, slice):
         // s_start = index.start
         std::optional<int32_t> s_start = index.start;
         // s_stop = index.stop

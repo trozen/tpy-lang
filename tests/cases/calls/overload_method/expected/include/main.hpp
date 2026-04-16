@@ -58,7 +58,6 @@ struct Vet {
     std::string treat(Dog& animal) {
         // self.count = self.count + 1
         this->count = ((this->count) + (::tpy::BigInt(1)));
-        // if isinstance(animal, Dog):
         // return "Treated dog: " + animal.name
         return (::tpy::str_concat("Treated dog: ", animal.name));
     }
@@ -68,7 +67,6 @@ struct Vet {
     std::string treat(Cat& animal) {
         // self.count = self.count + 1
         this->count = ((this->count) + (::tpy::BigInt(1)));
-        // if isinstance(animal, Dog):
         // return "Treated cat with " + str(animal.lives) + " lives"
         return (::tpy::str_concat((::tpy::str_concat("Treated cat with ", (animal.lives).to_string())), " lives"));
     }

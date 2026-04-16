@@ -9,7 +9,6 @@ namespace tpyapp::main {
 // @overload
 // def log(x: float) -> float: ...  # tpyc: ok
 double log(double x) {
-    // if base is None:
     // return x
     return x;
 }
@@ -17,7 +16,6 @@ double log(double x) {
 // @overload
 // def log(x: float, base: float) -> float: ...  # tpyc: ok
 double log(double x, double base) {
-    // if base is None:
     // return x / base
     return (::tpy::truediv(x, base));
 }

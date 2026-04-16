@@ -4,7 +4,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
 - CallMacroContext API redesign: current API grew ad-hoc from test cases (get_field_type, get_method_return_type, qualified_name, first_param, self_type, etc.). Needs a principled design pass: call site context (function params, method vs free), type introspection (fields, methods, qualified identity), and diagnostics. Consider whether type introspection belongs on TypeInfo (needs registry access) or stays on ctx. Unify get_record_fields (string name, match_args gated) with the TypeInfo-based path. See MACRO_DESIGN.md future extensions.
-- overload_getitem_both_slices -- overload flattening -- invalid source comments, should show if and note that dead code has been removed
 - `@overload` impl without annotations: arity-variant stubs + impl currently require the impl to carry full annotations. Could infer impl param types by merging stub signatures, or re-analyze the impl body per stub so the stubs become the sole source of type info. Blocked on restructuring sema body analysis; nice-to-have follow-up to the arity-overload work.
 - range function/type defined in .py and generic
 - iterator overhaul, drop begin/end iterators in sema and only use python iterators; codegen may still generate begin/end loops, e.g. for range(); but the compilation pipeline should be centered around Iterator/Iterable types

@@ -32,7 +32,6 @@ struct Container {
     // @auto_readonly
     // def __getitem__(self, index: Int32) -> T: ...  # tpyc: ok
     ::tpy::val_or_ref_t<T> __getitem__(int32_t index) {
-        // if isinstance(index, slice):
         // return self._data[index]
         return ::tpy::__getitem__(this->_data, index);
     }
@@ -41,7 +40,6 @@ struct Container {
     // @auto_readonly
     // def __getitem__(self, index: Int32) -> T: ...  # tpyc: ok
     ::tpy::val_or_cref_t<T> __getitem__(int32_t index) const {
-        // if isinstance(index, slice):
         // return self._data[index]
         return ::tpy::__getitem__(this->_data, index);
     }
@@ -49,7 +47,6 @@ struct Container {
     // @overload
     // def __getitem__(self, index: slice) -> Span[readonly[T]]: ...  # tpyc: ok
     std::span<const T> __getitem__(::tpy::Slice index) const {
-        // if isinstance(index, slice):
         // s_start = index.start
         std::optional<int32_t> s_start = index.start;
         // s_stop = index.stop

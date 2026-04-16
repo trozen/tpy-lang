@@ -238,7 +238,12 @@ class StatementGenerator:
         if self.ctx.current_error_return and isinstance(return_type, VoidType):
             out.write(f"{self.ctx.indent()}return {{}};\n")
 
-        self.ctx.emit_block_trailing_comments(out, body, self.ctx.indent())
+        # Skip trailing-comment scan when overload dead-branch elim resolved
+        # the body's top-level if to True -- the emitted stmts come from a
+        # then_body, not the TpyIf node, so scanning forward from the TpyIf's
+        # line would pick up comments from inside the dead branches.
+        if not self.ctx.overload_terminated:
+            self.ctx.emit_block_trailing_comments(out, body, self.ctx.indent())
 
         if is_method:
             self.ctx.in_method = False
@@ -259,7 +264,8 @@ class StatementGenerator:
 
         # Compound statements - delegate to handlers (they flush before their header)
         if isinstance(stmt, TpyIf):
-            self.ctx.emit_source_comment(out, stmt.loc, indent)
+            # Source comment is emitted inside _gen_if so that overload
+            # dead-branch elim can suppress it when the `if` is resolved away.
             self._gen_if(out, stmt, indent)
         elif isinstance(stmt, TpyWhile):
             self.ctx.emit_source_comment(out, stmt.loc, indent)
@@ -2981,7 +2987,8 @@ class StatementGenerator:
 
 
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str,
-                emit_post_narrowing: bool = True) -> None:
+                emit_post_narrowing: bool = True,
+                _skip_source_comment: bool = False) -> None:
         """Generate an if/elif/else chain as flat C++ if/else if/else."""
         # Collect the elif chain into a flat list of branches.
         # An elif is else_body == [TpyIf(...)] where the inner if has the
@@ -3007,6 +3014,12 @@ class StatementGenerator:
         if self.ctx.overload_param_types or self.ctx.literal_overload_facts:
             if self._gen_if_overload_specialized(out, chain, indent):
                 return
+
+        # Regular path: emit the `if` condition as a source comment.
+        # _skip_source_comment is set by the elif-with-temps recursive path
+        # which already emitted the comment before calling us.
+        if not _skip_source_comment:
+            self.ctx.emit_source_comment(out, stmt.loc, indent)
 
         # Pre-declare variables first declared inside branches (all levels).
         # Inner elif branch_decls are typically subsets of the outer's and
@@ -3047,7 +3060,8 @@ class StatementGenerator:
                     self.ctx.indent_level += 1
                     self.ctx.temps.flush(out, self.ctx.indent())
                     self._gen_if(out, node, self.ctx.indent(),
-                                emit_post_narrowing=False)
+                                emit_post_narrowing=False,
+                                _skip_source_comment=True)
                     self.ctx.indent_level -= 1
                     out.write(f"{indent}}}\n")
                     return
@@ -3071,7 +3085,8 @@ class StatementGenerator:
                     self.ctx.indent_level += 1
                     self.ctx.temps.flush(out, self.ctx.indent())
                     self._gen_if(out, node, self.ctx.indent(),
-                                emit_post_narrowing=False)
+                                emit_post_narrowing=False,
+                                _skip_source_comment=True)
                     self.ctx.indent_level -= 1
                     out.write(f"{indent}}}\n")
                     return

@@ -10,7 +10,6 @@ namespace tpyapp::main {
 // def repeat(s: str) -> str: ...  # tpyc: ok
 std::string repeat(std::string_view s) {
     ::tpy::BigInt count = 0;
-    // if count == 0:
     // return s
     return std::string(s);
 }
