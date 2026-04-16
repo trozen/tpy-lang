@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, Int32Type, BigIntType, FixedIntType, FloatType, Float32Type,
     BoolType, StrType, StrViewType, StringType, CharType, NamedType,
     NoneType, OptionalType, UnionType, EnumType, PendingStrType,
-    LiteralType, LiteralValue,
+    LiteralType, LiteralValue, TypeParamRef,
     unwrap_readonly, unwrap_ref_type,
     is_float_type, is_any_str_type,
 )
@@ -28,6 +28,13 @@ if TYPE_CHECKING:
     from .context import SemanticContext
     from .expressions import ExpressionAnalyzer
     from .statements import StatementAnalyzer
+
+
+def _subst_type_params(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
+    """Substitute TypeParamRef instances in a type according to subst map."""
+    if isinstance(typ, TypeParamRef) and typ.name in subst:
+        return subst[typ.name]
+    return typ.map_inner_types(lambda t: _subst_type_params(t, subst))
 
 
 class OrPatternKind(Enum):
@@ -188,7 +195,7 @@ class MatchAnalyzer:
             # Class pattern on concrete record with no conditions is always-matching
             elif ((is_record or is_optional) and isinstance(pat, TpyClassPattern)
                   and case.guard is None
-                  and not any(isinstance(sub, (TpyLiteralPattern, TpyValuePattern))
+                  and not any(self._is_constraining_sub_pattern(sub)
                               for _, sub in pat.keywords)):
                 had_wildcard = True
 
@@ -387,12 +394,6 @@ class MatchAnalyzer:
         resolved_type = self._resolve_pattern_type(
             cls_name, subject_type, record is not None, pattern)
 
-        type_key = str(resolved_type)
-        if type_key in seen_types:
-            raise self.ctx.error(
-                f"duplicate case for '{cls_name}' in match statement", pattern
-            )
-        seen_types.add(type_key)
         pattern.resolved_type = resolved_type
 
         if record is not None:
@@ -401,6 +402,16 @@ class MatchAnalyzer:
             raise self.ctx.error(
                 f"type '{cls_name}' does not support field patterns", pattern
             )
+
+        # Build type key for duplicate detection.
+        # Include union field guards so that e.g. Box(value=Cat()) and
+        # Box(value=Dog()) on Box[Cat|Dog] are distinct cases.
+        type_key = self._build_pattern_type_key(pattern, resolved_type)
+        if type_key in seen_types:
+            raise self.ctx.error(
+                f"duplicate case for '{cls_name}' in match statement", pattern
+            )
+        seen_types.add(type_key)
 
     def _resolve_pattern_type(
         self, name: str, subject_type: UnionType,
@@ -433,6 +444,12 @@ class MatchAnalyzer:
         if len(matches) == 1:
             return matches[0]
         if len(matches) > 1:
+            # Try disambiguation using field type sub-patterns
+            # (e.g. Box(value=str()) narrows Box[str] | Box[int] to Box[str])
+            disambiguated = self._disambiguate_by_field_types(
+                name, matches, pattern)
+            if disambiguated is not None:
+                return disambiguated
             raise self.ctx.error(
                 f"ambiguous '{name}' pattern: union has multiple {name} members",
                 pattern,
@@ -460,6 +477,7 @@ class MatchAnalyzer:
                 f"subject type '{subject_type.name}'", pattern
             )
 
+        pattern.resolved_type = subject_type
         self._resolve_class_pattern_fields(pattern, record, bindings)
 
     def _resolve_class_pattern_fields(
@@ -499,6 +517,9 @@ class MatchAnalyzer:
             pattern.keywords = resolved
             pattern.positional = []
 
+        # Build type param substitution map for generic records
+        type_subst = self._build_type_subst(record, pattern.resolved_type)
+
         # Validate keyword field bindings
         for field_name, sub_pattern in pattern.keywords:
             field_info = None
@@ -510,13 +531,41 @@ class MatchAnalyzer:
                 raise self.ctx.error(
                     f"'{cls_name}' has no field '{field_name}'", pattern
                 )
+            # Resolve field type with type param substitution
+            field_type = _subst_type_params(field_info.type, type_subst) if type_subst else field_info.type
             # Sub-pattern bindings
             if isinstance(sub_pattern, TpyCapturePattern):
-                bindings[sub_pattern.name] = field_info.type
+                bindings[sub_pattern.name] = field_type
             elif isinstance(sub_pattern, TpyWildcardPattern):
                 pass
             elif isinstance(sub_pattern, TpyLiteralPattern):
                 pass  # Literal comparison -- validated at codegen time
+            elif isinstance(sub_pattern, TpyClassPattern):
+                # Type sub-pattern (e.g., value=str()) -- type guard
+                matched_type = self._validate_field_type_pattern(sub_pattern, field_type, pattern)
+                # Recursively validate nested field patterns
+                if sub_pattern.keywords or sub_pattern.positional:
+                    self._resolve_nested_class_fields(sub_pattern, matched_type, bindings)
+            elif isinstance(sub_pattern, TpyAsPattern):
+                inner_sub = sub_pattern.pattern
+                if isinstance(inner_sub, TpyClassPattern):
+                    # Type sub-pattern with capture (e.g., value=str() as v)
+                    matched_type = self._validate_field_type_pattern(inner_sub, field_type, pattern)
+                    bindings[sub_pattern.name] = matched_type
+                    # Recursively validate nested field patterns
+                    if inner_sub.keywords or inner_sub.positional:
+                        self._resolve_nested_class_fields(inner_sub, matched_type, bindings)
+                elif isinstance(inner_sub, TpyLiteralPattern):
+                    bindings[sub_pattern.name] = field_type
+                elif isinstance(inner_sub, (TpyWildcardPattern, TpyCapturePattern)):
+                    bindings[sub_pattern.name] = field_type
+                    if isinstance(inner_sub, TpyCapturePattern):
+                        bindings[inner_sub.name] = field_type
+                else:
+                    raise self.ctx.error(
+                        f"Unsupported sub-pattern in field binding: "
+                        f"{type(inner_sub).__name__}", sub_pattern
+                    )
             else:
                 raise self.ctx.error(
                     f"Unsupported sub-pattern in field binding: "
@@ -793,3 +842,268 @@ class MatchAnalyzer:
                     f"in match statement", pattern
                 )
             seen.add(key)
+
+    # ------------------------------------------------------------------
+    # Nested type sub-pattern helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _build_pattern_type_key(
+        pattern: TpyClassPattern, resolved_type: TpyType,
+    ) -> str:
+        """Build a key for duplicate-case detection that includes union field guards."""
+        key = str(resolved_type)
+        for _, sub in pattern.keywords:
+            inner = sub
+            if isinstance(inner, TpyAsPattern):
+                inner = inner.pattern
+            if isinstance(inner, TpyClassPattern) and inner.is_union_field_guard:
+                key += f"+{inner.resolved_type}"
+        return key
+
+    @staticmethod
+    def _is_constraining_sub_pattern(sub: TpyPattern) -> bool:
+        """Check if a field sub-pattern adds a constraint (not always-matching)."""
+        if isinstance(sub, (TpyLiteralPattern, TpyValuePattern, TpyClassPattern)):
+            return True
+        if isinstance(sub, TpyAsPattern) and isinstance(sub.pattern, TpyClassPattern):
+            return True
+        return False
+
+    @staticmethod
+    def _build_type_subst(
+        record: 'RecordInfo', resolved_type: TpyType | None,
+    ) -> dict[str, TpyType]:
+        """Build type param substitution map from resolved_type's type_args."""
+        if (resolved_type is None or not isinstance(resolved_type, NamedType)
+                or not record.type_params or not resolved_type.type_args):
+            return {}
+        subst: dict[str, TpyType] = {}
+        for param_name, arg in zip(record.type_params, resolved_type.type_args):
+            if isinstance(arg, TpyType):
+                subst[param_name] = arg
+        return subst
+
+    def _disambiguate_by_field_types(
+        self, cls_name: str, candidates: list[TpyType],
+        pattern: TpyClassPattern,
+    ) -> TpyType | None:
+        """Try to disambiguate multiple same-name union members using field type sub-patterns.
+
+        For example, Box(value=str()) on union Box[str] | Box[int] narrows to Box[str]
+        by checking which candidate's 'value' field type matches 'str'.
+
+        Recurses into nested type sub-patterns, so Box(value=Box(value=str()))
+        can disambiguate Box[Box[str]] | Box[Box[int]].
+
+        Returns the unique matching candidate, or None if no type guards are present.
+        Raises an error if type guards are present but no candidate matches.
+        """
+        record = self.ctx.registry.get_record(cls_name)
+        if record is None:
+            return None
+        if not self._has_type_sub_patterns(pattern, record):
+            return None
+
+        all_fields = self.ctx.registry.get_all_fields(record)
+        matching: list[TpyType] = []
+        for candidate in candidates:
+            if self._pattern_matches_candidate(record, candidate, all_fields, pattern):
+                matching.append(candidate)
+
+        if len(matching) == 1:
+            return matching[0]
+        if len(matching) == 0:
+            raise self.ctx.error(
+                f"no '{cls_name}' variant matches the field type pattern(s)",
+                pattern,
+            )
+        return None
+
+    def _has_type_sub_patterns(
+        self, pattern: TpyClassPattern, record: 'RecordInfo',
+    ) -> bool:
+        """Check if a class pattern has any type sub-patterns (TpyClassPattern in fields)."""
+        match_args = record.match_args if record.match_args is not None else tuple(
+            f.name for f in record.fields
+        )
+        for i, sub_pat in enumerate(pattern.positional):
+            if i >= len(match_args):
+                break
+            inner = sub_pat
+            if isinstance(inner, TpyAsPattern):
+                inner = inner.pattern
+            if isinstance(inner, TpyClassPattern):
+                return True
+        for _, sub_pat in pattern.keywords:
+            inner = sub_pat
+            if isinstance(inner, TpyAsPattern):
+                inner = inner.pattern
+            if isinstance(inner, TpyClassPattern):
+                return True
+        return False
+
+    def _pattern_matches_candidate(
+        self, record: 'RecordInfo', candidate: TpyType,
+        all_fields: list, pattern: TpyClassPattern,
+    ) -> bool:
+        """Recursively check if all type sub-patterns in a class pattern match a candidate."""
+        subst = self._build_type_subst(record, candidate)
+
+        # Build combined keyword list (positional resolved via match_args + explicit keywords)
+        match_args = record.match_args if record.match_args is not None else tuple(
+            f.name for f in record.fields
+        )
+        keywords: list[tuple[str, TpyPattern]] = [
+            (match_args[i], sub_pat)
+            for i, sub_pat in enumerate(pattern.positional)
+            if i < len(match_args)
+        ]
+        keywords.extend(pattern.keywords)
+
+        for field_name, sub_pat in keywords:
+            inner = sub_pat
+            if isinstance(inner, TpyAsPattern):
+                inner = inner.pattern
+            if not isinstance(inner, TpyClassPattern) or not isinstance(inner.cls, TpyName):
+                continue
+
+            type_name = inner.cls.name
+            field_type = next((f.type for f in all_fields if f.name == field_name), None)
+            if field_type is None:
+                return False
+            resolved = _subst_type_params(field_type, subst) if subst else field_type
+
+            if not self._type_pattern_compatible(type_name, resolved, inner):
+                return False
+        return True
+
+    def _type_pattern_compatible(
+        self, type_name: str, field_type: TpyType,
+        inner_pattern: TpyClassPattern,
+    ) -> bool:
+        """Check if a type name matches a field type, recursing into inner patterns."""
+        # Resolve to a concrete type
+        pattern_type = _resolve_concrete_type_name(type_name)
+        if pattern_type is not None:
+            if field_type == pattern_type:
+                return True
+            if isinstance(field_type, UnionType):
+                return any(m == pattern_type for m in field_type.members)
+            return False
+
+        # User record: match by name
+        inner_record = self.ctx.registry.get_record(type_name)
+        if inner_record is None:
+            return False
+
+        # Collect matching types from field_type
+        if isinstance(field_type, NamedType) and field_type.name == type_name:
+            candidates = [field_type]
+        elif isinstance(field_type, UnionType):
+            candidates = [m for m in field_type.members
+                          if isinstance(m, NamedType) and m.name == type_name]
+        else:
+            return False
+
+        if not candidates:
+            return False
+
+        # If the inner pattern has further type sub-patterns, use them to narrow
+        has_inner = (inner_pattern.keywords or inner_pattern.positional) and self._has_type_sub_patterns(inner_pattern, inner_record)
+        if has_inner:
+            inner_fields = self.ctx.registry.get_all_fields(inner_record)
+            candidates = [c for c in candidates
+                          if self._pattern_matches_candidate(
+                              inner_record, c, inner_fields, inner_pattern)]
+
+        return len(candidates) >= 1
+
+    def _validate_field_type_pattern(
+        self, sub_pattern: TpyClassPattern, field_type: TpyType,
+        parent: TpyPattern,
+    ) -> TpyType:
+        """Validate a type sub-pattern against the resolved field type.
+
+        Returns the matched type (for binding). Sets sub_pattern.resolved_type
+        when the field is a union (signals codegen to emit holds_alternative).
+        """
+        if not isinstance(sub_pattern.cls, TpyName):
+            raise self.ctx.error(
+                "type pattern in field must use a simple name", sub_pattern
+            )
+        cls_name = sub_pattern.cls.name
+
+        pattern_type = _resolve_concrete_type_name(cls_name)
+        if pattern_type is None and self.ctx.registry.get_record(cls_name) is not None:
+            pattern_type = NamedType(cls_name)
+        if pattern_type is None:
+            raise self.ctx.error(
+                f"unknown type '{cls_name}' in field type pattern", sub_pattern
+            )
+
+        # Exact match: compile-time type guard (no runtime check)
+        if field_type == pattern_type:
+            return field_type
+        if isinstance(field_type, NamedType) and field_type.name == cls_name:
+            return field_type
+
+        # Union field: check if field_type is a union containing pattern_type
+        is_record = isinstance(pattern_type, NamedType)
+        if isinstance(field_type, UnionType):
+            if is_record:
+                # Records: match by name (handles parameterized types like Box[str])
+                matches = [m for m in field_type.members
+                           if isinstance(m, NamedType) and m.name == cls_name]
+            else:
+                # Primitives: exact type match
+                matches = [m for m in field_type.members if m == pattern_type]
+
+            if len(matches) == 1:
+                sub_pattern.resolved_type = matches[0]
+                sub_pattern.is_union_field_guard = True
+                return matches[0]
+
+            if len(matches) > 1:
+                # Multiple same-name members -- try inner patterns for disambiguation
+                inner_record = self.ctx.registry.get_record(cls_name)
+                if inner_record is not None and (sub_pattern.keywords or sub_pattern.positional):
+                    disambiguated = self._disambiguate_by_field_types(
+                        cls_name, matches, sub_pattern)
+                    if disambiguated is not None:
+                        sub_pattern.resolved_type = disambiguated
+                        sub_pattern.is_union_field_guard = True
+                        return disambiguated
+                raise self.ctx.error(
+                    f"ambiguous '{cls_name}' in field union type '{field_type}'",
+                    sub_pattern,
+                )
+
+            raise self.ctx.error(
+                f"type '{cls_name}' is not a member of "
+                f"field union type '{field_type}'", sub_pattern
+            )
+
+        raise self.ctx.error(
+            f"type pattern '{cls_name}' does not match "
+            f"field type '{field_type}'", sub_pattern
+        )
+
+    def _resolve_nested_class_fields(
+        self, sub_pattern: TpyClassPattern, matched_type: TpyType,
+        bindings: dict[str, TpyType],
+    ) -> None:
+        """Recursively resolve field patterns on a nested class sub-pattern."""
+        if not isinstance(sub_pattern.cls, TpyName):
+            return
+        cls_name = sub_pattern.cls.name
+        record = self.ctx.registry.get_record(cls_name)
+        if record is None:
+            raise self.ctx.error(
+                f"type '{cls_name}' does not support field patterns", sub_pattern
+            )
+        # resolved_type is already set by _validate_field_type_pattern for
+        # union fields; for exact matches, set it for type param substitution
+        if sub_pattern.resolved_type is None:
+            sub_pattern.resolved_type = matched_type
+        self._resolve_class_pattern_fields(sub_pattern, record, bindings)

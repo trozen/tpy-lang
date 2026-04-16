@@ -822,6 +822,9 @@ class TpyClassPattern(TpyPattern):
     keywords: list[tuple[str, TpyPattern]]
     # Set by sema: resolved record type for this class pattern
     resolved_type: TpyType | None = None
+    # Set by sema: True when this is a field sub-pattern matching against
+    # a union-typed field (codegen emits holds_alternative + std::get)
+    is_union_field_guard: bool = False
 
 
 @dataclass

@@ -68,7 +68,7 @@ std::string find(const std::variant<Bird*, Cat*, Dog*> a) {
         auto& n = __case_0.name;
         // return "bird: " + n
         return (::tpy::str_concat("bird: ", n));
-        goto __match_end_2;
+        goto __match_end_1;
         break;
     }
     case 1: {
@@ -79,7 +79,7 @@ std::string find(const std::variant<Bird*, Cat*, Dog*> a) {
             if ((n == "Rex")) {
                 // return "found Rex"
                 return "found Rex";
-                goto __match_end_2;
+                goto __match_end_1;
             }
         }
         // case Dog(name=n) | Cat(name=n):
@@ -87,7 +87,7 @@ std::string find(const std::variant<Bird*, Cat*, Dog*> a) {
             auto& n = __case_1.name;
             // return "other pet: " + n
             return (::tpy::str_concat("other pet: ", n));
-            goto __match_end_2;
+            goto __match_end_1;
         }
         break;
     }
@@ -99,7 +99,7 @@ std::string find(const std::variant<Bird*, Cat*, Dog*> a) {
             if ((n == "Rex")) {
                 // return "found Rex"
                 return "found Rex";
-                goto __match_end_2;
+                goto __match_end_1;
             }
         }
         // case Dog(name=n) | Cat(name=n):
@@ -107,12 +107,12 @@ std::string find(const std::variant<Bird*, Cat*, Dog*> a) {
             auto& n = __case_2.name;
             // return "other pet: " + n
             return (::tpy::str_concat("other pet: ", n));
-            goto __match_end_2;
+            goto __match_end_1;
         }
         break;
     }
     }
-__match_end_2:;
+__match_end_1:;
     // return ""
     return "";
 }

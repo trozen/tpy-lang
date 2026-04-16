@@ -697,6 +697,7 @@ class CodeGenContext:
         # Note: overload_param_types and literal_overload_facts are NOT reset
         # here -- they're managed by the caller (set before gen_body, cleared
         # in a finally block).
+        self.match_counter = 0
         self.iter_counter = 0
         self.unpack_counter = 0
         self.loop_else_labels = []

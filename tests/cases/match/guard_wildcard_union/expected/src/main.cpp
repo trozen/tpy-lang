@@ -70,7 +70,7 @@ std::string as_guard(const std::variant<Cat*, Dog*> a) {
         auto& n = __case_0.name;
         // return "cat: " + n
         return (::tpy::str_concat("cat: ", n));
-        goto __match_end_2;
+        goto __match_end_1;
         break;
     }
     case 1: {
@@ -82,7 +82,7 @@ std::string as_guard(const std::variant<Cat*, Dog*> a) {
             if ((n == "Buddy")) {
                 // return d.name + " the dog"
                 return (::tpy::str_concat(d.name, " the dog"));
-                goto __match_end_2;
+                goto __match_end_1;
             }
         }
         // case Dog(name=n):
@@ -90,12 +90,12 @@ std::string as_guard(const std::variant<Cat*, Dog*> a) {
             auto& n = __case_1.name;
             // return "dog: " + n
             return (::tpy::str_concat("dog: ", n));
-            goto __match_end_2;
+            goto __match_end_1;
         }
         break;
     }
     }
-__match_end_2:;
+__match_end_1:;
     // return ""
     return "";
 }

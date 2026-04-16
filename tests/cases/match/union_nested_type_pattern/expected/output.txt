@@ -1,0 +1,6 @@
+string: hello
+number: 42
+is string
+is number
+abc / xyz
+99 / end

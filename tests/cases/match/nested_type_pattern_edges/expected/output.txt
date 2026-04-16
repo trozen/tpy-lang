@@ -1,0 +1,20 @@
+cat: Luna
+dog: Rex
+none
+pet: Luna
+pet: Rex
+tag: hello
+string: abc
+number: 99
+string: pos
+number: 7
+cat: Nala
+dog: Buddy
+special cat
+cat: Nala
+dog: Rex
+float: 3.14
+str: pi
+true
+false
+str: yes

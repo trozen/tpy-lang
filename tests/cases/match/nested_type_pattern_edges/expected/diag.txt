@@ -1,0 +1,2 @@
+main.py:18: warning: copies Cat | Dog into field; use copy() to make this explicit
+main.py:48: warning: non-exhaustive match on 'Tag | Wrapper'; missing: Wrapper (add 'case _:' to suppress)

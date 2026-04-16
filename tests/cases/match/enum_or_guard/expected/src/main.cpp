@@ -143,11 +143,11 @@ std::string or_guard(Color c, bool flag) {
             // return "warm+flag"
             return "warm+flag";
         }
-        goto __match_default_2;
+        goto __match_default_1;
         break;
     }
     // case _:
-    default: __match_default_2: {
+    default: __match_default_1: {
         // return "other"
         return "other";
         break;

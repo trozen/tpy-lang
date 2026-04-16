@@ -1,0 +1,1 @@
+Parameterized type disambiguation relies on static type resolution; CPython erases generic type args

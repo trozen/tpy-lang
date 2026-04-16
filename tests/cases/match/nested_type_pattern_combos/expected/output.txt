@@ -1,0 +1,10 @@
+string: hello
+number: 42
+string: world
+number: 7
+bare: 99
+string: abc
+number: 10
+string: hi
+number: 5
+other
