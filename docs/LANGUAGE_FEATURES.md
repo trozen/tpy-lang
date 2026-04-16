@@ -130,23 +130,23 @@ This allows the same TurboPython source to target different environments without
 
 ## Type Categories
 
-TurboPython distinguishes between **value types** and **object types**:
+TurboPython distinguishes between **value types** and **reference types**:
 
 ### Value Types
-Small, immutable, passed by copy:
+Small, cheaply copyable, passed by value:
 - `int`, `float`, `Int32`, `Int64`, `bool`
 - Small immutable structs (configurable threshold)
 - `FixStr[N]` (fixed-size string)
 - User records that extend `ValueType` (see [ValueType Protocol](#working-valuetype-marker-protocol))
 
-### Object Types
-Larger, mutable, passed by reference:
-- Classes/structs (by default)
+### Reference Types
+Larger, mutable, passed by reference to functions but stored inline in fields and containers:
+- Classes/records (by default)
 - `str` (dynamic string)
 - `list`, `dict`, `set`
 
 ### Parameter Passing Convention
-For object types, `T` in a parameter implicitly means reference:
+For reference types, `T` in a parameter implicitly means reference:
 ```python
 def process(data: MyClass) -> None:  # data is passed by reference
     data.value = 42  # modifies original
@@ -880,7 +880,7 @@ See the full `tpy.unsafe` API [below](#unsafe-memory-operations----tpyunsafe-wor
 
 #### Owned Return Values (Working)
 
-Object types are normally returned by reference (`T&`) to avoid hidden copies. But this creates a problem when returning newly constructed objects:
+Reference types are normally returned by reference (`T&`) to avoid hidden copies. But this creates a problem when returning newly constructed objects:
 
 ```python
 def create_point() -> Point:

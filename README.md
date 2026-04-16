@@ -16,9 +16,9 @@ A proof-of-concept compiler (tpyc) that translates Python to C++.
 
 Main differences from CPython:
 
-- Type annotations on functions required
+- Type annotations required on functions (parameters + return) and class fields; local variables are inferred
 - `Int32` for integer literals (overrideable), `Int32`/`Int64` for explicit fixed-width, `int` = `BigInt` for arbitrary precision
-- Inline field storage in classes and collections; explicit ownership (`Own[T]`) at boundaries
+- Value types (`Int32`, `bool`, `str`, ...) are copied; reference types (classes, containers) are passed by reference to functions but stored inline in fields and containers. `Own[T]` transfers ownership (move) at function boundaries
 - No GIL, no refcounting, no GC -- deterministic destruction via RAII
 
 ```python
@@ -38,7 +38,9 @@ $ tpyc -xO fib.py        # compile to C++ and run (optimized)
 $ tpyc --dump-code fib.py # inspect generated C++
 ```
 
-Fields are declared inline on the class; `Own[T]` marks heap ownership transfer:
+Reference types (classes, `list`, `dict`, ...) are passed by reference to functions, but stored
+inline in class fields and containers. `Own[T]` marks ownership transfer -- the value is moved,
+not referenced:
 
 ```python
 from dataclasses import dataclass
@@ -50,9 +52,10 @@ class Event:
     code: Int32
 
 def make_batch(n: Int32) -> Own[list[Event]]:
+    # list comprehension creates a new list; Own means it is moved out to the caller
     return [Event(i, i * 2) for i in range(n)]
 
-batch = make_batch(3)
+batch = make_batch(3)  # batch owns the list (moved, not copied)
 for e in batch:
     print(e.timestamp, e.code)
 ```
