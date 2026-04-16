@@ -537,7 +537,7 @@ class StatementAnalyzer:
             return None
         # Value-type elements: moving is identical to copying, so consuming
         # the container's internal structure is pure overhead.
-        elem = iterable_type.get_iteration_element_type()
+        elem = builtin_modules.get_iterable_element_type(iterable_type, registry=self.ctx.registry)
         if elem is not None and elem.is_value_type():
             return None
         record_info = self.ctx.registry.get_record_for_type(iterable_type)

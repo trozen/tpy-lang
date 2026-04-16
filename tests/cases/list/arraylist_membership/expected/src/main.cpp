@@ -19,19 +19,18 @@ void main() {
     std::cout << ::tpy::print_bool((a.__contains__(20))) << "\n";
     // print(99 in a)
     std::cout << ::tpy::print_bool((a.__contains__(99))) << "\n";
-    // # `in` on SimpleBuffer (no __contains__ -- IIFE std::find path)
+    // # `in` on SimpleBuffer (no __contains__ -- __iter__+__next__ path)
     // b = SimpleBuffer()
     SimpleBuffer b = SimpleBuffer();
     // print(20 in b)
-    std::cout << ::tpy::print_bool(([&](){ auto __fi = (b).__iter__(); return (std::find(__fi.begin(), __fi.end(), 20) != __fi.end()); })()) << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& __itr = ::tpy::__iter__(b); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 20) { __found = true; break; } } __found; })) << "\n";
     // print(99 in b)
-    std::cout << ::tpy::print_bool(([&](){ auto __fi = (b).__iter__(); return (std::find(__fi.begin(), __fi.end(), 99) != __fi.end()); })()) << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& __itr = ::tpy::__iter__(b); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 99) { __found = true; break; } } __found; })) << "\n";
     // # list comprehension over user NativeIterable
     // doubled = [x * 2 for x in a]
     std::vector<int32_t> doubled = [&]() {
         std::vector<int32_t> __result;
-        auto& __src_0 = a;
-        auto __obj_0 = __src_0.__iter__();
+        auto& __obj_0 = a;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -46,8 +45,7 @@ void main() {
     // unique = {x // 10 for x in a}
     ::tpy::ordered_set<int32_t> unique = [&]() {
         ::tpy::ordered_set<int32_t> __result;
-        auto& __src_1 = a;
-        auto __obj_1 = __src_1.__iter__();
+        auto& __obj_1 = a;
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {

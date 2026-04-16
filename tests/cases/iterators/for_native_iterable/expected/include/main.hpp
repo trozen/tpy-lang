@@ -90,7 +90,7 @@ template<::tpy::NativeIterable<int32_t> T_items>
 bool contains_value(const T_items& items, int32_t target) {
     // # Test "in" operator with NativeIterable-typed param
     // return target in items
-    return (std::find(items.begin(), items.end(), target) != items.end());
+    return std::ranges::contains(items, target);
 }
 
 void __tpy_init();

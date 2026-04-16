@@ -10,6 +10,7 @@ from ..parse.nodes import (
     TpyCall, TpyName, TpyExpr,
 )
 from ..typesys import StrType, TypeParamRef, is_protocol_type, unwrap_ref_type
+from tpyc import modules as builtin_modules
 from .context import INDENT, escape_cpp_name
 
 
@@ -512,8 +513,11 @@ class GeneratorCodegen:
             fields.append((f"__for_r_{uid}", result_type))
             return GeneratorForInfo(uid=uid, strategy="next", fields=fields)
 
-        # NativeIterable containers (list, dict, set, Array, Span, str) -- begin/end
-        native_elem = iterable_type.get_iteration_element_type() if hasattr(iterable_type, 'get_iteration_element_type') else None
+        # Built-in NativeIterable containers (list, dict, set, Array, Span, str) -- begin/end
+        record = self.ctx.analyzer.registry.get_record_for_type(iterable_type)
+        is_builtin_ni = (record is not None and record.is_native
+                         and builtin_modules.is_native_iterable(iterable_type, registry=self.ctx.analyzer.registry))
+        native_elem = builtin_modules.get_iterable_element_type(iterable_type, registry=self.ctx.analyzer.registry) if is_builtin_ni else None
         if native_elem is not None:
             container_cpp = self.types.type_to_cpp(iterable_type)
             iter_type = f"decltype(std::declval<{container_cpp}&>().begin())"

@@ -11,12 +11,12 @@ void test_list_membership() {
     std::vector<int32_t> nums = {10, 20, 30, 40, 50};
     // # 'in' operator
     // if 30 in nums:
-    if ((std::find(nums.begin(), nums.end(), 30) != nums.end())) {
+    if (std::ranges::contains(nums, 30)) {
         // print("30 in list: yes")
         std::cout << "30 in list: yes" << "\n";
     }
     // if 99 in nums:
-    if ((std::find(nums.begin(), nums.end(), 99) != nums.end())) {
+    if (std::ranges::contains(nums, 99)) {
         // print("99 in list: yes")
         std::cout << "99 in list: yes" << "\n";
     // else:
@@ -26,12 +26,12 @@ void test_list_membership() {
     }
     // # 'not in' operator
     // if 99 not in nums:
-    if ((std::find(nums.begin(), nums.end(), 99) == nums.end())) {
+    if (!std::ranges::contains(nums, 99)) {
         // print("99 not in list: yes")
         std::cout << "99 not in list: yes" << "\n";
     }
     // if 30 not in nums:
-    if ((std::find(nums.begin(), nums.end(), 30) == nums.end())) {
+    if (!std::ranges::contains(nums, 30)) {
         // print("30 not in list: yes")
         std::cout << "30 not in list: yes" << "\n";
     // else:
@@ -46,12 +46,12 @@ void test_array_membership() {
     // arr: Array[Int32, 4] = [1, 2, 3, 4]
     std::array<int32_t, 4> arr = {1, 2, 3, 4};
     // if 3 in arr:
-    if ((std::find(arr.begin(), arr.end(), 3) != arr.end())) {
+    if (std::ranges::contains(arr, 3)) {
         // print("3 in array: yes")
         std::cout << "3 in array: yes" << "\n";
     }
     // if 5 in arr:
-    if ((std::find(arr.begin(), arr.end(), 5) != arr.end())) {
+    if (std::ranges::contains(arr, 5)) {
         // print("5 in array: yes")
         std::cout << "5 in array: yes" << "\n";
     // else:
@@ -60,7 +60,7 @@ void test_array_membership() {
         std::cout << "5 in array: no" << "\n";
     }
     // if 5 not in arr:
-    if ((std::find(arr.begin(), arr.end(), 5) == arr.end())) {
+    if (!std::ranges::contains(arr, 5)) {
         // print("5 not in array: yes")
         std::cout << "5 not in array: yes" << "\n";
     }
@@ -69,7 +69,7 @@ void test_array_membership() {
 // def check_span_contains(data: Span[Int32], value: Int32) -> bool:
 bool check_span_contains(std::span<int32_t> data, int32_t value) {
     // return value in data
-    return (std::find(data.begin(), data.end(), value) != data.end());
+    return std::ranges::contains(data, value);
 }
 
 // def test_span_membership() -> None:
@@ -149,19 +149,19 @@ void test_membership_in_conditions() {
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     // # Combined with 'and'
     // if 2 in nums and 4 in nums:
-    if (((std::find(nums.begin(), nums.end(), 2) != nums.end()) && (std::find(nums.begin(), nums.end(), 4) != nums.end()))) {
+    if ((std::ranges::contains(nums, 2) && std::ranges::contains(nums, 4))) {
         // print("both 2 and 4 in list")
         std::cout << "both 2 and 4 in list" << "\n";
     }
     // # Combined with 'or'
     // if 10 in nums or 3 in nums:
-    if (((std::find(nums.begin(), nums.end(), 10) != nums.end()) || (std::find(nums.begin(), nums.end(), 3) != nums.end()))) {
+    if ((std::ranges::contains(nums, 10) || std::ranges::contains(nums, 3))) {
         // print("10 or 3 in list")
         std::cout << "10 or 3 in list" << "\n";
     }
     // # Negation combined
     // if 1 in nums and 99 not in nums:
-    if (((std::find(nums.begin(), nums.end(), 1) != nums.end()) && (std::find(nums.begin(), nums.end(), 99) == nums.end()))) {
+    if ((std::ranges::contains(nums, 1) && !std::ranges::contains(nums, 99))) {
         // print("1 in and 99 not in list")
         std::cout << "1 in and 99 not in list" << "\n";
     }
@@ -176,12 +176,12 @@ void test_membership_with_variables() {
     // missing: Int32 = 7
     int32_t missing = 7;
     // if target in nums:
-    if ((std::find(nums.begin(), nums.end(), target) != nums.end())) {
+    if (std::ranges::contains(nums, target)) {
         // print("target found")
         std::cout << "target found" << "\n";
     }
     // if missing not in nums:
-    if ((std::find(nums.begin(), nums.end(), missing) == nums.end())) {
+    if (!std::ranges::contains(nums, missing)) {
         // print("missing not found")
         std::cout << "missing not found" << "\n";
     }

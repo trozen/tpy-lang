@@ -1136,7 +1136,7 @@ class CallAnalyzer:
         arg_type = self.expr.analyze_expr(expr.args[0])
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
-        elem_type = arg_type.get_iteration_element_type()
+        elem_type = builtin_modules.get_iterable_element_type(arg_type, registry=self.ctx.registry)
         if elem_type is None:
             raise self.ctx.error(
                 f"copy_iter() argument must be iterable, got {arg_type}", expr)
@@ -1186,7 +1186,7 @@ class CallAnalyzer:
                 )
             else:
                 self.compat.check_own_consumption(arg)
-        elem_type = arg_type.get_iteration_element_type()
+        elem_type = builtin_modules.get_iterable_element_type(arg_type, registry=self.ctx.registry)
         assert elem_type is not None
         result_type = OwnIterType(elem_type)
         expr.resolved_function_info = FunctionInfo(
@@ -1581,7 +1581,15 @@ class CallAnalyzer:
         param_type = unwrap_ref_type(param_type)
         if not is_protocol_type(param_type):
             return None
-        elem = param_type.get_iteration_element_type()
+        # Protocol element type is the first type_arg for iterable protocols.
+        # No registry needed -- protocol structure is enough.
+        qname = param_type.qualified_name()
+        if qname not in builtin_modules.ITERABLE_PROTOCOL_QNAMES:
+            return None
+        if not param_type.type_args:
+            return None
+        first = param_type.type_args[0]
+        elem = first if isinstance(first, TpyType) else None
         if elem is None:
             return None
         # Unwrap Own -- container elements are owned by value
@@ -1630,10 +1638,10 @@ class CallAnalyzer:
                     # element (e.g. tuple[K,V] for dict, not just V).
                     if _has_type_param_ref(p_type) and expr.call_type and inferred:
                         resolved_param = self.type_ops.substitute_type_params(p_type, inferred)
-                        expected_elem = resolved_param.get_iteration_element_type()
+                        expected_elem = builtin_modules.get_iterable_element_type(resolved_param, registry=self.ctx.registry)
                         if isinstance(expected_elem, OwnType):
                             expected_elem = expected_elem.wrapped
-                        arg_elem = at.get_iteration_element_type()
+                        arg_elem = builtin_modules.get_iterable_element_type(at, registry=self.ctx.registry)
                         if expected_elem is not None and arg_elem is not None:
                             if not self.compat.is_type_compatible(arg_elem, expected_elem):
                                 rejected = True

@@ -103,7 +103,7 @@ void __tpy_init() {
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
     global_list = &__global_slot_3;
     // if 2 in global_list:
-    if ((std::find((*global_list).begin(), (*global_list).end(), 2) != (*global_list).end())) {
+    if (std::ranges::contains((*global_list), 2)) {
         // print(1)
         std::cout << 1 << "\n";
     // else:
@@ -112,7 +112,7 @@ void __tpy_init() {
         std::cout << 0 << "\n";
     }
     // if 5 in global_list:
-    if ((std::find((*global_list).begin(), (*global_list).end(), 5) != (*global_list).end())) {
+    if (std::ranges::contains((*global_list), 5)) {
         // print(1)
         std::cout << 1 << "\n";
     // else:

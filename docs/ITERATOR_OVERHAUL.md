@@ -233,12 +233,9 @@ Final branch order in `_gen_for_each_loop`:
 4. `ReadOnlySpanLike` protocol -> `as_span` + begin/end
 5. `range()` counter loop (or `Range<T>` begin/end fallback)
 6. Concrete `NativeIterable` (built-in only, or `NativeIterable[T]`
-   protocol param) -> plain C++ begin/end range-for. **User records
-   that auto-derive NativeIterable are excluded** -- their begin()/end()
-   are codegen-synthesized as `this->__iter__().begin()`, which calls
-   begin() on a temporary iterator. Currently safe for SpanIter (its
-   begin() returns a raw span iterator, no self-pointer), but fragile
-   if __iter__() ever returns a next_iter_mixin-derived type.
+   protocol param) -> plain C++ begin/end range-for. User records
+   do not derive NativeIterable (Phase 3 removed auto-derivation)
+   and always fall through to the universal default.
 7. Universal default: `auto&& __itr = ::tpy::__iter__(src);
    for (;;) __itr.__next__()`. Handles user NativeIterables safely
    via `auto&&` lifetime-extension of the returned iterator value.
@@ -284,65 +281,60 @@ Phase 2 follow-ups (not blockers):
   misses the `std::get<X>(var)` binding emission; subsequent accesses
   fail to compile. Tracked in TODO.md (Bugs section).
 
-### Phase 3 - Eliminate `get_iteration_element_type()` + unify begin/end synthesis
+### Phase 3 - Eliminate `get_iteration_element_type()` -- DONE (2026-04-16)
 
-**Scope:** all callers outside sema iterability queries, plus the
-codegen-synthesized begin()/end() in `codegen_cpp/records.py`. No
-behavioral change intended for built-ins; user NativeIterables pick
-up a uniform lowering.
+**Scope:** replaced all `get_iteration_element_type()` callers with
+the new unified `get_iterable_element_type(type, registry)` accessor
+in `modules/type_resolution.py`. Removed the `get_iteration_element_type`
+method from `TpyType` base class and all 10 subclass overrides.
+Fixed `in` operator fallback for non-builtin types. Two snapshot
+changes (user NativeIterable `in` + NativeIterable[T] protocol `in`).
 
-Call sites (to be replaced with `IterableHelper.get_iterable_element_type_or_none`
-or an equivalent accessor):
-- `tpyc/sema/calls.py:1142, 1192, 1590, 1639, 1642` -- list/set/dict
-  constructor and Iterable-param coercion.
-- `tpyc/sema/statements.py:542` -- list-literal hinted inference.
-- `tpyc/codegen_cpp/expressions.py:499, 2954, 2978, 3057, 3240, 3382`
-  -- list/dict/set comprehensions, generator expressions, `in` operator.
-- `tpyc/codegen_cpp/gen_generators.py:516` -- generator function
-  for-loop pre-scan.
-- `tpyc/codegen_cpp/statements.py:3979, 3982` (already sema-adjacent;
-  revisit).
+Changes:
+- `tpyc/modules/type_resolution.py`: new standalone
+  `get_iterable_element_type(tpy_type, registry)` function -- single
+  source of truth for iteration element types. Covers all categories:
+  compiler-internal adapters (CopyIter, OwnIter, GenExpr, SpanIter),
+  iterable protocol params, str types, error_return __next__, and
+  __iter__() methods.
+- `tpyc/modules/__init__.py`: export `get_iterable_element_type`.
+- `tpyc/sema/list_literals.py`: `IterableHelper.get_iterable_element_type_or_none`
+  now delegates to the standalone function.
+- `tpyc/sema/calls.py`: 4 sites replaced (copy_iter, own_iter,
+  protocol param hint, generic constructor validation). The protocol
+  param hint in `_concrete_hint_from_param` (a @staticmethod without
+  registry access) inlines the iterable-protocol type_arg extraction
+  directly.
+- `tpyc/sema/statements.py`: 1 site replaced (consuming iter
+  value-type check).
+- `tpyc/codegen_cpp/expressions.py`: 6 sites replaced (copy_iter
+  elem, array comp range/non-range, comprehension IIFE, generator
+  expr, comp scope var registration).
+- `tpyc/codegen_cpp/gen_generators.py`: 1 site replaced. Changed
+  from `get_iteration_element_type()` (broad match) to builtin
+  NativeIterable check (`record.is_native` + `is_native_iterable`)
+  to avoid incorrectly routing user records through begin/end.
+- `tpyc/codegen_cpp/expressions.py` (`in` operator): non-builtin
+  types now use `::tpy::__iter__` + `.__next__()` statement expression
+  with `::tpy::unwrap_ref` for val_or_ref compatibility. Built-in
+  NativeIterables and `NativeIterable[T]` protocol params use
+  `std::ranges::contains` (C++23, single-evaluation).
+- `tpyc/typesys.py`: removed `get_iteration_element_type` from
+  base `TpyType` and 10 subclass overrides (CopyIterType, OwnIterType,
+  DictType, SetType, DictKeysViewType, DictValuesViewType,
+  DictItemsViewType, GenExprType, PendingDictType, PendingSetType).
 
-Then remove the `get_iteration_element_type` method from `TpyType`
-and subclasses. Single source of truth for iteration elements
-becomes the `__iter__`-protocol lookup.
+User records no longer auto-derive NativeIterable (removed from
+`tpyc/sema/registration.py`). NativeIterable is a marker for native
+(built-in) types only; user records keep synthesized begin/end for
+C++ interop but are not recognized as NativeIterable by the compiler.
+This eliminated the `_is_user_native_iterable` workaround branches
+in comprehension and genexpr codegen, and simplified the for-loop
+NativeIterable peephole check (no more `is_user_native` exclusion).
 
-**`in` operator fallback:** The `in` operator without `__contains__`
-currently emits `std::find(obj.begin(), obj.end(), target)` -- a
-hardcoded C++ pattern that bypasses the Python iterator protocol.
-Phase 3 should replace this with a `::tpy::__iter__` + `__next__`
-loop (matching CPython's semantics and the Phase 2 universal default),
-eliminating both the begin/end coupling and the per-callsite
-`_is_user_native_iterable` IIFE workaround in `expressions.py`.
-
-**Option B cleanup (inherited from Phase 2 audit):** Phase 2 discovered
-that codegen-synthesized `begin()/end()` in `codegen_cpp/records.py`
-(emitted for user records with `__iter__(self) -> SpanIter[T]` and
-no explicit begin/end) calls `begin()` on a temporary iterator.
-Currently safe for `SpanIter` (its `begin()` returns a raw span
-iterator into the container, no self-pointer), but fragile if
-`__iter__()` ever returns a `next_iter_mixin`-derived type whose
-`begin()` stores a parent back-pointer. Phase 2 contained this as
-a forward-safety measure at three begin/end callsites
-(`_gen_for_each_loop` NativeIterable peephole, list/dict/set
-comprehensions, `in` operator fallback) by capturing `__iter__()`
-first. Two callsites remain uncontained: generator-expression lambda
-capture (`expressions.py::_gen_generator_expression`) and
-generator-body begin/end loop (`gen_generators.py:379,389`).
-
-Phase 3 should eliminate the UB class globally by either:
-- Removing the begin/end synthesis in `codegen_cpp/records.py:349-360`
-  entirely, forcing all iteration on user NativeIterables through
-  `::tpy::__iter__` (consistent with the Phase 2 universal default),
-  or
-- Changing `NextIterator` in `runtime/cpp/include/tpy/next_iter.hpp`
-  to own the Parent by value instead of holding a pointer, so the
-  synthesized begin/end's temporary SpanIter lives inside each
-  NextIterator. Needs runtime audit of all `next_iter_mixin` users.
-
-Either eliminates the per-callsite `_is_user_native_iterable` branches
-in `statements.py` and `expressions.py`, and unblocks the deferred
-genexpr fix.
+**Remaining items for Phase 4/5:**
+- `IterInfo.iter_is_native` still used by gen_generators for
+  iter_begin_end vs iter_next strategy selection.
 
 ### Phase 4 - Unify generator-function for-loop lowering
 
@@ -373,17 +365,17 @@ Non-blocking cleanups that can happen after Phase 4:
 |---|---|---|---|---|
 | `lib/tpy/tpy/_core/_types.py` | NativeIterable gets `__iter__` [DONE] | - | - | - |
 | `tpyc/sema/registration.py` | resolve protocol method sigs [DONE, bonus] | - | - | - |
-| `tpyc/sema/list_literals.py` | simplify [DONE] | - | - | - |
-| `tpyc/sema/expressions.py` | - | - | use unified accessor | - |
-| `tpyc/sema/statements.py` | iter-depth uses is_native_iterable [DONE] | - | use unified accessor | - |
-| `tpyc/sema/calls.py` | - | - | use unified accessor | - |
-| `tpyc/modules/type_resolution.py` | `allow_protocol_return`, `extract_type_params`, recursive substitution [DONE] | - | audit `get_iter_info` / `iter_is_native` | - |
-| `tpyc/codegen_cpp/statements.py` | - | peepholes + universal default [DONE] | use unified accessor | - |
-| `tpyc/codegen_cpp/expressions.py` | - | UB containment (comps, `in`) [DONE] | use unified accessor, `in` fallback -> `__iter__`+`__next__` | - |
-| `tpyc/codegen_cpp/gen_generators.py` | - | - | use unified accessor | collapse branches |
+| `tpyc/sema/list_literals.py` | simplify [DONE] | - | delegates to standalone fn [DONE] | - |
+| `tpyc/sema/expressions.py` | - | - | (no change needed) | - |
+| `tpyc/sema/statements.py` | iter-depth uses is_native_iterable [DONE] | - | use unified accessor [DONE] | - |
+| `tpyc/sema/calls.py` | - | - | use unified accessor [DONE] | - |
+| `tpyc/modules/type_resolution.py` | `allow_protocol_return`, `extract_type_params`, recursive substitution [DONE] | - | add `get_iterable_element_type` [DONE] | - |
+| `tpyc/codegen_cpp/statements.py` | - | peepholes + universal default [DONE] | (no change needed) | - |
+| `tpyc/codegen_cpp/expressions.py` | - | UB containment (comps, `in`) [DONE] | use unified accessor + `in` fallback -> `__iter__`+`__next__` [DONE] | - |
+| `tpyc/codegen_cpp/gen_generators.py` | - | - | use unified accessor + builtin NI check [DONE] | collapse branches |
 | `lib/tpy/tpy/_core/_containers.py` | - | SpanIter `@readonly` removed [DONE] | - | - |
 | `runtime/cpp/include/tpy/span_iter.hpp` | - | non-const `__iter__` [DONE] | - | - |
-| `tpyc/typesys.py` | - | - | remove `get_iteration_element_type` overrides | - |
+| `tpyc/typesys.py` | - | - | removed `get_iteration_element_type` (base + 10 overrides) [DONE] | - |
 | `docs/ITERATOR_DESIGN.md` | update status table | update architecture | - | - |
 
 ## Testing checklist per phase
@@ -439,7 +431,15 @@ For each phase, run in order:
     `__iter__(self) -> Self`. SpanIter itself stays in the adapter
     allowlist (see follow-up note); full unification needs a
     parser/sema change that's out of scope for Phase 1.
-- _(next: Phase 3 -- eliminate get_iteration_element_type + unify begin/end synthesis)_
+- **2026-04-16**: Phase 3 complete on branch `iterator-phase1`. Full
+  suite green (2507 passed / 1 skipped). Three intentional snapshot
+  changes: `arraylist_membership` (comprehension + `in` operator),
+  `for_native_iterable` (NativeIterable[T] protocol `in` operator).
+  `get_iteration_element_type` removed from TpyType and all subclasses;
+  new standalone `get_iterable_element_type` in `modules/type_resolution.py`
+  is the single source of truth. User records no longer auto-derive
+  NativeIterable; `_is_user_native_iterable` workaround eliminated.
+- _(next: Phase 4 -- unify generator-function for-loop lowering)_
 
 ## Out of scope
 
@@ -447,8 +447,9 @@ For each phase, run in order:
 - `next()` / `iter()` builtins design changes (stable)
 - `yield from`, generator `send()`/`throw()`/`close()` (separate roadmap)
 - `__contains__` / `in` user-type dispatch design (separate roadmap).
-  The `in` fallback (no `__contains__`) migrates to `__iter__`+`__next__`
-  in Phase 3 (see Phase 3 notes)
+  The `in` fallback (no `__contains__`) now uses `__iter__`+`__next__`
+  for non-builtin types (Phase 3). Built-in NativeIterables and
+  `NativeIterable[T]` protocol params use `std::ranges::contains`.
 - Iterator combinators (`enumerate`, `zip`, `map`, `filter`) design --
   already working
 - Async iterators

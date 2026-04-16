@@ -9,8 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, CHAR, OwnType, CopyIterType, OwnIterType, GenExprType, SpanIterType,
-    is_protocol_type, is_any_str_type, unwrap_ref_type,
+    TpyType, CopyIterType, OwnIterType, GenExprType, SpanIterType,
+    is_protocol_type,
 )
 from .diagnostics import SemanticError
 
@@ -27,16 +27,6 @@ class IterableHelper:
     def __init__(self, ctx: SemanticContext):
         self.ctx = ctx
 
-    # Protocols whose single type argument is the iteration element type.
-    # NativeIterable is a marker for C++ begin/end-style iteration; kept
-    # alongside Iterator/Iterable/ReadOnlySpanLike for parameter-type use.
-    # The concrete implementation of iteration (via __iter__() in codegen)
-    # is independent of this sema-level protocol recognition.
-    _ITERABLE_PROTOCOLS = frozenset({
-        "typing.Iterator", "typing.Iterable",
-        "tpy.NativeIterable", "tpy.ReadOnlySpanLike",
-    })
-
     def is_type_iterable(self, typ: TpyType) -> bool:
         """Check if a type is iterable.
 
@@ -50,7 +40,7 @@ class IterableHelper:
         - Has __next__() (Iterator conformance)
         - Has __iter__() returning an iterator type
         """
-        if is_protocol_type(typ) and typ.qualified_name() in self._ITERABLE_PROTOCOLS:
+        if is_protocol_type(typ) and typ.qualified_name() in builtin_modules.ITERABLE_PROTOCOL_QNAMES:
             return True
         if isinstance(typ, (CopyIterType, OwnIterType, GenExprType, SpanIterType)):
             return True
@@ -62,41 +52,7 @@ class IterableHelper:
 
     def get_iterable_element_type_or_none(self, iterable_type: TpyType) -> TpyType | None:
         """Get the element type of an iterable, or None if not iterable."""
-        # Ref[T] and Own[T] are transparent for iteration resolution
-        iterable_type = unwrap_ref_type(iterable_type)
-        if isinstance(iterable_type, OwnType):
-            iterable_type = iterable_type.wrapped
-
-        # Compiler-internal iterator adapters (no stubs) plus SpanIter
-        # (stub-declared; see follow-up note in is_type_iterable above).
-        if isinstance(iterable_type, (CopyIterType, OwnIterType, GenExprType, SpanIterType)):
-            return iterable_type.element_type
-
-        # Protocol-typed iterables (parameter types): single type_arg is T.
-        if is_protocol_type(iterable_type) and iterable_type.qualified_name() in self._ITERABLE_PROTOCOLS:
-            if iterable_type.type_args:
-                first = iterable_type.type_args[0]
-                return first if isinstance(first, TpyType) else None
-            return None
-
-        # Handle str/String/StrView -> Char
-        if is_any_str_type(iterable_type):
-            return CHAR
-
-        # Check error_return __next__ (user-defined iterators)
-        er_elem = builtin_modules.get_error_return_next_element_type(iterable_type, registry=self.ctx.registry)
-        if er_elem is not None:
-            return er_elem
-
-        # Check __iter__() method (container -> separate iterator).
-        # Covers built-in containers (list, dict, set, Span, Array, Range,
-        # str, bytes, ...) via their declared __iter__ stubs, plus user
-        # records and types with __iter__ methods.
-        iter_elem = builtin_modules.get_iter_element_type(iterable_type, registry=self.ctx.registry)
-        if iter_elem is not None:
-            return iter_elem
-
-        return None
+        return builtin_modules.get_iterable_element_type(iterable_type, registry=self.ctx.registry)
 
     def get_iterable_element_type(
         self, iterable_type: TpyType, loc: SourceLocation | None = None,

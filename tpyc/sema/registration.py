@@ -962,19 +962,6 @@ class TypeRegistrar:
                 register_return_exception(record.name)
                 break
 
-        # Auto-derive NativeIterable[T] for types with __iter__() -> SpanIter[T].
-        # SpanIter is a NativeIterable, so the container inherits the protocol.
-        if "__iter__" in record_info.methods:
-            iter_overloads = record_info.methods["__iter__"]
-            if iter_overloads:
-                ret = iter_overloads[0].return_type
-                if isinstance(ret, SpanIterType):
-                    elem_type = ret.element_type
-                    ni_proto = NamedType("NativeIterable", (elem_type,), is_protocol=True,
-                                        _module_qname="tpy.NativeIterable")
-                    if not any(p.name == "NativeIterable" for p in record_info.implemented_protocols):
-                        record_info.implemented_protocols.append(ni_proto)
-
         # Auto-derive Send/Sync based on field types.
         # A record is Send if all its fields are Send (safe to move across threads).
         # A record is Sync if all its fields are Sync (safe to share across threads).

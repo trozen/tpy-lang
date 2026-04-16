@@ -3983,29 +3983,12 @@ class StatementGenerator:
                 self._gen_begin_end_loop(out, stmt, indent, iterable, elem_type, is_lvalue=False)
                 return
 
-        # Concrete NativeIterable -> plain C++ begin/end range-for.
-        # Covers built-in containers (list, dict, set, Span, Array, str, bytes,
-        # SpanIter, ...). User records that auto-derive NativeIterable (via
-        # `__span__` or an `__iter__` returning a NativeIterable) are
-        # *excluded* -- their begin()/end() are codegen-synthesized as
-        # `this->__iter__().begin()`, which calls begin() on a temporary
-        # iterator. Currently safe for SpanIter (its begin() returns a raw
-        # span iterator into the container, no self-pointer), but fragile
-        # if __iter__() ever returns a next_iter_mixin-derived type whose
-        # begin() stores a parent back-pointer. Such user records fall
-        # through to the universal default, where `auto&& __itr =
-        # ::tpy::__iter__(__src)` safely captures the returned iterator
-        # value. The protocol clause covers NativeIterable[T] parameter
-        # types whose C++ form is a template with NativeIterable<T> concept
-        # constraint -- begin/end are guaranteed by the concept.
-        record = self.ctx.analyzer.registry.get_record_for_type(iterable_type)
-        is_user_native = (
-            record is not None and not record.is_native
-            and is_native_iterable(iterable_type, registry=self.ctx.analyzer.registry)
-        )
+        # NativeIterable peephole: built-in types (list, dict, set, Span,
+        # Array, str, bytes, etc.) and NativeIterable[T] protocol params
+        # use C++ range-based-for with begin/end. User records are NOT
+        # NativeIterable (they use the universal __iter__+__next__ default).
         is_native = (
-            (is_native_iterable(iterable_type, registry=self.ctx.analyzer.registry)
-             and not is_user_native)
+            is_native_iterable(iterable_type, registry=self.ctx.analyzer.registry)
             or (is_protocol_type(resolved_type)
                 and resolved_type.qualified_name() == "tpy.NativeIterable")
         )

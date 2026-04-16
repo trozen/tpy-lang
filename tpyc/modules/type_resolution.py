@@ -7,9 +7,13 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
-    from tpyc.typesys import TpyType, TypeRegistry, RecordInfo, SpanType, FunctionInfo
+    from tpyc.typesys import TypeRegistry, RecordInfo, SpanType, FunctionInfo
 
-from tpyc.typesys import TypeParamRef, NamedType, PtrType, TupleType, TypeParamKind
+from tpyc.typesys import (
+    TypeParamRef, NamedType, PtrType, TupleType, TypeParamKind,
+    TpyType, CHAR, OwnType, CopyIterType, OwnIterType, GenExprType, SpanIterType,
+    is_any_str_type, is_protocol_type, unwrap_ref_type,
+)
 from tpyc.modules.defs import ParamDef, MethodDef, BuiltinTypeDef, GenericTypeLookup
 
 
@@ -289,6 +293,12 @@ def resolve_method(method: MethodDef, type_params: dict[str, "TpyType"]) -> Meth
 # Iterator / span helpers
 # ---------------------------------------------------------------------------
 
+# Protocols whose single type argument is the iteration element type.
+ITERABLE_PROTOCOL_QNAMES = frozenset({
+    "typing.Iterator", "typing.Iterable",
+    "tpy.NativeIterable", "tpy.ReadOnlySpanLike",
+})
+
 def is_native_iterable(tpy_type: "TpyType", registry: "TypeRegistry") -> bool:
     """Check if type extends NativeIterable (uses range-based for in C++)."""
     record = registry.get_record_for_type(tpy_type)
@@ -298,7 +308,7 @@ def is_native_iterable(tpy_type: "TpyType", registry: "TypeRegistry") -> bool:
     if record.extends_protocols:
         if any(ext.startswith("NativeIterable") for ext in record.extends_protocols):
             return True
-    # User records: check implemented_protocols (includes auto-derived from __span__)
+    # User records: check explicitly declared implemented_protocols
     for proto in record.implemented_protocols:
         if proto.name == "NativeIterable":
             return True
@@ -444,6 +454,51 @@ def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "Tpy
     """If type has __iter__() returning a concrete iterator, return element type T."""
     info = get_iter_info(tpy_type, registry)
     return info.element_type if info is not None else None
+
+
+def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
+    """Unified element-type accessor for any iterable type.
+
+    Single source of truth for "what element type does iterating this produce?"
+    Covers all iterable categories:
+    - Compiler-internal adapters (CopyIter, OwnIter, GenExpr, SpanIter)
+    - Protocol-typed params (Iterator[T], Iterable[T], NativeIterable[T], ReadOnlySpanLike[T])
+    - String types -> Char
+    - error_return __next__ iterators
+    - __iter__() method (built-in containers + user records)
+
+    Returns None if the type is not iterable.
+    """
+    tpy_type = unwrap_ref_type(tpy_type)
+    if isinstance(tpy_type, OwnType):
+        tpy_type = tpy_type.wrapped
+
+    # Compiler-internal iterator adapters (no stubs) plus SpanIter
+    if isinstance(tpy_type, (CopyIterType, OwnIterType, GenExprType, SpanIterType)):
+        return tpy_type.element_type
+
+    # Protocol-typed iterables: single type_arg is T
+    if is_protocol_type(tpy_type) and tpy_type.qualified_name() in ITERABLE_PROTOCOL_QNAMES:
+        if tpy_type.type_args:
+            first = tpy_type.type_args[0]
+            return first if isinstance(first, TpyType) else None
+        return None
+
+    # String types -> Char
+    if is_any_str_type(tpy_type):
+        return CHAR
+
+    # error_return __next__ (user-defined iterators)
+    er_elem = get_error_return_next_element_type(tpy_type, registry)
+    if er_elem is not None:
+        return er_elem
+
+    # __iter__() method (built-in containers + user records)
+    iter_elem = get_iter_element_type(tpy_type, registry)
+    if iter_elem is not None:
+        return iter_elem
+
+    return None
 
 
 def _find_record_iter_info(

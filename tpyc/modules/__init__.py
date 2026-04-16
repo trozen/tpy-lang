@@ -24,8 +24,9 @@ from tpyc.modules.type_resolution import (  # noqa: F401
     get_type_factory, get_type_factory_names,
     lookup_generic_type, lookup_generic_type_in_module,
     extract_type_params, resolve_method,
+    ITERABLE_PROTOCOL_QNAMES,
     is_native_iterable, get_extends_protocol_type_arg,
     get_error_return_next_element_type, IterInfo,
-    get_iter_info, get_iter_element_type,
+    get_iter_info, get_iter_element_type, get_iterable_element_type,
     get_span_element_type, get_span_return_type,
 )

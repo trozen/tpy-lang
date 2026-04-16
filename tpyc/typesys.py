@@ -446,14 +446,6 @@ class TpyType:
         """Return the element type for container types, or None for non-containers."""
         return None
 
-    def get_iteration_element_type(self) -> Optional['TpyType']:
-        """Return the element type for for-loop iteration.
-
-        For most containers this is the same as get_element_type().
-        Dict overrides: iteration yields keys (K), not values (V).
-        """
-        return self.get_element_type()
-
     def needs_explicit_element_target(self) -> bool:
         """Return True if array literals need explicit element type targeting.
 
@@ -2738,9 +2730,6 @@ class CopyIterType(NamedType):
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
-    def get_iteration_element_type(self) -> Optional[TpyType]:
-        return self.element_type
-
     def inner_types(self) -> tuple['TpyType', ...]:
         return (self.element_type,)
 
@@ -2779,9 +2768,6 @@ class OwnIterType(NamedType):
         return True
 
     def get_element_type(self) -> Optional[TpyType]:
-        return self.element_type
-
-    def get_iteration_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
     def inner_types(self) -> tuple['TpyType', ...]:
@@ -2880,10 +2866,6 @@ class DictType(NamedType):
         # Subscript result type: d[k] -> V
         return self.value_type
 
-    def get_iteration_element_type(self) -> Optional[TpyType]:
-        # For-loop variable type: for k in d -> K
-        return self.key_type
-
     def inner_types(self) -> tuple['TpyType', ...]:
         return (self.key_type, self.value_type)
 
@@ -2923,9 +2905,6 @@ class SetType(NamedType):
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
-    def get_iteration_element_type(self) -> Optional[TpyType]:
-        return self.element_type
-
     def inner_types(self) -> tuple['TpyType', ...]:
         return (self.element_type,)
 
@@ -2953,9 +2932,6 @@ class DictKeysViewType(NamedType):
 
     def to_cpp(self) -> str:
         return f"::tpy::dict_keys_view<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
-
-    def get_iteration_element_type(self) -> Optional[TpyType]:
-        return self.key_type
 
     def is_value_type(self) -> bool:
         return True
@@ -2997,9 +2973,6 @@ class DictValuesViewType(NamedType):
     def to_cpp(self) -> str:
         return f"::tpy::dict_values_view<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
 
-    def get_iteration_element_type(self) -> Optional[TpyType]:
-        return self.value_type
-
     def is_value_type(self) -> bool:
         return True
 
@@ -3039,9 +3012,6 @@ class DictItemsViewType(NamedType):
 
     def to_cpp(self) -> str:
         return f"::tpy::dict_items_view<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
-
-    def get_iteration_element_type(self) -> Optional[TpyType]:
-        return TupleType((self.key_type, self.value_type))
 
     def is_value_type(self) -> bool:
         return True
@@ -3140,9 +3110,6 @@ class GenExprType(TpyType):
     element_type: TpyType
 
     def get_element_type(self) -> Optional[TpyType]:
-        return self.element_type
-
-    def get_iteration_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
     def to_cpp(self) -> str:
@@ -3292,9 +3259,6 @@ class PendingDictType(TpyType):
     def get_element_type(self) -> Optional[TpyType]:
         return self.value_type
 
-    def get_iteration_element_type(self) -> Optional[TpyType]:
-        return self.key_type
-
     def __str__(self) -> str:
         return f"PendingDict[{self.key_type}, {self.value_type}]#{self.literal_id}"
 
@@ -3329,9 +3293,6 @@ class PendingSetType(TpyType):
         raise RuntimeError(f"PendingSetType should be resolved before codegen (literal_id={self.literal_id})")
 
     def get_element_type(self) -> Optional[TpyType]:
-        return self.element_type
-
-    def get_iteration_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
     def __str__(self) -> str:

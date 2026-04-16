@@ -34,7 +34,7 @@ def main() -> None:
     print(20 in a)
     print(99 in a)
 
-    # `in` on SimpleBuffer (no __contains__ -- IIFE std::find path)
+    # `in` on SimpleBuffer (no __contains__ -- __iter__+__next__ path)
     b = SimpleBuffer()
     print(20 in b)
     print(99 in b)
