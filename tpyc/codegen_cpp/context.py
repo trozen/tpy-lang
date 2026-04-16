@@ -296,7 +296,7 @@ class TempState:
     """Manages temporary variables for array literals passed to mutable reference params."""
 
     def __init__(self):
-        self._pending: list[tuple[str, str, str]] = []
+        self._pending: list[tuple[str, str, str, bool]] = []
         self._pending_named: list[tuple[str, str, str | None, bool]] = []
         self._counter: int = 0
 
@@ -958,7 +958,7 @@ class CodeGenContext:
             # Check if locally shadowed (only if we have a local namespace, not global_ns itself)
             if self.current_ns is not self.analyzer.global_ns:
                 # Traverse local namespace chain (up to but not including global_ns)
-                ns = self.current_ns
+                ns: Namespace | None = self.current_ns
                 while ns is not None and ns is not self.analyzer.global_ns:
                     if ns.lookup_local(expr.name):
                         return False  # Locally shadowed
@@ -1043,7 +1043,8 @@ class CodeGenContext:
             return False
         if obj is not None:
             # Methods on @native records have unknown C++ return convention.
-            obj_type = unwrap_readonly(self.analyzer.get_expr_type(obj))
+            raw_obj_type = self.analyzer.get_expr_type(obj)
+            obj_type = unwrap_readonly(raw_obj_type) if raw_obj_type is not None else None
             rec = self.analyzer.registry.get_record_for_type(obj_type) if obj_type else None
             if rec is None and isinstance(obj, TpyName):
                 rec = self.analyzer.registry.get_record(obj.name)
@@ -1155,7 +1156,8 @@ class CodeGenContext:
         # Subscript on user records returns by value (rvalue)
         # std::vector/array operator[] returns lvalue ref, but user __getitem__ returns by value
         if isinstance(expr, TpySubscript):
-            container_type = unwrap_readonly(self.analyzer.get_expr_type(expr.obj)) if self.analyzer.get_expr_type(expr.obj) is not None else None
+            raw_ct = self.analyzer.get_expr_type(expr.obj)
+            container_type = unwrap_readonly(raw_ct) if raw_ct is not None else None
             if isinstance(container_type, NamedType) and container_type.is_user_record:
                 return True
         if isinstance(expr, TpyCall):

@@ -1,0 +1,9 @@
+number: 42
+string: hello
+cat: Whiskers
+dog: Rex
+0
+1
+3
+99
+hello

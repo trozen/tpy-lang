@@ -161,32 +161,38 @@ class SemanticAnalyzer:
         self.registrar = TypeRegistrar(self.ctx, self.type_ops, self.protocols)
 
         # Wire up compatibility's deferred dependencies
-        self.compat.set_deps(self.type_ops, self.protocols)
+        self.compat.type_ops = self.type_ops
+        self.compat.protocols = self.protocols
 
         # Narrowing tracker (depends on type_ops, protocols)
         self.narrowing = NarrowingTracker(self.ctx, self.type_ops, self.protocols)
 
-        # Layer 3: Analyzers with circular deps - create first
-        self.expr = ExpressionAnalyzer(
-            self.ctx, self.type_ops, self.operators, self.protocols, self.compat, self.narrowing
-        )
+        # Layer 3: Analyzers ordered by dependencies
+        # Cycle: expr <-> calls <-> methods. Break by creating calls/methods
+        # first, then expr (which takes them), then setting back-references.
         self.calls = CallAnalyzer(
             self.ctx, self.type_ops, self.protocols, self.compat, self.deduction
         )
         self.methods = MethodAnalyzer(
             self.ctx, self.type_ops, self.protocols, self.compat, self.deduction
         )
+        self.expr = ExpressionAnalyzer(
+            self.ctx, self.type_ops, self.operators, self.protocols, self.compat,
+            self.narrowing, self.calls, self.methods,
+        )
+        # Complete the back-references
+        self.calls.expr = self.expr
+        self.calls.methods = self.methods
+        self.methods.expr = self.expr
+        self.methods.calls = self.calls
+        self.compat.methods = self.methods
+
+        # stmts and match: one-way deps, passed through constructors
         self.stmts = StatementAnalyzer(
             self.ctx, self.type_ops, self.compat, self.deduction, self.iterable,
-            self.protocols, self.narrowing
+            self.protocols, self.narrowing, self.expr,
         )
-
-        # Layer 4: Wire circular refs via explicit setters
-        self.expr.set_cross_deps(self.calls, self.methods, self.stmts.scopes)
-        self.calls.set_cross_deps(self.expr, self.methods)
-        self.methods.set_cross_deps(self.expr, self.calls)
-        self.stmts.set_cross_deps(self.expr)
-        self.compat.set_methods(self.methods)
+        self.expr.set_scopes(self.stmts.scopes)
 
         # Per-function/method pre-scan results (shared with codegen)
         self.function_scan_results: dict[int, ScanResult] = {}

@@ -56,20 +56,15 @@ class StatementGenerator:
         types: TypeResolver,
         builtins: BuiltinGenerator,
         protocols: ProtocolGenerator,
+        expressions: ExpressionGenerator,
     ):
         self.ctx = ctx
         self.types = types
         self.builtins = builtins
         self.protocols = protocols
-        self.match = MatchGenerator(ctx, types)
-        # Will be set after expressions is created
-        self.expressions: ExpressionGenerator | None = None
-        self._reassigned_param_copies: list[tuple[str, TpyType]] = []
-
-    def set_expressions(self, expressions: ExpressionGenerator):
-        """Set expressions generator (to break circular dependency)."""
         self.expressions = expressions
-        self.match.set_dependencies(expressions, self)
+        self.match = MatchGenerator(ctx, types, expressions, self)
+        self._reassigned_param_copies: list[tuple[str, TpyType]] = []
 
     def _gen_buffered_body(self, out: TextIO, stmts: list[TpyStmt],
                            track_stmt_line: bool = False) -> None:
@@ -2937,7 +2932,8 @@ class StatementGenerator:
         self._emit_isinstance_extractions(out, stmt.then_type_facts, indent_extra=0)
 
 
-    def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
+    def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str,
+                emit_post_narrowing: bool = True) -> None:
         """Generate an if/elif/else chain as flat C++ if/else if/else."""
         # Collect the elif chain into a flat list of branches.
         # An elif is else_body == [TpyIf(...)] where the inner if has the
@@ -3002,7 +2998,8 @@ class StatementGenerator:
                     out.write(f"{indent}}} else {{\n")
                     self.ctx.indent_level += 1
                     self.ctx.temps.flush(out, self.ctx.indent())
-                    self._gen_if(out, node, self.ctx.indent())
+                    self._gen_if(out, node, self.ctx.indent(),
+                                emit_post_narrowing=False)
                     self.ctx.indent_level -= 1
                     out.write(f"{indent}}}\n")
                     return
@@ -3025,7 +3022,8 @@ class StatementGenerator:
                     out.write(f"{indent}}} else {{\n")
                     self.ctx.indent_level += 1
                     self.ctx.temps.flush(out, self.ctx.indent())
-                    self._gen_if(out, node, self.ctx.indent())
+                    self._gen_if(out, node, self.ctx.indent(),
+                                emit_post_narrowing=False)
                     self.ctx.indent_level -= 1
                     out.write(f"{indent}}}\n")
                     return
@@ -3072,6 +3070,28 @@ class StatementGenerator:
             self.ctx.restore_local_scope(br_snap)
 
         out.write(f"{indent}}}\n")
+
+        # Early-return narrowing for recursive unions: when the then-body
+        # terminates (return/raise) and there's no else block, code after the
+        # if is implicitly the else branch. Emit else_type_facts extractions
+        # at the outer scope (like assert narrowing).
+        # Limited to recursive unions because general unions may have sequential
+        # isinstance checks on the same variable, and the extraction would
+        # shadow the original variant for subsequent checks.
+        if (emit_post_narrowing
+                and not last.else_body and last.else_type_facts
+                and self._has_concrete_isinstance_facts(last.else_type_facts)
+                and not self._is_protocol_isinstance_condition(last.condition)):
+            then_body = last.then_body
+            if then_body and isinstance(then_body[-1], (TpyReturn, TpyRaise)):
+                # Only emit for recursive union variables
+                recursive_facts = {
+                    k: v for k, v in last.else_type_facts.items()
+                    if self.ctx.is_recursive_union(self.ctx.var_types.get(k))
+                }
+                if recursive_facts:
+                    self._emit_isinstance_extractions(
+                        out, recursive_facts, indent_extra=0)
 
     def _check_overload_return_type(self, stmt: TpyReturn, stub_ret: TpyType) -> bool:
         """Validate that a return expression's type is compatible with the stub's return type.

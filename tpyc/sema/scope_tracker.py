@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, Iterator
 
 from ..typesys import TpyType, OwnType
-from ..parse import TpyCoerce, TpyName, TpyFieldAccess, TpySubscript, TpyExpr
+from ..parse import TpyCoerce, TpyName, TpyFieldAccess, TpySubscript, TpyExpr, TpyStmt, TpyFunction
 from ..namespace import Namespace
 from .diagnostics import Scope
 
@@ -73,7 +73,7 @@ class ScopeTracker:
             self.ctx.func.current_ns = old_ns
 
     @contextmanager
-    def nested_def_scope(self, func_node: object) -> Iterator[Scope]:
+    def nested_def_scope(self, func_node: TpyFunction) -> Iterator[Scope]:
         """Create an isolated scope for a nested function definition.
 
         Saves and restores all per-function state so the nested def analysis
@@ -149,7 +149,7 @@ class ScopeTracker:
         return source_depth > target_depth
 
     def check_escape(self, target_name: str, source_expr: TpyExpr,
-                     node: object) -> None:
+                     node: TpyExpr | TpyStmt | None) -> None:
         """Check if source may outlive target's storage.
 
         Hoisting is only safe when the source variable owns its storage

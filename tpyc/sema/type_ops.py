@@ -317,6 +317,9 @@ class TypeOperations:
         Returns:
             The type with all TypeParamRef instances replaced by their concrete types.
         """
+        # PERF TODO: candidate for memoization by (typ, frozen(subst)) if profile
+        # shows this is hot. Frozen dataclass types are hashable. Needs profiling
+        # data post-mypyc before acting; not a top hotspot in current profiles.
         if isinstance(typ, TypeParamRef):
             if typ.name in subst:
                 replacement = subst[typ.name]

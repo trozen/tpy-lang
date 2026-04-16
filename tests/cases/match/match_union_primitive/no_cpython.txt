@@ -1,0 +1,1 @@
+isinstance(5, Int32) is False in CPython; recursive type alias Tree = Int32 | list[Tree]

@@ -34,15 +34,10 @@ if TYPE_CHECKING:
 class MatchGenerator:
     """Generates C++ code from TurboPython match/case statements."""
 
-    def __init__(self, ctx: CodeGenContext, types: TypeResolver):
+    def __init__(self, ctx: CodeGenContext, types: TypeResolver,
+                 expressions: ExpressionGenerator, stmts: StatementGenerator):
         self.ctx = ctx
         self.types = types
-        # Set via set_dependencies()
-        self.expressions: ExpressionGenerator | None = None
-        self.stmts: StatementGenerator | None = None
-
-    def set_dependencies(self, expressions: ExpressionGenerator, stmts: StatementGenerator):
-        """Set expression and statement generators (to break circular dependency)."""
         self.expressions = expressions
         self.stmts = stmts
 

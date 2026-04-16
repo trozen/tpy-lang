@@ -2752,6 +2752,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Generic functions returning `T | U` where `T == U` at instantiation produce a sema error (duplicate variant members)
   - `isinstance(x, T)` narrowing in if/elif/else branches: narrows union variable to member type
   - `assert isinstance(x, T)` narrowing: `std::get<T>` extraction persists for the rest of the scope
+  - Early-return narrowing for recursive unions: `if isinstance(t, T): return ...` with no else block extracts the remaining member at the outer scope, so code after the guard uses the narrowed type
   - Compound conditions: `isinstance(x, T) and x.field > 0` narrows `x` on the RHS of `and`
   - `isinstance(x, T) or x.other_field > 0` narrows `x` to remaining members on `or` RHS
   - Negative (else-branch) narrowing: remaining union members after isinstance check
@@ -2935,7 +2936,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: `del obj[key]` -- element deletion via `__delitem__` dunder (dict, list, user types)
 - **Working**: `del x` -- variable unbinding. Use after del is a compile-time error. Re-assignment after del is supported. Works on locals, parameters, globals, nonlocals, loop variables, generators, and module-level variables. Early destruction (move-sink) is only emitted when the variable is the sole owner of its value; aliases, alias sources, parameters, and globals just unbind the name without destroying. Limitation: pointer-locals that were initially aliases (e.g. `a = b; a = new_value; del a`) skip early destruction conservatively, even after reassignment to an owned value.
 - **Working**: `match`/`case` -- structural pattern matching
-  - **Union subjects**: class patterns (`case Circle():`, `case Circle(radius=r):`), subject narrowing, `switch (s.index())` codegen with `std::get<N>`
+  - **Union subjects**: class patterns (`case Circle():`, `case Circle(radius=r):`), primitive type patterns (`case Int32():`, `case str():`), container type patterns (`case list():`), parameterized record patterns (`case Box():`), subject narrowing, `switch (s.index())` codegen with `std::get<N>`
   - **Enum subjects**: value patterns (`case Color.Red:`), `switch` codegen
   - **Literal subjects** (`Literal["r", "w"]`, `Literal[1, 2, 3]`): match on `Literal`-typed parameters with exhaustiveness warnings for missing values, subject narrowing in each arm (e.g. `case "r" | "w":` narrows to `Literal["r", "w"]`), enabling overload dispatch from match bodies. Codegen routes to str switch/if-elif or int/bool switch based on base type.
   - **Primitive subjects** (`int`, `bool`): literal patterns, `switch` codegen; (`str`): switch-based dispatch for 5+ unguarded literal cases (best length/char discriminator), if/elif fallback below threshold; (`float`): if/elif fallback

@@ -444,16 +444,11 @@ class CallAnalyzer:
         self.protocols = protocols
         self.compat = compat
         self.deduction = deduction
-        # Set via set_cross_deps() to break circular dependency
-        self.expr: ExpressionAnalyzer | None = None
-        self.methods: MethodAnalyzer | None = None
+        # Set after construction to break circular deps (expr <-> calls <-> methods)
+        self.expr: ExpressionAnalyzer
+        self.methods: MethodAnalyzer
         # Pending borrow checks deferred until Phase 2 resolves mutated_params
         self.pending_borrow_checks: list[tuple[FunctionInfo, int, str, SourceLocation | None]] = []
-
-    def set_cross_deps(self, expr: ExpressionAnalyzer, methods: MethodAnalyzer | None = None) -> None:
-        """Wire circular dependencies (must be called before analyze_call)."""
-        self.expr = expr
-        self.methods = methods
 
     def _restore_readonly_arg(self, arg: TpyExpr, arg_type: TpyType,
                               target_is_readonly: bool = False) -> TpyType:
@@ -1265,9 +1260,6 @@ class CallAnalyzer:
         resolved = _resolve_concrete_type_name(name)
         if resolved is not None:
             return resolved
-        # bool is not in _resolve_concrete_type_name -- check directly
-        if name == "bool":
-            return BOOL
         raise self.ctx.error(f"isinstance() second argument must be a type, got '{name}'", expr)
 
     def _analyze_isinstance(self, expr: TpyCall) -> TpyType:

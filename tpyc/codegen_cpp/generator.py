@@ -81,20 +81,14 @@ class CodeGenerator:
             options=self.options,
         )
 
-        # Create component generators
-        self.types = TypeResolver(self.ctx)
+        # Create component generators (ordered by dependencies)
         self.protocols = ProtocolGenerator(self.ctx)
+        self.types = TypeResolver(self.ctx, self.protocols)
         self.builtins = BuiltinGenerator(self.ctx, self.types)
         self.expressions = ExpressionGenerator(self.ctx, self.types, self.builtins, self.protocols)
-        self.statements = StatementGenerator(self.ctx, self.types, self.builtins, self.protocols)
-        self.records = RecordGenerator(self.ctx, self.types, self.protocols)
-        self.functions = FunctionGenerator(self.ctx, self.types, self.protocols)
-
-        # Wire up circular dependencies
-        self.types.set_protocols(self.protocols)
-        self.statements.set_expressions(self.expressions)
-        self.records.set_dependencies(self.expressions, self.functions)
-        self.functions.set_statements(self.statements)
+        self.statements = StatementGenerator(self.ctx, self.types, self.builtins, self.protocols, self.expressions)
+        self.functions = FunctionGenerator(self.ctx, self.types, self.protocols, self.statements)
+        self.records = RecordGenerator(self.ctx, self.types, self.protocols, self.expressions, self.functions)
 
         # Generator codegen (must be created after wiring since it uses statements/functions)
         from .gen_generators import GeneratorCodegen

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from ..typesys import PendingViewType, TpyType
 from ..sema.context import PENDING_CONTAINER_TYPES
+from ..sema import SemanticAnalyzer
 from ..parse import TpyVarDecl
+from .types import TypeResolver
 
 # Types that indicate an unresolved intermediate sema state.
 _PENDING_TYPES = (*PENDING_CONTAINER_TYPES, PendingViewType)
@@ -12,7 +14,7 @@ _PENDING_TYPES = (*PENDING_CONTAINER_TYPES, PendingViewType)
 
 def resolve_stmt_binding_type(
     stmt: TpyVarDecl,
-    analyzer: object,
+    analyzer: SemanticAnalyzer,
     include_global_binding: bool = True,
 ) -> TpyType | None:
     """Resolve variable type via var_types -> global binding.
@@ -35,8 +37,8 @@ def resolve_stmt_binding_type(
 
 def resolve_stmt_type_cascade(
     stmt: TpyVarDecl,
-    analyzer: object,
-    types: object,
+    analyzer: SemanticAnalyzer,
+    types: TypeResolver,
     include_global_binding: bool = True,
 ) -> TpyType | None:
     """Resolve variable type via var_types -> global binding -> expr type."""
@@ -46,5 +48,6 @@ def resolve_stmt_type_cascade(
         include_global_binding=include_global_binding,
     )
     if var_type is None or isinstance(var_type, _PENDING_TYPES):
+        assert stmt.init is not None
         var_type = types.get_resolved_type(stmt.init)
     return var_type

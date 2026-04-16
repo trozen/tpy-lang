@@ -82,15 +82,11 @@ class FunctionGenerator:
         ctx: CodeGenContext,
         types: TypeResolver,
         protocols: ProtocolGenerator,
+        statements: StatementGenerator,
     ):
         self.ctx = ctx
         self.types = types
         self.protocols = protocols
-        # Will be set after statements is created
-        self.statements: StatementGenerator | None = None
-
-    def set_statements(self, statements: StatementGenerator):
-        """Set statements generator (to break circular dependency)."""
         self.statements = statements
 
     def _collect_fn_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[int, str, FnType]]:

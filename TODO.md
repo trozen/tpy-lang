@@ -27,9 +27,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 
 ## Bugs
-- OwnType leaks into list literal element types: `_apply_own_wrapper` wraps non-last-use variable references in `OwnType`, but `_analyze_array_literal` doesn't unwrap it before checking element type compatibility. Causes spurious "incompatible element type" errors when a union-typed variable is used in a list literal and also used later. Repro: `a: Cat | Dog = Cat("x"); items = [a, b]; show(a)` -- `a` gets `Own[Cat | Dog]` in the list because it's not last-use. Fix: unwrap `OwnType` from element types in `_analyze_array_literal`.
-- Recursive union codegen gaps after isinstance narrowing: sema correctly narrows (e.g. `Tree` -> `list[Tree]` in false branch), but codegen doesn't access the variant member through the wrapper struct. `for child in t` emits `t.begin()` instead of `std::get<std::vector<Tree>>(t.value).begin()`. Also, `match`/`case` with primitive patterns (`case int():`) doesn't work on recursive unions (pre-existing).
-- Union codegen misses `std::get` emission for implicit-else narrowing (early return). `if isinstance(t, A): return ...; use(t)` -- sema narrows `t` to the other variant after the if, but codegen skips the `std::get<OtherVariant>(t)` binding. Generated C++ then uses the raw variant and fails to compile (e.g. `t.begin()` on a `std::variant`). Explicit `else:` works. Reproducer: `/tmp/agents/check_narrowing.py`. Pre-existing (present on Phase 1, tested on commit 335cc808f), surfaces whenever iteration or member access follows early-return narrowing on a non-recursive union.
 - Synthesized begin/end on user NativeIterable records calls begin() on a temporary iterator. `codegen_cpp/records.py:349-360` emits `auto begin() { return this->__iter__().begin(); }` for user records with `__iter__(self) -> SpanIter[T]` and no explicit begin/end. Currently safe for SpanIter (its begin() returns a raw span iterator pointing into the container, no self-pointer), but fragile: if `__iter__()` ever returns a `next_iter_mixin`-derived type whose begin() stores a parent back-pointer, the pointer would dangle. Phase 2 contained this as a forward-safety measure at for-loop peephole, comprehensions, and `in` operator callsites by capturing `__iter__()` first. Remaining uncontained callsites: generator expressions (`codegen_cpp/expressions.py::_gen_generator_expression`) and generator-body begin/end loop (`codegen_cpp/gen_generators.py:379,389`). Phase 3 option B fixes the root cause by either removing the synthesis or making `NextIterator` own the Parent by value. See `docs/ITERATOR_OVERHAUL.md` Phase 3.
 - Const inference gap for self passed through unknown callees: when a method passes `self` to a generic function whose FI is ephemeral (substituted copy, not tracked by Phase 2), mutation propagation skips the -1 sentinel in the unknown-callee conservative path (`caller_idx >= 0` guard in `mutation_propagation.py`). This means the method could be incorrectly inferred as const. Fixing this requires resolving ephemeral FIs back to their canonical registry entries, but FI object identity is not preserved across the registration/normalization/analysis lifecycle (multiple call paths create ephemeral FIs, and the canonical FI may not exist yet at recording time). See `_resolve_single` in `mutation_propagation.py`.
 - `__str__` vs `__repr__` separation: C++ `operator<<` serves as both, but Python distinguishes them. `print(x)` should use `__str__` (no quotes on strings), while container printing (`print([x])`) should use `__repr__` (quotes). Currently `operator<<` can't distinguish the two contexts. For recursive unions, `print(json_val)` where json_val holds a dict with string values prints `{'a': hello}` instead of `{'a': 'hello'}`. Affects all types, not just recursive unions -- the compiler handles this ad-hoc via `gen_print` (top-level) vs `detail::print_element` (containers). Fix: implement proper `__str__`/`__repr__` methods and have `print()` call `__str__`, containers call `__repr__`.
@@ -83,19 +80,23 @@ Goal: speed up test runs (currently ~3 min parallel, ~6 min single-threaded for 
 
 3. ~~**Remove `SemanticContext` forwarding shortcut**~~ **DONE** -- `FunctionTrackingState` was extracted to keep `SemanticContext` from growing unbounded, and `__getattr__`/`__setattr__` were added as a refactoring shortcut to avoid touching callsites. Fix: made callsites explicit via `ctx.func.<field>` (740+ substitutions across 13 sema files + `macro_api.py`), renamed `_func` to `func`, deleted `__getattr__`/`__setattr__` and `_FUNC_STATE_FIELDS`. Unblocks mypyc and makes the module-wide vs per-function state boundary visible at every use site. ~6-8% compile-time improvement on `json_model_inherit`.
 
-4. **Merge sequential `map_inner_types` passes** (redundant tree walks):
-   `statements.py` does alias resolution, enum resolution, and type resolution as 3 separate recursive tree walks over the same type. Each pass calls `map_inner_types` independently. Fix: merge into a single combined pass that handles all three in one walk.
+4. ~~**Merge sequential `map_inner_types` passes**~~ **DONE** -- `_analyze_var_decl` alias+enum resolution merged into one tree walk; `resolve_type` (protocol flags, TypeParamRef, compile-time-only aliases) still runs as a second pass since it has distinct logic. 3 walks -> 2 walks.
 
-5. **Memoize type transformations in `map_inner_types`** (no caching):
-   The same types get re-transformed repeatedly across different call sites with the same transformation function (e.g. `substitute_type_params` with identical bindings). Frozen dataclasses are hashable, so results can be cached per (type, transformation) pair. Especially valuable in `_resolve_builtin_self_refs` where the same builtin method signatures are walked repeatedly.
+5. ~~**Memoize type transformations**~~ parked -- motivating case (`_resolve_builtin_self_refs`) already cached in item #1. PERF TODO note left at `substitute_type_params` in `sema/type_ops.py` for the next candidate; needs profiling data post-mypyc before acting.
 
 6. ~~**Type kind tags to reduce `isinstance` overhead**~~ **DONE** -- `TypeKind` enum on `TpyType.tag` (ClassVar); predicates use frozenset tag lookup: `is_integer_type`, `is_any_int_type`, `is_float_type`, `is_any_float_type`, `is_numeric_type`, `is_primitive_type`, `is_void_like_type`, `is_callable_type`, `is_union_or_optional_type`, `is_any_str_type`. Multi-type isinstance tuples migrated. Real win lands under mypyc.
 
-### mypyc integration (after hotspot fixes)
+### mypy compliance (~1086 errors remaining)
 
-- **Build system**: switch from hatchling to setuptools with mypyc build step (or mypycify)
-- **Macro loader**: keep as pure Python, exclude from mypyc compilation. mypyc supports mixed compiled/interpreted packages
-- **Frozen dataclass `object.__setattr__`**: 2 spots in typesys.py, refactor to avoid
+- `TypeGuard` on predicate helpers (`is_protocol_type` -> `TypeGuard[NamedType]`, etc.) -- ~86 `attr-defined` errors
+- `Scope | None` union-attr errors (67) -- genuinely optional, needs per-site narrowing
+- `arg-type` (448), `assignment` (175) -- scattered, per-file mechanical work
+- `object.__setattr__` in `EnumType.__post_init__`, `PtrType.__post_init__` -- refactor to avoid
+
+### mypyc integration (after mypy compliance)
+
+- switch from hatchling to setuptools with mypyc build step (or mypycify)
+- keep macro loader as pure Python, exclude from mypyc compilation
 
 ### Profiling data (json_model_inherit, 33 modules, single compilation)
 
@@ -149,6 +150,7 @@ map_inner_types             eliminated from top 30
 - Closures: method references (`obj.method` as a value) -- needs partial application binding `self`. Currently gives "has no field" error.
 - Protocol isinstance in ternary expressions: `x = a.foo() if isinstance(a, P1) else a.bar()` generates a runtime `?:` but both branches must be valid C++ at template instantiation time. Fix: generate an IIFE with `if constexpr` inside, e.g. `[&]() -> T { if constexpr (P1<T_a>) { return a.foo(); } else { return a.bar(); } }()`. This also enables single-line field init in `__init__` (goes into the C++ member initializer list instead of requiring unconditional pre-assignment + reassignment in branches).
 - Allow `@runtime_checkable` decorator on protocols (no-op in tpyc, enables CPython compatibility for isinstance checks on user-defined protocols)
+- Nested patterns in match/case: `case Box(value=str() as v)` for disambiguating parameterized union members like `Box[str] | Box[int]`. Uses field guards with type sub-patterns -- standard Python match syntax, CPython-compatible.
 - allow type annotation to use "" (forward decl)
 - C-style for loop: reassigning loop variable affects iteration (differs from Python)
 

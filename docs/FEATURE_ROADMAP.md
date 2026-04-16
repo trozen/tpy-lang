@@ -707,8 +707,6 @@ mixed unions (primitives + records), return values, local variables, fields
 
 **Not yet supported**:
 - Cross-module mutual recursion (alias and member classes in different modules)
-- `Expr | None` (`Optional` of recursive union -- parser expands alias before Optional simplification)
-- `list[Expr]` brace-init-list when `Expr` contains move-only members (C++ initializer_list requires copy)
 
 **Dependencies**: Recursive type aliases (D19, done). `Box[T]` (done). Union types (done).
 

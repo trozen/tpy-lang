@@ -13,7 +13,10 @@ Defines the core types available in TurboPython:
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Callable, ClassVar, Optional
+from typing import Any, Callable, ClassVar, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .parse.nodes import TpyArrayLiteral, TpyListRepeat, TpyListComprehension, TpyCall, TpyDictLiteral
 
 
 class TypeParamKind(Enum):
@@ -2505,8 +2508,11 @@ def union_none_narrow(union: UnionType) -> tuple[TpyType, TpyType]:
     return make_union(*non_none), NoneType()
 
 
+@dataclass(frozen=True, eq=False)
 class ArrayType(NamedType):
     """Fixed-size array: Array[T, N] -> std::array<T, N>"""
+    name: str = field(default='Array', init=False)
+    type_args: tuple[TpyType, int | TypeParamRef] = field(default=None, init=False)  # type: ignore[assignment]  # set by __init__
 
     def __init__(self, element_type: TpyType, size: "int | TypeParamRef"):
         NamedType.__init__(self, name="Array", type_args=(element_type, size),
@@ -2553,12 +2559,15 @@ class ArrayType(NamedType):
         return ArrayType(types[0], self.size)
 
 
+@dataclass(frozen=True, eq=False)
 class SpanType(NamedType):
     """Non-owning view: Span[T] -> std::span<T>, Span[readonly[T]] -> std::span<const T>
 
     Const-ness is encoded in the element type: Span[readonly[T]] stores
     ReadonlyType(T) as the element, giving std::span<const T> in C++.
     """
+    name: str = field(default='Span', init=False)
+    type_args: tuple[TpyType, ...] = field(default=(), init=False)
 
     def __init__(self, element_type: TpyType, is_readonly: bool = False):
         # Normalize: is_readonly=True wraps element in ReadonlyType.
@@ -2634,6 +2643,7 @@ class SpanType(NamedType):
         return SpanType(self.inner_element_type)
 
 
+@dataclass(frozen=True, eq=False)
 class SpanIterType(NamedType):
     """Iterator over a contiguous span.
 
@@ -2643,6 +2653,8 @@ class SpanIterType(NamedType):
     Const-ness follows the same pattern as SpanType: ReadonlyType in the
     element encodes the const variant. SpanIter<T> holds span<T> internally.
     """
+    name: str = field(default='SpanIter', init=False)
+    type_args: tuple[TpyType, ...] = field(default=(), init=False)
 
     def __init__(self, element_type: TpyType):
         NamedType.__init__(self, name="SpanIter", type_args=(element_type,),
@@ -2691,12 +2703,15 @@ class SpanIterType(NamedType):
         return SpanIterType(types[0])
 
 
+@dataclass(frozen=True, eq=False)
 class CopyIterType(NamedType):
     """Iterator adapter that copies each element from a borrowing iterator.
 
     CopyIter[T] -> tpy::CopyIter<T, Inner> at C++ level.
     The Inner type is deduced by the C++ compiler; sema only tracks T.
     """
+    name: str = field(default='CopyIter', init=False)
+    type_args: tuple[TpyType, ...] = field(default=(), init=False)
 
     def __init__(self, element_type: TpyType):
         NamedType.__init__(self, name="CopyIter", type_args=(element_type,),
@@ -2733,12 +2748,15 @@ class CopyIterType(NamedType):
         return CopyIterType(types[0])
 
 
+@dataclass(frozen=True, eq=False)
 class OwnIterType(NamedType):
     """Consuming iterator that owns a moved container and iterates with moves.
 
     OwnIter[T] -> tpy::OwnIter<T> at C++ level.
     Created by own_iter(container) which moves the container into the iterator.
     """
+    name: str = field(default='OwnIter', init=False)
+    type_args: tuple[TpyType, ...] = field(default=(), init=False)
 
     def __init__(self, element_type: TpyType):
         NamedType.__init__(self, name="OwnIter", type_args=(element_type,),
@@ -2778,8 +2796,11 @@ def is_readonly_span(typ: 'TpyType') -> bool:
     return isinstance(typ, SpanType) and typ.is_readonly
 
 
+@dataclass(frozen=True, eq=False)
 class ListType(NamedType):
     """Dynamic list: list[T] -> std::vector<T>"""
+    name: str = field(default='list', init=False)
+    type_args: tuple[TpyType, ...] = field(default=(), init=False)
 
     def __init__(self, element_type: TpyType):
         NamedType.__init__(self, name="list", type_args=(element_type,),
@@ -2818,8 +2839,11 @@ class ListType(NamedType):
         return ListType(types[0])
 
 
+@dataclass(frozen=True, eq=False)
 class DictType(NamedType):
     """Dict type: dict[K, V] -> ::tpy::ordered_map<K, V>"""
+    name: str = field(default='dict', init=False)
+    type_args: tuple[TpyType, ...] = field(default=(), init=False)
 
     def __init__(self, key_type: TpyType, value_type: TpyType):
         NamedType.__init__(self, name="dict", type_args=(key_type, value_type),
@@ -2867,8 +2891,11 @@ class DictType(NamedType):
         return DictType(types[0], types[1])
 
 
+@dataclass(frozen=True, eq=False)
 class SetType(NamedType):
     """Set type: set[T] -> ::tpy::ordered_set<T>"""
+    name: str = field(default='set', init=False)
+    type_args: tuple[TpyType, ...] = field(default=(), init=False)
 
     def __init__(self, element_type: TpyType):
         NamedType.__init__(self, name="set", type_args=(element_type,),
@@ -2906,8 +2933,11 @@ class SetType(NamedType):
         return SetType(types[0])
 
 
+@dataclass(frozen=True, eq=False)
 class DictKeysViewType(NamedType):
     """Dict keys view: d.keys() -> ::tpy::dict_keys_view<K, V>"""
+    name: str = field(default='dict_keys', init=False)
+    type_args: tuple[TpyType, ...] = field(default=(), init=False)
 
     def __init__(self, key_type: TpyType, value_type: TpyType):
         NamedType.__init__(self, name="dict_keys", type_args=(key_type, value_type),
@@ -2946,8 +2976,11 @@ class DictKeysViewType(NamedType):
         return DictKeysViewType(types[0], types[1])
 
 
+@dataclass(frozen=True, eq=False)
 class DictValuesViewType(NamedType):
     """Dict values view: d.values() -> ::tpy::dict_values_view<K, V>"""
+    name: str = field(default='dict_values', init=False)
+    type_args: tuple[TpyType, ...] = field(default=(), init=False)
 
     def __init__(self, key_type: TpyType, value_type: TpyType):
         NamedType.__init__(self, name="dict_values", type_args=(key_type, value_type),
@@ -2986,8 +3019,11 @@ class DictValuesViewType(NamedType):
         return DictValuesViewType(types[0], types[1])
 
 
+@dataclass(frozen=True, eq=False)
 class DictItemsViewType(NamedType):
     """Dict items view: d.items() -> ::tpy::dict_items_view<K, V>"""
+    name: str = field(default='dict_items', init=False)
+    type_args: tuple[TpyType, ...] = field(default=(), init=False)
 
     def __init__(self, key_type: TpyType, value_type: TpyType):
         NamedType.__init__(self, name="dict_items", type_args=(key_type, value_type),
@@ -4093,7 +4129,7 @@ class TypeRegistry:
 
     def is_subclass_of_record(self, child: RecordInfo, parent: RecordInfo) -> bool:
         """Check if child record inherits from parent (by record identity)."""
-        current = child
+        current: RecordInfo | None = child
         visited: set[str] = set()
         while current and current.parent and isinstance(current.parent, NamedType):
             pname = current.parent.name

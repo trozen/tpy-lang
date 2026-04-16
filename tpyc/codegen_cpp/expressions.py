@@ -2794,7 +2794,11 @@ class ExpressionGenerator:
                 # reach nested str slots).
                 code = self.gen_expr_deref(e, elem_target)
                 resolved = self.types.get_resolved_type(e, elem_target)
-                elements.append(self._wrap_for_owned_slot(code, resolved, elem_target))
+                code = self._wrap_for_owned_slot(code, resolved, elem_target)
+                # Pointer-variant locals/calls must be converted to value
+                # variants for container storage.
+                code = self._to_value_variant_if_needed(e, code, elem_target)
+                elements.append(code)
         # Non-copyable element types in list (not Array) targets: use
         # make_vector instead of brace-init (std::initializer_list copies).
         # std::array uses aggregate init which handles move-only types fine.
@@ -2884,6 +2888,32 @@ class ExpressionGenerator:
                 return True
         return False
 
+    def _to_value_variant_if_needed(self, expr: TpyExpr, code: str, elem_target: TpyType | None) -> str:
+        """Wrap ptr-variant expression with to_value_variant for container storage.
+
+        Locals and params of non-value union type use pointer-variant repr
+        (variant<T*,...>), but containers store value variants (variant<T,...>).
+        """
+        if elem_target is None or not isinstance(elem_target, UnionType):
+            return code
+        # Check if this expression produces a pointer variant
+        e = expr
+        while isinstance(e, TpyCoerce):
+            e = e.expr
+        is_ptr_src = False
+        if isinstance(e, TpyName) and e.name in self.ctx.ptr_variant_locals:
+            # Narrowed variables are already concrete (Cat&), not ptr-variants
+            if e.name not in self.ctx.narrowed_vars:
+                is_ptr_src = True
+        elif isinstance(e, (TpyCall, TpyMethodCall)):
+            fi = e.resolved_function_info
+            if fi is not None and self.ctx.is_ptr_variant_union(fi.return_type):
+                is_ptr_src = True
+        if not is_ptr_src:
+            return code
+        val_cpp = self.types.type_to_cpp(elem_target)
+        return f"::tpy::to_value_variant<{val_cpp}>({code})"
+
     def _gen_nocopy_vector(self, elements: list[str], cpp_elem_type: str) -> str:
         """Emit a vector construction call for nocopy element types.
 
@@ -2917,8 +2947,10 @@ class ExpressionGenerator:
             for k, v in zip(expr.keys, expr.values):
                 k_resolved = self.types.get_resolved_type(k, dict_type.key_type)
                 k_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(k, dict_type.key_type), k_resolved, dict_type.key_type)
+                k_cpp = self._to_value_variant_if_needed(k, k_cpp, dict_type.key_type)
                 v_resolved = self.types.get_resolved_type(v, dict_type.value_type)
                 v_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(v, dict_type.value_type), v_resolved, dict_type.value_type)
+                v_cpp = self._to_value_variant_if_needed(v, v_cpp, dict_type.value_type)
                 pairs.append(f"{{{k_cpp}, {v_cpp}}}")
         return f"::tpy::ordered_map<{cpp_key}, {cpp_val}>({{{', '.join(pairs)}}})"
 
@@ -2935,7 +2967,9 @@ class ExpressionGenerator:
         with self._container_element_context():
             for e in expr.elements:
                 e_resolved = self.types.get_resolved_type(e, set_type.element_type)
-                elems.append(self._wrap_for_owned_slot(self.gen_expr_deref(e, set_type.element_type), e_resolved, set_type.element_type))
+                e_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(e, set_type.element_type), e_resolved, set_type.element_type)
+                e_cpp = self._to_value_variant_if_needed(e, e_cpp, set_type.element_type)
+                elems.append(e_cpp)
         return f"::tpy::ordered_set<{cpp_elem}>({{{', '.join(elems)}}})"
 
     def _gen_list_repeat(self, expr: TpyListRepeat, target_type: TpyType | None) -> str:

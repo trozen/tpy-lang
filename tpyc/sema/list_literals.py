@@ -75,7 +75,8 @@ class IterableHelper:
         # Protocol-typed iterables (parameter types): single type_arg is T.
         if is_protocol_type(iterable_type) and iterable_type.qualified_name() in self._ITERABLE_PROTOCOLS:
             if iterable_type.type_args:
-                return iterable_type.type_args[0]
+                first = iterable_type.type_args[0]
+                return first if isinstance(first, TpyType) else None
             return None
 
         # Handle str/String/StrView -> Char

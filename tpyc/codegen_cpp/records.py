@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from .types import TypeResolver
     from .expressions import ExpressionGenerator
     from .functions import FunctionGenerator
+    from .gen_generators import GeneratorCodegen
     from .protocols import ProtocolGenerator
 
 
@@ -41,19 +42,15 @@ class RecordGenerator:
         ctx: CodeGenContext,
         types: TypeResolver,
         protocols: ProtocolGenerator,
+        expressions: ExpressionGenerator,
+        functions: FunctionGenerator,
     ):
         self.ctx = ctx
         self.types = types
         self.protocols = protocols
-        # Will be set after dependencies are created
-        self.expressions: ExpressionGenerator | None = None
-        self.functions: FunctionGenerator | None = None
-        self.gen_generators = None  # Set by CodeGenerator after init
-
-    def set_dependencies(self, expressions: ExpressionGenerator, functions: FunctionGenerator):
-        """Set expression and function generators (to break circular dependency)."""
         self.expressions = expressions
         self.functions = functions
+        self.gen_generators: GeneratorCodegen  # Set by CodeGenerator after init
 
     def sort_records_by_inheritance(self, records: list[TpyRecord]) -> list[TpyRecord]:
         """Sort records so parent classes come before children.
@@ -384,7 +381,7 @@ class RecordGenerator:
                     # Declaration only -- body defined after generator struct
                     struct_name = GeneratorCodegen.gen_struct_name(method, record.name)
                     params = self.functions.gen_params(
-                        method.params, method, emit_defaults=True)
+                        method.params, method.type_params, emit_defaults=True)
                     const_suffix = " const" if method.is_readonly else ""
                     out.write(f"\n{INDENT}{struct_name} {method.name}({params}){const_suffix};\n")
                 continue
@@ -651,6 +648,8 @@ class RecordGenerator:
                 if not isinstance(expr, TpyMethodCall):
                     raise CodeGenError("Expected method call for super().__init__()", stmt.loc)
                 parent_type = expr.super_parent_type
+                if parent_type is None:
+                    raise CodeGenError("super().__init__() call without resolved parent type", stmt.loc)
                 args = ", ".join(self.expressions.gen_expr(a) for a in expr.args)
                 return f"{parent_type.to_cpp()}({args})"
         return None
