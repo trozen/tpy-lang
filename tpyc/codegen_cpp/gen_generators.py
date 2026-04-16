@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from io import StringIO
-from typing import TYPE_CHECKING
+from typing import Callable, TYPE_CHECKING
 
 from ..parse.nodes import (
     TpyFunction, TpyYield, TpyStmt, TpyWhile, TpyForEach, TpyReturn, TpyVarDecl,
@@ -18,7 +18,7 @@ from .context import INDENT, escape_cpp_name
 class GeneratorForInfo:
     """Pre-scanned info about a for-loop containing yields in a state machine generator."""
     uid: int
-    strategy: str  # "range" | "begin_end" | "next"
+    strategy: str  # "range" | "begin_end" | "next" | "iter_next"
     fields: list[tuple[str, str]]  # (field_name, cpp_type_string) for struct fields
 
 
@@ -319,61 +319,24 @@ class GeneratorCodegen:
             out.write(f"{I(2)}}}\n")
             out.write(f"{I(1)});\n")
             out.write(f"{I(0)}}}\n")
-        elif self._is_protocol_iterable(for_stmt):
-            # Protocol-typed iterable (Iterator[T] or Iterable[T]):
-            # use __iter__()/__next__() instead of begin()/end().
+        elif self._is_direct_iterator(for_stmt):
+            # Iterator[T] protocol: the param IS the iterator, call __next__() directly.
+            # No __iter__() call needed -- avoids copying move-only iterators.
             iterable_code = self.expressions.gen_expr(for_stmt.iterable)
-            proto_qname = self._get_protocol_iterable_qname(for_stmt)
-
             base_captures = self._build_capture_list(func.params, init_stmts)
+            all_captures = _add_self_capture(base_captures)
 
-            if proto_qname == "typing.Iterator":
-                # Iterator[T]: the param IS the iterator, call __next__() directly
-                all_captures = _add_self_capture(base_captures)
+            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_elem}>(\n")
+            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
+            out.write(f"{I(3)}auto __r = ({iterable_code}).__next__();\n")
+            out.write(f"{I(3)}if (!__r.has_value()) return std::nullopt;\n")
 
-                out.write(f"{I(1)}return ::tpy::make_generator<{cpp_elem}>(\n")
-                out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
-                out.write(f"{I(3)}auto __r = ({iterable_code}).__next__();\n")
-                out.write(f"{I(3)}if (!__r.has_value()) return std::nullopt;\n")
-            else:
-                # Iterable[T]: call __iter__() first, then __next__()
-                iter_type = f"std::decay_t<decltype(::tpy::__iter__({iterable_code}))>"
-                iter_capture = f"__iter = std::optional<{iter_type}>()"
-                parts = [p for p in [base_captures, iter_capture] if p]
-                all_captures = ", ".join(parts)
-                all_captures = _add_self_capture(all_captures)
-
-                out.write(f"{I(1)}return ::tpy::make_generator<{cpp_elem}>(\n")
-                out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
-                out.write(f"{I(3)}if (!__iter) {{ __iter.emplace(::tpy::__iter__({iterable_code})); }}\n")
-                out.write(f"{I(3)}auto __r = (*__iter).__next__();\n")
-                out.write(f"{I(3)}if (!__r.has_value()) return std::nullopt;\n")
-
-            self.ctx.indent_level = 3 + extra
-            out.write(f"{I(3)}{{\n")
-            self.ctx.indent_level = 4 + extra
-            # native_iterator returns val_or_ref -- unwrap with unwrap
-            if iter_elem and iter_elem.is_value_type():
-                out.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = ::tpy::unwrap_ref(*__r);\n")
-            else:
-                out.write(f"{I(4)}auto&& {cpp_var} = ::tpy::unwrap_ref(*__r);\n")
-
-            for stmt in pre_yield:
-                self.statements.gen_stmt(out, stmt)
-            yield_expr = self.expressions.gen_expr(yield_stmt.value)
-            out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
-            for stmt in post_yield:
-                self.statements.gen_stmt(out, stmt)
-            out.write(f"{I(4)}return std::optional<{cpp_elem}>(__val);\n")
-            out.write(f"{I(3)}}}\n")
-            out.write(f"{I(2)}}}\n")
-            out.write(f"{I(1)});\n")
-            out.write(f"{I(0)}}}\n")
-        else:
-            # Container iterable: capture by reference, begin/end iteration.
-            # Matches CPython semantics (mutations visible during iteration)
-            # and complex generator path (T& struct fields). Borrow analysis
-            # protects against dangling references.
+            self._gen_simple_for_yield_body(
+                out, for_stmt, pre_yield, post_yield, yield_stmt,
+                iter_elem, cpp_iter_elem, cpp_var, cpp_elem, val_binding, I, extra)
+        elif self._is_builtin_native_iterable(for_stmt):
+            # Built-in NativeIterable (list, dict, set, Span, etc.):
+            # begin/end peephole for efficiency.
             iterable_code = self.expressions.gen_expr(for_stmt.iterable)
 
             base_captures = self._build_capture_list(func.params, init_stmts)
@@ -408,6 +371,28 @@ class GeneratorCodegen:
             out.write(f"{I(2)}}}\n")
             out.write(f"{I(1)});\n")
             out.write(f"{I(0)}}}\n")
+        else:
+            # Universal default: ::tpy::__iter__() + __next__() loop.
+            # Handles Iterable[T] protocol, NativeIterable[T] protocol,
+            # user types with __iter__(), error_return __next__ iterators.
+            iterable_code = self.expressions.gen_expr(for_stmt.iterable)
+            base_captures = self._build_capture_list(func.params, init_stmts)
+
+            iter_type = f"std::decay_t<decltype(::tpy::__iter__({iterable_code}))>"
+            iter_capture = f"__iter = std::optional<{iter_type}>()"
+            parts = [p for p in [base_captures, iter_capture] if p]
+            all_captures = ", ".join(parts)
+            all_captures = _add_self_capture(all_captures)
+
+            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_elem}>(\n")
+            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
+            out.write(f"{I(3)}if (!__iter) {{ __iter.emplace(::tpy::__iter__({iterable_code})); }}\n")
+            out.write(f"{I(3)}auto __r = (*__iter).__next__();\n")
+            out.write(f"{I(3)}if (!__r.has_value()) return std::nullopt;\n")
+
+            self._gen_simple_for_yield_body(
+                out, for_stmt, pre_yield, post_yield, yield_stmt,
+                iter_elem, cpp_iter_elem, cpp_var, cpp_elem, val_binding, I, extra)
 
         self.ctx.indent_level = old_indent
         self.ctx.generator_self_ref = old_self_ref
@@ -421,15 +406,49 @@ class GeneratorCodegen:
                 return bound
         return resolved
 
-    def _is_protocol_iterable(self, for_stmt: TpyForEach) -> bool:
-        """Check if the for-loop iterates over a protocol-typed Iterator/Iterable."""
+    def _is_direct_iterator(self, for_stmt: TpyForEach) -> bool:
+        """Check if the iterable IS an iterator (has __next__() directly).
+
+        True for Iterator[T] protocol params. These should not go through
+        __iter__() to avoid copying move-only iterators.
+        """
         resolved = self._resolve_iterable_type(for_stmt)
         return (is_protocol_type(resolved)
-                and resolved.qualified_name() in ("typing.Iterator", "typing.Iterable"))
+                and resolved.qualified_name() == "typing.Iterator")
 
-    def _get_protocol_iterable_qname(self, for_stmt: TpyForEach) -> str:
-        """Get the qualified name of the protocol iterable type."""
-        return self._resolve_iterable_type(for_stmt).qualified_name()
+    def _is_builtin_native_iterable(self, for_stmt: TpyForEach) -> bool:
+        """Check if the iterable is a built-in NativeIterable (list, dict, etc.)."""
+        resolved = self._resolve_iterable_type(for_stmt)
+        record = self.ctx.analyzer.registry.get_record_for_type(resolved)
+        return (record is not None and record.is_native
+                and builtin_modules.is_native_iterable(resolved, registry=self.ctx.analyzer.registry))
+
+    def _gen_simple_for_yield_body(
+        self, out: 'TextIO', for_stmt: TpyForEach,
+        pre_yield: list[TpyStmt], post_yield: list[TpyStmt], yield_stmt: TpyYield,
+        iter_elem: 'TpyType | None', cpp_iter_elem: str, cpp_var: str,
+        cpp_elem: str, val_binding: str, I: 'Callable[[int], str]', extra: int,
+    ) -> None:
+        """Emit the shared yield body for __iter__+__next__ simple generator branches."""
+        self.ctx.indent_level = 3 + extra
+        out.write(f"{I(3)}{{\n")
+        self.ctx.indent_level = 4 + extra
+        if iter_elem and iter_elem.is_value_type():
+            out.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = ::tpy::unwrap_ref(*__r);\n")
+        else:
+            out.write(f"{I(4)}auto&& {cpp_var} = ::tpy::unwrap_ref(*__r);\n")
+
+        for stmt in pre_yield:
+            self.statements.gen_stmt(out, stmt)
+        yield_expr = self.expressions.gen_expr(yield_stmt.value)
+        out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
+        for stmt in post_yield:
+            self.statements.gen_stmt(out, stmt)
+        out.write(f"{I(4)}return std::optional<{cpp_elem}>(__val);\n")
+        out.write(f"{I(3)}}}\n")
+        out.write(f"{I(2)}}}\n")
+        out.write(f"{I(1)});\n")
+        out.write(f"{I(0)}}}\n")
 
     @staticmethod
     def _split_at_yield(body: list[TpyStmt]) -> tuple[TpyYield, list[TpyStmt], list[TpyStmt]]:
@@ -530,33 +549,17 @@ class GeneratorCodegen:
                 fields.insert(0, (f"__for_src_{uid}", container_cpp))
             return GeneratorForInfo(uid=uid, strategy="begin_end", fields=fields)
 
-        # __iter__()-based user types: call __iter__(), then use the result
-        from tpyc.modules import get_iter_info
-        iter_info = get_iter_info(iterable_type, registry=self.ctx.analyzer.registry)
-        if iter_info is not None:
-            iter_ret_type = self._get_iter_return_type(iterable_type)
-            if iter_ret_type is not None:
-                iter_ret_cpp = self.types.type_to_cpp(iter_ret_type)
-                result_type = f"std::expected<{elem_cpp}, ::tpy::StopIteration>"
-                if iter_info.iter_is_native:
-                    # __iter__() returns a NativeIterable (e.g. SpanIter) -- begin/end
-                    it_type = f"decltype(std::declval<{iter_ret_cpp}&>().begin())"
-                    fields = [
-                        (f"__for_itr_{uid}", iter_ret_cpp),
-                        (f"__for_it_{uid}", it_type),
-                        (f"__for_end_{uid}", it_type),
-                    ]
-                    return GeneratorForInfo(uid=uid, strategy="iter_begin_end", fields=fields)
-                else:
-                    # __iter__() returns an iterator with __next__()
-                    fields = [
-                        (f"__for_itr_{uid}", iter_ret_cpp),
-                        (f"__for_r_{uid}", result_type),
-                    ]
-                    return GeneratorForInfo(uid=uid, strategy="iter_next", fields=fields)
-
-        # Unsupported for-loop type
-        return None
+        # Universal default: ::tpy::__iter__() + __next__() loop.
+        # Handles Iterable[T]/NativeIterable[T] protocol params, user types
+        # with __iter__(), and any remaining iterable types.
+        src_cpp = self.types.type_to_cpp(iterable_type)
+        iter_field_type = f"std::decay_t<decltype(::tpy::__iter__(std::declval<{src_cpp}&>()))>"
+        result_field_type = f"decltype(std::declval<{iter_field_type}&>().__next__())"
+        fields = [
+            (f"__for_itr_{uid}", iter_field_type),
+            (f"__for_r_{uid}", result_field_type),
+        ]
+        return GeneratorForInfo(uid=uid, strategy="iter_next", fields=fields)
 
     def _is_named_generator_field(self, expr: TpyExpr) -> bool:
         """Check if expression is a named variable that's stable across yields.
@@ -566,42 +569,6 @@ class GeneratorCodegen:
         constructors) that would need to be stored in a synthetic field.
         """
         return isinstance(expr, TpyName)
-
-    def _get_iter_return_type(self, iterable_type: 'TpyType') -> 'TpyType | None':
-        """Get the concrete return type of __iter__() on the given type."""
-        from ..typesys import NamedType, OwnType, TypeParamRef
-
-        registry = self.ctx.analyzer.registry
-        record = None
-        type_subst: dict[str, 'TpyType'] = {}
-
-        if isinstance(iterable_type, NamedType) and iterable_type.is_user_record:
-            record = registry.get_record(iterable_type.name)
-        else:
-            record = registry.get_record_for_type(iterable_type)
-
-        if record is None:
-            return None
-
-        if record.type_params and hasattr(iterable_type, 'type_args') and iterable_type.type_args:
-            type_subst = dict(zip(record.type_params, iterable_type.type_args))
-
-        # Walk parent chain for __iter__
-        while record is not None:
-            method = record.get_method("__iter__")
-            if method is not None:
-                ret = method.return_type
-                if isinstance(ret, TypeParamRef) and ret.name in type_subst:
-                    ret = type_subst[ret.name]
-                if isinstance(ret, OwnType):
-                    ret = ret.wrapped
-                return ret
-            # Check parent
-            if record.parent_name:
-                record = registry.get_record(record.parent_name)
-            else:
-                break
-        return None
 
     def _setup_body_scope(self, out: TextIO, func: TpyFunction, init_stmts: list[TpyStmt],
                           indent_level: int = 1) -> None:

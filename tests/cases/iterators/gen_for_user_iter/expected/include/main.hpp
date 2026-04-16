@@ -79,8 +79,8 @@ struct __gen_doubled_range {
     int __state;
     NumberRange& r;
     int32_t x;
-    std::optional<RangeIter> __for_itr_0;
-    std::optional<std::expected<int32_t, ::tpy::StopIteration>> __for_r_0;
+    std::optional<std::decay_t<decltype(::tpy::__iter__(std::declval<NumberRange&>()))>> __for_itr_0;
+    std::optional<decltype(std::declval<std::decay_t<decltype(::tpy::__iter__(std::declval<NumberRange&>()))>&>().__next__())> __for_r_0;
 
     __gen_doubled_range(NumberRange& r)
         : __state(0), r(r) {}

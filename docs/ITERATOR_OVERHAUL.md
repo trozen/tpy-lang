@@ -332,22 +332,38 @@ This eliminated the `_is_user_native_iterable` workaround branches
 in comprehension and genexpr codegen, and simplified the for-loop
 NativeIterable peephole check (no more `is_user_native` exclusion).
 
-**Remaining items for Phase 4/5:**
-- `IterInfo.iter_is_native` still used by gen_generators for
-  iter_begin_end vs iter_next strategy selection.
+**Items resolved in Phase 4:**
+- `IterInfo.iter_is_native` no longer used by gen_generators
+  (`iter_begin_end` strategy eliminated).
 
-### Phase 4 - Unify generator-function for-loop lowering
+### Phase 4 - Unify generator-function for-loop lowering -- DONE (2026-04-16)
 
-**Scope:** `codegen_cpp/gen_generators.py`.
+**Scope:** `codegen_cpp/gen_generators.py` (strategy analysis + simple
+generator codegen) and `codegen_cpp/statements.py` (complex generator
+emit). Generator-specific machinery (yield-point splitting, state
+saving) unchanged.
 
-Mirror the Phase 2 restructuring for for-loops inside generator bodies:
-default to universal `::tpy::__iter__` + `__next__()` inside the state
-machine, with the same peepholes. Keep the generator-specific machinery
-(yield-point splitting, state saving) unchanged.
+**Simple generator** (lambda path) restructured from 3 branches to 4:
+1. Range -> counter (unchanged)
+2. Iterator[T] direct -> `__next__()` without `__iter__()` (avoids
+   copying move-only iterators)
+3. Built-in NativeIterable -> begin/end peephole
+4. Universal default -> `::tpy::__iter__()` + `__next__()` (handles
+   Iterable[T], NativeIterable[T] protocol params, user types,
+   error_return __next__)
+
+**Complex generator** (state machine path): eliminated `"iter_begin_end"`
+strategy. All non-range, non-builtin-NI, non-direct-iterator types now
+use `"iter_next"` strategy with `::tpy::__iter__()`. Struct field types
+use `decltype(::tpy::__iter__(...))` for correct deduction.
+
+Two snapshot changes: `gen_for_user_iter` (struct field types) and
+`gen_generic_own_iterable` (simple generator path). Both compile and
+execute correctly.
 
 ### Phase 5 - Revisit optional simplifications
 
-Non-blocking cleanups that can happen after Phase 4:
+Non-blocking cleanups that can happen independently:
 
 - `ReadOnlySpanLike` peephole: either fold `__span__`-only types into
   Iterable by synthesizing `__iter__` as
@@ -355,9 +371,9 @@ Non-blocking cleanups that can happen after Phase 4:
 - Phase out `NativeIterable[T]` as a user-facing parameter type in
   favor of `Iterable[T]` + codegen specialization (see
   `LANGUAGE_FEATURES.md`).
-- `IterInfo.iter_is_native` may collapse into a simpler "is concrete
-  `NativeIterable` at codegen time?" query since sema no longer needs
-  the distinction.
+- `IterInfo.iter_is_native` is no longer used in codegen (gen_generators
+  eliminated it in Phase 4). Remaining caller: sema iter-depth lifetime
+  tracking in `statements.py`. May collapse entirely.
 
 ## File-by-file impact matrix
 
@@ -372,7 +388,7 @@ Non-blocking cleanups that can happen after Phase 4:
 | `tpyc/modules/type_resolution.py` | `allow_protocol_return`, `extract_type_params`, recursive substitution [DONE] | - | add `get_iterable_element_type` [DONE] | - |
 | `tpyc/codegen_cpp/statements.py` | - | peepholes + universal default [DONE] | (no change needed) | - |
 | `tpyc/codegen_cpp/expressions.py` | - | UB containment (comps, `in`) [DONE] | use unified accessor + `in` fallback -> `__iter__`+`__next__` [DONE] | - |
-| `tpyc/codegen_cpp/gen_generators.py` | - | - | use unified accessor + builtin NI check [DONE] | collapse branches |
+| `tpyc/codegen_cpp/gen_generators.py` | - | - | use unified accessor + builtin NI check [DONE] | collapse to 4 strategies [DONE] |
 | `lib/tpy/tpy/_core/_containers.py` | - | SpanIter `@readonly` removed [DONE] | - | - |
 | `runtime/cpp/include/tpy/span_iter.hpp` | - | non-const `__iter__` [DONE] | - | - |
 | `tpyc/typesys.py` | - | - | removed `get_iteration_element_type` (base + 10 overrides) [DONE] | - |
@@ -439,7 +455,13 @@ For each phase, run in order:
   new standalone `get_iterable_element_type` in `modules/type_resolution.py`
   is the single source of truth. User records no longer auto-derive
   NativeIterable; `_is_user_native_iterable` workaround eliminated.
-- _(next: Phase 4 -- unify generator-function for-loop lowering)_
+- **2026-04-16**: Phase 4 complete on branch `iterator-overhaul-dev`.
+  Full suite green (2524 passed / 1 skipped). Two snapshot changes:
+  `gen_for_user_iter` (complex generator struct field types now use
+  decltype), `gen_generic_own_iterable` (simple generator uses
+  universal __iter__+__next__ instead of begin/end). Eliminated
+  `iter_begin_end` strategy and `_gen_generator_for_iter_begin_end`.
+  `IterInfo.iter_is_native` no longer used by gen_generators.
 
 ## Out of scope
 

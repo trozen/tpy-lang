@@ -16,7 +16,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled_range::__next__() {
     return -1;
     __resume_1:;
     // for x in r:
-    __for_itr_0 = r.__iter__();
+    __for_itr_0 = ::tpy::__iter__(r);
     for (;;) {
         __for_r_0 = (*__for_itr_0).__next__();
         if (!(*__for_r_0).has_value()) break;

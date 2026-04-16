@@ -2709,8 +2709,6 @@ class StatementGenerator:
             self._gen_generator_for_next(out, stmt, indent, info)
         elif info.strategy == "iter_next":
             self._gen_generator_for_iter_next(out, stmt, indent, info)
-        elif info.strategy == "iter_begin_end":
-            self._gen_generator_for_iter_begin_end(out, stmt, indent, info)
         else:
             raise CodeGenError(f"unknown generator for-loop strategy: {info.strategy}")
 
@@ -2851,7 +2849,7 @@ class StatementGenerator:
 
     def _gen_generator_for_iter_next(self, out: TextIO, stmt: TpyForEach,
                                       indent: str, info: 'GeneratorForInfo') -> None:
-        """Lowered __iter__() + __next__() for-loop for user types."""
+        """Lowered ::tpy::__iter__() + __next__() for-loop (universal default)."""
         uid = info.uid
         itr_raw = f"__for_itr_{uid}"
         itr = f"*{itr_raw}"
@@ -2862,38 +2860,13 @@ class StatementGenerator:
         self.ctx.temps.flush(out, indent)
 
         iterable_code = self.expressions.gen_expr(stmt.iterable)
-        out.write(f"{indent}{itr_raw} = {iterable_code}.__iter__();\n")
+        out.write(f"{indent}{itr_raw} = ::tpy::__iter__({iterable_code});\n")
 
         out.write(f"{indent}for (;;) {{\n")
         inner = indent + INDENT
         out.write(f"{inner}{r_raw} = ({itr}).__next__();\n")
         out.write(f"{inner}if (!({r}).has_value()) break;\n")
         out.write(f"{inner}{cpp_var} = ::tpy::unwrap_ref(*({r}));\n")
-
-        self._gen_generator_loop_body(out, stmt, indent)
-
-    def _gen_generator_for_iter_begin_end(self, out: TextIO, stmt: TpyForEach,
-                                           indent: str, info: 'GeneratorForInfo') -> None:
-        """Lowered __iter__() + begin/end for-loop for NativeIterable iterators."""
-        uid = info.uid
-        itr_raw = f"__for_itr_{uid}"
-        itr = f"*{itr_raw}"
-        it_raw = f"__for_it_{uid}"
-        it = f"*{it_raw}"
-        end_raw = f"__for_end_{uid}"
-        end = f"*{end_raw}"
-        cpp_var = escape_cpp_name(stmt.var)
-
-        self.ctx.temps.flush(out, indent)
-
-        iterable_code = self.expressions.gen_expr(stmt.iterable)
-        out.write(f"{indent}{itr_raw} = {iterable_code}.__iter__();\n")
-        out.write(f"{indent}{it_raw} = ({itr}).begin();\n")
-        out.write(f"{indent}{end_raw} = ({itr}).end();\n")
-        out.write(f"{indent}while ({it} != {end}) {{\n")
-
-        inner = indent + INDENT
-        out.write(f"{inner}{cpp_var} = *({it})++;\n")
 
         self._gen_generator_loop_body(out, stmt, indent)
 
