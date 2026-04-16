@@ -83,7 +83,7 @@ std::string with_guard(std::string_view cmd, bool verbose) {
     if (__match_subject == "help" && verbose) {
         // return "verbose help"
         return "verbose help";
-        goto __match_end_2;
+        goto __match_end_1;
     }
     if (__match_subject.size() >= 1) {
         switch (static_cast<unsigned char>(__match_subject[0])) {
@@ -92,7 +92,7 @@ std::string with_guard(std::string_view cmd, bool verbose) {
             if (__match_subject == "help") {
                 // return "help"
                 return "help";
-                goto __match_end_2;
+                goto __match_end_1;
             }
             break;
         }
@@ -101,7 +101,7 @@ std::string with_guard(std::string_view cmd, bool verbose) {
             if (__match_subject == "load") {
                 // return "load"
                 return "load";
-                goto __match_end_2;
+                goto __match_end_1;
             }
             break;
         }
@@ -110,7 +110,7 @@ std::string with_guard(std::string_view cmd, bool verbose) {
             if (__match_subject == "quit") {
                 // return "quit"
                 return "quit";
-                goto __match_end_2;
+                goto __match_end_1;
             }
             break;
         }
@@ -119,7 +119,7 @@ std::string with_guard(std::string_view cmd, bool verbose) {
             if (__match_subject == "redo") {
                 // return "redo"
                 return "redo";
-                goto __match_end_2;
+                goto __match_end_1;
             }
             break;
         }
@@ -128,7 +128,7 @@ std::string with_guard(std::string_view cmd, bool verbose) {
             if (__match_subject == "save") {
                 // return "save"
                 return "save";
-                goto __match_end_2;
+                goto __match_end_1;
             }
             break;
         }
@@ -137,7 +137,7 @@ std::string with_guard(std::string_view cmd, bool verbose) {
             if (__match_subject == "undo") {
                 // return "undo"
                 return "undo";
-                goto __match_end_2;
+                goto __match_end_1;
             }
             break;
         }
@@ -149,7 +149,7 @@ std::string with_guard(std::string_view cmd, bool verbose) {
         // return "unknown: " + s
         return (::tpy::str_concat("unknown: ", s));
     }
-    __match_end_2:;
+    __match_end_1:;
 }
 
 // def with_or(s: str) -> str:
@@ -163,7 +163,7 @@ std::string with_or(std::string_view s) {
             if (__match_subject == "cat") {
                 // return "animal"
                 return "animal";
-                goto __match_end_3;
+                goto __match_end_1;
             }
             break;
         }
@@ -172,7 +172,7 @@ std::string with_or(std::string_view s) {
             if (__match_subject == "red") {
                 // return "color"
                 return "color";
-                goto __match_end_3;
+                goto __match_end_1;
             }
             break;
         }
@@ -181,7 +181,7 @@ std::string with_or(std::string_view s) {
             if (__match_subject == "bird") {
                 // return "animal"
                 return "animal";
-                goto __match_end_3;
+                goto __match_end_1;
             }
             break;
         }
@@ -190,7 +190,7 @@ std::string with_or(std::string_view s) {
             if (__match_subject == "blue") {
                 // return "color"
                 return "color";
-                goto __match_end_3;
+                goto __match_end_1;
             }
             break;
         }
@@ -199,7 +199,7 @@ std::string with_or(std::string_view s) {
             if (__match_subject == "one") {
                 // return "number"
                 return "number";
-                goto __match_end_3;
+                goto __match_end_1;
             }
             break;
         }
@@ -208,7 +208,7 @@ std::string with_or(std::string_view s) {
             if (__match_subject == "dog") {
                 // return "animal"
                 return "animal";
-                goto __match_end_3;
+                goto __match_end_1;
             }
             break;
         }
@@ -217,7 +217,7 @@ std::string with_or(std::string_view s) {
             if (__match_subject == "green") {
                 // return "color"
                 return "color";
-                goto __match_end_3;
+                goto __match_end_1;
             }
             break;
         }
@@ -226,7 +226,7 @@ std::string with_or(std::string_view s) {
             if (__match_subject == "two") {
                 // return "number"
                 return "number";
-                goto __match_end_3;
+                goto __match_end_1;
             }
             break;
         }
@@ -237,7 +237,7 @@ std::string with_or(std::string_view s) {
         // return "other"
         return "other";
     }
-    __match_end_3:;
+    __match_end_1:;
 }
 
 // def by_length(s: str) -> str:
@@ -250,7 +250,7 @@ std::string by_length(std::string_view s) {
         if (__match_subject == "a") {
             // return "one"
             return "one";
-            goto __match_end_4;
+            goto __match_end_1;
         }
         break;
     }
@@ -259,7 +259,7 @@ std::string by_length(std::string_view s) {
         if (__match_subject == "bb") {
             // return "two"
             return "two";
-            goto __match_end_4;
+            goto __match_end_1;
         }
         break;
     }
@@ -268,7 +268,7 @@ std::string by_length(std::string_view s) {
         if (__match_subject == "ccc") {
             // return "three"
             return "three";
-            goto __match_end_4;
+            goto __match_end_1;
         }
         break;
     }
@@ -277,7 +277,7 @@ std::string by_length(std::string_view s) {
         if (__match_subject == "dddd") {
             // return "four"
             return "four";
-            goto __match_end_4;
+            goto __match_end_1;
         }
         break;
     }
@@ -286,7 +286,7 @@ std::string by_length(std::string_view s) {
         if (__match_subject == "eeeee") {
             // return "five"
             return "five";
-            goto __match_end_4;
+            goto __match_end_1;
         }
         break;
     }
@@ -296,7 +296,7 @@ std::string by_length(std::string_view s) {
         // return "other"
         return "other";
     }
-    __match_end_4:;
+    __match_end_1:;
 }
 
 // def main() -> None:

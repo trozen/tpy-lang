@@ -67,6 +67,10 @@ class MatchGenerator:
 
         if isinstance(subject_type, UnionType):
             has_guard = any(c.guard is not None for c in stmt.cases)
+            # Also use guarded path when union field guards cause multiple
+            # arms to share the same variant index
+            if not has_guard:
+                has_guard = self._has_shared_variant_index(stmt, subject_type)
             if has_guard:
                 self._gen_match_guarded_union(out, stmt, subject_type, indent)
             else:
@@ -121,10 +125,7 @@ class MatchGenerator:
         subject_name = stmt.subject.name
 
         def emit_field_bindings(pattern: TpyClassPattern) -> None:
-            for field_name, sub_pattern in pattern.keywords:
-                if isinstance(sub_pattern, TpyCapturePattern):
-                    escaped = escape_cpp_name(sub_pattern.name)
-                    out.write(f"{indent}auto& {escaped} = {subject_name}.{escape_cpp_name(field_name)};\n")
+            self._gen_match_field_bindings(out, pattern, subject_name, indent)
 
         for case in stmt.cases:
             pattern, as_name, as_raw_name = self._unwrap_as_pattern(case.pattern)
@@ -584,13 +585,18 @@ class MatchGenerator:
                 raise CodeGenError(
                     f"Unsupported pattern in guarded union match: {type(pattern).__name__}")
 
-        # Truncate each type's arm list after the first unguarded arm
-        # (anything after an unguarded arm is unreachable)
+        # Truncate each type's arm list after the first truly unguarded arm
+        # (anything after an unguarded arm is unreachable).
+        # Arms with union field guards are effectively guarded even if guard is None.
         for idx in type_arms:
             truncated: list[tuple[TpyMatchCase, TpyPattern, str | None, str | None]] = []
             for entry in type_arms[idx]:
                 truncated.append(entry)
-                if entry[0].guard is None:
+                pat = entry[1]
+                has_field_guard = (isinstance(pat, TpyClassPattern)
+                                   and any(self._sub_has_union_field_guard(sub)
+                                           for _, sub in pat.keywords))
+                if entry[0].guard is None and not has_field_guard:
                     break
             type_arms[idx] = truncated
 
@@ -674,30 +680,44 @@ class MatchGenerator:
         if needs_scope:
             out.write(f"{inner}{{\n")
 
-        # Emit bindings
-        if isinstance(pattern, TpyClassPattern):
-            if pattern.keywords:
-                self._gen_match_field_bindings(out, pattern, case_var, bind_indent)
-            self._emit_binding(out, as_name, as_raw_name, case_var, bind_indent)
-        elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
-            if isinstance(pattern, TpyCapturePattern):
-                self._emit_binding(
-                    out, escape_cpp_name(pattern.name), pattern.name,
-                    "__match_subject", bind_indent)
-            self._emit_binding(out, as_name, as_raw_name, "__match_subject", bind_indent)
-        else:
-            raise CodeGenError(
-                f"Unsupported pattern in guarded switch arm: {type(pattern).__name__}")
-
         # Emit guarded/unguarded body with goto
         has_narrowing = isinstance(pattern, TpyClassPattern)
         saved: dict[str, str | None] = {}
         guard = arm_case.guard
 
-        if guard is not None:
-            guard_code = self.expressions.gen_expr(guard)
-            self.ctx.temps.flush(out, bind_indent)
-            out.write(f"{bind_indent}if ({guard_code}) {{\n")
+        # Union field guards generate implicit conditions even without explicit guards
+        field_conds = (self._record_field_conditions(pattern, case_var)
+                       if isinstance(pattern, TpyClassPattern) and case_var else [])
+
+        # Emit non-union bindings before the condition (guards may reference them).
+        # Union field bindings (std::get) must go after the holds_alternative check.
+        if isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
+            if isinstance(pattern, TpyCapturePattern):
+                self._emit_binding(
+                    out, escape_cpp_name(pattern.name), pattern.name,
+                    "__match_subject", bind_indent)
+            self._emit_binding(out, as_name, as_raw_name, "__match_subject", bind_indent)
+        elif isinstance(pattern, TpyClassPattern) and not field_conds:
+            if pattern.keywords:
+                self._gen_match_field_bindings(out, pattern, case_var, bind_indent)
+            self._emit_binding(out, as_name, as_raw_name, case_var, bind_indent)
+        elif not isinstance(pattern, TpyClassPattern):
+            raise CodeGenError(
+                f"Unsupported pattern in guarded switch arm: {type(pattern).__name__}")
+
+        if guard is not None or field_conds:
+            cond_parts: list[str] = list(field_conds)
+            if guard is not None:
+                guard_code = self.expressions.gen_expr(guard)
+                self.ctx.temps.flush(out, bind_indent)
+                cond_parts.append(guard_code)
+            out.write(f"{bind_indent}if ({' && '.join(cond_parts)}) {{\n")
+            # Emit union field bindings inside the condition block
+            body_indent = INDENT * (self.ctx.indent_level + (3 if needs_scope else 2))
+            if isinstance(pattern, TpyClassPattern) and field_conds:
+                if pattern.keywords:
+                    self._gen_match_field_bindings(out, pattern, case_var, body_indent)
+                self._emit_binding(out, as_name, as_raw_name, case_var, body_indent)
             if has_narrowing:
                 saved = self._apply_narrowing(arm_case.type_facts, case_var)
             extra = 3 if needs_scope else 2
@@ -1372,9 +1392,7 @@ class MatchGenerator:
                 else:
                     out.write(f"{indent}{keyword} ({cond}) {{\n")
                 # Emit field bindings
-                for field_name, sub in pattern.keywords:
-                    if isinstance(sub, TpyCapturePattern):
-                        self._emit_binding(out, escape_cpp_name(sub.name), sub.name, f"{subject_expr}.{field_name}", inner)
+                self._gen_match_field_bindings(out, pattern, subject_expr, inner)
                 self._emit_binding(out, as_name, as_raw, subject_expr, inner)
                 self.ctx.indent_level += 2
                 for s in case.body:
@@ -1614,9 +1632,7 @@ class MatchGenerator:
                     cond = f"{cond} && {guard_code}"
                 out.write(f"{indent}{keyword} ({cond}) {{\n")
                 # Emit field bindings using dereferenced subject
-                for field_name, sub in pattern.keywords:
-                    if isinstance(sub, TpyCapturePattern):
-                        self._emit_binding(out, escape_cpp_name(sub.name), sub.name, f"{deref}.{field_name}", inner)
+                self._gen_match_field_bindings(out, pattern, deref, inner)
                 self._emit_binding(out, as_name, as_raw, deref, inner)
                 self.ctx.indent_level += 1
                 for s in case.body:
@@ -1710,8 +1726,11 @@ class MatchGenerator:
         """Generate C++ field comparison conditions for a record class pattern."""
         conds: list[str] = []
         for field_name, sub_pattern in pattern.keywords:
-            if isinstance(sub_pattern, TpyLiteralPattern):
-                val = sub_pattern.value
+            inner = sub_pattern
+            if isinstance(inner, TpyAsPattern):
+                inner = inner.pattern
+            if isinstance(inner, TpyLiteralPattern):
+                val = inner.value
                 if isinstance(val, bool):
                     conds.append(f"{subject_expr}.{field_name} == {'true' if val else 'false'}")
                 elif isinstance(val, int):
@@ -1720,7 +1739,45 @@ class MatchGenerator:
                     conds.append(f"{subject_expr}.{field_name} == {val!r}")
                 elif isinstance(val, str):
                     conds.append(f'{subject_expr}.{field_name} == "{escape_cpp_string(val)}"')
+            elif isinstance(inner, TpyClassPattern) and inner.is_union_field_guard:
+                # Union-typed field: runtime holds_alternative check
+                assert inner.resolved_type is not None
+                cpp_type = self.types.type_to_cpp(inner.resolved_type)
+                conds.append(f"std::holds_alternative<{cpp_type}>({subject_expr}.{field_name})")
+                # Recurse for nested field conditions on the variant member
+                if inner.keywords:
+                    get_expr = f"std::get<{cpp_type}>({subject_expr}.{field_name})"
+                    nested = self._record_field_conditions(inner, get_expr)
+                    conds.extend(nested)
         return conds
+
+    @staticmethod
+    def _sub_has_union_field_guard(sub: TpyPattern) -> bool:
+        """Check if a field sub-pattern contains a union field guard."""
+        inner = sub
+        if isinstance(inner, TpyAsPattern):
+            inner = inner.pattern
+        return isinstance(inner, TpyClassPattern) and inner.is_union_field_guard
+
+    def _has_shared_variant_index(self, stmt: TpyMatch, subject_type: UnionType) -> bool:
+        """Check if multiple cases resolve to the same variant index (e.g. union field guards)."""
+        seen: set[int] = set()
+        for case in stmt.cases:
+            pat = case.pattern
+            if isinstance(pat, TpyAsPattern):
+                pat = pat.pattern
+            indices: list[int] = []
+            if isinstance(pat, TpyClassPattern) and pat.resolved_type is not None:
+                indices.append(self._variant_index(subject_type, pat.resolved_type))
+            elif isinstance(pat, TpyOrPattern):
+                for alt in pat.patterns:
+                    if isinstance(alt, TpyClassPattern) and alt.resolved_type is not None:
+                        indices.append(self._variant_index(subject_type, alt.resolved_type))
+            for idx in indices:
+                if idx in seen:
+                    return True
+                seen.add(idx)
+        return False
 
     def _variant_index(self, union_type: UnionType, member_type: TpyType) -> int:
         """Find the index of a member type in a union's canonical member ordering."""
@@ -1750,3 +1807,33 @@ class MatchGenerator:
                 pass
             elif isinstance(sub_pattern, TpyLiteralPattern):
                 pass  # Literal sub-patterns handled as conditions (future)
+            elif isinstance(sub_pattern, TpyClassPattern):
+                if sub_pattern.is_union_field_guard and sub_pattern.keywords:
+                    # Union field with nested record patterns: extract variant, bind sub-fields
+                    cpp_type = self.types.type_to_cpp(sub_pattern.resolved_type)
+                    temp = f"__field_{field_name}"
+                    out.write(f"{indent}auto& {temp} = std::get<{cpp_type}>({case_var}.{field_name});\n")
+                    self._gen_match_field_bindings(out, sub_pattern, temp, indent)
+                elif not sub_pattern.is_union_field_guard and sub_pattern.keywords:
+                    # Compile-time type guard with nested field bindings: recurse with direct access
+                    self._gen_match_field_bindings(out, sub_pattern, f"{case_var}.{field_name}", indent)
+                # else: type guard only (no nested bindings), no output needed
+            elif isinstance(sub_pattern, TpyAsPattern):
+                inner_sub = sub_pattern.pattern
+                if isinstance(inner_sub, TpyClassPattern):
+                    # Type pattern with capture (e.g., value=str() as v)
+                    if inner_sub.is_union_field_guard:
+                        cpp_type = self.types.type_to_cpp(inner_sub.resolved_type)
+                        field_expr = f"std::get<{cpp_type}>({case_var}.{field_name})"
+                    else:
+                        field_expr = f"{case_var}.{field_name}"
+                    self._emit_binding(out, escape_cpp_name(sub_pattern.name), sub_pattern.name, field_expr, indent)
+                    # Recurse for nested field bindings
+                    if inner_sub.keywords:
+                        self._gen_match_field_bindings(out, inner_sub, escape_cpp_name(sub_pattern.name), indent)
+                elif isinstance(inner_sub, TpyLiteralPattern):
+                    self._emit_binding(out, escape_cpp_name(sub_pattern.name), sub_pattern.name, f"{case_var}.{field_name}", indent)
+                elif isinstance(inner_sub, (TpyWildcardPattern, TpyCapturePattern)):
+                    if isinstance(inner_sub, TpyCapturePattern):
+                        self._emit_binding(out, escape_cpp_name(inner_sub.name), inner_sub.name, f"{case_var}.{field_name}", indent)
+                    self._emit_binding(out, escape_cpp_name(sub_pattern.name), sub_pattern.name, f"{case_var}.{field_name}", indent)

@@ -473,7 +473,7 @@ The compiler is a proof-of-concept. Not yet implemented:
 
 Working but not previously listed:
 - `try`/`except`/`else`/`finally` -- two-tier exception model (C++ throw/catch + `@error_return` zero-cost via `std::expected`)
-- `match`/`case` pattern matching (union, literal, record, optional, enum, guard, or-pattern, positional)
+- `match`/`case` pattern matching (union, literal, record, optional, enum, guard, or-pattern, positional, nested type sub-patterns for parameterized union disambiguation and union-typed field guards)
 - `bytes`/`bytearray`/`BytesView` types
 - Generator functions (yield -> state machine codegen)
 - Compile-time macro modules (`# tpy: macro_module`)
