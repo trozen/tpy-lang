@@ -1,0 +1,1 @@
+main.py:6: error: @overload 'f' has a body and cannot be paired with a trailing implementation; either remove the body or remove the trailing implementation

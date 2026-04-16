@@ -2794,18 +2794,19 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - **Limitations**: Generic recursive aliases (`type Tree[T] = T | list[Tree[T]]`) are not yet supported.
   - **Not yet supported**: `isinstance(x, (A, B))` tuple form, `isinstance(x, Protocol)` on concrete-typed variables
   - **Working**: `match`/`case` pattern matching on union subjects (see Control Flow > Other)
-  - **Working**: `@overload` dispatch flattening -- Python-standard `@overload` stubs generate separate C++ overloads from a single implementation function. Stubs declare the per-type signatures; the implementation body's isinstance/match checks are resolved at compile time via dead branch elimination. Each overload compiles to a clean, specialized function with no runtime dispatch overhead.
+  - **Working**: `@overload` dispatch flattening -- Python-standard `@overload` stubs generate separate C++ overloads. Two modes are supported: **(a) stubs + impl** (multiple bodyless stubs followed by a single implementation whose body is specialized per-stub via dead-branch elim) and **(b) bodied stubs** (each `@overload` variant carries its own body and acts as its own implementation). Each overload compiles to a clean, specialized function with no runtime dispatch overhead.
     - Works for free functions and methods, including cross-module imports
-    - Stubs require `...` (Ellipsis) or `pass` body
-    - Stub parameter names must match implementation parameter names
-    - Stub parameter types must be subsets of the implementation's union members
-    - Exhaustiveness check: stubs must cover all union variants per parameter (missing variants are a sema error)
+    - Mode (a): stubs require `...` (Ellipsis) or `pass` body. Stub parameter names must prefix-match impl parameter names.
+    - Mode (a) arity variation: stubs may have fewer parameters than the implementation; every missing trailing impl parameter must have a default. Each short-arity stub emits a C++ function taking only the stub's params, with the omitted impl params emitted as locals initialized to their defaults at the top of the body. When the default's type narrows the impl param (`None` for `Optional[T]`, literal for non-union), dead-branch elim strips the non-matching paths. Short-arity stubs disallow keyword-only, `*args`, or `**kwargs` on the impl.
+    - Mode (b): each `@overload` has its own body; the group must contain no trailing implementation. Native (`@native`) and `@cpp_template` stubs can coexist with bodied overloads in the same group. Motivating use case: `math.log(x)` is `@native("std::log")`, `math.log(x, base)` is a bodied `@overload` that delegates to the single-arg form.
+    - Stub parameter types must be subsets of the implementation's union members (mode a)
+    - Exhaustiveness check: stubs must cover all union variants per parameter when all stubs include that parameter (missing variants are a sema error). Short-arity stubs that skip a parameter are covered by the impl's default.
     - `isinstance(x, T)` checks in if/elif/else are statically resolved to `true`/`false` per overload
     - `match`/`case` on union subjects selects only the matching arm per overload
-    - Call-site overload resolution picks the most specific stub (exact match preferred, coercions as fallback)
+    - Call-site overload resolution picks the most specific stub (exact match preferred, coercions as fallback), with arity narrowing first
     - `Literal["r", "w", ...]` parameter annotations for literal-value-based dispatch: `open(path, "rb")` can resolve to a different return type than `open(path, "r")`. Supports string, integer (including negative), and bool values. Multiple values per `Literal[...]` annotation supported. Mixed value types in a single `Literal[...]` are rejected. Literal arguments dispatch to `Literal` overloads; variables fall through to plain type overloads. Equality narrowing on `Literal`-typed parameters: `if mode == "rb":` narrows to `Literal["rb"]`, enabling dispatch to more specific stubs within branches. `match`/`case` on `Literal`-typed parameters with exhaustiveness checking and subject narrowing per arm. Literal overload flattening: each stub gets a per-literal C++ specialization with name mangling and dead branch elimination, enabling different return types per literal value for both functions and methods. Multi-value dead branch elimination: `or`/`and` chains (`mode == "r" or mode == "w"`) and `in`/`not in` operators (`mode in {"r", "w"}`) are folded when all values of a multi-value `Literal` are covered or contradicted. Requires `from typing import Literal`.
     - `from typing import overload` import required
-    - CPython compatible: stubs are no-ops in CPython, implementation runs with isinstance checks
+    - CPython compatible: mode (a) stubs are no-ops in CPython, implementation runs with isinstance checks. Mode (b) uses a runtime dispatch shim (`lib/cpy/typing.py`) that dispatches by arity and `isinstance` on type annotations. Tests using `@native` stubs mixed with mode (b) skip the CPython phase since `@native` has no CPython implementation.
 - **Working**: `T | None` for non-value types (records, lists, arrays) → nullable pointer (`T*`)
   - Locals, parameters, returns: `T*` (nullable pointer)
   - `x is None` / `x is not None` for null checks

@@ -1,15 +1,18 @@
 # tpy: cpp_namespace("tpystd::math")
-from typing import Final
+from typing import Final, overload
 from tpy.extern import native, cpp_template, type_param_default, DefaultInt
 
 pi: Final[float] = 3.141592653589793
 e: Final[float] = 2.718281828459045
 inf: Final[float] = 1e309
 
+@overload
 @native("std::log")
 def log(x: float) -> float: ...
 
-# TODO: add log(x, base) overload when overload arity mismatch is fixed (see TODO.md)
+@overload
+def log(x: float, base: float) -> float:
+    return log(x) / log(base)
 
 @native("std::log10")
 def log10(x: float) -> float: ...

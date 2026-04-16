@@ -9,7 +9,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, OwnType, ReadonlyType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
-    UnionType, VoidType, FnType,
+    UnionType, VoidType, FnType, NoneType, NONE,
     BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
     Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, LiteralType, LiteralValue, is_any_str_type, SpanType,
     resolve_int_literals, CONST_PARAMS_METHODS,
@@ -29,6 +29,29 @@ if TYPE_CHECKING:
     from .types import TypeResolver
     from .protocols import ProtocolGenerator, ProtocolParamInfo
     from .statements import StatementGenerator
+
+def _infer_literal_default_type(expr: TpyExpr) -> TpyType | None:
+    """Best-effort concrete type for a default expression, for overload narrowing.
+
+    Returns the narrowest literal/none type when the default is a simple
+    literal (None, int, float, bool, str); None for more complex defaults.
+    Used only to compute dead-branch-elim hints for short-arity overload stubs;
+    unrecognized defaults simply skip narrowing and the body compiles as-is.
+    """
+    if isinstance(expr, TpyNoneLiteral):
+        return NONE
+    if isinstance(expr, TpyIntLiteral):
+        return IntLiteralType(value=expr.value)
+    if isinstance(expr, TpyBoolLiteral):
+        return LiteralType(BoolType(), (LiteralValue("bool", expr.value),))
+    if isinstance(expr, TpyStrLiteral):
+        return LiteralType(StrType(), (LiteralValue("str", expr.value),))
+    if isinstance(expr, TpyUnaryOp) and expr.op == "-":
+        inner = _infer_literal_default_type(expr.operand)
+        if isinstance(inner, IntLiteralType) and inner.value is not None:
+            return IntLiteralType(value=-inner.value)
+    return None
+
 
 def literal_mangled_name(base_name: str, stub_or_info: TpyFunction | FunctionInfo) -> str:
     """Generate a mangled C++ name for a literal-specialized function.
@@ -656,8 +679,9 @@ class FunctionGenerator:
             return True
         if func.is_stub and not func.is_overload_stub:
             return False
-        # @overload stubs encountered directly: skip (handled via implementation)
-        if func.is_overload_stub:
+        # Bodied @overload variants are self-contained (no separate impl);
+        # emit a forward decl just like a regular function.
+        if func.is_overload_stub and func.is_stub:
             return False
 
         self._gen_function_forward_decl_single(out, func)
@@ -718,8 +742,9 @@ class FunctionGenerator:
         if func.cpp_template:
             return False
 
-        # @overload stubs are handled via the implementation function
-        if func.is_overload_stub:
+        # Bodyless @overload stubs are handled via the implementation function;
+        # bodied @overload stubs (mode b) are self-contained functions.
+        if func.is_overload_stub and func.is_stub:
             return False
 
         # @overload implementation with template params: emit specialized defs in header
@@ -803,8 +828,9 @@ class FunctionGenerator:
     def gen_function_def(self, out: TextIO, func: TpyFunction) -> None:
         """Generate a function definition."""
         from ..parse.nodes import FunctionLinkage
-        # @overload stubs have no body -- skip (the implementation emits all overloads)
-        if func.is_overload_stub:
+        # Bodyless @overload stubs are emitted via the implementation; bodied
+        # @overload variants (mode b) are self-contained and fall through.
+        if func.is_overload_stub and func.is_stub:
             return
         # Stubs have no body -- declaration only
         if func.is_stub:
@@ -963,15 +989,19 @@ class FunctionGenerator:
         Uses the implementation's body but with the stub's parameter types
         and return type. Sets overload_param_types so dead branch elimination
         kicks in for isinstance/match checks.
+
+        When the stub is shorter than the impl, trailing impl params are
+        filled in by the impl's defaults. Each missing param becomes a
+        local variable at the top of the body and, when its default's type
+        narrows the impl param, contributes a narrowing fact.
         """
         self.ctx.emit_preceding_comments(out, stub.loc)
         self.ctx.emit_source_comment(out, stub.loc)
 
-        # Build the overload param type map: param_name -> concrete type
-        overload_types: dict[str, TpyType] = {}
-        for (impl_pname, impl_ptype), (stub_pname, stub_ptype) in zip(impl.params, stub.params):
-            if isinstance(impl_ptype, UnionType) and not isinstance(stub_ptype, UnionType):
-                overload_types[stub_pname] = stub_ptype
+        impl_defaults = impl.defaults if impl.defaults else []
+        missing_params = impl.params[len(stub.params):]
+
+        overload_types = self._build_overload_narrowing(impl, stub, missing_params, impl_defaults)
 
         is_generic = bool(impl.type_params)
         rp = self._get_reassigned_params(impl)
@@ -1005,8 +1035,15 @@ class FunctionGenerator:
         for pname, ptype in stub.params:
             local_ns.bind_variable(pname, ptype)
 
-        # Set overload context so dead branch elimination kicks in
+        # Request synthetic locals for missing impl params at the top of the body.
+        self.ctx.overload_missing_param_locals = self._missing_param_local_specs(
+            missing_params, impl_defaults, start_idx=len(stub.params))
+
         self.ctx.overload_param_types = overload_types
+        # Promote literal narrowing to literal_overload_facts so that
+        # equality-based dead-branch elim (if count == 0:) works alongside
+        # isinstance-based elim (if x is None:).
+        self._inject_literal_overload_facts(overload_types)
         try:
             self.statements.gen_body(out, impl.body, stub.params, stub.return_type,
                                      impl, local_ns,
@@ -1014,8 +1051,87 @@ class FunctionGenerator:
                                          stub.params, mp, rp, use_const_params=stub.is_readonly))
         finally:
             self.ctx.overload_param_types = {}
+            self.ctx.overload_missing_param_locals = []
+            self.ctx.literal_overload_facts = {}
 
         out.write("}\n")
+
+    def _inject_literal_overload_facts(self, narrowing: dict[str, TpyType]) -> None:
+        """Promote IntLiteralType/LiteralType entries to literal_overload_facts.
+
+        literal_overload_facts feeds into literal_facts at gen_body entry,
+        enabling _resolve_literal_eq_statically to fold equality checks
+        (e.g. ``if count == 0:``) when the narrowed param is a literal.
+        """
+        for pname, narrowed in narrowing.items():
+            if isinstance(narrowed, LiteralType):
+                self.ctx.literal_overload_facts[pname] = narrowed
+            elif isinstance(narrowed, IntLiteralType) and narrowed.value is not None:
+                self.ctx.literal_overload_facts[pname] = LiteralType(
+                    BIGINT, (LiteralValue("int", narrowed.value),))
+
+    def _build_overload_narrowing(
+        self, impl: TpyFunction, stub: TpyFunction,
+        missing_params: list[tuple[str, TpyType]],
+        impl_defaults: list,
+    ) -> dict[str, TpyType]:
+        """Build the overload_param_types map for dead-branch elim in a spec.
+
+        - Stub-shadowed union impl params narrow to the stub's concrete member.
+        - Stub-shadowed Optional impl params narrow to the stub's non-Optional
+          type (inner T or NoneType).
+        - Stub-shadowed non-union impl params narrow to a LiteralType stub type.
+        - Missing impl params narrow to the default expression's concrete type
+          where that gives information beyond the declared impl param type.
+        """
+        narrowing: dict[str, TpyType] = {}
+        for (impl_pname, impl_ptype), (stub_pname, stub_ptype) in zip(impl.params, stub.params):
+            narrow = self._narrow_param(impl_ptype, stub_ptype)
+            if narrow is not None:
+                narrowing[stub_pname] = narrow
+        for i, (pname, ptype) in enumerate(missing_params,
+                                           start=len(impl.params) - len(missing_params)):
+            default_expr = impl_defaults[i] if i < len(impl_defaults) else None
+            if default_expr is None:
+                continue
+            default_type = _infer_literal_default_type(default_expr)
+            if default_type is None:
+                continue
+            narrow = self._narrow_param(ptype, default_type)
+            if narrow is not None:
+                narrowing[pname] = narrow
+        return narrowing
+
+    @staticmethod
+    def _narrow_param(impl_ptype: TpyType, concrete: TpyType) -> TpyType | None:
+        """Return concrete when it tightens impl_ptype for dead-branch elim."""
+        if isinstance(impl_ptype, UnionType) and not isinstance(concrete, UnionType):
+            return concrete
+        if isinstance(impl_ptype, OptionalType) and not isinstance(concrete, OptionalType):
+            # Concrete is either the inner T, NoneType, or a Literal of the inner.
+            if isinstance(concrete, NoneType):
+                return concrete
+            if isinstance(concrete, LiteralType):
+                return concrete
+            if concrete == impl_ptype.inner:
+                return concrete
+            return None
+        if isinstance(concrete, (LiteralType, IntLiteralType)) and not isinstance(impl_ptype, (LiteralType, IntLiteralType)):
+            return concrete
+        return None
+
+    @staticmethod
+    def _missing_param_local_specs(
+        missing_params: list[tuple[str, TpyType]],
+        impl_defaults: list,
+        *, start_idx: int,
+    ) -> list[tuple[str, TpyType, TpyExpr]]:
+        """Build (name, type, default_expr) specs for overload_missing_param_locals."""
+        specs: list[tuple[str, TpyType, TpyExpr]] = []
+        for offset, (pname, ptype) in enumerate(missing_params):
+            default_expr = impl_defaults[start_idx + offset]
+            specs.append((pname, ptype, default_expr))
+        return specs
 
     def _gen_overload_specialized_method(
         self, out: TextIO, impl: TpyFunction, stub: TpyFunction,
@@ -1028,11 +1144,10 @@ class FunctionGenerator:
         Delegates to _gen_method_overload with stub's signature but impl's body,
         with the overload context set for dead branch elimination.
         """
-        # Build overload param type map
-        overload_types: dict[str, TpyType] = {}
-        for (impl_pname, impl_ptype), (stub_pname, stub_ptype) in zip(impl.params, stub.params):
-            if isinstance(impl_ptype, UnionType) and not isinstance(stub_ptype, UnionType):
-                overload_types[stub_pname] = stub_ptype
+        impl_defaults = impl.defaults if impl.defaults else []
+        missing_params = impl.params[len(stub.params):]
+        overload_types = self._build_overload_narrowing(
+            impl, stub, missing_params, impl_defaults)
 
         # Create a synthetic TpyFunction with stub's types but impl's body.
         # Method const-ness (is_readonly) comes from the stub, since the stub's
@@ -1074,11 +1189,16 @@ class FunctionGenerator:
 
         # Set overload context
         self.ctx.overload_param_types = overload_types
+        self._inject_literal_overload_facts(overload_types)
+        self.ctx.overload_missing_param_locals = self._missing_param_local_specs(
+            missing_params, impl_defaults, start_idx=len(stub.params))
         try:
             self.gen_method_def(out, synth, record_name, dynamic_overrides,
                                 record_type_param_bounds=record_type_param_bounds)
         finally:
             self.ctx.overload_param_types = {}
+            self.ctx.overload_missing_param_locals = []
+            self.ctx.literal_overload_facts = {}
 
     def _gen_literal_specialized_method(
         self, out: TextIO, impl: TpyFunction, stub: TpyFunction,

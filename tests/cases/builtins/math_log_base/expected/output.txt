@@ -1,0 +1,3 @@
+log(8, 2) ok
+log(100, 10) ok
+log(e) ok

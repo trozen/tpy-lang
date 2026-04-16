@@ -1017,6 +1017,19 @@ class TpyFunction:
     loc: SourceLocation | None = None
 
     @property
+    def has_implementation(self) -> bool:
+        """True when this function/stub has its own implementation.
+
+        A function has an implementation if it carries a body, maps to an
+        external C++ symbol (@native), or expands via a C++ template
+        (@cpp_template). Plain bodyless stubs (``def f(x: int) -> int: ...``)
+        are declaration-only and need a separate implementation.
+        """
+        if not self.is_stub:
+            return True
+        return self.linkage != FunctionLinkage.DEFAULT or self.cpp_template is not None
+
+    @property
     def is_extern_c(self) -> bool:
         return self.linkage == FunctionLinkage.EXPORT_C
 

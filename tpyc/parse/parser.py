@@ -2114,9 +2114,10 @@ class Parser:
         is_overload_stub_body = is_stub_body or self._is_pass_body(node.body)
         is_stub = (is_stub_body and not is_overload_stub) or cpp_template is not None
         if is_overload_stub:
-            if not is_overload_stub_body:
-                raise ParseError(f"@overload method '{node.name}' must have `...` or `pass` body", node)
-            body = []
+            # @overload methods may be bodyless (`...` / `pass`, paired with a
+            # trailing impl) or carry their own body (self-contained overload
+            # variant -- sema validates that a group is all-bodied or all-bodyless).
+            body = [] if is_overload_stub_body else self._parse_body(node.body)
         elif is_stub:
             body = []
         else:
@@ -2452,9 +2453,10 @@ class Parser:
             is_stub = True
             body = []
         elif is_overload_stub:
-            if not is_overload_stub_body:
-                raise ParseError(f"@overload function '{node.name}' must have `...` or `pass` body", node)
-            body = []
+            # @overload functions may be bodyless (`...` / `pass`, paired with a
+            # trailing impl) or carry their own body (self-contained overload
+            # variant -- sema validates that a group is all-bodied or all-bodyless).
+            body = [] if is_overload_stub_body else self._parse_body(node.body)
         elif linkage in (FunctionLinkage.NATIVE, FunctionLinkage.NATIVE_C):
             if not (self._is_stub_body(node.body)):
                 display = self._LINKAGE_DISPLAY_NAMES.get(linkage, linkage.value)
