@@ -58,7 +58,7 @@ class TpyExpr:
 
 if TYPE_CHECKING:
     from ..coercions import Coercion
-    from ..typesys import FunctionInfo
+    from ..typesys import FunctionInfo, ResolvedBinop, ResolvedUnaryop
 
 
 @dataclass

@@ -16,7 +16,7 @@ from ..typesys import (
     PendingStrType, PendingViewType, StrType, StringType, StrViewType, LiteralType,
     PendingBytesType, BytesType, ByteArrayType, BytesViewType,
     NamedType, PtrType, OwnType, FnType, CallableType, VoidType, NoneType,
-    OptionalType,
+    OptionalType, BoolType,
     unwrap_ref_type,
     is_callable_type, is_float_type, is_integer_type, is_any_float_type,
 

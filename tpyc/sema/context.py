@@ -8,10 +8,11 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Literal, TYPE_CHECKING
+from typing import Literal
 
-if TYPE_CHECKING:
-    from ..macro_loader import MacroRegistry
+from ..macro_loader import MacroRegistry
+from ..parse.nodes import SourceLocation
+from .value_range import ValueRange
 
 from ..typesys import (
     TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
@@ -893,6 +894,7 @@ class SemanticContext:
         adding one branch here instead of duplicating blocks in statements.py.
         """
         literal_id = pending_type.literal_id
+        info: ListLiteralInfo | DictLiteralInfo | SetLiteralInfo
         if isinstance(pending_type, PendingListType):
             self.func.variable_to_literal[var_name] = literal_id
             info = self.list_literals[literal_id]

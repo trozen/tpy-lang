@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, CHAR, OwnType, is_protocol_type, is_any_str_type, unwrap_ref_type,
+    TpyType, NamedType, CHAR, OwnType, is_protocol_type, is_any_str_type, unwrap_ref_type,
 )
 from .diagnostics import SemanticError
 from .protocols import record_extends_any
@@ -59,15 +59,17 @@ class IterableHelper:
         if isinstance(iterable_type, OwnType):
             iterable_type = iterable_type.wrapped
         # Handle NativeIterable[T] protocol type
-        if is_protocol_type(iterable_type) and iterable_type.qualified_name() == "tpy.NativeIterable":
+        if isinstance(iterable_type, NamedType) and is_protocol_type(iterable_type) and iterable_type.qualified_name() == "tpy.NativeIterable":
             if iterable_type.type_args:
-                return iterable_type.type_args[0]
+                first = iterable_type.type_args[0]
+                return first if isinstance(first, TpyType) else None
             return None
 
         # Handle Iterator[T], Iterable[T], ReadOnlySpanLike[T] protocol types
-        if is_protocol_type(iterable_type) and iterable_type.qualified_name() in ("typing.Iterator", "typing.Iterable", "tpy.ReadOnlySpanLike"):
+        if isinstance(iterable_type, NamedType) and is_protocol_type(iterable_type) and iterable_type.qualified_name() in ("typing.Iterator", "typing.Iterable", "tpy.ReadOnlySpanLike"):
             if iterable_type.type_args:
-                return iterable_type.type_args[0]
+                first = iterable_type.type_args[0]
+                return first if isinstance(first, TpyType) else None
             return None
 
         # Handle str/String/StrView -> Char
