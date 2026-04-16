@@ -10,7 +10,6 @@ namespace tpyapp::main {
 // @overload
 // def describe(x: Literal[True]) -> str: ...
 std::string describe__lit_True(bool x) {
-    // if x:
     // return "yes"
     return "yes";
 }
@@ -18,7 +17,6 @@ std::string describe__lit_True(bool x) {
 // @overload
 // def describe(x: Literal[False]) -> str: ...
 std::string describe__lit_False(bool x) {
-    // if x:
     // return "no"
     return "no";
 }

@@ -11,7 +11,6 @@ namespace tpyapp::main {
 // @overload
 // def classify(x: Literal[1, 2]) -> str: ...
 std::string classify__lit_1__2(int32_t x) {
-    // if x == 1:
     if ((x == 1)) {
         // return "one"
         return "one";
@@ -26,7 +25,6 @@ std::string classify__lit_1__2(int32_t x) {
 // @overload
 // def classify(x: Literal[3, 4]) -> str: ...
 std::string classify__lit_3__4(int32_t x) {
-    // if x == 1:
     if ((x == 3)) {
         // return "three"
         return "three";
@@ -41,7 +39,6 @@ std::string classify__lit_3__4(int32_t x) {
 // @overload
 // def classify(x: Literal[-1, -2]) -> str: ...
 std::string classify__lit_neg1__neg2(int32_t x) {
-    // if x == 1:
     if ((x == -1)) {
         // return "neg_one"
         return "neg_one";

@@ -31,7 +31,6 @@ struct Record {
     // @overload
     // def get(self, key: Literal["age"]) -> Int32: ...
     int32_t get__lit_age(std::string_view key) const {
-        // if key == "age":
         // return self.data_age
         return this->data_age;
     }
@@ -39,7 +38,6 @@ struct Record {
     // @overload
     // def get(self, key: Literal["name"]) -> str: ...
     std::string get__lit_name(std::string_view key) const {
-        // if key == "age":
         // return self.data_name
         return this->data_name;
     }

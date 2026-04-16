@@ -11,7 +11,6 @@ namespace tpyapp::main {
 // @overload
 // def get_field(name: Literal["age"]) -> Int32: ...
 int32_t get_field__lit_age(std::string_view name) {
-    // if name == "age":
     // return 42
     return 42;
 }
@@ -19,7 +18,6 @@ int32_t get_field__lit_age(std::string_view name) {
 // @overload
 // def get_field(name: Literal["name"]) -> str: ...
 std::string get_field__lit_name(std::string_view name) {
-    // if name == "age":
     // return "hello"
     return "hello";
 }

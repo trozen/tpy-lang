@@ -9,7 +9,6 @@ namespace tpyapp::main {
 // @overload
 // def fmt(value: int) -> str: ...  # tpyc: ok
 std::string fmt(const ::tpy::BigInt& value) {
-    // if tag is None:
     // return str(value)
     return (value).to_string();
 }
@@ -17,7 +16,6 @@ std::string fmt(const ::tpy::BigInt& value) {
 // @overload
 // def fmt(value: int, tag: Tag) -> str: ...  # tpyc: ok
 std::string fmt(const ::tpy::BigInt& value, const Tag& tag) {
-    // if tag is None:
     // return tag.name + "=" + str(value)
     return (::tpy::str_concat((::tpy::str_concat(tag.name, "=")), (value).to_string()));
 }

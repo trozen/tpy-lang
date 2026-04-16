@@ -11,7 +11,6 @@ namespace tpyapp::main {
 std::string handle__lit_r__w(std::string_view mode) {
     // # or-chain: covers full set for Literal["r","w"], folds to true
     // # For Literal["rb","wb"], each == is false, chain folds to false
-    // if mode == "r" or mode == "w":
     // return "text"
     return "text";
 }
@@ -21,7 +20,6 @@ std::string handle__lit_r__w(std::string_view mode) {
 std::string handle__lit_rb__wb(std::string_view mode) {
     // # or-chain: covers full set for Literal["r","w"], folds to true
     // # For Literal["rb","wb"], each == is false, chain folds to false
-    // if mode == "r" or mode == "w":
     // return "binary"
     return "binary";
 }
@@ -33,7 +31,6 @@ std::string handle__lit_rb__wb(std::string_view mode) {
 // def handle_in(mode: Literal["r", "w"]) -> str: ...
 std::string handle_in__lit_r__w(std::string_view mode) {
     // # in-operator with set literal: covers full set for Literal["r","w"]
-    // if mode in {"r", "w"}:
     // return "text"
     return "text";
 }
@@ -42,7 +39,6 @@ std::string handle_in__lit_r__w(std::string_view mode) {
 // def handle_in(mode: Literal["rb", "wb"]) -> str: ...
 std::string handle_in__lit_rb__wb(std::string_view mode) {
     // # in-operator with set literal: covers full set for Literal["r","w"]
-    // if mode in {"r", "w"}:
     // return "binary"
     return "binary";
 }
@@ -54,7 +50,6 @@ std::string handle_in__lit_rb__wb(std::string_view mode) {
 // def handle_not_in(mode: Literal["r", "w"]) -> str: ...
 std::string handle_not_in__lit_r__w(std::string_view mode) {
     // # not-in: disjoint for Literal["r","w"] -> false, so else taken
-    // if mode not in {"r", "w"}:
     // return "text"
     return "text";
 }
@@ -63,7 +58,6 @@ std::string handle_not_in__lit_r__w(std::string_view mode) {
 // def handle_not_in(mode: Literal["rb", "wb"]) -> str: ...
 std::string handle_not_in__lit_rb__wb(std::string_view mode) {
     // # not-in: disjoint for Literal["r","w"] -> false, so else taken
-    // if mode not in {"r", "w"}:
     // return "binary"
     return "binary";
 }
@@ -75,8 +69,6 @@ std::string handle_not_in__lit_rb__wb(std::string_view mode) {
 // def handle_and(mode: Literal["r"]) -> str: ...
 std::string handle_and__lit_r(std::string_view mode) {
     // # and-contradiction: mode can't be both "r" and "w"
-    // if mode == "r" and mode == "w":
-    // if mode == "r":
     // return "read"
     return "read";
 }
@@ -85,8 +77,6 @@ std::string handle_and__lit_r(std::string_view mode) {
 // def handle_and(mode: Literal["w"]) -> str: ...
 std::string handle_and__lit_w(std::string_view mode) {
     // # and-contradiction: mode can't be both "r" and "w"
-    // if mode == "r" and mode == "w":
-    // if mode == "r":
     // return "write"
     return "write";
 }
@@ -98,7 +88,6 @@ std::string handle_and__lit_w(std::string_view mode) {
 // def handle_and_multi(mode: Literal["r", "w"]) -> str: ...
 std::string handle_and_multi__lit_r__w(std::string_view mode) {
     // # and-contradiction on multi-value: mode can't be "r" AND "w" at once
-    // if mode == "r" and mode == "w":
     // return "ok"
     return "ok";
 }
@@ -107,7 +96,6 @@ std::string handle_and_multi__lit_r__w(std::string_view mode) {
 // def handle_and_multi(mode: Literal["rb", "wb"]) -> str: ...
 std::string handle_and_multi__lit_rb__wb(std::string_view mode) {
     // # and-contradiction on multi-value: mode can't be "r" AND "w" at once
-    // if mode == "r" and mode == "w":
     // return "ok"
     return "ok";
 }
@@ -119,7 +107,6 @@ std::string handle_and_multi__lit_rb__wb(std::string_view mode) {
 // def handle_not_in_disjoint(mode: Literal["r", "w"]) -> str: ...
 std::string handle_not_in_disjoint__lit_r__w(std::string_view mode) {
     // # not-in with disjoint set: folds to true for Literal["r","w"]
-    // if mode not in {"x", "y"}:
     // return "not-xy"
     return "not-xy";
 }
@@ -128,7 +115,6 @@ std::string handle_not_in_disjoint__lit_r__w(std::string_view mode) {
 // def handle_not_in_disjoint(mode: Literal["rb", "wb"]) -> str: ...
 std::string handle_not_in_disjoint__lit_rb__wb(std::string_view mode) {
     // # not-in with disjoint set: folds to true for Literal["r","w"]
-    // if mode not in {"x", "y"}:
     // return "not-xy"
     return "not-xy";
 }
@@ -140,7 +126,6 @@ std::string handle_not_in_disjoint__lit_rb__wb(std::string_view mode) {
 // def handle_not(mode: Literal["r", "w"]) -> str: ...
 std::string handle_not__lit_r__w(std::string_view mode) {
     // # not wrapping: not (or-chain covering full set) -> false
-    // if not (mode == "r" or mode == "w"):
     // return "text"
     return "text";
 }
@@ -149,7 +134,6 @@ std::string handle_not__lit_r__w(std::string_view mode) {
 // def handle_not(mode: Literal["rb", "wb"]) -> str: ...
 std::string handle_not__lit_rb__wb(std::string_view mode) {
     // # not wrapping: not (or-chain covering full set) -> false
-    // if not (mode == "r" or mode == "w"):
     // return "binary"
     return "binary";
 }

@@ -9,7 +9,6 @@ namespace tpyapp::main {
 // @overload
 // def describe(animal: Dog) -> str: ...  # tpyc: ok
 std::string describe(const Dog& animal) {
-    // if isinstance(animal, Dog):
     // return "Dog: " + animal.name
     return (::tpy::str_concat("Dog: ", animal.name));
 }
@@ -17,7 +16,6 @@ std::string describe(const Dog& animal) {
 // @overload
 // def describe(animal: Cat) -> str: ...  # tpyc: ok
 std::string describe(const Cat& animal) {
-    // if isinstance(animal, Dog):
     // return "Cat with " + str(animal.lives) + " lives"
     return (::tpy::str_concat((::tpy::str_concat("Cat with ", (animal.lives).to_string())), " lives"));
 }

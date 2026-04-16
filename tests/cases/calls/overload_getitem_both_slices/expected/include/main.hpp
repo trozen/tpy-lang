@@ -24,7 +24,6 @@ struct Window {
     // @overload
     // def __getitem__(self, index: basic_slice) -> Span[readonly[Int32]]: ...  # tpyc: ok
     std::span<const int32_t> __getitem__(::tpy::BasicSlice index) const {
-        // if isinstance(index, basic_slice):
         // # Basic: return contiguous subspan
         // s_start = index.start
         std::optional<int32_t> s_start = index.start;
@@ -36,13 +35,11 @@ struct Window {
         int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
         // return self._data[start:stop]
         return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
-        // # Basic: return contiguous subspan
     }
 
     // @overload
     // def __getitem__(self, index: slice) -> Span[readonly[Int32]]: ...  # tpyc: ok
     std::span<const int32_t> __getitem__(::tpy::Slice index) const {
-        // if isinstance(index, basic_slice):
         // # Stepped: access .step to prove we received a slice, not basic_slice
         // s_step = index.step
         std::optional<int32_t> s_step = index.step;

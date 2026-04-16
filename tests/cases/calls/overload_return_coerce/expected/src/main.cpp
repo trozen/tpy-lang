@@ -10,7 +10,6 @@ namespace tpyapp::main {
 // @overload
 // def get_val(obj: A) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_val(const A& obj) {
-    // if isinstance(obj, A):
     // return obj.x  # Int32, stub -> int (not float)
     return obj.x;
 }
@@ -18,7 +17,6 @@ namespace tpyapp::main {
 // @overload
 // def get_val(obj: B) -> float: ...  # tpyc: ok
 double get_val(const B& obj) {
-    // if isinstance(obj, A):
     // return obj.y
     return obj.y;
 }
@@ -30,7 +28,6 @@ double get_val(const B& obj) {
 // @overload
 // def get_big(obj: C) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_big(const C& obj) {
-    // if isinstance(obj, C):
     // return obj.z  # Int64, stub -> int (not float)
     return obj.z;
 }
@@ -38,7 +35,6 @@ double get_val(const B& obj) {
 // @overload
 // def get_big(obj: B) -> float: ...  # tpyc: ok
 double get_big(const B& obj) {
-    // if isinstance(obj, C):
     // return obj.y
     return obj.y;
 }
@@ -50,7 +46,6 @@ double get_big(const B& obj) {
 // @overload
 // def get_wide(obj: A) -> Int64: ...  # tpyc: ok
 int64_t get_wide(const A& obj) {
-    // if isinstance(obj, A):
     // return obj.x  # Int32, stub -> Int64 (not float)
     return obj.x;
 }
@@ -58,7 +53,6 @@ int64_t get_wide(const A& obj) {
 // @overload
 // def get_wide(obj: B) -> float: ...  # tpyc: ok
 double get_wide(const B& obj) {
-    // if isinstance(obj, A):
     // return obj.y
     return obj.y;
 }
@@ -70,7 +64,6 @@ double get_wide(const B& obj) {
 // @overload
 // def get_cast(obj: A) -> float: ...  # tpyc: ok
 double get_cast(const A& obj) {
-    // if isinstance(obj, A):
     // return obj.x  # Int32, stub -> float (not int)
     return obj.x;
 }
@@ -78,7 +71,6 @@ double get_cast(const A& obj) {
 // @overload
 // def get_cast(obj: C) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_cast(const C& obj) {
-    // if isinstance(obj, A):
     // return obj.z
     return obj.z;
 }
