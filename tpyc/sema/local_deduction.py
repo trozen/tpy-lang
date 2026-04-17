@@ -13,17 +13,18 @@ from ..coercions import CoercionContext
 from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction, TpyListRepeat
 from ..parse.nodes import TpyStrLiteral, TpyBytesLiteral, TpySubscript, TpyFieldAccess, TpyBinOp, TpyIfExpr
 from ..typesys import (
-    ArrayType,
+
     BigIntType,
     DictLiteralInfo,
-    DictType,
+    make_dict,
     FixedIntType,
     FloatLiteralType,
     FloatType,
     IntLiteralType,
     ListLiteralInfo,
+    make_list,
     ListRepeatType,
-    ListType,
+    make_array,
     NoneType,
     OptionalType,
     OwnType,
@@ -40,8 +41,7 @@ from ..typesys import (
     ByteArrayType,
     BytesViewType,
     SetLiteralInfo,
-    SetType,
-    SpanType,
+    make_set,
     StrType,
     StringType,
     StrViewType,
@@ -55,6 +55,7 @@ from ..typesys import (
 from .context import PENDING_CONTAINER_TYPES
 from .diagnostics import SemanticError
 from .numeric_lattice import merge_literal_seed_target, numeric_info, widen_numeric_types
+from ..type_def_registry import is_set, is_dict, is_array, is_span, is_list
 
 if TYPE_CHECKING:
     from .compatibility import TypeCompatibility
@@ -355,31 +356,31 @@ class LocalTypeDeduction:
             literal_id = self.ctx.func.variable_to_literal.get(arg_expr.name)
             if literal_id is not None and literal_id in self.ctx.list_literals:
                 info = self.ctx.list_literals[literal_id]
-                if isinstance(param_type, ListType):
+                if is_list(param_type):
                     info.passed_to_list_param = True
-                    info.coerced_element_type = param_type.element_type
-                elif isinstance(param_type, SpanType):
+                    info.coerced_element_type = param_type.type_args[0]
+                elif is_span(param_type):
                     info.passed_to_span_param = True
-                    info.coerced_element_type = param_type.element_type
+                    info.coerced_element_type = param_type.type_args[0]
 
-        elif isinstance(arg_type, PendingDictType) and isinstance(param_type, DictType):
+        elif isinstance(arg_type, PendingDictType) and is_dict(param_type):
             literal_id = self.ctx.func.variable_to_dict_literal.get(arg_expr.name)
             if literal_id is not None:
                 info = self.ctx.dict_literals.get(literal_id)
                 if info:
-                    result = self._widen_inferred_type(info.key_type, param_type.key_type)
+                    result = self._widen_inferred_type(info.key_type, param_type.type_args[0])
                     if result is not None:
                         info.key_type = result
-                    result = self._widen_inferred_type(info.value_type, param_type.value_type)
+                    result = self._widen_inferred_type(info.value_type, param_type.type_args[1])
                     if result is not None:
                         info.value_type = result
 
-        elif isinstance(arg_type, PendingSetType) and isinstance(param_type, SetType):
+        elif isinstance(arg_type, PendingSetType) and is_set(param_type):
             literal_id = self.ctx.func.variable_to_set_literal.get(arg_expr.name)
             if literal_id is not None:
                 info = self.ctx.set_literals.get(literal_id)
                 if info:
-                    result = self._widen_inferred_type(info.element_type, param_type.element_type)
+                    result = self._widen_inferred_type(info.element_type, param_type.type_args[0])
                     if result is not None:
                         info.element_type = result
 
@@ -422,9 +423,9 @@ class LocalTypeDeduction:
             literal_id = self.ctx.func.variable_to_literal.get(var_name)
             if literal_id is not None and literal_id in self.ctx.list_literals:
                 info = self.ctx.list_literals[literal_id]
-                if isinstance(return_type, ListType):
+                if is_list(return_type):
                     info.passed_to_list_param = True
-                    info.coerced_element_type = return_type.element_type
+                    info.coerced_element_type = return_type.type_args[0]
 
     def register_list_alias(self, var_name: str, init_type: PendingListType, decl_line: int | None = None) -> PendingListType:
         """Register alias relationship when b = a where a is a PendingListType.
@@ -559,27 +560,27 @@ class LocalTypeDeduction:
             if info.has_explicit_annotation and info.explicit_type:
                 resolved = info.explicit_type
             elif info.is_mutated:
-                resolved = ListType(elem_type)
+                resolved = make_list(elem_type)
             elif info.needs_list_type:
                 # Both ternary branches must have the same C++ type; Array sizes may differ.
-                resolved = ListType(elem_type)
+                resolved = make_list(elem_type)
             elif info.passed_to_list_param:
-                resolved = ListType(elem_type)
+                resolved = make_list(elem_type)
             elif info.is_global:
                 # Globals can be imported and mutated by other modules
-                resolved = ListType(elem_type)
+                resolved = make_list(elem_type)
             elif info.passed_to_span_param and is_repeat and info.size < 0:
                 # Variable count repeat to Span -- needs contiguous memory, materialize
-                resolved = ListType(elem_type)
+                resolved = make_list(elem_type)
             elif info.size < 0 and info.needs_indexing:
                 # Variable count repeat with subscript access -- materialize for operator[]
-                resolved = ListType(elem_type)
+                resolved = make_list(elem_type)
             elif info.size < 0:
                 # Variable count (repeat with non-constant N) -- stays lazy
                 resolved = ListRepeatType(elem_type)
             else:
                 # Default: Array (stack-allocated, no mutation detected)
-                resolved = ArrayType(elem_type, info.size)
+                resolved = make_array(elem_type, info.size)
 
             self._apply_container_resolution(info, resolved)
 
@@ -599,13 +600,13 @@ class LocalTypeDeduction:
                 if source is None:
                     continue
                 # Forward: source became list -> alias must too
-                if isinstance(info.resolved_type, ArrayType) and isinstance(source.resolved_type, ListType):
-                    info.resolved_type = ListType(info.resolved_type.element_type)
+                if is_array(info.resolved_type) and is_list(source.resolved_type):
+                    info.resolved_type = make_list(info.resolved_type.type_args[0])
                     self._update_resolved_binding(info)
                     changed = True
                 # Reverse: alias became list -> source must too
-                elif isinstance(source.resolved_type, ArrayType) and isinstance(info.resolved_type, ListType):
-                    source.resolved_type = ListType(source.resolved_type.element_type)
+                elif is_array(source.resolved_type) and is_list(info.resolved_type):
+                    source.resolved_type = make_list(source.resolved_type.type_args[0])
                     self._update_resolved_binding(source)
                     changed = True
 
@@ -688,7 +689,7 @@ class LocalTypeDeduction:
             if isinstance(value_type, PendingViewType):
                 value_type = value_type.family.owned_type
 
-            self._apply_container_resolution(info, DictType(key_type, value_type))
+            self._apply_container_resolution(info, make_dict(key_type, value_type))
 
         # Process sets
         for literal_id in self.ctx.func.pending_set_resolutions:
@@ -712,7 +713,7 @@ class LocalTypeDeduction:
             if isinstance(elem_type, PendingViewType):
                 elem_type = elem_type.family.owned_type
 
-            self._apply_container_resolution(info, SetType(elem_type))
+            self._apply_container_resolution(info, make_set(elem_type))
 
     # ------------------------------------------------------------------
     # Set literal deduction

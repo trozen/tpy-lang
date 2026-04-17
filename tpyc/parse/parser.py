@@ -14,9 +14,9 @@ import textwrap
 from typing import Any, Literal, NoReturn, Optional
 
 from ..typesys import (
-    TpyType, NamedType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, FinalType, SelfType,
+    TpyType, NominalType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, FinalType, SelfType,
     strip_auto_readonly, apply_auto_readonly, has_auto_readonly, strip_auto_own, apply_auto_own, ensure_qualified,
-    TypeParamRef, OptionalType, VoidType, make_union, UnionType, EnumType, TupleType, FnType, CallableType,
+    TypeParamRef, OptionalType, VoidType, make_union, UnionType, EnumType, TupleType, CallableType, make_fn_type,
     _contains_self_reference, validate_recursive_union_paths,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW, BOOL, FLOAT, FLOAT32, BIGINT, SELF, BASIC_SLICE, SLICE, FieldInfo, RecordInfo, TypeRegistry,
     FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, BoolType, StrType, LiteralType, LiteralValue,
@@ -549,7 +549,7 @@ class Parser:
             elif original == "basic_slice": return BASIC_SLICE
             elif original == "slice": return SLICE
             elif original == "None": return VOID
-            elif original == "type": return NamedType("type", _module_qname=qnames.TYPE)
+            elif original == "type": return NominalType("type", _module_qname=qnames.TYPE)
             elif original == "tuple":
                 raise ParseError("tuple requires type arguments: tuple[T1, T2, ...]", node)
         elif module == "tpy":
@@ -583,17 +583,17 @@ class Parser:
         or for completely unknown names.
         """
         # Self-reference in a recursive type alias (e.g. list[JsonValue] inside
-        # the definition of JsonValue). Return a NamedType placeholder that
+        # the definition of JsonValue). Return a NominalType placeholder that
         # survives inside container types and is detected post-parse.
         if self._pending_alias_name is not None and name == self._pending_alias_name:
-            return NamedType(name)
+            return NominalType(name)
         # Resolve short nested type names: Kind -> Message.Kind
         if name in self._nested_type_scope:
             dotted = self._nested_type_scope[name]
             if (enum_type := self.registry.get_enum(dotted)) is not None:
                 return enum_type
             if self.registry.get_record(dotted) is not None:
-                return NamedType(dotted)
+                return NominalType(dotted)
         if (user_protocol := self.registry.get_protocol(name)) is not None:
             if user_protocol.type_params:
                 raise ParseError(
@@ -601,7 +601,7 @@ class Parser:
                     f"{name}[{', '.join(user_protocol.type_params)}]",
                     node
                 )
-            return NamedType(name, is_protocol=True)
+            return NominalType(name, is_protocol=True)
         elif (enum_type := self.registry.get_enum(name)) is not None:
             return enum_type
         elif (alias := self.registry.get_type_alias(name)) is not None:
@@ -611,7 +611,7 @@ class Parser:
         if (resolved or self.registry.is_known_type(name)
                 or name in self._module_class_names
                 or name in self._module_type_alias_names):
-            return NamedType(name)
+            return NominalType(name)
         return None
 
     def _raise_unresolved_import_error(self, raw_name: str, node: ast.expr) -> None:
@@ -846,9 +846,9 @@ class Parser:
                     if result.builtin_type_key:
                         for method in result.methods:
                             rt = method.return_type
-                            if (isinstance(rt, NamedType) and rt.name == result.name
+                            if (isinstance(rt, NominalType) and rt.name == result.name
                                     and not rt._module_qname):
-                                method.return_type = NamedType(
+                                method.return_type = NominalType(
                                     rt.name, rt.type_args, rt.is_protocol,
                                     result.builtin_type_key, rt.is_dynamic_protocol)
             elif isinstance(node, ast.FunctionDef):
@@ -1085,7 +1085,7 @@ class Parser:
             match = _type_map.get(type(ptype))
             if match:
                 return match
-            if isinstance(ptype, NamedType) and ptype.qualified_name() == qnames.TYPE:
+            if isinstance(ptype, NominalType) and ptype.qualified_name() == qnames.TYPE:
                 return (_NameArg, "type name")
             return None
 
@@ -1336,7 +1336,7 @@ class Parser:
                             # (cross-module protocols aren't in parser registry)
                             type_param_kinds.append(TypeParamKind.TYPE)
                             bound_type = self._parse_type_annotation(tp.bound)
-                            if not isinstance(bound_type, NamedType):
+                            if not isinstance(bound_type, NominalType):
                                 raise ParseError(f"Type parameter bound must be a protocol or 'int', got {bound_type}", tp)
                             type_param_bounds[tp.name] = bound_type
                     else:
@@ -1932,7 +1932,7 @@ class Parser:
                     method_type_params.append(tp.name)
                     if tp.bound is not None:
                         bound_type = self._parse_type_annotation(tp.bound)
-                        if not isinstance(bound_type, NamedType):
+                        if not isinstance(bound_type, NominalType):
                             raise ParseError(f"Type parameter bound must be a protocol or 'int', got {bound_type}", tp)
                         method_type_param_bounds[tp.name] = bound_type
                 else:
@@ -2352,7 +2352,7 @@ class Parser:
                         else:
                             type_param_kinds.append(TypeParamKind.TYPE)
                             bound_type = self._parse_type_annotation(tp.bound)
-                            if not isinstance(bound_type, NamedType):
+                            if not isinstance(bound_type, NominalType):
                                 raise ParseError(f"Type parameter bound must be a protocol or 'int', got {bound_type}", tp)
                             type_param_bounds[tp.name] = bound_type
                     else:
@@ -2567,11 +2567,11 @@ class Parser:
                 # guard ensures this only fires for names that went through
                 # _resolve_type_name (imports or builtins exports), not for
                 # unresolved forward references.
-                if (resolved and isinstance(registered, NamedType)
+                if (resolved and isinstance(registered, NominalType)
                         and not registered.is_protocol and not registered._module_qname):
                     btk = self.registry.get_builtin_type_key(registered.name)
                     if btk:
-                        registered = NamedType(registered.name, registered.type_args,
+                        registered = NominalType(registered.name, registered.type_args,
                                                registered.is_protocol, btk,
                                                registered.is_dynamic_protocol)
                 return registered
@@ -2624,7 +2624,7 @@ class Parser:
                             for p in param_list_node.elts
                         )
                         return_type = self._parse_type_annotation(return_node, type_param_scope)
-                        return FnType(param_types, return_type)
+                        return make_fn_type(param_types, return_type)
                 elif module == "builtins":
                     if original == "tuple":
                         return self._parse_tuple_type(node, type_param_scope)
@@ -2716,7 +2716,7 @@ class Parser:
                 if user_protocol := self.registry.get_protocol(resolved_container):
                     if user_protocol.type_params:
                         type_args = self._parse_protocol_type_args(node, resolved_container, user_protocol.type_params, type_param_scope)
-                        return NamedType(resolved_container, type_args, is_protocol=True)
+                        return NominalType(resolved_container, type_args, is_protocol=True)
 
                 # User-defined generic records (e.g., Stack[Int32])
                 if not resolved and raw_name:
@@ -2725,14 +2725,14 @@ class Parser:
                         or self.registry.get_record(resolved_container) is not None
                         or resolved_container in self._module_class_names):
                     type_args = self._parse_record_type_args(node, resolved_container, type_param_scope)
-                    return NamedType(resolved_container, type_args)
+                    return NominalType(resolved_container, type_args)
 
             # Nested generic records (e.g., Outer.Inner[T])
             if isinstance(node.value, ast.Attribute):
                 dotted = self._resolve_dotted_class_name(node.value)
                 if dotted is not None and self.registry.get_record(dotted) is not None:
                     type_args = self._parse_record_type_args(node, dotted, type_param_scope)
-                    return NamedType(dotted, type_args)
+                    return NominalType(dotted, type_args)
 
             raise ParseError(f"Unknown generic type: {raw_name}", node)
 
@@ -2750,7 +2750,7 @@ class Parser:
             dotted = self._resolve_dotted_class_name(node)
             if dotted is not None:
                 if self.registry.get_record(dotted) is not None:
-                    return NamedType(dotted)
+                    return NominalType(dotted)
                 enum_type = self.registry.get_enum(dotted)
                 if enum_type is not None:
                     return enum_type
@@ -3747,7 +3747,7 @@ class Parser:
             # Check if it's a known record type
             record_info = self.registry.get_record(type_name)
             if record_info:
-                return NamedType(type_name)
+                return NominalType(type_name)
         return None
 
 
@@ -3760,7 +3760,7 @@ class FragmentParser(Parser):
 
     Differs from Parser in two ways:
     - Resolves tpy/typing exports without explicit imports
-    - Returns NamedType for unresolved type names instead of raising
+    - Returns NominalType for unresolved type names instead of raising
     """
 
     def _resolve_type_name(self, local_name: str) -> tuple[str, str] | None:
@@ -3791,7 +3791,7 @@ class FragmentParser(Parser):
                     or "Unsupported qualified type" in msg):
                 raise
             if isinstance(node, ast.Name):
-                return NamedType(node.id)
+                return NominalType(node.id)
             if isinstance(node, ast.Subscript):
                 raw = node.value.id if isinstance(node.value, ast.Name) else None
                 if raw:
@@ -3800,9 +3800,9 @@ class FragmentParser(Parser):
                         self._parse_type_annotation(s, type_param_scope)
                         for s in slices
                     )
-                    return NamedType(raw, type_args)
+                    return NominalType(raw, type_args)
             if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
-                return NamedType(f"{node.value.id}.{node.attr}")
+                return NominalType(f"{node.value.id}.{node.attr}")
             raise
 
     @classmethod
@@ -3814,7 +3814,7 @@ class FragmentParser(Parser):
         """Parse a TPy source fragment without full module context.
 
         Used by macro quote/add_method_from_source APIs. Unresolved type names
-        become NamedType(name) -- sema resolves them later.
+        become NominalType(name) -- sema resolves them later.
         """
         source = textwrap.dedent(source).strip()
         parser = cls()

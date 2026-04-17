@@ -9,7 +9,7 @@ from collections import defaultdict
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, BoolType, FixedIntType, NamedType, OptionalType,
+    TpyType, BoolType, FixedIntType, NominalType, OptionalType,
     StrType, StringType, StrViewType, PendingStrType, UnionType, EnumType,
     LiteralType,
     unwrap_readonly, is_any_str_type,
@@ -90,7 +90,7 @@ class MatchGenerator:
                 self._gen_match_if_elif(out, stmt, indent)
         elif isinstance(subject_type, (FixedIntType, BoolType)):
             self._gen_match_switch_primitive(out, stmt, indent)
-        elif isinstance(subject_type, NamedType) and subject_type.is_user_record:
+        elif isinstance(subject_type, NominalType) and subject_type.is_user_record:
             has_guard = any(c.guard is not None for c in stmt.cases)
             if has_guard:
                 self._gen_match_guarded_record(out, stmt, indent)
@@ -1332,7 +1332,7 @@ class MatchGenerator:
             self.ctx.indent_level += 1
             self._emit_switch_groups(out, groups, inner, subject_expr="__match_inner")
             self.ctx.indent_level -= 1
-        elif isinstance(inner_type, NamedType) and inner_type.is_user_record:
+        elif isinstance(inner_type, NominalType) and inner_type.is_user_record:
             self._emit_optional_inner_record(out, inner_cases, inner)
         else:
             # str, float, other: if/elif chain on __match_inner

@@ -6,13 +6,14 @@ import re
 from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
-    from tpyc.typesys import TypeRegistry, RecordInfo, SpanType, FunctionInfo
+    from tpyc.typesys import TypeRegistry, RecordInfo, FunctionInfo
 
 from tpyc.typesys import (
-    TypeParamRef, NamedType, PtrType, TupleType, TypeParamKind,
-    TpyType, CHAR, OwnType, CopyIterType, OwnIterType, GenExprType, SpanIterType,
+    TypeParamRef, NominalType, PtrType, TupleType, TypeParamKind,
+    TpyType, CHAR, OwnType, GenExprType,
     is_any_str_type, is_protocol_type, unwrap_ref_type,
 )
+from tpyc.type_def_registry import is_span, is_span_iter, is_copy_iter, is_own_iter, is_iterator_adapter
 from tpyc.modules.defs import ParamDef, MethodDef, BuiltinTypeDef, GenericTypeLookup
 
 
@@ -95,24 +96,24 @@ def _get_type_factories() -> dict[str, tuple[list[TypeParamKind], "Callable[...,
     global _type_factories
     if _type_factories is None:
         from tpyc.typesys import (
-            ListType, DictType, DictKeysViewType, DictValuesViewType,
-            DictItemsViewType, SetType, ArrayType, SpanType, SpanIterType,
+            make_list, make_dict, make_dict_keys_view, make_dict_values_view,
+            make_dict_items_view, make_set, make_array, make_span, make_span_iter,
             PtrType, RangeType, FLOAT32, FLOAT, BIGINT, BOOL, CHAR, STR, STRING, STRVIEW, FSTR, BYTES, BYTEARRAY, BYTESVIEW, BASIC_SLICE, SLICE,
             ALL_FIXED_INTS,
         )
         TYPE = TypeParamKind.TYPE
         INT = TypeParamKind.INT
         _type_factories = {
-            "builtins.list": ([TYPE], lambda t: ListType(t)),
-            "builtins.dict": ([TYPE, TYPE], lambda k, v: DictType(k, v)),
-            "builtins.dict_keys": ([TYPE, TYPE], lambda k, v: DictKeysViewType(k, v)),
-            "builtins.dict_values": ([TYPE, TYPE], lambda k, v: DictValuesViewType(k, v)),
-            "builtins.dict_items": ([TYPE, TYPE], lambda k, v: DictItemsViewType(k, v)),
-            "builtins.set": ([TYPE], lambda t: SetType(t)),
+            "builtins.list": ([TYPE], lambda t: make_list(t)),
+            "builtins.dict": ([TYPE, TYPE], make_dict),
+            "builtins.dict_keys": ([TYPE, TYPE], make_dict_keys_view),
+            "builtins.dict_values": ([TYPE, TYPE], make_dict_values_view),
+            "builtins.dict_items": ([TYPE, TYPE], make_dict_items_view),
+            "builtins.set": ([TYPE], make_set),
             "builtins.Range": ([TYPE], lambda t: RangeType(t)),
-            "tpy.Array": ([TYPE, INT], lambda t, n: ArrayType(t, n)),
-            "tpy.Span": ([TYPE], lambda t: SpanType(t)),
-            "tpy.SpanIter": ([TYPE], lambda t: SpanIterType(t)),
+            "tpy.Array": ([TYPE, INT], lambda t, n: make_array(t, n)),
+            "tpy.Span": ([TYPE], lambda t: make_span(t)),
+            "tpy.SpanIter": ([TYPE], make_span_iter),
             "tpy.Ptr": ([TYPE], lambda t: PtrType(t)),
             "tpy.Float32": ([], lambda: FLOAT32),
             "tpy.Char": ([], lambda: CHAR),
@@ -203,9 +204,10 @@ def extract_type_params(tpy_type: "TpyType") -> dict[str, "TpyType"]:
     Note: Only type parameters that are themselves types are extracted.
     Integer parameters like N in Container[T, N] are not included.
     """
-    from tpyc.typesys import PtrType, DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType
-    if isinstance(tpy_type, (DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType)):
-        return {"K": tpy_type.key_type, "V": tpy_type.value_type}
+    from tpyc.typesys import PtrType
+    from tpyc.type_def_registry import is_dict_view, is_dict
+    if is_dict(tpy_type) or is_dict_view(tpy_type):
+        return {"K": tpy_type.type_args[0], "V": tpy_type.type_args[1]}
     # Pointer types: use the full pointee (preserving readonly if present).
     # For Ptr[readonly[T]], T maps to readonly[T] so that methods like
     # span() -> Span[T] correctly produce Span[readonly[T]].
@@ -224,7 +226,7 @@ def _resolve_type_or_param(t: "TpyType", type_params: dict[str, "TpyType"]) -> "
     Handles:
     - TypeParamRef("T") -> type_params["T"]
     - SelfType -> type_params["Self"] if available, else SELF
-    - NamedType (protocol) with TypeParamRef args -> resolved NamedType
+    - NominalType (protocol) with TypeParamRef args -> resolved NominalType
     - PtrType with TypeParamRef pointee -> resolved pointer type
     - Other TpyType -> returned as-is (uses map_inner_types for nested resolution)
     """
@@ -242,12 +244,12 @@ def _resolve_type_or_param(t: "TpyType", type_params: dict[str, "TpyType"]) -> "
             raise ValueError(f"Unresolved type parameter: {t.name}")
         return type_params[t.name]
 
-    # Handle NamedType (protocol) with TypeParamRef in type_args
-    if isinstance(t, NamedType) and t.is_protocol and t.type_args:
+    # Handle NominalType (protocol) with TypeParamRef in type_args
+    if isinstance(t, NominalType) and t.is_protocol and t.type_args:
         resolved_args = tuple(
             _resolve_type_or_param(arg, type_params) for arg in t.type_args
         )
-        return NamedType(t.name, resolved_args, is_protocol=True)
+        return NominalType(t.name, resolved_args, is_protocol=True)
 
     # Handle PtrType with TypeParamRef pointee
     if isinstance(t, PtrType):
@@ -339,7 +341,7 @@ def get_extends_protocol_type_arg(
                 if match and match.group(1) == protocol_name:
                     return _resolve_extends_type_arg(match.group(2), type_params)
 
-            # Fallback: check implemented_protocols (NamedType objects)
+            # Fallback: check implemented_protocols (NominalType objects)
             target_qname = get_protocol_qname(protocol_name)
             for impl_proto in record_info.implemented_protocols:
                 if impl_proto_matches_name(impl_proto, protocol_name, target_qname) and impl_proto.type_args:
@@ -350,10 +352,10 @@ def get_extends_protocol_type_arg(
 
 def get_error_return_next_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
     """If type has __next__() with @error_return(StopIteration), return element type T."""
-    from tpyc.typesys import NamedType, unwrap_ref_type
+    from tpyc.typesys import NominalType, unwrap_ref_type
 
     tpy_type = unwrap_ref_type(tpy_type)
-    if not isinstance(tpy_type, NamedType) or not tpy_type.is_user_record:
+    if not isinstance(tpy_type, NominalType) or not tpy_type.is_user_record:
         return None
     return _find_error_return_next_element(tpy_type.name, tpy_type.type_args, registry)
 
@@ -362,7 +364,7 @@ def _find_error_return_next_element(
     record_name: str, type_args: "list[TpyType] | None", registry: "TypeRegistry",
 ) -> "TpyType | None":
     """Walk a record's method table (and parent chain) looking for __next__() with error_return."""
-    from tpyc.typesys import NamedType, OwnType, TypeParamRef, unwrap_ref_type
+    from tpyc.typesys import NominalType, OwnType, TypeParamRef, unwrap_ref_type
 
     record = registry.find_record(record_name)
     if record is None:
@@ -382,7 +384,7 @@ def _find_error_return_next_element(
             return inner
 
     # Walk parent chain
-    if record.parent and isinstance(record.parent, NamedType) and record.parent.is_user_record:
+    if record.parent and isinstance(record.parent, NominalType) and record.parent.is_user_record:
         parent_args = list(record.parent.type_args) if record.parent.type_args else None
         if type_subst and parent_args:
             parent_args = [
@@ -396,12 +398,12 @@ def _find_error_return_next_element(
 
 def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
     """If type has __iter__() returning a concrete iterator, return element type T."""
-    from tpyc.typesys import NamedType, unwrap_ref_type
+    from tpyc.typesys import NominalType, unwrap_ref_type
 
     tpy_type = unwrap_ref_type(tpy_type)
     # Try user records (walks parent chain).
     # allow_protocol_return=True: user __iter__ returning Iterator[T] is recognized.
-    if isinstance(tpy_type, NamedType) and tpy_type.is_user_record:
+    if isinstance(tpy_type, NominalType) and tpy_type.is_user_record:
         record = registry.get_record(tpy_type.name)
         if record is not None:
             type_subst: dict[str, "TpyType"] = {"Self": tpy_type}
@@ -419,7 +421,7 @@ def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "Tpy
     # docs/ITERATOR_DESIGN.md).
     record = registry.get_record_for_type(tpy_type)
     if record is not None:
-        # extract_type_params handles NamedType.type_args as well as
+        # extract_type_params handles NominalType.type_args as well as
         # specialized subclasses (RangeType.elem, DictType.key_type/value_type,
         # PtrType.pointee, etc.) via each type's get_element_type() hook.
         # Include Self so that __iter__(self) -> Self substitutes to the
@@ -452,8 +454,8 @@ def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> 
         tpy_type = tpy_type.wrapped
 
     # Compiler-internal iterator adapters (no stubs) plus SpanIter
-    if isinstance(tpy_type, (CopyIterType, OwnIterType, GenExprType, SpanIterType)):
-        return tpy_type.element_type
+    if is_iterator_adapter(tpy_type) or isinstance(tpy_type, GenExprType):
+        return tpy_type.element_type if isinstance(tpy_type, GenExprType) else tpy_type.type_args[0]
 
     # Protocol-typed iterables: single type_arg is T
     if is_protocol_type(tpy_type) and tpy_type.qualified_name() in ITERABLE_PROTOCOL_QNAMES:
@@ -484,7 +486,7 @@ def _find_record_iter_element(
     *, allow_protocol_return: bool = False,
 ) -> "TpyType | None":
     """Check if record (or its parents) has __iter__() returning a concrete iterator; return element type."""
-    from tpyc.typesys import NamedType, TypeParamRef
+    from tpyc.typesys import NominalType, TypeParamRef
 
     result = _find_iter_method_element(record.get_method_overloads("__iter__"), type_subst, registry,
                                        allow_protocol_return=allow_protocol_return)
@@ -492,7 +494,7 @@ def _find_record_iter_element(
         return result
 
     # Walk parent chain (recursive)
-    if record.parent and isinstance(record.parent, NamedType) and record.parent.is_user_record:
+    if record.parent and isinstance(record.parent, NominalType) and record.parent.is_user_record:
         parent_info = registry.get_record(record.parent.name)
         if parent_info:
             parent_subst = dict(type_subst)
@@ -513,7 +515,7 @@ def _find_iter_method_element(
     *, allow_protocol_return: bool = False,
 ) -> "TpyType | None":
     """Check __iter__() methods for a concrete iterator return type and extract element type."""
-    from tpyc.typesys import FunctionInfo, NamedType, OwnType, SelfType, SpanIterType, TypeParamRef, is_protocol_type, unwrap_ref_type
+    from tpyc.typesys import FunctionInfo, NominalType, OwnType, SelfType, TypeParamRef, is_protocol_type, unwrap_ref_type
 
     for method in methods:
         if len(method.params) != 0:
@@ -524,10 +526,10 @@ def _find_iter_method_element(
             ret = method.returns
         # __iter__(self) -> Self handling. SelfType returns substitute
         # to the record's own type. User iterators with Self return
-        # resolve to their NamedType (is_user_record=True) and are
+        # resolve to their NominalType (is_user_record=True) and are
         # handled by the error_return __next__ branch below.
         # Note: builtins like SpanIter whose __iter__ returns Self end
-        # up as plain NamedType("SpanIter", ...) after parser resolution
+        # up as plain NominalType("SpanIter", ...) after parser resolution
         # and are NOT matched here; they rely on the compiler-internal
         # adapter list in IterableHelper. The parser doesn't resolve Self
         # to the SpanIterType typesys subclass; low-priority follow-up
@@ -540,8 +542,8 @@ def _find_iter_method_element(
             ret = ret.wrapped
 
         # SpanIter[T] -- known NativeIterable with element type T
-        if isinstance(ret, SpanIterType):
-            elem = ret.element_type
+        if is_span_iter(ret):
+            elem = ret.type_args[0]
             if isinstance(elem, TypeParamRef) and elem.name in type_subst:
                 elem = type_subst[elem.name]
             return elem
@@ -552,7 +554,7 @@ def _find_iter_method_element(
         # that e.g. dict_items.__iter__() -> Iterator[tuple[K, V]] yields
         # tuple[str, Point] when instantiated as dict_items[str, Point].
         if (allow_protocol_return
-                and is_protocol_type(ret) and isinstance(ret, NamedType)
+                and is_protocol_type(ret) and isinstance(ret, NominalType)
                 and ret.qualified_name() == "typing.Iterator" and ret.type_args):
             elem = ret.type_args[0]
             if type_subst:
@@ -567,7 +569,7 @@ def _find_iter_method_element(
                 return elem
 
         # User-defined iterator with error_return __next__
-        if isinstance(ret, NamedType) and ret.is_user_record:
+        if isinstance(ret, NominalType) and ret.is_user_record:
             iter_type_args = ret.type_args
             if iter_type_args and type_subst:
                 iter_type_args = [
@@ -585,15 +587,16 @@ def get_span_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "Tpy
     """If type has __span__() -> Span[T] or Span[readonly[T]], return element type T."""
     span_type = get_span_return_type(tpy_type, registry)
     if span_type is not None:
-        return span_type.element_type
+        from tpyc.typesys import unwrap_readonly
+        return unwrap_readonly(span_type.type_args[0])
     return None
 
 
-def get_span_return_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "SpanType | None":
-    """If type has __span__() -> Span[T] or Span[readonly[T]], return the full SpanType."""
-    from tpyc.typesys import NamedType, SpanType, TypeParamRef
+def get_span_return_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "NominalType | None":
+    """If type has __span__() -> Span[T] or Span[readonly[T]], return the full Span NominalType."""
+    from tpyc.typesys import NominalType, TypeParamRef
 
-    if isinstance(tpy_type, NamedType) and tpy_type.is_user_record:
+    if isinstance(tpy_type, NominalType) and tpy_type.is_user_record:
         record = registry.get_record(tpy_type.name)
     else:
         # Builtin types (list, Array, Span, etc.)
@@ -601,16 +604,16 @@ def get_span_return_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "Span
     if record is None:
         return None
     type_subst: dict[str, "TpyType"] = {}
-    if record.type_params and isinstance(tpy_type, NamedType) and tpy_type.type_args:
+    if record.type_params and isinstance(tpy_type, NominalType) and tpy_type.type_args:
         type_subst = dict(zip(record.type_params, tpy_type.type_args))
     return _find_span_method_return_type(record, type_subst, registry)
 
 
 def _find_span_method_return_type(
     record: "RecordInfo", type_subst: "dict[str, TpyType]", registry: "TypeRegistry",
-) -> "SpanType | None":
-    """Check if record has __span__() returning Span[T]/Span[readonly[T]], and return the SpanType."""
-    from tpyc.typesys import NamedType, SpanType, TypeParamRef
+) -> "NominalType | None":
+    """Check if record has __span__() returning Span[T]/Span[readonly[T]], and return the Span NominalType."""
+    from tpyc.typesys import NominalType, TypeParamRef, make_span
 
     for method in record.get_method_overloads("__span__"):
         if len(method.params) != 0:
@@ -618,16 +621,17 @@ def _find_span_method_return_type(
         ret = method.return_type
         if isinstance(ret, TypeParamRef) and ret.name in type_subst:
             ret = type_subst[ret.name]
-        if isinstance(ret, SpanType):
-            # Use inner_element_type (unwrapped) for TypeParamRef resolution,
-            # then reconstruct with the original is_readonly.
-            elem = ret.inner_element_type
+        if is_span(ret):
+            # Use inner element (unwrapped) for TypeParamRef resolution,
+            # then reconstruct with the original readonly-ness.
+            from tpyc.typesys import unwrap_readonly, is_readonly_span
+            elem = unwrap_readonly(ret.type_args[0])
             if isinstance(elem, TypeParamRef) and elem.name in type_subst:
                 elem = type_subst[elem.name]
-            return SpanType(elem, is_readonly=ret.is_readonly)
+            return make_span(elem, is_readonly=is_readonly_span(ret))
 
     # Walk parent chain
-    if record.parent and isinstance(record.parent, NamedType) and record.parent.is_user_record:
+    if record.parent and isinstance(record.parent, NominalType) and record.parent.is_user_record:
         parent_info = registry.get_record(record.parent.name)
         if parent_info:
             parent_subst = dict(type_subst)

@@ -9,8 +9,8 @@ from .compiler import Compiler, BuildLayout
 from .sema.diagnostics import SemanticError
 from .typesys import (
     INT32, INT64, BIGINT, BOOL, FLOAT, STR, CHAR, VOID,
-    PtrType, SpanType, ListType, DictType, ArrayType, OptionalType,
-    TupleType, UnionType, OwnType, ReadonlyType, StrViewType, NamedType,
+    PtrType, make_span, make_list, make_dict, make_array, OptionalType,
+    TupleType, UnionType, OwnType, ReadonlyType, StrViewType, NominalType,
 )
 
 # Stdlib path needed for from_source when code uses primitive type methods
@@ -134,44 +134,44 @@ class TestSendSync:
     def test_readonly_ptr_sync_if_pointee_sync(self):
         assert PtrType(INT32, is_readonly=True).is_sync()
         # Ptr[readonly[list[T]]]: list is not Sync
-        assert not PtrType(ListType(INT32), is_readonly=True).is_sync()
+        assert not PtrType(make_list(INT32), is_readonly=True).is_sync()
 
     # -- Span: not Send; Sync only if readonly --
 
     def test_span_not_send(self):
-        assert not SpanType(INT32).is_send()
-        assert not SpanType(INT32, is_readonly=True).is_send()
+        assert not make_span(INT32).is_send()
+        assert not make_span(INT32, is_readonly=True).is_send()
 
     def test_mutable_span_not_sync(self):
-        assert not SpanType(INT32).is_sync()
+        assert not make_span(INT32).is_sync()
 
     def test_readonly_span_sync_if_element_sync(self):
-        assert SpanType(INT32, is_readonly=True).is_sync()
+        assert make_span(INT32, is_readonly=True).is_sync()
 
     # -- list: Send if element Send, never Sync --
 
     def test_list_send_if_element_send(self):
-        assert ListType(INT32).is_send()
-        assert not ListType(PtrType(INT32)).is_send()
+        assert make_list(INT32).is_send()
+        assert not make_list(PtrType(INT32)).is_send()
 
     def test_list_not_sync(self):
-        assert not ListType(INT32).is_sync()
+        assert not make_list(INT32).is_sync()
 
     # -- dict: Send if elements Send, never Sync --
 
     def test_dict_send_if_elements_send(self):
-        assert DictType(STR, INT32).is_send()
-        assert not DictType(STR, PtrType(INT32)).is_send()
+        assert make_dict(STR, INT32).is_send()
+        assert not make_dict(STR, PtrType(INT32)).is_send()
 
     def test_dict_not_sync(self):
-        assert not DictType(STR, INT32).is_sync()
+        assert not make_dict(STR, INT32).is_sync()
 
     # -- Array: Send/Sync based on element --
 
     def test_array_send_sync_based_on_element(self):
-        assert ArrayType(INT32, 10).is_send()
-        assert ArrayType(INT32, 10).is_sync()
-        assert not ArrayType(PtrType(INT32), 10).is_send()
+        assert make_array(INT32, 10).is_send()
+        assert make_array(INT32, 10).is_sync()
+        assert not make_array(PtrType(INT32), 10).is_send()
 
     # -- Tuple: Send/Sync if all elements are --
 
@@ -195,14 +195,14 @@ class TestSendSync:
     # -- Own: delegates to wrapped --
 
     def test_own_delegates(self):
-        assert OwnType(ListType(INT32)).is_send()
-        assert not OwnType(ListType(INT32)).is_sync()
+        assert OwnType(make_list(INT32)).is_send()
+        assert not OwnType(make_list(INT32)).is_sync()
 
     # -- readonly: makes mutable containers Sync --
 
     def test_readonly_makes_sync(self):
-        assert not ListType(INT32).is_sync()
-        assert ReadonlyType(ListType(INT32)).is_sync()
+        assert not make_list(INT32).is_sync()
+        assert ReadonlyType(make_list(INT32)).is_sync()
 
     def test_readonly_of_readonly_ptr_is_sync(self):
         rop = PtrType(INT32, is_readonly=True)
@@ -212,7 +212,7 @@ class TestSendSync:
 
     def test_readonly_of_non_send_not_sync(self):
         # readonly[list[Ptr[T]]]: Ptr not Send, so list not Send, not Sync
-        assert not ReadonlyType(ListType(PtrType(INT32))).is_sync()
+        assert not ReadonlyType(make_list(PtrType(INT32))).is_sync()
 
 
 class TestSendSyncRecordDerivation:
@@ -234,7 +234,7 @@ class TestSendSyncRecordDerivation:
         )
         compiler = Compiler.from_source(source, lib_dirs=_STDLIB_DIRS)
         compiler.compile()
-        point_type = NamedType("Point")
+        point_type = NominalType("Point")
         assert point_type.is_send()
         assert point_type.is_sync()
 
@@ -259,7 +259,7 @@ class TestSendSyncRecordDerivation:
         src_file.write_text(source)
         compiler = Compiler(src_file, lib_dirs=[get_lib_dir() / "tpy"])
         compiler.compile()
-        holder_type = NamedType("Holder")
+        holder_type = NominalType("Holder")
         assert not holder_type.is_send()
         assert not holder_type.is_sync()
 
@@ -279,7 +279,7 @@ class TestSendSyncRecordDerivation:
         lib_dirs = [get_lib_dir() / "tpy"]
         compiler = Compiler.from_source(source, lib_dirs=lib_dirs)
         compiler.compile()
-        container_type = NamedType("Container")
+        container_type = NominalType("Container")
         assert container_type.is_send()
         assert not container_type.is_sync()
 

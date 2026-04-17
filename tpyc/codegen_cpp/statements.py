@@ -10,8 +10,8 @@ from typing import Callable, TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, FloatLiteralType, BoolType,
-    ArrayType, ListType, PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
-    NoneType, NamedType, StrType, StringType, StrViewType, BytesType, BytesViewType, STR, BYTES, TupleType, VoidType,
+    PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
+    NoneType, NominalType, StrType, StringType, StrViewType, BytesType, BytesViewType, STR, BYTES, TupleType, VoidType,
     INT32, BIGINT, FLOAT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType,
     resolve_int_literals,
@@ -35,6 +35,7 @@ from ..sema.context import PENDING_CONTAINER_TYPES
 from ..sema.diagnostics import SemanticError
 
 from .context import INDENT, CodeGenError, FinallyContext, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable
+from ..type_def_registry import is_list
 from .type_resolution import resolve_stmt_binding_type
 from ..prescan import match_is_none
 from .match import MatchGenerator
@@ -645,7 +646,7 @@ class StatementGenerator:
             return self._is_protocol_isinstance_condition(condition.operand)
         return False
 
-    def _gen_dynamic_protocol_init(self, name: str, target_type: NamedType,
+    def _gen_dynamic_protocol_init(self, name: str, target_type: NominalType,
                                     init: 'TpyExpr', indent: str) -> str:
         """Generate slot + pointer-local for a @dynamic protocol variable.
 
@@ -677,7 +678,7 @@ class StatementGenerator:
         return (f"{indent}{slot_type} {init_slot}{{{init_expr}}};\n"
                 f"{indent}{base_type}* {name} = &{init_slot};\n")
 
-    def _gen_dynamic_protocol_rebind(self, name: str, target_type: NamedType,
+    def _gen_dynamic_protocol_rebind(self, name: str, target_type: NominalType,
                                       init: 'TpyExpr', indent: str) -> str:
         """Generate slot rebind for a @dynamic protocol variable reassignment.
 
@@ -761,7 +762,7 @@ class StatementGenerator:
             # Fallback for unresolved list: resolve IntLiteralType in element
             elem = var_type.element_type
             if isinstance(elem, IntLiteralType):
-                var_type = ListType(resolve_lit(elem))
+                var_type = make_list(resolve_lit(elem))
         elif isinstance(var_type, PendingViewType):
             info = self.ctx.analyzer.ctx.view_vars(var_type.family).get(var_type.var_id)
             var_type = info.resolved_type if info and info.resolved_type else var_type.family.owned_type
@@ -977,8 +978,8 @@ class StatementGenerator:
         # Non-empty array literals generate bare {e1, e2, ...} which C++ can't deduce Range from;
         # empty literals already include the explicit type from _gen_array_literal.
         if isinstance(stmt.value, TpyArrayLiteral) and stmt.value.elements:
-            assert isinstance(target_type, ListType)
-            elem_cpp = self.types.type_to_cpp(target_type.element_type)
+            assert is_list(target_type)
+            elem_cpp = self.types.type_to_cpp(target_type.type_args[0])
             value = f"std::vector<{elem_cpp}>{value}"
         code = self.builtins.gen_call_from_fi(fi, subscript_obj, [slice_arg, value])
         return f"{indent}{code};\n"
@@ -1256,7 +1257,7 @@ class StatementGenerator:
                     # cannot be used as variable types; use auto instead.
                     # @dynamic protocols already have concrete base class
                     # names, so only check for structural protocols here.
-                    if (resolve_type and isinstance(resolve_type, NamedType)
+                    if (resolve_type and isinstance(resolve_type, NominalType)
                             and resolve_type.is_protocol and not resolve_type.is_dynamic_protocol):
                         cpp_type = "auto"
                     return self._gen_pointer_local_rebind(stmt.name, cpp_type, stmt.init, var_type, indent)
@@ -1572,7 +1573,7 @@ class StatementGenerator:
             # the function uses a two-parameter template (e.g. list_extend(T&, Container)).
             # Prefix with explicit vector type so the range overload resolves cleanly.
             receiver_type = self.ctx.get_expr_type(stmt.target)
-            if isinstance(stmt.value, TpyArrayLiteral) and isinstance(receiver_type, ListType):
+            if isinstance(stmt.value, TpyArrayLiteral) and is_list(receiver_type):
                 value = f"{self.types.type_to_cpp(receiver_type)}{value}"
             result = self.builtins.gen_call_from_fi(inplace.method, target, [value])
             return f"{indent}{result};\n"
@@ -3955,15 +3956,15 @@ class StatementGenerator:
         # is_value_type() / loop_var_binding(), not through Ref.
         sema_elem = unwrap_ref_type(self.types.resolve_type(stmt.elem_type)) if stmt.elem_type else None
 
-        # OwnIterType / CopyIterType: explicit own_iter() / copy_iter() call.
+        # OwnIter / CopyIter: explicit own_iter() / copy_iter() call.
         # These have begin/end, so use standard begin/end loop.
         # OwnIter uses auto&& binding (move-ready for future per-element moves).
-        from ..typesys import OwnIterType, CopyIterType
-        if isinstance(iterable_type, (OwnIterType, CopyIterType)):
+        from ..type_def_registry import is_own_iter, is_copy_iter, is_list
+        if is_own_iter(iterable_type) or is_copy_iter(iterable_type):
             iterable = self.expressions.gen_expr(stmt.iterable)
             elem_type = sema_elem
             assert elem_type is not None
-            consuming = isinstance(iterable_type, OwnIterType)
+            consuming = is_own_iter(iterable_type)
             self._gen_begin_end_loop(out, stmt, indent, iterable, elem_type,
                                      consuming=consuming)
             return

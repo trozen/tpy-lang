@@ -7,24 +7,23 @@ Function and constructor call analysis.
 from __future__ import annotations
 import copy
 from dataclasses import replace as dc_replace
-from typing import Callable, TYPE_CHECKING
+from typing import Callable, NoReturn, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingViewType, CopyIterType, OwnIterType,
+    TpyType, NominalType, OwnType, OptionalType, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
     IntLiteralType, FloatType, Float32Type, BoolType, resolve_int_literals,
     StrType, LiteralType, LiteralValue, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
-    PtrType, is_readonly_ptr, VoidType, SpanType, ArrayType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
-    UNKNOWN_ELEMENT, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
+    PtrType, is_readonly_ptr, VoidType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
+    UNKNOWN_ELEMENT, UnknownElementType, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
     UnionType, EnumType, VOID, BIGINT, BOOL, STR, INT32, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own,
     is_any_str_type, container_to_str_template, error_return_matches,
     is_protocol_union, protocol_union_protocols,
     FStrType,
     StrViewType, STRVIEW, MutationCallEdge,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
-    FnType, CallableType, unwrap_ref_type,
+    CallableType, is_fn_type, unwrap_ref_type,
     is_integer_type, is_any_int_type,
-    is_callable_type, is_float_type,
-)
+    is_callable_type, is_float_type, is_readonly_span)
 from ..parse import (
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
@@ -53,11 +52,12 @@ if TYPE_CHECKING:
 
 from tpyc import modules as builtin_modules
 from .. import qnames
+from ..type_def_registry import is_array, is_span, is_list
 
 
 def _tp_in_record_type(name: str, typ: TpyType) -> bool:
     """Check if type param `name` appears as a direct type arg of a record."""
-    if isinstance(typ, NamedType) and typ.is_record:
+    if isinstance(typ, NominalType) and typ.is_record:
         for inner in typ.inner_types():
             if isinstance(inner, TypeParamRef) and inner.name == name:
                 return True
@@ -384,7 +384,7 @@ def validate_generic_defaults(
 
 def validate_type_param_bounds(
     type_subst: dict[str, TpyType],
-    bounds: dict[str, NamedType],
+    bounds: dict[str, NominalType],
     func_name: str,
     type_conforms_to_protocol,
     error_fn,
@@ -423,7 +423,7 @@ def _repr_fallback_template(typ: TpyType) -> str | None:
         return _REPR_TEMPLATE
     if isinstance(typ, OptionalType):
         return _REPR_TEMPLATE
-    if isinstance(typ, NamedType) and typ.is_user_record:
+    if isinstance(typ, NominalType) and typ.is_user_record:
         return _REPR_TEMPLATE
     return None
 
@@ -601,12 +601,53 @@ class CallAnalyzer:
             td_call.args[i] = self.compat.coerce_expr(
                 arg, arg_type, fld.type, f"argument '{fld.name}'",
                 coercion_ctx=CoercionContext.ARG)
-        self.ctx.set_expr_type(td_call, NamedType(record.name))
+        self.ctx.set_expr_type(td_call, NominalType(record.name))
         return td_call
 
-    def _resolve_inferred_type_arg(self, t: TpyType) -> TpyType:
-        """Resolve literal types in inferred type args before codegen."""
+    def _resolve_inferred_type_arg(self, t: "TpyType | int") -> "TpyType | int":
+        """Resolve literal types in inferred type args before codegen.
+
+        Inferred values can be ints (integer-kind type params, e.g. N in
+        Array[T, N]) -- those pass through unchanged.
+        """
+        if isinstance(t, int):
+            return t
         return resolve_int_literals(t, self.ctx.default_int_type)
+
+    def _raise_empty_container_from_arg(self, outer_call: TpyCall, args, arg_types) -> 'NoReturn':
+        """Raise a user-facing "cannot infer empty container types" error.
+
+        Called when a generic constructor (e.g. `list(...)`) matched an
+        overload whose type params inferred to `UnknownElementType`, which
+        means an empty-container arg (`set()`, `dict()`, `{}`) still has
+        unresolved element types. The resolve_all pass emits the same
+        message when the pending container is seen standalone; this path
+        surfaces the message early so we don't feed UNKNOWN_ELEMENT into
+        cpp_template substitution and crash.
+        """
+        for arg, arg_type in zip(args, arg_types):
+            kind_word = None
+            if isinstance(arg_type, PendingListType):
+                kind_word = "list"
+            elif isinstance(arg_type, PendingSetType):
+                kind_word = "set"
+            elif isinstance(arg_type, PendingDictType):
+                kind_word = "dict"
+            if kind_word is None:
+                continue
+            raise self.ctx.error(
+                f"Cannot infer element type for empty {kind_word} passed to "
+                f"{outer_call.func_name}(); add a type annotation on the "
+                f"outer variable (e.g., `x: list[T] = {outer_call.func_name}(...)`) "
+                f"or on the empty {kind_word} itself",
+                arg,
+            )
+        # Fallback: no pending arg found -- still bail out without crashing.
+        raise self.ctx.error(
+            f"Cannot infer type parameters for {outer_call.func_name}() from "
+            f"arguments; provide an explicit type annotation",
+            outer_call,
+        )
 
     def _reject_kwargs_for_builtin(self, expr: TpyCall, name: str) -> None:
         """Reject kwargs on overloaded builtin functions."""
@@ -753,12 +794,12 @@ class CallAnalyzer:
                     # Strip Own[T] -- Own is a storage property, not a type distinction
                     if isinstance(var_type, OwnType):
                         var_type = var_type.wrapped
-                    if isinstance(var_type, FnType):
+                    if is_fn_type(var_type):
                         return self._analyze_fn_type_call(expr, var_type)
                     if isinstance(var_type, CallableType):
                         return self._analyze_callable_type_call(expr, var_type)
                     # Check for record type with __call__ method
-                    if isinstance(var_type, NamedType):
+                    if isinstance(var_type, NominalType):
                         record = self.ctx.registry.get_record_for_type(var_type)
                         if record and self.ctx.registry.get_method_overloads_with_parents(record, "__call__"):
                             return self._analyze_dunder_call(expr)
@@ -881,7 +922,7 @@ class CallAnalyzer:
             # Analyze arguments
             for arg in expr.args:
                 self.expr.analyze_expr(arg)
-            return NamedType(expr.func_name)
+            return NominalType(expr.func_name)
 
         # Fallback: Check if it's a function call
         func_infos = self.ctx.registry.get_function(expr.func_name)
@@ -901,6 +942,22 @@ class CallAnalyzer:
             # Check for constructors that can infer type from arguments
             if expr.args:
                 arg_types = [unwrap_own(unwrap_ref_type(self.expr.analyze_expr(arg))) for arg in expr.args]
+                # Empty-container args (`set()`, `{}`, `[]` with no type hint)
+                # can't drive ctor inference -- their element types are
+                # UnknownElementType. Emit the proper user-facing diagnostic
+                # now so we don't feed UNKNOWN or unresolved TypeParamRefs
+                # into cpp_template substitution (which raises
+                # "UnknownElementType should be resolved before codegen" or
+                # "Unknown type parameter 'K'").
+                for arg, at in zip(expr.args, arg_types):
+                    if isinstance(at, PendingListType) and isinstance(at.element_type, UnknownElementType):
+                        self._raise_empty_container_from_arg(expr, expr.args, arg_types)
+                    if isinstance(at, PendingSetType) and isinstance(at.element_type, UnknownElementType):
+                        self._raise_empty_container_from_arg(expr, expr.args, arg_types)
+                    if isinstance(at, PendingDictType) and (
+                            isinstance(at.key_type, UnknownElementType)
+                            or isinstance(at.value_type, UnknownElementType)):
+                        self._raise_empty_container_from_arg(expr, expr.args, arg_types)
                 init_overloads = record_info.get_method_overloads("__init__")
                 if init_overloads:
                     for ctor in init_overloads:
@@ -909,6 +966,16 @@ class CallAnalyzer:
                         # Try to match and infer type parameters
                         inferred_params = self.type_ops.match_generic_constructor(ctor.params, arg_types)
                         if inferred_params is not None:
+                            # Guard against UNKNOWN_ELEMENT leaking from a
+                            # `Pending*` arg (e.g. `list(set())`, `list({})`).
+                            # The element is still unresolved; we must not feed
+                            # UnknownElementType into the type factory or cpp
+                            # template substitution. Fire the same
+                            # empty-container diagnostic that resolve_all
+                            # would, sourced from the offending Pending* arg.
+                            if any(isinstance(v, UnknownElementType)
+                                   for v in inferred_params.values()):
+                                self._raise_empty_container_from_arg(expr, expr.args, arg_types)
                             # Use type_factory to create the result type
                             if (all(p in inferred_params for p in record_info.type_params)
                                     and record_info.type_factory):
@@ -1142,7 +1209,7 @@ class CallAnalyzer:
                 f"copy_iter() argument must be iterable, got {arg_type}", expr)
         # copy_iter produces owned copies -- strip Ref
         elem_type = unwrap_ref_type(elem_type)
-        result_type = CopyIterType(elem_type)
+        result_type = make_copy_iter(elem_type)
         expr.resolved_function_info = FunctionInfo(
             name="copy_iter",
             params=[ParamInfo("x", arg_type)],
@@ -1168,7 +1235,7 @@ class CallAnalyzer:
         arg_type = self.expr.analyze_expr(expr.args[0])
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
-        if not isinstance(arg_type, ListType):
+        if not is_list(arg_type):
             raise self.ctx.error(
                 f"own_iter() currently only supports list, got {arg_type}", expr)
         # Validate that the argument is at last use -- own_iter moves
@@ -1188,7 +1255,7 @@ class CallAnalyzer:
                 self.compat.check_own_consumption(arg)
         elem_type = builtin_modules.get_iterable_element_type(arg_type, registry=self.ctx.registry)
         assert elem_type is not None
-        result_type = OwnIterType(elem_type)
+        result_type = make_own_iter(elem_type)
         expr.resolved_function_info = FunctionInfo(
             name="own_iter",
             params=[ParamInfo("x", arg_type)],
@@ -1254,7 +1321,7 @@ class CallAnalyzer:
         # User-defined records
         record = self.ctx.registry.get_record(name)
         if record:
-            return NamedType(name)
+            return NominalType(name)
         # Builtin type names
         from tpyc.modules import _resolve_concrete_type_name
         resolved = _resolve_concrete_type_name(name)
@@ -1363,24 +1430,24 @@ class CallAnalyzer:
                     f"but variable is typed as '{var_type} | None'",
                     expr
                 )
-            type_args = var_type.type_args if isinstance(var_type, NamedType) and var_type.name == protocol_name else None
-            protocol_type = NamedType(protocol_name, is_protocol=True, type_args=type_args)
+            type_args = var_type.type_args if isinstance(var_type, NominalType) and var_type.name == protocol_name else None
+            protocol_type = NominalType(protocol_name, is_protocol=True, type_args=type_args)
         elif is_protocol_union(var_type):
             # Find the matching member in the union, preserving type_args
             members = protocol_union_protocols(var_type)
             matched = None
             for m in members:
-                if isinstance(m, NamedType) and m.name == protocol_name:
+                if isinstance(m, NominalType) and m.name == protocol_name:
                     matched = m
                     break
             if matched is None:
-                member_names = ", ".join(m.name for m in members if isinstance(m, NamedType))
+                member_names = ", ".join(m.name for m in members if isinstance(m, NominalType))
                 raise self.ctx.error(
                     f"Protocol '{protocol_name}' is not a member of the protocol union "
                     f"({member_names})",
                     expr
                 )
-            protocol_type = NamedType(
+            protocol_type = NominalType(
                 protocol_name, is_protocol=True, type_args=matched.type_args
             )
         else:
@@ -1566,7 +1633,7 @@ class CallAnalyzer:
         # If the derived hint type doesn't match the arg expression
         # (e.g. ListType hint for a dict literal arg), fall back to call_type
         for i, (hint, arg) in enumerate(zip(hints, expr.args)):
-            if isinstance(hint, ListType) and isinstance(arg, (TpyDictLiteral, TpySetLiteral)):
+            if is_list(hint) and isinstance(arg, (TpyDictLiteral, TpySetLiteral)):
                 hints[i] = expr.call_type
         return hints
 
@@ -1574,9 +1641,9 @@ class CallAnalyzer:
     def _concrete_hint_from_param(param_type: TpyType) -> TpyType | None:
         """Extract a concrete ListType hint from a protocol param type.
 
-        analyze_expr_with_hint dispatches on isinstance(hint, ListType),
+        analyze_expr_with_hint dispatches on is_list(hint),
         so protocol params like Iterable[Own[tuple[K,V]]] must be converted
-        to ListType(tuple[K,V]) for element-level hints to propagate.
+        to make_list(tuple[K,V]) for element-level hints to propagate.
         """
         param_type = unwrap_ref_type(param_type)
         if not is_protocol_type(param_type):
@@ -1595,7 +1662,7 @@ class CallAnalyzer:
         # Unwrap Own -- container elements are owned by value
         if isinstance(elem, OwnType):
             elem = elem.wrapped
-        return ListType(elem)
+        return make_list(elem)
 
     def _validate_generic_constructor(self, expr: TpyCall, arg_types: list[TpyType]) -> None:
         """Validate and resolve generic type constructor calls.
@@ -1650,12 +1717,12 @@ class CallAnalyzer:
                     # Can't fully resolve T, but reject clearly incompatible
                     # types. For Span[T]: arg must have an element type, and
                     # if T is known from call_type, element types must match.
-                    if isinstance(p_type, SpanType):
+                    if is_span(p_type):
                         arg_elem = at.get_element_type()
                         if arg_elem is None:
                             rejected = True
                             break
-                        if not p_type.is_readonly and isinstance(at, SpanType) and at.is_readonly:
+                        if not is_readonly_span(p_type) and is_span(at) and is_readonly_span(at):
                             rejected = True
                             break
                         expected_elem = expr.call_type.get_element_type() if expr.call_type else None
@@ -1934,7 +2001,7 @@ class CallAnalyzer:
         # bool(obj) __len__ fallback: types with __len__ but no __bool__
         if record.builtin_type_key == qnames.BOOL and len(arg_types) == 1:
             arg_type = arg_types[0]
-            if isinstance(arg_type, NamedType):
+            if isinstance(arg_type, NominalType):
                 arg_record = self.ctx.registry.get_record(arg_type.name)
                 if arg_record and arg_record.get_method_overloads("__len__"):
                     expr.resolved_function_info = FunctionInfo(
@@ -2041,7 +2108,7 @@ class CallAnalyzer:
                     f"Protocols are only valid as function and method parameters",
                     expr
                 )
-            if isinstance(type_arg, NamedType) and type_arg.is_record and not type_arg.type_args:
+            if isinstance(type_arg, NominalType) and type_arg.is_record and not type_arg.type_args:
                 if self.ctx.registry.get_record_for_type(type_arg) is None:
                     raise self.ctx.error(f"Unknown type: {type_arg.name}", expr)
             in_generic = bool(
@@ -2520,9 +2587,9 @@ class CallAnalyzer:
         n_kwonly = sum(1 for p in func.params if p.keyword_only)
 
         # Element type T from Span[readonly[T]]
-        assert isinstance(unwrap_ref_type(va_param.type), SpanType)
+        assert is_span(unwrap_ref_type(va_param.type))
         span_type = unwrap_ref_type(va_param.type)
-        elem_type = span_type.inner_element_type
+        elem_type = unwrap_readonly(span_type.type_args[0])
 
         # Split args: [fixed_positional...] [varargs...] [kwonly_defaults...]
         fixed_args = expr.args[:va_idx]
@@ -2548,7 +2615,7 @@ class CallAnalyzer:
                 # *expr unpacking: analyze inner expr and check element type compat
                 inner_type = self.expr.analyze_expr(arg.expr)
                 inner_elem = None
-                if isinstance(inner_type, (ListType, SpanType, ArrayType)):
+                if is_array(inner_type) or is_span(inner_type) or is_list(inner_type):
                     inner_elem = inner_type.get_element_type()
                 elif isinstance(inner_type, PendingListType):
                     inner_elem = inner_type.element_type
@@ -2842,7 +2909,7 @@ class CallAnalyzer:
                     f"'{record.name}()' got unexpected keyword argument '{first_kwarg}'", expr)
 
         # Check if this is a generic record instantiation (e.g., Stack[Int32]())
-        if expr.call_type is not None and isinstance(expr.call_type, NamedType) and expr.call_type.is_record:
+        if expr.call_type is not None and isinstance(expr.call_type, NominalType) and expr.call_type.is_record:
             # Validate type arguments
             if record.is_generic():
                 if not expr.call_type.type_args:
@@ -2865,7 +2932,7 @@ class CallAnalyzer:
                                     f"for type parameter '{param_name}' of '{record.name}'",
                                     expr
                                 )
-        if expr.call_type is not None and isinstance(expr.call_type, NamedType) and expr.call_type.is_record:
+        if expr.call_type is not None and isinstance(expr.call_type, NominalType) and expr.call_type.is_record:
             # Analyze and type-check constructor arguments with type substitution
             type_subst = self.type_ops.build_type_substitution(expr.call_type)
             if record.init_params:
@@ -2913,7 +2980,7 @@ class CallAnalyzer:
                             raise self.ctx.error(
                                 f"Protocol type '{type_arg.name}' cannot be used as a type argument",
                                 expr)
-                        if isinstance(type_arg, NamedType) and type_arg.is_record and not type_arg.type_args:
+                        if isinstance(type_arg, NominalType) and type_arg.is_record and not type_arg.type_args:
                             if self.ctx.registry.get_record_for_type(type_arg) is None:
                                 raise self.ctx.error(f"Unknown type: {type_arg.name}", expr)
                         self.type_ops.validate_type(
@@ -2936,7 +3003,7 @@ class CallAnalyzer:
                             elem_type = v.element_type
                             if isinstance(elem_type, IntLiteralType):
                                 elem_type = self.ctx.default_int_for_literal(elem_type)
-                            inferred[k] = ListType(elem_type)
+                            inferred[k] = make_list(elem_type)
                     # Validate type parameter bounds
                     for param_name, type_arg in inferred.items():
                         if param_name in record.type_param_bounds:
@@ -2949,7 +3016,7 @@ class CallAnalyzer:
                                 )
                     type_args = tuple(inferred[p] for p in record.type_params)
                     # Use expr.func (local name) not record.name (original) for alias support
-                    inferred_type = NamedType(expr.func_name, type_args)
+                    inferred_type = NominalType(expr.func_name, type_args)
                     expr.call_type = inferred_type
                     # Coerce arguments with substitution
                     type_subst = inferred
@@ -2980,7 +3047,7 @@ class CallAnalyzer:
                     if exp is not None:
                         if isinstance(exp, OwnType):
                             exp = exp.wrapped
-                        record_pattern = NamedType(record.name, tuple(
+                        record_pattern = NominalType(record.name, tuple(
                             TypeParamRef(tp) for tp in record.type_params
                         ))
                         self.type_ops.match_type_with_inference(record_pattern, exp, inferred)
@@ -2996,7 +3063,7 @@ class CallAnalyzer:
                                         expr
                                     )
                         type_args = tuple(inferred[p] for p in record.type_params)
-                        inferred_type = NamedType(expr.func_name, type_args)
+                        inferred_type = NominalType(expr.func_name, type_args)
                         expr.call_type = inferred_type
                         self._set_record_constructor_info(expr, record, inferred_type, inferred)
                         for arg in expr.args:
@@ -3033,7 +3100,7 @@ class CallAnalyzer:
                 f"use @dataclass or define __init__ to accept constructor arguments",
                 expr)
         # Use expr.func (local name) not record.name (original) for alias support
-        result_type = NamedType(expr.func_name)
+        result_type = NominalType(expr.func_name)
         self._set_record_constructor_info(expr, record, result_type)
         return result_type
 
@@ -3141,11 +3208,11 @@ class CallAnalyzer:
         callee_type = self.expr.analyze_expr(expr.func)
         if isinstance(callee_type, OwnType):
             callee_type = callee_type.wrapped
-        if isinstance(callee_type, FnType):
+        if is_fn_type(callee_type):
             return self._analyze_fn_type_call(expr, callee_type)
         if isinstance(callee_type, CallableType):
             return self._analyze_callable_type_call(expr, callee_type)
-        if isinstance(callee_type, NamedType):
+        if isinstance(callee_type, NominalType):
             record = self.ctx.registry.get_record_for_type(callee_type)
             if record and self.ctx.registry.get_method_overloads_with_parents(record, "__call__"):
                 return self._analyze_dunder_call(expr)
@@ -3169,7 +3236,7 @@ class CallAnalyzer:
         expr.resolved_function_info = synthetic.resolved_function_info
         return ret_type
 
-    def _analyze_fn_type_call(self, expr: TpyCall, fn_type: FnType) -> TpyType:
+    def _analyze_fn_type_call(self, expr: TpyCall, fn_type: CallableType) -> TpyType:
         """Analyze a call to a variable of Fn type."""
         return self._analyze_typed_callable_call(expr, fn_type.param_types, fn_type.return_type, "Fn")
 

@@ -12,7 +12,7 @@ from enum import Enum, IntEnum
 from typing import Any, Literal, Optional, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, FieldInfo, FunctionInfo,
+    TpyType, NominalType, FieldInfo, FunctionInfo,
     MethodSignature, TypeParamKind,
     EnumType, IntEnumType,
 )

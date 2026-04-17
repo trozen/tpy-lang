@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, BoolType,
-    PendingListType, PendingDictType, PendingSetType, PendingViewType, ListType, DictType, SetType, ArrayType, TypeParamRef, NamedType,
+    PendingListType, PendingDictType, PendingSetType, PendingViewType, make_list, make_dict, make_set, TypeParamRef, NominalType,
     UnionType, NoneType, VoidType, EnumType, TupleType,
     unwrap_readonly, is_protocol_type, resolve_int_literals,
     is_integer_type, is_float_type, is_void_like_type,
@@ -19,6 +19,7 @@ from ..typesys import (
 from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral, TpyIfExpr
 from ..sema.context import PENDING_CONTAINER_TYPES
 from .context import qualified_cpp_name
+from ..type_def_registry import is_list
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -179,9 +180,9 @@ class TypeResolver:
                 return FLOAT32
             return FLOAT
         # Resolve IntLiteralType in container element types
-        if isinstance(typ, ListType) and isinstance(typ.element_type, IntLiteralType):
-            elem = self.ctx.analyzer.ctx.default_int_for_literal(typ.element_type)
-            return ListType(elem)
+        if is_list(typ) and isinstance(typ.type_args[0], IntLiteralType):
+            elem = self.ctx.analyzer.ctx.default_int_for_literal(typ.type_args[0])
+            return make_list(elem)
         # Resolve IntLiteralType in tuple element types (recursively for nesting)
         if isinstance(typ, TupleType):
             resolve_lit = self.ctx.analyzer.ctx.default_int_for_literal
@@ -232,11 +233,11 @@ class TypeResolver:
             elem_type = typ.element_type
             if isinstance(elem_type, IntLiteralType):
                 elem_type = self.ctx.analyzer.ctx.default_int_for_literal(elem_type)
-            return ListType(elem_type)
+            return make_list(elem_type)
         if isinstance(typ, PendingDictType):
-            return DictType(typ.key_type, typ.value_type)
+            return make_dict(typ.key_type, typ.value_type)
         if isinstance(typ, PendingSetType):
-            return SetType(typ.element_type)
+            return make_set(typ.element_type)
         return None
 
     def resolve_type(self, typ: TpyType) -> TpyType:
@@ -309,11 +310,11 @@ class TypeResolver:
         Native records use their native C++ name directly (no namespace qualification).
         @dynamic protocol types map to the base class name.
         """
-        if isinstance(typ, NamedType) and is_protocol_type(typ):
+        if isinstance(typ, NominalType) and is_protocol_type(typ):
             protocol_info = self.ctx.analyzer.registry.get_protocol(typ.name)
             if protocol_info and protocol_info.is_dynamic:
                 return self.protocols.get_dynamic_base_name(typ.name)
-        if isinstance(typ, NamedType) and typ.is_user_record:
+        if isinstance(typ, NominalType) and typ.is_user_record:
             # Native records use their native C++ name directly (globally visible)
             record_info = self.ctx.analyzer.registry.get_record_for_type(typ)
             if record_info and record_info.is_native:
@@ -351,15 +352,22 @@ class TypeResolver:
         # Resolve PendingViewType to concrete types before codegen
         if isinstance(typ, PendingViewType):
             return self._resolve_pending_view(typ).to_cpp()
-        # For plain NamedType (not subclasses like ListType/ArrayType) with
-        # type_args, recursively resolve args to handle @dynamic protocols
-        if type(typ) is NamedType and typ.type_args:
-            base = typ.to_cpp_base_name()
-            args = ", ".join(
-                self.type_to_cpp(t) if isinstance(t, TpyType) else str(t)
-                for t in typ.type_args
-            )
-            return f"{base}<{args}>"
+        # For plain NominalType (not subclasses like ListType/ArrayType) with
+        # type_args, recursively resolve args to handle @dynamic protocols.
+        # Skip this branch when the TypeDef registry provides a custom
+        # cpp_formatter (e.g. CopyIter/OwnIter -> "auto", dict_keys ->
+        # ::tpy::dict_keys_view<...>) -- fall through to typ.to_cpp() so the
+        # formatter wins.
+        if type(typ) is NominalType and typ.type_args:
+            from tpyc.type_def_registry import type_def_of
+            td = type_def_of(typ)
+            if td is None or td.cpp_formatter is None:
+                base = typ.to_cpp_base_name()
+                args = ", ".join(
+                    self.type_to_cpp(t) if isinstance(t, TpyType) else str(t)
+                    for t in typ.type_args
+                )
+                return f"{base}<{args}>"
         # Default: use the type's built-in to_cpp() method
         return typ.to_cpp()
 

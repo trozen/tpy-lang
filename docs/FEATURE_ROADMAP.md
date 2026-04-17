@@ -832,7 +832,7 @@ patterns, and self-referential parameter types without repeating the class name.
 **Current state**: Done. `Self` works in return types and parameter types of record
 methods (instance methods, not `@staticmethod`). Also works in protocol method
 signatures (existing). For generic classes, `Self` resolves to the full generic type
-(e.g. `Stack[T]`). `Self` is substituted to `NamedType(record.name, type_args)` at
+(e.g. `Stack[T]`). `Self` is substituted to `NominalType(record.name, type_args)` at
 registration time -- no codegen changes needed.
 
 Remaining: `self: Own[Self]` for consuming methods (tracked in TODO.md).

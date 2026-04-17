@@ -7,7 +7,7 @@ Defines the core types available in TurboPython:
 - Ptr[readonly[T]]: Read-only pointer (maps to const T*)
 - Array[T, N], Span[T], list[T], dict[K, V]: Container types
 - User-defined records (classes)
-- NamedType: User-defined records/protocols and module-defined generics
+- NominalType: User-defined records/protocols and module-defined generics
 """
 
 from __future__ import annotations
@@ -41,7 +41,6 @@ class TypeKind(Enum):
     CHAR = auto()
     NONE = auto()
     VOID = auto()
-    FN = auto()
     CALLABLE = auto()
     UNION = auto()
     OPTIONAL = auto()
@@ -105,7 +104,7 @@ def error_return_to_cpp(name: str, current_module: str | None,
 
 # Native C++ name mapping for @native/@native_c records.
 # Maps Python class name -> C++ name (e.g., "Rect" -> "SDL_Rect").
-# Used by NamedType.to_cpp() so composite types like Ptr[Rect] resolve correctly.
+# Used by NominalType.to_cpp() so composite types like Ptr[Rect] resolve correctly.
 # NOTE: Global mutable state -- safe because the compilation pipeline is sequential
 # (each CodeGenerator.generate() call clears and repopulates before use).
 # Would need to move into CodeGenContext if codegen ever runs concurrently.
@@ -250,7 +249,7 @@ def get_protocol_qname(protocol_name: str) -> str | None:
     return None
 
 
-def impl_proto_matches_name(impl_proto: 'NamedType', protocol_name: str,
+def impl_proto_matches_name(impl_proto: 'NominalType', protocol_name: str,
                             target_qname: str | None = None) -> bool:
     """Check if an implemented protocol matches a target by qualified name.
 
@@ -325,7 +324,7 @@ class TpyType:
         Value types include primitive types like Int32, BigInt, Bool, Char, str.
         These types should be copied when accessed from containers.
 
-        Object types (RecordType, ListType, etc.) return False and should
+        Object types (RecordType, etc.) return False and should
         use reference semantics when accessed from containers.
         """
         return False
@@ -349,6 +348,10 @@ class TpyType:
         storage (i.e. the result is a view into the container, not an owned copy).
         Source-mutation tracking at the call site ensures the borrow stays valid.
         User-defined types can opt in once borrow-source annotation (6.7) is implemented."""
+        from tpyc.type_def_registry import type_def_of
+        td = type_def_of(self)
+        if td is not None:
+            return td.subscript_borrows
         return False
 
     def is_send(self) -> bool:
@@ -452,6 +455,10 @@ class TpyType:
         Array and Span need explicit conversions in their initializer lists.
         Dynamic containers (list, etc.) handle implicit conversions.
         """
+        from tpyc.type_def_registry import type_def_of
+        td = type_def_of(self)
+        if td is not None:
+            return td.needs_explicit_element_target
         return False
 
     def inner_types(self) -> tuple['TpyType', ...]:
@@ -474,7 +481,7 @@ class TpyType:
         if not inner:
             return self
         mapped = tuple(fn(t) for t in inner)
-        # Identity check: NamedType has compare=False fields (_module_qname,
+        # Identity check: NominalType has compare=False fields (_module_qname,
         # is_dynamic_protocol) that == would miss. Use `is` to be safe.
         if all(new is old for new, old in zip(mapped, inner)):
             return self
@@ -1167,7 +1174,7 @@ class TypeParamRef(TpyType):
     name: str
     # Codegen concern only: excluded from eq/hash so TypeParamRef("T") with and
     # without bound are considered the same type for type-checking purposes.
-    bound: Optional['NamedType'] = field(default=None, compare=False, hash=False)
+    bound: Optional['NominalType'] = field(default=None, compare=False, hash=False)
     kind: TypeParamKind = TypeParamKind.TYPE
 
     def to_cpp(self) -> str:
@@ -1180,7 +1187,7 @@ class TypeParamRef(TpyType):
         if self.kind == TypeParamKind.INT:
             # INT type params are std::size_t values
             return True
-        if self.bound is not None and isinstance(self.bound, NamedType) and self.bound.qualified_name() == "tpy.ValueType":
+        if self.bound is not None and isinstance(self.bound, NominalType) and self.bound.qualified_name() == "tpy.ValueType":
             return True
         # Unknown at definition time - the trait decides at C++ instantiation
         return False
@@ -1216,7 +1223,7 @@ class TypeParamRef(TpyType):
 
 
 @dataclass(frozen=True)
-class NamedType(TpyType):
+class NominalType(TpyType):
     """A named type: user-defined record/protocol, or module-defined generic.
 
     During parsing, is_protocol defaults to False (unknown).
@@ -1256,11 +1263,11 @@ class NamedType(TpyType):
         """
         return self._module_qname is not None and not self.is_protocol
 
-    def with_protocol_flag(self, is_protocol: bool) -> 'NamedType':
+    def with_protocol_flag(self, is_protocol: bool) -> 'NominalType':
         """Return a copy with is_protocol set."""
         if self.is_protocol == is_protocol:
             return self
-        return NamedType(self.name, self.type_args, is_protocol, self._module_qname,
+        return NominalType(self.name, self.type_args, is_protocol, self._module_qname,
                          self.is_dynamic_protocol)
 
     def to_cpp_base_name(self) -> str:
@@ -1271,6 +1278,13 @@ class NamedType(TpyType):
         if self.is_protocol and not self.is_dynamic_protocol:
             # Structural protocol: template parameter placeholder
             return "T"
+        # Per-qname cpp formatter (registry overrides the default {name}<{args}>
+        # rendering for builtins whose C++ name diverges from the Python qname,
+        # e.g. dict_keys -> ::tpy::dict_keys_view).
+        from tpyc.type_def_registry import type_def_of
+        td = type_def_of(self)
+        if td is not None and td.cpp_formatter is not None:
+            return td.cpp_formatter(self.type_args)
         # Check for native C++ name mapping (@native/@native_c records)
         cpp_name = _native_cpp_names.get(self.name, self.name)
         if self.type_args:
@@ -1303,40 +1317,76 @@ class NamedType(TpyType):
         # Records implementing ValueType marker protocol are value types
         if self.name in _value_type_record_names:
             return True
+        # Builtin qnames whose TypeDef declares value-ness (Span, dict views,
+        # iterator adapters, etc.). Non-registered types fall through to False.
+        from tpyc.type_def_registry import type_def_of
+        td = type_def_of(self)
+        if td is not None:
+            return td.is_value_type
         return False
 
     def is_send(self) -> bool:
+        # TypeDef override (builtin qname behavior) takes precedence over
+        # record-level registration -- e.g. list's native stub has no
+        # disqualifying fields and would be registered as Send, but the
+        # TypeDef says list[T] is Send only when T is.
+        from tpyc.type_def_registry import type_def_of, resolve_send_sync
+        td = type_def_of(self)
+        if td is not None:
+            resolved = resolve_send_sync(td.is_send, self.type_args)
+            if resolved is not None:
+                return resolved
         if self.name in _send_record_names:
             return True
         return self.is_value_type()
 
     def is_sync(self) -> bool:
+        from tpyc.type_def_registry import type_def_of, resolve_send_sync
+        td = type_def_of(self)
+        if td is not None:
+            resolved = resolve_send_sync(td.is_sync, self.type_args)
+            if resolved is not None:
+                return resolved
         if self.name in _sync_record_names:
             return True
         return self.is_value_type()
 
     def get_element_type(self) -> Optional['TpyType']:
+        # Per-qname override (e.g. SpanIter[readonly[T]] iterates T, not
+        # readonly[T] -- the readonly wrapper is stripped from the element).
+        from tpyc.type_def_registry import type_def_of
+        td = type_def_of(self)
+        if td is not None and td.element_of is not None:
+            return td.element_of(self.type_args)
         if self._module_qname:
-            # Convention: first type param is the element type
+            # Default convention: first type param is the element type
             for arg in self.type_args:
                 if isinstance(arg, TpyType):
                     return arg
         return None
 
     def inner_types(self) -> tuple['TpyType', ...]:
-        # Only return actual types, skip integer values
-        return tuple(t for t in self.type_args if isinstance(t, TpyType))
+        # Only return actual types; skip integer values and integer-kind
+        # TypeParamRefs (e.g. N in Array[T, N: int]) -- those are not
+        # traversable element types.
+        return tuple(
+            t for t in self.type_args
+            if isinstance(t, TpyType)
+            and not (isinstance(t, TypeParamRef) and t.kind == TypeParamKind.INT)
+        )
 
     def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        # Reconstruct type_args preserving integer positions
+        # Reconstruct type_args preserving non-traversable positions (ints
+        # and integer-kind TypeParamRefs -- see inner_types).
         new_args: list[TpyType | int] = []
         type_iter = iter(types)
         for arg in self.type_args:
-            if isinstance(arg, TpyType):
+            if isinstance(arg, TpyType) and not (
+                    isinstance(arg, TypeParamRef) and arg.kind == TypeParamKind.INT):
                 new_args.append(next(type_iter))
             else:
-                new_args.append(arg)  # Keep integer as-is
-        return NamedType(self.name, tuple(new_args), self.is_protocol, self._module_qname,
+                new_args.append(arg)
+        return NominalType(self.name, tuple(new_args), self.is_protocol, self._module_qname,
                          self.is_dynamic_protocol)
 
 
@@ -1349,7 +1399,7 @@ class SelfType(TpyType):
     substituted with Int32.
 
     In record method signatures, Self represents the record's own type
-    (e.g. Self in class Foo -> NamedType("Foo")). Substituted at
+    (e.g. Self in class Foo -> NominalType("Foo")). Substituted at
     registration time so it never reaches codegen for record methods.
     """
 
@@ -1926,7 +1976,7 @@ _NUMERIC_TAGS = frozenset({TypeKind.FIXED_INT, TypeKind.BIG_INT,
 _PRIMITIVE_TAGS = frozenset({TypeKind.BOOL, TypeKind.CHAR,
                              TypeKind.FIXED_INT, TypeKind.FLOAT, TypeKind.FLOAT32})
 _VOID_LIKE_TAGS = frozenset({TypeKind.NONE, TypeKind.VOID})
-_CALLABLE_TAGS = frozenset({TypeKind.FN, TypeKind.CALLABLE})
+_CALLABLE_TAGS = frozenset({TypeKind.CALLABLE})
 _UNION_OR_OPTIONAL_TAGS = frozenset({TypeKind.UNION, TypeKind.OPTIONAL})
 _ANY_STR_TAGS = frozenset({TypeKind.STR, TypeKind.STRING, TypeKind.STR_VIEW, TypeKind.PENDING_STR})
 
@@ -1982,7 +2032,7 @@ def is_void_like_type(t: 'TpyType | None') -> bool:
 
 
 def is_callable_type(t: 'TpyType | None') -> bool:
-    """True for callable function-type aliases (FnType, CallableType)."""
+    """True for callable function-type aliases (CallableType)."""
     return t is not None and t.tag in _CALLABLE_TAGS
 
 
@@ -2054,7 +2104,7 @@ def contains_type_param(t: TpyType) -> bool:
     return any(contains_type_param(inner) for inner in t.inner_types())
 
 
-def attach_type_param_bounds(t: TpyType, bounds: dict[str, 'NamedType']) -> TpyType:
+def attach_type_param_bounds(t: TpyType, bounds: dict[str, 'NominalType']) -> TpyType:
     """Attach bounds to TypeParamRef instances in a type tree.
 
     Returns a new type with bounds set on matching TypeParamRef nodes.
@@ -2067,7 +2117,7 @@ def attach_type_param_bounds(t: TpyType, bounds: dict[str, 'NamedType']) -> TpyT
             # Replace bound if missing or if the resolved version has better info
             # (e.g. is_protocol=True from sema vs is_protocol=False from parser
             # for protocols defined in implicit stdlib .py modules)
-            if t.bound is None or (isinstance(t.bound, NamedType) and not t.bound.is_protocol
+            if t.bound is None or (isinstance(t.bound, NominalType) and not t.bound.is_protocol
                                    and resolved_bound.is_protocol):
                 return TypeParamRef(t.name, bound=resolved_bound, kind=t.kind)
         return t
@@ -2284,8 +2334,8 @@ class UnionType(TpyType):
 
 
 def _contains_self_reference(typ: 'TpyType', name: str) -> bool:
-    """Check if a type tree contains a NamedType self-reference to the given name."""
-    if isinstance(typ, NamedType) and typ.name == name and not typ.is_protocol and not typ.is_module_type:
+    """Check if a type tree contains a NominalType self-reference to the given name."""
+    if isinstance(typ, NominalType) and typ.name == name and not typ.is_protocol and not typ.is_module_type:
         return True
     return any(_contains_self_reference(inner, name) for inner in typ.inner_types())
 
@@ -2301,7 +2351,7 @@ def validate_recursive_union_paths(
     """
 
     def _check(typ: 'TpyType', inside_indirection: bool) -> str | None:
-        if isinstance(typ, NamedType) and typ.name == alias_name and not typ.is_protocol:
+        if isinstance(typ, NominalType) and typ.name == alias_name and not typ.is_protocol:
             if not inside_indirection:
                 return (
                     f"direct recursion in type alias '{alias_name}' -- "
@@ -2311,14 +2361,12 @@ def validate_recursive_union_paths(
             return None
 
         # These types are defined later in this file, so use lazy string checks
-        # for types that are NamedType subclasses. The isinstance checks work
+        # for types that are NominalType subclasses. The isinstance checks work
         # because Python resolves the class at call time, not definition time.
         type_name = type(typ).__name__
-        is_indirecting = type_name in (
-            'ListType', 'DictType', 'SetType', 'OptionalType', 'PtrType',
-        )
-        # Box is a NamedType with name "Box"
-        if isinstance(typ, NamedType) and typ.name == "Box":
+        is_indirecting = type_name in ('OptionalType', 'PtrType')
+        # set / dict / Box are plain NominalTypes, detected by name
+        if isinstance(typ, NominalType) and typ.name in ("Box", "set", "dict", "list"):
             is_indirecting = True
 
         new_indirection = inside_indirection or is_indirecting
@@ -2421,7 +2469,7 @@ def resolve_int_literals(
     resolver can be a fixed type or a callable (e.g. default_int_for_literal)
     that maps IntLiteralType -> concrete int type.
     FloatLiteralType always resolves to FloatType (float64).
-    Handles TupleType, ArrayType, ListType at arbitrary nesting depth.
+    Handles TupleType at arbitrary nesting depth.
     """
     def _resolve(t: TpyType) -> TpyType:
         if isinstance(t, IntLiteralType):
@@ -2430,12 +2478,14 @@ def resolve_int_literals(
             return FloatType()
         if isinstance(t, TupleType):
             return t.map_inner_types(_resolve)
-        if isinstance(t, ArrayType) and isinstance(t.element_type, (IntLiteralType, FloatLiteralType)):
-            elem = _resolve(t.element_type)
-            return ArrayType(elem, t.size)
-        if isinstance(t, ListType) and isinstance(t.element_type, (IntLiteralType, FloatLiteralType)):
-            elem = _resolve(t.element_type)
-            return ListType(elem)
+        from tpyc.type_def_registry import is_array as _is_array, is_span as _is_span, is_list as _is_list_ctr
+        if _is_array(t) and isinstance(t.type_args[0], (IntLiteralType, FloatLiteralType)):
+            elem = _resolve(t.type_args[0])
+            return make_array(elem, t.type_args[1])
+        from tpyc.type_def_registry import is_list as _is_list
+        if _is_list(t) and isinstance(t.type_args[0], (IntLiteralType, FloatLiteralType)):
+            elem = _resolve(t.type_args[0])
+            return make_list(elem)
         return t
     return _resolve(typ)
 
@@ -2500,536 +2550,115 @@ def union_none_narrow(union: UnionType) -> tuple[TpyType, TpyType]:
     return make_union(*non_none), NoneType()
 
 
-@dataclass(frozen=True, eq=False)
-class ArrayType(NamedType):
-    """Fixed-size array: Array[T, N] -> std::array<T, N>"""
-    name: str = field(default='Array', init=False)
-    type_args: tuple[TpyType, int | TypeParamRef] = field(default=None, init=False)  # type: ignore[assignment]  # set by __init__
-
-    def __init__(self, element_type: TpyType, size: "int | TypeParamRef"):
-        NamedType.__init__(self, name="Array", type_args=(element_type, size),
-                           _module_qname="tpy.Array")
-
-    @property
-    def element_type(self) -> TpyType:
-        return self.type_args[0]
-
-    @property
-    def size(self) -> "int | TypeParamRef":
-        return self.type_args[1]
-
-    def to_cpp(self) -> str:
-        size_cpp = self.size.name if isinstance(self.size, TypeParamRef) else str(self.size)
-        return f"std::array<{self.element_type.to_cpp()}, {size_cpp}>"
-
-    def __str__(self) -> str:
-        size_str = self.size.name if isinstance(self.size, TypeParamRef) else str(self.size)
-        return f"Array[{self.element_type}, {size_str}]"
-
-    def qualified_name(self) -> Optional[str]:
-        return "tpy.Array"
+def make_array(element_type: 'TpyType', size: 'int | TypeParamRef') -> 'NominalType':
+    """Factory for Array[T, N]. Plain NominalType with qname tpy.Array;
+    behavior (is_send/is_sync propagate from element, subscript_borrows,
+    needs_explicit_element_target, cpp_formatter -> std::array<T, N>)
+    comes from the TypeDef registry."""
+    return NominalType(name="Array", type_args=(element_type, size),
+                       _module_qname="tpy.Array")
 
-    def is_send(self) -> bool:
-        return self.element_type.is_send()
-
-    def is_sync(self) -> bool:
-        return self.element_type.is_sync()
-
-    def get_element_type(self) -> Optional[TpyType]:
-        return self.element_type
-
-    def subscript_borrows(self) -> bool:
-        return True
 
-    def needs_explicit_element_target(self) -> bool:
-        return True
+def make_span(element_type: 'TpyType', is_readonly: bool = False) -> 'NominalType':
+    """Factory for Span[T] / Span[readonly[T]]. Plain NominalType with qname
+    tpy.Span; behavior (is_value_type=True, is_send=False, is_sync depends on
+    readonly, cpp_formatter handling const) comes from the TypeDef registry."""
+    if is_readonly and not isinstance(element_type, ReadonlyType):
+        element_type = ReadonlyType(element_type)
+    return NominalType(name="Span", type_args=(element_type,),
+                       _module_qname="tpy.Span")
 
-    def inner_types(self) -> tuple['TpyType', ...]:
-        return (self.element_type,)
-
-    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return ArrayType(types[0], self.size)
-
-
-@dataclass(frozen=True, eq=False)
-class SpanType(NamedType):
-    """Non-owning view: Span[T] -> std::span<T>, Span[readonly[T]] -> std::span<const T>
-
-    Const-ness is encoded in the element type: Span[readonly[T]] stores
-    ReadonlyType(T) as the element, giving std::span<const T> in C++.
-    """
-    name: str = field(default='Span', init=False)
-    type_args: tuple[TpyType, ...] = field(default=(), init=False)
 
-    def __init__(self, element_type: TpyType, is_readonly: bool = False):
-        # Normalize: is_readonly=True wraps element in ReadonlyType.
-        # Also accepts ReadonlyType(T) directly as element_type.
-        if is_readonly and not isinstance(element_type, ReadonlyType):
-            element_type = ReadonlyType(element_type)
-        NamedType.__init__(self, name="Span", type_args=(element_type,),
-                           _module_qname="tpy.Span")
-
-    @property
-    def element_type(self) -> TpyType:
-        return self.type_args[0]
-
-    @property
-    def is_readonly(self) -> bool:
-        return isinstance(self.element_type, ReadonlyType)
+def span_is_readonly(t: 'TpyType') -> bool:
+    """True if t is a Span whose element is wrapped in ReadonlyType."""
+    from tpyc.type_def_registry import is_span
+    return is_span(t) and isinstance(t.type_args[0], ReadonlyType)
 
-    @property
-    def inner_element_type(self) -> TpyType:
-        """Unwrapped element type (strips ReadonlyType if present)."""
-        return unwrap_readonly(self.element_type)
-
-    def to_cpp(self) -> str:
-        if self.is_readonly:
-            return f"std::span<const {self.inner_element_type.to_cpp()}>"
-        return f"std::span<{self.element_type.to_cpp()}>"
 
-    def __str__(self) -> str:
-        if self.is_readonly:
-            return f"Span[readonly[{self.inner_element_type}]]"
-        return f"Span[{self.element_type}]"
+def span_inner_element(t: 'TpyType') -> 'TpyType':
+    """Unwrapped element type of a Span (strips ReadonlyType). Caller must
+    have confirmed `is_span(t)`."""
+    return unwrap_readonly(t.type_args[0])
 
-    def qualified_name(self) -> Optional[str]:
-        return "tpy.Span"
 
-    def is_value_type(self) -> bool:
-        # Spans are lightweight views (ptr + size), passed/returned by value
-        return True
+def span_as_const(t: 'TpyType') -> 'NominalType':
+    """Return a const variant (Span[readonly[T]]) of a Span. No-op if already readonly."""
+    if span_is_readonly(t):
+        return t
+    return make_span(ReadonlyType(t.type_args[0]))
 
-    def is_send(self) -> bool:
-        # Spans borrow from another container -- not safe to transfer
-        return False
 
-    def is_sync(self) -> bool:
-        if self.is_readonly:
-            return self.inner_element_type.is_sync()
-        return False
+def span_as_mutable(t: 'TpyType') -> 'NominalType':
+    """Return a mutable (Span[T]) variant. No-op if already mutable."""
+    if not span_is_readonly(t):
+        return t
+    return make_span(span_inner_element(t))
 
-    def get_element_type(self) -> Optional[TpyType]:
-        # Return unwrapped element type for iteration/subscript type inference.
-        return self.inner_element_type
 
-    def needs_explicit_element_target(self) -> bool:
-        return True
+def make_span_iter(element_type: 'TpyType') -> 'NominalType':
+    """Factory for SpanIter[T]. Produces a plain NominalType with qname
+    `tpy.SpanIter`; behavior (is_value_type, is_send=False, is_sync=False,
+    const-aware cpp_formatter) comes from the TypeDef registry."""
+    return NominalType(name="SpanIter", type_args=(element_type,),
+                       _module_qname="tpy.SpanIter")
 
-    def inner_types(self) -> tuple['TpyType', ...]:
-        return (self.element_type,)
 
-    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        # readonly preserved if types[0] is ReadonlyType(...)
-        return SpanType(types[0])
+def make_copy_iter(element_type: 'TpyType') -> 'NominalType':
+    return NominalType(name="CopyIter", type_args=(element_type,),
+                       _module_qname="tpy.CopyIter")
 
-    def as_const(self) -> 'SpanType':
-        """Return a const (Span[readonly[T]]) version of this span."""
-        if self.is_readonly:
-            return self
-        return SpanType(ReadonlyType(self.element_type))
 
-    def as_mutable(self) -> 'SpanType':
-        """Return a mutable (Span) version of this span."""
-        if not self.is_readonly:
-            return self
-        return SpanType(self.inner_element_type)
-
-
-@dataclass(frozen=True, eq=False)
-class SpanIterType(NamedType):
-    """Iterator over a contiguous span.
-
-    SpanIter[T] -> ::tpy::SpanIter<T> (mutable elements T&)
-    SpanIter[readonly[T]] -> ::tpy::SpanIter<const T> (const elements)
-
-    Const-ness follows the same pattern as SpanType: ReadonlyType in the
-    element encodes the const variant. SpanIter<T> holds span<T> internally.
-    """
-    name: str = field(default='SpanIter', init=False)
-    type_args: tuple[TpyType, ...] = field(default=(), init=False)
-
-    def __init__(self, element_type: TpyType):
-        NamedType.__init__(self, name="SpanIter", type_args=(element_type,),
-                           _module_qname="tpy.SpanIter")
-
-    @property
-    def element_type(self) -> TpyType:
-        return self.type_args[0]
-
-    @property
-    def is_readonly(self) -> bool:
-        return isinstance(self.element_type, ReadonlyType)
-
-    @property
-    def inner_element_type(self) -> TpyType:
-        """Unwrapped element type (strips ReadonlyType if present)."""
-        return unwrap_readonly(self.element_type)
-
-    def to_cpp(self) -> str:
-        if self.is_readonly:
-            return f"::tpy::SpanIter<const {self.inner_element_type.to_cpp()}>"
-        return f"::tpy::SpanIter<{self.element_type.to_cpp()}>"
-
-    def __str__(self) -> str:
-        return f"SpanIter[{self.element_type}]"
-
-    def qualified_name(self) -> Optional[str]:
-        return "tpy.SpanIter"
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def is_send(self) -> bool:
-        return False
-
-    def is_sync(self) -> bool:
-        return False
-
-    def get_element_type(self) -> Optional[TpyType]:
-        return self.inner_element_type
-
-    def inner_types(self) -> tuple['TpyType', ...]:
-        return (self.element_type,)
-
-    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return SpanIterType(types[0])
-
-
-@dataclass(frozen=True, eq=False)
-class CopyIterType(NamedType):
-    """Iterator adapter that copies each element from a borrowing iterator.
-
-    CopyIter[T] -> tpy::CopyIter<T, Inner> at C++ level.
-    The Inner type is deduced by the C++ compiler; sema only tracks T.
-    """
-    name: str = field(default='CopyIter', init=False)
-    type_args: tuple[TpyType, ...] = field(default=(), init=False)
-
-    def __init__(self, element_type: TpyType):
-        NamedType.__init__(self, name="CopyIter", type_args=(element_type,),
-                           _module_qname="tpy.CopyIter")
-
-    @property
-    def element_type(self) -> TpyType:
-        return self.type_args[0]
-
-    def to_cpp(self) -> str:
-        # Full C++ type requires the Inner param which is auto-deduced.
-        # Use auto for variable declarations; codegen produces the factory call.
-        return "auto"
-
-    def __str__(self) -> str:
-        return f"CopyIter[{self.element_type}]"
-
-    def qualified_name(self) -> Optional[str]:
-        return "tpy.CopyIter"
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def get_element_type(self) -> Optional[TpyType]:
-        return self.element_type
-
-    def inner_types(self) -> tuple['TpyType', ...]:
-        return (self.element_type,)
-
-    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return CopyIterType(types[0])
-
-
-@dataclass(frozen=True, eq=False)
-class OwnIterType(NamedType):
-    """Consuming iterator that owns a moved container and iterates with moves.
-
-    OwnIter[T] -> tpy::OwnIter<T> at C++ level.
-    Created by own_iter(container) which moves the container into the iterator.
-    """
-    name: str = field(default='OwnIter', init=False)
-    type_args: tuple[TpyType, ...] = field(default=(), init=False)
-
-    def __init__(self, element_type: TpyType):
-        NamedType.__init__(self, name="OwnIter", type_args=(element_type,),
-                           _module_qname="tpy.OwnIter")
-
-    @property
-    def element_type(self) -> TpyType:
-        return self.type_args[0]
-
-    def to_cpp(self) -> str:
-        return "auto"
-
-    def __str__(self) -> str:
-        return f"OwnIter[{self.element_type}]"
-
-    def qualified_name(self) -> Optional[str]:
-        return "tpy.OwnIter"
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def get_element_type(self) -> Optional[TpyType]:
-        return self.element_type
-
-    def inner_types(self) -> tuple['TpyType', ...]:
-        return (self.element_type,)
-
-    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return OwnIterType(types[0])
+def make_own_iter(element_type: 'TpyType') -> 'NominalType':
+    return NominalType(name="OwnIter", type_args=(element_type,),
+                       _module_qname="tpy.OwnIter")
 
 
 def is_readonly_span(typ: 'TpyType') -> bool:
     """Check if a type is a read-only span (Span[readonly[T]])."""
-    return isinstance(typ, SpanType) and typ.is_readonly
+    return span_is_readonly(typ)
 
 
-@dataclass(frozen=True, eq=False)
-class ListType(NamedType):
-    """Dynamic list: list[T] -> std::vector<T>"""
-    name: str = field(default='list', init=False)
-    type_args: tuple[TpyType, ...] = field(default=(), init=False)
+def make_list(element_type: 'TpyType') -> 'NominalType':
+    """Factory for list[T]. Plain NominalType with qname builtins.list;
+    behavior (is_send from element, is_sync=False, subscript_borrows=True,
+    cpp_formatter -> std::vector<T>) comes from the TypeDef registry."""
+    return NominalType(name="list", type_args=(element_type,),
+                       _module_qname="builtins.list")
 
-    def __init__(self, element_type: TpyType):
-        NamedType.__init__(self, name="list", type_args=(element_type,),
-                           _module_qname="builtins.list")
 
-    @property
-    def element_type(self) -> TpyType:
-        return self.type_args[0]
+def make_dict(key_type: 'TpyType', value_type: 'TpyType') -> 'NominalType':
+    """Factory for dict[K, V]. Plain NominalType with qname builtins.dict;
+    behavior (is_send, is_sync=False, subscript_borrows=True, element_of=V,
+    cpp_formatter -> ::tpy::ordered_map<K, V>) comes from the registry."""
+    return NominalType(name="dict", type_args=(key_type, value_type),
+                       _module_qname="builtins.dict")
 
-    def to_cpp(self) -> str:
-        return f"std::vector<{self.element_type.to_cpp()}>"
 
-    def __str__(self) -> str:
-        return f"list[{self.element_type}]"
+def make_set(element_type: 'TpyType') -> 'NominalType':
+    """Factory for set[T]. Produces a plain NominalType with qname
+    `builtins.set`; behavior (is_send=element.is_send(), is_sync=False,
+    cpp_formatter -> ::tpy::ordered_set<T>) comes from the TypeDef registry."""
+    return NominalType(name="set", type_args=(element_type,),
+                       _module_qname="builtins.set")
 
-    def qualified_name(self) -> Optional[str]:
-        return "builtins.list"
 
-    def is_send(self) -> bool:
-        return self.element_type.is_send()
+def make_dict_keys_view(key_type: 'TpyType', value_type: 'TpyType') -> 'NominalType':
+    """Factory for `dict.keys()` view type. Produces a plain NominalType
+    with qname `builtins.dict_keys`; behavior comes from the TypeDef
+    registry (is_value_type=True, is_send/is_sync=False, cpp_formatter
+    -> ::tpy::dict_keys_view<K, V>)."""
+    return NominalType(name="dict_keys", type_args=(key_type, value_type),
+                       _module_qname="builtins.dict_keys")
 
-    def is_sync(self) -> bool:
-        # Mutable container -- not safe to share references across threads
-        return False
 
-    def subscript_borrows(self) -> bool:
-        return True
+def make_dict_values_view(key_type: 'TpyType', value_type: 'TpyType') -> 'NominalType':
+    return NominalType(name="dict_values", type_args=(key_type, value_type),
+                       _module_qname="builtins.dict_values")
 
-    def get_element_type(self) -> Optional[TpyType]:
-        return self.element_type
 
-    def inner_types(self) -> tuple['TpyType', ...]:
-        return (self.element_type,)
-
-    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return ListType(types[0])
-
-
-@dataclass(frozen=True, eq=False)
-class DictType(NamedType):
-    """Dict type: dict[K, V] -> ::tpy::ordered_map<K, V>"""
-    name: str = field(default='dict', init=False)
-    type_args: tuple[TpyType, ...] = field(default=(), init=False)
-
-    def __init__(self, key_type: TpyType, value_type: TpyType):
-        NamedType.__init__(self, name="dict", type_args=(key_type, value_type),
-                           _module_qname="builtins.dict")
-
-    @property
-    def key_type(self) -> TpyType:
-        return self.type_args[0]
-
-    @property
-    def value_type(self) -> TpyType:
-        return self.type_args[1]
-
-    def to_cpp(self) -> str:
-        return f"::tpy::ordered_map<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
-
-    def __str__(self) -> str:
-        return f"dict[{self.key_type}, {self.value_type}]"
-
-    def qualified_name(self) -> Optional[str]:
-        return "builtins.dict"
-
-    def is_send(self) -> bool:
-        return self.key_type.is_send() and self.value_type.is_send()
-
-    def is_sync(self) -> bool:
-        # Mutable container -- not safe to share references across threads
-        return False
-
-    def subscript_borrows(self) -> bool:
-        return True
-
-    def get_element_type(self) -> Optional[TpyType]:
-        # Subscript result type: d[k] -> V
-        return self.value_type
-
-    def inner_types(self) -> tuple['TpyType', ...]:
-        return (self.key_type, self.value_type)
-
-    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return DictType(types[0], types[1])
-
-
-@dataclass(frozen=True, eq=False)
-class SetType(NamedType):
-    """Set type: set[T] -> ::tpy::ordered_set<T>"""
-    name: str = field(default='set', init=False)
-    type_args: tuple[TpyType, ...] = field(default=(), init=False)
-
-    def __init__(self, element_type: TpyType):
-        NamedType.__init__(self, name="set", type_args=(element_type,),
-                           _module_qname="builtins.set")
-
-    @property
-    def element_type(self) -> TpyType:
-        return self.type_args[0]
-
-    def to_cpp(self) -> str:
-        return f"::tpy::ordered_set<{self.element_type.to_cpp()}>"
-
-    def __str__(self) -> str:
-        return f"set[{self.element_type}]"
-
-    def qualified_name(self) -> Optional[str]:
-        return "builtins.set"
-
-    def is_send(self) -> bool:
-        return self.element_type.is_send()
-
-    def is_sync(self) -> bool:
-        return False
-
-    def get_element_type(self) -> Optional[TpyType]:
-        return self.element_type
-
-    def inner_types(self) -> tuple['TpyType', ...]:
-        return (self.element_type,)
-
-    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return SetType(types[0])
-
-
-@dataclass(frozen=True, eq=False)
-class DictKeysViewType(NamedType):
-    """Dict keys view: d.keys() -> ::tpy::dict_keys_view<K, V>"""
-    name: str = field(default='dict_keys', init=False)
-    type_args: tuple[TpyType, ...] = field(default=(), init=False)
-
-    def __init__(self, key_type: TpyType, value_type: TpyType):
-        NamedType.__init__(self, name="dict_keys", type_args=(key_type, value_type),
-                           _module_qname="builtins.dict_keys")
-
-    @property
-    def key_type(self) -> TpyType:
-        return self.type_args[0]
-
-    @property
-    def value_type(self) -> TpyType:
-        return self.type_args[1]
-
-    def to_cpp(self) -> str:
-        return f"::tpy::dict_keys_view<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def is_send(self) -> bool:
-        return False
-
-    def is_sync(self) -> bool:
-        return False
-
-    def __str__(self) -> str:
-        return f"dict_keys[{self.key_type}]"
-
-    def inner_types(self) -> tuple['TpyType', ...]:
-        return (self.key_type, self.value_type)
-
-    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return DictKeysViewType(types[0], types[1])
-
-
-@dataclass(frozen=True, eq=False)
-class DictValuesViewType(NamedType):
-    """Dict values view: d.values() -> ::tpy::dict_values_view<K, V>"""
-    name: str = field(default='dict_values', init=False)
-    type_args: tuple[TpyType, ...] = field(default=(), init=False)
-
-    def __init__(self, key_type: TpyType, value_type: TpyType):
-        NamedType.__init__(self, name="dict_values", type_args=(key_type, value_type),
-                           _module_qname="builtins.dict_values")
-
-    @property
-    def key_type(self) -> TpyType:
-        return self.type_args[0]
-
-    @property
-    def value_type(self) -> TpyType:
-        return self.type_args[1]
-
-    def to_cpp(self) -> str:
-        return f"::tpy::dict_values_view<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def is_send(self) -> bool:
-        return False
-
-    def is_sync(self) -> bool:
-        return False
-
-    def __str__(self) -> str:
-        return f"dict_values[{self.value_type}]"
-
-    def inner_types(self) -> tuple['TpyType', ...]:
-        return (self.key_type, self.value_type)
-
-    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return DictValuesViewType(types[0], types[1])
-
-
-@dataclass(frozen=True, eq=False)
-class DictItemsViewType(NamedType):
-    """Dict items view: d.items() -> ::tpy::dict_items_view<K, V>"""
-    name: str = field(default='dict_items', init=False)
-    type_args: tuple[TpyType, ...] = field(default=(), init=False)
-
-    def __init__(self, key_type: TpyType, value_type: TpyType):
-        NamedType.__init__(self, name="dict_items", type_args=(key_type, value_type),
-                           _module_qname="builtins.dict_items")
-
-    @property
-    def key_type(self) -> TpyType:
-        return self.type_args[0]
-
-    @property
-    def value_type(self) -> TpyType:
-        return self.type_args[1]
-
-    def to_cpp(self) -> str:
-        return f"::tpy::dict_items_view<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def is_send(self) -> bool:
-        return False
-
-    def is_sync(self) -> bool:
-        return False
-
-    def __str__(self) -> str:
-        return f"dict_items[{self.key_type}, {self.value_type}]"
-
-    def inner_types(self) -> tuple['TpyType', ...]:
-        return (self.key_type, self.value_type)
-
-    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return DictItemsViewType(types[0], types[1])
+def make_dict_items_view(key_type: 'TpyType', value_type: 'TpyType') -> 'NominalType':
+    return NominalType(name="dict_items", type_args=(key_type, value_type),
+                       _module_qname="builtins.dict_items")
 
 
 @dataclass(frozen=True)
@@ -3123,55 +2752,21 @@ class GenExprType(TpyType):
 
 
 @dataclass(frozen=True)
-class FnType(TpyType):
-    """Fn[[ParamType, ...], ReturnType] -- zero-cost callable (template).
-
-    Valid only in function parameter position. Generates a C++ template parameter
-    with a requires clause constraining the call signature.
-    """
-    tag: ClassVar[TypeKind] = TypeKind.FN
-    param_types: tuple[TpyType, ...]
-    return_type: TpyType
-
-    def to_cpp(self) -> str:
-        raise RuntimeError(
-            "FnType.to_cpp() should not be called directly; "
-            "Fn params use template codegen"
-        )
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def inner_types(self) -> tuple[TpyType, ...]:
-        return self.param_types + (self.return_type,)
-
-    def with_inner_types(self, types: tuple[TpyType, ...]) -> 'TpyType':
-        return FnType(types[:-1], types[-1])
-
-    def __str__(self) -> str:
-        params = ", ".join(str(t) for t in self.param_types)
-        return f"Fn[[{params}], {self.return_type}]"
-
-    def qualified_name(self) -> Optional[str]:
-        return None
-
-
-def contains_fn_type(typ: TpyType) -> bool:
-    """Check if a type contains FnType anywhere in its structure."""
-    if isinstance(typ, FnType):
-        return True
-    return any(contains_fn_type(inner) for inner in typ.inner_types())
-
-
-@dataclass(frozen=True)
 class CallableType(TpyType):
-    """Callable[[ParamType, ...], ReturnType] -- type-erased callable (std::function).
+    """Callable[[ParamType, ...], ReturnType] or Fn[[ParamType, ...], ReturnType].
 
-    Valid in all positions: params, fields, returns, containers, locals.
+    Two modes distinguished by `is_template`:
+    - is_template=False (Callable): type-erased via std::function; valid in
+      all positions (params, fields, returns, containers, locals).
+    - is_template=True (Fn): zero-cost template parameter with a requires
+      clause. Valid only in function parameter position; to_cpp is an error
+      because Fn params are rendered as template parameters, not concrete
+      types.
     """
     tag: ClassVar[TypeKind] = TypeKind.CALLABLE
     param_types: tuple[TpyType, ...]
     return_type: TpyType
+    is_template: bool = False
 
     @staticmethod
     def _callable_param_cpp(t: 'TpyType') -> str:
@@ -3194,6 +2789,11 @@ class CallableType(TpyType):
         return f"std::function<{ret}({params})>"
 
     def to_cpp(self) -> str:
+        if self.is_template:
+            raise RuntimeError(
+                "CallableType(is_template=True).to_cpp() should not be called "
+                "directly; Fn params use template codegen"
+            )
         return self._std_function_sig()
 
     def to_cpp_param_type(self) -> str:
@@ -3209,14 +2809,32 @@ class CallableType(TpyType):
         return self.param_types + (self.return_type,)
 
     def with_inner_types(self, types: tuple[TpyType, ...]) -> 'TpyType':
-        return CallableType(types[:-1], types[-1])
+        return CallableType(types[:-1], types[-1], self.is_template)
 
     def __str__(self) -> str:
         params = ", ".join(str(t) for t in self.param_types)
-        return f"Callable[[{params}], {self.return_type}]"
+        name = "Fn" if self.is_template else "Callable"
+        return f"{name}[[{params}], {self.return_type}]"
 
     def qualified_name(self) -> Optional[str]:
         return None
+
+
+def make_fn_type(param_types: tuple['TpyType', ...], return_type: 'TpyType') -> CallableType:
+    """Factory for Fn[[...], R] -- callable template (zero-cost parameter position)."""
+    return CallableType(param_types, return_type, is_template=True)
+
+
+def is_fn_type(t: 'TpyType') -> bool:
+    """True if t is a template-mode CallableType (Fn[[...], R])."""
+    return isinstance(t, CallableType) and t.is_template
+
+
+def contains_fn_type(typ: TpyType) -> bool:
+    """Check if a type contains a template-mode Callable (Fn) anywhere in its structure."""
+    if isinstance(typ, CallableType) and typ.is_template:
+        return True
+    return any(contains_fn_type(inner) for inner in typ.inner_types())
 
 
 @dataclass
@@ -3486,7 +3104,7 @@ INT32_MAX = INT32.max_value
 
 def is_protocol_type(typ: TpyType) -> bool:
     """Check if a type is a protocol type."""
-    return isinstance(typ, NamedType) and typ.is_protocol
+    return isinstance(typ, NominalType) and typ.is_protocol
 
 
 def is_protocol_union(typ: TpyType) -> bool:
@@ -3515,11 +3133,13 @@ def container_to_str_template(typ: TpyType) -> str | None:
     """Return the C++ to_str template for a container type, or None."""
     if isinstance(typ, TupleType):
         return "::tpy::tuple_to_str({0})"
-    if isinstance(typ, (ListType, ArrayType, SpanType)):
+    from tpyc.type_def_registry import is_array as _is_array, is_span as _is_span, is_list as _is_list_ctr
+    if _is_array(typ) or _is_list_ctr(typ) or _is_span(typ):
         return "::tpy::list_to_str({0})"
-    if isinstance(typ, DictType):
+    from tpyc.type_def_registry import is_set, is_dict
+    if is_dict(typ):
         return "::tpy::dict_to_str({0})"
-    if isinstance(typ, SetType):
+    if is_set(typ):
         return "::tpy::set_to_str({0})"
     return None
 
@@ -3588,10 +3208,10 @@ class RecordInfo:
     properties: dict[str, 'PropertyInfo'] = field(default_factory=dict)  # property_name -> PropertyInfo
     type_params: list[str] = field(default_factory=list)  # ["T", "U"] for class Stack[T, U]
     type_param_kinds: list[TypeParamKind] = field(default_factory=list)  # [TYPE, INT] for class Matrix[T, N: int]
-    type_param_bounds: dict[str, 'NamedType'] = field(default_factory=dict)  # {"T": Comparable} (must be protocols)
+    type_param_bounds: dict[str, 'NominalType'] = field(default_factory=dict)  # {"T": Comparable} (must be protocols)
     type_factory: "Optional[Callable[..., TpyType]]" = None  # Factory to create concrete type from params
-    parent: Optional['TpyType'] = None  # Parent type (NamedType or builtin TpyType)
-    implemented_protocols: list['NamedType'] = field(default_factory=list)  # Explicit protocol implementations
+    parent: Optional['TpyType'] = None  # Parent type (NominalType or builtin TpyType)
+    implemented_protocols: list['NominalType'] = field(default_factory=list)  # Explicit protocol implementations
     extends_protocols: list[str] = field(default_factory=list)  # Protocol extensions: ["NativeIterable[T]"]
     native_name: Optional[str] = None  # C++ name for @native/@native_c records (e.g., "SDL_Rect")
     is_native: bool = False       # True for @native or @native_c records
@@ -3701,7 +3321,7 @@ class FunctionInfo:
     native_function: bool = False  # @native("func", function=True) -> generates func(self, args)
     native_preserves_refs: bool = False  # non-readonly but doesn't invalidate iterators/refs
     type_params: list[str] = field(default_factory=list)
-    type_param_bounds: dict[str, 'NamedType'] = field(default_factory=dict)
+    type_param_bounds: dict[str, 'NominalType'] = field(default_factory=dict)
     type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "tpy.extern.DefaultInt"}
     cpp_template: Optional[str] = None  # For builtins: "{self}.push_back({0})"
     value_ptr_coercion: bool = False  # @value_ptr_coercion: Ptr[T] params accept T values
@@ -4023,7 +3643,7 @@ class TypeRegistry:
 
     def get_all_fields(self, record: RecordInfo) -> list[FieldInfo]:
         """Get all fields for a record including inherited, in parent-first order."""
-        if record.parent is None or not isinstance(record.parent, NamedType):
+        if record.parent is None or not isinstance(record.parent, NominalType):
             return list(record.fields)
         parent = self.get_record(record.parent.name)
         if parent is None:
@@ -4072,17 +3692,17 @@ class TypeRegistry:
         Compares name + type_args at each level so generic parents are
         matched correctly (e.g. IntContainer -> Container[Int32]).
         """
-        if not (isinstance(child, NamedType) and child.is_user_record
-                and isinstance(parent, NamedType) and parent.is_user_record):
+        if not (isinstance(child, NominalType) and child.is_user_record
+                and isinstance(parent, NominalType) and parent.is_user_record):
             return False
         current_info = self.records.get(child.name)
         visited: set[str] = set()
         while current_info and current_info.parent and current_info.name not in visited:
             visited.add(current_info.name)
             p = current_info.parent
-            if isinstance(p, NamedType) and p.name == parent.name and p.type_args == parent.type_args:
+            if isinstance(p, NominalType) and p.name == parent.name and p.type_args == parent.type_args:
                 return True
-            if isinstance(p, NamedType) and p.is_user_record:
+            if isinstance(p, NominalType) and p.is_user_record:
                 current_info = self.records.get(p.name)
             else:
                 break
@@ -4092,7 +3712,7 @@ class TypeRegistry:
         """Check if child record inherits from parent (by record identity)."""
         current: RecordInfo | None = child
         visited: set[str] = set()
-        while current and current.parent and isinstance(current.parent, NamedType):
+        while current and current.parent and isinstance(current.parent, NominalType):
             pname = current.parent.name
             if pname in visited:
                 break
@@ -4125,9 +3745,9 @@ class TypeRegistry:
 
         Tries local records by short name first, then _qname_index by
         qualified name. This handles both user records and builtin types
-        whose NamedType may or may not have _module_qname set.
+        whose NominalType may or may not have _module_qname set.
         """
-        if isinstance(tpy_type, NamedType) and tpy_type.is_record:
+        if isinstance(tpy_type, NominalType) and tpy_type.is_record:
             result = self.records.get(tpy_type.name)
             if result is not None:
                 return result

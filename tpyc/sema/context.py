@@ -16,7 +16,7 @@ from .value_range import ValueRange
 
 from ..typesys import (
     TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
-    FixedIntType, INT32, BIGINT, NamedType, ReadonlyType, OwnType, OptionalType,
+    FixedIntType, INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType,
     PendingListType, PendingDictType, PendingSetType,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
@@ -613,7 +613,7 @@ class SemanticContext:
                     f"has non-copyable type '{f.type}')"
                 )
         # Check type arguments for generic instantiations
-        if isinstance(inner, NamedType) and inner.type_args:
+        if isinstance(inner, NominalType) and inner.type_args:
             if record is None or not record.has_copy:
                 for arg in inner.type_args:
                     if isinstance(arg, TpyType) and self.is_type_nocopy(arg):
@@ -648,7 +648,7 @@ class SemanticContext:
         record = self.registry.get_record_for_type(typ)
         if record is not None and record.is_nocopy:
             return True
-        if isinstance(typ, NamedType) and typ.type_args:
+        if isinstance(typ, NominalType) and typ.type_args:
             if record is not None and record.has_copy:
                 return False
             for arg in typ.type_args:
@@ -697,7 +697,7 @@ class SemanticContext:
             if parent_rec.is_nocopy or parent_rec.has_del:
                 return True
             parent = parent_rec.parent
-        if isinstance(typ, NamedType) and typ.type_args:
+        if isinstance(typ, NominalType) and typ.type_args:
             for arg in typ.type_args:
                 if isinstance(arg, TpyType) and self.is_type_non_copyable(arg):
                     return True

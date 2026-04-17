@@ -1,0 +1,1 @@
+main.py:5: error: Cannot infer element type for empty set passed to list(); add a type annotation on the outer variable (e.g., `x: list[T] = list(...)`) or on the empty set itself

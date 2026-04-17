@@ -10,9 +10,9 @@ from collections import defaultdict
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, OptionalType, OwnType, ReadonlyType,
+    TpyType, NominalType, OptionalType, OwnType, ReadonlyType,
     TypeParamRef, TypeParamKind, RecordInfo, TupleType, UnionType,
-    ArrayType, SpanType, SpanIterType, unwrap_readonly, unwrap_optional_own,
+    unwrap_readonly, unwrap_optional_own,
     get_covariant_params, FixedIntType, BigIntType, EnumType, PtrType,
     BytesType,
 )
@@ -24,6 +24,7 @@ from ..namespace import Namespace
 
 from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError, escape_cpp_name
 from .functions import factory_default_to_cpp
+from ..type_def_registry import is_span_iter, is_array
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -63,12 +64,12 @@ class RecordGenerator:
         record_by_name = {r.name: r for r in records}
 
         # Build dependency graph
-        # Only consider user-defined parents (NamedType records), not builtin types
+        # Only consider user-defined parents (NominalType records), not builtin types
         dependencies: dict[str, set[str]] = {r.name: set() for r in records}
         for record in records:
             record_info = self.ctx.analyzer.registry.get_record(record.name)
             if (record_info and record_info.parent and
-                isinstance(record_info.parent, NamedType) and record_info.parent.is_user_record and
+                isinstance(record_info.parent, NominalType) and record_info.parent.is_user_record and
                 record_info.parent.name in record_by_name):
                 dependencies[record.name].add(record_info.parent.name)
 
@@ -103,7 +104,7 @@ class RecordGenerator:
         record = self.ctx.analyzer.registry.get_record_for_type(typ)
         if record is not None and record.is_nocopy:
             return True
-        if isinstance(typ, NamedType) and typ.type_args:
+        if isinstance(typ, NominalType) and typ.type_args:
             if record is not None and record.has_copy:
                 return False
             return any(
@@ -278,7 +279,7 @@ class RecordGenerator:
             if non_init_stmts:
                 out.write(" {\n")
                 local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-                local_ns.bind_variable("self", NamedType(record.name))
+                local_ns.bind_variable("self", NominalType(record.name))
                 for pname, ptype in record.init_method.params:
                     local_ns.bind_variable(pname, ptype)
                 self.functions.gen_body(out, non_init_stmts, record.init_method.params,
@@ -358,7 +359,7 @@ class RecordGenerator:
             synthesized = False
             if has_iter and record_info and "__iter__" in record_info.methods:
                 iter_overloads = record_info.methods["__iter__"]
-                if iter_overloads and isinstance(iter_overloads[0].return_type, SpanIterType):
+                if iter_overloads and is_span_iter(iter_overloads[0].return_type):
                     out.write(f"\n{INDENT}auto begin() {{ return this->__iter__().begin(); }}\n")
                     out.write(f"{INDENT}auto end() {{ return this->__iter__().end(); }}\n")
                     out.write(f"{INDENT}auto begin() const {{ return this->__iter__().begin(); }}\n")
@@ -586,7 +587,7 @@ class RecordGenerator:
         out.write(f"{INDENT}{INDENT}if (!this->__tpy_owned_) return;\n")
         if body_stmts:
             local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-            local_ns.bind_variable("self", NamedType(name))
+            local_ns.bind_variable("self", NominalType(name))
             self.functions.gen_body(out, body_stmts, [], del_method.return_type,
                                     del_method, local_ns, indent_level=2, is_method=True,
                                     record_type_param_bounds=record.type_param_bounds or None)
@@ -814,7 +815,7 @@ class RecordGenerator:
         # std::tuple<T>/std::array<T,N> are default-constructible iff T is.
         if isinstance(typ, TupleType):
             return all(self._fld_type_cpp_default_constructible(et) for et in typ.element_types)
-        if isinstance(typ, ArrayType):
+        if is_array(typ):
             elem = typ.get_element_type()
             return elem is not None and self._fld_type_cpp_default_constructible(elem)
         # Enum types map to C++ enum class, which is trivially constructible.
@@ -823,7 +824,7 @@ class RecordGenerator:
         # Raw pointers are trivially constructible (just uninitialized).
         if isinstance(typ, PtrType):
             return True
-        if not isinstance(typ, NamedType) or not typ.is_user_record:
+        if not isinstance(typ, NominalType) or not typ.is_user_record:
             return protocols._is_default_constructible(typ)
         # Generic instantiation (e.g. Pair[Int32]): the base template class always
         # emits = default (see _all_fields_default_constructible), so any instantiation

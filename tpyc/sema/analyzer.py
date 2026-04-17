@@ -9,9 +9,9 @@ from dataclasses import replace as dc_replace
 from typing import Optional
 
 from ..typesys import (
-    TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, StrType, StrViewType, LiteralType, VoidType, VOID,
+    TpyType, TypeRegistry, NominalType, UnionType, FinalType, STR, StrType, StrViewType, LiteralType, VoidType, VOID,
     NoneType, INT32, FixedIntType, BigIntType, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
-    FunctionInfo, EnumType, SpanType, is_any_str_type,
+    FunctionInfo, EnumType, is_any_str_type,
     make_ref, unwrap_ref_type, RefType,
     is_integer_type, is_void_like_type,
 )
@@ -377,14 +377,14 @@ class SemanticAnalyzer:
             self.ctx.global_ns.bind_module(mod_name, alias)
 
         # Resolve imported type aliases in AST type annotations.
-        # The parser creates NamedType("Shape") for imported aliases since it
+        # The parser creates NominalType("Shape") for imported aliases since it
         # doesn't know about cross-module aliases at parse time. Substitute them
         # with the resolved types before registration/analysis.
         if self.ctx.user_imported_type_aliases:
             self._resolve_imported_aliases(module)
 
         # Resolve imported enum types in AST type annotations.
-        # Same issue as aliases: parser creates NamedType("Color") for imported
+        # Same issue as aliases: parser creates NominalType("Color") for imported
         # enums since it doesn't have cross-module type info at parse time.
         if self.ctx.user_imported_enums:
             self._resolve_imported_enums(module)
@@ -432,7 +432,7 @@ class SemanticAnalyzer:
 
         # The parser eagerly expands same-module union aliases, so
         # RecursiveAlias | None becomes UnionType(NoneType, member1, member2, ...)
-        # instead of OptionalType(NamedType("RecursiveAlias")).
+        # instead of OptionalType(NominalType("RecursiveAlias")).
         # Now that recursive aliases are identified, fix up those annotations.
         if module.recursive_union_names:
             self._fix_recursive_optional_annotations(module)
@@ -628,7 +628,7 @@ class SemanticAnalyzer:
 
     def _validate_factory_defaults(self, module: TpyModule) -> None:
         """Validate that field(default_factory=X) fields have Default-constructible types."""
-        default_proto = NamedType("Default", (), is_protocol=True)
+        default_proto = NominalType("Default", (), is_protocol=True)
         for record in module.all_records():
             for fld in record.fields:
                 if not fld.is_factory_default:
@@ -641,7 +641,7 @@ class SemanticAnalyzer:
                     )
                 # Validate factory name matches field type
                 expr = fld.default_expr
-                if isinstance(expr, TpyCall) and isinstance(fld.type, NamedType):
+                if isinstance(expr, TpyCall) and isinstance(fld.type, NominalType):
                     if expr.func_name != fld.type.name:
                         raise SemanticError(
                             f"default_factory '{expr.func_name}' does not match "
@@ -706,7 +706,7 @@ class SemanticAnalyzer:
             # Generic T bounded to ValueType: same as value type
             if isinstance(own.wrapped, TypeParamRef):
                 bound = self.type_ops.get_type_param_bound(own.wrapped.name)
-                if (bound is not None and isinstance(bound, NamedType)
+                if (bound is not None and isinstance(bound, NominalType)
                         and bound.qualified_name() == "tpy.ValueType"):
                     continue
             # @nocopy types: Own is the only way to pass them
@@ -1288,7 +1288,7 @@ class SemanticAnalyzer:
         The parser eagerly expands same-module aliases, so `Expr | None`
         (where Expr = Lit | BinOp) becomes UnionType(NoneType, BinOp, Lit)
         -- a 3-member pointer-variant. This method converts those back to
-        OptionalType(NamedType("Expr")) by matching the non-None members
+        OptionalType(NominalType("Expr")) by matching the non-None members
         against the recursive union alias definitions.
 
         Note: only covers module-level declarations (function signatures,
@@ -1319,7 +1319,7 @@ class SemanticAnalyzer:
                     key = frozenset(non_none)
                     alias_name = alias_by_members.get(key)
                     if alias_name is not None:
-                        return OptionalType(NamedType(alias_name))
+                        return OptionalType(NominalType(alias_name))
             return typ.map_inner_types(lambda t: _fix(t))
 
         def _fix_func(func: TpyFunction) -> None:
@@ -1351,8 +1351,8 @@ class SemanticAnalyzer:
     def _validate_type_alias_members(
         self, alias_name: str, typ: TpyType, loc: 'SourceLocation | None'
     ) -> None:
-        """Validate that all NamedType members in a type alias are registered."""
-        # Recursive union aliases have self-referencing NamedType placeholders
+        """Validate that all NominalType members in a type alias are registered."""
+        # Recursive union aliases have self-referencing NominalType placeholders
         # inside their members -- safety was already validated.
         if alias_name in self.ctx.recursive_union_names:
             return
@@ -1360,10 +1360,10 @@ class SemanticAnalyzer:
         members: list[TpyType] = []
         if isinstance(typ, UnionType):
             members = list(typ.members)
-        elif isinstance(typ, NamedType):
+        elif isinstance(typ, NominalType):
             members = [typ]
         for m in members:
-            if isinstance(m, NamedType) and not m.is_protocol and not m.is_module_type:
+            if isinstance(m, NominalType) and not m.is_protocol and not m.is_module_type:
                 if self.ctx.registry.get_record(m.name) is None:
                     raise SemanticError(
                         f"Type alias '{alias_name}' references unknown type '{m.name}'",
@@ -1374,13 +1374,13 @@ class SemanticAnalyzer:
     def _resolve_alias(typ: TpyType, aliases: dict[str, TpyType],
                         _seen: frozenset[str] = frozenset(),
                         _skip: frozenset[str] = frozenset()) -> TpyType:
-        """Recursively substitute alias NamedTypes with their resolved types.
+        """Recursively substitute alias NominalTypes with their resolved types.
 
         Uses _seen to prevent infinite recursion on self-referencing aliases.
         _skip contains recursive union alias names that must not be expanded
-        (their NamedType placeholders are structural).
+        (their NominalType placeholders are structural).
         """
-        if isinstance(typ, NamedType) and not typ.is_protocol and not typ.is_module_type:
+        if isinstance(typ, NominalType) and not typ.is_protocol and not typ.is_module_type:
             if typ.name in _seen or typ.name in _skip:
                 return typ
             resolved = aliases.get(typ.name)
@@ -1394,7 +1394,7 @@ class SemanticAnalyzer:
         )
 
     def _resolve_imported_aliases(self, module: TpyModule) -> None:
-        """Substitute imported alias NamedTypes in module AST type annotations."""
+        """Substitute imported alias NominalTypes in module AST type annotations."""
         from ..parse.nodes import TpyVarDecl
         aliases = self.ctx.registry.type_aliases
         skip = frozenset(module.recursive_union_names)
@@ -1421,7 +1421,7 @@ class SemanticAnalyzer:
                 func.params[i] = (name, resolved)
 
     def _resolve_imported_enums(self, module: TpyModule) -> None:
-        """Substitute imported enum NamedTypes in module AST type annotations."""
+        """Substitute imported enum NominalTypes in module AST type annotations."""
         from ..parse.nodes import TpyVarDecl
         enums = {name: self.ctx.registry.get_enum(name)
                  for name in self.ctx.user_imported_enums}
@@ -1448,8 +1448,8 @@ class SemanticAnalyzer:
 
     @staticmethod
     def _resolve_enum(typ: TpyType, enums: dict[str, EnumType]) -> TpyType:
-        """Recursively substitute NamedType placeholders with EnumType for imported enums."""
-        if isinstance(typ, NamedType) and not typ.is_protocol:
+        """Recursively substitute NominalType placeholders with EnumType for imported enums."""
+        if isinstance(typ, NominalType) and not typ.is_protocol:
             resolved = enums.get(typ.name)
             if resolved is not None:
                 return resolved
@@ -2024,7 +2024,7 @@ class SemanticAnalyzer:
             # Implicitly import member record types so codegen can qualify them
             if isinstance(typ, UnionType) and module_info.records:
                 for member in typ.members:
-                    if isinstance(member, NamedType) and member.name in module_info.records:
+                    if isinstance(member, NominalType) and member.name in module_info.records:
                         if member.name not in self.ctx.user_imported_records:
                             rec = module_info.records[member.name]
                             self.ctx.registry.register_record(rec, member.name)
@@ -2036,7 +2036,7 @@ class SemanticAnalyzer:
             enum_type = module_info.enums[original_name]
             self.ctx.registry.register_enum(enum_type, local_name)
             # Also register under original name: the parser resolves aliases
-            # back to original names for type annotations (NamedType("Color")
+            # back to original names for type annotations (NominalType("Color")
             # even when the alias is "C")
             if local_name != original_name:
                 self.ctx.registry.register_enum(enum_type, original_name)

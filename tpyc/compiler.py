@@ -1433,16 +1433,16 @@ class Compiler:
                     record.extends_protocols.append(ext_str)
             if record.builtin_type_key:
                 analyzer.registry.register_builtin_record(record.builtin_type_key, record)
-        # Resolve NamedType self-references in method signatures.
+        # Resolve NominalType self-references in method signatures.
         # When a @builtin_type class references itself in method params/returns
-        # (e.g. BytesView.find(sub: BytesView)), the parser creates NamedType
+        # (e.g. BytesView.find(sub: BytesView)), the parser creates NominalType
         # because the factory type isn't registered yet. Resolve them now.
         self._resolve_builtin_self_refs(module_info)
 
     def _resolve_builtin_self_refs(self, module_info: 'ModuleInfo') -> None:
-        """Replace NamedType with factory types in builtin record method signatures."""
+        """Replace NominalType with factory types in builtin record method signatures."""
         from dataclasses import replace as dc_replace
-        from .typesys import NamedType
+        from .typesys import NominalType
         factories = _get_type_factories()
         # Build name -> factory for non-generic builtin types in this module
         name_to_factory: dict[str, 'Callable[[], TpyType]'] = {}
@@ -1455,7 +1455,7 @@ class Compiler:
         if not name_to_factory:
             return
         def resolve(t: TpyType) -> TpyType:
-            if isinstance(t, NamedType) and not t.type_args and t.name in name_to_factory:
+            if isinstance(t, NominalType) and not t.type_args and t.name in name_to_factory:
                 return name_to_factory[t.name]()
             return t.map_inner_types(resolve)
         cache = self._resolved_self_ref_records

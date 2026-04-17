@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, FixedIntType, FloatType, Float32Type,
-    BoolType, StrType, StrViewType, StringType, CharType, NamedType,
+    BoolType, StrType, StrViewType, StringType, CharType, NominalType,
     NoneType, OptionalType, UnionType, EnumType, PendingStrType,
     LiteralType, LiteralValue, TypeParamRef,
     unwrap_readonly, unwrap_ref_type,
@@ -59,8 +59,8 @@ class MatchAnalyzer:
 
         subject_type = self.expr.analyze_expr(stmt.subject)
         effective_type = unwrap_ref_type(unwrap_readonly(subject_type))
-        # Expand recursive union alias NamedType to its underlying UnionType
-        if (isinstance(effective_type, NamedType)
+        # Expand recursive union alias NominalType to its underlying UnionType
+        if (isinstance(effective_type, NominalType)
                 and not effective_type.is_protocol and not effective_type.is_module_type
                 and effective_type.name in self.ctx.recursive_union_names):
             alias = self.ctx.registry.get_type_alias(effective_type.name)
@@ -76,7 +76,7 @@ class MatchAnalyzer:
             PendingStrType,
         ))
         is_record = (
-            isinstance(effective_type, NamedType)
+            isinstance(effective_type, NominalType)
             and effective_type.is_user_record
             and self.ctx.registry.get_record(effective_type.name) is not None
         )
@@ -339,7 +339,7 @@ class MatchAnalyzer:
             )
             return missing
 
-        if isinstance(subject_type, NamedType) and subject_type.is_user_record:
+        if isinstance(subject_type, NominalType) and subject_type.is_user_record:
             return [None]  # type: ignore[list-item]  # sentinel: no enumerable missing cases
 
         return []
@@ -420,13 +420,13 @@ class MatchAnalyzer:
         """Resolve a type name in a match class pattern against a union subject.
 
         Resolution order:
-        1. Exact match: record NamedType or primitive (Int32, str, bool, ...)
+        1. Exact match: record NominalType or primitive (Int32, str, bool, ...)
         2. Name-based member search: find the union member whose base name
            matches (handles parameterized types like list[T], Box[str])
         """
         resolved = _resolve_concrete_type_name(name)
         if resolved is None and is_record:
-            resolved = NamedType(name)
+            resolved = NominalType(name)
         # Check exact match against union members
         if resolved is not None:
             if any(m == resolved for m in subject_type.members):
@@ -457,7 +457,7 @@ class MatchAnalyzer:
         raise self.ctx.error(f"unknown type '{name}' in match pattern", pattern)
 
     def _analyze_class_pattern_record(
-        self, pattern: TpyClassPattern, subject_type: NamedType,
+        self, pattern: TpyClassPattern, subject_type: NominalType,
         bindings: dict[str, TpyType], stmt: TpyMatch,
     ) -> None:
         """Analyze a class pattern on a concrete record subject (field-value matching)."""
@@ -607,7 +607,7 @@ class MatchAnalyzer:
             )
 
     def _analyze_pattern_record(
-        self, pattern: TpyPattern, subject_type: NamedType,
+        self, pattern: TpyPattern, subject_type: NominalType,
         bindings: dict[str, TpyType], stmt: TpyMatch,
     ) -> None:
         """Analyze a pattern for concrete record subjects (field-value matching)."""
@@ -671,7 +671,7 @@ class MatchAnalyzer:
         elif isinstance(pattern, TpyClassPattern):
             # Class pattern on the inner type (e.g. case Point(): on Optional[Point])
             inner = subject_type.inner
-            if isinstance(inner, NamedType) and inner.is_user_record:
+            if isinstance(inner, NominalType) and inner.is_user_record:
                 record = self.ctx.registry.get_record(inner.name)
                 if record is not None:
                     self._analyze_class_pattern_record(pattern, inner, bindings, stmt)
@@ -875,7 +875,7 @@ class MatchAnalyzer:
         record: 'RecordInfo', resolved_type: TpyType | None,
     ) -> dict[str, TpyType]:
         """Build type param substitution map from resolved_type's type_args."""
-        if (resolved_type is None or not isinstance(resolved_type, NamedType)
+        if (resolved_type is None or not isinstance(resolved_type, NominalType)
                 or not record.type_params or not resolved_type.type_args):
             return {}
         subst: dict[str, TpyType] = {}
@@ -998,11 +998,11 @@ class MatchAnalyzer:
             return False
 
         # Collect matching types from field_type
-        if isinstance(field_type, NamedType) and field_type.name == type_name:
+        if isinstance(field_type, NominalType) and field_type.name == type_name:
             candidates = [field_type]
         elif isinstance(field_type, UnionType):
             candidates = [m for m in field_type.members
-                          if isinstance(m, NamedType) and m.name == type_name]
+                          if isinstance(m, NominalType) and m.name == type_name]
         else:
             return False
 
@@ -1036,7 +1036,7 @@ class MatchAnalyzer:
 
         pattern_type = _resolve_concrete_type_name(cls_name)
         if pattern_type is None and self.ctx.registry.get_record(cls_name) is not None:
-            pattern_type = NamedType(cls_name)
+            pattern_type = NominalType(cls_name)
         if pattern_type is None:
             raise self.ctx.error(
                 f"unknown type '{cls_name}' in field type pattern", sub_pattern
@@ -1045,16 +1045,16 @@ class MatchAnalyzer:
         # Exact match: compile-time type guard (no runtime check)
         if field_type == pattern_type:
             return field_type
-        if isinstance(field_type, NamedType) and field_type.name == cls_name:
+        if isinstance(field_type, NominalType) and field_type.name == cls_name:
             return field_type
 
         # Union field: check if field_type is a union containing pattern_type
-        is_record = isinstance(pattern_type, NamedType)
+        is_record = isinstance(pattern_type, NominalType)
         if isinstance(field_type, UnionType):
             if is_record:
                 # Records: match by name (handles parameterized types like Box[str])
                 matches = [m for m in field_type.members
-                           if isinstance(m, NamedType) and m.name == cls_name]
+                           if isinstance(m, NominalType) and m.name == cls_name]
             else:
                 # Primitives: exact type match
                 matches = [m for m in field_type.members if m == pattern_type]

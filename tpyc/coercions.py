@@ -9,12 +9,13 @@ from typing import Callable, Optional
 from .typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type,
     FloatLiteralType,
-    NamedType, PtrType, is_readonly_ptr, CharType, StrType, StringType, StrViewType,
+    NominalType, PtrType, is_readonly_ptr, CharType, StrType, StringType, StrViewType,
     BytesType, ByteArrayType, BytesViewType,
-    SpanType, is_readonly_span, PendingListType, TypeParamRef, TypeParamKind, ReadonlyType,
-    ListType, ArrayType, BasicSliceType, SliceType,
-    is_integer_type,
+    is_readonly_span, PendingListType, TypeParamRef, TypeParamKind, ReadonlyType,
+    BasicSliceType, SliceType,
+    is_integer_type, unwrap_readonly,
 )
+from .type_def_registry import is_array, is_span, is_list
 
 
 class CoercionContext(Enum):
@@ -50,17 +51,18 @@ def _is_safe_widening(actual: TpyType, expected: TpyType) -> bool:
 
 def _spanlike_to_span_match(actual: TpyType, expected: TpyType) -> bool:
     """Check if actual type (extending Spannable[T]) can coerce to Span[T]/ReadOnlySpan[T]."""
-    if not isinstance(expected, SpanType):
+    if not is_span(expected):
         return False
     # Span[readonly[T]] and readonly[container] cannot coerce to mutable Span (const violation)
-    if isinstance(actual, SpanType) and actual.is_readonly and not expected.is_readonly:
+    expected_is_readonly = is_readonly_span(expected)
+    if is_span(actual) and is_readonly_span(actual) and not expected_is_readonly:
         return False
-    if isinstance(actual, ReadonlyType) and not expected.is_readonly:
+    if isinstance(actual, ReadonlyType) and not expected_is_readonly:
         return False
     actual_elem = actual.get_element_type()
     if actual_elem is None:
         return False
-    expected_elem = expected.inner_element_type
+    expected_elem = unwrap_readonly(expected.type_args[0])
 
     # PendingListType is an internal compiler type that resolves to list (which extends Spannable).
     # Handle it directly since it's not in the module system.
@@ -74,7 +76,7 @@ def _spanlike_to_span_match(actual: TpyType, expected: TpyType) -> bool:
 
     # Check if actual is a builtin type that implements Spannable[T].
     # These are compiler-internal types with known span coercion support.
-    if not isinstance(actual, (ListType, ArrayType, SpanType)):
+    if not (is_array(actual) or is_list(actual)):
         return False
     if actual_elem == expected_elem:
         return True
@@ -334,10 +336,10 @@ COERCIONS: list[Coercion] = [
     # Pointer coercions
     Coercion(
         name="record_to_ptr",
-        from_type=NamedType,
+        from_type=NominalType,
         to_type=PtrType,
         type_match=lambda rec, ptr: (
-            isinstance(rec, NamedType) and rec.is_user_record and isinstance(ptr, PtrType) and isinstance(ptr.pointee, NamedType) and ptr.pointee.is_user_record and rec.name == ptr.pointee.name
+            isinstance(rec, NominalType) and rec.is_user_record and isinstance(ptr, PtrType) and isinstance(ptr.pointee, NominalType) and ptr.pointee.is_user_record and rec.name == ptr.pointee.name
         ),
         requires_lvalue=True,
         requires_mutable_lvalue=True,
@@ -346,10 +348,10 @@ COERCIONS: list[Coercion] = [
     ),
     Coercion(
         name="record_to_const_ptr",
-        from_type=NamedType,
+        from_type=NominalType,
         to_type=PtrType,
         type_match=lambda rec, ptr: (
-            isinstance(rec, NamedType) and rec.is_user_record and isinstance(ptr, PtrType) and is_readonly_ptr(ptr) and isinstance(ptr.inner_pointee, NamedType) and ptr.inner_pointee.is_user_record and rec.name == ptr.inner_pointee.name
+            isinstance(rec, NominalType) and rec.is_user_record and isinstance(ptr, PtrType) and is_readonly_ptr(ptr) and isinstance(ptr.inner_pointee, NominalType) and ptr.inner_pointee.is_user_record and rec.name == ptr.inner_pointee.name
         ),
         requires_lvalue=True,
         forbid_return_local=True,
@@ -363,9 +365,9 @@ COERCIONS: list[Coercion] = [
     ),
     Coercion(
         name="span_to_readonly_span",
-        from_type=SpanType,
-        to_type=SpanType,
-        type_match=lambda s1, s2: isinstance(s1, SpanType) and isinstance(s2, SpanType) and not s1.is_readonly and is_readonly_span(s2) and s1.inner_element_type == s2.inner_element_type,
+        from_type=NominalType,
+        to_type=NominalType,
+        type_match=lambda s1, s2: is_span(s1) and is_span(s2) and not is_readonly_span(s1) and is_readonly_span(s2) and unwrap_readonly(s1.type_args[0]) == unwrap_readonly(s2.type_args[0]),
         protocol_safe=True,
     ),
     # basic_slice -> slice (adds step=nullopt). C++ implicit via Slice(BasicSlice) ctor.
@@ -379,7 +381,7 @@ COERCIONS: list[Coercion] = [
     Coercion(
         name="spanlike_to_span_arg",
         from_type=TpyType,  # Matches any type; _spanlike_to_span_match filters by protocol
-        to_type=SpanType,
+        to_type=NominalType,
         type_match=_spanlike_to_span_match,
         contexts={CoercionContext.ARG},
     ),
@@ -387,7 +389,7 @@ COERCIONS: list[Coercion] = [
     Coercion(
         name="spanlike_to_span",
         from_type=TpyType,  # Matches any type; _spanlike_to_span_match filters by protocol
-        to_type=SpanType,
+        to_type=NominalType,
         type_match=_spanlike_to_span_match,
         contexts={CoercionContext.INIT, CoercionContext.ASSIGN, CoercionContext.RETURN},
         requires_lvalue=True,
@@ -451,7 +453,7 @@ VALUE_TO_PTR = Coercion(
 # Used directly by compatibility.py.
 UPCAST_TO_PTR = Coercion(
     name="upcast_to_ptr",
-    from_type=NamedType,
+    from_type=NominalType,
     to_type=PtrType,
     requires_lvalue=True,
     requires_mutable_lvalue=True,
@@ -466,21 +468,21 @@ UPCAST_TO_PTR = Coercion(
 SPAN_METHOD_TO_SPAN_ARG = Coercion(
     name="span_method_to_span_arg",
     from_type=TpyType,
-    to_type=SpanType,
+    to_type=NominalType,
 )
 
 # Non-arg contexts: lvalue required, no returning locals.
 SPAN_METHOD_TO_SPAN = Coercion(
     name="span_method_to_span",
     from_type=TpyType,
-    to_type=SpanType,
+    to_type=NominalType,
     requires_lvalue=True,
     forbid_return_local=True,
 )
 
 UPCAST_TO_CONST_PTR = Coercion(
     name="upcast_to_const_ptr",
-    from_type=NamedType,
+    from_type=NominalType,
     to_type=PtrType,
     requires_lvalue=True,
     forbid_return_local=True,

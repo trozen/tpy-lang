@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, CopyIterType, OwnIterType, GenExprType, SpanIterType,
+    TpyType, GenExprType,
     is_protocol_type,
 )
 from .diagnostics import SemanticError
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from .context import SemanticContext
 
 from tpyc import modules as builtin_modules
+from ..type_def_registry import is_iterator_adapter
 
 
 class IterableHelper:
@@ -36,14 +37,14 @@ class IterableHelper:
         - Is a compiler-internal iterator adapter (CopyIter[T], OwnIter[T],
           generator-expression type) or SpanIter[T] (stub-declared but its
           __iter__(self) -> Self currently bypasses the unified lookup --
-          the parser doesn't resolve Self to SpanIterType, so the adapter
+          the parser doesn't resolve Self to SpanIter, so the adapter
           allowlist covers it; low-priority follow-up)
         - Has __next__() (Iterator conformance)
         - Has __iter__() returning an iterator type
         """
         if is_protocol_type(typ) and typ.qualified_name() in builtin_modules.ITERABLE_PROTOCOL_QNAMES:
             return True
-        if isinstance(typ, (CopyIterType, OwnIterType, GenExprType, SpanIterType)):
+        if is_iterator_adapter(typ) or isinstance(typ, GenExprType):
             return True
         if builtin_modules.get_iter_element_type(typ, registry=self.ctx.registry) is not None:
             return True

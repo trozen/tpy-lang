@@ -158,11 +158,11 @@ exists with the same value in `other`.
 **New class in `tpyc/typesys.py`**:
 
 ```python
-class DictType(NamedType):
+class DictType(NominalType):
     """Dict type: dict[K, V] -> tpy::ordered_map<K, V>"""
 
     def __init__(self, key_type: TpyType, value_type: TpyType):
-        NamedType.__init__(self, name="dict", type_args=(key_type, value_type),
+        NominalType.__init__(self, name="dict", type_args=(key_type, value_type),
                            _module_qname="builtins.dict")
 
     @property

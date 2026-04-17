@@ -10,10 +10,10 @@ from typing import TYPE_CHECKING
 import re
 
 from ..typesys import (
-    TpyType, NamedType, TypeParamRef, SelfType, OwnType, ReadonlyType, RefType,
+    TpyType, NominalType, TypeParamRef, SelfType, OwnType, ReadonlyType, RefType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, PropertyInfo, is_protocol_type,
     FixedIntType, BigIntType, FloatType, Float32Type, BoolType, StrType, StringType, StrViewType, CharType,
-    ListType, ListRepeatType, GenExprType, CopyIterType, OwnIterType, DictType, SetType, ArrayType, TupleType, SpanType, OptionalType, IntLiteralType, FloatLiteralType, PendingListType, BIGINT, FLOAT,
+    ListRepeatType, GenExprType, make_list, TupleType, OptionalType, IntLiteralType, FloatLiteralType, PendingListType, BIGINT, FLOAT,
     EnumType, IntEnumType,
     impl_proto_matches_name, get_protocol_qname,
 )
@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
 from tpyc import modules as builtin_modules
 from .. import qnames
+from ..type_def_registry import is_copy_iter, is_own_iter, is_set, is_dict, is_array, is_span, is_list
 
 
 def record_extends_any(actual: TpyType, protocol_name: str, registry: 'TypeRegistry') -> bool:
@@ -70,7 +71,7 @@ class ProtocolChecker:
                 return False
         return True  # all methods (if any) are readonly, all parents (if any) are readonly
 
-    def type_conforms_to_protocol(self, actual: TpyType, protocol: NamedType) -> bool:
+    def type_conforms_to_protocol(self, actual: TpyType, protocol: NominalType) -> bool:
         """Check if actual type conforms to a protocol.
 
         Two conformance mechanisms work in parallel:
@@ -104,7 +105,7 @@ class ProtocolChecker:
 
         # PendingListType: delegate to list[T] (resolves to list or Array, both conform)
         if isinstance(actual, PendingListType):
-            return self.type_conforms_to_protocol(ListType(actual.element_type), protocol)
+            return self.type_conforms_to_protocol(make_list(actual.element_type), protocol)
 
         # GenExprType: satisfies Iterable[T] and Iterator[T]
         if isinstance(actual, GenExprType):
@@ -114,13 +115,13 @@ class ProtocolChecker:
                 return True
             return False
 
-        # CopyIterType / OwnIterType: satisfies Iterable[T] only (not Iterator).
+        # CopyIter / OwnIter: satisfies Iterable[T] only (not Iterator).
         # Both have C++ begin/end but are not exposed as Iterator to prevent
         # passing to functions that call __next__() after a for-loop consumes them.
-        if isinstance(actual, (CopyIterType, OwnIterType)):
+        if is_copy_iter(actual) or is_own_iter(actual):
             if protocol.qualified_name() == qnames.ITERABLE:
                 if protocol.type_args and len(protocol.type_args) == 1:
-                    return self.type_ops.types_match_for_inference(actual.element_type, protocol.type_args[0])
+                    return self.type_ops.types_match_for_inference(actual.type_args[0], protocol.type_args[0])
                 return True
             return False
 
@@ -206,7 +207,7 @@ class ProtocolChecker:
 
         return True
 
-    def _check_record_extends(self, actual: TpyType, protocol: NamedType) -> bool:
+    def _check_record_extends(self, actual: TpyType, protocol: NominalType) -> bool:
         """Check if a type extends a protocol via record-level declarations.
 
         Unified check for both user records (implemented_protocols) and
@@ -217,10 +218,10 @@ class ProtocolChecker:
         if record_info is None:
             return False
 
-        # User records: check implemented_protocols (concrete NamedTypes)
+        # User records: check implemented_protocols (concrete NominalTypes)
         # Build substitution map for generic records (e.g., ArrayList[T, N] instantiated as ArrayList[Int32, 8])
         type_subst: dict[str, TpyType] = {}
-        if record_info.type_params and isinstance(actual, NamedType) and actual.type_args:
+        if record_info.type_params and isinstance(actual, NominalType) and actual.type_args:
             for param_name, arg in zip(record_info.type_params, actual.type_args):
                 if isinstance(arg, TpyType):  # skip int-kind params (e.g. N: int)
                     type_subst[param_name] = arg
@@ -241,7 +242,7 @@ class ProtocolChecker:
         # Builtin types: check extends_protocols strings
         return self._match_extends_protocols(record_info, actual, protocol)
 
-    def _check_builtin_extends(self, actual: TpyType, protocol: NamedType) -> bool:
+    def _check_builtin_extends(self, actual: TpyType, protocol: NominalType) -> bool:
         """Check extends_protocols for builtin types only (non-marker protocols)."""
         record_info = self.ctx.registry.get_record_for_type(actual)
         if record_info is None or not record_info.extends_protocols:
@@ -249,7 +250,7 @@ class ProtocolChecker:
         return self._match_extends_protocols(record_info, actual, protocol)
 
     def _match_extends_protocols(
-        self, record_info: RecordInfo, actual: TpyType, protocol: NamedType,
+        self, record_info: RecordInfo, actual: TpyType, protocol: NominalType,
     ) -> bool:
         """Match extends_protocols strings against an expected protocol."""
         if not record_info.extends_protocols:
@@ -279,27 +280,27 @@ class ProtocolChecker:
                                StrType, StringType, StrViewType, CharType)):
             return True
         # Empty containers are default-constructible
-        if isinstance(actual, (ListType, DictType, SetType, SpanType)):
+        if is_list(actual) or is_span(actual) or is_dict(actual) or is_set(actual):
             return True
         # Optional[T] is default-constructible (std::nullopt)
         if isinstance(actual, OptionalType):
             return True
         # Array[T, N] is default-constructible if element T is
-        if isinstance(actual, ArrayType):
+        if is_array(actual):
             elem = actual.get_element_type()
             if elem is not None:
-                default_proto = NamedType("Default", (), is_protocol=True)
+                default_proto = NominalType("Default", (), is_protocol=True)
                 return self.type_conforms_to_protocol(elem, default_proto)
             return False
         # Tuple types: default-constructible if all element types are
         if isinstance(actual, TupleType):
-            default_proto = NamedType("Default", (), is_protocol=True)
+            default_proto = NominalType("Default", (), is_protocol=True)
             return all(
                 self.type_conforms_to_protocol(et, default_proto)
                 for et in actual.element_types
             )
         # User records: default-constructible if __init__ has no required params
-        if isinstance(actual, NamedType) and actual.is_user_record:
+        if isinstance(actual, NominalType) and actual.is_user_record:
             record = self.ctx.registry.get_record(actual.name)
             if record is None:
                 return False
@@ -327,7 +328,7 @@ class ProtocolChecker:
             return protocol_name in self._LIST_REPEAT_PROTOCOLS
         if isinstance(actual, GenExprType):
             return protocol_name in self._GENEXPR_PROTOCOLS
-        if isinstance(actual, (CopyIterType, OwnIterType)):
+        if is_copy_iter(actual) or is_own_iter(actual):
             return protocol_name in self._ITER_ADAPTER_PROTOCOLS
 
         record_info = self.ctx.registry.get_record_for_type(actual)
@@ -459,7 +460,7 @@ class ProtocolChecker:
 
     def type_has_field_with_type(self, actual: TpyType, field_name: str, expected_type: TpyType) -> bool:
         """Check if a type has a field with the expected type."""
-        if isinstance(actual, NamedType) and actual.is_record:
+        if isinstance(actual, NominalType) and actual.is_record:
             record = self.ctx.registry.get_record_for_type(actual)
             if record:
                 type_subst = self.type_ops.build_type_substitution(actual)
@@ -480,10 +481,10 @@ class ProtocolChecker:
         if actual == expected:
             return True
         # SelfType in actual matches when expected is the record type (Self -> MyType)
-        if isinstance(actual, SelfType) and isinstance(expected, NamedType):
+        if isinstance(actual, SelfType) and isinstance(expected, NominalType):
             return True
         # Generic Self: MyType[T] matches bare MyType (unparameterized Self substitution)
-        if (isinstance(actual, NamedType) and isinstance(expected, NamedType)
+        if (isinstance(actual, NominalType) and isinstance(expected, NominalType)
                 and actual.name == expected.name and not expected.type_args):
             return True
         # Unwrap ownership/const/ref wrappers: Own[T], readonly[T], and Ref[T]
@@ -509,7 +510,7 @@ class ProtocolChecker:
         if self.ctx.registry.is_subclass_of(expected, unwrapped):
             return True
         # If expected is a protocol, check if actual conforms to it
-        if is_protocol_type(expected) and isinstance(expected, NamedType):
+        if is_protocol_type(expected) and isinstance(expected, NominalType):
             return self.type_conforms_to_protocol(unwrapped, expected)
         return False
 
@@ -590,7 +591,7 @@ class ProtocolChecker:
 
     def get_protocol_method_signature(
         self,
-        protocol: NamedType,
+        protocol: NominalType,
         method_name: str,
         self_type: TpyType | None = None,
     ) -> tuple[list[tuple[str, TpyType]], TpyType, str | None] | None:
@@ -640,7 +641,7 @@ class ProtocolChecker:
 
     def lookup_protocol_method_return(
         self,
-        protocol: NamedType,
+        protocol: NominalType,
         method_name: str,
         arg_types: list[TpyType],
     ) -> TpyType | None:
@@ -766,19 +767,19 @@ class ProtocolChecker:
     ) -> dict[str, TpyType | int]:
         """Build substitution map from parent's type parameters to concrete type args.
 
-        For NamedType parents (user or module), extracts type args directly.
-        For non-NamedType parents (ListType, ArrayType, etc.), uses extract_type_params.
+        For NominalType parents (user or module), extracts type args directly.
+        For non-NominalType parents (etc.), uses extract_type_params.
         """
         if not parent_info.type_params:
             return {}
 
-        if isinstance(parent_type, NamedType):
+        if isinstance(parent_type, NominalType):
             if not parent_type.type_args:
                 return {}
             return dict(zip(parent_info.type_params, parent_type.type_args))
         return builtin_modules.extract_type_params(parent_type)
 
-    def get_protocol_conformance_issues(self, record_type: NamedType, protocol: NamedType) -> list[str]:
+    def get_protocol_conformance_issues(self, record_type: NominalType, protocol: NominalType) -> list[str]:
         """Get human-readable list of conformance issues for a record against a protocol.
 
         Distinguishes genuinely-absent methods from methods that exist with a

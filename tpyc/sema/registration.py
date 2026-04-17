@@ -9,16 +9,16 @@ from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo,
+    TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
-    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, EnumType, IntEnumType, BoolType, SpanType, SpanIterType,
+    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, EnumType, IntEnumType, BoolType, make_span,
     FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64, TupleType, final_type_str_to_strview,
     register_value_type_record, register_send_record, register_sync_record,
     register_return_exception, is_return_exception,
     attach_type_param_bounds,
     has_auto_readonly, has_auto_own,
     qualify_exception_name, ensure_qualified,
-    FnType, contains_fn_type, OptionalType, FStrType,
+    OptionalType, FStrType,
     public_module_name,
 )
 from ..parse import (
@@ -40,13 +40,13 @@ if TYPE_CHECKING:
 from tpyc import modules as builtin_modules
 from .. import qnames
 
-def _vararg_span_type(elem_type: 'TpyType') -> SpanType:
+def _vararg_span_type(elem_type: 'TpyType') -> NominalType:
     """Build the sema-level Span type for a *args parameter.
 
     Always Span[readonly[T]] regardless of value/non-value. The distinction
     (std::span<const T> vs tpy::varargs<T>) is handled in codegen only.
     """
-    return SpanType(elem_type, is_readonly=True)
+    return make_span(elem_type, is_readonly=True)
 
 
 _LINKAGE_MAP = {
@@ -79,8 +79,8 @@ def _validate_const_field_default(expr: TpyExpr, loc: object) -> None:
         "(literal, None, or fixed-int constructor like Int32(5))", loc)
 
 
-def build_record_self_type(record: TpyRecord) -> NamedType:
-    """Build a NamedType representing Self for a record, preserving type param kinds."""
+def build_record_self_type(record: TpyRecord) -> NominalType:
+    """Build a NominalType representing Self for a record, preserving type param kinds."""
     if record.type_params:
         type_args = tuple(
             TypeParamRef(
@@ -89,8 +89,8 @@ def build_record_self_type(record: TpyRecord) -> NamedType:
             )
             for i, tp in enumerate(record.type_params)
         )
-        return NamedType(record.name, type_args)
-    return NamedType(record.name)
+        return NominalType(record.name, type_args)
+    return NominalType(record.name)
 
 
 class TypeRegistrar:
@@ -103,9 +103,9 @@ class TypeRegistrar:
 
     def _resolve_type_param_bounds(
         self, raw_bounds: dict[str, TpyType], loc,
-    ) -> dict[str, NamedType]:
+    ) -> dict[str, NominalType]:
         """Resolve parsed type parameter bounds, validating each is a protocol."""
-        resolved: dict[str, NamedType] = {}
+        resolved: dict[str, NominalType] = {}
         for param_name, bound_type in raw_bounds.items():
             resolved_bound = self.type_ops.resolve_type(bound_type)
             if not is_protocol_type(resolved_bound):
@@ -123,7 +123,7 @@ class TypeRegistrar:
         into the global namespace and imported_names tracking.
         """
         # Register tpy types from type factories (Int32, Array, Span, etc.)
-        # Compile-time-only types (factory returns non-NamedType, e.g. FStr -> FStrType)
+        # Compile-time-only types (factory returns non-NominalType, e.g. FStr -> FStrType)
         # are also registered as type aliases so the parser resolves them directly.
         for qname in builtin_modules.get_type_factory_names("tpy"):
             simple_name = qname.split(".")[-1]
@@ -155,7 +155,7 @@ class TypeRegistrar:
         Compile-time-only types (like FStr) have a type factory but no C++
         representation. They must be resolved to their singleton at sema time
         so isinstance checks (e.g. isinstance(ptype, FStrType)) work.
-        Regular builtin types (Int32, basic_slice, etc.) stay as NamedType
+        Regular builtin types (Int32, basic_slice, etc.) stay as NominalType
         and use @native for C++ mapping.
         """
         type_obj = builtin_modules.get_builtin_type_obj(f"{module}.{original_name}")
@@ -372,7 +372,7 @@ class TypeRegistrar:
         # attach_type_param_bounds in the method loop below uses resolved versions
         # (with is_protocol=True, _module_qname set from sema registry).
         if record.type_param_bounds:
-            resolved_record_bounds: dict[str, NamedType] = {}
+            resolved_record_bounds: dict[str, NominalType] = {}
             for param_name, bound_type in record.type_param_bounds.items():
                 resolved_bound = self.type_ops.resolve_type(bound_type) if not is_protocol_type(bound_type) else bound_type
                 if not is_protocol_type(resolved_bound):
@@ -432,7 +432,7 @@ class TypeRegistrar:
                 is_native_stub = method.is_stub and (method.native_name or method.cpp_template)
                 # __iter__ returns Iterator[T] which is a protocol -- allow it since
                 # C++ codegen uses auto return type (deduced from body).
-                is_iter_method = method.name == "__iter__" and isinstance(method_return, NamedType) and method_return.qualified_name() in (qnames.ITERATOR, qnames.ITERABLE)
+                is_iter_method = method.name == "__iter__" and isinstance(method_return, NominalType) and method_return.qualified_name() in (qnames.ITERATOR, qnames.ITERABLE)
                 if not (pi and pi.is_dynamic) and not is_native_stub and not is_iter_method and not method.is_generator:
                     raise SemanticError(
                         f"Protocol type '{method_return.name}' cannot be used as a return type in '{record.name}.{method.name}'. "
@@ -441,7 +441,7 @@ class TypeRegistrar:
                     )
             # Generator method: extract yield type from Iterator[T] return type
             if method.is_generator:
-                if not (is_protocol_type(method_return) and isinstance(method_return, NamedType)
+                if not (is_protocol_type(method_return) and isinstance(method_return, NominalType)
                         and method_return.qualified_name() == "typing.Iterator"):
                     raise SemanticError(
                         f"Generator method must have return type 'Iterator[T]', "
@@ -520,7 +520,7 @@ class TypeRegistrar:
                         f"'{method.name}' must return self ('{record.name}'), not None",
                         method.loc or record.loc,
                     )
-                if not (isinstance(method_return, NamedType) and method_return.name == record.name):
+                if not (isinstance(method_return, NominalType) and method_return.name == record.name):
                     raise SemanticError(
                         f"'{method.name}' must return self ('{record.name}'), "
                         f"got '{method_return}'",
@@ -664,7 +664,7 @@ class TypeRegistrar:
                 )
             ret = copy_info.return_type
             inner = ret.wrapped if isinstance(ret, OwnType) else ret
-            if not (isinstance(inner, NamedType) and inner.name == record.name):
+            if not (isinstance(inner, NominalType) and inner.name == record.name):
                 raise SemanticError(
                     f"__copy__ must return {record.name}, got {ret}",
                     copy_loc,
@@ -726,7 +726,7 @@ class TypeRegistrar:
         # Full validation (protocols, circular check) is deferred to validate_record_inheritance.
         provisional_parent = None
         for base in record.bases:
-            if isinstance(base, NamedType) and self.ctx.registry.get_record(base.name) is not None:
+            if isinstance(base, NominalType) and self.ctx.registry.get_record(base.name) is not None:
                 provisional_parent = base
                 break
 
@@ -790,9 +790,9 @@ class TypeRegistrar:
         This is where we classify bases into parent class vs protocol implementations.
 
         Supports inheritance from:
-        - User-defined classes (NamedType with is_record)
-        - Builtin types (ListType, ArrayType, etc.)
-        - Protocols (NamedType with is_protocol)
+        - User-defined classes (NominalType with is_record)
+        - Builtin types (ArrayType, etc.)
+        - Protocols (NominalType with is_protocol)
         """
         record_info = self.ctx.registry.get_record(record.name)
         if record_info is None:
@@ -802,7 +802,7 @@ class TypeRegistrar:
         # (the C++ inheritance already exists, we just track it for type checking)
         if record_info.is_native and record.bases:
             for base in record.bases:
-                if isinstance(base, NamedType):
+                if isinstance(base, NominalType):
                     # Protocols are fine (express interface conformance, not C++ inheritance)
                     if self.ctx.registry.get_protocol(base.name):
                         continue
@@ -815,13 +815,13 @@ class TypeRegistrar:
 
         # Classify bases into parent class vs protocol implementations
         # We do this here (not in register_record) so forward-referenced protocols are recognized
-        parent: TpyType | None = None  # Can be NamedType or builtin type
-        implemented_protocols: list[NamedType] = []
+        parent: TpyType | None = None  # Can be NominalType or builtin type
+        implemented_protocols: list[NominalType] = []
 
         for base_type in record.bases:
             # Get the base name to check if it's actually a protocol
             base_name = None
-            if isinstance(base_type, NamedType):
+            if isinstance(base_type, NominalType):
                 base_name = base_type.name
 
             # Check if this base is actually a protocol (handles forward references)
@@ -831,21 +831,21 @@ class TypeRegistrar:
 
             if is_protocol_base:
                 # It's a protocol implementation - set the is_protocol flag correctly
-                protocol_type = base_type.with_protocol_flag(True) if isinstance(base_type, NamedType) else base_type
+                protocol_type = base_type.with_protocol_flag(True) if isinstance(base_type, NominalType) else base_type
                 # Set _module_qname from the protocol's registry entry so that
                 # qualified_name() returns the correct module (not just the
                 # _protocol_modules fallback which is first-write-wins)
-                if isinstance(protocol_type, NamedType) and not protocol_type._module_qname:
+                if isinstance(protocol_type, NominalType) and not protocol_type._module_qname:
                     proto_info = self.ctx.registry.get_protocol(base_name)
                     if proto_info and proto_info.module:
                         # Use public module name for qualified_name() comparisons
                         pub_module = public_module_name(proto_info.module)
-                        protocol_type = NamedType(
+                        protocol_type = NominalType(
                             protocol_type.name, protocol_type.type_args, True,
                             f"{pub_module}.{protocol_type.name}",
                             protocol_type.is_dynamic_protocol)
                 implemented_protocols.append(protocol_type)
-            elif isinstance(base_type, NamedType) and base_type.is_record:
+            elif isinstance(base_type, NominalType) and base_type.is_record:
                 # It's a class (user-defined or builtin) - check for multiple inheritance
                 if parent is not None:
                     raise SemanticError(
@@ -888,7 +888,7 @@ class TypeRegistrar:
         record_info.implemented_protocols = implemented_protocols
 
         # Validate parent class (only check circular inheritance for user-defined types)
-        if record_info.parent and isinstance(record_info.parent, NamedType) and record_info.parent.is_user_record:
+        if record_info.parent and isinstance(record_info.parent, NominalType) and record_info.parent.is_user_record:
             # Check for circular inheritance
             if self._has_circular_inheritance(record.name, record_info.parent.name):
                 raise SemanticError(
@@ -921,7 +921,7 @@ class TypeRegistrar:
             # Check if record implements all protocol methods.
             # For @builtin_type classes, use the concrete type (e.g. Float32Type)
             # so Self-substitution in protocol signatures matches method param types.
-            record_type: TpyType = NamedType(record.name)
+            record_type: TpyType = NominalType(record.name)
             if record_info.builtin_type_key:
                 record_type = builtin_modules.get_builtin_type_obj(record_info.builtin_type_key) or record_type
             if not self.protocols.type_conforms_to_protocol(record_type, protocol):
@@ -1190,7 +1190,7 @@ class TypeRegistrar:
         from ..typesys import MethodSignature, ProtocolInfo
         # Resolve implicit readonly and cross-module protocol flags on method
         # signatures. resolve_type backfills is_protocol / _module_qname on
-        # NamedType references to other protocols (e.g. Iterator[T] in
+        # NominalType references to other protocols (e.g. Iterator[T] in
         # Iterable[T].__iter__) so that later signature matches can detect
         # protocol returns.
         resolved_methods = []
@@ -1421,7 +1421,7 @@ class TypeRegistrar:
 
         # Fn is valid as a bare param type but not nested inside Optional/Union
         for pname, ptype in func.params:
-            if not isinstance(ptype, FnType) and contains_fn_type(ptype):
+            if not is_fn_type(ptype) and contains_fn_type(ptype):
                 raise SemanticError(
                     f"Fn type cannot be nested inside another type (Optional, Union, list, etc.). "
                     f"Use Callable for parameter '{pname}' instead",
@@ -1451,7 +1451,7 @@ class TypeRegistrar:
                       keyword_only=is_kwonly))
         # *args with no keyword-only params: append at end
         if func.vararg_name is not None and resolved_vararg_type is not None and (kw_start is None or kw_start >= len(resolved_params)):
-            span_type = SpanType(resolved_vararg_type, is_readonly=True)
+            span_type = make_span(resolved_vararg_type, is_readonly=True)
             param_infos.append(ParamInfo(func.vararg_name, span_type, is_variadic=True))
 
         # **kwargs: Unpack[TypedDict] -- append as TypedDict param at end
@@ -1459,7 +1459,7 @@ class TypeRegistrar:
         if func.kwarg_name is not None and func.kwarg_type is not None:
             resolved_kwarg_type = self.type_ops.resolve_type(func.kwarg_type)
             # Validate no field name conflicts with regular params
-            if isinstance(resolved_kwarg_type, NamedType):
+            if isinstance(resolved_kwarg_type, NominalType):
                 td_record = self.ctx.registry.get_record(resolved_kwarg_type.name)
                 if td_record is not None:
                     param_names = {n for n, _ in resolved_params}

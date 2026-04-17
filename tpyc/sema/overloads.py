@@ -15,7 +15,7 @@ from ..typesys import (
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
     PendingStrType, PendingViewType, StrType, StringType, StrViewType, LiteralType,
     PendingBytesType, BytesType, ByteArrayType, BytesViewType,
-    NamedType, PtrType, OwnType, FnType, CallableType, VoidType, NoneType,
+    NominalType, PtrType, OwnType, CallableType, is_fn_type, VoidType, NoneType,
     OptionalType, BoolType,
     unwrap_ref_type,
     is_callable_type, is_float_type, is_integer_type, is_any_float_type,
@@ -26,7 +26,7 @@ from ..coercions import resolve_coercion, CoercionContext
 if TYPE_CHECKING:
     ProtocolChecker = Callable[[TpyType, TpyType], bool]
     DerefChecker = Callable[[TpyType], TpyType | None]
-    SubclassChecker = Callable[['NamedType', 'NamedType'], bool]
+    SubclassChecker = Callable[['NominalType', 'NominalType'], bool]
 
 
 def _contains_type_param_ref(t: TpyType) -> bool:
@@ -52,7 +52,7 @@ def _structural_match(arg: TpyType, param: TpyType) -> bool:
         return _structural_match(unwrap_readonly(arg), param.wrapped)
     arg = unwrap_readonly(arg)
     # Callable -> Fn: structurally compatible callable types
-    if isinstance(arg, CallableType) and isinstance(param, FnType):
+    if isinstance(arg, CallableType) and is_fn_type(param):
         if len(arg.param_types) != len(param.param_types):
             return False
         return (all(_structural_match(a, p) for a, p in zip(arg.param_types, param.param_types))
@@ -97,7 +97,7 @@ def type_matches_strict(
     # FnType/CallableType: compare with qualifier unwrapping on inner types.
     # The arg FnType may have Own/Ref on param/return types from FI, while the
     # resolved overload's Fn type has bare types from substitution.
-    from ..typesys import FnType, CallableType, OwnType as _Own
+    from ..typesys import CallableType, OwnType as _Own
     if (is_callable_type(arg_inner)
             and is_callable_type(param_inner)
             and len(arg_inner.param_types) == len(param_inner.param_types)):
@@ -124,7 +124,7 @@ def type_matches_strict(
             return True
         return type_matches_strict(arg_inner, param_inner.inner, protocol_checker)
     # Callable -> Fn: std::function satisfies template requires clauses
-    if (isinstance(arg_inner, CallableType) and isinstance(param_inner, FnType)
+    if (isinstance(arg_inner, CallableType) and is_fn_type(param_inner)
             and arg_inner.param_types == param_inner.param_types
             and (arg_inner.return_type == param_inner.return_type
                  or isinstance(param_inner.return_type, VoidType))):
@@ -155,15 +155,15 @@ def type_matches_strict(
         # Strip Own[T] wrappers from protocol type args so that e.g.
         # list[Node] matches Iterable[Own[Node]] for protocol conformance.
         check_param = param_inner
-        if (isinstance(param_inner, NamedType) and param_inner.type_args
+        if (isinstance(param_inner, NominalType) and param_inner.type_args
                 and any(isinstance(a, OwnType) for a in param_inner.type_args)):
             stripped = tuple(a.wrapped if isinstance(a, OwnType) else a for a in param_inner.type_args)
             check_param = dc_replace(param_inner, type_args=stripped)
         return protocol_checker(check_arg, check_param)
-    # Non-protocol NamedType with Own[T] in type args: strip Own for overload matching.
+    # Non-protocol NominalType with Own[T] in type args: strip Own for overload matching.
     # Applies to any concrete container (e.g. dict[K, Own[V]]) not just DictType.
     # Copy warnings are emitted later by check_type_compatible.
-    if (isinstance(param_inner, NamedType) and not is_protocol_type(param_inner)
+    if (isinstance(param_inner, NominalType) and not is_protocol_type(param_inner)
             and any(isinstance(a, OwnType) for a in param_inner.inner_types())):
         stripped_inner = tuple(a.wrapped if isinstance(a, OwnType) else a for a in param_inner.inner_types())
         stripped_param = param_inner.with_inner_types(stripped_inner)
@@ -204,7 +204,7 @@ def type_matches_numeric(
     # T -> Optional[T]: unwrap Optional param and match inner type
     if isinstance(param_type, OptionalType):
         return type_matches_numeric(arg_type, param_type.inner)
-    # Recursive container matching: e.g. ListType(IntLiteralType) vs ListType(Int32)
+    # Recursive container matching: e.g. make_list(IntLiteralType) vs make_list(Int32)
     if type(arg_type) == type(param_type):
         arg_elem = arg_type.get_element_type()
         param_elem = param_type.get_element_type()
@@ -266,7 +266,7 @@ def type_matches_with_coercion(
         check_arg = arg_inner.wrapped if isinstance(arg_inner, OwnType) else arg_inner
         return protocol_checker(check_arg, param_inner)
     # Callable -> Fn: std::function satisfies template requires clauses
-    if (isinstance(arg_inner, CallableType) and isinstance(param_inner, FnType)
+    if (isinstance(arg_inner, CallableType) and is_fn_type(param_inner)
             and arg_inner.param_types == param_inner.param_types
             and (arg_inner.return_type == param_inner.return_type
                  or isinstance(param_inner.return_type, VoidType))):
@@ -279,23 +279,23 @@ def type_matches_with_coercion(
             return True
     # Inheritance: Child -> Parent (value upcast and pointer coercions)
     if subclass_checker:
-        if isinstance(arg_inner, NamedType) and arg_inner.is_user_record:
-            if isinstance(param_inner, NamedType) and param_inner.is_user_record:
+        if isinstance(arg_inner, NominalType) and arg_inner.is_user_record:
+            if isinstance(param_inner, NominalType) and param_inner.is_user_record:
                 if subclass_checker(arg_inner, param_inner):
                     return True
             pointee = getattr(param_inner, 'pointee', None)
-            if isinstance(pointee, NamedType) and pointee.is_user_record:
+            if isinstance(pointee, NominalType) and pointee.is_user_record:
                 if subclass_checker(arg_inner, pointee):
                     return True
-        if isinstance(arg_inner, PtrType) and isinstance(arg_inner.pointee, NamedType):
-            if isinstance(param_inner, PtrType) and isinstance(param_inner.pointee, NamedType):
+        if isinstance(arg_inner, PtrType) and isinstance(arg_inner.pointee, NominalType):
+            if isinstance(param_inner, PtrType) and isinstance(param_inner.pointee, NominalType):
                 # Ptr[readonly[T]] cannot coerce to mutable Ptr (would drop const)
                 if not (arg_inner.is_readonly and not param_inner.is_readonly):
                     if subclass_checker(arg_inner.pointee, param_inner.pointee):
                         return True
-    # Non-protocol NamedType with Own[T] in type args: strip Own for overload matching.
+    # Non-protocol NominalType with Own[T] in type args: strip Own for overload matching.
     # Symmetric with the same block in type_matches_strict.
-    if (isinstance(param_inner, NamedType) and not is_protocol_type(param_inner)
+    if (isinstance(param_inner, NominalType) and not is_protocol_type(param_inner)
             and any(isinstance(a, OwnType) for a in param_inner.inner_types())):
         stripped_inner = tuple(a.wrapped if isinstance(a, OwnType) else a for a in param_inner.inner_types())
         stripped_param = param_inner.with_inner_types(stripped_inner)

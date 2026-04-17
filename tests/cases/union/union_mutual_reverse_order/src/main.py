@@ -1,5 +1,5 @@
 # D20 mutual recursion with classes defined BEFORE the union alias.
-# Exercises the codegen path where Box[Expr] fields carry NamedType("Expr")
+# Exercises the codegen path where Box[Expr] fields carry NominalType("Expr")
 # (alias not yet registered at parse time) rather than the expanded UnionType.
 from tplib import Box
 from tpy import Own

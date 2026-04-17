@@ -10,19 +10,17 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, OwnType, ReadonlyType,
     FinalType, FixedIntType, BoolType, StrViewType, StringType,
-    ListType, DictType, ArrayType, SpanType, PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NamedType, CharType, StrType, TypeParamRef,
+    PendingListType, PendingDictType, make_list, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType, UnknownElementType,
     EnumType, unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType,
     BytesType, ByteArrayType, BytesViewType, LiteralType,
     ViewTypeFamily, VIEW_TYPE_FAMILIES, STR_FAMILY, BYTES_FAMILY,
-    PendingGenericInstanceType, FnType, contains_fn_type,
+    PendingGenericInstanceType, contains_fn_type,
     INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, is_protocol_type, is_protocol_union, final_type_str_to_strview,
     qualify_exception_name, is_return_exception, is_exception_type,
     FunctionInfo, ParamInfo,
     make_ref, unwrap_ref_type, RefType,
-    is_integer_type, is_any_int_type, is_numeric_type,
-
-)
+    is_integer_type, is_any_int_type, is_numeric_type, is_readonly_span)
 from ..parse import (
     TpyExpr,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyExprStmt, TpyReturn, TpyYield,
@@ -59,6 +57,7 @@ from .context import BorrowKind, PENDING_CONTAINER_TYPES, _storage_key, _borrow_
 from .local_deduction import collect_pending_source_types
 from tpyc import modules as builtin_modules
 from tpyc import qnames
+from ..type_def_registry import is_dict, is_array, is_span, is_list
 
 
 def _is_dangling_temporary_arg(expr: TpyExpr) -> bool:
@@ -497,7 +496,7 @@ class StatementAnalyzer:
                 # Frozen dataclass / readonly field: reject assignment except self.field in __init__
                 if isinstance(target, TpyFieldAccess):
                     actual = unwrap_readonly(check_type)
-                    if isinstance(actual, NamedType):
+                    if isinstance(actual, NominalType):
                         info = self.ctx.registry.get_record(actual.name)
                         if info is not None:
                             cur = self.ctx.func.current_function
@@ -947,7 +946,7 @@ class StatementAnalyzer:
                         # container's; for the latter, it's loop-body scope.
                         #
                         # Known gap (no failing test): user records whose
-                        # `__iter__()` returns `SpanIterType` (e.g. ArrayList,
+                        # `__iter__()` returns `SpanIter` (e.g. ArrayList,
                         # Stack with `__iter__(self) -> SpanIter[T]`) are NOT
                         # `is_native_iterable`, but their iterator does
                         # reference the container's storage. Provenance
@@ -955,7 +954,7 @@ class StatementAnalyzer:
                         # from param-derived iterables, so the gap is
                         # currently invisible. If it surfaces, recover by
                         # also checking whether `__iter__()` returns a
-                        # `SpanIterType` here.
+                        # `SpanIter` here.
                         references_container = builtin_modules.is_native_iterable(
                             inner_iterable_type, registry=self.ctx.registry
                         )
@@ -1277,7 +1276,7 @@ class StatementAnalyzer:
     def _raise_expr_type_name(self, expr_type: TpyType, stmt: TpyRaise) -> str:
         """Extract the type name from a raise expression's type for validation."""
         t = unwrap_qualifiers(expr_type)
-        if isinstance(t, NamedType) and not t.is_protocol:
+        if isinstance(t, NominalType) and not t.is_protocol:
             return t.name
         raise self.ctx.error(
             f"cannot raise expression of type '{expr_type}'; "
@@ -1421,7 +1420,7 @@ class StatementAnalyzer:
         if handler.binding:
             exc_record = self.ctx.registry.find_record_by_qname(handler.exception_type)
             if exc_record:
-                exc_type = NamedType(exc_record.name)
+                exc_type = NominalType(exc_record.name)
                 self.ctx.func.current_scope.bindings[handler.binding] = exc_type
                 self.init.mark_assigned(handler.binding)
 
@@ -1518,7 +1517,7 @@ class StatementAnalyzer:
 
             bare_name = handler_bare_names[i]
             if h.binding and bare_name:
-                exc_type = NamedType(bare_name)
+                exc_type = NominalType(bare_name)
                 self.ctx.func.current_scope.bindings[h.binding] = exc_type
                 self.init.mark_assigned(h.binding)
 
@@ -2074,9 +2073,9 @@ class StatementAnalyzer:
                 f" without 'nonlocal' declaration",
                 stmt)
         # Resolve type aliases + enums in annotation (single tree walk).
-        # - NamedType with a registered type alias -> alias target
+        # - NominalType with a registered type alias -> alias target
         #   (one level; recurses into alias's inner types; _seen guards self-referential aliases)
-        # - NamedType matching an enum name -> EnumType from sema registry
+        # - NominalType matching an enum name -> EnumType from sema registry
         # - Stale EnumType (from parser) -> sema registry's EnumType (may be IntEnumType)
         # Then resolve_type handles protocol flags, TypeParamRef upgrades, and
         # compile-time-only aliases (FStr etc.) in a second walk.
@@ -2089,7 +2088,7 @@ class StatementAnalyzer:
             def _enum_lookup(t: TpyType) -> TpyType:
                 if not has_enums:
                     return t
-                if isinstance(t, NamedType) and not t.is_protocol:
+                if isinstance(t, NominalType) and not t.is_protocol:
                     enum = registry.get_enum(t.name)
                     if enum is not None:
                         return enum
@@ -2100,11 +2099,11 @@ class StatementAnalyzer:
                 return t
 
             def _resolve(t: TpyType, _seen: frozenset[str] = frozenset()) -> TpyType:
-                # Alias resolution: replace NamedType with registered alias target.
+                # Alias resolution: replace NominalType with registered alias target.
                 # After resolving, apply enum lookup on the target (matches the
                 # original alias-then-enum pipeline so aliases-to-enums resolve).
                 if (has_aliases
-                        and isinstance(t, NamedType)
+                        and isinstance(t, NominalType)
                         and not t.is_protocol
                         and not t.is_module_type
                         and t.name not in _seen
@@ -2125,7 +2124,7 @@ class StatementAnalyzer:
 
             stmt.type = _resolve(stmt.type)
 
-        # Resolve type to set is_protocol flag, upgrade NamedType -> TypeParamRef
+        # Resolve type to set is_protocol flag, upgrade NominalType -> TypeParamRef
         # in generic scopes, and handle compile-time-only aliases (FStr).
         if stmt.type:
             stmt.type = self.type_ops.resolve_type(stmt.type)
@@ -2313,7 +2312,7 @@ class StatementAnalyzer:
 
             # Empty dict literal with annotation: d: dict[K, V] = {}
             if is_empty_dict_literal and stmt.type:
-                if isinstance(stmt.type, DictType):
+                if is_dict(stmt.type):
                     init_type = stmt.type
                     self.ctx.set_expr_type(stmt.init, init_type)
                 else:
@@ -2330,18 +2329,18 @@ class StatementAnalyzer:
                                           stmt.type.qualified_name() == lookup.qualified_name)
                 else:
                     # Empty literal [] can match list[T] annotation
-                    annotation_matches = isinstance(stmt.type, ListType)
+                    annotation_matches = is_list(stmt.type)
 
                 if annotation_matches:
-                    if isinstance(stmt.type, ListType):
+                    if is_list(stmt.type):
                         # list[T]: Use PendingListType for potential Array optimization
-                        elem_type = stmt.type.element_type
+                        elem_type = stmt.type.type_args[0]
                         # Set call_type so codegen generates explicit type (e.g., std::vector<int>())
                         if is_generic_constructor:
                             stmt.init.call_type = stmt.type  # type: ignore
                         if self.ctx.func.current_function is None:
                             # Global context: return ListType directly
-                            init_type = ListType(elem_type)
+                            init_type = make_list(elem_type)
                         else:
                             # Function-local context: create PendingListType
                             literal_id = self.ctx.literal_counter
@@ -2654,7 +2653,7 @@ class StatementAnalyzer:
                         root = _borrow_storage_root(init_inner.args[0])
                         if root is not None:
                             bt.add_borrow(root, stmt.name, BorrowKind.PTR)
-            elif isinstance(var_type, SpanType):
+            elif is_span(var_type):
                 # Span from slicing borrows the source container
                 # (StrView excluded: str is immutable, no mutations to warn about)
                 init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
@@ -2960,7 +2959,7 @@ class StatementAnalyzer:
         # Use the stub's value param type (e.g. Iterable[Own[T]]) for coercion,
         # which accepts any iterable and triggers copy warnings for lvalue sources.
         elem_type = actual_type.get_element_type()
-        rhs_hint = ListType(elem_type) if elem_type is not None else _value_param_type
+        rhs_hint = make_list(elem_type) if elem_type is not None else _value_param_type
         self.ctx.set_expr_type(stmt.target, rhs_hint)
 
         value_type = self.expr.analyze_expr_with_hint(stmt.value, rhs_hint)
@@ -3003,7 +3002,7 @@ class StatementAnalyzer:
         if isinstance(stmt.target, TpyFieldAccess) and stmt.target.is_property_access:
             obj_type = self.ctx.get_expr_type(stmt.target.obj)
             actual = unwrap_readonly(obj_type) if obj_type else None
-            record = self.ctx.registry.get_record_for_type(actual) if isinstance(actual, NamedType) else None
+            record = self.ctx.registry.get_record_for_type(actual) if isinstance(actual, NominalType) else None
             prop = self.protocols.lookup_record_property(record, stmt.target.field) if record else None
             if prop and prop.setter:
                 stmt.target.property_setter = True
@@ -3174,17 +3173,17 @@ class StatementAnalyzer:
             # Dict/TypedDict subscript assignment is always allowed
             actual_obj = unwrap_readonly(obj_type)
             is_typed_dict_target = (
-                isinstance(actual_obj, NamedType) and actual_obj.is_record
+                isinstance(actual_obj, NominalType) and actual_obj.is_record
                 and stmt.target.typed_dict_field is not None
             )
-            if not isinstance(actual_obj, (DictType, PendingDictType)) and not is_typed_dict_target:
+            if not (is_dict(actual_obj) or isinstance(actual_obj, PendingDictType)) and not is_typed_dict_target:
                 elem_type = obj_type.get_element_type()
                 if elem_type is not None:
                     # Span[readonly[T]] always rejects element assignment
-                    if isinstance(obj_type, SpanType) and obj_type.is_readonly:
+                    if is_span(obj_type) and is_readonly_span(obj_type):
                         raise self.ctx.error(f"Cannot assign to elements of {obj_type} (read-only)", stmt)
                     # Check if type conforms to MutableSequence[elem_type]
-                    mutable_seq = NamedType("MutableSequence", (elem_type,), is_protocol=True)
+                    mutable_seq = NominalType("MutableSequence", (elem_type,), is_protocol=True)
                     if not self.protocols.type_conforms_to_protocol(obj_type, mutable_seq):
                         raise self.ctx.error(f"Cannot assign to elements of {obj_type} (read-only)", stmt)
 
@@ -3342,10 +3341,10 @@ class StatementAnalyzer:
             if isinstance(actual, TupleType):
                 raise self.ctx.error(
                     "Tuples are immutable; cannot delete tuple elements", stmt)
-            if isinstance(actual, ArrayType):
+            if is_array(actual):
                 raise self.ctx.error(
                     "Arrays are fixed-size; cannot delete array elements", stmt)
-            if isinstance(actual, SpanType):
+            if is_span(actual):
                 raise self.ctx.error(
                     "Spans are read-only views; cannot delete span elements", stmt)
             # Check that the type has __delitem__

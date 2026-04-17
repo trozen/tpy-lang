@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Literal, TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NamedType, SelfType,
+    TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NominalType, SelfType,
     BigIntType, BoolType, IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo,
     is_protocol_type, unwrap_readonly, ensure_qualified, unwrap_ref_type, is_union_or_optional_type,
 
@@ -645,7 +645,7 @@ class CodeGenContext:
             if self.is_recursive_union(typ):
                 return f"{var_expr}.value"
             if (isinstance(typ, OptionalType)
-                    and isinstance(typ.inner, NamedType)
+                    and isinstance(typ.inner, NominalType)
                     and typ.inner.name in self.recursive_union_names):
                 return f"{var_expr}.value"
         return var_expr
@@ -1181,7 +1181,7 @@ class CodeGenContext:
         if isinstance(expr, TpySubscript):
             raw_ct = self.analyzer.get_expr_type(expr.obj)
             container_type = unwrap_readonly(raw_ct) if raw_ct is not None else None
-            if isinstance(container_type, NamedType) and container_type.is_user_record:
+            if isinstance(container_type, NominalType) and container_type.is_user_record:
                 return True
         if isinstance(expr, TpyCall):
             return self.is_rvalue_source(expr)

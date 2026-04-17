@@ -524,7 +524,7 @@ is simpler and keeps analysis logic centralized (rather than scattering it acros
 5-12 branch chains in type resolution, compatibility checking, codegen type mapping:
 
 ```python
-if isinstance(typ, NamedType):
+if isinstance(typ, NominalType):
     ...
 elif isinstance(typ, (ListType, ArrayType, SpanType)):
     ...

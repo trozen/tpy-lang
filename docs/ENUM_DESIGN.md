@@ -245,7 +245,7 @@ class EnumType(TpyType):
     def to_cpp(self) -> str:           # "Color"
     def is_value_type(self) -> bool:   # True
     def qualified_name(self) -> str | None:
-        # follows NamedType pattern for cross-module type qualification
+        # follows NominalType pattern for cross-module type qualification
         if self.module_name:
             return f"{self.module_name}.{self.name}"
         return None
@@ -498,7 +498,7 @@ c: Color = Color.Red
 
 The import resolution in `sema/analyzer.py` checks `module_info.enums` (the new
 category) to find the `EnumType`. The codegen qualifies imported enum types using
-`qualified_name()` (following the `NamedType` pattern), producing
+`qualified_name()` (following the `NominalType` pattern), producing
 `tpyapp::colors::Color` in C++.
 
 Member access (`Color.Red`) resolves through the imported `EnumType` -- the

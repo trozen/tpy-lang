@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 import io
 import sys as _sys
 
-from ..typesys import TpyType, NamedType, EnumType, UnionType, OwnType, PendingListType, ListType, ArrayType, PtrType, NoneType, VoidType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names, is_void_like_type
+from ..typesys import TpyType, NominalType, EnumType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names, is_void_like_type
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
 
@@ -55,7 +55,7 @@ class _ProtocolDeps:
 
 def _references_nested_type(typ: TpyType) -> bool:
     """Check if a type references a nested type (dotted name)."""
-    if isinstance(typ, (NamedType, EnumType)) and "." in typ.name:
+    if isinstance(typ, (NominalType, EnumType)) and "." in typ.name:
         return True
     return any(_references_nested_type(inner) for inner in typ.inner_types())
 
@@ -129,7 +129,7 @@ class CodeGenerator:
             f for f in module.functions if not f.builtin_decorator_key
         ]
         # Populate native C++ name mappings for this module's codegen.
-        # Must include both own records and imported records so NamedType.to_cpp()
+        # Must include both own records and imported records so NominalType.to_cpp()
         # resolves correctly in all type positions (Ptr[Rect] -> SDL_Rect*, etc.)
         clear_codegen_state()
         for record in module.records:
@@ -153,7 +153,7 @@ class CodeGenerator:
                 register_native_cpp_name(local_name, qualified_cpp_name(src_mod, original_name))
         for local_name, (src_mod, original_name) in self.analyzer.ctx.user_imported_enums.items():
             qualified = qualified_cpp_name(src_mod, original_name)
-            # Register under both alias and original name: alias for NamedType
+            # Register under both alias and original name: alias for NominalType
             # annotations (parser doesn't know the type), original for EnumType
             # values (EnumType.name is the original name)
             register_native_cpp_name(local_name, qualified)
@@ -161,7 +161,7 @@ class CodeGenerator:
                 register_native_cpp_name(original_name, qualified)
         # Register native names from builtin type records without type_factory
         # (e.g. TextIO -> tpy::TextFile, ValueError -> tpy::ValueError) so
-        # NamedType.to_cpp() resolves even when the type isn't explicitly imported.
+        # NominalType.to_cpp() resolves even when the type isn't explicitly imported.
         # Skip names that shadow local record definitions in the current module.
         local_record_names = {r.name for r in module.records}
         for record_info in self.analyzer.registry.get_native_builtin_records():
@@ -636,9 +636,9 @@ class CodeGenerator:
         emitted_imported_alias = False
         for local_name, (src_mod, original_name) in sorted(self.ctx.user_imported_type_aliases.items()):
             # Skip aliases that resolve to primitive/builtin types -- only
-            # NamedType (records) and UnionType (variants) need a using-declaration
+            # NominalType (records) and UnionType (variants) need a using-declaration
             alias_type = self.analyzer.registry.get_type_alias(local_name)
-            if alias_type is not None and not isinstance(alias_type, (NamedType, UnionType)):
+            if alias_type is not None and not isinstance(alias_type, (NominalType, UnionType)):
                 continue
             qualified = qualified_cpp_name(src_mod, original_name)
             if local_name == original_name:

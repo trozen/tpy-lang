@@ -25,7 +25,7 @@
 |-----------|-------------|
 | Per-assignment-segment typing | SSA-style reasoning: each assignment to a variable creates a new "version" with its own type. Enables narrower types per segment (e.g. StrView before reassignment, str after), avoiding unnecessary allocations. Requires liveness/escape analysis. See details at end of document. |
 | Empty list to Array promotion | `xs = []; xs.append(1); xs.append(2)` could resolve to `Array[Int32, 2]` if the final size is statically known (no dynamic mutations like loop appends or pop/remove). Would need to compute max required size from constant append/insert/extend counts. Likely low priority -- in hot paths users would declare `Array` explicitly with a known max size. |
-| Union expected-type resolution | `f(x)` where param is `Container[Int32] | str` -- try each union member as a candidate for resolving pending generic instances. Currently only plain `NamedType` and `Optional[NamedType]` are tried. |
+| Union expected-type resolution | `f(x)` where param is `Container[Int32] | str` -- try each union member as a candidate for resolving pending generic instances. Currently only plain `NominalType` and `Optional[NominalType]` are tried. |
 | Extended constraint sources | Field access as constraint (`v: Int32 = c.val` resolves T), cascading pending types (`x = s.items` where both pending). Niche -- existing sources (method calls, parameter passing, return types) cover practical cases. |
 
 ## Motivation
@@ -395,7 +395,7 @@ In `analyze_method_call`, when the receiver type is `PendingGenericInstanceType`
 
 When all type params become known after a constraining method call:
 
-1. Build `NamedType(record_name, tuple(inferred[tp] for tp in type_params))`
+1. Build `NominalType(record_name, tuple(inferred[tp] for tp in type_params))`
 2. Validate type param bounds (protocol conformance)
 3. Update scope binding, `expr_types`, `declared_var_types`, `var_types`
 4. Remove from `pending_generic_instances`
@@ -466,7 +466,7 @@ actual type, it calls `methods.try_resolve_pending_from_expected_type()`
 before erroring. This method:
 
 1. Unwraps `Own`/`Optional`/`readonly` from the expected type
-2. Checks if the inner type is a matching `NamedType` for the same record
+2. Checks if the inner type is a matching `NominalType` for the same record
 3. Builds a pattern type with `TypeParamRef`s for unresolved params
 4. Calls `match_type_with_inference` to extract constraints
 5. If all params resolved, calls `_eagerly_resolve_pending_generic`

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Callable
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, LiteralType, TypeParamRef,
     ResolvedBinop, ResolvedUnaryop, FunctionInfo, TypeParamKind,
-    INT32, FLOAT, PendingListType, ListType, OwnType, unwrap_ref_type,
+    INT32, FLOAT, PendingListType, make_list, OwnType, unwrap_ref_type,
 )
 from .overloads import type_matches_numeric, type_matches_strict
 from tpyc import modules as builtin_modules
@@ -87,7 +87,7 @@ class OperatorResolver:
         if isinstance(tpy_type, TypeParamRef) and tpy_type.kind == TypeParamKind.INT:
             return INT32
         if isinstance(tpy_type, PendingListType):
-            return ListType(tpy_type.element_type)
+            return make_list(tpy_type.element_type)
         if isinstance(tpy_type, LiteralType):
             return tpy_type.base_type
         return tpy_type

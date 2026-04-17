@@ -9,17 +9,15 @@ from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING, Optional
 
 from ..typesys import (
-    TpyType, IntLiteralType, FloatLiteralType, FixedIntType, BigIntType, Int32Type, ArrayType, ListType, ListRepeatType, DictType, SetType,
+    TpyType, IntLiteralType, FloatLiteralType, FixedIntType, BigIntType, Int32Type, ListRepeatType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, UnknownElementType,
-    SpanType, StrType, StringType, StrViewType, LiteralType, BytesType, ByteArrayType, BytesViewType, FloatType, Float32Type,
+    StrType, StringType, StrViewType, LiteralType, BytesType, ByteArrayType, BytesViewType, FloatType, Float32Type,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
-    NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
+    NominalType, TypeParamRef, NoneType, OptionalType, UnionType,
     is_protocol_type, unwrap_readonly, unwrap_optional_own,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
-    FnType, CallableType, RefType, unwrap_ref_type,
-    is_callable_type, is_integer_type, is_any_float_type,
-
-)
+    CallableType, is_fn_type, RefType, unwrap_ref_type,
+    is_callable_type, is_integer_type, is_any_float_type, is_readonly_span)
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
     TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
@@ -29,6 +27,7 @@ from ..parse import (
 from ..coercions import resolve_coercion, Coercion, CoercionContext, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN
 from .context import addr_taken_roots
 from .diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
+from ..type_def_registry import is_set, is_dict, is_array, is_span, is_list
 from .overloads import type_matches_numeric
 
 
@@ -140,21 +139,21 @@ class TypeCompatibility:
         return result
 
     def _resolve_recursive_refs(self, typ: TpyType) -> TpyType:
-        """Resolve NamedType references to recursive union aliases.
+        """Resolve NominalType references to recursive union aliases.
 
-        Handles both bare NamedType("Tree") and NamedType nested inside
-        containers (e.g. list[NamedType("Tree")] -> list[UnionType(...)]).
+        Handles both bare NominalType("Tree") and NominalType nested inside
+        containers (e.g. list[NominalType("Tree")] -> list[UnionType(...)]).
         Treats recursive union types as opaque (does not recurse into their
         members) to prevent infinite expansion of self-referencing placeholders.
         """
-        if isinstance(typ, NamedType) and not typ.is_protocol and not typ.is_module_type:
+        if isinstance(typ, NominalType) and not typ.is_protocol and not typ.is_module_type:
             if typ.name in self.ctx.recursive_union_names:
                 alias = self.ctx.registry.get_type_alias(typ.name)
                 if alias is not None:
                     return alias
         if not self.ctx.recursive_union_names:
             return typ
-        # Don't recurse into recursive union aliases -- their NamedType
+        # Don't recurse into recursive union aliases -- their NominalType
         # placeholders are structural and must not be expanded.
         if isinstance(typ, UnionType) and self.ctx.is_recursive_union(typ):
             return typ
@@ -177,9 +176,9 @@ class TypeCompatibility:
 
         Returns Coercion or None on success, CompatError on failure.
         """
-        # Resolve NamedType self-references from recursive union members.
-        # e.g. NamedType("Tree") -> UnionType, and also inside containers:
-        # list[NamedType("Tree")] -> list[UnionType(...)].
+        # Resolve NominalType self-references from recursive union members.
+        # e.g. NominalType("Tree") -> UnionType, and also inside containers:
+        # list[NominalType("Tree")] -> list[UnionType(...)].
         # Uses seen-set guard to prevent infinite recursion.
         actual = self._resolve_recursive_refs(actual)
         expected = self._resolve_recursive_refs(expected)
@@ -251,7 +250,7 @@ class TypeCompatibility:
         # Note: mutable Span is NOT excepted even for returns -- you cannot
         # construct a mutable span from a const container.
         if isinstance(actual, ReadonlyType) and not isinstance(expected, ReadonlyType):
-            is_mutable_span = isinstance(expected, SpanType) and not expected.is_readonly
+            is_mutable_span = is_span(expected) and not is_readonly_span(expected)
             if (not expected.is_value_type() or is_mutable_span) and (not is_return or is_mutable_span):
                 allow = False
                 if is_protocol_type(expected) and self.protocols:
@@ -317,10 +316,10 @@ class TypeCompatibility:
         # Optional[T] -> Optional[T] already handled by == check above
         # Optional[T] -> T: error (cannot implicitly unwrap)
 
-        # NamedType with Own[T] in type args signals copy semantics -- applies to both
+        # NominalType with Own[T] in type args signals copy semantics -- applies to both
         # protocols (Iterable[Own[T]]) and concrete containers (dict[K, Own[V]]).
         # Strip Own for conformance/equality check; warn when elements are implicitly copied.
-        if (isinstance(expected, NamedType)
+        if (isinstance(expected, NominalType)
                 and expected.inner_types()
                 and any(isinstance(a, OwnType) for a in expected.inner_types())):
             stripped_inner = tuple(a.wrapped if isinstance(a, OwnType) else a for a in expected.inner_types())
@@ -399,7 +398,7 @@ class TypeCompatibility:
             )
 
         # Callable object -> Fn/Callable: record with __call__ matching the signature
-        if isinstance(actual, NamedType) and is_callable_type(expected):
+        if isinstance(actual, NominalType) and is_callable_type(expected):
             record = self.ctx.registry.get_record_for_type(actual)
             if record:
                 overloads = self.ctx.registry.get_method_overloads_with_parents(record, "__call__")
@@ -418,7 +417,7 @@ class TypeCompatibility:
                     )
 
         # Callable -> Fn: std::function satisfies template requires clauses in C++
-        if isinstance(actual, CallableType) and isinstance(expected, FnType):
+        if isinstance(actual, CallableType) and is_fn_type(expected):
             if (len(actual.param_types) == len(expected.param_types)
                     and all(self._check_compat(a, e, "param", loc) is None
                             for a, e in zip(actual.param_types, expected.param_types))
@@ -427,8 +426,8 @@ class TypeCompatibility:
                 return None
 
         # Inheritance: Child -> Parent (implicit value upcast, C++ handles slicing/ref binding)
-        if (isinstance(actual, NamedType) and actual.is_user_record
-                and isinstance(expected, NamedType) and expected.is_user_record):
+        if (isinstance(actual, NominalType) and actual.is_user_record
+                and isinstance(expected, NominalType) and expected.is_user_record):
             if self.ctx.registry.is_subclass_of(actual, expected):
                 if coercion_ctx in (CoercionContext.ASSIGN,
                                     CoercionContext.INIT,
@@ -444,8 +443,8 @@ class TypeCompatibility:
 
         # Inheritance: Ptr[Child] -> Ptr[Parent] / Ptr[readonly[Parent]]
         # Ptr[readonly[Child]] -> Ptr[readonly[Parent]]
-        if isinstance(actual, PtrType) and isinstance(actual.inner_pointee, NamedType):
-            if isinstance(expected, PtrType) and isinstance(expected.inner_pointee, NamedType):
+        if isinstance(actual, PtrType) and isinstance(actual.inner_pointee, NominalType):
+            if isinstance(expected, PtrType) and isinstance(expected.inner_pointee, NominalType):
                 # Mutable Ptr can coerce to both Ptr and Ptr[readonly[...]] parent;
                 # Ptr[readonly[...]] can only coerce to Ptr[readonly[...]] parent
                 if not actual.is_readonly or expected.is_readonly:
@@ -455,8 +454,8 @@ class TypeCompatibility:
         # Covariant generic coercion: Box[Child] -> Box[Parent]
         # when Box extends Covariant[T] and Child conforms to @dynamic Parent.
         # C++ converting move ctor handles the actual conversion.
-        if (isinstance(actual, NamedType) and actual.is_user_record
-                and isinstance(expected, NamedType) and expected.is_user_record
+        if (isinstance(actual, NominalType) and actual.is_user_record
+                and isinstance(expected, NominalType) and expected.is_user_record
                 and actual.name == expected.name
                 and actual.type_args and expected.type_args
                 and actual.type_args != expected.type_args):
@@ -473,7 +472,7 @@ class TypeCompatibility:
         # and Lit is a valid member. Works for any generic container.
         # The C++ Expr wrapper struct's template constructor handles implicit
         # conversion from Lit to Expr, so Box<Expr>(Lit{...}) compiles.
-        if (isinstance(actual, NamedType) and isinstance(expected, NamedType)
+        if (isinstance(actual, NominalType) and isinstance(expected, NominalType)
                 and actual.name == expected.name
                 and actual.type_args and expected.type_args
                 and len(actual.type_args) == len(expected.type_args)
@@ -535,8 +534,8 @@ class TypeCompatibility:
             # Subclass coercion excluded: Child -> Own[Base] stores Child by value as
             # Base, silently slicing the object. Same invariance as container elements.
             # Only applies when record names differ (different types, not parametric covariance).
-            if (isinstance(actual, NamedType) and actual.is_user_record
-                    and isinstance(expected.wrapped, NamedType) and expected.wrapped.is_user_record
+            if (isinstance(actual, NominalType) and actual.is_user_record
+                    and isinstance(expected.wrapped, NominalType) and expected.wrapped.is_user_record
                     and actual.name != expected.wrapped.name):
                 return CompatError(
                     f"Type mismatch in {context}: expected {expected.wrapped}, got {actual}", loc)
@@ -574,75 +573,79 @@ class TypeCompatibility:
                 return None
 
         # Allow Array element type coercion if sizes match
-        if isinstance(actual, ArrayType) and isinstance(expected, ArrayType):
-            if actual.size == expected.size:
-                if isinstance(actual.element_type, IntLiteralType) and is_integer_type(expected.element_type):
+        if is_array(actual) and is_array(expected):
+            if actual.type_args[1] == expected.type_args[1]:
+                if isinstance(actual.type_args[0], IntLiteralType) and is_integer_type(expected.type_args[0]):
                     return None
 
         # Allow list element type coercion
-        if isinstance(actual, ListType) and isinstance(expected, ListType):
-            if isinstance(actual.element_type, IntLiteralType) and is_integer_type(expected.element_type):
+        if is_list(actual) and is_list(expected):
+            if isinstance(actual.type_args[0], IntLiteralType) and is_integer_type(expected.type_args[0]):
                 return None
 
-        # Allow ListType -> ArrayType only for literal expressions
-        # (global array literals and list repeats become ListType but can be assigned to Array variables)
+        # Allow list -> Array only for literal expressions
+        # (global array literals and list repeats become list[T] but can be assigned to Array variables)
         # List *variables* cannot be coerced to Array - codegen can't handle std::vector -> std::array
-        if isinstance(actual, ListType) and isinstance(expected, ArrayType):
+        if is_list(actual) and is_array(expected):
+            a_elem = actual.type_args[0]
+            e_elem, e_size = expected.type_args[0], expected.type_args[1]
             if isinstance(source_expr, (TpyArrayLiteral, TpyListRepeat)):
                 # Validate size for list repeats with known count
                 if isinstance(source_expr, TpyListRepeat) and isinstance(source_expr.count, TpyIntLiteral):
                     repeat_size = len(source_expr.elements) * source_expr.count.value
-                    if repeat_size != expected.size:
+                    if repeat_size != e_size:
                         return CompatError(
-                            f"List repeat produces {repeat_size} elements but Array[..., {expected.size}] expects {expected.size}",
+                            f"List repeat produces {repeat_size} elements but Array[..., {e_size}] expects {e_size}",
                             loc
                         )
-                if actual.element_type == expected.element_type:
+                if a_elem == e_elem:
                     return None
-                if isinstance(actual.element_type, IntLiteralType) and is_integer_type(expected.element_type):
+                if isinstance(a_elem, IntLiteralType) and is_integer_type(e_elem):
                     return None
 
         # Allow PendingListType compatibility during first phase (before resolution)
         if isinstance(actual, PendingListType):
             # Compatible with list[T] if element types are compatible
-            if isinstance(expected, ListType):
-                if actual.element_type == expected.element_type:
+            if is_list(expected):
+                e_elem = expected.type_args[0]
+                if actual.element_type == e_elem:
                     return None
-                if isinstance(actual.element_type, IntLiteralType) and is_integer_type(expected.element_type):
+                if isinstance(actual.element_type, IntLiteralType) and is_integer_type(e_elem):
                     return None
                 # Element type widening (e.g. Int32 -> Int32|None, Int32 -> Int64).
                 # Subclass coercion excluded: storing Child in list[Base] silently
                 # slices objects (same invariance as dict/set).
                 both_records = (
-                    isinstance(actual.element_type, NamedType) and actual.element_type.is_user_record
-                    and isinstance(expected.element_type, NamedType) and expected.element_type.is_user_record
+                    isinstance(actual.element_type, NominalType) and actual.element_type.is_user_record
+                    and isinstance(e_elem, NominalType) and e_elem.is_user_record
                 )
                 if both_records:
                     # Explicit error: avoid leaking PendingList internal repr in the generic message.
                     return CompatError(
-                        f"Type mismatch in {context}: expected {expected.element_type}, got {actual.element_type}", loc)
+                        f"Type mismatch in {context}: expected {e_elem}, got {actual.element_type}", loc)
                 else:
                     # Element type widening (e.g. Int32 -> Int32|None, Int32 -> Int64)
                     result = self._check_compat(
-                        actual.element_type, expected.element_type,
+                        actual.element_type, e_elem,
                         context, loc, source_expr, is_return, coercion_ctx
                     )
                     if not isinstance(result, CompatError):
                         return None  # element coercion is a probe, not propagated
             # Compatible with Array[T, N] if element types and sizes match
-            if isinstance(expected, ArrayType):
+            if is_array(expected):
                 if self.type_ops and self.type_ops.pending_list_matches_array(actual, expected):
                     return None
                 # Specific error for list repeat size mismatch
+                e_size = expected.type_args[1]
                 if (isinstance(source_expr, TpyListRepeat)
-                        and actual.size >= 0 and actual.size != expected.size):
+                        and actual.size >= 0 and actual.size != e_size):
                     return CompatError(
                         f"List repeat produces {actual.size} elements but "
-                        f"Array[..., {expected.size}] expects {expected.size}",
+                        f"Array[..., {e_size}] expects {e_size}",
                         loc,
                     )
             # Inline repeat cannot be passed directly to Span -- assign to a variable first
-            if isinstance(expected, SpanType) and isinstance(source_expr, TpyListRepeat):
+            if is_span(expected) and isinstance(source_expr, TpyListRepeat):
                 return CompatError(
                     f"Cannot pass list repeat directly to {expected}: "
                     f"assign to a variable first",
@@ -651,56 +654,61 @@ class TypeCompatibility:
 
         # ListRepeatType materializes to list[T] or Array[T, N]
         if isinstance(actual, ListRepeatType):
-            if isinstance(expected, ListType):
-                if actual.element_type == expected.element_type:
+            if is_list(expected):
+                e_elem = expected.type_args[0]
+                if actual.element_type == e_elem:
                     return None
-                if isinstance(actual.element_type, IntLiteralType) and is_integer_type(expected.element_type):
+                if isinstance(actual.element_type, IntLiteralType) and is_integer_type(e_elem):
                     return None
-            if isinstance(expected, ArrayType):
-                if actual.element_type == expected.element_type:
+            if is_array(expected):
+                if actual.element_type == expected.type_args[0]:
                     return None
-                if isinstance(actual.element_type, IntLiteralType) and is_integer_type(expected.element_type):
+                if isinstance(actual.element_type, IntLiteralType) and is_integer_type(expected.type_args[0]):
                     return None
 
         # Allow PendingDictType compatibility during first phase (before resolution)
-        if isinstance(actual, PendingDictType) and isinstance(expected, DictType):
-            key_ok = isinstance(actual.key_type, UnknownElementType) or _container_elem_matches(actual.key_type, expected.key_type)
-            val_ok = isinstance(actual.value_type, UnknownElementType) or _container_elem_matches(actual.value_type, expected.value_type)
+        if isinstance(actual, PendingDictType) and is_dict(expected):
+            e_k, e_v = expected.type_args[0], expected.type_args[1]
+            key_ok = isinstance(actual.key_type, UnknownElementType) or _container_elem_matches(actual.key_type, e_k)
+            val_ok = isinstance(actual.value_type, UnknownElementType) or _container_elem_matches(actual.value_type, e_v)
             if key_ok and val_ok:
                 return None
 
         # Allow PendingSetType compatibility during first phase (before resolution)
-        if isinstance(actual, PendingSetType) and isinstance(expected, SetType):
-            if isinstance(actual.element_type, UnknownElementType) or _container_elem_matches(actual.element_type, expected.element_type):
+        if isinstance(actual, PendingSetType) and is_set(expected):
+            if isinstance(actual.element_type, UnknownElementType) or _container_elem_matches(actual.element_type, expected.type_args[0]):
                 return None
 
         # DictType compatibility: key and value types must match exactly.
         # Own[V] stripping is handled by _container_elem_matches.
         # Subclass coercion is intentionally excluded: dict values are stored by value,
         # and tpy::dict_update/tpy::dict_ctor are non-converting templates (invariant V).
-        if isinstance(actual, DictType) and isinstance(expected, DictType):
-            key_ok = _container_elem_matches(actual.key_type, expected.key_type)
-            val_ok = _container_elem_matches(actual.value_type, expected.value_type)
+        if is_dict(actual) and is_dict(expected):
+            a_k, a_v = actual.type_args[0], actual.type_args[1]
+            e_k, e_v = expected.type_args[0], expected.type_args[1]
+            key_ok = _container_elem_matches(a_k, e_k)
+            val_ok = _container_elem_matches(a_v, e_v)
             if key_ok and val_ok:
                 return None
             # Raise a specific error pointing at the mismatching element type.
             # Strip Own[V] from the message to avoid leaking implementation details.
-            check_val = expected.value_type.wrapped if isinstance(expected.value_type, OwnType) else expected.value_type
+            check_val = e_v.wrapped if isinstance(e_v, OwnType) else e_v
             if not key_ok:
                 return CompatError(
-                    f"Type mismatch in {context}: expected {expected.key_type}, got {actual.key_type}", loc)
+                    f"Type mismatch in {context}: expected {e_k}, got {a_k}", loc)
             return CompatError(
-                f"Type mismatch in {context}: expected {check_val}, got {actual.value_type}", loc)
+                f"Type mismatch in {context}: expected {check_val}, got {a_v}", loc)
 
         # SetType compatibility: element types must match exactly.
         # Subclass coercion is intentionally excluded: tpy::ordered_set<T> is a
         # non-converting template (invariant T).
-        if isinstance(actual, SetType) and isinstance(expected, SetType):
-            if _container_elem_matches(actual.element_type, expected.element_type):
+        if is_set(actual) and is_set(expected):
+            a_elem, e_elem = actual.type_args[0], expected.type_args[0]
+            if _container_elem_matches(a_elem, e_elem):
                 return None
-            check_elem = expected.element_type.wrapped if isinstance(expected.element_type, OwnType) else expected.element_type
+            check_elem = e_elem.wrapped if isinstance(e_elem, OwnType) else e_elem
             return CompatError(
-                f"Type mismatch in {context}: expected {check_elem}, got {actual.element_type}", loc)
+                f"Type mismatch in {context}: expected {check_elem}, got {a_elem}", loc)
 
         # Allow PendingStrType compatibility during first phase (before resolution)
         if isinstance(actual, PendingStrType):
@@ -741,21 +749,21 @@ class TypeCompatibility:
         coercion = resolve_coercion(actual, expected, ctx)
         if coercion is None:
             # Inheritance: Child -> Ptr[Parent] / Ptr[readonly[Parent]] (address-of with upcast)
-            if isinstance(actual, NamedType) and actual.is_user_record:
-                if isinstance(expected, PtrType) and not expected.is_readonly and isinstance(expected.inner_pointee, NamedType):
+            if isinstance(actual, NominalType) and actual.is_user_record:
+                if isinstance(expected, PtrType) and not expected.is_readonly and isinstance(expected.inner_pointee, NominalType):
                     if self.ctx.registry.is_subclass_of(actual, expected.inner_pointee):
                         coercion = UPCAST_TO_PTR
-                elif is_readonly_ptr(expected) and isinstance(expected.inner_pointee, NamedType):
+                elif is_readonly_ptr(expected) and isinstance(expected.inner_pointee, NominalType):
                     if self.ctx.registry.is_subclass_of(actual, expected.inner_pointee):
                         coercion = UPCAST_TO_CONST_PTR
         if coercion is None:
             # __span__() method coercion: type with __span__() -> Span[T] coerces to Span/Span[readonly[T]]
-            if isinstance(actual, NamedType) and isinstance(expected, SpanType):
+            if isinstance(actual, NominalType) and is_span(expected):
                 from tpyc.modules import get_span_return_type
                 span_ret = get_span_return_type(actual, registry=self.ctx.registry)
-                if span_ret is not None and span_ret.inner_element_type == expected.inner_element_type:
+                if span_ret is not None and unwrap_readonly(span_ret.type_args[0]) == unwrap_readonly(expected.type_args[0]):
                     # Span[readonly[T]] cannot coerce to mutable Span
-                    if not span_ret.is_readonly or expected.is_readonly:
+                    if not is_readonly_span(span_ret) or is_readonly_span(expected):
                         if ctx == CoercionContext.ARG:
                             coercion = SPAN_METHOD_TO_SPAN_ARG
                         else:
@@ -763,8 +771,8 @@ class TypeCompatibility:
         if coercion is None:
             # Spannable[T] protocol -> Span[readonly[T]] coercion via __span__()
             if (is_protocol_type(actual) and actual.qualified_name() == "tpy.Spannable"
-                    and actual.type_args and isinstance(expected, SpanType)
-                    and expected.is_readonly and actual.type_args[0] == expected.inner_element_type):
+                    and actual.type_args and is_span(expected)
+                    and is_readonly_span(expected) and actual.type_args[0] == unwrap_readonly(expected.type_args[0])):
                 if ctx == CoercionContext.ARG:
                     coercion = SPAN_METHOD_TO_SPAN_ARG
                 else:
@@ -785,10 +793,10 @@ class TypeCompatibility:
         if coercion is None:
             return CompatError(f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
 
-        if isinstance(actual, PendingListType) and isinstance(expected, SpanType):
+        if isinstance(actual, PendingListType) and is_span(expected):
             info = self.ctx.list_literals.get(actual.literal_id)
             if info:
-                info.coerced_element_type = expected.element_type
+                info.coerced_element_type = expected.type_args[0]
                 info.passed_to_span_param = True
 
         if coercion.check_range and not coercion.check_range(actual, expected):
@@ -819,7 +827,7 @@ class TypeCompatibility:
                 )
             # Mutable Span from a lvalue container (e.g. Array -> Span[T]) requires
             # non-const source; codegen calls as_mut_span(). Mark source param as T&.
-            if (isinstance(expected, SpanType) and not expected.is_readonly
+            if (is_span(expected) and not is_readonly_span(expected)
                     and source_expr is not None):
                 self._mark_addr_taken(source_expr)
 
@@ -907,7 +915,7 @@ class TypeCompatibility:
             obj_type = self.ctx.get_expr_type(expr.obj)
             if obj_type is not None:
                 unwrapped = unwrap_readonly(obj_type)
-                if isinstance(unwrapped, SpanType) and unwrapped.is_readonly:
+                if is_span(unwrapped) and is_readonly_span(unwrapped):
                     return True
             return self.is_const_ref_source(expr.obj)
         if isinstance(expr, TpyFieldAccess):
@@ -958,10 +966,10 @@ class TypeCompatibility:
         if not isinstance(typ, TypeParamRef):
             return False
         bound = self.type_ops.get_type_param_bound(typ.name)
-        return bound is not None and isinstance(bound, NamedType) and bound.qualified_name() == "tpy.ValueType"
+        return bound is not None and isinstance(bound, NominalType) and bound.qualified_name() == "tpy.ValueType"
 
     def _check_union_member_type_args(
-        self, actual: NamedType, expected: NamedType,
+        self, actual: NominalType, expected: NominalType,
         context: str, loc: object,
         source_expr: 'TpyExpr | None',
         is_return: bool, coercion_ctx: CoercionContext,
@@ -976,8 +984,8 @@ class TypeCompatibility:
                 continue
             if not isinstance(a_arg, TpyType) or not isinstance(e_arg, TpyType):
                 return False
-            # Resolve NamedType("Expr") -> union type alias (recursive only)
-            e_resolved = self._resolve_recursive_refs(e_arg) if isinstance(e_arg, NamedType) else e_arg
+            # Resolve NominalType("Expr") -> union type alias (recursive only)
+            e_resolved = self._resolve_recursive_refs(e_arg) if isinstance(e_arg, NominalType) else e_arg
             if isinstance(e_resolved, UnionType) and self.ctx.is_recursive_union(e_resolved):
                 result = self._check_compat(
                     a_arg, e_resolved, context, loc, None, is_return, coercion_ctx,
@@ -998,7 +1006,7 @@ class TypeCompatibility:
 
     def _check_covariant_args(
         self, record_info: 'RecordInfo', covariant: set[str],
-        actual: NamedType, expected: NamedType
+        actual: NominalType, expected: NominalType
     ) -> bool:
         """Check if all type args are compatible under covariance rules."""
         for i, param_name in enumerate(record_info.type_params):
@@ -1023,7 +1031,7 @@ class TypeCompatibility:
         Requires C++ struct inheritance: @dynamic protocol implementation
         or class inheritance.
         """
-        if not isinstance(child, NamedType) or not isinstance(parent, NamedType):
+        if not isinstance(child, NominalType) or not isinstance(parent, NominalType):
             return False
         # @dynamic protocol: child implements parent
         if is_protocol_type(parent):
@@ -1145,7 +1153,7 @@ class TypeCompatibility:
         # Subscript: check if the base is a read-only type (Span[readonly[T]], str)
         if isinstance(expr, TpySubscript):
             obj_type = self.ctx.get_expr_type(expr.obj)
-            if isinstance(obj_type, SpanType) and obj_type.is_readonly:
+            if is_span(obj_type) and is_readonly_span(obj_type):
                 return False  # Span[readonly[T]] elements are read-only
             if is_any_str_type(obj_type):
                 return False

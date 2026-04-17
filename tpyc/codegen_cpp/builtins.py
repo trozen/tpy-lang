@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
-    NamedType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
-    ListType, ListRepeatType, DictType, SetType, DictKeysViewType, DictValuesViewType, DictItemsViewType,
-    ArrayType, SpanType, TupleType, OwnType, is_protocol_type, unwrap_readonly, is_any_str_type, is_any_bytes_type,
+    NominalType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
+    ListRepeatType,
+    TupleType, OwnType, is_protocol_type, unwrap_readonly, is_any_str_type, is_any_bytes_type,
     BytesType, ByteArrayType, BytesViewType, make_ref,
     is_float_type, is_integer_type,
 )
@@ -21,6 +21,7 @@ from ..parse import (
 )
 
 from .context import escape_cpp_string, CodeGenError, expand_cpp_template, qualify_native_name
+from ..type_def_registry import is_dict_view, is_set, is_dict, is_array, is_span, is_list
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -298,16 +299,16 @@ class BuiltinGenerator:
                 parts.append(f'::tpy::ByteArrayPrinter({self._gen_expr_deref(arg)})')
             elif is_any_bytes_type(arg_type):
                 parts.append(f'::tpy::BytesPrinter({self._gen_expr_deref(arg)})')
-            elif isinstance(arg_type, DictType):
+            elif is_dict(arg_type):
                 # Dict uses DictPrinter for {k: v, ...} formatting
                 parts.append(f'::tpy::DictPrinter({self._gen_expr_deref(arg)})')
-            elif isinstance(arg_type, SetType):
+            elif is_set(arg_type):
                 # Set uses SetPrinter for {a, b, c} or set() formatting
                 parts.append(f'::tpy::SetPrinter({self._gen_expr_deref(arg)})')
-            elif isinstance(arg_type, (DictKeysViewType, DictValuesViewType, DictItemsViewType)):
+            elif is_dict_view(arg_type):
                 # Dict views use their own operator<< for printing
                 parts.append(self._gen_expr_deref(arg))
-            elif isinstance(arg_type, (ListType, ListRepeatType, ArrayType, SpanType)):
+            elif is_array(arg_type) or is_span(arg_type) or is_list(arg_type) or isinstance(arg_type, ListRepeatType):
                 # Sequence containers use ListPrinter for [a, b, c] formatting
                 if isinstance(arg, TpyArrayLiteral):
                     # Array literals need explicit type for ListPrinter CTAD
