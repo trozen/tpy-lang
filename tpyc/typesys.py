@@ -2173,7 +2173,7 @@ class UnionType(TpyType):
     """Union of multiple types: A | B | C -> std::variant<A, B, C>.
 
     Members are stored in canonical sorted order for deterministic eq/hash.
-    NoneType is always last if present (maps to std::monostate).
+    NoneType is always first if present (maps to std::monostate).
     """
     tag: ClassVar[TypeKind] = TypeKind.UNION
     members: tuple[TpyType, ...]

@@ -33,14 +33,14 @@ std::string get_name(const Wrapper& w) {
     auto& __match_subject = w;
     // case Wrapper(pet=Cat(name=n)):
     if (std::holds_alternative<Cat>(__match_subject.pet)) {
-        auto& __field_pet = std::get<Cat>(__match_subject.pet);
-        auto& n = __field_pet.name;
+        auto& __field_match_subject_pet = std::get<Cat>(__match_subject.pet);
+        auto& n = __field_match_subject_pet.name;
         // return "cat " + n
         return (::tpy::str_concat("cat ", n));
     // case Wrapper(pet=Dog(name=n)):
     } else if (std::holds_alternative<Dog>(__match_subject.pet)) {
-        auto& __field_pet = std::get<Dog>(__match_subject.pet);
-        auto& n = __field_pet.name;
+        auto& __field_match_subject_pet = std::get<Dog>(__match_subject.pet);
+        auto& n = __field_match_subject_pet.name;
         // return "dog " + n
         return (::tpy::str_concat("dog ", n));
     // case _:
