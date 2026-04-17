@@ -1,1 +1,1 @@
-main.py:8: error: Type mismatch in argument 's': expected Span[Int32], got ReadOnlySpanLike[Int32]
+main.py:8: error: Type mismatch in argument 's': expected Span[Int32], got Spannable[Int32]

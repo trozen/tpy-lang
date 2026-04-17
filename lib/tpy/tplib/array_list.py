@@ -4,15 +4,15 @@
 # TODO: construct with fixed-extent Span[T, N] (deduce both T and N from the argument)
 from __future__ import annotations
 from typing import MutableSequence, Iterable, overload
-from tpy import Int32, UInt32, Own, Ptr, Span, ReadOnlySpanLike, SpanIter, copy, Default, Comparable, Equatable, make_default, span, readonly, auto_readonly, basic_slice
+from tpy import Int32, UInt32, Own, Ptr, Span, Spannable, SpanIter, copy, Default, Comparable, Equatable, make_default, span, readonly, auto_readonly, basic_slice
 from tpy.mem import UninitArrayStorage
 
 
-class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
+class ArrayList[T, N: int](Spannable[T], MutableSequence[T]):
     _storage: UninitArrayStorage[T, N]
     _size: Int32
 
-    def __init__(self, items: ReadOnlySpanLike[T] | Iterable[Own[T]] | None = None) -> None:
+    def __init__(self, items: Spannable[T] | Iterable[Own[T]] | None = None) -> None:
         self._storage = UninitArrayStorage[T, N]()
         self._size = 0
         if items is not None:
@@ -160,9 +160,9 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
     def __iter__(self) -> SpanIter[auto_readonly[T]]:
         return SpanIter(self.__span__())
 
-    def extend(self, items: ReadOnlySpanLike[T] | Iterable[Own[T]]) -> None:
-        # TODO: warn for ReadOnlySpanLike path too (also copies elements)
-        if isinstance(items, ReadOnlySpanLike):
+    def extend(self, items: Spannable[T] | Iterable[Own[T]]) -> None:
+        # TODO: warn for Spannable path too (also copies elements)
+        if isinstance(items, Spannable):
             items_span = span(items)
             size = len(items_span)
             assert self._size + size <= self._storage.capacity()

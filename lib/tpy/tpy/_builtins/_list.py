@@ -2,14 +2,14 @@
 # tpy: cpp_namespace("tpystd::builtins")
 from .._typing import overload, Self, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, Own
-from .._core._types import Int32, Equatable, Comparable, NativeIterable, NativeRangeConstructible, ReadOnlySpanLike
+from .._core._types import Int32, Equatable, Comparable, NativeIterable, NativeRangeConstructible, Spannable
 from .._core._containers import Span
 from .._bootstrap._extern import native, cpp_template, native_preserves_refs, builtin_type
 
 
 @builtin_type("builtins.list")
 @native("std::vector")
-class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], ReadOnlySpanLike[T]):
+class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spannable[T]):
     @pure
     @readonly
     @cpp_template("::tpy::construct<std::vector<{T}>>({0})")

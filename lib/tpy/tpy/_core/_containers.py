@@ -4,12 +4,12 @@ from .._typing import overload, Self, Iterator, Iterable
 from tpy import Span, Ptr
 from .._bootstrap._decorators import readonly, pure, nocopy, Own
 from .._bootstrap._extern import native, cpp_template, builtin_type
-from ._types import Int32, Comparable, Deref, ReadOnlySpanLike, NativeIterable
+from ._types import Int32, Comparable, Deref, Spannable, NativeIterable
 
 
 @builtin_type("tpy.Span")
 @native("std::span")
-class Span[T](Iterable[T], NativeIterable[T], ReadOnlySpanLike[T]):
+class Span[T](Iterable[T], NativeIterable[T], Spannable[T]):
     @overload
     @cpp_template("{cpp}({0}, static_cast<size_t>({1}))")
     def __init__(self, ptr: Ptr[T], length: Int32) -> None: ...
@@ -65,7 +65,7 @@ class Span[T](Iterable[T], NativeIterable[T], ReadOnlySpanLike[T]):
 
 @builtin_type("tpy.Array")
 @native("std::array")
-class Array[T, N: int](Iterable[T], NativeIterable[T], ReadOnlySpanLike[T]):
+class Array[T, N: int](Iterable[T], NativeIterable[T], Spannable[T]):
     @native("tpy::__iter__", function=True)
     @pure
     @readonly

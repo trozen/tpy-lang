@@ -1,0 +1,4 @@
+CPython @runtime_checkable NativeIterable matches any __iter__-bearing type
+structurally, so Counter takes the if branch under CPython but the else branch
+under tpyc (C++ concept requires begin/end). Tracked as a sema/C++/CPython
+alignment TODO.

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
@@ -296,7 +295,7 @@ def resolve_method(method: MethodDef, type_params: dict[str, "TpyType"]) -> Meth
 # Protocols whose single type argument is the iteration element type.
 ITERABLE_PROTOCOL_QNAMES = frozenset({
     "typing.Iterator", "typing.Iterable",
-    "tpy.NativeIterable", "tpy.ReadOnlySpanLike",
+    "tpy.NativeIterable", "tpy.Spannable",
 })
 
 def is_native_iterable(tpy_type: "TpyType", registry: "TypeRegistry") -> bool:
@@ -395,23 +394,8 @@ def _find_error_return_next_element(
     return None
 
 
-@dataclass
-class IterInfo:
-    """Result of checking __iter__() on a type.
-
-    After the iterator overhaul (Phase 2), `iter_is_native` no longer
-    influences `_gen_for_each_loop` dispatch -- the NativeIterable peephole
-    on the iterable itself drives that choice. `iter_is_native` is still
-    used by sema (iter-depth lifetime tracking in statements.py) and by
-    generator-function for-loop lowering (gen_generators.py). Phase 3/4
-    may collapse it entirely.
-    """
-    element_type: "TpyType"
-    iter_is_native: bool  # True if __iter__ returns a NativeIterable (can use begin/end directly)
-
-
-def get_iter_info(tpy_type: "TpyType", registry: "TypeRegistry") -> "IterInfo | None":
-    """If type has __iter__() returning a concrete iterator, return element type and dispatch info."""
+def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
+    """If type has __iter__() returning a concrete iterator, return element type T."""
     from tpyc.typesys import NamedType, unwrap_ref_type
 
     tpy_type = unwrap_ref_type(tpy_type)
@@ -423,8 +407,8 @@ def get_iter_info(tpy_type: "TpyType", registry: "TypeRegistry") -> "IterInfo | 
             type_subst: dict[str, "TpyType"] = {"Self": tpy_type}
             if record.type_params and tpy_type.type_args:
                 type_subst.update(zip(record.type_params, tpy_type.type_args))
-            result = _find_record_iter_info(record, type_subst, registry,
-                                            allow_protocol_return=True)
+            result = _find_record_iter_element(record, type_subst, registry,
+                                               allow_protocol_return=True)
             if result is not None:
                 return result
 
@@ -442,18 +426,12 @@ def get_iter_info(tpy_type: "TpyType", registry: "TypeRegistry") -> "IterInfo | 
         # record's own type (used by SpanIter and similar self-iterator types).
         type_subst_b = extract_type_params(tpy_type)
         type_subst_b["Self"] = tpy_type
-        result = _find_record_iter_info(record, type_subst_b, registry,
-                                        allow_protocol_return=True)
+        result = _find_record_iter_element(record, type_subst_b, registry,
+                                           allow_protocol_return=True)
         if result is not None:
             return result
 
     return None
-
-
-def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
-    """If type has __iter__() returning a concrete iterator, return element type T."""
-    info = get_iter_info(tpy_type, registry)
-    return info.element_type if info is not None else None
 
 
 def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
@@ -462,7 +440,7 @@ def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> 
     Single source of truth for "what element type does iterating this produce?"
     Covers all iterable categories:
     - Compiler-internal adapters (CopyIter, OwnIter, GenExpr, SpanIter)
-    - Protocol-typed params (Iterator[T], Iterable[T], NativeIterable[T], ReadOnlySpanLike[T])
+    - Protocol-typed params (Iterator[T], Iterable[T], NativeIterable[T], Spannable[T])
     - String types -> Char
     - error_return __next__ iterators
     - __iter__() method (built-in containers + user records)
@@ -501,15 +479,15 @@ def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> 
     return None
 
 
-def _find_record_iter_info(
+def _find_record_iter_element(
     record: "RecordInfo", type_subst: "dict[str, TpyType]", registry: "TypeRegistry",
     *, allow_protocol_return: bool = False,
-) -> "IterInfo | None":
-    """Check if record (or its parents) has __iter__() returning a concrete iterator."""
+) -> "TpyType | None":
+    """Check if record (or its parents) has __iter__() returning a concrete iterator; return element type."""
     from tpyc.typesys import NamedType, TypeParamRef
 
-    result = _find_iter_method_info(record.get_method_overloads("__iter__"), type_subst, registry,
-                                    allow_protocol_return=allow_protocol_return)
+    result = _find_iter_method_element(record.get_method_overloads("__iter__"), type_subst, registry,
+                                       allow_protocol_return=allow_protocol_return)
     if result is not None:
         return result
 
@@ -524,16 +502,16 @@ def _find_record_iter_info(
                         parent_subst[param_name] = type_subst[arg.name]
                     else:
                         parent_subst[param_name] = arg
-            return _find_record_iter_info(parent_info, parent_subst, registry,
-                                          allow_protocol_return=allow_protocol_return)
+            return _find_record_iter_element(parent_info, parent_subst, registry,
+                                             allow_protocol_return=allow_protocol_return)
 
     return None
 
 
-def _find_iter_method_info(
+def _find_iter_method_element(
     methods: "list[MethodDef | FunctionInfo]", type_subst: "dict[str, TpyType]", registry: "TypeRegistry",
     *, allow_protocol_return: bool = False,
-) -> "IterInfo | None":
+) -> "TpyType | None":
     """Check __iter__() methods for a concrete iterator return type and extract element type."""
     from tpyc.typesys import FunctionInfo, NamedType, OwnType, SelfType, SpanIterType, TypeParamRef, is_protocol_type, unwrap_ref_type
 
@@ -565,7 +543,7 @@ def _find_iter_method_info(
             elem = ret.element_type
             if isinstance(elem, TypeParamRef) and elem.name in type_subst:
                 elem = type_subst[elem.name]
-            return IterInfo(elem, iter_is_native=True)
+            return elem
 
         # Iterator[T] protocol return type (not Iterable -- codegen emits
         # .__next__() directly, which requires Iterator, not Iterable).
@@ -585,7 +563,7 @@ def _find_iter_method_info(
                     # a TypeParamRef and the guard below rejects it.
                     pass
             if not isinstance(elem, TypeParamRef):
-                return IterInfo(elem, iter_is_native=False)
+                return elem
 
         # User-defined iterator with error_return __next__
         if isinstance(ret, NamedType) and ret.is_user_record:
@@ -597,8 +575,7 @@ def _find_iter_method_info(
                 ]
             elem = _find_error_return_next_element(ret.name, iter_type_args, registry)
             if elem is not None:
-                iter_native = is_native_iterable(ret, registry)
-                return IterInfo(elem, iter_is_native=iter_native)
+                return elem
 
     return None
 

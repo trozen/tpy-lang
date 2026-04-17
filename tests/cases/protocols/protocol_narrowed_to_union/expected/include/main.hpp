@@ -10,19 +10,19 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T_items>
-  requires (::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::ReadOnlySpanLike<T_items, int32_t>)
+  requires (::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
 int32_t total(T_items& items);
 template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::ReadOnlySpanLike<T_items, int32_t>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
 int32_t maybe_total(const T_items* items);
 void main();
 
-// def total(items: ReadOnlySpanLike[Int32] | Iterable[Int32]) -> Int32:
+// def total(items: Spannable[Int32] | Iterable[Int32]) -> Int32:
 template<typename T_items>
-  requires (::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::ReadOnlySpanLike<T_items, int32_t>)
+  requires (::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
 int32_t total(T_items& items) {
-    // if isinstance(items, ReadOnlySpanLike):
-    if constexpr (::tpystd::tpy::ReadOnlySpanLike<T_items, int32_t>) {
+    // if isinstance(items, Spannable):
+    if constexpr (::tpystd::tpy::Spannable<T_items, int32_t>) {
         // s = span(items)
         std::span<const int32_t> s = ::tpy::as_span(items);
         // result: Int32 = 0
@@ -56,9 +56,9 @@ int32_t total(T_items& items) {
         return result2;
     }
 }
-// def maybe_total(items: ReadOnlySpanLike[Int32] | Iterable[Int32] | None) -> Int32:
+// def maybe_total(items: Spannable[Int32] | Iterable[Int32] | None) -> Int32:
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::ReadOnlySpanLike<T_items, int32_t>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
 int32_t maybe_total(const T_items* items) {
     // if items is not None:
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {

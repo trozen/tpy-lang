@@ -23,6 +23,11 @@ struct ROBuffer {
     // def __init__(self) -> None:
     ROBuffer() : _data({1, 2, 3}) {}
 
+    auto begin() { return this->__span__().begin(); }
+    auto end() { return this->__span__().end(); }
+    auto begin() const { return this->__span__().begin(); }
+    auto end() const { return this->__span__().end(); }
+
     // def __span__(self) -> Span[readonly[Int32]]:
     std::span<const int32_t> __span__() const {
         // return self._data
@@ -42,6 +47,11 @@ struct MutBuffer {
 
     // def __init__(self) -> None:
     MutBuffer() : _data({10, 20, 30}) {}
+
+    auto begin() { return this->__span__().begin(); }
+    auto end() { return this->__span__().end(); }
+    auto begin() const { return this->__span__().begin(); }
+    auto end() const { return this->__span__().end(); }
 
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[Int32]]:

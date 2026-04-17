@@ -87,7 +87,7 @@ SEQUENCE = "typing.Sequence"
 # -- tpy protocols --
 NATIVE_ITERABLE = "tpy.NativeIterable"
 NATIVE_RANGE_CONSTRUCTIBLE = "tpy.NativeRangeConstructible"
-READONLY_SPAN_LIKE = "tpy.ReadOnlySpanLike"
+SPANNABLE = "tpy.Spannable"
 VALUE_TYPE = "tpy.ValueType"
 SEND = "tpy.Send"
 SYNC = "tpy.Sync"

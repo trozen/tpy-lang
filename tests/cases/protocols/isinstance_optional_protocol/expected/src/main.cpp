@@ -17,7 +17,7 @@ void main() {
     std::cout << count_if_sized(&(nums)) << "\n";
     // print(count_if_sized())
     std::cout << count_if_sized() << "\n";
-    // # ReadOnlySpanLike[T] | None (generic protocol)
+    // # Spannable[T] | None (generic protocol)
     // print(sum_span(s))
     std::cout << sum_span(&(s)) << "\n";
     // print(sum_span())

@@ -1771,7 +1771,10 @@ class StatementGenerator:
                 continue
             # Protocol isinstance narrows the concept constraint, not the value;
             # no std::get extraction needed (the variable is already a T& ref).
+            # Track the narrowed type so get_resolved_type surfaces it to
+            # downstream dispatch (for-loop peephole, `in` operator, etc.).
             if is_protocol_type(narrowed_type):
+                self.ctx.protocol_narrowings[var_name] = narrowed_type
                 continue
             # In @overload context, the param is already the concrete type --
             # no std::get extraction needed.
@@ -3065,6 +3068,7 @@ class StatementGenerator:
                     return
 
             lit_snap = self.ctx.save_literal_facts()
+            proto_snap = self.ctx.save_protocol_narrowings()
             then_saved = self._emit_isinstance_extractions(out, node.then_type_facts)
 
             self.ctx.indent_level += 1
@@ -3074,6 +3078,7 @@ class StatementGenerator:
             self.ctx.indent_level -= 1
 
             self.ctx.restore_narrowed_vars(then_saved)
+            self.ctx.restore_protocol_narrowings(proto_snap)
             self.ctx.restore_literal_facts(lit_snap)
             self.ctx.restore_local_scope(br_snap)
 
@@ -3090,6 +3095,7 @@ class StatementGenerator:
                 and self._is_elif(last, last.else_body[0])
             )
             else_lit_snap = self.ctx.save_literal_facts()
+            else_proto_snap = self.ctx.save_protocol_narrowings()
             if is_elif_continuation:
                 else_saved: dict[str, str | None] = {}
             else:
@@ -3102,6 +3108,7 @@ class StatementGenerator:
             self.ctx.indent_level -= 1
 
             self.ctx.restore_narrowed_vars(else_saved)
+            self.ctx.restore_protocol_narrowings(else_proto_snap)
             self.ctx.restore_literal_facts(else_lit_snap)
             self.ctx.restore_local_scope(br_snap)
 
@@ -3223,12 +3230,14 @@ class StatementGenerator:
             else:
                 out.write(f"{indent}}} else if ({cond}) {{\n")
             lit_snap = self.ctx.save_literal_facts()
+            proto_snap = self.ctx.save_protocol_narrowings()
             then_saved = self._emit_isinstance_extractions(out, node.then_type_facts)
             self.ctx.indent_level += 1
             for s in node.then_body:
                 self.gen_stmt(out, s)
             self.ctx.indent_level -= 1
             self.ctx.restore_narrowed_vars(then_saved)
+            self.ctx.restore_protocol_narrowings(proto_snap)
             self.ctx.restore_literal_facts(lit_snap)
             self.ctx.restore_local_scope(br_snap)
 
@@ -3466,6 +3475,7 @@ class StatementGenerator:
         out.write(f"{indent}while ({cond}) {{\n")
 
         lit_snap = self.ctx.save_literal_facts()
+        proto_snap = self.ctx.save_protocol_narrowings()
         saved = self._emit_isinstance_extractions(out, stmt.then_type_facts)
 
         self.ctx.indent_level += 1
@@ -3475,6 +3485,7 @@ class StatementGenerator:
         self.ctx.indent_level -= 1
 
         self.ctx.restore_narrowed_vars(saved)
+        self.ctx.restore_protocol_narrowings(proto_snap)
         self.ctx.restore_literal_facts(lit_snap)
         out.write(f"{indent}}}\n")
         self.ctx.loop_else_labels.pop()
@@ -3679,31 +3690,6 @@ class StatementGenerator:
 
         self._gen_direct_next_loop(out, stmt, indent, iterable_expr, elem_type,
                                    call=next_call, iter_name=iter_name)
-
-    def _gen_captured_call_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
-                                iterable_expr: str, elem_type: TpyType,
-                                make_call: "Callable[[str], str]",
-                                consuming: bool = False) -> None:
-        """Capture iterable, apply a method/function call, then begin/end loop.
-
-        Used for __iter__() and ::tpy::as_span() where the container must
-        stay alive for the iterator/span to remain valid.
-
-        Produces:
-            auto& __src_N = <lvalue_expr>;   // or: auto __src_N = <rvalue_expr>;
-            auto __obj_N = __src_N.__iter__();  // (or ::tpy::as_span(__src_N))
-            auto __beg_N = __obj_N.begin();
-            ...
-        """
-        n = self.ctx.iter_counter
-        src_name = f"__src_{n}"
-        src_binding = "auto&" if self._is_lvalue_iterable(stmt.iterable) else "auto"
-
-        self.ctx.temps.flush(out, indent)
-        out.write(f"{indent}{src_binding} {src_name} = {iterable_expr};\n")
-        call_expr = make_call(src_name)
-        self._gen_begin_end_loop(out, stmt, indent, call_expr, elem_type, is_lvalue=False,
-                                 consuming=consuming)
 
     @staticmethod
     def _unwrap_coerce(expr: TpyExpr) -> TpyExpr:
@@ -3940,10 +3926,14 @@ class StatementGenerator:
         - Enum iteration: range over EnumUtil::members (begin/end).
         - OwnIter[T] / CopyIter[T]: begin/end (already exposes begin/end).
         - Auto-consuming iteration (`consuming_iter_fi`): native or user path.
-        - ReadOnlySpanLike[T] protocol param: ::tpy::as_span + begin/end.
         - range(...) call: C-style counter loop (or Range<T> begin/end fallback).
-        - Concrete NativeIterable type (or NativeIterable[T] protocol param):
-          plain C++ begin/end range-for, skipping the native_iterator adapter.
+        - Concrete NativeIterable type, or NativeIterable[T]/Spannable[T]
+          protocol param: plain C++ begin/end range-for, skipping the
+          native_iterator adapter. Spannable[T] works because the compiler
+          synthesizes begin()/end() from __span__() for conforming types.
+          NativeIterable[T] as a parameter type is typically used as an
+          opt-in fast path via `Iterable[T] | NativeIterable[T]` + isinstance
+          narrowing.
         - Universal default: auto&& __itr = ::tpy::__iter__(src); for(;;) __itr.__next__().
           Handles all remaining shapes uniformly -- protocol Iterator/Iterable,
           error_return __next__ iterators, user __iter__() methods, and
@@ -4012,14 +4002,6 @@ class StatementGenerator:
             if bound is not None and is_protocol_type(bound):
                 resolved_type = bound
 
-        # Handle ReadOnlySpanLike[T] protocol-typed iterables (uses ::tpy::as_span)
-        if is_protocol_type(resolved_type) and resolved_type.qualified_name() == "tpy.ReadOnlySpanLike":
-            elem_type = sema_elem
-            iterable = self.expressions.gen_expr_deref(stmt.iterable)
-            self._gen_captured_call_loop(out, stmt, indent, iterable, elem_type,
-                                         lambda src: f"::tpy::as_span({src})")
-            return
-
         # Optimize range() calls to C-style counter loops
         if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func_name == "range":
             elem_type = sema_elem
@@ -4032,13 +4014,21 @@ class StatementGenerator:
                 return
 
         # NativeIterable peephole: built-in types (list, dict, set, Span,
-        # Array, str, bytes, etc.) and NativeIterable[T] protocol params
-        # use C++ range-based-for with begin/end. User records are NOT
-        # NativeIterable (they use the universal __iter__+__next__ default).
+        # Array, str, bytes, etc.) and NativeIterable[T] / Spannable[T]
+        # protocol params use C++ range-based-for with begin/end. User
+        # records are NOT NativeIterable (they use the universal
+        # __iter__+__next__ default). Spannable[T] protocol params work
+        # because the compiler synthesizes begin()/end() from __span__()
+        # for concrete types that satisfy Spannable (see records.py).
+        # NativeIterable[T] is typically used as the fast-path arm of an
+        # `Iterable[T] | NativeIterable[T]` union narrowed with
+        # `isinstance(x, NativeIterable)`: the narrowed branch hits this
+        # peephole (range-for), the other branch falls to the universal
+        # default (__iter__/__next__).
         is_native = (
             is_native_iterable(iterable_type, registry=self.ctx.analyzer.registry)
             or (is_protocol_type(resolved_type)
-                and resolved_type.qualified_name() == "tpy.NativeIterable")
+                and resolved_type.qualified_name() in ("tpy.NativeIterable", "tpy.Spannable"))
         )
         if is_native:
             iterable = self.expressions.gen_expr_deref(stmt.iterable)

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # extend from another ArrayList (ReadOnlySpanLike)
+    // # extend from another ArrayList (Spannable)
     // a = ArrayList[Int32, 16]()
     ::tpystd::tplib::ArrayList<int32_t, 16> a = ::tpystd::tplib::ArrayList<int32_t, 16>();
     // a.append(1)

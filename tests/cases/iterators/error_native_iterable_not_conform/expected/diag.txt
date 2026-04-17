@@ -1,0 +1,1 @@
+main.py:23: error: Type NotIterable does not conform to protocol NativeIterable[Int32] in argument 'items'

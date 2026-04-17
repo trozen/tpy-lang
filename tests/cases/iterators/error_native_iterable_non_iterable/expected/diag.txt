@@ -1,1 +1,0 @@
-main.py:11: error: Type Int32 does not conform to protocol NativeIterable[Int32] in argument 'items'

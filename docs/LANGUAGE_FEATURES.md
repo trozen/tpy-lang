@@ -627,7 +627,7 @@ Key features:
 - `sort()` for in-place stable sort via `std::stable_sort` (matches Python's stable sort guarantee)
 - Zero-allocation passing of fixed-size arrays to functions that work with any size
 - Constructors: `Span(Ptr[T], Int32)` and `Span(Ptr[readonly[T]], Int32)` for low-level span creation
-- Explicit construction from containers: `Span[T](arr)`, `Span[readonly[T]](lst)` for any `ReadOnlySpanLike[T]` source (list, Array)
+- Explicit construction from containers: `Span[T](arr)`, `Span[readonly[T]](lst)` for any `Spannable[T]` source (list, Array)
 - Containers coerce to `Optional[Span[T]]` / `Optional[Span[readonly[T]]]` at call sites
 - `Ptr[T].span(length)` returns `Span[T]`, `Ptr[readonly[T]].span(length)` returns `Span[readonly[T]]`
 
@@ -2359,7 +2359,30 @@ class ArrayList[T, N: int]:
 
 #### Working: `NativeIterable[T]` (C++ range-for optimization marker)
 
-`NativeIterable[T]` is a **marker protocol** for types that support C++ range-based for loops. It's defined in the `tpy` module (not `typing`) because it maps to C++ `begin()`/`end()` iteration rather than Python's `__iter__`/`__next__` protocol. It is used internally by the compiler for codegen optimization (choosing direct range-for vs iterator adapter) but should generally not appear in user-facing function signatures -- use `Iterable[T]` from `typing` instead.
+`NativeIterable[T]` is a **marker protocol** for types that support C++ range-based for loops. It's defined in the `tpy` module (not `typing`) because it maps to C++ `begin()`/`end()` iteration rather than Python's `__iter__`/`__next__` protocol. Built-in containers extend it (via `extends` in their stubs); the compiler uses this to select direct range-for on concrete types like `list`, `dict`, `set`, `Span`, `Array`, `str`, `bytes`.
+
+**Use `Iterable[T]` (from `typing`) for ordinary function parameters.** It's the Python-standard convention and the compiler handles the common cases.
+
+**Advanced: manual fast-path via isinstance narrowing.** Power users who want explicit control over the iteration strategy (e.g. different loop bodies per branch, or deterministic opt-in to range-for for a specific hot function) can write a union and narrow:
+
+```python
+from typing import Iterable
+from tpy import NativeIterable, Int32
+
+def sum_fast(it: Iterable[Int32] | NativeIterable[Int32]) -> Int32:
+    total: Int32 = 0
+    if isinstance(it, NativeIterable):
+        # Narrowed to NativeIterable[Int32] -> C++ range-for (begin/end).
+        for x in it:
+            total += x
+    else:
+        # Iterable[Int32] -> universal __iter__/__next__ loop.
+        for x in it:
+            total += x
+    return total
+```
+
+This pattern is an escape hatch, not the recommended default -- ordinary code should stick with plain `Iterable[T]`. Automatic dispatch inside `Iterable[T]`-typed templates is tracked as a future codegen improvement.
 
 ```python
 from typing import Iterable
@@ -2461,7 +2484,7 @@ for (;;) {
 | 3. Range as NativeIterable | **Working** | `Range[T]` is an immutable container with `begin()`/`end()`, supports `list(range(...))` |
 | 4. Iterator[T]/Iterable[T] | **Working** | Built-in protocols from `typing`, for-loop support, `iter()` builtin |
 | 5. `__span__` protocol | **Working** | `__span__() -> Span[T]` for implicit Span coercion; iteration requires `__iter__()` |
-| 5b. `ReadOnlySpanLike[T]` protocol | **Working** | Readonly protocol for types with `__span__()`, for-loop and ReadOnlySpan coercion |
+| 5b. `Spannable[T]` protocol | **Working** | Readonly protocol for types with `__span__()`, for-loop and ReadOnlySpan coercion |
 | 6. Generator expressions | **Working** | `(expr for x in iterable)` → lazy `make_generator` wrapper, satisfies `Iterable[T]` |
 | 7. Generator functions | **Working** | `yield` in functions and methods -> state-machine struct or lambda wrapper implementing `Iterator[T]`. Simple generators use `make_generator` + lambda; complex generators use struct with switch/goto dispatch. Generator methods supported (`__iter__`, custom methods). |
 | 8. Iterator combinators | **Working** | `enumerate()`, `zip()`, `reversed()`, `map()`, `filter()`. `map` supports 1-5 iterables. `filter(None, iterable)` for truthiness filtering |
@@ -2629,13 +2652,13 @@ define `__iter__(self) -> SpanIter[T]` (returning `SpanIter(self.__span__())`) t
 CPython-compatible iteration. `SpanIter[T]` is a builtin type in the `tpy` module that wraps
 a span and implements `Iterable[T]`/`Iterator[T]`/`NativeIterable[T]`.
 
-#### Working: `ReadOnlySpanLike[T]` Protocol
+#### Working: `Spannable[T]` Protocol
 
-`ReadOnlySpanLike[T]` is a readonly protocol for types that expose contiguous storage via
+`Spannable[T]` is a readonly protocol for types that expose contiguous storage via
 `__span__()`. It enables writing generic functions that accept any span-producing type:
 
 ```python
-from tpy import Int32, Span, ReadOnlySpanLike
+from tpy import Int32, Span, Spannable
 
 class Buffer:
     _data: list[Int32]
@@ -2644,7 +2667,7 @@ class Buffer:
     def __span__(self) -> Span[Int32]:
         return self._data
 
-def sum_all(c: ReadOnlySpanLike[Int32]) -> Int32:
+def sum_all(c: Spannable[Int32]) -> Int32:
     total: Int32 = 0
     for x in c:
         total += x
@@ -2661,9 +2684,9 @@ structurally conforms. Builtins (list, Array, Span, Span[readonly[T]]) also conf
 via explicit `extends` declarations. User types implementing `__span__() -> Span[T]` satisfy
 the readonly protocol via covariant return (the compiler auto-generates a const overload).
 
-**Coercion**: `ReadOnlySpanLike[T]` values coerce to `Span[readonly[T]]` (not mutable `Span[T]`).
+**Coercion**: `Spannable[T]` values coerce to `Span[readonly[T]]` (not mutable `Span[T]`).
 
-**CPython mixin**: In CPython stubs, `ReadOnlySpanLike` is a base class that auto-generates
+**CPython mixin**: In CPython stubs, `Spannable` is a base class that auto-generates
 `__iter__` from `__span__()`. User types inheriting it get iteration for free in CPython.
 
 **Bounded type parameters**: `Iterator[T]` and `Iterable[T]` can be used as type parameter bounds:
@@ -2683,9 +2706,9 @@ def sum_generic[T: Iterable[Int32]](items: T) -> Int32:
 
 **For-loop support**: `for x in expr` works when `expr` has type `Iterator[T]` (direct `for(;;)` loop calling `__next__()` and checking `has_value()`) or `Iterable[T]` (calls `__iter__()` first, then iterates the resulting iterator). All iterators use the direct `std::expected` loop path. **Reference semantics are preserved**: for non-value types (records, containers), the loop variable is a reference to the original container element, so mutations are visible in the container -- matching CPython behavior. This is implemented via `val_or_ref<T>` in `native_iterator.__next__()`, which stores non-value types by pointer and value types by value.
 
-#### Working: Span coercion via `ReadOnlySpanLike[T]`
+#### Working: Span coercion via `Spannable[T]`
 
-Types extending `ReadOnlySpanLike[T]` (which provides `__span__() -> Span[readonly[T]]`) can be implicitly coerced to `Span[T]`. This unifies span coercion with the `ReadOnlySpanLike` protocol -- no separate marker protocol is needed.
+Types extending `Spannable[T]` (which provides `__span__() -> Span[readonly[T]]`) can be implicitly coerced to `Span[T]`. This unifies span coercion with the `Spannable` protocol -- no separate marker protocol is needed.
 
 ```python
 from tpy import Int32, Span, Array
@@ -2696,21 +2719,21 @@ def sum_span(values: Span[Int32]) -> Int32:
         total += v
     return total
 
-# All these work - Array, list extend ReadOnlySpanLike[T]
+# All these work - Array, list extend Spannable[T]
 arr: Array[Int32, 3] = [1, 2, 3]
 sum_span(arr)  # OK
 
 lst: list[Int32] = [4, 5, 6]
 sum_span(lst)  # OK
 
-# str does NOT extend ReadOnlySpanLike - this is an error
+# str does NOT extend Spannable - this is an error
 # s: str = "hello"
-# takes_span(s)  # ERROR: str does not extend ReadOnlySpanLike
+# takes_span(s)  # ERROR: str does not extend Spannable
 ```
 
 **Key points:**
-- **Built-in conformance**: `list[T]`, `Array[T, N]`, `Span[T]` extend `ReadOnlySpanLike[T]`
-- **str excluded**: `str` iterates over `Char` but doesn't extend `ReadOnlySpanLike` (design choice)
+- **Built-in conformance**: `list[T]`, `Array[T, N]`, `Span[T]` extend `Spannable[T]`
+- **str excluded**: `str` iterates over `Char` but doesn't extend `Spannable` (design choice)
 - **Zero overhead**: Uses C++ `std::span` implicit construction from contiguous ranges
 
 #### Compiler Traits Summary
@@ -2720,9 +2743,10 @@ Protocols serve as **compiler traits**—letting the compiler discover type capa
 - `len(x)` works on any type conforming to `Sized` ✓ (working)
 - `Sequence[T]` for types supporting `len()` and indexing ✓ (working)
 - `for` loops work on `Iterable[T]`-typed parameters ✓ (working)
-- `for` loops work on `NativeIterable[T]`-typed parameters ✓ (working)
+- `for` loops work on `NativeIterable[T]`-typed parameters (typically via
+  `Iterable[T] | NativeIterable[T]` + isinstance narrowing) ✓ (working)
 - `for` loops work on `Iterator[T]`-typed parameters ✓ (working)
-- Implicit coercion to `Span[T]` works on types extending `ReadOnlySpanLike[T]` ✓ (working)
+- Implicit coercion to `Span[T]` works on types extending `Spannable[T]` ✓ (working)
 - `for` loops work on `Iterator[T]`-typed parameters ✓ (working)
 - `list.extend()`, `str.join()`, `list()`, `dict()` accept `Iterable[T]` params ✓ (working)
 

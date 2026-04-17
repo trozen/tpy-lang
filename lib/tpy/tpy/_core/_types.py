@@ -46,7 +46,7 @@ class Deref[T](Protocol):
     def __deref__(self) -> T: ...
 
 
-class ReadOnlySpanLike[T](Protocol):
+class Spannable[T](Protocol):
     @readonly
     def __span__(self) -> Span[readonly[T]]: ...
 

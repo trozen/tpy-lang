@@ -11,9 +11,9 @@ struct Buffer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpystd::tpy::ReadOnlySpanLike<int32_t> T_x>
+template<::tpystd::tpy::Spannable<int32_t> T_x>
 int32_t span_len(const T_x& x);
-template<::tpystd::tpy::ReadOnlySpanLike<int32_t> T_x>
+template<::tpystd::tpy::Spannable<int32_t> T_x>
 int32_t span_sum(const T_x& x);
 void main();
 
@@ -24,6 +24,11 @@ struct Buffer {
 
     // def __init__(self) -> None:
     Buffer() : _data({10, 20, 30}) {}
+
+    auto begin() { return this->__span__().begin(); }
+    auto end() { return this->__span__().end(); }
+    auto begin() const { return this->__span__().begin(); }
+    auto end() const { return this->__span__().end(); }
 
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[Int32]]:
@@ -45,14 +50,14 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
     return os;
 }
 
-// def span_len(x: ReadOnlySpanLike[Int32]) -> Int32:
-template<::tpystd::tpy::ReadOnlySpanLike<int32_t> T_x>
+// def span_len(x: Spannable[Int32]) -> Int32:
+template<::tpystd::tpy::Spannable<int32_t> T_x>
 int32_t span_len(const T_x& x) {
     // return len(span(x))
     return ::tpy::__len__(::tpy::as_span(x));
 }
-// def span_sum(x: ReadOnlySpanLike[Int32]) -> Int32:
-template<::tpystd::tpy::ReadOnlySpanLike<int32_t> T_x>
+// def span_sum(x: Spannable[Int32]) -> Int32:
+template<::tpystd::tpy::Spannable<int32_t> T_x>
 int32_t span_sum(const T_x& x) {
     // total: Int32 = 0
     int32_t total = 0;

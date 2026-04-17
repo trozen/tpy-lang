@@ -1,6 +1,6 @@
 # isinstance() on Optional[Protocol] -- narrows away None at compile time
 from typing import Sized
-from tpy import Int32, ReadOnlySpanLike, Span, Array
+from tpy import Int32, Spannable, Span, Array
 
 
 def count_if_sized(items: Sized | None = None) -> Int32:
@@ -9,8 +9,8 @@ def count_if_sized(items: Sized | None = None) -> Int32:
     return -1
 
 
-def sum_span(items: ReadOnlySpanLike[Int32] | None = None) -> Int32:
-    if isinstance(items, ReadOnlySpanLike):
+def sum_span(items: Spannable[Int32] | None = None) -> Int32:
+    if isinstance(items, Spannable):
         total: Int32 = 0
         for x in items:
             total += x
@@ -33,7 +33,7 @@ def main() -> None:
     print(count_if_sized(nums))
     print(count_if_sized())
 
-    # ReadOnlySpanLike[T] | None (generic protocol)
+    # Spannable[T] | None (generic protocol)
     print(sum_span(s))
     print(sum_span())
 

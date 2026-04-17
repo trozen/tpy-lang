@@ -49,7 +49,7 @@ def _is_safe_widening(actual: TpyType, expected: TpyType) -> bool:
 
 
 def _spanlike_to_span_match(actual: TpyType, expected: TpyType) -> bool:
-    """Check if actual type (extending ReadOnlySpanLike[T]) can coerce to Span[T]/ReadOnlySpan[T]."""
+    """Check if actual type (extending Spannable[T]) can coerce to Span[T]/ReadOnlySpan[T]."""
     if not isinstance(expected, SpanType):
         return False
     # Span[readonly[T]] and readonly[container] cannot coerce to mutable Span (const violation)
@@ -62,7 +62,7 @@ def _spanlike_to_span_match(actual: TpyType, expected: TpyType) -> bool:
         return False
     expected_elem = expected.inner_element_type
 
-    # PendingListType is an internal compiler type that resolves to list (which extends ReadOnlySpanLike).
+    # PendingListType is an internal compiler type that resolves to list (which extends Spannable).
     # Handle it directly since it's not in the module system.
     if isinstance(actual, PendingListType):
         if actual_elem == expected_elem:
@@ -72,7 +72,7 @@ def _spanlike_to_span_match(actual: TpyType, expected: TpyType) -> bool:
             return True
         return False
 
-    # Check if actual is a builtin type that implements ReadOnlySpanLike[T].
+    # Check if actual is a builtin type that implements Spannable[T].
     # These are compiler-internal types with known span coercion support.
     if not isinstance(actual, (ListType, ArrayType, SpanType)):
         return False
@@ -374,7 +374,7 @@ COERCIONS: list[Coercion] = [
         from_type=BasicSliceType,
         to_type=SliceType,
     ),
-    # Span coercions: any ReadOnlySpanLike[T] type can coerce to Span[T]
+    # Span coercions: any Spannable[T] type can coerce to Span[T]
     # Arg context allows temporaries
     Coercion(
         name="spanlike_to_span_arg",
@@ -459,7 +459,7 @@ UPCAST_TO_PTR = Coercion(
     codegen=lambda e, _a, _b, _c: f"&{e}",
 )
 
-# Pre-built coercions for __span__() and ReadOnlySpanLike[T] protocol coercion to ReadOnlySpan.
+# Pre-built coercions for __span__() and Spannable[T] protocol coercion to ReadOnlySpan.
 # Used directly by compatibility.py (not in COERCIONS list); from_type is not consulted.
 # Codegen is handled in expressions.py _gen_span_coercion.
 # Arg context: temporaries allowed.

@@ -4,13 +4,13 @@ from tpy import Ptr
 from .._bootstrap._decorators import readonly, pure, Own
 from .._bootstrap._extern import native, cpp_template, value_ptr_coercion, builtin_function
 from ._containers import Span
-from ._types import ReadOnlySpanLike, Deref, Default
+from ._types import Spannable, Deref, Default
 
 
 @pure
 @readonly
 @native("tpy::as_span")
-def span[T](x: ReadOnlySpanLike[T]) -> Span[readonly[T]]: ...
+def span[T](x: Spannable[T]) -> Span[readonly[T]]: ...
 
 @pure
 @readonly

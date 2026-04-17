@@ -1,0 +1,1 @@
+main.py:13: error: Type str does not conform to protocol Iterable[Int32] in argument 'items'

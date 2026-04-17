@@ -1,8 +1,8 @@
-# Test that builtin types and user types (ArrayList) conform to ReadOnlySpanLike[T].
-from tpy import Int32, Array, Span, ReadOnlySpanLike, readonly
+# Test that builtin types and user types (ArrayList) conform to Spannable[T].
+from tpy import Int32, Array, Span, Spannable, readonly
 from tplib import ArrayList
 
-def sum_span(c: ReadOnlySpanLike[Int32]) -> Int32:
+def sum_span(c: Spannable[Int32]) -> Int32:
     total: Int32 = 0
     for x in c:
         total += x

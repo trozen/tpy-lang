@@ -26,7 +26,7 @@ discrimination trees:
    finally the TpyType-level `get_iteration_element_type()` fallback.
 2. **Codegen for-loop dispatch** (`codegen_cpp/statements.py::_gen_for_each_loop`)
    has eight branches: enum, `OwnIter`/`CopyIter`, auto-consuming,
-   protocol `Iterator`/`Iterable`, protocol `ReadOnlySpanLike`,
+   protocol `Iterator`/`Iterable`, protocol `Spannable`,
    `range()` peephole, `error_return __next__`, `__iter__()` method
    (native vs non-native), and a default begin/end fallback.
 3. **Generator-body for-loop lowering** (`codegen_cpp/gen_generators.py`)
@@ -70,7 +70,7 @@ Plus explicit peepholes, in priority order:
    range-based-for, skipping the `native_iterator` wrapper. Preserves
    today's codegen for `list`, `dict`, `set`, `Span`, `Array`, `str`,
    `bytes`, etc.
-4. `ReadOnlySpanLike[T]` protocol param -> `::tpy::as_span(x)` +
+4. `Spannable[T]` protocol param -> `::tpy::as_span(x)` +
    range-for (kept as peephole for now; revisit later).
 
 All other cases (user iterators, protocol-typed params, `__iter__`
@@ -79,7 +79,7 @@ the universal default.
 
 ## Design decisions made
 
-- **(Q1 resolved)** `ReadOnlySpanLike[T]` stays as a codegen peephole
+- **(Q1 resolved)** `Spannable[T]` stays as a codegen peephole
   (separate from iteration dispatch). Revisit / eliminate later.
 - **(Q2 resolved)** `NativeIterable[T]` stays as a marker protocol.
   Sema does **not** special-case it. To make sema treat it uniformly
@@ -136,7 +136,7 @@ Changes actually made:
 - `tpyc/sema/list_literals.py::IterableHelper` -- single dispatch
   tree:
   - protocol-typed iterables (`typing.Iterator`, `typing.Iterable`,
-    `tpy.NativeIterable`, `tpy.ReadOnlySpanLike`)
+    `tpy.NativeIterable`, `tpy.Spannable`)
   - compiler-internal iterator adapters (`CopyIterType`, `OwnIterType`,
     `GenExprType`, `SpanIterType`) -- these are sema constructs without
     records in the registry, so handled explicitly
@@ -230,13 +230,15 @@ Final branch order in `_gen_for_each_loop`:
 1. Enum iteration (begin/end over `EnumUtil::members`)
 2. `OwnIter`/`CopyIter` (begin/end)
 3. Auto-consuming (`consuming_iter_fi`)
-4. `ReadOnlySpanLike` protocol -> `as_span` + begin/end
-5. `range()` counter loop (or `Range<T>` begin/end fallback)
-6. Concrete `NativeIterable` (built-in only, or `NativeIterable[T]`
-   protocol param) -> plain C++ begin/end range-for. User records
-   do not derive NativeIterable (Phase 3 removed auto-derivation)
-   and always fall through to the universal default.
-7. Universal default: `auto&& __itr = ::tpy::__iter__(src);
+4. `range()` counter loop (or `Range<T>` begin/end fallback)
+5. Concrete `NativeIterable` (built-in only), or `NativeIterable[T]` /
+   `Spannable[T]` protocol param -> plain C++ begin/end range-for. User
+   records do not derive NativeIterable (Phase 3 removed auto-derivation)
+   and always fall through to the universal default. `Spannable[T]`
+   protocol params work because user types with `__span__()` get
+   compiler-synthesized `begin()`/`end()` delegating to `__span__()`
+   (Phase 5 fold; see `codegen_cpp/records.py`).
+6. Universal default: `auto&& __itr = ::tpy::__iter__(src);
    for (;;) __itr.__next__()`. Handles user NativeIterables safely
    via `auto&&` lifetime-extension of the returned iterator value.
 
@@ -365,15 +367,78 @@ execute correctly.
 
 Non-blocking cleanups that can happen independently:
 
-- `ReadOnlySpanLike` peephole: either fold `__span__`-only types into
-  Iterable by synthesizing `__iter__` as
-  `self.__span__().__iter__()`, or keep as-is.
-- Phase out `NativeIterable[T]` as a user-facing parameter type in
-  favor of `Iterable[T]` + codegen specialization (see
-  `LANGUAGE_FEATURES.md`).
-- `IterInfo.iter_is_native` is no longer used in codegen (gen_generators
-  eliminated it in Phase 4). Remaining caller: sema iter-depth lifetime
-  tracking in `statements.py`. May collapse entirely.
+- **[DONE 2026-04-16]** Renamed `ReadOnlySpanLike[T]` protocol to
+  `Spannable[T]`. Same semantics (`__span__() -> Span[readonly[T]]`);
+  the "ReadOnly" prefix was confusing since mutable-span types also
+  satisfy it via covariant return. Rename spans stubs, compiler,
+  tests, and docs; zero behavioral change; full suite green.
+- **[DONE 2026-04-16]** Folded Spannable iteration into the
+  NativeIterable peephole. Compiler now synthesizes `begin()/end()`
+  for any user record with `__span__()`, delegating to
+  `this->__span__().begin()/.end()` (`codegen_cpp/records.py`). The
+  dedicated Spannable for-loop peephole (`::tpy::as_span(src)` +
+  range-for) is gone; `Spannable[T]` protocol-typed params now flow
+  through the NativeIterable peephole emitting plain
+  `for (auto x : c)`. Dead helper `_gen_captured_call_loop` removed
+  from `codegen_cpp/statements.py`. 5 snapshot updates (`span_function`,
+  `span_iter_warning`, `span_protocol_coercion`, `span_like_builtin`,
+  `span_like_protocol`). Full suite green (2524 passed / 1 skipped)
+  with `--force-exec`. Runtime `::tpy::as_span()` still exists for
+  `Span[T]` coercion -- the fold only affected iteration codegen.
+- **[DONE 2026-04-17]** Repositioned `NativeIterable[T]` as opt-in
+  fast-path via `isinstance` narrowing. The user-facing idiom is:
+  ```python
+  def sum_fast(it: Iterable[T] | NativeIterable[T]) -> T:
+      if isinstance(it, NativeIterable):
+          # range-for on begin/end (narrowed to NativeIterable[T])
+          for x in it: ...
+      else:
+          # universal __iter__/__next__ (still Iterable[T])
+          for x in it: ...
+  ```
+  The two branches now produce distinct codegen thanks to a new codegen
+  plumbing step: sema's protocol-isinstance narrowing (stored in
+  `then_type_facts`) flows into `codegen_cpp/context.py::protocol_narrowings`
+  via `_emit_isinstance_extractions`, and
+  `codegen_cpp/types.py::get_resolved_type` consults it for `TpyName`
+  lookups. For-loop dispatch and `in`-operator dispatch therefore see
+  the narrower type inside the branch and pick the right peephole.
+  Tests: `iterable_native_narrowing` added. Migrated/dropped legacy
+  NativeIterable[T]-param tests: `native_iterable_str`,
+  `span_native_iterable`, `error_native_iterable_non_iterable`,
+  `error_native_iterable_type_mismatch` deleted (coverage redundant);
+  `error_native_iterable_bare` -> `error_iterable_bare`;
+  `error_native_iterable_str_wrong_type` -> `error_iterable_str_wrong_type`;
+  `for_native_iterable` -> `iterable_protocol_ops` (preserves unique
+  coverage: nested loops, `in` operator, protocol-to-protocol forwarding).
+  2 adjacent snapshot updates (`protocol_union_basic`,
+  `protocol_union_optional`) where narrowing now surfaces a
+  `Sequence[T]` protocol type and codegen emits `::tpy::__getitem__`
+  (protocol-generic) instead of direct `items[0]` -- semantically
+  equivalent. Full suite green (2521 passed / 1 skipped) with
+  `--force-exec`.
+- **[DONE 2026-04-16]** `IterInfo.iter_is_native` collapsed. Sema
+  iter-depth lifetime check in `statements.py` now uses
+  `is_native_iterable(source)` alone; experimentally verified that the
+  OR's `iter_is_native` arm never flipped the result for any test
+  (full suite green, 2524 passed / 1 skipped). `IterInfo` dataclass,
+  `get_iter_info` public function, and the `iter_is_native` flag on
+  `IterInfo` return values all removed. `_find_record_iter_info` /
+  `_find_iter_method_info` renamed to `_find_record_iter_element` /
+  `_find_iter_method_element` (now return `TpyType | None` directly).
+  No snapshot changes.
+
+  *Load-bearing detail kept for future reference:* the dropped
+  `iter_is_native=True` branch originally covered user records whose
+  `__iter__()` returns `SpanIterType` (e.g. `ArrayList`/`Stack` with
+  `__iter__(self) -> SpanIter[T]`). Those user records are not
+  `is_native_iterable`, so the OR used to flip them to
+  `references_container=True`, which widens the iter-depth to the
+  container's scope. No test exercises an escape from this path
+  (provenance tracking only activates for non-value loop vars from
+  param-derived iterables). If that gap becomes real, recover by
+  checking whether `__iter__()` returns a `SpanIterType` or an
+  `is_native_iterable` type rather than reintroducing the field.
 
 ## File-by-file impact matrix
 
@@ -462,6 +527,13 @@ For each phase, run in order:
   universal __iter__+__next__ instead of begin/end). Eliminated
   `iter_begin_end` strategy and `_gen_generator_for_iter_begin_end`.
   `IterInfo.iter_is_native` no longer used by gen_generators.
+- **2026-04-16**: Phase 5 first cleanup on branch `iterator-phase1`.
+  `IterInfo.iter_is_native` collapsed: sema consumer now uses
+  `is_native_iterable(source)` alone; `IterInfo` dataclass and
+  `get_iter_info` public function removed; helpers renamed to
+  `_find_record_iter_element` / `_find_iter_method_element` returning
+  `TpyType | None`. Full suite green (2524 passed / 1 skipped), zero
+  snapshot changes.
 
 ## Out of scope
 

@@ -500,6 +500,13 @@ class CodeGenContext:
 
     # --- Union type narrowing (isinstance -> std::get) ---
     narrowed_vars: dict[str, str] = field(default_factory=dict)
+    # Protocol isinstance narrowing: var -> narrowed protocol type.
+    # For `if isinstance(x, SomeProtocol):` on a union parameter, sema narrows x
+    # to the protocol type within the branch. No std::get extraction is emitted
+    # (the C++ template param is unchanged; the narrower concept constraint
+    # holds via `if constexpr`). This map lets get_resolved_type surface the
+    # narrower type to for-loop dispatch, `in` operator, etc.
+    protocol_narrowings: dict[str, 'TpyType'] = field(default_factory=dict)
     # Assignment narrowing: var -> narrowed concrete type (for inline std::get at access points)
     assign_narrowed_types: dict[str, 'TpyType'] = field(default_factory=dict)
     # Literal type narrowing: var -> single-value LiteralType for dead branch elimination
@@ -690,6 +697,7 @@ class CodeGenContext:
         self.current_type_param_bounds = {}
         self.in_method = False
         self.narrowed_vars = {}
+        self.protocol_narrowings = {}
         self.assign_narrowed_types = {}
         self.literal_facts = {}
         self.walrus_pre_declared = set()
@@ -749,6 +757,14 @@ class CodeGenContext:
                 self.narrowed_vars[var_name] = prev
             else:
                 self.narrowed_vars.pop(var_name, None)
+
+    def save_protocol_narrowings(self) -> dict[str, 'TpyType']:
+        """Snapshot protocol_narrowings before entering a branch."""
+        return dict(self.protocol_narrowings)
+
+    def restore_protocol_narrowings(self, saved: dict[str, 'TpyType']) -> None:
+        """Restore protocol_narrowings after a branch block."""
+        self.protocol_narrowings = dict(saved)
 
     def save_literal_facts(self) -> dict[str, 'TpyType']:
         """Snapshot literal_facts before entering a branch."""

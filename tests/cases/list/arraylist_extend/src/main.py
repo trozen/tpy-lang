@@ -4,7 +4,7 @@ from tplib import ArrayList
 
 
 def main() -> None:
-    # extend from another ArrayList (ReadOnlySpanLike)
+    # extend from another ArrayList (Spannable)
     a = ArrayList[Int32, 16]()
     a.append(1)
     a.append(2)

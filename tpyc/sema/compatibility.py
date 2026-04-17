@@ -742,8 +742,8 @@ class TypeCompatibility:
                         else:
                             coercion = SPAN_METHOD_TO_SPAN
         if coercion is None:
-            # ReadOnlySpanLike[T] protocol -> Span[readonly[T]] coercion via __span__()
-            if (is_protocol_type(actual) and actual.qualified_name() == "tpy.ReadOnlySpanLike"
+            # Spannable[T] protocol -> Span[readonly[T]] coercion via __span__()
+            if (is_protocol_type(actual) and actual.qualified_name() == "tpy.Spannable"
                     and actual.type_args and isinstance(expected, SpanType)
                     and expected.is_readonly and actual.type_args[0] == expected.inner_element_type):
                 if ctx == CoercionContext.ARG:

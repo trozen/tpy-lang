@@ -24,7 +24,7 @@ void describe(const T_items& items) {
     // if isinstance(items, Sequence):
     if constexpr (::tpystd::typing::Sequence<T_items, ::tpy::BigInt>) {
         // print(items[0])
-        std::cout << items[0] << "\n";
+        std::cout << ::tpy::__getitem__(items, 0) << "\n";
     // elif isinstance(items, Sized):
     } else if constexpr (::tpystd::typing::Sized<T_items>) {
         // print(len(items))
@@ -38,7 +38,7 @@ template<typename T_items>
     // if isinstance(items, Sequence):
     if constexpr (::tpystd::typing::Sequence<T_items, ::tpy::BigInt>) {
         // return items[0]
-        return items[0];
+        return ::tpy::__getitem__(items, 0);
     // elif isinstance(items, Sized):
     } else if constexpr (::tpystd::typing::Sized<T_items>) {
         // return len(items)

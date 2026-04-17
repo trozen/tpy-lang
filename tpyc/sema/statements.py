@@ -939,10 +939,8 @@ class StatementAnalyzer:
                         # fresh owned iterator (user-defined iterators).
                         # For the former, the loop-var lifetime is the
                         # container's; for the latter, it's loop-body scope.
-                        iter_info_result = builtin_modules.get_iter_info(inner_iterable_type, registry=self.ctx.registry)
-                        references_container = (
-                            (iter_info_result and iter_info_result.iter_is_native)
-                            or builtin_modules.is_native_iterable(inner_iterable_type, registry=self.ctx.registry)
+                        references_container = builtin_modules.is_native_iterable(
+                            inner_iterable_type, registry=self.ctx.registry
                         )
                         if references_container:
                             if self.compat.is_lvalue(stmt.iterable):

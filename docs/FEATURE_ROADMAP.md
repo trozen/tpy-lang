@@ -353,14 +353,14 @@ The user writes a single `__span__` method. The compiler detects it and uses it 
   returns `span<const T>`). When returning `Span[readonly[T]]`, only a const overload is
   generated. This follows the `__getitem__` dual-overload pattern.
 
-**CPython compatibility**: `__span__` is not meaningful in CPython. The `ReadOnlySpanLike[T]`
+**CPython compatibility**: `__span__` is not meaningful in CPython. The `Spannable[T]`
 protocol doubles as a CPython mixin base class that auto-generates `__iter__` from `__span__()`.
-User types inheriting `ReadOnlySpanLike` get iteration for free in both runtimes.
+User types inheriting `Spannable` get iteration for free in both runtimes.
 
-**`ReadOnlySpanLike[T]` protocol**: Readonly protocol for types with `__span__()`. Enables
+**`Spannable[T]` protocol**: Readonly protocol for types with `__span__()`. Enables
 generic functions accepting any span-producing type
-(`def sum_all(c: ReadOnlySpanLike[Int32])`). Builtins (list, Array, Span, Span[readonly[T]]) conform via `extends`. User types conform structurally -- `__span__() -> Span[T]`
-satisfies the readonly protocol via covariant return. `ReadOnlySpanLike[T]` values coerce to
+(`def sum_all(c: Spannable[Int32])`). Builtins (list, Array, Span, Span[readonly[T]]) conform via `extends`. User types conform structurally -- `__span__() -> Span[T]`
+satisfies the readonly protocol via covariant return. `Spannable[T]` values coerce to
 `Span[readonly[T]]` and support for-loop iteration.
 
 **Why it matters**: Previously user-defined types could only iterate via `__iter__`/`__next__`,
@@ -369,7 +369,7 @@ Builtin types use `NativeIterable[T]` for zero-cost C++ range-based for, but thi
 was not user-extensible. `__span__` bridges the gap for any contiguous container with no
 overhead. `ArrayList[T, N]` now uses `__span__` instead of `__iter__`/`ArrayListIter`.
 
-**Current state**: Part 1 done. Part 2 done. `ReadOnlySpanLike[T]` protocol done.
+**Current state**: Part 1 done. Part 2 done. `Spannable[T]` protocol done.
 
 **Dependencies**: Part 2 needs Part 1 (done).
 

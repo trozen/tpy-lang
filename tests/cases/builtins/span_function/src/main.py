@@ -1,5 +1,5 @@
-# Test tpy.span(): get Span[readonly[T]] from ReadOnlySpanLike types.
-from tpy import Int32, Span, ReadOnlySpanLike, Array, span, auto_readonly
+# Test tpy.span(): get Span[readonly[T]] from Spannable types.
+from tpy import Int32, Span, Spannable, Array, span, auto_readonly
 
 class Buffer:
     _data: list[Int32]
@@ -9,10 +9,10 @@ class Buffer:
     def __span__(self) -> Span[auto_readonly[Int32]]:
         return self._data
 
-def span_len(x: ReadOnlySpanLike[Int32]) -> Int32:
+def span_len(x: Spannable[Int32]) -> Int32:
     return len(span(x))
 
-def span_sum(x: ReadOnlySpanLike[Int32]) -> Int32:
+def span_sum(x: Spannable[Int32]) -> Int32:
     total: Int32 = 0
     for v in span(x):
         total += v

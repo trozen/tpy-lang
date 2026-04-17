@@ -11,7 +11,7 @@ from ._bootstrap import (
 from ._core import (
     # Structural protocols
     Truthy, Stringable, Representable, Hashable, Comparable, Equatable,
-    Deref, ReadOnlySpanLike,
+    Deref, Spannable,
     # Marker protocols
     NativeIterable, NativeRangeConstructible, ValueType, Send, Sync,
     Default, Covariant, ReturnException,
@@ -56,7 +56,7 @@ __all__ = [
     # Structural protocols
     "Truthy", "Stringable", "Representable",
     "Hashable", "Comparable", "Equatable",
-    "Deref", "ReadOnlySpanLike", "Default",
+    "Deref", "Spannable", "Default",
     # Marker protocols
     "NativeIterable", "NativeRangeConstructible",
     "ValueType", "Send", "Sync", "Covariant", "ReturnException",

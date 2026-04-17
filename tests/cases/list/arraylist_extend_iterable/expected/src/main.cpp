@@ -10,7 +10,7 @@ void main() {
     ::tpystd::tplib::ArrayList<int32_t, 16> a = ::tpystd::tplib::ArrayList<int32_t, 16>();
     // a.append(1)
     a.append(1);
-    // # extend from list (Iterable, not ReadOnlySpanLike)
+    // # extend from list (Iterable, not Spannable)
     // items: list[Int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
     // a.extend(items)

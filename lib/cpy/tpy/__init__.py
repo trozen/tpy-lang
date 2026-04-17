@@ -614,7 +614,7 @@ class Hashable(_Protocol):
 
 
 @_runtime_checkable
-class ReadOnlySpanLike(_Protocol[T]):
+class Spannable(_Protocol[T]):
     """Protocol for types exposing contiguous storage via __span__() (readonly).
 
     In CPython, provides __iter__ automatically from __span__().
@@ -652,7 +652,7 @@ make_default = _MakeDefault()
 
 
 def span(x):
-    """Get a readonly span from a ReadOnlySpanLike type."""
+    """Get a readonly span from a Spannable type."""
     return x.__span__()
 
 def deref(x):

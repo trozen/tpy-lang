@@ -1,1 +1,1 @@
-isinstance on tpyc static protocols (ReadOnlySpanLike) is compile-time only
+isinstance on tpyc static protocols (Spannable) is compile-time only

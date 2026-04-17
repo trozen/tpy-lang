@@ -1,4 +1,4 @@
-"""Tests that str does NOT coerce to Span[Char] (str is not ReadOnlySpanLike)."""
+"""Tests that str does NOT coerce to Span[Char] (str is not Spannable)."""
 from tpy import Char, Span
 
 def takes_span(values: Span[Char]) -> None:

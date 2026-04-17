@@ -7,7 +7,7 @@ def main() -> None:
     a = ArrayList[Int32, 16]()
     a.append(1)
 
-    # extend from list (Iterable, not ReadOnlySpanLike)
+    # extend from list (Iterable, not Spannable)
     items: list[Int32] = [10, 20, 30]
     a.extend(items)
     print(len(a))       # 4

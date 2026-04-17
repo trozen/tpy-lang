@@ -13,7 +13,7 @@ template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
 int32_t count_if_sized(const T_items* items = nullptr);
 template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::tpy::ReadOnlySpanLike<T_items, int32_t>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
 int32_t sum_span(const T_items* items = nullptr);
 template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
@@ -32,11 +32,11 @@ int32_t count_if_sized(const T_items* items) {
     // return -1
     return -1;
 }
-// def sum_span(items: ReadOnlySpanLike[Int32] | None = None) -> Int32:
+// def sum_span(items: Spannable[Int32] | None = None) -> Int32:
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::tpy::ReadOnlySpanLike<T_items, int32_t>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
 int32_t sum_span(const T_items* items) {
-    // if isinstance(items, ReadOnlySpanLike):
+    // if isinstance(items, Spannable):
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
         // total: Int32 = 0
         int32_t total = 0;

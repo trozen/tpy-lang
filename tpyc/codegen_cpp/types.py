@@ -44,6 +44,12 @@ class TypeResolver:
             target_type: Optional hint for what type the expression will be coerced to.
                          Used to determine if literal+literal should be Int32 or BigInt.
         """
+        # Protocol isinstance narrowing: `if isinstance(x, SomeProtocol):`
+        # narrows x from a union parameter to the protocol type within the
+        # branch. Surface the narrower type so for-loop dispatch, `in`
+        # operator, etc. pick the right peephole.
+        if isinstance(expr, TpyName) and expr.name in self.ctx.protocol_narrowings:
+            return unwrap_readonly(self.ctx.protocol_narrowings[expr.name])
         # Check for codegen-overridden types (e.g., loop variables)
         if isinstance(expr, TpyName) and expr.name in self.ctx.var_types:
             return unwrap_readonly(self.ctx.var_types[expr.name])

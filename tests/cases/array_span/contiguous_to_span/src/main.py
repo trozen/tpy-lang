@@ -1,4 +1,4 @@
-"""Tests that ReadOnlySpanLike[T] types can coerce to Span[T]."""
+"""Tests that Spannable[T] types can coerce to Span[T]."""
 from tpy import Int32, Span, Array
 from tplib import ArrayList
 

@@ -58,7 +58,7 @@ template<typename T_items>
         // if isinstance(items, Sequence):
         if constexpr (::tpystd::typing::Sequence<T_items, ::tpy::BigInt>) {
             // return items[0]
-            return (*items)[0];
+            return ::tpy::__getitem__((*items), 0);
         // elif isinstance(items, Sized):
         } else if constexpr (::tpystd::typing::Sized<T_items>) {
             // return len(items)
@@ -77,7 +77,7 @@ template<typename T_items>
         // if isinstance(items, Sequence):
         if constexpr (::tpystd::typing::Sequence<T_items, ::tpy::BigInt>) {
             // return items[0]
-            return (*items)[0];
+            return ::tpy::__getitem__((*items), 0);
         // elif isinstance(items, Sized):
         } else if constexpr (::tpystd::typing::Sized<T_items>) {
             // return len(items)

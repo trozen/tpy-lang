@@ -1170,7 +1170,7 @@ class ExpressionGenerator:
                 right_type = self.types.get_resolved_type(expr.right)
                 record = self.ctx.analyzer.registry.get_record_for_type(right_type)
                 # Built-in NativeIterable or NativeIterable[T] protocol param:
-                # efficient std::find with real begin/end
+                # efficient std::find with real begin/end.
                 is_native_in = (
                     (record is not None and record.is_native
                      and builtin_modules.is_native_iterable(right_type, registry=self.ctx.analyzer.registry))
@@ -3891,8 +3891,8 @@ class ExpressionGenerator:
         actual_type = self.ctx.get_expr_type(expr)
         if isinstance(actual_type, SpanType):
             return gen_inner
-        # ReadOnlySpanLike[T] protocol type: always uses as_span (readonly)
-        if is_protocol_type(actual_type) and actual_type.qualified_name() == "tpy.ReadOnlySpanLike":
+        # Spannable[T] protocol type: always uses as_span (readonly)
+        if is_protocol_type(actual_type) and actual_type.qualified_name() == "tpy.Spannable":
             return f"::tpy::as_span({gen_inner})"
         # User type with __span__() method: call it directly
         if isinstance(actual_type, NamedType) and actual_type.is_user_record:

@@ -10,7 +10,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpystd::tpy::ReadOnlySpanLike<int32_t> T_c>
+template<::tpystd::tpy::Spannable<int32_t> T_c>
 int32_t sum_span(const T_c& c);
 void test_list();
 void test_array();
@@ -18,14 +18,13 @@ void test_span();
 void test_ro_span();
 void test_arraylist();
 
-// def sum_span(c: ReadOnlySpanLike[Int32]) -> Int32:
-template<::tpystd::tpy::ReadOnlySpanLike<int32_t> T_c>
+// def sum_span(c: Spannable[Int32]) -> Int32:
+template<::tpystd::tpy::Spannable<int32_t> T_c>
 int32_t sum_span(const T_c& c) {
     // total: Int32 = 0
     int32_t total = 0;
     // for x in c:
-    auto& __src_0 = c;
-    auto __obj_0 = ::tpy::as_span(__src_0);
+    auto& __obj_0 = c;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {

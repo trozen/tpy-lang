@@ -1,11 +1,11 @@
 # Narrowed Optional[Protocol] passed to a required multi-protocol union param.
 # Regression test: the narrowed variable (pointer in C++) must be dereferenced.
 from typing import Iterable
-from tpy import Int32, ReadOnlySpanLike, span
+from tpy import Int32, Spannable, span
 
 
-def total(items: ReadOnlySpanLike[Int32] | Iterable[Int32]) -> Int32:
-    if isinstance(items, ReadOnlySpanLike):
+def total(items: Spannable[Int32] | Iterable[Int32]) -> Int32:
+    if isinstance(items, Spannable):
         s = span(items)
         result: Int32 = 0
         for x in s:
@@ -18,7 +18,7 @@ def total(items: ReadOnlySpanLike[Int32] | Iterable[Int32]) -> Int32:
         return result2
 
 
-def maybe_total(items: ReadOnlySpanLike[Int32] | Iterable[Int32] | None) -> Int32:
+def maybe_total(items: Spannable[Int32] | Iterable[Int32] | None) -> Int32:
     if items is not None:
         return total(items)
     return -1
