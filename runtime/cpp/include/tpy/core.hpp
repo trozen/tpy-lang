@@ -157,14 +157,46 @@ inline constexpr double truediv(double a, double b) {
     return a / b;
 }
 
+// Constant-evaluation helpers: std::floor / std::fmod are constexpr under
+// C++23 P1383 in libstdc++ (GCC 13+), but libc++ (Apple clang / macOS) has
+// not shipped that yet. When the stdlib advertises P1383 we call through
+// unconditionally; otherwise we fall back to hand-rolled constexpr paths
+// selected via `if consteval`. Fallbacks are correct for finite values in
+// long long range, which is the regime Final literals live in; the runtime
+// path is unchanged. Once every supported stdlib defines the feature macro,
+// drop the `#else` branches entirely.
+#if defined(__cpp_lib_constexpr_cmath) && __cpp_lib_constexpr_cmath >= 202202L
+#define TPY_CMATH_CONSTEXPR 1
+#else
+#define TPY_CMATH_CONSTEXPR 0
+#endif
+
 inline constexpr double floordiv(double a, double b) {
     if (b == 0.0) tpy_panic("Division by zero");
+#if TPY_CMATH_CONSTEXPR
     return std::floor(a / b);
+#else
+    if consteval {
+        double q = a / b;
+        long long i = static_cast<long long>(q);
+        double d = static_cast<double>(i);
+        return (d > q) ? d - 1.0 : d;
+    }
+    return std::floor(a / b);
+#endif
 }
 
 inline constexpr double fmod(double a, double b) {
     if (b == 0.0) tpy_panic("Division by zero");
+#if TPY_CMATH_CONSTEXPR
     return std::fmod(a, b);
+#else
+    if consteval {
+        long long i = static_cast<long long>(a / b);
+        return a - static_cast<double>(i) * b;
+    }
+    return std::fmod(a, b);
+#endif
 }
 
 // Float32 arithmetic helpers
@@ -175,12 +207,30 @@ inline constexpr float truediv_f32(float a, float b) {
 
 inline constexpr float floordiv_f32(float a, float b) {
     if (b == 0.0f) tpy_panic("Division by zero");
+#if TPY_CMATH_CONSTEXPR
     return std::floor(a / b);
+#else
+    if consteval {
+        float q = a / b;
+        long long i = static_cast<long long>(q);
+        float d = static_cast<float>(i);
+        return (d > q) ? d - 1.0f : d;
+    }
+    return std::floor(a / b);
+#endif
 }
 
 inline constexpr float fmod_f32(float a, float b) {
     if (b == 0.0f) tpy_panic("Division by zero");
+#if TPY_CMATH_CONSTEXPR
     return std::fmod(a, b);
+#else
+    if consteval {
+        long long i = static_cast<long long>(a / b);
+        return a - static_cast<float>(i) * b;
+    }
+    return std::fmod(a, b);
+#endif
 }
 
 } // namespace tpy
