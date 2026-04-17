@@ -126,7 +126,7 @@ class TypeCompatibility:
         loc: SourceLocation | None = None,
         source_expr: TpyExpr | None = None,
         is_return: bool = False,
-        coercion_ctx: str | None = None
+        coercion_ctx: CoercionContext | None = None
     ) -> Optional[Coercion]:
         """Check if actual type is compatible with expected type.
 
@@ -171,7 +171,7 @@ class TypeCompatibility:
         loc: SourceLocation | None = None,
         source_expr: TpyExpr | None = None,
         is_return: bool = False,
-        coercion_ctx: str | None = None
+        coercion_ctx: CoercionContext | None = None
     ) -> CompatResult:
         """Core type compatibility check.
 
@@ -430,6 +430,16 @@ class TypeCompatibility:
         if (isinstance(actual, NamedType) and actual.is_user_record
                 and isinstance(expected, NamedType) and expected.is_user_record):
             if self.ctx.registry.is_subclass_of(actual, expected):
+                if coercion_ctx in (CoercionContext.ASSIGN,
+                                    CoercionContext.INIT,
+                                    CoercionContext.RETURN):
+                    msg = (f"upcast narrows '{actual}' to '{expected}' -- "
+                           f"only '{expected}' fields and methods will be accessible; "
+                           f"keep the concrete type or make '{expected}' a @dynamic protocol")
+                    if source_expr is not None:
+                        self.ctx.warning(msg, source_expr)
+                    else:
+                        self.ctx.warning_from_loc(msg, loc)
                 return None
 
         # Inheritance: Ptr[Child] -> Ptr[Parent] / Ptr[readonly[Parent]]
@@ -825,7 +835,7 @@ class TypeCompatibility:
 
     def coerce_expr(
         self, expr: TpyExpr, actual: TpyType, expected: TpyType, context: str,
-        coercion_ctx: str, is_return: bool = False
+        coercion_ctx: CoercionContext, is_return: bool = False
     ) -> TpyExpr:
         """Wrap expr in a coercion node if a conversion is needed."""
         coercion = self.check_type_compatible(
@@ -954,7 +964,7 @@ class TypeCompatibility:
         self, actual: NamedType, expected: NamedType,
         context: str, loc: object,
         source_expr: 'TpyExpr | None',
-        is_return: bool, coercion_ctx: str,
+        is_return: bool, coercion_ctx: CoercionContext,
     ) -> bool:
         """Check Container[Lit] -> Container[Expr] union-member coercion.
 

@@ -2027,7 +2027,17 @@ class ExpressionGenerator:
                 # when the callee captures by reference (e.g. generators).
                 elif (resolved_ptype.is_ref_param() or isinstance(ptype, TypeParamRef)) and self.ctx.is_temporary_expr(arg):
                     init_expr = self.gen_expr(arg, resolved_ptype)
-                    temp_name = self.ctx.temps.create(resolved_ptype, init_expr)
+                    # Child -> Parent upcast: declare the temp with the child's
+                    # type so subtype data isn't sliced; C++ binds the parent
+                    # reference via implicit upcast.
+                    temp_type = resolved_ptype
+                    if isinstance(resolved_ptype, NamedType) and resolved_ptype.is_user_record:
+                        arg_type = self.ctx.get_expr_type(arg)
+                        if (isinstance(arg_type, NamedType) and arg_type.is_user_record
+                                and arg_type != resolved_ptype
+                                and self.ctx.analyzer.registry.is_subclass_of(arg_type, resolved_ptype)):
+                            temp_type = arg_type
+                    temp_name = self.ctx.temps.create(temp_type, init_expr)
                     gen_args.append(temp_name)
                 # Union params: wrap concrete member type in variant
                 elif (union_arg := self._gen_union_arg(arg, resolved_ptype,

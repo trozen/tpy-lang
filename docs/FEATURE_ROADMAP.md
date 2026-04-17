@@ -2523,7 +2523,36 @@ implementation can require explicit `Base.method(self)` calls for disambiguation
 **Current state**: Not started. Single inheritance works. Protocols cover the
 interface-composition use case; multiple inheritance adds implementation reuse.
 
-**Dependencies**: None beyond existing single inheritance.
+**Design direction (from 2026-04 discussion)**: static MI, not virtual. Consistent
+with tpyc's "don't pay for what you don't use" philosophy: plain classes already
+use C++ struct extension with static dispatch (no vtable). Proposed approach:
+
+- `class Child(A, B, ...)` emits non-virtual C++ multiple inheritance.
+- C3 linearization (MRO) computed at sema registration time, used for method
+  resolution, field merging (error on conflict), and `super()` dispatch. All
+  compile-time.
+- `isinstance(x, Mixin)` across MI resolves at compile time via the class's
+  linearization -- same trick as `isinstance(x, StaticProtocol)` today
+  (`if constexpr` / compile-time True/False). Free, no RTTI.
+- Diamonds rejected in v1 with a diagnostic pointing at `@dynamic`. Virtual
+  inheritance only needed when opting into runtime polymorphism.
+- What this explicitly **does not** give: `list[Mixin]` with heterogeneous
+  concrete types, upcasting to a mixin parameter across calls -- these require
+  `@dynamic` (for the vtable) or explicit boxing. Same trade-offs as single
+  inheritance today.
+
+Prerequisites for this design: the `isinstance` gaps listed in TODO.md (especially
+`isinstance(child, Parent)` on inheritance hierarchies), since static MI leans on
+compile-time hierarchy walks. Also benefits from: `@dynamic` on concrete classes
+(TODO.md) so users who do need runtime polymorphism have a remedy that doesn't
+require refactoring into a `Protocol`.
+
+Predecessor work done 2026-04: silent-slicing warnings + rvalue-arg slicing
+codegen fix. The "upcast narrows ..." warning and improved def-site method-hiding
+warning both surface divergences that static MI would inherit; fixing them first
+gives a clean baseline.
+
+**Dependencies**: `isinstance` gaps (TODO.md) should be closed first.
 
 **Effort**: L (MRO computation, C++ multiple base codegen, `super()` disambiguation,
 diamond detection/rejection, constructor ordering)

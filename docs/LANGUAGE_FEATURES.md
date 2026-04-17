@@ -3543,9 +3543,11 @@ def greet(a: Animal) -> None:
     print(a.name)
 
 d = Dog("Rex", "Lab")
-a: Animal = d        # value upcast
-greet(d)             # param passing (child -> parent)
+a: Animal = d        # value upcast -- WARNING: narrows to Animal
+greet(d)             # param passing (child -> parent) -- no warning (reference bind)
 ```
+
+**Value upcast warning**: assigning, initializing, or returning a `Child` value where a `Parent` is expected emits a warning because the upcast narrows the value: only fields and methods declared on `Parent` are accessible through the variable, and method calls resolve to the parent's implementations (differs from Python's dynamic dispatch). For concrete classes, the copy slices subtype-specific fields; for generic parents, the initialization is a C++ reference bind that preserves the source but still narrows access. The upcast is still accepted. To fix, either keep the concrete type (`a: Dog = Dog(...)`) or make the parent a `@dynamic` protocol for runtime polymorphism. Passing `Child` as a `Parent` parameter does not warn because tpyc binds the parameter as a C++ reference (`Parent&`, or `const Parent&` for readonly callees) -- no copy, though method calls still dispatch statically.
 
 **Pointer coercion** also works -- a child can be used where a pointer to parent is expected:
 

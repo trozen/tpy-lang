@@ -1,1 +1,2 @@
 main.py:7: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:19: warning: upcast narrows 'IntContainer' to 'Container[Int32]' -- only 'Container[Int32]' fields and methods will be accessible; keep the concrete type or make 'Container[Int32]' a @dynamic protocol

@@ -1,0 +1,3 @@
+This test intentionally demonstrates the static-dispatch divergence from CPython:
+tpyc calls Animal.speak through the Animal param (outputs "..."), while CPython
+uses virtual dispatch and calls Dog.speak ("Woof!"). The warning flags this gap.

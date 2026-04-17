@@ -22,7 +22,7 @@ def greet(a: Animal) -> None:
 def main() -> None:
     d: Dog = Dog("Rex", "Lab")
     # Direct upcast
-    a: Animal = Dog("Buddy", "Poodle")
+    a: Animal = Dog("Buddy", "Poodle")  # tpyc: warning(/upcast narrows 'Dog' to 'Animal'/)
     print(a.name)
     # Param passing (const ref binding, no slicing)
     greet(d)
@@ -30,7 +30,7 @@ def main() -> None:
     # Multi-level upcast (grandchild -> grandparent)
     p: Puppy = Puppy("Tiny", "Corgi", 8)
     greet(p)
-    a2: Animal = p
+    a2: Animal = p  # tpyc: warning(/upcast narrows 'Puppy' to 'Animal'/)
     print(a2.name)
 
 main()

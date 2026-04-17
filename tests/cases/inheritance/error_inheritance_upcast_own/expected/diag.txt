@@ -1,0 +1,1 @@
+main.py:20: error: Type mismatch in argument 'x': expected Animal, got Dog

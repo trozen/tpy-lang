@@ -16,7 +16,7 @@ def read_container(c: Container[Int32]) -> None:
 def main() -> None:
     ic: IntContainer = IntContainer(Int32(42))
     # Value upcast to generic parent
-    c: Container[Int32] = ic
+    c: Container[Int32] = ic  # tpyc: warning(/upcast narrows 'IntContainer' to 'Container\[Int32\]'/)
     print(c.value)
     # Param passing
     read_container(ic)

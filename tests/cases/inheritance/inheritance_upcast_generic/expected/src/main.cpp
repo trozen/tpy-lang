@@ -15,7 +15,7 @@ void main() {
     // ic: IntContainer = IntContainer(Int32(42))
     IntContainer ic = IntContainer(42);
     // # Value upcast to generic parent
-    // c: Container[Int32] = ic
+    // c: Container[Int32] = ic  # tpyc: warning(/upcast narrows 'IntContainer' to 'Container\[Int32\]'/)
     Container<int32_t>& c = ic;
     // print(c.value)
     std::cout << c.value << "\n";

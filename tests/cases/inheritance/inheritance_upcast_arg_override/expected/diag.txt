@@ -1,0 +1,1 @@
+main.py:11: warning: Method 'Dog.speak' hides 'Animal.speak' -- any 'Animal' reference will call 'Animal.speak', not 'Dog.speak' (differs from Python's dynamic dispatch); make 'Animal' a @dynamic protocol for runtime dispatch

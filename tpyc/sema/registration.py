@@ -1084,10 +1084,12 @@ class TypeRegistrar:
             ancestor_with_method = self._find_ancestor_with_method(parent_info, method_name)
             if ancestor_with_method:
                 self.ctx.warning(
-                    f"Method '{record.name}.{method_name}' hides '{ancestor_with_method}.{method_name}'. "
-                    f"In Python, parent methods calling 'self.{method_name}()' use dynamic dispatch "
-                    f"(child method called). In C++, static dispatch is used (parent method called). "
-                    f"This may cause different behavior between TurboPython and CPython.",
+                    f"Method '{record.name}.{method_name}' hides "
+                    f"'{ancestor_with_method}.{method_name}' -- any "
+                    f"'{ancestor_with_method}' reference will call "
+                    f"'{ancestor_with_method}.{method_name}', not "
+                    f"'{record.name}.{method_name}' (differs from Python's dynamic dispatch); "
+                    f"make '{ancestor_with_method}' a @dynamic protocol for runtime dispatch",
                     record
                 )
 
