@@ -2400,11 +2400,11 @@ print(sum_all(nums))  # 6
 ```
 
 **Key characteristics**:
-- **Marker protocol**: Types declare conformance via `extends`, no methods required
-- **Auto-derivation from `__iter__()`**: Any user type with `__iter__() -> SpanIter[T]` automatically conforms to `NativeIterable[T]`. The compiler synthesizes C++ `begin()`/`end()` methods that delegate to `__iter__()` for concept satisfaction.
-- **Built-in conformance**: All built-in container types extend both `NativeIterable[T]` and `Iterable[T]`
-- **Codegen optimization**: The compiler uses NativeIterable extends to select zero-overhead C++ range-based for loops for built-in types
-- **API methods use `Iterable[T]`**: `str.join()`, `list()` constructor, `dict()` constructor accept `Iterable[T]`; `list.extend()` and `list +=` accept `Iterable[Own[T]]` (triggers copy warnings for reference-type elements)
+- **Marker protocol**: Sema-level conformance is reserved for built-in containers that explicitly `extends NativeIterable` in their stubs. User records do NOT auto-derive conformance -- they reach the fast path only via the `Iterable[T] | NativeIterable[T]` + isinstance narrowing idiom.
+- **Codegen-side `begin()/end()` synthesis**: User records with `__iter__() -> SpanIter[T]` or `__span__()` get compiler-synthesized `begin()/end()` so they satisfy `std::ranges::input_range` at C++ template instantiation time. The synthesis is independent of the sema-level marker.
+- **Built-in conformance**: All built-in container types (`list`, `dict`, `set`, `Span`, `Array`, `str`, `bytes`, etc.) extend both `NativeIterable[T]` and `Iterable[T]`.
+- **Codegen optimization**: For concrete built-in NativeIterable types and for `NativeIterable[T]` / `Spannable[T]` protocol parameters, the compiler emits C++ range-based-for (`for (auto x : c)`). Everything else falls to the universal `::tpy::__iter__()` + `__next__()` loop.
+- **API methods use `Iterable[T]`**: `str.join()`, `list()` constructor, `dict()` constructor accept `Iterable[T]`; `list.extend()` and `list +=` accept `Iterable[Own[T]]` (triggers copy warnings for reference-type elements).
 
 See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design rationale.
 

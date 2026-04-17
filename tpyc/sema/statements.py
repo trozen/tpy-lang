@@ -939,6 +939,17 @@ class StatementAnalyzer:
                         # fresh owned iterator (user-defined iterators).
                         # For the former, the loop-var lifetime is the
                         # container's; for the latter, it's loop-body scope.
+                        #
+                        # Known gap (no failing test): user records whose
+                        # `__iter__()` returns `SpanIterType` (e.g. ArrayList,
+                        # Stack with `__iter__(self) -> SpanIter[T]`) are NOT
+                        # `is_native_iterable`, but their iterator does
+                        # reference the container's storage. Provenance
+                        # tracking only activates for non-value loop vars
+                        # from param-derived iterables, so the gap is
+                        # currently invisible. If it surfaces, recover by
+                        # also checking whether `__iter__()` returns a
+                        # `SpanIterType` here.
                         references_container = builtin_modules.is_native_iterable(
                             inner_iterable_type, registry=self.ctx.registry
                         )

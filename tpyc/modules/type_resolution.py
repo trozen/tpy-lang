@@ -415,8 +415,8 @@ def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "Tpy
     # Try builtin types via registry.
     # allow_protocol_return=True: builtin __iter__() stubs return Iterator[T]
     # (e.g. list, dict, set, Span, Array, Range, str) and sema recognizes them
-    # structurally -- this is the single iteration-protocol entry point under
-    # the iterator overhaul (see docs/ITERATOR_OVERHAUL.md).
+    # structurally -- this is the single iteration-protocol entry point (see
+    # docs/ITERATOR_DESIGN.md).
     record = registry.get_record_for_type(tpy_type)
     if record is not None:
         # extract_type_params handles NamedType.type_args as well as
@@ -529,8 +529,9 @@ def _find_iter_method_element(
         # Note: builtins like SpanIter whose __iter__ returns Self end
         # up as plain NamedType("SpanIter", ...) after parser resolution
         # and are NOT matched here; they rely on the compiler-internal
-        # adapter list in IterableHelper. See ITERATOR_OVERHAUL.md
-        # follow-up "Parser produces plain NamedType for Self ...".
+        # adapter list in IterableHelper. The parser doesn't resolve Self
+        # to the SpanIterType typesys subclass; low-priority follow-up
+        # while the adapter list stays tiny.
         if isinstance(ret, SelfType) and "Self" in type_subst:
             ret = type_subst["Self"]
         if isinstance(ret, TypeParamRef) and ret.name in type_subst:

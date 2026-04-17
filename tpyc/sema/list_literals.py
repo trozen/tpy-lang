@@ -36,7 +36,8 @@ class IterableHelper:
         - Is a compiler-internal iterator adapter (CopyIter[T], OwnIter[T],
           generator-expression type) or SpanIter[T] (stub-declared but its
           __iter__(self) -> Self currently bypasses the unified lookup --
-          see ITERATOR_OVERHAUL.md follow-up)
+          the parser doesn't resolve Self to SpanIterType, so the adapter
+          allowlist covers it; low-priority follow-up)
         - Has __next__() (Iterator conformance)
         - Has __iter__() returning an iterator type
         """

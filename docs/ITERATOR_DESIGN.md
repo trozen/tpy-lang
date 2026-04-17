@@ -8,20 +8,21 @@
 | `range()` counter-loop optimization | **Done** | `for i in range(n)` → C-style `for` |
 | `Iterator[T]` protocol | **Done** | `__next__()` with `@error_return(StopIteration)` -> `std::expected` |
 | User `__next__` + `raise StopIteration` | **Done** | Auto `@error_return(StopIteration)`, `std::expected` codegen |
-| `__iter__` container→iterator separation | **Done** | Structural detection, no protocol |
-| `NativeIterable[T]` (C++ containers) | **Done** | Marker protocol for `begin()`/`end()` |
-| Iterator consumption semantics | **Done** | `auto&` for lvalues, `auto` for rvalues |
+| `__iter__` container→iterator separation | **Done** | Structural detection via `get_iterable_element_type()` |
+| `NativeIterable[T]` (C++ containers) | **Done** | Marker protocol for `begin()`/`end()`; opt-in fast-path via `Iterable[T] \| NativeIterable[T]` + isinstance narrowing |
+| `Spannable[T]` protocol | **Done** | `__span__() -> Span[readonly[T]]`; used for `Span[T]` coercion and contiguous iteration |
+| `Iterable[T]` protocol | **Done** | Structural conformance; works as parameter type and union arm |
+| Iterator consumption semantics | **Done** | `auto&&` binding preserves in-place mutation and move-only owning iterators |
 | `__next__()` explicit calls | **Done** | Direct calls require `try/except StopIteration` |
-| `Iterable[T]` protocol | **Todo** | Needs return-type conformance in protocol system |
-| Consuming iteration (`__iter__(self: Own[Self])`) | **Planned** | See `docs/CONSUMING_ITERATION_DESIGN.md` |
-| `OwnIter[T]` runtime type | **Planned** | Drain iterator for `list[T]`, owns moved `std::vector<T>` |
-| `Iterator[Own[T]]` coercion to `Iterator[T]` | **Planned** | Strip `Own` on each element |
-| C++ `begin()`/`end()` on iterators | **Todo** | Make generated types usable with `std::ranges` |
+| Consuming iteration (`__iter__(self: Own[Self])`) | **Done** | See `docs/CONSUMING_ITERATION_DESIGN.md` |
+| `OwnIter[T]` runtime type | **Done** | Drain iterator for `list[T]`, owns moved `std::vector<T>` |
+| `Iterator[Own[T]]` coercion to `Iterator[T]` | **Done** | Strips `Own` on each element |
+| C++ `begin()`/`end()` on iterators | **Done** | `next_iter_mixin` CRTP adds begin/end from `__next__`; builtin containers native |
+| Iterator combinators | **Done** | `enumerate()`, `zip()`, `reversed()`, `map()`, `filter()` |
 | `next()` builtin | **Todo** | `next(it)` and `next(it, default)` |
-| `iter()` builtin | **Todo** | `iter(obj)` calls `__iter__()`, two-arg `iter(callable, sentinel)` |
-| `__reversed__` / `reversed()` | **Todo** | User-defined reverse iteration |
-| `__contains__` / `in` for user types | **Todo** | Currently `in` only works on built-in containers |
-| Iterator combinators | **Todo** | `enumerate()`, `zip()`, `filter()`, `map()` |
+| `iter()` builtin | **Done** | `iter(obj)` calls `__iter__()`; two-arg form (sentinel) TODO |
+| `__reversed__` / `reversed()` user types | **Todo** | `reversed()` builtin works on built-in containers; user `__reversed__` is a roadmap item |
+| `__contains__` / `in` for user types | **Todo** | `in` falls back to `__iter__`+`__next__` for non-builtins; user `__contains__` dispatch is a roadmap item |
 | Generator functions (`yield`) | **Done** | State-machine struct or lambda wrapper implementing `Iterator[T]` |
 | `yield from` | **Todo** | Delegation to sub-generators |
 | Generator `send()`/`throw()`/`close()` | **Todo** | Coroutine protocol |
@@ -33,33 +34,65 @@
 
 ## Architecture
 
-### Three For-Loop Paths
+### Sema / codegen split
 
-The `for` statement dispatches to one of three codegen paths based on the iterable's type:
+**Sema** reasons about iterability in Python terms: "does this type have `__iter__() -> Iterator[T]` (declared, auto-synthesized from `__next__`, or inherited), or is it a supported iterator shape?" The single entry point is `get_iterable_element_type(type, registry)` in `tpyc/modules/type_resolution.py`. No physical-lowering knowledge lives in sema.
+
+**Codegen** picks the physical lowering. `_gen_for_each_loop` in `codegen_cpp/statements.py` has a priority-ordered dispatch:
 
 ```
 for x in expr:
     body
 
-    ┌─ Iterator[T]?      ──→  while-loop (or range counter-loop)
-    │
-    ├─ has __iter__()?   ──→  __iter__() + while-loop
-    │
-    └─ NativeIterable?   ──→  C++ range-based for
+  1. enum iteration               → range-for over EnumUtil<E>::members
+  2. OwnIter[T] / CopyIter[T]     → range-for (they expose begin/end natively)
+  3. auto-consuming iteration     → user __iter__(Own[Self]) path
+  4. range(...) literal call      → C-style counter loop (or Range<T> begin/end)
+  5. concrete NativeIterable OR
+     NativeIterable[T] / Spannable[T]
+     protocol param                → C++ range-based for (begin/end)
+  6. universal default             → auto&& __itr = ::tpy::__iter__(src);
+                                     for (;;) { r = __itr.__next__();
+                                                if (!r.has_value()) break;
+                                                x = unwrap_ref(*r); ... }
 ```
 
-**Path 1: Iterator** -- types with `__next__()` returning `std::expected<T, StopIteration>` via `@error_return(StopIteration)`. Includes `Range[T]`, `SpanIter[T]`, and user-defined iterators. Range calls get an additional optimization to C-style counter loops.
+Only a concrete type `is_native_iterable(T)` (i.e. extends the `NativeIterable[T]` marker) reaches branch 5 for the container form; user records fall through to branch 6 unless they opt in via an `Iterable[T] | NativeIterable[T]` param and `isinstance(x, NativeIterable)` narrowing (see "NativeIterable fast-path narrowing" below). Spannable protocol params also reach branch 5, because the compiler synthesizes `begin()`/`end()` on records that declare `__span__()`.
 
-**Path 2: `__iter__` protocol** -- types with `__iter__()` returning an Iterator. The container is materialized first, then `__iter__()` is called to obtain a separate iterator object.
+Two implementation details are load-bearing:
 
-**Path 3: NativeIterable** -- C++ containers with `begin()`/`end()` (`list`, `Array`, `Span`, `str`). Uses C++ range-based `for` directly.
+- **`auto&&` binding for `__itr`** in the universal default. Universal-reference deduces `T&` for reference returns (iterator self& -- in-place consumption, no copy, works with move-only owning iterators) and lifetime-extends value returns (container -> `native_iterator` fallback).
+- **`SpanIter.__iter__` is non-const.** Both the stub and runtime return `SpanIter&`. A const `__iter__` would contradict Python semantics (iterator needs `__next__` to mutate) and block the `auto&&` universal path.
+
+### NativeIterable fast-path narrowing
+
+`NativeIterable[T]` is primarily a marker protocol used internally (sema recognizes built-in containers that extend it; codegen uses it to select C++ range-for over the `__iter__`/`__next__` adapter). It is NOT recommended as a plain parameter type -- plain `Iterable[T]` handles the common case.
+
+Users who want explicit control over iteration strategy (e.g. writing a hot loop where they know the argument has real `begin`/`end`) can use the narrowing idiom:
+
+```python
+def sum_fast(it: Iterable[T] | NativeIterable[T]) -> T:
+    total: T = ...
+    if isinstance(it, NativeIterable):
+        # narrowed to NativeIterable[T] -- C++ range-for (begin/end)
+        for x in it: ...
+    else:
+        # Iterable[T] -- universal __iter__/__next__
+        for x in it: ...
+```
+
+Sema's protocol-isinstance narrowing is stored in `then_type_facts` and propagated into codegen via `CodeGenContext.protocol_narrowings` (save/restored around every if/elif/else/while body). `codegen_cpp/types.py::get_resolved_type(TpyName)` consults it first, so the for-loop dispatch inside each branch sees the narrower type and picks the matching peephole.
+
+Automatic dispatch (emitting both branches inside every `Iterable[T]` template, gated by `if constexpr (NativeIterable<T>)`) is a planned follow-up; benchmark-gated since modern inlining often erases the difference.
 
 ### Key Types
 
 | Type | Role | C++ |
 |------|------|-----|
 | `Iterator[T]` | Protocol for lazy iterators (`__next__` + `@error_return(StopIteration)`) | `std::expected<T, StopIteration>` return |
-| `NativeIterable[T]` | Marker protocol for C++ containers | `tpy::NativeIterable` concept |
+| `Iterable[T]` | Protocol for types with `__iter__()` | Concept: `requires { ::tpy::__iter__(t); }` |
+| `NativeIterable[T]` | Marker protocol for C++ containers (begin/end) | `tpy::NativeIterable` concept |
+| `Spannable[T]` | Protocol for types with `__span__() -> Span[readonly[T]]` | `tpy::Spannable` concept |
 | `Range[T]` | Built-in range iterator (generic) | `tpy::Range<T>` |
 
 ---
@@ -269,11 +302,11 @@ This path is not user-extensible — it requires the C++ type to support `std::r
 
 ## Known Limitations
 
-- **No `Iterable[T]` protocol**: `__iter__` support is structural (detected by `get_iter_element_type()`), not protocol-based. Can't write `def f(it: Iterable[T])` as a parameter type. Adding it requires return-type conformance checking in the protocol system.
-
 - **No `next()` builtin**: Direct `obj.__next__()` calls require `try/except StopIteration`. The `next()` builtin function is not yet implemented.
 
-- **No C++ range compatibility for user iterators**: User-defined `Iterator` and `__iter__` types don't expose `begin()`/`end()`, so they can't be used with C++ `std::ranges` algorithms or range-based `for` from external C++ code.
+- **`NativeIterable` sema is structural, C++ concept is strict.** The sema conformance check matches any type with `__iter__` (the stub's only method); the C++ concept requires `std::ranges::begin`/`end`. Matters for the `Iterable[T] | NativeIterable[T]` narrowing idiom -- sema may allow the union to accept a type that doesn't satisfy the C++ concept, in which case the narrowed branch doesn't compile. Tightening sema to require explicit `extends NativeIterable` is tracked in TODO.md as a bounded follow-up.
+
+- **`match/case` doesn't save/restore `protocol_narrowings`.** Protocol-isinstance narrowing inside a `case` guard leaks past the case boundary. Same pattern fixed for `if/while`; TODO.md tracks the match/case version.
 
 ---
 
@@ -289,7 +322,9 @@ Tests live in `tests/cases/iterators/`:
 | `for_range_bigint` | `range()` with BigInt args |
 | `for_range_mixed` | Mixed Int32/BigInt range args |
 | `for_range_snapshot` | Generated C++ for range loops |
-| `for_native_iterable` | `NativeIterable[T]` protocol parameter |
+| `iterable_protocol_ops` | `Iterable[T]` protocol parameter (nested loops, `in`, protocol-to-protocol forwarding) |
+| `iterable_native_narrowing` | `Iterable[T] \| NativeIterable[T]` + isinstance narrowing; elif / nested-if save/restore |
+| `iterable_native_narrowing_user_iter` | Narrowing with a user iterator (tpyc-only, no_cpython.txt) |
 | `for_native_iterator` | `Iterator[T]` protocol parameter |
 | `for_user_iterator` | User `__next__` pattern |
 | `for_user_iterator_dunder` | User `__next__` + `raise StopIteration` |
@@ -299,7 +334,6 @@ Tests live in `tests/cases/iterators/`:
 | `for_iterator_field_consumption` | Consumption via `obj.field` |
 | `for_iterator_subscript_consumption` | Consumption via `items[idx]` |
 | `for_iterator_method_consumption` | Consumption via `obj.method()` |
-| `native_iterable_str` | String iteration (`NativeIterable[Char]`) |
 | `gen_basic` | Simple while-loop generator |
 | `gen_sequential` | Multiple sequential yields |
 | `gen_conditional` | Yield in if/else |
@@ -335,8 +369,13 @@ Tests live in `tests/cases/iterators/`:
 |------|------|
 | `runtime/cpp/include/tpy/range.hpp` | `Range<T>` with `__next__()` -> `std::expected` |
 | `runtime/cpp/include/tpy/protocols.hpp` | `NativeIterable` concept |
-| `tpyc/modules/tpy.py` | `Iterator[T]` protocol definition |
-| `tpyc/modules/__init__.py` | `get_native_iterator_element_type()`, `get_iter_element_type()` |
+| `lib/tpy/tpy/_typing/__init__.py` | `Iterator[T]` / `Iterable[T]` protocol definitions |
+| `lib/tpy/tpy/_core/_types.py` | `NativeIterable[T]` / `Spannable[T]` protocol definitions |
+| `tpyc/modules/__init__.py` | `get_iterable_element_type()`, `is_native_iterable()`, `ITERABLE_PROTOCOL_QNAMES` |
+| `tpyc/modules/type_resolution.py` | `get_iterable_element_type()` -- single source of truth for iteration element types |
+| `tpyc/codegen_cpp/context.py` | `protocol_narrowings` dict + save/restore helpers |
+| `tpyc/codegen_cpp/types.py` | `get_resolved_type()` consults `protocol_narrowings` |
+| `tpyc/codegen_cpp/records.py` | Synthesizes `begin()/end()` for user records with `__iter__ -> SpanIter[T]` or `__span__()` |
 | `tpyc/sema/registration.py` | `__next__` auto `@error_return(StopIteration)` |
 | `tpyc/sema/analyzer.py` | `__next__` validation (return type) |
 | `tpyc/sema/statements.py` | `raise StopIteration` validation |
