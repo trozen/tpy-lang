@@ -199,8 +199,7 @@ class MatchGenerator:
                         saved_narrow[var_name] = self.ctx.narrowed_vars.get(var_name)
                         self.ctx.narrowed_vars[var_name] = case_var
                 self.ctx.indent_level += 1
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 1
                 self.stmts.ctx.restore_narrowed_vars(saved_narrow)
                 out.write(f"{inner}break;\n")
@@ -219,8 +218,7 @@ class MatchGenerator:
                     # Wildcard subsumes all alternatives -> default
                     out.write(f"{indent}default: {{\n")
                     self.ctx.indent_level += 1
-                    for s in case.body:
-                        self.stmts.gen_stmt(out, s)
+                    self._emit_case_body(out, case.body, case.type_facts)
                     self.ctx.indent_level -= 1
                     out.write(f"{inner}break;\n")
                     out.write(f"{indent}}}\n")
@@ -232,8 +230,7 @@ class MatchGenerator:
                         out.write(f"{indent}case {idx}:\n")
                     out.write(f"{indent}{{\n")
                     self.ctx.indent_level += 1
-                    for s in case.body:
-                        self.stmts.gen_stmt(out, s)
+                    self._emit_case_body(out, case.body, case.type_facts)
                     self.ctx.indent_level -= 1
                     out.write(f"{inner}break;\n")
                     out.write(f"{indent}}}\n")
@@ -250,15 +247,16 @@ class MatchGenerator:
                             self._gen_match_field_bindings(out, alt, case_var, inner)
                         saved = self._apply_narrowing(case.type_facts, case_var)
                         self.ctx.indent_level += 1
-                        for s in case.body:
-                            self.stmts.gen_stmt(out, s)
+                        self._emit_case_body(out, case.body, case.type_facts)
                         self.ctx.indent_level -= 1
                         self.stmts.ctx.restore_narrowed_vars(saved)
                         out.write(f"{inner}break;\n")
                         out.write(f"{indent}}}\n")
 
             elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
-                self._gen_switch_default_arm(out, pattern, as_name, as_raw_name, case.body, indent, inner)
+                self._gen_switch_default_arm(
+                    out, pattern, as_name, as_raw_name, case.body,
+                    indent, inner, case.type_facts)
 
             else:
                 raise CodeGenError(f"Unsupported pattern in union switch: {type(pattern).__name__}")
@@ -399,22 +397,17 @@ class MatchGenerator:
                     out.write(f"{indent}case {label}:\n")
                 out.write(f"{indent}{{\n")
 
-            # Push literal_facts from the first entry (all entries in a group
-            # match the same value, so type_facts are equivalent)
-            lit_snap = self.ctx.save_literal_facts()
+            # Bound literal_facts/protocol_narrowings to the case scope.
+            # type_facts from the first entry apply to the whole group (all
+            # entries in a group match the same value, so facts are equivalent).
             type_facts_0 = entries[0][6]
-            if type_facts_0:
-                for var_name, ty in type_facts_0.items():
-                    if isinstance(ty, LiteralType):
-                        self.ctx.literal_facts[var_name] = ty
 
             # Single entry, no guard -> simple body
             if len(entries) == 1 and entries[0][0] is None:
                 _, body, cap, as_name, raw_names, _loc, _tf = entries[0]
                 self._emit_switch_binding(out, cap, as_name, raw_names, inner, subject_expr)
                 self.ctx.indent_level += 1
-                for s in body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, body, type_facts_0)
                 self.ctx.indent_level -= 1
             else:
                 # Emit capture/as binding before the guard chain so guards
@@ -437,15 +430,13 @@ class MatchGenerator:
                         if_opened = True
                         out.write(f"{inner}{keyword} ({guard_code}) {{\n")
                         self.ctx.indent_level += 2
-                        for s in body:
-                            self.stmts.gen_stmt(out, s)
+                        self._emit_case_body(out, body, type_facts_0)
                         self.ctx.indent_level -= 2
                     else:
                         # Unguarded entry: final else
                         out.write(f"{inner}}} else {{\n")
                         self.ctx.indent_level += 2
-                        for s in body:
-                            self.stmts.gen_stmt(out, s)
+                        self._emit_case_body(out, body, type_facts_0)
                         self.ctx.indent_level -= 2
                 # Close last if/else and add goto fallback if needed
                 if has_unguarded:
@@ -455,8 +446,6 @@ class MatchGenerator:
                     out.write(f"{inner}goto {default_label};\n")
                 else:
                     out.write(f"{inner}}}\n")
-
-            self.ctx.restore_literal_facts(lit_snap)
 
             out.write(f"{inner}break;\n")
             out.write(f"{indent}}}\n")
@@ -516,6 +505,7 @@ class MatchGenerator:
         self, out: TextIO, pattern: TpyWildcardPattern | TpyCapturePattern,
         as_name: str | None, as_raw_name: str | None,
         body: list[TpyStmt], indent: str, inner: str,
+        type_facts: dict[str, TpyType] | None = None,
     ) -> None:
         """Emit a default: arm in a switch statement."""
         out.write(f"{indent}default: {{\n")
@@ -523,8 +513,7 @@ class MatchGenerator:
             self._emit_binding(out, escape_cpp_name(pattern.name), pattern.name, "__match_subject", inner)
         self._emit_binding(out, as_name, as_raw_name, "__match_subject", inner)
         self.ctx.indent_level += 1
-        for s in body:
-            self.stmts.gen_stmt(out, s)
+        self._emit_case_body(out, body, type_facts)
         self.ctx.indent_level -= 1
         out.write(f"{inner}break;\n")
         out.write(f"{indent}}}\n")
@@ -722,8 +711,7 @@ class MatchGenerator:
                 saved = self._apply_narrowing(arm_case.type_facts, case_var)
             extra = 3 if needs_scope else 2
             self.ctx.indent_level += extra
-            for s in arm_case.body:
-                self.stmts.gen_stmt(out, s)
+            self._emit_case_body(out, arm_case.body, arm_case.type_facts)
             out.write(f"{INDENT * self.ctx.indent_level}goto {end_label};\n")
             self.ctx.indent_level -= extra
             if has_narrowing:
@@ -734,8 +722,7 @@ class MatchGenerator:
                 saved = self._apply_narrowing(arm_case.type_facts, case_var)
             extra = 2 if needs_scope else 1
             self.ctx.indent_level += extra
-            for s in arm_case.body:
-                self.stmts.gen_stmt(out, s)
+            self._emit_case_body(out, arm_case.body, arm_case.type_facts)
             out.write(f"{INDENT * self.ctx.indent_level}goto {end_label};\n")
             self.ctx.indent_level -= extra
             if has_narrowing:
@@ -755,15 +742,32 @@ class MatchGenerator:
                 self.ctx.narrowed_vars[var_name] = case_var
         return saved
 
-    def _push_literal_facts(self, case: 'TpyMatchCase') -> dict[str, TpyType]:
-        """Push LiteralType narrowing facts for dead branch elimination.
-        Returns saved literal_facts for restoration."""
-        saved = self.ctx.save_literal_facts()
-        if case.type_facts:
-            for var_name, ty in case.type_facts.items():
+    def _emit_case_body(
+        self, out: TextIO, body: list['TpyStmt'],
+        type_facts: dict[str, TpyType] | None = None,
+    ) -> None:
+        """Emit a case body with literal_facts/protocol_narrowings bounded to the case scope.
+
+        Persistent narrowings introduced inside a body (e.g. `assert isinstance(x, P)`)
+        would otherwise bleed into later cases or post-match code. Snapshotting and
+        restoring around body emission keeps them scoped to this case.
+
+        When type_facts is provided, LiteralType facts are pushed for dead-branch
+        elimination. narrowed_vars std::get extractions are managed separately by
+        the caller via _apply_narrowing (they depend on a case_var).
+        """
+        proto_saved = self.ctx.save_protocol_narrowings()
+        lit_saved = self.ctx.save_literal_facts()
+        if type_facts:
+            for var_name, ty in type_facts.items():
                 if isinstance(ty, LiteralType):
                     self.ctx.literal_facts[var_name] = ty
-        return saved
+        try:
+            for s in body:
+                self.stmts.gen_stmt(out, s)
+        finally:
+            self.ctx.restore_literal_facts(lit_saved)
+            self.ctx.restore_protocol_narrowings(proto_saved)
 
     def _gen_match_if_elif(self, out: TextIO, stmt: TpyMatch, indent: str) -> None:
         """Generate match/case as an if/elif/else chain (for str and float subjects)."""
@@ -774,7 +778,6 @@ class MatchGenerator:
             keyword = "if" if i == 0 else "} else if"
             pattern = case.pattern
             guard = case.guard
-            lit_snap = self._push_literal_facts(case)
 
             if isinstance(pattern, TpyLiteralPattern):
                 cond = self._gen_literal_cond(pattern)
@@ -784,8 +787,7 @@ class MatchGenerator:
                     cond = f"{cond} && {guard_code}"
                 out.write(f"{indent}{keyword} ({cond}) {{\n")
                 self.ctx.indent_level += 1
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 1
 
             elif isinstance(pattern, TpyOrPattern):
@@ -802,8 +804,7 @@ class MatchGenerator:
                     cond = f"({cond}) && {guard_code}"
                 out.write(f"{indent}{keyword} ({cond}) {{\n")
                 self.ctx.indent_level += 1
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 1
 
             elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
@@ -827,8 +828,7 @@ class MatchGenerator:
                 if isinstance(pattern, TpyCapturePattern) and guard is None:
                     self._emit_binding(out, escape_cpp_name(pattern.name), pattern.name, "__match_subject", inner)
                 self.ctx.indent_level += 1
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 1
 
             elif isinstance(pattern, TpyAsPattern):
@@ -849,16 +849,14 @@ class MatchGenerator:
                         self.ctx.temps.flush(out, inner)
                         out.write(f"{inner}if ({guard_code}) {{\n")
                         self.ctx.indent_level += 2
-                        for s in case.body:
-                            self.stmts.gen_stmt(out, s)
+                        self._emit_case_body(out, case.body, case.type_facts)
                         self.ctx.indent_level -= 2
                         out.write(f"{inner}}}\n")
                     else:
                         out.write(f"{indent}{keyword} ({cond}) {{\n")
                         self._emit_binding(out, as_name, pattern.name, "__match_subject", inner)
                         self.ctx.indent_level += 1
-                        for s in case.body:
-                            self.stmts.gen_stmt(out, s)
+                        self._emit_case_body(out, case.body, case.type_facts)
                         self.ctx.indent_level -= 1
                 elif isinstance(inner_pat, (TpyWildcardPattern, TpyCapturePattern)):
                     if guard is not None:
@@ -880,16 +878,13 @@ class MatchGenerator:
                         if isinstance(inner_pat, TpyCapturePattern):
                             self._emit_binding(out, escape_cpp_name(inner_pat.name), inner_pat.name, "__match_subject", inner)
                     self.ctx.indent_level += 1
-                    for s in case.body:
-                        self.stmts.gen_stmt(out, s)
+                    self._emit_case_body(out, case.body, case.type_facts)
                     self.ctx.indent_level -= 1
                 else:
                     raise CodeGenError(f"Unsupported as-pattern inner: {type(inner_pat).__name__}")
 
             else:
                 raise CodeGenError(f"Unsupported match pattern: {type(pattern).__name__}")
-
-            self.ctx.restore_literal_facts(lit_snap)
 
         out.write(f"{indent}}}\n")
 
@@ -970,12 +965,9 @@ class MatchGenerator:
             cond = f"({cond}) && {guard_code}" if is_or else f"{cond} && {guard_code}"
             out.write(f"{indent}if ({cond}) {{\n")
             self._emit_binding(out, as_name, as_raw, "__match_subject", inner)
-            lit_snap = self._push_literal_facts(case)
             self.ctx.indent_level += 1
-            for s in case.body:
-                self.stmts.gen_stmt(out, s)
+            self._emit_case_body(out, case.body, case.type_facts)
             self.ctx.indent_level -= 1
-            self.ctx.restore_literal_facts(lit_snap)
             out.write(f"{inner}goto {end_label};\n")
             out.write(f"{indent}}}\n")
 
@@ -1005,12 +997,9 @@ class MatchGenerator:
                 pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
                 out.write(f'{sw_inner}if (__match_subject == "{escape_cpp_string(string_val)}") {{\n')
                 self._emit_binding(out, as_name, as_raw, "__match_subject", sw_deep)
-                lit_snap = self._push_literal_facts(case)
                 self.ctx.indent_level += (3 if kind == "char_at" else 2)
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= (3 if kind == "char_at" else 2)
-                self.ctx.restore_literal_facts(lit_snap)
                 out.write(f"{sw_deep}goto {end_label};\n")
                 out.write(f"{sw_inner}}}\n")
             out.write(f"{sw_inner}break;\n")
@@ -1036,14 +1025,12 @@ class MatchGenerator:
                         self.ctx.temps.flush(out, inner)
                         out.write(f"{inner}if ({guard_code}) {{\n")
                         self.ctx.indent_level += 2
-                        for s in case.body:
-                            self.stmts.gen_stmt(out, s)
+                        self._emit_case_body(out, case.body, case.type_facts)
                         self.ctx.indent_level -= 2
                         out.write(f"{inner}}}\n")
                     else:
                         self.ctx.indent_level += 1
-                        for s in case.body:
-                            self.stmts.gen_stmt(out, s)
+                        self._emit_case_body(out, case.body, case.type_facts)
                         self.ctx.indent_level -= 1
                 else:
                     raise CodeGenError(
@@ -1073,8 +1060,7 @@ class MatchGenerator:
                 self._gen_match_field_bindings(out, pattern, "__match_subject", inner)
                 self._emit_binding(out, as_name, as_raw, "__match_subject", inner)
                 self.ctx.indent_level += 1
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 1
 
             elif isinstance(pattern, TpyOrPattern):
@@ -1099,8 +1085,7 @@ class MatchGenerator:
                 else:
                     out.write(f"{indent}}} else {{\n")
                 self.ctx.indent_level += 1
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 1
 
             elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
@@ -1112,8 +1097,7 @@ class MatchGenerator:
                     self._emit_binding(out, escape_cpp_name(pattern.name), pattern.name, "__match_subject", inner)
                 self._emit_binding(out, as_name, as_raw, "__match_subject", inner)
                 self.ctx.indent_level += 1
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 1
 
             else:
@@ -1145,15 +1129,13 @@ class MatchGenerator:
                     self.ctx.temps.flush(out, inner)
                     out.write(f"{inner}if ({guard_code}) {{\n")
                     self.ctx.indent_level += 2
-                    for s in case.body:
-                        self.stmts.gen_stmt(out, s)
+                    self._emit_case_body(out, case.body, case.type_facts)
                     self.ctx.indent_level -= 2
                     out.write(f"{inner}    goto {end_label};\n")
                     out.write(f"{inner}}}\n")
                 else:
                     self.ctx.indent_level += 1
-                    for s in case.body:
-                        self.stmts.gen_stmt(out, s)
+                    self._emit_case_body(out, case.body, case.type_facts)
                     self.ctx.indent_level -= 1
                     out.write(f"{inner}goto {end_label};\n")
                 out.write(f"{indent}}}\n")
@@ -1167,16 +1149,14 @@ class MatchGenerator:
                     self.ctx.temps.flush(out, indent)
                     out.write(f"{indent}if ({guard_code}) {{\n")
                     self.ctx.indent_level += 1
-                    for s in case.body:
-                        self.stmts.gen_stmt(out, s)
+                    self._emit_case_body(out, case.body, case.type_facts)
                     self.ctx.indent_level -= 1
                     out.write(f"{inner}goto {end_label};\n")
                     out.write(f"{indent}}}\n")
                 else:
                     out.write(f"{indent}{{\n")
                     self.ctx.indent_level += 1
-                    for s in case.body:
-                        self.stmts.gen_stmt(out, s)
+                    self._emit_case_body(out, case.body, case.type_facts)
                     self.ctx.indent_level -= 1
                     out.write(f"{indent}}}\n")
 
@@ -1210,8 +1190,7 @@ class MatchGenerator:
                     else:
                         out.write(f"{indent}{{\n")
                 self.ctx.indent_level += 1
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 1
                 out.write(f"{inner}goto {end_label};\n")
                 out.write(f"{indent}}}\n")
@@ -1307,8 +1286,7 @@ class MatchGenerator:
             pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
             self._emit_binding(out, as_name, as_raw, "__match_subject", inner)
             self.ctx.indent_level += 1
-            for s in case.body:
-                self.stmts.gen_stmt(out, s)
+            self._emit_case_body(out, case.body, case.type_facts)
             self.ctx.indent_level -= 1
         else:
             # Multiple or guarded None arms: guard chain inside null block
@@ -1332,8 +1310,7 @@ class MatchGenerator:
                 self._emit_binding(out, as_name, as_raw, "__match_subject", deep)
                 extra = 2 if case.guard is not None or j > 0 else 1
                 self.ctx.indent_level += extra
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= extra
             if any(c.guard is not None for c in none_cases):
                 out.write(f"{inner}}}\n")
@@ -1395,8 +1372,7 @@ class MatchGenerator:
                 self._gen_match_field_bindings(out, pattern, subject_expr, inner)
                 self._emit_binding(out, as_name, as_raw, subject_expr, inner)
                 self.ctx.indent_level += 2
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 2
 
             elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
@@ -1408,8 +1384,7 @@ class MatchGenerator:
                     self._emit_binding(out, escape_cpp_name(pattern.name), pattern.name, subject_expr, inner)
                 self._emit_binding(out, as_name, as_raw, subject_expr, inner)
                 self.ctx.indent_level += 2
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 2
 
             elif isinstance(pattern, TpyOrPattern):
@@ -1438,8 +1413,7 @@ class MatchGenerator:
                     else:
                         out.write(f"{indent}}} else {{\n")
                 self.ctx.indent_level += 2
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 2
 
             else:
@@ -1471,8 +1445,7 @@ class MatchGenerator:
                 out.write(f"{indent}{keyword} ({cond}) {{\n")
                 self._emit_binding(out, as_name, as_raw, deref, inner)
                 self.ctx.indent_level += 2
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 2
 
             elif isinstance(pattern, TpyValuePattern):
@@ -1486,8 +1459,7 @@ class MatchGenerator:
                 out.write(f"{indent}{keyword} ({cond}) {{\n")
                 self._emit_binding(out, as_name, as_raw, deref, inner)
                 self.ctx.indent_level += 2
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 2
 
             elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
@@ -1499,8 +1471,7 @@ class MatchGenerator:
                     self._emit_binding(out, escape_cpp_name(pattern.name), pattern.name, deref, inner)
                 self._emit_binding(out, as_name, as_raw, deref, inner)
                 self.ctx.indent_level += 2
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 2
 
             elif isinstance(pattern, TpyOrPattern):
@@ -1532,8 +1503,7 @@ class MatchGenerator:
                     else:
                         out.write(f"{indent}}} else {{\n")
                 self.ctx.indent_level += 2
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 2
 
             else:
@@ -1586,8 +1556,7 @@ class MatchGenerator:
                 out.write(f"{indent}{keyword} ({cond}) {{\n")
                 self._emit_binding(out, as_name, as_raw, "__match_subject", inner)
                 self.ctx.indent_level += 1
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 1
 
             elif isinstance(pattern, TpyLiteralPattern):
@@ -1601,8 +1570,7 @@ class MatchGenerator:
                 out.write(f"{indent}{keyword} ({cond}) {{\n")
                 self._emit_binding(out, as_name, as_raw, deref, inner)
                 self.ctx.indent_level += 1
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 1
 
             elif isinstance(pattern, TpyValuePattern):
@@ -1617,8 +1585,7 @@ class MatchGenerator:
                 out.write(f"{indent}{keyword} ({cond}) {{\n")
                 self._emit_binding(out, as_name, as_raw, deref, inner)
                 self.ctx.indent_level += 1
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 1
 
             elif isinstance(pattern, TpyClassPattern):
@@ -1635,8 +1602,7 @@ class MatchGenerator:
                 self._gen_match_field_bindings(out, pattern, deref, inner)
                 self._emit_binding(out, as_name, as_raw, deref, inner)
                 self.ctx.indent_level += 1
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 1
 
             elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
@@ -1664,8 +1630,7 @@ class MatchGenerator:
                     self._emit_binding(out, escape_cpp_name(pattern.name), pattern.name, deref, inner)
                 self._emit_binding(out, as_name, as_raw, deref, inner)
                 self.ctx.indent_level += 1
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 1
 
             elif isinstance(pattern, TpyOrPattern):
@@ -1709,8 +1674,7 @@ class MatchGenerator:
                     else:
                         out.write(f"{indent}}} else {{\n")
                 self.ctx.indent_level += 1
-                for s in case.body:
-                    self.stmts.gen_stmt(out, s)
+                self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 1
 
             else:

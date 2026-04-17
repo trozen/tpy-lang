@@ -347,9 +347,11 @@ values. Narrowing facts propagate through `type_facts` for codegen.
 
 **Codegen** (`codegen_cpp/match.py`): `LiteralType` subjects route to
 existing codegen paths based on `base_type`: string switch/if-elif for
-str, primitive switch for int/bool. `_push_literal_facts` pushes
+str, primitive switch for int/bool. `_emit_case_body` pushes LiteralType
 narrowing facts into `literal_facts` for dead branch elimination within
-arm bodies. `_SwitchEntry` extended with `type_facts` for the switch path.
+arm bodies, and snapshots both `literal_facts` and `protocol_narrowings`
+so persistent narrowings (e.g. `assert isinstance`) stay case-scoped.
+`_SwitchEntry` extended with `type_facts` for the switch path.
 
 **Operator fix** (`sema/operators.py`): `LiteralType` resolved to
 `base_type` in `get_effective_type_for_binop` and `_resolve_pending_types`,
