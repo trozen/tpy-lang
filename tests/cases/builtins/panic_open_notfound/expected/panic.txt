@@ -1,2 +1,1 @@
-terminate called after throwing an instance of 'tpy::FileNotFoundError'
-  what():  open(): cannot open '/nonexistent/path/file.txt'
+TurboPython panic: uncaught tpy::FileNotFoundError: open(): cannot open '/nonexistent/path/file.txt'

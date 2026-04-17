@@ -1,2 +1,1 @@
-terminate called after throwing an instance of 'tpy::ValueError'
-  what():  something went wrong
+TurboPython panic: uncaught tpy::ValueError: something went wrong

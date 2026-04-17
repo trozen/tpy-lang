@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <cxxabi.h>
 #include <exception>
 #include <expected>
 #include <optional>
@@ -16,6 +17,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <typeinfo>
 #include <variant>
 
 namespace tpy {
@@ -71,6 +73,41 @@ auto next(Iter& it) -> decltype(it.__next__()) {
     std::fwrite(msg.data(), 1, msg.size(), stderr);
     std::fputc('\n', stderr);
     std::exit(1);
+}
+
+// Normalizes uncaught-exception output across libstdc++/libc++. Installed from
+// codegen-emitted main() via std::set_terminate; not installed when codegen
+// runs in --no-main mode, so host applications keep their own terminate handler.
+[[noreturn]] inline void tpy_terminate_handler() noexcept {
+    const char* type_name = "unknown";
+    const char* what_msg = nullptr;
+    char* demangled = nullptr;
+
+    // Hold ex across the print: what_msg points into the exception object,
+    // which is only guaranteed to outlive any active exception_ptr owning it.
+    std::exception_ptr ex = std::current_exception();
+    if (ex) {
+        try {
+            std::rethrow_exception(ex);
+        } catch (const std::exception& e) {
+            int status = 0;
+            demangled = abi::__cxa_demangle(typeid(e).name(), nullptr, nullptr, &status);
+            type_name = (status == 0 && demangled) ? demangled : typeid(e).name();
+            what_msg = e.what();
+        } catch (...) {
+        }
+    }
+
+    std::fputs("TurboPython panic: uncaught ", stderr);
+    std::fputs(type_name, stderr);
+    if (what_msg && *what_msg) {
+        std::fputs(": ", stderr);
+        std::fputs(what_msg, stderr);
+    }
+    std::fputc('\n', stderr);
+
+    std::free(demangled);
+    std::_Exit(1);
 }
 
 /**
