@@ -28,7 +28,7 @@ from ..parse import (
 )
 from ..coercions import resolve_coercion, Coercion, CoercionContext, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN
 from .context import addr_taken_roots
-from .diagnostics import SemanticError
+from .diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from .overloads import type_matches_numeric
 
 
@@ -493,6 +493,15 @@ class TypeCompatibility:
                     and not self.is_copy_call(source_expr)
                     and not is_auto_moved):
                 value_type = self.ctx.get_expr_type(source_expr)
+                if self.ctx.is_type_non_copyable(expected.wrapped):
+                    verb = "may copy" if isinstance(expected.wrapped, TypeParamRef) else "cannot copy"
+                    if value_type == expected.wrapped:
+                        msg = (f"{verb} non-copyable type '{expected.wrapped}' "
+                               f"into owned storage{NOCOPY_REMEDIATION_HINT}")
+                    else:
+                        msg = (f"{verb} {value_type} into owned storage of type "
+                               f"'{expected.wrapped}'; target is non-copyable{NOCOPY_REMEDIATION_HINT}")
+                    raise self.ctx.error(msg, source_expr)
                 if isinstance(expected.wrapped, TypeParamRef):
                     self.ctx.warning(
                         f"may copy {value_type} into owned storage if not a value type; use copy() to make this explicit",

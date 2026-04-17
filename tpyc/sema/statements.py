@@ -41,7 +41,7 @@ from ..prescan import ScanResult, scan_reassigned_vars
 from ..liveness import analyze_last_uses
 from ..parse.nodes import VarLinkage
 from .context import addr_taken_roots
-from .diagnostics import SemanticError
+from .diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from .match import MatchAnalyzer
 from .narrowing import NarrowingTracker
 from .scope_tracker import ScopeTracker
@@ -376,6 +376,12 @@ class StatementAnalyzer:
                               and not self.ctx.is_recursive_union(elem_stripped)):
                             should_warn = True
                 if should_warn:
+                    if self.ctx.is_type_non_copyable(et):
+                        raise self.ctx.error(
+                            f"cannot copy non-copyable type '{et}' into field "
+                            f"(tuple element {i}){NOCOPY_REMEDIATION_HINT}",
+                            elem
+                        )
                     self.ctx.warning(
                         f"copies {et} into field (tuple element {i}); "
                         f"use copy() to make this explicit",
@@ -3048,6 +3054,15 @@ class StatementAnalyzer:
                     and not self.compat.is_copy_call(stmt.value)):
                 inner = unwrap_qualifiers(value_type)
                 dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"
+                if self.ctx.is_type_non_copyable(target_type):
+                    verb = "may copy" if isinstance(inner, TypeParamRef) else "cannot copy"
+                    if inner == target_type:
+                        msg = (f"{verb} non-copyable type '{target_type}' into "
+                               f"{dest}{NOCOPY_REMEDIATION_HINT}")
+                    else:
+                        msg = (f"{verb} {inner} into {dest} of type '{target_type}'; "
+                               f"target is non-copyable{NOCOPY_REMEDIATION_HINT}")
+                    raise self.ctx.error(msg, stmt)
                 if isinstance(inner, TypeParamRef):
                     msg = f"may copy {inner} into {dest} if not a value type; use copy() to make this explicit"
                 else:
@@ -3248,6 +3263,15 @@ class StatementAnalyzer:
             if stmt.loc is not None and not copy_warning_fired:
                 if self._is_non_owned_var_copy(stmt.value, target_type):
                     dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"
+                    if self.ctx.is_type_non_copyable(target_type):
+                        verb = "may copy" if isinstance(target_type, TypeParamRef) else "cannot copy"
+                        if value_type == target_type:
+                            msg = (f"{verb} non-copyable type '{target_type}' into "
+                                   f"{dest}{NOCOPY_REMEDIATION_HINT}")
+                        else:
+                            msg = (f"{verb} {value_type} into {dest} of type '{target_type}'; "
+                                   f"target is non-copyable{NOCOPY_REMEDIATION_HINT}")
+                        raise self.ctx.error(msg, stmt)
                     if isinstance(target_type, TypeParamRef):
                         msg = f"may copy {target_type} into {dest} if not a value type; use copy() to make this explicit"
                     else:

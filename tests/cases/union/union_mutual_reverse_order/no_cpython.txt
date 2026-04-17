@@ -1,0 +1,2 @@
+Classes reference Expr before its alias is defined; CPython evaluates forward
+references at class-body time and fails.

@@ -24,8 +24,7 @@ namespace tpyapp::main {
             if (!__r_1.has_value()) break;
             auto&& child = ::tpy::unwrap_ref(*__r_1);
             // d = depth(child)
-            Tree __tmp_1 = child;
-            ::tpy::BigInt d = depth(__tmp_1);
+            ::tpy::BigInt d = depth(child);
             // if d > result:
             if ((d > result)) {
                 // result = d
@@ -45,8 +44,7 @@ namespace tpyapp::main {
         return ::tpy::BigInt(-1);
     }
     // return depth(t)
-    Tree __tmp_2 = (*t);
-    return depth(__tmp_2);
+    return depth((*t));
 }
 
 // def show(t: Tree | None) -> None:
@@ -54,8 +52,7 @@ void show(Tree* t) {
     // if t is not None:
     if ((t != nullptr)) {
         // print(depth(t))
-        Tree __tmp_3 = (*t);
-        std::cout << depth(__tmp_3) << "\n";
+        std::cout << depth((*t)) << "\n";
     // else:
     } else {
         // print("none")
@@ -82,8 +79,7 @@ Tree* first_or_none(std::vector<Tree>& items) {
         return default_;
     }
     // result = depth(t)
-    Tree __tmp_4 = (*t);
-    ::tpy::BigInt result = depth(__tmp_4);
+    ::tpy::BigInt result = depth((*t));
     // return result
     return result;
 }
@@ -137,8 +133,8 @@ void main() {
     // print(maybe_depth(r))
     std::cout << maybe_depth(r) << "\n";
     // print(maybe_depth(first_or_none([])))
-    std::vector<Tree> __tmp_5 = std::vector<Tree>{};
-    std::cout << maybe_depth(first_or_none(__tmp_5)) << "\n";
+    std::vector<Tree> __tmp_1 = std::vector<Tree>{};
+    std::cout << maybe_depth(first_or_none(__tmp_1)) << "\n";
 }
 
 void __tpy_init() {

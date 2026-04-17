@@ -267,9 +267,19 @@ class ExpressionGenerator:
             return None
         arg_type = self.ctx.get_expr_type(arg)
         cpp_decl = self._get_cpp_declared_type(arg)
+        # Recursive union alias: NamedType("Expr") and UnionType(members) alias
+        # the same C++ wrapper struct. When ptype is the expanded union and arg
+        # carries the unexpanded NamedType (reverse source ordering -- classes
+        # defined before alias), treat them as the same already-variant value.
+        arg_is_same_recursive = (
+            isinstance(arg_type, NamedType)
+            and arg_type.name in self.ctx.recursive_union_names
+            and self.ctx.recursive_union_name(ptype_union) == arg_type.name
+        )
         already_union = (
             isinstance(arg_type, UnionType)
             or (cpp_decl is not None and isinstance(cpp_decl, UnionType))
+            or arg_is_same_recursive
         )
         if self.ctx.is_ptr_variant_union(ptype_union):
             if is_readonly_param:

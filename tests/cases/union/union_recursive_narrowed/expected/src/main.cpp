@@ -23,8 +23,7 @@ int32_t depth(const Tree& t) {
         if (!__r_1.has_value()) break;
         auto&& child = ::tpy::unwrap_ref(*__r_1);
         // d = depth(child)
-        Tree __tmp_1 = child;
-        int32_t d = depth(__tmp_1);
+        int32_t d = depth(child);
         // if d > m:
         if ((d > m)) {
             // m = d
@@ -54,8 +53,7 @@ int32_t count(const Tree& t) {
         if (!__r_1.has_value()) break;
         auto&& child = ::tpy::unwrap_ref(*__r_1);
         // total = total + count(child)
-        Tree __tmp_2 = child;
-        total = (::tpy::add_check<int32_t>(total, count(__tmp_2)));
+        total = (::tpy::add_check<int32_t>(total, count(child)));
     }
     // return total
     return total;
@@ -80,8 +78,7 @@ int32_t leaf_sum(const Tree& t) {
         if (!__r_1.has_value()) break;
         auto&& child = ::tpy::unwrap_ref(*__r_1);
         // s = s + leaf_sum(child)
-        Tree __tmp_3 = child;
-        s = (::tpy::add_check<int32_t>(s, leaf_sum(__tmp_3)));
+        s = (::tpy::add_check<int32_t>(s, leaf_sum(child)));
     }
     // return s
     return s;
@@ -126,8 +123,7 @@ int32_t depth_nested(const Tree& t, int32_t offset) {
             if (!__r_1.has_value()) break;
             auto&& child = ::tpy::unwrap_ref(*__r_1);
             // d = depth_nested(child, offset)
-            Tree __tmp_4 = child;
-            int32_t d = depth_nested(__tmp_4, offset);
+            int32_t d = depth_nested(child, offset);
             // if d > m:
             if ((d > m)) {
                 // m = d
@@ -163,8 +159,7 @@ std::string eval_expr(const Expr& e) {
         if (!__r_1.has_value()) break;
         auto&& child = ::tpy::unwrap_ref(*__r_1);
         // parts.append(eval_expr(child))
-        Expr __tmp_5 = child;
-        parts.push_back(eval_expr(__tmp_5));
+        parts.push_back(eval_expr(child));
     }
     // return ", ".join(parts)
     return ::tpy::str_join(", ", parts);
@@ -207,8 +202,8 @@ void main() {
     // print(eval_expr(42))
     std::cout << eval_expr(42) << "\n";
     // print(eval_expr([1, "two", [3]]))
-    Expr __tmp_6 = std::vector<Expr>{1, "two", std::vector<Expr>{3}};
-    std::cout << eval_expr(__tmp_6) << "\n";
+    Expr __tmp_1 = std::vector<Expr>{1, "two", std::vector<Expr>{3}};
+    std::cout << eval_expr(__tmp_1) << "\n";
 }
 
 void __tpy_init() {

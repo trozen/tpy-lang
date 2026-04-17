@@ -31,8 +31,7 @@ int32_t depth(const Tree& t) {
             if (!__r_1.has_value()) break;
             auto&& child = ::tpy::unwrap_ref(*__r_1);
             // d = depth(child)
-            Tree __tmp_1 = child;
-            int32_t d = depth(__tmp_1);
+            int32_t d = depth(child);
             // if d > result:
             if ((d > result)) {
                 // result = d
@@ -64,8 +63,7 @@ int32_t depth(const Tree& t) {
             if (!__r_1.has_value()) break;
             auto&& child = ::tpy::unwrap_ref(*__r_1);
             // d = int_depth(child)
-            IntTree __tmp_2 = child;
-            ::tpy::BigInt d = int_depth(__tmp_2);
+            ::tpy::BigInt d = int_depth(child);
             // if d > result:
             if ((d > result)) {
                 // result = d
@@ -127,11 +125,11 @@ void main() {
     std::cout << depth(::tpy::__getitem__(zs, 1)) << "\n";
     // # Function argument
     // print(depth([Leaf(10), [Leaf(20), Leaf(30)]]))
-    Tree __tmp_3 = std::vector<Tree>{Leaf(10), std::vector<Tree>{Leaf(20), Leaf(30)}};
-    std::cout << depth(__tmp_3) << "\n";
+    Tree __tmp_1 = std::vector<Tree>{Leaf(10), std::vector<Tree>{Leaf(20), Leaf(30)}};
+    std::cout << depth(__tmp_1) << "\n";
     // print(depth([Leaf(1), [Leaf(2), [Leaf(3), Leaf(4)]]]))
-    Tree __tmp_4 = std::vector<Tree>{Leaf(1), std::vector<Tree>{Leaf(2), std::vector<Tree>{Leaf(3), Leaf(4)}}};
-    std::cout << depth(__tmp_4) << "\n";
+    Tree __tmp_2 = std::vector<Tree>{Leaf(1), std::vector<Tree>{Leaf(2), std::vector<Tree>{Leaf(3), Leaf(4)}}};
+    std::cout << depth(__tmp_2) << "\n";
     // # Primitive variant
     // a: IntTree = [1, [2, 3]]
     IntTree a = std::vector<IntTree>{1, std::vector<IntTree>{2, 3}};
@@ -142,16 +140,16 @@ void main() {
     // print(int_depth(b))
     std::cout << int_depth(b) << "\n";
     // print(int_depth([10, [20, 30]]))
-    IntTree __tmp_5 = std::vector<IntTree>{10, std::vector<IntTree>{20, 30}};
-    std::cout << int_depth(__tmp_5) << "\n";
+    IntTree __tmp_3 = std::vector<IntTree>{10, std::vector<IntTree>{20, 30}};
+    std::cout << int_depth(__tmp_3) << "\n";
     // # Dict variant
     // d: JsonValue = {"a": 1, "b": {"c": 2, "d": 3}}
     JsonValue d = ::tpy::ordered_map<std::string, JsonValue>({{"a", 1}, {"b", ::tpy::ordered_map<std::string, JsonValue>({{"c", 2}, {"d", 3}})}});
     // print(json_keys(d))
     std::cout << json_keys(d) << "\n";
     // print(json_keys({"x": 1, "y": {"z": 2}}))
-    JsonValue __tmp_6 = ::tpy::ordered_map<std::string, JsonValue>({{"x", 1}, {"y", ::tpy::ordered_map<std::string, JsonValue>({{"z", 2}})}});
-    std::cout << json_keys(__tmp_6) << "\n";
+    JsonValue __tmp_4 = ::tpy::ordered_map<std::string, JsonValue>({{"x", 1}, {"y", ::tpy::ordered_map<std::string, JsonValue>({{"z", 2}})}});
+    std::cout << json_keys(__tmp_4) << "\n";
     // # Print recursive unions directly
     // print(x)
     std::cout << x << "\n";

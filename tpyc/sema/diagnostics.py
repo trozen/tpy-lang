@@ -30,6 +30,15 @@ OPTIONAL_VALUE_TRUTHINESS_WARNING = (
     "use 'is not None' for None-only checks."
 )
 
+# Remediation hint appended to "copies X into field/container/owned storage,
+# but X is non-copyable" errors. Listed in preference order: the idiomatic
+# fix (Own for ownership transfer), then explicit copy() for the rare case
+# a copy is genuinely wanted, then a reminder that last-use is already moved.
+NOCOPY_REMEDIATION_HINT = (
+    " (use Own[...] to transfer ownership, copy() if a copy is truly intended, "
+    "or let auto-move apply at last use)"
+)
+
 
 @dataclass
 class Diagnostic:

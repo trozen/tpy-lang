@@ -656,6 +656,56 @@ class SemanticContext:
                     return True
         return False
 
+    def is_type_non_copyable(self, typ: TpyType) -> bool:
+        """Check if a type cannot be copied at C++ level.
+
+        Superset of is_type_nocopy: also counts records with __del__ (which
+        deletes copy ops in the generated struct), and walks the parent
+        chain for @nocopy or __del__ (which implicitly deletes copy in
+        the child). Propagates through record fields and type args.
+        Respects __copy__ escape hatch.
+
+        Used to upgrade "copies X into field/container" warnings to errors --
+        the generated C++ would otherwise hit a deleted copy ctor.
+
+        Kept separate from is_type_nocopy because the latter feeds into
+        analyzer-level `is_nocopy` propagation and user-facing "@nocopy"
+        diagnostics, where the narrower "user declared intent" meaning is
+        wanted. This helper is strictly about "will C++ reject the copy?".
+        """
+        if isinstance(typ, ReadonlyType):
+            return self.is_type_non_copyable(typ.wrapped)
+        if isinstance(typ, OwnType):
+            return self.is_type_non_copyable(typ.wrapped)
+        if isinstance(typ, OptionalType):
+            return self.is_type_non_copyable(typ.inner)
+        record = self.registry.get_record_for_type(typ)
+        if record is None:
+            return False
+        if record.has_copy:
+            return False
+        if record.is_nocopy or record.has_del:
+            return True
+        # Inheritance: parent's deleted copy is inherited by the child.
+        parent = record.parent
+        while parent is not None:
+            parent_rec = self.registry.get_record_for_type(parent)
+            if parent_rec is None:
+                break
+            if parent_rec.has_copy:
+                break  # parent re-enables copy; stop the walk
+            if parent_rec.is_nocopy or parent_rec.has_del:
+                return True
+            parent = parent_rec.parent
+        if isinstance(typ, NamedType) and typ.type_args:
+            for arg in typ.type_args:
+                if isinstance(arg, TpyType) and self.is_type_non_copyable(arg):
+                    return True
+        for f in record.fields:
+            if self.is_type_non_copyable(f.type):
+                return True
+        return False
+
     def get_expr_type(self, expr: TpyExpr) -> TpyType | None:
         """Get the cached type of an expression, stripping Ref and Own.
 

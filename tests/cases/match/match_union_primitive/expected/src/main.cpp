@@ -70,8 +70,7 @@ int32_t depth(const Tree& t) {
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& child = *__beg_0;
             // d = depth(child)
-            Tree __tmp_1 = child;
-            int32_t d = depth(__tmp_1);
+            int32_t d = depth(child);
             // if d > m:
             if ((d > m)) {
                 // m = d
