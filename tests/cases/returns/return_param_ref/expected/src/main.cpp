@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def find_max(points: list[Point]) -> Point:
 Point& find_max(std::vector<Point>& points) {
     // best = points[0]
-    Point* best = &(::tpy::__getitem__(points, 0));
+    Point* best = const_cast<Point*>(&(::tpy::__getitem__(points, 0)));
     // for p in points:
     auto& __obj_0 = points;
     auto __beg_0 = __obj_0.begin();

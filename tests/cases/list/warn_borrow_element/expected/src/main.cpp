@@ -74,7 +74,7 @@ void test_reassign_borrower_clears() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     // v = items[Int32(0)]
     std::optional<Point> __slot_1;
-    Point* v = &(::tpy::__getitem__(items, 0));
+    Point* v = const_cast<Point*>(&(::tpy::__getitem__(items, 0)));
     // v = Point(Int32(9), Int32(9))
     v = &*(__slot_1 = Point(9, 9));
     // items.append(Point(Int32(5), Int32(6)))  # tpyc: ok

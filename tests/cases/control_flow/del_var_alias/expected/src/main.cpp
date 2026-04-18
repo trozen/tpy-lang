@@ -30,7 +30,7 @@ void main() {
     // e = f = Obj(99)
     Obj f = Obj(::tpy::BigInt(99));
     std::optional<Obj> __slot_1;
-    Obj* e = &(f);
+    Obj* e = const_cast<Obj*>(&(f));
     // del e
     // e = Obj(0)
     e = &*(__slot_1 = Obj(::tpy::BigInt(0)));

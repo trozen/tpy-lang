@@ -205,8 +205,7 @@ class FunctionGenerator:
     ) -> str:
         """Generate a template header that includes both protocol and Fn params.
 
-        emit_fn_requires: if False, skip the Fn requires clause (for forward decls
-        where the constraint on the definition is sufficient).
+        emit_fn_requires: if False, skip the Fn requires clause.
         indent: prefix for continuation lines (e.g. INDENT for method context).
         """
         fn_params = self._collect_fn_params(func.params)
@@ -704,9 +703,12 @@ class FunctionGenerator:
         dfl = func.defaults if func.defaults else None
         effective_ret = return_type_override or func.return_type
         if is_generic or has_proto_params or has_fn_params:
-            # Forward decl: skip Fn requires clause (constraint on definition is sufficient)
+            # Forward decl must carry the same requires clause as the definition.
+            # Omitting it produces an unconstrained overload candidate alongside the
+            # constrained definition; GCC then sees two candidates and refuses to
+            # pick one when explicit template args are provided.
             out.write(self._gen_template_header_with_fn(func, proto_params,
-                                                        emit_fn_requires=False))
+                                                        emit_fn_requires=True))
             ret_type = self._resolve_return_type(effective_ret, const=func.is_readonly,
                                                   error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params, func.type_params,

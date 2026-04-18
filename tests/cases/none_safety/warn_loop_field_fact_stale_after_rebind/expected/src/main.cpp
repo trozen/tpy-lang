@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def stale_after_rebind(b: Box, other: Box) -> Int32:
 int32_t stale_after_rebind(Box& b, Box& other) {
     // local: Box = b
-    Box* local = &(b);
+    Box* local = const_cast<Box*>(&(b));
     // while local.value is not None:
     while ((local->value.has_value())) {
         // local = other

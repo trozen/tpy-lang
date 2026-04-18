@@ -181,7 +181,7 @@ void lvalue_init_rvalue_rebind() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4), Point(5, 6)};
     // best: Point = items[0]
     std::optional<Point> __slot_1;
-    Point* best = &(::tpy::__getitem__(items, 0));
+    Point* best = const_cast<Point*>(&(::tpy::__getitem__(items, 0)));
     // for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();

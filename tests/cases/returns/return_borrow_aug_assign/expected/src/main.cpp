@@ -63,7 +63,7 @@ void test_borrow_cleared_no_warn() {
     std::vector<Point> data = {Point(1, 2), Point(3, 4)};
     // first = get_first(data)        # borrows data
     std::optional<Point> __slot_1;
-    Point* first = &(get_first(data));
+    Point* first = const_cast<Point*>(&(get_first(data)));
     // first = Point(9, 9)            # clears borrow
     first = &*(__slot_1 = Point(9, 9));
     // data += [Point(5, 6)]          # tpyc: ok

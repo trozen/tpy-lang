@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def pick(a: Box, b: Box, flag: bool) -> Int32:
 int32_t pick(const Box& a, const Box& b, bool flag) {
     // x = a
-    const Box* x = &(a);
+    const Box* x = const_cast<const Box*>(&(a));
     // if flag:
     if (flag) {
         // x = b

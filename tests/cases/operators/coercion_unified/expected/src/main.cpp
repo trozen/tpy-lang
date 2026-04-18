@@ -156,7 +156,7 @@ void test_ptr_to_record() {
     Point* ptr = &pt;
     // # Variable declaration
     // copy: Point = ptr
-    Point* copy = &(::tpy::deref_check(ptr));
+    Point* copy = const_cast<Point*>(&(::tpy::deref_check(ptr)));
     // print(copy.x)  # 7
     std::cout << copy->x << "\n";
     // # Assignment

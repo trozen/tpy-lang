@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def use_after_rebind(a: Box, b: Box) -> Int32:
 int32_t use_after_rebind(Box& a, Box& b) {
     // local = a
-    Box* local = &(a);
+    Box* local = const_cast<Box*>(&(a));
     // if local.value is not None:
     if ((local->value.has_value())) {
         // local = b

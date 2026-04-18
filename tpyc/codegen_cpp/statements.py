@@ -958,8 +958,13 @@ class StatementGenerator:
         elif self.ctx.is_global_name(init):
             return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = &({init_expr});\n"
         else:
-            # lvalue ref: param, subscript, field -> take address
-            return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = &({init_expr});\n"
+            # lvalue ref: param, subscript, field -> take address.
+            # const_cast strips const when value-type generic params arrive as const T&
+            # via param_val_or_ref_t; it is a no-op for mutable reference-type params.
+            # Safe: the slot mechanism redirects through the optional on first rvalue
+            # rebind, so we never write back through this initial pointer.
+            return (f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = "
+                    f"const_cast<{const_pfx}{cpp_type}*>(&({init_expr}));\n")
 
     def _gen_slice_assign(self, stmt: TpyAssign, indent: str) -> str:
         """Generate code for slice assignment via __setitem__(basic_slice/slice) stub dispatch."""

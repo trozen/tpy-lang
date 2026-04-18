@@ -92,7 +92,7 @@ void test_rebinding() {
     // b: Point = Point(2, 2)
     Point b = Point(2, 2);
     // x = a
-    Point* x = &(a);
+    Point* x = const_cast<Point*>(&(a));
     // print(x.x)  # 1
     std::cout << x->x << "\n";
     // x = b
@@ -158,7 +158,7 @@ void test_rebind_to_global() {
     // a: Point = Point(1, 1)
     Point a = Point(1, 1);
     // x = a
-    Point* x = &(a);
+    Point* x = const_cast<Point*>(&(a));
     // x = g
     x = g;
     // x.x = 600

@@ -22,24 +22,24 @@ void main() {
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     // # Sum via reduce
     // total = functools.reduce(add, nums, Int32(0))
-    int32_t total = ::tpy::functools_reduce(add, nums, 0);
+    int32_t total = ::tpystd::functools::reduce<int32_t, int32_t>(add, nums, 0);
     // print(total)  # 15
     std::cout << total << "\n";
     // # Product via reduce
     // product = functools.reduce(mul, nums, Int32(1))
-    int32_t product = ::tpy::functools_reduce(mul, nums, 1);
+    int32_t product = ::tpystd::functools::reduce<int32_t, int32_t>(mul, nums, 1);
     // print(product)  # 120
     std::cout << product << "\n";
     // # reduce with a single-element list
     // single: list[Int32] = [42]
     std::vector<int32_t> single = {42};
     // print(functools.reduce(add, single, Int32(0)))  # 42
-    std::cout << ::tpy::functools_reduce(add, single, 0) << "\n";
+    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, single, 0) << "\n";
     // # reduce with empty list returns initial
     // empty: list[Int32] = []
     std::vector<int32_t> empty = std::vector<int32_t>{};
     // print(functools.reduce(add, empty, Int32(99)))  # 99
-    std::cout << ::tpy::functools_reduce(add, empty, 99) << "\n";
+    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, empty, 99) << "\n";
 }
 
 void __tpy_init() {
