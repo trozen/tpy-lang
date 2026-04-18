@@ -1,22 +1,32 @@
+# random -- pseudo-random number generation (Mersenne Twister)
 # tpy: cpp_namespace("tpystd::random")
-# tpy: include("<cstdlib>")
-from tpy.extern import native
+# tpy: include("<tpy/random.hpp>")
+from tpy.extern import native, cpp_template
 from tpy import Int32
 
-@native("std::rand")
-def _rand() -> Int32: ...
+@native("tpy::random_random")
+def random() -> float: ...
 
-@native("std::srand")
-def _srand(n: Int32) -> None: ...
+@native("tpy::random_seed")
+def seed(n: Int32) -> None: ...
 
-# TODO: use std::mt19937 (Mersenne Twister, same as CPython) instead of std::rand.
-# Needs shared engine state between random() and seed(), which requires either
-# a C++ header or a way to store C++ objects as module-level TPy state.
-# RAND_MAX is 2^31-1 on Linux/macOS, 32767 on Windows MSVC.
-_RAND_MAX: float = 2147483647.0
+@native("tpy::random_randint")
+def randint(a: Int32, b: Int32) -> Int32: ...
 
-def random() -> float:
-    return float(_rand()) / _RAND_MAX
+@native("tpy::random_uniform")
+def uniform(a: float, b: float) -> float: ...
 
-def seed(n: Int32) -> None:
-    _srand(n)
+@native("tpy::random_gauss")
+def gauss(mu: float, sigma: float) -> float: ...
+
+@native("tpy::random_expovariate")
+def expovariate(lambd: float) -> float: ...
+
+@cpp_template("tpy::random_shuffle({0})")
+def shuffle[T](lst: list[T]) -> None: ...
+
+def choice[T](seq: list[T]) -> T:
+    n = Int32(len(seq))
+    if n == 0:
+        raise ValueError("Cannot choose from an empty sequence")
+    return seq[randint(0, n - 1)]

@@ -71,4 +71,25 @@ inline void init_sys_argv(int argc, char* argv[]) {
     }
 }
 
+/**
+ * time_perf_counter - High-resolution timer for benchmarking.
+ *
+ * Equivalent to Python's time.perf_counter(). Uses the highest-resolution
+ * clock available. Not guaranteed to be related to wall-clock time.
+ */
+inline double time_perf_counter() {
+    auto now = std::chrono::high_resolution_clock::now().time_since_epoch();
+    return std::chrono::duration<double>(now).count();
+}
+
+/**
+ * time_monotonic - Monotonic clock that cannot go backwards.
+ *
+ * Equivalent to Python's time.monotonic(). Suitable for measuring elapsed time.
+ */
+inline double time_monotonic() {
+    auto now = std::chrono::steady_clock::now().time_since_epoch();
+    return std::chrono::duration<double>(now).count();
+}
+
 } // namespace tpy

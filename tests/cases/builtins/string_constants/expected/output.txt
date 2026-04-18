@@ -1,0 +1,11 @@
+0123456789
+abcdefghijklmnopqrstuvwxyz
+ABCDEFGHIJKLMNOPQRSTUVWXYZ
+52
+10
+22
+8
+6
+True
+True
+True

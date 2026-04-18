@@ -1,0 +1,1 @@
+heapq.py:23: warning: may copy T elements if not a value type; use copy_iter() to make this explicit (or copy() to copy the entire container)

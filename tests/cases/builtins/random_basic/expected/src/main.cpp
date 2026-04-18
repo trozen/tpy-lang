@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // random.seed(Int32(42))
-    ::tpystd::random::seed(42);
+    ::tpy::random_seed(42);
     // a = random.random()
-    double a = ::tpystd::random::random();
+    double a = ::tpy::random_random();
     // b = random.random()
-    double b = ::tpystd::random::random();
+    double b = ::tpy::random_random();
     // # Values should be in [0, 1)
     // print(a >= 0.0)  # True
     std::cout << ::tpy::print_bool((a >= 0.0)) << "\n";
@@ -23,9 +23,9 @@ void main() {
     std::cout << ::tpy::print_bool((b < 1.0)) << "\n";
     // # Same seed should give same sequence
     // random.seed(Int32(42))
-    ::tpystd::random::seed(42);
+    ::tpy::random_seed(42);
     // c = random.random()
-    double c = ::tpystd::random::random();
+    double c = ::tpy::random_random();
     // print(a == c)  # True
     std::cout << ::tpy::print_bool((a == c)) << "\n";
 }
