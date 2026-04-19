@@ -2204,9 +2204,11 @@ class ExpressionGenerator:
                     return f"{cpp_name}{{{args}}}"
                 # @native: constructor call (C++ class)
                 return f"{cpp_name}({args})"
-            # Qualify imported records (use original name for aliases)
-            if expr.func_name in self.ctx.user_imported_records:
-                source_module, original_name = self.ctx.user_imported_records[expr.func_name]
+            # Cross-module constructor: qualify to the declaring module.
+            qual = self.ctx.analyzer.registry.imported_record_qualification(
+                expr.func_name, self.ctx.analyzer.ctx.module_name)
+            if qual is not None:
+                source_module, original_name = qual
                 return f"{qualified_cpp_name(source_module, original_name)}({args})"
             return f"{expr.func_name}({args})"
         # Callable variable call (possibly narrowed from Optional[Callable])
@@ -2739,10 +2741,11 @@ class ExpressionGenerator:
                 # Enum type-level member access: Color.Red -> Color::Red
                 if binding and binding.kind == BindingKind.ENUM:
                     enum_name = expr.obj.name
-                    # For cross-module enums, use qualified name
-                    if enum_name in self.ctx.user_imported_enums:
-                        src_mod, original = self.ctx.user_imported_enums[enum_name]
-                        enum_name = qualified_cpp_name(src_mod, original)
+                    # Cross-module enum: qualify to declaring module.
+                    enum_qual = self.ctx.analyzer.registry.imported_enum_qualification(
+                        enum_name, self.ctx.analyzer.ctx.module_name)
+                    if enum_qual is not None:
+                        enum_name = qualified_cpp_name(*enum_qual)
                     return f"{enum_name}::{cpp_field}"
 
                 # Nested type access on a record: Container.Kind -> Container::Kind
@@ -2750,13 +2753,15 @@ class ExpressionGenerator:
                     dotted = f"{expr.obj.name}.{expr.field}"
                     if (self.ctx.analyzer.registry.get_enum(dotted) is not None
                             or self.ctx.analyzer.registry.get_record(dotted) is not None):
-                        # For cross-module, use qualified C++ name
-                        if dotted in self.ctx.user_imported_enums:
-                            src_mod, original = self.ctx.user_imported_enums[dotted]
-                            return qualified_cpp_name(src_mod, original)
-                        if dotted in self.ctx.user_imported_records:
-                            src_mod, original = self.ctx.user_imported_records[dotted]
-                            return qualified_cpp_name(src_mod, original)
+                        # Cross-module: qualify to declaring module.
+                        enum_qual = self.ctx.analyzer.registry.imported_enum_qualification(
+                            dotted, self.ctx.analyzer.ctx.module_name)
+                        if enum_qual is not None:
+                            return qualified_cpp_name(*enum_qual)
+                        rec_qual = self.ctx.analyzer.registry.imported_record_qualification(
+                            dotted, self.ctx.analyzer.ctx.module_name)
+                        if rec_qual is not None:
+                            return qualified_cpp_name(*rec_qual)
                         return dotted.replace(".", "::")
 
         # Chained nested type access: Outer.Mid.Inner -> Outer::Mid::Inner

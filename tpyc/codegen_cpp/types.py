@@ -320,9 +320,11 @@ class TypeResolver:
             record_info = self.ctx.analyzer.registry.get_record_for_type(typ)
             if record_info and record_info.is_native:
                 return typ.to_cpp()  # to_cpp() already resolves via _native_cpp_names
-            # Check if this record is imported from a user module
-            if typ.name in self.ctx.user_imported_records:
-                source_module, original_name = self.ctx.user_imported_records[typ.name]
+            # Cross-module user record: qualify to the declaring module (canonical identity).
+            qual = self.ctx.analyzer.registry.imported_record_qualification(
+                typ.name, self.ctx.analyzer.ctx.module_name)
+            if qual is not None:
+                source_module, original_name = qual
                 qualified = qualified_cpp_name(source_module, original_name)
                 if typ.type_args:
                     args = ", ".join(
@@ -331,10 +333,12 @@ class TypeResolver:
                     )
                     return f"{qualified}<{args}>"
                 return qualified
-        # Imported enum types: qualify with source module namespace
+        # Cross-module enum: qualify to the declaring module (canonical identity).
         if is_enum_type(typ):
-            if typ.name in self.ctx.user_imported_enums:
-                source_module, original_name = self.ctx.user_imported_enums[typ.name]
+            qual = self.ctx.analyzer.registry.imported_enum_qualification(
+                typ.name, self.ctx.analyzer.ctx.module_name)
+            if qual is not None:
+                source_module, original_name = qual
                 return qualified_cpp_name(source_module, original_name)
         # Tuple types: qualify element types for imported members
         if isinstance(typ, TupleType):

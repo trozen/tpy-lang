@@ -2810,7 +2810,8 @@ class RecordInfo:
     has_del: bool = False           # True if class declares __del__ (needs drop flag)
     has_copy: bool = False          # True if class defines __copy__ (custom copy semantics)
     builtin_type_key: str | None = None  # e.g. "builtins.list" -- links .py class to type_factory
-    module: str | None = None  # Defining module (public name, None -> __main__ qname fallback)
+    module: str | None = None  # Public module name (collapses private submodules via public_module_name); used for qualified_name() and codegen C++ namespace
+    defining_module: str | None = None  # Raw (uncollapsed) module where the class was declared; used by re-export logic to look up the record through ModuleInfo.records
 
     @property
     def is_keyword_stub(self) -> bool:
@@ -3131,6 +3132,11 @@ class TypeRegistry:
         self.protocols: dict[str, ProtocolInfo] = {}
         self.modules: dict[str, ModuleInfo] = {}  # module_name -> ModuleInfo
         self.type_aliases: dict[str, 'TpyType'] = {}  # alias_name -> resolved type
+        # Source tracking for imported aliases: local_name -> (declaring_module, original_name).
+        # Type alias bodies (UnionType, OptionalType, ...) have no `_module_qname` of
+        # their own -- an alias is a pure name-binding in the module that declared it --
+        # so provenance must be stored here. Populated via register_type_alias(imported_from=...).
+        self.imported_type_alias_info: dict[str, tuple[str, str]] = {}
         self.enums: dict[str, 'NominalType'] = {}  # enum_name -> NominalType (enum-kind)
         # Fundamental types not in module system (pointer wrappers)
         self._fundamental_types = {"Own"}
@@ -3201,13 +3207,69 @@ class TypeRegistry:
         """
         self.enums[name or info.name] = info
 
-    def register_type_alias(self, name: str, typ: 'TpyType') -> None:
-        """Register a type alias (e.g., Shape = Circle | Rect)."""
+    def register_type_alias(self, name: str, typ: 'TpyType',
+                            *, imported_from: tuple[str, str] | None = None) -> None:
+        """Register a type alias (e.g., Shape = Circle | Rect).
+
+        imported_from: (declaring_module, alias_name) if the alias was imported
+            from another user module; None for locally-defined aliases.
+        """
         self.type_aliases[name] = typ
+        if imported_from is not None:
+            self.imported_type_alias_info[name] = imported_from
 
     def get_type_alias(self, name: str) -> 'TpyType | None':
         """Get a type alias by name, or None if not found."""
         return self.type_aliases.get(name)
+
+    def imported_record_qualification(
+        self, name: str, current_module: str
+    ) -> tuple[str, str] | None:
+        """For a user-imported record: return (defining_module, canonical_name), else None.
+
+        Reads `RecordInfo.defining_module` -- the actual (uncollapsed) submodule
+        where the class was declared. Both codegen (which qualifies C++ namespace
+        via `_namespace_map` / `cpp_namespace` directives) and compiler.py's
+        re-export logic (which looks up `ModuleInfo.records[original_name]`)
+        want this form. For regular user code `defining_module == module` (the
+        public name); they differ only for private submodules like
+        `tpy._builtins._bytes` where `module` collapses to `tpy` / `builtins`.
+        """
+        record_info = self.records.get(name)
+        if record_info is None or record_info.defining_module is None:
+            return None
+        source_module = record_info.defining_module
+        if source_module == current_module:
+            return None
+        module_info = self.modules.get(source_module)
+        if module_info is not None and module_info.is_builtin:
+            return None
+        return (source_module, record_info.name)
+
+    def imported_enum_qualification(
+        self, name: str, current_module: str
+    ) -> tuple[str, str] | None:
+        """For a user-imported enum: return (declaring_module, canonical_name), else None.
+
+        Reads `EnumInfo.module_name` (attached via `attach_dynamic_type_def` in
+        sema/registration.py::register_enum) and the enum NominalType's `.name`
+        field (which always holds the canonical declaration name, even when
+        registered under a local alias). Entry-point `__main__` enums have
+        EnumInfo.module_name == None and are correctly treated as local.
+        """
+        enum_type = self.enums.get(name)
+        if enum_type is None:
+            return None
+        from .type_def_registry import enum_info_of
+        einfo = enum_info_of(enum_type)
+        if einfo is None or einfo.module_name is None:
+            return None
+        if einfo.module_name == current_module:
+            return None
+        module_info = self.modules.get(einfo.module_name)
+        if module_info is not None and module_info.is_builtin:
+            return None
+        return (einfo.module_name, enum_type.name)
 
     def register_module(self, info: ModuleInfo) -> None:
         """Register a module by name."""

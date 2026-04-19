@@ -47,7 +47,7 @@ void main() {
     std::cout << sum_span(::tpy::as_mut_span(arr)) << "\n";
     // # ArrayList coerces to Span (user type with __span__)
     // al = ArrayList[Int32, 8]()
-    ::tpystd::tplib::ArrayList<int32_t, 8> al = ::tpystd::tplib::ArrayList<int32_t, 8>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 8> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // al.append(10)
     al.append(10);
     // al.append(20)

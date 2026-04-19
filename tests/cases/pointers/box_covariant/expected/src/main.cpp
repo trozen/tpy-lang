@@ -5,40 +5,40 @@ namespace tpyapp::main {
 
 
 // def print_area(b: Box[Shape]) -> None:
-void print_area(::tpystd::tplib::Box<Shape>& b) {
+void print_area(::tpystd::tplib::box::Box<Shape>& b) {
     // print(b.get().area())
     std::cout << ::tpy::print_float(b.get().area()) << "\n";
 }
 
 // def make_shape() -> Own[Box[Shape]]:
-::tpystd::tplib::Box<Shape> make_shape() {
+::tpystd::tplib::box::Box<Shape> make_shape() {
     // return Box(Circle(3.0))
-    return ::tpystd::tplib::Box<Circle>(Circle(3.0));
+    return ::tpystd::tplib::box::Box<Circle>(Circle(3.0));
 }
 
 // def main() -> None:
 void main() {
     // # Function arg coercion
     // bc = Box(Circle(5.0))
-    ::tpystd::tplib::Box<Circle> bc = ::tpystd::tplib::Box<Circle>(Circle(5.0));
+    ::tpystd::tplib::box::Box<Circle> bc = ::tpystd::tplib::box::Box<Circle>(Circle(5.0));
     // print_area(bc)
-    ::tpystd::tplib::Box<Shape> __tmp_1 = std::move(bc);
+    ::tpystd::tplib::box::Box<Shape> __tmp_1 = std::move(bc);
     print_area(__tmp_1);
     // bs = Box(Square(3.0))
-    ::tpystd::tplib::Box<Square> bs = ::tpystd::tplib::Box<Square>(Square(3.0));
+    ::tpystd::tplib::box::Box<Square> bs = ::tpystd::tplib::box::Box<Square>(Square(3.0));
     // print_area(bs)
-    ::tpystd::tplib::Box<Shape> __tmp_2 = std::move(bs);
+    ::tpystd::tplib::box::Box<Shape> __tmp_2 = std::move(bs);
     print_area(__tmp_2);
     // # Variable assignment coercion
     // bc2 = Box(Circle(2.0))
-    ::tpystd::tplib::Box<Circle> bc2 = ::tpystd::tplib::Box<Circle>(Circle(2.0));
+    ::tpystd::tplib::box::Box<Circle> bc2 = ::tpystd::tplib::box::Box<Circle>(Circle(2.0));
     // b_shape: Box[Shape] = bc2
-    ::tpystd::tplib::Box<Shape> b_shape = std::move(bc2);
+    ::tpystd::tplib::box::Box<Shape> b_shape = std::move(bc2);
     // print(b_shape.get().area())
     std::cout << ::tpy::print_float(b_shape.get().area()) << "\n";
     // # Return coercion via Own
     // b3 = make_shape()
-    ::tpystd::tplib::Box<Shape> b3 = make_shape();
+    ::tpystd::tplib::box::Box<Shape> b3 = make_shape();
     // print(b3.get().area())
     std::cout << ::tpy::print_float(b3.get().area()) << "\n";
 }

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 // # ArrayList methods (append, len, subscript)
 // al = ArrayList[Int32, 8]()
-::tpystd::tplib::ArrayList<int32_t, 8>* al{};
+::tpystd::tplib::array_list::ArrayList<int32_t, 8>* al{};
 // # Array methods (subscript, len)
 // arr: Array[Int32, 3] = [100, 200, 300]
 std::array<int32_t, 3>* arr{};
@@ -33,7 +33,7 @@ void __tpy_init() {
     ::tpystd::tplib::__tpy_init();
     // # ArrayList methods (append, len, subscript)
     // al = ArrayList[Int32, 8]()
-    static ::tpystd::tplib::ArrayList<int32_t, 8> __global_slot_1 = ::tpystd::tplib::ArrayList<int32_t, 8>();
+    static ::tpystd::tplib::array_list::ArrayList<int32_t, 8> __global_slot_1 = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     al = &__global_slot_1;
     // al.append(10)
     al->append(10);

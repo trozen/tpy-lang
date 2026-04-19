@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def test_contains() -> None:
 void test_contains() {
     // a = ArrayList[Int32, 8]()
-    ::tpystd::tplib::ArrayList<int32_t, 8> a = ::tpystd::tplib::ArrayList<int32_t, 8>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 8> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // a.append(10)
     a.append(10);
     // a.append(20)
@@ -23,13 +23,13 @@ void test_contains() {
 // def test_eq() -> None:
 void test_eq() {
     // a = ArrayList[Int32, 8]()
-    ::tpystd::tplib::ArrayList<int32_t, 8> a = ::tpystd::tplib::ArrayList<int32_t, 8>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 8> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // a.append(1)
     a.append(1);
     // a.append(2)
     a.append(2);
     // b = ArrayList[Int32, 8]()
-    ::tpystd::tplib::ArrayList<int32_t, 8> b = ::tpystd::tplib::ArrayList<int32_t, 8>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 8> b = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // b.append(1)
     b.append(1);
     // b.append(2)
@@ -45,7 +45,7 @@ void test_eq() {
 // def test_repr() -> None:
 void test_repr() {
     // a = ArrayList[Int32, 4]()
-    ::tpystd::tplib::ArrayList<int32_t, 4> a = ::tpystd::tplib::ArrayList<int32_t, 4>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 4> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     // a.append(10)
     a.append(10);
     // a.append(20)
@@ -57,7 +57,7 @@ void test_repr() {
 // def test_swap() -> None:
 void test_swap() {
     // a = ArrayList[Int32, 4]()
-    ::tpystd::tplib::ArrayList<int32_t, 4> a = ::tpystd::tplib::ArrayList<int32_t, 4>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 4> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     // a.append(1)
     a.append(1);
     // a.append(2)
@@ -73,7 +73,7 @@ void test_swap() {
 // def test_truncate() -> None:
 void test_truncate() {
     // a = ArrayList[Int32, 8]()
-    ::tpystd::tplib::ArrayList<int32_t, 8> a = ::tpystd::tplib::ArrayList<int32_t, 8>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 8> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // a.append(10)
     a.append(10);
     // a.append(20)
@@ -93,7 +93,7 @@ void test_truncate() {
 // def test_index() -> None:
 void test_index() {
     // a = ArrayList[Int32, 4]()
-    ::tpystd::tplib::ArrayList<int32_t, 4> a = ::tpystd::tplib::ArrayList<int32_t, 4>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 4> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     // a.append(10)
     a.append(10);
     // a.append(20)
@@ -107,7 +107,7 @@ void test_index() {
 // def test_count() -> None:
 void test_count() {
     // a = ArrayList[Int32, 8]()
-    ::tpystd::tplib::ArrayList<int32_t, 8> a = ::tpystd::tplib::ArrayList<int32_t, 8>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 8> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // a.append(1)
     a.append(1);
     // a.append(2)
@@ -129,7 +129,7 @@ void test_count() {
 // def test_remove() -> None:
 void test_remove() {
     // a = ArrayList[Int32, 8]()
-    ::tpystd::tplib::ArrayList<int32_t, 8> a = ::tpystd::tplib::ArrayList<int32_t, 8>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 8> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // a.append(10)
     a.append(10);
     // a.append(20)
@@ -145,7 +145,7 @@ void test_remove() {
 // def test_reverse() -> None:
 void test_reverse() {
     // a = ArrayList[Int32, 8]()
-    ::tpystd::tplib::ArrayList<int32_t, 8> a = ::tpystd::tplib::ArrayList<int32_t, 8>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 8> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // a.append(1)
     a.append(1);
     // a.append(2)
@@ -164,7 +164,7 @@ void test_reverse() {
 void test_sort() {
     // # General case
     // a = ArrayList[Int32, 8]()
-    ::tpystd::tplib::ArrayList<int32_t, 8> a = ::tpystd::tplib::ArrayList<int32_t, 8>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 8> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // a.append(5)
     a.append(5);
     // a.append(3)
@@ -181,7 +181,7 @@ void test_sort() {
     std::cout << a << "\n";
     // # Duplicates
     // b = ArrayList[Int32, 8]()
-    ::tpystd::tplib::ArrayList<int32_t, 8> b = ::tpystd::tplib::ArrayList<int32_t, 8>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 8> b = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // b.append(3)
     b.append(3);
     // b.append(1)
@@ -198,14 +198,14 @@ void test_sort() {
     std::cout << b << "\n";
     // # Empty
     // c = ArrayList[Int32, 4]()
-    ::tpystd::tplib::ArrayList<int32_t, 4> c = ::tpystd::tplib::ArrayList<int32_t, 4>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 4> c = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     // c.sort()
     c.sort();
     // print(c)
     std::cout << c << "\n";
     // # Single element
     // d = ArrayList[Int32, 4]()
-    ::tpystd::tplib::ArrayList<int32_t, 4> d = ::tpystd::tplib::ArrayList<int32_t, 4>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 4> d = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     // d.append(42)
     d.append(42);
     // d.sort()
@@ -214,7 +214,7 @@ void test_sort() {
     std::cout << d << "\n";
     // # Already sorted
     // e = ArrayList[Int32, 4]()
-    ::tpystd::tplib::ArrayList<int32_t, 4> e = ::tpystd::tplib::ArrayList<int32_t, 4>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 4> e = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     // e.append(1)
     e.append(1);
     // e.append(2)

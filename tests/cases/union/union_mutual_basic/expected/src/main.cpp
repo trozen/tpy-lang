@@ -56,13 +56,13 @@ void main() {
     std::cout << eval_expr(__tmp_1) << "\n";
     // # 10 + 3
     // e1 = BinOp(Box(Lit(10)), "+", Box(Lit(3)))
-    BinOp e1 = BinOp(::tpystd::tplib::Box<Expr>(Lit(::tpy::BigInt(10))), "+", ::tpystd::tplib::Box<Expr>(Lit(::tpy::BigInt(3))));
+    BinOp e1 = BinOp(::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(10))), "+", ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(3))));
     // print(eval_expr(e1))
     Expr __tmp_2 = std::move(e1);
     std::cout << eval_expr(__tmp_2) << "\n";
     // # (10 + 3) - 1
     // e2 = BinOp(Box(BinOp(Box(Lit(10)), "+", Box(Lit(3)))), "-", Box(Lit(1)))
-    BinOp e2 = BinOp(::tpystd::tplib::Box<Expr>(BinOp(::tpystd::tplib::Box<Expr>(Lit(::tpy::BigInt(10))), "+", ::tpystd::tplib::Box<Expr>(Lit(::tpy::BigInt(3))))), "-", ::tpystd::tplib::Box<Expr>(Lit(::tpy::BigInt(1))));
+    BinOp e2 = BinOp(::tpystd::tplib::box::Box<Expr>(BinOp(::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(10))), "+", ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(3))))), "-", ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(1))));
     // print(eval_expr(e2))
     Expr __tmp_3 = std::move(e2);
     std::cout << eval_expr(__tmp_3) << "\n";
@@ -78,7 +78,7 @@ void main() {
     std::cout << eval_expr(local) << "\n";
     // # field in non-recursive record
     // holder = ExprBox(Box(Lit(55)))
-    ExprBox holder = ExprBox(::tpystd::tplib::Box<Expr>(Lit(::tpy::BigInt(55))));
+    ExprBox holder = ExprBox(::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(55))));
     // print(eval_expr(holder.expr.get()))
     std::cout << eval_expr(holder.expr.get()) << "\n";
 }

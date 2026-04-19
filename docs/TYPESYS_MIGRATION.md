@@ -4,7 +4,7 @@
 
 Unify the type hierarchy around two shapes: **nominal** (identity = qualified name + type args, behavior from a registry) and **structural** (identity = operand shape, behavior derived from operands). Builtins, containers, primitives, records, protocols, and enums all become `NominalType` with behavior sourced from a single `TypeDef` registry. Wrappers (`Ptr`, `Own`, `Optional`, `Union`, `Tuple`, `Callable`, `Readonly`) stay structural.
 
-## Current state (Phases A, B, C, D, E, F.1, F.2a complete)
+## Current state (Phases A, B, C, D, E, F.1, F.2a, F.2b complete)
 
 ```
 TpyType (frozen dataclass base)
@@ -253,32 +253,179 @@ Each writer calls `TypeOperations.resolve_type`, which already substitutes parse
 Changes:
 
 1. **Writeback in `register_function`** (registration.py). Mirrors the pattern already used by `register_record` (field types) and `register_overload_group` (overload stub params/return). At the end of function registration, `func.params = list(resolved_params)` and `func.return_type = resolved_return`. For non-stubs, `_analyze_function` re-resolves and wraps with `make_ref`, overwriting this; for stubs, the resolved types persist and codegen sees qname-bearing NominalTypes.
-2. **Deleted `_resolve_imported_enums`**, its caller at analyzer.py:391, and the three helpers (`_resolve_func_enums`, `_resolve_enum`). The `self.ctx.user_imported_enums` dict itself stays -- codegen reads it separately for C++ namespace qualification of enum references in expressions/types (audit for that cleanup is Phase F.2b).
+2. **Deleted `_resolve_imported_enums`**, its caller at analyzer.py:391, and the three helpers (`_resolve_func_enums`, `_resolve_enum`). The `self.ctx.user_imported_enums` dict itself was initially kept (codegen still read it for C++ namespace qualification) but was later deleted in Phase F.2b along with its sibling dicts.
 
 Full suite green: 2608 passed + 1 skipped with `--force-exec` (byte-identical generated C++).
 
-### Phase F.2b -- Collapse codegen import-tracking dicts (NOT STARTED)
+### Phase F.2b -- Codegen qualifies types to canonical module (DONE)
 
-`user_imported_records` / `user_imported_enums` / `user_imported_type_aliases` (on `ctx` and mirrored into `codegen_cpp/context.py`) are consumed by codegen for C++ namespace qualification -- e.g. `tpy_other_module::Point` when `Point` was imported from `other_module`. With `_module_qname` on NominalType (Phase F.1 for records, already true for enums and protocols), codegen could derive the source module from `qualified_name()` directly, eliminating the dicts.
+Guiding principle from the user on the re-framing: "there should be one source of truth -- where a type is really defined. Import names are just aliases that should carry the real resolved true identity." In other words, codegen should never qualify a type through an import-alias path -- the canonical qname (declaring module) is the only identity we emit.
 
-Codegen-wide audit: every site that reads the three dicts (`codegen_cpp/generator.py`, `codegen_cpp/types.py`, `codegen_cpp/expressions.py`, `codegen_cpp/context.py`, `compiler.py`) needs a qname-based replacement. Larger and higher-risk than F.2a: byte-identical-C++ regressions from codegen mistakes are easy to miss, and the change crosses more files.
+**What changed.** Codegen record/enum qualification now reads the canonical `(RecordInfo.defining_module, RecordInfo.name)` / `(EnumInfo.module_name, NominalType.name)` pair via two new registry helpers (`TypeRegistry.imported_record_qualification`, `imported_enum_qualification`). The three dicts on `codegen_cpp/CodeGenContext` (`user_imported_records`, `user_imported_enums`, `user_imported_type_aliases`) are gone. Sites migrated:
 
-Worth a separate session from F.2a -- different code region, different risk profile.
+1. `codegen_cpp/types.py::type_to_cpp` -- records (was :324) and enums (was :336).
+2. `codegen_cpp/expressions.py` -- record constructor (was :2208), enum type-level member access (was :2743), nested dotted access for records/enums (was :2754-2759).
+3. `codegen_cpp/generator.py::generate` -- the loops that populate `_native_cpp_names` for imported records/enums now iterate the full `registry.records` / `registry.enums` and filter through the helpers. This fixes any `NominalType.to_cpp()` path that previously returned the alias form.
+
+**Snapshot changes.** 43 expected files changed, purely canonicalization:
+- `::tpystd::tplib::ArrayList` -> `::tpystd::tplib::array_list::ArrayList`
+- `::tpystd::tplib::Box` -> `::tpystd::tplib::box::Box`
+- `::tpystd::tplib::FixStr` -> `::tpystd::tplib::fix_str::FixStr`
+- `::tpystd::tplib::json::JsonToken/Reader/Error` -> `::tpystd::tplib::json::parser::JsonToken/Reader/Error`
+
+Both forms still compile: facade headers (`tplib.hpp`, `tplib.json.hpp`) already emit `using ::tpystd::tplib::array_list::ArrayList;` etc. for re-exports, so the short form continues to work where any is emitted -- but codegen no longer emits it.
+
+**Followup that landed in the same phase.** After the codegen migration, the sema-side dicts (`user_imported_records` / `user_imported_enums` / `user_imported_type_aliases` on `SemanticContext`) were *also* deleted. The original obstacle -- that `RecordInfo.module` collapses private submodules (`tpy._builtins._bytes` -> `tpy`) while re-export needs the actual submodule -- was solved by adding a second field:
+
+- `RecordInfo.module` -- public collapsed module, used for `qualified_name()` and canonical identity.
+- `RecordInfo.defining_module` -- raw uncollapsed module where the class was declared, used by re-export lookup and codegen namespace qualification.
+
+Both resolve to the same C++ namespace via `_namespace_map` / `cpp_namespace` directives, so swapping codegen from `module` to `defining_module` stayed byte-identical. Enums already had the right form on `EnumInfo.module_name` (always uncollapsed), and the alias dict moved onto `TypeRegistry.imported_type_alias_info` (alias bodies don't carry provenance so it has to be stored separately).
+
+- `compiler.py::_exports_to_module_info` re-export loops now iterate `registry.records` / `registry.enums` directly, using `imported_record_qualification` / `imported_enum_qualification` to filter cross-module entries, plus a dedupe filter for aliased imports (`from X import P as MyP` registers both `MyP` and `P`; only the alias re-exports).
+- The two codegen sites that used `user_imported_type_aliases` (union-alias registration, `using`-declaration emission in `codegen_cpp/generator.py`) now read `registry.imported_type_alias_info`.
+
+Full suite green at 2608 passed + 1 skipped with `--force-exec`; no snapshot diffs beyond the canonicalization batch from the main F.2b phase.
+
+**Regression tests** (added after a review found the aliased-re-export paths uncovered):
+- `cases/imports/package_alias_reexport_record` -- `pkg/__init__.py` does `from .sub import Point as P`; main uses `from pkg import P`. Pins the record branch of the aliased-dedupe filter in `_exports_to_module_info`.
+- `cases/imports/package_alias_reexport_enum` -- mirror of the above for an aliased enum re-exported through `__init__.py`.
+- `cases/imports/package_alias_reexport_class_shadow` -- `__init__.py` has `from .sub import Foo` followed by a local `class Foo:`; verifies the local class shadows the imported one in pkg's exports. Guards the removal of `user_imported_records.pop(info.name)` in `registration.py`.
 
 ### Phase F.3 -- Parser emits unresolved type-reference nodes (NOT STARTED)
 
-Steps:
+**Goal.** Make parsing purely syntactic: parser never constructs a `TpyType`.
+All name resolution (primitives, builtin generics, user records/protocols/
+enums, type parameters, import aliases) moves to sema. Parser imports from
+`typesys` / `modules` drop to zero (or near-zero -- only `TypeRegistry` for
+registration). Structural wrappers (`Ptr`, `Own`, `Optional`, `Union`,
+`Tuple`, `Callable`, `Readonly`) are still represented structurally but via
+`TpyTypeRef` wrapping in the AST, not by direct `PtrType(...)` construction
+at parse time.
 
-1. Introduce a pure AST node `TpyTypeRef(name, args, source_loc)` carrying unresolved type syntax. `args` is a tuple of `TpyTypeRef | int` (ints for `Array[T, N]` style).
-2. Parser emits `TpyTypeRef` everywhere it currently constructs a `TpyType`. Parser no longer imports from `typesys` (at most imports `TypeRegistry` for registration, and a few structural helpers if unavoidable).
-3. Sema adds a `resolve_type_ref(ref) -> TpyType` pass that walks `TpyTypeRef` against:
-   - the TypeDef registry (builtins + user-registered records/protocols/enums);
+**Why now.** Post-F.2b, sema already re-resolves everything the parser
+emits: `TypeOperations.resolve_type` substitutes enum placeholders, user-
+record qnames, protocol flags, `TypeParamRef`s, and walks structural
+wrappers. The parser's type construction is effectively a "first draft"
+that sema rewrites. F.3 deletes the first draft and has parser emit the
+unresolved form directly, collapsing two near-parallel resolution paths
+into one.
+
+**High-level steps** (original plan):
+
+1. Introduce a pure AST node `TpyTypeRef(name, args, source_loc)` carrying
+   unresolved type syntax. `args` is a tuple of `TpyTypeRef | int` (ints
+   for `Array[T, N]` style).
+2. Parser emits `TpyTypeRef` everywhere it currently constructs a
+   `TpyType`. Parser no longer imports from `typesys` (at most imports
+   `TypeRegistry` for registration, and a few structural helpers if
+   unavoidable).
+3. Sema adds a `resolve_type_ref(ref) -> TpyType` pass that walks
+   `TpyTypeRef` against:
+   - the TypeDef registry (builtins + user-registered records/protocols/
+     enums);
    - local type parameters in scope;
-   - structural syntax (`Ptr[...]`, `Own[...]`, `Optional[...]`, `T | U`, `tuple[...]`, `Callable[...]`, etc.) -- these build `StructuralType` directly.
-4. Parser's local-name resolution for type annotations moves to sema, unifying with cross-module resolution (CLAUDE.md notes cross-module resolution is already deferred; this extends the pattern).
-5. Type factory table in `modules/type_resolution.py` is deleted -- no longer called, since parser never constructs typed instances.
+   - structural syntax (`Ptr[...]`, `Own[...]`, `Optional[...]`, `T | U`,
+     `tuple[...]`, `Callable[...]`, etc.) -- these build `StructuralType`
+     directly.
+4. Parser's local-name resolution for type annotations moves to sema,
+   unifying with cross-module resolution (CLAUDE.md notes cross-module
+   resolution is already deferred; this extends the pattern).
+5. Type factory table in `modules/type_resolution.py` is deleted -- no
+   longer called, since parser never constructs typed instances.
 
-This phase is orthogonal to the nominal/structural split. It *could* run before Phase A, but is cleaner after A (fewer type classes to shuffle) and can run in parallel with Phases B-E once A is done -- the parser->sema contract change is independent of subclass elimination.
+This phase is orthogonal to the nominal/structural split. It *could* run
+before Phase A, but is cleaner after A (fewer type classes to shuffle) and
+can run in parallel with Phases B-E once A is done -- the parser->sema
+contract change is independent of subclass elimination.
+
+**Sub-step breakdown.** Each sub-step ships independently, keeps the full
+suite green, and preserves byte-identical generated C++. Pattern mirrors
+F.1/F.2a/F.2b.
+
+#### Phase F.3a -- Introduce `TpyTypeRef` (plumbing only)
+
+Pure plumbing. No consumers yet.
+
+1. Add `TpyTypeRef(name, args, source_loc)` to `parse/nodes.py`. `name` is
+   the raw identifier as it appears in source (`"Int32"`, `"list"`,
+   `"Ptr"`, `"Optional"`, `"T"`, `"Outer.Inner"`); `args` is a tuple of
+   `TpyTypeRef | int`. No resolution semantics encoded in the node.
+2. Decide whether `TpyTypeRef` represents *all* type syntax (including
+   structural wrappers like `Ptr`/`Optional`/union) or whether a few
+   special-cased structural node kinds coexist. **Tentative design**:
+   one uniform node. `Ptr[T]` parses to `TpyTypeRef("Ptr", (TpyTypeRef("T",
+   (), loc),), loc)`; `T | U` parses to `TpyTypeRef("|", (<ref T>, <ref
+   U>), loc)` (or a dedicated `TpyUnionRef` — decide during implementation
+   against readability).
+3. No parser or sema wiring yet. This sub-step exists to lock in the node
+   shape before anyone writes against it.
+
+#### Phase F.3b -- Parser emits `TpyTypeRef` for leaf annotation sites
+
+First real cut-over. Pick the annotation sites where sema's writers are
+well-audited (from F.2a's table): function params/returns, var decls,
+record fields, method signatures.
+
+1. Extend sema `TypeOperations` with `resolve_type_ref(ref: TpyTypeRef) ->
+   TpyType`. Initially this wraps the logic currently in parser's
+   `_parse_type_annotation` (primitive resolution, registry lookup,
+   structural-wrapper construction, type-param substitution, enum/record
+   substitution). The existing `resolve_type` becomes a thin shim that
+   dispatches on `TpyType` vs `TpyTypeRef`.
+2. Switch parser's `_parse_type_annotation` entry to emit `TpyTypeRef` for
+   the targeted AST fields. All other callers of `_parse_type_annotation`
+   (generic function calls, isinstance checks, etc.) continue to receive
+   `TpyType` for now.
+3. Update AST field types (`TpyFunction.params`, `.return_type`;
+   `TpyRecord.fields[i].type`; `TpyVarDecl.type`; method signatures) to
+   `TpyTypeRef`. The F.2a writer table already catalogs which sema sites
+   consume these.
+4. Sema writers call `resolve_type_ref` instead of `resolve_type` for the
+   migrated fields.
+5. Verify byte-identical codegen + full suite green.
+
+#### Phase F.3c -- Expand `TpyTypeRef` coverage to all annotation sites
+
+Migrate the remaining annotation consumers:
+
+1. `isinstance` checks (`TpyCall.isinstance_type`) and user-defined
+   `isinstance` type args.
+2. Generic function call type args (`func[Int32, str](...)`).
+3. Class base lists and protocol inheritance
+   (`TpyRecord.bases`, `TpyProtocol.bases`).
+4. Type alias bodies (`TpyModule.type_aliases`).
+5. Exception handler types (`TpyExceptHandler.type`).
+6. With-item enter types (`TpyWithItem.enter_type`).
+7. Match patterns (record-pattern type names, class-pattern type args).
+8. `TpyTypeParamConstruct` bounds and defaults.
+
+After this step, the AST should contain `TpyType` only for sema-resolved
+results (never for parser output). Verify byte-identical codegen.
+
+#### Phase F.3d -- Move primitive / builtin name resolution into sema
+
+Parser drops its imports of `INT32`, `BOOL`, `STR`, `FLOAT`, ... and the
+`qnames` module. `_resolve_primitive_type` and the related resolution
+helpers delete; sema's `resolve_type_ref` now handles the name->qname
+lookup via the TypeDef registry. Parser imports from `typesys` reduce to:
+
+- `TypeRegistry` (registration bookkeeping still lives there);
+- maybe a couple of structural-validation helpers (readonly/union
+  normalization) if cleanly unavoidable.
+
+Ideally none. Verify byte-identical codegen.
+
+#### Phase F.3e -- Delete the type factory table
+
+With parser resolution gone, `modules/type_resolution.py`'s factory table
+(`get_type_factory_param_kinds`, `lookup_generic_type`, etc.) has only
+sema-side readers for arity validation. Fold what remains into the
+TypeDef registry (arity becomes a TypeDef field, or derives from
+`RecordInfo.type_params`). `validate_type`'s multi-branch fallback
+collapses to a single TypeDef lookup. Delete the factory module.
+
+Verify byte-identical codegen + full suite green. Phase F.3 complete.
 
 ### Phase G -- Sema module cleanup (optional, independent)
 

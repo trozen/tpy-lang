@@ -1302,16 +1302,30 @@ class Compiler:
             if record_info:
                 exports.records[record.name] = record_info
 
-        # Re-export imported records from user modules
+        # Re-export imported records from user modules. Iterate the registry
+        # and filter by imported_record_qualification (cross-module, non-builtin).
+        # For aliased imports (`from X import P as MyP`) the record is registered
+        # under both local and canonical names; skip the canonical-name duplicate
+        # when an alias entry exists so re-export matches CPython `from` semantics.
         if can_reexport:
-            for local_name, (source_module, original_name) in analyzer.ctx.user_imported_records.items():
-                if local_name not in exports.records:
-                    # Get the record info from the source module
-                    module_info = analyzer.registry.get_module(source_module)
-                    if module_info and original_name in module_info.records:
-                        exports.records[local_name] = module_info.records[original_name]
-                        # Track re-export source for codegen
-                        exports.reexported_records[local_name] = (source_module, original_name)
+            aliased_record_ids = {
+                id(rinfo) for ln, rinfo in analyzer.registry.records.items()
+                if ln != rinfo.name
+            }
+            for local_name, record_info in analyzer.registry.records.items():
+                if local_name == record_info.name and id(record_info) in aliased_record_ids:
+                    continue
+                qual = analyzer.registry.imported_record_qualification(
+                    local_name, analyzer.ctx.module_name)
+                if qual is None:
+                    continue
+                source_module, original_name = qual
+                if local_name in exports.records:
+                    continue
+                module_info = analyzer.registry.get_module(source_module)
+                if module_info and original_name in module_info.records:
+                    exports.records[local_name] = module_info.records[original_name]
+                    exports.reexported_records[local_name] = (source_module, original_name)
 
         # Export all user-defined protocols
         for protocol in compiled.ast.protocols:
@@ -1334,14 +1348,27 @@ class Compiler:
             if enum_type:
                 exports.enums[enum.name] = enum_type
 
-        # Re-export imported enums from user modules
+        # Re-export imported enums from user modules (same aliasing treatment
+        # as records above).
         if can_reexport:
-            for local_name, (source_module, original_name) in analyzer.ctx.user_imported_enums.items():
-                if local_name not in exports.enums:
-                    module_info = analyzer.registry.get_module(source_module)
-                    if module_info and original_name in module_info.enums:
-                        exports.enums[local_name] = module_info.enums[original_name]
-                        exports.reexported_enums[local_name] = (source_module, original_name)
+            aliased_enum_ids = {
+                id(et) for ln, et in analyzer.registry.enums.items()
+                if ln != et.name
+            }
+            for local_name, enum_type in analyzer.registry.enums.items():
+                if local_name == enum_type.name and id(enum_type) in aliased_enum_ids:
+                    continue
+                qual = analyzer.registry.imported_enum_qualification(
+                    local_name, analyzer.ctx.module_name)
+                if qual is None:
+                    continue
+                source_module, original_name = qual
+                if local_name in exports.enums:
+                    continue
+                module_info = analyzer.registry.get_module(source_module)
+                if module_info and original_name in module_info.enums:
+                    exports.enums[local_name] = module_info.enums[original_name]
+                    exports.reexported_enums[local_name] = (source_module, original_name)
 
         # Export type aliases
         for name, (typ, _loc) in compiled.ast.type_aliases.items():

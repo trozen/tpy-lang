@@ -159,18 +159,31 @@ class CodeGenerator:
         for enum in module.all_enums():
             if "." in enum.name:
                 _native_cpp_names[enum.name] = enum.name.replace(".", "::")
-        for local_name, (src_mod, original_name) in self.analyzer.ctx.user_imported_records.items():
-            record_info = self.analyzer.registry.get_record(local_name)
-            if record_info and record_info.is_native and record_info.native_name:
+        # Register C++ names for imported records/enums using their canonical
+        # (declaring-module) qname. NominalType.to_cpp() consults these when it
+        # has no qname-based formatter on hand. Iterate the full record/enum
+        # registries; imported_*_qualification filters out locals and builtins.
+        current_module = self.analyzer.ctx.module_name
+        for local_name, record_info in self.analyzer.registry.records.items():
+            if record_info.is_native and record_info.native_name:
                 register_native_cpp_name(local_name, record_info.native_name)
-            elif not (record_info and record_info.is_native):
-                register_native_cpp_name(local_name, qualified_cpp_name(src_mod, original_name))
-        for local_name, (src_mod, original_name) in self.analyzer.ctx.user_imported_enums.items():
-            qualified = qualified_cpp_name(src_mod, original_name)
-            # Register under both alias and original name: alias for NominalType
-            # annotations (parser doesn't know the type), original for EnumType
-            # values (EnumType.name is the original name)
+                continue
+            if record_info.is_native:
+                continue
+            qual = self.analyzer.registry.imported_record_qualification(
+                local_name, current_module)
+            if qual is not None:
+                register_native_cpp_name(local_name, qualified_cpp_name(*qual))
+        for local_name in list(self.analyzer.registry.enums.keys()):
+            qual = self.analyzer.registry.imported_enum_qualification(
+                local_name, current_module)
+            if qual is None:
+                continue
+            qualified = qualified_cpp_name(*qual)
             register_native_cpp_name(local_name, qualified)
+            # For aliased imports, also map the canonical name so references
+            # that go through NominalType.name resolve too.
+            original_name = qual[1]
             if local_name != original_name:
                 register_native_cpp_name(original_name, qualified)
         # Register native names from builtin type records without type_factory
@@ -183,7 +196,7 @@ class CodeGenerator:
                 register_native_cpp_name(record_info.name, record_info.native_name)
         # Register imported union type aliases so UnionType.to_cpp() can use
         # the alias name instead of expanding to std::variant<...>
-        for local_name, (_src_mod, original_name) in self.analyzer.ctx.user_imported_type_aliases.items():
+        for local_name in self.analyzer.registry.imported_type_alias_info:
             alias_type = self.analyzer.registry.get_type_alias(local_name)
             if isinstance(alias_type, UnionType):
                 register_union_alias(alias_type.members, local_name)
@@ -199,14 +212,8 @@ class CodeGenerator:
             k: v for k, v in self.analyzer.ctx.user_imported_functions.items()
             if not (fi := self.analyzer.registry.get_function(k)) or not any(f.is_decorator_stub for f in fi)
         }
-        self.ctx.user_imported_records = {
-            k: v for k, v in self.analyzer.ctx.user_imported_records.items()
-            if not (ri := self.analyzer.registry.get_record(k)) or not ri.is_keyword_stub
-        }
         self.ctx.user_imported_protocols = dict(self.analyzer.ctx.user_imported_protocols)
         self.ctx.user_imported_variables = dict(self.analyzer.ctx.user_imported_variables)
-        self.ctx.user_imported_type_aliases = dict(self.analyzer.ctx.user_imported_type_aliases)
-        self.ctx.user_imported_enums = dict(self.analyzer.ctx.user_imported_enums)
         self.ctx.top_level_decls = dict(self.analyzer.ctx.top_level_decls)
         self.ctx.reexported_functions = reexported_functions or {}
         self.ctx.reexported_records = reexported_records or {}
@@ -648,7 +655,8 @@ class CodeGenerator:
         # Imported type alias using-declarations (before function forward
         # decls so signatures can reference alias names like Shape)
         emitted_imported_alias = False
-        for local_name, (src_mod, original_name) in sorted(self.ctx.user_imported_type_aliases.items()):
+        for local_name, (src_mod, original_name) in sorted(
+                self.analyzer.registry.imported_type_alias_info.items()):
             # Skip aliases whose C++ emission bypasses the Python name --
             # the `using PythonName = ...;` would be dead code. See
             # _emits_own_cpp above.

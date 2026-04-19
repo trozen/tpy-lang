@@ -381,7 +381,7 @@ class SemanticAnalyzer:
         # The parser creates NominalType("Shape") for imported aliases since it
         # doesn't know about cross-module aliases at parse time. Substitute them
         # with the resolved types before registration/analysis.
-        if self.ctx.user_imported_type_aliases:
+        if self.ctx.registry.imported_type_alias_info:
             self._resolve_imported_aliases(module)
 
         # First pass: register all enums then records. Enums are registered
@@ -1887,8 +1887,8 @@ class SemanticAnalyzer:
             return
         alias_type = tpy_info.type_aliases.get(original_name)
         if alias_type is not None:
-            self.ctx.registry.register_type_alias(local_name, alias_type)
-            self.ctx.user_imported_type_aliases[local_name] = ("tpy", original_name)
+            self.ctx.registry.register_type_alias(local_name, alias_type,
+                                                  imported_from=("tpy", original_name))
             if local_name != original_name:
                 self.ctx.registry.register_type_alias(original_name, alias_type)
 
@@ -1898,8 +1898,8 @@ class SemanticAnalyzer:
         if not tpy_info or not tpy_info.type_aliases:
             return
         for name, alias_type in tpy_info.type_aliases.items():
-            self.ctx.registry.register_type_alias(name, alias_type)
-            self.ctx.user_imported_type_aliases[name] = ("tpy", name)
+            self.ctx.registry.register_type_alias(name, alias_type,
+                                                  imported_from=("tpy", name))
 
     def _bind_star_reexport(self, original_name: str, local_name: str) -> None:
         """Try to bind a star-imported re-export from a known module.
@@ -1970,18 +1970,15 @@ class SemanticAnalyzer:
             self.ctx.registry.register_record(record_info, local_name)
             if local_name != original_name:
                 self.ctx.registry.register_record(record_info, original_name)
-            self.ctx.user_imported_records[local_name] = (module_name, original_name)
             # Also register nested types so Outer.Inner resolves in the importing module
             prefix = original_name + "."
             for nested_name, nested_info in module_info.records.items():
                 if nested_name.startswith(prefix):
                     self.ctx.registry.register_record(nested_info, nested_name)
-                    self.ctx.user_imported_records[nested_name] = (module_name, nested_name)
             if module_info.enums:
                 for nested_name, nested_enum in module_info.enums.items():
                     if nested_name.startswith(prefix):
                         self.ctx.registry.register_enum(nested_enum, nested_name)
-                        self.ctx.user_imported_enums[nested_name] = (module_name, nested_name)
             return True
 
         # Check for protocol
@@ -1997,16 +1994,15 @@ class SemanticAnalyzer:
         # Check for type alias
         if module_info.type_aliases and original_name in module_info.type_aliases:
             typ = module_info.type_aliases[original_name]
-            self.ctx.registry.register_type_alias(local_name, typ)
-            self.ctx.user_imported_type_aliases[local_name] = (module_name, original_name)
+            self.ctx.registry.register_type_alias(local_name, typ,
+                                                  imported_from=(module_name, original_name))
             # Implicitly import member record types so codegen can qualify them
             if isinstance(typ, UnionType) and module_info.records:
                 for member in typ.members:
                     if isinstance(member, NominalType) and member.name in module_info.records:
-                        if member.name not in self.ctx.user_imported_records:
+                        if self.ctx.registry.get_record(member.name) is None:
                             rec = module_info.records[member.name]
                             self.ctx.registry.register_record(rec, member.name)
-                            self.ctx.user_imported_records[member.name] = (module_name, member.name)
             return True
 
         # Check for enum
@@ -2019,7 +2015,6 @@ class SemanticAnalyzer:
             if local_name != original_name:
                 self.ctx.registry.register_enum(enum_type, original_name)
             self.ctx.global_ns.bind_enum(enum_type, name=local_name)
-            self.ctx.user_imported_enums[local_name] = (module_name, original_name)
             return True
 
         # Check for variable
@@ -2095,7 +2090,6 @@ class SemanticAnalyzer:
                         self.ctx.registry.register_record(record_info, name)
                     self.ctx.macro_ns.bind_imported_name(name, dep_mod_name, name)
                     self.ctx.imported_names.setdefault(name, (dep_mod_name, name))
-                    self.ctx.user_imported_records.setdefault(name, (dep_mod_name, name))
 
             if module_info.functions:
                 for name, func_infos in module_info.functions.items():
@@ -2117,4 +2111,3 @@ class SemanticAnalyzer:
                         self.ctx.registry.register_enum(enum_type, name)
                     self.ctx.macro_ns.bind_enum(enum_type, name=name)
                     self.ctx.imported_names.setdefault(name, (dep_mod_name, name))
-                    self.ctx.user_imported_enums.setdefault(name, (dep_mod_name, name))

@@ -287,6 +287,7 @@ class TypeRegistrar:
                 name=record.name,
                 fields=[],
                 module=record_module,
+                defining_module=self.ctx.module_name,
                 type_params=list(record.type_params) if record.type_params else [],
                 type_param_kinds=list(record.type_param_kinds) if record.type_param_kinds else [],
             )
@@ -810,6 +811,7 @@ class TypeRegistrar:
             has_copy=has_copy,
             builtin_type_key=record.builtin_type_key,
             module=public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace) or None,
+            defining_module=self.ctx.module_name,
         )
         self.ctx.registry.register_record(info)
         self.ctx.global_ns.bind_record(info)
@@ -834,7 +836,6 @@ class TypeRegistrar:
                 record=info,
             )
         # Local class definition shadows any `from X import name` import
-        self.ctx.user_imported_records.pop(info.name, None)
         if self.ctx.user_imported_functions.pop(info.name, None):
             self.ctx.registry.functions.pop(info.name, None)
 
@@ -1637,7 +1638,6 @@ class TypeRegistrar:
         self.ctx.global_ns.bind_function(info)
         # Local definition shadows any `from X import name` import
         self.ctx.user_imported_functions.pop(info.name, None)
-        self.ctx.user_imported_records.pop(info.name, None)
 
         # Propagate resolved types back to AST (matches register_record and
         # register_overload_group). For non-stub functions, _analyze_function

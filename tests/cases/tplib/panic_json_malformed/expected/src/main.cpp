@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def parse_bad() -> None:
 std::expected<void, ::tpystd::tplib::json::JsonError> parse_bad() {
     // reader = JsonReader('{"name": "hello')
-    ::tpystd::tplib::json::JsonReader reader = ::tpystd::tplib::json::JsonReader("{\"name\": \"hello");
+    ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("{\"name\": \"hello");
     // reader.read_object_start()
     {
         auto __try_tmp_1 = reader.read_object_start();

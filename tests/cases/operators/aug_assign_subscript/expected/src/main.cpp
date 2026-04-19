@@ -25,7 +25,7 @@ void test_list_aug_assign() {
 // def test_arraylist_aug_assign() -> None:
 void test_arraylist_aug_assign() {
     // items = ArrayList[Int32, 4]()
-    ::tpystd::tplib::ArrayList<int32_t, 4> items = ::tpystd::tplib::ArrayList<int32_t, 4>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 4> items = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     // items.append(100)
     items.append(100);
     // items.append(200)

@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // # -- empty, append, len --
     // s = FixStr[16]()
-    ::tpystd::tplib::FixStr<16> s = ::tpystd::tplib::FixStr<16>();
+    ::tpystd::tplib::fix_str::FixStr<16> s = ::tpystd::tplib::fix_str::FixStr<16>();
     // print(len(s))               # 0
     std::cout << ::tpy::__len__(s) << "\n";
     // h: Char = "h"
@@ -79,7 +79,7 @@ void main() {
     std::cout << std::format("val={}", ::tpy::__str__(s)) << "\n";
     // # -- copy --
     // t = copy(s)
-    ::tpystd::tplib::FixStr<16> t = ::tpystd::tplib::FixStr<16>(s);
+    ::tpystd::tplib::fix_str::FixStr<16> t = ::tpystd::tplib::fix_str::FixStr<16>(s);
     // b: Char = "b"
     char b = 'b';
     // t[0] = b

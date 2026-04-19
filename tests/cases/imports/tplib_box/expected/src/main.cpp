@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // b = Box[Int32](42)
-    ::tpystd::tplib::Box<int32_t> b = ::tpystd::tplib::Box<int32_t>(42);
+    ::tpystd::tplib::box::Box<int32_t> b = ::tpystd::tplib::box::Box<int32_t>(42);
     // print(b.get())
     std::cout << b.get() << "\n";
     // b.set(100)

@@ -584,11 +584,8 @@ class CodeGenContext:
     emitted_tpy_inits: set[str] = field(default_factory=set)
     # Maps local_name -> (source_module, original_name) to support import aliases
     user_imported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
-    user_imported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_protocols: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
-    user_imported_type_aliases: dict[str, tuple[str, str]] = field(default_factory=dict)
-    user_imported_enums: dict[str, tuple[str, str]] = field(default_factory=dict)
     top_level_decls: dict[str, int] = field(default_factory=dict)
     current_stmt_line: int = 0
 

@@ -47,7 +47,7 @@ void main() {
     Expr __tmp_1 = Lit(::tpy::BigInt(42));
     std::cout << eval_expr(__tmp_1) << "\n";
     // e = BinOp(Box(BinOp(Box(Lit(10)), "+", Box(Lit(3)))), "-", Box(Lit(1)))
-    BinOp e = BinOp(::tpystd::tplib::Box<Expr>(BinOp(::tpystd::tplib::Box<Expr>(Lit(::tpy::BigInt(10))), "+", ::tpystd::tplib::Box<Expr>(Lit(::tpy::BigInt(3))))), "-", ::tpystd::tplib::Box<Expr>(Lit(::tpy::BigInt(1))));
+    BinOp e = BinOp(::tpystd::tplib::box::Box<Expr>(BinOp(::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(10))), "+", ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(3))))), "-", ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(1))));
     // print(eval_expr(e))
     Expr __tmp_2 = std::move(e);
     std::cout << eval_expr(__tmp_2) << "\n";
