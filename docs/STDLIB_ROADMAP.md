@@ -141,7 +141,7 @@ Examples of the policy in action:
 | [`typing`](#typing) | P1 | Partial | ~60% | native | Protocols/Sized/Iterator/TypedDict/Unpack; missing Generic, TypeVar, ParamSpec, ClassVar |
 | [`datetime`](#datetime) | P1 | Missing | 0% | -- | Class-heavy; needs timedelta arithmetic and timezone handling |
 | [`csv`](#csv) | P1 | Missing | 0% | -- | Depends on `io` |
-| [`base64`](#base64) | P1 | Missing | 0% | -- | Candidate for pure TPy; bytes support is ready |
+| [`base64`](#base64) | P1 | Partial | ~95% | pure | Pure-TPy b64/b32/b16 encode+decode + urlsafe/standard variants + altchars=/validate=/casefold=/map01= kwargs + encodebytes/decodebytes. bytes/bytearray/str accepted on decoders (matches CPython). Missing: b85/a85 (rare, separate algorithms); `memoryview` depends on builtin gap |
 | [`hashlib`](#hashlib) | P1 | Missing | 0% | pure | Pure TPy (md5/sha1/sha256/sha512 are modest loops); optional thin OpenSSL binding later for speed |
 | [`argparse`](#argparse) | P1 | Missing | 0% | -- | Dynamic-type heavy; may need macro approach |
 | [`logging`](#logging) | P2 | Missing | 0% | -- | Module-level state + handler architecture |
@@ -737,13 +737,28 @@ native conversion helpers. Blocked by nothing architectural; medium effort.
 
 ### base64
 
-**Missing.** Pure-TPy candidate; `bytes` support is ready.
+Current: `lib/tpy/base64.py` -- pure TPy. CPython-compatible defaults:
+`b64decode(validate=False)` silently skips non-alphabet chars (matching
+CPython's lax MIME-mode behavior); `validate=True` makes any non-alphabet
+char raise `ValueError`. Padding errors always raise.
 
-| Item | Status |
-|---|---|
-| `b64encode`, `b64decode` | Missing |
-| `urlsafe_b64encode`, `urlsafe_b64decode` | Missing |
-| `b16/b32` variants | Missing |
+| Item | Status | Notes |
+|---|---|---|
+| `b64encode(data, altchars=None)` | Done | Standard `+/` alphabet; `altchars` builds a custom-alphabet view |
+| `b64decode(data, altchars=None, validate=False)` | Done | `validate=False` default matches CPython |
+| `standard_b64encode`, `standard_b64decode` | Done | Aliases over the standard alphabet |
+| `urlsafe_b64encode`, `urlsafe_b64decode` | Done | `-_` alphabet |
+| `b16encode`, `b16decode(data, casefold=False)` | Done | Hex; uppercase output; `casefold=True` accepts lowercase on decode |
+| `b32encode(data)` | Done | RFC 4648 base32; all five padding remainders covered |
+| `b32decode(data, casefold=False, map01=None)` | Done | Strict by default; `casefold=True` accepts lowercase; `map01` maps `'0'`->`'O'` and `'1'`->`'I'` or `'L'` |
+| `encodebytes(data)` / `decodebytes(data)` | Done | MIME-style 76-char line wrap with trailing `\n`; decode passes through `b64decode` (lax) |
+| `bytes` / `bytearray` inputs | Done | Auto-converted via `__span__` (generated signature is `std::span<const uint8_t>`) |
+| `str` input on decoders (`b64decode`, `standard_b64decode`, `urlsafe_b64decode`, `b32decode`, `b16decode`) | Done | `@overload` delegating through `.encode()`; matches CPython which accepts ASCII str on decoders |
+| `BytesView` input | Partial | Works as C++ span but TPy-level coercion not yet tested |
+| `b85encode`/`b85decode`, `a85encode`/`a85decode` | Missing | Rare; separate ~100-LOC algorithms |
+| `memoryview` input | Blocked | Depends on `memoryview` builtin (see `builtins` section) |
+
+Tests: `cases/stdlib/base64`.
 
 ### hashlib
 
