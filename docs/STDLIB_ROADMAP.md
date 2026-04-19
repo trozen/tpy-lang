@@ -90,6 +90,15 @@ The `approach` column in the overview table below reflects the **public-facing**
 strategy. Internally nearly every module ends up "mixed" if it touches the OS --
 the distinction is whether the Python-visible logic lives in .py or C++.
 
+### Test location convention
+
+Stdlib-module tests live under `tests/cases/stdlib/<module>/` -- one directory
+per CPython module, matching the import name (`stdlib/bisect`, `stdlib/heapq`,
+`stdlib/math/...` for grouped subcases, etc.). This keeps the stdlib surface
+discoverable as a group (`pytest -k stdlib/`) and separates it from feature
+tests under `cases/<feature>/`. Earlier stdlib tests that ended up under
+`cases/imports/` or `cases/builtins/` are being migrated as they're touched.
+
 Examples of the policy in action:
 
 - `bisect` -- fully pure TPy over the `Comparable` protocol. No native code.
@@ -138,7 +147,7 @@ Examples of the policy in action:
 | [`logging`](#logging) | P2 | Missing | 0% | -- | Module-level state + handler architecture |
 | [`configparser`](#configparser) | P2 | Missing | 0% | -- | Depends on `io` |
 | [`urllib.parse`](#urllibparse) | P2 | Missing | 0% | -- | Pure-TPy candidate; no network dependency |
-| [`heapq`](#heapq) | P2 | Missing | 0% | -- | Candidate for pure TPy over `list[T]` |
+| [`heapq`](#heapq) | P2 | Partial | ~90% | pure | Pure TPy over `list[T: Comparable]`. All non-variadic ops done; `merge(*iterables)` blocked on the same variadic-in-method-call gap as `math.hypot` |
 | [`copy`](#copy) | P2 | Missing | 0% | -- | `copy()` deep semantics need intrinsic support |
 | [`textwrap`](#textwrap) | P2 | Missing | 0% | -- | Pure TPy candidate |
 | [`decimal`](#decimal) | P2 | Missing | 0% | -- | Large surface; candidate for BigInt-based pure impl or native lib |
@@ -174,6 +183,8 @@ unblock.
 | Socket primitives | socket, http.client, smtplib, ftplib, urllib.request | L |
 | Runtime type info / reflection for `get_type_hints`, `type(x)`, `isinstance` on concrete | typing runtime, inspect, pickle | L |
 | Closure capture for `partial`/`lru_cache` | functools | S-M (may already work via Callable) |
+| `tuple[T1, T2, ...]` satisfying `Comparable` when all `Ti` are Comparable (built-in `<` works; protocol conformance missing) | heapq/bisect/sort on tuples, `list[tuple[priority, payload]]` priority queues, `sorted(list[tuple])` | S |
+| Generic `list[T].pop()` (and similar move-out returns) for reference-type T -- currently emits `val_or_ref_t<T> = T&` bound to rvalue | Reference-type heaps/stacks/queues in stdlib and user code; blocks `generic_stack` example with class elements | S-M (codegen) |
 
 ### Existing TODO.md bugs that gate pure-TPy stdlib work
 
@@ -643,7 +654,7 @@ Tests: `struct_unpack`.
 | `bisect_left`, `bisect_right`, `insort_left`, `insort_right` | Done | |
 | `bisect`, `insort` | Done | Aliases to `bisect_right` / `insort_right` |
 
-Tests: `stdlib_bisect`.
+Tests: `cases/stdlib/bisect`.
 
 ### enum
 
@@ -771,7 +782,27 @@ known gaps.
 
 ### heapq
 
-**Missing.** Pure-TPy candidate over `list[T]`.
+Current: `lib/tpy/heapq.py` -- pure TPy over `list[T: Comparable]`. Mirrors
+CPython's algorithm (sift-up/sift-down) line-for-line; heap items ordered by
+`<`.
+
+| Item | Status | Notes |
+|---|---|---|
+| `heappush`, `heappop` | Done | |
+| `heapify` | Done | O(n) bottom-up construction |
+| `heappushpop` | Done | Push then pop in one step |
+| `heapreplace` | Done | Pop then push in one step |
+| `nsmallest(n, a)` | Done | Heap-based O(n + k log n). Takes `list[T]` (should be `Iterable[T]` to match CPython -- same gap as `math.prod`/`fsum`) |
+| `nlargest(n, a)` | Done | Sort-based O(n log n). Size-k-heap variant (O(n log k)) is a perf follow-up. Same `list[T]` vs `Iterable[T]` gap |
+| `merge(*iterables, key=None, reverse=False)` | Missing | N-way merge; needs variadic in method-call position (same blocker as `math.hypot` variadic) plus a generator-based iterator-heads heap |
+| `key=` arg on `nlargest`/`nsmallest` | Missing | Needs `Callable[[T], K: Comparable]` threading; straightforward add once prioritized |
+
+Design note: CPython's `heapq` operates on any mutable sequence; TPy restricts
+to `list[T]` for now. Ref-type heaps work because reads go through `copy()`
+(mirroring the `bisect.insort_left` pattern); users get explicit copy
+semantics for reference types.
+
+Tests: `cases/stdlib/heapq`.
 
 ### copy
 
