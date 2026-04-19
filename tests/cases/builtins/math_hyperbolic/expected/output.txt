@@ -10,11 +10,3 @@ True
 True
 True
 True
-True
-3
--2
-True
-True
-True
-True
-True

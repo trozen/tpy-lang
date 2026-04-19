@@ -31,3 +31,9 @@ def insort_left[T: Comparable](a: list[T], x: T) -> None:
 def insort_right[T: Comparable](a: list[T], x: T) -> None:
     i: Int32 = bisect_right(a, x)
     a.insert(i, copy(x))
+
+def bisect[T: Comparable](a: list[T], x: T) -> Int32:
+    return bisect_right(a, x)
+
+def insort[T: Comparable](a: list[T], x: T) -> None:
+    insort_right(a, x)

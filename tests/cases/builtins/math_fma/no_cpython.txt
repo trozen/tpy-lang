@@ -1,0 +1,2 @@
+math.fma is CPython 3.13+; our test environment is 3.12. The TPy
+implementation binds std::fma which is C++11+.

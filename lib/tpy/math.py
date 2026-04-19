@@ -1,8 +1,70 @@
 # tpy: cpp_namespace("tpystd::math")
+# tpy: include("<tpy/stdlib/math.hpp>")
+#
+# Pending items to reach full CPython `math` parity. Each is blocked on a
+# specific compiler gap tracked in TODO.md; once fixed, update this module.
+#
+# - `nan` constant. `Final[float] = float('nan')` and similar non-literal
+#   initializers currently constexpr-panic. Blocked on the "Final initializer
+#   overflow / div-by-zero" entry in TODO.md Bugs.
+# - Variadic `hypot(*coords)`, `gcd(*ints)`, `lcm(*ints)`. TPy supports
+#   `*args` but `_gen_method_call` doesn't handle `TpyVarargPack`, so
+#   `math.hypot(x, y)` currently fails codegen. Currently shipped as binary
+#   forms. See "Variadic call codegen missing in `_gen_method_call`" in
+#   TODO.md Bugs (and the related Refactor item about a shared arg-binding
+#   helper).
+# - `Iterable[float]` parameter types for `prod`, `fsum`, `sumprod`, `dist`.
+#   CPython accepts any iterable for all four (including generators,
+#   `range(...)`, tuples, user iterators). Currently typed as `list[float]`
+#   as a workaround -- passing e.g. `range(5)` or a tuple errors today,
+#   which is a real CPython compat regression. Blocked on "List literals
+#   don't conform to Iterable[T] / Sequence[T] protocol parameters" in
+#   TODO.md Bugs.
+# - Strict-pairwise iteration for `sumprod` / `dist`. CPython's
+#   implementations use `zip(p, q, strict=True)` -- length mismatch raises
+#   `ValueError`. Once the Iterable conformance gap above is fixed, we need
+#   either a `zip_strict(...)` helper or inline pairwise `__next__` driving
+#   to detect mismatch without needing random access. Today the `list[float]`
+#   workaround gives us upfront `len()` checks for free.
+# - Int-typed overloads for `prod`. Currently `list[float]` only.
+# - `perm(n)` one-arg form (equivalent to `factorial(n)`). Requires
+#   `Optional[int]` default with kw-only semantics.
+# - Generic over int type for `gcd`, `isqrt` (result bounded by input, so
+#   generic is safe). Currently `int`-only forces BigInt allocation for
+#   small-int callers under --default-int=Int32. Pure-TPy generic is
+#   blocked on two language gaps: the missing `AnyInt` protocol (BigInt +
+#   AnyFixedInt) and the ban on `-x` / `abs(x)` / param reassignment
+#   inside unbounded-generic bodies. See TODO.md "No `AnyInt` protocol
+#   covering BigInt + all `AnyFixedInt`". `lcm`, `factorial`, `perm`,
+#   `comb` should probably stay `int`-only even once that lands -- their
+#   results can exceed fixed-int range (e.g. factorial(13) > Int32::max).
+#
+# Algorithmic follow-ups (correctness under our implementation, but not
+# bit-exact or optimal vs CPython):
+#
+# - `fsum`: currently Neumaier compensated summation. Significantly better
+#   than naive but not bit-exact. CPython uses Shewchuk's partials
+#   algorithm (maintains a growing list of non-overlapping partials,
+#   guarantees the sum rounds correctly to a single double). Worth
+#   adopting if users depend on fsum for bit-exact precision.
+# - `sumprod`: naive fold. CPython uses compensated arithmetic (similar
+#   to fsum) for precision. Large vectors can lose low bits in our impl.
+# - `isqrt`: Newton's method currently starts at `n`, which takes
+#   ~log2(n) extra iterations. Better initial guess:
+#   `1 << ((n.bit_length() + 1) // 2)` converges in ~log2(log2(n)) steps.
+#   Blocked on exposing `bit_length()` on int to Python -- the BigInt
+#   runtime has `abs_bit_length()` internally but no Python-visible method.
+#   Logged separately under builtins.
+# - `log(x, base)`: always `log(x) / log(base)`. CPython special-cases
+#   `base == 2` to dispatch to `log2` (one fewer transcendental call).
+#   Minor; consider if benchmarks warrant.
+
 from typing import Final, overload
+from tpy import Int32
 from tpy.extern import native, cpp_template, type_param_default, DefaultInt
 
 pi: Final[float] = 3.141592653589793
+tau: Final[float] = 6.283185307179586
 e: Final[float] = 2.718281828459045
 inf: Final[float] = 1e309
 
@@ -28,6 +90,48 @@ def pow(x: float, y: float) -> float: ...
 
 @native("std::exp")
 def exp(x: float) -> float: ...
+
+@native("std::expm1")
+def expm1(x: float) -> float: ...
+
+@native("std::log1p")
+def log1p(x: float) -> float: ...
+
+@native("std::tgamma")
+def gamma(x: float) -> float: ...
+
+@native("std::lgamma")
+def lgamma(x: float) -> float: ...
+
+@native("std::erf")
+def erf(x: float) -> float: ...
+
+@native("std::erfc")
+def erfc(x: float) -> float: ...
+
+@native("std::nextafter")
+def nextafter(x: float, y: float) -> float: ...
+
+@native("std::ldexp")
+def ldexp(x: float, i: Int32) -> float: ...
+
+@native("std::fma")
+def fma(x: float, y: float, z: float) -> float: ...
+
+@native("tpy::stdlib::math::modf")
+def modf(x: float) -> tuple[float, float]: ...
+
+# Exponent always fits in a 16+ bit signed int (actual range
+# [-1073, 1024] for IEEE 754 double; see tpy/stdlib/math.hpp for why).
+# Defaults to DefaultInt (respects --default-int); user can pick Int32,
+# Int64, BigInt, etc. explicitly. Zero-allocation for fixed-width T;
+# BigInt allocates.
+@type_param_default(T=DefaultInt)
+@cpp_template("::tpy::stdlib::math::frexp<{T}>({0})")
+def frexp[T](x: float) -> tuple[float, T]: ...
+
+@native("tpy::stdlib::math::ulp")
+def ulp(x: float) -> float: ...
 
 @native("tpy::BigInt::from_floor")
 def floor(x: float) -> int: ...
@@ -59,11 +163,183 @@ def asin(x: float) -> float: ...
 @native("std::acos")
 def acos(x: float) -> float: ...
 
+@native("std::atan")
+def atan(x: float) -> float: ...
+
+@native("std::sinh")
+def sinh(x: float) -> float: ...
+
+@native("std::cosh")
+def cosh(x: float) -> float: ...
+
+@native("std::tanh")
+def tanh(x: float) -> float: ...
+
+@native("std::asinh")
+def asinh(x: float) -> float: ...
+
+@native("std::acosh")
+def acosh(x: float) -> float: ...
+
+@native("std::atanh")
+def atanh(x: float) -> float: ...
+
+@native("std::isnan")
+def isnan(x: float) -> bool: ...
+
+@native("std::isinf")
+def isinf(x: float) -> bool: ...
+
+@native("std::isfinite")
+def isfinite(x: float) -> bool: ...
+
+@native("std::copysign")
+def copysign(x: float, y: float) -> float: ...
+
+@native("std::fmod")
+def fmod(x: float, y: float) -> float: ...
+
+@native("std::remainder")
+def remainder(x: float, y: float) -> float: ...
+
 def radians(x: float) -> float:
     return x * (pi / 180.0)
 
 def degrees(x: float) -> float:
     return x * (180.0 / pi)
+
+def gcd(a: int, b: int) -> int:
+    if a < 0:
+        a = -a
+    if b < 0:
+        b = -b
+    while b != 0:
+        t: int = b
+        b = a % b
+        a = t
+    return a
+
+def lcm(a: int, b: int) -> int:
+    if a == 0 or b == 0:
+        return 0
+    # (a // gcd(a, b)) * b keeps the intermediate bounded by max(|a|, |b|);
+    # the naive a*b first would blow up for large BigInts.
+    r: int = (a // gcd(a, b)) * b
+    if r < 0:
+        r = -r
+    return r
+
+def factorial(n: int) -> int:
+    if n < 0:
+        raise ValueError("factorial() not defined for negative values")
+    result: int = 1
+    i: int = 2
+    while i <= n:
+        result = result * i
+        i = i + 1
+    return result
+
+def isqrt(n: int) -> int:
+    if n < 0:
+        raise ValueError("isqrt() argument must be nonnegative")
+    if n == 0:
+        return 0
+    x: int = n
+    y: int = (x + 1) // 2
+    while y < x:
+        x = y
+        y = (x + n // x) // 2
+    return x
+
+def perm(n: int, k: int) -> int:
+    if n < 0 or k < 0:
+        raise ValueError("perm() arguments must be non-negative")
+    if k > n:
+        return 0
+    result: int = 1
+    i: int = 0
+    while i < k:
+        result = result * (n - i)
+        i = i + 1
+    return result
+
+def comb(n: int, k: int) -> int:
+    if n < 0 or k < 0:
+        raise ValueError("comb() arguments must be non-negative")
+    if k > n:
+        return 0
+    if k > n - k:
+        k = n - k
+    result: int = 1
+    i: int = 0
+    while i < k:
+        result = result * (n - i) // (i + 1)
+        i = i + 1
+    return result
+
+def isclose(a: float, b: float, *, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
+    if a == b:
+        return True
+    if isinf(a) or isinf(b):
+        return False
+    diff: float = fabs(a - b)
+    max_ab: float = fabs(a)
+    if fabs(b) > max_ab:
+        max_ab = fabs(b)
+    return diff <= abs_tol or diff <= rel_tol * max_ab
+
+# Below, `iterable: list[float]` / `p: list[float]` etc. would ideally be
+# `Iterable[float]` (prod/fsum -- iteration only) and `Sequence[float]`
+# (sumprod/dist -- need __len__ + __getitem__). Currently blocked by
+# bidirectional-inference / protocol-conformance gaps for list literals:
+# see TODO.md (list-literal vs Iterable/Sequence protocol conformance).
+
+def prod(iterable: list[float], *, start: float = 1.0) -> float:
+    result: float = start
+    for x in iterable:
+        result = result * x
+    return result
+
+def fsum(iterable: list[float]) -> float:
+    # Neumaier summation: more accurate than naive + compensated for large swings.
+    s: float = 0.0
+    c: float = 0.0
+    for x in iterable:
+        t: float = s + x
+        if fabs(s) >= fabs(x):
+            c = c + ((s - t) + x)
+        else:
+            c = c + ((x - t) + s)
+        s = t
+    return s + c
+
+def sumprod(p: list[float], q: list[float]) -> float:
+    if len(p) != len(q):
+        raise ValueError("sumprod(): input lengths differ")
+    s: float = 0.0
+    i: Int32 = 0
+    n: Int32 = Int32(len(p))
+    while i < n:
+        s = s + p[i] * q[i]
+        i = i + 1
+    return s
+
+def dist(p: list[float], q: list[float]) -> float:
+    if len(p) != len(q):
+        raise ValueError("dist(): input lengths differ")
+    n: Int32 = Int32(len(p))
+    if n == 0:
+        return 0.0
+    # Fold via hypot to avoid overflow when coordinates are large: the naive
+    # sqrt(sum((pi - qi)**2)) overflows when any (pi - qi)**2 exceeds
+    # DBL_MAX. std::hypot(a, b) is IEEE overflow-safe, and hypot-folding is
+    # mathematically equivalent: hypot(hypot(d0, d1), d2) == sqrt(d0^2 + d1^2 + d2^2).
+    result: float = fabs(p[0] - q[0])
+    i: Int32 = 1
+    while i < n:
+        result = hypot(result, p[i] - q[i])
+        i = i + 1
+    return result
 
 @type_param_default(T=DefaultInt)
 @cpp_template("::tpy::from_float_check<{T}>({0})")

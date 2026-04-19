@@ -57,6 +57,34 @@ defaults, naming, iteration protocols). Benefits:
 - Type checker, IDE, and LLMs see real Python code, not opaque C++ symbols.
 - Macro-based modules can inspect the pure-TPy layer.
 
+### C++ helper convention
+
+When a stdlib module genuinely needs a small C++ helper beyond raw libc /
+`std::` calls -- e.g. wrappers that return `std::tuple` to bridge CPython's
+multi-return APIs (`math.modf`, `math.frexp`) or that compose a handful of
+`std::` calls into a Python-semantics primitive (`math.ulp`) -- place it in
+`runtime/cpp/include/tpy/stdlib/<module>.hpp` under namespace
+`tpy::stdlib::<module>`. Example: `tpy/stdlib/math.hpp` defines
+`tpy::stdlib::math::modf(...)`.
+
+This keeps stdlib-backing helpers cleanly separated from TPy's own runtime
+core (`tpy::` at the top level, covering `tpy::BigInt`, `tpy::ordered_map`,
+`tpy::varargs`, etc.). Path mirrors namespace, standard C++ convention, and
+future modules slot in predictably: `tpy/stdlib/random.hpp` ->
+`tpy::stdlib::random`, `tpy/stdlib/time.hpp` -> `tpy::stdlib::time`, and so
+on.
+
+Complementary Python-side convention (already in use): stdlib `.py` modules
+declare `# tpy: cpp_namespace("tpystd::<module>")` so the generated code for
+the pure-TPy wrappers lives under `tpystd::math::`, `tpystd::bisect::`, etc.
+Three layers, three namespaces, all distinct:
+
+| Layer | Namespace | Example |
+|---|---|---|
+| Raw C/C++ primitives | `std::` (or third-party) | `std::log`, `std::modf` |
+| TPy-authored C++ helpers | `tpy::stdlib::<module>::` | `tpy::stdlib::math::modf` |
+| Generated code for pure-TPy wrappers | `tpystd::<module>::` | `tpystd::math::gcd` |
+
 The `approach` column in the overview table below reflects the **public-facing**
 strategy. Internally nearly every module ends up "mixed" if it touches the OS --
 the distinction is whether the Python-visible logic lives in .py or C++.
@@ -82,7 +110,7 @@ Examples of the policy in action:
 
 | Module | Priority | Status | % | Approach | Blockers / Notes |
 |---|---|---|---|---|---|
-| [`math`](#math) | P0 | Partial | ~50% | mixed | Thin libc bindings + pure TPy wrappers. Missing fmod/isnan/isinf/gamma family; trig inverses partial |
+| [`math`](#math) | P0 | Partial | ~98% | mixed | Thin libc bindings + pure TPy wrappers. Missing `nan` constant (blocked on TODO.md bug #52) and variadic `hypot`/`gcd`/`lcm` (blocked on codegen gap -- see TODO.md) |
 | [`time`](#time) | P0 | Stub | ~10% | mixed | Thin clock/sleep syscalls + pure TPy. Missing perf_counter/monotonic/struct_time/strftime |
 | [`sys`](#sys) | P0 | Stub | ~5% | mixed | Thin syscall bindings + pure TPy. Only `argv`; needs stdout/stderr/exit/path/version_info |
 | [`os`](#os) | P0 | Missing | 0% | -- | Needs filesystem wrapper + path handling |
@@ -177,28 +205,47 @@ Current: `lib/tpy/math.py` -- native C++ wrappers. Sufficient for numerics-heavy
 
 | Item | Status | Notes |
 |---|---|---|
-| `pi`, `e`, `inf` | Done | Constants as `Final[float]` |
-| `nan` | Missing | Trivial add |
-| `tau` | Missing | Trivial add |
+| `pi`, `tau`, `e`, `inf` | Done | Constants as `Final[float]` |
+| `nan` | Missing | NaN isn't a float literal; `Final[float] = ...` non-literal initializers currently constexpr-panic (TODO.md bug #52) |
 | `log`, `log10`, `log2` | Done | `log(x, base)` is pure-TPy overload |
+| `log1p`, `expm1` | Done | Thin `std::log1p` / `std::expm1` |
 | `sqrt`, `pow`, `exp` | Done | |
 | `floor`, `ceil`, `trunc` | Done | Return `int` (BigInt) / generic `T` |
 | `sin`, `cos`, `tan` | Done | |
-| `asin`, `acos`, `atan2` | Done | |
-| `atan` | Missing | Add `@native("std::atan")` |
-| `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, `atanh` | Missing | Trivial natives |
+| `asin`, `acos`, `atan`, `atan2` | Done | |
+| `sinh`, `cosh`, `tanh` | Done | |
+| `asinh`, `acosh`, `atanh` | Done | |
 | `fabs` | Done | |
-| `hypot` | Done | Binary only; variadic form needs `*args` |
+| `hypot` | Partial (binary) | Binary only; variadic form blocked on codegen gap (`TpyVarargPack` unhandled in `_gen_method_call`) |
 | `radians`, `degrees` | Done | Pure-TPy |
-| `isnan`, `isinf`, `isfinite` | Missing | Trivial natives (`std::isnan` etc.) |
-| `copysign` | Missing | Trivial native |
-| `fmod`, `remainder` | Missing | Trivial native |
-| `gcd`, `lcm` | Missing | Pure TPy over BigInt |
-| `factorial` | Missing | Pure TPy over BigInt |
-| `gamma`, `lgamma`, `erf`, `erfc` | Missing | Trivial natives |
-| `modf`, `frexp`, `ldexp` | Missing | Need tuple-return from native |
+| `isnan`, `isinf`, `isfinite` | Done | Thin `std::isnan` / `std::isinf` / `std::isfinite` |
+| `copysign` | Done | |
+| `fmod`, `remainder` | Done | C fmod semantics (truncation); IEEE remainder (nearest-even) |
+| `nextafter`, `ldexp`, `fma` | Done | Thin natives; `fma` is CPython 3.13+ (cpy test is no_cpython) |
+| `ulp` | Done | `tpy::stdlib::math::ulp` helper matching CPython edge cases for nan/inf/0 |
+| `modf` | Done | `tpy::stdlib::math::modf` wrapper returning `std::tuple<double, double>` |
+| `frexp` | Done | Generic over the exponent type: `frexp[T](x) -> tuple[float, T]`. Default T is `DefaultInt` (Int32 under default config); users can pick `Int64` or `int` (BigInt) for wider ranges |
+| `gcd`, `lcm` | Partial (binary) | Pure-TPy over BigInt, binary form. `lcm` uses `(a // gcd(a,b)) * b` to keep the intermediate bounded by `max(|a|, |b|)`. Variadic blocked on the same codegen gap as `hypot`. Generic-over-int-type is a follow-up (see math.py header) |
+| `factorial` | Done | Pure-TPy over BigInt; raises `ValueError` on negative |
+| `isqrt` | Done | Pure-TPy Newton's method over BigInt |
+| `perm`, `comb` | Done | Pure-TPy over BigInt; binary form (`k` is required positional, not optional as in CPython) |
+| `isclose` | Done | Pure-TPy; `rel_tol` / `abs_tol` are kw-only to match CPython |
+| `prod` | Done | Pure-TPy; `start` is kw-only to match CPython. Takes `list[float]` as a workaround -- CPython accepts any iterable; should be `Iterable[float]`. Blocked on list-literal-vs-protocol conformance (TODO.md). Int variant is a follow-up |
+| `fsum` | Done | Pure-TPy Neumaier compensated summation. Takes `list[float]` (should be `Iterable[float]` to match CPython) |
+| `sumprod` | Done | Pure-TPy; raises `ValueError` on length mismatch via upfront `len()`. Takes `list[float]` (should be `Iterable[float]` to match CPython, plus strict-pairwise iteration -- see Remaining gaps below) |
+| `dist` | Done | Pure-TPy Euclidean distance via hypot-fold (overflow-safe for coordinates up to `DBL_MAX`). Same `list[float]` -> `Iterable[float]` gap as `sumprod` |
+| `gamma`, `lgamma`, `erf`, `erfc` | Done | Thin natives (`std::tgamma` etc.) |
 
-Tests: `math_module`, `math_extended`, `math_log_base` in `tests/cases/builtins/`.
+Tests: `math_module`, `math_extended`, `math_log_base`, `math_hyperbolic`,
+`math_numeric`, `math_special`, `math_fma`, `math_frexp_generic` in
+`tests/cases/builtins/`.
+
+**Remaining gaps to reach 100% (minus `nan`):**
+- Variadic `hypot(*coords)`, `gcd(*ints)`, `lcm(*ints)` -- blocked on codegen gap. The `TpyVarargPack` arg is handled in `_gen_call` (simple function-name calls) but not in `_gen_method_call` (module-qualified calls like `math.hypot(...)`). Fix is likely a few-line copy of the dispatch into `_gen_method_call`. Tracked in TODO.md.
+- `Iterable[float]` signatures for `prod`, `fsum`, `sumprod`, `dist` -- CPython accepts any iterable (generators, `range(...)`, tuples, user iterators) for all four. Current `list[float]` signatures are a real CPython compat regression, not just a UX nit. Blocked on list-literal-vs-protocol conformance (TODO.md).
+- Strict-pairwise iteration for `sumprod` / `dist` -- CPython uses `zip(p, q, strict=True)` internally so length mismatch raises `ValueError` without needing random access. Once Iterable conformance is fixed, we need either a `zip_strict` helper or inline pairwise `__next__` driving. Today the `list[float]` workaround gets us upfront `len()` checks for free.
+- `math.prod` int variant (currently only `list[float]`).
+- `math.perm(n)` one-arg form (equivalent to `factorial(n)`) -- optional second arg blocks on `Optional[int]` default with kw-only.
 
 ### time
 
@@ -461,10 +508,10 @@ Tests: `struct_unpack`.
 
 **Done.** `lib/tpy/bisect.py` is pure TPy generic over `Comparable`.
 
-| Item | Status |
-|---|---|
-| `bisect_left`, `bisect_right`, `insort_left`, `insort_right` | Done |
-| `bisect` (alias) | Missing | Trivial alias to `bisect_right` |
+| Item | Status | Notes |
+|---|---|---|
+| `bisect_left`, `bisect_right`, `insort_left`, `insort_right` | Done | |
+| `bisect`, `insort` | Done | Aliases to `bisect_right` / `insort_right` |
 
 Tests: `stdlib_bisect`.
 

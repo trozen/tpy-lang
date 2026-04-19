@@ -11,11 +11,31 @@ void main() {
     // print(bisect_left(a, Int32(4)))
     int32_t __tmp_1 = 4;
     std::cout << ::tpystd::bisect::bisect_left<int32_t>(a, __tmp_1) << "\n";
+    // print(bisect_right(a, Int32(5)))
+    int32_t __tmp_2 = 5;
+    std::cout << ::tpystd::bisect::bisect_right<int32_t>(a, __tmp_2) << "\n";
+    // print(bisect(a, Int32(5)))  # alias for bisect_right
+    int32_t __tmp_3 = 5;
+    std::cout << ::tpystd::bisect::bisect<int32_t>(a, __tmp_3) << "\n";
     // insort_left(a, Int32(4))
-    int32_t __tmp_2 = 4;
-    ::tpystd::bisect::insort_left<int32_t>(a, __tmp_2);
+    int32_t __tmp_4 = 4;
+    ::tpystd::bisect::insort_left<int32_t>(a, __tmp_4);
     // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
+    // b: list[Int32] = [1, 3, 5, 7]
+    std::vector<int32_t> b = {1, 3, 5, 7};
+    // insort_right(b, Int32(3))
+    int32_t __tmp_5 = 3;
+    ::tpystd::bisect::insort_right<int32_t>(b, __tmp_5);
+    // print(b[1], b[2])
+    std::cout << ::tpy::__getitem__(b, 1) << " " << ::tpy::__getitem__(b, 2) << "\n";
+    // c: list[Int32] = [1, 3, 5, 7]
+    std::vector<int32_t> c = {1, 3, 5, 7};
+    // insort(c, Int32(3))  # alias for insort_right
+    int32_t __tmp_6 = 3;
+    ::tpystd::bisect::insort<int32_t>(c, __tmp_6);
+    // print(c[1], c[2])
+    std::cout << ::tpy::__getitem__(c, 1) << " " << ::tpy::__getitem__(c, 2) << "\n";
 }
 
 void __tpy_init() {
@@ -24,7 +44,7 @@ void __tpy_init() {
     initialized = true;
 
     // # Test importing bisect from stdlib
-    // from bisect import bisect_left, insort_left
+    // from bisect import bisect_left, bisect_right, bisect, insort_left, insort_right, insort
     ::tpystd::bisect::__tpy_init();
     // main()
     main();
