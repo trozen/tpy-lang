@@ -4452,6 +4452,34 @@ insort_left(a, Int32(4))        # a = [1, 3, 4, 5, 7]
 
 ### Standard Library Modules
 
+For the full per-module coverage tracker (status, priority, per-item status,
+blockers, implementation policy), see `docs/STDLIB_ROADMAP.md`. The subsections
+below cover only modules with a stable working surface.
+
+**Implementation policy summary** (see STDLIB_ROADMAP.md for detail): stdlib
+modules are pure TPy by default. Native C++ code is used only for OS/libc
+primitives, bindings to existing C++ libraries, or benchmarked hot inner
+loops -- everything else is .py. If the language is missing something that
+blocks a clean pure-TPy implementation, the right fix is to extend the
+language, not drop into C++.
+
+Currently working with a stable surface:
+
+| Module | Notes |
+|---|---|
+| `math` | Partial (~50%). Thin libc bindings + pure TPy helpers |
+| `time` | Stub (`time()`, `sleep()`). More planned |
+| `sys` | Stub (`argv` only). More planned |
+| `random` | Stub (`random()`, `seed()`). Target: pure-TPy Mersenne Twister |
+| `bisect` | Done. Pure TPy over the `Comparable` protocol |
+| `struct` | Partial (`unpack`, `unpack_from`, `calcsize`) via compile-time macros |
+| `enum` | Partial (`Enum`, `IntEnum`, `auto()`) via class macro |
+| `dataclasses` | Partial (~75%; `@dataclass(frozen, order)`, `field()`, `asdict()`, `astuple()`) via class macro |
+| `typing` | Partial (`Protocol`, `Self`, `Sized`, `Iterator`, `Iterable`, `TypedDict`, `Unpack`, etc.) |
+
+Everything else in CPython's stdlib is missing or blocked -- consult
+STDLIB_ROADMAP.md before relying on a module name.
+
 #### `time` module (Working)
 
 ```python

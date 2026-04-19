@@ -10,6 +10,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Generic parent protocols: `class Foo[T](Iterable[T], Protocol): ...` is rejected by the parser (`_parse_protocol` in tpyc/parse/parser.py, around line 1644) with "Generic parent protocols are not yet supported". Blocks clean composition like `class NativeIterable[T](Iterable[T], Protocol)` -- workaround is to redeclare the inherited methods directly. Low priority on its own, but prerequisite for the "NativeIterable cleanup" bundle in the Bugs section (see NativeIterable sema/C++ divergence entry).
 - Overloads with bodies (no dispatch function): allow `@overload` variants to have bodies directly, removing the need for a separate implementation function. TPy dispatches at compile time so this is straightforward. For CPython compatibility, `tpy.overload` could build a runtime dispatch table (pick by arity/types). Would simplify stdlib modules that mix `@native` and TPy overloads.
 - async/await (G1): entire concurrency model absent. XL effort -- needs runtime (event loop or alternative), coroutine codegen, async for/with. See FEATURE_ROADMAP.md.
+- Compile-time conditional compilation / build profiles (F8): feature-flag system for picking between implementations at compile time. Initial driver is stdlib `re` backend selection (std::regex / PCRE2 / SRE), but broader need for allocator choice, `@noalloc` gating, embedded target variants, debug vs release. Surface TBD: `# tpy: if feature(...)` blocks or static `if feature("...")` folded by sema; flags set via `tpyc --feature` or project config. See FEATURE_ROADMAP.md F8 and STDLIB_ROADMAP.md `re` section.
 - Eliminate concrete type classes (ListType, DictType, etc.): replace `isinstance(t, ListType)` checks with name-based or annotation-driven checks. ~60 references for ListType alone across type inference, codegen, and compatibility. Enables treating all types uniformly as NamedType + RecordInfo. Lower priority -- current type classes work fine, this is about uniformity.
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 - drop builtin types, like RangeType
@@ -215,20 +216,8 @@ map_inner_types             eliminated from top 30
 - Protobuf macro (tplib.protobuf) — designed in the doc, would be the next real use case for the macro system
 
 ## Standard Library
-- `collections` module: `defaultdict`, `Counter`, `deque`, `OrderedDict`
-- `itertools` module: `product`, `permutations`, `combinations`, `chain`, `islice`, `groupby`
-- `os` module: `path.join`, `path.exists`, `path.dirname`, `path.basename`, `getcwd`, `listdir`, `makedirs`, `remove`, `rename`, `environ`
-- `pathlib` module: `Path` class with `/` operator, `exists`, `read_text`, `write_text`, `mkdir`, `iterdir`, `glob`
-- `re` module: `search`, `match`, `findall`, `sub`, `split`, `compile` (wrap PCRE2 or RE2)
-- `functools` module: `partial`, `reduce`
-- `datetime` module: `datetime`, `date`, `time`, `timedelta`, `datetime.now`, `strftime`, `strptime`
-- `hashlib` module: `md5`, `sha1`, `sha256`, `sha512`, `hexdigest`
-- `argparse` module: `ArgumentParser`, `add_argument`, `parse_args`
-- `json` module: CPython-compatible `json.loads`, `json.dumps` API (complement to `tplib.json`)
-- `csv` module: `reader`, `writer`, `DictReader`, `DictWriter`
-- `logging` module: `getLogger`, `info`, `warning`, `error`, `debug`, `basicConfig`
-- `subprocess` module: `run`, `Popen`, `PIPE`, `CompletedProcess`
-- `string` module: `ascii_letters`, `digits`, `punctuation`, `whitespace` constants
+
+See `docs/STDLIB_ROADMAP.md` for the per-module tracker (status, priority, items, blockers). Update that doc when adding or changing stdlib coverage.
 
 ## Other
 - Docstrings: silently skipped in codegen (harmless, but no introspection support)

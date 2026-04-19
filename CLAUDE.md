@@ -542,6 +542,7 @@ When implementing new features:
 | File | Purpose | Policy |
 |------|---------|--------|
 | `docs/LANGUAGE_FEATURES.md` | Comprehensive language feature documentation | **Keep up-to-date** with any development |
+| `docs/STDLIB_ROADMAP.md` | Python stdlib coverage tracker (per-module items, status, blockers) | **Keep up-to-date** when adding/changing stdlib modules |
 | `CLAUDE.md` | Commands, architecture, quick reference | Update when adding major features |
 | `README.md` | Quick start, build flags | Update when CLI changes |
 
