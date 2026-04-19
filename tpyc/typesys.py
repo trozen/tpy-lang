@@ -12,8 +12,8 @@ Defines the core types available in TurboPython:
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from enum import Enum, auto
-from typing import Any, Callable, ClassVar, Optional, TYPE_CHECKING
+from enum import Enum
+from typing import Any, Callable, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .parse.nodes import TpyArrayLiteral, TpyListRepeat, TpyListComprehension, TpyCall, TpyDictLiteral
@@ -23,32 +23,6 @@ class TypeParamKind(Enum):
     """Kind of type parameter in a generic type."""
     TYPE = "type"  # A type parameter like T
     INT = "int"    # An integer literal like N
-
-
-class TypeKind(Enum):
-    """Discriminator tag for TpyType subclasses. Used by predicate helpers
-    (is_integer_type, is_float_type, etc.) to avoid isinstance calls on the
-    hot path. Each concrete subclass sets a unique ``tag`` ClassVar.
-    Types that don't participate in tag checks default to OTHER."""
-    OTHER = auto()
-    FIXED_INT = auto()
-    BIG_INT = auto()
-    INT_LITERAL = auto()
-    FLOAT = auto()
-    FLOAT32 = auto()
-    FLOAT_LITERAL = auto()
-    BOOL = auto()
-    CHAR = auto()
-    NONE = auto()
-    VOID = auto()
-    CALLABLE = auto()
-    UNION = auto()
-    OPTIONAL = auto()
-    STR = auto()
-    STRING = auto()
-    STR_VIEW = auto()
-    PENDING_STR = auto()
-    LITERAL = auto()
 
 
 def qualify_exception_name(name: str, registry: 'TypeRegistry') -> str:
@@ -297,13 +271,24 @@ def clear_all_compilation_state() -> None:
 class TpyType:
     """Base class for all TurboPython types."""
 
-    # Discriminator tag. Concrete subclasses override with a unique TypeKind
-    # value when they participate in predicate-helper tag checks. ClassVar
-    # so dataclass doesn't treat it as an instance field.
-    tag: ClassVar[TypeKind] = TypeKind.OTHER
+    # Every TpyType carries a tuple of type arguments (possibly empty).
+    # NominalType overrides with an instance field; primitives and most
+    # structurals inherit the empty default. No annotation -- dataclass
+    # subclasses would otherwise pick it up as an inherited field.
+    type_args = ()
 
     def to_cpp(self) -> str:
-        """Return the C++ representation of this type."""
+        """Return the C++ representation of this type.
+
+        If the type has a registered cpp_formatter in the TypeDef registry
+        (primitives, containers), use it. Otherwise subclasses override.
+        """
+        from tpyc.type_def_registry import type_def_of
+        td = type_def_of(self)
+        if td is not None and td.cpp_formatter is not None:
+            return td.cpp_formatter(self.type_args)
+        if td is not None and td.is_compile_time_only:
+            raise TypeError(f"{type(self).__name__} is compile-time only and has no C++ representation")
         raise NotImplementedError
 
     def is_pointer(self) -> bool:
@@ -316,6 +301,10 @@ class TpyType:
 
     def is_compile_time_only(self) -> bool:
         """Return True if this type exists only at compile time (no C++ representation)."""
+        from tpyc.type_def_registry import type_def_of
+        td = type_def_of(self)
+        if td is not None:
+            return td.is_compile_time_only
         return False
 
     def is_value_type(self) -> bool:
@@ -327,6 +316,10 @@ class TpyType:
         Object types (RecordType, etc.) return False and should
         use reference semantics when accessed from containers.
         """
+        from tpyc.type_def_registry import type_def_of
+        td = type_def_of(self)
+        if td is not None:
+            return td.is_value_type
         return False
 
     def is_trivially_destructible(self) -> bool:
@@ -341,6 +334,10 @@ class TpyType:
 
     def is_expensive_copy(self) -> bool:
         """Return True if copying this value type involves heap allocation."""
+        from tpyc.type_def_registry import type_def_of
+        td = type_def_of(self)
+        if td is not None:
+            return td.is_expensive_copy
         return False
 
     def subscript_borrows(self) -> bool:
@@ -360,6 +357,12 @@ class TpyType:
         Default: value types are Send (copied, no aliasing). Override for
         pointer-like types (Ptr, Span) and containers (list, dict).
         """
+        from tpyc.type_def_registry import type_def_of, resolve_send_sync
+        td = type_def_of(self)
+        if td is not None:
+            resolved = resolve_send_sync(td.is_send, self.type_args)
+            if resolved is not None:
+                return resolved
         return self.is_value_type()
 
     def is_sync(self) -> bool:
@@ -368,6 +371,12 @@ class TpyType:
         Default: value types are Sync (no mutable shared state). Override for
         mutable containers (list, dict) and pointer types.
         """
+        from tpyc.type_def_registry import type_def_of, resolve_send_sync
+        td = type_def_of(self)
+        if td is not None:
+            resolved = resolve_send_sync(td.is_sync, self.type_args)
+            if resolved is not None:
+                return resolved
         return self.is_value_type()
 
     def to_cpp_return(self) -> str:
@@ -395,10 +404,14 @@ class TpyType:
     def to_cpp_param_type(self) -> str:
         """Return just the C++ parameter type (no variable name).
 
-        Matches the type used by to_cpp_param(). Subclasses that override
-        to_cpp_param() should also override this if the type differs from
-        the default (e.g. str -> std::string_view, BigInt -> const BigInt&).
+        Uses the TypeDef's param_cpp_formatter when registered (handles
+        per-primitive overrides like str -> std::string_view). Otherwise
+        defaults: value types = to_cpp(), non-value = to_cpp() + "&".
         """
+        from tpyc.type_def_registry import type_def_of
+        td = type_def_of(self)
+        if td is not None and td.param_cpp_formatter is not None:
+            return td.param_cpp_formatter(self.type_args)
         if self.is_value_type():
             return self.to_cpp()
         return f"{self.to_cpp()}&"
@@ -409,9 +422,7 @@ class TpyType:
         Value types (primitives, views) are passed by value: T name
         Object types (containers, records) are passed by mutable reference: T& name
         """
-        if self.is_value_type():
-            return f"{self.to_cpp()} {name}"
-        return f"{self.to_cpp()}& {name}"
+        return f"{self.to_cpp_param_type()} {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
         """Return the C++ const parameter declaration for this type.
@@ -420,6 +431,10 @@ class TpyType:
         Object types are passed by const reference: const T& name
         Use for constructor params and other contexts where mutation is not needed.
         """
+        from tpyc.type_def_registry import type_def_of
+        td = type_def_of(self)
+        if td is not None and td.param_cpp_formatter is not None:
+            return f"{td.param_cpp_formatter(self.type_args)} {name}"
         if self.is_value_type():
             return f"{self.to_cpp()} {name}"
         return f"const {self.to_cpp()}& {name}"
@@ -443,10 +458,18 @@ class TpyType:
         Types passed as const ref (BigInt, str) cannot be reassigned in-place,
         so the codegen renames the param and emits a local mutable copy.
         """
+        from tpyc.type_def_registry import type_def_of
+        td = type_def_of(self)
+        if td is not None:
+            return td.param_needs_copy_for_reassign
         return False
 
     def get_element_type(self) -> Optional['TpyType']:
         """Return the element type for container types, or None for non-containers."""
+        from tpyc.type_def_registry import type_def_of
+        td = type_def_of(self)
+        if td is not None and td.element_of is not None:
+            return td.element_of(self.type_args)
         return None
 
     def needs_explicit_element_target(self) -> bool:
@@ -489,47 +512,8 @@ class TpyType:
 
 
 @dataclass(frozen=True)
-class FixedIntType(TpyType):
-    """Fixed-width integer type (Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64)."""
-    tag: ClassVar[TypeKind] = TypeKind.FIXED_INT
-    bits: int = 32
-    signed: bool = True
-
-    @property
-    def min_value(self) -> int:
-        if self.signed:
-            return -(2 ** (self.bits - 1))
-        return 0
-
-    @property
-    def max_value(self) -> int:
-        if self.signed:
-            return 2 ** (self.bits - 1) - 1
-        return 2 ** self.bits - 1
-
-    def to_cpp(self) -> str:
-        prefix = "int" if self.signed else "uint"
-        return f"{prefix}{self.bits}_t"
-
-    def __str__(self) -> str:
-        prefix = "Int" if self.signed else "UInt"
-        return f"{prefix}{self.bits}"
-
-    def qualified_name(self) -> Optional[str]:
-        return f"tpy.{self}"
-
-    def is_value_type(self) -> bool:
-        return True
-
-
-# Backward compat alias -- isinstance(x, Int32Type) matches any FixedIntType
-Int32Type = FixedIntType
-
-
-@dataclass(frozen=True)
 class VoidType(TpyType):
     """Void type (for functions returning nothing)."""
-    tag: ClassVar[TypeKind] = TypeKind.VOID
 
     def to_cpp(self) -> str:
         return "void"
@@ -545,353 +529,6 @@ class VoidType(TpyType):
 
     def to_cpp_return_const(self) -> str:
         return "void"
-
-
-@dataclass(frozen=True)
-class StrType(TpyType):
-    """String type -- context-dependent C++ mapping.
-
-    Default (locals, fields, returns, type args): std::string (owned).
-    Parameters: std::string_view (zero-copy).
-    """
-    tag: ClassVar[TypeKind] = TypeKind.STR
-
-    def to_cpp(self) -> str:
-        return "std::string"
-
-    def __str__(self) -> str:
-        return "str"
-
-    def qualified_name(self) -> Optional[str]:
-        return "builtins.str"
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def is_expensive_copy(self) -> bool:
-        return True
-
-    def to_cpp_param_type(self) -> str:
-        return "std::string_view"
-
-    def to_cpp_param(self, name: str) -> str:
-        return f"std::string_view {name}"
-
-    def to_cpp_const_param(self, name: str) -> str:
-        return f"std::string_view {name}"
-
-    def param_needs_copy_for_reassign(self) -> bool:
-        return True
-
-    def get_element_type(self) -> Optional['TpyType']:
-        from tpyc.typesys import CHAR
-        return CHAR
-
-
-@dataclass(frozen=True)
-class StringType(TpyType):
-    """Explicit owned string type: tpy.String -> std::string."""
-    tag: ClassVar[TypeKind] = TypeKind.STRING
-
-    def to_cpp(self) -> str:
-        return "std::string"
-
-    def __str__(self) -> str:
-        return "String"
-
-    def qualified_name(self) -> Optional[str]:
-        return "tpy.String"
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def is_expensive_copy(self) -> bool:
-        return True
-
-    def to_cpp_param_type(self) -> str:
-        return "const std::string&"
-
-    def to_cpp_param(self, name: str) -> str:
-        return f"const std::string& {name}"
-
-    def to_cpp_const_param(self, name: str) -> str:
-        return f"const std::string& {name}"
-
-    def param_needs_copy_for_reassign(self) -> bool:
-        return True
-
-    def get_element_type(self) -> Optional['TpyType']:
-        from tpyc.typesys import CHAR
-        return CHAR
-
-
-@dataclass(frozen=True)
-class StrViewType(TpyType):
-    """Explicit string view type: tpy.StrView -> std::string_view."""
-    tag: ClassVar[TypeKind] = TypeKind.STR_VIEW
-
-    def to_cpp(self) -> str:
-        return "std::string_view"
-
-    def __str__(self) -> str:
-        return "StrView"
-
-    def qualified_name(self) -> Optional[str]:
-        return "tpy.StrView"
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def is_send(self) -> bool:
-        # StrView borrows from another string -- not safe to transfer
-        return False
-
-    def is_sync(self) -> bool:
-        # Read-only view -- safe to share
-        return True
-
-    def get_element_type(self) -> Optional['TpyType']:
-        from tpyc.typesys import CHAR
-        return CHAR
-
-
-@dataclass(frozen=True)
-class FStrType(TpyType):
-    """Compile-time f-string decomposition marker.
-
-    Only valid as a function parameter type. When an f-string is passed to
-    an FStr parameter, the compiler keeps the f-string decomposed (format
-    template + individual expressions) instead of lowering to std::format.
-    FStr values never exist at runtime.
-    """
-    def is_compile_time_only(self) -> bool:
-        return True
-
-    def to_cpp(self) -> str:
-        raise TypeError("FStr is compile-time only and has no C++ representation")
-
-    def __str__(self) -> str:
-        return "FStr"
-
-    def qualified_name(self) -> Optional[str]:
-        return "tpy.FStr"
-
-    def is_value_type(self) -> bool:
-        return True
-
-
-@dataclass(frozen=True)
-class CharType(TpyType):
-    """Character type (single character)."""
-    tag: ClassVar[TypeKind] = TypeKind.CHAR
-
-    def to_cpp(self) -> str:
-        return "char"
-
-    def __str__(self) -> str:
-        return "Char"
-
-    def qualified_name(self) -> Optional[str]:
-        return "tpy.Char"
-
-    def is_value_type(self) -> bool:
-        return True
-
-
-@dataclass(frozen=True)
-class BytesType(TpyType):
-    """Bytes type -- context-dependent C++ mapping.
-
-    Default (locals, fields, returns, type args): std::vector<uint8_t> (owned).
-    Parameters: std::span<const uint8_t> (zero-copy).
-    """
-
-    def to_cpp(self) -> str:
-        return "std::vector<uint8_t>"
-
-    def __str__(self) -> str:
-        return "bytes"
-
-    def qualified_name(self) -> Optional[str]:
-        return "builtins.bytes"
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def is_expensive_copy(self) -> bool:
-        return True
-
-    def to_cpp_param_type(self) -> str:
-        return "std::span<const uint8_t>"
-
-    def to_cpp_param(self, name: str) -> str:
-        return f"std::span<const uint8_t> {name}"
-
-    def to_cpp_const_param(self, name: str) -> str:
-        return f"std::span<const uint8_t> {name}"
-
-    def param_needs_copy_for_reassign(self) -> bool:
-        return True
-
-    def get_element_type(self) -> Optional['TpyType']:
-        from tpyc.typesys import UINT8
-        return UINT8
-
-
-@dataclass(frozen=True)
-class ByteArrayType(TpyType):
-    """Explicit owned mutable bytes type: tpy.bytearray -> std::vector<uint8_t>."""
-
-    def to_cpp(self) -> str:
-        return "std::vector<uint8_t>"
-
-    def __str__(self) -> str:
-        return "bytearray"
-
-    def qualified_name(self) -> Optional[str]:
-        return "builtins.bytearray"
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def is_expensive_copy(self) -> bool:
-        return True
-
-    def to_cpp_param_type(self) -> str:
-        return "const std::vector<uint8_t>&"
-
-    def to_cpp_param(self, name: str) -> str:
-        return f"const std::vector<uint8_t>& {name}"
-
-    def to_cpp_const_param(self, name: str) -> str:
-        return f"const std::vector<uint8_t>& {name}"
-
-    def param_needs_copy_for_reassign(self) -> bool:
-        return True
-
-    def get_element_type(self) -> Optional['TpyType']:
-        from tpyc.typesys import UINT8
-        return UINT8
-
-
-@dataclass(frozen=True)
-class BytesViewType(TpyType):
-    """Bytes view type: tpy.BytesView -> std::span<const uint8_t>.
-
-    Same C++ type as Span[readonly[UInt8]], but carries bytes semantics
-    (prints as b'...', has .decode()/.hex() methods).
-    """
-
-    def to_cpp(self) -> str:
-        return "std::span<const uint8_t>"
-
-    def __str__(self) -> str:
-        return "BytesView"
-
-    def qualified_name(self) -> Optional[str]:
-        return "tpy.BytesView"
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def is_send(self) -> bool:
-        return False
-
-    def is_sync(self) -> bool:
-        return True
-
-    def get_element_type(self) -> Optional['TpyType']:
-        from tpyc.typesys import UINT8
-        return UINT8
-
-
-@dataclass(frozen=True)
-class BoolType(TpyType):
-    """Boolean type."""
-    tag: ClassVar[TypeKind] = TypeKind.BOOL
-
-    def to_cpp(self) -> str:
-        return "bool"
-
-    def __str__(self) -> str:
-        return "bool"
-
-    def qualified_name(self) -> Optional[str]:
-        return "builtins.bool"
-
-    def is_value_type(self) -> bool:
-        return True
-
-
-@dataclass(frozen=True)
-class FloatType(TpyType):
-    """64-bit floating point type (IEEE 754 double precision)."""
-    tag: ClassVar[TypeKind] = TypeKind.FLOAT
-
-    def to_cpp(self) -> str:
-        return "double"
-
-    def __str__(self) -> str:
-        return "float"
-
-    def qualified_name(self) -> Optional[str]:
-        return "builtins.float"
-
-    def is_value_type(self) -> bool:
-        return True
-
-
-@dataclass(frozen=True)
-class Float32Type(TpyType):
-    """32-bit floating point type (IEEE 754 single precision)."""
-    tag: ClassVar[TypeKind] = TypeKind.FLOAT32
-
-    def to_cpp(self) -> str:
-        return "float"
-
-    def __str__(self) -> str:
-        return "Float32"
-
-    def qualified_name(self) -> Optional[str]:
-        return "tpy.Float32"
-
-    def is_value_type(self) -> bool:
-        return True
-
-
-@dataclass(frozen=True)
-class BigIntType(TpyType):
-    """Arbitrary precision integer: int -> ::tpy::BigInt"""
-    tag: ClassVar[TypeKind] = TypeKind.BIG_INT
-
-    def to_cpp(self) -> str:
-        return "::tpy::BigInt"
-
-    def __str__(self) -> str:
-        return "int"
-
-    def qualified_name(self) -> Optional[str]:
-        return "builtins.int"
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def is_expensive_copy(self) -> bool:
-        return True
-
-    def to_cpp_param_type(self) -> str:
-        return f"const {self.to_cpp()}&"
-
-    def to_cpp_param(self, name: str) -> str:
-        # BigInt is expensive to copy, pass by const reference
-        return f"const {self.to_cpp()}& {name}"
-
-    def to_cpp_const_param(self, name: str) -> str:
-        # Same as to_cpp_param - BigInt always uses const reference
-        return f"const {self.to_cpp()}& {name}"
-
-    def param_needs_copy_for_reassign(self) -> bool:
-        return True
 
 
 @dataclass(frozen=True)
@@ -978,40 +615,6 @@ class RangeType(TpyType):
 
 
 @dataclass(frozen=True)
-class BasicSliceType(TpyType):
-    """Basic slice type: basic_slice(start, stop) for subscript ranges without step."""
-
-    def to_cpp(self) -> str:
-        return "::tpy::BasicSlice"
-
-    def __str__(self) -> str:
-        return "basic_slice"
-
-    def qualified_name(self) -> Optional[str]:
-        return "builtins.basic_slice"
-
-    def is_value_type(self) -> bool:
-        return True
-
-
-@dataclass(frozen=True)
-class SliceType(TpyType):
-    """Stepped slice type: slice(start, stop, step) for subscript ranges with step."""
-
-    def to_cpp(self) -> str:
-        return "::tpy::Slice"
-
-    def __str__(self) -> str:
-        return "slice"
-
-    def qualified_name(self) -> Optional[str]:
-        return "builtins.slice"
-
-    def is_value_type(self) -> bool:
-        return True
-
-
-@dataclass(frozen=True)
 class IntLiteralType(TpyType):
     """Unresolved integer literal - can coerce to Int32 or BigInt.
 
@@ -1024,7 +627,6 @@ class IntLiteralType(TpyType):
     value tracks the known literal value (including computed results from
     constant-folded binops like 2+3). None means the value is unknown.
     """
-    tag: ClassVar[TypeKind] = TypeKind.INT_LITERAL
     value: int | None = None
 
     def to_cpp(self) -> str:
@@ -1064,7 +666,6 @@ class LiteralType(TpyType):
     Delegates all C++ codegen methods to base_type, so Literal["r", "w"]
     behaves identically to str for code generation.
     """
-    tag: ClassVar[TypeKind] = TypeKind.LITERAL
     base_type: TpyType
     values: tuple[LiteralValue, ...]
 
@@ -1096,21 +697,29 @@ class LiteralType(TpyType):
     def param_needs_copy_for_reassign(self) -> bool:
         return self.base_type.param_needs_copy_for_reassign()
 
+    def get_element_type(self) -> Optional['TpyType']:
+        # LiteralType is a value-set refinement, not a container -- iteration
+        # isn't meaningful for it. Preserve the historical "None" answer
+        # regardless of what base_type would say.
+        return None
+
     def is_str_base(self) -> bool:
         """True when this Literal is over string values."""
-        return isinstance(self.base_type, StrType)
+        from .type_def_registry import is_str_type
+        return is_str_type(self.base_type)
 
     def is_int_base(self) -> bool:
         """True when this Literal is over integer values.
 
-        base_type is always a resolved concrete int type (FixedIntType or
-        BigIntType), never IntLiteralType -- so is_integer_type suffices.
+        base_type is always a resolved concrete int type (fixed-width int or
+        BigInt), never IntLiteralType -- so is_integer_type suffices.
         """
         return is_integer_type(self.base_type)
 
     def is_bool_base(self) -> bool:
         """True when this Literal is over bool values."""
-        return isinstance(self.base_type, BoolType)
+        from .type_def_registry import is_bool_type
+        return is_bool_type(self.base_type)
 
     def contains(self, tag: str, value: str | int | bool) -> bool:
         """Check if a tagged value is in this Literal's value set."""
@@ -1128,7 +737,6 @@ class FloatLiteralType(TpyType):
     - float * FloatLiteral -> float
     - FloatLiteral * FloatLiteral -> float (default)
     """
-    tag: ClassVar[TypeKind] = TypeKind.FLOAT_LITERAL
     value: float | None = None
 
     def to_cpp(self) -> str:
@@ -1285,6 +893,8 @@ class NominalType(TpyType):
         td = type_def_of(self)
         if td is not None and td.cpp_formatter is not None:
             return td.cpp_formatter(self.type_args)
+        if td is not None and td.is_compile_time_only:
+            raise TypeError(f"{self.name} is compile-time only and has no C++ representation")
         # Check for native C++ name mapping (@native/@native_c records)
         cpp_name = _native_cpp_names.get(self.name, self.name)
         if self.type_args:
@@ -1964,21 +1574,18 @@ def unwrap_final(typ: 'TpyType') -> 'TpyType':
 
 
 # --- Type-kind predicate helpers (None-safe) ---
-# O(1) tag comparisons using TpyType.tag (set on each concrete subclass).
-# None-safe: short-circuits on `t is not None`.
-
-_INT_TAGS = frozenset({TypeKind.FIXED_INT, TypeKind.BIG_INT})
-_ANY_INT_TAGS = frozenset({TypeKind.FIXED_INT, TypeKind.BIG_INT, TypeKind.INT_LITERAL})
-_FLOAT_TAGS = frozenset({TypeKind.FLOAT, TypeKind.FLOAT32})
-_ANY_FLOAT_TAGS = frozenset({TypeKind.FLOAT, TypeKind.FLOAT32, TypeKind.FLOAT_LITERAL})
-_NUMERIC_TAGS = frozenset({TypeKind.FIXED_INT, TypeKind.BIG_INT,
-                           TypeKind.FLOAT, TypeKind.FLOAT32, TypeKind.BOOL})
-_PRIMITIVE_TAGS = frozenset({TypeKind.BOOL, TypeKind.CHAR,
-                             TypeKind.FIXED_INT, TypeKind.FLOAT, TypeKind.FLOAT32})
-_VOID_LIKE_TAGS = frozenset({TypeKind.NONE, TypeKind.VOID})
-_CALLABLE_TAGS = frozenset({TypeKind.CALLABLE})
-_UNION_OR_OPTIONAL_TAGS = frozenset({TypeKind.UNION, TypeKind.OPTIONAL})
-_ANY_STR_TAGS = frozenset({TypeKind.STR, TypeKind.STRING, TypeKind.STR_VIEW, TypeKind.PENDING_STR})
+# Category + qname predicates go through the TypeDef registry so they keep
+# working after primitive subclasses are replaced with NominalType instances.
+# Structural types (None, Void, Callable, Union, Optional) use isinstance on
+# the dedicated subclass.
+#
+# PERF TODO: the compound predicates below (is_integer_type, is_numeric_type,
+# is_primitive_type, is_any_str_type, is_constexpr_eligible, ...) each chain
+# 2-4 type_def_of dict lookups per call. The previous frozenset-tag form was
+# one attribute read + one set lookup. Mitigation when profiling warrants:
+# cache TypeDef.category on NominalType at construction (single attribute
+# access), restoring the O(1) lookup cost. Orthogonal: route the coercions.py
+# linear scan through a qname-indexed hash table (see resolve_coercion).
 
 
 def is_any_str_type(typ: 'TpyType') -> bool:
@@ -1986,64 +1593,81 @@ def is_any_str_type(typ: 'TpyType') -> bool:
 
     Includes LiteralType with str base (the Literal["r", "w"] annotation type).
     Single-value LiteralType instances from enrichment never reach storage/codegen.
+    Excludes FStr (compile-time only, shares TypeCategory.STR with the runtime
+    str family in the registry).
     """
-    if typ.tag in _ANY_STR_TAGS:
+    from .type_def_registry import is_str_category, is_fstr_type
+    if is_fstr_type(typ):
+        return False
+    if is_str_category(typ) or isinstance(typ, PendingStrType):
         return True
-    # Cold path: Literal[str] annotations. Keep isinstance so mypy can narrow
-    # to LiteralType (tag comparisons don't narrow on TpyType alone).
+    # Cold path: Literal[str] annotations.
     return isinstance(typ, LiteralType) and typ.is_str_base()
 
 
 def is_integer_type(t: 'TpyType | None') -> bool:
-    """True for concrete integer types (FixedIntType/Int32Type, BigIntType). Excludes literals and bool."""
-    return t is not None and t.tag in _INT_TAGS
+    """True for concrete integer types (FixedInt, BigInt). Excludes literals and bool."""
+    if t is None:
+        return False
+    from .type_def_registry import is_fixed_int_type, is_big_int_type
+    return is_fixed_int_type(t) or is_big_int_type(t)
 
 
 def is_any_int_type(t: 'TpyType | None') -> bool:
     """True for any integer-family type including IntLiteralType (unresolved literals)."""
-    return t is not None and t.tag in _ANY_INT_TAGS
+    return is_integer_type(t) or isinstance(t, IntLiteralType)
 
 
 def is_float_type(t: 'TpyType | None') -> bool:
-    """True for concrete float types (FloatType, Float32Type). Excludes FloatLiteralType."""
-    return t is not None and t.tag in _FLOAT_TAGS
+    """True for concrete float types (float, Float32). Excludes FloatLiteralType."""
+    if t is None:
+        return False
+    from .type_def_registry import is_float_category
+    return is_float_category(t)
 
 
 def is_any_float_type(t: 'TpyType | None') -> bool:
     """True for any float-family type including FloatLiteralType (unresolved literals)."""
-    return t is not None and t.tag in _ANY_FLOAT_TAGS
+    return is_float_type(t) or isinstance(t, FloatLiteralType)
 
 
 def is_numeric_type(t: 'TpyType | None') -> bool:
     """True for types that participate in arithmetic: integers + floats + bool.
     Follows Python/C++ convention where bool is an integral numeric. Excludes literals."""
-    return t is not None and t.tag in _NUMERIC_TAGS
+    if t is None:
+        return False
+    from .type_def_registry import is_bool_type
+    return is_integer_type(t) or is_float_type(t) or is_bool_type(t)
 
 
 def is_primitive_type(t: 'TpyType | None') -> bool:
     """True for fundamental C++ scalar types: Bool, Char, FixedInt, Float, Float32.
     Register-sized, trivially copyable, no heap. Excludes BigInt (heap) and StrView (internal pointer)."""
-    return t is not None and t.tag in _PRIMITIVE_TAGS
+    if t is None:
+        return False
+    from .type_def_registry import is_fixed_int_type, is_bool_type, is_char_type
+    return is_fixed_int_type(t) or is_float_type(t) or is_bool_type(t) or is_char_type(t)
 
 
 def is_void_like_type(t: 'TpyType | None') -> bool:
     """True for NoneType or VoidType (Python None and C++ void return)."""
-    return t is not None and t.tag in _VOID_LIKE_TAGS
+    return isinstance(t, (NoneType, VoidType))
 
 
 def is_callable_type(t: 'TpyType | None') -> bool:
     """True for callable function-type aliases (CallableType)."""
-    return t is not None and t.tag in _CALLABLE_TAGS
+    return isinstance(t, CallableType)
 
 
 def is_union_or_optional_type(t: 'TpyType | None') -> bool:
     """True for UnionType or OptionalType (both carry a 'maybe-None' shape)."""
-    return t is not None and t.tag in _UNION_OR_OPTIONAL_TAGS
+    return isinstance(t, (UnionType, OptionalType))
 
 
 def is_any_bytes_type(typ: 'TpyType') -> bool:
     """Check if a type is any bytes type (bytes, bytearray, BytesView, PendingBytes)."""
-    return isinstance(typ, (BytesType, ByteArrayType, BytesViewType, PendingBytesType))
+    from .type_def_registry import is_bytes_category
+    return is_bytes_category(typ) or isinstance(typ, PendingBytesType)
 
 
 def is_constexpr_eligible(typ: 'TpyType') -> bool:
@@ -2051,9 +1675,10 @@ def is_constexpr_eligible(typ: 'TpyType') -> bool:
 
     Constexpr-eligible: fixed-width integers, float, bool, char, str, StrView.
     Non-constexpr (needs const): BigInt (non-trivial constructor), String (std::string).
-    Note: StrType uses std::string_view for Final[str] (overridden in codegen).
+    Note: str uses std::string_view for Final[str] (overridden in codegen).
     """
-    return is_primitive_type(typ) or typ.tag in (TypeKind.STR, TypeKind.STR_VIEW)
+    from .type_def_registry import is_str_type, is_str_view_type
+    return is_primitive_type(typ) or is_str_type(typ) or is_str_view_type(typ)
 
 
 def final_type_str_to_strview(t: 'TpyType') -> 'TpyType':
@@ -2063,7 +1688,8 @@ def final_type_str_to_strview(t: 'TpyType') -> 'TpyType':
     string_view instead of std::string. Applies to scalar str and
     recurses into tuple element types.
     """
-    if isinstance(t, StrType):
+    from .type_def_registry import is_str_type
+    if is_str_type(t):
         return STRVIEW
     if isinstance(t, TupleType):
         new_elems = tuple(final_type_str_to_strview(et) for et in t.element_types)
@@ -2085,7 +1711,6 @@ def unwrap_optional_own(t: 'TpyType') -> 'OwnType | None':
 @dataclass(frozen=True)
 class NoneType(TpyType):
     """The type of the None literal (distinct from VoidType which is for return types)."""
-    tag: ClassVar[TypeKind] = TypeKind.NONE
 
     def to_cpp(self) -> str:
         return "std::nullptr_t"
@@ -2134,7 +1759,6 @@ class OptionalType(TpyType):
     For non-value inner types, maps to T* (nullable pointer) in locals/params/returns.
     The canonical storage form (std::optional<T>) is reserved for future class members.
     """
-    tag: ClassVar[TypeKind] = TypeKind.OPTIONAL
     inner: TpyType
     # Locks representation to T* even when the concrete inner type is a value type.
     # Set during generic type substitution when the template used T* (unbounded
@@ -2180,26 +1804,30 @@ class OptionalType(TpyType):
     def to_cpp_param_type(self) -> str:
         if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}*"
-        if isinstance(self.inner, StrType):
+        from .type_def_registry import is_str_type
+        if is_str_type(self.inner):
             return "std::optional<std::string_view>"
         return self.to_cpp()
 
     def to_cpp_param(self, name: str) -> str:
+        from .type_def_registry import is_str_type
         if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}* {name}"
-        if isinstance(self.inner, StrType):
+        if is_str_type(self.inner):
             return f"std::optional<std::string_view> {name}"
         return f"{self.to_cpp()} {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
+        from .type_def_registry import is_str_type
         if self.uses_pointer_repr():
             return f"const {self.inner.to_cpp()}* {name}"
-        if isinstance(self.inner, StrType):
+        if is_str_type(self.inner):
             return f"std::optional<std::string_view> {name}"
         return f"{self.to_cpp()} {name}"
 
     def param_needs_copy_for_reassign(self) -> bool:
-        return isinstance(self.inner, StrType)
+        from .type_def_registry import is_str_type
+        return is_str_type(self.inner)
 
     def is_ref_param(self) -> bool:
         # Optional params are T* (pointer), not T& (reference)
@@ -2225,7 +1853,6 @@ class UnionType(TpyType):
     Members are stored in canonical sorted order for deterministic eq/hash.
     NoneType is always first if present (maps to std::monostate).
     """
-    tag: ClassVar[TypeKind] = TypeKind.UNION
     members: tuple[TpyType, ...]
 
     def to_cpp(self) -> str:
@@ -2468,14 +2095,14 @@ def resolve_int_literals(
 
     resolver can be a fixed type or a callable (e.g. default_int_for_literal)
     that maps IntLiteralType -> concrete int type.
-    FloatLiteralType always resolves to FloatType (float64).
+    FloatLiteralType always resolves to FLOAT (float64).
     Handles TupleType at arbitrary nesting depth.
     """
     def _resolve(t: TpyType) -> TpyType:
         if isinstance(t, IntLiteralType):
             return resolver(t) if callable(resolver) else resolver
         if isinstance(t, FloatLiteralType):
-            return FloatType()
+            return FLOAT
         if isinstance(t, TupleType):
             return t.map_inner_types(_resolve)
         from tpyc.type_def_registry import is_array as _is_array, is_span as _is_span, is_list as _is_list_ctr
@@ -2763,7 +2390,6 @@ class CallableType(TpyType):
       because Fn params are rendered as template parameters, not concrete
       types.
     """
-    tag: ClassVar[TypeKind] = TypeKind.CALLABLE
     param_types: tuple[TpyType, ...]
     return_type: TpyType
     is_template: bool = False
@@ -2980,7 +2606,7 @@ class ViewTypeFamily:
     """
     owned_type: TpyType
     view_type: TpyType
-    promote_param_type: type  # isinstance target: StringType or ByteArrayType
+    promote_param_match: Callable[['TpyType'], bool]  # predicate: matches String/ByteArray
     pending_type_class: type  # PendingStrType or PendingBytesType
     element_type: TpyType
     display_name: str
@@ -3023,7 +2649,6 @@ class PendingViewType(TpyType):
 @dataclass(frozen=True)
 class PendingStrType(PendingViewType):
     """Unresolved string local -- becomes StrView or str based on usage."""
-    tag: ClassVar[TypeKind] = TypeKind.PENDING_STR
 
     @property
     def family(self) -> ViewTypeFamily:
@@ -3056,50 +2681,52 @@ class ViewVarInfo:
 
 
 # Singleton instances for built-in types
-INT8 = FixedIntType(8, True)
-INT16 = FixedIntType(16, True)
-INT32 = FixedIntType(32, True)
-INT64 = FixedIntType(64, True)
-UINT8 = FixedIntType(8, False)
-UINT16 = FixedIntType(16, False)
-UINT32 = FixedIntType(32, False)
-UINT64 = FixedIntType(64, False)
+INT8 = NominalType("Int8", (), _module_qname="tpy.Int8")
+INT16 = NominalType("Int16", (), _module_qname="tpy.Int16")
+INT32 = NominalType("Int32", (), _module_qname="tpy.Int32")
+INT64 = NominalType("Int64", (), _module_qname="tpy.Int64")
+UINT8 = NominalType("UInt8", (), _module_qname="tpy.UInt8")
+UINT16 = NominalType("UInt16", (), _module_qname="tpy.UInt16")
+UINT32 = NominalType("UInt32", (), _module_qname="tpy.UInt32")
+UINT64 = NominalType("UInt64", (), _module_qname="tpy.UInt64")
 ALL_FIXED_INTS = [INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64]
 
 VOID = VoidType()
-STR = StrType()
-STRING = StringType()
-STRVIEW = StrViewType()
-FSTR = FStrType()
-CHAR = CharType()
-BYTES = BytesType()
-BYTEARRAY = ByteArrayType()
-BYTESVIEW = BytesViewType()
-BOOL = BoolType()
-FLOAT = FloatType()
-FLOAT32 = Float32Type()
+STR = NominalType("str", (), _module_qname="builtins.str")
+STRING = NominalType("String", (), _module_qname="tpy.String")
+STRVIEW = NominalType("StrView", (), _module_qname="tpy.StrView")
+FSTR = NominalType("FStr", (), _module_qname="tpy.FStr")
+CHAR = NominalType("Char", (), _module_qname="tpy.Char")
+BYTES = NominalType("bytes", (), _module_qname="builtins.bytes")
+BYTEARRAY = NominalType("bytearray", (), _module_qname="builtins.bytearray")
+BYTESVIEW = NominalType("BytesView", (), _module_qname="tpy.BytesView")
+BOOL = NominalType("bool", (), _module_qname="builtins.bool")
+FLOAT = NominalType("float", (), _module_qname="builtins.float")
+FLOAT32 = NominalType("Float32", (), _module_qname="tpy.Float32")
 
-BIGINT = BigIntType()
+BIGINT = NominalType("int", (), _module_qname="builtins.int")
 NONE = NoneType()
-BASIC_SLICE = BasicSliceType()
-SLICE = SliceType()
+BASIC_SLICE = NominalType("basic_slice", (), _module_qname="builtins.basic_slice")
+SLICE = NominalType("slice", (), _module_qname="builtins.slice")
 
 # View-type family descriptors (must follow singleton definitions)
+from .type_def_registry import is_string_type as _is_string_type, is_bytearray_type as _is_bytearray_type
 STR_FAMILY = ViewTypeFamily(
-    owned_type=STR, view_type=STRVIEW, promote_param_type=StringType,
+    owned_type=STR, view_type=STRVIEW, promote_param_match=_is_string_type,
     pending_type_class=PendingStrType, element_type=CHAR,
     display_name="str", qualified="builtins.str",
 )
 BYTES_FAMILY = ViewTypeFamily(
-    owned_type=BYTES, view_type=BYTESVIEW, promote_param_type=ByteArrayType,
+    owned_type=BYTES, view_type=BYTESVIEW, promote_param_match=_is_bytearray_type,
     pending_type_class=PendingBytesType, element_type=UINT8,
     display_name="bytes", qualified="builtins.bytes",
 )
 VIEW_TYPE_FAMILIES = (STR_FAMILY, BYTES_FAMILY)
 
-# Backward-compat range limits (use type.min_value / type.max_value instead)
-INT32_MIN = INT32.min_value
-INT32_MAX = INT32.max_value
+# Int32 range limits (for runtime-constant checks). Use int_traits_of(t) for
+# other widths.
+INT32_MIN = -(2 ** 31)
+INT32_MAX = 2 ** 31 - 1
 
 
 def is_protocol_type(typ: TpyType) -> bool:
@@ -3355,7 +2982,8 @@ class FunctionInfo:
     @property
     def has_fstr_param(self) -> bool:
         """True if any parameter has FStr type."""
-        return any(isinstance(p.type, FStrType) for p in self.params)
+        from .type_def_registry import is_fstr_type
+        return any(is_fstr_type(p.type) for p in self.params)
 
     @property
     def is_decorator_stub(self) -> bool:

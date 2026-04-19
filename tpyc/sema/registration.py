@@ -11,14 +11,14 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
-    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, EnumType, IntEnumType, BoolType, make_span,
-    FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64, TupleType, final_type_str_to_strview,
+    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, EnumType, IntEnumType, make_span,
+    STRVIEW, INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64, BIGINT, BOOL, TupleType, final_type_str_to_strview,
     register_value_type_record, register_send_record, register_sync_record,
     register_return_exception, is_return_exception,
     attach_type_param_bounds,
     has_auto_readonly, has_auto_own,
     qualify_exception_name, ensure_qualified,
-    OptionalType, FStrType,
+    OptionalType,
     public_module_name,
 )
 from ..parse import (
@@ -27,6 +27,7 @@ from ..parse import (
     TpyNoneLiteral, TpyStrLiteral,
 )
 from ..namespace import NameBinding, BindingKind
+from ..type_def_registry import is_fixed_int_type, is_fstr_type, int_traits_of
 from .diagnostics import SemanticError
 from .operators import DUNDER_CPP_TEMPLATES
 from ..macro_api import ClassInfo, expr_to_cpp_default
@@ -123,8 +124,8 @@ class TypeRegistrar:
         into the global namespace and imported_names tracking.
         """
         # Register tpy types from type factories (Int32, Array, Span, etc.)
-        # Compile-time-only types (factory returns non-NominalType, e.g. FStr -> FStrType)
-        # are also registered as type aliases so the parser resolves them directly.
+        # Compile-time-only types (e.g. FStr) are also registered as type aliases
+        # so the parser resolves them directly to their NominalType singleton.
         for qname in builtin_modules.get_type_factory_names("tpy"):
             simple_name = qname.split(".")[-1]
             if simple_name not in self.ctx.imported_names:
@@ -153,9 +154,9 @@ class TypeRegistrar:
         """Register a type alias for compile-time-only builtin types.
 
         Compile-time-only types (like FStr) have a type factory but no C++
-        representation. They must be resolved to their singleton at sema time
-        so isinstance checks (e.g. isinstance(ptype, FStrType)) work.
-        Regular builtin types (Int32, basic_slice, etc.) stay as NominalType
+        representation. They're resolved to their singleton at sema time so
+        predicate checks (e.g. is_fstr_type(ptype)) work.
+        Regular builtin types (Int32, basic_slice, etc.) also flow as NominalType
         and use @native for C++ mapping.
         """
         type_obj = builtin_modules.get_builtin_type_obj(f"{module}.{original_name}")
@@ -197,12 +198,13 @@ class TypeRegistrar:
         if enum.is_int_enum and enum.underlying_type_name:
             underlying = self._resolve_int_enum_underlying(enum.underlying_type_name)
             # Validate member values fit in underlying type range
-            if isinstance(underlying, FixedIntType):
+            underlying_tr = int_traits_of(underlying)
+            if underlying_tr is not None:
                 for name, value, loc in enum.members:
-                    if value < underlying.min_value or value > underlying.max_value:
+                    if value < underlying_tr.min_value or value > underlying_tr.max_value:
                         raise SemanticError(
                             f"Enum member '{name}' value {value} is out of range "
-                            f"for {underlying} ({underlying.min_value}..{underlying.max_value})",
+                            f"for {underlying} ({underlying_tr.min_value}..{underlying_tr.max_value})",
                             loc=loc or enum.loc,
                         )
 
@@ -223,14 +225,8 @@ class TypeRegistrar:
 
     _INT_ENUM_UNDERLYING_MAP: dict[str, TpyType] = {
         "int": INT32,
-        "Int8": FixedIntType(8, True),
-        "Int16": FixedIntType(16, True),
-        "Int32": INT32,
-        "Int64": FixedIntType(64, True),
-        "UInt8": FixedIntType(8, False),
-        "UInt16": FixedIntType(16, False),
-        "UInt32": FixedIntType(32, False),
-        "UInt64": FixedIntType(64, False),
+        "Int8": INT8, "Int16": INT16, "Int32": INT32, "Int64": INT64,
+        "UInt8": UINT8, "UInt16": UINT16, "UInt32": UINT32, "UInt64": UINT64,
     }
 
     def _resolve_int_enum_underlying(self, type_name: str) -> TpyType:
@@ -919,7 +915,7 @@ class TypeRegistrar:
                 )
 
             # Check if record implements all protocol methods.
-            # For @builtin_type classes, use the concrete type (e.g. Float32Type)
+            # For @builtin_type classes, use the concrete type (e.g. FLOAT32)
             # so Self-substitution in protocol signatures matches method param types.
             record_type: TpyType = NominalType(record.name)
             if record_info.builtin_type_key:
@@ -1511,7 +1507,7 @@ class TypeRegistrar:
                     f"call expression as its body.",
                     func.loc,
                 )
-        elif any(isinstance(p.type, FStrType) for p in info.params) and not func.is_stub:
+        elif any(is_fstr_type(p.type) for p in info.params) and not func.is_stub:
             raise SemanticError(
                 f"Function '{func.name}' has FStr parameter but is not marked @inline. "
                 f"FStr parameters require @inline.",

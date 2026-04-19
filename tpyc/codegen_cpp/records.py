@@ -13,8 +13,7 @@ from ..typesys import (
     TpyType, NominalType, OptionalType, OwnType, ReadonlyType,
     TypeParamRef, TypeParamKind, RecordInfo, TupleType, UnionType,
     unwrap_readonly, unwrap_optional_own,
-    get_covariant_params, FixedIntType, BigIntType, EnumType, PtrType,
-    BytesType,
+    get_covariant_params, EnumType, PtrType,
 )
 from ..parse import (
     TpyRecord, TpyEnum, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -24,7 +23,10 @@ from ..namespace import Namespace
 
 from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError, escape_cpp_name
 from .functions import factory_default_to_cpp
-from ..type_def_registry import is_span_iter, is_array
+from ..type_def_registry import (
+    is_span_iter, is_array,
+    is_big_int_type, is_bytes_type, int_traits_of,
+)
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -728,11 +730,11 @@ class RecordGenerator:
                                 value = self.expressions.gen_expr(source, fld_type)
                                 # bytes param (span<const uint8_t>) -> field (vector<uint8_t>):
                                 # construct from iterators since vector has no span constructor.
-                                if (isinstance(fld_type, BytesType)
+                                if (is_bytes_type(fld_type)
                                         and isinstance(source_expr, TpyName)
                                         and source_expr.name in param_names):
                                     for pname, ptype in init_method.params:
-                                        if pname == source_expr.name and isinstance(ptype, BytesType):
+                                        if pname == source_expr.name and is_bytes_type(ptype):
                                             value = f"std::vector<uint8_t>({value}.begin(), {value}.end())"
                                             break
                                 # Auto-move Own[T] params at last use in member init list.
@@ -1078,9 +1080,8 @@ class RecordGenerator:
             return
         ret_cpp = len_method.return_type.to_cpp()
         ret_type = len_method.return_type
-        is_signed = isinstance(ret_type, BigIntType) or (
-            isinstance(ret_type, FixedIntType) and ret_type.signed
-        )
+        ret_int_tr = int_traits_of(ret_type)
+        is_signed = is_big_int_type(ret_type) or (ret_int_tr is not None and ret_int_tr.signed)
         if ret_cpp == "size_t":
             out.write(f"\n{INDENT}size_t size() const {{ return __len__(); }}\n")
         elif is_signed:

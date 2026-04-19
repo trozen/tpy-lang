@@ -19,10 +19,12 @@ from ..typesys import (
     TypeParamRef, OptionalType, VoidType, make_union, UnionType, EnumType, TupleType, CallableType, make_fn_type,
     _contains_self_reference, validate_recursive_union_paths,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW, BOOL, FLOAT, FLOAT32, BIGINT, SELF, BASIC_SLICE, SLICE, FieldInfo, RecordInfo, TypeRegistry,
-    FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, BoolType, StrType, LiteralType, LiteralValue,
+    FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, LiteralType, LiteralValue,
     ALL_FIXED_INTS, public_module_name,
 )
+from ..type_def_registry import is_bool_type, is_str_type
 from ..modules import lookup_generic_type, lookup_generic_type_in_module, BuiltinTypeDef
+from ..modules.type_resolution import get_type_factory_param_kinds
 from .nodes import (
     ParseError, SourceLocation, ParseWarning, RecordLinkage, FunctionLinkage,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -1078,13 +1080,11 @@ class Parser:
         if not func.params:
             return _DecoratorArgSchema()  # bare only
 
-        _type_map: dict[type, tuple[type, str]] = {
-            BoolType: (bool, "bool"), StrType: (str, "str"),
-        }
         def _map_type(ptype: TpyType) -> tuple[type, str] | None:
-            match = _type_map.get(type(ptype))
-            if match:
-                return match
+            if is_bool_type(ptype):
+                return (bool, "bool")
+            if is_str_type(ptype):
+                return (str, "str")
             if isinstance(ptype, NominalType) and ptype.qualified_name() == qnames.TYPE:
                 return (_NameArg, "type name")
             return None
@@ -2560,19 +2560,29 @@ class Parser:
             resolved_name = resolved[1] if resolved else name
             registered = self._resolve_registered_type(resolved_name, node, resolved=bool(resolved))
             if registered is not None:
-                # Set _module_qname for @builtin_type records so cross-module
-                # lookups work (e.g. open() returning TextIO). Only for types
-                # with builtin_type_key -- regular records and aliases don't
-                # need this and would break if mis-tagged. The `resolved`
-                # guard ensures this only fires for names that went through
-                # _resolve_type_name (imports or builtins exports), not for
-                # unresolved forward references.
+                # Attach _module_qname to NominalType for any name resolved as
+                # a builtin -- both @builtin_type records (TextIO, BinaryIO,
+                # ...) and factory-defined generics (list, dict, set, Array,
+                # Span, ...). Without this, bare builtin-generic annotations
+                # (e.g. `def f(x: list)`) would produce an unqualified
+                # NominalType that downstream sema couldn't distinguish from a
+                # user record. User records go through _resolve_type_name via
+                # their own module's imports too -- filter them out by
+                # requiring either a builtin_type_key or a registered factory
+                # for the resolved qname. The `resolved` guard ensures this
+                # only fires for names that went through _resolve_type_name,
+                # not for unresolved forward references.
                 if (resolved and isinstance(registered, NominalType)
                         and not registered.is_protocol and not registered._module_qname):
-                    btk = self.registry.get_builtin_type_key(registered.name)
-                    if btk:
+                    module, original = resolved
+                    candidate_qname = f"{module}.{original}"
+                    is_builtin = (
+                        self.registry.get_builtin_type_key(registered.name) is not None
+                        or get_type_factory_param_kinds(candidate_qname) is not None
+                    )
+                    if is_builtin:
                         registered = NominalType(registered.name, registered.type_args,
-                                               registered.is_protocol, btk,
+                                               registered.is_protocol, candidate_qname,
                                                registered.is_dynamic_protocol)
                 return registered
             raise ParseError(f"Unknown type: {name}", node)

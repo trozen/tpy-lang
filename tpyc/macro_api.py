@@ -17,9 +17,9 @@ from typing import Any, Callable, Literal, NoReturn, TYPE_CHECKING
 
 from .parse.nodes import ParseError as _ParseError
 from .typesys import (
-    TpyType, NominalType, OwnType, BoolType,
-    FloatType, Float32Type, FixedIntType, OptionalType,
-    TupleType, EnumType, BigIntType, UnionType, make_set, make_dict, make_list,
+    TpyType, NominalType, OwnType,
+    OptionalType,
+    TupleType, EnumType, UnionType, make_set, make_dict, make_list,
     FieldInfo as InternalFieldInfo,
     INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64,
     ALL_FIXED_INTS,
@@ -407,12 +407,14 @@ class TypeInfo:
 
     @property
     def is_int(self) -> bool:
-        return isinstance(self._tpy_type, FixedIntType)
+        from .type_def_registry import is_fixed_int_type
+        return is_fixed_int_type(self._tpy_type)
 
     @property
     def is_int32(self) -> bool:
-        return (isinstance(self._tpy_type, FixedIntType)
-                and self._tpy_type.bits == 32 and self._tpy_type.signed)
+        from .type_def_registry import int_traits_of
+        tr = int_traits_of(self._tpy_type)
+        return tr is not None and tr.bits == 32 and tr.signed
 
     @property
     def is_float(self) -> bool:
@@ -420,15 +422,18 @@ class TypeInfo:
 
     @property
     def is_float32(self) -> bool:
-        return isinstance(self._tpy_type, Float32Type)
+        from .type_def_registry import is_float32_type
+        return is_float32_type(self._tpy_type)
 
     @property
     def is_bool(self) -> bool:
-        return isinstance(self._tpy_type, BoolType)
+        from .type_def_registry import is_bool_type
+        return is_bool_type(self._tpy_type)
 
     @property
     def is_bigint(self) -> bool:
-        return isinstance(self._tpy_type, BigIntType)
+        from .type_def_registry import is_big_int_type
+        return is_big_int_type(self._tpy_type)
 
     @property
     def is_enum(self) -> bool:
@@ -462,7 +467,8 @@ class TypeInfo:
     @property
     def int_type_name(self) -> str:
         """Get the fixed-int type name e.g. 'Int32' (only valid when is_int)."""
-        assert isinstance(self._tpy_type, FixedIntType)
+        from .type_def_registry import is_fixed_int_type
+        assert is_fixed_int_type(self._tpy_type)
         return str(self._tpy_type)
 
     def unwrap_optional(self) -> TypeInfo | None:

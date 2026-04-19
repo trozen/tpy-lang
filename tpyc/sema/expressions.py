@@ -10,19 +10,18 @@ from collections.abc import Callable as CallableFn
 from typing import Literal, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, BoolType, StrType, CharType,
+    TpyType, IntLiteralType, FloatLiteralType,
     NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_span, make_list, span_as_const, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType, VoidType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType, PendingViewType,
-    is_any_bytes_type, BytesType, ByteArrayType, BytesViewType, PendingBytesType,
-    FixedIntType, StringType, StrViewType, make_union,
+    is_any_bytes_type, PendingBytesType,
+    make_union,
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
     PendingDictType, PendingSetType, DictLiteralInfo,
     resolve_int_literals, CallableType, make_fn_type, is_fn_type,
-    FStrType,
     INT32, FLOAT, STR, FSTR, STRVIEW, CHAR, BOOL, BIGINT, NONE, BASIC_SLICE, SLICE, BYTES, BYTESVIEW, UINT8,
     is_protocol_type, container_to_str_template, contains_type_param,
-    PendingGenericInstanceType, BasicSliceType, SliceType, unwrap_ref_type, make_ref, RefType,
+    PendingGenericInstanceType, unwrap_ref_type, make_ref, RefType,
     is_integer_type, is_any_int_type, is_union_or_optional_type,
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
     unwrap_own, is_readonly_span)
@@ -41,7 +40,12 @@ from ..parse import (
     TpyNestedDef,
     collect_name_refs,
 )
-from ..type_def_registry import is_set, is_dict, is_array, is_span, is_list
+from ..type_def_registry import (
+    is_set, is_dict, is_array, is_span, is_list,
+    is_fixed_int_type, is_big_int_type, is_bool_type, is_char_type, is_fstr_type,
+    is_basic_slice_type, is_slice_type,
+    int_traits_of,
+)
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
@@ -294,7 +298,7 @@ class ExpressionAnalyzer:
 
         # F-string with FStr hint: keep decomposed for macro consumption.
         # Skip format-validity checks -- the call macro handles per-type dispatch.
-        if isinstance(expr, TpyFString) and isinstance(type_hint, FStrType):
+        if isinstance(expr, TpyFString) and is_fstr_type(type_hint):
             self._analyze_fstring(expr, for_fstr=True)
             self.ctx.set_expr_type(expr, FSTR)
             return FSTR
@@ -631,7 +635,7 @@ class ExpressionAnalyzer:
         Different types or bool operands -> return bool.
         """
         # Bool operands: C++ &&/|| already correct
-        if isinstance(left, BoolType) or isinstance(right, BoolType):
+        if is_bool_type(left) or is_bool_type(right):
             return BOOL
         # Resolve int literals to match concrete int type on the other side
         if isinstance(left, IntLiteralType):
@@ -763,7 +767,7 @@ class ExpressionAnalyzer:
 
         # Helper to check if type is any numeric type
         def is_numeric_type(t: TpyType) -> bool:
-            return isinstance(t, (Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType))
+            return is_any_int_type(t) or is_any_float_type(t)
 
         # Identity operators (is / is not) -- only valid with None or enums
         if expr.op in ("is", "is not"):
@@ -784,10 +788,10 @@ class ExpressionAnalyzer:
                     expr,
                 )
             # Bool literal identity: lower to ==/!=
-            if isinstance(left_check, BoolType) and isinstance(expr.right, TpyBoolLiteral):
+            if is_bool_type(left_check) and isinstance(expr.right, TpyBoolLiteral):
                 expr.op = "==" if expr.op == "is" else "!="
                 return BOOL
-            if isinstance(right_check, BoolType) and isinstance(expr.left, TpyBoolLiteral):
+            if is_bool_type(right_check) and isinstance(expr.left, TpyBoolLiteral):
                 expr.op = "==" if expr.op == "is" else "!="
                 return BOOL
             nullable_types = (OptionalType, PtrType)
@@ -954,8 +958,9 @@ class ExpressionAnalyzer:
                     if isinstance(check_left, IntLiteralType):
                         for m in subst_overloads:
                             pt = m.params[0].type
-                            if (isinstance(pt, FixedIntType)
-                                    and pt.min_value <= check_left.value <= pt.max_value):
+                            pt_tr = int_traits_of(pt)
+                            if (pt_tr is not None
+                                    and pt_tr.min_value <= check_left.value <= pt_tr.max_value):
                                 check_left = pt
                                 break
                         else:
@@ -988,7 +993,7 @@ class ExpressionAnalyzer:
             if helper.is_type_iterable(right_type):
                 # For string containers, LHS must be str or Char
                 if is_any_str_type(right_type):
-                    if not (is_any_str_type(left_type) or isinstance(left_type, CharType)):
+                    if not (is_any_str_type(left_type) or is_char_type(left_type)):
                         raise SemanticError(
                             f"Cannot check '{left_type}' membership in str (expected str or Char)",
                             expr.loc
@@ -1038,7 +1043,8 @@ class ExpressionAnalyzer:
                             f"and '{other_side.name}'",
                             expr,
                         )
-                if isinstance(other_side, (IntEnumType, IntLiteralType, FixedIntType, BigIntType)):
+                if (isinstance(other_side, (IntEnumType, IntLiteralType))
+                        or is_fixed_int_type(other_side) or is_big_int_type(other_side)):
                     # Coerce IntEnum operands to underlying type so standard
                     # FixedInt binop resolution (with checked arithmetic) handles it
                     expr.int_enum_coercion = int_enum_side
@@ -1253,7 +1259,10 @@ class ExpressionAnalyzer:
 
         # Logical not: validate operand type (Bool, numeric, Optional, or types with __bool__/__len__)
         if expr.op == "!":
-            if isinstance(effective_type, (BoolType, Int32Type, BigIntType, FloatType, Float32Type, IntLiteralType, FloatLiteralType, OptionalType, EnumType)):
+            if (is_bool_type(effective_type)
+                    or is_any_int_type(effective_type)
+                    or is_any_float_type(effective_type)
+                    or isinstance(effective_type, (OptionalType, EnumType))):
                 return BOOL
             record = self.ctx.registry.get_record_for_type(effective_type)
             if record and (record.get_method_overloads("__bool__")
@@ -1342,11 +1351,11 @@ class ExpressionAnalyzer:
 
     def _try_find_field(self, typ: TpyType, expr: TpyFieldAccess) -> TpyType | None:
         """Try to find a field on typ. Returns field type or None."""
-        if isinstance(typ, BasicSliceType):
+        if is_basic_slice_type(typ):
             if expr.field in ("start", "stop"):
                 return OptionalType(INT32)
             return None
-        if isinstance(typ, SliceType):
+        if is_slice_type(typ):
             if expr.field in ("start", "stop", "step"):
                 return OptionalType(INT32)
             return None
@@ -1873,11 +1882,11 @@ class ExpressionAnalyzer:
         if isinstance(t, IntLiteralType) and isinstance(e, IntLiteralType):
             return self.ctx.default_int_for_literal(t, expr.then_expr)
         if isinstance(t, IntLiteralType):
-            if isinstance(e, (FixedIntType, BigIntType, FloatType, Float32Type)):
+            if is_integer_type(e) or is_float_type(e):
                 return e
             t = self.ctx.default_int_for_literal(t, expr.then_expr)
         if isinstance(e, IntLiteralType):
-            if isinstance(t, (FixedIntType, BigIntType, FloatType, Float32Type)):
+            if is_integer_type(t) or is_float_type(t):
                 return t
             e = self.ctx.default_int_for_literal(e, expr.else_expr)
 
@@ -2555,8 +2564,8 @@ class ExpressionAnalyzer:
 
         # Slice-typed variable as index: route through __getitem__ overload
         # resolution (same path as literal a:b syntax but with variable index).
-        if isinstance(index_type, (BasicSliceType, SliceType)):
-            stepped = isinstance(index_type, SliceType)
+        if is_basic_slice_type(index_type) or is_slice_type(index_type):
+            stepped = is_slice_type(index_type)
             if stepped:
                 expr.is_stepped_slice = True
             is_readonly = isinstance(inner_obj_type, ReadonlyType)
@@ -2655,8 +2664,8 @@ class ExpressionAnalyzer:
         """Find __getitem__(basic_slice) or __getitem__(slice) overload on any type.
 
         Works for both built-in types (via qualified_name -> registry) and user records.
-        When stepped=False, looks for BasicSliceType param first, falls back to SliceType.
-        When stepped=True, looks for SliceType param first, falls back to BasicSliceType.
+        When stepped=False, looks for basic_slice param first, falls back to slice.
+        When stepped=True, looks for slice param first, falls back to basic_slice.
         Prefers the const overload when is_readonly=True.
         Returns (return_type, FunctionInfo) or None.
         """
@@ -2664,16 +2673,16 @@ class ExpressionAnalyzer:
         if record is None:
             return None
         getitem_overloads = record.methods.get("__getitem__", [])
-        primary = SliceType if stepped else BasicSliceType
-        fallback = BasicSliceType if stepped else SliceType
+        primary = is_slice_type if stepped else is_basic_slice_type
+        fallback = is_basic_slice_type if stepped else is_slice_type
         slice_overloads = [
             fi for fi in getitem_overloads
-            if len(fi.params) == 1 and isinstance(fi.params[0].type, primary)
+            if len(fi.params) == 1 and primary(fi.params[0].type)
         ]
         if not slice_overloads:
             slice_overloads = [
                 fi for fi in getitem_overloads
-                if len(fi.params) == 1 and isinstance(fi.params[0].type, fallback)
+                if len(fi.params) == 1 and fallback(fi.params[0].type)
             ]
         if not slice_overloads:
             return None
@@ -2696,7 +2705,7 @@ class ExpressionAnalyzer:
         """Find __setitem__(basic_slice, value) or __setitem__(slice, value) overload.
 
         Similar to _find_slice_getitem but for assignment.
-        No fallback from SliceType to BasicSliceType (or vice versa) -- unlike
+        No fallback from slice to basic_slice (or vice versa) -- unlike
         getitem where a basic_slice can promote to slice for reading, assignment
         semantics differ (stepped requires exact-length match).
         Returns (value_param_type, FunctionInfo) or None.
@@ -2705,10 +2714,10 @@ class ExpressionAnalyzer:
         if record is None:
             return None
         setitem_overloads = record.methods.get("__setitem__", [])
-        target = SliceType if stepped else BasicSliceType
+        target = is_slice_type if stepped else is_basic_slice_type
         slice_overloads = [
             fi for fi in setitem_overloads
-            if len(fi.params) == 2 and isinstance(fi.params[0].type, target)
+            if len(fi.params) == 2 and target(fi.params[0].type)
         ]
         if not slice_overloads:
             return None
@@ -2719,13 +2728,14 @@ class ExpressionAnalyzer:
             value_type = self.type_ops.substitute_type_params(value_type, type_subst)
         return value_type, func_info
 
-    _FORMATTABLE_TYPES = (
-        FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, BoolType,
-        StrType, StringType, StrViewType, PendingStrType, CharType, EnumType,
-    )
-
     _STRINGABLE = NominalType("Stringable", is_protocol=True)
     _REPRESENTABLE = NominalType("Representable", is_protocol=True)
+
+    @staticmethod
+    def _is_formattable(t: TpyType) -> bool:
+        """True for types that f-string can format directly (no __str__/__repr__ needed)."""
+        return (is_numeric_type(t) or is_char_type(t) or is_any_str_type(t)
+                or isinstance(t, (IntLiteralType, FloatLiteralType, EnumType)))
 
     def _analyze_fstring(self, expr: TpyFString, *, for_fstr: bool = False) -> TpyType:
         """Analyze f-string parts and return STR (owned string).
@@ -2754,7 +2764,7 @@ class ExpressionAnalyzer:
                             part.expr,
                         )
                 elif conv == FSTRING_CONV_STR:
-                    if not isinstance(resolved, self._FORMATTABLE_TYPES):
+                    if not self._is_formattable(resolved):
                         if not self.protocols.type_conforms_to_protocol(resolved, self._STRINGABLE):
                             if not self.protocols.type_conforms_to_protocol(resolved, self._REPRESENTABLE):
                                 raise self.ctx.error(
@@ -2762,7 +2772,7 @@ class ExpressionAnalyzer:
                                     " (no __str__ or __repr__ method)",
                                     part.expr,
                                 )
-                elif not isinstance(resolved, self._FORMATTABLE_TYPES):
+                elif not self._is_formattable(resolved):
                     if not self.protocols.type_conforms_to_protocol(resolved, self._STRINGABLE):
                         if not self.protocols.type_conforms_to_protocol(resolved, self._REPRESENTABLE):
                             raise self.ctx.error(
@@ -2770,7 +2780,7 @@ class ExpressionAnalyzer:
                                 " (no __str__ or __repr__ method)",
                                 part.expr,
                             )
-                if part.format_spec is not None and isinstance(resolved, (BigIntType, IntLiteralType)):
+                if part.format_spec is not None and (is_big_int_type(resolved) or isinstance(resolved, IntLiteralType)):
                     raise self.ctx.error(
                         "Format specs on int are not yet supported (use a fixed-width type like Int32)",
                         part.expr,

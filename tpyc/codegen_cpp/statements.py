@@ -9,10 +9,10 @@ import io
 from typing import Callable, TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, FloatLiteralType, BoolType,
+    TpyType, IntLiteralType, FloatLiteralType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
-    NoneType, NominalType, StrType, StringType, StrViewType, BytesType, BytesViewType, STR, BYTES, TupleType, VoidType,
-    INT32, BIGINT, FLOAT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
+    NoneType, NominalType, STR, BYTES, TupleType, VoidType,
+    INT32, BIGINT, FLOAT, is_protocol_type, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType,
     resolve_int_literals,
     error_return_to_cpp, qualify_exception_name, is_return_exception,
@@ -35,7 +35,11 @@ from ..sema.context import PENDING_CONTAINER_TYPES
 from ..sema.diagnostics import SemanticError
 
 from .context import INDENT, CodeGenError, FinallyContext, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable
-from ..type_def_registry import is_list
+from ..type_def_registry import (
+    is_list,
+    is_fixed_int_type, is_big_int_type, is_bytes_type, is_str_type,
+    is_str_view_type, is_bytes_view_type, is_string_type,
+)
 from .type_resolution import resolve_stmt_binding_type
 from ..prescan import match_is_none
 from .match import MatchGenerator
@@ -78,7 +82,7 @@ class StatementGenerator:
                 cpp_name = escape_cpp_name(pname)
                 cpp_type = ptype.to_cpp()
                 param_ref = f"__param_{cpp_name}"
-                if isinstance(ptype, OptionalType) and isinstance(ptype.inner, StrType):
+                if isinstance(ptype, OptionalType) and is_str_type(ptype.inner):
                     init = (f"{param_ref} ? std::make_optional("
                             f"std::string(*{param_ref})) : std::nullopt")
                 else:
@@ -470,13 +474,13 @@ class StatementGenerator:
                         ret_expr = f"(*{ret_expr})"
                         ret_expr = self.expressions._maybe_move(ret_value, ret_expr)
                         # Narrowed Optional[str] param: (*s) yields string_view
-                        if (isinstance(ret_type, StrType)
+                        if (is_str_type(ret_type)
                                 and self._is_optional_str_param(ret_value)):
                             ret_expr = f"std::string({ret_expr})"
                 # StrView local returned as str needs explicit conversion.
                 # Also wrap str-typed params, ternary/or of params/views
-                # (all produce string_view in C++ despite StrType in sema).
-                elif isinstance(ret_type, StrType):
+                # (all produce string_view in C++ despite being typed as str in sema).
+                elif is_str_type(ret_type):
                     if (self._is_str_view_source(ret_value)
                             or self._expr_uses_optional_str_param(ret_value)):
                         ret_expr = f"std::string({ret_expr})"
@@ -1381,11 +1385,11 @@ class StatementGenerator:
                 else:
                     init_expr = f"(*{init_expr})"
             # string_view -> string init requires explicit conversion in C++.
-            elif isinstance(target_type, StrType):
+            elif is_str_type(target_type):
                 if self._is_str_view_source(stmt.init):
                     init_expr = f"std::string({init_expr})"
             # span -> vector init requires explicit conversion in C++.
-            elif isinstance(target_type, BytesType):
+            elif is_bytes_type(target_type):
                 if self._is_bytes_view_source(stmt.init):
                     init_expr = f"::tpy::bytes_copy({init_expr})"
             return f"{indent}{cpp_type} {cpp_name} = {init_expr};\n"
@@ -1585,7 +1589,7 @@ class StatementGenerator:
 
         # Special case: FixedInt += BigInt should convert BigInt to the target type
         # This preserves checked arithmetic and avoids unnecessary promotion to BigInt
-        if isinstance(target_type, Int32Type) and isinstance(value_type, BigIntType):
+        if is_fixed_int_type(target_type) and is_big_int_type(value_type):
             # Dereference globals before .to_fixed_check<T>() conversion
             if self.ctx.is_indirect_name(stmt.value):
                 value = f"(*{value})"
@@ -1595,7 +1599,8 @@ class StatementGenerator:
         # Use resolved binop from sema for augmented assignment (a += b is a = a + b)
         if binop_result := stmt.resolved_binop:
             # String += optimization: in-place append instead of allocating a new string
-            if isinstance(target_type, (StrType, StringType, PendingStrType)) and stmt.op == "+":
+            if (is_str_type(target_type) or is_string_type(target_type)
+                    or isinstance(target_type, PendingStrType)) and stmt.op == "+":
                 return f"{indent}{target} += {value};\n"
             result = self.expressions._gen_binop_from_result(binop_result, target, value)
             return f"{indent}{target} = {result};\n"
@@ -1641,7 +1646,7 @@ class StatementGenerator:
         value_type = self.types.get_resolved_type(stmt.value, elem_type)
 
         # Special case: FixedInt += BigInt should convert BigInt to the element type
-        if isinstance(elem_type, Int32Type) and isinstance(value_type, BigIntType):
+        if is_fixed_int_type(elem_type) and is_big_int_type(value_type):
             # Dereference globals before .to_fixed_check<T>() conversion
             if self.ctx.is_indirect_name(stmt.value):
                 value = f"(*{value})"
@@ -1668,7 +1673,8 @@ class StatementGenerator:
         target_type: TpyType, indent: str,
     ) -> str | None:
         """Emit x += rhs if value_expr is x + rhs on a string type, else None."""
-        if not isinstance(target_type, (StrType, StringType, PendingStrType)):
+        if not (is_str_type(target_type) or is_string_type(target_type)
+                or isinstance(target_type, PendingStrType)):
             return None
         inner = value_expr
         while isinstance(inner, TpyCoerce):
@@ -1686,7 +1692,7 @@ class StatementGenerator:
             return False
         declared = self.ctx.current_func_params.get(expr.name)
         return (isinstance(declared, OptionalType)
-                and isinstance(declared.inner, StrType))
+                and is_str_type(declared.inner))
 
     def _is_str_view_source(self, expr: TpyExpr) -> bool:
         """Check if expr produces std::string_view at C++ runtime and needs explicit std::string().
@@ -1695,19 +1701,19 @@ class StatementGenerator:
         so they don't need an explicit wrapper and return False.
 
         For all other expressions, two checks are combined:
-        1. If sema/local_deduction annotated the expression as StrViewType (e.g. an or-chain
+        1. If sema/local_deduction annotated the expression as StrView (e.g. an or-chain
            where a promoted local forced the annotation), trust that annotation.
         2. Otherwise delegate to expressions._is_str_view_at_runtime, which uses AND
-           semantics and handles str params (StrType in sema but string_view in C++).
+           semantics and handles str params (typed as str in sema but string_view in C++).
         """
         if isinstance(expr, TpyStrLiteral):
             return False
-        if isinstance(self.types.get_resolved_type(expr), StrViewType):
+        if is_str_view_type(self.types.get_resolved_type(expr)):
             return True
         # Note: TpyCoerce is not explicitly handled here. If a coercion wrapping
         # a string_view source (e.g. narrowed Optional[str] param) ever appears
-        # as a var init with StrType target, the coerce target type resolves to
-        # StrType (not StrViewType), and _is_str_view_at_runtime returns False,
+        # as a var init with a str target, the coerce target type resolves to
+        # str (not StrView), and _is_str_view_at_runtime returns False,
         # so no std::string() wrap would be emitted. That path is currently not
         # reachable in practice (Optional[str] coercions go through the
         # _is_optional_str_param / _expr_uses_optional_str_param guards instead).
@@ -1719,7 +1725,7 @@ class StatementGenerator:
         Bytes literals are temporary vectors (not view-safe), so return False.
         Bytes params are spans, so return True.
         """
-        if isinstance(self.types.get_resolved_type(expr), BytesViewType):
+        if is_bytes_view_type(self.types.get_resolved_type(expr)):
             return True
         return self.expressions._is_bytes_view_at_runtime(expr)
 
@@ -2725,7 +2731,7 @@ class StatementGenerator:
     def _gen_generator_for_range(self, out: TextIO, stmt: TpyForEach,
                                   indent: str, info: 'GeneratorForInfo') -> None:
         """Lowered range() for-loop: counter variables as struct fields."""
-        from ..typesys import IntLiteralType, BigIntType
+        from ..typesys import IntLiteralType
 
         uid = info.uid
         # Synthetic fields are std::optional -- dereference with *
@@ -2763,7 +2769,7 @@ class StatementGenerator:
             if step_lit is None:
                 out.write(f'{indent}if ({step} == 0) '
                           f'::tpy::tpy_panic("range() arg 3 must not be zero");\n')
-            if isinstance(elem_type, BigIntType):
+            if is_big_int_type(elem_type):
                 pass  # BigInt uses += directly
             else:
                 self._gen_range_overflow_check(out, indent, counter, stop, step, elem_type)
@@ -3823,7 +3829,7 @@ class StatementGenerator:
                           f"{counter} < {stop_expr}; ++{counter}) {{\n")
             else:
                 step_cpp = gen_args[2]
-                if isinstance(elem_type, BigIntType):
+                if is_big_int_type(elem_type):
                     step_temp = f"__step_{n}"
                     out.write(f"{indent}{cpp_elem} {step_temp} = {step_cpp};\n")
                     step_cpp = step_temp
@@ -3837,7 +3843,7 @@ class StatementGenerator:
                           f"{counter} > {stop_expr}; --{counter}) {{\n")
             else:
                 step_cpp = gen_args[2]
-                if isinstance(elem_type, BigIntType):
+                if is_big_int_type(elem_type):
                     step_temp = f"__step_{n}"
                     out.write(f"{indent}{cpp_elem} {step_temp} = {step_cpp};\n")
                     step_cpp = step_temp
@@ -3865,7 +3871,7 @@ class StatementGenerator:
                                     start_expr: str, stop_expr: str,
                                     step_expr: str, elem_type: TpyType) -> None:
         """Emit upfront overflow check for fixed-int range loops with step != ±1."""
-        if isinstance(elem_type, FixedIntType):
+        if is_fixed_int_type(elem_type):
             cpp_t = elem_type.to_cpp()
             out.write(f"{indent}::tpy::range_check_overflow<{cpp_t}>({start_expr}, {stop_expr}, {step_expr});\n")
 

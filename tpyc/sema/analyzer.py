@@ -9,8 +9,8 @@ from dataclasses import replace as dc_replace
 from typing import Optional
 
 from ..typesys import (
-    TpyType, TypeRegistry, NominalType, UnionType, FinalType, STR, StrType, StrViewType, LiteralType, VoidType, VOID,
-    NoneType, INT32, FixedIntType, BigIntType, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
+    TpyType, TypeRegistry, NominalType, UnionType, FinalType, STR, LiteralType, VoidType, VOID,
+    NoneType, INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
     FunctionInfo, EnumType, is_any_str_type,
     make_ref, unwrap_ref_type, RefType,
     is_integer_type, is_void_like_type,
@@ -44,6 +44,7 @@ from ..liveness import analyze_last_uses
 from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
 from ..typesys import TypeParamRef, TupleType
+from ..type_def_registry import is_str_type, is_str_view_type
 
 
 def _is_stmt_super_init_call(stmt: TpyStmt) -> bool:
@@ -832,7 +833,7 @@ class SemanticAnalyzer:
             if func.is_generator:
                 gen_borrows = frozenset(
                     i for i, (_, ptype) in enumerate(func.params)
-                    if not ptype.is_value_type() or isinstance(ptype, (StrType, StrViewType))
+                    if not ptype.is_value_type() or is_str_type(ptype) or is_str_view_type(ptype)
                 )
                 if gen_borrows:
                     func_info.return_borrows_from = func_info.return_borrows_from | gen_borrows
@@ -902,7 +903,7 @@ class SemanticAnalyzer:
                 check_type = raw_type.inner if isinstance(raw_type, OptionalType) else raw_type
                 if cap_name in outer_param_names:
                     # Reject str/StrView parameter captures (string_view dangles)
-                    if isinstance(check_type, (StrType, StrViewType)):
+                    if is_str_type(check_type) or is_str_view_type(check_type):
                         self.ctx.emit_error(
                             f"Escaping closure '{name}' captures str parameter"
                             f" '{cap_name}' which would dangle (string_view into"

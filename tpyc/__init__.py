@@ -67,7 +67,7 @@ VERSION_INFO: tuple[int, int, int, str, int] = _parse_version_info(__version__)
 
 
 from .typesys import (
-    TpyType, Int32Type, FixedIntType, VoidType, NominalType, PtrType, is_readonly_ptr,
+    TpyType, VoidType, NominalType, PtrType, is_readonly_ptr,
     INT32, VOID, TypeRegistry
 )
 from .parse import Parser, ParseError, TpyModule
@@ -98,7 +98,7 @@ __all__ = [
     "Parser", "ParseError",
     "SemanticAnalyzer", "SemanticError",
     "CodeGenerator",
-    "TpyType", "Int32Type", "FixedIntType", "VoidType", "NominalType",
+    "TpyType", "VoidType", "NominalType",
     "PtrType", "is_readonly_ptr",
     "INT32", "VOID", "TypeRegistry", "TpyModule"
 ]

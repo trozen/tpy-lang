@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, NominalType, OwnType, OptionalType, PendingListType, PendingDictType, PendingSetType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
-    PendingGenericInstanceType, IntLiteralType, FixedIntType, BigIntType, CallableType, unwrap_ref_type, FStrType, is_any_int_type,
+    PendingGenericInstanceType, IntLiteralType, CallableType, unwrap_ref_type, is_any_int_type,
 
 )
 from ..parse import (
@@ -24,7 +24,7 @@ from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
 from .diagnostics import OPTIONAL_NONE_ACCESS_WARNING
-from ..type_def_registry import is_list
+from ..type_def_registry import is_list, is_fstr_type
 from .overloads import resolve_overload
 from .calls import (
     arity_error_msg, resolve_kwargs, validate_generic_defaults,
@@ -1365,7 +1365,7 @@ class MethodAnalyzer:
         # For FStr params, validate that f-string literals are passed.
         if method_info.inline_body is not None:
             for i, (pi, arg) in enumerate(zip(method_info.params, expr.args)):
-                if isinstance(pi.type, FStrType) and not isinstance(arg, TpyFString):
+                if is_fstr_type(pi.type) and not isinstance(arg, TpyFString):
                     if isinstance(arg, TpyStrLiteral):
                         expr.args[i] = TpyFString(parts=[arg.value], loc=arg.loc)
                     else:

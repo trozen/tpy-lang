@@ -7,15 +7,18 @@ from enum import Enum
 from typing import Callable, Optional
 
 from .typesys import (
-    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type,
-    FloatLiteralType,
-    NominalType, PtrType, is_readonly_ptr, CharType, StrType, StringType, StrViewType,
-    BytesType, ByteArrayType, BytesViewType,
+    TpyType, IntLiteralType, FloatLiteralType,
+    NominalType, PtrType, is_readonly_ptr,
     is_readonly_span, PendingListType, TypeParamRef, TypeParamKind, ReadonlyType,
-    BasicSliceType, SliceType,
     is_integer_type, unwrap_readonly,
 )
-from .type_def_registry import is_array, is_span, is_list
+from .type_def_registry import (
+    is_array, is_span, is_list, int_traits_of,
+    is_fixed_int_type, is_big_int_type, is_float64_type, is_float32_type,
+    is_char_type, is_str_type, is_string_type, is_str_view_type,
+    is_bytes_type, is_bytearray_type, is_bytes_view_type,
+    is_basic_slice_type, is_slice_type,
+)
 
 
 class CoercionContext(Enum):
@@ -24,6 +27,22 @@ class CoercionContext(Enum):
     INIT = "init"
     ARG = "arg"
     RETURN = "return"
+
+
+# A type-side matcher: predicate that identifies the actual/expected side.
+# Used by `Coercion.from_type` / `Coercion.to_type` as a coarse pre-filter;
+# finer discrimination (e.g. element equality, readonly-ness) belongs in
+# `Coercion.type_match`.
+TypeMatcher = Callable[[TpyType], bool]
+
+
+def _is(cls: type) -> TypeMatcher:
+    """Build a TypeMatcher that checks isinstance against a class."""
+    return lambda t: isinstance(t, cls)
+
+
+def _match_any_side(_: TpyType) -> bool:
+    return True
 
 
 def _match_any(_: TpyType, __: TpyType) -> bool:
@@ -35,17 +54,30 @@ def _int_type_param_match(actual: TpyType, expected: TpyType) -> bool:
     return isinstance(actual, TypeParamRef) and actual.kind == TypeParamKind.INT
 
 
+def _int_literal_fits_fixed_int(lit: TpyType, target: TpyType) -> bool:
+    """check_range for int_literal_to_fixed_int: literal value (if known) must
+    fit in the target fixed-int's range."""
+    if not isinstance(lit, IntLiteralType):
+        return False
+    tr = int_traits_of(target)
+    if tr is None:
+        return False
+    return lit.value is None or (tr.min_value <= lit.value <= tr.max_value)
+
+
 def _is_safe_widening(actual: TpyType, expected: TpyType) -> bool:
-    """Check if actual FixedIntType can safely widen to expected FixedIntType."""
-    if not isinstance(actual, FixedIntType) or not isinstance(expected, FixedIntType):
+    """Check if actual fixed-int can safely widen to expected fixed-int."""
+    a = int_traits_of(actual)
+    b = int_traits_of(expected)
+    if a is None or b is None:
         return False
-    if actual == expected:
+    if a == b:
         return False
-    if actual.signed == expected.signed:
-        return actual.bits < expected.bits
+    if a.signed == b.signed:
+        return a.bits < b.bits
     # Unsigned -> signed: need strictly more bits (e.g. UInt8 -> Int16)
-    if not actual.signed and expected.signed:
-        return actual.bits < expected.bits
+    if not a.signed and b.signed:
+        return a.bits < b.bits
     return False
 
 
@@ -69,7 +101,7 @@ def _spanlike_to_span_match(actual: TpyType, expected: TpyType) -> bool:
     if isinstance(actual, PendingListType):
         if actual_elem == expected_elem:
             return True
-        # IntLiteral elements coerce to any FixedIntType or BigInt
+        # IntLiteral elements coerce to any fixed-width int or BigInt
         if isinstance(actual_elem, IntLiteralType) and is_integer_type(expected_elem):
             return True
         return False
@@ -85,12 +117,29 @@ def _spanlike_to_span_match(actual: TpyType, expected: TpyType) -> bool:
     return False
 
 
+# Convenience matchers for the Ptr-shape rules (kept readable as helpers).
+def _is_user_record(t: TpyType) -> bool:
+    return isinstance(t, NominalType) and t.is_user_record
+
+
+def _is_mutable_ptr(t: TpyType) -> bool:
+    return isinstance(t, PtrType) and not is_readonly_ptr(t)
+
+
+def _is_readonly_ptr_match(t: TpyType) -> bool:
+    return isinstance(t, PtrType) and is_readonly_ptr(t)
+
+
 @dataclass(frozen=True)
 class Coercion:
-    """A type coercion rule."""
+    """A type coercion rule.
+
+    `from_type` / `to_type` are predicates on a single type (coarse pre-filter).
+    `type_match` is an optional finer two-sided predicate.
+    """
     name: str
-    from_type: type[TpyType]
-    to_type: type[TpyType]
+    from_type: TypeMatcher
+    to_type: TypeMatcher
     type_match: Callable[[TpyType, TpyType], bool] = _match_any
     contexts: Optional[set[CoercionContext]] = None
     requires_lvalue: bool = False
@@ -107,15 +156,15 @@ COERCIONS: list[Coercion] = [
     # INT type parameter coercions (compile-time constants)
     Coercion(
         name="int_type_param_to_fixed_int",
-        from_type=TypeParamRef,
-        to_type=FixedIntType,
+        from_type=_is(TypeParamRef),
+        to_type=is_fixed_int_type,
         type_match=_int_type_param_match,
         codegen=lambda e, _a, b, _c: f"static_cast<{b.to_cpp()}>({e})",
     ),
     Coercion(
         name="int_type_param_to_bigint",
-        from_type=TypeParamRef,
-        to_type=BigIntType,
+        from_type=_is(TypeParamRef),
+        to_type=is_big_int_type,
         type_match=_int_type_param_match,
         codegen=lambda e, _a, _b, _c: f"::tpy::BigInt(static_cast<int64_t>({e}))",
     ),
@@ -123,23 +172,23 @@ COERCIONS: list[Coercion] = [
     # Integer literal to any fixed-width integer (range-checked)
     Coercion(
         name="int_literal_to_fixed_int",
-        from_type=IntLiteralType,
-        to_type=FixedIntType,
-        check_range=lambda lit, target: isinstance(lit, IntLiteralType) and isinstance(target, FixedIntType) and (lit.value is None or (target.min_value <= lit.value <= target.max_value)),
+        from_type=_is(IntLiteralType),
+        to_type=is_fixed_int_type,
+        check_range=_int_literal_fits_fixed_int,
     ),
 
     # Integer literal to BigInt (always valid)
     Coercion(
         name="int_literal_to_bigint",
-        from_type=IntLiteralType,
-        to_type=BigIntType,
+        from_type=_is(IntLiteralType),
+        to_type=is_big_int_type,
     ),
 
     # Widening between fixed-width integers (e.g. Int8 -> Int32, UInt8 -> Int16)
     Coercion(
         name="fixed_int_widening",
-        from_type=FixedIntType,
-        to_type=FixedIntType,
+        from_type=is_fixed_int_type,
+        to_type=is_fixed_int_type,
         type_match=_is_safe_widening,
         codegen=lambda e, _a, b, _c: f"static_cast<{b.to_cpp()}>({e})",
     ),
@@ -147,147 +196,147 @@ COERCIONS: list[Coercion] = [
     # Fixed-width integer to BigInt
     Coercion(
         name="fixed_int_to_bigint",
-        from_type=FixedIntType,
-        to_type=BigIntType,
+        from_type=is_fixed_int_type,
+        to_type=is_big_int_type,
         codegen=lambda e, _a, _b, _c: f"::tpy::BigInt({e})",
     ),
     # BigInt to fixed-width integer (narrowing, runtime checked)
     Coercion(
         name="bigint_to_fixed_int",
-        from_type=BigIntType,
-        to_type=FixedIntType,
+        from_type=is_big_int_type,
+        to_type=is_fixed_int_type,
         codegen=lambda e, _a, b, _c: f"({e}).to_fixed_check<{b.to_cpp()}>()",
     ),
 
     # Float coercions
     Coercion(
         name="int_literal_to_float",
-        from_type=IntLiteralType,
-        to_type=FloatType,
+        from_type=_is(IntLiteralType),
+        to_type=is_float64_type,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
     Coercion(
         name="fixed_int_to_float",
-        from_type=FixedIntType,
-        to_type=FloatType,
+        from_type=is_fixed_int_type,
+        to_type=is_float64_type,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
     Coercion(
         name="bigint_to_float",
-        from_type=BigIntType,
-        to_type=FloatType,
+        from_type=is_big_int_type,
+        to_type=is_float64_type,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
 
     # Float literal coercions (adapts to context)
     Coercion(
         name="float_literal_to_float",
-        from_type=FloatLiteralType,
-        to_type=FloatType,
+        from_type=_is(FloatLiteralType),
+        to_type=is_float64_type,
         codegen=lambda e, _a, _b, _c: e,
     ),
     Coercion(
         name="float_literal_to_float32",
-        from_type=FloatLiteralType,
-        to_type=Float32Type,
+        from_type=_is(FloatLiteralType),
+        to_type=is_float32_type,
         codegen=lambda e, _a, _b, _c: e,  # identity: gen_expr provides 'f' suffix
     ),
 
     # Float32 coercions (widening to Float32)
     Coercion(
         name="int_literal_to_float32",
-        from_type=IntLiteralType,
-        to_type=Float32Type,
+        from_type=_is(IntLiteralType),
+        to_type=is_float32_type,
         codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
     ),
     Coercion(
         name="fixed_int_to_float32",
-        from_type=FixedIntType,
-        to_type=Float32Type,
+        from_type=is_fixed_int_type,
+        to_type=is_float32_type,
         codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
     ),
     Coercion(
         name="bigint_to_float32",
-        from_type=BigIntType,
-        to_type=Float32Type,
+        from_type=is_big_int_type,
+        to_type=is_float32_type,
         codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
     ),
     # Float32 -> float (widening, lossless)
     Coercion(
         name="float32_to_float",
-        from_type=Float32Type,
-        to_type=FloatType,
+        from_type=is_float32_type,
+        to_type=is_float64_type,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
     # float -> Float32 (narrowing, but allowed for convenience -- matches C++ behavior)
     Coercion(
         name="float_to_float32",
-        from_type=FloatType,
-        to_type=Float32Type,
+        from_type=is_float64_type,
+        to_type=is_float32_type,
         codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
     ),
 
     # Char to str coercion
     Coercion(
         name="char_to_str",
-        from_type=CharType,
-        to_type=StrType,
+        from_type=is_char_type,
+        to_type=is_str_type,
         codegen=lambda e, _a, _b, _c: f"std::string(::tpy::char_to_str({e}))",
     ),
     # Char to String coercion
     Coercion(
         name="char_to_string",
-        from_type=CharType,
-        to_type=StringType,
+        from_type=is_char_type,
+        to_type=is_string_type,
         codegen=lambda e, _a, _b, _c: f"std::string(1, {e})",
     ),
     # Char to StrView coercion
     Coercion(
         name="char_to_strview",
-        from_type=CharType,
-        to_type=StrViewType,
+        from_type=is_char_type,
+        to_type=is_str_view_type,
         codegen=lambda e, _a, _b, _c: f"::tpy::char_to_str({e})",
     ),
 
-    # String <-> StrType identity coercions (both map to std::string)
+    # String <-> str identity coercions (both map to std::string)
     Coercion(
         name="string_to_str",
-        from_type=StringType,
-        to_type=StrType,
+        from_type=is_string_type,
+        to_type=is_str_type,
         protocol_safe=True,
     ),
     Coercion(
         name="str_to_string",
-        from_type=StrType,
-        to_type=StringType,
+        from_type=is_str_type,
+        to_type=is_string_type,
     ),
 
     # String -> StrView (safe implicit, C++ handles std::string -> string_view)
     Coercion(
         name="string_to_strview",
-        from_type=StringType,
-        to_type=StrViewType,
+        from_type=is_string_type,
+        to_type=is_str_view_type,
     ),
-    # StrType -> StrView (safe implicit, C++ handles std::string -> string_view)
+    # str -> StrView (safe implicit, C++ handles std::string -> string_view)
     Coercion(
         name="str_to_strview",
-        from_type=StrType,
-        to_type=StrViewType,
+        from_type=is_str_type,
+        to_type=is_str_view_type,
     ),
 
     # StrView -> String (allocates)
     Coercion(
         name="strview_to_string",
-        from_type=StrViewType,
-        to_type=StringType,
+        from_type=is_str_view_type,
+        to_type=is_string_type,
         codegen=lambda e, _a, _b, _c: f"std::string({e})",
         protocol_safe=True,
     ),
-    # StrView -> StrType (allocates -- StrType is now std::string)
+    # StrView -> str (allocates -- str is now std::string)
     Coercion(
         name="strview_to_str",
-        from_type=StrViewType,
-        to_type=StrType,
+        from_type=is_str_view_type,
+        to_type=is_str_type,
         codegen=lambda e, _a, _b, _c: f"std::string({e})",
         protocol_safe=True,
     ),
@@ -295,40 +344,40 @@ COERCIONS: list[Coercion] = [
     # bytearray <-> bytes identity coercions (both map to std::vector<uint8_t>)
     Coercion(
         name="bytearray_to_bytes",
-        from_type=ByteArrayType,
-        to_type=BytesType,
+        from_type=is_bytearray_type,
+        to_type=is_bytes_type,
         protocol_safe=True,
     ),
     Coercion(
         name="bytes_to_bytearray",
-        from_type=BytesType,
-        to_type=ByteArrayType,
+        from_type=is_bytes_type,
+        to_type=is_bytearray_type,
     ),
 
     # bytes/bytearray -> BytesView (safe implicit, vector -> span)
     Coercion(
         name="bytes_to_bytesview",
-        from_type=BytesType,
-        to_type=BytesViewType,
+        from_type=is_bytes_type,
+        to_type=is_bytes_view_type,
     ),
     Coercion(
         name="bytearray_to_bytesview",
-        from_type=ByteArrayType,
-        to_type=BytesViewType,
+        from_type=is_bytearray_type,
+        to_type=is_bytes_view_type,
     ),
 
     # BytesView -> bytes/bytearray (allocates)
     Coercion(
         name="bytesview_to_bytes",
-        from_type=BytesViewType,
-        to_type=BytesType,
+        from_type=is_bytes_view_type,
+        to_type=is_bytes_type,
         codegen=lambda e, _a, _b, _c: f"std::vector<uint8_t>({e}.begin(), {e}.end())",
         protocol_safe=True,
     ),
     Coercion(
         name="bytesview_to_bytearray",
-        from_type=BytesViewType,
-        to_type=ByteArrayType,
+        from_type=is_bytes_view_type,
+        to_type=is_bytearray_type,
         codegen=lambda e, _a, _b, _c: f"std::vector<uint8_t>({e}.begin(), {e}.end())",
         protocol_safe=True,
     ),
@@ -336,10 +385,11 @@ COERCIONS: list[Coercion] = [
     # Pointer coercions
     Coercion(
         name="record_to_ptr",
-        from_type=NominalType,
-        to_type=PtrType,
+        from_type=_is_user_record,
+        to_type=_is_mutable_ptr,
         type_match=lambda rec, ptr: (
-            isinstance(rec, NominalType) and rec.is_user_record and isinstance(ptr, PtrType) and isinstance(ptr.pointee, NominalType) and ptr.pointee.is_user_record and rec.name == ptr.pointee.name
+            isinstance(ptr.pointee, NominalType) and ptr.pointee.is_user_record
+            and rec.name == ptr.pointee.name
         ),
         requires_lvalue=True,
         requires_mutable_lvalue=True,
@@ -348,10 +398,11 @@ COERCIONS: list[Coercion] = [
     ),
     Coercion(
         name="record_to_const_ptr",
-        from_type=NominalType,
-        to_type=PtrType,
+        from_type=_is_user_record,
+        to_type=_is_readonly_ptr_match,
         type_match=lambda rec, ptr: (
-            isinstance(rec, NominalType) and rec.is_user_record and isinstance(ptr, PtrType) and is_readonly_ptr(ptr) and isinstance(ptr.inner_pointee, NominalType) and ptr.inner_pointee.is_user_record and rec.name == ptr.inner_pointee.name
+            isinstance(ptr.inner_pointee, NominalType) and ptr.inner_pointee.is_user_record
+            and rec.name == ptr.inner_pointee.name
         ),
         requires_lvalue=True,
         forbid_return_local=True,
@@ -359,37 +410,41 @@ COERCIONS: list[Coercion] = [
     ),
     Coercion(
         name="ptr_to_const_ptr",
-        from_type=PtrType,
-        to_type=PtrType,
-        type_match=lambda p1, p2: isinstance(p1, PtrType) and isinstance(p2, PtrType) and not p1.is_readonly and is_readonly_ptr(p2) and p1.inner_pointee == p2.inner_pointee,
+        from_type=_is_mutable_ptr,
+        to_type=_is_readonly_ptr_match,
+        type_match=lambda p1, p2: p1.inner_pointee == p2.inner_pointee,
     ),
     Coercion(
         name="span_to_readonly_span",
-        from_type=NominalType,
-        to_type=NominalType,
-        type_match=lambda s1, s2: is_span(s1) and is_span(s2) and not is_readonly_span(s1) and is_readonly_span(s2) and unwrap_readonly(s1.type_args[0]) == unwrap_readonly(s2.type_args[0]),
+        from_type=_is(NominalType),
+        to_type=_is(NominalType),
+        type_match=lambda s1, s2: (
+            is_span(s1) and is_span(s2)
+            and not is_readonly_span(s1) and is_readonly_span(s2)
+            and unwrap_readonly(s1.type_args[0]) == unwrap_readonly(s2.type_args[0])
+        ),
         protocol_safe=True,
     ),
     # basic_slice -> slice (adds step=nullopt). C++ implicit via Slice(BasicSlice) ctor.
     Coercion(
         name="basic_slice_to_slice",
-        from_type=BasicSliceType,
-        to_type=SliceType,
+        from_type=is_basic_slice_type,
+        to_type=is_slice_type,
     ),
     # Span coercions: any Spannable[T] type can coerce to Span[T]
     # Arg context allows temporaries
     Coercion(
         name="spanlike_to_span_arg",
-        from_type=TpyType,  # Matches any type; _spanlike_to_span_match filters by protocol
-        to_type=NominalType,
+        from_type=_match_any_side,  # Matches any type; _spanlike_to_span_match filters by protocol
+        to_type=_is(NominalType),
         type_match=_spanlike_to_span_match,
         contexts={CoercionContext.ARG},
     ),
     # Non-arg contexts require lvalue (can't take span of temporary)
     Coercion(
         name="spanlike_to_span",
-        from_type=TpyType,  # Matches any type; _spanlike_to_span_match filters by protocol
-        to_type=NominalType,
+        from_type=_match_any_side,  # Matches any type; _spanlike_to_span_match filters by protocol
+        to_type=_is(NominalType),
         type_match=_spanlike_to_span_match,
         contexts={CoercionContext.INIT, CoercionContext.ASSIGN, CoercionContext.RETURN},
         requires_lvalue=True,
@@ -400,10 +455,18 @@ COERCIONS: list[Coercion] = [
 
 def resolve_coercion(actual: TpyType, expected: TpyType, ctx: CoercionContext) -> Optional[Coercion]:
     """Find a coercion rule that converts actual to expected in the given context."""
+    # PERF TODO: linear scan over ~39 rules, each evaluating two Python-level
+    # predicates (from_type / to_type) plus an optional type_match. When primitive
+    # subclasses were collapsed to NominalType singletons, from_type / to_type
+    # changed from C-level isinstance checks to Python calls that do a
+    # type_def_of dict lookup. Most rules are indexable by (from_qname, to_qname) --
+    # a hash-table dispatch with a fallback linear scan for wildcard-side rules
+    # (spanlike_to_span_arg, DEREF_COERCION) would cut per-call cost >10x.
+    # Not worth doing until a profile shows dispatch in the top costs.
     for coercion in COERCIONS:
         if coercion.contexts is not None and ctx not in coercion.contexts:
             continue
-        if isinstance(actual, coercion.from_type) and isinstance(expected, coercion.to_type):
+        if coercion.from_type(actual) and coercion.to_type(expected):
             if coercion.type_match(actual, expected):
                 return coercion
     return None
@@ -417,7 +480,7 @@ def is_protocol_safe_coercion(actual: TpyType, expected: TpyType) -> bool:
     for coercion in COERCIONS:
         if not coercion.protocol_safe:
             continue
-        if isinstance(actual, coercion.from_type) and isinstance(expected, coercion.to_type):
+        if coercion.from_type(actual) and coercion.to_type(expected):
             if coercion.type_match(actual, expected):
                 return True
     return False
@@ -431,8 +494,8 @@ def _deref_codegen(e: str, actual: TpyType, _expected: TpyType, _ctx: CoercionCo
 
 DEREF_COERCION = Coercion(
     name="deref_to_target",
-    from_type=TpyType,
-    to_type=TpyType,
+    from_type=_match_any_side,
+    to_type=_match_any_side,
     codegen=_deref_codegen,
 )
 
@@ -440,8 +503,8 @@ DEREF_COERCION = Coercion(
 # Applied explicitly by calls.py for functions with @value_ptr_coercion.
 VALUE_TO_PTR = Coercion(
     name="value_to_ptr",
-    from_type=TpyType,
-    to_type=PtrType,
+    from_type=_match_any_side,
+    to_type=_is(PtrType),
     requires_lvalue=True,
     requires_mutable_lvalue=True,
     forbid_return_local=True,
@@ -453,8 +516,8 @@ VALUE_TO_PTR = Coercion(
 # Used directly by compatibility.py.
 UPCAST_TO_PTR = Coercion(
     name="upcast_to_ptr",
-    from_type=NominalType,
-    to_type=PtrType,
+    from_type=_is(NominalType),
+    to_type=_is(PtrType),
     requires_lvalue=True,
     requires_mutable_lvalue=True,
     forbid_return_local=True,
@@ -467,23 +530,23 @@ UPCAST_TO_PTR = Coercion(
 # Arg context: temporaries allowed.
 SPAN_METHOD_TO_SPAN_ARG = Coercion(
     name="span_method_to_span_arg",
-    from_type=TpyType,
-    to_type=NominalType,
+    from_type=_match_any_side,
+    to_type=_is(NominalType),
 )
 
 # Non-arg contexts: lvalue required, no returning locals.
 SPAN_METHOD_TO_SPAN = Coercion(
     name="span_method_to_span",
-    from_type=TpyType,
-    to_type=NominalType,
+    from_type=_match_any_side,
+    to_type=_is(NominalType),
     requires_lvalue=True,
     forbid_return_local=True,
 )
 
 UPCAST_TO_CONST_PTR = Coercion(
     name="upcast_to_const_ptr",
-    from_type=NominalType,
-    to_type=PtrType,
+    from_type=_is(NominalType),
+    to_type=_is(PtrType),
     requires_lvalue=True,
     forbid_return_local=True,
     codegen=lambda e, _a, _b, _c: f"&{e}",

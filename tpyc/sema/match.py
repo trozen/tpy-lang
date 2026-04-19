@@ -9,14 +9,18 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, BigIntType, FixedIntType, FloatType, Float32Type,
-    BoolType, StrType, StrViewType, StringType, CharType, NominalType,
+    TpyType,
+    NominalType,
     NoneType, OptionalType, UnionType, EnumType, PendingStrType,
     LiteralType, LiteralValue, TypeParamRef,
     unwrap_readonly, unwrap_ref_type,
     is_float_type, is_any_str_type,
 )
 from ..modules import _resolve_concrete_type_name
+from ..type_def_registry import (
+    is_bool_type, is_fixed_int_type, is_big_int_type,
+    is_str_category, is_char_type, is_float_category,
+)
 from ..parse import (
     TpyName, TpyFieldAccess,
     TpyMatch, TpyMatchCase, TpyPattern, TpyWildcardPattern, TpyCapturePattern,
@@ -70,11 +74,12 @@ class MatchAnalyzer:
         is_union = isinstance(effective_type, UnionType)
         is_enum = isinstance(effective_type, EnumType)
         is_literal = isinstance(effective_type, LiteralType)
-        is_primitive = is_literal or isinstance(effective_type, (
-            Int32Type, BigIntType, FixedIntType, FloatType, Float32Type,
-            BoolType, StrType, StrViewType, StringType, CharType,
-            PendingStrType,
-        ))
+        is_primitive = is_literal or (
+            is_fixed_int_type(effective_type) or is_big_int_type(effective_type)
+            or is_float_category(effective_type) or is_bool_type(effective_type)
+            or is_str_category(effective_type) or is_char_type(effective_type)
+            or isinstance(effective_type, PendingStrType)
+        )
         is_record = (
             isinstance(effective_type, NominalType)
             and effective_type.is_user_record
@@ -323,7 +328,7 @@ class MatchAnalyzer:
                 return ["None"]
             return []
 
-        if isinstance(subject_type, BoolType):
+        if is_bool_type(subject_type):
             missing: list[str] = []
             if True not in seen_values:
                 missing.append("True")
@@ -754,13 +759,14 @@ class MatchAnalyzer:
                 "None literal pattern requires an Optional subject", pattern
             )
         if isinstance(val, bool):
-            if not isinstance(check_type, BoolType):
+            if not is_bool_type(check_type):
                 raise self.ctx.error(
                     f"bool literal pattern not valid for subject type '{subject_type}'",
                     pattern,
                 )
         elif isinstance(val, int):
-            if not isinstance(check_type, (Int32Type, BigIntType, FixedIntType, EnumType)):
+            if not (is_fixed_int_type(check_type) or is_big_int_type(check_type)
+                    or isinstance(check_type, EnumType)):
                 raise self.ctx.error(
                     f"int literal pattern not valid for subject type '{subject_type}'",
                     pattern,

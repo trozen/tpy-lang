@@ -140,6 +140,14 @@ def get_type_factory(qname: str) -> "Callable[..., TpyType] | None":
     return entry[1] if entry else None
 
 
+def get_type_factory_param_kinds(qname: str) -> list["TypeParamKind"] | None:
+    """Return the type-parameter kinds for a registered factory, or None if
+    the qname isn't a factory. Zero-length list means "no type args expected"
+    (primitive-like); non-empty means "this many args required"."""
+    entry = _get_type_factories().get(qname)
+    return entry[0] if entry else None
+
+
 def get_type_factory_names(module_prefix: str) -> list[str]:
     """Get qualified names of all type factories for a module prefix."""
     prefix = f"{module_prefix}."

@@ -11,15 +11,14 @@ from typing import Callable, NoReturn, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, OwnType, OptionalType, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
-    IntLiteralType, FloatType, Float32Type, BoolType, resolve_int_literals,
-    StrType, LiteralType, LiteralValue, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
-    PtrType, is_readonly_ptr, VoidType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
+    IntLiteralType, resolve_int_literals,
+    LiteralType, LiteralValue, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
+    PtrType, is_readonly_ptr, VoidType, ParamInfo, ReadonlyType,
     UNKNOWN_ELEMENT, UnknownElementType, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
     UnionType, EnumType, VOID, BIGINT, BOOL, STR, INT32, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own,
     is_any_str_type, container_to_str_template, error_return_matches,
     is_protocol_union, protocol_union_protocols,
-    FStrType,
-    StrViewType, STRVIEW, MutationCallEdge,
+    STRVIEW, MutationCallEdge,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     CallableType, is_fn_type, unwrap_ref_type,
     is_integer_type, is_any_int_type,
@@ -52,7 +51,12 @@ if TYPE_CHECKING:
 
 from tpyc import modules as builtin_modules
 from .. import qnames
-from ..type_def_registry import is_array, is_span, is_list
+from ..type_def_registry import (
+    is_array, is_span, is_list,
+    is_fixed_int_type, is_bool_type, is_char_type, is_fstr_type,
+    is_str_type, is_big_int_type,
+    int_traits_of,
+)
 
 
 def _tp_in_record_type(name: str, typ: TpyType) -> bool:
@@ -74,13 +78,13 @@ def prefer_strview_for_literals(
     type_conforms_to_protocol: 'Callable',
     explicit_count: int = 0,
 ) -> None:
-    """Downgrade T=StrType to T=StrViewType when all args at bare-T
+    """Downgrade T=str to T=StrView when all args at bare-T
     positions are string literals (static lifetime, safe as string_view)."""
     explicit_params = set(func.type_params[:explicit_count])
     for tp, inferred_type in list(type_subst.items()):
         if tp in explicit_params:
             continue
-        if not isinstance(inferred_type, StrType):
+        if not is_str_type(inferred_type):
             continue
         # Skip if T would become a record field (StrView not allowed as field)
         if _tp_in_record_type(tp, func.return_type):
@@ -127,11 +131,11 @@ def _enrich_literal_types(
         return arg_types
     enriched = []
     for arg_t, arg in zip(arg_types, args):
-        if isinstance(arg_t, StrType) and isinstance(arg, TpyStrLiteral):
+        if is_str_type(arg_t) and isinstance(arg, TpyStrLiteral):
             enriched.append(LiteralType(STR, (LiteralValue("str", arg.value),)))
         elif isinstance(arg_t, IntLiteralType) and arg_t.value is not None:
             enriched.append(LiteralType(INT32, (LiteralValue("int", arg_t.value),)))
-        elif isinstance(arg_t, BoolType) and isinstance(arg, TpyBoolLiteral):
+        elif is_bool_type(arg_t) and isinstance(arg, TpyBoolLiteral):
             enriched.append(LiteralType(BOOL, (LiteralValue("bool", arg.value),)))
         elif isinstance(arg_t, LiteralType):
             enriched.append(arg_t)
@@ -334,7 +338,11 @@ def _partial_substitute(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
     return typ.map_inner_types(lambda t: _partial_substitute(t, subst))
 
 
-_NUMERIC_TYPES = (FixedIntType, BigIntType, FloatType, Float32Type, IntLiteralType)
+def _is_numeric_or_int_literal(t: TpyType) -> bool:
+    """True for any numeric type (int/float concrete families) or IntLiteralType.
+    Matches the former _NUMERIC_TYPES tuple (excludes bool -- added separately)."""
+    return (is_fixed_int_type(t) or is_big_int_type(t)
+            or is_float_type(t) or isinstance(t, IntLiteralType))
 
 
 def _default_compatible_with_type(default_expr: TpyExpr, resolved_type: TpyType) -> bool:
@@ -345,17 +353,17 @@ def _default_compatible_with_type(default_expr: TpyExpr, resolved_type: TpyType)
         case TpyNoneLiteral():
             return isinstance(resolved_type, OptionalType)
         case TpyBoolLiteral():
-            return isinstance(resolved_type, (BoolType,) + _NUMERIC_TYPES)
+            return is_bool_type(resolved_type) or _is_numeric_or_int_literal(resolved_type)
         case TpyIntLiteral():
-            return isinstance(resolved_type, _NUMERIC_TYPES) or isinstance(resolved_type, BoolType)
+            return _is_numeric_or_int_literal(resolved_type) or is_bool_type(resolved_type)
         case TpyFloatLiteral():
             return is_float_type(resolved_type)
         case TpyStrLiteral():
-            return is_any_str_type(resolved_type) or isinstance(resolved_type, CharType)
+            return is_any_str_type(resolved_type) or is_char_type(resolved_type)
         case TpyUnaryOp(op="-"):
             return _default_compatible_with_type(default_expr.operand, resolved_type)
         case TpyCall():
-            return isinstance(resolved_type, _NUMERIC_TYPES)
+            return _is_numeric_or_int_literal(resolved_type)
         case _:
             # Unknown expression type: allow (parser ensures only const exprs reach here)
             return True
@@ -409,7 +417,7 @@ def _repr_fallback_template(typ: TpyType) -> str | None:
     Covers: bool, fixed ints, float, BigInt, strings, optionals,
     enums, and user records (which always have operator<<).
     """
-    if isinstance(typ, BoolType):
+    if is_bool_type(typ):
         return _REPR_TEMPLATE
     if is_integer_type(typ):
         return _REPR_TEMPLATE
@@ -417,7 +425,7 @@ def _repr_fallback_template(typ: TpyType) -> str | None:
         return _REPR_TEMPLATE
     if is_any_str_type(typ):
         return _REPR_TEMPLATE
-    if isinstance(typ, CharType):
+    if is_char_type(typ):
         return _REPR_TEMPLATE
     if isinstance(typ, EnumType):
         return _REPR_TEMPLATE
@@ -1961,7 +1969,7 @@ class CallAnalyzer:
         self._reject_kwargs_for_builtin(expr, expr.func_name)
         arg_types = [unwrap_own(unwrap_ref_type(self.expr.analyze_expr(arg))) for arg in expr.args]
 
-        # Resolve the concrete type (e.g. Float32Type). __init__ returns None
+        # Resolve the concrete type (e.g. FLOAT32 singleton). __init__ returns None
         # in Python, so we look up the actual type via the type factory.
         record_type = builtin_modules.get_builtin_type_obj(record.builtin_type_key)
 
@@ -1973,13 +1981,14 @@ class CallAnalyzer:
                    for (pname, ptype), arg_type in zip(ctor.params, arg_types)):
                 ret = record_type or ctor.return_type
                 # Reject int literals that are out of range for the target fixed-int type
-                if (isinstance(ret, FixedIntType) and len(arg_types) == 1
+                if (is_fixed_int_type(ret) and len(arg_types) == 1
                         and isinstance(arg_types[0], IntLiteralType)):
                     lit = arg_types[0]
-                    if lit.value is not None and not (ret.min_value <= lit.value <= ret.max_value):
+                    ret_tr = int_traits_of(ret)
+                    if lit.value is not None and not (ret_tr.min_value <= lit.value <= ret_tr.max_value):
                         raise self.ctx.error(
                             f"{ret} overflow: {lit.value} is outside range "
-                            f"[{ret.min_value}, {ret.max_value}]",
+                            f"[{ret_tr.min_value}, {ret_tr.max_value}]",
                             expr,
                         )
                 expr.resolved_function_info = _resolve_cpp_template_type_params(ctor, result_type=ret)
@@ -2066,15 +2075,17 @@ class CallAnalyzer:
             return
         target = target_type or ctor.return_type
         source = arg_types[0]
-        if not isinstance(target, FixedIntType) or not isinstance(source, FixedIntType):
+        target_tr = int_traits_of(target)
+        source_tr = int_traits_of(source)
+        if target_tr is None or source_tr is None:
             return
         arg = expr.args[0]
         if not isinstance(arg, TpyName):
             return
         # Safe when: signed -> unsigned, target at least as wide, source proven non-negative
         is_safe = (
-            source.signed and not target.signed
-            and target.bits >= source.bits
+            source_tr.signed and not target_tr.signed
+            and target_tr.bits >= source_tr.bits
             and (rng := self.ctx.func.value_ranges.get(arg.name)) is not None
             and rng.is_non_negative()
         )
@@ -2473,7 +2484,7 @@ class CallAnalyzer:
 
         # Validate FStr params receive f-string literals (or plain strings)
         for i, (pi, arg) in enumerate(zip(func.params, expr.args)):
-            if isinstance(pi.type, FStrType) and not isinstance(arg, TpyFString):
+            if is_fstr_type(pi.type) and not isinstance(arg, TpyFString):
                 if isinstance(arg, TpyStrLiteral):
                     expr.args[i] = TpyFString(parts=[arg.value], loc=arg.loc)
                 else:
@@ -2568,7 +2579,7 @@ class CallAnalyzer:
 
             self.check_own_param(arg, arg_type, pname, ptype)
 
-            if not (isinstance(ptype, CharType) and is_any_str_type(arg_type) and
+            if not (is_char_type(ptype) and is_any_str_type(arg_type) and
                     isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
                 coerced_arg = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                        coercion_ctx=CoercionContext.ARG)
@@ -2603,7 +2614,7 @@ class CallAnalyzer:
             if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType):
                 arg_type = arg_type.wrapped
             self.check_own_param(arg, arg_type, pname, ptype)
-            if not (isinstance(ptype, CharType) and is_any_str_type(arg_type) and
+            if not (is_char_type(ptype) and is_any_str_type(arg_type) and
                     isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
                 coerced_arg = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                        coercion_ctx=CoercionContext.ARG)
@@ -2790,7 +2801,7 @@ class CallAnalyzer:
 
                 self.check_own_param(arg, arg_type, pname, check_ptype)
 
-                if not (isinstance(check_ptype, CharType) and is_any_str_type(arg_type) and
+                if not (is_char_type(check_ptype) and is_any_str_type(arg_type) and
                         isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
                     coerced_arg = self.compat.coerce_expr(arg, arg_type, check_ptype, f"argument '{pname}'",
                                                            coercion_ctx=CoercionContext.ARG)

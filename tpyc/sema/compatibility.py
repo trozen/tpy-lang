@@ -9,9 +9,9 @@ from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING, Optional
 
 from ..typesys import (
-    TpyType, IntLiteralType, FloatLiteralType, FixedIntType, BigIntType, Int32Type, ListRepeatType,
+    TpyType, IntLiteralType, FloatLiteralType, ListRepeatType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, UnknownElementType,
-    StrType, StringType, StrViewType, LiteralType, BytesType, ByteArrayType, BytesViewType, FloatType, Float32Type,
+    LiteralType,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NominalType, TypeParamRef, NoneType, OptionalType, UnionType,
     is_protocol_type, unwrap_readonly, unwrap_optional_own,
@@ -27,7 +27,10 @@ from ..parse import (
 from ..coercions import resolve_coercion, Coercion, CoercionContext, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN
 from .context import addr_taken_roots
 from .diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
-from ..type_def_registry import is_set, is_dict, is_array, is_span, is_list
+from ..type_def_registry import (
+    is_set, is_dict, is_array, is_span, is_list, is_str_view_type, int_traits_of,
+    is_big_int_type, is_str_category, is_bytes_category, is_str_type, is_string_type,
+)
 from .overloads import type_matches_numeric
 
 
@@ -564,7 +567,7 @@ class TypeCompatibility:
 
         # IntLiteral can coerce to BigInt or stay unresolved
         if isinstance(actual, IntLiteralType):
-            if isinstance(expected, (BigIntType, IntLiteralType)):
+            if is_big_int_type(expected) or isinstance(expected, IntLiteralType):
                 return None
 
         # FloatLiteral can coerce to float/Float32 or stay unresolved
@@ -717,21 +720,21 @@ class TypeCompatibility:
             if isinstance(expected, LiteralType) and expected.is_str_base():
                 return None
         if isinstance(expected, PendingStrType):
-            if isinstance(actual, (StrType, StringType, StrViewType)):
+            if is_str_category(actual):
                 return None
         # LiteralType is compatible with its base type family
         if isinstance(actual, LiteralType) and isinstance(expected, LiteralType):
             if all(v in expected.values for v in actual.values):
                 return None
         if isinstance(expected, LiteralType):
-            if expected.is_str_base() and isinstance(actual, (StrType, StringType, StrViewType)):
+            if expected.is_str_base() and is_str_category(actual):
                 return None
             if expected.base_type == actual:
                 return None
             if expected.is_int_base() and isinstance(actual, IntLiteralType):
                 return None
         if isinstance(actual, LiteralType):
-            if actual.is_str_base() and isinstance(expected, (StrType, StringType, StrViewType)):
+            if actual.is_str_base() and is_str_category(expected):
                 return None
             if actual.base_type == expected:
                 return None
@@ -739,10 +742,10 @@ class TypeCompatibility:
                 return None
         # Allow PendingBytesType compatibility during first phase (before resolution)
         if isinstance(actual, PendingBytesType):
-            if isinstance(expected, (BytesType, ByteArrayType, BytesViewType, PendingBytesType)):
+            if is_bytes_category(expected) or isinstance(expected, PendingBytesType):
                 return None
         if isinstance(expected, PendingBytesType):
-            if isinstance(actual, (BytesType, ByteArrayType, BytesViewType)):
+            if is_bytes_category(actual):
                 return None
 
         ctx = coercion_ctx or context
@@ -800,9 +803,10 @@ class TypeCompatibility:
                 info.passed_to_span_param = True
 
         if coercion.check_range and not coercion.check_range(actual, expected):
+            tr = int_traits_of(expected)
             return CompatError(
                 f"Integer literal {actual.value} is outside {expected} range "
-                f"[{expected.min_value}, {expected.max_value}] in {context}",
+                f"[{tr.min_value}, {tr.max_value}] in {context}",
                 loc
             )
 
@@ -1216,7 +1220,7 @@ class TypeCompatibility:
 
             # A function returning owned str/String creates a temporary
             # std::string that dangles if returned as StrView.
-            if fi is not None and isinstance(fi.return_type, (StrType, StringType)):
+            if fi is not None and (is_str_type(fi.return_type) or is_string_type(fi.return_type)):
                 return True
 
             # Regular function call - assume it returns something safe
@@ -1261,7 +1265,7 @@ class TypeCompatibility:
         # std::string that dangles if returned as StrView.
         if isinstance(expr, TpyMethodCall):
             fi = expr.resolved_function_info
-            if fi is not None and isinstance(fi.return_type, (StrType, StringType)):
+            if fi is not None and (is_str_type(fi.return_type) or is_string_type(fi.return_type)):
                 return True
             return False
 
@@ -1296,12 +1300,12 @@ class TypeCompatibility:
             return
         # StrView is a value type but holds an interior pointer -- returning
         # a StrView referencing a local would dangle after the function returns.
-        if isinstance(return_type, StrViewType):
+        if is_str_view_type(return_type):
             inner = expr.expr if isinstance(expr, TpyCoerce) else expr
             # StrView(x) constructor: check the wrapped argument
             if (isinstance(inner, TpyCall) and inner.args and isinstance(inner.func, TpyName)
                     and (inner.func_name == "StrView"
-                         or isinstance(getattr(inner, 'call_type', None), StrViewType))):
+                         or is_str_view_type(getattr(inner, 'call_type', None)))):
                 if self.is_dangling_return(inner.args[0]):
                     raise self.ctx.error(
                         "Cannot return StrView referencing a local or temporary; "

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, OptionalType, NoneType, VoidType, PtrType, OwnType, NominalType,
-    TypeParamRef, FixedIntType, BigIntType, IntLiteralType,
+    TypeParamRef, IntLiteralType,
     ReadonlyType, UnionType, unwrap_readonly, unwrap_ref_type, make_union, union_none_narrow,
     is_protocol_type, LiteralType, LiteralValue, is_any_int_type,
 

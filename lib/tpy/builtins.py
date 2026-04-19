@@ -13,11 +13,13 @@ from tpy._builtins import (
 )
 
 __all__ = [
-    # Types (always available without import)
+    # Types (always available as annotations via implicit `import builtins`
+    # semantics, matching CPython -- the parser auto-resolves any name in
+    # this __all__ against `builtins` without requiring `from builtins import`
+    # in user code).
     "int", "float", "bool", "str", "bytes", "bytearray", "None",
     "tuple", "basic_slice", "slice", "type",
     "Exception", "ValueError", "OSError", "FileNotFoundError", "BaseException",
-    # These require explicit import in user code
     "list", "dict", "dict_keys", "dict_values", "dict_items", "set",
     "Range", "range",
     "len", "repr", "hash", "chr", "ord", "abs", "min", "max", "pow", "divmod", "next", "iter", "round",

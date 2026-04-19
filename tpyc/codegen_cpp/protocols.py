@@ -10,12 +10,13 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, TypeParamKind, ReadonlyType, VoidType, SelfType,
-    OptionalType, UnionType, StrType, OwnType, MethodSignature, is_protocol_type,
+    OptionalType, UnionType, OwnType, MethodSignature, is_protocol_type,
     unwrap_readonly, unwrap_own, is_protocol_union, protocol_union_protocols,
     protocol_union_has_none, unwrap_ref_type,
 )
 from ..parse import TpyProtocol, TpyRecord
 from .context import INDENT, DUNDER_TO_BINARY_OP, qualified_cpp_name
+from ..type_def_registry import is_str_type
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -430,7 +431,7 @@ class ProtocolGenerator:
             any string type (str, StrView, String).
             """
             resolved = subst_type(typ)
-            if isinstance(resolved, StrType):
+            if is_str_type(resolved):
                 return "std::string_view"
             return resolved.to_cpp()
 
@@ -565,7 +566,7 @@ class ProtocolGenerator:
             call_expr = self._dynamic_forward_call(method_sig)
             # Covariant str: inner may return string_view but vtable returns string;
             # explicit construction handles the conversion.
-            if isinstance(method_sig.return_type, StrType):
+            if is_str_type(method_sig.return_type):
                 call_expr = f"std::string({call_expr})"
             out.write(f"{INDENT}{ret_cpp} {method_sig.name}({params_cpp}){const_qual} override {{ {ret_kw}{call_expr}; }}\n")
 

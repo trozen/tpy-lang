@@ -16,13 +16,14 @@ from .value_range import ValueRange
 
 from ..typesys import (
     TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
-    FixedIntType, INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType,
+    INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType,
     PendingListType, PendingDictType, PendingSetType,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
     unwrap_readonly, unwrap_ref_type, unwrap_qualifiers,
 )
 from ..namespace import Namespace
+from ..type_def_registry import int_traits_of
 from ..parse import (
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
     TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp, TpyIfExpr,
@@ -743,10 +744,11 @@ class SemanticContext:
         """Resolve configured default-int, with range-safe fallback for literals."""
         if not isinstance(typ, IntLiteralType):
             return self.default_int_type
+        default_tr = int_traits_of(self.default_int_type)
         if (
-            isinstance(self.default_int_type, FixedIntType)
+            default_tr is not None
             and typ.value is not None
-            and not (self.default_int_type.min_value <= typ.value <= self.default_int_type.max_value)
+            and not (default_tr.min_value <= typ.value <= default_tr.max_value)
         ):
             if warn_node is not None:
                 self.warning(

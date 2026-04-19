@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, TypeParamRef, NominalType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType,
     make_array, make_list, PendingListType, PendingViewType, GenExprType, SelfType, OptionalType, UnionType,
     TupleType,
-    Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
+    IntLiteralType, TypeParamKind, BIGINT,
     NoneType, VoidType, CallableType,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
     public_module_name, unwrap_ref_type, RefType,
@@ -22,6 +22,7 @@ from ..coercions import resolve_coercion, CoercionContext
 from .diagnostics import SemanticError
 from .. import qnames
 from ..type_def_registry import is_copy_iter, is_own_iter, is_array, is_span, is_list
+from ..modules.type_resolution import get_type_factory_param_kinds
 
 if TYPE_CHECKING:
     from ..parse import SourceLocation
@@ -71,7 +72,7 @@ class TypeOperations:
                     return TypeParamRef(typ.name, bound=bound)
                 if typ.name in (self.ctx.record_ctx.type_params or []):
                     return TypeParamRef(typ.name)
-            # Resolve compile-time-only type aliases (e.g. FStr -> FStrType).
+            # Resolve compile-time-only type aliases (e.g. FStr singleton).
             # Registered at import time for builtin types with no C++ representation.
             if not typ.type_args and self.ctx.registry.type_aliases:
                 alias = self.ctx.registry.get_type_alias(typ.name)
@@ -170,32 +171,68 @@ class TypeOperations:
         if isinstance(typ, NominalType) and typ.is_record:
             if typ.qualified_name() == "builtins.type":
                 raise SemanticError("'type' cannot be used as a type annotation", loc)
+            # Unified arity/validity check. Rule 1 of the Post-Phase-D invariants
+            # (docs/TYPESYS_MIGRATION.md): validity comes from qname/TypeDef/
+            # factory/record registry, not from `_module_qname != None`. Prefer
+            # user-record info (may shadow builtin names), then fall through to
+            # the factory (covers bare-name NominalType like def f(x: list) that
+            # the parser leaves without `_module_qname`).
             record_info = self.ctx.registry.get_record_for_type(typ)
-            if not record_info:
-                if self.ctx.registry.get_enum(typ.name) is not None:
-                    pass  # imported enum -- NominalType will be resolved to EnumType
-                elif not allow_forward_ref:
-                    raise SemanticError(f"Unknown type: {typ.name}", loc)
-                pass
-            elif typ.type_args:
-                # Validate type arguments for generic record
-                if not record_info.is_generic():
-                    raise SemanticError(f"Record '{typ.name}' is not generic, but type arguments were provided", loc)
-                if len(typ.type_args) != len(record_info.type_params):
+            kinds: list | None = None
+            if record_info is None:
+                qn = typ.qualified_name()
+                if qn:
+                    kinds = get_type_factory_param_kinds(qn)
+                if kinds is None:
+                    # Parser may leave bare-name builtins without _module_qname;
+                    # try namespace-qualified lookup against known module prefixes.
+                    for ns in ("builtins", "tpy"):
+                        k = get_type_factory_param_kinds(f"{ns}.{typ.name}")
+                        if k is not None:
+                            kinds = k
+                            break
+            if record_info is not None:
+                if typ.type_args:
+                    if not record_info.is_generic():
+                        raise SemanticError(f"Record '{typ.name}' is not generic, but type arguments were provided", loc)
+                    if len(typ.type_args) != len(record_info.type_params):
+                        raise SemanticError(
+                            f"Record '{typ.name}' expects {len(record_info.type_params)} type arguments, "
+                            f"got {len(typ.type_args)}",
+                            loc,
+                        )
+                    self.validate_record_type_args(typ, record_info, allow_type_param_ref, loc)
+                elif record_info.is_generic():
                     raise SemanticError(
-                        f"Record '{typ.name}' expects {len(record_info.type_params)} type arguments, "
-                        f"got {len(typ.type_args)}",
+                        f"Generic record '{typ.name}' requires type arguments: "
+                        f"{typ.name}[{', '.join(record_info.type_params)}]",
                         loc,
                     )
-                # Validate each type argument matches its expected kind
-                self.validate_record_type_args(typ, record_info, allow_type_param_ref, loc)
-            elif record_info.is_generic():
-                # Generic record used without type arguments
-                raise SemanticError(
-                    f"Generic record '{typ.name}' requires type arguments: "
-                    f"{typ.name}[{', '.join(record_info.type_params)}]",
-                    loc,
-                )
+            elif kinds is not None:
+                # Factory-only builtin: primitive singleton (empty kinds) or
+                # generic container (list, dict, set, Array, Span, ...). Arity
+                # mismatch -- including the bare-generic case -- is an error.
+                if len(kinds) != len(typ.type_args):
+                    if not typ.type_args and kinds:
+                        raise SemanticError(
+                            f"Generic type '{typ.name}' requires "
+                            f"{len(kinds)} type argument{'s' if len(kinds) != 1 else ''}",
+                            loc,
+                        )
+                    if typ.type_args and not kinds:
+                        raise SemanticError(
+                            f"Type '{typ.name}' is not generic, but type arguments were provided",
+                            loc,
+                        )
+                    raise SemanticError(
+                        f"Type '{typ.name}' expects {len(kinds)} type argument"
+                        f"{'s' if len(kinds) != 1 else ''}, got {len(typ.type_args)}",
+                        loc,
+                    )
+            elif self.ctx.registry.get_enum(typ.name) is not None:
+                pass  # imported enum -- NominalType will be resolved to EnumType
+            elif not allow_forward_ref:
+                raise SemanticError(f"Unknown type: {typ.name}", loc)
             # Container element validation (containers are NominalType + TypeDef)
             elem_type = typ.get_element_type()
             if elem_type is not None:

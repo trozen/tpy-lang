@@ -12,7 +12,6 @@ import re
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, OwnType, ReadonlyType, RefType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, PropertyInfo, is_protocol_type,
-    FixedIntType, BigIntType, FloatType, Float32Type, BoolType, StrType, StringType, StrViewType, CharType,
     ListRepeatType, GenExprType, make_list, TupleType, OptionalType, IntLiteralType, FloatLiteralType, PendingListType, BIGINT, FLOAT,
     EnumType, IntEnumType,
     impl_proto_matches_name, get_protocol_qname,
@@ -26,7 +25,11 @@ if TYPE_CHECKING:
 
 from tpyc import modules as builtin_modules
 from .. import qnames
-from ..type_def_registry import is_copy_iter, is_own_iter, is_set, is_dict, is_array, is_span, is_list
+from ..type_def_registry import (
+    is_copy_iter, is_own_iter, is_set, is_dict, is_array, is_span, is_list,
+    is_fixed_int_type, is_big_int_type, is_char_type, is_str_category,
+)
+from ..typesys import is_numeric_type
 
 
 def record_extends_any(actual: TpyType, protocol_name: str, registry: 'TypeRegistry') -> bool:
@@ -276,8 +279,8 @@ class ProtocolChecker:
     def _is_default_constructible(self, actual: TpyType) -> bool:
         """Check if a type supports default construction (zero-arg init)."""
         # All primitive value types are default-constructible
-        if isinstance(actual, (FixedIntType, BigIntType, FloatType, Float32Type, BoolType,
-                               StrType, StringType, StrViewType, CharType)):
+        if (is_numeric_type(actual) or is_char_type(actual)
+                or is_str_category(actual)):
             return True
         # Empty containers are default-constructible
         if is_list(actual) or is_span(actual) or is_dict(actual) or is_set(actual):
@@ -501,7 +504,7 @@ class ProtocolChecker:
         # Allow BigInt where a fixed int is expected (e.g. __len__() -> int
         # satisfies Sized which expects -> Int32). The C++ side uses
         # std::convertible_to<int32_t> so the implicit conversion is safe.
-        if isinstance(expected, FixedIntType) and isinstance(unwrapped, BigIntType):
+        if is_fixed_int_type(expected) and is_big_int_type(unwrapped):
             return True
         # Inherited method return type: actual is a parent of expected.
         # e.g. Counter.__iter__() -> Counter inherited by DoubleCounter,

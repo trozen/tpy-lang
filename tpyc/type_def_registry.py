@@ -51,6 +51,32 @@ class TypeCategory(Enum):
 
 
 @dataclass(frozen=True)
+class IntTraits:
+    """Fixed-width integer traits: width + signedness.
+
+    `min_value` / `max_value` are computed from bits+signed; no need to
+    store them."""
+    bits: int
+    signed: bool
+
+    @property
+    def min_value(self) -> int:
+        return -(2 ** (self.bits - 1)) if self.signed else 0
+
+    @property
+    def max_value(self) -> int:
+        if self.signed:
+            return 2 ** (self.bits - 1) - 1
+        return 2 ** self.bits - 1
+
+
+@dataclass(frozen=True)
+class FloatTraits:
+    """Floating-point traits: width (32 or 64)."""
+    bits: int
+
+
+@dataclass(frozen=True)
 class TypeDef:
     """Per-qname behavior record. All fields describe properties intrinsic
     to the qname (not to a particular instance's type_args).
@@ -64,6 +90,11 @@ class TypeDef:
     `cpp_formatter` overrides NominalType.to_cpp's default `{name}<{args}>`
     rendering when the C++ type name differs from the Python qname (e.g.
     dict_keys -> ::tpy::dict_keys_view).
+
+    `param_cpp_formatter` overrides the default to_cpp_param_type() computation
+    (value types = to_cpp(); non-value = to_cpp() + "&"). Set for primitives
+    whose parameter rendering differs from their value rendering -- e.g.
+    builtins.str renders as std::string but is passed as std::string_view.
     """
     qname: str
     category: TypeCategory
@@ -72,6 +103,7 @@ class TypeDef:
     is_send: Optional[Union[bool, Callable[[tuple], bool]]] = None
     is_sync: Optional[Union[bool, Callable[[tuple], bool]]] = None
     cpp_formatter: Optional[Callable[[tuple], str]] = None
+    param_cpp_formatter: Optional[Callable[[tuple], str]] = None
     # element_of(type_args) -> "element type produced by iterating this type".
     # Overrides NominalType.get_element_type's default (first TpyType arg).
     # Needed when the raw first type_arg carries decoration that iteration
@@ -80,6 +112,17 @@ class TypeDef:
     # Array/Span need explicit type targets for literal initializers (see
     # NominalType.needs_explicit_element_target). Default is False.
     needs_explicit_element_target: bool = False
+    # Primitive-specific: copy cost and reassign semantics. Matters for
+    # parameter passing (const T& for expensive copies) and for the codegen
+    # pattern that emits a local mutable copy when a const-ref parameter
+    # is reassigned in the body.
+    is_expensive_copy: bool = False
+    param_needs_copy_for_reassign: bool = False
+    # Compile-time-only types (FStr) have no runtime C++ representation.
+    is_compile_time_only: bool = False
+    # Category-specific trait payloads.
+    int_traits: Optional[IntTraits] = None
+    float_traits: Optional[FloatTraits] = None
 
 
 _type_defs: dict[str, TypeDef] = {}
@@ -96,7 +139,18 @@ def get_type_def(qname: str) -> Optional[TypeDef]:
 
 
 def type_def_of(t: "TpyType") -> Optional[TypeDef]:
-    if t is None:
+    # type_args for parameterized types can contain plain ints (Array[T, N])
+    # so predicates called in generic-matching code see non-TpyType values.
+    # Mirror isinstance(t, XxxType)'s "quietly False" behavior.
+    #
+    # PERF TODO: called from every is_*_type predicate; each call does
+    # hasattr + qualified_name() dispatch + dict.get. Since NominalType
+    # singletons never change TypeDef, the lookup result could be cached on
+    # the instance at construction (one lookup per singleton, O(1) attribute
+    # thereafter), turning tag-based predicates back into a ~single-instruction
+    # frozenset-style check. Consider once post-mypyc profiling identifies
+    # predicate dispatch as a bottleneck.
+    if t is None or not hasattr(t, "qualified_name"):
         return None
     qn = t.qualified_name()
     return _type_defs.get(qn) if qn else None
@@ -122,6 +176,12 @@ def resolve_send_sync(field, type_args: tuple) -> Optional[bool]:
 # subclasses are deleted in Phase B.
 
 def _is_cat(t: "TpyType", cat: TypeCategory) -> bool:
+    # LiteralType / PendingViewType delegate qualified_name() to a base/family,
+    # so their TypeDef lookup hits the inner's category. Mirror isinstance
+    # semantics which never matched those wrappers.
+    from tpyc.typesys import LiteralType, PendingViewType
+    if isinstance(t, (LiteralType, PendingViewType)):
+        return False
     td = type_def_of(t)
     return td is not None and td.category is cat
 
@@ -149,6 +209,12 @@ def is_iterator_adapter(t: "TpyType") -> bool: return _is_cat(t, TypeCategory.IT
 
 
 def _is_qn(t: "TpyType", qname: str) -> bool:
+    # LiteralType and PendingViewType delegate qualified_name() to an inner
+    # base/family, so their TypeDef lookup would hit a primitive's qname.
+    # Mirror `isinstance(t, PrimitiveSubclass)` which never matched them.
+    from tpyc.typesys import LiteralType, PendingViewType
+    if isinstance(t, (LiteralType, PendingViewType)):
+        return False
     td = type_def_of(t)
     return td is not None and td.qname == qname
 
@@ -158,40 +224,185 @@ def is_copy_iter(t: "TpyType") -> bool: return _is_qn(t, "tpy.CopyIter")
 def is_own_iter(t: "TpyType") -> bool:  return _is_qn(t, "tpy.OwnIter")
 
 
+# Primitive predicates (Phase D). Prefer these over isinstance(t, FooType)
+# so callers stop depending on the primitive subclass identity. Once the
+# subclasses are deleted in Phase D step 4, primitives become NominalType
+# instances with a TypeDef entry and these predicates still answer correctly.
+
+def is_fixed_int_type(t: "TpyType") -> bool:  return _is_cat(t, TypeCategory.FIXED_INT)
+def is_big_int_type(t: "TpyType") -> bool:    return _is_cat(t, TypeCategory.BIG_INT)
+def is_bool_type(t: "TpyType") -> bool:       return _is_cat(t, TypeCategory.BOOL)
+def is_char_type(t: "TpyType") -> bool:       return _is_cat(t, TypeCategory.CHAR)
+def is_float_category(t: "TpyType") -> bool:  return _is_cat(t, TypeCategory.FLOAT)
+def is_str_category(t: "TpyType") -> bool:    return _is_cat(t, TypeCategory.STR)
+def is_bytes_category(t: "TpyType") -> bool:  return _is_cat(t, TypeCategory.BYTES)
+def is_slice_category(t: "TpyType") -> bool:  return _is_cat(t, TypeCategory.SLICE)
+
+
+# Single-qname primitive predicates.
+def is_str_type(t: "TpyType") -> bool:     return _is_qn(t, "builtins.str")
+def is_string_type(t: "TpyType") -> bool:  return _is_qn(t, "tpy.String")
+def is_str_view_type(t: "TpyType") -> bool: return _is_qn(t, "tpy.StrView")
+def is_fstr_type(t: "TpyType") -> bool:    return _is_qn(t, "tpy.FStr")
+def is_float64_type(t: "TpyType") -> bool: return _is_qn(t, "builtins.float")
+def is_float32_type(t: "TpyType") -> bool: return _is_qn(t, "tpy.Float32")
+def is_bytes_type(t: "TpyType") -> bool:   return _is_qn(t, "builtins.bytes")
+def is_bytearray_type(t: "TpyType") -> bool: return _is_qn(t, "builtins.bytearray")
+def is_bytes_view_type(t: "TpyType") -> bool: return _is_qn(t, "tpy.BytesView")
+def is_basic_slice_type(t: "TpyType") -> bool: return _is_qn(t, "builtins.basic_slice")
+def is_slice_type(t: "TpyType") -> bool:   return _is_qn(t, "builtins.slice")
+
+
+# Trait accessors. Return the dataclass or None if the type isn't in the
+# corresponding category. Callers should prefer these over reading .bits /
+# .signed / .min_value / .max_value from subclasses directly.
+
+def int_traits_of(t: "TpyType") -> Optional[IntTraits]:
+    td = type_def_of(t)
+    return td.int_traits if td is not None else None
+
+
+def float_traits_of(t: "TpyType") -> Optional[FloatTraits]:
+    td = type_def_of(t)
+    return td.float_traits if td is not None else None
+
+
 # --- Population -----------------------------------------------------------
 
 def _populate() -> None:
     TC = TypeCategory
 
-    # Fixed-width integers (signed + unsigned). Value types.
-    for qn in ("tpy.Int8", "tpy.Int16", "tpy.Int32", "tpy.Int64",
-               "tpy.UInt8", "tpy.UInt16", "tpy.UInt32", "tpy.UInt64"):
-        register(TypeDef(qn, TC.FIXED_INT, is_value_type=True))
+    # Fixed-width integers (signed + unsigned). Value types. cpp_formatter
+    # renders as int{bits}_t / uint{bits}_t derived from int_traits.
+    def _int_cpp(bits: int, signed: bool):
+        name = f"int{bits}_t" if signed else f"uint{bits}_t"
+        return lambda args: name
 
-    register(TypeDef("builtins.int",   TC.BIG_INT, is_value_type=True))
-    register(TypeDef("builtins.float", TC.FLOAT,   is_value_type=True))
-    register(TypeDef("tpy.Float32",    TC.FLOAT,   is_value_type=True))
-    register(TypeDef("builtins.bool",  TC.BOOL,    is_value_type=True))
-    register(TypeDef("tpy.Char",       TC.CHAR,    is_value_type=True))
+    for bits in (8, 16, 32, 64):
+        for signed in (True, False):
+            prefix = "Int" if signed else "UInt"
+            qn = f"tpy.{prefix}{bits}"
+            register(TypeDef(
+                qn, TC.FIXED_INT, is_value_type=True,
+                cpp_formatter=_int_cpp(bits, signed),
+                param_cpp_formatter=_int_cpp(bits, signed),
+                int_traits=IntTraits(bits=bits, signed=signed),
+            ))
 
-    # String family. All flavors report is_value_type=True today; String is
-    # heap-backed but still "passed around by value" semantically.
-    register(TypeDef("builtins.str", TC.STR, is_value_type=True))
-    register(TypeDef("tpy.String",   TC.STR, is_value_type=True))
-    register(TypeDef("tpy.StrView",  TC.STR, is_value_type=True))
-    register(TypeDef("tpy.FStr",     TC.STR, is_value_type=True))
+    # BigInt: heap-backed, expensive to copy, passed by const reference.
+    register(TypeDef(
+        "builtins.int", TC.BIG_INT, is_value_type=True,
+        cpp_formatter=lambda args: "::tpy::BigInt",
+        param_cpp_formatter=lambda args: "const ::tpy::BigInt&",
+        is_expensive_copy=True, param_needs_copy_for_reassign=True,
+    ))
 
-    # Bytes family. All value types per current typesys; BytesView borrows.
-    register(TypeDef("builtins.bytes",     TC.BYTES, is_value_type=True))
-    register(TypeDef("builtins.bytearray", TC.BYTES, is_value_type=True))
-    register(TypeDef("tpy.BytesView",      TC.BYTES, is_value_type=True))
+    # Floats.
+    register(TypeDef(
+        "builtins.float", TC.FLOAT, is_value_type=True,
+        cpp_formatter=lambda args: "double",
+        param_cpp_formatter=lambda args: "double",
+        float_traits=FloatTraits(bits=64),
+    ))
+    register(TypeDef(
+        "tpy.Float32", TC.FLOAT, is_value_type=True,
+        cpp_formatter=lambda args: "float",
+        param_cpp_formatter=lambda args: "float",
+        float_traits=FloatTraits(bits=32),
+    ))
+
+    # Bool and Char.
+    register(TypeDef(
+        "builtins.bool", TC.BOOL, is_value_type=True,
+        cpp_formatter=lambda args: "bool",
+        param_cpp_formatter=lambda args: "bool",
+    ))
+    register(TypeDef(
+        "tpy.Char", TC.CHAR, is_value_type=True,
+        cpp_formatter=lambda args: "char",
+        param_cpp_formatter=lambda args: "char",
+    ))
+
+    # String family. All flavors report is_value_type=True; String and str
+    # are heap-backed and expensive to copy, StrView is a lightweight view,
+    # FStr is compile-time-only.
+    # element_of returns CHAR so iteration / for-each over any str-family
+    # type yields Char.
+    def _char_elem(args):
+        from tpyc.typesys import CHAR
+        return CHAR
+
+    register(TypeDef(
+        "builtins.str", TC.STR, is_value_type=True,
+        cpp_formatter=lambda args: "std::string",
+        param_cpp_formatter=lambda args: "std::string_view",
+        is_expensive_copy=True, param_needs_copy_for_reassign=True,
+        element_of=_char_elem,
+    ))
+    register(TypeDef(
+        "tpy.String", TC.STR, is_value_type=True,
+        cpp_formatter=lambda args: "std::string",
+        param_cpp_formatter=lambda args: "const std::string&",
+        is_expensive_copy=True, param_needs_copy_for_reassign=True,
+        element_of=_char_elem,
+    ))
+    register(TypeDef(
+        "tpy.StrView", TC.STR, is_value_type=True,
+        is_send=False, is_sync=True,
+        cpp_formatter=lambda args: "std::string_view",
+        param_cpp_formatter=lambda args: "std::string_view",
+        element_of=_char_elem,
+    ))
+    # FStr has no runtime representation; cpp_formatter/param_cpp_formatter
+    # stay None so to_cpp() raises TypeError via the is_compile_time_only
+    # check in TpyType.to_cpp / NominalType.to_cpp.
+    register(TypeDef(
+        "tpy.FStr", TC.STR, is_value_type=True,
+        is_compile_time_only=True,
+    ))
+
+    # Bytes family. bytes/bytearray are heap-backed (std::vector<uint8_t>),
+    # BytesView borrows (std::span<const uint8_t>). Element type is UInt8.
+    def _u8_elem(args):
+        from tpyc.typesys import UINT8
+        return UINT8
+
+    register(TypeDef(
+        "builtins.bytes", TC.BYTES, is_value_type=True,
+        cpp_formatter=lambda args: "std::vector<uint8_t>",
+        param_cpp_formatter=lambda args: "std::span<const uint8_t>",
+        is_expensive_copy=True, param_needs_copy_for_reassign=True,
+        element_of=_u8_elem,
+    ))
+    register(TypeDef(
+        "builtins.bytearray", TC.BYTES, is_value_type=True,
+        cpp_formatter=lambda args: "std::vector<uint8_t>",
+        param_cpp_formatter=lambda args: "const std::vector<uint8_t>&",
+        is_expensive_copy=True, param_needs_copy_for_reassign=True,
+        element_of=_u8_elem,
+    ))
+    register(TypeDef(
+        "tpy.BytesView", TC.BYTES, is_value_type=True,
+        is_send=False, is_sync=True,
+        cpp_formatter=lambda args: "std::span<const uint8_t>",
+        param_cpp_formatter=lambda args: "std::span<const uint8_t>",
+        element_of=_u8_elem,
+    ))
 
     # Slice types (value types, no subscript). Note: BASIC_SLICE's
     # qualified_name returns "builtins.basic_slice" but the parser factory
     # table keys it as "tpy.basic_slice" -- pre-existing inconsistency
     # (see modules/type_resolution.py). Registry follows the class.
-    register(TypeDef("builtins.basic_slice", TC.SLICE, is_value_type=True))
-    register(TypeDef("builtins.slice",       TC.SLICE, is_value_type=True))
+    register(TypeDef(
+        "builtins.basic_slice", TC.SLICE, is_value_type=True,
+        cpp_formatter=lambda args: "::tpy::BasicSlice",
+        param_cpp_formatter=lambda args: "::tpy::BasicSlice",
+    ))
+    register(TypeDef(
+        "builtins.slice", TC.SLICE, is_value_type=True,
+        cpp_formatter=lambda args: "::tpy::Slice",
+        param_cpp_formatter=lambda args: "::tpy::Slice",
+    ))
 
     # Containers.
     # subscript_borrows reflects the current subclass .subscript_borrows().

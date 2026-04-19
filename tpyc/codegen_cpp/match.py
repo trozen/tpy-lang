@@ -9,11 +9,10 @@ from collections import defaultdict
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, BoolType, FixedIntType, NominalType, OptionalType,
-    StrType, StringType, StrViewType, PendingStrType, UnionType, EnumType,
+    TpyType, NominalType, OptionalType,
+    PendingStrType, UnionType, EnumType,
     LiteralType,
     unwrap_readonly, is_any_str_type,
-
 )
 from ..parse import (
     TpyStmt, TpyExpr, TpyName, TpyMatch, TpyMatchCase, TpyPattern,
@@ -22,6 +21,7 @@ from ..parse import (
 )
 from .context import INDENT, CodeGenError, escape_cpp_name, escape_cpp_string, escape_cpp_char
 from .string_dispatch import find_best_discriminator, STRING_SWITCH_THRESHOLD
+from ..type_def_registry import is_fixed_int_type, is_bool_type
 
 if TYPE_CHECKING:
     from ..parse import SourceLocation
@@ -84,11 +84,11 @@ class MatchGenerator:
                     self._gen_match_switch_str(out, stmt, indent)
                 else:
                     self._gen_match_if_elif(out, stmt, indent)
-            elif isinstance(base, (FixedIntType, BoolType)):
+            elif is_fixed_int_type(base) or is_bool_type(base):
                 self._gen_match_switch_primitive(out, stmt, indent)
             else:
                 self._gen_match_if_elif(out, stmt, indent)
-        elif isinstance(subject_type, (FixedIntType, BoolType)):
+        elif is_fixed_int_type(subject_type) or is_bool_type(subject_type):
             self._gen_match_switch_primitive(out, stmt, indent)
         elif isinstance(subject_type, NominalType) and subject_type.is_user_record:
             has_guard = any(c.guard is not None for c in stmt.cases)
@@ -1327,7 +1327,7 @@ class MatchGenerator:
             self.ctx.indent_level += 1
             self._emit_switch_groups(out, groups, inner, subject_expr="__match_inner")
             self.ctx.indent_level -= 1
-        elif isinstance(inner_type, (FixedIntType, BoolType)):
+        elif is_fixed_int_type(inner_type) or is_bool_type(inner_type):
             groups = self._group_switch_arms(inner_cases, kind="primitive")
             self.ctx.indent_level += 1
             self._emit_switch_groups(out, groups, inner, subject_expr="__match_inner")

@@ -8,19 +8,20 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, OwnType, ReadonlyType,
-    FinalType, FixedIntType, BoolType, StrViewType, StringType,
-    PendingListType, PendingDictType, make_list, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, CharType, StrType, TypeParamRef,
+    TpyType, IntLiteralType, FloatLiteralType, OwnType, ReadonlyType,
+    FinalType,
+    PendingListType, PendingDictType, make_list, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, TypeParamRef,
     ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType, UnknownElementType,
     EnumType, unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType,
-    BytesType, ByteArrayType, BytesViewType, LiteralType,
+    LiteralType,
     ViewTypeFamily, VIEW_TYPE_FAMILIES, STR_FAMILY, BYTES_FAMILY,
     PendingGenericInstanceType, contains_fn_type,
     INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, is_protocol_type, is_protocol_union, final_type_str_to_strview,
     qualify_exception_name, is_return_exception, is_exception_type,
     FunctionInfo, ParamInfo,
     make_ref, unwrap_ref_type, RefType,
-    is_integer_type, is_any_int_type, is_numeric_type, is_readonly_span)
+    is_integer_type, is_any_int_type, is_numeric_type, is_readonly_span,
+    is_float_type, is_any_float_type)
 from ..parse import (
     TpyExpr,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyExprStmt, TpyReturn, TpyYield,
@@ -57,7 +58,12 @@ from .context import BorrowKind, PENDING_CONTAINER_TYPES, _storage_key, _borrow_
 from .local_deduction import collect_pending_source_types
 from tpyc import modules as builtin_modules
 from tpyc import qnames
-from ..type_def_registry import is_dict, is_array, is_span, is_list
+from ..type_def_registry import (
+    is_dict, is_array, is_span, is_list,
+    is_char_type, is_str_type, is_string_type, is_str_view_type,
+    is_bytes_type, is_bytearray_type, is_bytes_view_type,
+    is_fixed_int_type, is_big_int_type,
+)
 
 
 def _is_dangling_temporary_arg(expr: TpyExpr) -> bool:
@@ -151,16 +157,23 @@ def _root_name_of_expr(expr: TpyExpr) -> str | None:
     return expr.name if isinstance(expr, TpyName) else None
 
 
-# Map raw owned types and pending view types to their ViewTypeFamily.
-_VIEW_TYPE_TO_FAMILY: dict[type, ViewTypeFamily] = {}
-for _f in VIEW_TYPE_FAMILIES:
-    _VIEW_TYPE_TO_FAMILY[type(_f.owned_type)] = _f
-    _VIEW_TYPE_TO_FAMILY[_f.pending_type_class] = _f
+# Map raw owned types (by qname) and pending view types (by class) to their
+# ViewTypeFamily. Owned types share the NominalType class, so dispatch on qname.
+_VIEW_OWNED_QNAME_TO_FAMILY: dict[str, ViewTypeFamily] = {
+    _f.owned_type.qualified_name(): _f for _f in VIEW_TYPE_FAMILIES
+}
+_VIEW_PENDING_CLASS_TO_FAMILY: dict[type, ViewTypeFamily] = {
+    _f.pending_type_class: _f for _f in VIEW_TYPE_FAMILIES
+}
 
 
 def _view_family_for_type(var_type: TpyType) -> ViewTypeFamily | None:
     """Return the ViewTypeFamily for a str/bytes/pending-view type, or None."""
-    return _VIEW_TYPE_TO_FAMILY.get(type(var_type))
+    family = _VIEW_PENDING_CLASS_TO_FAMILY.get(type(var_type))
+    if family is not None:
+        return family
+    qn = var_type.qualified_name() if isinstance(var_type, NominalType) else None
+    return _VIEW_OWNED_QNAME_TO_FAMILY.get(qn) if qn else None
 
 
 class StatementAnalyzer:
@@ -234,7 +247,7 @@ class StatementAnalyzer:
         (explicit owned) so the user makes an intentional choice.
         Suppressed for dunder methods (__str__, __repr__).
         """
-        if not isinstance(expected, StrType):
+        if not is_str_type(expected):
             return
         func = self.ctx.func.current_function
         if func is None or not func.is_method:
@@ -1920,7 +1933,7 @@ class StatementAnalyzer:
             fi = expr.resolved_function_info
             if fi is not None and fi.name == '__init__':
                 result_type = expr.call_type or self.ctx.get_expr_type(expr)
-                if isinstance(result_type, (FixedIntType, BigIntType, FloatType, Float32Type, BoolType, CharType)):
+                if is_numeric_type(result_type) or is_char_type(result_type):
                     return self._find_nonconstant_leaf(expr.args[0], result_type)
         if isinstance(expr, TpyTupleLiteral):
             if isinstance(target_type, TupleType) and len(target_type.element_types) == len(expr.elements):
@@ -1989,7 +2002,7 @@ class StatementAnalyzer:
             info = ViewVarInfo(var_id=var_id, variable_name=name,
                                decl_line=line, source_var_ids=source_ids)
         else:
-            # Fresh from owned type (StrType or BytesType)
+            # Fresh from owned type (str or bytes)
             if init_expr is not None:
                 is_owned = not self.deduction.is_view_compatible_source(init_expr, init_type)
             else:
@@ -2187,7 +2200,8 @@ class StatementAnalyzer:
                     stmt
                 )
             inner = stmt.type
-            if not isinstance(inner, (FixedIntType, BigIntType, FloatType, Float32Type, BoolType, StrViewType, CharType, TupleType)):
+            if not (is_numeric_type(inner) or is_char_type(inner)
+                    or is_str_view_type(inner) or isinstance(inner, TupleType)):
                 raise self.ctx.error(
                     f"Final[{inner}] is not supported; "
                     f"only primitive types (int, float, bool, str, StrView, Char, IntN) "
@@ -2436,7 +2450,7 @@ class StatementAnalyzer:
                     ann_line = stmt.loc.line if stmt.loc else None
                     self.deduction.retro_validate_against_annotation(stmt.name, stmt.type, annotation_line=ann_line)
                 # Special case: single-char string literal can be assigned to Char
-                if (isinstance(stmt.type, CharType) and is_any_str_type(init_type) and
+                if (is_char_type(stmt.type) and is_any_str_type(init_type) and
                     isinstance(stmt.init, TpyStrLiteral) and len(stmt.init.value) == 1):
                     pass  # Allow str literal -> Char
                 else:
@@ -3534,8 +3548,8 @@ class StatementAnalyzer:
             self.ctx.mark_all_view_borrowers_mutated(storage)
         if (
             isinstance(stmt.target, TpyName)
-            and isinstance(target_type, BigIntType)
-            and isinstance(value_type, Int32Type)
+            and is_big_int_type(target_type)
+            and is_fixed_int_type(value_type)
             and stmt.target.name in self.ctx.func.literal_default_vars
         ):
             type_name = str(value_type)
@@ -3547,20 +3561,22 @@ class StatementAnalyzer:
             )
         # Target must be numeric, owned string, or a type with registered operators.
         # StrView is excluded -- it's non-owning, so += would dangle.
-        is_numeric_target = isinstance(target_type, (Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type))
-        is_str_target = isinstance(target_type, (StrType, StringType, PendingStrType))
-        is_bytes_target = isinstance(target_type, (BytesType, ByteArrayType, PendingBytesType))
+        is_numeric_target = is_any_int_type(target_type) or is_float_type(target_type)
+        is_str_target = (is_str_type(target_type) or is_string_type(target_type)
+                         or isinstance(target_type, PendingStrType))
+        is_bytes_target = (is_bytes_type(target_type) or is_bytearray_type(target_type)
+                           or isinstance(target_type, PendingBytesType))
         # PendingViewType += promotes to owned
         if isinstance(target_type, PendingViewType) and isinstance(stmt.target, TpyName):
             self.deduction.mark_view_augassign(stmt.target.name, target_type.family)
         if not is_numeric_target and not is_str_target and not is_bytes_target:
             # StrView/BytesView += would dangle (result is a temporary assigned to a view)
-            if isinstance(target_type, StrViewType):
+            if is_str_view_type(target_type):
                 raise self.ctx.error(
                     f"Augmented assignment is not supported for StrView (result would dangle)",
                     stmt,
                 )
-            if isinstance(target_type, BytesViewType):
+            if is_bytes_view_type(target_type):
                 raise self.ctx.error(
                     f"Augmented assignment is not supported for BytesView (result would dangle)",
                     stmt,
@@ -3593,7 +3609,7 @@ class StatementAnalyzer:
                 stmt,
             )
         check_value_type = value_type.wrapped if isinstance(value_type, OwnType) else value_type
-        if is_numeric_target and not isinstance(check_value_type, (Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType)):
+        if is_numeric_target and not (is_any_int_type(check_value_type) or is_any_float_type(check_value_type)):
             raise self.ctx.error(
                 f"Augmented assignment value must be a numeric type, got {check_value_type}",
                 stmt,
@@ -3606,7 +3622,7 @@ class StatementAnalyzer:
         # Special case: FixedInt += BigInt should use the target's ops (value gets converted)
         # This preserves checked arithmetic and avoids unnecessary promotion to BigInt
         resolve_value_type = check_value_type
-        if isinstance(target_type, Int32Type) and isinstance(check_value_type, BigIntType):
+        if is_fixed_int_type(target_type) and is_big_int_type(check_value_type):
             resolve_value_type = target_type
         # Invalidate range facts for the target (value has changed)
         if isinstance(stmt.target, TpyName):

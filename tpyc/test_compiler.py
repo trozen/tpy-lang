@@ -8,9 +8,9 @@ from . import get_lib_dir, get_runtime_dir
 from .compiler import Compiler, BuildLayout
 from .sema.diagnostics import SemanticError
 from .typesys import (
-    INT32, INT64, BIGINT, BOOL, FLOAT, STR, CHAR, VOID,
+    INT32, INT64, BIGINT, BOOL, FLOAT, STR, STRVIEW, CHAR, VOID,
     PtrType, make_span, make_list, make_dict, make_array, OptionalType,
-    TupleType, UnionType, OwnType, ReadonlyType, StrViewType, NominalType,
+    TupleType, UnionType, OwnType, ReadonlyType, NominalType,
 )
 
 # Stdlib path needed for from_source when code uses primitive type methods
@@ -117,10 +117,10 @@ class TestSendSync:
     # -- StrView: borrows, not Send, but Sync (read-only) --
 
     def test_strview_not_send(self):
-        assert not StrViewType().is_send()
+        assert not STRVIEW.is_send()
 
     def test_strview_is_sync(self):
-        assert StrViewType().is_sync()
+        assert STRVIEW.is_sync()
 
     # -- Ptr: not Send; Sync only if readonly --
 

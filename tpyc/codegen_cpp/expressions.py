@@ -10,7 +10,7 @@ import io
 from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, StringType, StrViewType, LiteralType, LiteralValue, BytesType, BytesViewType, CharType,
+    TpyType, IntLiteralType, LiteralType, LiteralValue,
     NominalType, PtrType, OwnType, OptionalType, NoneType, make_array,
     PendingListType, ListRepeatType,
     TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
@@ -18,7 +18,14 @@ from ..typesys import (
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
     is_float_type, is_readonly_span)
-from ..type_def_registry import is_dict_view, is_set, is_dict, is_array, is_span, is_list
+from ..type_def_registry import (
+    is_dict_view, is_set, is_dict, is_array, is_span, is_list,
+    is_fixed_int_type, is_big_int_type, is_bool_type, is_char_type,
+    is_str_type, is_string_type, is_str_view_type,
+    is_bytes_type, is_bytes_view_type,
+    is_float32_type, is_float64_type, is_bytearray_type,
+    int_traits_of,
+)
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
@@ -386,12 +393,12 @@ class ExpressionGenerator:
             return result
         declared = self.ctx.current_func_params.get(name)
         if not (isinstance(declared, OptionalType)
-                and isinstance(declared.inner, StrType)):
+                and is_str_type(declared.inner)):
             return result
         target = target_type
         if isinstance(target, OwnType):
             target = target.wrapped
-        if isinstance(target, OptionalType) and isinstance(target.inner, StrType):
+        if isinstance(target, OptionalType) and is_str_type(target.inner):
             return (f"{result} ? std::make_optional("
                     f"std::string(*{result})) : std::nullopt")
         return result
@@ -632,7 +639,7 @@ class ExpressionGenerator:
         # Bytes literal passed to bytes/BytesView param: use static storage.
         # The C++ param is std::span<const uint8_t>, so bytes_literal()
         # avoids the heap allocation of a temporary vector.
-        if isinstance(arg, TpyBytesLiteral) and isinstance(ptype, (BytesType, BytesViewType)):
+        if isinstance(arg, TpyBytesLiteral) and (is_bytes_type(ptype) or is_bytes_view_type(ptype)):
             if not arg.value:
                 return "std::span<const uint8_t>{}"
             return self._gen_bytes_literal_span(arg.value)
@@ -697,7 +704,7 @@ class ExpressionGenerator:
 
         elif isinstance(expr, TpyFloatLiteral):
             val = repr(expr.value)
-            if isinstance(target_type, Float32Type):
+            if is_float32_type(target_type):
                 if val == "inf":
                     return "std::numeric_limits<float>::infinity()"
                 if val == "-inf":
@@ -754,16 +761,16 @@ class ExpressionGenerator:
 
         elif isinstance(expr, TpyStrLiteral):
             # If target type is Char and single char, output as char literal
-            if isinstance(target_type, CharType) and len(expr.value) == 1:
+            if is_char_type(target_type) and len(expr.value) == 1:
                 return f"'{escape_cpp_char(expr.value)}'"
             return f'"{escape_cpp_string(expr.value)}"'
 
         elif isinstance(expr, TpyBytesLiteral):
             if not expr.value:
-                if isinstance(target_type, BytesViewType):
+                if is_bytes_view_type(target_type):
                     return "std::span<const uint8_t>{}"
                 return "std::vector<uint8_t>{}"
-            if isinstance(target_type, BytesViewType):
+            if is_bytes_view_type(target_type):
                 return self._gen_bytes_literal_span(expr.value)
             hex_bytes = ", ".join(f"0x{b:02x}" for b in expr.value)
             return f"std::vector<uint8_t>{{{hex_bytes}}}"
@@ -940,8 +947,9 @@ class ExpressionGenerator:
         if is_any_bytes_type(var_type):
             return f"(!{rendered}.empty())"
         # Primitive types with implicit C++ bool conversion -- skip __bool__ dispatch.
-        if isinstance(var_type, (BoolType, Int32Type, FixedIntType, BigIntType,
-                                 FloatType, Float32Type, IntLiteralType, CharType)):
+        if (is_bool_type(var_type) or is_fixed_int_type(var_type) or is_big_int_type(var_type)
+                or is_float64_type(var_type) or is_float32_type(var_type)
+                or is_char_type(var_type) or isinstance(var_type, IntLiteralType)):
             return rendered
         record = self.ctx.analyzer.registry.get_record_for_type(var_type)
         if record:
@@ -958,20 +966,20 @@ class ExpressionGenerator:
     def _is_str_view_at_runtime(self, expr: TpyExpr) -> bool:
         """True if this expression produces std::string_view at C++ runtime.
 
-        Cases that produce string_view despite having StrType as their sema type:
+        Cases that produce string_view despite being typed as str in sema:
         - str params: C++ signature uses string_view (via to_cpp_param)
         - str literals: materialized as std::string_view temps in _gen_logical_value;
           treated as string_view here so recursive chain detection works correctly.
           Callers in _gen_if_expr must guard separately: literals are const char*
           there and need no explicit wrapping (C++ handles string?const-char* natively).
-        - StrViewType locals: explicitly typed as string_view
+        - StrView locals: explicitly typed as string_view
         Nested and/or/ternary chains are handled recursively.
         """
         if isinstance(expr, TpyName):
             param_type = self.ctx.current_func_params.get(expr.name)
-            return (isinstance(param_type, StrType)
+            return (is_str_type(param_type)
                     or (isinstance(param_type, LiteralType) and param_type.is_str_base())
-                    or isinstance(self.types.get_resolved_type(expr), StrViewType))
+                    or is_str_view_type(self.types.get_resolved_type(expr)))
         if isinstance(expr, TpyStrLiteral):
             return True
         if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
@@ -980,26 +988,26 @@ class ExpressionGenerator:
         if isinstance(expr, TpyIfExpr):
             return (self._is_str_view_at_runtime(expr.then_expr)
                     and self._is_str_view_at_runtime(expr.else_expr))
-        return isinstance(self.types.get_resolved_type(expr), StrViewType)
+        return is_str_view_type(self.types.get_resolved_type(expr))
 
     def _is_bytes_view_at_runtime(self, expr: TpyExpr) -> bool:
         """True if this expression produces std::span<const uint8_t> at C++ runtime.
 
         bytes params use span via to_cpp_param. Bytes literals with BytesView
-        resolved type use static storage. BytesViewType locals are explicit views.
+        resolved type use static storage. BytesView locals are explicit views.
         """
         if isinstance(expr, TpyBytesLiteral):
-            return isinstance(self.types.get_resolved_type(expr), BytesViewType)
+            return is_bytes_view_type(self.types.get_resolved_type(expr))
         if isinstance(expr, TpyName):
-            return (isinstance(self.ctx.current_func_params.get(expr.name), BytesType)
-                    or isinstance(self.types.get_resolved_type(expr), BytesViewType))
+            return (is_bytes_type(self.ctx.current_func_params.get(expr.name))
+                    or is_bytes_view_type(self.types.get_resolved_type(expr)))
         if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
             return (self._is_bytes_view_at_runtime(expr.left)
                     and self._is_bytes_view_at_runtime(expr.right))
         if isinstance(expr, TpyIfExpr):
             return (self._is_bytes_view_at_runtime(expr.then_expr)
                     and self._is_bytes_view_at_runtime(expr.else_expr))
-        return isinstance(self.types.get_resolved_type(expr), BytesViewType)
+        return is_bytes_view_type(self.types.get_resolved_type(expr))
 
     @staticmethod
     def _gen_bytes_literal_span(value: bytes) -> str:
@@ -1106,17 +1114,17 @@ class ExpressionGenerator:
             and not self.types.involves_variables(expr)
         ):
             resolved = self.types.get_resolved_type(expr)
-            bigint_target = resolved if isinstance(resolved, BigIntType) else None
+            bigint_target = resolved if is_big_int_type(resolved) else None
             return self._gen_int_literal_value(analyzed_type.value, bigint_target)
 
         # First pass: get raw types to detect fixed-int operands
         left_raw = self.types.get_resolved_type(expr.left)
         right_raw = self.types.get_resolved_type(expr.right)
-        # If one operand is a FixedIntType, resolve literals as that type (not BigInt)
-        fixed_context = target_type if isinstance(target_type, FixedIntType) else None
-        if isinstance(left_raw, FixedIntType):
+        # If one operand is a fixed-width int, resolve literals as that type (not BigInt)
+        fixed_context = target_type if is_fixed_int_type(target_type) else None
+        if is_fixed_int_type(left_raw):
             fixed_context = left_raw
-        elif isinstance(right_raw, FixedIntType):
+        elif is_fixed_int_type(right_raw):
             fixed_context = right_raw
         left_type = self.types.get_resolved_type(expr.left, fixed_context)
         right_type = self.types.get_resolved_type(expr.right, fixed_context)
@@ -1296,7 +1304,7 @@ class ExpressionGenerator:
                 if folded is not None:
                     return folded
             result_type = self.types.get_resolved_type(expr)
-            if not isinstance(result_type, BoolType):
+            if not is_bool_type(result_type):
                 # Value-context: Python operand semantics via temp + ternary.
                 # `x or y` -> truthy(x) ? x : y
                 # `x and y` -> truthy(x) ? y : x
@@ -1335,9 +1343,9 @@ class ExpressionGenerator:
             # Python's int-to-float promotion for comparisons).
             left_cmp = left_target if left_target is not None else left_type
             right_cmp = right_target if right_target is not None else right_type
-            if isinstance(left_cmp, BigIntType) and is_float_type(right_cmp):
+            if is_big_int_type(left_cmp) and is_float_type(right_cmp):
                 left = f"static_cast<{right_cmp.to_cpp()}>({left})"
-            elif isinstance(right_cmp, BigIntType) and is_float_type(left_cmp):
+            elif is_big_int_type(right_cmp) and is_float_type(left_cmp):
                 right = f"static_cast<{left_cmp.to_cpp()}>({right})"
 
             # IntEnum coercion: cast enum operand(s) to underlying type
@@ -1365,7 +1373,7 @@ class ExpressionGenerator:
         right_analyzer_type = self.ctx.analyzer.get_expr_type(expr.right)
         left_is_literal = isinstance(left_analyzer_type, IntLiteralType) and not isinstance(expr.left, TpyName)
         right_is_literal = isinstance(right_analyzer_type, IntLiteralType) and not isinstance(expr.right, TpyName)
-        if (isinstance(target_type, FixedIntType) and left_is_literal and right_is_literal):
+        if (is_fixed_int_type(target_type) and left_is_literal and right_is_literal):
             # Pass target_type to handle nested binops like 1 + (2 + 3)
             left = self.gen_expr(expr.left, target_type)
             right = self.gen_expr(expr.right, target_type)
@@ -1471,9 +1479,9 @@ class ExpressionGenerator:
             left_cmp = left_type.inner
         if isinstance(right_type, OptionalType):
             right_cmp = right_type.inner
-        if isinstance(left_cmp, BigIntType) and is_float_type(right_cmp):
+        if is_big_int_type(left_cmp) and is_float_type(right_cmp):
             left_str = f"static_cast<{right_cmp.to_cpp()}>({left_str})"
-        elif isinstance(right_cmp, BigIntType) and is_float_type(left_cmp):
+        elif is_big_int_type(right_cmp) and is_float_type(left_cmp):
             right_str = f"static_cast<{left_cmp.to_cpp()}>({right_str})"
 
         # IntEnum coercion
@@ -1625,10 +1633,10 @@ class ExpressionGenerator:
                 right_target = right_type.inner
 
         # Char literal coercion
-        if left_target is None and isinstance(right_type, CharType):
+        if left_target is None and is_char_type(right_type):
             if not (pair.optional_safe_eq and isinstance(left_type, OptionalType)):
                 left_target = CHAR
-        if right_target is None and isinstance(left_type, CharType):
+        if right_target is None and is_char_type(left_type):
             if not (pair.optional_safe_eq and isinstance(right_type, OptionalType)):
                 right_target = CHAR
 
@@ -1781,7 +1789,7 @@ class ExpressionGenerator:
 
     def _gen_int_literal_value(self, v: int, target_type: TpyType | None) -> str:
         """Emit an integer literal, wrapping in BigInt constructor if needed."""
-        if isinstance(target_type, BigIntType):
+        if is_big_int_type(target_type):
             if -2**31 <= v <= 2**31 - 1:
                 return f"::tpy::BigInt({v})"
             if -2**63 <= v <= 2**63 - 1:
@@ -1893,7 +1901,7 @@ class ExpressionGenerator:
             arg = self.gen_expr(expr.args[0])
             # BigInt needs checked conversion to the underlying type
             arg_type = self.types.get_resolved_type(expr.args[0])
-            if isinstance(arg_type, BigIntType):
+            if is_big_int_type(arg_type):
                 arg = f"({arg}).to_fixed_check<{underlying_cpp}>()"
             return f"::tpy::EnumUtil<{cpp_type}>::from_value({arg})"
         # Enum try_parse: try_parse(Color, "Red") -> ::tpy::EnumUtil<Color>::try_parse("Red")
@@ -2241,7 +2249,7 @@ class ExpressionGenerator:
                     # inner type; string_view is not implicitly convertible to
                     # std::string, so wrap when the field stores an owned string
                     result_type = self.types.get_resolved_type(expr)
-                    if isinstance(result_type, (StrType, StringType)):
+                    if is_str_type(result_type) or is_string_type(result_type):
                         default = f"std::string({default})"
                     return f"{obj}.{cpp_field}.value_or({default})"
                 else:
@@ -2838,7 +2846,7 @@ class ExpressionGenerator:
                 elem_target = TupleType((target_type.type_args[0], target_type.type_args[1]))
             else:
                 et = target_type.get_element_type()
-                if isinstance(et, (OptionalType, UnionType, TupleType, StrType)):
+                if isinstance(et, (OptionalType, UnionType, TupleType)) or is_str_type(et):
                     elem_target = et
                 # Recursive union element type: pass it as elem_target so nested
                 # array literals trigger union_prefix.
@@ -3043,7 +3051,7 @@ class ExpressionGenerator:
         count = self.gen_expr_deref(expr.count)
         count_type = self.ctx.analyzer.get_expr_type(expr.count)
         # BigInt count needs conversion (IntLiteralType is already plain int)
-        if isinstance(count_type, BigIntType):
+        if is_big_int_type(count_type):
             count = f"{count}.to_fixed_check<int32_t>()"
 
         # Determine result type and element type.
@@ -3364,7 +3372,7 @@ class ExpressionGenerator:
             buf.write(f"{ind3}{cpp_iter} {cpp_var} = __i++;\n")
         else:
             buf.write(f'{ind2}if (__step == 0) ::tpy::tpy_panic("range() arg 3 must not be zero");\n')
-            if isinstance(elem_type, FixedIntType):
+            if is_fixed_int_type(elem_type):
                 buf.write(f"{ind2}::tpy::range_check_overflow<{cpp_iter}>(__i, __stop, __step);\n")
             buf.write(f"{ind2}while ((__step > 0) ? (__i < __stop) : (__i > __stop)) {{\n")
             buf.write(f"{ind3}{cpp_iter} {cpp_var} = __i;\n")
@@ -3500,7 +3508,7 @@ class ExpressionGenerator:
         assert isinstance(range_call, TpyCall)
         nargs = len(range_call.args)
         cpp_elem = elem_type.to_cpp()
-        is_bigint = isinstance(elem_type, BigIntType)
+        is_bigint = is_big_int_type(elem_type)
 
         if nargs == 1:
             stop_expr = self.gen_expr_deref(range_call.args[0], elem_type)
@@ -3634,10 +3642,10 @@ class ExpressionGenerator:
         A string_view variable that ends up in such a slot is copied at the call site
         rather than promoting the variable's type to std::string for its whole lifetime.
         """
-        if isinstance(resolved, StrViewType):
-            if isinstance(slot_type, StrType):
+        if is_str_view_type(resolved):
+            if is_str_type(slot_type):
                 return f"std::string({code})"
-            if isinstance(slot_type, OptionalType) and isinstance(slot_type.inner, StrType):
+            if isinstance(slot_type, OptionalType) and is_str_type(slot_type.inner):
                 return f"std::string({code})"
         return code
 
@@ -3931,10 +3939,10 @@ class ExpressionGenerator:
         return f"{helper}({gen_inner})"
 
     def _convert_to_fixed_int_arg(self, gen_expr: str, actual_type: TpyType, expected_type: TpyType, expr: TpyExpr) -> str:
-        """Convert to the target FixedIntType when a runtime BigInt may be present."""
-        if isinstance(expected_type, FixedIntType):
+        """Convert to the target fixed-width int when a runtime BigInt may be present."""
+        if is_fixed_int_type(expected_type):
             cpp_t = expected_type.to_cpp()
-            if isinstance(actual_type, BigIntType):
+            if is_big_int_type(actual_type):
                 if isinstance(expr, TpyIntLiteral):
                     return gen_expr
                 return f"({gen_expr}).to_fixed_check<{cpp_t}>()"
@@ -3976,7 +3984,7 @@ class ExpressionGenerator:
                     fmt_parts.append("{}")
 
                 is_user_type = (
-                    (isinstance(arg_type, NominalType) and not arg_type.is_protocol)
+                    (isinstance(arg_type, NominalType) and arg_type.is_user_record)
                     or isinstance(arg_type, TypeParamRef)
                 )
 
@@ -3991,18 +3999,18 @@ class ExpressionGenerator:
                 elif conv == FSTRING_CONV_STR and is_user_type:
                     gen_arg = f"::tpy::__str__({gen_arg})"
                 # Wrap args that need Python-compatible formatting
-                elif isinstance(arg_type, BoolType):
+                elif is_bool_type(arg_type):
                     if has_spec:
                         gen_arg = f"static_cast<int>({gen_arg})"
                     else:
                         gen_arg = f"::tpy::bool_to_str({gen_arg})"
-                elif isinstance(arg_type, FloatType) and not has_spec:
+                elif is_float64_type(arg_type) and not has_spec:
                     gen_arg = f"::tpy::float_to_str({gen_arg})"
-                elif isinstance(arg_type, Float32Type) and not has_spec:
+                elif is_float32_type(arg_type) and not has_spec:
                     gen_arg = f"::tpy::float_to_str(static_cast<double>({gen_arg}))"
                 elif self.types.is_runtime_bigint(part.expr, arg_type) and not has_spec:
                     gen_arg = f"({gen_arg}).to_string()"
-                elif isinstance(arg_type, FixedIntType) and arg_type.bits == 8:
+                elif (arg_tr := int_traits_of(arg_type)) is not None and arg_tr.bits == 8:
                     gen_arg = f"static_cast<int>({gen_arg})"
                 elif isinstance(arg_type, EnumType):
                     gen_arg = f"static_cast<int>({gen_arg})"
@@ -4114,9 +4122,9 @@ class ExpressionGenerator:
         # C++ ternary requires both branches to have the same type.
         # When arms have mismatched C++ types (one string_view, one std::string),
         # explicitly convert the string_view arm so the ternary deduces std::string.
-        # Skip when the target is StrViewType -- wrapping would create a dangling
+        # Skip when the target is StrView -- wrapping would create a dangling
         # string_view pointing to a temporary std::string.
-        if isinstance(result_type, StrType) and not isinstance(target_type, StrViewType):
+        if is_str_type(result_type) and not is_str_view_type(target_type):
             then_is_view = self._is_str_view_at_runtime(expr.then_expr)
             else_is_view = self._is_str_view_at_runtime(expr.else_expr)
             if then_is_view != else_is_view:

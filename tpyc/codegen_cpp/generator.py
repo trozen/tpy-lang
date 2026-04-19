@@ -636,10 +636,16 @@ class CodeGenerator:
         emitted_imported_alias = False
         for local_name, (src_mod, original_name) in sorted(self.ctx.user_imported_type_aliases.items()):
             # Skip aliases that resolve to primitive/builtin types -- only
-            # NominalType (records) and UnionType (variants) need a using-declaration
+            # user-defined NominalType (records) and UnionType (variants)
+            # need a using-declaration. Builtin NominalType singletons
+            # (Float64, str, bool, etc.) have module_type=True and are
+            # already provided by tpy_pch / <typedef> mappings.
             alias_type = self.analyzer.registry.get_type_alias(local_name)
-            if alias_type is not None and not isinstance(alias_type, (NominalType, UnionType)):
-                continue
+            if alias_type is not None:
+                if isinstance(alias_type, NominalType) and alias_type.is_module_type:
+                    continue
+                if not isinstance(alias_type, (NominalType, UnionType)):
+                    continue
             qualified = qualified_cpp_name(src_mod, original_name)
             if local_name == original_name:
                 hpp.write(f"using {qualified};\n")

@@ -10,9 +10,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..typesys import (
-    TpyType, IntLiteralType, FixedIntType, BigIntType, FloatType, Float32Type, BoolType,
+    TpyType, IntLiteralType,
     BIGINT, FLOAT, FLOAT32,
     is_float_type,
+)
+from ..type_def_registry import (
+    is_fixed_int_type, is_big_int_type, is_bool_type,
+    is_float32_type, is_float64_type,
+    int_traits_of,
 )
 
 
@@ -27,22 +32,26 @@ def numeric_info(typ: TpyType) -> NumericTypeInfo | None:
     """Return numeric metadata for known numeric-like types."""
     if isinstance(typ, IntLiteralType):
         return NumericTypeInfo("int_literal", 0)
-    if isinstance(typ, FixedIntType):
+    if is_fixed_int_type(typ):
         # Rank scales with bit width: Int8=8, Int16=9, Int32=10, Int64=11
-        return NumericTypeInfo("int", typ.bits // 8 + 6)
-    if isinstance(typ, BigIntType):
+        tr = int_traits_of(typ)
+        assert tr is not None, f"fixed int without IntTraits: {typ}"
+        return NumericTypeInfo("int", tr.bits // 8 + 6)
+    if is_big_int_type(typ):
         return NumericTypeInfo("int", 100)
-    if isinstance(typ, Float32Type):
+    if is_float32_type(typ):
         return NumericTypeInfo("float", 190)
-    if isinstance(typ, FloatType):
+    if is_float64_type(typ):
         return NumericTypeInfo("float", 200)
-    if isinstance(typ, BoolType):
+    if is_bool_type(typ):
         return NumericTypeInfo("bool", 5)
     return None
 
 
-def fixed_int_range_contains(typ: FixedIntType, value: int) -> bool:
-    return typ.min_value <= value <= typ.max_value
+def fixed_int_range_contains(typ: TpyType, value: int) -> bool:
+    tr = int_traits_of(typ)
+    assert tr is not None, f"fixed_int_range_contains called on non-fixed-int {typ}"
+    return tr.min_value <= value <= tr.max_value
 
 
 def merge_literal_seed_target(
@@ -57,21 +66,21 @@ def merge_literal_seed_target(
     """
     if isinstance(init_type, IntLiteralType):
         if (
-            isinstance(existing_type, FixedIntType)
+            is_fixed_int_type(existing_type)
             and init_type.value is not None
             and not fixed_int_range_contains(existing_type, init_type.value)
         ):
             return BIGINT
         return existing_type
-    if isinstance(init_type, FixedIntType):
+    if is_fixed_int_type(init_type):
         if all(fixed_int_range_contains(init_type, v) for v in literal_values):
             return init_type
         return existing_type
-    if isinstance(init_type, BigIntType):
+    if is_big_int_type(init_type):
         return BIGINT
-    if isinstance(init_type, Float32Type):
+    if is_float32_type(init_type):
         return FLOAT32
-    if isinstance(init_type, FloatType):
+    if is_float64_type(init_type):
         return FLOAT
     # bool is intentionally separate and should not merge with numeric literals.
     return None
@@ -101,10 +110,10 @@ def widen_numeric_types(a: TpyType, b: TpyType) -> TpyType | None:
 
     # Both float-family -> widen to the higher-rank float
     if is_float_type(a) and is_float_type(b):
-        if type(a) is type(b):
+        if a == b:
             return None
         # Float64 wins over Float32
-        return a if isinstance(a, FloatType) else b
+        return a if is_float64_type(a) else b
 
     # Either is float-family -> float-family wins over int
     if is_float_type(a):
@@ -113,26 +122,31 @@ def widen_numeric_types(a: TpyType, b: TpyType) -> TpyType | None:
         return b
 
     # Both BigInt -> same type, no widening
-    if isinstance(a, BigIntType) and isinstance(b, BigIntType):
+    if is_big_int_type(a) and is_big_int_type(b):
         return None
 
     # Either is BigInt -> BigInt wins
-    if isinstance(a, BigIntType):
+    if is_big_int_type(a):
         return a
-    if isinstance(b, BigIntType):
+    if is_big_int_type(b):
         return b
 
     # Both FixedInt
-    assert isinstance(a, FixedIntType) and isinstance(b, FixedIntType)
-    if a == b:
+    a_tr = int_traits_of(a)
+    b_tr = int_traits_of(b)
+    assert a_tr is not None and b_tr is not None, f"expected fixed ints, got {a} and {b}"
+    if a_tr == b_tr:
         return None
 
-    if a.signed == b.signed:
-        return a if a.bits > b.bits else b
+    if a_tr.signed == b_tr.signed:
+        return a if a_tr.bits > b_tr.bits else b
 
     # Mixed sign: allow only if the wider type is signed with strictly more bits
-    wider, narrower = (a, b) if a.bits > b.bits else (b, a)
-    if wider.signed and wider.bits > narrower.bits:
+    if a_tr.bits > b_tr.bits:
+        wider, wider_traits, narrower_traits = a, a_tr, b_tr
+    else:
+        wider, wider_traits, narrower_traits = b, b_tr, a_tr
+    if wider_traits.signed and wider_traits.bits > narrower_traits.bits:
         return wider
 
     # Same width mixed sign (e.g. Int32 + UInt32) -> refuse

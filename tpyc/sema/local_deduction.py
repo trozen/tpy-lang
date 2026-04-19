@@ -14,12 +14,9 @@ from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce
 from ..parse.nodes import TpyStrLiteral, TpyBytesLiteral, TpySubscript, TpyFieldAccess, TpyBinOp, TpyIfExpr
 from ..typesys import (
 
-    BigIntType,
     DictLiteralInfo,
     make_dict,
-    FixedIntType,
     FloatLiteralType,
-    FloatType,
     IntLiteralType,
     ListLiteralInfo,
     make_list,
@@ -37,14 +34,8 @@ from ..typesys import (
     ViewTypeFamily,
     ViewVarInfo,
     VIEW_TYPE_FAMILIES,
-    BytesType,
-    ByteArrayType,
-    BytesViewType,
     SetLiteralInfo,
     make_set,
-    StrType,
-    StringType,
-    StrViewType,
     TpyType,
     TupleType,
     FLOAT,
@@ -55,7 +46,10 @@ from ..typesys import (
 from .context import PENDING_CONTAINER_TYPES
 from .diagnostics import SemanticError
 from .numeric_lattice import merge_literal_seed_target, numeric_info, widen_numeric_types
-from ..type_def_registry import is_set, is_dict, is_array, is_span, is_list
+from ..type_def_registry import (
+    is_set, is_dict, is_array, is_span, is_list, is_fixed_int_type, is_big_int_type,
+    is_str_type, is_str_view_type, is_bytes_type, is_bytes_view_type,
+)
 
 if TYPE_CHECKING:
     from .compatibility import TypeCompatibility
@@ -199,9 +193,9 @@ class LocalTypeDeduction:
             merged = merge_literal_seed_target(existing_type, init_type, self.ctx.func.literal_values.get(name, []))
             if merged is not None:
                 if (
-                    isinstance(existing_type, FixedIntType)
+                    is_fixed_int_type(existing_type)
                     and isinstance(init_type, IntLiteralType)
-                    and isinstance(merged, BigIntType)
+                    and is_big_int_type(merged)
                     and init_expr is not None
                     and init_type.value is not None
                 ):
@@ -752,8 +746,8 @@ class LocalTypeDeduction:
         Note: bytes literals are NOT view-safe (temporary vectors, unlike string
         literals which have static storage).
         """
-        is_str = isinstance(init_type, (StrType, StrViewType, PendingStrType))
-        is_bytes = isinstance(init_type, (BytesType, BytesViewType, PendingBytesType))
+        is_str = is_str_type(init_type) or is_str_view_type(init_type) or isinstance(init_type, PendingStrType)
+        is_bytes = is_bytes_type(init_type) or is_bytes_view_type(init_type) or isinstance(init_type, PendingBytesType)
         if not (is_str or is_bytes):
             return False
 
@@ -774,16 +768,16 @@ class LocalTypeDeduction:
             if isinstance(func, TpyFunction):
                 for pname, ptype in func.params:
                     if pname == name:
-                        if is_str and isinstance(ptype, (StrType, StrViewType)):
+                        if is_str and (is_str_type(ptype) or is_str_view_type(ptype)):
                             return True
-                        if is_bytes and isinstance(ptype, (BytesType, BytesViewType)):
+                        if is_bytes and (is_bytes_type(ptype) or is_bytes_view_type(ptype)):
                             return True
 
             # Another pending or view local (must match the same family)
             scope_type = self.ctx.func.current_scope.lookup(name) if self.ctx.func.current_scope else None
-            if is_str and isinstance(scope_type, (PendingStrType, StrViewType)):
+            if is_str and (isinstance(scope_type, PendingStrType) or is_str_view_type(scope_type)):
                 return True
-            if is_bytes and isinstance(scope_type, (PendingBytesType, BytesViewType)):
+            if is_bytes and (isinstance(scope_type, PendingBytesType) or is_bytes_view_type(scope_type)):
                 return True
 
             # Final[str] global constant
@@ -792,7 +786,7 @@ class LocalTypeDeduction:
 
         # Function/method call returning a view type
         if isinstance(init_expr, (TpyCall, TpyMethodCall)):
-            if isinstance(init_type, (StrViewType, BytesViewType)):
+            if is_str_view_type(init_type) or is_bytes_view_type(init_type):
                 return True
 
         # Subscript on lvalue container -- source-mutation tracking
@@ -851,7 +845,7 @@ class LocalTypeDeduction:
 
     def mark_view_param_context(self, arg_expr: TpyExpr, param_type: TpyType, family: ViewTypeFamily) -> None:
         """Track when a pending view-type var is passed to a promote-param type."""
-        if not isinstance(param_type, family.promote_param_type):
+        if not family.promote_param_match(param_type):
             return
         if isinstance(arg_expr, TpyCoerce):
             arg_expr = arg_expr.expr

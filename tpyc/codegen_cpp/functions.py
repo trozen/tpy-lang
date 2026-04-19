@@ -10,13 +10,14 @@ from typing import TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, NominalType, OwnType, ReadonlyType, OptionalType, PendingListType, IntLiteralType, is_fn_type, CallableType,
     UnionType, VoidType, NoneType, NONE,
-    BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
-    Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, LiteralType, LiteralValue, is_any_str_type,
+    BIGINT, BOOL, STR, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
+    PtrType, LiteralType, LiteralValue, is_any_str_type,
+    is_primitive_type,
     resolve_int_literals, CONST_PARAMS_METHODS,
     error_return_to_cpp, unwrap_ref_type,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
-from ..type_def_registry import is_span
+from ..type_def_registry import is_span, is_char_type, is_str_type
 from ..parse.nodes import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
     TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyName,
@@ -44,9 +45,9 @@ def _infer_literal_default_type(expr: TpyExpr) -> TpyType | None:
     if isinstance(expr, TpyIntLiteral):
         return IntLiteralType(value=expr.value)
     if isinstance(expr, TpyBoolLiteral):
-        return LiteralType(BoolType(), (LiteralValue("bool", expr.value),))
+        return LiteralType(BOOL, (LiteralValue("bool", expr.value),))
     if isinstance(expr, TpyStrLiteral):
-        return LiteralType(StrType(), (LiteralValue("str", expr.value),))
+        return LiteralType(STR, (LiteralValue("str", expr.value),))
     if isinstance(expr, TpyUnaryOp) and expr.op == "-":
         inner = _infer_literal_default_type(expr.operand)
         if isinstance(inner, IntLiteralType) and inner.value is not None:
@@ -238,7 +239,7 @@ class FunctionGenerator:
         if isinstance(expr, TpyBoolLiteral):
             return "true" if expr.value else "false"
         if isinstance(expr, TpyStrLiteral):
-            if isinstance(ptype, CharType) and len(expr.value) == 1:
+            if is_char_type(ptype) and len(expr.value) == 1:
                 ch = expr.value[0]
                 if ch == "'":
                     return "'\\''"
@@ -1553,7 +1554,7 @@ class FunctionGenerator:
         is_value = var_type.is_value_type() or self.ctx.is_recursive_union(var_type)
         if is_value:
             # C++ primitives need explicit zero-init; class types (BigInt, string_view) don't
-            init = "{}" if isinstance(var_type, (Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType)) else ""
+            init = "{}" if (is_primitive_type(var_type) or isinstance(var_type, PtrType)) else ""
             out.write(f"{cpp_type} {stmt.name}{init};\n")
         else:
             out.write(f"{cpp_type}* {stmt.name}{{}};\n")
@@ -1584,7 +1585,7 @@ class FunctionGenerator:
         var_type = self._resolve_global_type(stmt)
         cpp_type = var_type.to_cpp()
         # Final[str] -> constexpr std::string_view (string literals are static)
-        if isinstance(var_type, StrType):
+        if is_str_type(var_type):
             cpp_type = "std::string_view"
         if is_constexpr_eligible(var_type):
             init_expr = self._gen_final_init_expr(stmt, var_type)

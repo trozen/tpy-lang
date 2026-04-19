@@ -10,16 +10,20 @@ from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING, Callable
 
 from ..typesys import (
-    TpyType, IntLiteralType, FloatLiteralType, Int32Type, FixedIntType, BigIntType, BIGINT,
-    FloatType, Float32Type,
+    TpyType, IntLiteralType, FloatLiteralType, BIGINT,
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
-    PendingStrType, PendingViewType, StrType, StringType, StrViewType, LiteralType,
-    PendingBytesType, BytesType, ByteArrayType, BytesViewType,
+    PendingStrType, PendingViewType, LiteralType,
+    PendingBytesType,
     NominalType, PtrType, OwnType, CallableType, is_fn_type, VoidType, NoneType,
-    OptionalType, BoolType,
+    OptionalType,
     unwrap_ref_type,
     is_callable_type, is_float_type, is_integer_type, is_any_float_type,
 
+)
+from ..type_def_registry import (
+    is_fixed_int_type, is_big_int_type, is_bool_type,
+    is_str_type, is_bytes_type, is_str_category, is_bytes_category,
+    int_traits_of,
 )
 from ..coercions import resolve_coercion, CoercionContext
 
@@ -61,6 +65,11 @@ def _structural_match(arg: TpyType, param: TpyType) -> bool:
     if isinstance(arg, NoneType) and isinstance(param, VoidType):
         return True
     if type(arg) != type(param):
+        return False
+    # Post-Phase-D all containers/primitives/records are NominalType; type()
+    # equality alone passes list[Int32] vs set[Int32]. Require matching name
+    # so structural recursion only fires for same-kind NominalType pairs.
+    if isinstance(arg, NominalType) and arg.name != param.name:
         return False
     # PtrType: readonly arg cannot match mutable param (would drop const)
     if isinstance(arg, PtrType) and isinstance(param, PtrType):
@@ -109,11 +118,12 @@ def type_matches_strict(
         if (all(_strip(a) == _strip(p) for a, p in zip(arg_inner.param_types, param_inner.param_types))
                 and _strip(arg_inner.return_type) == _strip(param_inner.return_type)):
             return True
-    # IntLiteralType matches the specific FixedIntType it was inferred to (from
+    # IntLiteralType matches the specific fixed-width int it was inferred to (from
     # generic resolution). This allows resolved-generic overloads like
     # range(stop: Int32) to match IntLiteralType(5) in the first pass.
-    if isinstance(arg_inner, IntLiteralType) and isinstance(param_inner, FixedIntType):
-        if arg_inner.value is None or param_inner.min_value <= arg_inner.value <= param_inner.max_value:
+    if isinstance(arg_inner, IntLiteralType) and is_fixed_int_type(param_inner):
+        tr = int_traits_of(param_inner)
+        if arg_inner.value is None or tr.min_value <= arg_inner.value <= tr.max_value:
             return True
     # None literal (NoneType) matches None type annotation (VoidType)
     if isinstance(arg_inner, NoneType) and isinstance(param_inner, VoidType):
@@ -133,7 +143,7 @@ def type_matches_strict(
     if isinstance(arg_inner, PendingViewType) and isinstance(param_inner, PendingViewType):
         if arg_inner.family is param_inner.family:
             return True
-    if isinstance(arg_inner, PendingStrType) and isinstance(param_inner, StrType):
+    if isinstance(arg_inner, PendingStrType) and is_str_type(param_inner):
         return True
     # Single-value LiteralType matches multi-value LiteralType if value is in the set.
     # Only in strict pass -- LiteralType -> base type is deferred to coercion pass
@@ -146,7 +156,7 @@ def type_matches_strict(
             return param_inner.contains("int", arg_inner.value)
         return False
     # PendingBytesType (unresolved bytes local) matches bytes params
-    if isinstance(arg_inner, PendingBytesType) and isinstance(param_inner, BytesType):
+    if isinstance(arg_inner, PendingBytesType) and is_bytes_type(param_inner):
         return True
     if protocol_checker and is_protocol_type(param_inner):
         # Unwrap Own[T] from arg -- copy()-wrapped return values should still match
@@ -181,17 +191,18 @@ def type_matches_numeric(
     triggering general type coercions (e.g., Int32->BigInt promotion).
 
     - Exact equality
-    - IntLiteralType matches IntLiteralType, Int32Type, BigIntType, FloatType, or Float32Type
-    - INT TypeParamRef matches Int32Type or BigIntType
+    - IntLiteralType matches IntLiteralType, any fixed-width int, BigInt, float, or Float32
+    - INT TypeParamRef matches any fixed-width int or BigInt
     """
     if arg_type == param_type:
         return True
     if isinstance(arg_type, IntLiteralType):
-        if isinstance(param_type, FixedIntType):
+        if is_fixed_int_type(param_type):
             if arg_type.value is None:
                 return True  # Unknown value -- can't range-check, allow match
-            return param_type.min_value <= arg_type.value <= param_type.max_value
-        if isinstance(param_type, (BigIntType, IntLiteralType)):
+            tr = int_traits_of(param_type)
+            return tr.min_value <= arg_type.value <= tr.max_value
+        if is_big_int_type(param_type) or isinstance(param_type, IntLiteralType):
             return True
         if is_float_type(param_type):
             return True
@@ -204,8 +215,14 @@ def type_matches_numeric(
     # T -> Optional[T]: unwrap Optional param and match inner type
     if isinstance(param_type, OptionalType):
         return type_matches_numeric(arg_type, param_type.inner)
-    # Recursive container matching: e.g. make_list(IntLiteralType) vs make_list(Int32)
+    # Recursive container matching: e.g. make_list(IntLiteralType) vs make_list(Int32).
+    # Post-Phase-D all builtin containers share the NominalType class, so also
+    # require matching name (list vs set etc. would otherwise both pass type()
+    # equality and fall into the element-only check).
     if type(arg_type) == type(param_type):
+        if isinstance(arg_type, NominalType):
+            if arg_type.name != param_type.name:
+                return False
         arg_elem = arg_type.get_element_type()
         param_elem = param_type.get_element_type()
         if arg_elem is not None and param_elem is not None:
@@ -239,18 +256,18 @@ def type_matches_with_coercion(
     if isinstance(arg_inner, NoneType) and isinstance(param_inner, OptionalType):
         return True
     # PendingStrType matches any string type (str, String, StrView)
-    if isinstance(arg_inner, PendingStrType) and isinstance(param_inner, (StrType, StringType, StrViewType)):
+    if isinstance(arg_inner, PendingStrType) and is_str_category(param_inner):
         return True
     # Single-value LiteralType matches multi-value LiteralType if value is in the set
     if isinstance(arg_inner, LiteralType) and isinstance(param_inner, LiteralType):
         return all(v in param_inner.values for v in arg_inner.values)
     # LiteralType falls back to matching its base type
     if isinstance(arg_inner, LiteralType):
-        if arg_inner.is_str_base() and isinstance(param_inner, (StrType, StringType, StrViewType)):
+        if arg_inner.is_str_base() and is_str_category(param_inner):
             return True
         if arg_inner.is_int_base() and is_integer_type(param_inner):
             return True
-        if arg_inner.is_bool_base() and isinstance(param_inner, BoolType):
+        if arg_inner.is_bool_base() and is_bool_type(param_inner):
             return True
     # IntLiteralType matches LiteralType with int base if value is in the set
     if isinstance(arg_inner, IntLiteralType) and isinstance(param_inner, LiteralType) and param_inner.is_int_base():
@@ -258,7 +275,7 @@ def type_matches_with_coercion(
             return param_inner.contains("int", arg_inner.value)
         return False
     # PendingBytesType matches any bytes type (bytes, bytearray, BytesView)
-    if isinstance(arg_inner, PendingBytesType) and isinstance(param_inner, (BytesType, ByteArrayType, BytesViewType)):
+    if isinstance(arg_inner, PendingBytesType) and is_bytes_category(param_inner):
         return True
     if protocol_checker and is_protocol_type(param_inner):
         # Unwrap Own[T] -- ownership marker, not a distinct type.
@@ -384,7 +401,7 @@ def resolve_overload(
             score = sum(1 for arg_t, (_, ptype) in zip(arg_types, overload.params)
                         if type_matches_numeric(arg_t, ptype))
             narrowing = sum(1 for arg_t, (_, ptype) in zip(arg_types, overload.params)
-                           if isinstance(arg_t, BigIntType) and isinstance(unwrap_ref_type(ptype), Int32Type))
+                           if is_big_int_type(arg_t) and is_fixed_int_type(unwrap_ref_type(ptype)))
             candidates.append((score, narrowing, overload))
 
     if candidates:
@@ -398,16 +415,18 @@ def resolve_overload(
             # Prefer the configured default integer type for integer literals.
             if ptype == default_int_type:
                 return 0
-            if isinstance(default_int_type, FixedIntType):
-                if isinstance(ptype, FixedIntType):
+            default_tr = int_traits_of(default_int_type)
+            if default_tr is not None:
+                ptype_tr = int_traits_of(ptype)
+                if ptype_tr is not None:
                     # Keep preference stable around configured width/signedness.
-                    width_gap = abs(ptype.bits - default_int_type.bits) // 8
-                    sign_penalty = 1 if ptype.signed != default_int_type.signed else 0
+                    width_gap = abs(ptype_tr.bits - default_tr.bits) // 8
+                    sign_penalty = 1 if ptype_tr.signed != default_tr.signed else 0
                     return 1 + width_gap + sign_penalty
-                if isinstance(ptype, BigIntType):
+                if is_big_int_type(ptype):
                     return 8
-            if isinstance(default_int_type, BigIntType):
-                if isinstance(ptype, FixedIntType):
+            if is_big_int_type(default_int_type):
+                if is_fixed_int_type(ptype):
                     return 2
             return 1
 
