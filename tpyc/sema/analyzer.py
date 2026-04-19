@@ -384,12 +384,6 @@ class SemanticAnalyzer:
         if self.ctx.user_imported_type_aliases:
             self._resolve_imported_aliases(module)
 
-        # Resolve imported enum types in AST type annotations.
-        # Same issue as aliases: parser creates NominalType("Color") for imported
-        # enums since it doesn't have cross-module type info at parse time.
-        if self.ctx.user_imported_enums:
-            self._resolve_imported_enums(module)
-
         # First pass: register all enums then records. Enums are registered
         # first so that record field-type resolution (in register_record) can
         # substitute parser-level NominalType("Color") placeholders with the
@@ -1436,44 +1430,6 @@ class SemanticAnalyzer:
             resolved = SemanticAnalyzer._resolve_alias(typ, aliases, _skip=skip)
             if resolved is not typ:
                 func.params[i] = (name, resolved)
-
-    def _resolve_imported_enums(self, module: TpyModule) -> None:
-        """Substitute imported enum NominalTypes in module AST type annotations."""
-        from ..parse.nodes import TpyVarDecl
-        enums = {name: self.ctx.registry.get_enum(name)
-                 for name in self.ctx.user_imported_enums}
-        for func in module.functions:
-            self._resolve_func_enums(func, enums)
-        for record in module.all_records():
-            for f in record.fields:
-                f.type = self._resolve_enum(f.type, enums)
-            for method in record.methods:
-                self._resolve_func_enums(method, enums)
-        for stmt in module.top_level_stmts:
-            if isinstance(stmt, TpyVarDecl) and stmt.type is not None:
-                stmt.type = self._resolve_enum(stmt.type, enums)
-
-    @staticmethod
-    def _resolve_func_enums(func: TpyFunction, enums: dict[str, NominalType]) -> None:
-        """Resolve enum types in a function's signature."""
-        if func.return_type is not None:
-            func.return_type = SemanticAnalyzer._resolve_enum(func.return_type, enums)
-        for i, (name, typ) in enumerate(func.params):
-            resolved = SemanticAnalyzer._resolve_enum(typ, enums)
-            if resolved is not typ:
-                func.params[i] = (name, resolved)
-
-    @staticmethod
-    def _resolve_enum(typ: TpyType, enums: dict[str, NominalType]) -> TpyType:
-        """Recursively substitute NominalType placeholders with the registered
-        enum NominalType (which carries _module_qname) for imported enums."""
-        if isinstance(typ, NominalType) and not typ.is_protocol:
-            resolved = enums.get(typ.name)
-            if resolved is not None:
-                return resolved
-        return typ.map_inner_types(
-            lambda t: SemanticAnalyzer._resolve_enum(t, enums)
-        )
 
     def _analyze_record_methods(self, record: TpyRecord) -> None:
         """Analyze all methods of a record."""

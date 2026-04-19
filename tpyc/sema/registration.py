@@ -1639,6 +1639,14 @@ class TypeRegistrar:
         self.ctx.user_imported_functions.pop(info.name, None)
         self.ctx.user_imported_records.pop(info.name, None)
 
+        # Propagate resolved types back to AST (matches register_record and
+        # register_overload_group). For non-stub functions, _analyze_function
+        # will re-resolve and wrap with make_ref. For stubs, this is the only
+        # site that substitutes parser-level placeholders (imported enums,
+        # user records) with qname-bearing types the codegen expects.
+        func.params = list(resolved_params)
+        func.return_type = resolved_return
+
     def register_overload_group(self, stubs: list[TpyFunction]) -> None:
         """Register a group of @overload stubs as a single overloaded function binding.
 

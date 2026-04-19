@@ -4,7 +4,7 @@
 
 Unify the type hierarchy around two shapes: **nominal** (identity = qualified name + type args, behavior from a registry) and **structural** (identity = operand shape, behavior derived from operands). Builtins, containers, primitives, records, protocols, and enums all become `NominalType` with behavior sourced from a single `TypeDef` registry. Wrappers (`Ptr`, `Own`, `Optional`, `Union`, `Tuple`, `Callable`, `Readonly`) stay structural.
 
-## Current state (Phases A, B, C, D, E, F.1 complete)
+## Current state (Phases A, B, C, D, E, F.1, F.2a complete)
 
 ```
 TpyType (frozen dataclass base)
@@ -236,19 +236,26 @@ Changes:
 
 Full suite green at 2607 passed + 1 skipped; `--force-exec` at the phase boundary also green with byte-identical generated C++ across all cases.
 
-### Phase F.2a -- Audit `_resolve_imported_enums` redundancy (NOT STARTED)
+### Phase F.2a -- `_resolve_imported_enums` removed (DONE)
 
-The TODO originally framed "collapse three resolution passes." Phase F.1 review showed only two passes exist (`_resolve_imported_enums`, `_resolve_imported_aliases`); records never had one -- with Phase F.1, user records flow through `resolve_type` substitution in `type_ops` directly.
+Audit mapped every writer of AST type-annotation fields:
 
-`_resolve_imported_enums` walks module AST (records, functions, top-level stmts) and patches enum placeholders post-registration. With user records now minting qnames through `resolve_type` at registration time, the enums pass *may* be redundant: if every enum reference also reaches `resolve_type`, the AST-level write-back is dead code.
+| AST field                               | Writer                                  |
+| --------------------------------------- | --------------------------------------- |
+| `TpyRecord.fields[i].type`              | `register_record` (registration.py:330) |
+| `TpyRecord.methods[i].return_type/.params` | `_analyze_record_methods` (analyzer.py) |
+| `TpyFunction.return_type/.params` (non-stub, top-level) | `_analyze_function` (analyzer.py) |
+| `TpyFunction.return_type/.params` (@overload stubs) | `register_overload_group` (registration.py) |
+| `TpyVarDecl.type` (top-level)           | `_analyze_var_decl` (statements.py:2125) |
 
-Audit plan:
-- Enumerate every site that reads an AST-level type annotation (`TpyRecord.fields[i].type`, `TpyFunction.params[i]`, `TpyFunction.return_type`, `TpyVarDecl.type`, ...).
-- For each, determine whether codegen reads the AST version or a sema-resolved mirror (`RecordInfo.fields`, `FunctionInfo.params`, `FunctionInfo.return_type`, ...).
-- If every codegen read path already goes through the sema-resolved mirror, delete `_resolve_imported_enums` and its caller in `analyzer.py`. Verify with `--force-exec` byte-identical.
-- If some codegen reads AST directly, either fix those to read the sema mirror, or keep the pass (and document why).
+Each writer calls `TypeOperations.resolve_type`, which already substitutes parser-level enum placeholders via the registry (added in Phase E). Only gap was **plain stub functions at module level** -- `register_function` resolved types into `FunctionInfo` but never wrote them back to the AST, so codegen would see a bare `NominalType("Color")` with no `_module_qname` for an imported enum referenced by a `@native` / stub signature. (No existing test case exercised this, but the gap was real.)
 
-Small, scoped, sema-side. Keeps the F.1 warm-context advantage if tackled soon.
+Changes:
+
+1. **Writeback in `register_function`** (registration.py). Mirrors the pattern already used by `register_record` (field types) and `register_overload_group` (overload stub params/return). At the end of function registration, `func.params = list(resolved_params)` and `func.return_type = resolved_return`. For non-stubs, `_analyze_function` re-resolves and wraps with `make_ref`, overwriting this; for stubs, the resolved types persist and codegen sees qname-bearing NominalTypes.
+2. **Deleted `_resolve_imported_enums`**, its caller at analyzer.py:391, and the three helpers (`_resolve_func_enums`, `_resolve_enum`). The `self.ctx.user_imported_enums` dict itself stays -- codegen reads it separately for C++ namespace qualification of enum references in expressions/types (audit for that cleanup is Phase F.2b).
+
+Full suite green: 2608 passed + 1 skipped with `--force-exec` (byte-identical generated C++).
 
 ### Phase F.2b -- Collapse codegen import-tracking dicts (NOT STARTED)
 
