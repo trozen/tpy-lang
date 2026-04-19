@@ -3,9 +3,10 @@
 Tracks TPy's coverage of the CPython standard library. This is a living
 document -- update it whenever a stdlib module or item gains/loses support.
 
-**Scope**: only modules present in CPython's `stdlib`. TPy-native extras
-(`tplib.Box`, `tplib.ArrayList`, `tplib.FixStr`, `tplib.json`) and builtins
-(len, print, list, dict, ...) are tracked elsewhere (`LANGUAGE_FEATURES.md`).
+**Scope**: modules present in CPython's `stdlib` plus the implicit `builtins`
+module (len, print, list, dict, exceptions, etc.). TPy-native extras
+(`tplib.Box`, `tplib.ArrayList`, `tplib.FixStr`, `tplib.json`) are tracked in
+`LANGUAGE_FEATURES.md` since they don't have CPython equivalents.
 
 Status legend:
 - **Done** -- matches CPython semantics for the items listed below
@@ -110,6 +111,7 @@ Examples of the policy in action:
 
 | Module | Priority | Status | % | Approach | Blockers / Notes |
 |---|---|---|---|---|---|
+| [`builtins`](#builtins) | P0 | Partial | ~70% | mixed | Implicit import. Core types + most common functions + key exceptions present. Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, most specialized exceptions (`IndexError`, `KeyError`, `TypeError`, etc. -- currently panic), `hasattr`/`getattr`/`setattr` (dynamic attr), `callable`, `id`, `type(x)` runtime. See [builtins](#builtins) for per-item status |
 | [`math`](#math) | P0 | Partial | ~98% | mixed | Thin libc bindings + pure TPy wrappers. Missing `nan` constant (blocked on TODO.md bug #52) and variadic `hypot`/`gcd`/`lcm` (blocked on codegen gap -- see TODO.md) |
 | [`time`](#time) | P0 | Stub | ~10% | mixed | Thin clock/sleep syscalls + pure TPy. Missing perf_counter/monotonic/struct_time/strftime |
 | [`sys`](#sys) | P0 | Stub | ~5% | mixed | Thin syscall bindings + pure TPy. Only `argv`; needs stdout/stderr/exit/path/version_info |
@@ -198,6 +200,134 @@ TPy stdlib surface.
 ## Module Detail
 
 Item status legend (per-row): **Done** / **Partial** / **Missing** / **Blocked**.
+
+### builtins
+
+Implicitly imported. Surface lives in `lib/tpy/tpy/_builtins/` (types,
+functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
+
+**Types**
+
+| Item | Status | Notes |
+|---|---|---|
+| `int` | Done | Arbitrary-precision `BigInt` |
+| `float` | Done | IEEE 754 double |
+| `bool` | Done | |
+| `str` | Done | Context-dependent `std::string` / `std::string_view` |
+| `bytes`, `bytearray` | Done | |
+| `list` | Done | `std::vector<T>` |
+| `dict` | Done | Insertion-ordered `tpy::ordered_map<K, V>` |
+| `set` | Done | Insertion-ordered `tpy::ordered_set<T>` |
+| `tuple` | Done | `std::tuple<...>` |
+| `range` | Done | `Range[T]` |
+| `slice`, `basic_slice` | Done | Three-arg and two-arg slices |
+| `frozenset` | Missing | Immutable set; would be `tpy::ordered_set<T>` with mutation-free surface |
+| `complex` | Missing | Not yet planned; niche |
+| `memoryview` | Missing | `BytesView` exists for bytes-like; general memoryview over any buffer is bigger scope |
+| `type` | Partial | `isinstance(x, T)` works; `type(x)` as a runtime value is not yet supported |
+| `object` | Done | Implicit root |
+| `None` | Done | |
+
+**Functions -- numeric and conversion**
+
+| Item | Status | Notes |
+|---|---|---|
+| `abs`, `min`, `max`, `sum` | Done | |
+| `pow`, `divmod`, `round` | Done | |
+| `bin`, `hex`, `oct` | Done | |
+| `chr`, `ord` | Done | |
+| `len`, `hash` | Done | |
+
+**Functions -- iteration**
+
+| Item | Status | Notes |
+|---|---|---|
+| `iter`, `next` | Done | |
+| `all`, `any`, `sorted` | Done | |
+| `enumerate`, `filter`, `map`, `reversed`, `zip` | Done | |
+
+**Functions -- introspection / attribute access**
+
+| Item | Status | Notes |
+|---|---|---|
+| `isinstance` | Done | Some CPython cases missing -- see TODO.md "isinstance gaps" |
+| `repr` | Done | User-type fallback partial; see TODO.md "repr() on union types" |
+| `issubclass` | Missing | |
+| `callable` | Missing | Compile-time evaluable under static dispatch |
+| `hasattr`, `getattr`, `setattr`, `delattr` | Missing | Needs dynamic attribute support (see LANGUAGE_FEATURES) |
+| `id` | Missing | `tpy.unsafe.unsafe_address_of` exists as an approximation; `id` semantics differ under static compilation |
+| `type(x)` (runtime value) | Missing | See TODO.md "type(); T = type(x); z = T()" |
+| `vars`, `dir` | Missing | Not meaningful without runtime object introspection |
+| `ascii`, `format` | Missing | f-strings cover most `format` uses |
+
+**Functions -- I/O**
+
+| Item | Status | Notes |
+|---|---|---|
+| `print` | Done | |
+| `open`, `open_text`, `open_binary` | Done | `TextIO` / `BinaryIO` context managers |
+| `input` | Missing | Needs stdin reader |
+
+**Descriptors / class utilities**
+
+| Item | Status | Notes |
+|---|---|---|
+| `@property` | Done | See LANGUAGE_FEATURES Properties |
+| `@staticmethod` | Done | |
+| `@classmethod` | Open | Tracked in FEATURE_ROADMAP Future Extensions (sugar over `type[T]`) |
+| `super()` | Done | See LANGUAGE_FEATURES |
+
+**Dynamic / not-meaningful under AOT**
+
+| Item | Status | Notes |
+|---|---|---|
+| `eval`, `exec`, `compile` | Missing | Not meaningful without a runtime interpreter |
+| `globals`, `locals` | Missing | Static compilation; no dict-shaped scope |
+| `__import__` | Missing | Imports resolve at compile time |
+| `breakpoint`, `help` | Missing | N/A |
+
+**Exceptions**
+
+Exception hierarchy support. Many built-in exception types are raised
+implicitly by runtime checks (bounds, overflow, etc.) but don't yet exist
+as user-catchable TPy types -- the current behavior is a panic. Moving
+each to a proper catchable exception is tracked per-site.
+
+| Item | Status | Notes |
+|---|---|---|
+| `BaseException`, `Exception` | Done | Two-tier exception model |
+| `ValueError` | Partial | Type defined and catchable; raised by `math.factorial`, `math.isqrt`, user code. Still panicked (not thrown) by `list.remove`/`list.index` on missing item, `str.index`/`bytes.index` on missing substring, and a few other container/string ops |
+| `OSError`, `FileNotFoundError` | Done | |
+| `StopIteration` | Done | |
+| `IndexError` | Missing | Bounds violations currently panic |
+| `KeyError` | Missing | Dict miss currently panics |
+| `TypeError` | Missing | Static type errors are compile-time, but runtime `TypeError` has some use cases |
+| `AttributeError` | Missing | Fields are static; rare dynamic-access path would need this |
+| `OverflowError` | Missing | Fixed-int overflow currently panics |
+| `ZeroDivisionError` | Missing | Div-by-zero currently panics |
+| `AssertionError` | Missing | `assert` works (panics on failure); `AssertionError` type is not defined, so `except AssertionError:` cannot match |
+| `ArithmeticError`, `FloatingPointError` | Missing | |
+| `RuntimeError`, `NotImplementedError`, `RecursionError` | Missing | |
+| `LookupError` | Missing | Base of IndexError/KeyError |
+| `NameError`, `UnboundLocalError` | Missing | Static scope; would only fire for compile-time-detected cases |
+| `ImportError`, `ModuleNotFoundError` | Missing | Import failures are compile-time today |
+| `UnicodeError` and subtypes | Missing | |
+| `SystemExit`, `KeyboardInterrupt`, `GeneratorExit` | Missing | Control-flow exceptions; need runtime support |
+| `MemoryError`, `SystemError` | Missing | |
+| `EOFError`, `PermissionError`, `TimeoutError` | Missing | I/O error hierarchy |
+
+**Sentinels**
+
+| Item | Status | Notes |
+|---|---|---|
+| `True`, `False` | Done | |
+| `None` | Done | |
+| `NotImplemented` | Missing | Used by `__eq__` etc. to signal "try the reflected op"; TPy's overload dispatch handles this differently |
+| `Ellipsis` (`...`) | Partial | Usable in stub bodies (`def f(): ...`); not a first-class runtime value |
+
+Tests: `tests/cases/builtins/` has a broad suite covering the working
+surface (enumerate, filter, map, zip, sorted, hash, abs, bin, hex, oct,
+all, any, sum, divmod, range, and many more).
 
 ### math
 
