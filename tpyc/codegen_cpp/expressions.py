@@ -2866,12 +2866,13 @@ class ExpressionGenerator:
                 if isinstance(et, (OptionalType, UnionType, TupleType)) or is_str_type(et):
                     elem_target = et
                 # Recursive union element type: pass it as elem_target so nested
-                # array literals trigger union_prefix.
-                elif isinstance(et, NominalType) and et.is_user_record:
-                    if et.name in self.ctx.recursive_union_names:
-                        alias = self.ctx.analyzer.registry.get_type_alias(et.name)
-                        if alias is not None:
-                            elem_target = alias
+                # array literals trigger union_prefix. Alias placeholders are
+                # bare NominalType (no TypeDef entry) -- match by name directly.
+                elif (isinstance(et, NominalType) and not et.is_protocol
+                        and et.name in self.ctx.recursive_union_names):
+                    alias = self.ctx.analyzer.registry.get_type_alias(et.name)
+                    if alias is not None:
+                        elem_target = alias
         elements = []
         with self._container_element_context():
             for e in expr.elements:
@@ -2923,9 +2924,10 @@ class ExpressionGenerator:
             expr_type = self.ctx.get_expr_type(expr)
             if is_list(expr_type):
                 et = expr_type.type_args[0]
-                if isinstance(et, NominalType) and et.is_user_record:
-                    if et.name in self.ctx.recursive_union_names:
-                        return f"{self.types.type_to_cpp(expr_type)}{literal}"
+                # Alias placeholder (bare NominalType) for recursive union.
+                if (isinstance(et, NominalType) and not et.is_protocol
+                        and et.name in self.ctx.recursive_union_names):
+                    return f"{self.types.type_to_cpp(expr_type)}{literal}"
         return literal
 
     def _is_nocopy_container_element(self, typ: TpyType | None) -> bool:
@@ -2942,7 +2944,8 @@ class ExpressionGenerator:
         if isinstance(typ, UnionType):
             return any(self._is_cpp_noncopyable(m) for m in typ.members
                        if not isinstance(m, (NoneType, VoidType)))
-        if (isinstance(typ, NominalType) and typ.is_user_record
+        # Alias placeholder (bare NominalType) for recursive union.
+        if (isinstance(typ, NominalType) and not typ.is_protocol
                 and typ.name in self.ctx.recursive_union_names):
             alias = self.ctx.analyzer.registry.get_type_alias(typ.name)
             if isinstance(alias, UnionType):

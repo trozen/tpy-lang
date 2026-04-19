@@ -1433,7 +1433,7 @@ class StatementAnalyzer:
         if handler.binding:
             exc_record = self.ctx.registry.find_record_by_qname(handler.exception_type)
             if exc_record:
-                exc_type = NominalType(exc_record.name)
+                exc_type = NominalType(exc_record.name, _module_qname=exc_record.qualified_name())
                 self.ctx.func.current_scope.bindings[handler.binding] = exc_type
                 self.init.mark_assigned(handler.binding)
 
@@ -2099,8 +2099,13 @@ class StatementAnalyzer:
             recursive_names = self.ctx.recursive_union_names
 
             def _expand_aliases(t: TpyType, _seen: frozenset[str] = frozenset()) -> TpyType:
+                # Alias references are bare parser NominalType placeholders
+                # (no _module_qname, no TypeDef entry) -- the qname guard
+                # enforces "unresolved only," matching `_resolve_alias` in
+                # analyzer.py. `get_type_alias` is the specific check.
                 if (isinstance(t, NominalType)
-                        and t.is_user_record
+                        and not t.is_protocol
+                        and not t._module_qname
                         and t.name not in _seen
                         and t.name not in recursive_names):
                     alias = registry.get_type_alias(t.name)

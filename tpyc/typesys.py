@@ -779,8 +779,20 @@ class NominalType(TpyType):
 
     @property
     def is_user_record(self) -> bool:
-        """Return True if this is a user-defined record (not a module-defined builtin)."""
-        return not self.is_protocol and not self._module_qname
+        """Return True if this is a user-defined record (not a builtin stub,
+        not a protocol, not an unresolved parser placeholder).
+
+        Consults the TypeDef registry (populated by sema's register_record for
+        every user-declared class); placeholders with no `_module_qname` yield
+        no registry entry and return False. The previous definition tested
+        `not _module_qname` directly -- the Post-Phase-D invariant #1 anti-
+        pattern of treating missing qname as a semantic shortcut.
+        """
+        if self.is_protocol:
+            return False
+        from tpyc.type_def_registry import type_def_of
+        td = type_def_of(self)
+        return td is not None and td.record is not None and td.record.builtin_type_key is None
 
     def with_protocol_flag(self, is_protocol: bool) -> 'NominalType':
         """Return a copy with is_protocol set."""
@@ -879,8 +891,12 @@ class NominalType(TpyType):
         td = type_def_of(self)
         if td is not None and td.element_of is not None:
             return td.element_of(self.type_args)
-        if self._module_qname:
-            # Default convention: first type param is the element type
+        # Container categories default to "first type_arg is the element".
+        # Pre-migration this branch gated on `self._module_qname`; that was
+        # the Post-Phase-D invariant #1 anti-pattern (qname-as-shortcut).
+        # Now that user records carry _module_qname too, dispatch on category
+        # so Tagged[T] (RECORD) doesn't claim its first type_arg as element.
+        if td is not None and td.category in _ELEMENT_FROM_FIRST_ARG_CATEGORIES:
             for arg in self.type_args:
                 if isinstance(arg, TpyType):
                     return arg
@@ -1872,8 +1888,14 @@ class UnionType(TpyType):
 
 
 def _contains_self_reference(typ: 'TpyType', name: str) -> bool:
-    """Check if a type tree contains a NominalType self-reference to the given name."""
-    if isinstance(typ, NominalType) and typ.name == name and typ.is_user_record:
+    """Check if a type tree contains a NominalType self-reference to the given name.
+
+    Walks an alias body where self-references are bare parser placeholders
+    (no _module_qname). Matches on name + non-protocol shape; excludes
+    already-resolved types which carry a qname.
+    """
+    if (isinstance(typ, NominalType) and typ.name == name
+            and not typ.is_protocol and not typ._module_qname):
         return True
     return any(_contains_self_reference(inner, name) for inner in typ.inner_types())
 
@@ -2628,6 +2650,23 @@ NONE = NoneType()
 BASIC_SLICE = NominalType("basic_slice", (), _module_qname="tpy.basic_slice")
 SLICE = NominalType("slice", (), _module_qname="builtins.slice")
 
+
+# Categories whose "element type" is the first type argument by default
+# (consulted by NominalType.get_element_type when no explicit element_of
+# override is set on the TypeDef). Anything not in this set returns None --
+# user records, protocols, enums, primitives, etc.
+from tpyc.type_def_registry import TypeCategory as _TypeCategory
+_ELEMENT_FROM_FIRST_ARG_CATEGORIES = frozenset({
+    _TypeCategory.LIST,
+    _TypeCategory.DICT,
+    _TypeCategory.DICT_VIEW,
+    _TypeCategory.SET,
+    _TypeCategory.ARRAY,
+    _TypeCategory.SPAN,
+    _TypeCategory.ITERATOR,
+    _TypeCategory.RANGE,
+})
+
 # View-type family descriptors (must follow singleton definitions)
 from .type_def_registry import is_string_type as _is_string_type, is_bytearray_type as _is_bytearray_type
 STR_FAMILY = ViewTypeFamily(
@@ -2771,6 +2810,7 @@ class RecordInfo:
     has_del: bool = False           # True if class declares __del__ (needs drop flag)
     has_copy: bool = False          # True if class defines __copy__ (custom copy semantics)
     builtin_type_key: str | None = None  # e.g. "builtins.list" -- links .py class to type_factory
+    module: str | None = None  # Defining module (public name, None -> __main__ qname fallback)
 
     @property
     def is_keyword_stub(self) -> bool:
@@ -2793,6 +2833,12 @@ class RecordInfo:
     def is_generic(self) -> bool:
         """Return True if this is a generic record with type parameters."""
         return bool(self.type_params)
+
+    def qualified_name(self) -> str:
+        """Stable qname for this record, usable as the key for type_def_of / TypeDef lookup."""
+        if self.builtin_type_key:
+            return self.builtin_type_key
+        return f"{self.module or '__main__'}.{self.name}"
 
 
 class FunctionLinkage(Enum):

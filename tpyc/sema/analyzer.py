@@ -1373,7 +1373,11 @@ class SemanticAnalyzer:
         elif isinstance(typ, NominalType):
             members = [typ]
         for m in members:
-            if isinstance(m, NominalType) and m.is_user_record:
+            # Bare NominalType reference in an alias body -- the registry
+            # lookup is the actual check. Exclude resolved types (which have
+            # a _module_qname) and protocols.
+            if (isinstance(m, NominalType) and not m.is_protocol
+                    and not m._module_qname):
                 if self.ctx.registry.get_record(m.name) is None:
                     raise SemanticError(
                         f"Type alias '{alias_name}' references unknown type '{m.name}'",
@@ -1390,7 +1394,10 @@ class SemanticAnalyzer:
         _skip contains recursive union alias names that must not be expanded
         (their NominalType placeholders are structural).
         """
-        if isinstance(typ, NominalType) and typ.is_user_record:
+        # Alias placeholders are bare parser NominalTypes (no _module_qname,
+        # no TypeDef entry). Exclude protocols and anything already resolved.
+        if (isinstance(typ, NominalType) and not typ.is_protocol
+                and not typ._module_qname):
             if typ.name in _seen or typ.name in _skip:
                 return typ
             resolved = aliases.get(typ.name)
@@ -1498,7 +1505,11 @@ class SemanticAnalyzer:
             local_ns = Namespace(parent=self.ctx.global_ns)
             self.ctx.func.current_ns = local_ns
             if not method.is_staticmethod:
-                self_named = build_record_self_type(record)
+                info = self.ctx.registry.get_record(record.name)
+                self_named = build_record_self_type(
+                    record,
+                    qname=info.qualified_name() if info is not None else None,
+                )
                 self_type = self._normalize_param_type(self_named, method.is_readonly)
                 scope.define("self", self_type)
                 self.ctx.func.var_scope_depth["self"] = scope.depth

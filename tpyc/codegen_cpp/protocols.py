@@ -606,9 +606,20 @@ class ProtocolGenerator:
         return f"inner.{method_sig.name}({args_str})"
 
     def collect_record_types_from_type(self, typ: TpyType, result: set[str]) -> None:
-        """Recursively collect all record type names from a type."""
-        if isinstance(typ, NominalType) and typ.is_user_record:
-            result.add(typ.name)
+        """Recursively collect all user record type names from a type.
+
+        Codegen iterates `TpyProtocol.methods` (parser AST, not rewritten by
+        sema's `register_protocol`), so some NominalTypes here are still bare
+        parser placeholders (no `_module_qname`, no TypeDef entry). For those,
+        `is_user_record` is False; fall back to the record registry directly.
+        """
+        if isinstance(typ, NominalType) and not typ.is_protocol:
+            if typ.is_user_record:
+                result.add(typ.name)
+            else:
+                info = self.ctx.analyzer.registry.get_record(typ.name)
+                if info is not None and info.builtin_type_key is None:
+                    result.add(typ.name)
         for inner in typ.inner_types():
             self.collect_record_types_from_type(inner, result)
 
@@ -622,20 +633,34 @@ class ProtocolGenerator:
 
         When a protocol references Container[Message] where Container has a user-defined
         protocol bound, C++ needs Message to be fully defined to check the constraint.
+        Same placeholder-tolerance story as `collect_record_types_from_type` --
+        accept either a resolved user-record NominalType or a bare placeholder
+        whose name resolves to a non-builtin RecordInfo in the registry.
         """
-        if isinstance(typ, NominalType) and typ.is_user_record and typ.type_args:
+        registry = self.ctx.analyzer.registry
+
+        def is_user_record_nominal(t: TpyType) -> bool:
+            if not isinstance(t, NominalType) or t.is_protocol:
+                return False
+            if t.is_user_record:
+                return True
+            info = registry.get_record(t.name)
+            return info is not None and info.builtin_type_key is None
+
+        if (isinstance(typ, NominalType) and typ.type_args
+                and is_user_record_nominal(typ)):
             record = records_by_name.get(typ.name)
             if record and record.type_param_bounds:
                 # Check if any bound is a user-defined protocol
                 has_user_bound = any(
-                    self.ctx.analyzer.registry.get_protocol(bound.name) is None or
-                    self.ctx.analyzer.registry.get_protocol(bound.name).cpp_concept is None
+                    registry.get_protocol(bound.name) is None or
+                    registry.get_protocol(bound.name).cpp_concept is None
                     for bound in record.type_param_bounds.values()
                 )
                 if has_user_bound:
                     # Collect all type args as needing early definition
                     for type_arg in typ.type_args:
-                        if isinstance(type_arg, NominalType) and type_arg.is_user_record:
+                        if isinstance(type_arg, NominalType) and is_user_record_nominal(type_arg):
                             result.add(type_arg.name)
 
         # Recurse into inner types

@@ -149,7 +149,11 @@ class TypeCompatibility:
         Treats recursive union types as opaque (does not recurse into their
         members) to prevent infinite expansion of self-referencing placeholders.
         """
-        if isinstance(typ, NominalType) and typ.is_user_record:
+        # Recursive-union alias placeholders are bare NominalType (no qname)
+        # emitted by the parser; they never carry a TypeDef entry, so the
+        # redefined is_user_record would return False here. Match by name
+        # against recursive_union_names directly.
+        if isinstance(typ, NominalType) and not typ.is_protocol:
             if typ.name in self.ctx.recursive_union_names:
                 alias = self.ctx.registry.get_type_alias(typ.name)
                 if alias is not None:

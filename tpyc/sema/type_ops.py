@@ -93,6 +93,18 @@ class TypeOperations:
                 enum_typ = self.ctx.registry.get_enum(typ.name)
                 if enum_typ is not None:
                     return enum_typ
+            # User-record substitution (mirror of enum substitution). Parser
+            # creates `NominalType("MyRec", ...)` with no `_module_qname` for
+            # a user-record reference; mint a qname-bearing copy so downstream
+            # `type_def_of(t)` / `is_user_record(t)` resolve via the TypeDef
+            # registry rather than treating "_module_qname is None" as "user
+            # record" (Post-Phase-D invariant #1).
+            if not typ.is_protocol and not typ._module_qname:
+                record_info = self.ctx.registry.get_record(typ.name)
+                if record_info is not None and not record_info.builtin_type_key:
+                    typ = NominalType(typ.name, typ.type_args, typ.is_protocol,
+                                      record_info.qualified_name(),
+                                      typ.is_dynamic_protocol)
             # Resolve compile-time-only type aliases (e.g. FStr singleton).
             # Registered at import time for builtin types with no C++ representation.
             if not typ.type_args and self.ctx.registry.type_aliases:
@@ -175,6 +187,10 @@ class TypeOperations:
             resolved_members = tuple(self.resolve_type(m, protocols_only=protocols_only) for m in typ.members)
             if any(new is not old for new, old in zip(resolved_members, typ.members)):
                 return UnionType(resolved_members)
+        elif isinstance(typ, TupleType):
+            resolved_elements = tuple(self.resolve_type(e, protocols_only=protocols_only) for e in typ.element_types)
+            if any(new is not old for new, old in zip(resolved_elements, typ.element_types)):
+                return TupleType(resolved_elements)
         return typ
 
     def validate_type(
@@ -1059,7 +1075,8 @@ class TypeOperations:
             unresolved = [tp for tp in record.type_params if tp not in inferred]
             if unresolved:
                 exp = expected_type.wrapped if isinstance(expected_type, OwnType) else expected_type
-                record_pattern = NominalType(record.name, tuple(TypeParamRef(tp) for tp in record.type_params))
+                record_pattern = NominalType(record.name, tuple(TypeParamRef(tp) for tp in record.type_params),
+                                              _module_qname=record.qualified_name())
                 self.match_type_with_inference(record_pattern, exp, inferred)
 
         # Verify all type params were inferred

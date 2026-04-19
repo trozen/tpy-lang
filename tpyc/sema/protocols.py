@@ -302,10 +302,13 @@ class ProtocolChecker:
                 self.type_conforms_to_protocol(et, default_proto)
                 for et in actual.element_types
             )
-        # User records: default-constructible if __init__ has no required params
-        if isinstance(actual, NominalType) and actual.is_user_record:
+        # User records: default-constructible if __init__ has no required params.
+        # Tolerate unresolved parser placeholders (make_default[Point]() type_args
+        # may not have flowed through resolve_type) by looking up the registry
+        # directly and filtering out @builtin_type stubs.
+        if isinstance(actual, NominalType) and not actual.is_protocol:
             record = self.ctx.registry.get_record(actual.name)
-            if record is None:
+            if record is None or record.builtin_type_key:
                 return False
             if not record.has_init:
                 return True

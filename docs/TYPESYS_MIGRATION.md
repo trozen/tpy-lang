@@ -4,7 +4,7 @@
 
 Unify the type hierarchy around two shapes: **nominal** (identity = qualified name + type args, behavior from a registry) and **structural** (identity = operand shape, behavior derived from operands). Builtins, containers, primitives, records, protocols, and enums all become `NominalType` with behavior sourced from a single `TypeDef` registry. Wrappers (`Ptr`, `Own`, `Optional`, `Union`, `Tuple`, `Callable`, `Readonly`) stay structural.
 
-## Current state (Phases A, B, C, D, E complete)
+## Current state (Phases A, B, C, D, E, F.1 complete)
 
 ```
 TpyType (frozen dataclass base)
@@ -33,7 +33,7 @@ resets them between compilations (hooked into
 
 Remaining problems:
 - Parser still constructs structural types (PtrType, OptionalType, UnionType, ...)
-  and resolves module-local primitive names directly -- Phase F makes parsing
+  and resolves module-local primitive names directly -- Phase F.3 makes parsing
   purely syntactic with sema owning all resolution.
 - `_value_type_record_names` / `_send_record_names` / `_sync_record_names`
   accumulators on `typesys.py` parallel the new TypeDef.record payload;
@@ -216,9 +216,49 @@ Six sub-steps shipped on `typesys-migration-phase-e`:
 
 Full suite green at every sub-step; `--force-exec` at the phase boundary also green (2606 passed, 1 skipped).
 
-### Phase F -- Move type resolution from parser to sema
+### Phase F.1 -- is_user_record via TypeDef (DONE)
 
-Today the parser imports many type classes from `typesys` and constructs `PtrType`, `OwnType`, `OptionalType`, `UnionType`, `TupleType`, `CallableType` (with `is_template=True` for Fn), `NominalType` via factories (list/dict/set/Array/Span/...), etc. directly. It also resolves local-name type annotations. This phase makes parsing purely syntactic -- parser emits unresolved type-reference AST nodes, sema owns all resolution.
+Landed the Post-Phase-D invariant #1 cleanup for user records. Previously `NominalType.is_user_record` was defined as `not is_protocol and not _module_qname` -- exactly the "qname-as-shortcut" anti-pattern the invariants call out. With user records now carrying `_module_qname` and a TypeDef.record payload (populated in Phase E), the redefinition can consult the registry directly.
+
+Changes:
+
+1. **`RecordInfo.module`** added. Populated at `sema/registration.py::register_record` via `public_module_name(...)`. `RecordInfo.qualified_name()` derives `{module}.{name}` (or `__main__.{name}` for entry-point records); `builtin_type_key` takes precedence when set. Matches the convention already used by enums (Phase E).
+2. **`NominalType.is_user_record` redefined** -- `TypeDef.record is not None and record.builtin_type_key is None` (protocols still filter out separately). Bare parser placeholders (no TypeDef entry) now return False; the old `_module_qname == None` semantic is gone.
+3. **`resolve_type` user-record substitution** added (mirrors the enum substitution from Phase E): bare `NominalType("Counter", ...)` gets minted as `NominalType("Counter", ..., _module_qname="__main__.Counter")` so downstream `type_def_of(t)` resolves. Covers same-module and cross-module references uniformly.
+4. **`resolve_type` TupleType recursion** added -- previously tuples were returned unchanged, so `tuple[Point, Point]` kept `Point` as a bare placeholder. Now walks element types.
+5. **Constructor call result type** (`sema/calls.py::_analyze_record_constructor`) -- all return paths now mint qname-bearing NominalType. Covers non-generic (`Dog()`), generic-with-inferred-args (`Stack(1)`), and generic-with-explicit-args (`Stack[Int32]()`).
+6. **Self type construction** (`build_record_self_type`) -- takes optional `qname` parameter; sema passes `RecordInfo.qualified_name()` so method bodies see a qname-bearing `Self`. Similarly for TypedDict construction, exception bindings, record-pattern patterns.
+7. **Stub registration in `register_record`** -- for non-@builtin_type user records, a minimal `RecordInfo(name, module, type_params, type_param_kinds)` is stashed into `registry.records[name]` at the top of `register_record`, before field/method type resolution runs. This lets `resolve_type`'s user-record substitution find the record while its own full info is still being built. The full info (line 794+) overwrites the stub. `@builtin_type` stubs are skipped because the parser has already registered them with `builtin_type_key` and overwriting would strip parser-contributed state that `validate_type`'s method-signature arity check relies on.
+8. **Parent NominalType minting** (`validate_record_inheritance`) -- record_info.parent gets a qname-bearing copy so downstream `is_user_record` checks on `record.parent` resolve.
+9. **Codegen placeholder-tolerant helper** (`codegen_cpp/protocols.py::_is_user_record_name`) -- `collect_record_types_from_type` and `collect_type_args_of_bounded_records` operate on raw `TpyProtocol.methods` (AST), not on sema's resolved `ProtocolInfo.methods`. Those types stay qname-less. Helper falls back to `registry.get_record(name).builtin_type_key is None` when `is_user_record` returns False for lack of a TypeDef entry.
+10. **NominalType.get_element_type category dispatch** -- old code defaulted to "first type_arg is element" whenever `_module_qname` was set. Post-migration user records have qnames too, so the check flipped to `TypeDef.category in {LIST, DICT, SET, ARRAY, SPAN, ITERATOR, DICT_VIEW, RANGE}`. Prevents `Tagged[Greeter]` from claiming its first type_arg (`Greeter`) as a container element.
+11. **Placeholder-inclusive call sites fixed** (8 sites) -- replaced `is_user_record` filter (which used to coincidentally match bare placeholders) with explicit placeholder shape checks or direct `name in recursive_union_names` / `get_type_alias` lookups. Covers recursive-union expansion in compatibility / match / narrowing / statements / analyzer / typesys / codegen-expressions and parser placeholder-to-qname patching.
+
+Full suite green at 2607 passed + 1 skipped; `--force-exec` at the phase boundary also green with byte-identical generated C++ across all cases.
+
+### Phase F.2a -- Audit `_resolve_imported_enums` redundancy (NOT STARTED)
+
+The TODO originally framed "collapse three resolution passes." Phase F.1 review showed only two passes exist (`_resolve_imported_enums`, `_resolve_imported_aliases`); records never had one -- with Phase F.1, user records flow through `resolve_type` substitution in `type_ops` directly.
+
+`_resolve_imported_enums` walks module AST (records, functions, top-level stmts) and patches enum placeholders post-registration. With user records now minting qnames through `resolve_type` at registration time, the enums pass *may* be redundant: if every enum reference also reaches `resolve_type`, the AST-level write-back is dead code.
+
+Audit plan:
+- Enumerate every site that reads an AST-level type annotation (`TpyRecord.fields[i].type`, `TpyFunction.params[i]`, `TpyFunction.return_type`, `TpyVarDecl.type`, ...).
+- For each, determine whether codegen reads the AST version or a sema-resolved mirror (`RecordInfo.fields`, `FunctionInfo.params`, `FunctionInfo.return_type`, ...).
+- If every codegen read path already goes through the sema-resolved mirror, delete `_resolve_imported_enums` and its caller in `analyzer.py`. Verify with `--force-exec` byte-identical.
+- If some codegen reads AST directly, either fix those to read the sema mirror, or keep the pass (and document why).
+
+Small, scoped, sema-side. Keeps the F.1 warm-context advantage if tackled soon.
+
+### Phase F.2b -- Collapse codegen import-tracking dicts (NOT STARTED)
+
+`user_imported_records` / `user_imported_enums` / `user_imported_type_aliases` (on `ctx` and mirrored into `codegen_cpp/context.py`) are consumed by codegen for C++ namespace qualification -- e.g. `tpy_other_module::Point` when `Point` was imported from `other_module`. With `_module_qname` on NominalType (Phase F.1 for records, already true for enums and protocols), codegen could derive the source module from `qualified_name()` directly, eliminating the dicts.
+
+Codegen-wide audit: every site that reads the three dicts (`codegen_cpp/generator.py`, `codegen_cpp/types.py`, `codegen_cpp/expressions.py`, `codegen_cpp/context.py`, `compiler.py`) needs a qname-based replacement. Larger and higher-risk than F.2a: byte-identical-C++ regressions from codegen mistakes are easy to miss, and the change crosses more files.
+
+Worth a separate session from F.2a -- different code region, different risk profile.
+
+### Phase F.3 -- Parser emits unresolved type-reference nodes (NOT STARTED)
 
 Steps:
 

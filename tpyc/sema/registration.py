@@ -83,8 +83,13 @@ def _validate_const_field_default(expr: TpyExpr, loc: object) -> None:
         "(literal, None, or fixed-int constructor like Int32(5))", loc)
 
 
-def build_record_self_type(record: TpyRecord) -> NominalType:
-    """Build a NominalType representing Self for a record, preserving type param kinds."""
+def build_record_self_type(record: TpyRecord, qname: str | None = None) -> NominalType:
+    """Build a NominalType representing Self for a record, preserving type param kinds.
+
+    `qname` is the record's module-qualified name (from RecordInfo.qualified_name);
+    when provided, the resulting NominalType carries `_module_qname` so the
+    TypeDef-backed `is_user_record` resolves on `self`-typed references.
+    """
     if record.type_params:
         type_args = tuple(
             TypeParamRef(
@@ -93,8 +98,8 @@ def build_record_self_type(record: TpyRecord) -> NominalType:
             )
             for i, tp in enumerate(record.type_params)
         )
-        return NominalType(record.name, type_args)
-    return NominalType(record.name)
+        return NominalType(record.name, type_args, _module_qname=qname)
+    return NominalType(record.name, _module_qname=qname)
 
 
 class TypeRegistrar:
@@ -258,6 +263,34 @@ class TypeRegistrar:
         # For generic records, skip validation of TypeParamRef types
         is_generic = bool(record.type_params)
 
+        # For non-@builtin_type user records, pre-register a minimal RecordInfo
+        # (name + module + type_params) so that resolve_type's user-record
+        # substitution can mint `_module_qname` on references to the class by
+        # name inside its own methods/fields (e.g. `def __iter__(self) ->
+        # Counter` or `def push(self, x: T) -> Stack[T]`) even while the full
+        # info is still being built. type_params is required so validate_type's
+        # arity check recognizes `Stack[T]` as a valid generic reference. The
+        # full info gets registered below and overwrites this stub.
+        # @builtin_type stubs (list, dict, ...) are skipped -- the parser has
+        # already registered those.
+        #
+        # Direct assignment to `registry.records[...]` (not via the
+        # `register_record()` method) is intentional: `register_record()` also
+        # writes `_qname_index` for `builtin_type_key`-carrying infos, and we
+        # don't want the placeholder to pollute that index. The full
+        # registration at the bottom of this function goes through the normal
+        # path. If `register_record()` grows new side effects, update the
+        # comment here so the skip is still audited.
+        if not record.builtin_type_key:
+            record_module = public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace) or None
+            self.ctx.registry.records[record.name] = RecordInfo(
+                name=record.name,
+                fields=[],
+                module=record_module,
+                type_params=list(record.type_params) if record.type_params else [],
+                type_param_kinds=list(record.type_param_kinds) if record.type_param_kinds else [],
+            )
+
         # Check for duplicate method definitions (second definition silently wins in Python,
         # but it is always a bug and can interfere with @override checks).
         # @overload stubs are exempt -- multiple stubs + one implementation share the same name.
@@ -374,7 +407,11 @@ class TypeRegistrar:
                 init_params.append((fld.name, fld.type, default))
 
         # Build the Self type for this record (used to substitute SelfType in methods)
-        record_self_type = build_record_self_type(record)
+        stub_info = self.ctx.registry.get_record(record.name)
+        record_self_type = build_record_self_type(
+            record,
+            qname=stub_info.qualified_name() if stub_info is not None else None,
+        )
 
         # Pre-compute ids of mutable clones from @auto_readonly (flagged by the parser).
         # Used below to prevent implicit_readonly from clobbering is_readonly=False on these
@@ -772,6 +809,7 @@ class TypeRegistrar:
             has_del=record.del_method is not None,
             has_copy=has_copy,
             builtin_type_key=record.builtin_type_key,
+            module=public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace) or None,
         )
         self.ctx.registry.register_record(info)
         self.ctx.global_ns.bind_record(info)
@@ -782,10 +820,7 @@ class TypeRegistrar:
         #   stub-contributed methods/fields.
         # - User records use `{module}.{name}`; entry-point records fall
         #   back to `__main__.{name}`. Mirrors the enum treatment so every
-        #   record has a queryable TypeDef entry (even though user records'
-        #   NominalType still carries `_module_qname=None` today -- the
-        #   entry is groundwork for Phase F, when user records gain qnames
-        #   and `is_user_record` gets redefined).
+        #   record has a queryable TypeDef entry.
         if info.builtin_type_key:
             attach_dynamic_type_def(
                 info.builtin_type_key,
@@ -793,10 +828,8 @@ class TypeRegistrar:
                 record=info,
             )
         else:
-            module = public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace)
-            qname_module = module if module else "__main__"
             attach_dynamic_type_def(
-                f"{qname_module}.{info.name}",
+                info.qualified_name(),
                 TypeCategory.RECORD,
                 record=info,
             )
@@ -905,7 +938,15 @@ class TypeRegistrar:
                         f"Use '{base_type.name}[T]' with appropriate type arguments.",
                         record.loc
                     )
+                # Mint a qname-bearing parent so downstream `is_user_record`
+                # (TypeDef-backed) resolves correctly on the stored reference.
                 parent = base_type
+                if (not base_type._module_qname
+                        and not parent_info.builtin_type_key):
+                    parent = NominalType(base_type.name, base_type.type_args,
+                                         base_type.is_protocol,
+                                         parent_info.qualified_name(),
+                                         base_type.is_dynamic_protocol)
             elif self._is_inheritable_builtin(base_type):
                 # It's a builtin type - check for multiple inheritance
                 if parent is not None:
@@ -960,7 +1001,9 @@ class TypeRegistrar:
             # Check if record implements all protocol methods.
             # For @builtin_type classes, use the concrete type (e.g. FLOAT32)
             # so Self-substitution in protocol signatures matches method param types.
-            record_type: TpyType = NominalType(record.name)
+            record_type: TpyType = NominalType(
+                record.name, _module_qname=record_info.qualified_name()
+            )
             if record_info.builtin_type_key:
                 record_type = builtin_modules.get_builtin_type_obj(record_info.builtin_type_key) or record_type
             if not self.protocols.type_conforms_to_protocol(record_type, protocol):

@@ -2553,14 +2553,12 @@ class Parser:
                 # Span, ...). Without this, bare builtin-generic annotations
                 # (e.g. `def f(x: list)`) would produce an unqualified
                 # NominalType that downstream sema couldn't distinguish from a
-                # user record. User records go through _resolve_type_name via
-                # their own module's imports too -- filter them out by
-                # requiring either a builtin_type_key or a registered factory
-                # for the resolved qname. The `resolved` guard ensures this
-                # only fires for names that went through _resolve_type_name,
-                # not for unresolved forward references.
+                # user record. Filter out types that already carry a qname
+                # (protocols and anything sema has already resolved) -- we're
+                # only interested in bare parser placeholders here.
                 if (resolved and isinstance(registered, NominalType)
-                        and registered.is_user_record):
+                        and not registered.is_protocol
+                        and not registered._module_qname):
                     module, original = resolved
                     candidate_qname = f"{module}.{original}"
                     is_builtin = (

@@ -610,7 +610,7 @@ class CallAnalyzer:
             td_call.args[i] = self.compat.coerce_expr(
                 arg, arg_type, fld.type, f"argument '{fld.name}'",
                 coercion_ctx=CoercionContext.ARG)
-        self.ctx.set_expr_type(td_call, NominalType(record.name))
+        self.ctx.set_expr_type(td_call, NominalType(record.name, _module_qname=record.qualified_name()))
         return td_call
 
     def _resolve_inferred_type_arg(self, t: "TpyType | int") -> "TpyType | int":
@@ -2900,6 +2900,17 @@ class CallAnalyzer:
         cached = self.ctx.get_expr_type(expr)
         if cached is not None:
             return cached
+        # Normalize expr.call_type to carry `_module_qname` so that the result
+        # type flowing back to the caller is TypeDef-resolvable (Post-Phase-D
+        # invariant #1). Parser emits bare NominalType("Dog") for `Dog()`.
+        if (isinstance(expr.call_type, NominalType)
+                and not expr.call_type._module_qname
+                and not expr.call_type.is_protocol):
+            expr.call_type = NominalType(
+                expr.call_type.name, expr.call_type.type_args,
+                expr.call_type.is_protocol, record.qualified_name(),
+                expr.call_type.is_dynamic_protocol,
+            )
         # Types with overloaded @cpp_template/@native __init__ (e.g. Int32, str, bool)
         if record.builtin_type_key and not record.type_params:
             init_overloads = record.get_method_overloads("__init__")
@@ -3028,7 +3039,8 @@ class CallAnalyzer:
                                 )
                     type_args = tuple(inferred[p] for p in record.type_params)
                     # Use expr.func (local name) not record.name (original) for alias support
-                    inferred_type = NominalType(expr.func_name, type_args)
+                    inferred_type = NominalType(expr.func_name, type_args,
+                                                _module_qname=record.qualified_name())
                     expr.call_type = inferred_type
                     # Coerce arguments with substitution
                     type_subst = inferred
@@ -3061,7 +3073,7 @@ class CallAnalyzer:
                             exp = exp.wrapped
                         record_pattern = NominalType(record.name, tuple(
                             TypeParamRef(tp) for tp in record.type_params
-                        ))
+                        ), _module_qname=record.qualified_name())
                         self.type_ops.match_type_with_inference(record_pattern, exp, inferred)
                     if all(tp in inferred for tp in record.type_params):
                         # Validate type parameter bounds
@@ -3075,7 +3087,8 @@ class CallAnalyzer:
                                         expr
                                     )
                         type_args = tuple(inferred[p] for p in record.type_params)
-                        inferred_type = NominalType(expr.func_name, type_args)
+                        inferred_type = NominalType(expr.func_name, type_args,
+                                                    _module_qname=record.qualified_name())
                         expr.call_type = inferred_type
                         self._set_record_constructor_info(expr, record, inferred_type, inferred)
                         for arg in expr.args:
@@ -3112,7 +3125,7 @@ class CallAnalyzer:
                 f"use @dataclass or define __init__ to accept constructor arguments",
                 expr)
         # Use expr.func (local name) not record.name (original) for alias support
-        result_type = NominalType(expr.func_name)
+        result_type = NominalType(expr.func_name, _module_qname=record.qualified_name())
         self._set_record_constructor_info(expr, record, result_type)
         return result_type
 
