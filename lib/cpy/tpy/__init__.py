@@ -83,7 +83,22 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
     def trunc(cls, value):
         return cls(int(value))
 
+    @classmethod
+    def add_wrap(cls, a, b):
+        return cls(int(a) + int(b))
+
+    @classmethod
+    def sub_wrap(cls, a, b):
+        return cls(int(a) - int(b))
+
+    @classmethod
+    def mul_wrap(cls, a, b):
+        return cls(int(a) * int(b))
+
     FixedInt.trunc = trunc
+    FixedInt.add_wrap = add_wrap
+    FixedInt.sub_wrap = sub_wrap
+    FixedInt.mul_wrap = mul_wrap
 
     if signed:
         def __neg__(self): return FixedInt(int.__neg__(self))

@@ -142,7 +142,7 @@ Examples of the policy in action:
 | [`datetime`](#datetime) | P1 | Missing | 0% | -- | Class-heavy; needs timedelta arithmetic and timezone handling |
 | [`csv`](#csv) | P1 | Missing | 0% | -- | Depends on `io` |
 | [`base64`](#base64) | P1 | Partial | ~95% | pure | Pure-TPy b64/b32/b16 encode+decode + urlsafe/standard variants + altchars=/validate=/casefold=/map01= kwargs + encodebytes/decodebytes. bytes/bytearray/str accepted on decoders (matches CPython). Missing: b85/a85 (rare, separate algorithms); `memoryview` depends on builtin gap |
-| [`hashlib`](#hashlib) | P1 | Missing | 0% | pure | Pure TPy (md5/sha1/sha256/sha512 are modest loops); optional thin OpenSSL binding later for speed |
+| [`hashlib`](#hashlib) | P1 | Partial | ~20% | pure | SHA-256 pure-TPy. MD5/SHA-1/SHA-512 are straight follow-ups (same class pattern, different round functions / endian). BLAKE2/SHA-3 later. Optional OpenSSL backend also later |
 | [`argparse`](#argparse) | P1 | Missing | 0% | -- | Dynamic-type heavy; may need macro approach |
 | [`logging`](#logging) | P2 | Missing | 0% | -- | Module-level state + handler architecture |
 | [`configparser`](#configparser) | P2 | Missing | 0% | -- | Depends on `io` |
@@ -762,22 +762,41 @@ Tests: `cases/stdlib/base64`.
 
 ### hashlib
 
-**Missing.** Under the policy: pure TPy first. MD5/SHA-1/SHA-2 are a few
-hundred lines of bit-twiddling each and have well-known reference
-implementations. A thin OpenSSL binding could be added later as an optional
-backend (selected via F8) for throughput, but should not be a dependency.
+Current: `lib/tpy/hashlib.py` -- pure-TPy FIPS 180-4 port. Only SHA-256
+shipped so far; MD5/SHA-1/SHA-512 are mechanical follow-ups using the
+same class pattern (new H0/K constants, swap the round function,
+little-endian for MD5). Needed new shared primitives to get here:
 
-Blockers for the pure-TPy impl: efficient fixed-width integer operations
-(already present), `bytes`/`bytearray` support (already present), no other
-known gaps.
+- `add_wrap`/`sub_wrap`/`mul_wrap` on all eight fixed-width int types
+  (Int8/16/32/64, UInt8/16/32/64) -- wrapping modular arithmetic,
+  analogous to Rust's `wrapping_add`. Signed variants route through the
+  unsigned type (`static_cast<intN_t>(static_cast<uintN_t>(a) OP ...)`)
+  to get defined wrap without signed-overflow UB.
+- `tpy.bits` module (`rotl32`/`rotr32`/`rotl64`/`rotr64`/`byteswap32`/
+  `byteswap64`) wrapping C++20 `std::rotl`/`std::rotr` and C++23
+  `std::byteswap`. Re-usable for ciphers, RNGs, `struct`, and
+  struct-of-ints packing beyond hashlib.
 
 | Item | Status | Notes |
 |---|---|---|
-| `md5`, `sha1`, `sha256`, `sha512` | Missing | Pure TPy; standard reference loops |
+| `sha256(data=None)` + `SHA256` class | Done | FIPS 180-4 algorithm, verified against NIST vectors + CPython |
+| `.update(data)`, `.digest()`, `.hexdigest()`, `.copy()` | Done | On `SHA256` |
+| `.digest_size`, `.block_size`, `.name` | Done | Instance attrs |
+| `md5`, `MD5` | Missing | Next slice; same pattern with little-endian state |
+| `sha1`, `SHA1` | Missing | Same pattern, 20-byte digest |
+| `sha512`, `SHA512` | Missing | Same pattern, 64-bit words -- needs UInt64 rotate + add_wrap (both already present) |
 | `blake2b`, `blake2s` | Missing | Pure TPy; Python has its own impl too |
 | `sha3_*`, `shake_*` | Missing | Later |
-| `new(name)`, `algorithms_available` | Missing | |
-| `.update`, `.digest`, `.hexdigest`, `.copy` | Missing | |
+| `new(name)` dispatcher | Missing | Returns a hash object by name; needs `type(x)`-style dispatch or a dict-of-factories |
+| `algorithms_available` / `algorithms_guaranteed` | Missing | Module-level `set[str]` / `frozenset[str]` |
+| Optional OpenSSL backend | Missing | Future; gated by F8 feature flag. Only justified by a perf-critical use case |
+
+Design note: `hashlib.sha256(data=None)` takes `bytes | None = None`
+instead of CPython's `b""` default because TPy sema rejects non-literal
+constant defaults (see TODO.md). Callers pass either nothing or bytes;
+behavior matches CPython.
+
+Tests: `cases/stdlib/hashlib`.
 
 ### argparse
 
