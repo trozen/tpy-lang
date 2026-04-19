@@ -7,6 +7,7 @@ All existing imports like ``from .parse import X`` continue to work.
 
 from .nodes import (
     ParseError, SourceLocation, RecordLinkage, FunctionLinkage, VarLinkage,
+    TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, TypeRefNode,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFStringValue, TpyFString,
     FSTRING_CONV_NONE, FSTRING_CONV_STR, FSTRING_CONV_REPR, FSTRING_CONV_ASCII,

@@ -13,7 +13,7 @@ from typing import Any, Literal, Optional, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, FieldInfo, FunctionInfo,
-    MethodSignature, TypeParamKind,
+    MethodSignature, TypeParamKind, LiteralValue,
 )
 
 
@@ -41,6 +41,66 @@ class SourceLocation:
     line: int  # 1-indexed line number
     column: int = 0  # 0-indexed column
     file: str | None = None  # Source file path (optional)
+
+
+# Unresolved type-syntax nodes (Phase F.3).
+#
+# Parser emits these in annotation positions instead of constructing TpyType
+# directly. Sema's resolve_type_ref walks them against the TypeDef registry,
+# local type-parameter scope, and structural wrappers to produce TpyType.
+#
+# Four node kinds cover all Python type syntax:
+#   - TpyTypeRef       : Name or Name[args]. Handles primitives, generics,
+#                        structural wrappers expressed via subscript
+#                        (Ptr[T], Own[T], Optional[T], Readonly[T], tuple[T1,T2],
+#                        Array[T, N], ...), qualified names (Outer.Inner), type
+#                        parameters, Self, None. Integer args (Array[T, N])
+#                        sit alongside type args.
+#   - TpyUnionRef      : T | U | ... (Python BinOp with BitOr).
+#   - TpyCallableRef   : Callable[[P1, P2], R] or Fn[[P1, P2], R] -- the
+#                        list-shaped param group doesn't fit a uniform args
+#                        tuple.
+#   - TpyLiteralRef    : Literal[v1, v2, ...] where the args are values, not
+#                        types.
+
+@dataclass(frozen=True)
+class TpyTypeRef:
+    """Named type reference with optional type arguments.
+
+    `name` is the raw source identifier, possibly dotted for qualified
+    references ("Outer.Inner", "module.Name"). Resolution (primitive lookup,
+    builtin/user registry lookup, type-parameter substitution, enum/record
+    qname minting) happens in sema.
+    """
+    name: str
+    args: tuple['TypeRefNode | int', ...] = ()
+    loc: SourceLocation | None = None
+
+
+@dataclass(frozen=True)
+class TpyUnionRef:
+    """Union-syntax type reference: T | U | ..."""
+    members: tuple['TypeRefNode', ...]
+    loc: SourceLocation | None = None
+
+
+@dataclass(frozen=True)
+class TpyCallableRef:
+    """Callable[[P1, P2], R] or Fn[[P1, P2], R]."""
+    kind: Literal["Callable", "Fn"]
+    params: tuple['TypeRefNode', ...]
+    return_type: 'TypeRefNode'
+    loc: SourceLocation | None = None
+
+
+@dataclass(frozen=True)
+class TpyLiteralRef:
+    """Literal[v1, v2, ...] -- values, not types."""
+    values: tuple[LiteralValue, ...]
+    loc: SourceLocation | None = None
+
+
+type TypeRefNode = TpyTypeRef | TpyUnionRef | TpyCallableRef | TpyLiteralRef
 
 
 # AST node types for TurboPython

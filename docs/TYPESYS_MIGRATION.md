@@ -4,7 +4,7 @@
 
 Unify the type hierarchy around two shapes: **nominal** (identity = qualified name + type args, behavior from a registry) and **structural** (identity = operand shape, behavior derived from operands). Builtins, containers, primitives, records, protocols, and enums all become `NominalType` with behavior sourced from a single `TypeDef` registry. Wrappers (`Ptr`, `Own`, `Optional`, `Union`, `Tuple`, `Callable`, `Readonly`) stay structural.
 
-## Current state (Phases A, B, C, D, E, F.1, F.2a, F.2b complete)
+## Current state (Phases A, B, C, D, E, F.1, F.2a, F.2b, F.3a complete)
 
 ```
 TpyType (frozen dataclass base)
@@ -343,23 +343,67 @@ contract change is independent of subclass elimination.
 suite green, and preserves byte-identical generated C++. Pattern mirrors
 F.1/F.2a/F.2b.
 
-#### Phase F.3a -- Introduce `TpyTypeRef` (plumbing only)
+#### Phase F.3a -- Introduce `TpyTypeRef` (plumbing only, DONE)
 
 Pure plumbing. No consumers yet.
 
-1. Add `TpyTypeRef(name, args, source_loc)` to `parse/nodes.py`. `name` is
-   the raw identifier as it appears in source (`"Int32"`, `"list"`,
-   `"Ptr"`, `"Optional"`, `"T"`, `"Outer.Inner"`); `args` is a tuple of
-   `TpyTypeRef | int`. No resolution semantics encoded in the node.
-2. Decide whether `TpyTypeRef` represents *all* type syntax (including
-   structural wrappers like `Ptr`/`Optional`/union) or whether a few
-   special-cased structural node kinds coexist. **Tentative design**:
-   one uniform node. `Ptr[T]` parses to `TpyTypeRef("Ptr", (TpyTypeRef("T",
-   (), loc),), loc)`; `T | U` parses to `TpyTypeRef("|", (<ref T>, <ref
-   U>), loc)` (or a dedicated `TpyUnionRef` — decide during implementation
-   against readability).
-3. No parser or sema wiring yet. This sub-step exists to lock in the node
-   shape before anyone writes against it.
+Landed a 4-node hybrid rather than the tentative uniform design. Three
+Python type-syntax forms resist uniform `name + args` representation:
+
+- `T | U` (BinOp, not subscript; variable-arity members).
+- `Callable[[P1, P2], R]` / `Fn[[P1, P2], R]` (inner list-shape for the
+  param group).
+- `Literal[v1, v2, ...]` (args are values, not types).
+
+Giving each a dedicated AST node makes `resolve_type_ref` dispatch
+cleanly via `isinstance` (mirrors how sema already handles `PtrType` vs
+`UnionType` vs `CallableType` vs `LiteralType`). No magic name strings
+(`"__union__"`, `"|"`), no non-uniform argument encoding.
+
+Nodes added in `parse/nodes.py`:
+
+```python
+@dataclass(frozen=True)
+class TpyTypeRef:
+    """Name or Name[args]. Covers primitives, generics, structural wrappers
+    expressed via subscript (Ptr[T], Own[T], Optional[T], Readonly[T],
+    tuple[T1,T2], Array[T, N], ...), qualified names (Outer.Inner), type
+    parameters, Self, None."""
+    name: str
+    args: tuple[TypeRefNode | int, ...] = ()   # int for Array[T, N]
+    loc: SourceLocation | None = None
+
+@dataclass(frozen=True)
+class TpyUnionRef:
+    members: tuple[TypeRefNode, ...]
+    loc: SourceLocation | None = None
+
+@dataclass(frozen=True)
+class TpyCallableRef:
+    kind: Literal["Callable", "Fn"]
+    params: tuple[TypeRefNode, ...]
+    return_type: TypeRefNode
+    loc: SourceLocation | None = None
+
+@dataclass(frozen=True)
+class TpyLiteralRef:
+    values: tuple[LiteralValue, ...]           # reuses existing LiteralValue
+    loc: SourceLocation | None = None
+
+type TypeRefNode = TpyTypeRef | TpyUnionRef | TpyCallableRef | TpyLiteralRef
+```
+
+Notes:
+
+- `frozen=True` signals "parser output, treat as immutable" and matches
+  the convention used by `TpyType` subclasses.
+- PEP 695 `type` alias (`type TypeRefNode = ...`) is used because it
+  lazy-evaluates -- forward references inside the aliased classes work
+  without string quoting.
+- Dotted qualified names stay as a single `name` string
+  (`"Outer.Inner"`); sema splits them during resolution.
+- All four nodes re-exported from `parse/__init__.py`.
+- No parser or sema wiring yet. F.3b introduces the first consumers.
 
 #### Phase F.3b -- Parser emits `TpyTypeRef` for leaf annotation sites
 
