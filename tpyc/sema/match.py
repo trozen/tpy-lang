@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType,
     NominalType,
-    NoneType, OptionalType, UnionType, EnumType, PendingStrType,
+    NoneType, OptionalType, UnionType, PendingStrType,
     LiteralType, LiteralValue, TypeParamRef,
     unwrap_readonly, unwrap_ref_type,
     is_float_type, is_any_str_type,
@@ -20,6 +20,7 @@ from ..modules import _resolve_concrete_type_name
 from ..type_def_registry import (
     is_bool_type, is_fixed_int_type, is_big_int_type,
     is_str_category, is_char_type, is_float_category,
+    is_enum_type, enum_info_of,
 )
 from ..parse import (
     TpyName, TpyFieldAccess,
@@ -72,7 +73,7 @@ class MatchAnalyzer:
                 effective_type = alias
         stmt.subject_type = effective_type
         is_union = isinstance(effective_type, UnionType)
-        is_enum = isinstance(effective_type, EnumType)
+        is_enum = is_enum_type(effective_type)
         is_literal = isinstance(effective_type, LiteralType)
         is_primitive = is_literal or (
             is_fixed_int_type(effective_type) or is_big_int_type(effective_type)
@@ -316,10 +317,11 @@ class MatchAnalyzer:
                 and str(m) not in seen_types
             ]
 
-        if isinstance(subject_type, EnumType):
+        if is_enum_type(subject_type):
+            einfo = enum_info_of(subject_type)
             return [
                 f"{subject_type.name}.{name}"
-                for name in subject_type.members
+                for name in einfo.members
                 if (subject_type.name, name) not in seen_values
             ]
 
@@ -766,7 +768,7 @@ class MatchAnalyzer:
                 )
         elif isinstance(val, int):
             if not (is_fixed_int_type(check_type) or is_big_int_type(check_type)
-                    or isinstance(check_type, EnumType)):
+                    or is_enum_type(check_type)):
                 raise self.ctx.error(
                     f"int literal pattern not valid for subject type '{subject_type}'",
                     pattern,
@@ -811,8 +813,8 @@ class MatchAnalyzer:
     ) -> None:
         """Validate a value pattern (e.g., Color.RED) against the subject type."""
         val_type = self.expr.analyze_expr(pattern.expr)
-        if isinstance(subject_type, EnumType):
-            if not isinstance(val_type, EnumType) or val_type.name != subject_type.name:
+        if is_enum_type(subject_type):
+            if not is_enum_type(val_type) or val_type.name != subject_type.name:
                 raise self.ctx.error(
                     f"value pattern type '{val_type}' does not match "
                     f"subject type '{subject_type}'", pattern

@@ -14,7 +14,6 @@ from typing import Any, Literal, Optional, TYPE_CHECKING
 from ..typesys import (
     TpyType, NominalType, FieldInfo, FunctionInfo,
     MethodSignature, TypeParamKind,
-    EnumType, IntEnumType,
 )
 
 
@@ -141,7 +140,7 @@ class TpyBinOp(TpyExpr):
     typed_dict_in_field: str | None = None  # Set by sema: "key" in TypedDict -> field presence check
     typed_dict_in_always_true: bool = False  # Set by sema: total=True field, fold to True
     optional_safe_eq: bool = False  # Set by sema: ==/!= with Optional value-type operand(s)
-    int_enum_coercion: 'IntEnumType | None' = None  # Set by sema: IntEnum arithmetic coerced to underlying type
+    int_enum_coercion: 'NominalType | None' = None  # Set by sema: IntEnum arithmetic coerced to underlying type
     divisor_non_zero: bool = False  # Set by sema: divisor provably non-zero, skip div-zero check
 
     def children(self) -> list[TpyExpr]:
@@ -221,8 +220,8 @@ class TpyCall(TpyExpr):
     kwarg_td_call: 'TpyExpr | None' = None  # Set by sema: synthetic TypedDict construction for **kwargs
     resolved_import: tuple[str, str] | None = None  # Set by parser: (module, name) for resolved imports
     resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved function overloads
-    enum_from_value: EnumType | None = None  # Set by sema for enum value lookup: Color(0)
-    enum_try_parse: EnumType | None = None   # Set by sema for tpy.try_parse(Color, "Red")
+    enum_from_value: NominalType | None = None  # Set by sema for enum value lookup: Color(0)
+    enum_try_parse: NominalType | None = None   # Set by sema for tpy.try_parse(Color, "Red")
     isinstance_var: str | None = None        # Set by sema: variable name being isinstance-checked
     isinstance_type: TpyType | None = None   # Set by sema: resolved type being checked for
     isinstance_is_protocol: bool = False     # Set by sema: protocol isinstance (if constexpr)
@@ -445,7 +444,7 @@ class TpySubscript(TpyExpr):
     obj: TpyExpr
     index: TpyExpr  # TpySlice for slicing, other TpyExpr for single-index
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
-    enum_from_name: 'EnumType | None' = None    # Set by sema for Color["Red"] name lookup
+    enum_from_name: 'NominalType | None' = None    # Set by sema for Color["Red"] name lookup
     bounds_safe: bool = False  # Set by sema: index provably in [0, len(obj)), skip bounds check
     is_stepped_slice: bool = False  # Set by sema: slice has step (a[::2])
     slice_function_info: 'FunctionInfo | None' = None  # Set by sema: resolved __getitem__ for slice
@@ -673,7 +672,7 @@ class TpyForEach(TpyStmt):
     iterable: TpyExpr
     body: list[TpyStmt]
     orelse: list[TpyStmt] = field(default_factory=list)
-    enum_iterable: 'EnumType | None' = None  # set by sema when iterating over enum type
+    enum_iterable: 'NominalType | None' = None  # set by sema when iterating over enum type
     elem_type: 'TpyType | None' = None  # set by sema: resolved element type for codegen
     is_tuple_unpack: bool = False  # set by parser: synthetic loop var for tuple destructuring
     const_loop_var: bool = False  # set by sema: loop var is never mutated, safe for const auto&

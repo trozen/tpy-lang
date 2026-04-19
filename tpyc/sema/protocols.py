@@ -13,7 +13,6 @@ from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, OwnType, ReadonlyType, RefType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, PropertyInfo, is_protocol_type,
     ListRepeatType, GenExprType, make_list, TupleType, OptionalType, IntLiteralType, FloatLiteralType, PendingListType, BIGINT, FLOAT,
-    EnumType, IntEnumType,
     impl_proto_matches_name, get_protocol_qname,
 )
 from ..coercions import is_protocol_safe_coercion, resolve_coercion, CoercionContext
@@ -28,6 +27,7 @@ from .. import qnames
 from ..type_def_registry import (
     is_copy_iter, is_own_iter, is_set, is_dict, is_array, is_span, is_list,
     is_fixed_int_type, is_big_int_type, is_char_type, is_str_category,
+    is_enum_type,
 )
 from ..typesys import is_numeric_type
 
@@ -129,7 +129,7 @@ class ProtocolChecker:
             return False
 
         # Enum/IntEnum: hashable, comparable, and equatable at C++ level
-        if isinstance(actual, (EnumType, IntEnumType)):
+        if is_enum_type(actual):
             if protocol.qualified_name() in (qnames.HASHABLE, qnames.COMPARABLE, qnames.EQUATABLE):
                 return True
 

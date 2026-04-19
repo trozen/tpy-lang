@@ -13,7 +13,7 @@ from ..typesys import (
     TpyType, NominalType, OptionalType, OwnType, ReadonlyType,
     TypeParamRef, TypeParamKind, RecordInfo, TupleType, UnionType,
     unwrap_readonly, unwrap_optional_own,
-    get_covariant_params, EnumType, PtrType,
+    get_covariant_params, PtrType,
 )
 from ..parse import (
     TpyRecord, TpyEnum, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -26,6 +26,7 @@ from .functions import factory_default_to_cpp
 from ..type_def_registry import (
     is_span_iter, is_array,
     is_big_int_type, is_bytes_type, int_traits_of,
+    is_enum_type, enum_info_of,
 )
 
 if TYPE_CHECKING:
@@ -475,7 +476,7 @@ class RecordGenerator:
         enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
         if not enum_type:
             return
-        underlying = enum_type.underlying_type.to_cpp()
+        underlying = enum_info_of(enum_type).underlying_type.to_cpp()
         short_name = enum.name.rsplit(".", 1)[-1]
         out.write(f"{INDENT}enum class {short_name} : {underlying} {{\n")
         for member_name, value, _ in enum.members:
@@ -821,7 +822,7 @@ class RecordGenerator:
             elem = typ.get_element_type()
             return elem is not None and self._fld_type_cpp_default_constructible(elem)
         # Enum types map to C++ enum class, which is trivially constructible.
-        if isinstance(typ, EnumType):
+        if is_enum_type(typ):
             return True
         # Raw pointers are trivially constructible (just uninitialized).
         if isinstance(typ, PtrType):

@@ -14,7 +14,7 @@ from ..typesys import (
     NominalType, PtrType, OwnType, OptionalType, NoneType, make_array,
     PendingListType, ListRepeatType,
     TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
-    EnumType, IntEnumType, TupleType, CallableType,
+    TupleType, CallableType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
     is_float_type, is_readonly_span)
@@ -25,6 +25,7 @@ from ..type_def_registry import (
     is_bytes_type, is_bytes_view_type,
     is_float32_type, is_float64_type, is_bytearray_type,
     int_traits_of,
+    is_enum_type, is_int_enum_type, enum_info_of,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -935,10 +936,10 @@ class ExpressionGenerator:
     def _truthy_for_rendered(self, rendered: str, var_type: TpyType) -> str:
         """Generate truthiness test for an already-rendered, already-dereferenced
         C++ expression. For pointer-locals, dereference before calling."""
-        if isinstance(var_type, IntEnumType):
-            cpp_underlying = var_type.underlying_type.to_cpp()
+        if is_int_enum_type(var_type):
+            cpp_underlying = enum_info_of(var_type).underlying_type.to_cpp()
             return f"(static_cast<{cpp_underlying}>({rendered}) != 0)"
-        if isinstance(var_type, EnumType):
+        if is_enum_type(var_type):
             return "true"
         if isinstance(var_type, OptionalType) and not var_type.uses_pointer_repr():
             return f"::tpy::is_truthy({rendered})"
@@ -1348,12 +1349,18 @@ class ExpressionGenerator:
             elif is_big_int_type(right_cmp) and is_float_type(left_cmp):
                 right = f"static_cast<{left_cmp.to_cpp()}>({right})"
 
-            # IntEnum coercion: cast enum operand(s) to underlying type
+            # IntEnum coercion: cast enum operand(s) to underlying type.
+            # int_enum_coercion is set by sema only for types that passed
+            # is_int_enum_type, which means they flowed through register_enum
+            # and have a populated TypeDef.enum payload -- enum_info_of is
+            # guaranteed non-None here.
             if expr.int_enum_coercion:
-                underlying_cpp = self.types.type_to_cpp(expr.int_enum_coercion.underlying_type)
-                if isinstance(left_type, IntEnumType):
+                einfo = enum_info_of(expr.int_enum_coercion)
+                assert einfo is not None, "int_enum_coercion set on a type without registered EnumInfo"
+                underlying_cpp = self.types.type_to_cpp(einfo.underlying_type)
+                if is_int_enum_type(left_type):
                     left = f"static_cast<{underlying_cpp}>({left})"
-                if isinstance(right_type, IntEnumType):
+                if is_int_enum_type(right_type):
                     right = f"static_cast<{underlying_cpp}>({right})"
             # Use sema-resolved comparison method when available.
             if expr.resolved_binop:
@@ -1410,10 +1417,10 @@ class ExpressionGenerator:
                 right = self._convert_to_fixed_int_arg(right, right_actual, param_type, expr.right)
             # IntEnum coercion: cast enum operand(s) to underlying type
             if expr.int_enum_coercion:
-                underlying_cpp = self.types.type_to_cpp(expr.int_enum_coercion.underlying_type)
-                if isinstance(left_type, IntEnumType):
+                underlying_cpp = self.types.type_to_cpp(enum_info_of(expr.int_enum_coercion).underlying_type)
+                if is_int_enum_type(left_type):
                     left = f"static_cast<{underlying_cpp}>({left})"
-                if isinstance(right_type, IntEnumType):
+                if is_int_enum_type(right_type):
                     right = f"static_cast<{underlying_cpp}>({right})"
             # C++ can't deduce template params from bare initializer lists,
             # so array literal operands need explicit std::vector<T>{...} prefix
@@ -1486,10 +1493,10 @@ class ExpressionGenerator:
 
         # IntEnum coercion
         if pair.int_enum_coercion:
-            underlying_cpp = self.types.type_to_cpp(pair.int_enum_coercion.underlying_type)
-            if isinstance(left_type, IntEnumType):
+            underlying_cpp = self.types.type_to_cpp(enum_info_of(pair.int_enum_coercion).underlying_type)
+            if is_int_enum_type(left_type):
                 left_str = f"static_cast<{underlying_cpp}>({left_str})"
-            if isinstance(right_type, IntEnumType):
+            if is_int_enum_type(right_type):
                 right_str = f"static_cast<{underlying_cpp}>({right_str})"
 
         return f"({left_str} {pair.op} {right_str})"
@@ -1698,8 +1705,8 @@ class ExpressionGenerator:
             return self.builtins.gen_call_from_fi(unaryop_result.method, operand, [])
 
         # IntEnum: unary negation via static_cast
-        if isinstance(operand_type, IntEnumType) and expr.op == "-":
-            underlying_cpp = self.types.type_to_cpp(operand_type.underlying_type)
+        if is_int_enum_type(operand_type) and expr.op == "-":
+            underlying_cpp = self.types.type_to_cpp(enum_info_of(operand_type).underlying_type)
             return f"(-static_cast<{underlying_cpp}>({operand}))"
 
         # Fallback for IntLiteralType (not in module system)
@@ -1893,11 +1900,16 @@ class ExpressionGenerator:
             var_decl_type = self.ctx.var_types.get(orig_var)
             get_ref = self.ctx.variant_data_expr(var_ref, var_decl_type) if var_decl_type else var_ref
             return f"std::holds_alternative<{cpp_type}>({get_ref})"
-        # Enum value lookup: Color(0) -> ::tpy::EnumUtil<Color>::from_value(0)
+        # Enum value lookup: Color(0) -> ::tpy::EnumUtil<Color>::from_value(0).
+        # enum_from_value is set only by sema when resolving via BindingKind.ENUM,
+        # whose binding always points to a registered enum NominalType -- so the
+        # TypeDef.enum payload is guaranteed populated here.
         if expr.enum_from_value is not None:
             enum_type = expr.enum_from_value
             cpp_type = enum_type.to_cpp()
-            underlying_cpp = enum_type.underlying_type.to_cpp()
+            einfo = enum_info_of(enum_type)
+            assert einfo is not None, "enum_from_value set on a type without registered EnumInfo"
+            underlying_cpp = einfo.underlying_type.to_cpp()
             arg = self.gen_expr(expr.args[0])
             # BigInt needs checked conversion to the underlying type
             arg_type = self.types.get_resolved_type(expr.args[0])
@@ -2750,7 +2762,7 @@ class ExpressionGenerator:
         # Chained nested type access: Outer.Mid.Inner -> Outer::Mid::Inner
         if isinstance(expr.obj, TpyFieldAccess):
             expr_type = self.ctx.get_expr_type(expr)
-            if isinstance(expr_type, EnumType) and "." in expr_type.name:
+            if is_enum_type(expr_type) and "." in expr_type.name:
                 # Enum member access: Container.Kind.LIST -> Container::Kind::LIST
                 return f"{expr_type.to_cpp()}::{cpp_field}"
 
@@ -2766,12 +2778,17 @@ class ExpressionGenerator:
             actual_obj_type = actual_obj_type.wrapped
         if isinstance(actual_obj_type, OwnType):
             actual_obj_type = actual_obj_type.wrapped
-        if isinstance(actual_obj_type, EnumType):
+        if is_enum_type(actual_obj_type):
             if expr.field == "name":
                 cpp_type = actual_obj_type.to_cpp()
                 return f"::tpy::EnumUtil<{cpp_type}>::name({obj})"
             elif expr.field == "value":
-                return f"static_cast<{actual_obj_type.underlying_type.to_cpp()}>({obj})"
+                # is_enum_type == True implies the TypeDef was registered via
+                # attach_dynamic_type_def(..., enum=EnumInfo(...)), so the
+                # enum payload is always present here.
+                einfo = enum_info_of(actual_obj_type)
+                assert einfo is not None, "is_enum_type==True but enum_info_of returned None"
+                return f"static_cast<{einfo.underlying_type.to_cpp()}>({obj})"
 
         # Narrowed vars (from isinstance std::get) are direct references, not pointers
         is_narrowed = (isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.narrowed_vars) or is_assign_narrowed
@@ -4011,7 +4028,7 @@ class ExpressionGenerator:
                     gen_arg = f"({gen_arg}).to_string()"
                 elif (arg_tr := int_traits_of(arg_type)) is not None and arg_tr.bits == 8:
                     gen_arg = f"static_cast<int>({gen_arg})"
-                elif isinstance(arg_type, EnumType):
+                elif is_enum_type(arg_type):
                     gen_arg = f"static_cast<int>({gen_arg})"
                 elif is_user_type:
                     gen_arg = f"::tpy::__str__({gen_arg})"

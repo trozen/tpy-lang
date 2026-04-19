@@ -10,8 +10,8 @@ from typing import TextIO, TYPE_CHECKING
 import io
 import sys as _sys
 
-from ..typesys import TpyType, NominalType, EnumType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names, is_void_like_type
-from ..type_def_registry import type_def_of
+from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names, is_void_like_type
+from ..type_def_registry import type_def_of, is_enum_type, enum_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
 
@@ -69,7 +69,7 @@ class _ProtocolDeps:
 
 def _references_nested_type(typ: TpyType) -> bool:
     """Check if a type references a nested type (dotted name)."""
-    if isinstance(typ, (NominalType, EnumType)) and "." in typ.name:
+    if (isinstance(typ, NominalType) or is_enum_type(typ)) and "." in typ.name:
         return True
     return any(_references_nested_type(inner) for inner in typ.inner_types())
 
@@ -942,7 +942,7 @@ class CodeGenerator:
         enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
         if not enum_type:
             return
-        underlying = enum_type.underlying_type.to_cpp()
+        underlying = enum_info_of(enum_type).underlying_type.to_cpp()
 
         out.write(f"enum class {enum.name} : {underlying} {{\n")
         for member_name, value, _ in enum.members:
@@ -964,7 +964,7 @@ class CodeGenerator:
             enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
             if not enum_type:
                 continue
-            underlying = enum_type.underlying_type.to_cpp()
+            underlying = enum_info_of(enum_type).underlying_type.to_cpp()
             cpp_enum_name = enum.name.replace(".", "::")
             qualified = f"{ns}::{cpp_enum_name}"
             member_count = len(enum.members)
@@ -994,7 +994,7 @@ class CodeGenerator:
             enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
             if not enum_type:
                 continue
-            underlying = enum_type.underlying_type.to_cpp()
+            underlying = enum_info_of(enum_type).underlying_type.to_cpp()
             cpp_enum_name = enum.name.replace(".", "::")
             qualified = f"{ns}::{cpp_enum_name}"
             member_count = len(enum.members)

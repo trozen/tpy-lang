@@ -16,7 +16,7 @@ from typing import Any, Literal, NoReturn, Optional
 from ..typesys import (
     TpyType, NominalType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, FinalType, SelfType,
     strip_auto_readonly, apply_auto_readonly, has_auto_readonly, strip_auto_own, apply_auto_own, ensure_qualified,
-    TypeParamRef, OptionalType, VoidType, make_union, UnionType, EnumType, TupleType, CallableType, make_fn_type,
+    TypeParamRef, OptionalType, VoidType, make_union, UnionType, TupleType, CallableType, make_fn_type,
     _contains_self_reference, validate_recursive_union_paths,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW, BOOL, FLOAT, FLOAT32, BIGINT, SELF, BASIC_SLICE, SLICE, FieldInfo, RecordInfo, TypeRegistry,
     FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, LiteralType, LiteralValue,
@@ -824,13 +824,10 @@ class Parser:
                     ))
                 elif isinstance(result, TpyEnum):
                     enums.append(result)
-                    # Register the enum type so it can be used in type annotations
-                    enum_type = EnumType(
-                        name=result.name,
-                        members=tuple(m for m, _, _ in result.members),
-                        member_values=tuple((m, v) for m, v, _ in result.members),
-                    )
-                    self.registry.register_enum(enum_type)
+                    # Register an enum placeholder so it can be used in type
+                    # annotations within the same file. Sema re-registers with
+                    # the fully-populated NominalType + TypeDef.enum payload.
+                    self.registry.register_enum(NominalType(name=result.name))
                 else:
                     records.append(result)
                     # Register the record type
@@ -1439,12 +1436,7 @@ class Parser:
                     # Register immediately with dotted name so forward references
                     # within the same class body work (e.g., kind: Container.Kind)
                     dotted_name = f"{node.name}.{nested.name}"
-                    enum_type = EnumType(
-                        name=dotted_name,
-                        members=tuple(m for m, _, _ in nested.members),
-                        member_values=tuple((m, v) for m, v, _ in nested.members),
-                    )
-                    self.registry.register_enum(enum_type)
+                    self.registry.register_enum(NominalType(name=dotted_name))
                     self._nested_type_scope[nested.name] = dotted_name
                     nested_enums.append(nested)
                 else:
@@ -1598,12 +1590,7 @@ class Parser:
             ))
             self._register_nested_types(nr)
         for ne in record.nested_enums:
-            enum_type = EnumType(
-                name=ne.name,
-                members=tuple(m for m, _, _ in ne.members),
-                member_values=tuple((m, v) for m, v, _ in ne.members),
-            )
-            self.registry.register_enum(enum_type)
+            self.registry.register_enum(NominalType(name=ne.name))
 
     def _parse_protocol(self, node: ast.ClassDef) -> TpyProtocol:
         """Parse a protocol definition."""

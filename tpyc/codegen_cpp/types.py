@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType,
     PendingListType, PendingDictType, PendingSetType, PendingViewType, make_list, make_dict, make_set, TypeParamRef, NominalType,
-    UnionType, NoneType, VoidType, EnumType, TupleType,
+    UnionType, NoneType, VoidType, TupleType,
     unwrap_readonly, is_protocol_type, resolve_int_literals,
     is_integer_type, is_float_type, is_void_like_type,
     INT32, BIGINT, FLOAT, FLOAT32, STR, BYTES,
@@ -22,6 +22,7 @@ from .context import qualified_cpp_name
 from ..type_def_registry import (
     is_list,
     is_fixed_int_type, is_big_int_type, is_bool_type, is_float64_type, is_float32_type,
+    is_enum_type,
 )
 
 if TYPE_CHECKING:
@@ -331,7 +332,7 @@ class TypeResolver:
                     return f"{qualified}<{args}>"
                 return qualified
         # Imported enum types: qualify with source module namespace
-        if isinstance(typ, EnumType):
+        if is_enum_type(typ):
             if typ.name in self.ctx.user_imported_enums:
                 source_module, original_name = self.ctx.user_imported_enums[typ.name]
                 return qualified_cpp_name(source_module, original_name)

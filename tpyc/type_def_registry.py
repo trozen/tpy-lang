@@ -16,12 +16,12 @@ per-category logic on top of TypeDef.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Callable, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 if TYPE_CHECKING:
-    from tpyc.typesys import TpyType
+    from tpyc.typesys import TpyType, RecordInfo, ProtocolInfo
 
 
 class TypeCategory(Enum):
@@ -77,6 +77,26 @@ class FloatTraits:
 
 
 @dataclass(frozen=True)
+class EnumInfo:
+    """Enum payload attached to TypeDef.enum.
+
+    Carries the members / member_values / underlying_type / is_int_enum
+    fields that previously lived on the EnumType / IntEnumType subclasses.
+    Both enum flavors share TypeCategory.ENUM; `is_int_enum` gates the
+    int-arithmetic surface.
+    """
+    members: tuple[str, ...]
+    member_values: tuple[tuple[str, int], ...]
+    underlying_type: "TpyType"
+    is_int_enum: bool
+    module_name: str | None = None
+
+    @property
+    def member_value_map(self) -> dict[str, int]:
+        return dict(self.member_values)
+
+
+@dataclass
 class TypeDef:
     """Per-qname behavior record. All fields describe properties intrinsic
     to the qname (not to a particular instance's type_args).
@@ -95,6 +115,13 @@ class TypeDef:
     (value types = to_cpp(); non-value = to_cpp() + "&"). Set for primitives
     whose parameter rendering differs from their value rendering -- e.g.
     builtins.str renders as std::string but is passed as std::string_view.
+
+    TypeDef is non-frozen so that category-specific payloads (`record`,
+    `protocol`) can be attached after construction during sema registration.
+    Static (module-init) TypeDefs for builtins are populated once by
+    `_populate()` and then treated as effectively read-only; dynamic
+    attachments go through `attach_dynamic_type_def()` and are reset by
+    `clear_dynamic_type_defs()` between compilations.
     """
     qname: str
     category: TypeCategory
@@ -123,9 +150,30 @@ class TypeDef:
     # Category-specific trait payloads.
     int_traits: Optional[IntTraits] = None
     float_traits: Optional[FloatTraits] = None
+    # Category-specific payloads attached at sema-registration time.
+    # `record` carries RecordInfo for RECORD-category TypeDefs; `protocol`
+    # carries ProtocolInfo for PROTOCOL-category TypeDefs. Builtin
+    # container / primitive categories (LIST, DICT, FIXED_INT, ...) may
+    # also gain a `record` payload when their @builtin_type stub registers
+    # a RecordInfo (e.g. list, dict -- the stub contributes methods).
+    # `enum` carries EnumInfo for ENUM-category TypeDefs (populated when
+    # an Enum or IntEnum is registered). The IntEnum/Enum distinction is
+    # `enum.is_int_enum`; both share TypeCategory.ENUM.
+    record: Optional[Any] = None
+    protocol: Optional[Any] = None
+    enum: Optional[EnumInfo] = None
 
 
 _type_defs: dict[str, TypeDef] = {}
+
+# Qnames whose TypeDef was created or mutated by a dynamic attachment
+# (sema-time `attach_dynamic_type_def`). On `clear_dynamic_type_defs()`
+# purely-dynamic TypeDefs are removed and pre-existing static ones get
+# their record/protocol payload reset. This keeps the static registry
+# (populated once at module load by `_populate()`) independent from per-
+# compilation state, without requiring two separate dicts.
+_dynamic_created_qnames: set[str] = set()
+_dynamic_attached_qnames: set[str] = set()
 
 
 def register(td: TypeDef) -> None:
@@ -136,6 +184,65 @@ def register(td: TypeDef) -> None:
 
 def get_type_def(qname: str) -> Optional[TypeDef]:
     return _type_defs.get(qname)
+
+
+def attach_dynamic_type_def(
+    qname: str,
+    category: "TypeCategory",
+    *,
+    record: Optional["RecordInfo"] = None,
+    protocol: Optional["ProtocolInfo"] = None,
+    enum: Optional[EnumInfo] = None,
+    is_value_type: Optional[bool] = None,
+) -> TypeDef:
+    """Attach a RecordInfo / ProtocolInfo / EnumInfo payload to the TypeDef
+    for qname.
+
+    Creates a new TypeDef with the given category if none exists (purely
+    dynamic case: user records/protocols/enums whose qname isn't in the
+    static registry). If a TypeDef already exists (e.g. `builtins.list`
+    whose @builtin_type stub also produces a RecordInfo), the existing
+    category is preserved and only the payloads are set.
+
+    `is_value_type` overrides the default (False) when creating a new
+    TypeDef -- needed for enums (which are value types) because the base
+    NominalType.is_value_type() consults TypeDef.is_value_type.
+
+    Returns the TypeDef for convenience.
+    """
+    td = _type_defs.get(qname)
+    if td is None:
+        td = TypeDef(
+            qname=qname, category=category,
+            record=record, protocol=protocol, enum=enum,
+            is_value_type=(is_value_type if is_value_type is not None else False),
+        )
+        _type_defs[qname] = td
+        _dynamic_created_qnames.add(qname)
+    else:
+        if record is not None:
+            td.record = record
+        if protocol is not None:
+            td.protocol = protocol
+        if enum is not None:
+            td.enum = enum
+        _dynamic_attached_qnames.add(qname)
+    return td
+
+
+def clear_dynamic_type_defs() -> None:
+    """Reset dynamic attachments. Called from `clear_all_compilation_state`
+    so per-compilation RECORD/PROTOCOL/ENUM TypeDefs don't bleed across runs."""
+    for qname in _dynamic_created_qnames:
+        _type_defs.pop(qname, None)
+    _dynamic_created_qnames.clear()
+    for qname in _dynamic_attached_qnames:
+        td = _type_defs.get(qname)
+        if td is not None:
+            td.record = None
+            td.protocol = None
+            td.enum = None
+    _dynamic_attached_qnames.clear()
 
 
 def type_def_of(t: "TpyType") -> Optional[TypeDef]:
@@ -265,6 +372,45 @@ def int_traits_of(t: "TpyType") -> Optional[IntTraits]:
 def float_traits_of(t: "TpyType") -> Optional[FloatTraits]:
     td = type_def_of(t)
     return td.float_traits if td is not None else None
+
+
+def record_info_of(t: "TpyType") -> Optional["RecordInfo"]:
+    """Return the RecordInfo payload attached to this type's TypeDef, if any.
+
+    Returns None for types without a TypeDef or without an attached record
+    (structural wrappers, primitives, user records with no public qname, ...)."""
+    td = type_def_of(t)
+    return td.record if td is not None else None
+
+
+def protocol_info_of(t: "TpyType") -> Optional["ProtocolInfo"]:
+    """Return the ProtocolInfo payload attached to this type's TypeDef, if any."""
+    td = type_def_of(t)
+    return td.protocol if td is not None else None
+
+
+def enum_info_of(t: "TpyType") -> Optional[EnumInfo]:
+    """Return the EnumInfo payload attached to this type's TypeDef, if any.
+
+    Every enum registered by sema has a TypeDef entry (sema/registration.py
+    assigns each enum a qname, including `__main__.<name>` for entry-point
+    enums). Returns None for non-enum types."""
+    td = type_def_of(t)
+    return td.enum if td is not None else None
+
+
+def is_enum_type(t: "TpyType") -> bool:
+    """True for any enum -- both plain Enum and IntEnum."""
+    return _is_cat(t, TypeCategory.ENUM)
+
+
+def is_int_enum_type(t: "TpyType") -> bool:
+    """True for IntEnum specifically; False for plain Enum and non-enums.
+
+    IntEnum shares TypeCategory.ENUM with plain Enum; the distinction is
+    `enum.is_int_enum`."""
+    info = enum_info_of(t)
+    return info is not None and info.is_int_enum
 
 
 # --- Population -----------------------------------------------------------
@@ -458,7 +604,10 @@ def _populate() -> None:
     register(TypeDef("builtins.dict_items",  TC.DICT_VIEW, is_value_type=True,
                      is_send=False, is_sync=False,
                      cpp_formatter=_dict_view_cpp("items")))
-    register(TypeDef("builtins.Range",       TC.RANGE,     is_value_type=True))
+    register(TypeDef(
+        "builtins.Range", TC.RANGE, is_value_type=True,
+        cpp_formatter=lambda args: f"::tpy::Range<{args[0].to_cpp()}>",
+    ))
 
     # Array[T, N]: fixed-size, value-like (not heap-backed). type_args is
     # (element, size) where size is int or integer-kind TypeParamRef.

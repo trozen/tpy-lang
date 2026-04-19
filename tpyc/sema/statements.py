@@ -12,7 +12,7 @@ from ..typesys import (
     FinalType,
     PendingListType, PendingDictType, make_list, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, TypeParamRef,
     ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType, UnknownElementType,
-    EnumType, unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType,
+    unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType,
     LiteralType,
     ViewTypeFamily, VIEW_TYPE_FAMILIES, STR_FAMILY, BYTES_FAMILY,
     PendingGenericInstanceType, contains_fn_type,
@@ -571,10 +571,10 @@ class StatementAnalyzer:
                 return fi
         return None
 
-    def _resolve_enum_iterable(self, stmt: TpyForEach) -> EnumType | None:
+    def _resolve_enum_iterable(self, stmt: TpyForEach) -> NominalType | None:
         """Check if for-each iterates over an enum type (e.g. `for c in Color`).
 
-        Returns the EnumType if so, None otherwise.
+        Returns the enum NominalType if so, None otherwise.
         """
         iterable = stmt.iterable
         if not isinstance(iterable, TpyName):
@@ -2085,59 +2085,37 @@ class StatementAnalyzer:
                 f"Cannot assign to '{stmt.name}' in nested function"
                 f" without 'nonlocal' declaration",
                 stmt)
-        # Resolve type aliases + enums in annotation (single tree walk).
-        # - NominalType with a registered type alias -> alias target
-        #   (one level; recurses into alias's inner types; _seen guards self-referential aliases)
-        # - NominalType matching an enum name -> EnumType from sema registry
-        # - Stale EnumType (from parser) -> sema registry's EnumType (may be IntEnumType)
-        # Then resolve_type handles protocol flags, TypeParamRef upgrades, and
-        # compile-time-only aliases (FStr etc.) in a second walk.
-        if stmt.type and (self.ctx.registry.type_aliases or self.ctx.registry.enums):
+        # Type alias expansion: replace NominalType("Shape") with the alias
+        # target (one level; recurses into the target's inner types; _seen
+        # guards self-referential aliases). Must run before `resolve_type`
+        # because alias targets can contain further type references that
+        # resolve_type wants to process uniformly. Enum substitution is
+        # handled by `resolve_type` itself -- it replaces bare
+        # NominalType("Color") placeholders with the registered enum
+        # NominalType (which carries `_module_qname`), whether the enum
+        # appears directly or is the target of a resolved alias.
+        if stmt.type and self.ctx.registry.type_aliases:
             registry = self.ctx.registry
-            has_aliases = bool(registry.type_aliases)
-            has_enums = bool(registry.enums)
             recursive_names = self.ctx.recursive_union_names
 
-            def _enum_lookup(t: TpyType) -> TpyType:
-                if not has_enums:
-                    return t
-                if isinstance(t, NominalType) and not t.is_protocol:
-                    enum = registry.get_enum(t.name)
-                    if enum is not None:
-                        return enum
-                elif isinstance(t, EnumType):
-                    enum = registry.get_enum(t.name)
-                    if enum is not None:
-                        return enum
-                return t
-
-            def _resolve(t: TpyType, _seen: frozenset[str] = frozenset()) -> TpyType:
-                # Alias resolution: replace NominalType with registered alias target.
-                # After resolving, apply enum lookup on the target (matches the
-                # original alias-then-enum pipeline so aliases-to-enums resolve).
-                if (has_aliases
-                        and isinstance(t, NominalType)
+            def _expand_aliases(t: TpyType, _seen: frozenset[str] = frozenset()) -> TpyType:
+                if (isinstance(t, NominalType)
                         and t.is_user_record
                         and t.name not in _seen
                         and t.name not in recursive_names):
                     alias = registry.get_type_alias(t.name)
                     if alias is not None:
                         new_seen = _seen | {t.name}
-                        resolved = alias.map_inner_types(
-                            lambda inner: _resolve(inner, new_seen)
+                        return alias.map_inner_types(
+                            lambda inner: _expand_aliases(inner, new_seen)
                         )
-                        return _enum_lookup(resolved)
-                # No alias hit: try enum on this node directly.
-                after_enum = _enum_lookup(t)
-                if after_enum is not t:
-                    return after_enum
-                # Recurse into inner types.
-                return t.map_inner_types(lambda inner: _resolve(inner, _seen))
+                return t.map_inner_types(lambda inner: _expand_aliases(inner, _seen))
 
-            stmt.type = _resolve(stmt.type)
+            stmt.type = _expand_aliases(stmt.type)
 
-        # Resolve type to set is_protocol flag, upgrade NominalType -> TypeParamRef
-        # in generic scopes, and handle compile-time-only aliases (FStr).
+        # resolve_type sets is_protocol flag, upgrades NominalType -> TypeParamRef
+        # in generic scopes, substitutes enum placeholders, and handles
+        # compile-time-only aliases (FStr etc.).
         if stmt.type:
             stmt.type = self.type_ops.resolve_type(stmt.type)
 

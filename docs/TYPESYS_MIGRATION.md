@@ -4,32 +4,40 @@
 
 Unify the type hierarchy around two shapes: **nominal** (identity = qualified name + type args, behavior from a registry) and **structural** (identity = operand shape, behavior derived from operands). Builtins, containers, primitives, records, protocols, and enums all become `NominalType` with behavior sourced from a single `TypeDef` registry. Wrappers (`Ptr`, `Own`, `Optional`, `Union`, `Tuple`, `Callable`, `Readonly`) stay structural.
 
-## Current state (Phases A, B, C, D complete)
+## Current state (Phases A, B, C, D, E complete)
 
 ```
 TpyType (frozen dataclass base)
   NominalType (name, type_args)
-    -- all container subclasses removed in Phase B; containers now flow through
-       NominalType + TypeDef registry with qname-based dispatch.
-    -- all primitive subclasses (FixedIntType, BoolType, StrType, CharType,
-       FloatType, Float32Type, BigIntType, CharType, StringType, StrViewType,
-       BytesType, ByteArrayType, BytesViewType, BasicSliceType, SliceType,
-       FStrType) removed in Phase D step 6; primitives are singletons like
-       NominalType("Int32", (), _module_qname="tpy.Int32").
-  EnumType, IntEnumType                                        (distinct data model -- TODO Phase E)
+    -- all container subclasses removed in Phase B.
+    -- all primitive subclasses removed in Phase D step 6; primitives are
+       singletons like NominalType("Int32", (), _module_qname="tpy.Int32").
+    -- RangeType, EnumType, IntEnumType removed in Phase E; enums become
+       NominalType("<Name>", (), _module_qname="<module>.<Name>") with an
+       EnumInfo payload attached to TypeDef.enum. `__main__` entry-point
+       enums use "__main__.<Name>" as their synthesized qname.
   PtrType, OwnType, OptionalType, UnionType, TupleType, ReadonlyType, ...  (structural wrappers)
   CallableType(is_template: bool)                                          -- FnType merged in, Phase C done
 ```
 
 TypeDef registry in `tpyc/type_def_registry.py` holds per-qname behavior
 (`cpp_formatter`, `is_send`/`is_sync` as bool or callable, `element_of`,
-`subscript_borrows`, `is_value_type`, `needs_explicit_element_target`).
-Conformance tests in `tpyc/test_type_def_registry.py` pin the invariants.
+`subscript_borrows`, `is_value_type`, `needs_explicit_element_target`,
+and the category payloads `record: RecordInfo`, `protocol: ProtocolInfo`,
+`enum: EnumInfo`). `attach_dynamic_type_def(qname, category, ...)` creates
+or updates entries at sema-registration time; `clear_dynamic_type_defs()`
+resets them between compilations (hooked into
+`clear_all_compilation_state`). Conformance tests in
+`tpyc/test_type_def_registry.py` pin the invariants: `PRIMITIVE_SNAPSHOT`
+(primitives), `ENUM_SNAPSHOT` (enums).
 
 Remaining problems:
-- Primitive subclasses hardcode names and C++ mappings; behavior is per-class instead of per-qname.
-- Parser creates concrete subclass instances (via factory table) that should be deferred to sema.
-- Two code paths for builtins vs user types throughout sema and codegen.
+- Parser still constructs structural types (PtrType, OptionalType, UnionType, ...)
+  and resolves module-local primitive names directly -- Phase F makes parsing
+  purely syntactic with sema owning all resolution.
+- `_value_type_record_names` / `_send_record_names` / `_sync_record_names`
+  accumulators on `typesys.py` parallel the new TypeDef.record payload;
+  a future pass could fold them onto TypeDef fields and drop the globals.
 
 ## Target state
 
@@ -192,9 +200,21 @@ Concrete followups to make the invariants stick:
   - `test_type_matches_numeric_rejects_cross_container` and `test_structural_match_rejects_cross_container` -- unit-level pins for the two overloads.py sites.
 - **Durable review check** -- grep future PRs for `isinstance(x, NominalType) and not x.is_protocol` -- most sites want `x.is_user_record` instead (user records are the only ones that bypass the TypeDef/factory system).
 
-### Phase E -- Records, protocols, enums
+### Phase E -- Records, protocols, enums (DONE)
 
-Records and protocols already flow through `NominalType` today, so registering a TypeDef on record/protocol creation is mostly bookkeeping. Enums: move `EnumType` / `IntEnumType` data (members, underlying type) to `TypeDef.enum`; migrate enum-specific code to read from TypeDef; delete the enum subclasses.
+Six sub-steps shipped on `typesys-migration-phase-e`:
+
+1. **RangeType elimination.** `RangeType` collapsed into `NominalType("Range", (elem,), _module_qname="builtins.Range")` via a new `make_range` factory; `cpp_formatter=lambda args: f"::tpy::Range<{args[0].to_cpp()}>"` added to the `builtins.Range` TypeDef so `_emits_own_cpp` returns True for imported Range aliases. Zero call sites post-collapse (no code was reading `.elem`).
+2. **Record/protocol TypeDef bookkeeping.** `TypeDef` is now non-frozen and carries `record: Optional[RecordInfo]` and `protocol: Optional[ProtocolInfo]` payloads. New `attach_dynamic_type_def(qname, category, *, record, protocol, enum, is_value_type)` creates-or-updates a TypeDef; `clear_dynamic_type_defs()` resets the dynamic slice and is hooked into `clear_all_compilation_state()`. `sema/registration.py` attaches on `register_record` (for `builtin_type_key` records and for user records in public modules -- `__main__` stays un-attached, same as the existing enum convention) and `register_protocol`. Accessors `record_info_of(t)` / `protocol_info_of(t)` added but have no consumers yet; the groundwork lets Phase F unify `@native` / `_native_cpp_names` / `@builtin_type` through a single TypeDef path.
+3. **ENUM\_SNAPSHOT conformance table.** Hand-written golden values pin `is_int_enum` / `members` / `member_values` / `underlying_type` qname / `qualified_name` / `is_value_type` / `is_send` / `is_sync` / `to_cpp` / `member_value_map` for four fixtures (Enum/IntEnum × qualified/__main__/UInt8-underlying). Mirrors `PRIMITIVE_SNAPSHOT`'s role from Phase D.
+4. **`EnumInfo` + `TypeDef.enum`.** `EnumInfo(members, member_values, underlying_type, is_int_enum, module_name)` added to `tpyc/type_def_registry.py`; `TypeDef.enum` is the payload slot. Accessor `enum_info_of(t)` and predicates `is_enum_type(t)` / `is_int_enum_type(t)` added. Both predicates initially kept isinstance fallbacks (removed in step 7).
+5. **Enum TypeDef population.** `sema/registration.py::register_enum` now always attaches a TypeDef.enum entry, using `"__main__.<name>"` as the qname fallback for entry-point enums so `type_def_of(t)` resolves uniformly. `is_value_type=True` is set at attach time. The NominalType built for the enum carries `_module_qname` from the same synthesized qname.
+6. **Reader flip.** ~49 `isinstance(x, EnumType)` / `isinstance(x, IntEnumType)` / `isinstance(x, (EnumType, IntEnumType))` sites across sema (match, expressions, statements, calls, protocols, analyzer) and codegen (generator, records, types, expressions, match) and `macro_api.py` converted to predicate calls. All `.members` / `.member_values` / `.underlying_type` / `.member_value_map` accesses on EnumType instances migrated to `enum_info_of(x).members` etc. The `_enum_lookup` helper in `sema/statements.py` simplified (the `isinstance(EnumType)` branch became dead once the subclass started being just a NominalType).
+7. **Subclass deletion.** `EnumType` / `IntEnumType` removed from `typesys.py`. Parser and `sema/registration.py` construction sites emit `NominalType(name, (), _module_qname=...)` instead. `TypeRegistry.register_enum` / `get_enum` annotations retyped to `NominalType`. Two downstream fixes surfaced during deletion:
+   - **Enum substitution in `TypeOperations.resolve_type`.** Parser emits `NominalType("Color", _module_qname=None)` for a same-module enum annotation; sema's `resolve_type` now substitutes it with the registered enum NominalType (which carries `_module_qname`), so `type_def_of(t)` resolves in downstream sema/codegen. Ordering also flipped: enums are registered before records so `register_record`'s field-type resolution can see them.
+   - **`OptionalType.force_pointer_repr` staleness.** `resolve_type`'s `OptionalType` branch used to snapshot `typ.uses_pointer_repr()` on the *unresolved* inner, freezing the wrong decision when the inner later substituted into a value-typed enum. Now preserves only the original explicit `force_pointer_repr` (reserved for generic substitution) and lets `uses_pointer_repr()` recompute from the resolved inner.
+
+Full suite green at every sub-step; `--force-exec` at the phase boundary also green (2606 passed, 1 skipped).
 
 ### Phase F -- Move type resolution from parser to sema
 

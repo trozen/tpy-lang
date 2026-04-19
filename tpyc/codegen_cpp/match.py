@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, OptionalType,
-    PendingStrType, UnionType, EnumType,
+    PendingStrType, UnionType,
     LiteralType,
     unwrap_readonly, is_any_str_type,
 )
@@ -21,7 +21,7 @@ from ..parse import (
 )
 from .context import INDENT, CodeGenError, escape_cpp_name, escape_cpp_string, escape_cpp_char
 from .string_dispatch import find_best_discriminator, STRING_SWITCH_THRESHOLD
-from ..type_def_registry import is_fixed_int_type, is_bool_type
+from ..type_def_registry import is_fixed_int_type, is_bool_type, is_enum_type
 
 if TYPE_CHECKING:
     from ..parse import SourceLocation
@@ -75,7 +75,7 @@ class MatchGenerator:
                 self._gen_match_guarded_union(out, stmt, subject_type, indent)
             else:
                 self._gen_match_switch_union(out, stmt, subject_type, indent)
-        elif isinstance(subject_type, EnumType):
+        elif is_enum_type(subject_type):
             self._gen_match_switch_enum(out, stmt, indent)
         elif isinstance(subject_type, LiteralType):
             base = subject_type.base_type
@@ -1322,7 +1322,7 @@ class MatchGenerator:
         out.write(f"{inner}auto& __match_inner = {deref};\n")
 
         inner_type = subject_type.inner
-        if isinstance(inner_type, EnumType):
+        if is_enum_type(inner_type):
             groups = self._group_switch_arms(inner_cases, kind="enum")
             self.ctx.indent_level += 1
             self._emit_switch_groups(out, groups, inner, subject_expr="__match_inner")

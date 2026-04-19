@@ -11,7 +11,7 @@ from typing import Optional
 from ..typesys import (
     TpyType, TypeRegistry, NominalType, UnionType, FinalType, STR, LiteralType, VoidType, VOID,
     NoneType, INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
-    FunctionInfo, EnumType, is_any_str_type,
+    FunctionInfo, is_any_str_type,
     make_ref, unwrap_ref_type, RefType,
     is_integer_type, is_void_like_type,
 )
@@ -390,11 +390,20 @@ class SemanticAnalyzer:
         if self.ctx.user_imported_enums:
             self._resolve_imported_enums(module)
 
-        # First pass: register all records and enums (including nested)
-        for record in module.all_records():
-            self.registrar.register_record(record)
+        # First pass: register all enums then records. Enums are registered
+        # first so that record field-type resolution (in register_record) can
+        # substitute parser-level NominalType("Color") placeholders with the
+        # registered enum NominalType that carries `_module_qname`. Records
+        # never depend on each other at registration time, and enums are
+        # self-contained, so this ordering is safe even for nested enums --
+        # nested enum names are already dotted ("Message.Kind") when
+        # `register_enum` sees them (parser assigns them in
+        # `_register_nested_types` / `_prefix_nested_names`), so the parent
+        # record need not exist in the sema registry yet.
         for enum in module.all_enums():
             self.registrar.register_enum(enum)
+        for record in module.all_records():
+            self.registrar.register_record(record)
 
         # Populate macro_ns with exports from macro dep modules.
         # Macros have run during register_record, so we know which macro
@@ -1438,7 +1447,7 @@ class SemanticAnalyzer:
                 stmt.type = self._resolve_enum(stmt.type, enums)
 
     @staticmethod
-    def _resolve_func_enums(func: TpyFunction, enums: dict[str, EnumType]) -> None:
+    def _resolve_func_enums(func: TpyFunction, enums: dict[str, NominalType]) -> None:
         """Resolve enum types in a function's signature."""
         if func.return_type is not None:
             func.return_type = SemanticAnalyzer._resolve_enum(func.return_type, enums)
@@ -1448,8 +1457,9 @@ class SemanticAnalyzer:
                 func.params[i] = (name, resolved)
 
     @staticmethod
-    def _resolve_enum(typ: TpyType, enums: dict[str, EnumType]) -> TpyType:
-        """Recursively substitute NominalType placeholders with EnumType for imported enums."""
+    def _resolve_enum(typ: TpyType, enums: dict[str, NominalType]) -> TpyType:
+        """Recursively substitute NominalType placeholders with the registered
+        enum NominalType (which carries _module_qname) for imported enums."""
         if isinstance(typ, NominalType) and not typ.is_protocol:
             resolved = enums.get(typ.name)
             if resolved is not None:

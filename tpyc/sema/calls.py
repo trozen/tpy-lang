@@ -15,7 +15,7 @@ from ..typesys import (
     LiteralType, LiteralValue, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, ParamInfo, ReadonlyType,
     UNKNOWN_ELEMENT, UnknownElementType, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
-    UnionType, EnumType, VOID, BIGINT, BOOL, STR, INT32, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own,
+    UnionType, VOID, BIGINT, BOOL, STR, INT32, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own,
     is_any_str_type, container_to_str_template, error_return_matches,
     is_protocol_union, protocol_union_protocols,
     STRVIEW, MutationCallEdge,
@@ -56,6 +56,7 @@ from ..type_def_registry import (
     is_fixed_int_type, is_bool_type, is_char_type, is_fstr_type,
     is_str_type, is_big_int_type,
     int_traits_of,
+    is_enum_type,
 )
 
 
@@ -427,7 +428,7 @@ def _repr_fallback_template(typ: TpyType) -> str | None:
         return _REPR_TEMPLATE
     if is_char_type(typ):
         return _REPR_TEMPLATE
-    if isinstance(typ, EnumType):
+    if is_enum_type(typ):
         return _REPR_TEMPLATE
     if isinstance(typ, OptionalType):
         return _REPR_TEMPLATE
@@ -1275,11 +1276,11 @@ class CallAnalyzer:
         return result_type
 
     def _analyze_tpy_try_parse(self, expr: TpyCall) -> TpyType:
-        """Analyze try_parse(EnumType, str) -> Optional[EnumType]."""
+        """Analyze try_parse(EnumT, str) -> Optional[EnumT] for some enum type EnumT."""
         self._reject_kwargs_for_builtin(expr, "try_parse")
         if len(expr.args) != 2:
             raise self.ctx.error(
-                "try_parse() takes exactly 2 arguments: try_parse(EnumType, name)",
+                "try_parse() takes exactly 2 arguments: try_parse(EnumT, name)",
                 expr,
             )
         first_arg = expr.args[0]
@@ -1483,7 +1484,7 @@ class CallAnalyzer:
             qualified_name="builtins.isinstance",
         )
 
-    def _analyze_enum_from_value(self, expr: TpyCall, enum_type: EnumType) -> TpyType:
+    def _analyze_enum_from_value(self, expr: TpyCall, enum_type: NominalType) -> TpyType:
         """Analyze enum value lookup: Color(0) -> Color."""
         self._reject_kwargs_for_builtin(expr, enum_type.name)
         if len(expr.args) != 1:

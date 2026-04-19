@@ -19,7 +19,7 @@ from enum import Enum, auto
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .typesys import TpyType, FunctionInfo, RecordInfo, EnumType
+    from .typesys import TpyType, FunctionInfo, RecordInfo, NominalType
 
 
 class BindingKind(Enum):
@@ -41,7 +41,7 @@ class NameBinding:
     type: Optional[TpyType] = None           # For VARIABLE/BUILTIN
     func_infos: Optional[list[FunctionInfo]] = None  # For FUNCTION (single or @overload group)
     record_info: Optional[RecordInfo] = None  # For RECORD
-    enum_type: Optional[EnumType] = None      # For ENUM
+    enum_type: Optional[NominalType] = None   # For ENUM (NominalType with TypeDef.enum)
     import_source: Optional[tuple[str, str]] = None  # For IMPORTED_NAME: (module, original_name)
 
 
@@ -77,7 +77,7 @@ class Namespace:
         """Convenience method to bind a user-defined record."""
         self.bind(NameBinding(kind=BindingKind.RECORD, name=info.name, record_info=info))
 
-    def bind_enum(self, enum_type: EnumType, name: str | None = None) -> None:
+    def bind_enum(self, enum_type: NominalType, name: str | None = None) -> None:
         """Convenience method to bind a user-defined enum."""
         self.bind(NameBinding(kind=BindingKind.ENUM, name=name or enum_type.name, enum_type=enum_type))
 

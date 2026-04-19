@@ -72,6 +72,27 @@ class TypeOperations:
                     return TypeParamRef(typ.name, bound=bound)
                 if typ.name in (self.ctx.record_ctx.type_params or []):
                     return TypeParamRef(typ.name)
+            # Substitute parser-level enum NominalType placeholders with the
+            # registered enum NominalType that carries `_module_qname`, so
+            # downstream `type_def_of(t)` / `is_enum_type(t)` / `enum_info_of(t)`
+            # resolve correctly. Parser creates `NominalType("Color")` (no
+            # _module_qname) for `c: Color`; `register_enum` creates the
+            # authoritative NominalType with its qname set.
+            #
+            # The `not _module_qname` check here is a *parser/sema boundary*
+            # marker ("this NominalType hasn't been resolved yet"), NOT the
+            # Post-Phase-D invariant #1 anti-pattern (using _module_qname as
+            # a semantic shortcut for arity / validity). Both anti-patterns
+            # read the same field but mean different things: the invariant
+            # forbids branching sema validation on _module_qname (arity
+            # checks should go through the factory / registry); the
+            # placeholder-vs-resolved distinction is a legitimate life-cycle
+            # check and goes away entirely once Phase F makes the parser
+            # emit TpyTypeRef instead of NominalType.
+            if not typ.type_args and not typ.is_protocol and not typ._module_qname:
+                enum_typ = self.ctx.registry.get_enum(typ.name)
+                if enum_typ is not None:
+                    return enum_typ
             # Resolve compile-time-only type aliases (e.g. FStr singleton).
             # Registered at import time for builtin types with no C++ representation.
             if not typ.type_args and self.ctx.registry.type_aliases:
@@ -143,7 +164,13 @@ class TypeOperations:
         elif isinstance(typ, OptionalType):
             resolved_inner = self.resolve_type(typ.inner, protocols_only=protocols_only)
             if resolved_inner is not typ.inner:
-                return OptionalType(resolved_inner, force_pointer_repr=typ.uses_pointer_repr())
+                # Preserve only explicit force_pointer_repr (set by generic
+                # substitution). Do *not* snapshot `typ.uses_pointer_repr()`
+                # here -- that was computed against the unresolved inner
+                # (parser-level NominalType with no _module_qname) and would
+                # freeze the wrong decision when the substitution turns the
+                # inner into a value-typed enum.
+                return OptionalType(resolved_inner, force_pointer_repr=typ.force_pointer_repr)
         elif isinstance(typ, UnionType):
             resolved_members = tuple(self.resolve_type(m, protocols_only=protocols_only) for m in typ.members)
             if any(new is not old for new, old in zip(resolved_members, typ.members)):

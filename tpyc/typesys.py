@@ -257,6 +257,7 @@ def clear_codegen_state() -> None:
 
 def clear_all_compilation_state() -> None:
     """Full reset for a new compilation (called once per tpyc invocation)."""
+    from tpyc.type_def_registry import clear_dynamic_type_defs
     _native_cpp_names.clear()
     _union_alias_names.clear()
     _value_type_record_names.clear()
@@ -265,6 +266,7 @@ def clear_all_compilation_state() -> None:
     _return_exception_names.clear()
     _return_exception_names.update(_BUILTIN_RETURN_EXCEPTIONS)
     _protocol_modules.clear()
+    clear_dynamic_type_defs()
 
 
 @dataclass(frozen=True)
@@ -529,89 +531,6 @@ class VoidType(TpyType):
 
     def to_cpp_return_const(self) -> str:
         return "void"
-
-
-@dataclass(frozen=True)
-class EnumType(TpyType):
-    """Enum type -- symbolic constants grouped under a named type.
-
-    Maps to C++ enum class. Members are integer-valued constants.
-    """
-    name: str
-    members: tuple[str, ...] = ()                     # ("Red", "Green", "Blue")
-    member_values: tuple[tuple[str, int], ...] = ()   # (("Red", 0), ("Green", 1), ("Blue", 2))
-    underlying_type: 'TpyType' = None  # type: ignore[assignment]  # Defaults to INT32 at runtime
-    module_name: str | None = None
-
-    def __post_init__(self) -> None:
-        # Frozen dataclass -- use object.__setattr__ to set default
-        if self.underlying_type is None:
-            object.__setattr__(self, 'underlying_type', INT32)
-
-    @property
-    def member_value_map(self) -> dict[str, int]:
-        """Dict-like lookup for member values."""
-        return dict(self.member_values)
-
-    def to_cpp(self) -> str:
-        return _native_cpp_names.get(self.name, self.name)
-
-    def __str__(self) -> str:
-        return self.name
-
-    def qualified_name(self) -> str | None:
-        if self.module_name:
-            return f"{self.module_name}.{self.name}"
-        return None
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def __eq__(self, other: object) -> bool:
-        """Type identity is by name only -- module_name is codegen metadata."""
-        if not isinstance(other, EnumType):
-            return NotImplemented
-        return self.name == other.name
-
-    def __hash__(self) -> int:
-        return hash(self.name)
-
-
-@dataclass(frozen=True, eq=False)
-class IntEnumType(EnumType):
-    """IntEnum type -- enum that also behaves as an integer.
-
-    Supports arithmetic with integers, ordering comparisons, and int coercion.
-    isinstance(t, EnumType) catches both EnumType and IntEnumType.
-    """
-    pass
-
-
-@dataclass(frozen=True)
-class RangeType(TpyType):
-    """Range type: range() -> ::tpy::Range<T> (lazy iterator over T)."""
-    elem: "TpyType"
-
-    def to_cpp(self) -> str:
-        return f"::tpy::Range<{self.elem.to_cpp()}>"
-
-    def __str__(self) -> str:
-        return f"Range[{self.elem}]"
-
-    def qualified_name(self) -> Optional[str]:
-        return "builtins.Range"
-
-    def get_element_type(self) -> Optional["TpyType"]:
-        return self.elem
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def inner_types(self) -> tuple['TpyType', ...]:
-        return (self.elem,)
-
-    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return RangeType(types[0])
 
 
 @dataclass(frozen=True)
@@ -2232,6 +2151,14 @@ def make_own_iter(element_type: 'TpyType') -> 'NominalType':
                        _module_qname="tpy.OwnIter")
 
 
+def make_range(element_type: 'TpyType') -> 'NominalType':
+    """Factory for Range[T]. Plain NominalType with qname builtins.Range;
+    behavior (is_value_type=True, cpp_formatter -> ::tpy::Range<T>) comes
+    from the TypeDef registry."""
+    return NominalType(name="Range", type_args=(element_type,),
+                       _module_qname="builtins.Range")
+
+
 def is_readonly_span(typ: 'TpyType') -> bool:
     """Check if a type is a read-only span (Span[readonly[T]])."""
     return span_is_readonly(typ)
@@ -3139,7 +3066,7 @@ class ModuleInfo:
     records: dict[str, RecordInfo] = field(default_factory=dict)  # type_name -> RecordInfo (exported types)
     protocols: dict[str, ProtocolInfo] = field(default_factory=dict)  # protocol_name -> ProtocolInfo
     type_aliases: dict[str, 'TpyType'] = field(default_factory=dict)  # alias_name -> resolved type
-    enums: dict[str, 'EnumType'] = field(default_factory=dict)  # enum_name -> EnumType
+    enums: dict[str, 'NominalType'] = field(default_factory=dict)  # enum_name -> NominalType (enum-kind)
 
     def has_export(self, name: str) -> bool:
         """Check if a name is exported by this module."""
@@ -3158,7 +3085,7 @@ class TypeRegistry:
         self.protocols: dict[str, ProtocolInfo] = {}
         self.modules: dict[str, ModuleInfo] = {}  # module_name -> ModuleInfo
         self.type_aliases: dict[str, 'TpyType'] = {}  # alias_name -> resolved type
-        self.enums: dict[str, 'EnumType'] = {}  # enum_name -> EnumType
+        self.enums: dict[str, 'NominalType'] = {}  # enum_name -> NominalType (enum-kind)
         # Fundamental types not in module system (pointer wrappers)
         self._fundamental_types = {"Own"}
 
@@ -3215,11 +3142,14 @@ class TypeRegistry:
         if info.module:
             register_protocol_module(info.name, info.module)
 
-    def register_enum(self, info: 'EnumType', name: str | None = None) -> None:
+    def register_enum(self, info: 'NominalType', name: str | None = None) -> None:
         """Register an enum type.
 
         Args:
-            info: The enum type to register.
+            info: The enum NominalType to register. Behavior payload
+                  (members, underlying type, is_int_enum) lives on the
+                  per-qname TypeDef.enum entry populated alongside this
+                  registration in sema/registration.py.
             name: Optional name to register under (defaults to info.name).
                   Used for imported enums that may have a local alias.
         """
@@ -3379,7 +3309,7 @@ class TypeRegistry:
     def get_protocol(self, name: str) -> Optional[ProtocolInfo]:
         return self.protocols.get(name)
 
-    def get_enum(self, name: str) -> Optional['EnumType']:
+    def get_enum(self, name: str) -> Optional['NominalType']:
         return self.enums.get(name)
 
     def is_known_type(self, name: str) -> bool:

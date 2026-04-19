@@ -98,7 +98,8 @@ def _get_type_factories() -> dict[str, tuple[list[TypeParamKind], "Callable[...,
         from tpyc.typesys import (
             make_list, make_dict, make_dict_keys_view, make_dict_values_view,
             make_dict_items_view, make_set, make_array, make_span, make_span_iter,
-            PtrType, RangeType, FLOAT32, FLOAT, BIGINT, BOOL, CHAR, STR, STRING, STRVIEW, FSTR, BYTES, BYTEARRAY, BYTESVIEW, BASIC_SLICE, SLICE,
+            make_range,
+            PtrType, FLOAT32, FLOAT, BIGINT, BOOL, CHAR, STR, STRING, STRVIEW, FSTR, BYTES, BYTEARRAY, BYTESVIEW, BASIC_SLICE, SLICE,
             ALL_FIXED_INTS,
         )
         TYPE = TypeParamKind.TYPE
@@ -110,7 +111,7 @@ def _get_type_factories() -> dict[str, tuple[list[TypeParamKind], "Callable[...,
             "builtins.dict_values": ([TYPE, TYPE], make_dict_values_view),
             "builtins.dict_items": ([TYPE, TYPE], make_dict_items_view),
             "builtins.set": ([TYPE], make_set),
-            "builtins.Range": ([TYPE], lambda t: RangeType(t)),
+            "builtins.Range": ([TYPE], make_range),
             "tpy.Array": ([TYPE, INT], lambda t, n: make_array(t, n)),
             "tpy.Span": ([TYPE], lambda t: make_span(t)),
             "tpy.SpanIter": ([TYPE], make_span_iter),
@@ -430,8 +431,8 @@ def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "Tpy
     record = registry.get_record_for_type(tpy_type)
     if record is not None:
         # extract_type_params handles NominalType.type_args as well as
-        # specialized subclasses (RangeType.elem, DictType.key_type/value_type,
-        # PtrType.pointee, etc.) via each type's get_element_type() hook.
+        # structural wrappers (PtrType.pointee, etc.) via each type's
+        # get_element_type() hook.
         # Include Self so that __iter__(self) -> Self substitutes to the
         # record's own type (used by SpanIter and similar self-iterator types).
         type_subst_b = extract_type_params(tpy_type)

@@ -19,7 +19,7 @@ from .parse.nodes import ParseError as _ParseError
 from .typesys import (
     TpyType, NominalType, OwnType,
     OptionalType,
-    TupleType, EnumType, UnionType, make_set, make_dict, make_list,
+    TupleType, UnionType, make_set, make_dict, make_list,
     FieldInfo as InternalFieldInfo,
     INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64,
     ALL_FIXED_INTS,
@@ -437,7 +437,8 @@ class TypeInfo:
 
     @property
     def is_enum(self) -> bool:
-        return isinstance(self._tpy_type, EnumType)
+        from .type_def_registry import is_enum_type
+        return is_enum_type(self._tpy_type)
 
     @property
     def is_list(self) -> bool:
@@ -461,7 +462,8 @@ class TypeInfo:
     @property
     def enum_name(self) -> str:
         """Get the enum class name (only valid when is_enum is True)."""
-        assert isinstance(self._tpy_type, EnumType)
+        from .type_def_registry import is_enum_type
+        assert is_enum_type(self._tpy_type)
         return self._tpy_type.name
 
     @property

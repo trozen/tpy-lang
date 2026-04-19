@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
-    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, EnumType, IntEnumType, make_span,
+    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, make_span,
     STRVIEW, INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64, BIGINT, BOOL, TupleType, final_type_str_to_strview,
     register_value_type_record, register_send_record, register_sync_record,
     register_return_exception, is_return_exception,
@@ -27,7 +27,10 @@ from ..parse import (
     TpyNoneLiteral, TpyStrLiteral,
 )
 from ..namespace import NameBinding, BindingKind
-from ..type_def_registry import is_fixed_int_type, is_fstr_type, int_traits_of
+from ..type_def_registry import (
+    is_fixed_int_type, is_fstr_type, int_traits_of,
+    attach_dynamic_type_def, TypeCategory, EnumInfo,
+)
 from .diagnostics import SemanticError
 from .operators import DUNDER_CPP_TEMPLATES
 from ..macro_api import ClassInfo, expr_to_cpp_default
@@ -209,19 +212,30 @@ class TypeRegistrar:
                         )
 
         module_name = self.ctx.module_name if self.ctx.module_name != "__main__" else None
-        common_args = dict(
-            name=enum.name,
-            members=tuple(m for m, _, _ in enum.members),
-            member_values=tuple((m, v) for m, v, _ in enum.members),
-            underlying_type=underlying,
-            module_name=module_name,
-        )
-        if enum.is_int_enum:
-            enum_type = IntEnumType(**common_args)
-        else:
-            enum_type = EnumType(**common_args)
+        members = tuple(m for m, _, _ in enum.members)
+        member_values = tuple((m, v) for m, v, _ in enum.members)
+        # Every enum gets a qname so it can be looked up in the TypeDef
+        # registry. For __main__ entry-point enums the `module_name` field
+        # on EnumInfo stays None (codegen uses that to decide whether to
+        # emit a namespace prefix) but the qname uses "__main__" as its
+        # prefix so `type_def_of(t)` always finds the entry.
+        qname_module = module_name if module_name is not None else "__main__"
+        qname = f"{qname_module}.{enum.name}"
+        enum_type = NominalType(name=enum.name, type_args=(), _module_qname=qname)
         self.ctx.registry.register_enum(enum_type)
         self.ctx.global_ns.bind_enum(enum_type)
+        attach_dynamic_type_def(
+            qname,
+            TypeCategory.ENUM,
+            enum=EnumInfo(
+                members=members,
+                member_values=member_values,
+                underlying_type=underlying,
+                is_int_enum=enum.is_int_enum,
+                module_name=module_name,
+            ),
+            is_value_type=True,
+        )
 
     _INT_ENUM_UNDERLYING_MAP: dict[str, TpyType] = {
         "int": INT32,
@@ -277,6 +291,10 @@ class TypeRegistrar:
             self.type_ops.validate_type(fld.type, allow_type_param_ref=is_generic, loc=fld.loc)
             # Protocol types cannot be used as field types
             resolved_fld_type = self.type_ops.resolve_type(fld.type)
+            # Persist the resolved type back so downstream sema/codegen sees
+            # parser-level NominalType placeholders substituted with registered
+            # enums / protocol-flagged types / resolved aliases.
+            fld.type = resolved_fld_type
             if is_protocol_type(resolved_fld_type):
                 raise SemanticError(
                     f"Protocol type '{fld.type.name}' cannot be used as a field type in '{record.name}'. "
@@ -757,6 +775,31 @@ class TypeRegistrar:
         )
         self.ctx.registry.register_record(info)
         self.ctx.global_ns.bind_record(info)
+        # Attach RecordInfo to the TypeDef registry under a stable qname:
+        # - @builtin_type stubs (list, dict, Array, ...) attach onto the
+        #   pre-existing static TypeDef by its builtin_type_key; the static
+        #   entry keeps its category (LIST/ARRAY/...) and picks up the
+        #   stub-contributed methods/fields.
+        # - User records use `{module}.{name}`; entry-point records fall
+        #   back to `__main__.{name}`. Mirrors the enum treatment so every
+        #   record has a queryable TypeDef entry (even though user records'
+        #   NominalType still carries `_module_qname=None` today -- the
+        #   entry is groundwork for Phase F, when user records gain qnames
+        #   and `is_user_record` gets redefined).
+        if info.builtin_type_key:
+            attach_dynamic_type_def(
+                info.builtin_type_key,
+                TypeCategory.RECORD,
+                record=info,
+            )
+        else:
+            module = public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace)
+            qname_module = module if module else "__main__"
+            attach_dynamic_type_def(
+                f"{qname_module}.{info.name}",
+                TypeCategory.RECORD,
+                record=info,
+            )
         # Local class definition shadows any `from X import name` import
         self.ctx.user_imported_records.pop(info.name, None)
         if self.ctx.user_imported_functions.pop(info.name, None):
@@ -1217,6 +1260,15 @@ class TypeRegistrar:
             module=public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace),
         )
         self.ctx.registry.register_protocol(info)
+        # Attach ProtocolInfo to the TypeDef registry under a stable qname.
+        # User protocols in entry-point modules fall back to `__main__.<name>`,
+        # mirroring the record/enum convention.
+        qname_module = info.module if info.module else "__main__"
+        attach_dynamic_type_def(
+            f"{qname_module}.{info.name}",
+            TypeCategory.PROTOCOL,
+            protocol=info,
+        )
 
         if protocol.is_dynamic:
             # Generic check can run immediately (doesn't need parent info)

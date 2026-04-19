@@ -29,7 +29,7 @@ from .typesys import TpyType, INT32, INT64, BIGINT, clear_all_compilation_state
 from .macro_loader import MacroRegistry, is_macro_module_source
 
 if TYPE_CHECKING:
-    from .typesys import FunctionInfo, RecordInfo, ProtocolInfo, EnumType, ModuleInfo, ModuleVarInfo
+    from .typesys import FunctionInfo, RecordInfo, ProtocolInfo, NominalType, ModuleInfo, ModuleVarInfo
 
 
 DEFAULT_INT_CHOICES = ("Int32", "Int64", "BigInt")
@@ -590,7 +590,7 @@ class ModuleExports:
     functions: dict[str, list[FunctionInfo]] = field(default_factory=dict)
     records: dict[str, RecordInfo] = field(default_factory=dict)
     protocols: dict[str, ProtocolInfo] = field(default_factory=dict)
-    enums: dict[str, 'EnumType'] = field(default_factory=dict)
+    enums: dict[str, 'NominalType'] = field(default_factory=dict)
     variables: dict[str, TpyType] = field(default_factory=dict)
     type_aliases: dict[str, TpyType] = field(default_factory=dict)
     reexported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)

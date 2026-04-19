@@ -13,7 +13,7 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType,
     NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_span, make_list, span_as_const, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType, VoidType,
-    ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType, PendingViewType,
+    ReadonlyType, unwrap_readonly, is_any_str_type, PendingStrType, PendingViewType,
     is_any_bytes_type, PendingBytesType,
     make_union,
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
@@ -45,6 +45,7 @@ from ..type_def_registry import (
     is_fixed_int_type, is_big_int_type, is_bool_type, is_char_type, is_fstr_type,
     is_basic_slice_type, is_slice_type,
     int_traits_of,
+    is_enum_type, is_int_enum_type, enum_info_of,
 )
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
@@ -779,7 +780,7 @@ class ExpressionAnalyzer:
             if isinstance(right_check, OwnType):
                 right_check = right_check.wrapped
             # Enum identity: lower to ==/!=
-            if isinstance(left_check, EnumType) and isinstance(right_check, EnumType):
+            if is_enum_type(left_check) and is_enum_type(right_check):
                 if left_check.name == right_check.name:
                     expr.op = "==" if expr.op == "is" else "!="
                     return BOOL
@@ -814,9 +815,9 @@ class ExpressionAnalyzer:
 
         # Enum operators: base Enum supports == and != only;
         # IntEnum also supports ordering, comparison with integers, and arithmetic
-        if isinstance(left_effective, EnumType) or isinstance(right_effective, EnumType):
-            left_is_int_enum = isinstance(left_effective, IntEnumType)
-            right_is_int_enum = isinstance(right_effective, IntEnumType)
+        if is_enum_type(left_effective) or is_enum_type(right_effective):
+            left_is_int_enum = is_int_enum_type(left_effective)
+            right_is_int_enum = is_int_enum_type(right_effective)
             is_comparison = expr.op in ("==", "!=", "<", ">", "<=", ">=")
 
             if is_comparison:
@@ -827,7 +828,7 @@ class ExpressionAnalyzer:
                 if right_is_int_enum and is_any_int_type(left_effective):
                     expr.int_enum_coercion = right_effective
                     return BOOL
-                if isinstance(left_effective, EnumType) and isinstance(right_effective, EnumType):
+                if is_enum_type(left_effective) and is_enum_type(right_effective):
                     if left_effective.name != right_effective.name:
                         raise self.ctx.error(
                             f"Cannot compare enum types '{left_effective.name}' and '{right_effective.name}'",
@@ -844,16 +845,16 @@ class ExpressionAnalyzer:
                         expr.int_enum_coercion = left_effective
                     return BOOL
                 # One side is enum, other is not (and not int for IntEnum)
-                enum_name = left_effective.name if isinstance(left_effective, EnumType) else right_effective.name
+                enum_name = left_effective.name if is_enum_type(left_effective) else right_effective.name
                 raise self.ctx.error(
-                    f"Cannot compare '{enum_name}' with '{right_effective if isinstance(left_effective, EnumType) else left_effective}'",
+                    f"Cannot compare '{enum_name}' with '{right_effective if is_enum_type(left_effective) else left_effective}'",
                     expr,
                 )
 
             # Non-comparison ops: IntEnum arithmetic is handled below;
             # base Enum in arithmetic is an error
             if not left_is_int_enum and not right_is_int_enum:
-                enum_name = left_effective.name if isinstance(left_effective, EnumType) else right_effective.name
+                enum_name = left_effective.name if is_enum_type(left_effective) else right_effective.name
                 raise self.ctx.error(
                     f"Operator '{expr.op}' not supported for enum type '{enum_name}'",
                     expr,
@@ -1029,29 +1030,29 @@ class ExpressionAnalyzer:
         if expr.op in ("+", "-", "*", "//", "%"):
             int_enum_side = None
             other_side = None
-            if isinstance(left_effective, IntEnumType):
+            if is_int_enum_type(left_effective):
                 int_enum_side = left_effective
                 other_side = right_effective
-            elif isinstance(right_effective, IntEnumType):
+            elif is_int_enum_type(right_effective):
                 int_enum_side = right_effective
                 other_side = left_effective
             if int_enum_side is not None:
-                if isinstance(other_side, IntEnumType):
+                if is_int_enum_type(other_side):
                     if other_side.name != int_enum_side.name:
                         raise self.ctx.error(
                             f"Cannot mix arithmetic between '{int_enum_side.name}' "
                             f"and '{other_side.name}'",
                             expr,
                         )
-                if (isinstance(other_side, (IntEnumType, IntLiteralType))
+                if (is_int_enum_type(other_side) or isinstance(other_side, IntLiteralType)
                         or is_fixed_int_type(other_side) or is_big_int_type(other_side)):
                     # Coerce IntEnum operands to underlying type so standard
                     # FixedInt binop resolution (with checked arithmetic) handles it
                     expr.int_enum_coercion = int_enum_side
-                    if isinstance(left_effective, IntEnumType):
-                        left_effective = left_effective.underlying_type
-                    if isinstance(right_effective, IntEnumType):
-                        right_effective = right_effective.underlying_type
+                    if is_int_enum_type(left_effective):
+                        left_effective = enum_info_of(left_effective).underlying_type
+                    if is_int_enum_type(right_effective):
+                        right_effective = enum_info_of(right_effective).underlying_type
                     # Fall through to standard binop resolution below
 
         # IntLiteral + IntLiteral -> IntLiteral (stays unresolved until context determines type)
@@ -1262,7 +1263,8 @@ class ExpressionAnalyzer:
             if (is_bool_type(effective_type)
                     or is_any_int_type(effective_type)
                     or is_any_float_type(effective_type)
-                    or isinstance(effective_type, (OptionalType, EnumType))):
+                    or isinstance(effective_type, OptionalType)
+                    or is_enum_type(effective_type)):
                 return BOOL
             record = self.ctx.registry.get_record_for_type(effective_type)
             if record and (record.get_method_overloads("__bool__")
@@ -1278,8 +1280,8 @@ class ExpressionAnalyzer:
                 return effective_type
 
         # IntEnum: unary negation returns the underlying integer type
-        if isinstance(effective_type, IntEnumType) and expr.op == "-":
-            return effective_type.underlying_type
+        if is_int_enum_type(effective_type) and expr.op == "-":
+            return enum_info_of(effective_type).underlying_type
 
         # IntLiteralType special cases - preserve literal nature when possible
         if isinstance(effective_type, IntLiteralType):
@@ -1461,7 +1463,7 @@ class ExpressionAnalyzer:
                 # Enum type-level member access: Color.Red -> EnumType
                 if binding and binding.kind == BindingKind.ENUM:
                     enum_type = binding.enum_type
-                    if expr.field in enum_type.members:
+                    if expr.field in enum_info_of(enum_type).members:
                         return enum_type
                     raise self.ctx.error(
                         f"Enum '{enum_type.name}' has no member '{expr.field}'", expr)
@@ -1479,8 +1481,8 @@ class ExpressionAnalyzer:
             if chain is not None:
                 # chain is a (dotted_name, type) for the intermediate nested type
                 dotted_name, chain_type = chain
-                if isinstance(chain_type, EnumType):
-                    if expr.field in chain_type.members:
+                if is_enum_type(chain_type):
+                    if expr.field in enum_info_of(chain_type).members:
                         return chain_type
                     if expr.field in ("name", "value"):
                         pass  # fall through to normal field access
@@ -1519,11 +1521,11 @@ class ExpressionAnalyzer:
             )
 
         # Enum instance property access: c.name -> str, c.value -> underlying type
-        if isinstance(actual_type, EnumType):
+        if is_enum_type(actual_type):
             if expr.field == "name":
                 return STR
             elif expr.field == "value":
-                return actual_type.underlying_type
+                return enum_info_of(actual_type).underlying_type
             raise self.ctx.error(
                 f"Enum value of type '{actual_type.name}' has no attribute '{expr.field}'. "
                 f"Use '{actual_type.name}.{expr.field}' to access enum members", expr)
@@ -1744,7 +1746,7 @@ class ExpressionAnalyzer:
             key_type = key_type.wrapped
         if isinstance(key_type, IntLiteralType):
             return
-        if isinstance(key_type, (EnumType, IntEnumType)):
+        if is_enum_type(key_type):
             return
         if isinstance(key_type, PendingViewType):
             return
@@ -2735,7 +2737,8 @@ class ExpressionAnalyzer:
     def _is_formattable(t: TpyType) -> bool:
         """True for types that f-string can format directly (no __str__/__repr__ needed)."""
         return (is_numeric_type(t) or is_char_type(t) or is_any_str_type(t)
-                or isinstance(t, (IntLiteralType, FloatLiteralType, EnumType)))
+                or isinstance(t, (IntLiteralType, FloatLiteralType))
+                or is_enum_type(t))
 
     def _analyze_fstring(self, expr: TpyFString, *, for_fstr: bool = False) -> TpyType:
         """Analyze f-string parts and return STR (owned string).
