@@ -65,7 +65,7 @@ class MatchAnalyzer:
         effective_type = unwrap_ref_type(unwrap_readonly(subject_type))
         # Expand recursive union alias NominalType to its underlying UnionType
         if (isinstance(effective_type, NominalType)
-                and not effective_type.is_protocol and not effective_type.is_module_type
+                and effective_type.is_user_record
                 and effective_type.name in self.ctx.recursive_union_names):
             alias = self.ctx.registry.get_type_alias(effective_type.name)
             if alias is not None:

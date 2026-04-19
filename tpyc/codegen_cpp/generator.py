@@ -11,6 +11,7 @@ import io
 import sys as _sys
 
 from ..typesys import TpyType, NominalType, EnumType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names, is_void_like_type
+from ..type_def_registry import type_def_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
 
@@ -27,6 +28,19 @@ from .string_dispatch import find_best_discriminator, STRING_SWITCH_THRESHOLD
 
 if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
+
+
+def _emits_own_cpp(typ: NominalType) -> bool:
+    """True if this NominalType's C++ emission bypasses its Python name --
+    either via a TypeDef cpp_formatter (builtins like list, str), via a
+    native_name mapping (@native records), or because it has no runtime
+    form (compile-time-only types like FStr). In those cases, an imported
+    `using PythonName = ...;` alias is dead code: the Python name never
+    appears in generated C++."""
+    td = type_def_of(typ)
+    if td is not None and (td.cpp_formatter is not None or td.is_compile_time_only):
+        return True
+    return typ.name in _native_cpp_names
 
 # Maps user-facing platform names to sys.platform prefixes (also in compiler.py)
 _PLATFORM_MAP = {"windows": "win32", "linux": "linux", "macos": "darwin"}
@@ -635,14 +649,12 @@ class CodeGenerator:
         # decls so signatures can reference alias names like Shape)
         emitted_imported_alias = False
         for local_name, (src_mod, original_name) in sorted(self.ctx.user_imported_type_aliases.items()):
-            # Skip aliases that resolve to primitive/builtin types -- only
-            # user-defined NominalType (records) and UnionType (variants)
-            # need a using-declaration. Builtin NominalType singletons
-            # (Float64, str, bool, etc.) have module_type=True and are
-            # already provided by tpy_pch / <typedef> mappings.
+            # Skip aliases whose C++ emission bypasses the Python name --
+            # the `using PythonName = ...;` would be dead code. See
+            # _emits_own_cpp above.
             alias_type = self.analyzer.registry.get_type_alias(local_name)
             if alias_type is not None:
-                if isinstance(alias_type, NominalType) and alias_type.is_module_type:
+                if isinstance(alias_type, NominalType) and _emits_own_cpp(alias_type):
                     continue
                 if not isinstance(alias_type, (NominalType, UnionType)):
                     continue

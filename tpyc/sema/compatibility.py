@@ -149,7 +149,7 @@ class TypeCompatibility:
         Treats recursive union types as opaque (does not recurse into their
         members) to prevent infinite expansion of self-referencing placeholders.
         """
-        if isinstance(typ, NominalType) and not typ.is_protocol and not typ.is_module_type:
+        if isinstance(typ, NominalType) and typ.is_user_record:
             if typ.name in self.ctx.recursive_union_names:
                 alias = self.ctx.registry.get_type_alias(typ.name)
                 if alias is not None:
@@ -192,8 +192,8 @@ class TypeCompatibility:
         if actual == expected:
             if not (isinstance(actual, OwnType) and isinstance(source_expr, TpyName)):
                 return None
-        # FnType/CallableType: inner param/return types may carry Own/Ref
-        # qualifiers from FI that don't affect callable contract compatibility.
+        # CallableType (Fn and Callable): inner param/return types may carry
+        # Own/Ref qualifiers from FI that don't affect callable contract compatibility.
         if (is_callable_type(actual)
                 and is_callable_type(expected)
                 and len(actual.param_types) == len(expected.param_types)):

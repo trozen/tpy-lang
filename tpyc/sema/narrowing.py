@@ -99,7 +99,7 @@ class NarrowingTracker:
         # Expand recursive union alias NominalType to underlying UnionType
         # (e.g. after Optional narrowing: Tree | None -> Tree -> int | list[Tree])
         if (isinstance(effective, NominalType)
-                and not effective.is_protocol and not effective.is_module_type
+                and effective.is_user_record
                 and effective.name in self.ctx.recursive_union_names):
             alias = self.ctx.registry.get_type_alias(effective.name)
             if alias is not None:

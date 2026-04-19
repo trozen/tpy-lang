@@ -82,23 +82,27 @@ vs `Box<dyn Fn(A, B) -> R>` (dynamic dispatch, heap-allocated).
 
 ### Type System
 
-Two new types in `typesys.py`:
+One type in `typesys.py` with a mode flag (`is_template`) distinguishing
+Fn (template) from Callable (type-erased):
 
 ```python
 @dataclass(frozen=True)
-class FnType(TpyType):
-    """Fn[[ParamType, ...], ReturnType] -- zero-cost callable (template).
-    Valid only in function parameter position."""
-    param_types: tuple[TpyType, ...]
-    return_type: TpyType
-
-@dataclass(frozen=True)
 class CallableType(TpyType):
-    """Callable[[ParamType, ...], ReturnType] -- type-erased callable (std::function).
-    Valid in all positions: params, fields, returns, containers, locals."""
+    """Fn / Callable -- param_types, return_type, plus is_template.
+
+    is_template=True: Fn[[...], R] -- zero-cost, template-param rendering.
+        Valid only in function parameter position.
+    is_template=False: Callable[[...], R] -- type-erased (std::function).
+        Valid in all positions: params, fields, returns, containers, locals.
+    """
     param_types: tuple[TpyType, ...]
     return_type: TpyType
+    is_template: bool = False
 ```
+
+(Originally split into `FnType` and `CallableType` subclasses; merged during
+the typesys migration's Phase C into a single `CallableType` with a flag,
+since the two shared all structural behavior and differed only in rendering.)
 
 ### `Fn` -- Zero-Cost Callable (Template)
 
@@ -331,7 +335,7 @@ discussed in Section III.
 ### Lambda Type
 
 Each lambda has a unique anonymous type (like C++ lambdas). In the type system,
-it satisfies both `FnType` and `CallableType` via structural compatibility but
+it satisfies both Fn and Callable via structural compatibility but
 has no user-visible type name. For local variables:
 
 ```python
@@ -887,13 +891,14 @@ similar patterns. Both `Fn` (template) and `Callable` (`std::function`) paths.
 **Parser changes:**
 - Remove `lambda` from `FORBIDDEN_CONSTRUCTS`
 - Parse `ast.Lambda` into a new `TpyLambda` AST node
-- Parse `Fn[[T, ...], R]` type annotations into `FnType`
-- Parse `Callable[[T, ...], R]` type annotations into `CallableType`
+- Parse `Fn[[T, ...], R]` type annotations into `CallableType(..., is_template=True)`
+- Parse `Callable[[T, ...], R]` type annotations into `CallableType(..., is_template=False)`
 
 **Type system changes:**
-- Add `FnType(param_types, return_type)` to `typesys.py`
-- Add `CallableType(param_types, return_type)` to `typesys.py`
-- Add `LambdaType` (anonymous, unique per lambda) that satisfies both
+- Add `CallableType(param_types, return_type, is_template)` to `typesys.py`
+  (originally split into separate `FnType` and `CallableType`; merged in
+  typesys migration Phase C)
+- Add `LambdaType` (anonymous, unique per lambda) that satisfies both Fn and Callable
 
 **Sema changes:**
 - Analyze lambda body: infer param types from context (bidirectional inference),

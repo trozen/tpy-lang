@@ -863,14 +863,6 @@ class NominalType(TpyType):
         """Return True if this is a user-defined record (not a module-defined builtin)."""
         return not self.is_protocol and not self._module_qname
 
-    @property
-    def is_module_type(self) -> bool:
-        """Return True if this is a module-defined builtin type.
-
-        Transitional -- should go away when builtin/user lookup paths are unified.
-        """
-        return self._module_qname is not None and not self.is_protocol
-
     def with_protocol_flag(self, is_protocol: bool) -> 'NominalType':
         """Return a copy with is_protocol set."""
         if self.is_protocol == is_protocol:
@@ -1962,7 +1954,7 @@ class UnionType(TpyType):
 
 def _contains_self_reference(typ: 'TpyType', name: str) -> bool:
     """Check if a type tree contains a NominalType self-reference to the given name."""
-    if isinstance(typ, NominalType) and typ.name == name and not typ.is_protocol and not typ.is_module_type:
+    if isinstance(typ, NominalType) and typ.name == name and typ.is_user_record:
         return True
     return any(_contains_self_reference(inner, name) for inner in typ.inner_types())
 
@@ -2706,7 +2698,7 @@ FLOAT32 = NominalType("Float32", (), _module_qname="tpy.Float32")
 
 BIGINT = NominalType("int", (), _module_qname="builtins.int")
 NONE = NoneType()
-BASIC_SLICE = NominalType("basic_slice", (), _module_qname="builtins.basic_slice")
+BASIC_SLICE = NominalType("basic_slice", (), _module_qname="tpy.basic_slice")
 SLICE = NominalType("slice", (), _module_qname="builtins.slice")
 
 # View-type family descriptors (must follow singleton definitions)

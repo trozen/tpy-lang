@@ -491,10 +491,11 @@ Design space:
 Two type kinds implemented: `Fn` (template-based, zero overhead, monomorphized) and
 `Callable` (type-erased `std::function`). Named function references as values also work.
 
-**Current state**: Done. `FnType` for zero-cost callable template params (monomorphized
-at each call site). `CallableType` for type-erased `std::function<R(Args...)>` (supports
-closures, storable in fields/containers). Named function references can be passed as
-values. Lambda expressions work as both `Fn` and `Callable`.
+**Current state**: Done. `CallableType(is_template=True)` for zero-cost callable template
+params (monomorphized at each call site). `CallableType(is_template=False)` for type-erased
+`std::function<R(Args...)>` (supports closures, storable in fields/containers). Named
+function references can be passed as values. Lambda expressions work as both `Fn` and
+`Callable`.
 
 **Dependencies**: Done.
 

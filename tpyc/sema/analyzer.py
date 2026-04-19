@@ -1364,7 +1364,7 @@ class SemanticAnalyzer:
         elif isinstance(typ, NominalType):
             members = [typ]
         for m in members:
-            if isinstance(m, NominalType) and not m.is_protocol and not m.is_module_type:
+            if isinstance(m, NominalType) and m.is_user_record:
                 if self.ctx.registry.get_record(m.name) is None:
                     raise SemanticError(
                         f"Type alias '{alias_name}' references unknown type '{m.name}'",
@@ -1381,7 +1381,7 @@ class SemanticAnalyzer:
         _skip contains recursive union alias names that must not be expanded
         (their NominalType placeholders are structural).
         """
-        if isinstance(typ, NominalType) and not typ.is_protocol and not typ.is_module_type:
+        if isinstance(typ, NominalType) and typ.is_user_record:
             if typ.name in _seen or typ.name in _skip:
                 return typ
             resolved = aliases.get(typ.name)

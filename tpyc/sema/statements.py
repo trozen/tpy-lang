@@ -2117,8 +2117,7 @@ class StatementAnalyzer:
                 # original alias-then-enum pipeline so aliases-to-enums resolve).
                 if (has_aliases
                         and isinstance(t, NominalType)
-                        and not t.is_protocol
-                        and not t.is_module_type
+                        and t.is_user_record
                         and t.name not in _seen
                         and t.name not in recursive_names):
                     alias = registry.get_type_alias(t.name)

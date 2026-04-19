@@ -2573,7 +2573,7 @@ class Parser:
                 # only fires for names that went through _resolve_type_name,
                 # not for unresolved forward references.
                 if (resolved and isinstance(registered, NominalType)
-                        and not registered.is_protocol and not registered._module_qname):
+                        and registered.is_user_record):
                     module, original = resolved
                     candidate_qname = f"{module}.{original}"
                     is_builtin = (

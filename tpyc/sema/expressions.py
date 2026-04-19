@@ -2835,7 +2835,7 @@ class ExpressionAnalyzer:
         # Check return type compatibility (allow implicit coercions like int literal -> Int32)
         if isinstance(fn_type.return_type, TypeParamRef):
             # Hint has unresolved type param (e.g. from generic builtin map[T,U]):
-            # use the body's inferred type and return a concrete FnType.
+            # use the body's inferred type and return a concrete CallableType.
             # Resolve IntLiteralType so overload resolution sees a concrete int type.
             if isinstance(body_type, IntLiteralType):
                 body_type = self.ctx.default_int_for_literal(body_type)
@@ -2910,8 +2910,8 @@ class ExpressionAnalyzer:
         if not contains_type_param(hint):
             return hint
         # Build concrete param/return types from the matched function info.
-        # Strip Ref from param types and Own from return type -- FnType represents
-        # the logical callable contract. Ref on return type IS preserved so type
+        # Strip Ref from param types and Own from return type -- the Fn type
+        # represents the logical callable contract. Ref on return type IS preserved so type
         # inference can track reference semantics through combinators
         # (e.g. map(identity, pts) infers U=Ref[Point] -> val_or_ref<Point>).
 

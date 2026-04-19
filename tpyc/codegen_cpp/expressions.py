@@ -2850,7 +2850,7 @@ class ExpressionGenerator:
                     elem_target = et
                 # Recursive union element type: pass it as elem_target so nested
                 # array literals trigger union_prefix.
-                elif isinstance(et, NominalType) and not et.is_protocol and not et.is_module_type:
+                elif isinstance(et, NominalType) and et.is_user_record:
                     if et.name in self.ctx.recursive_union_names:
                         alias = self.ctx.analyzer.registry.get_type_alias(et.name)
                         if alias is not None:
@@ -2906,7 +2906,7 @@ class ExpressionGenerator:
             expr_type = self.ctx.get_expr_type(expr)
             if is_list(expr_type):
                 et = expr_type.type_args[0]
-                if isinstance(et, NominalType) and not et.is_protocol and not et.is_module_type:
+                if isinstance(et, NominalType) and et.is_user_record:
                     if et.name in self.ctx.recursive_union_names:
                         return f"{self.types.type_to_cpp(expr_type)}{literal}"
         return literal
@@ -2925,8 +2925,7 @@ class ExpressionGenerator:
         if isinstance(typ, UnionType):
             return any(self._is_cpp_noncopyable(m) for m in typ.members
                        if not isinstance(m, (NoneType, VoidType)))
-        if (isinstance(typ, NominalType) and not typ.is_protocol
-                and not typ.is_module_type
+        if (isinstance(typ, NominalType) and typ.is_user_record
                 and typ.name in self.ctx.recursive_union_names):
             alias = self.ctx.analyzer.registry.get_type_alias(typ.name)
             if isinstance(alias, UnionType):

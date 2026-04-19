@@ -103,9 +103,9 @@ def type_matches_strict(
         param_inner = param_inner.wrapped
     if arg_inner == param_inner:
         return True
-    # FnType/CallableType: compare with qualifier unwrapping on inner types.
-    # The arg FnType may have Own/Ref on param/return types from FI, while the
-    # resolved overload's Fn type has bare types from substitution.
+    # CallableType (Fn and Callable): compare with qualifier unwrapping on inner
+    # types. The arg callable may have Own/Ref on param/return types from FI,
+    # while the resolved overload's callable has bare types from substitution.
     from ..typesys import CallableType, OwnType as _Own
     if (is_callable_type(arg_inner)
             and is_callable_type(param_inner)

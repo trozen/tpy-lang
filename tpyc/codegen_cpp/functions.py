@@ -310,7 +310,7 @@ class FunctionGenerator:
         fn_idx = 0
         for i, (pname, ptype) in enumerate(params):
             cpp_pname = escape_cpp_name(pname)
-            # FnType params become forwarding-ref template params
+            # Fn params become forwarding-ref template params
             if is_fn_type(ptype):
                 part = f"__F{fn_idx}&& {cpp_pname}"
                 fn_idx += 1
@@ -422,7 +422,7 @@ class FunctionGenerator:
         fn_idx = 0
         for i, (pname, ptype) in enumerate(params):
             cpp_pname = escape_cpp_name(pname)
-            # FnType params become forwarding-ref template params (same as gen_params)
+            # Fn params become forwarding-ref template params (same as gen_params)
             if is_fn_type(ptype):
                 part = f"__F{fn_idx}&& {cpp_pname}"
                 fn_idx += 1

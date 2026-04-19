@@ -56,8 +56,8 @@ def _canonical_instances() -> dict[str, ts.TpyType]:
         "builtins.bytes":     ts.BYTES,
         "builtins.bytearray": ts.BYTEARRAY,
         "tpy.BytesView":      ts.BYTESVIEW,
-        "builtins.basic_slice": ts.BASIC_SLICE,
-        "builtins.slice":       ts.SLICE,
+        "tpy.basic_slice":    ts.BASIC_SLICE,
+        "builtins.slice":     ts.SLICE,
         "builtins.list":  ts.make_list(I32),
         "builtins.dict":  ts.make_dict(STR, I32),
         "builtins.set":   ts.make_set(I32),
@@ -397,7 +397,7 @@ PRIMITIVE_SNAPSHOT: dict[str, dict] = {
                                element_qname="tpy.UInt8"),
 
     # --- Slices ----------------------------------------------------------
-    "builtins.basic_slice": dict(category=TypeCategory.SLICE, is_value_type=True,
+    "tpy.basic_slice":      dict(category=TypeCategory.SLICE, is_value_type=True,
                                  is_send=True, is_sync=True, subscript_borrows=False,
                                  is_expensive_copy=False, param_needs_copy_for_reassign=False,
                                  is_compile_time_only=False,
@@ -431,8 +431,8 @@ _PRIMITIVE_INSTANCES: dict[str, ts.TpyType] = {
     "builtins.bytes":     ts.BYTES,
     "builtins.bytearray": ts.BYTEARRAY,
     "tpy.BytesView":      ts.BYTESVIEW,
-    "builtins.basic_slice": ts.BASIC_SLICE,
-    "builtins.slice":       ts.SLICE,
+    "tpy.basic_slice":    ts.BASIC_SLICE,
+    "builtins.slice":     ts.SLICE,
 }
 
 

@@ -249,7 +249,7 @@ def is_float32_type(t: "TpyType") -> bool: return _is_qn(t, "tpy.Float32")
 def is_bytes_type(t: "TpyType") -> bool:   return _is_qn(t, "builtins.bytes")
 def is_bytearray_type(t: "TpyType") -> bool: return _is_qn(t, "builtins.bytearray")
 def is_bytes_view_type(t: "TpyType") -> bool: return _is_qn(t, "tpy.BytesView")
-def is_basic_slice_type(t: "TpyType") -> bool: return _is_qn(t, "builtins.basic_slice")
+def is_basic_slice_type(t: "TpyType") -> bool: return _is_qn(t, "tpy.basic_slice")
 def is_slice_type(t: "TpyType") -> bool:   return _is_qn(t, "builtins.slice")
 
 
@@ -389,12 +389,10 @@ def _populate() -> None:
         element_of=_u8_elem,
     ))
 
-    # Slice types (value types, no subscript). Note: BASIC_SLICE's
-    # qualified_name returns "builtins.basic_slice" but the parser factory
-    # table keys it as "tpy.basic_slice" -- pre-existing inconsistency
-    # (see modules/type_resolution.py). Registry follows the class.
+    # Slice types (value types, no subscript). basic_slice is tpy-specific
+    # (no CPython analog); slice is the CPython built-in.
     register(TypeDef(
-        "builtins.basic_slice", TC.SLICE, is_value_type=True,
+        "tpy.basic_slice", TC.SLICE, is_value_type=True,
         cpp_formatter=lambda args: "::tpy::BasicSlice",
         param_cpp_formatter=lambda args: "::tpy::BasicSlice",
     ))
