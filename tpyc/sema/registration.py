@@ -25,6 +25,7 @@ from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
     TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn, TpyMethodCall, TpyCall, TpyExprStmt,
     TpyNoneLiteral, TpyStrLiteral,
+    TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef,
 )
 from ..namespace import NameBinding, BindingKind
 from ..type_def_registry import (
@@ -1727,6 +1728,12 @@ class TypeRegistrar:
         """
         for stmt in stmts:
             if isinstance(stmt, TpyVarDecl) and stmt.type:
+                # Resolve parser-emitted TypeRefNode (Phase F.3b.4) first so
+                # downstream reads (global scope, _analyze_var_decl) see
+                # TpyType. register_globals runs before top-level statement
+                # analysis, so this is the primary writer for TpyVarDecl.type.
+                if isinstance(stmt.type, (TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef)):
+                    stmt.type = self.type_ops.resolve_type_ref(stmt.type)
                 actual_type = stmt.type
                 # Detect Final[T]: unwrap, record finality, register inner type
                 if isinstance(actual_type, FinalType):

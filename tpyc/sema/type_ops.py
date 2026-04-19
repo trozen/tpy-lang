@@ -23,6 +23,7 @@ from .diagnostics import SemanticError
 from .. import qnames
 from ..type_def_registry import is_copy_iter, is_own_iter, is_array, is_span, is_list
 from ..modules.type_resolution import get_type_factory_param_kinds
+from ..parse import TpyFunction
 
 if TYPE_CHECKING:
     from ..parse import SourceLocation
@@ -46,6 +47,58 @@ class TypeOperations:
 
     def __init__(self, ctx: SemanticContext):
         self.ctx = ctx
+
+    def resolve_type_ref(self, ref, type_param_scope=None) -> TpyType:
+        """Resolve a parser-emitted TypeRefNode to a TpyType.
+
+        Delegates to the parser's resolver callable attached at end-of-parse.
+        The callable carries parser state (imports, local_defs,
+        module_class_names, ...) needed for resolution. Returned TpyType
+        still needs downstream resolve_type() processing for protocol flags
+        and record/enum qname substitution -- sema writers typically pipe
+        through both.
+
+        If type_param_scope is not provided, builds it from the current
+        function/record context so references like `list[T]` inside a
+        generic function body resolve `T` as a TypeParamRef. The parser's
+        own _type_param_scope is parse-time state that is unreliable at
+        sema time.
+
+        Phase F.3b.4: used by writers at leaf AST sites that emit TpyTypeRef
+        (currently only TpyVarDecl.type). Remaining sites flip in F.3b.5+.
+        """
+        resolver = self.ctx.parser_resolver
+        if resolver is None:
+            from .diagnostics import SemanticError
+            raise SemanticError(
+                "TypeRefNode encountered but no parser resolver is attached "
+                "(module was not produced by the current-phase Parser)"
+            )
+        if type_param_scope is None:
+            type_param_scope = self._current_type_param_scope()
+        return resolver(ref, type_param_scope)
+
+    def _current_type_param_scope(self) -> dict | None:
+        """Build a type_param_scope dict from the current function / record
+        context. Returns None if neither is in generic scope.
+
+        Mirrors the parser's `_type_param_scope` shape: name -> TypeParamKind.
+        Functions only carry TYPE-kind params; records can have INT-kind
+        params (e.g. Matrix[T, N: int]) -- zip names with kinds.
+        """
+        scope: dict = {}
+        func = self.ctx.func.current_function
+        if isinstance(func, TpyFunction) and func.type_params:
+            kinds = getattr(func, 'type_param_kinds', None) or []
+            for i, name in enumerate(func.type_params):
+                scope[name] = kinds[i] if i < len(kinds) else TypeParamKind.TYPE
+        record_params = self.ctx.record_ctx.type_params or []
+        record_kinds = self.ctx.record_ctx.type_param_kinds or []
+        for i, name in enumerate(record_params):
+            if name not in scope:
+                kind = record_kinds[i] if i < len(record_kinds) else TypeParamKind.TYPE
+                scope[name] = kind
+        return scope or None
 
     def resolve_type(self, typ: TpyType, *, protocols_only: bool = False) -> TpyType:
         """Resolve a type, setting is_protocol flag on NominalType when needed.

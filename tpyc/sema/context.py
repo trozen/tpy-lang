@@ -8,7 +8,7 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
 from ..macro_loader import MacroRegistry
 from ..parse.nodes import SourceLocation
@@ -500,6 +500,13 @@ class SemanticContext:
 
     # --- Recursive union aliases (self- or mutually-referencing) ---
     recursive_union_names: set[str] = field(default_factory=set)
+
+    # --- TypeRef resolver (Phase F.3b.4) ---
+    # Bound callable provided by the parser at end-of-parse; resolves a
+    # TypeRefNode (emitted by the walker at leaf annotation sites) to a
+    # TpyType. Wired by sema.analyzer.analyze() from module.resolver.
+    # Accessed by TypeOperations.resolve_type_ref.
+    parser_resolver: Any = None  # Callable[[TypeRefNode, Optional[dict]], TpyType] | None
     # Reverse map: frozenset(members) -> alias name (built lazily)
     _recursive_union_members: dict[frozenset, str] | None = None
 

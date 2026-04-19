@@ -89,31 +89,54 @@ class TestStarImportResolution:
 
 
 class TestParserStateIsolation:
-    """Verify that Parser.parse() resets all state between calls."""
+    """Verify that `Parser.parse()` resets import-related state between calls.
+
+    Scope of these tests (narrowed in Phase F.3b.5): we verify that the
+    second parse's `module.imports` does not include the first parse's
+    imports, AND that invoking the attached `module.resolver` on the
+    second parse's AST refs raises (because the required import is
+    absent from the parser's current state). They do NOT verify that
+    modules produced by separate `parse()` calls hold independent
+    resolvers -- in this codebase `resolver` is the same bound method
+    across parses on the same Parser instance, so calling the first
+    module's resolver AFTER the second parse will see the second
+    parse's state. That sharing is safe in production (each module
+    gets a fresh Parser) and out of scope for these tests.
+    """
 
     def test_module_alias_does_not_leak(self):
         p = Parser()
         # First parse has 'import typing as t'
         p.parse("import typing as t\nfrom tpy import Int32\ndef f(x: t.Optional[Int32]) -> Int32:\n    return Int32(0)\n")
-        # Second parse has no typing import -- t.Optional must fail
+        # Second parse has no typing import -- t.Optional must fail to resolve
+        m = p.parse("from tpy import Int32\ndef f(x: t.Optional[Int32]) -> Int32:\n    return Int32(0)\n")
+        assert "typing" not in m.imports
+        func = next(f for f in m.functions if f.name == "f")
         with pytest.raises(ParseError):
-            p.parse("from tpy import Int32\ndef f(x: t.Optional[Int32]) -> Int32:\n    return Int32(0)\n")
+            m.resolver(func.params[0][1])
 
     def test_tpy_star_import_does_not_leak(self):
         p = Parser()
         # First parse has 'from tpy import *'
         p.parse("from tpy import *\ndef f(x: Int32) -> Int32:\n    return x\n")
-        # Second parse has no tpy import -- Int32 must fail
+        # Second parse has no tpy import -- Int32 must fail to resolve
+        m = p.parse("def f(x: Int32) -> Int32:\n    return x\n")
+        assert not m.tpy_star_import
+        func = next(f for f in m.functions if f.name == "f")
         with pytest.raises(ParseError):
-            p.parse("def f(x: Int32) -> Int32:\n    return x\n")
+            m.resolver(func.params[0][1])
 
     def test_typing_import_does_not_leak(self):
         p = Parser()
         # First parse has 'from typing import Optional'
         p.parse("from typing import Optional\nfrom tpy import Int32\ndef f(x: Optional[Int32]) -> Int32:\n    return Int32(0)\n")
-        # Second parse has no typing import -- Optional must fail
+        # Second parse has no typing import -- Optional must fail to resolve
+        m = p.parse("from tpy import Int32\ndef f(x: Optional[Int32]) -> Int32:\n    return Int32(0)\n")
+        typing_source = m.imports.get("typing")
+        assert typing_source is None or "Optional" not in {orig for orig, _ in (typing_source or set())}
+        func = next(f for f in m.functions if f.name == "f")
         with pytest.raises(ParseError):
-            p.parse("from tpy import Int32\ndef f(x: Optional[Int32]) -> Int32:\n    return Int32(0)\n")
+            m.resolver(func.params[0][1])
 
 
 class TestScanStarExports:

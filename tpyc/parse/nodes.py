@@ -9,28 +9,12 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
-from typing import Any, Literal, Optional, TYPE_CHECKING
+from typing import Any, Callable, Literal, Optional, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, FieldInfo, FunctionInfo,
     MethodSignature, TypeParamKind, LiteralValue,
 )
-
-
-class ParseError(Exception):
-    """Error during parsing."""
-    def __init__(self, message: str, node: Optional[ast.AST] = None):
-        self.node = node
-        self.message = message
-        self.lineno = node.lineno if node and hasattr(node, 'lineno') else None
-        loc = f" at line {self.lineno}" if self.lineno else ""
-        super().__init__(f"{message}{loc}")
-
-    def format(self, filename: str = "<unknown>") -> str:
-        """Format error with file:line prefix."""
-        if self.lineno:
-            return f"{filename}:{self.lineno}: error: {self.message}"
-        return f"{filename}: error: {self.message}"
 
 
 # Source location for error reporting and source mapping
@@ -41,6 +25,34 @@ class SourceLocation:
     line: int  # 1-indexed line number
     column: int = 0  # 0-indexed column
     file: str | None = None  # Source file path (optional)
+
+
+class ParseError(Exception):
+    """Error during parsing.
+
+    Accepts either an ast.AST node (for parse-time errors where the ast is
+    available) or a SourceLocation (for resolver-time errors where only the
+    walked TypeRefNode's loc is known). Lineno is populated from whichever
+    is provided.
+    """
+    def __init__(self, message: str, node: Optional[ast.AST] = None,
+                 *, loc: Optional['SourceLocation'] = None):
+        self.node = node
+        self.message = message
+        if node is not None and hasattr(node, 'lineno'):
+            self.lineno = node.lineno
+        elif loc is not None:
+            self.lineno = loc.line
+        else:
+            self.lineno = None
+        loc_str = f" at line {self.lineno}" if self.lineno else ""
+        super().__init__(f"{message}{loc_str}")
+
+    def format(self, filename: str = "<unknown>") -> str:
+        """Format error with file:line prefix."""
+        if self.lineno:
+            return f"{filename}:{self.lineno}: error: {self.message}"
+        return f"{filename}: error: {self.message}"
 
 
 # Unresolved type-syntax nodes (Phase F.3).
@@ -575,9 +587,16 @@ class VarLinkage(Enum):
 
 @dataclass
 class TpyVarDecl(TpyStmt):
-    """Variable declaration with optional initializer."""
+    """Variable declaration with optional initializer.
+
+    `type` may temporarily hold a TypeRefNode when emitted by the parser at
+    leaf annotation sites (Phase F.3b.4); the sema writer
+    (_analyze_var_decl) calls TypeOperations.resolve_type_ref to produce a
+    TpyType and writes it back in place. All downstream sema/codegen reads
+    see only TpyType.
+    """
     name: str
-    type: Optional[TpyType]
+    type: Optional[TpyType | TypeRefNode]
     init: Optional[TpyExpr]
     linkage: VarLinkage = VarLinkage.DEFAULT
     native_name: str | None = None
@@ -1021,8 +1040,12 @@ class TpyFunction:
     - type_param_bounds stores bounds for each bounded type param (e.g., {"T": Comparable})
     """
     name: str
-    params: list[tuple[str, TpyType]]
-    return_type: TpyType
+    # Between parse and sema's _resolve_pending_type_refs pre-pass, params
+    # and return_type for top-level (non-method) functions may hold
+    # TypeRefNode in place of TpyType (Phase F.3b.5). All readers post-
+    # pre-pass see TpyType.
+    params: list[tuple[str, TpyType | TypeRefNode]]
+    return_type: TpyType | TypeRefNode
     body: list[TpyStmt]
     is_noalloc: bool = False
     is_inline: bool = False
@@ -1061,12 +1084,16 @@ class TpyFunction:
     is_stub: bool = False
     value_ptr_coercion: bool = False
     type_params: list[str] = field(default_factory=list)
+    # Parallel with type_params (like TpyRecord.type_param_kinds). Carries
+    # TypeParamKind.INT for `def f[N: int](...)` so sema-time resolution
+    # of ref-based params can tell INT-kind type params from TYPE-kind.
+    type_param_kinds: list[TypeParamKind] = field(default_factory=list)
     type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
     type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "tpy.extern.DefaultInt"}
     defaults: list['TpyExpr | None'] = field(default_factory=list)  # len == len(params); None = no default
     keyword_only_start: int | None = None  # index into params where keyword-only begins
     vararg_name: str | None = None  # name of *args parameter
-    vararg_type: 'TpyType | None' = None  # element type T from *args: T
+    vararg_type: 'TpyType | TypeRefNode | None' = None  # element type T from *args: T
     kwarg_name: str | None = None  # name of **kwargs parameter
     kwarg_type: 'TpyType | None' = None  # TypedDict type from **kwargs: Unpack[TD]
     error_return: str | None = None  # @error_return(E) exception type name
@@ -1229,6 +1256,14 @@ class TpyModule:
     directives: ModuleDirectives = field(default_factory=ModuleDirectives)
     # Union type aliases that need wrapper-struct representation (self- or mutually-recursive)
     recursive_union_names: set[str] = field(default_factory=set)
+    # Parser resolver: a callable attached at end-of-parse that resolves a
+    # TypeRefNode (emitted by the walker at leaf annotation sites) to a
+    # TpyType. Sema invokes it via TypeOperations.resolve_type_ref when a
+    # writer encounters an unresolved ref in the AST. Bound to the parser
+    # instance so it carries the resolution state (imports, local_defs,
+    # module_class_names, type_alias_names, reverse_module_aliases,
+    # bare_module_imports). See Phase F.3b.4.
+    resolver: Callable[..., TpyType] | None = None
 
     def all_records(self) -> list[TpyRecord]:
         """All records including nested, in definition order (depth-first)."""

@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, TypeRegistry, NominalType, UnionType, FinalType, STR, LiteralType, VoidType, VOID,
     NoneType, INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
     FunctionInfo, is_any_str_type,
-    make_ref, unwrap_ref_type, RefType,
+    make_ref, unwrap_ref_type, RefType, TypeParamKind,
     is_integer_type, is_void_like_type,
 )
 from ..namespace import Namespace, NameBinding, BindingKind
@@ -21,6 +21,7 @@ from .registration import build_record_self_type, _vararg_span_type
 from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
     TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef,
+    TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef,
 )
 from .expressions import _collect_body_name_refs
 
@@ -320,6 +321,9 @@ class SemanticAnalyzer:
         # Set module context
         self.ctx.module_name = module_name
         self.ctx.module_cpp_namespace = getattr(module.directives, 'cpp_namespace', None) if hasattr(module, 'directives') else None
+        # Parser ref resolver (Phase F.3b.4): used by TypeOperations.resolve_type_ref
+        # to resolve TpyTypeRef nodes emitted at leaf annotation sites.
+        self.ctx.parser_resolver = module.resolver
 
         # Convert parse warnings to diagnostics
         for warning in module.parse_warnings:
@@ -376,6 +380,13 @@ class SemanticAnalyzer:
         for mod_name in module.bare_module_imports:
             alias = module.module_aliases.get(mod_name)
             self.ctx.global_ns.bind_module(mod_name, alias)
+
+        # Phase F.3b.4 / F.3b.5: resolve TpyTypeRef nodes emitted by the
+        # walker at leaf annotation sites before any pass reads
+        # func.params / func.return_type / fld.type / stmt.type as TpyType.
+        # Runs before register_record / register_function / _fix_recursive /
+        # _resolve_imported_aliases so those see resolved TpyType uniformly.
+        self._resolve_pending_type_refs(module)
 
         # Resolve imported type aliases in AST type annotations.
         # The parser creates NominalType("Shape") for imported aliases since it
@@ -1285,6 +1296,71 @@ class SemanticAnalyzer:
             # Tag union aliases in this cycle as recursive
             for alias_name in cycle.alias_names:
                 module.recursive_union_names.add(alias_name)
+
+    def _resolve_pending_type_refs(self, module: TpyModule) -> None:
+        """Resolve all TpyTypeRef nodes emitted by the walker at leaf
+        annotation sites, in-place. Downstream passes assume TpyType
+        invariants (map_inner_types, isinstance against structural classes,
+        etc.), so refs must be fully resolved before any of them run.
+
+        Currently flipped sites (F.3b.4 + F.3b.5):
+        - TpyVarDecl.type (top-level)
+        - TpyFunction.params / return_type / vararg_type for top-level
+          non-method functions (module.functions)
+        - FieldInfo.type for all records (TpyRecord.fields[*].type)
+
+        Nested defs (inside function bodies) and methods are resolved
+        eagerly at parse time (parser._finalize_function_refs /
+        _parse_method keeps TpyType). F.3b.6+ may extend coverage.
+        """
+        ref_types = (TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef)
+
+        def _resolve(t, scope=None):
+            if isinstance(t, ref_types):
+                return self.type_ops.resolve_type_ref(t, scope)
+            return t
+
+        def _func_scope(func):
+            if not func.type_params:
+                return None
+            kinds = func.type_param_kinds
+            return {
+                name: (kinds[i] if i < len(kinds) else TypeParamKind.TYPE)
+                for i, name in enumerate(func.type_params)
+            }
+
+        def _record_scope(record):
+            if not record.type_params:
+                return None
+            kinds = record.type_param_kinds
+            return {
+                name: (kinds[i] if i < len(kinds) else TypeParamKind.TYPE)
+                for i, name in enumerate(record.type_params)
+            }
+
+        # Top-level functions (methods are resolved eagerly in _parse_method,
+        # nested defs in _parse_nested_def)
+        for func in module.functions:
+            scope = _func_scope(func)
+            func.params = [(n, _resolve(t, scope)) for (n, t) in func.params]
+            if func.return_type is not None:
+                func.return_type = _resolve(func.return_type, scope)
+            if func.vararg_type is not None:
+                func.vararg_type = _resolve(func.vararg_type, scope)
+
+        # All records (including nested) -- fields only. Record methods
+        # carry TpyType already (resolved eagerly in _parse_method since
+        # auto_readonly / property-setter logic inspects types at parse
+        # time).
+        for record in module.all_records():
+            scope = _record_scope(record)
+            for fld in record.fields:
+                fld.type = _resolve(fld.type, scope)
+
+        # Top-level TpyVarDecls
+        for stmt in module.top_level_stmts:
+            if isinstance(stmt, TpyVarDecl) and stmt.type is not None:
+                stmt.type = _resolve(stmt.type)
 
     def _fix_recursive_optional_annotations(self, module: TpyModule) -> None:
         """Fix annotations where a recursive union alias + None was flattened.

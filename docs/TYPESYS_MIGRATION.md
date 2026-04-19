@@ -4,7 +4,7 @@
 
 Unify the type hierarchy around two shapes: **nominal** (identity = qualified name + type args, behavior from a registry) and **structural** (identity = operand shape, behavior derived from operands). Builtins, containers, primitives, records, protocols, and enums all become `NominalType` with behavior sourced from a single `TypeDef` registry. Wrappers (`Ptr`, `Own`, `Optional`, `Union`, `Tuple`, `Callable`, `Readonly`) stay structural.
 
-## Current state (Phases A, B, C, D, E, F.1, F.2a, F.2b, F.3a complete)
+## Current state (Phases A, B, C, D, E, F.1, F.2a, F.2b, F.3a, F.3b.1, F.3b.2, F.3b.3, F.3b.4, F.3b.5 complete)
 
 ```
 TpyType (frozen dataclass base)
@@ -411,23 +411,404 @@ First real cut-over. Pick the annotation sites where sema's writers are
 well-audited (from F.2a's table): function params/returns, var decls,
 record fields, method signatures.
 
-1. Extend sema `TypeOperations` with `resolve_type_ref(ref: TpyTypeRef) ->
-   TpyType`. Initially this wraps the logic currently in parser's
-   `_parse_type_annotation` (primitive resolution, registry lookup,
-   structural-wrapper construction, type-param substitution, enum/record
-   substitution). The existing `resolve_type` becomes a thin shim that
-   dispatches on `TpyType` vs `TpyTypeRef`.
-2. Switch parser's `_parse_type_annotation` entry to emit `TpyTypeRef` for
-   the targeted AST fields. All other callers of `_parse_type_annotation`
-   (generic function calls, isinstance checks, etc.) continue to receive
-   `TpyType` for now.
-3. Update AST field types (`TpyFunction.params`, `.return_type`;
-   `TpyRecord.fields[i].type`; `TpyVarDecl.type`; method signatures) to
-   `TpyTypeRef`. The F.2a writer table already catalogs which sema sites
-   consume these.
-4. Sema writers call `resolve_type_ref` instead of `resolve_type` for the
-   migrated fields.
-5. Verify byte-identical codegen + full suite green.
+Split into three sub-sub-steps because the resolution state that
+`resolve_type_ref` needs (parser's `_local_defs`, `_module_class_names`,
+`_module_type_alias_names`, `_nested_type_scope`, `_pending_alias_name`,
+`_reverse_module_aliases`, plus `_imports`) is currently parser-private.
+Moving it all at once couples "introduce the refactored walker" with
+"move state out of parser with ownership changes," which is too risky
+for one commit. Each sub-sub-step ships independently with full suite
+green + byte-identical generated C++.
+
+##### F.3b.1 -- Standalone syntactic walker (DONE)
+
+Adds `Parser._parse_type_ref(ast_expr, type_param_scope) -> TypeRefNode`
+in `tpyc/parse/parser.py`. Pure syntactic walk: builds TypeRefNode from
+an `ast.expr`. Uses `_resolve_type_name` /
+`_resolve_qualified_type_name` only to disambiguate structural wrappers
+(Ptr/Own/readonly/auto_readonly/auto_own from `tpy`; Optional/Final/
+Callable/Literal from `typing`; tuple from `builtins`; Fn from `tpy`)
+from user generics -- leaf names (primitives, user records, enums,
+protocols, type parameters, qualified names) stay raw in
+`TpyTypeRef.name`.
+
+Resolution-time errors (unknown type, qualified-module-not-imported,
+Own-in-union, readonly normalization) are deliberately not raised here
+-- they belong to the resolver. Only syntax-provable errors (malformed
+`Callable[[P1], R]` shape, `Literal` value kind mixing) are raised at
+this layer.
+
+No call sites use the new method yet. 35 unit tests in
+`tpyc/test_parse_type_ref.py` pin the shape for representative
+annotations (leaf names, generics, structural wrappers, unions,
+callables, literals, dotted attributes, permissiveness on unknown
+names).
+
+##### F.3b.2 -- Parallel resolver + equivalence tests (DONE)
+
+Added `Parser._resolve_type_ref_impl(ref, type_param_scope) -> TpyType`
+in `tpyc/parse/parser.py`. Owns leaf name resolution + TpyType
+construction + validation: primitive / registry lookup, type-param
+substitution, generic arity via `lookup_generic_type`, structural
+wrapper construction (with `Ptr[readonly[T]]` -> `PtrType(T,
+is_readonly=True)` normalization), union own/readonly normalization,
+nested dotted class lookup, qualified-module error hints, "Unknown
+type" / unresolved-import errors.
+
+Supporting changes:
+
+- **`ParseError` extended** to accept an optional `loc: SourceLocation`
+  fallback. Resolver-path errors populate `lineno` from `ref.loc` so
+  error messages stay byte-identical to the ast-based path.
+- **`_resolve_primitive_type`, `_resolve_registered_type`,
+  `_raise_unresolved_import_error`** all made `node` optional and added
+  `loc` kwarg. Existing callers (positional `node`) unchanged.
+- **Walker fix** -- `_parse_subscript_type_ref` now builds the full
+  dotted name for 3+ level Attribute chains (`a.b.c.D[T]`), so the
+  resolver's nested-class fallback can match via
+  `_resolve_dotted_class_name_str`. Previously raised-name was None for
+  chains deeper than 2.
+- **String-keyed variants** added alongside ast-keyed helpers:
+  `_resolve_qualified_type_name_str(mod, attr)`,
+  `_resolve_dotted_class_name_str(dotted)`,
+  `_raise_unresolved_qualified_error_str(dotted, loc)`. Resolver uses
+  these so it doesn't depend on ast structure.
+
+**Not wired** -- `_parse_type_annotation` is unchanged; the resolver has
+no call sites yet. That's F.3b.3's job.
+
+**Tests** -- `TestResolverEquivalence` and `TestResolverErrors` classes
+added to `tpyc/test_parse_type_ref.py`. For 68 annotation sources
+covering primitives (fixed-int widths, floats, str family, bytes,
+slice types, None), generics (list/dict/set/tuple/Array/Span with int
+size), structural wrappers (Ptr/Own/readonly/auto_readonly/auto_own/
+Optional/Final), unions, Callable/Fn, Literal, and deep nesting, plus
+`T` / `list[T]` / `Ptr[T]` / `Array[T, N]` with type-parameter scopes,
+the equivalence assertion is
+`_parse_type_annotation(node) == _resolve_type_ref_impl(_parse_type_ref(node))`.
+Error-lineno preservation pinned separately (`test_error_lineno_preserved`).
+
+Full unit suite: 379 passed (311 + 68 new). Integration smoke green.
+No call sites changed; dead code still.
+
+##### F.3b.3 -- Flip `_parse_type_annotation` through the walker (DONE)
+
+`_parse_type_annotation` rewritten to a 3-line router:
+
+```python
+def _parse_type_annotation(self, node, type_param_scope=None) -> TpyType:
+    if type_param_scope is None:
+        type_param_scope = self._type_param_scope
+    ref = self._parse_type_ref(node, type_param_scope)
+    return self._resolve_type_ref_impl(ref, type_param_scope)
+```
+
+External contract unchanged -- all ~30 call sites still receive
+`TpyType`. `FragmentParser.` _parse_type_annotation` override
+(`except ParseError` fallback for unresolved names in macro fragments)
+still works because it calls `super()._parse_type_annotation`.
+
+**Structural-wrapper name collision**: The initial implementation used
+bare canonical names like `TpyTypeRef("Ptr", ...)` / `("Optional",
+...)` for structural wrappers when the source name resolved. But the
+generic-path fallback also emitted `TpyTypeRef(raw_name, ...)` where
+`raw_name` was the user's source identifier -- so `Optional[T]`
+written **without** `from typing import Optional` produced the same
+shape as `Optional[T]` with the import, and the resolver silently
+built `OptionalType` instead of raising the expected "requires: from
+typing import Optional" error.
+
+First fix-attempt used dotted qnames (`"tpy.Ptr"`, `"typing.Optional"`,
+`"builtins.tuple"`). That resolved the bare-name collision but
+introduced a second one: qualified dotted source like
+`typing.Optional[T]` written without `import typing` also falls
+through to the generic path with `raw_name = "typing.Optional"` -- same
+string as the canonical qname. Resolver silently matched again.
+
+Final form: **`:` separator for canonical names** (`"tpy:Ptr"`,
+`"tpy:Own"`, `"tpy:readonly"`, `"tpy:auto_readonly"`, `"tpy:auto_own"`,
+`"typing:Optional"`, `"typing:Final"`, `"builtins:tuple"`). `:` cannot
+appear in any Python identifier or dotted-name form, so the canonical
+strings are distinct from any raw user source the generic-path
+fallback could produce. Regression pinned by
+`cases/imports/error_typing_qualified_not_imported` (no diag change --
+this case already raised under the ast path and raises again under the
+ref path, after the fix).
+
+**Verification:**
+- Full unit suite: 379 passed.
+- Full integration suite: 2714 passed + 1 skipped.
+- `uv run pytest --force-exec` (rebuilds every case's exec phase,
+  ignoring fingerprint-based skips): 2714 passed + 1 skipped. **Zero
+  changes to `tests/` expected files** -- byte-identical generated C++
+  across every case.
+- The sema-side resolve pipeline (`TypeOperations.resolve_type`) sees
+  the same `TpyType` it did before, so all downstream paths remain
+  untouched.
+
+##### F.3b.4 -- Infrastructure + first flipped site (DONE)
+
+Scope reduction: land the end-to-end sema-side ref resolution pipeline
+with a single flipped site (`TpyVarDecl.type`) as the proving case.
+The remaining four leaf sites (TpyFunction params/return, record
+fields, method signatures, overload stubs) move in F.3b.5+.
+
+**Infrastructure:**
+
+- `TpyModule.resolver: Callable | None`. Parser attaches
+  `self._resolve_type_ref_impl` (bound method) at end-of-parse. Bound
+  method retains the parser instance alive, so the resolution state
+  (registry, imports, local_defs, module_class_names,
+  module_type_alias_names, reverse_module_aliases, bare_module_imports)
+  travels with it. Mirrors the parser-author / sema-reader pattern of
+  `TpyModule.directives`.
+- `SemanticContext.parser_resolver: Any`. `analyzer.analyze()` wires it
+  from `module.resolver`.
+- `TypeOperations.resolve_type_ref(ref, type_param_scope=None) ->
+  TpyType`. Delegates to `ctx.parser_resolver`. When the caller omits
+  `type_param_scope`, builds one from the current function/record
+  context (`ctx.func.current_function.type_params`,
+  `ctx.record_ctx.type_params` + kinds). The parser's own
+  `_type_param_scope` is parse-time state and is unreliable at sema
+  time, so the resolver must receive scope per-call for code inside
+  generic bodies.
+- `TypeOperations._current_type_param_scope()` helper builds the scope
+  dict; zips record `type_params` + `type_param_kinds` (parallel lists
+  on `TpyRecord`) and assigns `TypeParamKind.TYPE` uniformly for
+  function params (`TpyFunction` doesn't carry kinds).
+
+**Walker fix:** `_parse_type_ref` for `ast.Name` applies
+`_nested_type_scope` eagerly. Referencing `Kind` inside
+`class Message: class Kind: ...` emits `TpyTypeRef("Message.Kind",
+...)` directly, so the emitted ref survives to sema time even though
+`_nested_type_scope` is parse-time-only state. Without this, a deferred
+resolution in sema would see a bare `TpyTypeRef("Kind", ...)` with no
+way to find the dotted form.
+
+**Flipped site: `TpyVarDecl.type`.** Parser's AnnAssign handler emits
+`TpyTypeRef` via `_parse_type_ref` instead of `TpyType` via
+`_parse_type_annotation`. `TpyVarDecl.type` field type widened to
+`Optional[TpyType | TypeRefNode]`.
+
+Three writer sites resolve + write back:
+- `sema/analyzer.py::_resolve_pending_type_refs` -- new top-level
+  pre-pass that runs before `_fix_recursive_optional_annotations`
+  (which reads `stmt.type` and calls `typ.map_inner_types` --
+  TypeRefNode doesn't have that). Resolves all `TpyVarDecl.type` refs
+  in `module.top_level_stmts` to `TpyType` in place.
+- `sema/registration.py::register_globals` -- defensive resolution at
+  top of the loop. In practice, already-resolved by the pre-pass, but
+  kept so future changes don't regress.
+- `sema/statements.py::_analyze_var_decl` -- defensive resolution at
+  top. Needed for TpyVarDecl inside function bodies (which aren't in
+  top_level_stmts and aren't touched by the pre-pass).
+
+**ParseError extension re-used.** The `loc` kwarg added in F.3b.2
+carries through: errors raised by the sema-side resolver path still
+report correct line numbers via `ref.loc`.
+
+**Verification:**
+- Unit suite: 379 passed.
+- Integration suite: 2714 passed + 1 skipped.
+- `uv run pytest --force-exec`: 2714 passed + 1 skipped, zero changes
+  to any `tests/expected/` files. Byte-identical generated C++.
+
+##### F.3b.5 -- Flip top-level function signatures + record fields (DONE)
+
+Scope reduced from the original "flip remaining four sites" to the two
+that don't require rearchitecting parse-time type inspection. Record
+methods and protocol method signatures stay on the TpyType path; they
+move in a later sub-step together with the parse-time logic that
+depends on them.
+
+**Flipped:**
+- `TpyFunction.params` / `.return_type` / `.vararg_type` for top-level
+  functions (`_parse_function`, including `@overload` stubs and
+  `@builtin_decorator` stubs).
+- `TpyRecord.fields[i].type` (FieldInfo emission in `_parse_class`).
+
+**Kept on TpyType path (parse-time resolution still required):**
+- Record methods (`_parse_method`) -- inspect param types at parse
+  time for `@auto_readonly` wrapping and property-setter `Own[T]`
+  promotion.
+- Protocol method signatures (lines 1741+, `MethodSignature`).
+- Nested-def bodies and macro-fragment functions -- resolved eagerly
+  via the new `Parser._finalize_function_refs(func)` helper so the
+  enclosing scope's type params don't get lost.
+
+**AST widening** (`tpyc/parse/nodes.py`):
+- `TpyFunction.params: list[tuple[str, TpyType | TypeRefNode]]`
+- `TpyFunction.return_type: TpyType | TypeRefNode`
+- `TpyFunction.vararg_type: TpyType | TypeRefNode | None`
+- `TpyFunction.type_param_kinds: list[TypeParamKind]` new parallel
+  field. `_parse_function` populated it locally before but never
+  stored; F.3b.5's sema-side `_resolve_pending_type_refs` needs
+  per-function INT/TYPE kinds to build resolution scope correctly
+  (otherwise `def f[T, N: int](a: Array[T, N])` would resolve N as
+  TYPE and reject the int-kind slot).
+- `FieldInfo.type` annotation stays `TpyType` (typesys module, no
+  parse-time imports) but is dynamically a TypeRefNode between parse
+  and the pre-pass; runtime isinstance at the pre-pass covers the
+  cross-type handling.
+
+**Parser changes** (`tpyc/parse/parser.py`):
+- `_parse_function` param / vararg / kwonly / return sites flipped to
+  `_parse_type_ref`.
+- `_parse_class` field-annotation site flipped to `_parse_type_ref`.
+- `_parse_nested_def` and `FragmentParser.parse_fragment` call the
+  new `_finalize_function_refs(func)` after `_parse_function` so
+  nested / macro-fragment functions immediately have TpyType
+  signatures.
+- `@builtin_decorator` stub path in `_parse_module` also calls
+  `_finalize_function_refs` before `_schema_from_stub` (which inspects
+  param types at parse time to derive decorator argument schemas).
+
+**Sema changes** (`tpyc/sema/analyzer.py`, `tpyc/sema/type_ops.py`):
+- `_resolve_pending_type_refs` moved to run before
+  `register_record` / `register_function`, so all downstream passes
+  read TpyType uniformly.
+- `_resolve_pending_type_refs` extended to walk `module.functions`
+  (params / return_type / vararg_type) and `module.all_records()`
+  fields.
+- Per-function scope built from `type_param_kinds` list so INT-kind
+  type params survive the ref->type transition.
+- `TypeOperations._current_type_param_scope()` also reads
+  `type_param_kinds` for the current function (was hard-coded TYPE).
+
+**Test updates** (`tpyc/test_parse.py`):
+- `TestParserStateIsolation`'s three tests previously asserted
+  `pytest.raises(ParseError)` on the second parse of names that used
+  to fail at parse time. Those names now fail in sema, so the tests
+  are refactored to verify state isolation directly: check that the
+  leaked import is absent from `module.imports`, then call the
+  attached `module.resolver` on the unresolved ref and assert it
+  raises.
+
+**Verification:**
+- Unit suite: 379 passed.
+- Integration suite: 2714 passed + 1 skipped.
+- `uv run pytest --force-exec`: 2714 passed + 1 skipped, zero changes
+  to any `tests/expected/` files. Byte-identical generated C++.
+
+##### F.3b.6 -- Parser purity for methods (NOT STARTED)
+
+F.3b.1--F.3b.5 reached the limit of what can be flipped without moving
+parse-time semantic logic. `_parse_method` still inspects resolved
+types for decorator-driven transformations (`@auto_readonly` wrapping,
+property-setter `Own[T]` promotion) and produces method clones
+(`_clone_auto_readonly`, `_clone_auto_own`) via `strip_auto_readonly`
+/ `apply_auto_readonly` tree walks on TpyType. The self annotation is
+also inspected at parse time to derive `is_consuming` / `auto_own` /
+`auto_readonly` flags. To flip `TpyRecord.methods` + protocol method
+signatures to `TpyTypeRef`, that logic has to move to sema.
+
+**Target architecture** (parser-purity design):
+
+Parser emits one TpyFunction per source def with only syntactic
+intent:
+
+- Decorators as flags (unchanged: `auto_readonly`, `auto_own`,
+  `is_readonly`, `is_property_setter`, `is_staticmethod`, ...).
+- Self annotation as `TpyTypeRef` (no inspection).
+- Params / return / vararg as `TpyTypeRef`.
+- No cloning at parse time.
+
+Sema gains `sema/method_expansion.py` running between
+`_resolve_pending_type_refs` and `register_enum` / `register_record`:
+
+1. `_derive_self_flags` -- walks resolved self type. `Own[Self]` ->
+   `is_consuming`. `AutoOwn[Self]` -> `auto_own`.
+   `AutoReadonly[Self]` -> `auto_readonly`. Validates incompatible
+   combinations (`__init__` / `__del__` x ownership, `@readonly` x
+   `Own[Self]`, etc.). Errors raised as `SemanticError`, not
+   `ParseError`.
+2. `_apply_auto_readonly_wrapping` -- if `method.auto_readonly`,
+   scan resolved params and wrap non-value non-readonly with
+   `AutoReadonlyType`. Also detect per-param `AutoReadonlyType`
+   that propagates the flag.
+3. `_apply_property_setter_wrapping` -- if `is_property_setter`,
+   wrap first param with `Own[T]` when not value-type.
+4. `_expand_clones` -- methods with `auto_readonly` -> mutable/const
+   clones via `strip_auto_readonly` / `apply_auto_readonly`.
+   Methods with self `auto_own` -> borrowing/consuming clones.
+   Clones inserted into `record.methods` before registration.
+
+**Known user-facing side effects:**
+
+- Error type shift: validation errors like "Own[Self] is not allowed
+  on __init__" move from `ParseError` to `SemanticError`. User-facing
+  `file.py:N: error: msg` format is preserved (same lineno via
+  `ref.loc`), but tests that do `pytest.raises(ParseError)` on these
+  specific messages need to switch to `SemanticError`. Audit needed;
+  expect ~5-10 test cases.
+- `FragmentParser.parse_fragment` output for `quote_fun` / macros
+  currently returns a TpyFunction with wrapping + clones applied.
+  After F.3b.6, fragment output is the raw (unexpanded) form; sema
+  re-runs method_expansion on macro-generated methods. Macro consumers
+  in `tplib` need audit.
+
+**Sub-steps:**
+
+##### F.3b.6.1 -- Introduce method_expansion.py; move self-flag derivation
+
+- Add `sema/method_expansion.py` with an `expand_methods(module)`
+  entry point (initially just the self-flag derivation step).
+- Parser's `_parse_method` stops inspecting self annotation; emits
+  self as-is (still TpyType via eager resolve for now).
+- `expand_methods` walks `module.all_records()` + `module.functions`
+  (methods only), reading `method.params[0][1]` (self type) to derive
+  `is_consuming` / `auto_own` / `auto_readonly` flags and validate
+  guards.
+- `expand_methods` runs in `analyzer.analyze()` between
+  `_resolve_pending_type_refs` and `register_enum`.
+- Error-type shift tests update.
+- Byte-identical codegen verification.
+
+##### F.3b.6.2 -- Move auto_readonly + property-setter wrapping + cloning
+
+- Delete `_parse_method` wrapping loops (lines ~2124-2146) and
+  `_parse_method` property-setter wrapping (line ~2190-2193).
+- Delete parse-time clone calls at `_parse_class` (lines ~1484-1486).
+- Delete parser helpers `_clone_auto_readonly`, `_clone_auto_own`
+  (move their logic into `method_expansion.py`).
+- `expand_methods` now runs all four transformation steps: self-flag
+  derivation (from F.3b.6.1), wrapping, cloning, property-setter
+  wrapping.
+- Registration reads `record.methods` after expansion, so clone
+  counts match what sema sees today.
+- Macro / FragmentParser audit: ensure macro-generated methods also
+  flow through `expand_methods`. If macros produce unexpanded methods
+  (likely simplest), sema re-runs expansion after macro execution.
+- Byte-identical codegen verification.
+
+##### F.3b.6.3 -- Flip `_parse_method` + protocol method signatures to TpyTypeRef
+
+- With parse-time type inspection gone, method params / self / return
+  / vararg can finally be `TpyTypeRef`.
+- `_parse_method` emits `TpyTypeRef`. `_parse_class` protocol section
+  (lines ~1741, 1746, 1760) emits `TpyTypeRef` for `MethodSignature`.
+- `_resolve_pending_type_refs` extends to walk record methods with
+  **merged scope** (record type params + method type params).
+  Protocol methods similarly.
+- Parse-time self inspection in F.3b.6.1 moves to run AFTER
+  `_resolve_pending_type_refs` (so it sees TpyType).
+- Widen `TpyFunction.params`, `return_type`, `vararg_type` (already
+  widened in F.3b.5; verify method path reaches them). Widen
+  `MethodSignature.params`, `return_type` in `typesys.py` (or move
+  `MethodSignature` to `parse/nodes.py` if circular-import risk
+  arises).
+- `FragmentParser`: no longer needs `_finalize_function_refs` for
+  method-producing fragments -- sema handles everything.
+- Byte-identical codegen verification.
+
+##### F.3b.6.4 -- Cleanup
+
+- Delete parser's `_parse_type_annotation` call sites in method /
+  protocol paths (now all go through `_parse_type_ref`).
+- Remove `_finalize_function_refs` calls that are no longer needed.
+- Delete anything in `_parse_method` that's pure parse-time method
+  semantics (should be empty after F.3b.6.1-3).
+- Doc update: mark F.3b.6 complete.
 
 #### Phase F.3c -- Expand `TpyTypeRef` coverage to all annotation sites
 
