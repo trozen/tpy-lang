@@ -133,7 +133,7 @@ Examples of the policy in action:
 | [`collections`](#collections) | P0 | Missing | 0% | -- | OrderedDict trivial (have ordered_map); deque needs C++ struct; Counter/defaultdict/namedtuple need macros |
 | [`itertools`](#itertools) | P0 | Missing | 0% | -- | C++ primitives exist in `runtime/itertools.hpp`; needs Python-surface module |
 | [`functools`](#functools) | P0 | Missing | 0% | -- | partial/reduce/lru_cache need closure + macro support |
-| [`random`](#random) | P1 | Stub | ~15% | mixed | Should be pure-TPy Mersenne Twister over a thin entropy binding. Currently thin `std::rand` wrappers |
+| [`random`](#random) | P1 | Partial | ~80% | pure | Pure-TPy MT19937 + CPython's distribution suite, byte-identical to CPython on the same seed. Done: `Random` class, `random`, `seed(Int32)`, `getrandbits(k<=32)`, `randint`, `randrange`, `randbytes`, `uniform`, `triangular`, `gauss`, `normalvariate`, `lognormvariate`, `expovariate`, `paretovariate`, `weibullvariate`, `gammavariate`, `betavariate`, `vonmisesvariate`. Missing: `choice`/`shuffle` (Tier 2, straightforward), `choices`/`sample`/`SystemRandom`/auto-seed/`binomialvariate`/`getstate` (Tier 3, blocked on Iterable protocol or OS-entropy binding). See module docstring TODOs |
 | [`struct`](#struct) | P1 | Partial | ~60% | macro | unpack/calcsize only; `pack` needs statement-expr or buffer builder |
 | [`bisect`](#bisect) | P1 | Done | 100% | pure | All four functions implemented generically over `Comparable` |
 | [`enum`](#enum) | P1 | Partial | ~50% | macro | Enum/IntEnum/auto; missing functional API, lookup by name/value, iteration |
@@ -196,9 +196,9 @@ ramps up.
 | TODO.md bug | Effect on stdlib | Blocks |
 |---|---|---|
 | Variable re-exports through `native_module` facades don't produce usable `VARIABLE` bindings downstream (bug in Bugs section) | Any stdlib module that exposes module-level constants through a facade (re-export via `__init__.py`) can't be used via the idiomatic `from module import CONST` | `sys` (stdout/stderr as objects), `math` constants, `time` constants, any singleton instance |
-| Init chain doesn't propagate transitively through `native_module` facades | Non-trivial module-level init (seeding a Mersenne Twister, building a lookup table, opening stdout/stderr) is silently not run when reached via a facade import | `random` (MT state), `logging` (root logger), `locale`, `sys.stdout` wrapping |
+| Init chain doesn't propagate transitively through `native_module` facades | Non-trivial module-level init (building a lookup table, opening stdout/stderr) is silently not run when reached via a facade import | `logging` (root logger), `locale`, `sys.stdout` wrapping |
 | `import pkg.sub` followed by attribute access (`pkg.sub.X`) not supported | Forces `from pkg.sub import X` everywhere. Any stdlib module that users canonically access as `os.path.join(...)` or `logging.info(...)` is painful | `os.path`, `logging.*` module-level functions, `http.client`, `urllib.parse`, any stdlib with sub-packages |
-| Module-level mutable state across compilation units | No single source of truth for per-process state | `logging` (handlers registry), `random` (shared RNG instance), `sys.path`, `warnings` |
+| Module-level mutable state across compilation units | Single source of truth for per-process state. Verified working for regular stdlib modules with a reference-type module-level singleton (e.g. `random`'s shared RNG instance); still needs checking for facade-routed or reassignment-based patterns | `logging` (handlers registry), `sys.path`, `warnings` |
 | Non-native functions in builtin modules can't be called from user code (bug: codegen emits unqualified names) | Can't mix pure-TPy functions into a native-facade module. Forces workaround through `@cpp_template` / `@native` shims | `itertools` (would want to re-export C++ generators as pure-TPy functions), any facade that mixes thin bindings + pure helpers |
 
 Recommendation: bundle these as a **"stdlib enablement"** workstream and fix
@@ -627,8 +627,12 @@ from user code" -- see TODO.md bugs) or `@native` thin shims.
 
 ### random
 
-Current: `lib/tpy/random.py` -- uses `std::rand/srand`. Non-reproducible
-cross-platform; marked TODO for Mersenne Twister.
+Current: `lib/tpy/random.py` -- pure-TPy MT19937 engine. `Random` class
+holds the 624-word state; module-level `random()` / `seed()` /
+`getrandbits()` delegate to a module-level `_inst: Random` singleton.
+Byte-identical to CPython's `random._inst.getrandbits(32)` for non-negative
+Int32 seeds (verified against seed 42, 1, 7, 99, 12345; `cases/stdlib/random`
+exercises this under both TPy and CPython).
 
 Target under the policy: the Mersenne Twister state machine itself is **pure
 TPy** (same as CPython's `_randommodule.c` logic, but in .py). The only native
@@ -636,23 +640,84 @@ primitive is an OS entropy source for seeding when no explicit seed is given
 (e.g. `os.urandom` via thin syscall binding). Everything else -- `randint`,
 `choice`, `shuffle`, `sample`, `gauss`, etc. -- is pure TPy over the MT core.
 
-Blockers for the pure-TPy MT: needs module-level mutable state (the RNG
-state vector) that actually works across compilation units (see TODO.md bugs
-around `native_module` facades and init-chain propagation). These are
-language bugs worth fixing before doing the random module port.
+**Unblocked (engine landed).** Earlier drafts flagged the MT port as gated
+on the `native_module`-facade bugs (TODO.md:47, :48) and "module-level
+mutable state across compilation units." Verified those don't apply here:
+`random.py` is a regular stdlib module, not a facade, so it compiles to one
+TU with a module-level `_inst: Random` whose state is genuinely shared
+across all importers. The one real limitation -- TPy rejects reassigning a
+module-level reference-type variable -- is sidestepped by in-place
+`_inst._seed(s)` mutation, which is how CPython's `random.seed()` works
+anyway.
+
+**Thread safety (deferred).** The module-level `_inst` is shared mutable
+state and NOT thread-safe: concurrent callers can corrupt the 624-word
+vector (double-twist, torn index updates). Currently theoretical -- TPy
+has no threading primitives -- but will need a fix when `threading` lands.
+Three candidate models, each with trade-offs: per-thread `_inst` via
+thread-local storage (muddies `seed()` semantics), lock inside `Random`
+(contention under heavy use), or deprecate module-level helpers in favour
+of explicit `Random()` instances (breaks CPython shorthand). CPython itself
+punts to "use per-thread Random()" in docs and added internal locking in
+free-threaded 3.13+. Decision deferred until the TPy threading model is
+chosen.
+
+Sketch:
+
+    class Random:
+        _state: Array[UInt32, 624]
+        _index: UInt32
+
+        def __init__(self, seed: UInt32 = UInt32(5489)) -> None: ...
+        def _seed(self, s: UInt32) -> None: ...          # init_by_array
+        def _genrand_uint32(self) -> UInt32: ...         # MT step + twist
+        def random(self) -> float: ...                   # genrand_res53
+        # randint, choice, shuffle, gauss, ... as methods
+
+    _inst: Random = Random(UInt32(5489))
+
+    def random() -> float: return _inst.random()
+    def seed(n: UInt32) -> None: _inst._seed(n)
+    # ...
+
+Soft gaps for full CPython compat (neither gates the core MT port):
+- `Iterable[T]` conformance for list literals (TODO.md:53) constrains
+  `choices` / `sample` signatures. Workaround: declare as `list[T]` (same
+  compromise as `math.prod` / `fsum` / `dist`).
+- OS entropy primitive for implicit auto-seed and `SystemRandom`: ~10-line
+  `@native` binding to `getentropy(3)` / `std::random_device`. Independent
+  of the `os` module.
 
 | Item | Status | Notes |
 |---|---|---|
-| `random()` | Done | Uniform [0, 1) |
-| `seed(n)` | Done | |
-| `randint(a, b)`, `randrange` | Missing | Easy add |
-| `choice(seq)`, `choices`, `sample` | Missing | Easy add |
-| `shuffle(seq)` | Missing | Needs mutable-Span iteration |
-| `uniform(a, b)`, `gauss`, `normalvariate` | Missing | Easy adds |
-| `expovariate`, `betavariate`, `gammavariate`, `lognormvariate` | Missing | |
-| `Random` class (per-instance state) | Missing | Needs object-held RNG state |
+| `random()` | Done | Uniform [0, 1); MT19937 `genrand_res53`. Byte-identical to CPython |
+| `seed(a)` | Partial | Non-negative Int32 only; CPython accepts `None`/`int`/`str`/`bytes`. Negative Int32 panics on the `UInt32(n)` coercion |
+| `getrandbits(k)` | Partial | k in [1, 32]; CPython supports arbitrary k via multi-word concat |
+| `randint(a, b)` | Done | Inclusive [a, b]; `b - a + 1` must fit Int32 |
+| `randrange(stop)`, `randrange(start, stop)`, `randrange(start, stop, step)` | Done | Three overloads; step can be negative |
+| `randbytes(n)` | Done | Byte-identical to CPython's `getrandbits(n*8).to_bytes(n, 'little')` for any `n` on any host |
+| `uniform(a, b)` | Done | |
+| `triangular(low=0.0, high=1.0, mode=None)` | Done | |
+| `gauss(mu, sigma)` | Done | Box-Muller with cached second value. Reseed clears cache |
+| `normalvariate(mu, sigma)` | Done | Kinderman-Monahan (distinct stream from `gauss`), matches CPython |
+| `lognormvariate(mu, sigma)` | Done | |
+| `expovariate(lambd)` | Done | |
+| `paretovariate(alpha)` | Done | |
+| `weibullvariate(alpha, beta)` | Done | |
+| `gammavariate(alpha, beta)` | Done | Cheng 1977 (alpha>1) + Ahrens-Dieter (0<alpha<1) + exponential (alpha==1) |
+| `betavariate(alpha, beta)` | Done | Composed over `gammavariate` |
+| `vonmisesvariate(mu, kappa)` | Done | Floor-mod workaround for TODO.md:56 (`%` sign semantics) |
+| `Random` class (per-instance state) | Done | Per-instance 624-word state; module-level functions delegate to `_inst: Random` singleton |
+| `choice(seq)`, `shuffle(seq)` | Missing | Tier 2: works today for value-type T; deferred pending one pass of verification |
+| `getstate()`, `setstate(state)` | Missing | Tier 2; CPython tuple shape awkward, `list[UInt32]` variant viable |
+| `choices(pop, weights=, cum_weights=, k=)` | Missing | Tier 3: soft `Iterable[T]` gap for list-literal weights (TODO.md:53) |
+| `sample(pop, k, counts=None)` | Missing | Tier 3: same `Iterable[T]` gap + complex algorithm |
+| `binomialvariate(n, p)` | Missing | Tier 3: BTRS state machine; defer until demand |
+| `SystemRandom` class | Missing | Tier 3: depends on OS entropy primitive |
 
-Tests: `random_basic`.
+Tests: `cases/builtins/random_basic` (existing API smoke test);
+`cases/stdlib/random` (MT engine byte-identity with CPython + per-instance
+Random + singleton isolation, `cpy` phase enabled).
 
 ### struct
 
