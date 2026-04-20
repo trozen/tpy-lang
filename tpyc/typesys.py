@@ -16,7 +16,7 @@ from enum import Enum
 from typing import Any, Callable, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .parse.nodes import TpyArrayLiteral, TpyListRepeat, TpyListComprehension, TpyCall, TpyDictLiteral
+    from .parse.nodes import TpyArrayLiteral, TpyListRepeat, TpyListComprehension, TpyCall, TpyDictLiteral, TypeRefNode
 
 
 class TypeParamKind(Enum):
@@ -3056,10 +3056,15 @@ CONST_PARAMS_METHODS = frozenset({
 
 @dataclass
 class MethodSignature:
-    """Method signature required by a protocol."""
+    """Method signature required by a protocol.
+
+    Between parse and sema's _resolve_pending_type_refs pre-pass, params
+    and return_type may hold `TypeRefNode` in place of `TpyType` (Phase
+    F.3b.6.3). All readers post-pre-pass see TpyType.
+    """
     name: str
-    params: list[tuple[str, TpyType]]  # (param_name, param_type)
-    return_type: TpyType
+    params: list[tuple[str, 'TpyType | TypeRefNode']]
+    return_type: 'TpyType | TypeRefNode'
     is_readonly: bool = False
     readonly_opt_out: bool = False
     cpp_template: str | None = None

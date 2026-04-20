@@ -395,7 +395,11 @@ class SemanticAnalyzer:
         if self.ctx.registry.imported_type_alias_info:
             self._resolve_imported_aliases(module)
 
-        # First pass: register all enums then records. Enums are registered
+        # First pass: register all enums then records. Method expansion
+        # (self-flag derivation, wrapping, cloning, validation) runs
+        # inside `register_record` after `_apply_class_macros` so that
+        # macro-added methods flow through the same pipeline as regular
+        # ones (Phase F.3b.6.5). Enums are registered
         # first so that record field-type resolution (in register_record) can
         # substitute parser-level NominalType("Color") placeholders with the
         # registered enum NominalType that carries `_module_qname`. Records
@@ -1338,6 +1342,23 @@ class SemanticAnalyzer:
                 for i, name in enumerate(record.type_params)
             }
 
+        def _merged_method_scope(record_scope, method):
+            """Record type params + method type params, method-level wins on collision."""
+            if not method.type_params:
+                return record_scope
+            merged = dict(record_scope) if record_scope else {}
+            method_kinds = method.type_param_kinds
+            for i, name in enumerate(method.type_params):
+                kind = method_kinds[i] if i < len(method_kinds) else TypeParamKind.TYPE
+                merged[name] = kind
+            return merged
+
+        def _protocol_scope(protocol):
+            if not protocol.type_params:
+                return None
+            # Protocols only carry TYPE-kind type params (parser constraint).
+            return {name: TypeParamKind.TYPE for name in protocol.type_params}
+
         # Top-level functions (methods are resolved eagerly in _parse_method,
         # nested defs in _parse_nested_def)
         for func in module.functions:
@@ -1348,14 +1369,33 @@ class SemanticAnalyzer:
             if func.vararg_type is not None:
                 func.vararg_type = _resolve(func.vararg_type, scope)
 
-        # All records (including nested) -- fields only. Record methods
-        # carry TpyType already (resolved eagerly in _parse_method since
-        # auto_readonly / property-setter logic inspects types at parse
-        # time).
+        # All records (including nested) -- fields + methods. Record
+        # methods use a merged scope (record type params + method type
+        # params) when resolving param / return / vararg refs. Self is
+        # also resolved here so sema.method_expansion sees TpyType.
+        # (Phase F.3b.6.3)
         for record in module.all_records():
             scope = _record_scope(record)
             for fld in record.fields:
                 fld.type = _resolve(fld.type, scope)
+            for method in record.methods:
+                method_scope = _merged_method_scope(scope, method)
+                method.params = [(n, _resolve(t, method_scope)) for (n, t) in method.params]
+                if method.return_type is not None:
+                    method.return_type = _resolve(method.return_type, method_scope)
+                if method.vararg_type is not None:
+                    method.vararg_type = _resolve(method.vararg_type, method_scope)
+                if method.self_annotation is not None:
+                    method.self_annotation = _resolve(method.self_annotation, method_scope)
+
+        # Protocol MethodSignatures: resolve params + return_type under
+        # the protocol's own type-param scope.
+        for protocol in module.protocols:
+            scope = _protocol_scope(protocol)
+            for msig in protocol.methods:
+                msig.params = [(n, _resolve(t, scope)) for (n, t) in msig.params]
+                if msig.return_type is not None:
+                    msig.return_type = _resolve(msig.return_type, scope)
 
         # Top-level TpyVarDecls
         for stmt in module.top_level_stmts:

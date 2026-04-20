@@ -15,7 +15,7 @@ from typing import Any, Literal, NoReturn, Optional
 
 from ..typesys import (
     TpyType, NominalType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, FinalType, SelfType,
-    strip_auto_readonly, apply_auto_readonly, has_auto_readonly, strip_auto_own, apply_auto_own, ensure_qualified,
+    ensure_qualified,
     TypeParamRef, OptionalType, VoidType, make_union, UnionType, TupleType, CallableType, make_fn_type,
     _contains_self_reference, validate_recursive_union_paths,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW, BOOL, FLOAT, FLOAT32, BIGINT, SELF, BASIC_SLICE, SLICE, FieldInfo, RecordInfo, TypeRegistry,
@@ -1478,15 +1478,12 @@ class Parser:
                 parsed = self._parse_method(item, node.name, type_param_scope, property_names)
                 if parsed.is_property_getter:
                     property_names.add(parsed.name)
-                    # Dual overloads (const + mutable) for correct reference semantics.
-                    # Registration prunes the mutable clone for value-type returns.
+                    # Dual overloads (const + mutable) for correct reference
+                    # semantics; sema.method_expansion performs the actual
+                    # clone. Registration prunes the mutable clone for
+                    # value-type returns.
                     parsed.auto_readonly = True
-                if parsed.auto_readonly:
-                    methods.extend(self._clone_auto_readonly(parsed))
-                elif parsed.auto_own:
-                    methods.extend(self._clone_auto_own(parsed))
-                else:
-                    methods.append(parsed)
+                methods.append(parsed)
             elif isinstance(item, ast.Pass):
                 pass
             elif isinstance(item, ast.Expr) and isinstance(item.value, ast.Constant) and item.value.value is ...:
@@ -1748,12 +1745,12 @@ class Parser:
                         continue
                     if arg.annotation is None:
                         raise ParseError(f"Protocol method parameter '{arg.arg}' must have type annotation", item)
-                    param_type = self._parse_type_annotation(arg.annotation)
+                    param_type = self._parse_type_ref(arg.annotation)
                     params.append((arg.arg, param_type))
 
                 return_type = VOID
                 if item.returns:
-                    return_type = self._parse_type_annotation(item.returns)
+                    return_type = self._parse_type_ref(item.returns)
 
                 methods.append(MethodSignature(
                     name=item.name,
@@ -1998,10 +1995,15 @@ class Parser:
                 else:
                     raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
 
-        if auto_readonly and method_type_params:
+        # Early @auto_readonly + method type params guard. Sema catches
+        # the self-annotation / per-param paths, but running this at parse
+        # time keeps the diagnostic pinned to the decorator's line rather
+        # than getting shadowed by later parse-time checks (stub bodies,
+        # body validation, etc.).
+        if auto_readonly_dec is not None and method_type_params:
             raise ParseError(
                 f"auto_readonly on methods with method-level type parameters is not yet supported ('{node.name}')",
-                auto_readonly_dec or node,
+                auto_readonly_dec,
             )
 
         # Merge class-level and method-level type param scopes
@@ -2013,8 +2015,7 @@ class Parser:
 
         params = []
         has_self = not is_staticmethod
-        is_consuming = False
-        auto_own = False
+        self_annotation = None  # Resolved self type; consumed by sema.method_expansion.
         # Count non-self params for __exit__ stripping check
         n_non_self = len(node.args.args) - (1 if has_self else 0)
         args_iter = iter(enumerate(node.args.args))
@@ -2023,58 +2024,12 @@ class Parser:
                 # Non-static methods must have 'self' as first parameter
                 if arg.arg != "self":
                     raise ParseError(f"First parameter of method '{node.name}' must be 'self'", node)
-                # Check for self: Own[Self] or self: auto_own[Self] annotation
+                # Emit the self annotation as a TypeRefNode; sema resolves
+                # it in `_resolve_pending_type_refs` and
+                # `sema.method_expansion.expand_methods` validates the
+                # shape + derives flags (Phase F.3b.6.3).
                 if arg.annotation is not None:
-                    self_ann = self._parse_type_annotation(arg.annotation, type_param_scope)
-                    if isinstance(self_ann, OwnType) and isinstance(self_ann.wrapped, SelfType):
-                        if node.name in ("__init__", "__del__"):
-                            raise ParseError(
-                                f"Own[Self] is not allowed on '{node.name}'",
-                                node,
-                            )
-                        if is_readonly:
-                            raise ParseError(
-                                f"Own[Self] cannot be combined with @readonly on method '{node.name}'",
-                                node,
-                            )
-                        is_consuming = True
-                    elif isinstance(self_ann, AutoOwnType) and isinstance(self_ann.wrapped, SelfType):
-                        if node.name in ("__init__", "__del__"):
-                            raise ParseError(
-                                f"auto_own[Self] is not allowed on '{node.name}'",
-                                node,
-                            )
-                        if is_readonly:
-                            raise ParseError(
-                                f"auto_own[Self] cannot be combined with @readonly on method '{node.name}'",
-                                node,
-                            )
-                        auto_own = True
-                    elif isinstance(self_ann, AutoReadonlyType) and isinstance(self_ann.wrapped, SelfType):
-                        if node.name in ("__init__", "__del__"):
-                            raise ParseError(
-                                f"auto_readonly[Self] is not allowed on '{node.name}'",
-                                node,
-                            )
-                        if is_readonly:
-                            raise ParseError(
-                                f"auto_readonly[Self] cannot be combined with @readonly on method '{node.name}'",
-                                node,
-                            )
-                        if auto_readonly_dec is not None:
-                            raise ParseError(
-                                f"'self: auto_readonly[Self]' cannot be combined with the "
-                                f"@auto_readonly decorator on method '{node.name}'",
-                                node,
-                            )
-                        auto_readonly = True
-                    else:
-                        raise ParseError(
-                            f"Only 'Own[Self]', 'auto_own[Self]', or 'auto_readonly[Self]' "
-                            f"is allowed as a type annotation for 'self', "
-                            f"got '{self_ann}'",
-                            node,
-                        )
+                    self_annotation = self._parse_type_ref(arg.annotation, type_param_scope)
                 continue
             # __exit__ exception params (exc_type, exc_val, exc_tb) are stripped --
             # they are always None in TPy (no general exceptions). This allows
@@ -2083,7 +2038,7 @@ class Parser:
                 continue
             if arg.annotation is None:
                 raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
-            param_type = self._parse_type_annotation(arg.annotation, type_param_scope)
+            param_type = self._parse_type_ref(arg.annotation, type_param_scope)
             params.append((arg.arg, param_type))
 
         # __exit__ must have exactly 3 params (exc_type, exc_val, exc_tb) to
@@ -2106,7 +2061,7 @@ class Parser:
                 raise ParseError(
                     f"*{va.arg} must have a type annotation (element type)", node)
             vararg_name = va.arg
-            vararg_type = self._parse_type_annotation(va.annotation, type_param_scope)
+            vararg_type = self._parse_type_ref(va.annotation, type_param_scope)
 
         # Parse keyword-only parameters (after * or *args)
         keyword_only_start = None
@@ -2115,7 +2070,7 @@ class Parser:
             for arg in node.args.kwonlyargs:
                 if arg.annotation is None:
                     raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
-                param_type = self._parse_type_annotation(arg.annotation, type_param_scope)
+                param_type = self._parse_type_ref(arg.annotation, type_param_scope)
                 params.append((arg.arg, param_type))
 
         # **kwargs: Unpack[TypedDict]
@@ -2128,33 +2083,6 @@ class Parser:
             kwarg_type = self._parse_unpack_annotation(kwarg_node.annotation, type_param_scope, node)
             kwarg_name = kwarg_node.arg
 
-        # @auto_readonly decorator: wrap all eligible params with AutoReadonlyType.
-        # This unifies with the per-param annotation path -- the decorator is just
-        # sugar for annotating every non-value, non-already-readonly param.
-        if auto_readonly and auto_readonly_dec is not None:
-            params = [
-                (n, AutoReadonlyType(t) if (not t.is_value_type()
-                     and not isinstance(t, (AutoReadonlyType, ReadonlyType)))
-                 else t)
-                for n, t in params
-            ]
-
-        # Detect per-param auto_readonly[T] (from explicit annotations, not decorator).
-        if not auto_readonly:
-            for _, ptype in params:
-                if has_auto_readonly(ptype):
-                    auto_readonly = True
-                    break
-
-        # Re-check type-param guard for annotation/per-param path (the earlier
-        # guard at decorator time only fires when auto_readonly_dec is set).
-        if auto_readonly and auto_readonly_dec is None and method_type_params:
-            raise ParseError(
-                f"auto_readonly on methods with method-level type parameters "
-                f"is not yet supported ('{node.name}')",
-                node,
-            )
-
         # Parse default parameter values (skip_self for non-static methods)
         defaults = self._parse_param_defaults(node, params, skip_self=has_self,
                                               type_param_scope=type_param_scope,
@@ -2164,7 +2092,7 @@ class Parser:
         # Get return type (default to Void for __init__)
         return_type = VOID
         if node.name != "__init__" and node.returns:
-            return_type = self._parse_type_annotation(node.returns, type_param_scope)
+            return_type = self._parse_type_ref(node.returns, type_param_scope)
 
         if cpp_template is not None:
             if not self._is_stub_body(node.body):
@@ -2196,12 +2124,6 @@ class Parser:
         if node.name == "__next__" and error_return is None:
             error_return = "StopIteration"
 
-        # Property setter: wrap value param in Own (stores into field = ownership transfer)
-        if is_property_setter and params:
-            pname, ptype = params[0]
-            if not isinstance(ptype, OwnType) and not ptype.is_value_type():
-                params[0] = (pname, OwnType(ptype))
-
         method = TpyFunction(
             name=node.name,
             params=params,
@@ -2212,13 +2134,11 @@ class Parser:
             is_property_getter=is_property_getter,
             is_property_setter=is_property_setter,
             property_name=property_setter_name,
-            is_consuming=is_consuming,
             is_inline=is_inline,
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,
             is_pure=is_pure,
-            auto_readonly=auto_readonly,
-            auto_own=auto_own,
+            has_auto_readonly_decorator=auto_readonly_dec is not None,
             is_override=is_override,
             is_overload_stub=is_overload_stub,
             is_stub=is_overload_stub_body if is_overload_stub else is_stub,
@@ -2237,75 +2157,10 @@ class Parser:
             kwarg_type=kwarg_type,
             error_return=error_return,
             is_generator=is_generator,
+            self_annotation=self_annotation,
             loc=self._loc(node)
         )
         return method
-
-    def _clone_auto_readonly(self, method: TpyFunction) -> list[TpyFunction]:
-        """Expand an auto_readonly method into two ordinary overloads.
-
-        Returns [mutable_overload, const_overload].
-        - Mutable: params/return stripped of auto_readonly, is_readonly=False
-        - Const:   params/return with auto_readonly -> readonly, is_readonly=True
-
-        auto_readonly[T] nodes in params and return type specify where readonly
-        is applied in the const overload. The @auto_readonly decorator wraps all
-        eligible params before this runs, so both decorator and per-param
-        annotations go through the same code path.
-        """
-        mutable_params = [(n, strip_auto_readonly(t)) for n, t in method.params]
-        const_params = [(n, apply_auto_readonly(t)) for n, t in method.params]
-        mutable_return = strip_auto_readonly(method.return_type)
-        const_return = apply_auto_readonly(method.return_type)
-        mutable = dataclasses.replace(
-            method,
-            params=mutable_params,
-            return_type=mutable_return,
-            is_readonly=False,
-            auto_readonly=False,
-            auto_readonly_params_resolved=True,
-            is_auto_readonly_mutable_clone=True,
-        )
-        const = dataclasses.replace(
-            method,
-            params=const_params,
-            return_type=const_return,
-            body=copy.deepcopy(method.body),
-            is_readonly=True,
-            auto_readonly=False,
-            auto_readonly_params_resolved=True,
-            defaults=copy.deepcopy(method.defaults),
-        )
-        return [mutable, const]
-
-    def _clone_auto_own(self, method: TpyFunction) -> list[TpyFunction]:
-        """Expand a self: auto_own[Self] method into two ordinary overloads.
-
-        Returns [borrowing_overload, consuming_overload].
-        - Borrowing: is_consuming=False, auto_own=False, return_type=strip_auto_own(original)
-        - Consuming: is_consuming=True,  auto_own=False, return_type=apply_auto_own(original)
-
-        auto_own[T] nodes in the return type specify where Own is applied
-        in the consuming overload. Parts without auto_own[T] are unchanged.
-        """
-        borrowing_return = strip_auto_own(method.return_type)
-        consuming_return = apply_auto_own(method.return_type)
-        borrowing = dataclasses.replace(
-            method,
-            return_type=borrowing_return,
-            is_consuming=False,
-            auto_own=False,
-            is_auto_own_borrowing_clone=True,
-        )
-        consuming = dataclasses.replace(
-            method,
-            return_type=consuming_return,
-            body=copy.deepcopy(method.body),
-            is_consuming=True,
-            auto_own=False,
-            defaults=copy.deepcopy(method.defaults),
-        )
-        return [borrowing, consuming]
 
     _FUNCTION_LINKAGE_MAP: dict[str, FunctionLinkage] = {
         qnames.NATIVE: FunctionLinkage.NATIVE,
@@ -4206,23 +4061,45 @@ class FragmentParser(Parser):
                     f"quote_fun: expected exactly 1 function definition, "
                     f"got {len(funcs)}", tree)
             func_node = funcs[0]
-            # Detect method: first param named 'self' (annotation optional)
+            # Detect method: first param named 'self'.
             args = func_node.args.args
             has_self = bool(args and args[0].arg == "self")
-            if has_self and args[0].annotation is None:
-                args[0].annotation = ast.Constant(value=None)
-            func = parser._parse_function(func_node)
+            if has_self:
+                # Route through `_parse_method` so method-specific state
+                # (self_annotation, has_auto_readonly_decorator, @property
+                # flags) gets populated -- otherwise sema's expand_methods
+                # sees a bare TpyFunction and skips expansion (Phase
+                # F.3b.6.6, Gap 2). `class_name` is only used in error
+                # messages; `<macro>` is a synthetic placeholder.
+                # `property_names=None` means @x.setter decorators fall
+                # through to the general decorator handler and surface as
+                # an "Unknown decorator" error, matching the prior free-
+                # function routing.
+                func = parser._parse_method(
+                    func_node, class_name="<macro>",
+                    type_param_scope=None, property_names=None)
+            else:
+                func = parser._parse_function(func_node)
             # Macro fragment output is consumed before sema's pre-pass runs,
             # so resolve refs immediately -- matches _parse_nested_def.
             # Fragments have no enclosing type-param scope; the function's
             # own type_params are merged in by _finalize_function_refs.
             parser._finalize_function_refs(func, outer_scope=None)
-            # Strip self param -- is_method functions don't include it
-            if has_self:
-                func.is_method = True
-                func.params = func.params[1:]
-                if func.defaults and len(func.defaults) > len(func.params):
-                    func.defaults = func.defaults[1:]
+            if has_self and isinstance(
+                    func.self_annotation, (TpyTypeRef, TpyUnionRef,
+                                           TpyCallableRef, TpyLiteralRef)):
+                # _finalize_function_refs doesn't touch self_annotation
+                # (non-fragment call sites feed through
+                # `_resolve_pending_type_refs` per-record). Resolve it here
+                # under the method's own type-param scope so expand_methods
+                # sees TpyType.
+                scope: dict[str, TypeParamKind] = {}
+                if func.type_params:
+                    kinds = func.type_param_kinds or []
+                    for i, name in enumerate(func.type_params):
+                        scope[name] = kinds[i] if i < len(kinds) else TypeParamKind.TYPE
+                func.self_annotation = parser._resolve_type_ref_impl(
+                    func.self_annotation, scope or None)
             return func
         elif kind == "statements":
             return parser._parse_body(tree.body)

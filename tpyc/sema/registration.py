@@ -33,6 +33,7 @@ from ..type_def_registry import (
     attach_dynamic_type_def, TypeCategory, EnumInfo,
 )
 from .diagnostics import SemanticError
+from .method_expansion import expand_methods_for_record
 from .operators import DUNDER_CPP_TEMPLATES
 from ..macro_api import ClassInfo, expr_to_cpp_default
 from ..macro_loader import validate_and_call_macro, call_macro_field_function
@@ -293,28 +294,6 @@ class TypeRegistrar:
                 type_param_kinds=list(record.type_param_kinds) if record.type_param_kinds else [],
             )
 
-        # Check for duplicate method definitions (second definition silently wins in Python,
-        # but it is always a bug and can interfere with @override checks).
-        # @overload stubs are exempt -- multiple stubs + one implementation share the same name.
-        # Parser-cloned @auto_readonly pairs are exempt -- the mutable clone is marked
-        # is_auto_readonly_mutable_clone=True so only those pairs bypass the duplicate check.
-        propagate_clone_names: set[str] = {m.name for m in record.methods if m.is_auto_readonly_mutable_clone or m.is_auto_own_borrowing_clone}
-        overload_names: set[str] = {m.name for m in record.methods if m.is_overload_stub}
-        # Property getter+setter share a name -- exempt from duplicate check
-        property_method_names: set[str] = {m.name for m in record.methods if m.is_property_getter or m.is_property_setter}
-        seen_method_names: set[str] = set()
-        for method in record.methods:
-            if method.name in overload_names or method.name in propagate_clone_names:
-                continue
-            if method.name in property_method_names:
-                continue
-            if method.name in seen_method_names:
-                raise SemanticError(
-                    f"Method '{method.name}' defined twice in class '{record.name}'",
-                    method.loc or record.loc,
-                )
-            seen_method_names.add(method.name)
-
         # Validate field types
         for fld in record.fields:
             # Check INT type params before general validation (to provide field location)
@@ -372,8 +351,40 @@ class TypeRegistrar:
                     del_method.loc or record.loc,
                 )
 
-        # Apply class macros (e.g. @dataclass)
+        # Apply class macros (e.g. @dataclass, @model). Macros see
+        # backfilled field types from the validation loop above and may
+        # add methods via ClassInfo.add_method.
         self._apply_class_macros(record)
+
+        # Expand methods on the final method set (source + macro-added).
+        # Runs self-flag derivation, validation, @auto_readonly / property
+        # setter wrapping, and cloning (Phase F.3b.6). Idempotent on
+        # already-expanded clones, so running once per record here is
+        # safe even if the module-level entry point is invoked elsewhere
+        # (Phase F.3b.6.5 closed the macro gap by moving the call here).
+        expand_methods_for_record(record)
+
+        # Check for duplicate method definitions (second definition silently wins in Python,
+        # but it is always a bug and can interfere with @override checks).
+        # Runs post-expansion so the clone flags correctly exempt clone
+        # pairs. @overload stubs are exempt -- multiple stubs + one
+        # implementation share the same name. Property getter+setter share
+        # a name -- also exempt.
+        propagate_clone_names: set[str] = {m.name for m in record.methods if m.is_auto_readonly_mutable_clone or m.is_auto_own_borrowing_clone}
+        overload_names: set[str] = {m.name for m in record.methods if m.is_overload_stub}
+        property_method_names: set[str] = {m.name for m in record.methods if m.is_property_getter or m.is_property_setter}
+        seen_method_names: set[str] = set()
+        for method in record.methods:
+            if method.name in overload_names or method.name in propagate_clone_names:
+                continue
+            if method.name in property_method_names:
+                continue
+            if method.name in seen_method_names:
+                raise SemanticError(
+                    f"Method '{method.name}' defined twice in class '{record.name}'",
+                    method.loc or record.loc,
+                )
+            seen_method_names.add(method.name)
 
         # Validate field defaults are const (after macros have transformed them)
         for fld in record.fields:

@@ -1061,20 +1061,25 @@ class TpyFunction:
     is_property_setter: bool = False
     property_name: str | None = None  # for setter: which property it belongs to
     is_consuming: bool = False
-    # Transient: True only during parsing for @auto_readonly methods.
-    # After _clone_auto_readonly runs, both clones have auto_readonly=False.
+    # Transient input to sema.method_expansion._clone_auto_readonly:
+    # true for @auto_readonly methods, @property getters, methods with
+    # `self: auto_readonly[Self]`, and methods with per-param
+    # `auto_readonly[T]`. After cloning, both clones carry False.
     auto_readonly: bool = False
-    # Set on the mutable clone produced by _clone_auto_readonly.
-    # Used instead of params-list identity to detect mutable+const clone pairs.
+    # Set on the mutable clone produced by
+    # sema.method_expansion._clone_auto_readonly; used to detect
+    # mutable+const clone pairs without relying on params-list identity.
     is_auto_readonly_mutable_clone: bool = False
     # Set on both clones after _clone_auto_readonly resolves AutoReadonlyType
     # in params. Tells sema/codegen not to blanket-apply readonly to all params
     # (each param already carries ReadonlyType or not from the clone).
     auto_readonly_params_resolved: bool = False
-    # Transient: True when self: auto_own[Self] is detected.
-    # After _clone_auto_own runs, both clones have auto_own=False.
+    # Transient input to sema.method_expansion._clone_auto_own: true when
+    # `self: auto_own[Self]` is detected. After cloning, both clones have
+    # auto_own=False.
     auto_own: bool = False
-    # Set on the borrowing clone produced by _clone_auto_own.
+    # Set on the borrowing clone produced by
+    # sema.method_expansion._clone_auto_own.
     is_auto_own_borrowing_clone: bool = False
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT
     native_name: str | None = None
@@ -1103,6 +1108,19 @@ class TpyFunction:
     generator_yield_type: 'TpyType | None' = None  # Set by sema: T from Iterator[T]
     generator_locals: 'list[tuple[str, TpyType]] | None' = None  # Set by sema: local vars for struct fields
     skip_codegen: bool = False  # Set by sema: @inline function, body inlined at call sites
+    # Phase F.3b.6.1 / F.3b.6.3: preserves the self annotation (e.g.
+    # OwnType(SelfType), AutoOwnType(SelfType), AutoReadonlyType(SelfType))
+    # for methods. Between parse and sema's _resolve_pending_type_refs
+    # pre-pass, this may hold TypeRefNode in place of TpyType
+    # (F.3b.6.3); sema resolves before method_expansion reads it.
+    # None when self had no explicit annotation or for non-methods.
+    # Carried through dc_replace on auto_own / auto_readonly clones.
+    self_annotation: 'TpyType | TypeRefNode | None' = None
+    # Phase F.3b.6.2: set by parser when the method carries the
+    # `@auto_readonly` decorator. Sema.method_expansion uses this to drive
+    # AutoReadonlyType param wrapping (previously done in _parse_method).
+    # Cleared on the auto_readonly clones once they've been expanded.
+    has_auto_readonly_decorator: bool = False
     loc: SourceLocation | None = None
 
     @property

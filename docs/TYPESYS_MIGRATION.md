@@ -690,7 +690,7 @@ depends on them.
 - `uv run pytest --force-exec`: 2714 passed + 1 skipped, zero changes
   to any `tests/expected/` files. Byte-identical generated C++.
 
-##### F.3b.6 -- Parser purity for methods (NOT STARTED)
+##### F.3b.6 -- Parser purity for methods (DONE)
 
 F.3b.1--F.3b.5 reached the limit of what can be flipped without moving
 parse-time semantic logic. `_parse_method` still inspects resolved
@@ -749,66 +749,195 @@ Sema gains `sema/method_expansion.py` running between
 
 **Sub-steps:**
 
-##### F.3b.6.1 -- Introduce method_expansion.py; move self-flag derivation
+##### F.3b.6.1 -- Introduce method_expansion.py; move self-annotation validation (DONE)
 
-- Add `sema/method_expansion.py` with an `expand_methods(module)`
-  entry point (initially just the self-flag derivation step).
-- Parser's `_parse_method` stops inspecting self annotation; emits
-  self as-is (still TpyType via eager resolve for now).
-- `expand_methods` walks `module.all_records()` + `module.functions`
-  (methods only), reading `method.params[0][1]` (self type) to derive
-  `is_consuming` / `auto_own` / `auto_readonly` flags and validate
-  guards.
+Implementation split from the plan's literal wording for byte-identical
+codegen: the self-annotation *validation* checks move to sema, but the
+parser still sets `is_consuming` / `auto_own` / `auto_readonly` flags
+because parse-time cloning (`_clone_auto_readonly` / `_clone_auto_own`)
+still consumes them. F.3b.6.2 moves cloning + flag derivation together;
+F.3b.6.3 flips the method signature shape.
+
+- `sema/method_expansion.py` added with `expand_methods(module)` entry
+  point. Currently walks `module.all_records()` methods and validates
+  self-annotation constraints.
+- Parser's `_parse_method` no longer raises `ParseError` for:
+  - `Own[Self]` / `auto_own[Self]` / `auto_readonly[Self]` on
+    `__init__` / `__del__`
+  - `Own[Self]` / `auto_own[Self]` combined with `@readonly`
+- Parser preserves the resolved self annotation on
+  `TpyFunction.self_annotation` (new field, carried through
+  `dataclasses.replace` on clones). The borrowing / mutable clone half
+  is skipped in sema to avoid duplicate diagnostics.
+- Two checks stay in `_parse_method` until F.3b.6.2 (need pre-clone
+  `is_readonly` / `auto_readonly_dec` state):
+  - `self: auto_readonly[Self]` + `@readonly`
+  - `self: auto_readonly[Self]` + `@auto_readonly` decorator
 - `expand_methods` runs in `analyzer.analyze()` between
   `_resolve_pending_type_refs` and `register_enum`.
-- Error-type shift tests update.
-- Byte-identical codegen verification.
+- No test snapshot changes: `ParseError` and `SemanticError` produce
+  identical `file:line: error: message` output, and messages are
+  preserved verbatim.
+- Byte-identical codegen: `uv run pytest --force-exec` is 2718 passed
+  + 1 skipped with zero changes to `tests/cases/**/expected/`.
 
-##### F.3b.6.2 -- Move auto_readonly + property-setter wrapping + cloning
+##### F.3b.6.2 -- Move auto_readonly + property-setter wrapping + cloning (DONE)
 
-- Delete `_parse_method` wrapping loops (lines ~2124-2146) and
-  `_parse_method` property-setter wrapping (line ~2190-2193).
-- Delete parse-time clone calls at `_parse_class` (lines ~1484-1486).
-- Delete parser helpers `_clone_auto_readonly`, `_clone_auto_own`
-  (move their logic into `method_expansion.py`).
-- `expand_methods` now runs all four transformation steps: self-flag
-  derivation (from F.3b.6.1), wrapping, cloning, property-setter
-  wrapping.
-- Registration reads `record.methods` after expansion, so clone
-  counts match what sema sees today.
-- Macro / FragmentParser audit: ensure macro-generated methods also
-  flow through `expand_methods`. If macros produce unexpanded methods
-  (likely simplest), sema re-runs expansion after macro execution.
-- Byte-identical codegen verification.
+- `sema/method_expansion.expand_methods` now runs four transformation
+  steps per method: self-flag derivation (absorbs F.3b.6.1's parser
+  behaviour), self-annotation validation, param wrapping
+  (`@auto_readonly` decorator + per-param `auto_readonly[T]` detection
+  + property-setter `Own[T]`), and cloning (auto_readonly ->
+  mutable/const; auto_own -> borrowing/consuming).
+- Parser's `_parse_method` shed:
+  - self-annotation flag setting for `is_consuming` / `auto_own` /
+    `auto_readonly` (sema derives from `self_annotation`)
+  - `@auto_readonly` decorator param wrapping loop
+  - per-param `auto_readonly[T]` detection
+  - late (non-decorator) `auto_readonly` + method-type-params guard
+  - property-setter first-param `Own[T]` wrapping
+  - two remaining self-annotation validation checks (combined with
+    `@readonly`, combined with `@auto_readonly` decorator)
+- Parser's `_parse_class` no longer calls `_clone_auto_readonly` /
+  `_clone_auto_own`; methods append as-is. The helpers are deleted.
+- Parser retains the decorator-scoped `@auto_readonly` guards (no
+  combining with `@readonly` / `@staticmethod` / `__init__` / `__del__`,
+  no combining with method-level type params) because firing them at
+  parse time keeps the diagnostic pinned to the decorator location and
+  short-circuits before other parse-time checks (e.g. stub body
+  validation) mask them.
+- New `TpyFunction.has_auto_readonly_decorator` flag carries "had the
+  `@auto_readonly` decorator" through to sema for the wrapping step.
+- `register_record` now sees the expanded method list because
+  `expand_methods` replaces `record.methods` in place with the
+  result of expansion, matching pre-F.3b.6 shape.
+- Byte-identical codegen: `uv run pytest` + `--force-exec` both pass
+  2718 + 1 skipped with zero `tests/cases/**/expected/` diffs.
 
-##### F.3b.6.3 -- Flip `_parse_method` + protocol method signatures to TpyTypeRef
+##### F.3b.6.3 -- Flip `_parse_method` + protocol method signatures to TpyTypeRef (DONE)
 
-- With parse-time type inspection gone, method params / self / return
-  / vararg can finally be `TpyTypeRef`.
-- `_parse_method` emits `TpyTypeRef`. `_parse_class` protocol section
-  (lines ~1741, 1746, 1760) emits `TpyTypeRef` for `MethodSignature`.
-- `_resolve_pending_type_refs` extends to walk record methods with
-  **merged scope** (record type params + method type params).
-  Protocol methods similarly.
-- Parse-time self inspection in F.3b.6.1 moves to run AFTER
-  `_resolve_pending_type_refs` (so it sees TpyType).
-- Widen `TpyFunction.params`, `return_type`, `vararg_type` (already
-  widened in F.3b.5; verify method path reaches them). Widen
-  `MethodSignature.params`, `return_type` in `typesys.py` (or move
-  `MethodSignature` to `parse/nodes.py` if circular-import risk
-  arises).
-- `FragmentParser`: no longer needs `_finalize_function_refs` for
-  method-producing fragments -- sema handles everything.
-- Byte-identical codegen verification.
+- `_parse_method` now emits `TypeRefNode` via `_parse_type_ref` for
+  method params, return_type, vararg_type, kwonly params, and the
+  self annotation. Protocol `MethodSignature` params / return_type
+  same.
+- `_resolve_pending_type_refs` extends to walk record methods and
+  protocol method signatures:
+  - Record methods resolve with a **merged scope** (record type
+    params + method type params; method wins on collision).
+  - Self annotation is resolved here so sema's `expand_methods` sees
+    TpyType when deriving flags / validating shape.
+  - Protocol methods resolve under the protocol's own type-param
+    scope.
+- `MethodSignature.params` / `return_type` in `typesys.py` widened to
+  `TpyType | TypeRefNode` via a TYPE_CHECKING-only import (no
+  circular-import fallout). `TpyFunction.self_annotation` similarly
+  widened in `parse/nodes.py`.
+- Parser's catch-all "Only 'Own[Self]' / 'auto_own[Self]' /
+  'auto_readonly[Self]' is allowed" shape check moves to
+  `sema.method_expansion._validate_self_annotation` (it needs a
+  resolved TpyType; was the last parser-side reason to call
+  `_parse_type_annotation` in the method path).
+- Parser no longer calls `_parse_type_annotation` anywhere in
+  `_parse_method` or the protocol method path.
+- `FragmentParser` still calls `_finalize_function_refs` -- macro
+  consumers need TpyType immediately and don't flow through the
+  module-level pre-pass. Auditable in F.3b.6.4 if needed; no
+  macro-visible regression today.
+- Byte-identical codegen: `uv run pytest` + `--force-exec` both pass
+  2718 + 1 skipped with zero expected/ diffs.
 
-##### F.3b.6.4 -- Cleanup
+##### F.3b.6.4 -- Cleanup (DONE)
 
-- Delete parser's `_parse_type_annotation` call sites in method /
-  protocol paths (now all go through `_parse_type_ref`).
-- Remove `_finalize_function_refs` calls that are no longer needed.
-- Delete anything in `_parse_method` that's pure parse-time method
-  semantics (should be empty after F.3b.6.1-3).
-- Doc update: mark F.3b.6 complete.
+Audit of the method path after F.3b.6.3 shows cleanup is mostly a no-op:
+
+- `_parse_type_annotation` no longer appears in the method signature
+  path (params / return / vararg / kwonly / self) or the protocol
+  method signature path. The one remaining call in `_parse_method` is
+  on type-parameter **bounds** (`def foo[T: Bound]`), which is a
+  narrow well-scoped resolution that intentionally stays parser-side
+  for now -- bounds don't flow through the sema resolve pre-pass and
+  the check expects `NominalType` immediately.
+- `_finalize_function_refs` calls survive only in paths that legitimately
+  need TpyType synchronously (nested defs inside function bodies,
+  @builtin_decorator stubs, macro fragments via FragmentParser).
+  None of these are method-body calls.
+- `_parse_method` still contains:
+  - The `@auto_readonly` decorator-scoped guards (combinability with
+    `@readonly` / `@staticmethod` / `__init__` / `__del__`, and the
+    early method-level-type-params guard). These stay because they
+    point the diagnostic at the decorator's own line via
+    `auto_readonly_dec`, which sema can't easily replicate without
+    extra location plumbing.
+  - Decorator parsing, defaults, generator detection, `__exit__`
+    param shape check, `__next__` error_return defaulting. These are
+    pure parser concerns that don't look at resolved types.
+
+Phase F.3b.6 lifts parser / sema boundary for methods to the target
+shape: parser emits TpyTypeRef for every signature site, sema's
+`_resolve_pending_type_refs` + `expand_methods` own flag derivation,
+validation, wrapping, and cloning.
+
+**Overall F.3b.6 verification:**
+- Unit suite: 383 passed (+4 vs. F.3b.5 baseline).
+- Integration suite: 2718 passed + 1 skipped (+4 vs. F.3b.5 baseline).
+- `uv run pytest --force-exec`: 2718 passed + 1 skipped, zero diffs
+  under `tests/cases/**/expected/`.
+
+##### F.3b.6.5 -- Route macro-added methods through `expand_methods` (DONE)
+
+F.3b.6 left one latent gap: `_apply_class_macros` ran inside
+`register_record` *after* the module-level `expand_methods` pass, so
+methods added by a macro (via `ClassInfo.add_method`) skipped every
+expansion step. If a macro ever produced a method with
+`@auto_readonly`, per-param `auto_readonly[T]`, or
+`self: Own[Self] | auto_own[Self] | auto_readonly[Self]`, registration
+would trip "auto_readonly[T] in return type is only allowed on
+@auto_readonly methods" or simply emit uncloned output.
+
+- Moved the expansion call site into `register_record`, running right
+  after `_apply_class_macros`. The module-level
+  `expand_methods(module)` entry point still exists for convenience
+  but nothing in the analyzer calls it. Order inside `register_record`
+  is now: stub RecordInfo, field validation (resolves field types),
+  `__del__` validation, `_apply_class_macros`,
+  `expand_methods_for_record`, duplicate-method check (runs against
+  the fully expanded list so clone flags exempt correctly), field
+  default const-validation, rest of registration.
+- Idempotency: on first expansion, clones get `self_annotation=None`
+  so a second pass through `_expand_one` sees no derivation source,
+  flags stay False, and no re-cloning happens. Pinned by
+  `tpyc/test_method_expansion.py`.
+- No macro today actually generates expansion-triggering methods, so
+  full suite + `--force-exec` remain byte-identical. Unit suite grew
+  by 6 (method_expansion tests).
+
+##### F.3b.6.6 -- FragmentParser method mode (DONE)
+
+Closed the last F.3b.6 gap: macros that go through
+`ast.quote_fun` / `cls.add_method_from_source` can now emit methods
+with full method semantics.
+
+- `FragmentParser.parse_fragment(kind="function")` detects a method by
+  the leading `self` param and routes through `_parse_method` (with
+  synthetic `class_name="<macro>"`, no property-name context) instead
+  of `_parse_function`. `self_annotation` and
+  `has_auto_readonly_decorator` get populated; `self` is stripped
+  from `params` inside `_parse_method`, matching source-defined
+  methods.
+- `_finalize_function_refs` only resolves params / return / vararg
+  TpyTypeRefs. The new code path also resolves `self_annotation`
+  explicitly under the method's own type-param scope so
+  `expand_methods_for_record` sees TpyType.
+- Regression test: `tests/cases/records/macro_quote_auto_readonly` --
+  a macro emits `@auto_readonly def first(self) -> Int32`; the
+  generated C++ shows both `first()` and `first() const` clones, and
+  the readonly-receiver call path type-checks.
+- `@property` / `@property.setter` decorators still aren't usable from
+  FragmentParser because `property_names` is None (the setter's
+  `@x.setter` falls through to the "unknown decorator" handler). This
+  matches pre-F.3b.6.6 behaviour and is a separate concern; fixing it
+  requires giving the macro API a way to emit getter + setter as a
+  pair so FragmentParser can thread `property_names` between them.
 
 #### Phase F.3c -- Expand `TpyTypeRef` coverage to all annotation sites
 
