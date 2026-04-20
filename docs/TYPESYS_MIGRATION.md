@@ -4,7 +4,7 @@
 
 Unify the type hierarchy around two shapes: **nominal** (identity = qualified name + type args, behavior from a registry) and **structural** (identity = operand shape, behavior derived from operands). Builtins, containers, primitives, records, protocols, and enums all become `NominalType` with behavior sourced from a single `TypeDef` registry. Wrappers (`Ptr`, `Own`, `Optional`, `Union`, `Tuple`, `Callable`, `Readonly`) stay structural.
 
-## Current state (Phases A, B, C, D, E, F.1, F.2a, F.2b, F.3a, F.3b.1, F.3b.2, F.3b.3, F.3b.4, F.3b.5 complete)
+## Current state (Phases A, B, C, D, E, F.1, F.2a, F.2b, F.3a, F.3b, F.3c, F.3d complete)
 
 ```
 TpyType (frozen dataclass base)
@@ -32,9 +32,36 @@ resets them between compilations (hooked into
 (primitives), `ENUM_SNAPSHOT` (enums).
 
 Remaining problems:
-- Parser still constructs structural types (PtrType, OptionalType, UnionType, ...)
-  and resolves module-local primitive names directly -- Phase F.3 makes parsing
-  purely syntactic with sema owning all resolution.
+- **F.3e** -- `modules/type_resolution.py`'s factory table
+  (`get_type_factory_param_kinds`, `lookup_generic_type`,
+  `lookup_generic_type_in_module`) still exists; after F.3d sema
+  (via `TypeResolver`) and a single `lookup_generic_type_in_module`
+  call in parser's subscript-as-value check are the only readers. Fold
+  what remains into the TypeDef registry and delete the factory module.
+- **Remaining parser typesys coupling** (follow-up to F.3d, to close
+  before the migration ships). Parser still imports 15 typesys symbols
+  vs. the "ideally none" goal in the Phase F.3 intro. Breakdown:
+  - Bookkeeping / info / registry: `FieldInfo`, `RecordInfo`,
+    `FunctionInfo`, `MethodSignature`, `ProtocolInfo`, `TypeRegistry`,
+    `TypeParamKind`, `LiteralValue`. These are structurally load-bearing
+    for parser-time registration and walker output; leaving them is
+    defensible.
+  - `VOID` -- 5 uses as default `FunctionInfo.return_type` /
+    `TpyFunction.return_type` when the annotation is missing. Could be
+    eliminated by making those fields `Optional[TpyType]` and letting
+    sema substitute `VOID` during `_resolve_pending_type_refs`.
+  - `BIGINT`, `FLOAT`, `STR`, `NominalType`, `_FIXED_INT_MAP` --
+    consumed by `Parser._infer_type_from_expr` (success path) and
+    `_get_default_value` / `_validate_const_default`
+    (`_FIXED_INT_MAP` membership only). The failure path was moved to
+    sema in F.3d.4 via `TpyInferFromDefaultRef`; moving the success
+    path too (sema-side inference on `FieldInfo.default_expr`) would
+    delete all five imports.
+  - `ensure_qualified` -- 1 use at parser.py:1560 in `_parse_protocol`
+    for cpp_concept resolution. Could defer by storing the raw form
+    and letting sema call `ensure_qualified`.
+  - `public_module_name` -- 3 uses in import resolution (module-name
+    normalization). Marginal; could stay.
 - `_value_type_record_names` / `_send_record_names` / `_sync_record_names`
   accumulators on `typesys.py` parallel the new TypeDef.record payload;
   a future pass could fold them onto TypeDef fields and drop the globals.
@@ -292,7 +319,7 @@ Full suite green at 2608 passed + 1 skipped with `--force-exec`; no snapshot dif
 - `cases/imports/package_alias_reexport_enum` -- mirror of the above for an aliased enum re-exported through `__init__.py`.
 - `cases/imports/package_alias_reexport_class_shadow` -- `__init__.py` has `from .sub import Foo` followed by a local `class Foo:`; verifies the local class shadows the imported one in pkg's exports. Guards the removal of `user_imported_records.pop(info.name)` in `registration.py`.
 
-### Phase F.3 -- Parser emits unresolved type-reference nodes (NOT STARTED)
+### Phase F.3 -- Parser emits unresolved type-reference nodes (F.3a-F.3d DONE; F.3e pending)
 
 **Goal.** Make parsing purely syntactic: parser never constructs a `TpyType`.
 All name resolution (primitives, builtin generics, user records/protocols/
@@ -1093,18 +1120,137 @@ Both are tracked under "Typesys migration followups" in
 `TODO.md` with the path to removal. They become cheap to delete after
 F.3d moves primitive resolution out of the parser.
 
-#### Phase F.3d -- Move primitive / builtin name resolution into sema
+#### Phase F.3d -- Move name resolution into a sema-owned resolver (DONE)
 
-Parser drops its imports of `INT32`, `BOOL`, `STR`, `FLOAT`, ... and the
-`qnames` module. `_resolve_primitive_type` and the related resolution
-helpers delete; sema's `resolve_type_ref` now handles the name->qname
-lookup via the TypeDef registry. Parser imports from `typesys` reduce to:
+Four sub-steps on `typesys-migration-phase-F3d`, each byte-identical
+under `uv run pytest --force-exec` (2730 passed + 1 skipped, zero diffs
+in `tests/cases/**/expected/`). Both F.3c debts -- parse-time
+resolve-for-side-effect on class bases (F.3c.2b) and sema mutating
+`parser._pending_alias_name` via `resolver.__self__` (F.3c.2c) --
+fully deleted.
 
-- `TypeRegistry` (registration bookkeeping still lives there);
-- maybe a couple of structural-validation helpers (readonly/union
-  normalization) if cleanly unavoidable.
+##### F.3d.1 -- Extract `TypeResolver` into `tpyc/type_resolver.py` (DONE)
 
-Ideally none. Verify byte-identical codegen.
+Moved all name-to-TpyType resolution machinery out of the parser into a
+new `TypeResolver` class that holds a back-reference to the parser and
+reads live state (registry, imports, local_defs, nested_type_scope,
+module_class_names, module_type_alias_names, bare_module_imports,
+reverse_module_aliases) on each call, so container growth during parse
+-- and re-assignment of per-parse containers at the top of each
+`parse()` -- is visible. Parser constructs a single `TypeResolver`
+instance in `__init__` and attaches it to `TpyModule.resolver` at the
+end of each `parse()` call; sema's `TypeOperations.resolve_type_ref`
+calls `resolver.resolve(...)` explicitly instead of treating the
+resolver as a bound-method callable.
+
+Relocated from parser: `_resolve_type_ref_impl` (became
+`TypeResolver.resolve`), `_resolve_primitive_type`,
+`_resolve_registered_type`, `_resolve_qualified_type_name_str`,
+`_resolve_dotted_class_name_str`, `_raise_unresolved_qualified_error_str`,
+`_resolve_generic_type_from_ref`, `_resolve_record_type_args_from_ref`.
+`_FIXED_INT_MAP` also relocated; parser re-imports it for the callers
+that stayed behind (`_get_default_value`, `_validate_const_default`,
+`_infer_type_from_expr`). Kept on parser (FragmentParser overrides or
+walker-time use): `_resolve_type_name`, `_resolve_qualified_type_name`,
+`_resolve_dotted_class_name`, `_resolve_parser_keyword`,
+`_raise_unresolved_import_error`.
+
+Parser keeps a one-line `_resolve_type_ref_impl` delegate for the test
+equivalence suite and the macro fragment `self_annotation` path.
+`sema/analyzer.py` temporarily uses `resolver._parser` instead of
+`resolver.__self__` (removed in F.3d.3).
+
+##### F.3d.2 -- Prune parser typesys imports (DONE)
+
+With the resolver extracted, parser.py's `typesys` imports reduce to
+runtime-needed symbols only:
+
+- **Info / bookkeeping:** `FieldInfo`, `RecordInfo`, `FunctionInfo`,
+  `MethodSignature`, `ProtocolInfo`, `TypeRegistry`
+- **Walker state / output:** `TypeParamKind`, `LiteralValue`
+- **Small primitive set** for field-inference / return-type defaults:
+  `VOID`, `STR`, `FLOAT`, `BIGINT`, `NominalType`
+- **Helpers:** `ensure_qualified`, `public_module_name`
+
+`TpyType` moved behind `TYPE_CHECKING` (used only as string-form
+annotation under `from __future__ import annotations`). Dropped all
+structural-type imports (`PtrType`, `OwnType`, `ReadonlyType`,
+`AutoReadonlyType`, `AutoOwnType`, `FinalType`, `SelfType`,
+`TypeParamRef`, `OptionalType`, `VoidType`, `make_union`, `UnionType`,
+`TupleType`, `CallableType`, `make_fn_type`, `INT32`, `STRING`,
+`STRVIEW`, `CHAR`, `BYTES`, `BYTEARRAY`, `BYTESVIEW`, `BOOL`,
+`FLOAT32`, `SELF`, `BASIC_SLICE`, `SLICE`, `LiteralType`,
+`ALL_FIXED_INTS`) and dead imports left over from F.3c.2c
+(`_contains_self_reference`, `validate_recursive_union_paths`). Also
+dropped `BuiltinTypeDef` / `get_type_factory_param_kinds` (used only
+by the moved resolver methods) and the bulk `lookup_generic_type`
+re-export (one remaining site uses a local import). Kept
+`lookup_generic_type_in_module` for the subscript-as-value check in
+`_parse_expr`.
+
+Deleted the now-dead `_raise_unresolved_qualified_error` (node-based,
+unreachable since F.3c.2b routed everything through the loc-based
+variant that moved to TypeResolver in F.3d.1).
+
+The `qnames` module import stays in parser.py -- still needed for
+decorator-qname matching (out of scope for F.3d; candidate for a later
+cleanup that refactors decorator handling).
+
+##### F.3d.3 -- Thread `pending_alias` through the resolver API (DONE)
+
+`TypeResolver.resolve(...)` gains a keyword parameter
+`pending_alias: str | None = None`. When set (by sema's alias pass), it
+is stored on `self._pending_alias` for the duration of the call;
+recursive re-entries through the public `resolve()` without
+`pending_alias` inherit the context naturally, and it is restored on
+exit. `_resolve_registered_type` consults `self._pending_alias` instead
+of `parser._pending_alias_name`.
+
+`TypeOperations.resolve_type_ref` forwards `pending_alias` to
+`resolver.resolve`. Sema's `_resolve_pending_type_refs` alias pass
+passes `pending_alias=alias_name` as a keyword arg instead of mutating
+`parser._pending_alias_name` via `resolver.__self__`. Added a
+`TypeResolver.registry` property so sema's alias pass does
+`resolver.registry.register_type_alias(...)` instead of reaching
+through `resolver._parser.registry.register_type_alias(...)`.
+
+Parser loses its `_pending_alias_name` field. F.3c.2c debt deleted,
+and the broader `resolver.__self__` read-through pattern called out
+in TODO.md is no longer used anywhere.
+
+##### F.3d.4 -- Move class-body validation to sema (DONE)
+
+Deletes the parse-time resolve-for-side-effect call at `_parse_class`
+that existed purely to fire base-resolution errors at the class-header
+line before parse-time class-body checks (stub-body validation, field
+auto-declare for `Red = auto()` when `Enum` is shadowed) masked them.
+
+Three parse-time class-body validation sites move to sema, where they
+naturally run after `_resolve_pending_type_refs` has surfaced any base
+resolution errors:
+
+- Stub-body / `@native` decorator restrictions (`is_stub` on DEFAULT
+  linkage, `native_name` on DEFAULT linkage, missing stub body on
+  non-DEFAULT linkage) move into a new analyzer method
+  `_validate_record_method_linkage` called right after
+  `_resolve_pending_type_refs`. Errors attach to `record.loc` so the
+  diagnostic points at the class header, matching the pre-F.3d.4
+  parser-raised variant that passed the class's ast node to
+  `ParseError`.
+- "Cannot infer type for field 'X'" failure for unannotated class-body
+  assignments like `Red = auto()` is deferred via a new
+  `TpyInferFromDefaultRef` marker node. Parser emits the field with
+  this marker when `_infer_type_from_expr` returns None (while still
+  parsing the default as TpyExpr for downstream passes). Sema's
+  field-resolution loop raises the `SemanticError` only when it
+  encounters the marker -- by which point base errors on the
+  enclosing record have already fired.
+
+Pinning tests restored byte-identically: `error_shadow_protocol` now
+sees `'Protocol' requires: from typing import Protocol` from sema
+base resolution; `error_enum_base_shadowed` sees `Unknown type: Enum`;
+`error_enum_module_shadowed` sees `Unsupported qualified type:
+enum.Enum`. F.3c.2b debt deleted.
 
 #### Phase F.3e -- Delete the type factory table
 

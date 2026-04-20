@@ -113,7 +113,7 @@ class TestParserStateIsolation:
         assert "typing" not in m.imports
         func = next(f for f in m.functions if f.name == "f")
         with pytest.raises(ParseError):
-            m.resolver(func.params[0][1])
+            m.resolver.resolve(func.params[0][1])
 
     def test_tpy_star_import_does_not_leak(self):
         p = Parser()
@@ -124,7 +124,7 @@ class TestParserStateIsolation:
         assert not m.tpy_star_import
         func = next(f for f in m.functions if f.name == "f")
         with pytest.raises(ParseError):
-            m.resolver(func.params[0][1])
+            m.resolver.resolve(func.params[0][1])
 
     def test_typing_import_does_not_leak(self):
         p = Parser()
@@ -136,7 +136,7 @@ class TestParserStateIsolation:
         assert typing_source is None or "Optional" not in {orig for orig, _ in (typing_source or set())}
         func = next(f for f in m.functions if f.name == "f")
         with pytest.raises(ParseError):
-            m.resolver(func.params[0][1])
+            m.resolver.resolve(func.params[0][1])
 
 
 class TestScanStarExports:

@@ -18,11 +18,12 @@ from ..typesys import (
 )
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call, ParseError
+from ..parse.nodes import RecordLinkage
 from .registration import build_record_self_type, _vararg_span_type
 from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
     TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef,
-    TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef,
+    TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, TpyInferFromDefaultRef,
 )
 from .expressions import _collect_body_name_refs
 
@@ -388,6 +389,14 @@ class SemanticAnalyzer:
         # Runs before register_record / register_function / _fix_recursive /
         # _resolve_imported_aliases so those see resolved TpyType uniformly.
         self._resolve_pending_type_refs(module)
+
+        # Phase F.3d.4: method-linkage validation (stubs allowed/required
+        # per record linkage, @native decorator restrictions) was moved
+        # here from parse time so base-resolution errors (raised from
+        # `_resolve_pending_type_refs` above) naturally fire first. This
+        # deletes the parse-time base-resolution side-effect that was
+        # tracked as the F.3c.2b debt.
+        self._validate_record_method_linkage(module)
 
         # Resolve imported type aliases in AST type annotations.
         # The parser creates NominalType("Shape") for imported aliases since it
@@ -1302,6 +1311,42 @@ class SemanticAnalyzer:
             for alias_name in cycle.alias_names:
                 module.recursive_union_names.add(alias_name)
 
+    def _validate_record_method_linkage(self, module: TpyModule) -> None:
+        """Check per-record linkage rules against each method:
+        @native classes require stub bodies; regular classes disallow
+        stub bodies (except @overload stubs) and @native("...") decorators.
+
+        Phase F.3d.4 moved these checks from parse time to here so that
+        base-resolution errors from `_resolve_pending_type_refs` fire
+        first instead of being masked by parse-time class-body
+        validation.
+        """
+        for record in module.all_records():
+            for method in record.methods:
+                # Use record.loc so the diagnostic points at the class
+                # header, matching the pre-F.3d.4 parser-raised variant
+                # which passed the class's ast node to ParseError.
+                if record.linkage != RecordLinkage.DEFAULT:
+                    if not method.is_stub:
+                        raise SemanticError(
+                            "Methods on @native classes must have '...' "
+                            "body (stub declaration)",
+                            loc=record.loc,
+                        )
+                else:
+                    if method.is_stub and not method.is_overload_stub:
+                        raise SemanticError(
+                            f"Method '{method.name}' cannot have '...' body "
+                            f"on a regular class (only allowed on @native classes)",
+                            loc=record.loc,
+                        )
+                    if method.native_name is not None:
+                        raise SemanticError(
+                            f"@native(\"...\") decorator on method '{method.name}' "
+                            f"is only allowed on @native classes",
+                            loc=record.loc,
+                        )
+
     def _resolve_pending_type_refs(self, module: TpyModule) -> None:
         """Resolve all TpyTypeRef nodes emitted by the walker at leaf
         annotation sites, in-place. Downstream passes assume TpyType
@@ -1369,34 +1414,19 @@ class SemanticAnalyzer:
                 return bounds
             return {name: _resolve(t, None) for name, t in bounds.items()}
 
-        # Type alias RHS (Phase F.3c.2c): resolve in declaration order
-        # with `_pending_alias_name` set on the parser so same-body
-        # self-references produce a NominalType(name) placeholder,
-        # matching pre-flip parse-time behaviour. Register each resolved
-        # alias in parser.registry immediately so later alias bodies can
-        # find it by name. Also detect recursive unions post-resolution.
-        #
-        # DEBT (F.3c.2c): mutating `parser._pending_alias_name` from
-        # sema is a cross-layer leak -- sema reaches through the
-        # resolver's bound method into parser state. To remove: either
-        # (a) thread `pending_alias_name` as an explicit parameter on
-        # the resolver API (`type_ops.resolve_type_ref`), or (b) move
-        # the "same-body self-ref produces NominalType placeholder"
-        # logic into sema itself so parser doesn't need the field at
-        # all. See TODO.md "Typesys migration followups".
+        # Type alias RHS (Phase F.3c.2c): resolve in declaration order,
+        # passing `pending_alias=alias_name` to the resolver so same-body
+        # self-references produce a NominalType(name) placeholder, matching
+        # pre-flip parse-time behaviour. Register each resolved alias in
+        # the registry immediately so later alias bodies can find it by
+        # name. Also detect recursive unions post-resolution.
         if module.type_aliases:
             resolver = self.ctx.parser_resolver
-            parser_instance = resolver.__self__ if resolver is not None else None
             resolved_aliases: dict[str, tuple[TpyType, object]] = {}
             for alias_name, (alias_ref, alias_loc) in module.type_aliases.items():
                 if isinstance(alias_ref, ref_types):
-                    if parser_instance is not None:
-                        parser_instance._pending_alias_name = alias_name
-                    try:
-                        alias_type = self.type_ops.resolve_type_ref(alias_ref, None)
-                    finally:
-                        if parser_instance is not None:
-                            parser_instance._pending_alias_name = None
+                    alias_type = self.type_ops.resolve_type_ref(
+                        alias_ref, None, pending_alias=alias_name)
                 else:
                     alias_type = alias_ref
                 # Recursive union detection (moved from parser).
@@ -1405,8 +1435,8 @@ class SemanticAnalyzer:
                     if err is not None:
                         raise SemanticError(err, loc=alias_loc)
                     module.recursive_union_names.add(alias_name)
-                if parser_instance is not None:
-                    parser_instance.registry.register_type_alias(alias_name, alias_type)
+                if resolver is not None:
+                    resolver.registry.register_type_alias(alias_name, alias_type)
                 resolved_aliases[alias_name] = (alias_type, alias_loc)
             module.type_aliases = resolved_aliases
 
@@ -1430,15 +1460,22 @@ class SemanticAnalyzer:
         # type params) when resolving param / return / vararg refs. Self
         # is also resolved here so sema.method_expansion sees TpyType.
         # (Phase F.3b.6.3)
-        # Phase F.3c.2b: bases resolved here too. Parser's method-linkage
-        # validation (stub body on regular class, etc.) moved to
-        # register_record so sema-time base-resolution errors aren't
-        # masked.
+        # Phase F.3c.2b: bases resolved here too. Phase F.3d.4 deleted
+        # the parse-time base-resolution side-effect by moving the
+        # parse-time class-body checks that masked base errors (stub
+        # body / @native decorator validation, field-type inference
+        # failure) to sema-time, where they fire naturally after base
+        # resolution has surfaced any errors.
         for record in module.all_records():
             scope = _record_scope(record)
             record.type_param_bounds = _resolve_bounds(record.type_param_bounds)
             record.bases = [_resolve(b, scope) for b in record.bases]
             for fld in record.fields:
+                if isinstance(fld.type, TpyInferFromDefaultRef):
+                    raise SemanticError(
+                        f"Cannot infer type for field '{fld.name}'",
+                        loc=fld.type.loc,
+                    )
                 fld.type = _resolve(fld.type, scope)
             for method in record.methods:
                 method_scope = _merged_method_scope(scope, method)

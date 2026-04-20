@@ -48,15 +48,17 @@ class TypeOperations:
     def __init__(self, ctx: SemanticContext):
         self.ctx = ctx
 
-    def resolve_type_ref(self, ref, type_param_scope=None) -> TpyType:
+    def resolve_type_ref(
+        self, ref, type_param_scope=None, *, pending_alias: str | None = None,
+    ) -> TpyType:
         """Resolve a parser-emitted TypeRefNode to a TpyType.
 
-        Delegates to the parser's resolver callable attached at end-of-parse.
-        The callable carries parser state (imports, local_defs,
-        module_class_names, ...) needed for resolution. Returned TpyType
-        still needs downstream resolve_type() processing for protocol flags
-        and record/enum qname substitution -- sema writers typically pipe
-        through both.
+        Delegates to the TypeResolver instance attached to the module at
+        end-of-parse.  The resolver reads parser state (registry, imports,
+        local_defs, module_class_names, ...) live each call.  Returned
+        TpyType still needs downstream resolve_type() processing for
+        protocol flags and record/enum qname substitution -- sema writers
+        typically pipe through both.
 
         If type_param_scope is not provided, builds it from the current
         function/record context so references like `list[T]` inside a
@@ -64,8 +66,12 @@ class TypeOperations:
         own _type_param_scope is parse-time state that is unreliable at
         sema time.
 
-        Phase F.3b.4: used by writers at leaf AST sites that emit TpyTypeRef
-        (currently only TpyVarDecl.type). Remaining sites flip in F.3b.5+.
+        `pending_alias` (optional, typically passed by the alias-resolution
+        pass in `_resolve_pending_type_refs`) enables same-body self-ref
+        placeholder behaviour for recursive aliases like
+        `type JsonValue = str | list[JsonValue]`.  Phase F.3d.3 threaded
+        this through as an explicit parameter; before then it was mutated
+        on the parser instance from sema via `resolver.__self__`.
         """
         resolver = self.ctx.parser_resolver
         if resolver is None:
@@ -76,7 +82,7 @@ class TypeOperations:
             )
         if type_param_scope is None:
             type_param_scope = self._current_type_param_scope()
-        return resolver(ref, type_param_scope)
+        return resolver.resolve(ref, type_param_scope, pending_alias=pending_alias)
 
     def _current_type_param_scope(self) -> dict | None:
         """Build a type_param_scope dict from the current function / record

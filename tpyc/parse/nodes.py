@@ -112,7 +112,22 @@ class TpyLiteralRef:
     loc: SourceLocation | None = None
 
 
-type TypeRefNode = TpyTypeRef | TpyUnionRef | TpyCallableRef | TpyLiteralRef
+@dataclass(frozen=True)
+class TpyInferFromDefaultRef:
+    """Pending marker used by the parser on a FieldInfo whose type could
+    not be inferred from its default-value expression at parse time
+    (e.g. `Red = auto()` in a class whose `Enum` base was shadowed).
+
+    Emitted instead of raising "Cannot infer type for field 'X'" at parse
+    time so that any sema-time base resolution errors on the enclosing
+    record fire first. Sema's `_resolve_pending_type_refs` handles this
+    node explicitly in the field loop and surfaces the inference error
+    as a SemanticError only when base resolution has already succeeded.
+    """
+    loc: SourceLocation | None = None
+
+
+type TypeRefNode = TpyTypeRef | TpyUnionRef | TpyCallableRef | TpyLiteralRef | TpyInferFromDefaultRef
 
 
 # AST node types for TurboPython
@@ -1286,9 +1301,10 @@ class TpyModule:
     # Type aliases (e.g., Shape = Circle | Rect) -> (resolved type, source location)
     # Between parse and sema's _resolve_pending_type_refs pre-pass, alias
     # RHS values may hold TypeRefNode in place of TpyType (Phase F.3c.2c).
-    # Sema resolves each alias under a `_pending_alias_name` context that
-    # lets same-body self-refs become NominalType(name) placeholders,
-    # then detects recursive unions post-resolution.
+    # Sema resolves each alias passing `pending_alias=alias_name` through
+    # the resolver API so same-body self-refs become NominalType(name)
+    # placeholders (Phase F.3d.3), then detects recursive unions
+    # post-resolution.
     type_aliases: 'dict[str, tuple[TpyType | TypeRefNode, SourceLocation | None]]' = field(default_factory=dict)
     # Parser warnings (e.g., imports after non-import code)
     parse_warnings: list[ParseWarning] = field(default_factory=list)
@@ -1296,14 +1312,15 @@ class TpyModule:
     directives: ModuleDirectives = field(default_factory=ModuleDirectives)
     # Union type aliases that need wrapper-struct representation (self- or mutually-recursive)
     recursive_union_names: set[str] = field(default_factory=set)
-    # Parser resolver: a callable attached at end-of-parse that resolves a
-    # TypeRefNode (emitted by the walker at leaf annotation sites) to a
-    # TpyType. Sema invokes it via TypeOperations.resolve_type_ref when a
-    # writer encounters an unresolved ref in the AST. Bound to the parser
-    # instance so it carries the resolution state (imports, local_defs,
-    # module_class_names, type_alias_names, reverse_module_aliases,
-    # bare_module_imports). See Phase F.3b.4.
-    resolver: Callable[..., TpyType] | None = None
+    # Parser resolver: a TypeResolver instance attached at end-of-parse that
+    # resolves a TypeRefNode (emitted by the walker at leaf annotation sites)
+    # to a TpyType. Sema invokes `resolver.resolve(ref, scope)` via
+    # TypeOperations.resolve_type_ref when a writer encounters an unresolved
+    # ref in the AST. Holds a back-reference to the parser so it carries live
+    # resolution state (registry, imports, local_defs, module_class_names,
+    # type_alias_names, reverse_module_aliases, bare_module_imports). See
+    # Phase F.3b.4 (introduced) / F.3d.1 (extracted to standalone class).
+    resolver: 'Any | None' = None
 
     def all_records(self) -> list[TpyRecord]:
         """All records including nested, in definition order (depth-first)."""

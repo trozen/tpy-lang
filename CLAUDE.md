@@ -306,6 +306,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `cli.py` | CLI entry point, argument parsing, error handling |
 | `parse/` | Parser package: `parser.py` (AST builder using Python's `ast`, `FragmentParser` subclass for macro source fragments), `nodes.py` (TurboPython AST node definitions), `imports.py` (import resolution helpers) |
 | `typesys.py` | Type definitions (Int32, BigInt, Float, bool, Void, Str, Char, Bytes, ByteArray, BytesView, Record, Ptr, Own, Optional, List, Array, Span, Tuple) and TypeRegistry |
+| `type_resolver.py` | `TypeResolver` class: resolves parser-emitted `TypeRefNode` (unresolved type-reference AST nodes from the walker) to `TpyType`. Owns primitive lookup, registered-type lookup, generic instantiation, and structural-wrapper construction. Parser constructs one instance and attaches it to `TpyModule.resolver`; sema delegates via `resolver.resolve(ref, scope, pending_alias=...)` |
 | `sema/` | Multi-pass semantic analysis (see below) |
 | `codegen_cpp/` | C++ code generation (see below) |
 | `compiler.py` | Multi-module orchestration: discovery, dependency resolution, compilation order |
