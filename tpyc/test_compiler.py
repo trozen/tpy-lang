@@ -234,7 +234,7 @@ class TestSendSyncRecordDerivation:
         )
         compiler = Compiler.from_source(source, lib_dirs=_STDLIB_DIRS)
         compiler.compile()
-        point_type = NominalType("Point")
+        point_type = NominalType("Point", (), _module_qname="__main__.Point")
         assert point_type.is_send()
         assert point_type.is_sync()
 
@@ -259,7 +259,7 @@ class TestSendSyncRecordDerivation:
         src_file.write_text(source)
         compiler = Compiler(src_file, lib_dirs=[get_lib_dir() / "tpy"])
         compiler.compile()
-        holder_type = NominalType("Holder")
+        holder_type = NominalType("Holder", (), _module_qname="__main__.Holder")
         assert not holder_type.is_send()
         assert not holder_type.is_sync()
 
@@ -279,7 +279,7 @@ class TestSendSyncRecordDerivation:
         lib_dirs = [get_lib_dir() / "tpy"]
         compiler = Compiler.from_source(source, lib_dirs=lib_dirs)
         compiler.compile()
-        container_type = NominalType("Container")
+        container_type = NominalType("Container", (), _module_qname="__main__.Container")
         assert container_type.is_send()
         assert not container_type.is_sync()
 

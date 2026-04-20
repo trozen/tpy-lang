@@ -4,7 +4,7 @@
 
 Unify the type hierarchy around two shapes: **nominal** (identity = qualified name + type args, behavior from a registry) and **structural** (identity = operand shape, behavior derived from operands). Builtins, containers, primitives, records, protocols, and enums all become `NominalType` with behavior sourced from a single `TypeDef` registry. Wrappers (`Ptr`, `Own`, `Optional`, `Union`, `Tuple`, `Callable`, `Readonly`) stay structural.
 
-## Current state (Phases A, B, C, D, E, F.1, F.2a, F.2b, F.3a, F.3b, F.3c, F.3d, F.3e, F.3f complete)
+## Current state (Phases A, B, C, D, E, F.1, F.2a, F.2b, F.3a-F.3g, F.4 complete)
 
 ```
 TpyType (frozen dataclass base)
@@ -34,9 +34,10 @@ invariants: `PRIMITIVE_SNAPSHOT` (primitives), `ENUM_SNAPSHOT` (enums),
 `FACTORY_SNAPSHOT` (generic-instantiation payload).
 
 Remaining problems:
-- Tracked as **Phase F.4** below: `_value_type_record_names` /
-  `_send_record_names` / `_sync_record_names` accumulators on
-  `typesys.py` still parallel the TypeDef.record payload.
+- Tracked as **Phase F.5** below: the three substitution blocks
+  (enum / user-record / protocol-qname) in `sema/type_ops.py::resolve_type`
+  survive because parser's `TypeResolver` can't see re-export facades'
+  defining modules.
 
 ## Target state
 
@@ -1545,56 +1546,55 @@ NominalType") is replaced with the real rationale.
   at their registration site so the substitution block sees a
   RecordInfo with the right qname for `Outer.Inner`.
 
-### Phase F.4 -- Fold record traits onto TypeDef (PLANNED)
+### Phase F.4 -- Fold record traits onto TypeDef (DONE)
 
-Three process-global sets in `typesys.py` carry per-record boolean
-traits that already have a natural home on `TypeDef.record`
+Three process-global sets in `typesys.py` carried per-record
+boolean traits that already had a natural home on `TypeDef.record`
 (populated since Phase E):
 
 - `_value_type_record_names: set[str]` -- records implementing `ValueType`.
 - `_send_record_names: set[str]` -- records marked `Send`.
 - `_sync_record_names: set[str]` -- records marked `Sync`.
 
-Readers today: `NominalType.is_value_type` / `is_send` / `is_sync`
-consult these sets after checking the static TypeDef payload
-(containers dominate; record flags are the fallback). Writers:
-`register_value_type_record` / `register_send_record` /
-`register_sync_record` called from sema/registration when the
-corresponding decorators / protocol extends are detected.
+**Goal (achieved).** The three sets and their registration helpers
+are deleted; the booleans now live on `RecordInfo` (next to the
+pre-existing `is_value_type` field). `NominalType.is_value_type` /
+`is_send` / `is_sync` read them off `type_def_of(t).record`, one
+source of truth per qname, matching the pattern Phases B/D/E
+established for containers, primitives, and enums.
 
-**Goal.** Delete the three sets and their registration helpers;
-move the booleans onto `TypeDef.record` (either as new fields on
-`RecordInfo` or on `TypeDef` itself next to `is_value_type`).
-`NominalType.is_value_type` / `is_send` / `is_sync` then read from
-the dynamic `TypeDef` entry directly -- one source of truth, matching
-the pattern Phases B/D/E established for containers, primitives, and
-enums.
+**Landed sub-steps:**
 
-**Why.** Pattern-completing for Phase F's "TypeDef is the only
-per-qname behavior table" theme. Shrinks the set of process-globals
-that the larger "eliminate process-global compilation state" item
-in TODO.md has to thread onto a `Compiler` instance.
+- **F.4.1** added `is_send: bool = False` and `is_sync: bool = False`
+  fields on `RecordInfo` alongside the pre-existing `is_value_type`.
+  `validate_record_inheritance` in `sema/registration.py` now writes
+  the RecordInfo fields in addition to calling the old
+  `register_*_record` helpers (dual-write; purely additive).
+- **F.4.2** flipped `NominalType.is_value_type` / `is_send` /
+  `is_sync` to consult `td.record.is_*` as the per-record fallback
+  after the existing container/primitive dispatch, replacing the
+  `self.name in _*_record_names` short-name match. Three unit tests
+  in `tpyc/test_compiler.py::TestSendSyncRecordDerivation` that had
+  constructed bare `NominalType("Point")` / `NominalType("Holder")` /
+  `NominalType("Container")` without `_module_qname` were updated to
+  carry `_module_qname="__main__.<Name>"` so that `type_def_of`
+  resolves -- the architecturally correct shape for probing post-sema
+  state (short-name lookup was an accident of the deleted set).
+- **F.4.3** deleted `_value_type_record_names` / `_send_record_names`
+  / `_sync_record_names`, the `register_value_type_record` /
+  `register_send_record` / `register_sync_record` helpers, and their
+  entries in `clear_all_compilation_state()` /
+  `clear_codegen_state()`'s docstring. Dropped the three imports in
+  `sema/registration.py`. Updated `conftest.py` docstring and the
+  TODO.md process-globals bullet.
 
 **Why separate from F.3.** F.3 focused on parser/sema convergence
-(parser emits TpyTypeRef; sema owns resolution). F.4 is about
-completing the record-trait consolidation that Phase E started on the
+(parser emits TpyTypeRef; sema owns resolution). F.4 completed the
+record-trait consolidation that Phase E started on the
 container/primitive side -- different axis, independent commit.
 
-**Dependencies.** None beyond Phase E (`TypeDef.record` already
-populated). Phase G is orthogonal (sema module structure; different
-files). Can ship F.4 before G, after G, or in parallel.
-
-**Sketch.**
-1. Add `is_value_type: bool`, `is_send: bool`, `is_sync: bool` fields
-   to `RecordInfo` (or `TypeDef`). Populate at sema registration time
-   in `sema/registration.py` where the three `register_*_record`
-   helpers fire today.
-2. Flip `NominalType.is_value_type` / `is_send` / `is_sync` to read
-   from the `TypeDef.record` payload after the container/primitive
-   dispatch, instead of consulting the global sets.
-3. Delete the three global sets, their `register_*_record` helpers,
-   and the corresponding entries in `clear_all_compilation_state()`.
-4. Byte-identical codegen verification under `--force-exec`.
+Full suite green (`uv run pytest`: 2773 passed, 1 skipped); byte-identical
+codegen verification via `--force-exec` at the phase boundary.
 
 ### Phase F.5 -- Canonicalize import sources to defining modules (PLANNED)
 

@@ -86,9 +86,6 @@ def error_return_to_cpp(name: str, current_module: str | None,
 # Would need to move into CodeGenContext if codegen ever runs concurrently.
 _native_cpp_names: dict[str, str] = {}
 _union_alias_names: dict[tuple['TpyType', ...], str] = {}
-_value_type_record_names: set[str] = set()
-_send_record_names: set[str] = set()
-_sync_record_names: set[str] = set()
 _protocol_modules: dict[str, str] = {}  # protocol_name -> module_name
 
 
@@ -112,21 +109,6 @@ def register_native_cpp_name(py_name: str, cpp_name: str) -> None:
 def register_union_alias(members: tuple['TpyType', ...], alias_name: str) -> None:
     """Register a union type -> alias name mapping for codegen."""
     _union_alias_names[members] = alias_name
-
-
-def register_value_type_record(name: str) -> None:
-    """Register a record as a value type (ValueType marker protocol)."""
-    _value_type_record_names.add(name)
-
-
-def register_send_record(name: str) -> None:
-    """Register a record as Send (safe to transfer across threads)."""
-    _send_record_names.add(name)
-
-
-def register_sync_record(name: str) -> None:
-    """Register a record as Sync (safe to share references across threads)."""
-    _sync_record_names.add(name)
 
 
 # Builtins that are always ReturnException. Pre-seeded because _funcs.py
@@ -225,12 +207,7 @@ def impl_proto_matches_name(impl_proto: 'NominalType', protocol_name: str,
 
 
 def clear_codegen_state() -> None:
-    """Clear per-module codegen state (called before each module's codegen).
-
-    Does NOT clear _value_type_record_names, _send_record_names, or
-    _sync_record_names -- those are accumulated during sema across all
-    modules and must persist for the full build.
-    """
+    """Clear per-module codegen state (called before each module's codegen)."""
     _native_cpp_names.clear()
     _union_alias_names.clear()
 
@@ -240,9 +217,6 @@ def clear_all_compilation_state() -> None:
     from tpyc.type_def_registry import clear_dynamic_type_defs
     _native_cpp_names.clear()
     _union_alias_names.clear()
-    _value_type_record_names.clear()
-    _send_record_names.clear()
-    _sync_record_names.clear()
     _return_exception_names.clear()
     _return_exception_names.update(_BUILTIN_RETURN_EXCEPTIONS)
     _protocol_modules.clear()
@@ -827,15 +801,18 @@ class NominalType(TpyType):
         return None
 
     def is_value_type(self) -> bool:
-        # Records implementing ValueType marker protocol are value types
-        if self.name in _value_type_record_names:
-            return True
         # Builtin qnames whose TypeDef declares value-ness (Span, dict views,
-        # iterator adapters, etc.). Non-registered types fall through to False.
+        # iterator adapters, primitives, ...) answer directly.
+        # Record-category TypeDefs fall through to the RecordInfo.is_value_type
+        # flag, which sema sets when the record implements the ValueType
+        # marker protocol.
         from tpyc.type_def_registry import type_def_of
         td = type_def_of(self)
         if td is not None:
-            return td.is_value_type
+            if td.is_value_type:
+                return True
+            if td.record is not None and td.record.is_value_type:
+                return True
         return False
 
     def is_send(self) -> bool:
@@ -849,8 +826,8 @@ class NominalType(TpyType):
             resolved = resolve_send_sync(td.is_send, self.type_args)
             if resolved is not None:
                 return resolved
-        if self.name in _send_record_names:
-            return True
+            if td.record is not None and td.record.is_send:
+                return True
         return self.is_value_type()
 
     def is_sync(self) -> bool:
@@ -860,8 +837,8 @@ class NominalType(TpyType):
             resolved = resolve_send_sync(td.is_sync, self.type_args)
             if resolved is not None:
                 return resolved
-        if self.name in _sync_record_names:
-            return True
+            if td.record is not None and td.record.is_sync:
+                return True
         return self.is_value_type()
 
     def get_element_type(self) -> Optional['TpyType']:
@@ -2787,6 +2764,8 @@ class RecordInfo:
     is_typed_dict: bool = False   # True for TypedDict (struct with string-literal subscript)
     is_total_false: bool = False  # True for TypedDict(total=False) -- all fields Optional, absent by default
     is_value_type: bool = False   # True for ValueType marker protocol
+    is_send: bool = False         # True if record is Send (all fields Send + parent Send); derived by sema
+    is_sync: bool = False         # True if record is Sync (all fields Sync + parent Sync); derived by sema
     has_del: bool = False           # True if class declares __del__ (needs drop flag)
     has_copy: bool = False          # True if class defines __copy__ (custom copy semantics)
     builtin_type_key: str | None = None  # e.g. "builtins.list" -- links .py class to type_factory

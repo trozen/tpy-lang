@@ -1,9 +1,9 @@
 """Root-level pytest conftest.
 
 Resets process-global compilation state before every test. The globals
-(`_value_type_record_names`, `_send_record_names`, `_sync_record_names`,
-`_native_cpp_names`, `_union_alias_names`, `_protocol_modules`,
-`_return_exception_names` in tpyc/typesys.py) are accumulated during a
+(`_native_cpp_names`, `_union_alias_names`, `_protocol_modules`,
+`_return_exception_names` in tpyc/typesys.py, plus the dynamic TypeDef
+attachments in tpyc/type_def_registry.py) are accumulated during a
 compilation. `Compiler.compile()` clears them at its start, but tests that
 inspect them directly (e.g. tpyc/test_type_def_registry.py) or test cases
 ordered after a case that leaves distinctive state behind would otherwise

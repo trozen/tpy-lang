@@ -13,7 +13,6 @@ from ..typesys import (
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
     IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, make_span,
     STRVIEW, INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64, BIGINT, BOOL, TupleType, final_type_str_to_strview,
-    register_value_type_record, register_send_record, register_sync_record,
     register_return_exception, is_return_exception,
     attach_type_param_bounds,
     has_auto_readonly, has_auto_own,
@@ -1054,7 +1053,6 @@ class TypeRegistrar:
                         record.loc
                     )
                 record_info.is_value_type = True
-                register_value_type_record(record.name)
                 break
 
         # ReturnException marker: register exception type as return-only
@@ -1068,7 +1066,7 @@ class TypeRegistrar:
         # A record is Sync if all its fields are Sync (safe to share across threads).
         # TypeParamRef fields are assumed OK -- enforced at C++ instantiation via concepts.
         # NOTE: Modules are compiled in dependency order, so parent records from
-        # imported modules are already registered in the global sets.
+        # imported modules are already attached to their TypeDef.record payload.
         is_send = all(
             f.type.is_send() or isinstance(f.type, TypeParamRef)
             for f in record_info.fields
@@ -1080,10 +1078,8 @@ class TypeRegistrar:
         if record_info.parent is not None:
             is_send = is_send and record_info.parent.is_send()
             is_sync = is_sync and record_info.parent.is_sync()
-        if is_send:
-            register_send_record(record.name)
-        if is_sync:
-            register_sync_record(record.name)
+        record_info.is_send = is_send
+        record_info.is_sync = is_sync
 
     def validate_method_error_returns(self, record: TpyRecord) -> None:
         """Validate @error_return(E) on methods references a ReturnException type.
