@@ -32,6 +32,7 @@ from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLev
 from tpyc.compiler import (
     Compiler, CompileError, BuildLayout, CppCompilerConfig, get_or_build_pch,
 )
+from tpyc.build.third_party import resolve_build_plan
 
 # Default options for tests: emit source comments for easier debugging
 TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True, comment_line_numbers=False)
@@ -152,12 +153,26 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
     pch_header = get_pch_header()
     pch_include = [] if pch_header is None else ["-include", str(pch_header)]
 
+    # Add include dirs for any third-party deps declared by stdlib modules
+    # (e.g. `# tpy: link_third_party("pcre2")` in tplib/pcre2.py needs the
+    # PCRE2 header on -I). We always resolve in bundled mode here -- the
+    # cache key includes runtime + lib hashes so the cache is per-mode-implicit.
+    third_party_plan = resolve_build_plan(
+        dep_names=compiler.collect_third_party_deps(),
+        runtime_cpp_dir=RUNTIME_DIR.parent,
+        modes={},  # use each lib's default_mode (bundled for pcre2)
+    )
+    third_party_includes: list[str] = []
+    for d in third_party_plan.extra_include_dirs:
+        third_party_includes += ["-I", str(d)]
+
     common = [
         *CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}",
         *CPP_CONFIG.extra_flags,
         *CPP_CONFIG.warn_flags,
         "-I", str(RUNTIME_DIR),
         "-I", str(layout.include_dir),
+        *third_party_includes,
         *pch_include,
     ]
 
@@ -190,6 +205,33 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
 
     relpaths = {rel for rel, _ in results}
     objects = [obj for _, obj in results]
+
+    # Also pre-compile bundled C deps (e.g. PCRE2 .c files). These are
+    # referenced by stdlib .o files (e.g. re.o links against pcre2_*),
+    # so any test linking the stdlib cache needs them available -- even
+    # tests that don't import the relevant module, because the cache .o
+    # set is shared. Compiled with the C compiler derived from the C++ one.
+    #
+    # No opt_flags applied here, mirroring the .cpp pre-compile above:
+    # tests always run a single shared cache regardless of build variant.
+    # End-user `tpyc -xO` builds go through `BuildLayout.build_cpp_commands`
+    # (not this cache) and DO get -O3 on the same .c sources.
+    if third_party_plan.c_sources:
+        from tpyc.compiler import _derive_c_compiler
+        c_compiler = _derive_c_compiler(CPP_CONFIG.compiler)
+        for c_src, c_flags in third_party_plan.c_sources:
+            obj_path = obj_dir / (c_src.stem + ".o")
+            prefix = ["ccache"] if CPP_CONFIG.ccache else []
+            cmd = [*prefix, *c_compiler, *CPP_CONFIG.extra_flags,
+                   *c_flags, "-c", "-o", str(obj_path), str(c_src)]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise RuntimeError(
+                    f"third-party pre-compilation failed for {c_src.name}:\n"
+                    f"{result.stderr}"
+                )
+            objects.append(str(obj_path))
+
     return _StdlibCache(objects=objects, cpp_relpaths=relpaths)
 
 
@@ -506,6 +548,12 @@ class CompileResult:
     cast_safe_facts: dict[tuple[int, str], bool] | None = None
     # Linker flags from # tpy: link() directives
     link_flags: list[str] = field(default_factory=list)
+    # Third-party (link_third_party) build inputs: include dirs for the C
+    # bindings, extra link flags (system mode), and bundled C source files
+    # to compile into the test binary (e.g. PCRE2 .c files in bundled mode).
+    third_party_include_dirs: list[Path] = field(default_factory=list)
+    third_party_link_flags: list[str] = field(default_factory=list)
+    third_party_c_sources: list[tuple[Path, list[str]]] = field(default_factory=list)
 
 
 def _validate_default_int_name(name: str) -> str:
@@ -611,13 +659,23 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         div_zero_facts = ctx.div_zero_facts if ctx else None
         cast_safe_facts = ctx.cast_safe_facts if ctx else None
         link_flags = compiler.collect_link_flags()
+        # Resolve third-party deps in bundled mode (default for tests). When
+        # a system-mode test variant is needed, switch the modes dict here.
+        tp_plan = resolve_build_plan(
+            dep_names=compiler.collect_third_party_deps(),
+            runtime_cpp_dir=RUNTIME_DIR.parent,
+            modes={},
+        )
         return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path,
                              all_modules=all_modules, declared_var_types=declared_var_types,
                              ptr_deref_facts=ptr_deref_facts,
                              subscript_bounds_facts=subscript_bounds_facts,
                              div_zero_facts=div_zero_facts,
                              cast_safe_facts=cast_safe_facts,
-                             link_flags=link_flags)
+                             link_flags=link_flags,
+                             third_party_include_dirs=list(tp_plan.extra_include_dirs),
+                             third_party_link_flags=list(tp_plan.extra_link_flags),
+                             third_party_c_sources=list(tp_plan.c_sources))
 
     except CompileError as e:
         return CompileResult(success=False, diagnostics=e.format() + "\n")
@@ -819,8 +877,17 @@ def _hash_files(paths: list[Path]) -> str:
 
 @functools.cache
 def _runtime_hash() -> str:
-    """Hash of all runtime headers under runtime/cpp/include/. Session-cached."""
+    """Hash of all runtime headers under runtime/cpp/include/ and the
+    vendored third_party/ source trees. Session-cached.
+
+    Including third_party/ ensures that bumping a vendored library version
+    (PCRE2 etc.) invalidates the stdlib .o cache automatically, so the
+    next test run rebuilds with the new sources.
+    """
     files = sorted(p for p in RUNTIME_DIR.rglob("*") if p.is_file())
+    third_party_dir = RUNTIME_DIR.parent / "third_party"
+    if third_party_dir.is_dir():
+        files += sorted(p for p in third_party_dir.rglob("*") if p.is_file())
     return _hash_files(files)
 
 
@@ -907,7 +974,9 @@ def build_and_run(build_dir: Path, module_name: str,
                   link_flags: list[str] | None = None,
                   build_variant: str = "debug",
                   precompiled_objects: list[str] | None = None,
-                  exclude_cpp_relpaths: set[str] | None = None) -> RunResult:
+                  exclude_cpp_relpaths: set[str] | None = None,
+                  extra_link_flags: list[str] | None = None,
+                  c_sources: list[tuple[Path, list[str]]] | None = None) -> RunResult:
     """Compile generated C++ and run, capturing all output (including panics).
 
     Args:
@@ -965,6 +1034,8 @@ def build_and_run(build_dir: Path, module_name: str,
         extra_objects=precompiled_objects,
         extra_include_dirs=extra_include_dirs or None,
         force_includes=all_force_includes or None,
+        extra_link_flags=extra_link_flags or None,
+        c_sources=c_sources or None,
     )
     for cmd in compile_cmds:
         result = subprocess.run(cmd, capture_output=True, text=True)

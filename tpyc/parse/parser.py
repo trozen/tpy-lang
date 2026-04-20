@@ -171,11 +171,14 @@ _DIRECTIVE_LINE_RE = re.compile(r'^#\s*tpy:\s+(\w.+)$')
 # Schema: (positional arg types, allowed keyword arg types)
 # Keys are the known directive names; unknown names produce a warning.
 _DIRECTIVE_SPECS: dict[str, tuple[list[type], dict[str, type]]] = {
-    "native_module":    ([], {}),
-    "macro_module":     ([], {}),
-    "include":          ([str], {"platform": str}),
-    "link":             ([str], {"platform": str}),
-    "cpp_namespace":    ([str], {}),
+    "native_module":     ([], {}),
+    "macro_module":      ([], {}),
+    "include":           ([str], {"platform": str}),
+    # link: raw `-lfoo` by default; `managed=True` routes through the
+    # third-party registry (tpyc/build/third_party.py) for bundled/system/
+    # auto resolution via the `--<lib>=<mode>` CLI flag.
+    "link":              ([str], {"platform": str, "managed": bool}),
+    "cpp_namespace":     ([str], {}),
 }
 
 _CPP_NAMESPACE_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*(::[A-Za-z_][A-Za-z0-9_]*)*$')
@@ -236,6 +239,7 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
     """Scan all standalone # tpy: comment lines and return parsed directives."""
     includes: list[tuple[str, str | None]] = []
     link_libs: list[tuple[str, str | None]] = []
+    third_party_deps: list[tuple[str, str | None]] = []
     native_module = False
     cpp_namespace: str | None = None
     warnings: list[ParseWarning] = []
@@ -275,7 +279,12 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
         elif name == "include":
             includes.append((args[0], kwargs.get("platform")))
         elif name == "link":
-            link_libs.append((args[0], kwargs.get("platform")))
+            # managed=True -> registry-resolved third-party dep.
+            # managed=False (or omitted) -> raw -lfoo linker flag.
+            if kwargs.get("managed", False):
+                third_party_deps.append((args[0], kwargs.get("platform")))
+            else:
+                link_libs.append((args[0], kwargs.get("platform")))
         elif name == "cpp_namespace":
             ns_value = args[0]
             if not _CPP_NAMESPACE_RE.match(ns_value):
@@ -287,8 +296,12 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
                     f"duplicate 'cpp_namespace' directive (previous: {cpp_namespace!r})", loc))
             cpp_namespace = ns_value
 
-    return ModuleDirectives(includes=includes, link_libs=link_libs, native_module=native_module,
-                            cpp_namespace=cpp_namespace), warnings
+    return ModuleDirectives(
+        includes=includes, link_libs=link_libs,
+        third_party_deps=third_party_deps,
+        native_module=native_module,
+        cpp_namespace=cpp_namespace,
+    ), warnings
 
 
 def _collect_bitor_arms(node: ast.BinOp) -> list[ast.expr]:

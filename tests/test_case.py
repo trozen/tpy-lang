@@ -209,15 +209,23 @@ def test_case(case_dir, main_src, request):
         extra_includes = find_extra_include_dirs(case_dir)
         force_includes = find_force_includes(case_dir)
         cache = get_stdlib_cache()
+        # Combine test-supplied include dirs with third-party-resolved ones
+        # (e.g. PCRE2 src dir for tests that import the `re` module).
+        all_extra_includes = list(extra_includes) + list(result.third_party_include_dirs)
+        # Third-party C sources (e.g. PCRE2 .c) are pre-compiled into the
+        # stdlib cache; don't re-compile per-test or we'd duplicate symbols.
+        per_test_c_sources = None if cache else (result.third_party_c_sources or None)
         run_result = build_and_run(
             build_dir, module_name,
             all_cpp_files=all_cpp_files,
             extra_src_files=extra_src or None,
-            extra_include_dirs=extra_includes or None,
+            extra_include_dirs=all_extra_includes or None,
             force_includes=force_includes or None,
             link_flags=result.link_flags or None,
             precompiled_objects=cache.objects if cache else None,
             exclude_cpp_relpaths=cache.cpp_relpaths if cache else None,
+            extra_link_flags=result.third_party_link_flags or None,
+            c_sources=per_test_c_sources,
         )
         if run_result.cpp_build_failed:
             pytest.fail(

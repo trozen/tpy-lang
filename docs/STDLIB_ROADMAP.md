@@ -129,7 +129,7 @@ Examples of the policy in action:
 | [`pathlib`](#pathlib) | P0 | Missing | 0% | -- | Class-heavy; depends on filesystem bindings |
 | [`io`](#io) | P0 | Missing | 0% | -- | Protocol design needed; unlocks json/csv/pickle/configparser |
 | [`json`](#json) | P0 | Missing | 0% | -- | tplib.json exists (TPy-native). Stdlib-compat wrapper would need `io` |
-| [`re`](#re) | P0 | Missing | 0% | mixed | Staged: `tplib.cppstd.re` (std::regex) + syntax translator -> `tplib.pcre2.re` later. Backend selection needs F8 |
+| [`re`](#re) | P0 | Partial | ~50% | pure | Pure-TPy facade over `tplib.pcre2` raw bindings. PCRE2 vendored under `runtime/cpp/third_party/pcre2/` (5MB) and built bundled by default; `--pcre2={bundled,system,auto}` selects backend. compile/search/match/fullmatch/findall/sub/split + Pattern/Match classes + IGNORECASE/MULTILINE/DOTALL/VERBOSE/ASCII flags + `re.error`. Missing: named-group accessors, `count` arg on sub, true generator finditer, bytes input, compile cache |
 | [`collections`](#collections) | P0 | Missing | 0% | -- | OrderedDict trivial (have ordered_map); deque needs C++ struct; Counter/defaultdict/namedtuple need macros |
 | [`itertools`](#itertools) | P0 | Missing | 0% | -- | C++ primitives exist in `runtime/itertools.hpp`; needs Python-surface module |
 | [`functools`](#functools) | P0 | Missing | 0% | -- | partial/reduce/lru_cache need closure + macro support |
@@ -506,47 +506,72 @@ Options:
 
 ### re
 
-**Missing -- staged plan.** Biggest single missing module by impact.
+**Partial.** Pure-TPy facade in `lib/tpy/re.py` over raw PCRE2 bindings in
+`lib/tpy/tplib/pcre2.py`. PCRE2 is vendored at
+`runtime/cpp/third_party/pcre2/` (10.44, ~5MB after stripping `doc/`,
+`testdata/`, and autotools build files; reproducible via
+`scripts/vendor_pcre2.py`) and built into the user binary via the existing
+`BuildLayout.build_cpp_commands` infrastructure -- no separate CMake
+required for `tpyc -x` / `-b`. Backend selection: `tpyc --pcre2=bundled`
+(default), `--pcre2=system` (`-lpcre2-8`), or `--pcre2=auto`. The CMake-
+emit path emits a 3-mode selector into `sources.cmake` so users
+integrating into a larger CMake project can flip via `-DTPY_PCRE2=system`.
 
-Engine options considered: `std::regex` (zero deps, slow, ECMAScript syntax), **RE2**
-(fast, linear-time, no backrefs/lookaround), **PCRE2** (closest semantics to CPython's
-SRE, MIT-licensed, widely packaged), vendored SRE (~20k LOC, full compat).
-CPython uses its own engine (SRE); no existing library is a drop-in match for
-Python `re` semantics. For precedent: Codon uses RE2, RustPython uses the Rust
-`regex` crate, GraalPy has its own TRegex. None literally ship SRE.
+History: F8 was originally listed as a prerequisite to choose between
+`std::regex` and PCRE2 backends. Reframed as a future enhancement -- v1
+ships PCRE2 only (CPython-quality semantics, mature JIT). cppstd backend
+deferred until embedded targets actually need it.
 
-**Staged plan:**
+Architecture (no C++ wrapper layer, no pcre2.h in TPy-generated TUs):
 
-- **Phase 1 (now):** Add `tplib.cppstd.re` -- a thin binding over `std::regex`.
-  Ship `re` as a Python-facing facade on top. Includes:
-  - a **syntax translator** (macro-driven, or pure function invoked from the
-    facade) that rewrites Python regex syntax to ECMAScript where they differ:
-    `(?P<name>...)` -> `(?<name>...)`, `(?P=name)` -> `\k<name>`, etc.
-  - compile-time diagnostics for unsupported constructs: lookbehind,
-    `\p{...}` Unicode categories, verbose mode inline flags, Unicode `\d\w\s`
-    semantics that don't match ASCII.
-  - clear documentation of the compat gap.
-  Trade-off: std::regex is known-slow, but it's zero deps and unblocks the
-  surface. Establishes a `tplib.cppstd.*` convention for other C++ stdlib
-  bindings (`cppstd.chrono`, `cppstd.filesystem`, ...).
-- **Phase 2:** Add `tplib.pcre2.re` -- PCRE2 binding. Make it the default
-  backend for `re`; keep cppstd as a fallback for deps-free builds.
-  Selection via the feature-flag system (see FEATURE_ROADMAP.md F8).
-- **Phase 3 (if needed):** Vendor SRE for perfect CPython compat.
-  Only if PCRE2's residual divergences actually bite users.
+  * `runtime/cpp/include/tpy/stdlib/pcre2_h.hpp` -- hand-written facade
+    that mirrors the PCRE2 symbols and types we use (opaque struct
+    forward-decls, `extern "C"` function declarations, `PCRE2_SPTR8` /
+    `PCRE2_UCHAR8` / `PCRE2_SIZE` typedefs). Deliberately does NOT
+    `#include <pcre2.h>` -- pcre2.h's `PCRE2_*` macros would otherwise
+    collide with TPy module-level constants of the same name. The vendored
+    PCRE2 .c files include the real pcre2.h during their separate
+    compilation; the linker resolves our extern "C" declarations to those
+    symbols.
+  * `lib/tpy/tplib/pcre2.py` -- pure `@native` 1:1 bindings to `pcre2_*_8`
+    C primitives. Mirrors upstream constant names exactly
+    (`PCRE2_CASELESS`, `PCRE2_SUBSTITUTE_GLOBAL`, etc.). No Python semantics.
+  * `lib/tpy/re.py` -- facade. Pattern + Match classes manage
+    `pcre2_code*` / `pcre2_match_data*` lifetimes via `__del__`. All flag
+    mapping, group accessors, sub/split/findall logic live here in TPy.
 
 | Item | Status | Notes |
 |---|---|---|
-| `compile`, `match`, `search`, `findall`, `finditer`, `fullmatch` | Missing | Phase 1 target |
-| `sub`, `subn`, `split` | Missing | Phase 1 target |
-| `Match`, `Pattern` types | Missing | Phase 1 target |
-| Flags (`IGNORECASE`, `MULTILINE`, `DOTALL`, ...) | Missing | Map to std::regex::flag_type in phase 1 |
-| Named groups `(?P<name>...)` | Missing | Syntax translator in phase 1 |
-| Backreferences `(?P=name)` | Missing | Syntax translator in phase 1 |
-| Lookahead | Missing | std::regex supports it; phase 1 |
-| Lookbehind | Missing | Not supported by std::regex or RE2; needs PCRE2 (phase 2) |
-| `\p{...}` Unicode categories | Missing | Needs PCRE2 (phase 2) |
-| Verbose mode `(?x)` | Missing | Translator in phase 1 (strip whitespace/comments) |
+| `compile`, `Pattern` | Done | Pure-TPy class wrapping `Ptr[pcre2.Code]`; JIT-compiled on construct |
+| `search`, `match`, `fullmatch` | Done | Return `Optional[Own[Match]]` |
+| `findall` | Done | List of group-0 strings. Doesn't yet return captures-tuples for grouped patterns (CPython divergence) |
+| `finditer` | Partial | Returns `list[Match]` instead of a generator (deferred to v2) |
+| `sub` | Partial | Global replacement only; CPython's `count` arg deferred. Backref syntax is PCRE2-native (`$1`, `${name}`), not CPython's `\1` -- syntax translator deferred |
+| `split`, `split(maxsplit=)` | Done | |
+| `Match.group(int)`, `start`, `end`, `span` | Done | All returning `Int32` offsets and TPy `str` slices |
+| `Match.groups()` | Partial | Returns `list[str]` instead of tuple (varadic-tuple support pending) |
+| `Match.group("name")`, `groupdict` | Missing | Needs PCRE2 nametable walk |
+| Flags (`IGNORECASE`, `MULTILINE`, `DOTALL`, `VERBOSE`, `ASCII`) | Done | CPython bit values; mapped to upstream `PCRE2_*` flags. `re.A` / `re.I` / `re.M` / `re.S` / `re.X` aliases too |
+| `re.error` | Done | Catchable exception subtype |
+| Named groups `(?P<name>...)` | Done (syntax) | PCRE2 accepts Python's `(?P<name>...)` form natively for back-compat |
+| Backreferences `(?P=name)` in pattern | Done | PCRE2-native |
+| Backreferences in `sub` replacement | Partial | PCRE2 `$1` syntax only; CPython's `\1` needs a translator (deferred) |
+| Lookahead, lookbehind, `\p{...}`, etc. | Done | All PCRE2 features available -- patterns just work |
+| `re.compile` cache | Missing | Needs module-level mutable state (see "stdlib enablement workstream" above) |
+| bytes input | Missing | str only for now |
+
+Tests:
+  * `cases/stdlib/re_basic/` -- CPython-compatible surface. TPy and
+    CPython produce byte-identical output for compile/search/match/
+    fullmatch/findall/split/sub-without-backref + all 5 flags + pattern
+    features (quantifiers, classes, anchors, backrefs in pattern,
+    non-capturing groups) + error class catching. cpy phase enabled.
+  * `cases/stdlib/re_pcre2_specific/` -- divergent behaviors isolated:
+    sub with PCRE2 `$1`/`$2` backref syntax, `Match.groups()` returning
+    `list[str]` vs CPython's `tuple[str, ...]`. Marked `no_cpython`.
+    Each divergence is tracked as a `TODO(v2)` in `lib/tpy/re.py`; when
+    the syntax translator + varadic-tuple support land, this test folds
+    into `re_basic/`.
 
 ### collections
 

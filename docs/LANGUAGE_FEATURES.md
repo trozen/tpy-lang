@@ -4709,13 +4709,15 @@ Compiler directives are special comments that must appear in the file preamble (
 # tpy: include(<sys/time.h>, platform="linux")  # platform-filtered include
 # tpy: link("SDL2")                         # add -lSDL2 linker flag
 # tpy: link("m", platform="linux")          # platform-filtered: only link on Linux
+# tpy: link("pcre2", managed=True)          # declare dependency on a registered third-party lib
 # tpy: native_module                        # declaration-only module (no .hpp/.cpp generated)
 # tpy: cpp_namespace("myproject::core")      # override C++ namespace
 ```
 
 **Directives:**
 - **`include(path)`** / **`include(path, platform=name)`** -- adds a C/C++ `#include` to the generated header. Quoted paths use `#include "..."`, angle-bracket paths (`<...>`) use `#include <...>`. Optional `platform` filter: `"linux"`, `"macos"`, `"windows"`. In `native_module` modules, includes are propagated to importing modules' headers.
-- **`link(lib)` / `link(lib, platform=name)`** -- adds `-llib` linker flag. Optional `platform` filter: `"linux"`, `"macos"`, `"windows"`.
+- **`link(lib)` / `link(lib, platform=name)`** -- adds `-llib` linker flag. Raw, unconditional. Optional `platform` filter: `"linux"`, `"macos"`, `"windows"`.
+- **`link(lib, managed=True)`** -- declares a dependency on a registered third-party C/C++ library (defined in `tpyc/build/third_party.py`). The build layer resolves this to concrete include dirs, link flags, and vendored-source inclusion based on the user-selected mode (`tpyc --<lib>={bundled,system,auto,none}`). Higher-level than raw `link()`: one declaration covers all modes consistently across direct-compile (`tpyc -x`/`-b`) and CMake-emit paths. The `none` mode triggers a compile error if anything in the build graph declares the dependency -- useful for embedded targets that want to strip out an optional module. Used today by `lib/tpy/tplib/pcre2.py` for the `re` stdlib module; future stdlib C-binding modules (`gzip` -> zlib, etc.) will use the same directive. Composes with `platform=`.
 - **`native_module`** -- marks the module as declaration-only: no `.hpp` or `.cpp` is generated. Use for modules that only declare `@native` bindings to existing C/C++ types. Each module must declare this explicitly (it does not propagate from parent packages). When combined with `cpp_namespace`, bare `@native` entities are auto-prefixed with the namespace.
 - **`cpp_namespace(name)`** -- overrides the C++ namespace for the module (replaces the default `tpyapp::module_name`). In `__init__.py`, child modules inherit the namespace with their relative name appended (e.g., `cpp_namespace("mypkg")` in `__init__.py` makes `pkg/foo.py` use `mypkg::foo`).
 

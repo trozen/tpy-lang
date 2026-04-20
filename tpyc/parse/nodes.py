@@ -1135,6 +1135,10 @@ class ModuleDirectives:
     includes: list[tuple[str, str | None]] = field(default_factory=list)
     # Each entry: (lib_name, platform_filter_or_None)
     link_libs: list[tuple[str, str | None]] = field(default_factory=list)
+    # Third-party library declarations: (registry_name, platform_filter).
+    # Resolved at build time via tpyc.build.third_party into include paths,
+    # link flags, and CMake snippets based on the user's selected mode.
+    third_party_deps: list[tuple[str, str | None]] = field(default_factory=list)
     native_module: bool = False
     # Override C++ namespace (replaces tpyapp::module_name)
     cpp_namespace: str | None = None

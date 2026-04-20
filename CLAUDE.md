@@ -444,7 +444,8 @@ Library search roots and CPython stubs:
 | `tpy/tpy/unsafe.py` | Unsafe operations: `unsafe_ptr()`, `unsafe_cast()` |
 | `tpy/tpy/version.py` | Version/implementation identification: `__version__`, `version_info`, `is_compiled`. Values come from `_version.py` (a `# tpy: macro_module` that reads `tpyc.__version__` at compile time). Not re-exported through `tpy/__init__.py` because native_module facades don't propagate variables (see TODO). |
 | `tpy/_macro_helpers.py` | Shared macro helpers: `build_init`, `build_eq`, `build_repr`, `build_hash`, `build_order` (compile-time only) |
-| `tpy/math.py`, `time.py`, `sys.py`, `bisect.py`, `dataclasses.py`, `enum.py`, `random.py`, `struct.py` | Python stdlib analogs |
+| `tpy/math.py`, `time.py`, `sys.py`, `bisect.py`, `dataclasses.py`, `enum.py`, `random.py`, `struct.py`, `re.py` | Python stdlib analogs |
+| `tpy/tplib/pcre2.py` | Raw `@native` bindings to PCRE2 (used by `re`); not for direct user import |
 | `cpy/tpy/` | CPython stubs ONLY (not seen by tpyc): `Int32`, `Ptr`, `Array`, decorators; submodules: `mem`, `unsafe` |
 | `cpy/tpyc/` | CPython stub for tpyc: `__init__.py` exposes `__version__` + `VERSION_INFO` read from the installed distribution via `importlib.metadata`; `macro_api.py` raises ImportError (macro modules run at compile time only, not available under CPython) |
 | `cpy/tplib` | Symlink to `tpy/tplib/` so CPython tests can find tplib |
@@ -455,6 +456,32 @@ Library search roots and CPython stubs:
 3. `lib/tpy/` (tplib, stdlib modules, tpy protocols)
 
 The CPY phase of `test_case` uses PYTHONPATH `lib/cpy/:src_dir`.
+
+### Vendored third-party C/C++ libraries (`runtime/cpp/third_party/`)
+
+Stdlib modules that bind C/C++ libraries (e.g. `re` -> PCRE2) keep the
+upstream source vendored under `runtime/cpp/third_party/<lib>/`, with a
+sidecar `<lib>.vendor.json` recording version/URL/SHA256, and a
+`scripts/vendor_<lib>.py` that reproduces the vendored tree from upstream.
+
+Each lib also has a small hand-written facade header at
+`runtime/cpp/include/tpy/stdlib/<lib>_h.hpp` that mirrors the symbols and
+types we use -- this header **does not** include the upstream C header,
+keeping the upstream macros out of TPy-generated TUs (avoids preprocessor
+collisions with TPy module-level constants of the same name). The vendored
+.c files include the real upstream header during their separate
+compilation; the linker resolves our `extern "C"` declarations to those
+symbols. See `runtime/cpp/third_party/README.md` for the bump procedure.
+
+User opt-in per stdlib module: `tpyc --<lib>=bundled|system|auto|none`.
+Default is bundled (zero setup); system uses `find_package` (CMake path)
+or `-l<lib>` (direct-compile path); none disables the lib and turns any
+import that needs it into a compile error (useful for embedded builds
+that want to strip out optional modules).
+
+Stdlib modules declare their dependency via
+`# tpy: link("pcre2", managed=True)`. The `managed=True` kwarg routes
+through the registry; plain `link("foo")` remains raw `-lfoo`.
 
 ## Performance Profiles (Planned)
 
