@@ -18,7 +18,10 @@ from pathlib import Path
 from typing import Callable, Iterable, TYPE_CHECKING
 
 from .parse import Parser, ParseError, TpyModule, TpyImport, RelativeImportKey, SourceLocation, scan_star_exports
-from .parse.imports import StarImportResolver, NonLiteralAllError
+from .parse.imports import (
+    StarImportResolver, NonLiteralAllError, _PRIVATE_MODULE_PUBLIC_NAMES,
+)
+from .module_names import public_module_name as _public_module_name_of
 from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
@@ -676,6 +679,11 @@ class Compiler:
         # because RecordInfo objects live in Compiler.modules for the full
         # compiler lifetime.
         self._resolved_self_ref_records: set[int] = set()
+        # Phase F.5 public-surface -> raw-private-submodule reverse map.
+        # Populated lazily on first `_canonicalize_import_sources` call and
+        # then reused across the compilation; invalidated by re-entering
+        # `_init_shared`.
+        self._public_to_raw_cache: dict[str, list[str]] | None = None
 
     @classmethod
     def from_source(
@@ -1155,12 +1163,118 @@ class Compiler:
             result = implicit + [m for m in result if m not in implicit_set]
         self.compile_order = result
 
+    def _canonicalize_import_sources(self, compiled: CompiledModule) -> None:
+        """Rewrite the module's parser import table to defining modules.
+
+        Runs once per module right before `_analyze_module`. By now all
+        dependencies (in topological order) have been sema-analyzed, so
+        `self.modules[dep].exports.{records,enums,protocols}` are
+        populated. Re-export facades share the defining module's
+        RecordInfo / ProtocolInfo / enum NominalType by reference, so a
+        single lookup per imported name suffices -- transitive chains
+        are already flattened in the shared objects. Phase F.5:
+        canonical tuples let `type_resolver` mint `_module_qname` on
+        the first pass, retiring the substitution blocks in
+        `sema/type_ops.py::resolve_type`.
+        """
+        resolver = compiled.ast.resolver
+        if resolver is None:
+            return
+        resolver.canonicalize_import_table(self._lookup_defining_module)
+
+    def _lookup_defining_module(
+        self, surface_module: str, name: str,
+    ) -> tuple[str, str] | None:
+        """Return the (defining_module, canonical_name) tuple for a
+        re-exported record/enum/protocol, or None if nothing to rewrite.
+
+        The surface module in parser's name_index is the *public*
+        identity (`public_module_name` applied at import time, plus the
+        `_PRIVATE_MODULE_PUBLIC_NAMES` overrides). When F.5.1 runs on
+        module M in topological order, M's private-submodule
+        dependencies (e.g. `tpy._core._types`) are already analyzed
+        but their shared public facade (`tpy`, `typing`) may not be.
+        Fall back to scanning the private submodules that collapse to
+        the surface -- their exports are populated and carry the same
+        RecordInfo / ProtocolInfo / enum NominalType by reference, so
+        the canonical tuple they yield is identical to what the facade
+        would produce later.
+        """
+        result = self._lookup_in_module(surface_module, name)
+        if result is not None:
+            return result
+        for candidate in self._private_submodules_for(surface_module):
+            result = self._lookup_in_module(candidate, name)
+            if result is not None:
+                return result
+        return None
+
+    def _private_submodules_for(self, surface_module: str) -> list[str]:
+        """Enumerate candidate raw private submodules that collapse to
+        `surface_module` under `public_module_name` / the explicit
+        `_PRIVATE_MODULE_PUBLIC_NAMES` overrides. Cached across
+        `_canonicalize_import_sources` calls within a compilation."""
+        if self._public_to_raw_cache is None:
+            self._public_to_raw_cache = self._build_public_to_raw_cache()
+        return self._public_to_raw_cache.get(surface_module, [])
+
+    def _build_public_to_raw_cache(self) -> dict[str, list[str]]:
+        cache: dict[str, list[str]] = {}
+        for raw_name, compiled in self.modules.items():
+            override = _PRIVATE_MODULE_PUBLIC_NAMES.get(raw_name)
+            if override is not None:
+                cache.setdefault(override, []).append(raw_name)
+                continue
+            if "._" not in raw_name:
+                continue
+            cpp_ns = compiled.ast.directives.cpp_namespace
+            public = _public_module_name_of(raw_name, cpp_ns)
+            if public and public != raw_name:
+                cache.setdefault(public, []).append(raw_name)
+        return cache
+
+    def _lookup_in_module(
+        self, module_name: str, name: str,
+    ) -> tuple[str, str] | None:
+        """Resolve a (module, name) against a module's exports. Returns
+        the (defining_module, canonical_name) tuple if `name` is
+        exported as a record / enum / protocol; None otherwise."""
+        compiled = self.modules.get(module_name)
+        if compiled is None:
+            return None
+        exports = compiled.exports
+        if name in exports.records:
+            rinfo = exports.records[name]
+            if rinfo.module:
+                return (rinfo.module, rinfo.name)
+        if name in exports.enums:
+            etype = exports.enums[name]
+            qn = etype._module_qname
+            if qn:
+                # Enum NominalTypes minted in sema.registration.register_enum
+                # (and parser's register_enum_placeholder) always use the
+                # `{module}.{name}` shape; anything else is a bug in the
+                # registration path.
+                dot = qn.rfind('.')
+                assert dot > 0, f"enum qname '{qn}' missing module prefix"
+                return (qn[:dot], qn[dot + 1:])
+        if name in exports.protocols:
+            pinfo = exports.protocols[name]
+            if pinfo.module:
+                return (pinfo.module, pinfo.name)
+        return None
+
     def _analyze_module(self, compiled: CompiledModule) -> None:
         """Analyze a single module.
 
         Args:
             compiled: The compiled module to analyze.
         """
+        # Phase F.5: canonicalize import table to defining modules before
+        # any resolver calls (sema's type_ops.resolve_type_ref delegates
+        # through to the parser's TypeResolver).
+        self._canonicalize_import_sources(compiled)
+
         # Create analyzer
         analyzer = SemanticAnalyzer(default_int_type=self.default_int_type)
         analyzer.ctx.macro_registry = self._macro_registry

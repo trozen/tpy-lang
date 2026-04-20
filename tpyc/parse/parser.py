@@ -797,6 +797,7 @@ class Parser:
                         name=result.name,
                         methods=result.methods,
                         type_params=result.type_params,
+                        is_dynamic=result.is_dynamic,
                         module=self._public_module(),
                     ))
                 elif isinstance(result, TpyEnum):

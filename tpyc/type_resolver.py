@@ -15,7 +15,7 @@ resolve() call.
 """
 from __future__ import annotations
 import ast
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from .typesys import (
     TpyType, NominalType, PtrType, OwnType, ReadonlyType, AutoReadonlyType,
@@ -76,6 +76,18 @@ class TypeResolver:
         """Expose the parser's TypeRegistry so sema can register resolved
         aliases / read bookkeeping without reaching through `_parser`."""
         return self._parser.registry
+
+    def canonicalize_import_table(
+        self, lookup: 'Callable[[str, str], tuple[str, str] | None]',
+    ) -> None:
+        """Canonicalize the parser's import table to (defining_module, name).
+
+        Called by the compiler between parse and sema (Phase F.5) so
+        subsequent resolve() calls see defining-module tuples for
+        re-exported symbols and can mint authoritative `_module_qname`
+        on the first pass.
+        """
+        self._parser._imports.canonicalize_name_index(lookup)
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -268,7 +280,8 @@ class TypeResolver:
                         registered = self._resolve_registered_type(
                             resolved_q[1], loc=ref.loc, resolved=True)
                         if registered is not None:
-                            return registered
+                            return self._upgrade_from_type_def(
+                                registered, resolved_q)
                 # Nested dotted class: Outer.Inner, Outer.Mid.Inner, ...
                 dotted = self._resolve_dotted_class_name_str(name)
                 if dotted is not None:
@@ -295,8 +308,17 @@ class TypeResolver:
             registered = self._resolve_registered_type(
                 resolved_name, loc=ref.loc, resolved=bool(resolved))
             if registered is not None:
+                # Mint _module_qname for cross-module user refs. The
+                # builtin path handles type-factory-backed names (list,
+                # Array, ...); the canonical-import path (post-F.5.1)
+                # covers user records / protocols / enums imported from
+                # other modules -- after F.5.1 the tuple points at the
+                # defining module, so `{module}.{original}` is the
+                # authoritative qname. For canonical protocols we also
+                # upgrade is_protocol / is_dynamic_protocol from
+                # TypeDef.protocol (the dep module's sema has already
+                # attached it), replacing the old block-3 substitution.
                 if (resolved and isinstance(registered, NominalType)
-                        and not registered.is_protocol
                         and not registered._module_qname):
                     module, original = resolved
                     candidate_qname = f"{module}.{original}"
@@ -305,11 +327,27 @@ class TypeResolver:
                         parser.registry.get_builtin_type_key(registered.name) is not None
                         or (candidate_td is not None and candidate_td.type_factory is not None)
                     )
-                    if is_builtin:
+                    if is_builtin or parser._imports.is_canonical(name):
+                        is_protocol = registered.is_protocol
+                        is_dynamic_protocol = registered.is_dynamic_protocol
+                        if candidate_td is not None and candidate_td.protocol is not None:
+                            proto = candidate_td.protocol
+                            if proto.type_params:
+                                # Match sema block-3's original error class so
+                                # diag.txt formats as `file:line: error: ...`
+                                # (ParseError would go through the `Parse
+                                # error: ...` CLI path instead).
+                                from .sema.diagnostics import SemanticError
+                                raise SemanticError(
+                                    f"Generic protocol '{registered.name}' requires type arguments: "
+                                    f"{registered.name}[{', '.join(proto.type_params)}]",
+                                    loc=ref.loc,
+                                )
+                            is_protocol = True
+                            is_dynamic_protocol = proto.is_dynamic
                         registered = NominalType(
                             registered.name, registered.type_args,
-                            registered.is_protocol, candidate_qname,
-                            registered.is_dynamic_protocol,
+                            is_protocol, candidate_qname, is_dynamic_protocol,
                         )
                 return registered
             # LOAD-BEARING MESSAGE: `resolve_lenient` pattern-matches on
@@ -368,7 +406,13 @@ class TypeResolver:
                     a if isinstance(a, int) else self.resolve(a, type_param_scope)
                     for a in ref.args
                 )
-                return NominalType(resolved_container, type_args, is_protocol=True)
+                qname = (f"{user_protocol.module}.{resolved_container}"
+                         if user_protocol.module else None)
+                return NominalType(
+                    resolved_container, type_args, is_protocol=True,
+                    _module_qname=qname,
+                    is_dynamic_protocol=user_protocol.is_dynamic,
+                )
 
         # Unresolved bare (non-dotted) name -- helpful import hint
         if not resolved and "." not in name and name:
@@ -377,7 +421,23 @@ class TypeResolver:
                 or resolved_container in parser._module_class_names):
             type_args = self._resolve_record_type_args_from_ref(
                 ref, resolved_container, type_param_scope)
-            return NominalType(resolved_container, type_args)
+            canonical = "." not in name and parser._imports.is_canonical(name)
+            qname = self._user_record_qname(
+                resolved_container, resolved, canonical=canonical)
+            # Upgrade is_protocol / is_dynamic_protocol for cross-module
+            # canonical protocol refs via TypeDef.protocol (replaces the
+            # old sema block-3 substitution).
+            is_protocol = False
+            is_dynamic_protocol = False
+            if canonical and qname:
+                td = get_type_def(qname)
+                if td is not None and td.protocol is not None:
+                    is_protocol = True
+                    is_dynamic_protocol = td.protocol.is_dynamic
+            return NominalType(
+                resolved_container, type_args, is_protocol,
+                qname, is_dynamic_protocol,
+            )
 
         # Nested generic records (Outer.Inner[T])
         if "." in name:
@@ -385,7 +445,8 @@ class TypeResolver:
             if dotted is not None and parser.registry.get_record(dotted) is not None:
                 type_args = self._resolve_record_type_args_from_ref(
                     ref, dotted, type_param_scope)
-                return NominalType(dotted, type_args)
+                qname = self._user_record_qname(dotted, None)
+                return NominalType(dotted, type_args, _module_qname=qname)
 
         # LOAD-BEARING MESSAGE: `resolve_lenient` pattern-matches on
         # "Unknown generic type" to fall back to a NominalType placeholder.
@@ -395,6 +456,67 @@ class TypeResolver:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _upgrade_from_type_def(
+        self, registered: TpyType, resolved: tuple[str, str],
+    ) -> TpyType:
+        """Mint `_module_qname` / upgrade protocol flags on a qualified
+        (`typing.Sized`) or canonical bare-name resolution using the
+        resolved (module, name) tuple's `TypeDef`.
+
+        Only NominalTypes without a qname are upgraded. For TypeDefs
+        carrying a ProtocolInfo payload, `is_protocol` /
+        `is_dynamic_protocol` are also upgraded (mirrors the F.5.3
+        retirement of sema's block-3 substitution), and a bare generic
+        protocol raises `SemanticError` just as block-3 did.
+        Enum-registered NominalTypes come back from
+        `_resolve_registered_type` already qname-bearing and fall
+        through unchanged.
+        """
+        if not isinstance(registered, NominalType) or registered._module_qname:
+            return registered
+        module, original = resolved
+        candidate_qname = f"{module}.{original}"
+        td = get_type_def(candidate_qname)
+        if td is None:
+            return registered
+        if td.protocol is None and td.record is None and td.enum is None \
+                and td.type_factory is None:
+            return registered
+        is_protocol = registered.is_protocol
+        is_dynamic_protocol = registered.is_dynamic_protocol
+        if td.protocol is not None:
+            if td.protocol.type_params and not registered.type_args:
+                from .sema.diagnostics import SemanticError
+                raise SemanticError(
+                    f"Generic protocol '{registered.name}' requires type arguments: "
+                    f"{registered.name}[{', '.join(td.protocol.type_params)}]"
+                )
+            is_protocol = True
+            is_dynamic_protocol = td.protocol.is_dynamic
+        return NominalType(
+            registered.name, registered.type_args,
+            is_protocol, candidate_qname, is_dynamic_protocol,
+        )
+
+    def _user_record_qname(
+        self, container: str, resolved: tuple[str, str] | None,
+        *, canonical: bool = False,
+    ) -> str | None:
+        """Mint `_module_qname` for a user-record reference.
+
+        Cross-module refs use the (post-F.5.1 canonical) import tuple
+        when `canonical=True`; same-module refs pull from
+        `parser.registry.get_record().module`. Returns None when
+        neither source supplies a module (bare placeholders that later
+        passes will resolve) or the tuple is not canonicalized.
+        """
+        if resolved is not None and canonical:
+            return f"{resolved[0]}.{resolved[1]}"
+        rinfo = self._parser.registry.get_record(container)
+        if rinfo is not None and rinfo.module and not rinfo.builtin_type_key:
+            return f"{rinfo.module}.{container}"
+        return None
 
     def _resolve_primitive_type(
         self, module: str, original: str,
@@ -475,7 +597,11 @@ class TypeResolver:
                     f"{name}[{', '.join(user_protocol.type_params)}]",
                     node, loc=loc,
                 )
-            return NominalType(name, is_protocol=True)
+            qname = f"{user_protocol.module}.{name}" if user_protocol.module else None
+            return NominalType(
+                name, is_protocol=True, _module_qname=qname,
+                is_dynamic_protocol=user_protocol.is_dynamic,
+            )
         elif (enum_type := parser.registry.get_enum(name)) is not None:
             return enum_type
         elif (alias := parser.registry.get_type_alias(name)) is not None:
@@ -485,6 +611,14 @@ class TypeResolver:
         if (resolved or parser.registry.is_known_type(name)
                 or name in parser._module_class_names
                 or name in parser._module_type_alias_names):
+            # Mint qname for same-module user records from parser.registry.
+            # Cross-module refs get their qname minted in `_resolve_ref` from
+            # the canonicalized import tuple. Builtin-type stubs carry their
+            # qname in `builtin_type_key`; leave them bare so the downstream
+            # builtin-path minting (is_builtin gate) stays authoritative.
+            rinfo = parser.registry.get_record(name)
+            if rinfo is not None and rinfo.module and not rinfo.builtin_type_key:
+                return NominalType(name, _module_qname=f"{rinfo.module}.{name}")
             return NominalType(name)
         return None
 

@@ -18,7 +18,6 @@ from ..typesys import (
     unwrap_ref_type, RefType,
     is_callable_type, is_integer_type, is_void_like_type,
 )
-from ..module_names import public_module_name
 from ..coercions import resolve_coercion, CoercionContext
 from .diagnostics import SemanticError
 from .. import qnames
@@ -113,15 +112,18 @@ class TypeOperations:
     def resolve_type(self, typ: TpyType, *, protocols_only: bool = False) -> TpyType:
         """Resolve a type, setting is_protocol flag on NominalType when needed.
 
-        During parsing, NominalType may be created with is_protocol=False for
-        names that are actually protocols. This method sets the flag correctly.
-        Also converts NominalType("T") to TypeParamRef("T") when T is a type
-        parameter in the current function or record scope (unless protocols_only).
+        Since Phase F.5 the parser-side `TypeResolver` mints authoritative
+        `_module_qname`, `is_protocol`, and `is_dynamic_protocol` on its
+        first pass (using the post-F.5.1 canonical import table + the
+        dep module's attached `TypeDef.protocol`). This pass therefore
+        only has to: convert scope-local type-parameter names to
+        `TypeParamRef`, expand compile-time-only type aliases, and
+        recurse into structural wrappers' inner types.
 
         Args:
-            protocols_only: If True, only resolve protocol flags -- skip
-                TypeParamRef conversion. Used during record registration when
-                type parameter scope is not yet active.
+            protocols_only: If True, skip TypeParamRef conversion. Used
+                during record registration when type parameter scope is
+                not yet active.
         """
         if isinstance(typ, NominalType):
             # Convert bare NominalType to TypeParamRef when it matches a type
@@ -135,97 +137,21 @@ class TypeOperations:
                     return TypeParamRef(typ.name, bound=bound)
                 if typ.name in (self.ctx.record_ctx.type_params or []):
                     return TypeParamRef(typ.name)
-            # Enum / user-record / protocol qname substitution. Sema is the
-            # authoritative owner of `_module_qname` because only sema's
-            # ctx.registry has the cross-module view -- parser.registry is
-            # one-module wide. Phase F.3g.1-3 made parser populate
-            # RecordInfo.module / ProtocolInfo.module / enum placeholder
-            # qnames, so `record_info.qualified_name()` on sema's registry
-            # entry returns the authoritative qname in both cases:
-            #
-            # - Same-module: RecordInfo came from this module's parser,
-            #   with `module` set to the declaring module.
-            # - Cross-module, including re-export facades (`from tplib
-            #   import ArrayList` -> tplib's __init__.py re-exports from
-            #   tplib.array_list): the compiler's `_exports_to_module_info`
-            #   shares the SAME RecordInfo object through the re-export
-            #   chain (compiler.py: `exports.records[local_name] =
-            #   module_info.records[original_name]`), so when sema's
-            #   import pass calls `register_record(record_info, local_name)`
-            #   it inserts the *original* RecordInfo whose `module` points
-            #   to the defining module. `qualified_name()` therefore
-            #   returns e.g. `tplib.array_list.ArrayList`, not the surface
-            #   `tplib.ArrayList`.
-            #
-            # The parser-side TypeResolver still returns bare NominalType
-            # for cross-module user refs here; the substitution below
-            # fills the qname in. Documented followup: Phase F.5
-            # (docs/TYPESYS_MIGRATION.md) canonicalizes the parser-side
-            # import table to carry defining-module tuples, after which
-            # the resolver can mint qnames on the first pass and this
-            # substitution becomes dead code.
-            if not typ.type_args and not typ.is_protocol and not typ._module_qname:
-                enum_typ = self.ctx.registry.get_enum(typ.name)
-                if enum_typ is not None:
-                    return enum_typ
-            if not typ.is_protocol and not typ._module_qname:
-                record_info = self.ctx.registry.get_record(typ.name)
-                if record_info is not None and not record_info.builtin_type_key:
-                    typ = NominalType(typ.name, typ.type_args, typ.is_protocol,
-                                      record_info.qualified_name(),
-                                      typ.is_dynamic_protocol)
             # Resolve compile-time-only type aliases (e.g. FStr singleton).
             # Registered at import time for builtin types with no C++ representation.
             if not typ.type_args and self.ctx.registry.type_aliases:
                 alias = self.ctx.registry.get_type_alias(typ.name)
                 if alias is not None and alias.is_compile_time_only():
                     return alias
-            # Protocol flag + qname upgrade. Parser may emit a bare
-            # NominalType for a name that sema later recognizes as a
-            # protocol (cross-module import, or same-file protocol whose
-            # definition comes after a forward reference); upgrade the
-            # flags here. Only False -> True, never the reverse.
-            protocol_info = self.ctx.registry.get_protocol(typ.name)
-            # Generic protocols require type arguments (e.g., Sequence[T] not bare Sequence)
-            if (protocol_info and protocol_info.type_params
-                    and not typ.type_args and not protocols_only):
-                from ..sema.diagnostics import SemanticError
-                raise SemanticError(
-                    f"Generic protocol '{typ.name}' requires type arguments: "
-                    f"{typ.name}[{', '.join(protocol_info.type_params)}]")
-            resolved_is_protocol = typ.is_protocol or (protocol_info is not None)
-            resolved_is_dynamic = bool(protocol_info and protocol_info.is_dynamic)
-            # Mint _module_qname for protocols from ProtocolInfo.module. Parser
-            # does not know ProtocolInfo for cross-module refs (parser.registry
-            # only sees same-module protocols); sema supplies it here.
-            resolved_qname = typ._module_qname
-            if resolved_is_protocol and not resolved_qname and protocol_info and protocol_info.module:
-                resolved_qname = f"{public_module_name(protocol_info.module)}.{typ.name}"
-            needs_flag_update = (typ.is_protocol != resolved_is_protocol
-                                 or typ.is_dynamic_protocol != resolved_is_dynamic
-                                 or typ._module_qname != resolved_qname)
             # Recursively resolve type arguments
             if typ.type_args:
                 new_args = tuple(
                     self.resolve_type(arg, protocols_only=protocols_only) if isinstance(arg, TpyType) else arg
                     for arg in typ.type_args
                 )
-                # Identity check: NominalType.__eq__ excludes is_dynamic_protocol
-                # (compare=False), so == would miss flag-only changes.
-                args_changed = any(
-                    new is not old for new, old in zip(new_args, typ.type_args)
-                )
-                if args_changed or needs_flag_update:
-                    if needs_flag_update:
-                        # Protocol/qname flag changed -- only for user records/protocols
-                        return NominalType(typ.name, new_args, resolved_is_protocol,
-                                         resolved_qname, resolved_is_dynamic)
-                    # Only type_args changed -- use with_inner_types to preserve subclass
+                if any(new is not old for new, old in zip(new_args, typ.type_args)):
                     new_inner = tuple(a for a in new_args if isinstance(a, TpyType))
                     return typ.with_inner_types(new_inner)
-            elif needs_flag_update:
-                return NominalType(typ.name, typ.type_args, resolved_is_protocol,
-                                 resolved_qname, resolved_is_dynamic)
         elif isinstance(typ, PtrType):
             resolved_pointee = self.resolve_type(typ.pointee, protocols_only=protocols_only)
             if resolved_pointee is not typ.pointee:

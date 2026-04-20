@@ -4,7 +4,7 @@
 
 Unify the type hierarchy around two shapes: **nominal** (identity = qualified name + type args, behavior from a registry) and **structural** (identity = operand shape, behavior derived from operands). Builtins, containers, primitives, records, protocols, and enums all become `NominalType` with behavior sourced from a single `TypeDef` registry. Wrappers (`Ptr`, `Own`, `Optional`, `Union`, `Tuple`, `Callable`, `Readonly`) stay structural.
 
-## Current state (Phases A, B, C, D, E, F.1, F.2a, F.2b, F.3a-F.3g, F.4 complete)
+## Current state (Phases A, B, C, D, E, F.1, F.2a, F.2b, F.3a-F.3g, F.4, F.5 complete)
 
 ```
 TpyType (frozen dataclass base)
@@ -34,10 +34,9 @@ invariants: `PRIMITIVE_SNAPSHOT` (primitives), `ENUM_SNAPSHOT` (enums),
 `FACTORY_SNAPSHOT` (generic-instantiation payload).
 
 Remaining problems:
-- Tracked as **Phase F.5** below: the three substitution blocks
-  (enum / user-record / protocol-qname) in `sema/type_ops.py::resolve_type`
-  survive because parser's `TypeResolver` can't see re-export facades'
-  defining modules.
+- None in the F.3 parser-refactor thread; resolve_type is now a
+  scope-local TypeParamRef converter + alias expander + type-arg
+  recursion (see Phase F.5 below).
 
 ## Target state
 
@@ -1596,91 +1595,136 @@ container/primitive side -- different axis, independent commit.
 Full suite green (`uv run pytest`: 2773 passed, 1 skipped); byte-identical
 codegen verification via `--force-exec` at the phase boundary.
 
-### Phase F.5 -- Canonicalize import sources to defining modules (PLANNED)
+### Phase F.5 -- Canonicalize import sources to defining modules (DONE)
 
-Independent of the F.3 parser-refactor thread; lives here because it
-unlocks retiring the three residual substitution blocks in
-`sema/type_ops.py::resolve_type` that F.3g couldn't delete.
+Retired the three residual substitution blocks
+(enum / user-record / protocol-qname + flag upgrade) in
+`sema/type_ops.py::resolve_type` by making the parser-side
+`TypeResolver` emit fully-qualified NominalTypes on the first
+resolution pass.
 
-The blocks survive only because the parser-side `TypeResolver` can't
-compute cross-module qnames for re-export facades. Specifically,
-`parser._imports.get_import_source(name)` returns the **surface**
-module -- the one named in the `from X import Y` statement -- while
-the authoritative `TypeDef` qname uses the **defining** module:
-`from tplib import ArrayList` resolves through `tplib/__init__.py`'s
-`from .array_list import ArrayList` so the defining module is
-`tplib.array_list`, not `tplib`.
+The blocks survived F.3g only because the parser-side resolver
+couldn't compute cross-module qnames through re-export facades:
+`parser._imports.get_import_source(name)` returned the **surface**
+module named in the `from X import Y` statement, while the
+authoritative `TypeDef` qname uses the **defining** module.
+Example: `from tplib import ArrayList` goes through
+`tplib/__init__.py`'s `from .array_list import ArrayList` so the
+defining module is `tplib.array_list`, not `tplib`.
 
-Sema's `ctx.registry` already has the right answer: its import pass
-copies each imported `RecordInfo` / `ProtocolInfo` / `NominalType`
-into the importing module's registry with `defining_module`
-preserved (so `record_info.qualified_name()` is authoritative). The
-compiler also has the right answer: `_exports_to_module_info`
-resolves re-exports when building each module's `ModuleInfo` for
-cross-module consumption. Only the parser lacks it, because parser
-runs per-module before the compiler has finished aggregating.
+**Landed sub-steps:**
 
-**Goal.** Expose the defining module to parser's import table so
-that `parser._imports.get_import_source(name)` returns
-`(defining_module, original_name)` uniformly, and the resolver can
-mint canonical `_module_qname` on the first pass for every import
--- facade or not. The three substitution blocks (enum / user-record
-/ protocol-qname) in `resolve_type` then become dead code and get
-deleted. The "resolver emits qname-bearing NominalType" approach
-F.3g.4 attempted can be reattempted and landed cleanly on top of
-this.
+- **F.5.1 -- Per-module import-table canonicalization.** Added
+  `Compiler._canonicalize_import_sources(compiled)`, called at the
+  top of `_analyze_module(compiled)` (so dep modules have already
+  been sema-analyzed in topological order and their
+  `CompiledModule.exports` dicts are populated). The pass hands a
+  `(surface_module, name) -> (defining_module, canonical_name)`
+  lookup to `TypeResolver.canonicalize_import_table`, which walks
+  the parser's `_name_index` and rewrites entries whose
+  `surface_module`'s exports carry the `name` as a record / enum /
+  protocol. The lookup pulls `RecordInfo.module`, the enum
+  NominalType's `_module_qname`, or `ProtocolInfo.module` -- the
+  same authoritative fields sema registration writes. Re-exported
+  items are share-pointed through facades in `_extract_exports`
+  (compiler.py `exports.records[local_name] =
+  module_info.records[original_name]`), so the shared
+  RecordInfo / ProtocolInfo / enum NominalType already carries the
+  ultimate defining module; no transitive chain walk needed.
 
-**Why.** Removes the last parser/sema boundary patch in the resolve
-pipeline. Moves the "one source of truth per qname" discipline into
-the import-resolution layer, where it belongs. Modest perf win on
-`resolve_type` (it runs on every `TpyType` traversal -- the
-substitution check is one of several branches that fire per call).
+  *Canonical-imports set.* F.5.1 tracks which imports point at
+  real nominal types (records / enums / protocols) via
+  `ImportProcessor._canonical_imports` / `is_canonical(name)`. Only
+  names in that set are eligible for resolver qname minting in
+  F.5.2 -- anything else (type aliases, module-keyword imports,
+  decorator names, primitives without a factory) stays in the
+  pre-F.5 shape. This gating is load-bearing: blind qname minting
+  on every import tuple would pollute bare NominalTypes that
+  downstream passes use as alias-resolution placeholders
+  (`analyzer._resolve_alias` skips anything with `_module_qname`
+  set), silently breaking compile-time aliases like
+  `type Float64 = float`. `_canonical_imports` is the single source
+  of truth for "this tuple identifies a TypeDef-backed nominal
+  type".
 
-**Why separate from F.3.** F.3 was about reshaping the
-parser/sema boundary for type-reference nodes -- parser output
-structure. F.5 is about reshaping the compiler's import table --
-cross-module aggregation. Different axis, different layer, ships
-independently.
+  *Public-to-raw fallback.* Parser collapses private submodule
+  imports to their public identity (`from .._typing import X`
+  becomes `("typing", "X")` via `_PRIVATE_MODULE_PUBLIC_NAMES`, and
+  `from .._core._types` becomes `("tpy", "...")` via
+  `public_module_name`). When F.5.1 runs on a private-submodule
+  dependent (e.g. `tpy._core._types` which needs `Iterator` from
+  `tpy._typing`), the `typing` facade module may not yet be
+  analyzed. A cached `_build_public_to_raw_cache` maps each public
+  surface name to the raw private submodules that collapse to it
+  (either via the explicit override dict or via `public_module_name`
+  namespace-aware matching); the lookup falls back to those
+  candidates when the direct lookup misses. The shared
+  RecordInfo / ProtocolInfo / enum NominalType carries the same
+  defining-module fields regardless of which candidate surfaces it,
+  so the tuple produced is identical.
 
-**Dependencies.** F.3g.1-3 (parser.registry populated with
-RecordInfo.module / ProtocolInfo.module / enum placeholder qnames).
-No dependency on F.4 or G.
+- **F.5.2 -- Resolver mints qnames on first pass.** Extended
+  `TypeResolver._resolve_registered_type` and `_resolve_ref`'s bare-
+  name + generic branches to mint `_module_qname` (and, for
+  protocols, upgrade `is_protocol` / `is_dynamic_protocol`):
+  - Same-module user records / protocols pull their qname from
+    `parser.registry.get_record().module` / `.get_protocol().module`
+    (both populated by F.3g parser registrations).
+  - Cross-module canonical imports (`is_canonical(name)` True, post-
+    F.5.1) mint `_module_qname = f"{module}.{original}"` from the
+    rewritten import tuple, and -- for protocols -- consult
+    `get_type_def(qname).protocol` to upgrade `is_protocol` and
+    `is_dynamic_protocol` (the dep module's sema has already
+    attached the ProtocolInfo). Generic protocols referenced
+    bare raise the same `"requires type arguments"` error previously
+    raised by sema block 3.
+  - Qualified `mod.Attr` annotations (e.g. `typing.Sized`) route
+    through a shared `_upgrade_from_type_def` helper that checks the
+    resolved tuple's TypeDef for record / protocol / enum /
+    type_factory presence before minting, so type-alias lookups
+    stay unqualified.
+  - The builtin path (type-factory-backed names: `list`, `Array`,
+    `Span`, ...) retained its `is_builtin` gate so factory
+    NominalTypes continue to carry their canonical qname without
+    depending on F.5.1 canonicalization.
 
-**Sketch.**
-1. After `compiler._compute_compile_order()` (so all modules are
-   parsed) but before `_analyze_module` loops start, walk each
-   compiled module's `parser._imports._name_index` and rewrite
-   entries: `(surface_module, original_name)` ->
-   `(defining_module, original_name)` wherever the surface module's
-   `ModuleInfo` shows the name was re-exported. For the common
-   non-facade case (`from mylib import Foo` where mylib defines Foo
-   directly) the tuple is unchanged.
-2. Use the compiler's existing re-export tracking
-   (`_exports_to_module_info` already knows defining modules --
-   expose it as a lookup per `(surface_module, name)` if not
-   already).
-3. Re-land F.3g.4's resolver-side qname minting:
-   `type_resolver._resolve_registered_type` and `_resolve_ref`'s
-   generic branch mint `_module_qname = f"{module}.{original}"`
-   from the now-canonical import tuple on the first pass.
-4. Delete the three substitution blocks in
-   `sema/type_ops.py::resolve_type`. Update the comment block.
-5. Byte-identical codegen verification under `--force-exec`.
+  Parser-side `ProtocolInfo` now carries `is_dynamic` too (registered
+  in `parser.py:_parse_class` from the `TpyProtocol.is_dynamic` AST
+  flag). Without this, same-module `@dynamic` protocol references
+  resolved to NominalTypes with `is_dynamic_protocol=False` and
+  `NominalType.to_cpp` emitted the structural-protocol placeholder
+  `"T"` instead of the dynamic-protocol concrete name.
 
-**Risks / watch-outs.**
-- Chained re-exports (`pkg/__init__.py` re-exports from
-  `pkg.sub/__init__.py` which re-exports from `pkg.sub.mod`): the
-  lookup must resolve transitively to the ultimate defining module,
-  not one step up. The compiler's re-export tracking already walks
-  chains; sketch step 2 just exposes it -- audit first.
-- Aliased re-exports (`from .colors import Color as C`): the
-  `original_name` piece of the tuple must be the *defining-module*
-  name (`Color`), not the local alias (`C`). Compiler state should
-  already have this but check.
-- Same-module forward references don't go through the import table;
-  the resolver still needs its `parser._module_class_names` /
-  `parser.registry.get_record` path for those (F.3g.4 covered both
-  branches). The re-land should keep the dual lookup.
+- **F.5.3 -- Delete the three substitution blocks.** Collapsed
+  `sema/type_ops.py::resolve_type` to a scope-local TypeParamRef
+  converter, compile-time alias expander, and type-arg recursor.
+  The 70-line comment block justifying the old substitutions was
+  replaced with a one-paragraph docstring pointing at F.5. Dropped
+  the unused `from ..module_names import public_module_name` import.
+  The structural-wrapper branches (`PtrType`, `OwnType`, `Readonly`,
+  `Optional`, `Union`, `Tuple`, ...) are unchanged.
+
+**Verification.** Full suite (`uv run pytest --force-exec`):
+2775 passed, 1 skipped. Byte-identical generated code vs. the
+pre-F.5 baseline. Two new regression tests:
+- `tests/cases/nested_def/cross_module_record_param` pins the
+  parse-time resolver path: nested-def type refs resolve before
+  F.5.1 runs, so their NominalTypes come back without a
+  `_module_qname`; codegen's existing
+  `imported_record_qualification` fallback recovers the C++
+  namespace from sema's registry.
+- `tests/cases/protocols/error_protocol_generic_bare_cross_module`
+  pins the cross-module-canonical path for user-defined generic
+  protocols used without type arguments: the resolver raises
+  `SemanticError` (not `ParseError`) so the CLI produces the
+  standard `file:line: error: ...` diagnostic, matching what sema's
+  retired block-3 used to emit.
+
+**Why separate from F.3.** F.3 reshaped the parser/sema boundary
+for type-reference nodes (parser output structure). F.5 reshapes
+how the compiler's import table surfaces authoritative
+cross-module data (import-table aggregation). Different axis,
+different layer; landed independently on top of F.3g + F.4.
 
 ### Phase G -- Sema module cleanup (optional, independent)
 
@@ -1707,6 +1751,7 @@ Break circular imports by extracting shared types into leaf modules. Benefits fr
 ## Followups (pre-existing cleanups surfaced during the migration)
 
 - **(DONE)** `basic_slice` module mismatch resolved: `BASIC_SLICE.qualified_name()` now returns `"tpy.basic_slice"` matching the factory-table key. Flipped in `typesys.py` (singleton `_module_qname`), `type_def_registry.py` (TypeDef registration + `is_basic_slice_type` predicate), `qnames.py` (BASIC_SLICE constant), and `test_type_def_registry.py` (fixture keys).
+- **Same-module generic protocol raises `ParseError`** in `TypeResolver._resolve_registered_type` (see `tpyc/type_resolver.py` user_protocol branch). Pre-F.5 behavior, surfaced by the F.5 reviewer pass. F.5 aligned the cross-module canonical path to raise `SemanticError` (so the CLI produces the standard `file:line: error: ...` diagnostic), but left the same-module path alone for scope discipline. In the test harness both classes format identically via `conftest.py`'s `.format()` branches; the divergence only appears in CLI output (`Parse error: Generic protocol 'X' requires type arguments: X[T] at line N` vs. `main.py:N: error: Generic protocol 'X' ...`). Low priority -- fix is a one-line swap to `SemanticError` with the loc passed through, and a test case exercising the same-module path via CLI would pin it.
 
 ## Performance tradeoffs introduced by Phase D
 
