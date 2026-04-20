@@ -28,7 +28,8 @@ if TYPE_CHECKING:
     from ..typesys import TpyType
 from .nodes import (
     ParseError, SourceLocation, ParseWarning, RecordLinkage, FunctionLinkage,
-    TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, TpyInferFromDefaultRef, TypeRefNode,
+    TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, TpyInferFromDefaultRef,
+    ResolverInputNode, TypeRefNode,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_ASCII,
     TpyBoolLiteral,
@@ -2344,8 +2345,11 @@ class Parser:
     def _parse_type_ref(
         self, node: ast.expr,
         type_param_scope: dict[str, TypeParamKind] | None = None,
-    ) -> TypeRefNode:
-        """Walk an ast.expr for a type annotation and produce a TypeRefNode."""
+    ) -> ResolverInputNode:
+        """Walk an ast.expr for a type annotation and produce a ResolverInputNode
+        (one of the four walker outputs: TpyTypeRef, TpyUnionRef,
+        TpyCallableRef, TpyLiteralRef). TpyInferFromDefaultRef is emitted
+        only at a single field-declaration site, never by this walker."""
         if type_param_scope is None:
             type_param_scope = self._type_param_scope
         loc = self._loc(node)
@@ -2390,7 +2394,7 @@ class Parser:
         self, node: ast.Subscript,
         type_param_scope: dict[str, TypeParamKind] | None,
         loc: SourceLocation | None,
-    ) -> TypeRefNode:
+    ) -> ResolverInputNode:
         """Handle ast.Subscript: disambiguate structural wrappers from generics."""
         if isinstance(node.value, ast.Name):
             resolved = self._resolve_type_name(node.value.id)
@@ -2458,7 +2462,7 @@ class Parser:
             raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
 
         slices = _extract_subscript_slices(node)
-        arg_refs: list[TypeRefNode | int] = []
+        arg_refs: list[ResolverInputNode | int] = []
         for s in slices:
             if (isinstance(s, ast.Constant) and isinstance(s.value, int)
                     and not isinstance(s.value, bool)):
@@ -2528,7 +2532,7 @@ class Parser:
         return TpyLiteralRef(values=tuple(values), loc=loc)
 
     def _resolve_type_ref_impl(
-        self, ref: TypeRefNode,
+        self, ref: ResolverInputNode,
         type_param_scope: dict[str, TypeParamKind] | None = None,
     ) -> TpyType:
         """Thin delegate to TypeResolver.resolve. Kept for the test
@@ -3496,8 +3500,15 @@ class FragmentParser(Parser):
             return ("typing", local_name)
         return None
 
-    def _raise_unresolved_import_error(self, raw_name: str, node: ast.expr) -> None:
-        pass  # Lenient: unresolved imports are not errors in fragments
+    def _raise_unresolved_import_error(
+        self, raw_name: str, node: ast.expr | None = None,
+        *, loc: SourceLocation | None = None,
+    ) -> None:
+        # Lenient: unresolved imports are not errors in fragments. Override
+        # signature matches the base shape so TypeResolver's loc-based call
+        # path (`parser._raise_unresolved_import_error(name, loc=ref.loc)`)
+        # is compatible when a fragment's resolve hits an unresolvable name.
+        pass
 
     def _parse_type_annotation(
         self, node: ast.expr, type_param_scope: dict | None = None,

@@ -26,7 +26,7 @@ from ..modules.type_resolution import get_type_factory_param_kinds
 from ..parse import TpyFunction
 
 if TYPE_CHECKING:
-    from ..parse import SourceLocation
+    from ..parse import SourceLocation, ResolverInputNode
     from .context import SemanticContext
     from tpyc import modules as builtin_modules
 
@@ -49,7 +49,8 @@ class TypeOperations:
         self.ctx = ctx
 
     def resolve_type_ref(
-        self, ref, type_param_scope=None, *, pending_alias: str | None = None,
+        self, ref: 'ResolverInputNode',
+        type_param_scope=None, *, pending_alias: str | None = None,
     ) -> TpyType:
         """Resolve a parser-emitted TypeRefNode to a TpyType.
 

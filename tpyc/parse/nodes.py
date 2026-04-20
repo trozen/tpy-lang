@@ -85,14 +85,14 @@ class TpyTypeRef:
     qname minting) happens in sema.
     """
     name: str
-    args: tuple['TypeRefNode | int', ...] = ()
+    args: tuple['ResolverInputNode | int', ...] = ()
     loc: SourceLocation | None = None
 
 
 @dataclass(frozen=True)
 class TpyUnionRef:
     """Union-syntax type reference: T | U | ..."""
-    members: tuple['TypeRefNode', ...]
+    members: tuple['ResolverInputNode', ...]
     loc: SourceLocation | None = None
 
 
@@ -100,8 +100,8 @@ class TpyUnionRef:
 class TpyCallableRef:
     """Callable[[P1, P2], R] or Fn[[P1, P2], R]."""
     kind: Literal["Callable", "Fn"]
-    params: tuple['TypeRefNode', ...]
-    return_type: 'TypeRefNode'
+    params: tuple['ResolverInputNode', ...]
+    return_type: 'ResolverInputNode'
     loc: SourceLocation | None = None
 
 
@@ -127,7 +127,12 @@ class TpyInferFromDefaultRef:
     loc: SourceLocation | None = None
 
 
-type TypeRefNode = TpyTypeRef | TpyUnionRef | TpyCallableRef | TpyLiteralRef | TpyInferFromDefaultRef
+# ResolverInputNode is the subset of TypeRefNode that TypeResolver.resolve
+# accepts: four parser-walker outputs (named ref, union, callable, literal).
+# TpyInferFromDefaultRef is NOT a resolver input -- it's a field-storage
+# marker that sema catches explicitly before calling the resolver.
+type ResolverInputNode = TpyTypeRef | TpyUnionRef | TpyCallableRef | TpyLiteralRef
+type TypeRefNode = ResolverInputNode | TpyInferFromDefaultRef
 
 
 # AST node types for TurboPython

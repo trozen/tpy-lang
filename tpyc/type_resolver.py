@@ -31,7 +31,7 @@ from .modules import lookup_generic_type, lookup_generic_type_in_module, Builtin
 from .modules.type_resolution import get_type_factory_param_kinds
 from .parse.nodes import (
     ParseError, SourceLocation,
-    TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, TypeRefNode,
+    TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, ResolverInputNode,
 )
 from .parse.imports import _IMPLICIT_MODULES
 
@@ -79,11 +79,17 @@ class TypeResolver:
     # ------------------------------------------------------------------
 
     def resolve(
-        self, ref: TypeRefNode,
+        self, ref: ResolverInputNode,
         type_param_scope: dict[str, TypeParamKind] | None = None,
         *, pending_alias: str | None = None,
     ) -> TpyType:
-        """Resolve a TypeRefNode to a TpyType.
+        """Resolve a parser-walker-emitted type reference to a TpyType.
+
+        Accepts `ResolverInputNode` (the four walker outputs: TpyTypeRef,
+        TpyUnionRef, TpyCallableRef, TpyLiteralRef).  `TpyInferFromDefaultRef`
+        is deliberately *not* a valid input -- it's a field-storage marker
+        that sema catches explicitly in its field loop and never routes
+        through the resolver.
 
         `pending_alias`, when set (typically by sema's alias pass), enables
         same-body self-ref placeholder behaviour for recursive aliases like
@@ -101,7 +107,7 @@ class TypeResolver:
         return self._resolve_ref(ref, type_param_scope)
 
     def _resolve_ref(
-        self, ref: TypeRefNode,
+        self, ref: ResolverInputNode,
         type_param_scope: dict[str, TypeParamKind] | None,
     ) -> TpyType:
         """Internal resolver.  Recursive calls to `self.resolve(...)` without
