@@ -81,6 +81,52 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - User Exception subclass doesn't auto-inherit native `__init__(message)`: `class error(Exception): pass` then `raise error("msg")` errors "'raise error()' does not accept arguments". CPython auto-inherits `Exception.__init__` via MRO; TPy requires each subclass to declare its own. Best workaround today (used by `lib/tpy/re.py::error`): declare `def __init__(self, message: String = "") -> None: super().__init__(message)` -- `String` (std::string) is needed instead of `str` because `tpy::Exception(std::string)` has no string_view overload (see next entry). Result: `re.error` is catchable but the param-type signature differs from CPython's idiomatic `str`. Fix options: (a) one-line C++ struct + `@native` binding for each user exception (matches existing _exceptions.py pattern, requires runtime/cpp/ touch); (b) sema synthesizes `__init__` for user Exception subclasses with empty bodies, delegating to the parent's native constructor.
 - `tpy::Exception` (and the rest of the BaseException hierarchy in `runtime/cpp/include/tpy/core.hpp`) only has a `std::string` constructor; passing a `std::string_view` fails to compile because there's no implicit conversion. This forces user-defined Exception subclasses with explicit `__init__` to type their message param as `String` (std::string) rather than the more idiomatic `str` (std::string_view). Surfaced in `lib/tpy/re.py::error.__init__`. Two fixes, either works: (a) add a `BaseException(std::string_view msg) : message(msg) {}` overload in core.hpp -- one line, matches std::string's own string_view-accepting constructor; (b) codegen materializes string_view -> std::string at super().__init__ call sites where the parent constructor expects std::string. (a) is strictly simpler and less surprising for users who write the C++ themselves.
 - `format_float` in `runtime/cpp/include/tpy/format.hpp` drops precision for small-magnitude floats. The fixed-notation shortest-round-trip loop tries `std::setprecision(prec)` for `prec` in 1..17, but `setprecision` with `std::fixed` means *digits after the decimal point*, not significant digits. For values with |v| < 0.1 the shortest round-trip needs >17 digits after the decimal (leading zeros burn precision budget); the loop runs out and falls through to the default-precision `ostringstream << v` on line 129, which gives 6 digits. Observed: `print(0.025010755222666936)` emits `0.0250108` in TPy vs `0.025010755222666936` in CPython. Surfaced while wiring `random.random()` tests (forced the test to use `getrandbits(32)` for byte-identity instead of printing floats directly). Fix: either (a) raise the loop bound high enough (e.g. 24) and let the round-trip test cut it off, or (b) switch to `std::to_chars(first, last, v, std::chars_format::shortest)` (C++17) which gives Python-style shortest-round-trip in one call. (b) is both faster and correct by construction; (a) is a one-line patch.
+- Readonly propagation through generic T blocks storing callable cmp/key in
+  comparison dunders. Writing `functools.cmp_to_key`-style wrappers requires
+  a generic record `Wrap[T]` with a `cmp: Callable[[T, T], Int32]` field and
+  a `__lt__(self, other) -> bool` that calls `self.cmp(self.obj, other.obj)`.
+  `__lt__` is deduced readonly, so `self.obj` reads as `readonly[T]`, and
+  every natural path to feed it to the Callable fails:
+  1. Passing `self.obj` directly: "expected 'T', got 'readonly[T]'".
+  2. Typing the field as `Callable[[readonly[T], readonly[T]], Int32]`:
+     compiles, but then `a - b` inside a user cmp lambda errors with
+     "Invalid operand types for '-': readonly[Int32] and readonly[Int32]"
+     -- basic arithmetic is not defined on `readonly[FixedInt]`.
+  3. `a: T = copy(self.obj)`: "Cannot pass readonly[T] as mutable T in
+     variable 'a'" -- `copy()` does not strip readonly through a generic T.
+  4. Dropping `@readonly` on `__lt__`: no effect -- comparison dunders are
+     readonly-deduced unconditionally and there is no escape hatch.
+  Three possible fixes, each with independent value:
+  (a) Teach `copy()` to strip readonly through generics (local binding
+      `T = copy(readonly[T])` is safe -- copy creates owned storage).
+  (b) Allow arithmetic on `readonly[FixedInt]` (reading a const int is fine;
+      the const is just a local-binding marker and the operators are pure).
+  (c) Allow opt-out of readonly deduction on specific methods
+      (`@readonly(False)` or similar) for dunders that legitimately need
+      mutable self access to callable fields.
+  Surfaced while trying to add `functools.cmp_to_key`; deferred that
+  stdlib item in STDLIB_ROADMAP.md until one of the three lands. (a) is
+  probably the lowest-impact fix and would unblock the cleanest cmp_to_key
+  implementation. Lives in `sema/` (readonly tracking through generic
+  substitution / copy elision).
+- Generic `U` over `str` drops lifetime when composed with `Fn[...]` returning `U`. Minimal repro (no stdlib):
+  ```python
+  def apply[U](f: Fn[[U], U], init: U) -> Own[U]:
+      return copy(f(init))
+  print(apply(lambda s: s + "!", "hello"))   # prints garbled bytes
+  ```
+  Codegen infers `U = std::string_view` (the param form of `str`), so the lambda is generated as `[](std::string_view) -> std::string_view { return str_concat(...); }` -- `str_concat` returns an owned `std::string`, the implicit conversion yields a dangling view. The non-generic form (`def apply_str(f: Fn[[str], str], init: str) -> str: ...`) works because `str` return type is correctly `std::string`. Surfaced while wiring `lib/tpy/functools.py::reduce`; functools ships with an int/float smoke case and a docstring warning to avoid str reduce until this lands. Same root-cause family as the heapq note about generic-T not specializing `T = std::string` to `std::string_view` for params -- both are the codegen-time split between "storage type" and "parameter type" for `str` not being threaded through generic substitutions. Fix: when substituting a generic param with `str`, use `std::string` for storage slots (return types, local slots, return-value bindings) and `std::string_view` only for `param_val_or_ref_t` at call boundaries. Lives in codegen type-mapping for generic substitutions.
+- Overload resolution + `Fn[...]` param: when a generic function is `@overload`ed and one parameter is typed `Fn[...]`, neither named-function refs nor lambdas resolve in the callable-argument slot. Repro (with both overloads local, no stdlib):
+  ```python
+  @overload
+  def f[T, U](g: Fn[[U, T], U], a: list[T], init: U) -> U: ...
+  @overload
+  def f[T](g: Fn[[T, T], T], a: list[T]) -> T: ...
+  def add(x: Int32, y: Int32) -> Int32: return x + y
+  f(add, xs)                     # error: 'add' is not a variable
+  f(lambda a, b: a + b, xs)      # error: lambda params cannot be inferred
+  ```
+  The 3-arg form works -- `f(add, xs, Int32(0))` and `f(lambda a, b: a + b, xs, Int32(0))` both compile. Single-overload functions with an `Fn` param work fine with both named refs and lambdas. So the bug is specifically in overload candidate enumeration not trying each candidate's `Fn` signature as a type context for the callable argument (and not re-checking named-function refs against each candidate's `Fn` param). Surfaced when writing `lib/tpy/functools.py`: drop the CPython-style 2-arg `reduce(func, a)` until this lands, ship 3-arg only. Fix: during overload resolution, when a candidate expects `Fn[...]` at position `i`, pre-type-the-arg against that `Fn` signature (for lambdas) or look up the name as a function ref convertible to that `Fn` (for named refs) before computing the candidate's match score. Lives in `sema/overloads.py` / `sema/calls.py`.
 
 ## Ownership & Consuming Iteration
 - Consuming `items()` for dict: consuming `__iter__` works for keys, but consuming `items()` can't use `@overload` with `Own[Self]` because the return type changes (`dict_items` -> `Iterator[tuple]`), breaking non-iteration callers like `len(d.items())`. Needs a mechanism that only selects consuming dispatch when used as a for-loop iterable.

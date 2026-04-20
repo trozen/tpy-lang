@@ -16,15 +16,27 @@ std::tuple<::tpy::val_or_ref_t<T>, ::tpy::val_or_ref_t<U>> pair(::tpy::param_val
 template<::tpystd::tpy::Comparable T>
 ::tpy::val_or_ref_t<T> max_val(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
 int32_t apply_fn(__F0&& f, int32_t x);
 int32_t apply_callable(const std::function<int32_t(int32_t)>& f, int32_t x);
 template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
+      { __fn(__a0, __a1) } -> std::convertible_to<std::tuple<int32_t, int32_t>>;
+  }
 std::tuple<int32_t, int32_t> make_pair(__F0&& f, int32_t a, int32_t b);
 template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
+      { __fn(__a0, __a1) } -> std::convertible_to<int32_t>;
+  }
 int32_t apply2(__F0&& f, int32_t a, int32_t b);
 void use_local();
 std::function<int32_t(int32_t)> get_identity();
 template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      __fn(__a0);
+  }
 void run_void(__F0&& f, int32_t x);
 void main();
 

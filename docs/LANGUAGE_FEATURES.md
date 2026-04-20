@@ -4472,6 +4472,7 @@ Currently working with a stable surface:
 | `sys` | Stub (`argv` only). More planned |
 | `random` | Stub (`random()`, `seed()`). Target: pure-TPy Mersenne Twister |
 | `bisect` | Done. Pure TPy over the `Comparable` protocol |
+| `functools` | Partial. 3-arg `reduce(func, a, initial)` only. See STDLIB_ROADMAP.md for blocked items |
 | `struct` | Partial (`unpack`, `unpack_from`, `calcsize`) via compile-time macros |
 | `enum` | Partial (`Enum`, `IntEnum`, `auto()`) via class macro |
 | `dataclasses` | Partial (~75%; `@dataclass(frozen, order)`, `field()`, `asdict()`, `astuple()`) via class macro |

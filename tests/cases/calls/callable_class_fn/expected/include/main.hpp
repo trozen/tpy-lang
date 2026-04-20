@@ -13,8 +13,14 @@ struct Adder;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
 int32_t apply(__F0&& f, int32_t x);
 template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
 int32_t apply_twice(__F0&& f, int32_t x);
 void main();
 

@@ -200,13 +200,10 @@ class FunctionGenerator:
         self, func: TpyFunction,
         proto_params: list,
         *, emit_defaults: bool = True,
-        emit_fn_requires: bool = True,
         indent: str = "",
     ) -> str:
         """Generate a template header that includes both protocol and Fn params.
 
-        emit_fn_requires: if False, skip the Fn requires clause (for forward decls
-        where the constraint on the definition is sufficient).
         indent: prefix for continuation lines (e.g. INDENT for method context).
         """
         fn_params = self._collect_fn_params(func.params)
@@ -218,8 +215,6 @@ class FunctionGenerator:
             return base_header
 
         fn_tpl_parts, fn_req_parts = self._gen_fn_template_parts(fn_params)
-        if not emit_fn_requires:
-            fn_req_parts = []
         return self._merge_fn_into_header(base_header, fn_tpl_parts, fn_req_parts, indent=indent)
 
     @staticmethod
@@ -704,9 +699,10 @@ class FunctionGenerator:
         dfl = func.defaults if func.defaults else None
         effective_ret = return_type_override or func.return_type
         if is_generic or has_proto_params or has_fn_params:
-            # Forward decl: skip Fn requires clause (constraint on definition is sufficient)
-            out.write(self._gen_template_header_with_fn(func, proto_params,
-                                                        emit_fn_requires=False))
+            # Forward decl must carry the same Fn requires clause as the
+            # definition; otherwise C++ treats them as two distinct overloads
+            # and calls become ambiguous.
+            out.write(self._gen_template_header_with_fn(func, proto_params))
             ret_type = self._resolve_return_type(effective_ret, const=func.is_readonly,
                                                   error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params, func.type_params,
