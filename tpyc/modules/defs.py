@@ -5,12 +5,12 @@ Built-in module data classes and constant tables.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tpyc.typesys import TpyType
 
-from tpyc.typesys import TypeParamRef, NominalType, PtrType, TypeParamKind
+from tpyc.typesys import NominalType  # noqa: F401 -- forward ref in MethodDef.type_param_bounds
 
 
 @dataclass
@@ -34,26 +34,6 @@ class MethodDef:
     # Per-method type params and bounds (for constraining class-level type params)
     type_params: list[str] = field(default_factory=list)
     type_param_bounds: dict[str, "NominalType"] = field(default_factory=dict)
-
-
-@dataclass
-class BuiltinTypeDef:
-    """Definition of a built-in type with its methods."""
-    type_obj: "TpyType | None"  # The type object (e.g., INT32), None for parameterized types
-    cpp_type: str
-    methods: dict[str, list[MethodDef]] = field(default_factory=dict)
-    type_params: list[str] = field(default_factory=list)  # ["T"], ["T", "N"], etc.
-    param_kinds: list[TypeParamKind] = field(default_factory=list)  # Kind of each type param
-    type_factory: "Callable[..., TpyType] | None" = None  # Factory to create TpyType from params
-    extends: list[str] = field(default_factory=list)  # Protocols: ["NativeIterable[T]"]
-    is_nocopy: bool = False  # True for move-only types (copy deleted)
-
-
-@dataclass
-class GenericTypeLookup:
-    """Result of looking up a generic type by name."""
-    type_def: BuiltinTypeDef | None
-    qualified_name: str
 
 
 # C++ expression templates for Python dunder methods.

@@ -3431,10 +3431,13 @@ class TypeRegistry:
             return True
         if name in self.records or name in self.protocols or name in self.type_aliases or name in self.enums:
             return True
-        # Check type factory mapping for builtin types defined in .py stubs
-        from tpyc.modules import get_type_factory
+        # Check the TypeDef registry for builtin types defined in .py stubs.
+        # `td.type_factory is not None` matches the old factory-table membership
+        # check: only factory-registered qnames count as "known" here.
+        from tpyc.type_def_registry import get_type_def
         for module_name in ("builtins", "tpy"):
-            if get_type_factory(f"{module_name}.{name}") is not None:
+            td = get_type_def(f"{module_name}.{name}")
+            if td is not None and td.type_factory is not None:
                 return True
         return False
 

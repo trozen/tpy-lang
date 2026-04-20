@@ -372,14 +372,14 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 
 ### Built-in Modules (`tpyc/modules/`)
 
-All builtin types, functions, and protocols are defined in `.py` stubs under `lib/tpy/`. The `tpyc/modules/` package provides type factories, resolution helpers, and constant tables used by sema and codegen.
+All builtin types, functions, and protocols are defined in `.py` stubs under `lib/tpy/`. The `tpyc/modules/` package provides resolution helpers and constant tables used by sema and codegen. (Generic type factories and per-qname behavior now live on `tpyc.type_def_registry.TypeDef`; see Phase F.3e of `docs/TYPESYS_MIGRATION.md`.)
 
 | Module | Purpose |
 |--------|---------|
-| `defs.py` | Data classes (`BuiltinTypeDef`, `ParamDef`, `MethodDef`), dunder C++ templates, operator-to-method tables |
+| `defs.py` | Data classes (`ParamDef`, `MethodDef`), dunder C++ templates, operator-to-method tables |
 | `registry.py` | Builtin module name set, type object lookup from factories |
 | `resolver.py` | User module resolution |
-| `type_resolution.py` | Type factories, generic type lookup, iteration/span helpers |
+| `type_resolution.py` | Method resolution, iterator/span helpers, extends-arg parsing |
 
 ### Runtime (`runtime/`)
 

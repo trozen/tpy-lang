@@ -64,6 +64,7 @@ from ..type_def_registry import (
     is_char_type, is_str_type, is_string_type, is_str_view_type,
     is_bytes_type, is_bytearray_type, is_bytes_view_type,
     is_fixed_int_type, is_big_int_type,
+    find_factory_by_simple_name,
 )
 
 
@@ -2303,13 +2304,13 @@ class StatementAnalyzer:
             # Note: [] * N is collapsed to [] in the parser
             is_empty_literal = isinstance(stmt.init, TpyArrayLiteral) and not stmt.init.elements
             is_empty_dict_literal = isinstance(stmt.init, TpyDictLiteral) and not stmt.init.keys
-            _generic_lookup = (builtin_modules.lookup_generic_type(stmt.init.func_name)
-                               if isinstance(stmt.init, TpyCall) and isinstance(stmt.init.func, TpyName) else None)
+            _generic_td = (find_factory_by_simple_name(stmt.init.func_name)
+                           if isinstance(stmt.init, TpyCall) and isinstance(stmt.init.func, TpyName) else None)
             is_generic_constructor = (isinstance(stmt.init, TpyCall) and
                                       not stmt.init.args and
                                       stmt.init.call_type is None and
-                                      _generic_lookup is not None and
-                                      bool(_generic_lookup.type_def and _generic_lookup.type_def.type_params))
+                                      _generic_td is not None and
+                                      bool(_generic_td.param_kinds))
 
             # Empty dict literal with annotation: d: dict[K, V] = {}
             if is_empty_dict_literal and stmt.type:
@@ -2325,9 +2326,9 @@ class StatementAnalyzer:
                 # Check if annotation matches the constructor's generic type
                 annotation_matches = False
                 if is_generic_constructor:
-                    lookup = builtin_modules.lookup_generic_type(stmt.init.func_name)
-                    annotation_matches = (lookup is not None and
-                                          stmt.type.qualified_name() == lookup.qualified_name)
+                    td = find_factory_by_simple_name(stmt.init.func_name)
+                    annotation_matches = (td is not None and
+                                          stmt.type.qualified_name() == td.qname)
                 else:
                     # Empty literal [] can match list[T] annotation
                     annotation_matches = is_list(stmt.type)

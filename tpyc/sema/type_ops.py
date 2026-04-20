@@ -21,8 +21,10 @@ from ..typesys import (
 from ..coercions import resolve_coercion, CoercionContext
 from .diagnostics import SemanticError
 from .. import qnames
-from ..type_def_registry import is_copy_iter, is_own_iter, is_array, is_span, is_list
-from ..modules.type_resolution import get_type_factory_param_kinds
+from ..type_def_registry import (
+    is_copy_iter, is_own_iter, is_array, is_span, is_list,
+    get_type_def, find_factory_by_simple_name,
+)
 from ..parse import TpyFunction
 
 if TYPE_CHECKING:
@@ -281,19 +283,20 @@ class TypeOperations:
             # the factory (covers bare-name NominalType like def f(x: list) that
             # the parser leaves without `_module_qname`).
             record_info = self.ctx.registry.get_record_for_type(typ)
-            kinds: list | None = None
+            kinds: tuple | None = None
             if record_info is None:
+                # Primary path: resolve via the fully qualified name the type
+                # already knows. Parser leaves some bare-name builtins without
+                # _module_qname (e.g. `def f(x: list)`), so qualified_name()
+                # returns None or just the simple name; for those we scan
+                # `builtins` + `tpy` by simple name as the factory-aware
+                # fallback. Either way a single TypeDef lookup wins.
                 qn = typ.qualified_name()
-                if qn:
-                    kinds = get_type_factory_param_kinds(qn)
-                if kinds is None:
-                    # Parser may leave bare-name builtins without _module_qname;
-                    # try namespace-qualified lookup against known module prefixes.
-                    for ns in ("builtins", "tpy"):
-                        k = get_type_factory_param_kinds(f"{ns}.{typ.name}")
-                        if k is not None:
-                            kinds = k
-                            break
+                td = get_type_def(qn) if qn else None
+                if td is None or td.type_factory is None:
+                    td = find_factory_by_simple_name(typ.name)
+                if td is not None and td.type_factory is not None:
+                    kinds = td.param_kinds
             if record_info is not None:
                 if typ.type_args:
                     if not record_info.is_generic():

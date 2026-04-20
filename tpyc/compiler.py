@@ -21,8 +21,8 @@ from .parse import Parser, ParseError, TpyModule, TpyImport, RelativeImportKey, 
 from .parse.imports import StarImportResolver, NonLiteralAllError
 from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from .modules.resolver import ModuleResolver, ResolvedModule
-from .modules import get_builtin_module_names, get_type_factory as _get_type_factory
-from .modules.type_resolution import _get_type_factories
+from .modules import get_builtin_module_names
+from .type_def_registry import get_type_def as _get_type_def
 from .codegen_cpp import CodeGenerator, CodeGenOptions
 from .codegen_cpp.context import module_to_cpp_namespace, set_namespace_map, set_include_path_map, get_include_path, clear_namespace_map, module_to_include_path
 from .typesys import TpyType, INT32, INT64, BIGINT, clear_all_compilation_state
@@ -1451,9 +1451,9 @@ class Compiler:
         for record in module_info.records.values():
             builtin_qname = record.builtin_type_key or f"{module_info.name}.{record.name}"
             if not record.type_factory:
-                factory = _get_type_factory(builtin_qname)
-                if factory:
-                    record.type_factory = factory
+                td = _get_type_def(builtin_qname)
+                if td is not None and td.type_factory is not None:
+                    record.type_factory = td.type_factory
             for proto in record.implemented_protocols:
                 ext_str = str(proto)
                 if ext_str not in record.extends_protocols:
@@ -1470,15 +1470,16 @@ class Compiler:
         """Replace NominalType with factory types in builtin record method signatures."""
         from dataclasses import replace as dc_replace
         from .typesys import NominalType
-        factories = _get_type_factories()
-        # Build name -> factory for non-generic builtin types in this module
+        # Build name -> factory for non-generic builtin types in this module.
+        # Generic entries are skipped: self-refs without type_args only make
+        # sense for zero-arg factories that resolve to a singleton.
         name_to_factory: dict[str, 'Callable[[], TpyType]'] = {}
         for rec in module_info.records.values():
             btk = rec.builtin_type_key
             if btk:
-                entry = factories.get(btk)
-                if entry and not entry[0]:  # non-generic (no type params)
-                    name_to_factory[rec.name] = entry[1]
+                td = _get_type_def(btk)
+                if td is not None and td.type_factory is not None and not td.param_kinds:
+                    name_to_factory[rec.name] = td.type_factory
         if not name_to_factory:
             return
         def resolve(t: TpyType) -> TpyType:

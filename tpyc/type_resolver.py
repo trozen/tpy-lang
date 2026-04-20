@@ -27,8 +27,9 @@ from .typesys import (
     ALL_FIXED_INTS,
 )
 from . import qnames
-from .modules import lookup_generic_type, lookup_generic_type_in_module, BuiltinTypeDef
-from .modules.type_resolution import get_type_factory_param_kinds
+from .type_def_registry import (
+    TypeDef, get_type_def, find_factory_by_simple_name, find_factory_in_module,
+)
 from .parse.nodes import (
     ParseError, SourceLocation,
     TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, ResolverInputNode,
@@ -259,9 +260,10 @@ class TypeResolver:
                         and not registered._module_qname):
                     module, original = resolved
                     candidate_qname = f"{module}.{original}"
+                    candidate_td = get_type_def(candidate_qname)
                     is_builtin = (
                         parser.registry.get_builtin_type_key(registered.name) is not None
-                        or get_type_factory_param_kinds(candidate_qname) is not None
+                        or (candidate_td is not None and candidate_td.type_factory is not None)
                     )
                     if is_builtin:
                         registered = NominalType(
@@ -286,24 +288,24 @@ class TypeResolver:
         resolved_container = resolved[1] if resolved else name
 
         # Module-defined generic types (list, Array, Span, ...)
-        if resolved_container and (lookup := lookup_generic_type(resolved_container)):
-            if not resolved and lookup.qualified_name.startswith("tpy."):
+        if resolved_container and (td := find_factory_by_simple_name(resolved_container)):
+            if not resolved and td.qname.startswith("tpy."):
                 parser._raise_unresolved_import_error(name, loc=ref.loc)
             return self._resolve_generic_type_from_ref(
-                ref, resolved_container, lookup.type_def, type_param_scope)
+                ref, resolved_container, td, type_param_scope)
 
         # Imported generic from a module
         if resolved:
             source_module, original_name = resolved
-            if lookup := lookup_generic_type_in_module(original_name, source_module):
+            if td := find_factory_in_module(original_name, source_module):
                 return self._resolve_generic_type_from_ref(
-                    ref, resolved_container, lookup.type_def, type_param_scope)
+                    ref, resolved_container, td, type_param_scope)
         elif "." not in name and name:
             if import_source := parser._imports.get_import_source(name):
                 source_module, original_name = import_source
-                if lookup := lookup_generic_type_in_module(original_name, source_module):
+                if td := find_factory_in_module(original_name, source_module):
                     return self._resolve_generic_type_from_ref(
-                        ref, resolved_container, lookup.type_def, type_param_scope)
+                        ref, resolved_container, td, type_param_scope)
 
         # Qualified name with missing module import -- only for dotted subscripts
         # where qualified resolution failed.
@@ -483,10 +485,10 @@ class TypeResolver:
                 )
 
     def _resolve_generic_type_from_ref(
-        self, ref: TpyTypeRef, name: str, type_def: BuiltinTypeDef,
+        self, ref: TpyTypeRef, name: str, type_def: TypeDef,
         type_param_scope: dict[str, TypeParamKind] | None,
     ) -> TpyType:
-        """Resolve a generic reference (name + args) using a BuiltinTypeDef factory."""
+        """Resolve a generic reference (name + args) using a TypeDef factory."""
         param_kinds = type_def.param_kinds
         expected_count = len(param_kinds)
 

@@ -46,6 +46,7 @@ from ..type_def_registry import (
     is_basic_slice_type, is_slice_type,
     int_traits_of,
     is_enum_type, is_int_enum_type, enum_info_of,
+    find_factory_by_simple_name,
 )
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
@@ -321,13 +322,13 @@ class ExpressionAnalyzer:
                 return typ
 
         # Check for generic type constructor (list(), Container[T](), etc.)
-        _generic_lookup = (builtin_modules.lookup_generic_type(expr.func_name)
-                           if isinstance(expr, TpyCall) and isinstance(expr.func, TpyName) else None)
+        _generic_td = (find_factory_by_simple_name(expr.func_name)
+                       if isinstance(expr, TpyCall) and isinstance(expr.func, TpyName) else None)
         is_generic_constructor = (isinstance(expr, TpyCall) and
                                   not expr.args and
                                   expr.call_type is None and
-                                  _generic_lookup is not None and
-                                  bool(_generic_lookup.type_def and _generic_lookup.type_def.type_params))
+                                  _generic_td is not None and
+                                  bool(_generic_td.param_kinds))
 
         # Check for empty list literal []
         is_empty_literal = isinstance(expr, TpyArrayLiteral) and not expr.elements
@@ -340,9 +341,9 @@ class ExpressionAnalyzer:
             # Check if type_hint matches the constructor's generic type
             hint_matches = False
             if is_generic_constructor:
-                lookup = builtin_modules.lookup_generic_type(expr.func_name)  # type: ignore
-                hint_matches = (lookup is not None and
-                                inner_hint.qualified_name() == lookup.qualified_name)
+                td = find_factory_by_simple_name(expr.func_name)  # type: ignore
+                hint_matches = (td is not None and
+                                inner_hint.qualified_name() == td.qname)
             else:
                 # Empty literal [] can match list[T] hint
                 hint_matches = is_list(inner_hint)

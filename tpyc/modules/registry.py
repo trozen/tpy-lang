@@ -24,11 +24,13 @@ def get_builtin_module_names() -> set[str]:
 def get_builtin_type_obj(qname: str) -> "TpyType | None":
     """Get the type object for a builtin type by qualified name (e.g. 'tpy.Float32').
 
-    Uses type factories from .py-defined builtin types.
+    Uses type factories from the TypeDef registry (populated from .py-defined
+    builtin types).
     """
-    from tpyc.modules.type_resolution import _get_type_factories
+    from tpyc.type_def_registry import get_type_def
 
-    entry = _get_type_factories().get(qname)
-    if entry and not entry[0]:  # no type params -> non-generic singleton
-        return entry[1]()
+    td = get_type_def(qname)
+    if td is not None and td.type_factory is not None and not td.param_kinds:
+        # no type params -> non-generic singleton
+        return td.type_factory()
     return None

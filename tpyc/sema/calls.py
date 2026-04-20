@@ -57,6 +57,7 @@ from ..type_def_registry import (
     is_str_type, is_big_int_type,
     int_traits_of,
     is_enum_type,
+    find_factory_by_simple_name, find_factory_in_module,
 )
 
 
@@ -768,9 +769,9 @@ class CallAnalyzer:
                 if isinstance(expr.call_type, PtrType) and expr.args:
                     self._validate_ptr_constructor(expr)
                     # Set resolved constructor for codegen (the &{0} template)
-                    lookup = builtin_modules.lookup_generic_type(expr.func_name)
-                    if lookup:
-                        rec = self.ctx.registry.get_builtin_record(lookup.qualified_name)
+                    td = find_factory_by_simple_name(expr.func_name)
+                    if td is not None:
+                        rec = self.ctx.registry.get_builtin_record(td.qname)
                         if rec:
                             for ctor in rec.get_method_overloads("__init__"):
                                 if len(ctor.params) == len(expr.args) and (ctor.cpp_template or ctor.native_function):
@@ -790,7 +791,7 @@ class CallAnalyzer:
             # Otherwise fall through to function handling (type_args will be used)
 
         # Track if we found an imported generic type (allows fallthrough to generic handling)
-        # Stores the original name (not alias) for lookup_generic_type
+        # Stores the original name (not alias) for factory lookup by simple name
         imported_generic_name: str | None = None
         imported_generic_module: str | None = None
 
@@ -894,7 +895,7 @@ class CallAnalyzer:
                         if record_info.get_method_overloads("__init__") and not record_info.type_params:
                             return self._analyze_record_constructor(expr, record_info)
                     # Generic types (Array, list) - mark as found and fall through
-                    if builtin_modules.lookup_generic_type_in_module(func_name, module_name):
+                    if find_factory_in_module(func_name, module_name) is not None:
                         imported_generic_name = func_name
                         imported_generic_module = module_name
                     else:
@@ -918,8 +919,8 @@ class CallAnalyzer:
                         expr
                     )
             # Also check generic tpy types (Array, Span)
-            if lookup := builtin_modules.lookup_generic_type(expr.func_name):
-                if lookup.qualified_name.startswith("tpy."):
+            if td := find_factory_by_simple_name(expr.func_name):
+                if td.qname.startswith("tpy."):
                     raise self.ctx.error(
                         f"'{expr.func_name}' requires: from tpy import {expr.func_name}",
                         expr
@@ -941,9 +942,9 @@ class CallAnalyzer:
         # Generic type constructor without context for type inference
         # Only proceed if we found an imported generic type in namespace
         if imported_generic_name and imported_generic_module and (
-            lookup := builtin_modules.lookup_generic_type_in_module(imported_generic_name, imported_generic_module)
+            lookup_td := find_factory_in_module(imported_generic_name, imported_generic_module)
         ):
-            record_info = self.ctx.registry.get_builtin_record(lookup.qualified_name)
+            record_info = self.ctx.registry.get_builtin_record(lookup_td.qname)
             if not record_info:
                 raise self.ctx.error(f"Unknown type '{expr.func_name}'", expr)
             params = ", ".join(record_info.type_params)
@@ -1016,7 +1017,7 @@ class CallAnalyzer:
                                 if isinstance(hint, OwnType):
                                     hint = hint.wrapped
                                 hint = unwrap_readonly(hint)
-                                if hint.qualified_name() == lookup.qualified_name:
+                                if hint.qualified_name() == lookup_td.qname:
                                     expr.call_type = hint
                                     if ctor.cpp_template or ctor.native_function:
                                         hint_params = extract_type_params(hint)
@@ -1610,16 +1611,23 @@ class CallAnalyzer:
         if not expr.call_type or not expr.args:
             return fallback
 
-        lookup = builtin_modules.lookup_generic_type(expr.func_name)
-        if lookup is None:
+        lookup_qname: str | None = None
+        td = find_factory_by_simple_name(expr.func_name)
+        if td is not None:
+            lookup_qname = td.qname
+        else:
+            # Fallback: type may be imported from a submodule without a
+            # factory reachable by simple name (e.g. tpy.mem submodule
+            # exports). If the record itself carries a type_factory, use
+            # its qname.
             qname = expr.call_type.qualified_name()
             if qname:
                 rec = self.ctx.registry.get_builtin_record(qname)
                 if rec and rec.type_params and rec.type_factory:
-                    lookup = builtin_modules.GenericTypeLookup(None, qname)
-        if lookup is None:
+                    lookup_qname = qname
+        if lookup_qname is None:
             return fallback
-        record_info = self.ctx.registry.get_builtin_record(lookup.qualified_name)
+        record_info = self.ctx.registry.get_builtin_record(lookup_qname)
         if not record_info:
             return fallback
 
@@ -1682,15 +1690,18 @@ class CallAnalyzer:
         checked (arg must be a container with matching element type) even though
         T itself is unresolved.
         """
-        lookup = builtin_modules.lookup_generic_type(expr.func_name)
-        if lookup is None:
+        lookup_qname: str | None = None
+        td = find_factory_by_simple_name(expr.func_name)
+        if td is not None:
+            lookup_qname = td.qname
+        else:
             # Try looking up via call_type's qualified name (for types from submodules)
             qname = expr.call_type.qualified_name() if expr.call_type else None
             if qname:
                 rec = self.ctx.registry.get_builtin_record(qname)
                 if rec and rec.type_params and rec.type_factory:
-                    lookup = builtin_modules.GenericTypeLookup(None, qname)
-        record_info = self.ctx.registry.get_builtin_record(lookup.qualified_name) if lookup else None
+                    lookup_qname = qname
+        record_info = self.ctx.registry.get_builtin_record(lookup_qname) if lookup_qname else None
         if not record_info:
             return
         init_overloads = record_info.get_method_overloads("__init__")

@@ -21,7 +21,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 if TYPE_CHECKING:
-    from tpyc.typesys import TpyType, RecordInfo, ProtocolInfo
+    from tpyc.typesys import TpyType, RecordInfo, ProtocolInfo, TypeParamKind
 
 
 class TypeCategory(Enum):
@@ -48,6 +48,14 @@ class TypeCategory(Enum):
     RECORD = auto()
     PROTOCOL = auto()
     ENUM = auto()
+    # Structural wrappers that need factory / arity lookup alongside the
+    # nominal TypeDefs. Currently used only by `tpy.Ptr` -- Ptr is a
+    # structural wrapper (instances are PtrType, not NominalType), but
+    # the parser/sema resolver still needs to find its param_kinds and
+    # construct PtrType via a factory, so the entry lives here to keep
+    # all factory-table data in a single registry. No `_is_cat` predicate
+    # tests this category; Ptr values never hit NominalType dispatch.
+    STRUCTURAL_WRAPPER = auto()
 
 
 @dataclass(frozen=True)
@@ -162,6 +170,26 @@ class TypeDef:
     record: Optional[Any] = None
     protocol: Optional[Any] = None
     enum: Optional[EnumInfo] = None
+    # Generic-instantiation payload folded in by F.3e (replaces the former
+    # `modules/type_resolution.py` factory table).
+    #
+    # `param_kinds` is the arity + kind (TYPE vs INT) of each type
+    # parameter, stored as a tuple so static registry entries are
+    # effectively immutable. An empty tuple means "no type args expected"
+    # (primitive singleton); a non-empty tuple means "exactly this many
+    # args, of these kinds, required". The parser/sema arity-validation
+    # path and the resolver's generic instantiation both consult this
+    # field.
+    #
+    # `type_factory` constructs a TpyType instance from resolved type args
+    # (e.g. `lambda t: make_list(t)` for `builtins.list`). Primitive
+    # entries take zero args and return the singleton; structural wrappers
+    # (tpy.Ptr) build a fresh instance. None means "no factory" -- used
+    # for TypeDefs that are only conformance entries (CopyIter, OwnIter)
+    # or for dynamic RECORD/PROTOCOL/ENUM entries whose construction goes
+    # through sema registration, not a factory callable.
+    param_kinds: tuple["TypeParamKind", ...] = ()
+    type_factory: Optional[Callable[..., "TpyType"]] = None
 
 
 _type_defs: dict[str, TypeDef] = {}
@@ -261,6 +289,35 @@ def type_def_of(t: "TpyType") -> Optional[TypeDef]:
         return None
     qn = t.qualified_name()
     return _type_defs.get(qn) if qn else None
+
+
+def find_factory_by_simple_name(name: str) -> Optional[TypeDef]:
+    """Scan the default search roots (`builtins`, then `tpy`) for a TypeDef
+    with the given simple name and a registered `type_factory`. Returns the
+    first match or None. Mirrors the old
+    `modules.type_resolution.lookup_generic_type` behavior."""
+    for module in ("builtins", "tpy"):
+        td = _type_defs.get(f"{module}.{name}")
+        if td is not None and td.type_factory is not None:
+            return td
+    return None
+
+
+def find_factory_in_module(name: str, module: str) -> Optional[TypeDef]:
+    """Lookup a TypeDef by simple name within a specific module. Mirrors
+    the old `modules.type_resolution.lookup_generic_type_in_module`."""
+    td = _type_defs.get(f"{module}.{name}")
+    if td is not None and td.type_factory is not None:
+        return td
+    return None
+
+
+def factory_qnames_in_module(module: str) -> list[str]:
+    """Enumerate qnames with a registered `type_factory` whose module
+    prefix matches. Replaces `modules.type_resolution.get_type_factory_names`."""
+    prefix = f"{module}."
+    return [qn for qn, td in _type_defs.items()
+            if qn.startswith(prefix) and td.type_factory is not None]
 
 
 def resolve_send_sync(field, type_args: tuple) -> Optional[bool]:
@@ -681,6 +738,104 @@ def _populate() -> None:
                      cpp_formatter=lambda args: "auto"))
     register(TypeDef("tpy.OwnIter",  TC.ITERATOR, is_value_type=True,
                      cpp_formatter=lambda args: "auto"))
+
+    _populate_factories()
+
+
+def _populate_factories() -> None:
+    """Attach `param_kinds` + `type_factory` to the TypeDefs registered
+    above, and register the one structural-wrapper entry that has no
+    other TypeDef (tpy.Ptr). This replaces the former factory table in
+    `modules/type_resolution.py`; see F.3e of docs/TYPESYS_MIGRATION.md.
+
+    Typesys is imported lazily here because typesys.py imports
+    `TypeCategory` from this module at its top level -- so by the time
+    this runs, typesys is either fully loaded or loading, and the
+    singletons / `make_*` factories we need are defined before typesys's
+    type_def_registry import on its last page."""
+    from tpyc.typesys import (
+        TypeParamKind,
+        PtrType, ReadonlyType,
+        make_list, make_dict, make_dict_keys_view, make_dict_values_view,
+        make_dict_items_view, make_set, make_array, make_span,
+        make_span_iter, make_range,
+        FLOAT32, FLOAT, BIGINT, BOOL, CHAR, STR, STRING, STRVIEW, FSTR,
+        BYTES, BYTEARRAY, BYTESVIEW, BASIC_SLICE, SLICE,
+        INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64,
+    )
+    TYPE = TypeParamKind.TYPE
+    INT = TypeParamKind.INT
+    TC = TypeCategory
+
+    def _ptr_factory(t):
+        # Normalize readonly[T] arg: Ptr[readonly[T]] stores ReadonlyType(T)
+        # as the pointee, matching the resolver's current construction path.
+        if isinstance(t, ReadonlyType):
+            return PtrType(t.wrapped, is_readonly=True)
+        return PtrType(t)
+
+    # tpy.Ptr is the only factory-reachable structural wrapper. Register
+    # it with category STRUCTURAL_WRAPPER so the registry is the single
+    # source of factory truth. is_value_type mirrors PtrType.is_value_type()
+    # for the conformance check that iterates over canonical instances.
+    #
+    # `_ptr_factory` is effectively runtime-dead in normal parse flow:
+    # the type_resolver's `tpy:Ptr` structural-wrapper branch (canonical
+    # walker-tagged name) fires before generic-factory resolution, so
+    # the factory is reached only via `find_factory_by_simple_name`
+    # existence checks (parser subscript-as-value, sema "requires: from
+    # tpy import Ptr" hint) and the FACTORY_SNAPSHOT conformance tests.
+    # The ReadonlyType normalization above matches the resolver's own
+    # Ptr handling so both paths stay semantically interchangeable if
+    # the structural branch ever goes away.
+    register(TypeDef(
+        "tpy.Ptr", TC.STRUCTURAL_WRAPPER,
+        is_value_type=True,
+        param_kinds=(TYPE,),
+        type_factory=_ptr_factory,
+    ))
+
+    # Nominal-type entries: attach param_kinds + type_factory onto the
+    # TypeDefs already registered by `_populate()`. Order mirrors the
+    # former `_get_type_factories` table so reviewers can diff the two.
+    _factories: list[tuple[str, tuple, Callable[..., "TpyType"]]] = [
+        ("builtins.list",        (TYPE,),      lambda t: make_list(t)),
+        ("builtins.dict",        (TYPE, TYPE), make_dict),
+        ("builtins.dict_keys",   (TYPE, TYPE), make_dict_keys_view),
+        ("builtins.dict_values", (TYPE, TYPE), make_dict_values_view),
+        ("builtins.dict_items",  (TYPE, TYPE), make_dict_items_view),
+        ("builtins.set",         (TYPE,),      make_set),
+        ("builtins.Range",       (TYPE,),      make_range),
+        ("tpy.Array",            (TYPE, INT),  lambda t, n: make_array(t, n)),
+        ("tpy.Span",             (TYPE,),      lambda t: make_span(t)),
+        ("tpy.SpanIter",         (TYPE,),      make_span_iter),
+        ("tpy.Float32",          (),           lambda: FLOAT32),
+        ("tpy.Char",             (),           lambda: CHAR),
+        ("tpy.String",           (),           lambda: STRING),
+        ("tpy.StrView",          (),           lambda: STRVIEW),
+        ("tpy.FStr",             (),           lambda: FSTR),
+        ("builtins.int",         (),           lambda: BIGINT),
+        ("builtins.float",       (),           lambda: FLOAT),
+        ("builtins.bool",        (),           lambda: BOOL),
+        ("builtins.str",         (),           lambda: STR),
+        ("builtins.bytes",       (),           lambda: BYTES),
+        ("builtins.bytearray",   (),           lambda: BYTEARRAY),
+        ("tpy.BytesView",        (),           lambda: BYTESVIEW),
+        ("tpy.basic_slice",      (),           lambda: BASIC_SLICE),
+        ("builtins.slice",       (),           lambda: SLICE),
+    ]
+    for qn, kinds, fac in _factories:
+        td = _type_defs[qn]
+        td.param_kinds = kinds
+        td.type_factory = fac
+
+    for singleton in (INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64):
+        qn = singleton.qualified_name()
+        td = _type_defs[qn]
+        td.param_kinds = ()
+        # Bind `singleton` by default-argument so each lambda closes over
+        # its own value instead of the loop variable's final value.
+        td.type_factory = (lambda s=singleton: s)
 
 
 _populate()

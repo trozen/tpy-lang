@@ -70,6 +70,7 @@ def _canonical_instances() -> dict[str, ts.TpyType]:
         "tpy.SpanIter": ts.make_span_iter(I32),
         "tpy.CopyIter": ts.make_copy_iter(I32),
         "tpy.OwnIter":  ts.make_own_iter(I32),
+        "tpy.Ptr":      ts.PtrType(I32),
     }
     return cases
 
@@ -983,3 +984,162 @@ def test_attach_dynamic_updates_existing_typedef():
     assert td_cleared is not None
     assert td_cleared.category is original_category
     assert td_cleared.record is original_record
+
+
+# =========================================================================
+# Factory payload snapshot (Phase F.3e).
+#
+# Hard-coded golden table of `param_kinds` arity + kind for every factory
+# entry that used to live in `modules/type_resolution.py`. Pins the
+# contract that the merged TypeDef registry must honor. As with
+# PRIMITIVE_SNAPSHOT, hand-maintained -- regenerating from the registry
+# would defeat the check.
+# =========================================================================
+
+
+def _k(kind_name: str):
+    """Shorthand for TypeParamKind enum members (imported lazily to avoid
+    adding a top-level typesys import to this file)."""
+    from tpyc.typesys import TypeParamKind
+    return getattr(TypeParamKind, kind_name)
+
+
+# qname -> tuple of TypeParamKind strings ("TYPE" / "INT"). Empty tuple
+# means "no type args" (primitive singletons).
+FACTORY_SNAPSHOT: dict[str, tuple[str, ...]] = {
+    # Containers
+    "builtins.list":        ("TYPE",),
+    "builtins.dict":        ("TYPE", "TYPE"),
+    "builtins.dict_keys":   ("TYPE", "TYPE"),
+    "builtins.dict_values": ("TYPE", "TYPE"),
+    "builtins.dict_items":  ("TYPE", "TYPE"),
+    "builtins.set":         ("TYPE",),
+    "builtins.Range":       ("TYPE",),
+    "tpy.Array":            ("TYPE", "INT"),
+    "tpy.Span":             ("TYPE",),
+    "tpy.SpanIter":         ("TYPE",),
+    # Structural wrapper
+    "tpy.Ptr":              ("TYPE",),
+    # Primitive singletons
+    "tpy.Float32":    (),
+    "tpy.Char":       (),
+    "tpy.String":     (),
+    "tpy.StrView":    (),
+    "tpy.FStr":       (),
+    "builtins.int":   (),
+    "builtins.float": (),
+    "builtins.bool":  (),
+    "builtins.str":   (),
+    "builtins.bytes":     (),
+    "builtins.bytearray": (),
+    "tpy.BytesView":      (),
+    "tpy.basic_slice":    (),
+    "builtins.slice":     (),
+    "tpy.Int8":  (), "tpy.Int16": (), "tpy.Int32": (), "tpy.Int64": (),
+    "tpy.UInt8": (), "tpy.UInt16": (), "tpy.UInt32": (), "tpy.UInt64": (),
+}
+
+
+def test_factory_snapshot_covers_every_registered_factory():
+    """Every TypeDef with a `type_factory` must have a FACTORY_SNAPSHOT
+    entry, and vice versa. Protects against silent drift when someone adds
+    or removes a factory without updating the golden table."""
+    registered = {qn for qn, td in _type_defs.items() if td.type_factory is not None}
+    missing = registered - set(FACTORY_SNAPSHOT)
+    assert not missing, (
+        f"Registered factory qnames without a FACTORY_SNAPSHOT entry: {missing}."
+    )
+    extra = set(FACTORY_SNAPSHOT) - registered
+    assert not extra, (
+        f"FACTORY_SNAPSHOT entries that aren't registered factories: {extra}."
+    )
+
+
+@pytest.mark.parametrize("qname", sorted(FACTORY_SNAPSHOT))
+def test_factory_param_kinds_match_snapshot(qname):
+    """`TypeDef.param_kinds` must match the golden arity/kinds table."""
+    td = get_type_def(qname)
+    assert td is not None
+    expected = tuple(_k(name) for name in FACTORY_SNAPSHOT[qname])
+    actual = tuple(td.param_kinds)
+    assert actual == expected, (
+        f"{qname}: TypeDef.param_kinds={actual!r} but snapshot={expected!r}"
+    )
+
+
+def test_factory_produces_same_instance_as_registry():
+    """`TypeDef.type_factory(...)` with canonical args must produce a
+    TpyType whose qualified name equals the TypeDef qname. Catches wiring
+    mistakes (e.g. list's factory producing a dict) without pinning every
+    factory's exact return value."""
+    I32 = ts.INT32
+    canonical_args: dict[str, tuple] = {
+        "builtins.list":        (I32,),
+        "builtins.dict":        (ts.STR, I32),
+        "builtins.dict_keys":   (ts.STR, I32),
+        "builtins.dict_values": (ts.STR, I32),
+        "builtins.dict_items":  (ts.STR, I32),
+        "builtins.set":         (I32,),
+        "builtins.Range":       (I32,),
+        "tpy.Array":            (I32, 10),
+        "tpy.Span":             (I32,),
+        "tpy.SpanIter":         (I32,),
+        "tpy.Ptr":              (I32,),
+    }
+    for qname, args in canonical_args.items():
+        td = get_type_def(qname)
+        assert td is not None and td.type_factory is not None
+        produced = td.type_factory(*args)
+        assert produced.qualified_name() == qname, (
+            f"{qname}: factory produced {produced!r} with qname "
+            f"{produced.qualified_name()!r}"
+        )
+
+    # Zero-arg factories must return the typesys singleton with the same qname.
+    zero_arg_qnames = [qn for qn, kinds in FACTORY_SNAPSHOT.items() if not kinds]
+    for qname in zero_arg_qnames:
+        td = get_type_def(qname)
+        assert td is not None and td.type_factory is not None
+        produced = td.type_factory()
+        assert produced.qualified_name() == qname, (
+            f"{qname}: zero-arg factory produced {produced!r} with qname "
+            f"{produced.qualified_name()!r}"
+        )
+
+
+def test_structural_wrapper_category_only_holds_ptr():
+    """The STRUCTURAL_WRAPPER category exists only for `tpy.Ptr`. If a new
+    entry gets added, the author must update the resolver / sema paths
+    that currently key on Ptr being the sole structural-wrapper factory."""
+    wrappers = {qn for qn, td in _type_defs.items()
+                if td.category is TypeCategory.STRUCTURAL_WRAPPER}
+    assert wrappers == {"tpy.Ptr"}, (
+        f"Unexpected STRUCTURAL_WRAPPER entries: {wrappers}"
+    )
+
+
+def test_find_factory_helpers_match_old_lookup():
+    """`find_factory_by_simple_name` and `find_factory_in_module` must
+    resolve to the same qname as the old `lookup_generic_type` /
+    `lookup_generic_type_in_module` factory table."""
+    from tpyc.type_def_registry import (
+        find_factory_by_simple_name, find_factory_in_module,
+        factory_qnames_in_module,
+    )
+    # Simple-name lookup scans builtins then tpy.
+    assert find_factory_by_simple_name("list").qname == "builtins.list"
+    assert find_factory_by_simple_name("Span").qname == "tpy.Span"
+    assert find_factory_by_simple_name("Ptr").qname == "tpy.Ptr"
+    assert find_factory_by_simple_name("definitely_unknown") is None
+
+    # Module-qualified lookup.
+    assert find_factory_in_module("Array", "tpy").qname == "tpy.Array"
+    assert find_factory_in_module("list", "builtins").qname == "builtins.list"
+    # Wrong module -> None.
+    assert find_factory_in_module("Array", "builtins") is None
+    assert find_factory_in_module("list", "tpy") is None
+
+    # Enumeration helper: every tpy.* factory qname must appear.
+    tpy_factories = set(factory_qnames_in_module("tpy"))
+    expected_tpy = {qn for qn in FACTORY_SNAPSHOT if qn.startswith("tpy.")}
+    assert tpy_factories == expected_tpy

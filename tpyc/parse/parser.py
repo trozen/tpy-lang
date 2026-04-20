@@ -20,8 +20,10 @@ from ..typesys import (
     FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, LiteralValue,
     public_module_name,
 )
-from ..type_def_registry import is_bool_type, is_str_type
-from ..modules import lookup_generic_type_in_module
+from ..type_def_registry import (
+    is_bool_type, is_str_type,
+    find_factory_by_simple_name, find_factory_in_module,
+)
 from ..type_resolver import TypeResolver, _FIXED_INT_MAP
 
 if TYPE_CHECKING:
@@ -3238,12 +3240,11 @@ class Parser:
                 if name in ("Own", "Fn"):
                     raise ParseError(f"Generic type '{name}' cannot be used as a value", node)
                 # Module-defined generic types
-                from tpyc.modules import lookup_generic_type as _lookup_generic_type
-                if _lookup_generic_type(name) is not None:
+                if find_factory_by_simple_name(name) is not None:
                     raise ParseError(f"Generic type '{name}' cannot be used as a value", node)
                 # Generic types from imported builtin submodules (tpy.mem, etc.)
                 if import_src := self._imports.get_import_source(name):
-                    if lookup_generic_type_in_module(import_src[1], import_src[0]) is not None:
+                    if find_factory_in_module(import_src[1], import_src[0]) is not None:
                         raise ParseError(f"Generic type '{name}' cannot be used as a value", node)
             obj = self._parse_expr(node.value)
             if isinstance(node.slice, ast.Slice):

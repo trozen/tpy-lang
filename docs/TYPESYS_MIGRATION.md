@@ -4,7 +4,7 @@
 
 Unify the type hierarchy around two shapes: **nominal** (identity = qualified name + type args, behavior from a registry) and **structural** (identity = operand shape, behavior derived from operands). Builtins, containers, primitives, records, protocols, and enums all become `NominalType` with behavior sourced from a single `TypeDef` registry. Wrappers (`Ptr`, `Own`, `Optional`, `Union`, `Tuple`, `Callable`, `Readonly`) stay structural.
 
-## Current state (Phases A, B, C, D, E, F.1, F.2a, F.2b, F.3a, F.3b, F.3c, F.3d complete)
+## Current state (Phases A, B, C, D, E, F.1, F.2a, F.2b, F.3a, F.3b, F.3c, F.3d, F.3e complete)
 
 ```
 TpyType (frozen dataclass base)
@@ -23,24 +23,23 @@ TpyType (frozen dataclass base)
 TypeDef registry in `tpyc/type_def_registry.py` holds per-qname behavior
 (`cpp_formatter`, `is_send`/`is_sync` as bool or callable, `element_of`,
 `subscript_borrows`, `is_value_type`, `needs_explicit_element_target`,
-and the category payloads `record: RecordInfo`, `protocol: ProtocolInfo`,
-`enum: EnumInfo`). `attach_dynamic_type_def(qname, category, ...)` creates
-or updates entries at sema-registration time; `clear_dynamic_type_defs()`
-resets them between compilations (hooked into
-`clear_all_compilation_state`). Conformance tests in
-`tpyc/test_type_def_registry.py` pin the invariants: `PRIMITIVE_SNAPSHOT`
-(primitives), `ENUM_SNAPSHOT` (enums).
+the generic-instantiation payload `param_kinds: tuple[TypeParamKind, ...]`
++ `type_factory: Callable[..., TpyType] | None`, and the category payloads
+`record: RecordInfo`, `protocol: ProtocolInfo`, `enum: EnumInfo`).
+`attach_dynamic_type_def(qname, category, ...)` creates or updates
+entries at sema-registration time; `clear_dynamic_type_defs()` resets
+them between compilations (hooked into `clear_all_compilation_state`).
+Conformance tests in `tpyc/test_type_def_registry.py` pin the
+invariants: `PRIMITIVE_SNAPSHOT` (primitives), `ENUM_SNAPSHOT` (enums),
+`FACTORY_SNAPSHOT` (generic-instantiation payload).
 
 Remaining problems:
-- **F.3e** -- `modules/type_resolution.py`'s factory table
-  (`get_type_factory_param_kinds`, `lookup_generic_type`,
-  `lookup_generic_type_in_module`) still exists; after F.3d sema
-  (via `TypeResolver`) and a single `lookup_generic_type_in_module`
-  call in parser's subscript-as-value check are the only readers. Fold
-  what remains into the TypeDef registry and delete the factory module.
-- **Remaining parser typesys coupling** (follow-up to F.3d, to close
-  before the migration ships). Parser still imports 15 typesys symbols
-  vs. the "ideally none" goal in the Phase F.3 intro. Breakdown:
+- **F.3f (followup, deferred)** -- Remaining parser typesys coupling.
+  Parser still imports 15 typesys symbols vs. the "ideally none" goal
+  in the Phase F.3 intro. Deferred from F.3e to keep that phase
+  focused on the factory table; the meaty piece (moving
+  `_infer_type_from_expr`'s success path to sema) is a refactor on
+  the scale of F.3d.4 and earns its own phase. Breakdown:
   - Bookkeeping / info / registry: `FieldInfo`, `RecordInfo`,
     `FunctionInfo`, `MethodSignature`, `ProtocolInfo`, `TypeRegistry`,
     `TypeParamKind`, `LiteralValue`. These are structurally load-bearing
@@ -1252,16 +1251,124 @@ base resolution; `error_enum_base_shadowed` sees `Unknown type: Enum`;
 `error_enum_module_shadowed` sees `Unsupported qualified type:
 enum.Enum`. F.3c.2b debt deleted.
 
-#### Phase F.3e -- Delete the type factory table
+#### Phase F.3e -- Delete the type factory table (DONE)
 
-With parser resolution gone, `modules/type_resolution.py`'s factory table
-(`get_type_factory_param_kinds`, `lookup_generic_type`, etc.) has only
-sema-side readers for arity validation. Fold what remains into the
-TypeDef registry (arity becomes a TypeDef field, or derives from
-`RecordInfo.type_params`). `validate_type`'s multi-branch fallback
-collapses to a single TypeDef lookup. Delete the factory module.
+Four sub-steps on `typesys-migration-phase-F3e`, each byte-identical
+under `uv run pytest --force-exec` (2768 passed + 1 skipped, zero diffs
+in `tests/cases/**/expected/`). The old `modules/type_resolution.py`
+factory table (`get_type_factory_param_kinds`, `lookup_generic_type`,
+`lookup_generic_type_in_module`, `get_type_factory`,
+`get_type_factory_names`, `_get_type_factories`,
+`_make_factory_type_def`) is gone; the `BuiltinTypeDef` and
+`GenericTypeLookup` dataclasses it powered are gone too.
 
-Verify byte-identical codegen + full suite green. Phase F.3 complete.
+The "Remaining parser typesys coupling" item in the F.3 problems list
+is *not* bundled into F.3e -- it is deferred as **Phase F.3f** (see
+that item for the breakdown). F.3f must land before Phase F.3 ships.
+
+##### F.3e.1 -- Add factory payload to TypeDef (DONE)
+
+`TypeDef` gains two fields: `param_kinds: tuple[TypeParamKind, ...]`
+(tuple so static registry entries are effectively immutable) and
+`type_factory: Optional[Callable[..., TpyType]]`. A new
+`_populate_factories()` pass (called from `_populate()`) attaches
+factory payloads to 32 of the 34 existing TypeDefs (CopyIter and
+OwnIter get no factory -- they are compiler-internal adapters
+constructed only by `copy_iter()` / `own_iter()` builtins) and
+registers a single new `tpy.Ptr` entry.
+
+`tpy.Ptr` is the only structural wrapper that the old factory table
+needed to carry -- `PtrType` instances are not `NominalType`, so the
+TypeDef registry previously had no entry for them. A new
+`TypeCategory.STRUCTURAL_WRAPPER` lets the one Ptr entry share the
+registry without claiming to be a nominal category. No `_is_cat`
+predicate tests this category, and `PtrType` dispatch stays on its
+own class -- the TypeDef exists solely so the parser/sema resolver
+can look up Ptr's `param_kinds` and `type_factory` through the
+unified API.
+
+Typesys imports happen lazily inside `_populate_factories()` to keep
+module-load order safe: `typesys.py` imports `type_def_registry`
+near the end (after all singletons and `make_*` helpers are
+defined), and `type_def_registry`'s population runs before those
+imports, so deferring the typesys import until the populate call
+resolves the circular dependency cleanly.
+
+Three small helpers land alongside the fields:
+`find_factory_by_simple_name(name)` (scans `builtins` then `tpy`,
+mirroring the old `lookup_generic_type`),
+`find_factory_in_module(name, module)` (mirror of
+`lookup_generic_type_in_module`), and `factory_qnames_in_module(mod)`
+(mirror of `get_type_factory_names`, used by `register_tpy_star_import`).
+
+`FACTORY_SNAPSHOT` conformance fixture pins
+`qname -> tuple[TypeParamKind, ...]` for every factory entry and
+gates both directions ("every registered factory has a snapshot
+entry" and vice versa). Supporting tests verify the canonical-arg
+construction actually returns a value whose `qualified_name()`
+matches the TypeDef qname, that `STRUCTURAL_WRAPPER` holds only
+`tpy.Ptr`, and that the three new helpers agree with the old
+factory-table lookup semantics.
+
+##### F.3e.2 -- Route callers through TypeDef (DONE)
+
+Every public-API caller of the factory table switches to TypeDef:
+
+- `tpyc/typesys.py::is_known_type`: membership check now reads
+  `get_type_def(...).type_factory is not None`.
+- `tpyc/compiler.py::_index_builtin_type_records`: reads
+  `td.type_factory` instead of `get_type_factory(qname)`.
+- `tpyc/sema/registration.py::register_tpy_star_import`: iterates
+  `factory_qnames_in_module("tpy")`.
+- `tpyc/sema/type_ops.py::validate_type`: arity lookup via
+  `get_type_def` + `td.param_kinds`.
+- `tpyc/sema/expressions.py`, `tpyc/sema/statements.py`,
+  `tpyc/sema/calls.py`: eight call sites total that used to read
+  `lookup.qualified_name` + `lookup.type_def.type_params` now read
+  `td.qname` + `bool(td.param_kinds)`. Two sites that fabricated
+  `GenericTypeLookup(None, qname)` to carry a fallback qname (for
+  types imported from submodules without a simple-name factory)
+  now track a plain `lookup_qname: str | None` -- same control
+  flow, no wrapper.
+- `tpyc/type_resolver.py`: imports shift from `tpyc.modules` to
+  `tpyc.type_def_registry`; `_resolve_generic_type_from_ref` is
+  typed against `TypeDef` instead of `BuiltinTypeDef`.
+- `tpyc/parse/parser.py`: the two subscript-as-value existence
+  checks (to raise "Generic type 'X' cannot be used as a value")
+  now call `find_factory_by_simple_name` /
+  `find_factory_in_module`.
+
+Factory-table code stays in place at this step so each caller
+migration can be verified independently.
+
+##### F.3e.3 -- Delete the factory module (DONE)
+
+Factory-table code removed from `modules/type_resolution.py`. The
+`BuiltinTypeDef` and `GenericTypeLookup` dataclasses in
+`modules/defs.py` deleted (they existed purely for the old return
+types). `modules/__init__.py` drops the factory re-exports entirely
+(including the orphaned `TypeParamKind` re-export that briefly
+lived there during migration).
+
+Two stragglers surfaced only at this deletion step because they
+reached into the private `_get_type_factories()` rather than the
+public surface swept in F.3e.2:
+- `tpyc/modules/registry.py::get_builtin_type_obj` (used by sema
+  to map a qname to a singleton during module registration).
+- `tpyc/compiler.py::_resolve_builtin_self_refs` (substitutes
+  `NominalType` for singleton factories in `@builtin_type` method
+  signatures).
+Both now consult `get_type_def` + `td.type_factory` /
+`td.param_kinds`. The `--force-exec` suite catches any behavioral
+drift if these two diverge from the old factory-table semantics.
+
+##### F.3e.4 -- Collapse `validate_type` fallback (DONE)
+
+`sema/type_ops.py::validate_type`'s two-pass fallback (try the
+type's qualified_name, then loop over `("builtins", "tpy")`) gets
+rewritten as a single `get_type_def` + one
+`find_factory_by_simple_name` fallback. Small, but it was called
+out by name in the phase intro.
 
 ### Phase G -- Sema module cleanup (optional, independent)
 

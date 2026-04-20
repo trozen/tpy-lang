@@ -1,20 +1,27 @@
-"""Type resolution: factories, generic type lookup, method resolution, iterator/span helpers."""
+"""Method resolution, iterator/span helpers, extends-arg parsing.
+
+The generic type factory table that used to live here was folded into
+the TypeDef registry in Phase F.3e (see docs/TYPESYS_MIGRATION.md).
+Remaining helpers are shared utilities that don't fit on a single TpyType
+subclass: extends-clause string parsing, type-param substitution for
+method signatures, and the iter/span element-type discovery used by sema.
+"""
 
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tpyc.typesys import TypeRegistry, RecordInfo, FunctionInfo
 
 from tpyc.typesys import (
-    TypeParamRef, NominalType, PtrType, TupleType, TypeParamKind,
+    TypeParamRef, NominalType, PtrType, TupleType,
     TpyType, CHAR, OwnType, GenExprType,
     is_any_str_type, is_protocol_type, unwrap_ref_type,
 )
 from tpyc.type_def_registry import is_span, is_span_iter, is_copy_iter, is_own_iter, is_iterator_adapter
-from tpyc.modules.defs import ParamDef, MethodDef, BuiltinTypeDef, GenericTypeLookup
+from tpyc.modules.defs import ParamDef, MethodDef
 
 
 # ---------------------------------------------------------------------------
@@ -78,124 +85,6 @@ def _resolve_extends_type_arg(type_str: str, type_params: dict[str, "TpyType"]) 
     if type_str in type_params:
         return type_params[type_str]
     return _resolve_concrete_type_name(type_str)
-
-
-# ---------------------------------------------------------------------------
-# Type factory system
-# ---------------------------------------------------------------------------
-
-# Type factories: the bridge between .py type definitions and compiler-internal
-# type classes. For types fully defined in .py, this is the only hardcoded piece.
-# Keyed by qualified name. param_kinds is needed by the parser to validate
-# type arguments (TYPE vs INT).
-_type_factories: dict[str, tuple[list[TypeParamKind], "Callable[..., TpyType]"]] | None = None
-
-
-def _get_type_factories() -> dict[str, tuple[list[TypeParamKind], "Callable[..., TpyType]"]]:
-    """Lazily initialize the type factory mapping (avoids circular imports)."""
-    global _type_factories
-    if _type_factories is None:
-        from tpyc.typesys import (
-            make_list, make_dict, make_dict_keys_view, make_dict_values_view,
-            make_dict_items_view, make_set, make_array, make_span, make_span_iter,
-            make_range,
-            PtrType, FLOAT32, FLOAT, BIGINT, BOOL, CHAR, STR, STRING, STRVIEW, FSTR, BYTES, BYTEARRAY, BYTESVIEW, BASIC_SLICE, SLICE,
-            ALL_FIXED_INTS,
-        )
-        TYPE = TypeParamKind.TYPE
-        INT = TypeParamKind.INT
-        _type_factories = {
-            "builtins.list": ([TYPE], lambda t: make_list(t)),
-            "builtins.dict": ([TYPE, TYPE], make_dict),
-            "builtins.dict_keys": ([TYPE, TYPE], make_dict_keys_view),
-            "builtins.dict_values": ([TYPE, TYPE], make_dict_values_view),
-            "builtins.dict_items": ([TYPE, TYPE], make_dict_items_view),
-            "builtins.set": ([TYPE], make_set),
-            "builtins.Range": ([TYPE], make_range),
-            "tpy.Array": ([TYPE, INT], lambda t, n: make_array(t, n)),
-            "tpy.Span": ([TYPE], lambda t: make_span(t)),
-            "tpy.SpanIter": ([TYPE], make_span_iter),
-            "tpy.Ptr": ([TYPE], lambda t: PtrType(t)),
-            "tpy.Float32": ([], lambda: FLOAT32),
-            "tpy.Char": ([], lambda: CHAR),
-            "tpy.String": ([], lambda: STRING),
-            "tpy.StrView": ([], lambda: STRVIEW),
-            "tpy.FStr": ([], lambda: FSTR),
-            "builtins.int": ([], lambda: BIGINT),
-            "builtins.float": ([], lambda: FLOAT),
-            "builtins.bool": ([], lambda: BOOL),
-            "builtins.str": ([], lambda: STR),
-            "builtins.bytes": ([], lambda: BYTES),
-            "builtins.bytearray": ([], lambda: BYTEARRAY),
-            "tpy.BytesView": ([], lambda: BYTESVIEW),
-            "tpy.basic_slice": ([], lambda: BASIC_SLICE),
-            "builtins.slice": ([], lambda: SLICE),
-            **{f"tpy.{t}": ([], (lambda typ: lambda: typ)(t)) for t in ALL_FIXED_INTS},
-        }
-    return _type_factories
-
-
-def get_type_factory(qname: str) -> "Callable[..., TpyType] | None":
-    """Get the type factory for a qualified type name."""
-    entry = _get_type_factories().get(qname)
-    return entry[1] if entry else None
-
-
-def get_type_factory_param_kinds(qname: str) -> list["TypeParamKind"] | None:
-    """Return the type-parameter kinds for a registered factory, or None if
-    the qname isn't a factory. Zero-length list means "no type args expected"
-    (primitive-like); non-empty means "this many args required"."""
-    entry = _get_type_factories().get(qname)
-    return entry[0] if entry else None
-
-
-def get_type_factory_names(module_prefix: str) -> list[str]:
-    """Get qualified names of all type factories for a module prefix."""
-    prefix = f"{module_prefix}."
-    return [k for k in _get_type_factories() if k.startswith(prefix)]
-
-
-def _make_factory_type_def(param_kinds: list[TypeParamKind], factory: "Callable[..., TpyType]") -> BuiltinTypeDef:
-    """Create a minimal BuiltinTypeDef from the type factory mapping.
-
-    Used for types fully defined in .py that have no hardcoded BuiltinTypeDef.
-    """
-    # Placeholder names -- only param_kinds matters to the parser caller
-    type_params = [chr(ord('A') + i) if len(param_kinds) > 1 else "T"
-                   for i in range(len(param_kinds))]
-    return BuiltinTypeDef(
-        type_obj=None,
-        cpp_type="",
-        type_params=type_params,
-        param_kinds=param_kinds,
-        type_factory=factory,
-    )
-
-
-def lookup_generic_type(name: str) -> GenericTypeLookup | None:
-    """Lookup a parameterized type by its simple name (e.g., 'list', 'Array').
-
-    Only returns types that have type parameters and a type factory defined.
-    Returns first match across default modules (builtins + tpy) only.
-    Types from other modules (tpy.mem, tpy.unsafe, etc.) require explicit import
-    and are resolved via lookup_generic_type_in_module() instead.
-    """
-    for module_name in ("builtins", "tpy"):
-        qualified = f"{module_name}.{name}"
-        if entry := _get_type_factories().get(qualified):
-            return GenericTypeLookup(_make_factory_type_def(*entry), qualified)
-    return None
-
-
-def lookup_generic_type_in_module(name: str, module_name: str) -> GenericTypeLookup | None:
-    """Lookup a parameterized type by simple name within a specific module.
-
-    Used when resolving imported names (e.g., 'from tpy.mem import UninitArrayStorage').
-    """
-    qualified = f"{module_name}.{name}"
-    if entry := _get_type_factories().get(qualified):
-        return GenericTypeLookup(_make_factory_type_def(*entry), qualified)
-    return None
 
 
 # ---------------------------------------------------------------------------

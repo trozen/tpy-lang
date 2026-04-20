@@ -31,6 +31,7 @@ from ..namespace import NameBinding, BindingKind
 from ..type_def_registry import (
     is_fixed_int_type, is_fstr_type, int_traits_of,
     attach_dynamic_type_def, TypeCategory, EnumInfo,
+    factory_qnames_in_module,
 )
 from .diagnostics import SemanticError
 from .method_expansion import expand_methods_for_record
@@ -136,7 +137,7 @@ class TypeRegistrar:
         # Register tpy types from type factories (Int32, Array, Span, etc.)
         # Compile-time-only types (e.g. FStr) are also registered as type aliases
         # so the parser resolves them directly to their NominalType singleton.
-        for qname in builtin_modules.get_type_factory_names("tpy"):
+        for qname in factory_qnames_in_module("tpy"):
             simple_name = qname.split(".")[-1]
             if simple_name not in self.ctx.imported_names:
                 self.ctx.imported_names[simple_name] = ("tpy", simple_name)
