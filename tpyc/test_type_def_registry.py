@@ -31,6 +31,10 @@ from tpyc.type_def_registry import (
     _type_defs,
 )
 from tpyc.type_def_registry import IntTraits, FloatTraits
+from tpyc.typesys import ALL_FIXED_INTS
+from tpyc.parse.parser import _FIXED_INT_NAMES as PARSER_FIXED_INT_NAMES
+from tpyc.codegen_cpp.statements import StatementGenerator
+from tpyc.macro_api import _FIXED_INT_NAMES as MACRO_FIXED_INT_NAMES
 
 
 # Map qname -> a concrete TpyType instance with canonical args.
@@ -1143,3 +1147,25 @@ def test_find_factory_helpers_match_old_lookup():
     tpy_factories = set(factory_qnames_in_module("tpy"))
     expected_tpy = {qn for qn in FACTORY_SNAPSHOT if qn.startswith("tpy.")}
     assert tpy_factories == expected_tpy
+
+
+def test_fixed_int_names_stay_in_sync():
+    """Three modules carry a `_FIXED_INT_NAMES` set (one hardcoded in
+    parser after F.3f.3; two derived from ALL_FIXED_INTS in codegen
+    statements and macro_api). If a new fixed-int width ever lands in
+    typesys.ALL_FIXED_INTS, the hardcoded copy in parser must update in
+    lockstep; this test pins the invariant so a single addition surfaces
+    all sites at once.
+
+    codegen_cpp.functions._SCALAR_ZERO_CTOR_NAMES is intentionally
+    broader (adds `int`/`float`/`bool` for zero-arg scalar ctor codegen)
+    and is not covered here.
+    """
+    expected = frozenset(str(t) for t in ALL_FIXED_INTS)
+    assert PARSER_FIXED_INT_NAMES == expected, (
+        f"parser._FIXED_INT_NAMES drifted from ALL_FIXED_INTS: "
+        f"missing={expected - PARSER_FIXED_INT_NAMES}, "
+        f"extra={PARSER_FIXED_INT_NAMES - expected}"
+    )
+    assert StatementGenerator._FIXED_INT_NAMES == expected
+    assert MACRO_FIXED_INT_NAMES == expected

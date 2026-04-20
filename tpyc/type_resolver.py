@@ -40,9 +40,11 @@ if TYPE_CHECKING:
     from .parse.parser import Parser
 
 
-# Map of fixed-int type names to their singleton instances. Also used by
-# parser-side code (_get_default_value, _validate_const_default,
-# _infer_type_from_expr) via re-export from parser.py.
+# Map of fixed-int type names to their singleton instances. Used by the
+# resolver for bare-name lookup and by sema's field-default inferrer
+# (analyzer._infer_field_type_from_default). Parser-side callers that
+# previously reached through here for name-membership checks now use a
+# local _FIXED_INT_NAMES frozenset (Phase F.3f.3).
 _FIXED_INT_MAP: dict[str, TpyType] = {str(t): t for t in ALL_FIXED_INTS}
 
 
@@ -106,6 +108,40 @@ class TypeResolver:
             finally:
                 self._pending_alias = prev
         return self._resolve_ref(ref, type_param_scope)
+
+    def resolve_lenient(
+        self, ref: ResolverInputNode,
+        type_param_scope: dict[str, TypeParamKind] | None = None,
+    ) -> TpyType:
+        """Resolve like `resolve()` but, on name-resolution errors for a
+        bare TpyTypeRef, construct a `NominalType(name, args)` placeholder
+        instead of raising. Used by FragmentParser so macro fragments can
+        reference symbols not visible to the fragment-level resolver --
+        sema re-resolves them in the final context.
+
+        Name-resolution failures are identified by the same message
+        patterns the former FragmentParser override caught: "Unknown
+        type", "Unknown generic type", "Unsupported qualified type".
+        Structural errors (Own-in-union, Callable arity, etc.) still
+        raise. Non-TpyTypeRef inputs (unions/callables/literals) are not
+        leniency targets -- they delegate to `resolve()` unchanged.
+        (Phase F.3f.5d)
+        """
+        try:
+            return self.resolve(ref, type_param_scope)
+        except ParseError as e:
+            if not isinstance(ref, TpyTypeRef):
+                raise
+            msg = str(e)
+            if not ("Unknown type" in msg or "Unknown generic type" in msg
+                    or "Unsupported qualified type" in msg):
+                raise
+            resolved_args: tuple = tuple(
+                a if isinstance(a, int)
+                else self.resolve_lenient(a, type_param_scope)
+                for a in ref.args
+            )
+            return NominalType(ref.name, resolved_args)
 
     def _resolve_ref(
         self, ref: ResolverInputNode,
@@ -243,6 +279,10 @@ class TypeResolver:
                         return enum_type
                 # Helpful error for unimported implicit module
                 self._raise_unresolved_qualified_error_str(name, ref.loc)
+                # LOAD-BEARING MESSAGE: `resolve_lenient` pattern-matches
+                # on "Unsupported qualified type" to fall back to a
+                # NominalType placeholder. Keep the string stable or
+                # update `resolve_lenient`'s filter.
                 raise ParseError(f"Unsupported qualified type: {name}", loc=ref.loc)
 
             # Bare name resolution
@@ -272,6 +312,9 @@ class TypeResolver:
                             registered.is_dynamic_protocol,
                         )
                 return registered
+            # LOAD-BEARING MESSAGE: `resolve_lenient` pattern-matches on
+            # "Unknown type" to fall back to a NominalType placeholder.
+            # Keep the string stable or update `resolve_lenient`'s filter.
             raise ParseError(f"Unknown type: {name}", loc=ref.loc)
 
         # Generic form (name + args) -- bare or dotted
@@ -344,6 +387,9 @@ class TypeResolver:
                     ref, dotted, type_param_scope)
                 return NominalType(dotted, type_args)
 
+        # LOAD-BEARING MESSAGE: `resolve_lenient` pattern-matches on
+        # "Unknown generic type" to fall back to a NominalType placeholder.
+        # Keep the string stable or update `resolve_lenient`'s filter.
         raise ParseError(f"Unknown generic type: {name}", loc=ref.loc)
 
     # ------------------------------------------------------------------

@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional, TYPE_CHECKING
 
+from .module_names import public_module_name
+
 if TYPE_CHECKING:
     from .parse.nodes import TpyArrayLiteral, TpyListRepeat, TpyListComprehension, TpyCall, TpyDictLiteral, TypeRefNode
 
@@ -178,30 +180,8 @@ def is_exception_type(name: str, registry: 'TypeRegistry') -> bool:
     return False
 
 
-def public_module_name(module_name: str, cpp_namespace: str | None = None) -> str:
-    """Map a private submodule name to its public module identity.
-
-    e.g. "tpy._core._types" -> "tpy", "tpy._builtins._list" -> "tpy"
-
-    When cpp_namespace is provided (e.g. "tpystd::typing" for tpy._typing),
-    derives the public name from the namespace instead of the module path.
-    This handles cross-package implementations like typing protocols defined
-    in tpy._typing.
-    """
-    if cpp_namespace and "._" in module_name:
-        # Derive from namespace: "tpystd::typing" -> "typing", "tpystd::tpy" -> "tpy"
-        ns_parts = cpp_namespace.split("::")
-        # Skip the common prefix (e.g. "tpystd") and join the rest
-        if len(ns_parts) >= 2 and ns_parts[0] == "tpystd":
-            return ".".join(ns_parts[1:])
-    parts = module_name.split(".")
-    # Keep only parts up to (but not including) the first private component
-    public_parts = []
-    for part in parts:
-        if part.startswith("_"):
-            break
-        public_parts.append(part)
-    return ".".join(public_parts) if public_parts else module_name
+# public_module_name relocated to tpyc/module_names.py in Phase F.3f.6
+# so parser can import it without dragging in typesys.
 
 
 def register_protocol_module(protocol_name: str, module_name: str) -> None:
@@ -2898,7 +2878,15 @@ class FunctionInfo:
     """
     name: str
     params: list[ParamInfo]
-    return_type: TpyType
+    # Always carries a resolved TpyType at runtime. The `Optional`
+    # annotation is a type-checker concession for the parse -> sema
+    # window where `TpyFunction.return_type` briefly holds `None`
+    # (parser's "no annotation" sentinel; see Phase F.3f.1). All
+    # FunctionInfo construction sites (parser.py:799 via
+    # func.return_type post-_finalize_function_refs; sema registration
+    # paths post-_resolve_pending_type_refs) feed an already-resolved
+    # TpyType. Readers may treat `return_type` as non-None.
+    return_type: Optional[TpyType]
     is_noalloc: bool = False
     is_readonly: bool = False
     is_pure: bool = False
@@ -3060,11 +3048,13 @@ class MethodSignature:
 
     Between parse and sema's _resolve_pending_type_refs pre-pass, params
     and return_type may hold `TypeRefNode` in place of `TpyType` (Phase
-    F.3b.6.3). All readers post-pre-pass see TpyType.
+    F.3b.6.3). All readers post-pre-pass see TpyType. Additionally
+    (Phase F.3f.1), return_type may be None when no annotation was
+    provided -- sema substitutes VOID during the pre-pass.
     """
     name: str
     params: list[tuple[str, 'TpyType | TypeRefNode']]
-    return_type: 'TpyType | TypeRefNode'
+    return_type: 'TpyType | TypeRefNode | None'
     is_readonly: bool = False
     readonly_opt_out: bool = False
     cpp_template: str | None = None
@@ -3211,6 +3201,17 @@ class TypeRegistry:
                   Used for imported enums that may have a local alias.
         """
         self.enums[name or info.name] = info
+
+    def register_enum_placeholder(self, name: str) -> None:
+        """Register a parse-time enum placeholder by name only.
+
+        Parser uses this to mark a name as an enum so that later
+        parse-time type-ref resolution within the same file can treat
+        it as a known enum. Sema re-registers with the fully-populated
+        NominalType + TypeDef.enum payload. Keeps typesys value
+        construction out of the parser. (Phase F.3f.5c)
+        """
+        self.enums[name] = NominalType(name=name)
 
     def register_type_alias(self, name: str, typ: 'TpyType',
                             *, imported_from: tuple[str, str] | None = None) -> None:

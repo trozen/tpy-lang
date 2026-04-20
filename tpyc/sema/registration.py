@@ -19,8 +19,8 @@ from ..typesys import (
     has_auto_readonly, has_auto_own,
     qualify_exception_name, ensure_qualified,
     OptionalType,
-    public_module_name,
 )
+from ..module_names import public_module_name
 from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
     TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn, TpyMethodCall, TpyCall, TpyExprStmt,
@@ -1311,7 +1311,10 @@ class TypeRegistrar:
             fields=protocol.fields,
             type_params=protocol.type_params,
             parent_protocols=protocol.parent_protocols,
-            cpp_concept=protocol.cpp_concept,
+            # Phase F.3f.4: parser stores the raw cpp_concept string;
+            # the `::`-prefix normalization happens here so parser does
+            # not need to import typesys.ensure_qualified.
+            cpp_concept=ensure_qualified(protocol.cpp_concept) if protocol.cpp_concept else None,
             is_marker=protocol.cpp_concept is not None and len(resolved_methods) == 0,
             is_dynamic=protocol.is_dynamic,
             module=public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace),

@@ -4,7 +4,7 @@
 
 Unify the type hierarchy around two shapes: **nominal** (identity = qualified name + type args, behavior from a registry) and **structural** (identity = operand shape, behavior derived from operands). Builtins, containers, primitives, records, protocols, and enums all become `NominalType` with behavior sourced from a single `TypeDef` registry. Wrappers (`Ptr`, `Own`, `Optional`, `Union`, `Tuple`, `Callable`, `Readonly`) stay structural.
 
-## Current state (Phases A, B, C, D, E, F.1, F.2a, F.2b, F.3a, F.3b, F.3c, F.3d, F.3e complete)
+## Current state (Phases A, B, C, D, E, F.1, F.2a, F.2b, F.3a, F.3b, F.3c, F.3d, F.3e, F.3f complete)
 
 ```
 TpyType (frozen dataclass base)
@@ -34,36 +34,9 @@ invariants: `PRIMITIVE_SNAPSHOT` (primitives), `ENUM_SNAPSHOT` (enums),
 `FACTORY_SNAPSHOT` (generic-instantiation payload).
 
 Remaining problems:
-- **F.3f (followup, deferred)** -- Remaining parser typesys coupling.
-  Parser still imports 15 typesys symbols vs. the "ideally none" goal
-  in the Phase F.3 intro. Deferred from F.3e to keep that phase
-  focused on the factory table; the meaty piece (moving
-  `_infer_type_from_expr`'s success path to sema) is a refactor on
-  the scale of F.3d.4 and earns its own phase. Breakdown:
-  - Bookkeeping / info / registry: `FieldInfo`, `RecordInfo`,
-    `FunctionInfo`, `MethodSignature`, `ProtocolInfo`, `TypeRegistry`,
-    `TypeParamKind`, `LiteralValue`. These are structurally load-bearing
-    for parser-time registration and walker output; leaving them is
-    defensible.
-  - `VOID` -- 5 uses as default `FunctionInfo.return_type` /
-    `TpyFunction.return_type` when the annotation is missing. Could be
-    eliminated by making those fields `Optional[TpyType]` and letting
-    sema substitute `VOID` during `_resolve_pending_type_refs`.
-  - `BIGINT`, `FLOAT`, `STR`, `NominalType`, `_FIXED_INT_MAP` --
-    consumed by `Parser._infer_type_from_expr` (success path) and
-    `_get_default_value` / `_validate_const_default`
-    (`_FIXED_INT_MAP` membership only). The failure path was moved to
-    sema in F.3d.4 via `TpyInferFromDefaultRef`; moving the success
-    path too (sema-side inference on `FieldInfo.default_expr`) would
-    delete all five imports.
-  - `ensure_qualified` -- 1 use at parser.py:1560 in `_parse_protocol`
-    for cpp_concept resolution. Could defer by storing the raw form
-    and letting sema call `ensure_qualified`.
-  - `public_module_name` -- 3 uses in import resolution (module-name
-    normalization). Marginal; could stay.
-- `_value_type_record_names` / `_send_record_names` / `_sync_record_names`
-  accumulators on `typesys.py` parallel the new TypeDef.record payload;
-  a future pass could fold them onto TypeDef fields and drop the globals.
+- Tracked as **Phase F.4** below: `_value_type_record_names` /
+  `_send_record_names` / `_sync_record_names` accumulators on
+  `typesys.py` still parallel the TypeDef.record payload.
 
 ## Target state
 
@@ -318,7 +291,7 @@ Full suite green at 2608 passed + 1 skipped with `--force-exec`; no snapshot dif
 - `cases/imports/package_alias_reexport_enum` -- mirror of the above for an aliased enum re-exported through `__init__.py`.
 - `cases/imports/package_alias_reexport_class_shadow` -- `__init__.py` has `from .sub import Foo` followed by a local `class Foo:`; verifies the local class shadows the imported one in pkg's exports. Guards the removal of `user_imported_records.pop(info.name)` in `registration.py`.
 
-### Phase F.3 -- Parser emits unresolved type-reference nodes (F.3a-F.3d DONE; F.3e pending)
+### Phase F.3 -- Parser emits unresolved type-reference nodes (F.3a-F.3f DONE, F.3g pending)
 
 **Goal.** Make parsing purely syntactic: parser never constructs a `TpyType`.
 All name resolution (primitives, builtin generics, user records/protocols/
@@ -1262,9 +1235,9 @@ factory table (`get_type_factory_param_kinds`, `lookup_generic_type`,
 `_make_factory_type_def`) is gone; the `BuiltinTypeDef` and
 `GenericTypeLookup` dataclasses it powered are gone too.
 
-The "Remaining parser typesys coupling" item in the F.3 problems list
-is *not* bundled into F.3e -- it is deferred as **Phase F.3f** (see
-that item for the breakdown). F.3f must land before Phase F.3 ships.
+The "Remaining parser typesys coupling" item that was in the F.3
+problems list was not bundled into F.3e; it landed as **Phase F.3f**
+instead. See that sub-section below for the six-sub-step breakdown.
 
 ##### F.3e.1 -- Add factory payload to TypeDef (DONE)
 
@@ -1369,6 +1342,259 @@ type's qualified_name, then loop over `("builtins", "tpy")`) gets
 rewritten as a single `get_type_def` + one
 `find_factory_by_simple_name` fallback. Small, but it was called
 out by name in the phase intro.
+
+#### Phase F.3f -- Residual parser typesys coupling cleanup (DONE)
+
+Six sub-steps on `typesys-migration-phase-F3f`, each byte-identical
+under `uv run pytest --force-exec` (2768 passed + 1 skipped, zero
+diffs in `tests/cases/**/expected/`). Drove parser's typesys imports
+from 15 symbols (post-F.3e) down to the 8 bookkeeping/walker items
+the Phase F.3 intro explicitly permits (`FieldInfo`, `RecordInfo`,
+`TypeRegistry`, `FunctionInfo`, `MethodSignature`, `ProtocolInfo`,
+`TypeParamKind`, `LiteralValue`). All TpyType-construction and
+value-singleton imports are gone; parser no longer imports
+`NominalType`, primitive singletons, structural helpers, or string
+utilities from `typesys`.
+
+##### F.3f.1 -- Optional `return_type`, drop `VOID` (DONE)
+
+`TpyFunction.return_type`, `MethodSignature.return_type`, and
+`FunctionInfo.return_type` become `Optional[...]`. Parser emits
+`None` when no annotation is provided instead of importing
+`typesys.VOID` as a placeholder. Sema's `_resolve_pending_type_refs`
+substitutes `VOID` via a new `_resolve_return_type` helper before
+any downstream reader sees the field.
+
+For the parse-time path (`_finalize_function_refs`, used by
+`@builtin_decorator` stubs, nested defs, and `FragmentParser`),
+`None` is substituted by routing a synthetic
+`TpyTypeRef("None")` through the resolver (which maps `"None"` to
+`VOID`). Keeps the same substitution semantics without a typesys
+value import in parser.
+
+The `@builtin_function` param placeholder (parser.py:2158)
+similarly emits `TpyTypeRef("None")` rather than `VOID` -- keeps
+the params-list type unchanged.
+
+##### F.3f.2 -- Move `_infer_type_from_expr` success path to sema (DONE)
+
+Parser always emits `TpyInferFromDefaultRef` for bare `name = expr`
+class-body assignments; sema's field-resolution pass runs the
+inferrer on `FieldInfo.default_expr`. This unifies the parse-time
+success/failure paths (F.3d.4 already moved the failure case) and
+removes parser's direct typesys construction of `BIGINT`/`FLOAT`/`STR`
+primitives and `NominalType` for records.
+
+The sema-side inferrer (`_infer_field_type_from_default`) mirrors the
+old parser logic one-for-one, consuming `TpyExpr` rather than
+`ast.expr`: `TpyIntLiteral` -> `BIGINT`, `TpyFloatLiteral` -> `FLOAT`,
+`TpyStrLiteral` -> `STR`, `TpyCall` with fixed-int / `int` / `float`
+name -> matching singleton, and `TpyCall` with a registered record
+name -> `NominalType(name)`. Returns `None` on unknown forms; the
+field-resolution loop raises the existing "Cannot infer type for
+field 'X'" error only on genuine failure.
+
+Deletes `parser._infer_type_from_expr` along with `BIGINT`, `FLOAT`,
+`STR` imports from parser.py.
+
+##### F.3f.3 -- Local `_FIXED_INT_NAMES` constant (DONE)
+
+`_validate_const_default` and `_get_default_value` only need name
+membership for fixed-int constructors; neither needed the `TpyType`
+singletons. Parser gets a module-local `_FIXED_INT_NAMES` frozenset
+kept in sync with `typesys.ALL_FIXED_INTS`, dropping the
+`_FIXED_INT_MAP` import. The map itself stays in `type_resolver`
+for the actual singleton lookup (bare-name resolution + sema's
+field-default inferrer).
+
+##### F.3f.4 -- Defer `ensure_qualified` on `cpp_concept` (DONE)
+
+`@native("ConceptName")` on a protocol previously had its string
+argument normalized at parse time via `typesys.ensure_qualified`
+(adding the `::` prefix when the name isn't already qualified). The
+raw string travels untouched from parser to sema's
+`register_protocol`, so the normalization can happen at the copy
+point into `ProtocolInfo` without changing any consumer behaviour
+(`ensure_qualified` is idempotent on already-qualified names).
+
+Deletes `ensure_qualified` from parser.py.
+
+##### F.3f.5 -- Eliminate `NominalType` from parser (DONE)
+
+Four independent `NominalType` call-site groups in parser.py each
+get addressed:
+
+- **5a.** `@builtin_type` method return-type fixup relocated from
+  parser's post-registration block to sema. The fixup re-wraps
+  `NominalType(name=class_name)` return types with
+  `builtin_type_key` as `_module_qname`. Since F.3b.5, methods emit
+  `TypeRefNode` (making the old parse-time `isinstance` check
+  unreachable in practice); post-move suite run with an assertion at
+  the fixup's branch showed zero hits across all 2768 tests, so the
+  relocated block is deleted outright -- the resolver +
+  `resolve_type`'s user-record substitution now mint `_module_qname`
+  cleanly on their own.
+- **5b.** `_schema_from_stub`'s
+  `isinstance(ptype, NominalType) and ptype.qualified_name() ==
+  qnames.TYPE` predicate replaced with
+  `type_def_of(ptype).qname == qnames.TYPE`. `type_def_of` is the
+  qname-based dispatch used elsewhere; this was one of the last
+  isinstance stragglers.
+- **5c.** Three `registry.register_enum(NominalType(name=X))` call
+  sites (module-level enum, dotted nested enum, record-nested enum)
+  use a new `TypeRegistry.register_enum_placeholder(name: str)`
+  method. Parser-time enum name registration stays intact; the
+  `NominalType` construction moves into `typesys` itself.
+- **5d.** `FragmentParser._parse_type_annotation` override previously
+  wrapped `super()._parse_type_annotation` in try/except and
+  constructed `NominalType` placeholders for unresolved names in
+  macro fragments. The fallback logic moves into
+  `TypeResolver.resolve_lenient(ref, scope)`, which mirrors the
+  former message-pattern filter (`"Unknown type"`, `"Unknown generic
+  type"`, `"Unsupported qualified type"`) and recursively constructs
+  `NominalType` placeholders for `TpyTypeRef` subtrees.
+  `FragmentParser`'s override becomes a three-line walker + lenient
+  resolver composition.
+
+After all four, `NominalType` drops from parser.py's typesys import
+block.
+
+##### F.3f.6 -- Relocate `public_module_name` (DONE)
+
+`public_module_name` is a pure string helper with no `TpyType`
+dependencies. Relocating it to a new leaf module `tpyc/module_names.py`
+lets parser, `parse/imports.py`, and sema modules import it without
+routing through `typesys`. `typesys.py` still uses
+`public_module_name` internally (for `register_protocol_module`) and
+imports it back from `.module_names`. No circular: `module_names`
+has zero tpyc dependencies.
+
+#### Phase F.3g -- Kill `resolve_type` substitution blocks (PLANNED)
+
+Three parser-patching substitution blocks remain in
+`sema/type_ops.py::resolve_type`:
+
+1. **Enum qname mint** (type_ops.py:155-158): replaces the parser-level
+   `NominalType("Color")` placeholder with the registered enum
+   singleton that carries `_module_qname`.
+2. **User-record qname mint** (type_ops.py:165-170): reads
+   `record_info.qualified_name()` from the sema registry and mints
+   `_module_qname` on a bare `NominalType("Counter")`.
+3. **Protocol qname + `is_protocol` flag** (type_ops.py:188-193):
+   sets both from `protocol_info.module` when the bare name was
+   emitted without them.
+
+All three exist because `type_resolver.py::_resolve_registered_type`
+currently returns `NominalType(name)` for user records/protocols
+*without* `_module_qname`, and bare `NominalType(name=...)` placeholders
+for enums, leaning on sema's post-resolution substitution pass to
+fill in the authoritative qname. The root cause: parser's registry
+entries for records/protocols/enums do not carry the module name
+(parser.py's `register_record`/`register_protocol`/
+`register_enum_placeholder` calls only pass `name`/`fields`/...),
+so the resolver has nothing to read. Sema's own registry has the
+module info, but the resolver reads parser.registry, not sema's.
+
+**Goal.** Parser registers records, protocols, and enum placeholders
+with the module qname attached. Resolver reads it back and emits
+fully-qualified `NominalType` with `_module_qname` set on the first
+pass. All three substitution blocks become dead code and get deleted.
+
+**Why.** Direct completion of Phase F.3's charter. The comment at
+`resolve_type:145-154` explicitly predicts these substitutions "go
+away entirely once Phase F makes the parser emit TpyTypeRef instead
+of NominalType"; F.3a-F.3f made the structural change but the
+resolver was not updated to set `_module_qname`, so the substitution
+pass stayed load-bearing. F.3g closes the loop -- parser.registry
+becomes the authoritative carrier of per-record module information,
+the resolver emits canonical NominalType on the first pass, and
+sema no longer patches parser output for qname completeness.
+
+**Dependencies.** None. Parser already has
+`self._imports._module_name` + `self._directives.cpp_namespace` +
+`public_module_name` imported (since F.3f.6). Independent of F.4.
+
+**Sketch.**
+1. Parser: when constructing `RecordInfo` / `ProtocolInfo` /
+   `register_enum_placeholder` (parser.py ~lines 746, 756, 760,
+   1387, 1397, 1536), compute
+   `module = public_module_name(self._imports._module_name, cpp_ns)`
+   and pass it through. Enum placeholder similarly mints a full
+   `NominalType` with `_module_qname` set.
+2. `TypeResolver._resolve_registered_type`: for user records,
+   populate `_module_qname` from `record_info.qualified_name()`.
+   For protocols, also set `is_protocol=True` and the protocol's
+   module qname. For enums, return the fully-qualified placeholder
+   directly.
+3. Delete the three substitution blocks in `sema/type_ops.py`.
+   Update the nearby comment (now stale) that claims the
+   substitution will go away "once Phase F makes the parser emit
+   TpyTypeRef"; replace with a note that it did.
+4. Byte-identical codegen verification under `--force-exec`.
+
+**Risks / watch-outs.**
+- `public_module_name` needs the cpp_namespace from
+  `ModuleDirectives`; make sure `_directives` is populated at
+  registration time (it is -- directives scan runs before the main
+  parse loop).
+- Builtin (`@builtin_type`) records: `qualified_name()` returns
+  `builtin_type_key` when set, so module assignment is harmless for
+  those; no special-casing needed.
+- Nested / dotted records (e.g. `Outer.Inner`): the resolver's
+  nested-lookup path at `_resolve_registered_type:459-460` returns
+  `NominalType(dotted)` -- also needs to mint the qname. Audit both
+  bare-name and nested-name paths.
+
+### Phase F.4 -- Fold record traits onto TypeDef (PLANNED)
+
+Three process-global sets in `typesys.py` carry per-record boolean
+traits that already have a natural home on `TypeDef.record`
+(populated since Phase E):
+
+- `_value_type_record_names: set[str]` -- records implementing `ValueType`.
+- `_send_record_names: set[str]` -- records marked `Send`.
+- `_sync_record_names: set[str]` -- records marked `Sync`.
+
+Readers today: `NominalType.is_value_type` / `is_send` / `is_sync`
+consult these sets after checking the static TypeDef payload
+(containers dominate; record flags are the fallback). Writers:
+`register_value_type_record` / `register_send_record` /
+`register_sync_record` called from sema/registration when the
+corresponding decorators / protocol extends are detected.
+
+**Goal.** Delete the three sets and their registration helpers;
+move the booleans onto `TypeDef.record` (either as new fields on
+`RecordInfo` or on `TypeDef` itself next to `is_value_type`).
+`NominalType.is_value_type` / `is_send` / `is_sync` then read from
+the dynamic `TypeDef` entry directly -- one source of truth, matching
+the pattern Phases B/D/E established for containers, primitives, and
+enums.
+
+**Why.** Pattern-completing for Phase F's "TypeDef is the only
+per-qname behavior table" theme. Shrinks the set of process-globals
+that the larger "eliminate process-global compilation state" item
+in TODO.md has to thread onto a `Compiler` instance.
+
+**Why separate from F.3.** F.3 focused on parser/sema convergence
+(parser emits TpyTypeRef; sema owns resolution). F.4 is about
+completing the record-trait consolidation that Phase E started on the
+container/primitive side -- different axis, independent commit.
+
+**Dependencies.** None beyond Phase E (`TypeDef.record` already
+populated). Phase G is orthogonal (sema module structure; different
+files). Can ship F.4 before G, after G, or in parallel.
+
+**Sketch.**
+1. Add `is_value_type: bool`, `is_send: bool`, `is_sync: bool` fields
+   to `RecordInfo` (or `TypeDef`). Populate at sema registration time
+   in `sema/registration.py` where the three `register_*_record`
+   helpers fire today.
+2. Flip `NominalType.is_value_type` / `is_send` / `is_sync` to read
+   from the `TypeDef.record` payload after the container/primitive
+   dispatch, instead of consulting the global sets.
+3. Delete the three global sets, their `register_*_record` helpers,
+   and the corresponding entries in `clear_all_compilation_state()`.
+4. Byte-identical codegen verification under `--force-exec`.
 
 ### Phase G -- Sema module cleanup (optional, independent)
 

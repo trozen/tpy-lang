@@ -1067,9 +1067,11 @@ class TpyFunction:
     # Between parse and sema's _resolve_pending_type_refs pre-pass, params
     # and return_type for top-level (non-method) functions may hold
     # TypeRefNode in place of TpyType (Phase F.3b.5). All readers post-
-    # pre-pass see TpyType.
+    # pre-pass see TpyType. Additionally (Phase F.3f.1), return_type may
+    # be None when no annotation was provided -- sema substitutes VOID
+    # during the pre-pass.
     params: list[tuple[str, TpyType | TypeRefNode]]
-    return_type: TpyType | TypeRefNode
+    return_type: 'TpyType | TypeRefNode | None'
     body: list[TpyStmt]
     is_noalloc: bool = False
     is_inline: bool = False

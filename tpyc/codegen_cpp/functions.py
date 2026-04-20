@@ -80,7 +80,10 @@ def literal_mangled_name(base_name: str, stub_or_info: TpyFunction | FunctionInf
     return f"{base_name}__lit_{'__'.join(parts)}"
 
 
-_FIXED_INT_NAMES = {
+# Zero-arg scalar constructors that codegen to `0` (as opposed to
+# aggregate init `{}`). Covers every fixed-int width plus the three
+# bare numeric/bool builtins -- misnamed `_FIXED_INT_NAMES` historically.
+_SCALAR_ZERO_CTOR_NAMES = {
     "Int8", "Int16", "Int32", "Int64",
     "UInt8", "UInt16", "UInt32", "UInt64",
     "int", "float", "bool",
@@ -270,7 +273,7 @@ class FunctionGenerator:
             if expr.args:
                 return FunctionGenerator.default_to_cpp(expr.args[0], ptype)
             # Zero-arg call: Int32() -> 0, list()/dict()/Record() -> {}
-            if isinstance(expr.func, TpyName) and expr.func_name in _FIXED_INT_NAMES:
+            if isinstance(expr.func, TpyName) and expr.func_name in _SCALAR_ZERO_CTOR_NAMES:
                 return "0"
             return factory_default_to_cpp(ptype)
         return "0"

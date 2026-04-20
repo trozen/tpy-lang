@@ -11,20 +11,18 @@ import copy
 import dataclasses
 import re
 import textwrap
-from typing import Any, Literal, NoReturn, Optional, TYPE_CHECKING
+from typing import Any, Literal, NoReturn, TYPE_CHECKING
 
 from ..typesys import (
-    NominalType, ensure_qualified,
-    VOID, STR, FLOAT, BIGINT,
     FieldInfo, RecordInfo, TypeRegistry,
     FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, LiteralValue,
-    public_module_name,
 )
+from ..module_names import public_module_name
 from ..type_def_registry import (
-    is_bool_type, is_str_type,
+    is_bool_type, is_str_type, type_def_of,
     find_factory_by_simple_name, find_factory_in_module,
 )
-from ..type_resolver import TypeResolver, _FIXED_INT_MAP
+from ..type_resolver import TypeResolver
 
 if TYPE_CHECKING:
     from ..typesys import TpyType
@@ -70,6 +68,16 @@ _PARSER_KEYWORD_MODULES = frozenset({"typing", "enum"})
 # Checked via raw AST name (_decorator_raw_name) since import resolution hasn't
 # run yet during pre-scan.
 _BUILTIN_DEC_NAMES = frozenset({"builtin_type", "builtin_decorator", "builtin_function"})
+
+# Fixed-int constructor names recognized syntactically by the parser for
+# default-value validation (_validate_const_default) and the C++ literal
+# simplification in _get_default_value. The actual TpyType lookup happens
+# in sema via type_resolver._FIXED_INT_MAP; here we only need name
+# membership. Kept in sync with typesys.ALL_FIXED_INTS. (Phase F.3f.3)
+_FIXED_INT_NAMES: frozenset[str] = frozenset({
+    "Int8", "Int16", "Int32", "Int64",
+    "UInt8", "UInt16", "UInt32", "UInt64",
+})
 
 # Operator-to-string mappings for AST binary, comparison, and unary operators
 _BINOP_TO_STR: dict[type, str] = {
@@ -745,7 +753,7 @@ class Parser:
                     # Register an enum placeholder so it can be used in type
                     # annotations within the same file. Sema re-registers with
                     # the fully-populated NominalType + TypeDef.enum payload.
-                    self.registry.register_enum(NominalType(name=result.name))
+                    self.registry.register_enum_placeholder(result.name)
                 else:
                     records.append(result)
                     # Register the record type
@@ -758,16 +766,8 @@ class Parser:
                     # Prefix nested type names with parent chain and register
                     self._prefix_nested_names(result, result.name)
                     self._register_nested_types(result)
-                    # Fix up method return types that reference the class by
-                    # name but were parsed before the class was registered
-                    if result.builtin_type_key:
-                        for method in result.methods:
-                            rt = method.return_type
-                            if (isinstance(rt, NominalType) and rt.name == result.name
-                                    and not rt._module_qname):
-                                method.return_type = NominalType(
-                                    rt.name, rt.type_args, rt.is_protocol,
-                                    result.builtin_type_key, rt.is_dynamic_protocol)
+                    # Phase F.3f.5a: @builtin_type method return-type
+                    # fixup moved to sema/analyzer._resolve_pending_type_refs.
             elif isinstance(node, ast.FunctionDef):
                 seen_non_import = True
                 # Warn if function shadows an imported parser keyword name
@@ -792,8 +792,11 @@ class Parser:
                     # Module-level scope -- no enclosing type params.
                     self._finalize_function_refs(func, outer_scope=None)
                     # Register for decorator resolution (like @builtin_type for records)
+                    # return_type may be None (no annotation) -- FunctionInfo
+                    # here is used solely for decorator-key lookup; the value
+                    # is not read for call resolution (Phase F.3f.1).
                     self.registry.register_function(FunctionInfo(
-                        name=func.name, params=[], return_type=VOID,
+                        name=func.name, params=[], return_type=func.return_type,
                         builtin_decorator_key=func.builtin_decorator_key,
                     ))
                     # Derive arg schema from stub signature
@@ -1011,7 +1014,10 @@ class Parser:
                 return (bool, "bool")
             if is_str_type(ptype):
                 return (str, "str")
-            if isinstance(ptype, NominalType) and ptype.qualified_name() == qnames.TYPE:
+            # Phase F.3f.5b: qname-based predicate via type_def_of instead
+            # of isinstance(ptype, NominalType) + ptype.qualified_name().
+            td = type_def_of(ptype)
+            if td is not None and td.qname == qnames.TYPE:
                 return (_NameArg, "type name")
             return None
 
@@ -1332,22 +1338,15 @@ class Parser:
                 if len(item.targets) != 1 or not isinstance(item.targets[0], ast.Name):
                     raise ParseError("Invalid field declaration", item)
                 field_name = item.targets[0].id
-                field_type = self._infer_type_from_expr(item.value)
+                # Phase F.3f.2: parser no longer infers field type at parse
+                # time. Always emit the marker; sema's field-resolution
+                # pass runs the inferrer on FieldInfo.default_expr. This
+                # unifies the parse-time success/failure paths (F.3d.4
+                # already moved the failure case) and removes the parser's
+                # direct typesys construction for primitives and records.
+                field_type: 'TpyType | TypeRefNode | TpyInferFromDefaultRef' = TpyInferFromDefaultRef(loc=self._loc(item))
                 default_val = self._get_default_value(item.value)
-                # F.3d.4: parse the RHS as TpyExpr unconditionally (pre-F.3d.4
-                # only the AnnAssign branch did this). Needed so sema can
-                # re-inspect the expression when field_type is deferred via
-                # TpyInferFromDefaultRef; also populates FieldInfo.default_expr
-                # for inferred-type fields where it used to be None, which
-                # downstream None-guarded readers tolerate (suite verified
-                # byte-identical).
                 default_expr = self._parse_expr(item.value)
-                if field_type is None:
-                    # Defer "Cannot infer type" error to sema (F.3d.4) so
-                    # that base-resolution errors on this record fire
-                    # first. Sema's _resolve_pending_type_refs surfaces
-                    # the error only after bases have resolved cleanly.
-                    field_type = TpyInferFromDefaultRef(loc=self._loc(item))
                 fields.append(FieldInfo(field_name, field_type, default_val,
                                         default_expr=default_expr,
                                         loc=self._loc(item)))
@@ -1385,7 +1384,7 @@ class Parser:
                     # Register immediately with dotted name so forward references
                     # within the same class body work (e.g., kind: Container.Kind)
                     dotted_name = f"{node.name}.{nested.name}"
-                    self.registry.register_enum(NominalType(name=dotted_name))
+                    self.registry.register_enum_placeholder(dotted_name)
                     self._nested_type_scope[nested.name] = dotted_name
                     nested_enums.append(nested)
                 else:
@@ -1528,7 +1527,7 @@ class Parser:
             ))
             self._register_nested_types(nr)
         for ne in record.nested_enums:
-            self.registry.register_enum(NominalType(name=ne.name))
+            self.registry.register_enum_placeholder(ne.name)
 
     def _parse_protocol(self, node: ast.ClassDef) -> TpyProtocol:
         """Parse a protocol definition."""
@@ -1543,7 +1542,9 @@ class Parser:
             if qname == qnames.NATIVE:
                 if not isinstance(pos, str):
                     raise ParseError("@native on protocol requires a C++ concept name string argument", dec)
-                cpp_concept = ensure_qualified(pos)
+                # Phase F.3f.4: store the raw form; sema's register_protocol
+                # applies ensure_qualified() when copying into ProtocolInfo.
+                cpp_concept = pos
                 continue
             dec_name = self._decorator_local_name(dec) or "?"
             raise ParseError(
@@ -1616,7 +1617,9 @@ class Parser:
                     param_type = self._parse_type_ref(arg.annotation)
                     params.append((arg.arg, param_type))
 
-                return_type = VOID
+                # Phase F.3f.1: return_type=None means no annotation;
+                # sema's _resolve_pending_type_refs substitutes VOID.
+                return_type: 'TpyType | TypeRefNode | None' = None
                 if item.returns:
                     return_type = self._parse_type_ref(item.returns)
 
@@ -1957,8 +1960,10 @@ class Parser:
                                               kw_defaults=node.args.kw_defaults,
                                               n_kwonly=len(node.args.kwonlyargs))
 
-        # Get return type (default to Void for __init__)
-        return_type = VOID
+        # Get return type. Phase F.3f.1: None means no annotation; sema
+        # substitutes VOID. __init__ is kept at None here (no annotation
+        # by construction); sema treats it the same way.
+        return_type: 'TpyType | TypeRefNode | None' = None
         if node.name != "__init__" and node.returns:
             return_type = self._parse_type_ref(node.returns, type_param_scope)
 
@@ -2154,8 +2159,15 @@ class Parser:
             # @builtin_function stubs: params are illustrative only,
             # type annotations not required (sema handles everything)
             for arg in node.args.args:
-                param_type = (self._parse_type_ref(arg.annotation, type_param_scope)
-                              if arg.annotation else VOID)
+                # Phase F.3f.1: @builtin_function params are illustrative
+                # stubs; sema handles the real types specially. Missing
+                # annotations emit a TpyTypeRef("None") placeholder that
+                # the resolver maps to VOID.
+                param_type: 'TpyType | TypeRefNode' = (
+                    self._parse_type_ref(arg.annotation, type_param_scope)
+                    if arg.annotation
+                    else TpyTypeRef(name="None", loc=self._loc(arg))
+                )
                 params.append((arg.arg, param_type))
         else:
             for arg in node.args.args:
@@ -2209,7 +2221,8 @@ class Parser:
                                               kw_defaults=node.args.kw_defaults,
                                               n_kwonly=len(node.args.kwonlyargs))
 
-        return_type = VOID
+        # Phase F.3f.1: None means no annotation; sema substitutes VOID.
+        return_type: 'TpyType | TypeRefNode | None' = None
         if node.returns:
             return_type = self._parse_type_ref(node.returns, type_param_scope)
 
@@ -2579,7 +2592,16 @@ class Parser:
                 t = self._resolve_type_ref_impl(t, resolve_scope)
             new_params.append((name, t))
         func.params = new_params
-        if isinstance(func.return_type, ref_types):
+        if func.return_type is None:
+            # Phase F.3f.1: "no annotation" sentinel -- route through the
+            # resolver as TpyTypeRef("None") so the same VOID singleton is
+            # substituted without a direct typesys import. This is the
+            # eager (parse-time) branch; the deferred branch is in
+            # sema/analyzer.py::_resolve_pending_type_refs via
+            # _resolve_return_type. Both paths converge on VOID.
+            func.return_type = self._resolve_type_ref_impl(
+                TpyTypeRef(name="None"), resolve_scope)
+        elif isinstance(func.return_type, ref_types):
             func.return_type = self._resolve_type_ref_impl(
                 func.return_type, resolve_scope)
         if isinstance(func.vararg_type, ref_types):
@@ -3367,7 +3389,7 @@ class Parser:
             if isinstance(expr.operand, (TpyIntLiteral, TpyFloatLiteral)):
                 return
         # Int32(5) etc. -- a fixed-int constructor wrapping a literal
-        if isinstance(expr, TpyCall) and expr.func_name in _FIXED_INT_MAP:
+        if isinstance(expr, TpyCall) and expr.func_name in _FIXED_INT_NAMES:
             if not expr.args:
                 return  # Int32() -> 0
             if len(expr.args) == 1:
@@ -3447,37 +3469,13 @@ class Parser:
             return f"-{inner}"
         elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             # Int32(x) just becomes x in C++
-            if node.func.id in _FIXED_INT_MAP:
+            if node.func.id in _FIXED_INT_NAMES:
                 if not node.args:
                     return "0"
                 return self._get_default_value(node.args[0])
             args = ", ".join(str(self._get_default_value(a)) for a in node.args)
             return f"{node.func.id}({args})"
         return "0"
-
-    def _infer_type_from_expr(self, node: ast.expr) -> Optional[TpyType]:
-        """Infer type from an expression (for field declarations without annotations)."""
-        if isinstance(node, ast.Constant):
-            if isinstance(node.value, int):
-                return BIGINT
-            elif isinstance(node.value, float):
-                return FLOAT
-            elif isinstance(node.value, str):
-                return STR
-        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-            type_name = node.func.id
-            if (fixed_int := _FIXED_INT_MAP.get(type_name)) is not None:
-                return fixed_int
-            if type_name == "int":
-                return BIGINT
-            if type_name == "float":
-                return FLOAT
-            # Check if it's a known record type
-            record_info = self.registry.get_record(type_name)
-            if record_info:
-                return NominalType(type_name)
-        return None
-
 
 # ---------------------------------------------------------------------------
 # FragmentParser -- lightweight parser for macro source fragments
@@ -3514,31 +3512,14 @@ class FragmentParser(Parser):
     def _parse_type_annotation(
         self, node: ast.expr, type_param_scope: dict | None = None,
     ) -> TpyType:
-        try:
-            return super()._parse_type_annotation(node, type_param_scope)
-        except ParseError as e:
-            msg = str(e)
-            # Only catch unresolved-name errors, not structural errors
-            # (e.g., "Fn requires exactly 2 arguments").
-            # "Unsupported qualified type" covers the dotted-name fallback
-            # after _raise_unresolved_qualified_error (which may or may not raise).
-            if not ("Unknown type" in msg or "Unknown generic type" in msg
-                    or "Unsupported qualified type" in msg):
-                raise
-            if isinstance(node, ast.Name):
-                return NominalType(node.id)
-            if isinstance(node, ast.Subscript):
-                raw = node.value.id if isinstance(node.value, ast.Name) else None
-                if raw:
-                    slices = _extract_subscript_slices(node)
-                    type_args = tuple(
-                        self._parse_type_annotation(s, type_param_scope)
-                        for s in slices
-                    )
-                    return NominalType(raw, type_args)
-            if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
-                return NominalType(f"{node.value.id}.{node.attr}")
-            raise
+        # Phase F.3f.5d: walker-then-lenient-resolver. The lenient
+        # fallback (constructing a NominalType placeholder for
+        # unresolved names) lives in TypeResolver.resolve_lenient,
+        # keeping NominalType construction out of the parser.
+        if type_param_scope is None:
+            type_param_scope = self._type_param_scope
+        ref = self._parse_type_ref(node, type_param_scope)
+        return self._resolver.resolve_lenient(ref, type_param_scope)
 
     @classmethod
     def parse_fragment(

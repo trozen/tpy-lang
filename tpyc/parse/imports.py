@@ -12,7 +12,7 @@ from .nodes import (
     ParseError, SourceLocation, RelativeImportKey,
     TpyImport, ParseWarning,
 )
-from ..typesys import public_module_name
+from ..module_names import public_module_name
 
 # Callback type for resolving star import exports.
 # Takes a module name, returns the set of exported names, or None if not found.

@@ -456,3 +456,51 @@ class TestResolverErrors:
             assert False, "should have raised"
         except ParseError as e:
             assert e.lineno == expected_lineno
+
+
+class TestResolverLenient:
+    """Pin `TypeResolver.resolve_lenient` message-pattern fallback.
+
+    The lenient resolver catches three specific error message patterns
+    ("Unknown type", "Unknown generic type", "Unsupported qualified type")
+    and falls back to a NominalType placeholder. The error sites carry
+    LOAD-BEARING-MESSAGE markers; this test enforces the contract.
+    """
+
+    def test_lenient_unknown_bare_name(self):
+        from .typesys import NominalType
+        parser = _make_parser()
+        node = _ann_tree("TotallyUnknownName")
+        ref = parser._parse_type_ref(node)
+        # Strict resolver raises.
+        with pytest.raises(ParseError, match="Unknown type"):
+            parser._resolve_type_ref_impl(ref)
+        # Lenient resolver returns a NominalType placeholder.
+        result = parser._resolver.resolve_lenient(ref)
+        assert isinstance(result, NominalType)
+        assert result.name == "TotallyUnknownName"
+        assert result.type_args == ()
+
+    def test_lenient_unknown_generic_with_args(self):
+        from .typesys import NominalType, INT32
+        parser = _make_parser()
+        node = _ann_tree("UnknownGeneric[Int32]")
+        ref = parser._parse_type_ref(node)
+        with pytest.raises(ParseError, match="Unknown generic type"):
+            parser._resolve_type_ref_impl(ref)
+        result = parser._resolver.resolve_lenient(ref)
+        assert isinstance(result, NominalType)
+        assert result.name == "UnknownGeneric"
+        # Inner Int32 resolves normally through strict path inside the
+        # lenient recursion, so type_args carries the real singleton.
+        assert result.type_args == (INT32,)
+
+    def test_lenient_still_raises_structural_errors(self):
+        """Structural errors (not name-resolution) still propagate."""
+        parser = _make_parser()
+        # Fn with wrong arity is a structural error raised by the walker,
+        # not the resolver. The walker runs first, so it raises before
+        # the lenient resolver even sees it.
+        with pytest.raises(ParseError):
+            node = _ann_tree("Fn[[Int32]]")  # Fn requires [[params], return]
+            parser._parse_type_ref(node)

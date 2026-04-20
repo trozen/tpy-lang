@@ -11,16 +11,18 @@ from typing import Optional
 from ..typesys import (
     TpyType, TypeRegistry, NominalType, UnionType, FinalType, STR, LiteralType, VoidType, VOID,
     NoneType, INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
-    FunctionInfo, is_any_str_type,
+    FunctionInfo, is_any_str_type, BIGINT, FLOAT,
     make_ref, unwrap_ref_type, RefType, TypeParamKind,
     is_integer_type, is_void_like_type,
     _contains_self_reference, validate_recursive_union_paths,
 )
+from ..type_resolver import _FIXED_INT_MAP
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call, ParseError
 from ..parse.nodes import RecordLinkage
 from .registration import build_record_self_type, _vararg_span_type
 from ..parse.nodes import (
+    TpyIntLiteral, TpyFloatLiteral,
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
     TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef,
     TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, TpyInferFromDefaultRef,
@@ -1190,9 +1192,12 @@ class SemanticAnalyzer:
 
         for func in functions:
             if func.builtin_decorator_key:
-                # Register minimal FunctionInfo so the key flows through exports
+                # Register minimal FunctionInfo so the key flows through exports.
+                # return_type comes from func (already VOID-substituted by
+                # _resolve_pending_type_refs); this FunctionInfo is used for
+                # decorator-key lookup, not call resolution.
                 self.ctx.registry.register_function(FunctionInfo(
-                    name=func.name, params=[], return_type=VOID,
+                    name=func.name, params=[], return_type=func.return_type,
                     builtin_decorator_key=func.builtin_decorator_key,
                 ))
                 continue
@@ -1347,6 +1352,53 @@ class SemanticAnalyzer:
                             loc=record.loc,
                         )
 
+    def _infer_field_type_from_default(self, expr: 'TpyExpr | None') -> 'TpyType | None':
+        """Infer a field type from its default-value expression.
+
+        Moved from parser (`_infer_type_from_expr`) in Phase F.3f.2 so
+        parser stops constructing TpyType. Mirrors the old semantics
+        one-for-one: int/float/str literals map to BIGINT/FLOAT/STR;
+        fixed-int constructor calls map to the matching singleton;
+        int()/float() map to BIGINT/FLOAT; calls to a registered record
+        name map to NominalType(name). Returns None if the expression
+        does not match any recognized form -- caller raises "Cannot
+        infer type for field 'X'".
+        """
+        if expr is None:
+            return None
+        if isinstance(expr, TpyIntLiteral):
+            return BIGINT
+        if isinstance(expr, TpyFloatLiteral):
+            return FLOAT
+        if isinstance(expr, TpyStrLiteral):
+            return STR
+        if isinstance(expr, TpyCall) and isinstance(expr.func, TpyName):
+            type_name = expr.func_name
+            if (fixed_int := _FIXED_INT_MAP.get(type_name)) is not None:
+                return fixed_int
+            if type_name == "int":
+                return BIGINT
+            if type_name == "float":
+                return FLOAT
+            # Only sees records from already-registered (imported)
+            # modules. Current-module records aren't in the sema
+            # registry yet at this point -- `_resolve_pending_type_refs`
+            # runs before `register_record` in the analyzer pipeline
+            # (analyzer.py:393 vs 427). A same-file bare default like
+            # `x = SiblingClass()` -- where SiblingClass is declared
+            # earlier in the same module -- will fall through and raise
+            # "Cannot infer type for field 'x'". The old parse-time
+            # path did resolve same-file siblings (parser's registry
+            # was populated as each class was parsed); post-F.3f.2 the
+            # pattern requires an explicit annotation. No test in the
+            # suite hits this pattern today; flagged as a latent
+            # divergence by the F.3f review. Fix path: either reach
+            # through to `module.records` here, or reorder sema to
+            # register records before `_resolve_pending_type_refs`.
+            if self.ctx.registry.get_record(type_name):
+                return NominalType(type_name)
+        return None
+
     def _resolve_pending_type_refs(self, module: TpyModule) -> None:
         """Resolve all TpyTypeRef nodes emitted by the walker at leaf
         annotation sites, in-place. Downstream passes assume TpyType
@@ -1369,6 +1421,14 @@ class SemanticAnalyzer:
             if isinstance(t, ref_types):
                 return self.type_ops.resolve_type_ref(t, scope)
             return t
+
+        def _resolve_return_type(t, scope=None):
+            """Phase F.3f.1: None on parser-emitted return_type means "no
+            annotation was provided"; substitute VOID here so downstream
+            readers see a concrete TpyType."""
+            if t is None:
+                return VOID
+            return _resolve(t, scope)
 
         def _func_scope(func):
             if not func.type_params:
@@ -1445,8 +1505,7 @@ class SemanticAnalyzer:
         for func in module.functions:
             scope = _func_scope(func)
             func.params = [(n, _resolve(t, scope)) for (n, t) in func.params]
-            if func.return_type is not None:
-                func.return_type = _resolve(func.return_type, scope)
+            func.return_type = _resolve_return_type(func.return_type, scope)
             if func.vararg_type is not None:
                 func.vararg_type = _resolve(func.vararg_type, scope)
             # Phase F.3c.2: kwarg_type (from **kwargs: Unpack[TD]) emitted
@@ -1472,16 +1531,23 @@ class SemanticAnalyzer:
             record.bases = [_resolve(b, scope) for b in record.bases]
             for fld in record.fields:
                 if isinstance(fld.type, TpyInferFromDefaultRef):
-                    raise SemanticError(
-                        f"Cannot infer type for field '{fld.name}'",
-                        loc=fld.type.loc,
-                    )
-                fld.type = _resolve(fld.type, scope)
+                    # Phase F.3f.2: inference moved from parser to sema.
+                    # Parser always emits the marker for bare `name = expr`
+                    # class-body assignments; sema attempts inference from
+                    # the parsed TpyExpr, raising only on genuine failure.
+                    inferred = self._infer_field_type_from_default(fld.default_expr)
+                    if inferred is None:
+                        raise SemanticError(
+                            f"Cannot infer type for field '{fld.name}'",
+                            loc=fld.type.loc,
+                        )
+                    fld.type = inferred
+                else:
+                    fld.type = _resolve(fld.type, scope)
             for method in record.methods:
                 method_scope = _merged_method_scope(scope, method)
                 method.params = [(n, _resolve(t, method_scope)) for (n, t) in method.params]
-                if method.return_type is not None:
-                    method.return_type = _resolve(method.return_type, method_scope)
+                method.return_type = _resolve_return_type(method.return_type, method_scope)
                 if method.vararg_type is not None:
                     method.vararg_type = _resolve(method.vararg_type, method_scope)
                 if method.self_annotation is not None:
@@ -1500,8 +1566,7 @@ class SemanticAnalyzer:
             ]
             for msig in protocol.methods:
                 msig.params = [(n, _resolve(t, scope)) for (n, t) in msig.params]
-                if msig.return_type is not None:
-                    msig.return_type = _resolve(msig.return_type, scope)
+                msig.return_type = _resolve_return_type(msig.return_type, scope)
 
         # Top-level TpyVarDecls
         for stmt in module.top_level_stmts:

@@ -15,9 +15,10 @@ from ..typesys import (
     IntLiteralType, TypeParamKind, BIGINT,
     NoneType, VoidType, CallableType,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
-    public_module_name, unwrap_ref_type, RefType,
+    unwrap_ref_type, RefType,
     is_callable_type, is_integer_type, is_void_like_type,
 )
+from ..module_names import public_module_name
 from ..coercions import resolve_coercion, CoercionContext
 from .diagnostics import SemanticError
 from .. import qnames
