@@ -440,6 +440,14 @@ class Parser:
         # so it reads live state (registry, imports, local_defs, ...) each call.
         # Attached to TpyModule.resolver at end of parse(); sema delegates here.
         self._resolver = TypeResolver(self)
+        # Module # tpy: directives, populated by parse() before _parse_module
+        # so class/protocol/enum registration can see cpp_namespace at
+        # registration time (Phase F.3g.1).
+        self._directives = ModuleDirectives()
+        # True when the module is compiled as an entry point. Overrides the
+        # module name used by `_public_module()` to `"__main__"`
+        # (Phase F.3g.3). Set by parse() from its `is_entry_point` argument.
+        self._is_entry_point: bool = False
 
     def _loc(self, node: ast.AST) -> SourceLocation | None:
         """Create a SourceLocation from an AST node."""
@@ -457,6 +465,34 @@ class Parser:
     def _qualify(resolved: tuple[str, str]) -> str:
         """Join a (module, name) resolution to a qualified name string."""
         return f"{resolved[0]}.{resolved[1]}"
+
+    def _public_module(self) -> str:
+        """Return the public module name for records/protocols/enums
+        registered from this module, collapsing private submodules via
+        `public_module_name`. Used to populate `RecordInfo.module`,
+        `ProtocolInfo.module`, and enum placeholder qnames at parse time
+        (Phase F.3g).
+
+        Entry-point modules use `"__main__"` regardless of their
+        on-disk file name, matching sema's convention
+        (analyzer.analyze sets `ctx.module_name = "__main__"` for the
+        entry point) and Python's runtime `__name__` semantics. Parser
+        and sema must agree on the qname so sema's substitution blocks
+        in `sema/type_ops.py::resolve_type` see the authoritative
+        qname on the first pass.
+
+        Fallback: when the parser is invoked without a `module_name`
+        (e.g. the `test_parse_type_ref.py` unit harness parses
+        snippets without a module context), return `"__main__"` so
+        qname construction stays well-formed. Compiler-driven parses
+        always set `module_name` + `is_entry_point`, so this branch
+        is only reached from fragment-level tests."""
+        if self._is_entry_point:
+            return "__main__"
+        return public_module_name(
+            self._imports._module_name,
+            self._directives.cpp_namespace,
+        ) or "__main__"
 
     def _resolve_type_name(self, local_name: str) -> tuple[str, str] | None:
         """Resolve annotation name -> (module, original_name) or None.
@@ -579,10 +615,21 @@ class Parser:
         return False
 
     def parse(self, source: str, module_name: str | None = None,
-              is_package_init: bool = False) -> TpyModule:
-        """Parse TurboPython source code into a TpyModule."""
+              is_package_init: bool = False,
+              is_entry_point: bool = False) -> TpyModule:
+        """Parse TurboPython source code into a TpyModule.
+
+        `is_entry_point` mirrors the compiler's convention of treating
+        the entry-point module as `__main__` for qname purposes
+        (matching sema's `ctx.module_name = "__main__"` rename and
+        Python's runtime `__name__` convention). It only affects the
+        value returned by `_public_module()` and hence the qnames
+        attached to record / protocol / enum-placeholder registrations;
+        import resolution still uses the original `module_name`.
+        """
         self.source_lines = source.splitlines()
         self._warnings = []
+        self._is_entry_point = is_entry_point
         self._imports = ImportProcessor(self._warn, module_name=module_name,
                                         is_package_init=is_package_init,
                                         star_import_resolver=self._star_import_resolver)
@@ -590,8 +637,11 @@ class Parser:
         self._bare_module_imports = set()
         self._reverse_module_aliases = {}
         tree = ast.parse(source)
-        module = self._parse_module(tree)
+        # Scan directives first so cpp_namespace is available while
+        # _parse_module registers records/protocols/enums (Phase F.3g.1).
         directives, directive_warnings = _scan_directives(self.source_lines)
+        self._directives = directives
+        module = self._parse_module(tree)
         module.directives = directives
         module.parse_warnings.extend(directive_warnings)
         # Attach the ref resolver so sema can resolve TpyTypeRef nodes emitted
@@ -747,13 +797,15 @@ class Parser:
                         name=result.name,
                         methods=result.methods,
                         type_params=result.type_params,
+                        module=self._public_module(),
                     ))
                 elif isinstance(result, TpyEnum):
                     enums.append(result)
                     # Register an enum placeholder so it can be used in type
                     # annotations within the same file. Sema re-registers with
                     # the fully-populated NominalType + TypeDef.enum payload.
-                    self.registry.register_enum_placeholder(result.name)
+                    self.registry.register_enum_placeholder(
+                        result.name, module=self._public_module())
                 else:
                     records.append(result)
                     # Register the record type
@@ -762,6 +814,7 @@ class Parser:
                         fields=result.fields,
                         has_init=result.init_method is not None,
                         builtin_type_key=result.builtin_type_key,
+                        module=self._public_module(),
                     ))
                     # Prefix nested type names with parent chain and register
                     self._prefix_nested_names(result, result.name)
@@ -1384,7 +1437,8 @@ class Parser:
                     # Register immediately with dotted name so forward references
                     # within the same class body work (e.g., kind: Container.Kind)
                     dotted_name = f"{node.name}.{nested.name}"
-                    self.registry.register_enum_placeholder(dotted_name)
+                    self.registry.register_enum_placeholder(
+                        dotted_name, module=self._public_module())
                     self._nested_type_scope[nested.name] = dotted_name
                     nested_enums.append(nested)
                 else:
@@ -1398,6 +1452,7 @@ class Parser:
                         name=dotted_name,
                         fields=nested.fields,
                         has_init=nested.init_method is not None,
+                        module=self._public_module(),
                     ))
                     self._nested_type_scope[nested.name] = dotted_name
                     nested_records.append(nested)
@@ -1524,10 +1579,12 @@ class Parser:
                 name=nr.name,
                 fields=nr.fields,
                 has_init=nr.init_method is not None,
+                module=self._public_module(),
             ))
             self._register_nested_types(nr)
         for ne in record.nested_enums:
-            self.registry.register_enum_placeholder(ne.name)
+            self.registry.register_enum_placeholder(
+                ne.name, module=self._public_module())
 
     def _parse_protocol(self, node: ast.ClassDef) -> TpyProtocol:
         """Parse a protocol definition."""

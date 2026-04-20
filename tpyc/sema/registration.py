@@ -227,7 +227,12 @@ class TypeRegistrar:
         # on EnumInfo stays None (codegen uses that to decide whether to
         # emit a namespace prefix) but the qname uses "__main__" as its
         # prefix so `type_def_of(t)` always finds the entry.
-        qname_module = module_name if module_name is not None else "__main__"
+        # Phase F.3g.3: qname is built with public_module_name so it matches
+        # parser.registry's enum placeholder qname (the resolver surfaces
+        # that placeholder unchanged post-F.3g.5), avoiding divergence for
+        # enums declared in private submodules like `tpy._core._X`.
+        qname_module_raw = module_name if module_name is not None else "__main__"
+        qname_module = public_module_name(qname_module_raw, self.ctx.module_cpp_namespace)
         qname = f"{qname_module}.{enum.name}"
         enum_type = NominalType(name=enum.name, type_args=(), _module_qname=qname)
         self.ctx.registry.register_enum(enum_type)

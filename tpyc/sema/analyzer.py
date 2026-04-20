@@ -1380,23 +1380,23 @@ class SemanticAnalyzer:
                 return BIGINT
             if type_name == "float":
                 return FLOAT
-            # Only sees records from already-registered (imported)
-            # modules. Current-module records aren't in the sema
-            # registry yet at this point -- `_resolve_pending_type_refs`
-            # runs before `register_record` in the analyzer pipeline
-            # (analyzer.py:393 vs 427). A same-file bare default like
-            # `x = SiblingClass()` -- where SiblingClass is declared
-            # earlier in the same module -- will fall through and raise
-            # "Cannot infer type for field 'x'". The old parse-time
-            # path did resolve same-file siblings (parser's registry
-            # was populated as each class was parsed); post-F.3f.2 the
-            # pattern requires an explicit annotation. No test in the
-            # suite hits this pattern today; flagged as a latent
-            # divergence by the F.3f review. Fix path: either reach
-            # through to `module.records` here, or reorder sema to
-            # register records before `_resolve_pending_type_refs`.
-            if self.ctx.registry.get_record(type_name):
-                return NominalType(type_name)
+            # Imported records are already in sema's registry by this
+            # point (import-handling runs before _resolve_pending_type_refs);
+            # same-module records are not -- register_record runs later.
+            # For same-module siblings, consult parser.registry via
+            # module.resolver, which F.3g.2 populates with
+            # RecordInfo.module at class-registration time. The minted
+            # qname matches sema's eventual register_record qname (both
+            # go through public_module_name), so type_def_of dispatch
+            # works once register_record finishes.
+            if (record_info := self.ctx.registry.get_record(type_name)) is not None:
+                return NominalType(type_name, _module_qname=record_info.qualified_name())
+            parser_resolver = self.ctx.parser_resolver
+            if parser_resolver is not None:
+                parser_record = parser_resolver.registry.get_record(type_name)
+                if parser_record is not None:
+                    return NominalType(type_name,
+                                       _module_qname=parser_record.qualified_name())
         return None
 
     def _resolve_pending_type_refs(self, module: TpyModule) -> None:

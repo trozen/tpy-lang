@@ -135,33 +135,39 @@ class TypeOperations:
                     return TypeParamRef(typ.name, bound=bound)
                 if typ.name in (self.ctx.record_ctx.type_params or []):
                     return TypeParamRef(typ.name)
-            # Substitute parser-level enum NominalType placeholders with the
-            # registered enum NominalType that carries `_module_qname`, so
-            # downstream `type_def_of(t)` / `is_enum_type(t)` / `enum_info_of(t)`
-            # resolve correctly. Parser creates `NominalType("Color")` (no
-            # _module_qname) for `c: Color`; `register_enum` creates the
-            # authoritative NominalType with its qname set.
+            # Enum / user-record / protocol qname substitution. Sema is the
+            # authoritative owner of `_module_qname` because only sema's
+            # ctx.registry has the cross-module view -- parser.registry is
+            # one-module wide. Phase F.3g.1-3 made parser populate
+            # RecordInfo.module / ProtocolInfo.module / enum placeholder
+            # qnames, so `record_info.qualified_name()` on sema's registry
+            # entry returns the authoritative qname in both cases:
             #
-            # The `not _module_qname` check here is a *parser/sema boundary*
-            # marker ("this NominalType hasn't been resolved yet"), NOT the
-            # Post-Phase-D invariant #1 anti-pattern (using _module_qname as
-            # a semantic shortcut for arity / validity). Both anti-patterns
-            # read the same field but mean different things: the invariant
-            # forbids branching sema validation on _module_qname (arity
-            # checks should go through the factory / registry); the
-            # placeholder-vs-resolved distinction is a legitimate life-cycle
-            # check and goes away entirely once Phase F makes the parser
-            # emit TpyTypeRef instead of NominalType.
+            # - Same-module: RecordInfo came from this module's parser,
+            #   with `module` set to the declaring module.
+            # - Cross-module, including re-export facades (`from tplib
+            #   import ArrayList` -> tplib's __init__.py re-exports from
+            #   tplib.array_list): the compiler's `_exports_to_module_info`
+            #   shares the SAME RecordInfo object through the re-export
+            #   chain (compiler.py: `exports.records[local_name] =
+            #   module_info.records[original_name]`), so when sema's
+            #   import pass calls `register_record(record_info, local_name)`
+            #   it inserts the *original* RecordInfo whose `module` points
+            #   to the defining module. `qualified_name()` therefore
+            #   returns e.g. `tplib.array_list.ArrayList`, not the surface
+            #   `tplib.ArrayList`.
+            #
+            # The parser-side TypeResolver still returns bare NominalType
+            # for cross-module user refs here; the substitution below
+            # fills the qname in. Documented followup: Phase F.5
+            # (docs/TYPESYS_MIGRATION.md) canonicalizes the parser-side
+            # import table to carry defining-module tuples, after which
+            # the resolver can mint qnames on the first pass and this
+            # substitution becomes dead code.
             if not typ.type_args and not typ.is_protocol and not typ._module_qname:
                 enum_typ = self.ctx.registry.get_enum(typ.name)
                 if enum_typ is not None:
                     return enum_typ
-            # User-record substitution (mirror of enum substitution). Parser
-            # creates `NominalType("MyRec", ...)` with no `_module_qname` for
-            # a user-record reference; mint a qname-bearing copy so downstream
-            # `type_def_of(t)` / `is_user_record(t)` resolve via the TypeDef
-            # registry rather than treating "_module_qname is None" as "user
-            # record" (Post-Phase-D invariant #1).
             if not typ.is_protocol and not typ._module_qname:
                 record_info = self.ctx.registry.get_record(typ.name)
                 if record_info is not None and not record_info.builtin_type_key:
@@ -174,9 +180,11 @@ class TypeOperations:
                 alias = self.ctx.registry.get_type_alias(typ.name)
                 if alias is not None and alias.is_compile_time_only():
                     return alias
-            # Check if this should have is_protocol set.
-            # Only upgrade False -> True, never downgrade (parser may know about
-            # same-file protocols not yet in the sema registry).
+            # Protocol flag + qname upgrade. Parser may emit a bare
+            # NominalType for a name that sema later recognizes as a
+            # protocol (cross-module import, or same-file protocol whose
+            # definition comes after a forward reference); upgrade the
+            # flags here. Only False -> True, never the reverse.
             protocol_info = self.ctx.registry.get_protocol(typ.name)
             # Generic protocols require type arguments (e.g., Sequence[T] not bare Sequence)
             if (protocol_info and protocol_info.type_params
@@ -187,7 +195,9 @@ class TypeOperations:
                     f"{typ.name}[{', '.join(protocol_info.type_params)}]")
             resolved_is_protocol = typ.is_protocol or (protocol_info is not None)
             resolved_is_dynamic = bool(protocol_info and protocol_info.is_dynamic)
-            # Set _module_qname for protocols from their ProtocolInfo.module
+            # Mint _module_qname for protocols from ProtocolInfo.module. Parser
+            # does not know ProtocolInfo for cross-module refs (parser.registry
+            # only sees same-module protocols); sema supplies it here.
             resolved_qname = typ._module_qname
             if resolved_is_protocol and not resolved_qname and protocol_info and protocol_info.module:
                 resolved_qname = f"{public_module_name(protocol_info.module)}.{typ.name}"

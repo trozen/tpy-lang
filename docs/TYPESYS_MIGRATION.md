@@ -291,7 +291,7 @@ Full suite green at 2608 passed + 1 skipped with `--force-exec`; no snapshot dif
 - `cases/imports/package_alias_reexport_enum` -- mirror of the above for an aliased enum re-exported through `__init__.py`.
 - `cases/imports/package_alias_reexport_class_shadow` -- `__init__.py` has `from .sub import Foo` followed by a local `class Foo:`; verifies the local class shadows the imported one in pkg's exports. Guards the removal of `user_imported_records.pop(info.name)` in `registration.py`.
 
-### Phase F.3 -- Parser emits unresolved type-reference nodes (F.3a-F.3f DONE, F.3g pending)
+### Phase F.3 -- Parser emits unresolved type-reference nodes (F.3a-F.3g DONE)
 
 **Goal.** Make parsing purely syntactic: parser never constructs a `TpyType`.
 All name resolution (primitives, builtin generics, user records/protocols/
@@ -1469,81 +1469,81 @@ routing through `typesys`. `typesys.py` still uses
 imports it back from `.module_names`. No circular: `module_names`
 has zero tpyc dependencies.
 
-#### Phase F.3g -- Kill `resolve_type` substitution blocks (PLANNED)
+#### Phase F.3g -- Thread per-record module provenance into parser.registry (DONE)
 
-Three parser-patching substitution blocks remain in
-`sema/type_ops.py::resolve_type`:
+**Goal.** Parser populates `RecordInfo.module`,
+`ProtocolInfo.module`, and enum placeholder qnames at class
+registration, so the resolver / sema can read authoritative qname
+info off `record_info.qualified_name()` (or the enum placeholder
+singleton) without inferring module from context. Establishes
+parser.registry as the canonical carrier of per-record module
+provenance for *same-module* declarations.
 
-1. **Enum qname mint** (type_ops.py:155-158): replaces the parser-level
-   `NominalType("Color")` placeholder with the registered enum
-   singleton that carries `_module_qname`.
-2. **User-record qname mint** (type_ops.py:165-170): reads
-   `record_info.qualified_name()` from the sema registry and mints
-   `_module_qname` on a bare `NominalType("Counter")`.
-3. **Protocol qname + `is_protocol` flag** (type_ops.py:188-193):
-   sets both from `protocol_info.module` when the bare name was
-   emitted without them.
+**Not a goal (moved to Phase F.5).** Retire the three substitution
+blocks in `sema/type_ops.py::resolve_type`. F.3g originally aimed
+to delete them by also teaching the parser-side `TypeResolver` to
+mint `_module_qname` on the first pass (attempted as F.3g.4, then
+reverted). The approach works for same-module refs but fails for
+cross-module imports through re-export facades -- `from tplib
+import ArrayList` re-exported from `tplib.array_list` has surface
+module `tplib` but defining module `tplib.array_list`. The
+parser-side resolver is one-module wide; only sema's `ctx.registry`
+(or the compiler's `_exports_to_module_info`) has the defining
+module. Retiring the substitution requires reshaping the parser's
+import table, which is its own concern -- see Phase F.5.
 
-All three exist because `type_resolver.py::_resolve_registered_type`
-currently returns `NominalType(name)` for user records/protocols
-*without* `_module_qname`, and bare `NominalType(name=...)` placeholders
-for enums, leaning on sema's post-resolution substitution pass to
-fill in the authoritative qname. The root cause: parser's registry
-entries for records/protocols/enums do not carry the module name
-(parser.py's `register_record`/`register_protocol`/
-`register_enum_placeholder` calls only pass `name`/`fields`/...),
-so the resolver has nothing to read. Sema's own registry has the
-module info, but the resolver reads parser.registry, not sema's.
+**Effect.** Parser populates `RecordInfo.module`,
+`ProtocolInfo.module`, and enum placeholder qnames using
+`public_module_name(self._imports._module_name,
+self._directives.cpp_namespace)`. Entry-point modules use
+`"__main__"` (matching sema's convention and Python's runtime
+`__name__`) via a new `is_entry_point` flag threaded from the
+compiler through `parser.parse()`. Sema's `register_enum` qname
+construction is aligned to also use `public_module_name` so the
+qname matches the parser-side placeholder in every case.
 
-**Goal.** Parser registers records, protocols, and enum placeholders
-with the module qname attached. Resolver reads it back and emits
-fully-qualified `NominalType` with `_module_qname` set on the first
-pass. All three substitution blocks become dead code and get deleted.
+The three substitution blocks in `resolve_type` still run, but for
+*every* path they now pull a fully-populated `RecordInfo` /
+`ProtocolInfo` from sema's registry -- same-module (RecordInfo came
+from this module's parser) and cross-module (RecordInfo copied
+during sema's import pass with `defining_module` preserved).
+`record_info.qualified_name()` is authoritative in both cases. The
+comment block on `resolve_type` is rewritten to describe this
+invariant directly; the stale pre-F.3 note ("...goes away entirely
+once Phase F makes the parser emit TpyTypeRef instead of
+NominalType") is replaced with the real rationale.
 
-**Why.** Direct completion of Phase F.3's charter. The comment at
-`resolve_type:145-154` explicitly predicts these substitutions "go
-away entirely once Phase F makes the parser emit TpyTypeRef instead
-of NominalType"; F.3a-F.3f made the structural change but the
-resolver was not updated to set `_module_qname`, so the substitution
-pass stayed load-bearing. F.3g closes the loop -- parser.registry
-becomes the authoritative carrier of per-record module information,
-the resolver emits canonical NominalType on the first pass, and
-sema no longer patches parser output for qname completeness.
+**Landed sub-steps:**
 
-**Dependencies.** None. Parser already has
-`self._imports._module_name` + `self._directives.cpp_namespace` +
-`public_module_name` imported (since F.3f.6). Independent of F.4.
+- **F.3g.1** plumbed directives into the parser loop
+  (`_scan_directives` runs before `_parse_module`; `_directives` is
+  stored on the parser; `_public_module()` helper returns
+  `public_module_name(self._imports._module_name,
+  self._directives.cpp_namespace)` -- `"__main__"` when
+  `is_entry_point=True`).
+- **F.3g.2** passes `module=self._public_module()` when constructing
+  `RecordInfo` / `ProtocolInfo` at the four parser-side
+  registration sites (top-level record/protocol, nested record,
+  `_register_nested_types`).
+- **F.3g.3** extended `register_enum_placeholder(name, module=None)`
+  to mint `NominalType(name, _module_qname=f"{module or
+  '__main__'}.{name}")` and threaded `is_entry_point` through
+  `parser.parse()` + `compiler._discover_modules` so entry-point
+  records/protocols/enums get `"__main__"` qnames consistently with
+  sema. Sema `register_enum` was aligned to also route qname_module
+  through `public_module_name`.
 
-**Sketch.**
-1. Parser: when constructing `RecordInfo` / `ProtocolInfo` /
-   `register_enum_placeholder` (parser.py ~lines 746, 756, 760,
-   1387, 1397, 1536), compute
-   `module = public_module_name(self._imports._module_name, cpp_ns)`
-   and pass it through. Enum placeholder similarly mints a full
-   `NominalType` with `_module_qname` set.
-2. `TypeResolver._resolve_registered_type`: for user records,
-   populate `_module_qname` from `record_info.qualified_name()`.
-   For protocols, also set `is_protocol=True` and the protocol's
-   module qname. For enums, return the fully-qualified placeholder
-   directly.
-3. Delete the three substitution blocks in `sema/type_ops.py`.
-   Update the nearby comment (now stale) that claims the
-   substitution will go away "once Phase F makes the parser emit
-   TpyTypeRef"; replace with a note that it did.
-4. Byte-identical codegen verification under `--force-exec`.
+**Risks / watch-outs (resolved for this phase):**
 
-**Risks / watch-outs.**
-- `public_module_name` needs the cpp_namespace from
-  `ModuleDirectives`; make sure `_directives` is populated at
-  registration time (it is -- directives scan runs before the main
-  parse loop).
+- Parser and sema must agree on the qname for entry-point modules.
+  Resolved by introducing `is_entry_point` (sema already used
+  `"__main__"` for entry modules; parser now does the same).
 - Builtin (`@builtin_type`) records: `qualified_name()` returns
   `builtin_type_key` when set, so module assignment is harmless for
   those; no special-casing needed.
-- Nested / dotted records (e.g. `Outer.Inner`): the resolver's
-  nested-lookup path at `_resolve_registered_type:459-460` returns
-  `NominalType(dotted)` -- also needs to mint the qname. Audit both
-  bare-name and nested-name paths.
+- Nested / dotted records (e.g. `Outer.Inner`) also populate `module`
+  at their registration site so the substitution block sees a
+  RecordInfo with the right qname for `Outer.Inner`.
 
 ### Phase F.4 -- Fold record traits onto TypeDef (PLANNED)
 
@@ -1595,6 +1595,92 @@ files). Can ship F.4 before G, after G, or in parallel.
 3. Delete the three global sets, their `register_*_record` helpers,
    and the corresponding entries in `clear_all_compilation_state()`.
 4. Byte-identical codegen verification under `--force-exec`.
+
+### Phase F.5 -- Canonicalize import sources to defining modules (PLANNED)
+
+Independent of the F.3 parser-refactor thread; lives here because it
+unlocks retiring the three residual substitution blocks in
+`sema/type_ops.py::resolve_type` that F.3g couldn't delete.
+
+The blocks survive only because the parser-side `TypeResolver` can't
+compute cross-module qnames for re-export facades. Specifically,
+`parser._imports.get_import_source(name)` returns the **surface**
+module -- the one named in the `from X import Y` statement -- while
+the authoritative `TypeDef` qname uses the **defining** module:
+`from tplib import ArrayList` resolves through `tplib/__init__.py`'s
+`from .array_list import ArrayList` so the defining module is
+`tplib.array_list`, not `tplib`.
+
+Sema's `ctx.registry` already has the right answer: its import pass
+copies each imported `RecordInfo` / `ProtocolInfo` / `NominalType`
+into the importing module's registry with `defining_module`
+preserved (so `record_info.qualified_name()` is authoritative). The
+compiler also has the right answer: `_exports_to_module_info`
+resolves re-exports when building each module's `ModuleInfo` for
+cross-module consumption. Only the parser lacks it, because parser
+runs per-module before the compiler has finished aggregating.
+
+**Goal.** Expose the defining module to parser's import table so
+that `parser._imports.get_import_source(name)` returns
+`(defining_module, original_name)` uniformly, and the resolver can
+mint canonical `_module_qname` on the first pass for every import
+-- facade or not. The three substitution blocks (enum / user-record
+/ protocol-qname) in `resolve_type` then become dead code and get
+deleted. The "resolver emits qname-bearing NominalType" approach
+F.3g.4 attempted can be reattempted and landed cleanly on top of
+this.
+
+**Why.** Removes the last parser/sema boundary patch in the resolve
+pipeline. Moves the "one source of truth per qname" discipline into
+the import-resolution layer, where it belongs. Modest perf win on
+`resolve_type` (it runs on every `TpyType` traversal -- the
+substitution check is one of several branches that fire per call).
+
+**Why separate from F.3.** F.3 was about reshaping the
+parser/sema boundary for type-reference nodes -- parser output
+structure. F.5 is about reshaping the compiler's import table --
+cross-module aggregation. Different axis, different layer, ships
+independently.
+
+**Dependencies.** F.3g.1-3 (parser.registry populated with
+RecordInfo.module / ProtocolInfo.module / enum placeholder qnames).
+No dependency on F.4 or G.
+
+**Sketch.**
+1. After `compiler._compute_compile_order()` (so all modules are
+   parsed) but before `_analyze_module` loops start, walk each
+   compiled module's `parser._imports._name_index` and rewrite
+   entries: `(surface_module, original_name)` ->
+   `(defining_module, original_name)` wherever the surface module's
+   `ModuleInfo` shows the name was re-exported. For the common
+   non-facade case (`from mylib import Foo` where mylib defines Foo
+   directly) the tuple is unchanged.
+2. Use the compiler's existing re-export tracking
+   (`_exports_to_module_info` already knows defining modules --
+   expose it as a lookup per `(surface_module, name)` if not
+   already).
+3. Re-land F.3g.4's resolver-side qname minting:
+   `type_resolver._resolve_registered_type` and `_resolve_ref`'s
+   generic branch mint `_module_qname = f"{module}.{original}"`
+   from the now-canonical import tuple on the first pass.
+4. Delete the three substitution blocks in
+   `sema/type_ops.py::resolve_type`. Update the comment block.
+5. Byte-identical codegen verification under `--force-exec`.
+
+**Risks / watch-outs.**
+- Chained re-exports (`pkg/__init__.py` re-exports from
+  `pkg.sub/__init__.py` which re-exports from `pkg.sub.mod`): the
+  lookup must resolve transitively to the ultimate defining module,
+  not one step up. The compiler's re-export tracking already walks
+  chains; sketch step 2 just exposes it -- audit first.
+- Aliased re-exports (`from .colors import Color as C`): the
+  `original_name` piece of the tuple must be the *defining-module*
+  name (`Color`), not the local alias (`C`). Compiler state should
+  already have this but check.
+- Same-module forward references don't go through the import table;
+  the resolver still needs its `parser._module_class_names` /
+  `parser.registry.get_record` path for those (F.3g.4 covered both
+  branches). The re-land should keep the dual lookup.
 
 ### Phase G -- Sema module cleanup (optional, independent)
 

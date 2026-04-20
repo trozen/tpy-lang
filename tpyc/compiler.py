@@ -722,7 +722,7 @@ class Compiler:
             resolver_fn = self._make_star_import_resolver() if self.resolver else None
             parser = Parser(decorator_schemas=self._decorator_schemas,
                             star_import_resolver=resolver_fn)
-            ast = parser.parse(source, module_name=entry_name)
+            ast = parser.parse(source, module_name=entry_name, is_entry_point=True)
             self._decorator_schemas.update(parser._decorator_schemas)
             self.modules[entry_name] = CompiledModule(
                 name=entry_name,
@@ -904,7 +904,8 @@ class Compiler:
                         star_import_resolver=self._make_star_import_resolver())
         try:
             ast = parser.parse(source, module_name=module_name,
-                               is_package_init=is_package_init)
+                               is_package_init=is_package_init,
+                               is_entry_point=is_entry_point)
         except ParseError as e:
             raise CompileError(e.message, module_name, path, lineno=e.lineno)
         self._decorator_schemas.update(parser._decorator_schemas)
