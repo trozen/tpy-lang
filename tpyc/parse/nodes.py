@@ -282,8 +282,11 @@ class TpyCall(TpyExpr):
     """
     func: TpyExpr  # TpyName for simple calls; arbitrary TpyExpr for expression callees
     args: list[TpyExpr]
-    call_type: Optional[TpyType] = None  # For generic instantiation like MyContainer[T, N]()
-    type_args: tuple[TpyType, ...] = ()  # Explicit type args for generic function calls: func[T](args)
+    # Between parse and sema's _resolve_pending_type_refs pre-pass,
+    # call_type and type_args may hold TypeRefNode in place of TpyType
+    # (Phase F.3c.3). All readers post-pre-pass see TpyType.
+    call_type: 'TpyType | TypeRefNode | None' = None  # For generic instantiation like MyContainer[T, N]()
+    type_args: 'tuple[TpyType | TypeRefNode | None, ...]' = ()  # Explicit type args for generic function calls: func[T](args)
     inferred_type_args: tuple[TpyType, ...] | None = None  # Set by sema for generic function calls
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     subscript_callee: 'TpyExpr | None' = None  # Set by parser: fns[0](args) -> stores TpySubscript(fns, 0) for sema fallback
@@ -322,7 +325,8 @@ class TpyMethodCall(TpyExpr):
     kwargs: dict[str, TpyExpr] = field(default_factory=dict)
     double_star_unpack: 'TpyExpr | None' = None  # **expr unpacking at call site
     resolved_import: tuple[str, str] | None = None  # Set by parser: (module, name) for resolved imports
-    type_args: tuple[TpyType, ...] = ()  # Explicit type args for module.func[T](args) syntax
+    # Phase F.3c.3: may hold TypeRefNode pre-sema-pre-pass.
+    type_args: 'tuple[TpyType | TypeRefNode | None, ...]' = ()  # Explicit type args for module.func[T](args) syntax
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     is_static_call: bool = False  # Set by sema for ClassName.staticmethod() calls
     super_parent_type: Optional[TpyType] = None  # Set by sema for super().method() calls
@@ -1093,14 +1097,19 @@ class TpyFunction:
     # TypeParamKind.INT for `def f[N: int](...)` so sema-time resolution
     # of ref-based params can tell INT-kind type params from TYPE-kind.
     type_param_kinds: list[TypeParamKind] = field(default_factory=list)
-    type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
+    # Between parse and sema's _resolve_pending_type_refs pre-pass, bounds
+    # may hold TypeRefNode in place of TpyType (Phase F.3c.1). All readers
+    # post-pre-pass see TpyType.
+    type_param_bounds: 'dict[str, TpyType | TypeRefNode]' = field(default_factory=dict)
     type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "tpy.extern.DefaultInt"}
     defaults: list['TpyExpr | None'] = field(default_factory=list)  # len == len(params); None = no default
     keyword_only_start: int | None = None  # index into params where keyword-only begins
     vararg_name: str | None = None  # name of *args parameter
     vararg_type: 'TpyType | TypeRefNode | None' = None  # element type T from *args: T
     kwarg_name: str | None = None  # name of **kwargs parameter
-    kwarg_type: 'TpyType | None' = None  # TypedDict type from **kwargs: Unpack[TD]
+    # Between parse and sema's _resolve_pending_type_refs pre-pass, kwarg_type
+    # may hold TypeRefNode in place of TpyType (Phase F.3c.2).
+    kwarg_type: 'TpyType | TypeRefNode | None' = None  # TypedDict type from **kwargs: Unpack[TD]
     error_return: str | None = None  # @error_return(E) exception type name
     builtin_decorator_key: str | None = None  # @builtin_decorator("tpy.readonly")
     builtin_function_key: str | None = None  # @builtin_function("tpy.extern.native_global")
@@ -1171,8 +1180,14 @@ class TpyRecord:
     methods: list[TpyFunction] = field(default_factory=list)
     type_params: list[str] = field(default_factory=list)
     type_param_kinds: list[TypeParamKind] = field(default_factory=list)
-    type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
-    bases: list[TpyType] = field(default_factory=list)
+    # Between parse and sema's _resolve_pending_type_refs pre-pass, bounds
+    # may hold TypeRefNode in place of TpyType (Phase F.3c.1). All readers
+    # post-pre-pass see TpyType.
+    type_param_bounds: 'dict[str, TpyType | TypeRefNode]' = field(default_factory=dict)
+    # Between parse and sema's _resolve_pending_type_refs pre-pass, bases
+    # may hold TypeRefNode in place of TpyType (Phase F.3c.2b). All
+    # readers post-pre-pass see TpyType.
+    bases: 'list[TpyType | TypeRefNode]' = field(default_factory=list)
     linkage: RecordLinkage = RecordLinkage.DEFAULT
     native_name: str | None = None
     is_nocopy: bool = False
@@ -1207,7 +1222,9 @@ class TpyProtocol:
     """Protocol definition for structural subtyping."""
     name: str
     methods: list[MethodSignature]
-    fields: list[tuple[str, TpyType]] = field(default_factory=list)
+    # Between parse and sema's _resolve_pending_type_refs pre-pass, field
+    # types may hold TypeRefNode in place of TpyType (Phase F.3c.2).
+    fields: 'list[tuple[str, TpyType | TypeRefNode]]' = field(default_factory=list)
     type_params: list[str] = field(default_factory=list)
     parent_protocols: list[str] = field(default_factory=list)
     is_dynamic: bool = False
@@ -1267,7 +1284,12 @@ class TpyModule:
     # Modules that had bare `import X` statements (needed for module binding in sema)
     bare_module_imports: set[str] = field(default_factory=set)
     # Type aliases (e.g., Shape = Circle | Rect) -> (resolved type, source location)
-    type_aliases: dict[str, tuple[TpyType, SourceLocation | None]] = field(default_factory=dict)
+    # Between parse and sema's _resolve_pending_type_refs pre-pass, alias
+    # RHS values may hold TypeRefNode in place of TpyType (Phase F.3c.2c).
+    # Sema resolves each alias under a `_pending_alias_name` context that
+    # lets same-body self-refs become NominalType(name) placeholders,
+    # then detects recursive unions post-resolution.
+    type_aliases: 'dict[str, tuple[TpyType | TypeRefNode, SourceLocation | None]]' = field(default_factory=dict)
     # Parser warnings (e.g., imports after non-import code)
     parse_warnings: list[ParseWarning] = field(default_factory=list)
     # Module-level # tpy: directives

@@ -14,9 +14,10 @@ from ..typesys import (
     FunctionInfo, is_any_str_type,
     make_ref, unwrap_ref_type, RefType, TypeParamKind,
     is_integer_type, is_void_like_type,
+    _contains_self_reference, validate_recursive_union_paths,
 )
 from ..namespace import Namespace, NameBinding, BindingKind
-from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call
+from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call, ParseError
 from .registration import build_record_self_type, _vararg_span_type
 from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
@@ -1359,6 +1360,56 @@ class SemanticAnalyzer:
             # Protocols only carry TYPE-kind type params (parser constraint).
             return {name: TypeParamKind.TYPE for name in protocol.type_params}
 
+        # Type parameter bounds (Phase F.3c.1): resolved with no enclosing
+        # type-param scope since bounds reference protocols in scope, not
+        # other type params. Matches pre-F.3c.1 parser behavior which
+        # called `_parse_type_annotation(tp.bound)` without a scope.
+        def _resolve_bounds(bounds):
+            if not bounds:
+                return bounds
+            return {name: _resolve(t, None) for name, t in bounds.items()}
+
+        # Type alias RHS (Phase F.3c.2c): resolve in declaration order
+        # with `_pending_alias_name` set on the parser so same-body
+        # self-references produce a NominalType(name) placeholder,
+        # matching pre-flip parse-time behaviour. Register each resolved
+        # alias in parser.registry immediately so later alias bodies can
+        # find it by name. Also detect recursive unions post-resolution.
+        #
+        # DEBT (F.3c.2c): mutating `parser._pending_alias_name` from
+        # sema is a cross-layer leak -- sema reaches through the
+        # resolver's bound method into parser state. To remove: either
+        # (a) thread `pending_alias_name` as an explicit parameter on
+        # the resolver API (`type_ops.resolve_type_ref`), or (b) move
+        # the "same-body self-ref produces NominalType placeholder"
+        # logic into sema itself so parser doesn't need the field at
+        # all. See TODO.md "Typesys migration followups".
+        if module.type_aliases:
+            resolver = self.ctx.parser_resolver
+            parser_instance = resolver.__self__ if resolver is not None else None
+            resolved_aliases: dict[str, tuple[TpyType, object]] = {}
+            for alias_name, (alias_ref, alias_loc) in module.type_aliases.items():
+                if isinstance(alias_ref, ref_types):
+                    if parser_instance is not None:
+                        parser_instance._pending_alias_name = alias_name
+                    try:
+                        alias_type = self.type_ops.resolve_type_ref(alias_ref, None)
+                    finally:
+                        if parser_instance is not None:
+                            parser_instance._pending_alias_name = None
+                else:
+                    alias_type = alias_ref
+                # Recursive union detection (moved from parser).
+                if isinstance(alias_type, UnionType) and _contains_self_reference(alias_type, alias_name):
+                    err = validate_recursive_union_paths(alias_name, alias_type.members)
+                    if err is not None:
+                        raise SemanticError(err, loc=alias_loc)
+                    module.recursive_union_names.add(alias_name)
+                if parser_instance is not None:
+                    parser_instance.registry.register_type_alias(alias_name, alias_type)
+                resolved_aliases[alias_name] = (alias_type, alias_loc)
+            module.type_aliases = resolved_aliases
+
         # Top-level functions (methods are resolved eagerly in _parse_method,
         # nested defs in _parse_nested_def)
         for func in module.functions:
@@ -1368,14 +1419,25 @@ class SemanticAnalyzer:
                 func.return_type = _resolve(func.return_type, scope)
             if func.vararg_type is not None:
                 func.vararg_type = _resolve(func.vararg_type, scope)
+            # Phase F.3c.2: kwarg_type (from **kwargs: Unpack[TD]) emitted
+            # as TypeRefNode by the parser.
+            if func.kwarg_type is not None:
+                func.kwarg_type = _resolve(func.kwarg_type, scope)
+            func.type_param_bounds = _resolve_bounds(func.type_param_bounds)
 
-        # All records (including nested) -- fields + methods. Record
-        # methods use a merged scope (record type params + method type
-        # params) when resolving param / return / vararg refs. Self is
-        # also resolved here so sema.method_expansion sees TpyType.
+        # All records (including nested) -- fields, methods, bases.
+        # Record methods use a merged scope (record type params + method
+        # type params) when resolving param / return / vararg refs. Self
+        # is also resolved here so sema.method_expansion sees TpyType.
         # (Phase F.3b.6.3)
+        # Phase F.3c.2b: bases resolved here too. Parser's method-linkage
+        # validation (stub body on regular class, etc.) moved to
+        # register_record so sema-time base-resolution errors aren't
+        # masked.
         for record in module.all_records():
             scope = _record_scope(record)
+            record.type_param_bounds = _resolve_bounds(record.type_param_bounds)
+            record.bases = [_resolve(b, scope) for b in record.bases]
             for fld in record.fields:
                 fld.type = _resolve(fld.type, scope)
             for method in record.methods:
@@ -1387,11 +1449,18 @@ class SemanticAnalyzer:
                     method.vararg_type = _resolve(method.vararg_type, method_scope)
                 if method.self_annotation is not None:
                     method.self_annotation = _resolve(method.self_annotation, method_scope)
+                if method.kwarg_type is not None:
+                    method.kwarg_type = _resolve(method.kwarg_type, method_scope)
+                method.type_param_bounds = _resolve_bounds(method.type_param_bounds)
 
         # Protocol MethodSignatures: resolve params + return_type under
-        # the protocol's own type-param scope.
+        # the protocol's own type-param scope. Protocol field types
+        # similarly (Phase F.3c.2).
         for protocol in module.protocols:
             scope = _protocol_scope(protocol)
+            protocol.fields = [
+                (fname, _resolve(ftype, scope)) for fname, ftype in protocol.fields
+            ]
             for msig in protocol.methods:
                 msig.params = [(n, _resolve(t, scope)) for (n, t) in msig.params]
                 if msig.return_type is not None:
@@ -1401,6 +1470,73 @@ class SemanticAnalyzer:
         for stmt in module.top_level_stmts:
             if isinstance(stmt, TpyVarDecl) and stmt.type is not None:
                 stmt.type = _resolve(stmt.type)
+
+        # Phase F.3c.3: resolve expression-level type uses inside function
+        # bodies (TpyCall.call_type, TpyCall.type_args,
+        # TpyMethodCall.type_args). These were previously resolved at
+        # parse time by `_parse_type_annotation`; now parser emits
+        # TypeRefNode and we resolve here. The walker recurses into
+        # nested defs (which are separate scopes for locals but share
+        # the module-level resolver).
+        def _resolve_call_type_refs(stmts, call_scope):
+            for stmt in stmts:
+                for expr in stmt.exprs():
+                    _resolve_expr_calls(expr, call_scope)
+                for body in stmt.sub_bodies():
+                    _resolve_call_type_refs(body, call_scope)
+                if isinstance(stmt, TpyNestedDef):
+                    # Nested def signature was already finalized at parse
+                    # time; recurse into body for nested TpyCall refs.
+                    nested_scope = _func_scope(stmt.func) or call_scope
+                    _resolve_call_type_refs(stmt.func.body, nested_scope)
+
+        def _resolve_expr_calls(expr, call_scope):
+            if isinstance(expr, TpyCall):
+                if isinstance(expr.call_type, ref_types):
+                    # Parser catches structural errors at parse time; here
+                    # we catch name-resolution errors silently to match
+                    # pre-flip behaviour (sema falls back to type_args /
+                    # subscript_callee when the name isn't a type).
+                    try:
+                        expr.call_type = self.type_ops.resolve_type_ref(
+                            expr.call_type, call_scope)
+                    except ParseError:
+                        expr.call_type = None
+                _resolve_call_type_args(expr, call_scope)
+            elif isinstance(expr, TpyMethodCall):
+                _resolve_call_type_args(expr, call_scope)
+            for child in expr.children():
+                _resolve_expr_calls(child, call_scope)
+
+        def _resolve_call_type_args(expr, call_scope):
+            """Resolve TypeRefNode elements in expr.type_args. Matches pre-
+            flip `_try_parse_type_args` semantics: on any element
+            resolution failure, drop the whole tuple and propagate the
+            error message through `type_args_parse_error` so sema's
+            generic-call validator reports it."""
+            if not expr.type_args:
+                return
+            new_args = []
+            for ta in expr.type_args:
+                if isinstance(ta, ref_types):
+                    try:
+                        new_args.append(self.type_ops.resolve_type_ref(ta, call_scope))
+                    except ParseError as e:
+                        expr.type_args = ()
+                        if expr.type_args_parse_error is None:
+                            expr.type_args_parse_error = e.message
+                        return
+                else:
+                    new_args.append(ta)
+            expr.type_args = tuple(new_args)
+
+        for func in module.functions:
+            _resolve_call_type_refs(func.body, _func_scope(func))
+        for record in module.all_records():
+            rscope = _record_scope(record)
+            for method in record.methods:
+                _resolve_call_type_refs(method.body, _merged_method_scope(rscope, method))
+        _resolve_call_type_refs(module.top_level_stmts, None)
 
     def _fix_recursive_optional_annotations(self, module: TpyModule) -> None:
         """Fix annotations where a recursive union alias + None was flattened.

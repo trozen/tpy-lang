@@ -789,26 +789,20 @@ class Parser:
 
     def _register_type_alias(
         self, name: str, type_node: ast.expr,
-        type_aliases: dict[str, tuple[TpyType, SourceLocation | None]]
+        type_aliases: 'dict[str, tuple[TpyType | TypeRefNode, SourceLocation | None]]'
     ) -> None:
-        """Parse a type annotation node and register as a type alias."""
-        # Allow self-references during RHS parsing (for recursive type aliases)
-        self._pending_alias_name = name
-        try:
-            alias_type = self._parse_type_annotation(type_node)
-        finally:
-            self._pending_alias_name = None
+        """Parse a type alias RHS as a TypeRefNode (Phase F.3c.2c).
 
-        # Detect recursive type aliases (self-reference inside the RHS)
-        if isinstance(alias_type, UnionType) and _contains_self_reference(alias_type, name):
-            err = validate_recursive_union_paths(name, alias_type.members)
-            if err is not None:
-                raise ParseError(err, type_node)
-            self._recursive_union_names.add(name)
-
-        self.registry.register_type_alias(name, alias_type)
+        Sema's `_resolve_pending_type_refs` resolves the ref under a
+        `_pending_alias_name` context so same-body self-references
+        produce a `NominalType(name)` placeholder, mirroring parse-time
+        behaviour. Sema then detects recursive unions and registers the
+        resolved alias in parser.registry so later alias bodies can
+        reference it.
+        """
+        ref = self._parse_type_ref(type_node)
         loc = SourceLocation(line=type_node.lineno) if hasattr(type_node, 'lineno') else None
-        type_aliases[name] = (alias_type, loc)
+        type_aliases[name] = (ref, loc)
 
     def _parse_module(self, tree: ast.Module) -> TpyModule:
         """Parse a module."""
@@ -980,15 +974,19 @@ class Parser:
         """Check if a base class expression refers to typing.TypedDict."""
         return self._resolve_parser_keyword(base) == ("typing", "TypedDict")
 
-    def _parse_unpack_annotation(self, annotation: ast.expr, type_param_scope, error_node) -> 'TpyType':
-        """Parse Unpack[TypedDict] annotation from **kwargs. Returns the inner TypedDict type."""
+    def _parse_unpack_annotation(self, annotation: ast.expr, type_param_scope, error_node) -> 'TpyType | TypeRefNode':
+        """Parse Unpack[TypedDict] annotation from **kwargs.
+
+        Returns the inner TypedDict reference as a TypeRefNode; sema
+        resolves it via `_resolve_pending_type_refs` and validates it is
+        a TypedDict in registration (Phase F.3c.2).
+        """
         if not isinstance(annotation, ast.Subscript):
             raise ParseError("**kwargs must have Unpack[TypedDict] annotation", error_node)
         resolved = self._resolve_parser_keyword(annotation.value)
         if resolved != ("typing", "Unpack"):
             raise ParseError("**kwargs must have Unpack[TypedDict] annotation", error_node)
-        inner_type = self._parse_type_annotation(annotation.slice, type_param_scope)
-        return inner_type
+        return self._parse_type_ref(annotation.slice, type_param_scope)
 
     # Valid integer mixin types for IntEnum: class P(int, Enum) or class P(Int8, Enum)
     _INT_MIXIN_TYPES: dict[str, str] = {
@@ -1389,7 +1387,7 @@ class Parser:
         # Also extract bounds: class Foo[T: Comparable]: or class Foo[N: int]:
         type_params = []
         type_param_kinds: list[TypeParamKind] = []
-        type_param_bounds: dict[str, TpyType] = {}
+        type_param_bounds: dict[str, 'TpyType | TypeRefNode'] = {}
         if hasattr(node, 'type_params') and node.type_params:
             for tp in node.type_params:
                 if isinstance(tp, ast.TypeVar):
@@ -1399,13 +1397,10 @@ class Parser:
                         if isinstance(tp.bound, ast.Name) and tp.bound.id == 'int':
                             type_param_kinds.append(TypeParamKind.INT)
                         else:
-                            # Protocol bound -- full validation deferred to sema
-                            # (cross-module protocols aren't in parser registry)
+                            # Protocol bound -- resolution and protocol-shape
+                            # validation deferred to sema (Phase F.3c.1).
                             type_param_kinds.append(TypeParamKind.TYPE)
-                            bound_type = self._parse_type_annotation(tp.bound)
-                            if not isinstance(bound_type, NominalType):
-                                raise ParseError(f"Type parameter bound must be a protocol or 'int', got {bound_type}", tp)
-                            type_param_bounds[tp.name] = bound_type
+                            type_param_bounds[tp.name] = self._parse_type_ref(tp.bound)
                     else:
                         type_param_kinds.append(TypeParamKind.TYPE)
                 else:
@@ -1417,15 +1412,33 @@ class Parser:
         old_scope = self._type_param_scope
         self._type_param_scope = type_param_scope
 
-        # Parse base classes/protocols for inheritance (with type params in scope)
-        # Classification into parent class vs protocol is deferred to sema
-        # TypedDict marker base is filtered out (it's not a real parent)
-        bases: list[TpyType] = []
+        # Parse base classes/protocols for inheritance. Classification
+        # into parent class vs protocol happens above via
+        # `_is_protocol_base` (keyword-matching, robust to shadowing
+        # detection). TypedDict marker base is filtered out.
+        #
+        # Bases emit as TypeRefNode (Phase F.3c.2b); sema re-resolves in
+        # `_resolve_pending_type_refs` under the record's type-param
+        # scope.
+        #
+        # DEBT (F.3c.2b): we also call `_resolve_type_ref_impl` here as
+        # a parse-time side-effect (discarding the TpyType) so that
+        # resolution errors -- "Unknown type", "Unsupported qualified
+        # type", "<name> requires: from <mod> import <name>" -- fire at
+        # the class header rather than being masked by later parse-time
+        # class-body checks (stub-body validation, field auto-declare,
+        # enum dispatch, TypedDict handling). To remove this impurity:
+        # move class-body validation to sema so sema-time base
+        # resolution errors fire naturally first. Then delete the
+        # `_resolve_type_ref_impl` call below. See TODO.md
+        # "Typesys migration followups".
+        bases: 'list[TpyType | TypeRefNode]' = []
         for base in node.bases:
             if is_typed_dict and self._is_typed_dict_base(base):
                 continue
-            base_type = self._parse_type_annotation(base, type_param_scope)
-            bases.append(base_type)
+            ref = self._parse_type_ref(base, type_param_scope)
+            self._resolve_type_ref_impl(ref, type_param_scope)
+            bases.append(ref)
 
         fields = []
         methods = []
@@ -1764,7 +1777,9 @@ class Parser:
                 if not isinstance(item.target, ast.Name):
                     raise ParseError("Invalid field declaration in protocol", item)
                 field_name = item.target.id
-                field_type = self._parse_type_annotation(item.annotation)
+                # Emit as TypeRefNode (Phase F.3c.2); sema resolves under
+                # the protocol's type-param scope.
+                field_type = self._parse_type_ref(item.annotation)
                 fields.append((field_name, field_type))
             elif isinstance(item, ast.Pass):
                 pass
@@ -1982,16 +1997,14 @@ class Parser:
 
         # Extract method-level type parameters (e.g. def foo[T](self, x: T) -> T:)
         method_type_params: list[str] = []
-        method_type_param_bounds: dict[str, TpyType] = {}
+        method_type_param_bounds: dict[str, 'TpyType | TypeRefNode'] = {}
         if hasattr(node, 'type_params') and node.type_params:
             for tp in node.type_params:
                 if isinstance(tp, ast.TypeVar):
                     method_type_params.append(tp.name)
                     if tp.bound is not None:
-                        bound_type = self._parse_type_annotation(tp.bound)
-                        if not isinstance(bound_type, NominalType):
-                            raise ParseError(f"Type parameter bound must be a protocol or 'int', got {bound_type}", tp)
-                        method_type_param_bounds[tp.name] = bound_type
+                        # Protocol bound -- resolution + validation deferred to sema (F.3c.1).
+                        method_type_param_bounds[tp.name] = self._parse_type_ref(tp.bound)
                 else:
                     raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
 
@@ -2255,7 +2268,7 @@ class Parser:
         # Bounds: def foo[T: Comparable](): (protocol bound)
         # INT params: def foo[T, N: int](): (integer type parameter, e.g. for Array[T, N])
         type_params = []
-        type_param_bounds: dict[str, TpyType] = {}
+        type_param_bounds: dict[str, 'TpyType | TypeRefNode'] = {}
         type_param_kinds: list[TypeParamKind] = []
         if hasattr(node, 'type_params') and node.type_params:
             for tp in node.type_params:
@@ -2266,10 +2279,8 @@ class Parser:
                             type_param_kinds.append(TypeParamKind.INT)
                         else:
                             type_param_kinds.append(TypeParamKind.TYPE)
-                            bound_type = self._parse_type_annotation(tp.bound)
-                            if not isinstance(bound_type, NominalType):
-                                raise ParseError(f"Type parameter bound must be a protocol or 'int', got {bound_type}", tp)
-                            type_param_bounds[tp.name] = bound_type
+                            # Protocol bound -- resolution + validation deferred to sema (F.3c.1).
+                            type_param_bounds[tp.name] = self._parse_type_ref(tp.bound)
                     else:
                         type_param_kinds.append(TypeParamKind.TYPE)
                 else:
@@ -3019,51 +3030,18 @@ class Parser:
             func.vararg_type = self._resolve_type_ref_impl(
                 func.vararg_type, resolve_scope)
 
-    def _parse_protocol_type_args(self, node: ast.Subscript, name: str,
-                                    type_params: list[str], type_param_scope: dict[str, TypeParamKind] | None = None) -> tuple[TpyType, ...]:
-        """Parse type arguments for a generic protocol like Sequence[Int32]."""
-        expected_count = len(type_params)
-        slices = _extract_subscript_slices(node)
-
-        if len(slices) != expected_count:
-            raise ParseError(f"{name} requires exactly {expected_count} type parameters", node)
-
-        type_args = tuple(self._parse_type_annotation(s, type_param_scope) for s in slices)
-        return type_args
-
-    def _parse_record_type_args(self, node: ast.Subscript, name: str, type_param_scope: dict[str, TypeParamKind] | None = None) -> tuple[TpyType | int, ...]:
-        """Parse type arguments for a user-defined generic record like Stack[Int32] or Matrix[Int32, 8].
-
-        For records with integer type parameters, integer literals are allowed in type argument positions.
-        The validation of which positions accept integers is done in sema (since the record info
-        may not be registered yet during parsing).
-        """
-        slices = _extract_subscript_slices(node)
-
-        # Parse each type argument (allowing integer literals)
-        type_args: list[TpyType | int] = []
-        for s in slices:
-            # Check for integer literals
-            if isinstance(s, ast.Constant) and isinstance(s.value, int):
-                type_args.append(s.value)
-            # Check for type parameter references that are INT kind (forward as TypeParamRef)
-            elif isinstance(s, ast.Name) and type_param_scope and s.id in type_param_scope:
-                kind = type_param_scope[s.id]
-                type_args.append(TypeParamRef(s.id, kind=kind))
-            else:
-                type_args.append(self._parse_type_annotation(s, type_param_scope))
-        return tuple(type_args)
-
-    def _parse_type_args_from_subscript(self, node: ast.Subscript) -> tuple[TpyType, ...]:
+    def _parse_type_args_from_subscript(self, node: ast.Subscript) -> 'tuple[TpyType | TypeRefNode | None, ...]':
         """Extract type arguments from a subscript for generic function calls like first[Int32](x).
 
-        Raises ParseError if any element is not a valid type. The caller should catch
-        this for cases where non-type arguments are valid (e.g., Array[Int32, 8]).
+        Raises ParseError if any element is structurally not a valid type
+        (e.g. integer literal at a type-args site). Name-resolution
+        errors do not fire at parse time; elements emit as TypeRefNode
+        and sema resolves in the pre-pass body walker (Phase F.3c.3).
         """
         slices = _extract_subscript_slices(node)
 
-        # Parse each type argument - raise error if any fails
-        type_args: list[TpyType | None] = []
+        # Parse each type argument - raise error if any is structurally invalid.
+        type_args: 'list[TpyType | TypeRefNode | None]' = []
         for s in slices:
             # _ wildcard: infer this type argument
             if isinstance(s, ast.Name) and s.id == '_':
@@ -3072,7 +3050,7 @@ class Parser:
             # Integer constants are not valid type arguments
             if isinstance(s, ast.Constant) and isinstance(s.value, int):
                 raise ParseError(f"Integer '{s.value}' is not a valid type argument", s)
-            type_args.append(self._parse_type_annotation(s))
+            type_args.append(self._parse_type_ref(s))
         return tuple(type_args)
 
     def _parse_comprehension_generator(self, gen: ast.comprehension) -> TpyComprehensionGenerator:
@@ -3098,62 +3076,17 @@ class Parser:
         else:
             raise ParseError("Unsupported comprehension target", gen.target)
 
-    def _try_parse_type_args(self, node: ast.Subscript) -> tuple[tuple[TpyType, ...], str | None]:
+    def _try_parse_type_args(self, node: ast.Subscript) -> 'tuple[tuple[TpyType | TypeRefNode | None, ...], str | None]':
         """Try to parse type args from a subscript, capturing parse errors.
 
         Returns (type_args, parse_error). On success parse_error is None.
         On failure type_args is empty and parse_error holds the message.
+        Elements may be TypeRefNode pre-sema (Phase F.3c.3).
         """
         try:
             return self._parse_type_args_from_subscript(node), None
         except ParseError as e:
             return (), e.message
-
-    def _parse_tuple_type(self, node: ast.Subscript, type_param_scope: dict[str, TypeParamKind] | None = None) -> TupleType:
-        """Parse tuple[T1, T2, ...] type annotation."""
-        slices = _extract_subscript_slices(node)
-        if not slices:
-            raise ParseError("tuple requires at least one type argument: tuple[T1, T2, ...]", node)
-        element_types = tuple(
-            self._parse_type_annotation(s, type_param_scope) for s in slices
-        )
-        return TupleType(element_types)
-
-    def _parse_generic_type(self, node: ast.Subscript, name: str, type_def: BuiltinTypeDef, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyType:
-        """Parse a module-defined generic type using its metadata."""
-        param_kinds = type_def.param_kinds
-        expected_count = len(param_kinds)
-        slices = _extract_subscript_slices(node)
-
-        if len(slices) != expected_count:
-            raise ParseError(f"{name} requires exactly {expected_count} type parameters", node)
-
-        # Parse each parameter according to its kind
-        parsed_args: list[TpyType | int] = []
-        for i, (slice_node, kind) in enumerate(zip(slices, param_kinds)):
-            if kind == TypeParamKind.TYPE:
-                parsed_args.append(self._parse_type_annotation(slice_node, type_param_scope))
-            elif kind == TypeParamKind.INT:
-                if isinstance(slice_node, ast.Constant) and isinstance(slice_node.value, int):
-                    parsed_args.append(slice_node.value)
-                elif isinstance(slice_node, ast.Name) and type_param_scope and slice_node.id in type_param_scope:
-                    # Allow forwarded INT type params (e.g., Array[T, N] where N: int)
-                    param_name = slice_node.id
-                    param_kind = type_param_scope[param_name]
-                    if param_kind == TypeParamKind.INT:
-                        parsed_args.append(TypeParamRef(param_name, kind=TypeParamKind.INT))
-                    else:
-                        raise ParseError(f"{name} parameter {i + 1} requires an integer, got type parameter '{param_name}'", node)
-                else:
-                    raise ParseError(f"{name} parameter {i + 1} must be an integer literal or int type parameter", node)
-
-        assert type_def.type_factory is not None
-        try:
-            return type_def.type_factory(*parsed_args)
-        except ParseError:
-            raise
-        except Exception as e:
-            raise ParseError(f"Failed to construct type {name}: {e}", node) from e
 
     def _parse_body(self, nodes: list[ast.stmt]) -> list[TpyStmt]:
         """Parse a list of statements, flattening any multi-statement expansions."""
@@ -3629,14 +3562,21 @@ class Parser:
                     # (for type instantiations like Array[Int32, 8], non-type args are valid
                     # so parse error is stored and sema decides whether to report it)
                     type_args, type_args_parse_error = self._try_parse_type_args(node.func)
-                    # Try to parse as a type annotation (for type instantiation
-                    # like ArrayList[Int32]()). Sema decides whether to use
-                    # call_type or type_args based on whether the name resolves
-                    # to a type or a function.
+                    # Try to parse as a type annotation ref (for type
+                    # instantiation like ArrayList[Int32]()). Sema
+                    # decides whether to use call_type or type_args
+                    # based on whether the name resolves to a type or a
+                    # function. Emits TypeRefNode; sema resolves in the
+                    # pre-pass body walker. try/except catches
+                    # structural parse errors (Callable/Fn/Literal
+                    # shape); name-resolution errors defer to sema,
+                    # which catches them per-call and falls back to
+                    # type_args / subscript_callee just like the
+                    # pre-flip behaviour.
                     call_type = None
                     if self._could_be_type(name):
                         try:
-                            call_type = self._parse_type_annotation(node.func)
+                            call_type = self._parse_type_ref(node.func)
                         except ParseError:
                             pass
                     # Try to parse the subscript as an expression so sema can

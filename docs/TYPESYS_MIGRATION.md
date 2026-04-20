@@ -941,21 +941,157 @@ with full method semantics.
 
 #### Phase F.3c -- Expand `TpyTypeRef` coverage to all annotation sites
 
-Migrate the remaining annotation consumers:
+Audit of the original list against the actual parser call sites
+(post-F.3b.6): items 5-7 (`TpyExceptHandler.type`, `TpyWithItem.enter_type`,
+match-pattern class names) are already either strings that sema resolves
+or sema-inferred fields, not parser-parsed types. Item 1
+(`TpyCall.isinstance_type`) is also sema-inferred. The real remaining
+sites are covered by four sub-steps:
 
-1. `isinstance` checks (`TpyCall.isinstance_type`) and user-defined
-   `isinstance` type args.
-2. Generic function call type args (`func[Int32, str](...)`).
-3. Class base lists and protocol inheritance
-   (`TpyRecord.bases`, `TpyProtocol.bases`).
-4. Type alias bodies (`TpyModule.type_aliases`).
-5. Exception handler types (`TpyExceptHandler.type`).
-6. With-item enter types (`TpyWithItem.enter_type`).
-7. Match patterns (record-pattern type names, class-pattern type args).
-8. `TpyTypeParamConstruct` bounds and defaults.
+##### F.3c.1 -- Type parameter bounds (DONE)
 
-After this step, the AST should contain `TpyType` only for sema-resolved
-results (never for parser output). Verify byte-identical codegen.
+Flipped the three `tp.bound` call sites (record-level at
+`_parse_class`, method-level in `_parse_method`, free-function in
+`_parse_function`) from `_parse_type_annotation` to `_parse_type_ref`.
+Widened `TpyRecord.type_param_bounds` and `TpyFunction.type_param_bounds`
+value types to `TpyType | TypeRefNode`. `_resolve_pending_type_refs`
+extended with a `_resolve_bounds` helper that walks record / method /
+free-function bounds dicts under a None scope (bounds reference
+protocols in scope, not other type params -- matches pre-flip
+behaviour).
+
+Removed the parser's "bound must be NominalType" check; sema's
+`_resolve_type_param_bounds` already asserts `is_protocol_type(resolved)`
+(which is strictly stronger -- it checks `NominalType AND is_protocol`).
+Diagnostic text shifts from `"Type parameter bound must be a protocol
+or 'int', got X"` at parse time to `"Type parameter bound must be a
+protocol, got X"` at sema. No diag.txt tests depend on the exact text.
+
+Byte-identical codegen: `uv run pytest` + `--force-exec` both 2730
+passed + 1 skipped with zero `tests/cases/**/expected/` diffs.
+
+##### F.3c.2 -- Declaration-body type references (PARTIAL)
+
+Flipped two of the four originally-planned sites:
+
+- **Protocol field types** (`TpyProtocol.fields`): parser emits
+  `TypeRefNode`; sema resolves under the protocol's type-param scope.
+- **`**kwargs: Unpack[TypedDict]`** (`TpyFunction.kwarg_type`): parser
+  emits `TypeRefNode` for the inner TypedDict; sema resolves in the
+  pre-pass.
+
+`TpyProtocol.fields` value type widened to `TpyType | TypeRefNode`;
+`TpyFunction.kwarg_type` widened similarly. Byte-identical codegen:
+2730 + 1 skipped under `--force-exec`.
+
+##### F.3c.2b -- Class bases (DONE, pragmatic)
+
+Flipped `TpyRecord.bases` to `list[TpyType | TypeRefNode]`. Parser
+emits `TypeRefNode` via `_parse_type_ref`, `_resolve_pending_type_refs`
+walks bases under the record's type-param scope.
+
+The parser retains a parse-time `_resolve_type_ref_impl` call on each
+base, discarding the resolved TpyType and storing the `TypeRefNode`.
+This is a deliberate side-effect: it keeps the "Unknown type",
+"Unsupported qualified type", and "<name> requires: from <mod> import
+<name>" hints firing at the class-header line rather than being masked
+by later parse-time class-body checks (stub-body validation,
+field-type inference on `Red = auto()` when `Enum` is shadowed, etc.).
+
+Architecturally a loose end: ideally class-body validation would move
+to sema so sema-time base resolution errors fire naturally first,
+removing the need for the parse-time side-effect. That's a larger
+refactor across stub-body validation, field auto-declare, enum
+dispatch, TypedDict handling, etc., and out of scope for F.3c.
+
+Byte-identical codegen: 2730 passed + 1 skipped under `--force-exec`.
+
+##### F.3c.2c -- Type alias bodies (DONE)
+
+Flipped `TpyModule.type_aliases` value types from
+`tuple[TpyType, SourceLocation | None]` to
+`tuple[TpyType | TypeRefNode, SourceLocation | None]`. Parser's
+`_register_type_alias` now uses `_parse_type_ref` (no parse-time
+resolution, no parse-time recursive-union detection).
+
+Sema's `_resolve_pending_type_refs` gains an early alias-resolution
+pass that runs before records / methods / functions. For each alias in
+declaration order: it sets `parser._pending_alias_name` so the
+resolver produces `NominalType(name)` placeholders for same-body
+self-references, resolves the RHS ref, then registers the resolved
+type in parser.registry so subsequent aliases can look it up by name.
+Recursive unions are detected post-resolution (same logic moved from
+parser).
+
+Forward references between aliases (`type B = list[A]` before
+`type A = int`) continue to work via the existing
+`_module_type_alias_names` pre-scan + later substitution machinery
+that was already load-bearing pre-flip.
+
+Byte-identical codegen: 2730 passed + 1 skipped under `--force-exec`.
+
+##### F.3c.3 -- Expression-level type uses (DONE)
+
+Flipped `TpyCall.call_type`, `TpyCall.type_args`, and
+`TpyMethodCall.type_args` to `TypeRefNode` at the emission sites
+(`_parse_call` `call_type` branch, `_parse_type_args_from_subscript`).
+Parser now catches only structural errors at parse time (e.g.
+integer literals at type-arg positions); name-resolution errors
+defer to sema.
+
+Sema's `_resolve_pending_type_refs` gains a recursive body-walker pass
+that finds every `TpyCall` / `TpyMethodCall` in function /
+method / top-level / nested-def bodies and resolves `call_type` +
+`type_args` under the enclosing function's type-param scope. Matches
+pre-flip silent-failure semantics: `call_type` resolution errors
+clear the field (sema falls back to `type_args` / `subscript_callee`);
+`type_args` resolution errors clear the tuple and populate
+`type_args_parse_error`, which sema's generic-call validator already
+reports at line 2106 in `calls.py`.
+
+Internal resolver helpers (`_parse_record_type_args`,
+`_parse_protocol_type_args`, `_parse_tuple_type`, `_parse_generic_type`)
+are dead code after F.3b.3 routed everything through `_parse_type_ref`;
+their deletion is scheduled for F.3c.4.
+
+Byte-identical codegen: 2730 passed + 1 skipped under `--force-exec`.
+
+##### F.3c.4 -- Cleanup (DONE)
+
+Deleted four dead parser helpers that were already unreachable after
+F.3b.3 routed annotation parsing through `_parse_type_ref`:
+`_parse_protocol_type_args`, `_parse_record_type_args`,
+`_parse_tuple_type`, `_parse_generic_type`. Their ref-based variants
+(`_resolve_protocol_type_args`, `_resolve_record_type_args`, the
+inline tuple / generic paths in `_resolve_type_ref_impl`) are the
+only alive code paths now.
+
+`_parse_type_annotation` survives as a thin wrapper around
+`_parse_type_ref + _resolve_type_ref_impl`. Its remaining callers:
+
+- `FragmentParser._parse_type_annotation` (override with lenient
+  NominalType fallback for macro fragments with unknown type names).
+- Equivalence tests in `tpyc/test_parse_type_ref.py` that pin the
+  walker+resolver composition against the annotation path.
+
+Both are legitimate uses of the public helper. No further cleanup in
+F.3c.
+
+After F.3c, the AST contains `TpyType` only for sema-resolved results
+(parser-emission path is uniformly `TypeRefNode`). The two F.3c debts
+(parse-time resolve-for-side-effect on class bases, sema mutating
+`parser._pending_alias_name`) are tracked in TODO.md "Typesys
+migration followups" and become cheap to delete once F.3d moves
+primitive resolution out of the parser.
+
+Byte-identical codegen: 2730 passed + 1 skipped under `--force-exec`.
+
+**Architectural debt tracking:** F.3c.2b and F.3c.2c each introduced a
+load-bearing workaround (parse-time resolve-for-side-effect on bases;
+sema mutating `parser._pending_alias_name` via `resolver.__self__`).
+Both are tracked under "Typesys migration followups" in
+`TODO.md` with the path to removal. They become cheap to delete after
+F.3d moves primitive resolution out of the parser.
 
 #### Phase F.3d -- Move primitive / builtin name resolution into sema
 
