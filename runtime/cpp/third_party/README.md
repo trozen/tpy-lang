@@ -30,10 +30,13 @@ on an already-vendored tree is a no-op.
 1. Edit `scripts/vendor_<name>.py`: bump `VERSION`, `URL`, `SHA256`.
 2. Run: `uv run python scripts/vendor_<name>.py`.
 3. Review the diff in `runtime/cpp/third_party/<name>/`.
-4. If our manual mirror header
+4. If upstream added, removed, or renamed source files, update the
+   corresponding sidecar source list (e.g.
+   `runtime/cpp/third_party/<name>.sources.txt`).
+5. If our manual mirror header
    (`runtime/cpp/include/tpy/stdlib/<name>_h.hpp`) needs updating because
    the upstream API changed shape, do that too.
-5. Commit.
+6. Commit.
 
 ## Current contents
 

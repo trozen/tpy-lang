@@ -1,26 +1,27 @@
-"""Third-party C/C++ libraries consumed by TPy stdlib modules.
+"""Generic registry for third-party C/C++ libraries consumed by TPy
+stdlib modules.
 
-Each vendorable/system library is declared here once. Stdlib `.py` modules
-signal their dependency with
+Each vendorable/system library is declared once as a ``ThirdPartyLib``.
+Stdlib `.py` modules signal their dependency with
 
-    # tpy: link_third_party("pcre2")
+    # tpy: link("pcre2", managed=True)
 
-and the build layer (CMake emission via `tpyc/compiler.py::generate_cmake`
-and the direct-compile path for `tpyc -x` / `-b`) consults the registry to
-produce concrete include paths, link flags, and CMake snippets.
+and the build layer (CMake emission via ``tpyc/compiler.py::generate_cmake``
+and the direct-compile path for ``tpyc -x`` / ``-b``) consults the
+registry to produce concrete include paths, link flags, and CMake
+snippets.
 
 Three user-selectable modes per lib:
   * ``bundled`` -- build from the vendored source under
     ``runtime/cpp/third_party/<name>/``. Hermetic, zero system deps. Default.
   * ``system`` -- ``find_package`` in CMake mode, ``-l<lib>`` directly in
-    direct-compile mode. Right for downstream C++ projects that already pin
-    their own version and want to avoid double-linking.
+    direct-compile mode. Right for downstream C++ projects that already
+    pin their own version and want to avoid double-linking.
   * ``auto`` -- try system first, fall back to bundled.
 
-v1 is deliberately narrow: a single ``PCRE2`` factory and a one-entry
-lookup map. The shape anticipates multi-lib registration, but we avoid the
-loop + auto-CLI-flag-registration machinery until a second lib (zlib,
-sqlite3, libuv) arrives and drives what needs to vary.
+Per-library specifics (PCRE2's source list, its compile flags, etc.)
+live in sibling modules (``tpyc/build/pcre2.py``, etc.); this file keeps
+only the machinery that's shared across any managed lib.
 """
 
 from __future__ import annotations
@@ -52,7 +53,14 @@ class DisabledLibError(Exception):
 
 @dataclass(frozen=True)
 class ThirdPartyLib:
-    """Declaration of a single third-party C/C++ dependency."""
+    """Declaration of a single third-party C/C++ dependency.
+
+    Lib-specific build knowledge (what .c files to compile, what -I /
+    -D flags they need, what dir holds the public headers) lives behind
+    the ``bundled_*`` callables rather than in the registry, so adding
+    a new managed lib means a new factory module plus one row in
+    ``_FACTORIES``, not edits to the generic resolver.
+    """
 
     # Identity
     name: str                                   # "pcre2"
@@ -80,53 +88,60 @@ class ThirdPartyLib:
                                                 # vendored sub-build
     license_file: str = "LICENSE"
 
+    # Per-lib callables for the direct-compile bundled path. Each takes
+    # the lib itself and returns the lib-specific answer:
+    #   * bundled_source_files   -- list of .c files to compile
+    #   * bundled_compile_flags  -- list of -I / -D / ... flags for those
+    #                               .c files (same flags for all sources
+    #                               in v1; refine if any lib needs per-file)
+    #   * bundled_user_include_dir -- path containing the public headers
+    #                                 that dependents #include
+    # None means "bundled direct-compile not supported for this lib"
+    # (either no bundled source dir, or CMake-only bundled build).
+    bundled_source_files: Callable[["ThirdPartyLib"], list[Path]] | None = None
+    bundled_compile_flags: Callable[["ThirdPartyLib"], list[str]] | None = None
+    bundled_user_include_dir: Callable[["ThirdPartyLib"], Path] | None = None
+
 
 # ---------------------------------------------------------------------------
-# PCRE2 declaration
+# Source-manifest helper
 # ---------------------------------------------------------------------------
 
-def _pcre2(runtime_cpp_dir: Path) -> ThirdPartyLib:
-    """PCRE2 declaration.
-
-    Vendored build options picked for TPy's use:
-      * 8-bit only -- Python str maps to UTF-8 bytes; 16/32-bit unused.
-      * JIT on -- ~10x match-time speedup, widely supported.
-      * Tests + pcre2grep off -- we validate via our own test cases, and
-        the grep CLI utility doesn't belong in a runtime build.
-    """
-    return ThirdPartyLib(
-        name="pcre2",
-        cli_flag="--pcre2",
-        cmake_var="TPY_PCRE2",
-        default_mode="bundled",
-        min_version="10.35",
-        find_package_name="PCRE2",
-        find_package_components=("8BIT",),
-        find_package_target="PCRE2::8BIT",
-        pkgconfig_name="libpcre2-8",
-        system_link_flags=("-lpcre2-8",),
-        bundled_source_dir=runtime_cpp_dir / "third_party" / "pcre2",
-        bundled_cmake_vars={
-            "PCRE2_BUILD_PCRE2_8": "ON",
-            "PCRE2_BUILD_PCRE2_16": "OFF",
-            "PCRE2_BUILD_PCRE2_32": "OFF",
-            "PCRE2_SUPPORT_JIT": "ON",
-            "PCRE2_BUILD_TESTS": "OFF",
-            "PCRE2_BUILD_PCRE2GREP": "OFF",
-        },
-        bundled_static_target="pcre2-8-static",
-        license_file="LICENCE",
-    )
+def read_source_manifest(path: Path) -> list[str]:
+    """Read a source-list manifest (one filename per line, ``#`` comments,
+    blank lines ignored). Used by per-lib factories that keep the source
+    list as a sidecar file next to the vendored tree rather than embedded
+    in Python."""
+    names: list[str] = []
+    for raw in path.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        names.append(line)
+    return names
 
 
-_FACTORIES: dict[str, Callable[[Path], ThirdPartyLib]] = {
-    "pcre2": _pcre2,
-}
+# ---------------------------------------------------------------------------
+# Registry
+# ---------------------------------------------------------------------------
+# Per-lib factories are imported lazily on first lookup so their source
+# files can depend on names defined later in this module (ThirdPartyLib,
+# read_source_manifest) without needing mid-module imports.
+
+_FACTORIES: dict[str, Callable[[Path], ThirdPartyLib]] | None = None
+
+
+def _factories() -> dict[str, Callable[[Path], ThirdPartyLib]]:
+    global _FACTORIES
+    if _FACTORIES is None:
+        from . import pcre2 as _pcre2
+        _FACTORIES = {"pcre2": _pcre2.factory}
+    return _FACTORIES
 
 
 def known_lib_names() -> list[str]:
     """Names of all declared third-party libraries, sorted."""
-    return sorted(_FACTORIES)
+    return sorted(_factories())
 
 
 def get_lib(name: str, runtime_cpp_dir: Path) -> ThirdPartyLib:
@@ -136,11 +151,12 @@ def get_lib(name: str, runtime_cpp_dir: Path) -> ThirdPartyLib:
     ``include/`` and ``third_party/``), used to resolve vendored source
     locations.
     """
-    factory = _FACTORIES.get(name)
+    factories = _factories()
+    factory = factories.get(name)
     if factory is None:
         raise KeyError(
             f"unknown third-party library: {name!r} "
-            f"(known: {sorted(_FACTORIES)})"
+            f"(known: {sorted(factories)})"
         )
     return factory(runtime_cpp_dir)
 
@@ -186,7 +202,7 @@ def emit_cmake_snippet(lib: ThirdPartyLib) -> str:
         return out_
 
     out: list[str] = []
-    out.append(f'# --- {lib.name} (via # tpy: link_third_party) ---')
+    out.append(f'# --- {lib.name} (via # tpy: link(..., managed=True)) ---')
     out.append(
         f'set({lib.cmake_var} "{lib.default_mode}" CACHE STRING '
         f'"Source for {lib.name}: bundled | system | auto")'
@@ -332,110 +348,6 @@ def resolve_bundled_flags(
 
 
 # ---------------------------------------------------------------------------
-# PCRE2 bundled-build helpers (direct-compile path; no CMake required).
-#
-# PCRE2 ships a "non-autotools" build path: rename a few `.generic` /
-# `.dist` template files, then compile the .c files with -DPCRE2_CODE_UNIT_WIDTH=8
-# and -DHAVE_CONFIG_H. We pre-materialized the templates at vendoring time, so
-# all the build path needs to do is enumerate the sources + flags.
-# ---------------------------------------------------------------------------
-
-# Source files that compose libpcre2-8. From PCRE2's NON-AUTOTOOLS-BUILD
-# documentation -- this is the canonical source list for an 8-bit build.
-# Files in src/ that are NOT in this list are either standalone tools
-# (pcre2grep.c, pcre2test.c, pcre2demo.c), test harnesses (pcre2_jit_test.c,
-# pcre2posix_test.c, pcre2_fuzzsupport.c), build helpers (pcre2_dftables.c
-# generates pcre2_chartables.c -- we ship the pre-generated file), the
-# POSIX wrapper (pcre2posix.c -- a separate library), or files that are
-# #included by other .c files (pcre2_printint.c is included by pcre2test
-# and pcre2_dftables; pcre2_jit_match.c and pcre2_jit_misc.c are included
-# by pcre2_jit_compile.c; pcre2_ucptables.c is included by pcre2_tables.c).
-_PCRE2_8_SOURCES: tuple[str, ...] = (
-    "pcre2_auto_possess.c",
-    "pcre2_chartables.c",
-    "pcre2_chkdint.c",
-    "pcre2_compile.c",
-    "pcre2_config.c",
-    "pcre2_context.c",
-    "pcre2_convert.c",
-    "pcre2_dfa_match.c",
-    "pcre2_error.c",
-    "pcre2_extuni.c",
-    "pcre2_find_bracket.c",
-    "pcre2_jit_compile.c",
-    "pcre2_maketables.c",
-    "pcre2_match.c",
-    "pcre2_match_data.c",
-    "pcre2_newline.c",
-    "pcre2_ord2utf.c",
-    "pcre2_pattern_info.c",
-    "pcre2_script_run.c",
-    "pcre2_serialize.c",
-    "pcre2_string_utils.c",
-    "pcre2_study.c",
-    "pcre2_substitute.c",
-    "pcre2_substring.c",
-    "pcre2_tables.c",
-    "pcre2_ucd.c",
-    "pcre2_valid_utf.c",
-    "pcre2_xclass.c",
-)
-
-
-def pcre2_source_files(lib: ThirdPartyLib) -> list[Path]:
-    """Return the list of PCRE2 .c files to compile into libpcre2-8.
-
-    Uses the explicit source list from PCRE2's NON-AUTOTOOLS-BUILD doc rather
-    than globbing -- avoids accidentally pulling in #included-by-others files
-    (pcre2_printint.c, pcre2_jit_match.c, etc.) when PCRE2 grows new sources.
-    """
-    if lib.bundled_source_dir is None:
-        raise RuntimeError(f"{lib.name}: no bundled source dir configured")
-    src_dir = lib.bundled_source_dir / "src"
-    if not src_dir.is_dir():
-        raise FileNotFoundError(
-            f"{lib.name}: bundled src/ not found at {src_dir}"
-        )
-    paths: list[Path] = []
-    for name in _PCRE2_8_SOURCES:
-        p = src_dir / name
-        if not p.is_file():
-            raise FileNotFoundError(
-                f"{lib.name}: expected source file missing: {p}"
-            )
-        paths.append(p)
-    return paths
-
-
-def pcre2_compile_flags(lib: ThirdPartyLib) -> list[str]:
-    """Return the C-compiler flags needed to build a PCRE2 .c file.
-
-    -I<src_dir> is required so PCRE2's internal headers (pcre2_internal.h,
-    pcre2.h, config.h) resolve. -DHAVE_CONFIG_H tells PCRE2 to include
-    config.h (which we materialized from config.h.generic at vendoring time
-    with SUPPORT_PCRE2_8 / SUPPORT_JIT / SUPPORT_UNICODE enabled).
-    """
-    if lib.bundled_source_dir is None:
-        raise RuntimeError(f"{lib.name}: no bundled source dir configured")
-    src_dir = lib.bundled_source_dir / "src"
-    return [
-        "-DHAVE_CONFIG_H",
-        "-DPCRE2_CODE_UNIT_WIDTH=8",
-        f"-I{src_dir}",
-    ]
-
-
-def pcre2_user_include_dir(lib: ThirdPartyLib) -> Path:
-    """Path containing pcre2.h for user code to #include.
-
-    Same dir as the source files; PCRE2 keeps everything in src/.
-    """
-    if lib.bundled_source_dir is None:
-        raise RuntimeError(f"{lib.name}: no bundled source dir configured")
-    return lib.bundled_source_dir / "src"
-
-
-# ---------------------------------------------------------------------------
 # Build-plan resolution (top-level entry point for the compile/link path)
 # ---------------------------------------------------------------------------
 
@@ -485,16 +397,17 @@ def resolve_build_plan(
             continue
 
         # Bundled (or auto, treated as bundled in direct-compile for now).
-        # TODO: replace this name-dispatch with per-ThirdPartyLib callables
-        # (e.g. ``ThirdPartyLib.bundled_source_files``) when a second
-        # bundled-capable lib lands -- avoids growing this if/elif chain
-        # and keeps lib-specific glue next to the lib's declaration.
-        if name == "pcre2":
-            for src in pcre2_source_files(lib):
-                plan.c_sources.append((src, pcre2_compile_flags(lib)))
-            plan.extra_include_dirs.append(pcre2_user_include_dir(lib))
-        else:
+        # Per-lib source list / compile flags / include dir come from the
+        # callables on the lib; generic resolver stays neutral.
+        if lib.bundled_source_files is None:
             raise NotImplementedError(
-                f"bundled-mode direct compile not implemented for {name!r}"
+                f"bundled-mode direct compile not implemented for {name!r} "
+                f"(no bundled_source_files callable on the lib declaration)"
             )
+        flags = (lib.bundled_compile_flags(lib)
+                 if lib.bundled_compile_flags is not None else [])
+        for src in lib.bundled_source_files(lib):
+            plan.c_sources.append((src, flags))
+        if lib.bundled_user_include_dir is not None:
+            plan.extra_include_dirs.append(lib.bundled_user_include_dir(lib))
     return plan
