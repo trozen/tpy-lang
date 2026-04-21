@@ -22,6 +22,19 @@ imports (`FieldInfo`, `RecordInfo`, `TypeRegistry`, `FunctionInfo`,
 `MethodSignature`, `ProtocolInfo`, `TypeParamKind`, `LiteralValue`)
 are bookkeeping only; zero `TpyType` constructors or singletons.
 
+**Known layering deviation:** `parse/resolve_refs.py` and
+`parse/type_resolver.py` both raise `SemanticError` (from
+`sema/diagnostics.py`) for resolution-time errors like unknown
+types, bare-generic arity mismatches, and protocol-requires-type-
+arguments. `sema/diagnostics.py` itself imports from `parse` (for
+`TpyExpr`, `SourceLocation`), so it is effectively a "shared
+diagnostics" module living under `sema/` rather than a clean leaf.
+The resolve phase uses `SemanticError` (not `ParseError`) so the
+CLI emits `file:line: error: msg` for resolution errors, matching
+analyze-phase diagnostics. Extracting `SemanticError` to a neutral
+`tpyc/diagnostics.py` would let the resolve phase be truly parse-
+internal; see `TODO.md` for the cleanup entry.
+
 `Compiler._canonicalize_import_sources` rewrites each module's
 import table from surface names (`from tplib import ArrayList`) to
 defining modules (`tplib.array_list`) using the already-analyzed
