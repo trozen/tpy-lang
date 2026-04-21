@@ -1459,7 +1459,7 @@ L (Phase 3: decorator definitions in `.py` files)
 
 A feature-flag system that lets modules pick between implementations at compile
 time. The initial driver is stdlib: the `re` module needs to swap between
-`tplib.cppstd.re` (std::regex, zero deps), `tplib.pcre2.re` (PCRE2, closest to
+`_bindings.cppstd.re` (std::regex, zero deps), `_bindings.pcre2.re` (PCRE2, closest to
 CPython semantics), and potentially a vendored SRE port, without changing user
 code. Similar needs exist elsewhere -- allocator choice, `@noalloc` profile
 gating, stdlib variants for embedded targets, debug vs release behavior,
@@ -1470,11 +1470,11 @@ Surface sketch (to be designed):
 ```python
 # Library module picks an implementation at compile time
 # tpy: if feature(re_backend) == "pcre2"
-from tplib.pcre2.re import *  # tpy: re-export
+from _bindings.pcre2.re import *  # tpy: re-export
 # tpy: elif feature(re_backend) == "std"
-from tplib.cppstd.re import *
+from _bindings.cppstd.re import *
 # tpy: else
-from tplib.sre.re import *
+from _bindings.sre.re import *
 # tpy: endif
 ```
 
@@ -1484,9 +1484,9 @@ Or via a static `if` the compiler folds at sema time:
 from tpy import feature
 
 if feature("re_backend") == "pcre2":
-    from tplib.pcre2.re import *
+    from _bindings.pcre2.re import *
 else:
-    from tplib.cppstd.re import *
+    from _bindings.cppstd.re import *
 ```
 
 Flags set via `tpyc --feature re_backend=pcre2`, project config
@@ -1496,7 +1496,7 @@ directives for local overrides.
 **Why it matters**: avoids forcing one stdlib backend on everyone; lets
 embedded users strip out features; cleanly swaps implementations for
 experimentation and benchmarking. Without this, we either pick one backend and
-live with its limits, or ask users to rewrite imports (`import tplib.pcre2.re
+live with its limits, or ask users to rewrite imports (`import _bindings.pcre2.re
 as re`) -- the latter scales poorly across a real project.
 
 **Scope considerations**:

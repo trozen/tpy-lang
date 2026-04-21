@@ -154,7 +154,7 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
     pch_include = [] if pch_header is None else ["-include", str(pch_header)]
 
     # Add include dirs for any third-party deps declared by stdlib modules
-    # (e.g. `# tpy: link_third_party("pcre2")` in tplib/pcre2.py needs the
+    # (e.g. `# tpy: link_third_party("pcre2")` in _bindings/pcre2.py needs the
     # PCRE2 header on -I). We always resolve in bundled mode here -- the
     # cache key includes runtime + lib hashes so the cache is per-mode-implicit.
     third_party_plan = resolve_build_plan(
@@ -232,17 +232,74 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
                 )
             objects.append(str(obj_path))
 
+    # TPy-owned runtime .cpp files (e.g. socket / getaddrinfo helper). Always
+    # pre-compiled and linked into every test binary -- same rationale as the
+    # stdlib .o above: avoids recompiling per-case. Cache key is invalidated
+    # via _runtime_hash() which includes runtime/cpp/src/. Parallelized the
+    # same way as the stdlib compile above; errors handled the same way too
+    # -- one bad runtime source degrades the whole cache to empty with a
+    # warning, matching the stdlib-failure path, rather than propagating an
+    # uncaught RuntimeError to pytest.
+    from tpyc.compiler import discover_runtime_cpp_sources
+    runtime_cpp_sources = discover_runtime_cpp_sources(RUNTIME_DIR.parent)
+    if runtime_cpp_sources:
+        rt_src_root = RUNTIME_DIR.parent / "src"
+
+        def _compile_runtime_one(rt_cpp: Path) -> str:
+            """Compile a single runtime .cpp to .o; raise on failure."""
+            try:
+                rel = rt_cpp.relative_to(rt_src_root)
+                obj_name = "rt_" + str(rel).replace(os.sep, "_").removesuffix(".cpp") + ".o"
+            except ValueError:
+                obj_name = "rt_" + rt_cpp.stem + ".o"
+            obj_path = obj_dir / obj_name
+            prefix = ["ccache"] if CPP_CONFIG.ccache else []
+            cmd = [*prefix, *common, "-c", "-o", str(obj_path), str(rt_cpp)]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise RuntimeError(
+                    f"runtime .cpp pre-compilation failed for "
+                    f"{rt_cpp.name}:\n{result.stderr}"
+                )
+            return str(obj_path)
+
+        rt_max = max(1, min(max_workers, len(runtime_cpp_sources)))
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=rt_max) as ex:
+                rt_objs = list(ex.map(_compile_runtime_one, runtime_cpp_sources))
+        except RuntimeError as exc:
+            print(f"WARNING: {exc}", file=sys.stderr)
+            return _StdlibCache(objects=[], cpp_relpaths=set())
+        objects.extend(rt_objs)
+
     return _StdlibCache(objects=objects, cpp_relpaths=relpaths)
 
 
 _SHARED_CACHE_ROOT_ENV = "TPYC_SHARED_CACHE_DIR"
-_DEFAULT_SHARED_CACHE_ROOT = Path("/tmp/tpyc-cache")
+
+
+def _default_shared_cache_root() -> Path:
+    """Default shared-cache root, following XDG Base Directory on Linux/macOS
+    and %LOCALAPPDATA% on Windows.
+
+    Preference order: `$XDG_CACHE_HOME/tpyc` > `%LOCALAPPDATA%\\tpyc\\cache`
+    (Windows) > `~/.cache/tpyc`. Matches ccache / cargo / uv / pip convention;
+    persists across reboots, unlike /tmp.
+    """
+    xdg = os.environ.get("XDG_CACHE_HOME")
+    if xdg:
+        return Path(xdg) / "tpyc"
+    if sys.platform == "win32":
+        local_app = os.environ.get("LOCALAPPDATA")
+        if local_app:
+            return Path(local_app) / "tpyc" / "cache"
+    return Path.home() / ".cache" / "tpyc"
 
 
 def _shared_cache_root() -> Path:
     """Root dir for shared caches (overridable via TPYC_SHARED_CACHE_DIR)."""
     override = os.environ.get(_SHARED_CACHE_ROOT_ENV)
-    return Path(override) if override else _DEFAULT_SHARED_CACHE_ROOT
+    return Path(override) if override else _default_shared_cache_root()
 
 
 @functools.cache
@@ -467,9 +524,11 @@ def get_stdlib_cache() -> _StdlibCache | None:
 
     Persists across pytest invocations and is shared across xdist workers via
     a content-addressed dir under $TPYC_SHARED_CACHE_DIR/stdlib-objs/<key>/
-    (default /tmp/tpyc-cache/stdlib-objs/<key>/). Cache key invalidates when
-    runtime headers, lib/tpy stdlib, or C++ build config change. Falls back
-    to a per-process tempdir if the shared root is unwritable.
+    (default $XDG_CACHE_HOME/tpyc/stdlib-objs/<key>/, i.e. ~/.cache/tpyc/
+    stdlib-objs/<key>/ on Linux/macOS; %LOCALAPPDATA%\\tpyc\\cache\\stdlib-objs\\
+    <key>\\ on Windows). Cache key invalidates when runtime headers, lib/tpy
+    stdlib, or C++ build config change. Falls back to a per-process tempdir if
+    the shared root is unwritable.
     """
     global _stdlib_cache, _stdlib_cache_initialized
     if _stdlib_cache_initialized:
@@ -877,14 +936,19 @@ def _hash_files(paths: list[Path]) -> str:
 
 @functools.cache
 def _runtime_hash() -> str:
-    """Hash of all runtime headers under runtime/cpp/include/ and the
-    vendored third_party/ source trees. Session-cached.
+    """Hash of all runtime headers under runtime/cpp/include/, TPy-owned
+    runtime .cpp files under runtime/cpp/src/, and vendored third_party/
+    source trees. Session-cached.
 
     Including third_party/ ensures that bumping a vendored library version
     (PCRE2 etc.) invalidates the stdlib .o cache automatically, so the
-    next test run rebuilds with the new sources.
+    next test run rebuilds with the new sources. Including src/ does the
+    same for TPy-owned runtime helpers.
     """
     files = sorted(p for p in RUNTIME_DIR.rglob("*") if p.is_file())
+    runtime_src_dir = RUNTIME_DIR.parent / "src"
+    if runtime_src_dir.is_dir():
+        files += sorted(p for p in runtime_src_dir.rglob("*") if p.is_file())
     third_party_dir = RUNTIME_DIR.parent / "third_party"
     if third_party_dir.is_dir():
         files += sorted(p for p in third_party_dir.rglob("*") if p.is_file())

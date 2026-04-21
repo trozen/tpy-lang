@@ -16,6 +16,10 @@ def unsafe_ptr[T, N: int](a: Array[T, N]) -> Ptr[T]: ...
 @cpp_template("{0}.data()")
 def unsafe_ptr[T](l: list[T]) -> Ptr[T]: ...
 
+@overload
+@cpp_template("{0}.data()")
+def unsafe_ptr(b: bytes) -> Ptr[readonly[UInt8]]: ...
+
 # unsafe_cast: reinterpret a pointer as a different pointee type
 # TODO: add @compiler_check decorator to make sema validation visible here
 # (currently keyed on qualified_name in calls.py: const-safety, type hint checks)
@@ -138,3 +142,26 @@ def unsafe_str_view(p: Ptr[Char], size: UInt32) -> StrView: ...
 @overload
 @cpp_template("std::string_view({0}, {1})")
 def unsafe_str_view(p: Ptr[readonly[Char]], size: UInt32) -> StrView: ...
+
+# unsafe_str_from_cstr: read a null-terminated C string into an owned TPy
+# str. Caller ensures the pointer is valid and there is a \0 within the
+# intended range. Typical use: wrap a `const char*` returned by a libc
+# call (strerror, inet_ntop, gai_strerror, ...).
+@cpp_template("std::string(reinterpret_cast<const char*>({0}))")
+def unsafe_str_from_cstr(p: Ptr[readonly[UInt8]]) -> str: ...
+
+# unsafe_str_from_buf: build an owned TPy str from a raw byte buffer of
+# `size` bytes. No null terminator required. Typical use: decode the
+# written portion of a pre-sized output buffer (pcre2 substitute, iconv,
+# ...). Companion to unsafe_str_view above -- that one borrows, this one
+# copies into owned storage.
+@cpp_template("std::string(reinterpret_cast<const char*>({0}), static_cast<size_t>({1}))")
+def unsafe_str_from_buf(p: Ptr[readonly[UInt8]], size: UInt64) -> str: ...
+
+# unsafe_bytes_from_buf: construct an owned bytes from a raw byte buffer
+# of `size` bytes. Caller ensures the pointer + range is valid for read.
+# CPython's `bytes()` does not accept raw pointers (no buffer protocol
+# exposure at that layer), so this can't be a bytes constructor overload;
+# it lives here alongside other raw-memory constructors.
+@cpp_template("std::vector<uint8_t>({0}, {0} + {1})")
+def unsafe_bytes_from_buf(p: Ptr[UInt8], size: UInt64) -> bytes: ...

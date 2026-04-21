@@ -294,6 +294,21 @@ def list_compilers() -> None:
     print("  A path to any C++ compiler binary is also accepted.")
 
 
+def discover_runtime_cpp_sources(runtime_cpp_dir: Path) -> list[Path]:
+    """List TPy-owned .cpp files under `runtime_cpp_dir/src/` (recursively).
+
+    These are compiled and linked into every TPy binary alongside user-
+    generated .cpp files. They exist for stdlib helpers that need direct
+    access to C system struct layouts (e.g. sockets / getaddrinfo) and
+    can't be expressed header-only without leaking system-header macros
+    into downstream TUs. Returns [] if the directory doesn't exist.
+    """
+    src_dir = runtime_cpp_dir / "src"
+    if not src_dir.is_dir():
+        return []
+    return sorted(src_dir.rglob("*.cpp"))
+
+
 def get_or_build_pch(
     config: CppCompilerConfig,
     runtime_include_dir: Path,
@@ -453,6 +468,7 @@ class BuildLayout:
         force_includes: list[Path] | None = None,
         extra_link_flags: list[str] | None = None,
         c_sources: list[tuple[Path, list[str]]] | None = None,
+        runtime_cpp_sources: list[Path] | None = None,
     ) -> list[list[str]]:
         """Build C++ compilation commands: per-file compile steps + a link step.
 
@@ -475,6 +491,13 @@ class BuildLayout:
                        (derived from config.compiler), each paired with its
                        own list of compile flags. Used to build vendored C
                        deps like PCRE2 inline with the user binary.
+            runtime_cpp_sources: TPy-owned C++ runtime sources (typically
+                       discovered under runtime/cpp/src/ via
+                       `discover_runtime_cpp_sources`). Compiled with the
+                       same C++ toolchain + include paths as generated user
+                       code; .o files go into a `runtime/` subdir of the
+                       build dir (prefix avoids stem collisions with user
+                       modules of the same name).
         """
         if config is None:
             config = CppCompilerConfig()
@@ -536,6 +559,28 @@ class BuildLayout:
                     "-c", "-o", str(obj), str(c_file),
                 ])
 
+        # TPy-owned runtime .cpp files. Same C++ toolchain + include paths
+        # as user code. Object names derive from the path relative to
+        # runtime/cpp/src/ to avoid collisions with user modules whose
+        # .cpp happens to share a stem.
+        if runtime_cpp_sources:
+            rt_src_root = runtime_include_dir.parent / "src"
+            rt_obj_dir = self.build_dir / "runtime"
+            rt_obj_dir.mkdir(parents=True, exist_ok=True)
+            for rt_cpp in runtime_cpp_sources:
+                try:
+                    rel = rt_cpp.relative_to(rt_src_root)
+                    obj_name = "rt_" + str(rel).replace(os.sep, "_").removesuffix(".cpp") + ".o"
+                except ValueError:
+                    obj_name = "rt_" + rt_cpp.stem + ".o"
+                obj = rt_obj_dir / obj_name
+                obj_files.append(str(obj))
+                prefix = ["ccache"] if config.ccache else []
+                cmds.append([
+                    *prefix, *common,
+                    "-c", "-o", str(obj), str(rt_cpp),
+                ])
+
         cmds.append([
             *config.compiler,
             "-o", str(output),
@@ -554,6 +599,7 @@ class BuildLayout:
         extra_include_dirs: list[Path] | None = None,
         bundle_runtime: bool = True,
         third_party_libs: list[Any] | None = None,
+        runtime_cpp_sources: list[Path] | None = None,
     ) -> Path:
         """Generate a .cmake include file with source/include/link variables.
 
@@ -588,17 +634,39 @@ class BuildLayout:
         include_dirs = []
         include_dirs.append(f"{cmake_dir}/{self.include_dir.relative_to(self.root_dir)}")
 
+        runtime_cpp_dir = runtime_include_dir.parent  # .../runtime/cpp
+        runtime_src_dir = runtime_cpp_dir / "src"
+
         if bundle_runtime:
             bundled_dir = self.root_dir / "runtime" / "include"
             if bundled_dir.exists():
                 shutil.rmtree(bundled_dir)
             shutil.copytree(runtime_include_dir, bundled_dir)
             include_dirs.append(f"{cmake_dir}/runtime/include")
+            # Bundle runtime sources too so the sources.cmake is self-contained
+            # (references paths under `runtime/src/` rather than reaching back
+            # into the original toolchain checkout).
+            if runtime_cpp_sources and runtime_src_dir.is_dir():
+                bundled_src = self.root_dir / "runtime" / "src"
+                if bundled_src.exists():
+                    shutil.rmtree(bundled_src)
+                shutil.copytree(runtime_src_dir, bundled_src)
+                for rt_cpp in runtime_cpp_sources:
+                    try:
+                        rel = rt_cpp.relative_to(runtime_src_dir)
+                        sources.append(f"{cmake_dir}/runtime/src/{rel}")
+                    except ValueError:
+                        sources.append(str(rt_cpp))
         else:
             try:
                 include_dirs.append(f"{cmake_dir}/{os.path.relpath(runtime_include_dir, self.root_dir)}")
             except ValueError:
                 include_dirs.append(str(runtime_include_dir))
+            for rt_cpp in (runtime_cpp_sources or []):
+                try:
+                    sources.append(f"{cmake_dir}/{os.path.relpath(rt_cpp, self.root_dir)}")
+                except ValueError:
+                    sources.append(str(rt_cpp))
 
         for extra_d in (extra_include_dirs or []):
             try:

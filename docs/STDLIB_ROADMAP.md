@@ -108,7 +108,7 @@ Examples of the policy in action:
 - `random` -- currently thin binds to `std::rand`; long-term should be a
   pure-TPy Mersenne Twister (matches CPython), with only `os.urandom`-style
   entropy as the native primitive.
-- `re` -- thin `tplib.cppstd.re` / `tplib.pcre2.re` binding (the regex engine
+- `re` -- thin `tplib.cppstd.re` / `_bindings.pcre2.re` binding (the regex engine
   is the primitive), with a pure-TPy facade for the Python surface and a
   pure-TPy syntax translator.
 - `pathlib` -- pure TPy over thin filesystem-syscall bindings.
@@ -129,7 +129,7 @@ Examples of the policy in action:
 | [`pathlib`](#pathlib) | P0 | Missing | 0% | -- | Class-heavy; depends on filesystem bindings |
 | [`io`](#io) | P0 | Missing | 0% | -- | Protocol design needed; unlocks json/csv/pickle/configparser |
 | [`json`](#json) | P0 | Missing | 0% | -- | tplib.json exists (TPy-native). Stdlib-compat wrapper would need `io` |
-| [`re`](#re) | P0 | Partial | ~50% | pure | Pure-TPy facade over `tplib.pcre2` raw bindings. PCRE2 vendored under `runtime/cpp/third_party/pcre2/` (5MB) and built bundled by default; `--pcre2={bundled,system,auto}` selects backend. compile/search/match/fullmatch/findall/sub/split + Pattern/Match classes + IGNORECASE/MULTILINE/DOTALL/VERBOSE/ASCII flags + `re.error`. Missing: named-group accessors, `count` arg on sub, true generator finditer, bytes input, compile cache |
+| [`re`](#re) | P0 | Partial | ~50% | pure | Pure-TPy facade over `_bindings.pcre2` raw bindings. PCRE2 vendored under `runtime/cpp/third_party/pcre2/` (5MB) and built bundled by default; `--pcre2={bundled,system,auto}` selects backend. compile/search/match/fullmatch/findall/sub/split + Pattern/Match classes + IGNORECASE/MULTILINE/DOTALL/VERBOSE/ASCII flags + `re.error`. Missing: named-group accessors, `count` arg on sub, true generator finditer, bytes input, compile cache |
 | [`collections`](#collections) | P0 | Missing | 0% | -- | OrderedDict trivial (have ordered_map); deque needs C++ struct; Counter/defaultdict/namedtuple need macros |
 | [`itertools`](#itertools) | P0 | Missing | 0% | -- | C++ primitives exist in `runtime/itertools.hpp`; needs Python-surface module |
 | [`functools`](#functools) | P0 | Partial | ~10% | pure | `reduce(func, a, initial)` (3-arg only) done. 2-arg `reduce(func, a)`, `cmp_to_key`, `total_ordering`, `wraps` gated on specific compiler fixes (see section). partial/lru_cache/singledispatch/cached_property/partialmethod need closures + macros |
@@ -507,7 +507,7 @@ Options:
 ### re
 
 **Partial.** Pure-TPy facade in `lib/tpy/re.py` over raw PCRE2 bindings in
-`lib/tpy/tplib/pcre2.py`. PCRE2 is vendored at
+`lib/tpy/_bindings/pcre2.py`. PCRE2 is vendored at
 `runtime/cpp/third_party/pcre2/` (10.44, ~5MB after stripping `doc/`,
 `testdata/`, and autotools build files; reproducible via
 `scripts/vendor_pcre2.py`) and built into the user binary via the existing
@@ -533,7 +533,7 @@ Architecture (no C++ wrapper layer, no pcre2.h in TPy-generated TUs):
     PCRE2 .c files include the real pcre2.h during their separate
     compilation; the linker resolves our extern "C" declarations to those
     symbols.
-  * `lib/tpy/tplib/pcre2.py` -- pure `@native` 1:1 bindings to `pcre2_*_8`
+  * `lib/tpy/_bindings/pcre2.py` -- pure `@native` 1:1 bindings to `pcre2_*_8`
     C primitives. Mirrors upstream constant names exactly
     (`PCRE2_CASELESS`, `PCRE2_SUBSTITUTE_GLOBAL`, etc.). No Python semantics.
   * `lib/tpy/re.py` -- facade. Pattern + Match classes manage
@@ -993,11 +993,77 @@ for value types; dataclass deep-copy would need macro-driven recursion similar t
 
 ### socket
 
-**Blocked** on socket primitives.
+**Partial.** Pure-TPy facade in `lib/tpy/socket.py` over raw `@native`
+bindings in `lib/tpy/_bindings/posix_socket.py`. One out-of-line C++ helper
+in `runtime/cpp/src/stdlib/socket_impl.cpp` for DNS resolution
+(getaddrinfo walks a `struct addrinfo` whose field order isn't portable
+between Linux and BSD/macOS, so the struct walking lives on the C++ side
+where `<netdb.h>` is available).
+
+Phase 1 ships a working IPv4 TCP client/server shape sufficient for the
+"simple socket client / simple socket server" milestone in the project
+roadmap. Phase 2 is non-blocking I/O + `selectors`. Phase 3 is TLS/ssl.
+Phase 4 is `http.client` (pure TPy). Phase 5 is websocket client.
+
+Architecture (mirrors the re / PCRE2 split):
+
+  * `runtime/cpp/include/tpy/stdlib/socket_h.hpp` -- ABI-glue header.
+    Forward-declares `struct sockaddr_in` (POSIX-stable 16-byte layout)
+    with `static_assert` guards on size + field offsets, plus
+    `extern "C"` decls of libc socket/bind/connect/... and our three
+    runtime helpers. Deliberately does NOT include `<sys/socket.h>` /
+    `<netdb.h>` -- those headers `#define` macros (`AF_INET`, `SOCK_STREAM`,
+    ...) that would collide with TPy module-level constants of the same
+    name.
+  * `runtime/cpp/src/stdlib/socket_impl.cpp` -- implements
+    `tpy_resolve_ipv4(const uint8_t*, uint64_t, uint8_t[4])`,
+    `tpy_errno()`, `tpy_last_resolve_error()`. Includes the system
+    headers freely; isolated to its own TU so macros don't escape.
+    First inhabitant of `runtime/cpp/src/` (new runtime-lib convention
+    -- see "C++ helper convention" above).
+  * `lib/tpy/_bindings/posix_socket.py` -- pure `@native` 1:1 bindings over
+    the libc C ABI + the three runtime helpers. `@native(binding="C")
+    class SockaddrIn` mirrors the struct for typed field access.
+  * `lib/tpy/socket.py` -- facade. `Socket` class (`@nocopy`, RAII via
+    `__del__` closing the fd), SocketError, constants, create_connection
+    / create_server, gethostbyname, with-statement support.
+
+| Item | Status | Notes |
+|---|---|---|
+| `Socket(family, type, proto)` | Done | `@nocopy`, RAII close in `__del__`. No module-level `socket()` factory -- blocked on @native-name-collision codegen bug (TODO.md); use `Socket(AF_INET, SOCK_STREAM)` or `create_connection`/`create_server` |
+| `bind`, `connect`, `listen`, `accept` | Done | `accept() -> Own[Socket]` instead of CPython's `(sock, (host, port))` -- blocked on tuple-of-@nocopy codegen bug (TODO.md). Callers get the peer via `.getpeername()` on the returned Socket |
+| `send`, `sendall`, `recv` | Done | `send` returns `Int32` (truncated from `ssize_t`); realistic per-call sends are well under 2 GiB. `recv` returns a fresh `bytes` |
+| `close`, `shutdown`, `fileno` | Done | |
+| `setsockopt_int` | Done | Int-valued options only; struct options (`SO_RCVTIMEO`, `SO_LINGER`) deferred |
+| `getsockname`, `getpeername` | Done | Return `tuple[str, Int32]` |
+| `gethostbyname` | Done | Resolves via `getaddrinfo` behind `tpy_resolve_ipv4`; returns the first A record only |
+| `create_connection`, `create_server` | Done | TCP client/server convenience factories; `create_server` bundles SO_REUSEADDR + bind + listen |
+| `with socket(...) as s:` | Done | `__enter__` returns self, `__exit__` closes |
+| `SocketError` | Done | Wraps errno + strerror. `except socket.SocketError` blocked by qualified-except-clause gap; use `from socket import SocketError` |
+| Constants (`AF_INET`, `SOCK_STREAM`, `SOL_SOCKET`, ...) | Done | Linux glibc values hardcoded. macOS/BSD values differ -- deferred |
+| `socketpair()` | Missing | Same tuple-of-@nocopy blocker as accept() |
+| IPv6 / `AF_INET6` | Missing | Needs `SockaddrIn6` binding |
+| `AF_UNIX` | Missing | Needs `SockaddrUn` binding |
+| `sendto`, `recvfrom`, `recv_into` | Missing | UDP out-addr + recv-into-caller-buffer variants |
+| `setblocking`, `settimeout` | Missing | Non-blocking I/O belongs with Phase 2 `selectors` |
+| `getaddrinfo` (full API) | Missing | Flat `tpy_resolve_ipv4` only today; multi-result walk needs typed records |
+| `makefile()` | Missing | Needs io module to grow "adopt this fd" |
+| Windows (Winsock2) | Missing | `SOCKET` unsigned, `WSAStartup`, `closesocket`, `WSAGetLastError` -- all in `#ifdef _WIN32` block inside socket_impl.cpp once we have Windows CI |
+| TLS (`ssl` module) | Missing | Phase 3; needs mbedTLS vendored |
+
+Tests:
+  * No integration test cases under `tests/cases/` -- running real client/
+    server end-to-end needs threading or fork (not in Phase 1), and
+    fingerprint-based skip logic doesn't play well with network ports.
+  * Examples under `examples/net/` (`tcp_client.py` + `tcp_server.py`)
+    serve as manual smoke tests: run the server in one terminal, the
+    client in another, verify the echo round-trip.
 
 ### http.client
 
-**Blocked** on socket + regex.
+**Blocked** on TLS (phase 3) for HTTPS; HTTP-over-socket would build on
+Phase 1's `socket` today but makes limited sense without TLS. Slated
+for Phase 4 per the network roadmap discussion.
 
 ### urllib.request
 

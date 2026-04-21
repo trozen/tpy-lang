@@ -465,6 +465,9 @@ def main() -> int:
             print(f"error: {exc}", file=sys.stderr)
             return 1
 
+        from .compiler import discover_runtime_cpp_sources
+        runtime_cpp_sources = discover_runtime_cpp_sources(runtime_dir / "cpp")
+
         cmake_layout = BuildLayout(output_dir, module_name, flat=explicit_output)
         cmake_layout.generate_cmake(
             runtime_include_dir=runtime_dir / "cpp" / "include",
@@ -472,6 +475,7 @@ def main() -> int:
             link_flags=link_flags,
             bundle_runtime=args.bundle_runtime and not building and explicit_output,
             third_party_libs=third_party_plan.libs,
+            runtime_cpp_sources=runtime_cpp_sources or None,
         )
 
         # Build if requested
@@ -513,6 +517,7 @@ def main() -> int:
                 extra_include_dirs=third_party_plan.extra_include_dirs or None,
                 extra_link_flags=third_party_plan.extra_link_flags or None,
                 c_sources=third_party_plan.c_sources or None,
+                runtime_cpp_sources=runtime_cpp_sources or None,
             )
 
             compile_steps = compile_cmds[:-1]

@@ -2,7 +2,7 @@
 """Regular expressions, CPython-compatible surface, backed by PCRE2.
 
 Architecture:
-  * `tplib.pcre2` -- raw @native bindings to the PCRE2 C API.
+  * `_bindings.pcre2` -- raw @native bindings to the PCRE2 C API.
   * this module  -- pure-TPy facade. Pattern / Match classes manage PCRE2
     handle lifetimes via __del__. All Python semantics (flag mapping, group
     accessors, sub/split logic, error model) live here, not in C++.
@@ -51,7 +51,7 @@ from tpy import (
 )
 from tpy.extern import cpp_template
 from tpy.mem import UninitArrayStorage, UninitHeapStorage
-from tpy.unsafe import unsafe_ptr, unsafe_cast, unsafe_load
+from tpy.unsafe import unsafe_ptr, unsafe_cast, unsafe_load, unsafe_str_from_buf
 from tpy import take_ptr
 
 # TODO(compiler): the `UInt64(0)` / `UInt32(0)` constructor calls scattered
@@ -75,14 +75,14 @@ from tpy import take_ptr
 # all four sites to just `None`.
 # TODO(compiler): aliased import block here is a workaround for two related
 # gaps in TODO.md "Bugs":
-#   * `from tplib import pcre2` doesn't bind the submodule -- forces
-#     `from tplib.pcre2 import X` for every used symbol;
+#   * `from _bindings import pcre2` doesn't bind the submodule -- forces
+#     `from _bindings.pcre2 import X` for every used symbol;
 #   * `pcre2.MatchData` qualified type names rejected in annotations --
 #     forces aliasing the types (`_PcreMatchData` etc.) so they're plain
 #     names by the time annotations reference them.
-# When either lands, this can collapse to `from tplib import pcre2` +
+# When either lands, this can collapse to `from _bindings import pcre2` +
 # `pcre2.MatchData` / `pcre2.compile(...)` throughout the file.
-from tplib.pcre2 import (
+from _bindings.pcre2 import (
     Code as _PcreCode,
     MatchData as _PcreMatchData,
     MatchContext as _PcreMatchContext,
@@ -212,11 +212,7 @@ def _pcre2_error_msg(errcode: Int32) -> str:
     n = _pcre_get_error_message(errcode, buf.ptr(), 256)
     if n < 0:
         return "unknown error"
-    return _bytes_to_str(buf.ptr(), UInt64(n))
-
-
-@cpp_template("std::string(reinterpret_cast<const char*>({0}), static_cast<size_t>({1}))")
-def _bytes_to_str(p: Ptr[UInt8], size: UInt64) -> str: ...
+    return unsafe_str_from_buf(unsafe_cast(buf.ptr()), UInt64(n))
 
 
 # ---------- Match ----------
@@ -455,7 +451,7 @@ class Pattern:
             )
         if rc < 0:
             raise error(_pcre2_error_msg(rc))
-        return _bytes_to_str(outbuf.ptr(), outlen)
+        return unsafe_str_from_buf(unsafe_cast(outbuf.ptr()), outlen)
 
     def split(self, subject: str, maxsplit: Int32 = 0) -> Own[list[str]]:
         """Split `subject` at each match. `maxsplit=0` means no limit."""

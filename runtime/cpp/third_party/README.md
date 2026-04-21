@@ -39,7 +39,7 @@ on an already-vendored tree is a no-op.
 
 | Directory | Sidecar | Lib | Used by | Vendor script |
 |---|---|---|---|---|
-| `pcre2/` | `pcre2.vendor.json` | PCRE2 10.44 | `re` (via `tplib.pcre2`) | `scripts/vendor_pcre2.py` |
+| `pcre2/` | `pcre2.vendor.json` | PCRE2 10.44 | `re` (via `_bindings.pcre2`) | `scripts/vendor_pcre2.py` |
 
 ## Why committed instead of fetched
 

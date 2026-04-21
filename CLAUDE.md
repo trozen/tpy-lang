@@ -97,7 +97,7 @@ This makes typical iterative work nearly free for cases the change didn't touch 
 
 Parallel execution (`-n auto`) is configured in `pyproject.toml` via `addopts`. Worker count auto-caps to the cgroup v2 CPU quota (so `-n auto` in a Docker container with `--cpus=N` gets N workers, not the host's `os.cpu_count()`).
 
-The exec phase reuses pre-compiled stdlib object files via a content-addressed persistent cache at `/tmp/tpyc-cache/stdlib-objs/<key>/` (override root with `TPYC_SHARED_CACHE_DIR`). The cache key invalidates when `runtime/cpp/include/`, `lib/tpy/`, or C++ build config changes; old keys remain on disk and are not auto-GC'd, so periodically prune `/tmp/tpyc-cache/stdlib-objs/` if it grows.
+The exec phase reuses pre-compiled stdlib object files via a content-addressed persistent cache at `$XDG_CACHE_HOME/tpyc/stdlib-objs/<key>/` (defaults to `~/.cache/tpyc/stdlib-objs/` on Linux/macOS, `%LOCALAPPDATA%\tpyc\cache\stdlib-objs\` on Windows; override root with `TPYC_SHARED_CACHE_DIR`). The cache key invalidates when `runtime/cpp/include/`, `lib/tpy/`, or C++ build config changes; old keys remain on disk and are not auto-GC'd, so periodically prune the cache dir if it grows.
 
 ### Test commands
 
@@ -444,8 +444,8 @@ Library search roots and CPython stubs:
 | `tpy/tpy/unsafe.py` | Unsafe operations: `unsafe_ptr()`, `unsafe_cast()` |
 | `tpy/tpy/version.py` | Version/implementation identification: `__version__`, `version_info`, `is_compiled`. Values come from `_version.py` (a `# tpy: macro_module` that reads `tpyc.__version__` at compile time). Not re-exported through `tpy/__init__.py` because native_module facades don't propagate variables (see TODO). |
 | `tpy/_macro_helpers.py` | Shared macro helpers: `build_init`, `build_eq`, `build_repr`, `build_hash`, `build_order` (compile-time only) |
-| `tpy/math.py`, `time.py`, `sys.py`, `bisect.py`, `dataclasses.py`, `enum.py`, `random.py`, `struct.py`, `re.py` | Python stdlib analogs |
-| `tpy/tplib/pcre2.py` | Raw `@native` bindings to PCRE2 (used by `re`); not for direct user import |
+| `tpy/math.py`, `time.py`, `sys.py`, `bisect.py`, `dataclasses.py`, `enum.py`, `random.py`, `struct.py`, `re.py`, `socket.py` | Python stdlib analogs |
+| `tpy/_bindings/` | Raw `@native` binding layers used by stdlib modules (not for direct user import): `pcre2.py` (for `re`), `posix_socket.py` (for `socket`). Convention: put any future raw-libc binding here, keep `tplib/` reserved for TPy-native user types |
 | `cpy/tpy/` | CPython stubs ONLY (not seen by tpyc): `Int32`, `Ptr`, `Array`, decorators; submodules: `mem`, `unsafe` |
 | `cpy/tpyc/` | CPython stub for tpyc: `__init__.py` exposes `__version__` + `VERSION_INFO` read from the installed distribution via `importlib.metadata`; `macro_api.py` raises ImportError (macro modules run at compile time only, not available under CPython) |
 | `cpy/tplib` | Symlink to `tpy/tplib/` so CPython tests can find tplib |
