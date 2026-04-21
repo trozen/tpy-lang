@@ -15,7 +15,7 @@ std::string get_pet_name(const Zoo& z) {
         return __p.name;
     }
     // if isinstance(p, Cat):
-    if (std::holds_alternative<const Cat*>(p)) {
+    if (true) {
         auto& __p = *std::get<const Cat*>(p);
         // return p.name
         return __p.name;
@@ -36,7 +36,7 @@ std::string get_pet_name_ro(const Zoo& z) {
         return __p.name;
     }
     // if isinstance(p, Cat):
-    if (std::holds_alternative<const Cat*>(p)) {
+    if (true) {
         auto& __p = *std::get<const Cat*>(p);
         // return p.name
         return __p.name;
@@ -55,7 +55,7 @@ std::string greet_pet(std::variant<const Cat*, const Dog*> pet) {
         return __pet.name;
     } else {
         // elif isinstance(pet, Cat):
-        if (std::holds_alternative<const Cat*>(pet)) {
+        if (true) {
             auto& __pet = *std::get<const Cat*>(pet);
             // return pet.name
             return __pet.name;

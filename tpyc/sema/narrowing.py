@@ -251,11 +251,12 @@ class NarrowingTracker:
             check_type = expr.isinstance_type
             effective = self.effective_union_type(name)
             if isinstance(effective, UnionType):
-                remaining = [m for m in effective.members if m != check_type]
-                if remaining:
-                    false_type = make_union(*remaining)
-                else:
-                    false_type = check_type
+                # Tuple form isinstance(x, (A, B)) packs check types as a union.
+                check_members = (tuple(check_type.members)
+                                 if isinstance(check_type, UnionType)
+                                 else (check_type,))
+                remaining = [m for m in effective.members if m not in check_members]
+                false_type = (make_union(*remaining) if remaining else check_type)
                 return {name: check_type}, {name: false_type}
             # Optional[Protocol] isinstance narrows to the inner protocol type
             if self._is_optional_type(effective):

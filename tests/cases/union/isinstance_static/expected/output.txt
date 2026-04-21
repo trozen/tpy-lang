@@ -1,0 +1,10 @@
+True
+False
+True
+False
+7
+8
+True
+True
+False
+int32

@@ -2775,6 +2775,8 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Mixed `readonly`/non-`readonly` in unions is a parse error
   - Generic functions returning `T | U` where `T == U` at instantiation produce a sema error (duplicate variant members)
   - `isinstance(x, T)` narrowing in if/elif/else branches: narrows union variable to member type
+  - `isinstance(x, (A, B))` tuple form narrows `x` to `A | B`, composes with `and`/`or`/`not` and match-case guards
+  - `isinstance(x, T)` where `x` is already narrowed to a concrete non-union type folds to a compile-time bool (no runtime `holds_alternative`), covering nested redundant checks, exhaustive elif tails, and post-assignment-narrowing checks
   - `assert isinstance(x, T)` narrowing: `std::get<T>` extraction persists for the rest of the scope
   - Early-return narrowing for recursive unions: `if isinstance(t, T): return ...` with no else block extracts the remaining member at the outer scope, so code after the guard uses the narrowed type
   - Compound conditions: `isinstance(x, T) and x.field > 0` narrows `x` on the RHS of `and`
@@ -2816,7 +2818,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
     ```
     The compiler detects cross-type cycles, validates indirection, and generates a C++ wrapper struct that can be forward-declared. `Box(Lit(1))` auto-coerces to `Box[Expr]` via the wrapper's implicit constructor. Works with `isinstance`, `match`/`case`, and mixed unions (primitives + records). Both source orderings supported (alias first or classes first). Cross-module mutual recursion is not yet supported.
   - **Limitations**: Generic recursive aliases (`type Tree[T] = T | list[Tree[T]]`) are not yet supported. Mutual type-alias recursion (`type A = list[B]; type B = list[A]`) is silently accepted by the compiler but generates C++ that fails to compile -- each `using` declaration references the other before it is defined. Use a recursive-union wrapper (as in the `Expr` / `Lit` / `BinOp` example above) for mutually-recursive types instead.
-  - **Not yet supported**: `isinstance(x, (A, B))` tuple form, `isinstance(x, Protocol)` on concrete-typed variables
+  - **Not yet supported**: `isinstance(x, Protocol)` on concrete-typed variables
   - **Working**: `match`/`case` pattern matching on union subjects (see Control Flow > Other)
   - **Working**: `@overload` dispatch flattening -- Python-standard `@overload` stubs generate separate C++ overloads. Two modes are supported: **(a) stubs + impl** (multiple bodyless stubs followed by a single implementation whose body is specialized per-stub via dead-branch elim) and **(b) bodied stubs** (each `@overload` variant carries its own body and acts as its own implementation). Each overload compiles to a clean, specialized function with no runtime dispatch overhead.
     - Works for free functions and methods, including cross-module imports

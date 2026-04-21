@@ -13,7 +13,7 @@ void greet(const std::variant<Cat*, Dog*> pet) {
         std::cout << __pet.name << "\n";
     } else {
         // elif isinstance(pet, Cat):
-        if (std::holds_alternative<Cat*>(pet)) {
+        if (true) {
             auto& __pet = *std::get<Cat*>(pet);
             // print(pet.name)
             std::cout << __pet.name << "\n";

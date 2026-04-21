@@ -1,0 +1,1 @@
+main.py:24: error: Types 'C', 'D' are not members of union 'A | B'

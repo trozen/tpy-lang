@@ -14,7 +14,7 @@ std::string describe_expr(const Expr& e) {
         return (__e.value).to_string();
     } else {
         // elif isinstance(e, BinOp):
-        if (std::holds_alternative<BinOp>(e.value)) {
+        if (true) {
             const auto& __e = std::get<BinOp>(e.value);
             // return "(" + describe_expr(e.left.get()) + "+" + describe_expr(e.right.get()) + ")"
             return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", describe_expr(__e.left.get()))), "+")), describe_expr(__e.right.get()))), ")"));

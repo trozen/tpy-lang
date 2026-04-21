@@ -14,7 +14,7 @@ void rename(std::variant<Cat*, Dog*> pet, std::string_view new_name) {
         __pet.name = new_name;
     } else {
         // elif isinstance(pet, Dog):
-        if (std::holds_alternative<Dog*>(pet)) {
+        if (true) {
             auto& __pet = *std::get<Dog*>(pet);
             // pet.name = new_name
             __pet.name = new_name;
@@ -32,7 +32,7 @@ std::string read_name(const std::variant<Cat*, Dog*> pet) {
         return __pet.name;
     } else {
         // elif isinstance(pet, Dog):
-        if (std::holds_alternative<Dog*>(pet)) {
+        if (true) {
             auto& __pet = *std::get<Dog*>(pet);
             // return pet.name
             return __pet.name;

@@ -28,7 +28,7 @@ void main() {
     // # Narrowed variable in list literal: 'a' is Cat& after isinstance,
     // # must not be wrapped with to_value_variant.
     // if isinstance(a, Cat):
-    if (std::holds_alternative<Cat*>(a)) {
+    if (true) {
         auto& __a = *std::get<Cat*>(a);
         // more: list[Cat | Dog] = [a, b]
         std::vector<std::variant<Cat, Dog>> more = {__a, ::tpy::to_value_variant<std::variant<Cat, Dog>>(b)};
