@@ -435,7 +435,13 @@ class MatchAnalyzer:
         """
         resolved = _resolve_concrete_type_name(name)
         if resolved is None and is_record:
-            resolved = NominalType(name)
+            # Mint qname so exact-match against union members (line 441
+            # below) works under strict NominalType equality.  Without
+            # the qname, the match fails for cross-module records and
+            # we fall through to the short-name fuzzy path.
+            info = self.ctx.registry.get_record(name)
+            qname = info.qualified_name() if info else None
+            resolved = NominalType(name, _module_qname=qname)
         # Check exact match against union members
         if resolved is not None:
             if any(m == resolved for m in subject_type.members):
@@ -1045,8 +1051,10 @@ class MatchAnalyzer:
         cls_name = sub_pattern.cls.name
 
         pattern_type = _resolve_concrete_type_name(cls_name)
-        if pattern_type is None and self.ctx.registry.get_record(cls_name) is not None:
-            pattern_type = NominalType(cls_name)
+        if pattern_type is None:
+            info = self.ctx.registry.get_record(cls_name)
+            if info is not None:
+                pattern_type = NominalType(cls_name, _module_qname=info.qualified_name())
         if pattern_type is None:
             raise self.ctx.error(
                 f"unknown type '{cls_name}' in field type pattern", sub_pattern

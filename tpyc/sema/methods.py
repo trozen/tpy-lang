@@ -1217,7 +1217,10 @@ class MethodAnalyzer:
                 pattern_args.append(info.inferred[tp])
             else:
                 pattern_args.append(TypeParamRef(tp))
-        pattern = NominalType(info.record_name, tuple(pattern_args))
+        pattern = NominalType(
+            info.record_name, tuple(pattern_args),
+            _module_qname=info.record_info.qualified_name(),
+        )
 
         # Match to extract constraints
         if not self.type_ops.match_type_with_inference(pattern, target, info.inferred):
@@ -1248,7 +1251,10 @@ class MethodAnalyzer:
     def _eagerly_resolve_pending_generic(self, info: 'PendingGenericInstanceInfo') -> NominalType:
         """Resolve a pending generic instance to a concrete NominalType."""
         type_args = tuple(info.inferred[tp] for tp in info.type_params)
-        resolved_type = NominalType(info.record_name, type_args)
+        resolved_type = NominalType(
+            info.record_name, type_args,
+            _module_qname=info.record_info.qualified_name(),
+        )
 
         # Validate type param bounds
         for param_name, type_arg in zip(info.type_params, type_args):

@@ -44,6 +44,25 @@ if TYPE_CHECKING:
 _REF_TYPES = (TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef)
 
 
+def _promote_bare_nominals(typ: TpyType, registry) -> TpyType:
+    """Return `typ` with every bare `NominalType` whose short name
+    resolves in `registry` replaced by its qname-bearing counterpart.
+    Recurses into structural wrappers.  Closes the bridge from macro-
+    emitted `types.named("Foo")` placeholders to the strict-equality
+    NominalType identity sema/codegen downstream relies on.
+    """
+    if isinstance(typ, NominalType) and typ._module_qname is None:
+        info = registry.get_record(typ.name)
+        if info is not None:
+            qname = info.qualified_name()
+            if qname:
+                typ = NominalType(
+                    typ.name, typ.type_args, typ.is_protocol,
+                    qname, typ.is_dynamic_protocol,
+                )
+    return typ.map_inner_types(lambda t: _promote_bare_nominals(t, registry))
+
+
 def _infer_field_type_from_default(
     expr: 'TpyExpr | None', resolver: 'TypeResolver',
 ) -> TpyType | None:
@@ -131,7 +150,7 @@ def _protocol_scope(protocol):
     return {name: TypeParamKind.TYPE for name in protocol.type_params}
 
 
-def resolve_method_body_refs(method, record, resolver) -> None:
+def resolve_method_body_refs(method, record, resolver, *, promote_registry=None) -> None:
     """Resolve all TypeRefNodes in a record method's body (TpyVarDecl
     annotations, `TpyCall.call_type`, `TpyCall.type_args`,
     `TpyMethodCall.type_args`).
@@ -141,28 +160,64 @@ def resolve_method_body_refs(method, record, resolver) -> None:
     received during the module-level `resolve_refs` walk.  Idempotent:
     already-resolved sites fall through the walker's isinstance checks
     unchanged.
+
+    `promote_registry` (optional) is consulted to promote bare
+    `NominalType` placeholders left behind by `types.named(...)` macro
+    calls.  Callers from sema pass `ctx.registry` so imported records
+    are visible.
     """
     scope = _merged_method_scope(_record_scope(record), method)
-    _walk_body(method.body, scope, resolver)
+    _walk_body(method.body, scope, resolver, promote_registry=promote_registry)
 
 
-def _walk_body(stmts, call_scope, resolver):
+def _walk_body(stmts, call_scope, resolver, *, promote_registry=None):
     """Body walker extracted so both `resolve_refs` and
-    `resolve_method_body_refs` share the same traversal."""
+    `resolve_method_body_refs` share the same traversal.
+
+    `promote_registry`, when provided, is used to upgrade bare
+    `NominalType("Foo")` placeholders (left behind by macro-emitted
+    `types.named("Foo")`) to their qname-bearing counterparts so
+    strict `NominalType` equality holds downstream.
+    """
     for stmt in stmts:
         if isinstance(stmt, TpyVarDecl) and stmt.type is not None:
             if isinstance(stmt.type, _REF_TYPES):
                 stmt.type = resolver.resolve(stmt.type, call_scope)
+            elif promote_registry is not None:
+                # Only promote bare NominalTypes when sema explicitly
+                # asks (post-macro-deps pass).  Parse-time walks use
+                # `promote_registry=None` so we don't traverse every
+                # already-resolved type on every module-level walk.
+                stmt.type = _promote_bare_nominals(stmt.type, promote_registry)
         for expr in stmt.exprs():
             _walk_expr_calls(expr, call_scope, resolver)
         for body in stmt.sub_bodies():
-            _walk_body(body, call_scope, resolver)
+            _walk_body(body, call_scope, resolver, promote_registry=promote_registry)
         # TpyNestedDef inherits `sub_bodies() -> []` from TpyStmt, so the
         # loop above is a no-op for nested defs -- the body must be
         # walked here explicitly, under the nested function's own scope.
         if isinstance(stmt, TpyNestedDef):
+            # Nested def signatures are resolved at parse time (before
+            # the compiler canonicalizes cross-module imports), so any
+            # imported-record param types land as bare NominalTypes.
+            # Promote them now that `promote_registry` has the full
+            # cross-module picture.
+            if promote_registry is not None:
+                stmt.func.params = [
+                    (n, _promote_bare_nominals(t, promote_registry))
+                    for n, t in stmt.func.params
+                ]
+                if stmt.func.return_type is not None:
+                    stmt.func.return_type = _promote_bare_nominals(
+                        stmt.func.return_type, promote_registry)
+                if stmt.func.vararg_type is not None:
+                    stmt.func.vararg_type = _promote_bare_nominals(
+                        stmt.func.vararg_type, promote_registry)
+                if stmt.func.kwarg_type is not None:
+                    stmt.func.kwarg_type = _promote_bare_nominals(
+                        stmt.func.kwarg_type, promote_registry)
             nested_scope = _func_scope(stmt.func) or call_scope
-            _walk_body(stmt.func.body, nested_scope, resolver)
+            _walk_body(stmt.func.body, nested_scope, resolver, promote_registry=promote_registry)
 
 
 def _walk_expr_calls(expr, call_scope, resolver):

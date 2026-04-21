@@ -932,7 +932,7 @@ class CallAnalyzer:
             # Analyze arguments
             for arg in expr.args:
                 self.expr.analyze_expr(arg)
-            return NominalType(expr.func_name)
+            return NominalType(expr.func_name, _module_qname=record.qualified_name())
 
         # Fallback: Check if it's a function call
         func_infos = self.ctx.registry.get_function(expr.func_name)
@@ -1331,7 +1331,7 @@ class CallAnalyzer:
         # User-defined records
         record = self.ctx.registry.get_record(name)
         if record:
-            return NominalType(name)
+            return NominalType(name, _module_qname=record.qualified_name())
         # Builtin type names
         from tpyc.modules import _resolve_concrete_type_name
         resolved = _resolve_concrete_type_name(name)
@@ -1441,7 +1441,14 @@ class CallAnalyzer:
                     expr
                 )
             type_args = var_type.type_args if isinstance(var_type, NominalType) and var_type.name == protocol_name else None
-            protocol_type = NominalType(protocol_name, is_protocol=True, type_args=type_args)
+            qname = var_type._module_qname if (
+                isinstance(var_type, NominalType) and var_type.name == protocol_name
+            ) else (f"{protocol_info.module}.{protocol_name}"
+                    if protocol_info and protocol_info.module else None)
+            protocol_type = NominalType(
+                protocol_name, is_protocol=True, type_args=type_args,
+                _module_qname=qname,
+            )
         elif is_protocol_union(var_type):
             # Find the matching member in the union, preserving type_args
             members = protocol_union_protocols(var_type)
@@ -1457,8 +1464,11 @@ class CallAnalyzer:
                     f"({member_names})",
                     expr
                 )
+            # Preserve the matched member's qname so isinstance-based
+            # union-member narrowing equality-compares correctly.
             protocol_type = NominalType(
-                protocol_name, is_protocol=True, type_args=matched.type_args
+                protocol_name, is_protocol=True, type_args=matched.type_args,
+                _module_qname=matched._module_qname,
             )
         else:
             raise self.ctx.error(

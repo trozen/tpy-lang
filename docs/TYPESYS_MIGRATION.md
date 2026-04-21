@@ -33,10 +33,27 @@ Conformance tests in `tpyc/test_type_def_registry.py` pin the
 invariants: `PRIMITIVE_SNAPSHOT` (primitives), `ENUM_SNAPSHOT` (enums),
 `FACTORY_SNAPSHOT` (generic-instantiation payload).
 
-Remaining problems:
-- None in the F.3 parser-refactor thread; resolve_type is now a
-  scope-local TypeParamRef converter + alias expander + type-arg
-  recursion (see Phase F.5 below).
+Remaining problems / known debts:
+- `resolve_type` in `sema/type_ops.py` is now a scope-local
+  TypeParamRef converter + alias expander + type-arg recursion
+  (see Phase F.5).
+- Parser still imports ~8 bookkeeping symbols from typesys
+  (`FieldInfo`, `RecordInfo`, `TypeRegistry`, `FunctionInfo`,
+  `MethodSignature`, `ProtocolInfo`, `TypeParamKind`, `LiteralValue`)
+  plus ~5 predicate/factory helpers from `type_def_registry`
+  (`is_bool_type`, `is_str_type`, `type_def_of`,
+  `find_factory_by_simple_name`, `find_factory_in_module`).  Zero
+  TpyType subclasses or singleton values are imported.
+- Parser performs a small number of parse-time resolution sites for
+  semantic reasons (nested defs, `@builtin_decorator` stubs, macro
+  fragments, type-param bounds, subscript-as-value existence
+  checks).  See the discussion before Phase G for why these cannot
+  trivially move.
+- `TypeResolver` holds a back-reference to its owning `Parser` and
+  reads 9 private attributes + 2 helper methods off it (documented
+  in the class docstring at `tpyc/parse/type_resolver.py`).  The
+  coupling is intra-package (parser + resolver evolve together);
+  sema does not reach through it.
 
 ## Target state
 
@@ -293,14 +310,18 @@ Full suite green at 2608 passed + 1 skipped with `--force-exec`; no snapshot dif
 
 ### Phase F.3 -- Parser emits unresolved type-reference nodes (F.3a-F.3g DONE)
 
-**Goal.** Make parsing purely syntactic: parser never constructs a `TpyType`.
-All name resolution (primitives, builtin generics, user records/protocols/
-enums, type parameters, import aliases) moves to sema. Parser imports from
-`typesys` / `modules` drop to zero (or near-zero -- only `TypeRegistry` for
-registration). Structural wrappers (`Ptr`, `Own`, `Optional`, `Union`,
-`Tuple`, `Callable`, `Readonly`) are still represented structurally but via
-`TpyTypeRef` wrapping in the AST, not by direct `PtrType(...)` construction
-at parse time.
+**Goal.** Make parsing mostly syntactic: parser emits `TpyTypeRef`
+for annotation sites; a dedicated resolve phase (lifted out of sema
+in Phase G) binds them to `TpyType`.  Parser imports from `typesys`
+drop to bookkeeping symbols only (`FieldInfo`, `RecordInfo`,
+`TypeRegistry`, `FunctionInfo`, `MethodSignature`, `ProtocolInfo`,
+`TypeParamKind`, `LiteralValue`).  A small number of parse-time
+resolutions remain for semantic reasons (nested defs,
+`@builtin_decorator` stub schema derivation, macro fragments,
+type-param bounds).  Structural wrappers (`Ptr`, `Own`, `Optional`,
+`Union`, `Tuple`, `Callable`, `Readonly`) are represented
+structurally but as `TpyTypeRef` wrappers pre-resolve rather than
+direct `PtrType(...)` construction at parse time.
 
 **Why now.** Post-F.2b, sema already re-resolves everything the parser
 emits: `TypeOperations.resolve_type` substitutes enum placeholders, user-
@@ -1726,9 +1747,58 @@ how the compiler's import table surfaces authoritative
 cross-module data (import-table aggregation). Different axis,
 different layer; landed independently on top of F.3g + F.4.
 
-### Phase G -- Sema module cleanup (optional, independent)
+### Phase G -- Extract resolution from sema (DONE as Phase G in code; renamed for clarity)
 
-Break circular imports by extracting shared types into leaf modules. Benefits from A-F (fewer cross-references) but doesn't depend on them. Candidates: call-analysis utilities out of `calls.py`, splitting `SemanticContext`.
+Shipped as a separate sub-series (G.1-G.7) after F.5.  Lifts
+TypeRefNode -> TpyType binding out of sema into a compiler-driven
+phase that sits between canonicalization and analysis:
+
+```
+parse        -> AST with TypeRefNodes               [parse/]
+canonicalize -> import table -> defining modules    [compiler.py]
+resolve      -> TypeRefNodes -> TpyType             [parse/resolve_refs.py]
+analyze      -> type check, narrow, substitute      [sema/]
+```
+
+- **G.1-G.2**: extracted `_resolve_pending_type_refs` + helpers into
+  `parse/resolve_refs.py`; deleted `TypeOperations.resolve_type_ref`,
+  `_current_type_param_scope`, and the defensive
+  `isinstance(stmt.type, ref_types)` fallbacks; added
+  `resolve_method_body_refs` for macro-added methods.
+- **G.3**: relocated `type_resolver.py` into `parse/`; dropped the
+  `ParserResolverView` Protocol (intra-package coupling).
+- **G.4**: tightened `TypeOperations.resolve_type` down to scope-
+  local normalization (TypeParamRef conversion, alias expansion,
+  structural recursion).  Docstring describes the actual function,
+  not ref resolution.
+- **G.5**: kept `ctx.parser_resolver` for two legitimate sema uses
+  (field-default inference, macro post-resolve); type-annotated as
+  `TYPE_CHECKING`-guarded `TypeResolver | None`.
+- **G.6**: compiler calls `_resolve_module_refs` directly; deleted
+  the analyzer shim and its private `_infer_field_type_from_default`.
+- **G.7**: extracted class-macro application into `sema/macros.py`
+  (`run_macro_phase_for_record`); `register_record` slimmed.
+
+**Strict qname-aware nominal identity (follow-up to Phase G).**
+`NominalType.__eq__` / `__hash__` include `_module_qname` strictly
+(transitive equivalence; set/dict behavior is insertion-order
+independent).  A small helper `same_nominal_symbol_loose(a, b)` lives
+in `typesys.py` for the narrow set of sites that compare across the
+parse/resolve boundary (bare placeholder vs qname-bearing).  It is
+strict when both sides have a qname and permissive when either is
+bare; currently used by `TypeRegistry.is_subclass_of` for the
+parent-chain walk.  `TypeRegistry.register_module` indexes a
+module's records into `_user_qname_index` so cross-module records
+stay findable by qname even when the local short name is shadowed.
+Regression pins live in `tpyc/test_nominal_identity.py` and
+`tests/cases/imports/cross_module_same_name_union/`.
+
+The doc's **original Phase G** ("Sema module cleanup: break
+circular imports, split `SemanticContext`") is a separate optional
+housekeeping item independent of the resolution work that shipped
+above.  Left for future follow-up if a forcing function appears;
+the current sema import graph has a handful of lazy imports that
+could be hoisted but nothing that blocks downstream work.
 
 ## Safety techniques
 

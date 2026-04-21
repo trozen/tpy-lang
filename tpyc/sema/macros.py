@@ -24,13 +24,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..parse.nodes import TpyCall, TpyMethodCall
-from ..parse.resolve_refs import resolve_method_body_refs
+from ..parse.resolve_refs import resolve_method_body_refs, _promote_bare_nominals
 from ..macro_api import ClassInfo
 from ..macro_loader import validate_and_call_macro, call_macro_field_function
 from .diagnostics import SemanticError
 
 if TYPE_CHECKING:
     from ..parse.nodes import TpyRecord
+    from ..typesys import TypeRegistry
     from .context import SemanticContext
 
 
@@ -78,12 +79,40 @@ def _apply_class_macros(record: 'TpyRecord', ctx: 'SemanticContext') -> None:
 def _resolve_macro_added_method_bodies(record: 'TpyRecord', ctx: 'SemanticContext') -> None:
     """Resolve `TypeRefNode`s in bodies of methods added by macros.
 
+    Macros that call `add_method_from_source(...)` produce method
+    bodies with TpyTypeRef annotations (FragmentParser's walker leaves
+    them unresolved).  This pass resolves them against the enclosing
+    module's resolver so downstream sema sees TpyType everywhere.
+
+    Signature-level bare `NominalType` placeholders emitted by
+    `types.named(...)` are NOT promoted here -- that happens in
+    `analyzer._promote_macro_generated_types` after
+    `_populate_macro_deps` has made cross-module macro dependencies
+    (e.g. JsonReader, JsonWriter) visible in `ctx.registry`.  Doing
+    it here would only catch same-module refs and leave cross-module
+    ones to the second pass anyway.
+
     Idempotent on source-defined methods whose bodies are already
-    TpyType -- the body walker's isinstance checks short-circuit for
-    already-resolved sites.
+    fully resolved.
     """
     resolver = ctx.parser_resolver
     if resolver is None:
         return
     for method in record.methods:
         resolve_method_body_refs(method, record, resolver)
+
+
+def _promote_method_signature(method, registry: 'TypeRegistry') -> None:
+    """Promote bare NominalType placeholders in a method's signature to
+    qname-bearing form, in place."""
+    method.params = [
+        (name, _promote_bare_nominals(t, registry)) for name, t in method.params
+    ]
+    if method.return_type is not None:
+        method.return_type = _promote_bare_nominals(method.return_type, registry)
+    if method.vararg_type is not None:
+        method.vararg_type = _promote_bare_nominals(method.vararg_type, registry)
+    if method.kwarg_type is not None:
+        method.kwarg_type = _promote_bare_nominals(method.kwarg_type, registry)
+    if method.self_annotation is not None:
+        method.self_annotation = _promote_bare_nominals(method.self_annotation, registry)

@@ -723,7 +723,13 @@ class NominalType(TpyType):
     name: str
     type_args: tuple['TpyType | int', ...] = ()
     is_protocol: bool = False
-    _module_qname: str | None = field(default=None, compare=False, hash=False)
+    # Nominal identity = qualified name + type args.  Included in
+    # equality and hash so `pkg_a.Foo` vs `pkg_b.Foo` (or `Foo` bare
+    # vs `mod.Foo`) never collapse via set/dict dedup.  Do NOT use
+    # `==` to bridge a parser placeholder with its resolved
+    # counterpart -- call `same_nominal_symbol_loose(a, b)` for that
+    # axis instead (see module-level helper below).
+    _module_qname: str | None = field(default=None)
     is_dynamic_protocol: bool = field(default=False, compare=False, hash=False)
 
     @property
@@ -882,6 +888,30 @@ class NominalType(TpyType):
                 new_args.append(arg)
         return NominalType(self.name, tuple(new_args), self.is_protocol, self._module_qname,
                          self.is_dynamic_protocol)
+
+
+def same_nominal_symbol_loose(a: 'TpyType', b: 'TpyType') -> bool:
+    """Transition-era equivalence for NominalTypes where one side may
+    be a parser placeholder without `_module_qname` set.
+
+    Returns True when both are NominalTypes with matching `name`,
+    `type_args`, and `is_protocol`, and their qnames are either equal
+    or at least one is `None`.  DO NOT use this as a drop-in for `==`
+    -- strict `__eq__` remains the correct comparison for resolved
+    types in sets/dicts/unions.  This helper exists only for the
+    narrow set of sites that compare across the parse/resolve
+    boundary -- currently `TypeRegistry.is_subclass_of`'s parent-
+    chain walk, where a recorded parent reference (minted pre-qname)
+    may need to match a qname-bearing argument.  Keep the call-site
+    list short; each addition should be justified at review time.
+    """
+    if not (isinstance(a, NominalType) and isinstance(b, NominalType)):
+        return False
+    if a.name != b.name or a.type_args != b.type_args or a.is_protocol != b.is_protocol:
+        return False
+    if a._module_qname is None or b._module_qname is None:
+        return True
+    return a._module_qname == b._module_qname
 
 
 @dataclass(frozen=True)
@@ -2034,7 +2064,10 @@ def make_union(*types: TpyType) -> TpyType:
         else:
             flat.append(t)
 
-    # Deduplicate preserving order
+    # Deduplicate preserving order.  `NominalType` equality includes
+    # `_module_qname`, so two records with the same short name from
+    # different modules (e.g. `pkg_a.Foo` vs `pkg_b.Foo`) are distinct
+    # and survive the set-dedup.
     seen: set[TpyType] = set()
     deduped: list[TpyType] = []
     for t in flat:
@@ -3099,7 +3132,11 @@ class TypeRegistry:
 
     def __init__(self):
         self.records: dict[str, RecordInfo] = {}
-        self._qname_index: dict[str, RecordInfo] = {}  # qualified name -> RecordInfo
+        # Qname -> RecordInfo indexes, split so builtin consumers
+        # (`get_builtin_record` and its callers) don't accidentally
+        # match user records that happen to share a qname namespace.
+        self._qname_index: dict[str, RecordInfo] = {}       # builtins only
+        self._user_qname_index: dict[str, RecordInfo] = {}  # user records only
         self.functions: dict[str, list[FunctionInfo]] = {}  # User-defined functions (single or @overload group)
         self.protocols: dict[str, ProtocolInfo] = {}
         self.modules: dict[str, ModuleInfo] = {}  # module_name -> ModuleInfo
@@ -3125,6 +3162,15 @@ class TypeRegistry:
         self.records[key] = info
         if info.builtin_type_key:
             self._qname_index[info.builtin_type_key] = info
+        else:
+            # Index user records by fully-qualified name so cross-module
+            # lookups (`get_record_for_type`, `is_subclass_of`) can
+            # disambiguate shadowed short names.  Kept separate from
+            # `_qname_index` so `get_builtin_record` consumers don't
+            # accidentally match user records.
+            qname = info.qualified_name()
+            if qname:
+                self._user_qname_index[qname] = info
 
     def register_builtin_record(self, qname: str, info: RecordInfo) -> None:
         """Register a builtin type's RecordInfo by its qualified name."""
@@ -3263,8 +3309,19 @@ class TypeRegistry:
         return (einfo.module_name, enum_type.name)
 
     def register_module(self, info: ModuleInfo) -> None:
-        """Register a module by name."""
+        """Register a module by name and index its records' qnames so
+        cross-module `get_record_for_type` / `is_subclass_of` lookups
+        find them even when the user never imported them by short name
+        (short-name lookup would otherwise pick a local shadow).
+        """
         self.modules[info.name] = info
+        for rec in info.records.values():
+            if rec.builtin_type_key:
+                self._qname_index.setdefault(rec.builtin_type_key, rec)
+            else:
+                qname = rec.qualified_name()
+                if qname:
+                    self._user_qname_index.setdefault(qname, rec)
 
     def get_module(self, name: str) -> Optional[ModuleInfo]:
         """Get a module by name."""
@@ -3344,15 +3401,19 @@ class TypeRegistry:
         if not (isinstance(child, NominalType) and child.is_user_record
                 and isinstance(parent, NominalType) and parent.is_user_record):
             return False
-        current_info = self.records.get(child.name)
+        current_info = self.get_record_for_type(child)
         visited: set[str] = set()
         while current_info and current_info.parent and current_info.name not in visited:
             visited.add(current_info.name)
             p = current_info.parent
-            if isinstance(p, NominalType) and p.name == parent.name and p.type_args == parent.type_args:
+            # Parent references recorded pre-qname-mint may be bare; the
+            # `parent` argument may be qname-bearing.  `loose` matches
+            # strictly when both have qnames (keeps cross-module
+            # shadowing honest) and permissively when either is bare.
+            if same_nominal_symbol_loose(p, parent):
                 return True
             if isinstance(p, NominalType) and p.is_user_record:
-                current_info = self.records.get(p.name)
+                current_info = self.get_record_for_type(p)
             else:
                 break
         return False
@@ -3392,17 +3453,22 @@ class TypeRegistry:
     def get_record_for_type(self, tpy_type: 'TpyType') -> Optional[RecordInfo]:
         """Unified lookup for any type's RecordInfo.
 
-        Tries local records by short name first, then _qname_index by
-        qualified name. This handles both user records and builtin types
-        whose NominalType may or may not have _module_qname set.
+        Qname-first when the NominalType carries one, so cross-module
+        references never collide with a locally-shadowed short name.
+        Falls back to short-name lookup if the qname misses -- bare
+        placeholder NominalTypes (no qname) and records registered only
+        under a short alias still resolve.
         """
         if isinstance(tpy_type, NominalType) and tpy_type.is_record:
-            result = self.records.get(tpy_type.name)
-            if result is not None:
-                return result
+            qname = tpy_type._module_qname
+            if qname:
+                result = self._user_qname_index.get(qname) or self._qname_index.get(qname)
+                if result is not None:
+                    return result
+            return self.records.get(tpy_type.name)
         qname = tpy_type.qualified_name()
         if qname:
-            return self.get_builtin_record(qname)
+            return self._qname_index.get(qname)
         return None
 
     def get_protocol(self, name: str) -> Optional[ProtocolInfo]:

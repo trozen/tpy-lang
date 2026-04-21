@@ -285,12 +285,14 @@ class TypeResolver:
                             resolved_q[1], loc=ref.loc, resolved=True)
                         if registered is not None:
                             return self._upgrade_from_type_def(
-                                registered, resolved_q)
+                                registered, resolved_q, loc=ref.loc)
                 # Nested dotted class: Outer.Inner, Outer.Mid.Inner, ...
                 dotted = self._resolve_dotted_class_name_str(name)
                 if dotted is not None:
-                    if parser.registry.get_record(dotted) is not None:
-                        return NominalType(dotted)
+                    rinfo = parser.registry.get_record(dotted)
+                    if rinfo is not None:
+                        qname = self._user_record_qname(dotted, None)
+                        return NominalType(dotted, _module_qname=qname)
                     enum_type = parser.registry.get_enum(dotted)
                     if enum_type is not None:
                         return enum_type
@@ -455,6 +457,7 @@ class TypeResolver:
 
     def _upgrade_from_type_def(
         self, registered: TpyType, resolved: tuple[str, str],
+        *, loc: SourceLocation | None = None,
     ) -> TpyType:
         """Mint `_module_qname` / upgrade protocol flags on a qualified
         (`typing.Sized`) or canonical bare-name resolution using the
@@ -463,9 +466,10 @@ class TypeResolver:
         Only NominalTypes without a qname are upgraded.  For TypeDefs
         carrying a ProtocolInfo payload, `is_protocol` /
         `is_dynamic_protocol` are also upgraded, and a bare generic
-        protocol raises `SemanticError`.  Enum-registered NominalTypes
-        come back from `_resolve_registered_type` already qname-bearing
-        and fall through unchanged.
+        protocol raises `SemanticError` (with `loc` attached so the
+        diagnostic formats as `file:line: error: ...`).  Enum-registered
+        NominalTypes come back from `_resolve_registered_type` already
+        qname-bearing and fall through unchanged.
         """
         if not isinstance(registered, NominalType) or registered._module_qname:
             return registered
@@ -484,7 +488,8 @@ class TypeResolver:
                 from ..sema.diagnostics import SemanticError
                 raise SemanticError(
                     f"Generic protocol '{registered.name}' requires type arguments: "
-                    f"{registered.name}[{', '.join(td.protocol.type_params)}]"
+                    f"{registered.name}[{', '.join(td.protocol.type_params)}]",
+                    loc=loc,
                 )
             is_protocol = True
             is_dynamic_protocol = td.protocol.is_dynamic
@@ -584,7 +589,8 @@ class TypeResolver:
             if (enum_type := parser.registry.get_enum(dotted)) is not None:
                 return enum_type
             if parser.registry.get_record(dotted) is not None:
-                return NominalType(dotted)
+                qname = self._user_record_qname(dotted, None)
+                return NominalType(dotted, _module_qname=qname)
         if (user_protocol := parser.registry.get_protocol(name)) is not None:
             if user_protocol.type_params:
                 from ..sema.diagnostics import SemanticError

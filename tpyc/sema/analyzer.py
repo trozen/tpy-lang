@@ -47,6 +47,11 @@ from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
 from ..typesys import TypeParamRef, TupleType
 from ..type_def_registry import is_str_type, is_str_view_type
+from ..parse.resolve_refs import (
+    _walk_body, _merged_method_scope, _record_scope,
+    _promote_bare_nominals,
+)
+from .macros import _promote_method_signature
 
 
 def _is_stmt_super_init_call(stmt: TpyStmt) -> bool:
@@ -423,6 +428,15 @@ class SemanticAnalyzer:
         # Macros have run during register_record, so we know which macro
         # modules were used and can import their dependencies.
         self._populate_macro_deps(module)
+
+        # Promote bare NominalTypes that macros emitted via
+        # `types.named(...)` to qname-bearing form now that macro_deps
+        # are in ctx.registry.  Macros like `@model` reference types
+        # (JsonReader, JsonWriter) that main.py doesn't import
+        # explicitly; they land in the registry only after
+        # `_populate_macro_deps`, so promotion has to run here rather
+        # than inside `register_record`.
+        self._promote_macro_generated_types(module)
 
         # Register protocols (two phases to allow forward references)
         for protocol in module.protocols:
@@ -2099,6 +2113,53 @@ class SemanticAnalyzer:
             return False
 
         raise self._error(f"'{original_name}' not found in module '{module_name}'")
+
+    def _promote_macro_generated_types(self, module: TpyModule) -> None:
+        """Promote bare `NominalType` placeholders on macro-generated
+        method signatures / bodies / registered `FunctionInfo` to
+        qname-bearing form using the post-macro-deps `ctx.registry`.
+
+        Macros may reference types (JsonReader, JsonWriter, ...) that
+        main.py doesn't import explicitly -- those land in the registry
+        only after `_populate_macro_deps`, so promotion must run here
+        rather than inside `register_record`.
+        """
+        resolver = self.ctx.parser_resolver
+        if resolver is None:
+            return
+        registry = self.ctx.registry
+        for record in module.all_records():
+            # AST-level method (TpyFunction) signatures + bodies.
+            for method in record.methods:
+                _promote_method_signature(method, registry)
+                scope = _merged_method_scope(_record_scope(record), method)
+                _walk_body(method.body, scope, resolver, promote_registry=registry)
+            # Registered FunctionInfo (captured before promotion) --
+            # rebuild ParamInfo / return_type in place so overload
+            # resolution sees the promoted param types.
+            info = registry.get_record(record.name)
+            if info is None:
+                continue
+            for overloads in info.methods.values():
+                for i, finfo in enumerate(overloads):
+                    new_params = [
+                        dc_replace(p, type=_promote_bare_nominals(p.type, registry))
+                        for p in finfo.params
+                    ]
+                    new_return = (
+                        _promote_bare_nominals(finfo.return_type, registry)
+                        if finfo.return_type is not None else finfo.return_type
+                    )
+                    overloads[i] = dc_replace(
+                        finfo,
+                        params=new_params,
+                        return_type=new_return,
+                    )
+        # Top-level functions: walk bodies so nested-def signatures
+        # (resolved at parse time, before F.5 canonicalization) get
+        # their bare NominalTypes promoted.
+        for func in module.functions:
+            _walk_body(func.body, None, resolver, promote_registry=registry)
 
     def _populate_macro_deps(self, module: TpyModule) -> None:
         """Populate macro_ns with exports from MACRO_DEPS of used macro modules.
