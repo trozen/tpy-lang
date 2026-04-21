@@ -17,6 +17,7 @@ from ..typesys import (
     is_float_type, is_any_str_type,
 )
 from ..modules import _resolve_concrete_type_name
+from .flow_facts import FlowFacts
 from ..type_def_registry import (
     is_bool_type, is_fixed_int_type, is_big_int_type,
     is_str_category, is_char_type, is_float_category,
@@ -60,8 +61,6 @@ class MatchAnalyzer:
 
     def analyze_match(self, stmt: TpyMatch) -> None:
         """Analyze a match/case statement."""
-        from .flow_facts import FlowFacts
-
         subject_type = self.expr.analyze_expr(stmt.subject)
         effective_type = unwrap_ref_type(unwrap_readonly(subject_type))
         # Expand recursive union alias NominalType to its underlying UnionType

@@ -23,7 +23,7 @@ from ..parse import (
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
-from .diagnostics import OPTIONAL_NONE_ACCESS_WARNING
+from .diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
 from ..type_def_registry import is_list, is_fstr_type
 from .overloads import resolve_overload
 from .calls import (
@@ -31,6 +31,7 @@ from .calls import (
     validate_type_param_bounds, prefer_strview_for_literals,
     _enrich_literal_types,
 )
+from .statements import _root_name_of_expr
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -505,7 +506,6 @@ class MethodAnalyzer:
         for i, (arg, expected_type) in enumerate(zip(expr.args, callable_type.param_types)):
             arg_type = self.expr.analyze_expr_with_hint(arg, expected_type)
             if arg_type != expected_type:
-                from .context import SemanticError
                 try:
                     self.compat.check_type_compatible(
                         arg_type, expected_type,
@@ -707,16 +707,11 @@ class MethodAnalyzer:
                 # and string view sources (receiver mutation invalidates views)
                 info = expr.resolved_function_info
                 if info is not None and not info.is_readonly:
-                    from .statements import _root_name_of_expr
-                    from ..parse.nodes import (
-                        TpyName as _TpyName, TpyMethodCall as _TpyMethodCall,
-                        TpyFieldAccess as _TpyFieldAccess,
-                    )
                     obj_root = _root_name_of_expr(expr.obj)
                     if obj_root is not None:
                         self.ctx.mark_loop_var_mutated(obj_root)
                         is_direct_self_call = (
-                            isinstance(expr.obj, _TpyName) and expr.obj.name == "self"
+                            isinstance(expr.obj, TpyName) and expr.obj.name == "self"
                         )
                         if is_direct_self_call:
                             # self.method() -- entirely deferred to call edges
@@ -745,7 +740,7 @@ class MethodAnalyzer:
                         # the span is a mutable view of self's storage.
                         # Treat as self-mutation conservatively.
                         chain = expr.obj
-                        while isinstance(chain, _TpyMethodCall):
+                        while isinstance(chain, TpyMethodCall):
                             chain = chain.obj
                         chain_root = _root_name_of_expr(chain)
                         if chain_root == "self":
@@ -1228,7 +1223,6 @@ class MethodAnalyzer:
             for tp, expected_arg in zip(info.type_params, target.type_args):
                 if tp in info.inferred and isinstance(expected_arg, TpyType):
                     if info.inferred[tp] != expected_arg:
-                        from .diagnostics import SemanticError
                         raise SemanticError(
                             f"Conflicting type for '{tp}' in '{info.record_name}': "
                             f"previously inferred as '{info.inferred[tp]}', "

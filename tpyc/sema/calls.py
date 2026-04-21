@@ -36,6 +36,7 @@ from ..coercions import CoercionContext, VALUE_TO_PTR
 from .context import PENDING_CONTAINER_TYPES, addr_taken_roots
 from .diagnostics import SemanticError
 from .overloads import type_matches_numeric, resolve_overload
+from .statements import _root_name_of_expr
 from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo
 from ..macro_loader import expand_call_macro
 
@@ -50,6 +51,7 @@ if TYPE_CHECKING:
     from ..parse.nodes import SourceLocation
 
 from tpyc import modules as builtin_modules
+from ..modules import _resolve_concrete_type_name
 from .. import qnames
 from ..type_def_registry import (
     is_array, is_span, is_list,
@@ -704,6 +706,7 @@ class CallAnalyzer:
 
         # Handle super() call
         if expr.func_name == "super":
+            # Lazy: methods.py imports calls at module load; cycle breaks here.
             from .methods import MethodAnalyzer
             return MethodAnalyzer._analyze_super_call_static(self.ctx, expr)
 
@@ -882,7 +885,6 @@ class CallAnalyzer:
                     if record_info := self.ctx.registry.get_record(expr.func_name):
                         return self._analyze_record_constructor(expr, record_info)
                     # Check for module function (e.g., math.sqrt)
-                    from .registration import TypeRegistrar
                     if overloads := self._get_module_function_overloads(module_name, func_name):
                         if overloads[0].special_handling:
                             return self._analyze_special_builtin(expr, overloads)
@@ -1333,7 +1335,6 @@ class CallAnalyzer:
         if record:
             return NominalType(name, _module_qname=record.qualified_name())
         # Builtin type names
-        from tpyc.modules import _resolve_concrete_type_name
         resolved = _resolve_concrete_type_name(name)
         if resolved is not None:
             return resolved
@@ -1879,7 +1880,6 @@ class CallAnalyzer:
         fi = expr.resolved_function_info
         if fi is None or fi.is_readonly:
             return
-        from .statements import _root_name_of_expr
         for i, param in enumerate(fi.params):
             if i >= len(expr.args):
                 break
@@ -1899,7 +1899,6 @@ class CallAnalyzer:
         fi = expr.resolved_function_info
         if fi is None or fi.is_readonly or fi.is_pure:
             return
-        from .statements import _root_name_of_expr
         name_to_idx = self.ctx.func.current_param_name_to_idx
         rebound = self.ctx.func.current_rebound_params
 
@@ -2518,6 +2517,7 @@ class CallAnalyzer:
         param_map: dict[str, TpyExpr] = {}
         for pi, arg in zip(func.params, expr.args):
             param_map[pi.name] = arg
+        # Lazy: methods.py imports calls at module load; cycle breaks here.
         from .methods import MethodAnalyzer
         MethodAnalyzer._substitute_inline_body(body, None, param_map)
 

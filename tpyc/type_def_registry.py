@@ -6,7 +6,7 @@ Each builtin qname has one `TypeDef` describing its intrinsic behaviour
 category payloads for records / protocols / enums / factories).  Sema
 and codegen dispatch on qname via `type_def_of(t)` plus the `is_*`
 predicates in this module, rather than `isinstance` on specific
-subclasses.  See docs/TYPESYS_MIGRATION.md for the design rationale.
+subclasses.  See docs/ARCHITECTURE.md for the design rationale.
 
 Only per-qname intrinsic data lives here.  Args-dependent behaviour
 (e.g. `is_send` for `list[T]` depends on `T`) is expressed via callable

@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 from ..typesys import (
     TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
-    INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType,
+    INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType, UnionType,
     PendingListType, PendingDictType, PendingSetType,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
@@ -522,7 +522,6 @@ class SemanticContext:
 
     def is_recursive_union(self, typ: 'TpyType') -> bool:
         """Check if a union type is a recursive union alias."""
-        from ..typesys import UnionType
         if not isinstance(typ, UnionType) or not self.recursive_union_names:
             return False
         if self._recursive_union_members is None:

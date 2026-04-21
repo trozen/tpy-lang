@@ -14,7 +14,7 @@ from ..typesys import (
     LiteralType,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NominalType, TypeParamRef, NoneType, OptionalType, UnionType,
-    is_protocol_type, unwrap_readonly, unwrap_optional_own,
+    is_protocol_type, unwrap_own, unwrap_readonly, unwrap_optional_own,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     CallableType, is_fn_type, RefType, unwrap_ref_type,
     is_callable_type, is_integer_type, is_any_float_type, is_readonly_span)
@@ -24,7 +24,8 @@ from ..parse import (
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyFunction,
     TpyIfExpr, TpyTupleLiteral, SourceLocation
 )
-from ..coercions import resolve_coercion, Coercion, CoercionContext, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN
+from ..coercions import resolve_coercion, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN
+from ..modules import get_span_return_type
 from .context import addr_taken_roots
 from .diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from ..type_def_registry import (
@@ -201,7 +202,6 @@ class TypeCompatibility:
         if (is_callable_type(actual)
                 and is_callable_type(expected)
                 and len(actual.param_types) == len(expected.param_types)):
-            from ..typesys import unwrap_own
             stripped_actual = type(actual)(
                 tuple(unwrap_ref_type(unwrap_own(p)) for p in actual.param_types),
                 unwrap_ref_type(unwrap_own(actual.return_type)))
@@ -766,7 +766,6 @@ class TypeCompatibility:
         if coercion is None:
             # __span__() method coercion: type with __span__() -> Span[T] coerces to Span/Span[readonly[T]]
             if isinstance(actual, NominalType) and is_span(expected):
-                from tpyc.modules import get_span_return_type
                 span_ret = get_span_return_type(actual, registry=self.ctx.registry)
                 if span_ret is not None and unwrap_readonly(span_ret.type_args[0]) == unwrap_readonly(expected.type_args[0]):
                     # Span[readonly[T]] cannot coerce to mutable Span
@@ -795,7 +794,6 @@ class TypeCompatibility:
                     if ctx != CoercionContext.ARG:
                         deref_target = self.type_ops.get_deref_target_type(actual)
                 if deref_target is not None and unwrap_readonly(deref_target) == expected:
-                    from ..coercions import DEREF_COERCION
                     coercion = DEREF_COERCION
         if coercion is None:
             return CompatError(f"Type mismatch in {context}: expected {expected}, got {actual}", loc)

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
-    TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
+    TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type,
     IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, make_span,
     STRVIEW, INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64, BIGINT, BOOL, TupleType, final_type_str_to_strview,
     register_return_exception, is_return_exception,
@@ -1255,7 +1255,6 @@ class TypeRegistrar:
 
     def register_protocol(self, protocol: TpyProtocol) -> None:
         """Register a protocol type (without validating parents yet)."""
-        from ..typesys import MethodSignature, ProtocolInfo
         # Resolve implicit readonly and cross-module protocol flags on method
         # signatures. resolve_type backfills is_protocol / _module_qname on
         # NominalType references to other protocols (e.g. Iterator[T] in

@@ -11,8 +11,8 @@ from typing import Optional
 from ..typesys import (
     TpyType, TypeRegistry, NominalType, UnionType, FinalType, STR, LiteralType, VoidType, VOID,
     NoneType, INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
-    FunctionInfo, is_any_str_type, BIGINT, FLOAT,
-    make_ref, unwrap_ref_type, RefType, TypeParamKind,
+    FunctionInfo, ParamInfo, is_any_str_type, BIGINT, FLOAT,
+    make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType,
     is_integer_type, is_void_like_type,
     _contains_self_reference, validate_recursive_union_paths,
 )
@@ -45,7 +45,8 @@ from ..prescan import ScanResult, scan_reassigned_vars
 from ..liveness import analyze_last_uses
 from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
-from ..typesys import TypeParamRef, TupleType
+from ..cycle_detection import detect_type_cycles
+from ..parse import SourceLocation, is_parser_keyword
 from ..type_def_registry import is_str_type, is_str_view_type
 from ..parse.resolve_refs import (
     _walk_body, _merged_method_scope, _record_scope,
@@ -544,8 +545,6 @@ class SemanticAnalyzer:
         type markers) are registered, so make_ref correctly identifies which
         types need wrapping.
         """
-        from ..typesys import ParamInfo
-
         def _ref_params(params: list) -> list:
             result = []
             for p in params:
@@ -1277,8 +1276,6 @@ class SemanticAnalyzer:
         Runs after all records are registered but before type alias registration.
         Tags aliases in module.recursive_union_names (codegen emits wrapper structs).
         """
-        from ..cycle_detection import detect_type_cycles
-
         # Build inputs: record fields and non-recursive union aliases
         record_fields: dict[str, list[tuple[str, TpyType]]] = {}
         for record in module.all_records():
@@ -1431,7 +1428,6 @@ class SemanticAnalyzer:
         # inside their members -- safety was already validated.
         if alias_name in self.ctx.recursive_union_names:
             return
-        from ..parse import SourceLocation
         members: list[TpyType] = []
         if isinstance(typ, UnionType):
             members = list(typ.members)
@@ -1477,7 +1473,6 @@ class SemanticAnalyzer:
 
     def _resolve_imported_aliases(self, module: TpyModule) -> None:
         """Substitute imported alias NominalTypes in module AST type annotations."""
-        from ..parse.nodes import TpyVarDecl
         aliases = self.ctx.registry.type_aliases
         skip = frozenset(module.recursive_union_names)
         for func in module.functions:
@@ -2098,7 +2093,6 @@ class SemanticAnalyzer:
 
         # @builtin_type/@builtin_decorator stubs and parser keywords are handled
         # at parse time, not exported by .py files -- silently skip them here.
-        from ..parse import is_parser_keyword
         if is_parser_keyword(module_name, original_name):
             return True
         if (self.ctx.registry.get_builtin_type_key(original_name) or

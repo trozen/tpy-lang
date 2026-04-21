@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from .type_ops import TypeOperations
 
 from tpyc import modules as builtin_modules
+from ..modules import get_dunder_cpp_template
 from .. import qnames
 from ..type_def_registry import (
     is_copy_iter, is_own_iter, is_set, is_dict, is_array, is_span, is_list,
@@ -639,7 +640,6 @@ class ProtocolChecker:
                 cpp_template = method_sig.cpp_template
                 # .py protocols don't have cpp templates; use dunder map
                 if cpp_template is None:
-                    from ..modules import get_dunder_cpp_template
                     cpp_template = get_dunder_cpp_template(method_name)
                 return (params, return_type, cpp_template)
 

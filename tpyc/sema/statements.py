@@ -45,6 +45,7 @@ from .match import MatchAnalyzer
 from .narrowing import NarrowingTracker
 from .scope_tracker import ScopeTracker
 from .init_tracker import InitTracker
+from .value_range import ValueRange
 if TYPE_CHECKING:
     from .context import SemanticContext
     from .type_ops import TypeOperations
@@ -54,8 +55,10 @@ if TYPE_CHECKING:
     from .expressions import ExpressionAnalyzer
     from .protocols import ProtocolChecker
 
-from .context import BorrowKind, PENDING_CONTAINER_TYPES, _storage_key, _borrow_storage_root
+from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _borrow_storage_root
+from .expressions import _collect_body_name_refs, _collect_body_local_defs
 from .local_deduction import collect_pending_source_types
+from .operators import OperatorResolver
 from tpyc import modules as builtin_modules
 from tpyc import qnames
 from ..type_def_registry import (
@@ -1107,7 +1110,6 @@ class StatementAnalyzer:
 
     def _apply_range_facts(self, facts: dict[str, 'ValueRange']) -> None:
         """Apply integer range facts, intersecting with any existing ranges."""
-        from .value_range import ValueRange
         for name, new_range in facts.items():
             existing = self.ctx.func.value_ranges.get(name)
             if existing is not None:
@@ -1120,7 +1122,6 @@ class StatementAnalyzer:
 
         Detects: range(len(arr)), range(N).
         """
-        from .value_range import ValueRange
         iterable = stmt.iterable
         if not isinstance(iterable, TpyCall) or iterable.func_name != "range":
             return
@@ -1748,8 +1749,6 @@ class StatementAnalyzer:
 
     def _analyze_nested_def(self, stmt: TpyNestedDef) -> None:
         """Analyze a nested function definition."""
-        from .expressions import _collect_body_name_refs, _collect_body_local_defs
-
         func = stmt.func
 
         if self.ctx.func.in_nested_def:
@@ -1881,7 +1880,6 @@ class StatementAnalyzer:
 
     def _analyze_global_stmt(self, stmt: TpyGlobal) -> None:
         """Analyze a `global x, y` statement."""
-        from .context import MODULE_INIT_CONTEXT
         # Must be inside a function, not at module level
         if self.ctx.is_top_level or isinstance(self.ctx.func.current_function, type(MODULE_INIT_CONTEXT)):
             raise self.ctx.error("'global' declaration is only allowed inside a function", stmt)
@@ -3462,7 +3460,6 @@ class StatementAnalyzer:
                 f"Cannot reassign Final variable '{stmt.target.name}'",
                 stmt
             )
-        from .operators import OperatorResolver
         target_type = unwrap_own(unwrap_ref_type(self.expr.analyze_expr(stmt.target)))
         # Augmented assignment on properties not yet supported
         if isinstance(stmt.target, TpyFieldAccess) and stmt.target.is_property_access:

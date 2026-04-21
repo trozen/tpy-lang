@@ -372,7 +372,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 
 ### Built-in Modules (`tpyc/modules/`)
 
-All builtin types, functions, and protocols are defined in `.py` stubs under `lib/tpy/`. The `tpyc/modules/` package provides resolution helpers and constant tables used by sema and codegen. (Generic type factories and per-qname behavior now live on `tpyc.type_def_registry.TypeDef`; see Phase F.3e of `docs/TYPESYS_MIGRATION.md`.)
+All builtin types, functions, and protocols are defined in `.py` stubs under `lib/tpy/`. The `tpyc/modules/` package provides resolution helpers and constant tables used by sema and codegen. (Generic type factories and per-qname behavior live on `tpyc.type_def_registry.TypeDef`; see `docs/ARCHITECTURE.md` for the nominal/structural split and TypeDef registry design.)
 
 | Module | Purpose |
 |--------|---------|
@@ -543,6 +543,7 @@ When implementing new features:
 | File | Purpose | Policy |
 |------|---------|--------|
 | `docs/LANGUAGE_FEATURES.md` | Comprehensive language feature documentation | **Keep up-to-date** with any development |
+| `docs/ARCHITECTURE.md` | Compiler architecture: nominal/structural types, TypeDef registry, sema layout, perf tradeoffs | Update when type-system or sema structure changes |
 | `CLAUDE.md` | Commands, architecture, quick reference | Update when adding major features |
 | `README.md` | Quick start, build flags | Update when CLI changes |
 

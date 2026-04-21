@@ -14,7 +14,7 @@ from ..typesys import (
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
     PendingStrType, PendingViewType, LiteralType,
     PendingBytesType,
-    NominalType, PtrType, OwnType, CallableType, is_fn_type, VoidType, NoneType,
+    NominalType, PtrType, OwnType, ReadonlyType, CallableType, is_fn_type, VoidType, NoneType,
     OptionalType,
     unwrap_ref_type,
     is_callable_type, is_float_type, is_integer_type, is_any_float_type,
@@ -45,7 +45,6 @@ def _structural_match(arg: TpyType, param: TpyType) -> bool:
     if isinstance(param, TypeParamRef):
         return True
     # Unwrap Ref, Own, Readonly from both sides (transparent for matching)
-    from ..typesys import ReadonlyType, OwnType
     arg = unwrap_ref_type(arg)
     param = unwrap_ref_type(param)
     if isinstance(param, TypeParamRef):
@@ -106,13 +105,12 @@ def type_matches_strict(
     # CallableType (Fn and Callable): compare with qualifier unwrapping on inner
     # types. The arg callable may have Own/Ref on param/return types from FI,
     # while the resolved overload's callable has bare types from substitution.
-    from ..typesys import CallableType, OwnType as _Own
     if (is_callable_type(arg_inner)
             and is_callable_type(param_inner)
             and len(arg_inner.param_types) == len(param_inner.param_types)):
         def _strip(t: TpyType) -> TpyType:
             t = unwrap_ref_type(t)
-            if isinstance(t, _Own): t = t.wrapped
+            if isinstance(t, OwnType): t = t.wrapped
             if isinstance(t, PendingViewType): t = t.family.owned_type
             return t
         if (all(_strip(a) == _strip(p) for a, p in zip(arg_inner.param_types, param_inner.param_types))

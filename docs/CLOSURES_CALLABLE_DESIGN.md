@@ -100,9 +100,9 @@ class CallableType(TpyType):
     is_template: bool = False
 ```
 
-(Originally split into `FnType` and `CallableType` subclasses; merged during
-the typesys migration's Phase C into a single `CallableType` with a flag,
-since the two shared all structural behavior and differed only in rendering.)
+(Originally split into `FnType` and `CallableType` subclasses; merged into
+a single `CallableType` with a flag, since the two shared all structural
+behavior and differed only in rendering.)
 
 ### `Fn` -- Zero-Cost Callable (Template)
 
@@ -896,8 +896,8 @@ similar patterns. Both `Fn` (template) and `Callable` (`std::function`) paths.
 
 **Type system changes:**
 - Add `CallableType(param_types, return_type, is_template)` to `typesys.py`
-  (originally split into separate `FnType` and `CallableType`; merged in
-  typesys migration Phase C)
+  (originally split into separate `FnType` and `CallableType`; merged into
+  a single class with a flag)
 - Add `LambdaType` (anonymous, unique per lambda) that satisfies both Fn and Callable
 
 **Sema changes:**

@@ -7,6 +7,7 @@ Core expression analysis including literals, names, operators, field access, and
 from __future__ import annotations
 from contextlib import ExitStack
 from collections.abc import Callable as CallableFn
+from dataclasses import replace as dc_replace
 from typing import Literal, TYPE_CHECKING
 
 from ..typesys import (
@@ -56,6 +57,8 @@ from .narrowing import NarrowingTracker
 from .numeric_lattice import widen_numeric_types
 from .list_literals import IterableHelper
 from .local_deduction import collect_pending_source_types
+from .operators import DUNDER_CPP_TEMPLATES, _substitute_type_params
+from .overloads import resolve_overload
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -604,7 +607,6 @@ class ExpressionAnalyzer:
         decls = self.ctx.if_branch_decls.setdefault(id(loop_stmt), {})
         decls[name] = var_type
         # Mark the original for-loop's var for hoisted codegen (hidden counter)
-        from ..parse import TpyForEach
         if isinstance(orig_stmt, TpyForEach) and name == orig_stmt.var:
             orig_stmt.hoist_loop_var = True
         return True
@@ -941,13 +943,10 @@ class ExpressionAnalyzer:
             if right_record:
                 contains_overloads = right_record.get_method_overloads("__contains__")
                 if contains_overloads:
-                    from .operators import _substitute_type_params
-                    from .overloads import resolve_overload
                     type_subst = builtin_modules.extract_type_params(right_type)
                     # Substitute type params for generic containers
                     subst_overloads = contains_overloads
                     if type_subst:
-                        from dataclasses import replace as dc_replace
                         subst_overloads = [
                             dc_replace(m, params=[
                                 ParamInfo(p.name, _substitute_type_params(p.type, type_subst))
@@ -1121,7 +1120,6 @@ class ExpressionAnalyzer:
                             # cpp_template instead of raw C++ operator syntax.
                             cpp = method.cpp_template
                             if not cpp and not method.native_function:
-                                from .operators import DUNDER_CPP_TEMPLATES
                                 cpp = DUNDER_CPP_TEMPLATES.get(method_name)
                             resolved_method = FunctionInfo(
                                 name=method_name,

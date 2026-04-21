@@ -26,11 +26,12 @@ from ..type_def_registry import (
     get_type_def, find_factory_by_simple_name,
 )
 from ..parse import TpyFunction
+from tpyc import modules as builtin_modules
+from .overloads import resolve_overload
 
 if TYPE_CHECKING:
     from ..parse import SourceLocation
     from .context import SemanticContext
-    from tpyc import modules as builtin_modules
 
 
 def _contains_type_param_ref(types: tuple[TpyType, ...]) -> bool:
@@ -74,7 +75,6 @@ class TypeOperations:
         """
         if isinstance(typ, NominalType):
             if not protocols_only and not typ.type_args and not typ.is_protocol:
-                from ..parse import TpyFunction
                 func = self.ctx.func.current_function
                 if isinstance(func, TpyFunction) and typ.name in func.type_params:
                     bound = func.type_param_bounds.get(typ.name)
@@ -139,12 +139,12 @@ class TypeOperations:
         if isinstance(typ, NominalType) and typ.is_record:
             if typ.qualified_name() == "builtins.type":
                 raise SemanticError("'type' cannot be used as a type annotation", loc)
-            # Unified arity/validity check. Rule 1 of the Post-Phase-D invariants
-            # (docs/TYPESYS_MIGRATION.md): validity comes from qname/TypeDef/
-            # factory/record registry, not from `_module_qname != None`. Prefer
-            # user-record info (may shadow builtin names), then fall through to
-            # the factory (covers bare-name NominalType like def f(x: list) that
-            # the parser leaves without `_module_qname`).
+            # Unified arity/validity check. See docs/ARCHITECTURE.md:
+            # validity comes from qname/TypeDef/factory/record registry, not
+            # from `_module_qname != None`. Prefer user-record info (may
+            # shadow builtin names), then fall through to the factory
+            # (covers bare-name NominalType like def f(x: list) that the
+            # parser leaves without `_module_qname`).
             record_info = self.ctx.registry.get_record_for_type(typ)
             kinds: tuple | None = None
             if record_info is None:
@@ -398,8 +398,6 @@ class TypeOperations:
             Mapping from type parameter names to concrete types or integers.
             For example: {"T": Int32, "N": 8} for Matrix[Int32, 8].
         """
-        from tpyc import modules as builtin_modules
-
         if isinstance(record_type, NominalType):
             record_info = self.ctx.registry.get_record_for_type(record_type)
             if not record_info or not record_info.is_generic():
@@ -479,7 +477,6 @@ class TypeOperations:
         Checks current function's type_param_bounds first, then record's.
         Returns None if no bound is declared.
         """
-        from ..parse import TpyFunction
         # Check current function's type param bounds
         if (self.ctx.func.current_function and isinstance(self.ctx.func.current_function, TpyFunction)
                 and type_param_name in self.ctx.func.current_function.type_param_bounds):
@@ -502,7 +499,6 @@ class TypeOperations:
         """
         # RefType wrapper on param: strip Ref from param side and also strip
         # from arg if present (Ref[T] param accepts both T and Ref[T] args).
-        from ..typesys import RefType, unwrap_ref_type
         if isinstance(param_type, RefType):
             return self.match_type_with_inference(param_type.wrapped, unwrap_ref_type(arg_type), inferred)
         # Ref on arg side is preserved for type param inference -- this lets
@@ -646,8 +642,6 @@ class TypeOperations:
         inferred: dict[str, TpyType],
     ) -> bool:
         """Match a protocol with TypeParamRef type_args against arg_type (e.g., NativeIterable[T], Iterator[T])."""
-        from tpyc import modules as builtin_modules
-
         # GenExprType satisfies Iterable[T] and Iterator[T];
         # CopyIter/OwnIter satisfy Iterable[T] only.
         if ((isinstance(arg_type, GenExprType) and param_type.qualified_name() in (qnames.ITERABLE, qnames.ITERATOR))
@@ -1125,7 +1119,6 @@ class TypeOperations:
 
     def get_deref_target_type(self, typ: TpyType, is_readonly: bool = False) -> TpyType | None:
         """If typ has __deref__(), return resolved return type. Else None."""
-        from .overloads import resolve_overload
         record_info = self.ctx.registry.get_record_for_type(typ)
         if not record_info:
             return None
