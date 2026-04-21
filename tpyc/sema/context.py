@@ -32,7 +32,7 @@ from ..parse import (
     TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp, TpyIfExpr,
     TpyNestedDef,
 )
-from .diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
+from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
 
 # Tuple of all pending container types -- use in isinstance checks so adding
 # a new container type requires updating only this one constant.

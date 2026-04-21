@@ -32,7 +32,7 @@ from ..parse import (
 )
 from ..namespace import Namespace
 from ..sema.context import PENDING_CONTAINER_TYPES
-from ..sema.diagnostics import SemanticError
+from ..diagnostics import SemanticError
 
 from .context import INDENT, CodeGenError, FinallyContext, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable
 from ..type_def_registry import (

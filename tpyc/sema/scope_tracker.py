@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Iterator
 from ..typesys import TpyType, OwnType
 from ..parse import TpyCoerce, TpyName, TpyFieldAccess, TpySubscript, TpyExpr, TpyStmt, TpyFunction
 from ..namespace import Namespace
-from .diagnostics import Scope
+from ..diagnostics import Scope
 
 if TYPE_CHECKING:
     from .context import SemanticContext

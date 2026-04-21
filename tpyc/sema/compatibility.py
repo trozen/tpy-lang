@@ -27,10 +27,11 @@ from ..parse import (
 from ..coercions import resolve_coercion, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN
 from ..modules import get_span_return_type
 from .context import addr_taken_roots
-from .diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
+from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_list, is_str_view_type, int_traits_of,
     is_big_int_type, is_str_category, is_bytes_category, is_str_type, is_string_type,
+    protocol_info_of,
 )
 from .overloads import type_matches_numeric
 
@@ -261,7 +262,7 @@ class TypeCompatibility:
             if (not expected.is_value_type() or is_mutable_span) and (not is_return or is_mutable_span):
                 allow = False
                 if is_protocol_type(expected) and self.protocols:
-                    proto_info = self.ctx.registry.get_protocol(expected.name)
+                    proto_info = protocol_info_of(expected)
                     if proto_info and self.protocols.is_all_readonly(proto_info):
                         allow = True
                 if not allow:
@@ -1041,7 +1042,7 @@ class TypeCompatibility:
             return False
         # @dynamic protocol: child implements parent
         if is_protocol_type(parent):
-            proto_info = self.ctx.registry.get_protocol(parent.name)
+            proto_info = protocol_info_of(parent)
             if proto_info and proto_info.is_dynamic:
                 if self.protocols and self.protocols.type_conforms_to_protocol(child, parent):
                     return True

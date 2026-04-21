@@ -23,7 +23,7 @@ from ..parse import (
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
-from .diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
+from ..diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
 from ..type_def_registry import is_list, is_fstr_type
 from .overloads import resolve_overload
 from .calls import (

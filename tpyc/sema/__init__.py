@@ -8,7 +8,7 @@ Provides type checking and semantic validation:
 - Pointer semantics validation
 """
 
-from .diagnostics import DiagnosticLevel, Diagnostic, SemanticError, Scope, TypedExpr
+from ..diagnostics import DiagnosticLevel, Diagnostic, SemanticError, Scope, TypedExpr
 from .analyzer import SemanticAnalyzer
 
 __all__ = [

@@ -35,7 +35,7 @@ from .nodes import (
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyName,
 )
 from .type_resolver import _FIXED_INT_MAP
-from ..sema.diagnostics import SemanticError
+from ..diagnostics import SemanticError
 
 if TYPE_CHECKING:
     from .nodes import TpyExpr

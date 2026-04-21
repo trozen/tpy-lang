@@ -1,8 +1,13 @@
 """
-TurboPython Semantic Analysis Diagnostics and Data Structures
+TurboPython Compiler Diagnostics
 
-Contains error/warning handling and basic data structures used throughout
-the semantic analysis pipeline.
+Neutral diagnostics module used by both the parse/resolve and sema/analyze
+phases. Sits upstream of both so neither layer needs to reach into the
+other for error classes.
+
+Only depends on `.typesys` (for `TpyType` in `Scope`) and `.parse` (for
+`TpyExpr`, `SourceLocation` in `Diagnostic` / `SemanticError`). Both are
+base modules; no reverse dependencies.
 """
 
 from __future__ import annotations
@@ -10,8 +15,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
-from ..typesys import TpyType
-from ..parse import TpyExpr, SourceLocation
+from .typesys import TpyType
+from .parse import TpyExpr, SourceLocation
 
 
 class DiagnosticLevel(Enum):
@@ -55,7 +60,7 @@ class Diagnostic:
 
 
 class SemanticError(Exception):
-    """Error during semantic analysis."""
+    """Error raised during resolve or sema phases."""
     def __init__(self, message: str, loc: SourceLocation | None = None,
                  filename: str | None = None):
         self.message = message

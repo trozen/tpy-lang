@@ -27,7 +27,7 @@ from ..parse.nodes import TpyCall, TpyMethodCall
 from ..parse.resolve_refs import resolve_method_body_refs, _promote_bare_nominals
 from ..macro_api import ClassInfo
 from ..macro_loader import validate_and_call_macro, call_macro_field_function
-from .diagnostics import SemanticError
+from ..diagnostics import SemanticError
 
 if TYPE_CHECKING:
     from ..parse.nodes import TpyRecord
