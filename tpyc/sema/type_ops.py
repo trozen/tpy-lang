@@ -28,7 +28,7 @@ from ..type_def_registry import (
 from ..parse import TpyFunction
 
 if TYPE_CHECKING:
-    from ..parse import SourceLocation, ResolverInputNode
+    from ..parse import SourceLocation
     from .context import SemanticContext
     from tpyc import modules as builtin_modules
 
@@ -50,85 +50,29 @@ class TypeOperations:
     def __init__(self, ctx: SemanticContext):
         self.ctx = ctx
 
-    def resolve_type_ref(
-        self, ref: 'ResolverInputNode',
-        type_param_scope=None, *, pending_alias: str | None = None,
-    ) -> TpyType:
-        """Resolve a parser-emitted TypeRefNode to a TpyType.
-
-        Delegates to the TypeResolver instance attached to the module at
-        end-of-parse.  The resolver reads parser state (registry, imports,
-        local_defs, module_class_names, ...) live each call.  Returned
-        TpyType still needs downstream resolve_type() processing for
-        protocol flags and record/enum qname substitution -- sema writers
-        typically pipe through both.
-
-        If type_param_scope is not provided, builds it from the current
-        function/record context so references like `list[T]` inside a
-        generic function body resolve `T` as a TypeParamRef. The parser's
-        own _type_param_scope is parse-time state that is unreliable at
-        sema time.
-
-        `pending_alias` (optional, typically passed by the alias-resolution
-        pass in `_resolve_pending_type_refs`) enables same-body self-ref
-        placeholder behaviour for recursive aliases like
-        `type JsonValue = str | list[JsonValue]`.  Phase F.3d.3 threaded
-        this through as an explicit parameter; before then it was mutated
-        on the parser instance from sema via `resolver.__self__`.
-        """
-        resolver = self.ctx.parser_resolver
-        if resolver is None:
-            from .diagnostics import SemanticError
-            raise SemanticError(
-                "TypeRefNode encountered but no parser resolver is attached "
-                "(module was not produced by the current-phase Parser)"
-            )
-        if type_param_scope is None:
-            type_param_scope = self._current_type_param_scope()
-        return resolver.resolve(ref, type_param_scope, pending_alias=pending_alias)
-
-    def _current_type_param_scope(self) -> dict | None:
-        """Build a type_param_scope dict from the current function / record
-        context. Returns None if neither is in generic scope.
-
-        Mirrors the parser's `_type_param_scope` shape: name -> TypeParamKind.
-        Functions only carry TYPE-kind params; records can have INT-kind
-        params (e.g. Matrix[T, N: int]) -- zip names with kinds.
-        """
-        scope: dict = {}
-        func = self.ctx.func.current_function
-        if isinstance(func, TpyFunction) and func.type_params:
-            kinds = getattr(func, 'type_param_kinds', None) or []
-            for i, name in enumerate(func.type_params):
-                scope[name] = kinds[i] if i < len(kinds) else TypeParamKind.TYPE
-        record_params = self.ctx.record_ctx.type_params or []
-        record_kinds = self.ctx.record_ctx.type_param_kinds or []
-        for i, name in enumerate(record_params):
-            if name not in scope:
-                kind = record_kinds[i] if i < len(record_kinds) else TypeParamKind.TYPE
-                scope[name] = kind
-        return scope or None
-
     def resolve_type(self, typ: TpyType, *, protocols_only: bool = False) -> TpyType:
-        """Resolve a type, setting is_protocol flag on NominalType when needed.
+        """Sema-local type normalization.
 
-        Since Phase F.5 the parser-side `TypeResolver` mints authoritative
-        `_module_qname`, `is_protocol`, and `is_dynamic_protocol` on its
-        first pass (using the post-F.5.1 canonical import table + the
-        dep module's attached `TypeDef.protocol`). This pass therefore
-        only has to: convert scope-local type-parameter names to
-        `TypeParamRef`, expand compile-time-only type aliases, and
-        recurse into structural wrappers' inner types.
+        Runs on already-resolved `TpyType` values from the parser-side
+        `TypeResolver` and applies the transformations that depend on
+        sema state:
+
+        - Bare `NominalType` matching a type parameter in the current
+          function / record scope becomes `TypeParamRef` (parser emits
+          `NominalType("T")` because type-param scope is scope-local
+          to sema, not parser).
+        - Compile-time-only aliases (e.g. `FStr` singleton) expand to
+          their target type.
+        - Structural wrappers (`PtrType`, `OwnType`, ...) recurse into
+          their inner types so both transformations above reach deeply
+          nested positions.
 
         Args:
-            protocols_only: If True, skip TypeParamRef conversion. Used
-                during record registration when type parameter scope is
-                not yet active.
+            protocols_only: If True, skip TypeParamRef conversion.
+                Used during record registration when the type-parameter
+                scope is not yet active.
         """
         if isinstance(typ, NominalType):
-            # Convert bare NominalType to TypeParamRef when it matches a type
-            # parameter name in scope (method-level type params in annotations
-            # are parsed as NominalType but should be TypeParamRef).
             if not protocols_only and not typ.type_args and not typ.is_protocol:
                 from ..parse import TpyFunction
                 func = self.ctx.func.current_function
@@ -137,13 +81,10 @@ class TypeOperations:
                     return TypeParamRef(typ.name, bound=bound)
                 if typ.name in (self.ctx.record_ctx.type_params or []):
                     return TypeParamRef(typ.name)
-            # Resolve compile-time-only type aliases (e.g. FStr singleton).
-            # Registered at import time for builtin types with no C++ representation.
             if not typ.type_args and self.ctx.registry.type_aliases:
                 alias = self.ctx.registry.get_type_alias(typ.name)
                 if alias is not None and alias.is_compile_time_only():
                     return alias
-            # Recursively resolve type arguments
             if typ.type_args:
                 new_args = tuple(
                     self.resolve_type(arg, protocols_only=protocols_only) if isinstance(arg, TpyType) else arg
@@ -152,44 +93,29 @@ class TypeOperations:
                 if any(new is not old for new, old in zip(new_args, typ.type_args)):
                     new_inner = tuple(a for a in new_args if isinstance(a, TpyType))
                     return typ.with_inner_types(new_inner)
-        elif isinstance(typ, PtrType):
-            resolved_pointee = self.resolve_type(typ.pointee, protocols_only=protocols_only)
-            if resolved_pointee is not typ.pointee:
-                return PtrType(resolved_pointee, is_readonly=typ.is_readonly)
-        elif isinstance(typ, OwnType):
-            resolved_wrapped = self.resolve_type(typ.wrapped, protocols_only=protocols_only)
-            if resolved_wrapped is not typ.wrapped:
-                return OwnType(resolved_wrapped)
-        elif isinstance(typ, ReadonlyType):
-            resolved_wrapped = self.resolve_type(typ.wrapped, protocols_only=protocols_only)
-            if resolved_wrapped is not typ.wrapped:
-                return ReadonlyType(resolved_wrapped)
-        elif isinstance(typ, AutoReadonlyType):
-            resolved_wrapped = self.resolve_type(typ.wrapped, protocols_only=protocols_only)
-            if resolved_wrapped is not typ.wrapped:
-                return AutoReadonlyType(resolved_wrapped)
-        elif isinstance(typ, AutoOwnType):
-            resolved_wrapped = self.resolve_type(typ.wrapped, protocols_only=protocols_only)
-            if resolved_wrapped is not typ.wrapped:
-                return AutoOwnType(resolved_wrapped)
-        elif isinstance(typ, OptionalType):
-            resolved_inner = self.resolve_type(typ.inner, protocols_only=protocols_only)
-            if resolved_inner is not typ.inner:
-                # Preserve only explicit force_pointer_repr (set by generic
-                # substitution). Do *not* snapshot `typ.uses_pointer_repr()`
-                # here -- that was computed against the unresolved inner
-                # (parser-level NominalType with no _module_qname) and would
-                # freeze the wrong decision when the substitution turns the
-                # inner into a value-typed enum.
-                return OptionalType(resolved_inner, force_pointer_repr=typ.force_pointer_repr)
-        elif isinstance(typ, UnionType):
-            resolved_members = tuple(self.resolve_type(m, protocols_only=protocols_only) for m in typ.members)
-            if any(new is not old for new, old in zip(resolved_members, typ.members)):
-                return UnionType(resolved_members)
-        elif isinstance(typ, TupleType):
-            resolved_elements = tuple(self.resolve_type(e, protocols_only=protocols_only) for e in typ.element_types)
-            if any(new is not old for new, old in zip(resolved_elements, typ.element_types)):
-                return TupleType(resolved_elements)
+            return typ
+        if isinstance(typ, PtrType):
+            resolved = self.resolve_type(typ.pointee, protocols_only=protocols_only)
+            return PtrType(resolved, is_readonly=typ.is_readonly) if resolved is not typ.pointee else typ
+        if isinstance(typ, (OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType)):
+            resolved = self.resolve_type(typ.wrapped, protocols_only=protocols_only)
+            return type(typ)(resolved) if resolved is not typ.wrapped else typ
+        if isinstance(typ, OptionalType):
+            resolved = self.resolve_type(typ.inner, protocols_only=protocols_only)
+            if resolved is typ.inner:
+                return typ
+            # Preserve only explicit `force_pointer_repr` (set by generic
+            # substitution).  Do NOT snapshot `typ.uses_pointer_repr()`
+            # here -- it was computed against the unresolved inner and
+            # would freeze the wrong decision when substitution turns
+            # the inner into a value-typed enum.
+            return OptionalType(resolved, force_pointer_repr=typ.force_pointer_repr)
+        if isinstance(typ, UnionType):
+            resolved = tuple(self.resolve_type(m, protocols_only=protocols_only) for m in typ.members)
+            return UnionType(resolved) if any(a is not b for a, b in zip(resolved, typ.members)) else typ
+        if isinstance(typ, TupleType):
+            resolved = tuple(self.resolve_type(e, protocols_only=protocols_only) for e in typ.element_types)
+            return TupleType(resolved) if any(a is not b for a, b in zip(resolved, typ.element_types)) else typ
         return typ
 
     def validate_type(

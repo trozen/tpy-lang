@@ -55,7 +55,18 @@ class ParseError(Exception):
         return f"{filename}: error: {self.message}"
 
 
-# Unresolved type-syntax nodes (Phase F.3).
+class ResolutionFailure(ParseError):
+    """Recoverable name-resolution failure raised by `TypeResolver`.
+
+    Signals that a `TpyTypeRef` referred to a name the resolver could not
+    bind ("Unknown type", "Unknown generic type", "Unsupported qualified
+    type").  Lenient callers (macro-fragment resolution) catch this
+    specifically and substitute a `NominalType(name, args)` placeholder;
+    everyone else treats it as a regular `ParseError`.
+    """
+
+
+# Unresolved type-syntax nodes.
 #
 # Parser emits these in annotation positions instead of constructing TpyType
 # directly. Sema's resolve_type_ref walks them against the TypeDef registry,
@@ -303,8 +314,8 @@ class TpyCall(TpyExpr):
     func: TpyExpr  # TpyName for simple calls; arbitrary TpyExpr for expression callees
     args: list[TpyExpr]
     # Between parse and sema's _resolve_pending_type_refs pre-pass,
-    # call_type and type_args may hold TypeRefNode in place of TpyType
-    # (Phase F.3c.3). All readers post-pre-pass see TpyType.
+    # call_type and type_args may hold TypeRefNode in place of TpyType.
+    # All readers post-pre-pass see TpyType.
     call_type: 'TpyType | TypeRefNode | None' = None  # For generic instantiation like MyContainer[T, N]()
     type_args: 'tuple[TpyType | TypeRefNode | None, ...]' = ()  # Explicit type args for generic function calls: func[T](args)
     inferred_type_args: tuple[TpyType, ...] | None = None  # Set by sema for generic function calls
@@ -345,7 +356,7 @@ class TpyMethodCall(TpyExpr):
     kwargs: dict[str, TpyExpr] = field(default_factory=dict)
     double_star_unpack: 'TpyExpr | None' = None  # **expr unpacking at call site
     resolved_import: tuple[str, str] | None = None  # Set by parser: (module, name) for resolved imports
-    # Phase F.3c.3: may hold TypeRefNode pre-sema-pre-pass.
+    # May hold TypeRefNode pre-sema-pre-pass.
     type_args: 'tuple[TpyType | TypeRefNode | None, ...]' = ()  # Explicit type args for module.func[T](args) syntax
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     is_static_call: bool = False  # Set by sema for ClassName.staticmethod() calls
@@ -614,10 +625,9 @@ class TpyVarDecl(TpyStmt):
     """Variable declaration with optional initializer.
 
     `type` may temporarily hold a TypeRefNode when emitted by the parser at
-    leaf annotation sites (Phase F.3b.4); the sema writer
-    (_analyze_var_decl) calls TypeOperations.resolve_type_ref to produce a
-    TpyType and writes it back in place. All downstream sema/codegen reads
-    see only TpyType.
+    annotation sites; the sema writer (`_analyze_var_decl`) calls
+    `TypeOperations.resolve_type_ref` to produce a TpyType and writes it
+    back in place. All downstream sema/codegen reads see only TpyType.
     """
     name: str
     type: Optional[TpyType | TypeRefNode]
@@ -1066,10 +1076,9 @@ class TpyFunction:
     name: str
     # Between parse and sema's _resolve_pending_type_refs pre-pass, params
     # and return_type for top-level (non-method) functions may hold
-    # TypeRefNode in place of TpyType (Phase F.3b.5). All readers post-
-    # pre-pass see TpyType. Additionally (Phase F.3f.1), return_type may
-    # be None when no annotation was provided -- sema substitutes VOID
-    # during the pre-pass.
+    # TypeRefNode in place of TpyType. All readers post-pre-pass see
+    # TpyType.  `return_type` may also be None when no annotation was
+    # provided -- sema substitutes VOID during the pre-pass.
     params: list[tuple[str, TpyType | TypeRefNode]]
     return_type: 'TpyType | TypeRefNode | None'
     body: list[TpyStmt]
@@ -1120,8 +1129,8 @@ class TpyFunction:
     # of ref-based params can tell INT-kind type params from TYPE-kind.
     type_param_kinds: list[TypeParamKind] = field(default_factory=list)
     # Between parse and sema's _resolve_pending_type_refs pre-pass, bounds
-    # may hold TypeRefNode in place of TpyType (Phase F.3c.1). All readers
-    # post-pre-pass see TpyType.
+    # may hold TypeRefNode in place of TpyType.  All readers post-pre-pass
+    # see TpyType.
     type_param_bounds: 'dict[str, TpyType | TypeRefNode]' = field(default_factory=dict)
     type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "tpy.extern.DefaultInt"}
     defaults: list['TpyExpr | None'] = field(default_factory=list)  # len == len(params); None = no default
@@ -1130,7 +1139,7 @@ class TpyFunction:
     vararg_type: 'TpyType | TypeRefNode | None' = None  # element type T from *args: T
     kwarg_name: str | None = None  # name of **kwargs parameter
     # Between parse and sema's _resolve_pending_type_refs pre-pass, kwarg_type
-    # may hold TypeRefNode in place of TpyType (Phase F.3c.2).
+    # may hold TypeRefNode in place of TpyType.
     kwarg_type: 'TpyType | TypeRefNode | None' = None  # TypedDict type from **kwargs: Unpack[TD]
     error_return: str | None = None  # @error_return(E) exception type name
     builtin_decorator_key: str | None = None  # @builtin_decorator("tpy.readonly")
@@ -1139,18 +1148,16 @@ class TpyFunction:
     generator_yield_type: 'TpyType | None' = None  # Set by sema: T from Iterator[T]
     generator_locals: 'list[tuple[str, TpyType]] | None' = None  # Set by sema: local vars for struct fields
     skip_codegen: bool = False  # Set by sema: @inline function, body inlined at call sites
-    # Phase F.3b.6.1 / F.3b.6.3: preserves the self annotation (e.g.
-    # OwnType(SelfType), AutoOwnType(SelfType), AutoReadonlyType(SelfType))
-    # for methods. Between parse and sema's _resolve_pending_type_refs
-    # pre-pass, this may hold TypeRefNode in place of TpyType
-    # (F.3b.6.3); sema resolves before method_expansion reads it.
+    # Preserves the self annotation for methods (e.g. OwnType(SelfType),
+    # AutoOwnType(SelfType), AutoReadonlyType(SelfType)).  Between parse
+    # and sema's _resolve_pending_type_refs pre-pass this may hold a
+    # TypeRefNode; sema resolves before `method_expansion` reads it.
     # None when self had no explicit annotation or for non-methods.
-    # Carried through dc_replace on auto_own / auto_readonly clones.
+    # Carried through `dc_replace` on auto_own / auto_readonly clones.
     self_annotation: 'TpyType | TypeRefNode | None' = None
-    # Phase F.3b.6.2: set by parser when the method carries the
-    # `@auto_readonly` decorator. Sema.method_expansion uses this to drive
-    # AutoReadonlyType param wrapping (previously done in _parse_method).
-    # Cleared on the auto_readonly clones once they've been expanded.
+    # Set by the parser when the method carries `@auto_readonly`.
+    # `method_expansion` uses this to drive AutoReadonlyType param
+    # wrapping; cleared on the auto_readonly clones once expanded.
     has_auto_readonly_decorator: bool = False
     loc: SourceLocation | None = None
 
@@ -1203,12 +1210,12 @@ class TpyRecord:
     type_params: list[str] = field(default_factory=list)
     type_param_kinds: list[TypeParamKind] = field(default_factory=list)
     # Between parse and sema's _resolve_pending_type_refs pre-pass, bounds
-    # may hold TypeRefNode in place of TpyType (Phase F.3c.1). All readers
-    # post-pre-pass see TpyType.
+    # may hold TypeRefNode in place of TpyType.  All readers post-pre-pass
+    # see TpyType.
     type_param_bounds: 'dict[str, TpyType | TypeRefNode]' = field(default_factory=dict)
     # Between parse and sema's _resolve_pending_type_refs pre-pass, bases
-    # may hold TypeRefNode in place of TpyType (Phase F.3c.2b). All
-    # readers post-pre-pass see TpyType.
+    # may hold TypeRefNode in place of TpyType.  All readers post-pre-
+    # pass see TpyType.
     bases: 'list[TpyType | TypeRefNode]' = field(default_factory=list)
     linkage: RecordLinkage = RecordLinkage.DEFAULT
     native_name: str | None = None
@@ -1245,7 +1252,7 @@ class TpyProtocol:
     name: str
     methods: list[MethodSignature]
     # Between parse and sema's _resolve_pending_type_refs pre-pass, field
-    # types may hold TypeRefNode in place of TpyType (Phase F.3c.2).
+    # types may hold TypeRefNode in place of TpyType.
     fields: 'list[tuple[str, TpyType | TypeRefNode]]' = field(default_factory=list)
     type_params: list[str] = field(default_factory=list)
     parent_protocols: list[str] = field(default_factory=list)
@@ -1307,11 +1314,10 @@ class TpyModule:
     bare_module_imports: set[str] = field(default_factory=set)
     # Type aliases (e.g., Shape = Circle | Rect) -> (resolved type, source location)
     # Between parse and sema's _resolve_pending_type_refs pre-pass, alias
-    # RHS values may hold TypeRefNode in place of TpyType (Phase F.3c.2c).
-    # Sema resolves each alias passing `pending_alias=alias_name` through
-    # the resolver API so same-body self-refs become NominalType(name)
-    # placeholders (Phase F.3d.3), then detects recursive unions
-    # post-resolution.
+    # RHS values may hold TypeRefNode in place of TpyType.  Sema resolves
+    # each alias passing `pending_alias=alias_name` through the resolver
+    # API so same-body self-refs become NominalType(name) placeholders,
+    # then detects recursive unions post-resolution.
     type_aliases: 'dict[str, tuple[TpyType | TypeRefNode, SourceLocation | None]]' = field(default_factory=dict)
     # Parser warnings (e.g., imports after non-import code)
     parse_warnings: list[ParseWarning] = field(default_factory=list)
@@ -1319,14 +1325,14 @@ class TpyModule:
     directives: ModuleDirectives = field(default_factory=ModuleDirectives)
     # Union type aliases that need wrapper-struct representation (self- or mutually-recursive)
     recursive_union_names: set[str] = field(default_factory=set)
-    # Parser resolver: a TypeResolver instance attached at end-of-parse that
-    # resolves a TypeRefNode (emitted by the walker at leaf annotation sites)
-    # to a TpyType. Sema invokes `resolver.resolve(ref, scope)` via
-    # TypeOperations.resolve_type_ref when a writer encounters an unresolved
-    # ref in the AST. Holds a back-reference to the parser so it carries live
-    # resolution state (registry, imports, local_defs, module_class_names,
-    # type_alias_names, reverse_module_aliases, bare_module_imports). See
-    # Phase F.3b.4 (introduced) / F.3d.1 (extracted to standalone class).
+    # Parser resolver: a TypeResolver instance attached at end-of-parse
+    # that resolves a TypeRefNode (emitted by the walker at annotation
+    # sites) to a TpyType.  Sema invokes `resolver.resolve(ref, scope)`
+    # via `TypeOperations.resolve_type_ref` when a writer encounters an
+    # unresolved ref.  Holds a back-reference to the parser so it carries
+    # live resolution state (registry, imports, local_defs,
+    # module_class_names, type_alias_names, reverse_module_aliases,
+    # bare_module_imports).
     resolver: 'Any | None' = None
 
     def all_records(self) -> list[TpyRecord]:

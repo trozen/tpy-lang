@@ -693,18 +693,17 @@ class ClassInfo:
         """
         self.add_method(ast.quote_fun(source))
 
-    # TODO(F.3b.6 follow-up): property getter+setter emission from macros.
+    # TODO: property getter+setter emission from macros.
     # FragmentParser parses fragments one at a time, so the setter's
-    # `@getter_name.setter` decorator has no `property_names` context to
-    # match against and falls through as "Unknown decorator". To support
-    # macro-generated properties, add something like
+    # `@getter_name.setter` decorator has no `property_names` context
+    # and falls through as "Unknown decorator".  To support macro-
+    # generated properties, add something like
     #   add_property_pair(getter_source: str, setter_source: str) -> None
     # that parses both fragments together, threading the getter name
-    # into FragmentParser so the setter resolves correctly. The rest of
-    # the method expansion pipeline (Phase F.3b.6) already handles
-    # property setter Own[T] wrapping, so the fix is purely at the
-    # FragmentParser routing layer. Wait for a real use case before
-    # committing to an API shape.
+    # into FragmentParser so the setter resolves correctly.  The method
+    # expansion pipeline already handles property-setter `Own[T]`
+    # wrapping, so the fix is purely at the FragmentParser routing
+    # layer.  Wait for a real use case before committing to an API shape.
 
     def set_match_args(self, names: list[str]) -> None:
         """Set positional match arg names (mirrors Python's __match_args__)."""

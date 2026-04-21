@@ -16,16 +16,13 @@ from ..typesys import (
     is_integer_type, is_void_like_type,
     _contains_self_reference, validate_recursive_union_paths,
 )
-from ..type_resolver import _FIXED_INT_MAP
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call, ParseError
 from ..parse.nodes import RecordLinkage
 from .registration import build_record_self_type, _vararg_span_type
 from ..parse.nodes import (
-    TpyIntLiteral, TpyFloatLiteral,
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
     TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef,
-    TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, TpyInferFromDefaultRef,
 )
 from .expressions import _collect_body_name_refs
 
@@ -325,8 +322,10 @@ class SemanticAnalyzer:
         # Set module context
         self.ctx.module_name = module_name
         self.ctx.module_cpp_namespace = getattr(module.directives, 'cpp_namespace', None) if hasattr(module, 'directives') else None
-        # Parser ref resolver (Phase F.3b.4): used by TypeOperations.resolve_type_ref
-        # to resolve TpyTypeRef nodes emitted at leaf annotation sites.
+        # Module resolver -- consumed by `_infer_field_type_from_default`
+        # (same-module record lookup) and the macro post-resolve step in
+        # `register_record` (body TypeRefNodes on macro-added methods).
+        # See `SemanticContext.parser_resolver` docstring.
         self.ctx.parser_resolver = module.resolver
 
         # Convert parse warnings to diagnostics
@@ -385,19 +384,14 @@ class SemanticAnalyzer:
             alias = module.module_aliases.get(mod_name)
             self.ctx.global_ns.bind_module(mod_name, alias)
 
-        # Phase F.3b.4 / F.3b.5: resolve TpyTypeRef nodes emitted by the
-        # walker at leaf annotation sites before any pass reads
-        # func.params / func.return_type / fld.type / stmt.type as TpyType.
-        # Runs before register_record / register_function / _fix_recursive /
-        # _resolve_imported_aliases so those see resolved TpyType uniformly.
-        self._resolve_pending_type_refs(module)
+        # TypeRefNodes were already resolved before `analyze()` was
+        # called (by `Compiler._resolve_module_refs` between
+        # canonicalization and sema).  Everything downstream can read
+        # TpyType uniformly.
 
-        # Phase F.3d.4: method-linkage validation (stubs allowed/required
-        # per record linkage, @native decorator restrictions) was moved
-        # here from parse time so base-resolution errors (raised from
-        # `_resolve_pending_type_refs` above) naturally fire first. This
-        # deletes the parse-time base-resolution side-effect that was
-        # tracked as the F.3c.2b debt.
+        # Method-linkage validation (stubs allowed/required per record
+        # linkage, @native decorator restrictions) runs here so any
+        # base-resolution errors from the resolve phase fire first.
         self._validate_record_method_linkage(module)
 
         # Resolve imported type aliases in AST type annotations.
@@ -407,20 +401,19 @@ class SemanticAnalyzer:
         if self.ctx.registry.imported_type_alias_info:
             self._resolve_imported_aliases(module)
 
-        # First pass: register all enums then records. Method expansion
+        # First pass: register all enums then records.  Method expansion
         # (self-flag derivation, wrapping, cloning, validation) runs
-        # inside `register_record` after `_apply_class_macros` so that
-        # macro-added methods flow through the same pipeline as regular
-        # ones (Phase F.3b.6.5). Enums are registered
-        # first so that record field-type resolution (in register_record) can
-        # substitute parser-level NominalType("Color") placeholders with the
-        # registered enum NominalType that carries `_module_qname`. Records
-        # never depend on each other at registration time, and enums are
-        # self-contained, so this ordering is safe even for nested enums --
+        # inside `register_record` after `_apply_class_macros` so macro-
+        # added methods flow through the same pipeline as regular ones.
+        # Enums are registered first so record field-type resolution
+        # (inside `register_record`) can substitute parser-level
+        # `NominalType("Color")` placeholders with the registered enum
+        # NominalType that carries `_module_qname`.  Records never depend
+        # on each other at registration time, and enums are self-
+        # contained, so this ordering is safe even for nested enums --
         # nested enum names are already dotted ("Message.Kind") when
-        # `register_enum` sees them (parser assigns them in
-        # `_register_nested_types` / `_prefix_nested_names`), so the parent
-        # record need not exist in the sema registry yet.
+        # `register_enum` sees them, so the parent record need not
+        # exist in the sema registry yet.
         for enum in module.all_enums():
             self.registrar.register_enum(enum)
         for record in module.all_records():
@@ -1321,16 +1314,13 @@ class SemanticAnalyzer:
         @native classes require stub bodies; regular classes disallow
         stub bodies (except @overload stubs) and @native("...") decorators.
 
-        Phase F.3d.4 moved these checks from parse time to here so that
-        base-resolution errors from `_resolve_pending_type_refs` fire
-        first instead of being masked by parse-time class-body
-        validation.
+        Runs after `_resolve_pending_type_refs` so base-resolution
+        errors fire first (previously these checks ran at parse time
+        and could mask those errors).
         """
         for record in module.all_records():
             for method in record.methods:
-                # Use record.loc so the diagnostic points at the class
-                # header, matching the pre-F.3d.4 parser-raised variant
-                # which passed the class's ast node to ParseError.
+                # Use record.loc so the diagnostic points at the class header.
                 if record.linkage != RecordLinkage.DEFAULT:
                     if not method.is_stub:
                         raise SemanticError(
@@ -1352,293 +1342,6 @@ class SemanticAnalyzer:
                             loc=record.loc,
                         )
 
-    def _infer_field_type_from_default(self, expr: 'TpyExpr | None') -> 'TpyType | None':
-        """Infer a field type from its default-value expression.
-
-        Moved from parser (`_infer_type_from_expr`) in Phase F.3f.2 so
-        parser stops constructing TpyType. Mirrors the old semantics
-        one-for-one: int/float/str literals map to BIGINT/FLOAT/STR;
-        fixed-int constructor calls map to the matching singleton;
-        int()/float() map to BIGINT/FLOAT; calls to a registered record
-        name map to NominalType(name). Returns None if the expression
-        does not match any recognized form -- caller raises "Cannot
-        infer type for field 'X'".
-        """
-        if expr is None:
-            return None
-        if isinstance(expr, TpyIntLiteral):
-            return BIGINT
-        if isinstance(expr, TpyFloatLiteral):
-            return FLOAT
-        if isinstance(expr, TpyStrLiteral):
-            return STR
-        if isinstance(expr, TpyCall) and isinstance(expr.func, TpyName):
-            type_name = expr.func_name
-            if (fixed_int := _FIXED_INT_MAP.get(type_name)) is not None:
-                return fixed_int
-            if type_name == "int":
-                return BIGINT
-            if type_name == "float":
-                return FLOAT
-            # Imported records are already in sema's registry by this
-            # point (import-handling runs before _resolve_pending_type_refs);
-            # same-module records are not -- register_record runs later.
-            # For same-module siblings, consult parser.registry via
-            # module.resolver, which F.3g.2 populates with
-            # RecordInfo.module at class-registration time. The minted
-            # qname matches sema's eventual register_record qname (both
-            # go through public_module_name), so type_def_of dispatch
-            # works once register_record finishes.
-            if (record_info := self.ctx.registry.get_record(type_name)) is not None:
-                return NominalType(type_name, _module_qname=record_info.qualified_name())
-            parser_resolver = self.ctx.parser_resolver
-            if parser_resolver is not None:
-                parser_record = parser_resolver.registry.get_record(type_name)
-                if parser_record is not None:
-                    return NominalType(type_name,
-                                       _module_qname=parser_record.qualified_name())
-        return None
-
-    def _resolve_pending_type_refs(self, module: TpyModule) -> None:
-        """Resolve all TpyTypeRef nodes emitted by the walker at leaf
-        annotation sites, in-place. Downstream passes assume TpyType
-        invariants (map_inner_types, isinstance against structural classes,
-        etc.), so refs must be fully resolved before any of them run.
-
-        Currently flipped sites (F.3b.4 + F.3b.5):
-        - TpyVarDecl.type (top-level)
-        - TpyFunction.params / return_type / vararg_type for top-level
-          non-method functions (module.functions)
-        - FieldInfo.type for all records (TpyRecord.fields[*].type)
-
-        Nested defs (inside function bodies) and methods are resolved
-        eagerly at parse time (parser._finalize_function_refs /
-        _parse_method keeps TpyType). F.3b.6+ may extend coverage.
-        """
-        ref_types = (TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef)
-
-        def _resolve(t, scope=None):
-            if isinstance(t, ref_types):
-                return self.type_ops.resolve_type_ref(t, scope)
-            return t
-
-        def _resolve_return_type(t, scope=None):
-            """Phase F.3f.1: None on parser-emitted return_type means "no
-            annotation was provided"; substitute VOID here so downstream
-            readers see a concrete TpyType."""
-            if t is None:
-                return VOID
-            return _resolve(t, scope)
-
-        def _func_scope(func):
-            if not func.type_params:
-                return None
-            kinds = func.type_param_kinds
-            return {
-                name: (kinds[i] if i < len(kinds) else TypeParamKind.TYPE)
-                for i, name in enumerate(func.type_params)
-            }
-
-        def _record_scope(record):
-            if not record.type_params:
-                return None
-            kinds = record.type_param_kinds
-            return {
-                name: (kinds[i] if i < len(kinds) else TypeParamKind.TYPE)
-                for i, name in enumerate(record.type_params)
-            }
-
-        def _merged_method_scope(record_scope, method):
-            """Record type params + method type params, method-level wins on collision."""
-            if not method.type_params:
-                return record_scope
-            merged = dict(record_scope) if record_scope else {}
-            method_kinds = method.type_param_kinds
-            for i, name in enumerate(method.type_params):
-                kind = method_kinds[i] if i < len(method_kinds) else TypeParamKind.TYPE
-                merged[name] = kind
-            return merged
-
-        def _protocol_scope(protocol):
-            if not protocol.type_params:
-                return None
-            # Protocols only carry TYPE-kind type params (parser constraint).
-            return {name: TypeParamKind.TYPE for name in protocol.type_params}
-
-        # Type parameter bounds (Phase F.3c.1): resolved with no enclosing
-        # type-param scope since bounds reference protocols in scope, not
-        # other type params. Matches pre-F.3c.1 parser behavior which
-        # called `_parse_type_annotation(tp.bound)` without a scope.
-        def _resolve_bounds(bounds):
-            if not bounds:
-                return bounds
-            return {name: _resolve(t, None) for name, t in bounds.items()}
-
-        # Type alias RHS (Phase F.3c.2c): resolve in declaration order,
-        # passing `pending_alias=alias_name` to the resolver so same-body
-        # self-references produce a NominalType(name) placeholder, matching
-        # pre-flip parse-time behaviour. Register each resolved alias in
-        # the registry immediately so later alias bodies can find it by
-        # name. Also detect recursive unions post-resolution.
-        if module.type_aliases:
-            resolver = self.ctx.parser_resolver
-            resolved_aliases: dict[str, tuple[TpyType, object]] = {}
-            for alias_name, (alias_ref, alias_loc) in module.type_aliases.items():
-                if isinstance(alias_ref, ref_types):
-                    alias_type = self.type_ops.resolve_type_ref(
-                        alias_ref, None, pending_alias=alias_name)
-                else:
-                    alias_type = alias_ref
-                # Recursive union detection (moved from parser).
-                if isinstance(alias_type, UnionType) and _contains_self_reference(alias_type, alias_name):
-                    err = validate_recursive_union_paths(alias_name, alias_type.members)
-                    if err is not None:
-                        raise SemanticError(err, loc=alias_loc)
-                    module.recursive_union_names.add(alias_name)
-                if resolver is not None:
-                    resolver.registry.register_type_alias(alias_name, alias_type)
-                resolved_aliases[alias_name] = (alias_type, alias_loc)
-            module.type_aliases = resolved_aliases
-
-        # Top-level functions (methods are resolved eagerly in _parse_method,
-        # nested defs in _parse_nested_def)
-        for func in module.functions:
-            scope = _func_scope(func)
-            func.params = [(n, _resolve(t, scope)) for (n, t) in func.params]
-            func.return_type = _resolve_return_type(func.return_type, scope)
-            if func.vararg_type is not None:
-                func.vararg_type = _resolve(func.vararg_type, scope)
-            # Phase F.3c.2: kwarg_type (from **kwargs: Unpack[TD]) emitted
-            # as TypeRefNode by the parser.
-            if func.kwarg_type is not None:
-                func.kwarg_type = _resolve(func.kwarg_type, scope)
-            func.type_param_bounds = _resolve_bounds(func.type_param_bounds)
-
-        # All records (including nested) -- fields, methods, bases.
-        # Record methods use a merged scope (record type params + method
-        # type params) when resolving param / return / vararg refs. Self
-        # is also resolved here so sema.method_expansion sees TpyType.
-        # (Phase F.3b.6.3)
-        # Phase F.3c.2b: bases resolved here too. Phase F.3d.4 deleted
-        # the parse-time base-resolution side-effect by moving the
-        # parse-time class-body checks that masked base errors (stub
-        # body / @native decorator validation, field-type inference
-        # failure) to sema-time, where they fire naturally after base
-        # resolution has surfaced any errors.
-        for record in module.all_records():
-            scope = _record_scope(record)
-            record.type_param_bounds = _resolve_bounds(record.type_param_bounds)
-            record.bases = [_resolve(b, scope) for b in record.bases]
-            for fld in record.fields:
-                if isinstance(fld.type, TpyInferFromDefaultRef):
-                    # Phase F.3f.2: inference moved from parser to sema.
-                    # Parser always emits the marker for bare `name = expr`
-                    # class-body assignments; sema attempts inference from
-                    # the parsed TpyExpr, raising only on genuine failure.
-                    inferred = self._infer_field_type_from_default(fld.default_expr)
-                    if inferred is None:
-                        raise SemanticError(
-                            f"Cannot infer type for field '{fld.name}'",
-                            loc=fld.type.loc,
-                        )
-                    fld.type = inferred
-                else:
-                    fld.type = _resolve(fld.type, scope)
-            for method in record.methods:
-                method_scope = _merged_method_scope(scope, method)
-                method.params = [(n, _resolve(t, method_scope)) for (n, t) in method.params]
-                method.return_type = _resolve_return_type(method.return_type, method_scope)
-                if method.vararg_type is not None:
-                    method.vararg_type = _resolve(method.vararg_type, method_scope)
-                if method.self_annotation is not None:
-                    method.self_annotation = _resolve(method.self_annotation, method_scope)
-                if method.kwarg_type is not None:
-                    method.kwarg_type = _resolve(method.kwarg_type, method_scope)
-                method.type_param_bounds = _resolve_bounds(method.type_param_bounds)
-
-        # Protocol MethodSignatures: resolve params + return_type under
-        # the protocol's own type-param scope. Protocol field types
-        # similarly (Phase F.3c.2).
-        for protocol in module.protocols:
-            scope = _protocol_scope(protocol)
-            protocol.fields = [
-                (fname, _resolve(ftype, scope)) for fname, ftype in protocol.fields
-            ]
-            for msig in protocol.methods:
-                msig.params = [(n, _resolve(t, scope)) for (n, t) in msig.params]
-                msig.return_type = _resolve_return_type(msig.return_type, scope)
-
-        # Top-level TpyVarDecls
-        for stmt in module.top_level_stmts:
-            if isinstance(stmt, TpyVarDecl) and stmt.type is not None:
-                stmt.type = _resolve(stmt.type)
-
-        # Phase F.3c.3: resolve expression-level type uses inside function
-        # bodies (TpyCall.call_type, TpyCall.type_args,
-        # TpyMethodCall.type_args). These were previously resolved at
-        # parse time by `_parse_type_annotation`; now parser emits
-        # TypeRefNode and we resolve here. The walker recurses into
-        # nested defs (which are separate scopes for locals but share
-        # the module-level resolver).
-        def _resolve_call_type_refs(stmts, call_scope):
-            for stmt in stmts:
-                for expr in stmt.exprs():
-                    _resolve_expr_calls(expr, call_scope)
-                for body in stmt.sub_bodies():
-                    _resolve_call_type_refs(body, call_scope)
-                if isinstance(stmt, TpyNestedDef):
-                    # Nested def signature was already finalized at parse
-                    # time; recurse into body for nested TpyCall refs.
-                    nested_scope = _func_scope(stmt.func) or call_scope
-                    _resolve_call_type_refs(stmt.func.body, nested_scope)
-
-        def _resolve_expr_calls(expr, call_scope):
-            if isinstance(expr, TpyCall):
-                if isinstance(expr.call_type, ref_types):
-                    # Parser catches structural errors at parse time; here
-                    # we catch name-resolution errors silently to match
-                    # pre-flip behaviour (sema falls back to type_args /
-                    # subscript_callee when the name isn't a type).
-                    try:
-                        expr.call_type = self.type_ops.resolve_type_ref(
-                            expr.call_type, call_scope)
-                    except ParseError:
-                        expr.call_type = None
-                _resolve_call_type_args(expr, call_scope)
-            elif isinstance(expr, TpyMethodCall):
-                _resolve_call_type_args(expr, call_scope)
-            for child in expr.children():
-                _resolve_expr_calls(child, call_scope)
-
-        def _resolve_call_type_args(expr, call_scope):
-            """Resolve TypeRefNode elements in expr.type_args. Matches pre-
-            flip `_try_parse_type_args` semantics: on any element
-            resolution failure, drop the whole tuple and propagate the
-            error message through `type_args_parse_error` so sema's
-            generic-call validator reports it."""
-            if not expr.type_args:
-                return
-            new_args = []
-            for ta in expr.type_args:
-                if isinstance(ta, ref_types):
-                    try:
-                        new_args.append(self.type_ops.resolve_type_ref(ta, call_scope))
-                    except ParseError as e:
-                        expr.type_args = ()
-                        if expr.type_args_parse_error is None:
-                            expr.type_args_parse_error = e.message
-                        return
-                else:
-                    new_args.append(ta)
-            expr.type_args = tuple(new_args)
-
-        for func in module.functions:
-            _resolve_call_type_refs(func.body, _func_scope(func))
-        for record in module.all_records():
-            rscope = _record_scope(record)
-            for method in record.methods:
-                _resolve_call_type_refs(method.body, _merged_method_scope(rscope, method))
-        _resolve_call_type_refs(module.top_level_stmts, None)
 
     def _fix_recursive_optional_annotations(self, module: TpyModule) -> None:
         """Fix annotations where a recursive union alias + None was flattened.

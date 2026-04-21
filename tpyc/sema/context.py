@@ -8,11 +8,14 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Literal
+from typing import Any, Literal, TYPE_CHECKING
 
 from ..macro_loader import MacroRegistry
 from ..parse.nodes import SourceLocation
 from .value_range import ValueRange
+
+if TYPE_CHECKING:
+    from ..parse.type_resolver import TypeResolver
 
 from ..typesys import (
     TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
@@ -501,12 +504,19 @@ class SemanticContext:
     # --- Recursive union aliases (self- or mutually-referencing) ---
     recursive_union_names: set[str] = field(default_factory=set)
 
-    # --- TypeRef resolver (Phase F.3b.4) ---
-    # Bound callable provided by the parser at end-of-parse; resolves a
-    # TypeRefNode (emitted by the walker at leaf annotation sites) to a
-    # TpyType. Wired by sema.analyzer.analyze() from module.resolver.
-    # Accessed by TypeOperations.resolve_type_ref.
-    parser_resolver: Any = None  # Callable[[TypeRefNode, Optional[dict]], TpyType] | None
+    # --- Module resolver (parser-owned) ---
+    # The `TypeResolver` the parser built for this module.  Wired by
+    # `sema.analyzer.analyze()` from `module.resolver`.  Consumed by:
+    #   - `_infer_field_type_from_default` to look up same-module
+    #     records via the parser's registry (not yet in `ctx.registry`
+    #     when the field-default pass runs).
+    #   - `register_record`'s macro post-resolve step (resolves
+    #     TypeRefNodes in bodies of methods added by class macros,
+    #     which join the record after the module-level `resolve_refs`
+    #     walk has already finished).
+    # No other sema code should touch this; the main parser ->
+    # TpyType binding happens via `parse.resolve_refs.resolve_refs`.
+    parser_resolver: 'TypeResolver | None' = None
     # Reverse map: frozenset(members) -> alias name (built lazily)
     _recursive_union_members: dict[frozenset, str] | None = None
 

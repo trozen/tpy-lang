@@ -1,17 +1,16 @@
 """
 Per-qname TypeDef registry.
 
-Part of the Phase A scaffolding for the typesys migration (see
-docs/TYPESYS_MIGRATION.md). Each builtin qname has one TypeDef capturing
-behavior that today lives on a dedicated subclass (DictType,
-SpanType, ...). Sema and codegen can read TypeDef instead of isinstance
-/ downcasting, which unblocks subclass removal in Phase B.
+Each builtin qname has one `TypeDef` describing its intrinsic behaviour
+(formatter, value-type status, Send/Sync, subscript semantics, per-
+category payloads for records / protocols / enums / factories).  Sema
+and codegen dispatch on qname via `type_def_of(t)` plus the `is_*`
+predicates in this module, rather than `isinstance` on specific
+subclasses.  See docs/TYPESYS_MIGRATION.md for the design rationale.
 
-TypeDef fields are intentionally minimal at this stage -- only properties
-that are intrinsic to the qname (not dependent on type_args) are stored
-here. Args-dependent behavior (e.g. is_send for list[T] depends on T)
-stays on the current subclass methods until Phase B migrates it to
-per-category logic on top of TypeDef.
+Only per-qname intrinsic data lives here.  Args-dependent behaviour
+(e.g. `is_send` for `list[T]` depends on `T`) is expressed via callable
+fields (`is_send: bool | Callable[[type_args], bool]`).
 """
 
 from __future__ import annotations
@@ -170,8 +169,7 @@ class TypeDef:
     record: Optional[Any] = None
     protocol: Optional[Any] = None
     enum: Optional[EnumInfo] = None
-    # Generic-instantiation payload folded in by F.3e (replaces the former
-    # `modules/type_resolution.py` factory table).
+    # Generic-instantiation payload.
     #
     # `param_kinds` is the arity + kind (TYPE vs INT) of each type
     # parameter, stored as a tuple so static registry entries are
@@ -335,9 +333,9 @@ def resolve_send_sync(field, type_args: tuple) -> Optional[bool]:
 
 # --- Predicates -----------------------------------------------------------
 #
-# These return the same answers as the current `isinstance(t, FooType)` checks
-# but go through the TypeDef registry, so they continue to work after the
-# subclasses are deleted in Phase B.
+# Qname-based replacements for the pre-migration `isinstance(t, FooType)`
+# dispatch.  All container / primitive / enum subclasses have been
+# collapsed into `NominalType`, so these predicates go through TypeDef.
 
 def _is_cat(t: "TpyType", cat: TypeCategory) -> bool:
     # LiteralType / PendingViewType delegate qualified_name() to a base/family,
@@ -388,10 +386,9 @@ def is_copy_iter(t: "TpyType") -> bool: return _is_qn(t, "tpy.CopyIter")
 def is_own_iter(t: "TpyType") -> bool:  return _is_qn(t, "tpy.OwnIter")
 
 
-# Primitive predicates (Phase D). Prefer these over isinstance(t, FooType)
-# so callers stop depending on the primitive subclass identity. Once the
-# subclasses are deleted in Phase D step 4, primitives become NominalType
-# instances with a TypeDef entry and these predicates still answer correctly.
+# Primitive predicates.  Prefer these over ad-hoc `isinstance` on the
+# primitive subclasses (which no longer exist) or direct qname
+# comparisons; they go through the TypeDef registry uniformly.
 
 def is_fixed_int_type(t: "TpyType") -> bool:  return _is_cat(t, TypeCategory.FIXED_INT)
 def is_big_int_type(t: "TpyType") -> bool:    return _is_cat(t, TypeCategory.BIG_INT)
@@ -745,14 +742,13 @@ def _populate() -> None:
 def _populate_factories() -> None:
     """Attach `param_kinds` + `type_factory` to the TypeDefs registered
     above, and register the one structural-wrapper entry that has no
-    other TypeDef (tpy.Ptr). This replaces the former factory table in
-    `modules/type_resolution.py`; see F.3e of docs/TYPESYS_MIGRATION.md.
+    other TypeDef (`tpy.Ptr`).
 
-    Typesys is imported lazily here because typesys.py imports
-    `TypeCategory` from this module at its top level -- so by the time
-    this runs, typesys is either fully loaded or loading, and the
-    singletons / `make_*` factories we need are defined before typesys's
-    type_def_registry import on its last page."""
+    Typesys is imported lazily here because `typesys.py` imports
+    `TypeCategory` from this module at its top level.  By the time
+    `_populate_factories` runs, typesys is either fully loaded or
+    mid-load with its singletons / `make_*` factories already defined
+    (the `type_def_registry` import sits on typesys's last page)."""
     from tpyc.typesys import (
         TypeParamKind,
         PtrType, ReadonlyType,

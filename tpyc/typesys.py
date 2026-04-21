@@ -162,8 +162,8 @@ def is_exception_type(name: str, registry: 'TypeRegistry') -> bool:
     return False
 
 
-# public_module_name relocated to tpyc/module_names.py in Phase F.3f.6
-# so parser can import it without dragging in typesys.
+# `public_module_name` lives in `tpyc/module_names.py` so parser can
+# import it without dragging in typesys.
 
 
 def register_protocol_module(protocol_name: str, module_name: str) -> None:
@@ -2857,14 +2857,12 @@ class FunctionInfo:
     """
     name: str
     params: list[ParamInfo]
-    # Always carries a resolved TpyType at runtime. The `Optional`
+    # Always carries a resolved TpyType at runtime.  The `Optional`
     # annotation is a type-checker concession for the parse -> sema
     # window where `TpyFunction.return_type` briefly holds `None`
-    # (parser's "no annotation" sentinel; see Phase F.3f.1). All
-    # FunctionInfo construction sites (parser.py:799 via
-    # func.return_type post-_finalize_function_refs; sema registration
-    # paths post-_resolve_pending_type_refs) feed an already-resolved
-    # TpyType. Readers may treat `return_type` as non-None.
+    # (parser's "no annotation" sentinel).  All FunctionInfo
+    # construction sites feed an already-resolved TpyType, so readers
+    # may treat `return_type` as non-None.
     return_type: Optional[TpyType]
     is_noalloc: bool = False
     is_readonly: bool = False
@@ -3025,11 +3023,11 @@ CONST_PARAMS_METHODS = frozenset({
 class MethodSignature:
     """Method signature required by a protocol.
 
-    Between parse and sema's _resolve_pending_type_refs pre-pass, params
-    and return_type may hold `TypeRefNode` in place of `TpyType` (Phase
-    F.3b.6.3). All readers post-pre-pass see TpyType. Additionally
-    (Phase F.3f.1), return_type may be None when no annotation was
-    provided -- sema substitutes VOID during the pre-pass.
+    Between parse and sema's `_resolve_pending_type_refs` pre-pass,
+    `params` and `return_type` may hold `TypeRefNode` in place of
+    `TpyType`.  All readers post-pre-pass see TpyType.  `return_type`
+    may also be None when no annotation was provided -- sema
+    substitutes VOID during the pre-pass.
     """
     name: str
     params: list[tuple[str, 'TpyType | TypeRefNode']]
@@ -3184,22 +3182,18 @@ class TypeRegistry:
     def register_enum_placeholder(self, name: str, module: str) -> None:
         """Register a parse-time enum placeholder by name.
 
-        Parser uses this to mark a name as an enum so that later
-        parse-time type-ref resolution within the same file can treat
-        it as a known enum. Sema re-registers with the fully-populated
-        NominalType + TypeDef.enum payload. Keeps typesys value
-        construction out of the parser. (Phase F.3f.5c)
+        Parser calls this to mark a name as an enum so same-file type-
+        ref resolution can treat it as a known enum.  Sema re-registers
+        later with the fully-populated NominalType + TypeDef.enum
+        payload.  Keeping typesys value construction out of the parser
+        preserves parser purity.
 
-        Phase F.3g.3: `module` is the public module for the declaring
-        file (`"__main__"` for the entry-point module, matching sema's
-        `ctx.module_name` rename). The placeholder is minted with
-        `_module_qname = f"{module}.{name}"` so it matches sema's
-        `register_enum` qname and feeds the substitution blocks in
-        `sema/type_ops.py::resolve_type` the authoritative qname on
-        the first pass; this is a prerequisite for the Phase F.5
-        substitution-block retirement, not sufficient on its own
-        (cross-module re-export facades are the remaining blocker --
-        see docs/TYPESYS_MIGRATION.md F.5).
+        `module` is the public module for the declaring file
+        (`"__main__"` for the entry-point module, matching sema's
+        `ctx.module_name` convention).  The placeholder is minted with
+        `_module_qname = f"{module}.{name}"` so parser-side and sema-
+        side registrations agree on the qname, letting the resolver
+        mint authoritative `_module_qname` values on the first pass.
         """
         qname = f"{module}.{name}"
         self.enums[name] = NominalType(name=name, _module_qname=qname)

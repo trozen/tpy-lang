@@ -1,10 +1,10 @@
 """Method resolution, iterator/span helpers, extends-arg parsing.
 
-The generic type factory table that used to live here was folded into
-the TypeDef registry in Phase F.3e (see docs/TYPESYS_MIGRATION.md).
-Remaining helpers are shared utilities that don't fit on a single TpyType
-subclass: extends-clause string parsing, type-param substitution for
-method signatures, and the iter/span element-type discovery used by sema.
+Shared utilities that don't belong on a single TpyType subclass:
+extends-clause string parsing, type-param substitution for method
+signatures, and the iter/span element-type discovery used by sema.  The
+generic-type-factory table that used to live here now lives on
+`TypeDef`.
 """
 
 from __future__ import annotations

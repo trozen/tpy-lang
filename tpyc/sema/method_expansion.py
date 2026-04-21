@@ -1,38 +1,32 @@
-"""Method expansion sema pass (Phase F.3b.6).
+"""Method expansion sema pass.
 
-Runs between `_resolve_pending_type_refs` and `register_enum` on the module.
-
-After F.3b.6.2 this pass owns four parser-purity transformations for
-methods (free functions are not expanded here):
+Runs between `_resolve_pending_type_refs` and `register_enum` on the
+module, and owns four transformations for record methods (free functions
+are not expanded here):
 
 1. Self-flag derivation -- walks `method.self_annotation` to set
-   `is_consuming` (Own[Self]), `auto_own` (AutoOwnType(Self)),
-   `auto_readonly` (AutoReadonlyType(Self)).
+   `is_consuming` (`Own[Self]`), `auto_own` (`AutoOwnType(Self)`),
+   `auto_readonly` (`AutoReadonlyType(Self)`).
 2. Self-annotation validation -- raises `SemanticError` for
    `Own[Self]` / `auto_own[Self]` / `auto_readonly[Self]` on
-   `__init__` / `__del__`, and the various @readonly / @auto_readonly
-   combinability checks. Previously raised `ParseError` from the parser.
+   `__init__` / `__del__`, plus the `@readonly` / `@auto_readonly`
+   combinability checks.
 3. Wrapping -- applies `AutoReadonlyType` to eligible params when the
-   method carries the `@auto_readonly` decorator, detects per-param
+   method carries `@auto_readonly`, detects per-param
    `auto_readonly[T]` to set the flag, and wraps the first non-self
    param of a `@property` setter with `Own[T]` when non-value.
 4. Cloning -- expands `auto_readonly` methods into mutable + const
-   overload pairs (via `strip_auto_readonly` / `apply_auto_readonly`)
-   and `auto_own` methods into borrowing + consuming pairs (via
-   `strip_auto_own` / `apply_auto_own`). Clones replace the original
-   entry in `record.methods` so register_record sees the expanded list.
+   overload pairs (`strip_auto_readonly` / `apply_auto_readonly`) and
+   `auto_own` methods into borrowing + consuming pairs (`strip_auto_own`
+   / `apply_auto_own`).  Clones replace the original entry in
+   `record.methods` so registration sees the expanded list.
 
 Parser state consumed here:
   - `TpyFunction.self_annotation`: resolved self type.
-  - `TpyFunction.has_auto_readonly_decorator`: true iff @auto_readonly
-    decorator was attached. Cleared on every clone once expanded.
-  - `TpyFunction.auto_readonly`: pre-set to True for @property getters
-    by `_parse_class` (parser preserves that convention so cloning logic
-    here covers getters uniformly).
-
-Future F.3b.6.3 flips method signatures to `TpyTypeRef`, at which
-point `self_annotation` is absorbed into `params[0]` and resolution
-happens alongside other method refs.
+  - `TpyFunction.has_auto_readonly_decorator`: true iff `@auto_readonly`
+    was attached.  Cleared on every clone once expanded.
+  - `TpyFunction.auto_readonly`: pre-set to True for `@property` getters
+    by `_parse_class` so cloning covers getters uniformly.
 """
 
 from __future__ import annotations

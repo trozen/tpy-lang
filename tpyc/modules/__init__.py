@@ -18,8 +18,8 @@ from tpyc.modules.registry import (  # noqa: F401
 )
 
 # --- Method resolution, iteration helpers ---
-# (Generic type factories and lookups live in tpyc.type_def_registry since
-# Phase F.3e; import from there directly.)
+# (Generic type factories and lookups live in `tpyc.type_def_registry`;
+# import from there directly.)
 from tpyc.modules.type_resolution import (  # noqa: F401
     _resolve_concrete_type_name, _resolve_extends_type_arg,
     extract_type_params, resolve_method,

@@ -24,7 +24,6 @@ from ..typesys import (
     is_float_type, is_any_float_type)
 from ..parse import (
     TpyExpr,
-    TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyExprStmt, TpyReturn, TpyYield,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
     TpyRaise, TpyExceptHandler, TpyTry, TpyWith,
@@ -2079,10 +2078,6 @@ class StatementAnalyzer:
 
     def _analyze_var_decl(self, stmt: TpyVarDecl) -> None:
         """Analyze a variable declaration."""
-        # Resolve parser-emitted TypeRefNode (Phase F.3b.4) to TpyType before
-        # running the rest of the pipeline.
-        if isinstance(stmt.type, (TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef)):
-            stmt.type = self.type_ops.resolve_type_ref(stmt.type)
         # In nested defs, assigning to an outer variable requires nonlocal
         if (self.ctx.func.in_nested_def
                 and stmt.name in self.ctx.func.outer_scope_locals

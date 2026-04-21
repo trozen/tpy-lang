@@ -162,11 +162,12 @@ class ImportProcessor:
         self.imports: dict[str, set[tuple[str, str]] | None] | None = None
         # Reverse index: local_name -> (module_name, original_name) for O(1) lookup
         self._name_index: dict[str, tuple[str, str]] = {}
-        # Local names whose import tuple was confirmed canonical (defining
-        # module) by `canonicalize_name_index` (Phase F.5). Used by
-        # TypeResolver to gate `_module_qname` minting: parser-level
-        # aliases and builtin-module lookups are NOT canonicalized and
-        # stay in their pre-F.5 form (bare NominalType, no qname).
+        # Local names whose import tuple has been rewritten by
+        # `canonicalize_name_index` to point at the defining module
+        # rather than a re-export facade.  `TypeResolver` consults this
+        # set to gate `_module_qname` minting: parser-level aliases and
+        # builtin-module lookups are NOT canonicalized and so stay as
+        # bare `NominalType` without a qname.
         self._canonical_imports: set[str] = set()
 
     def _resolve_placeholder_module(self, key: str) -> str:
@@ -214,13 +215,13 @@ class ImportProcessor:
         For each `(surface_module, original_name)` tuple, call `lookup`.
         When it returns a tuple, record the name as canonical
         (`is_canonical()` becomes True) and replace the entry if the
-        lookup changed it. Called by the compiler between parse and
-        sema (Phase F.5) to redirect re-export facades to the module
-        that actually declares the symbol, so `TypeResolver` can mint
-        canonical `_module_qname` on its first pass -- but only for
-        names whose lookup succeeded (records / enums / protocols),
-        keeping aliases and other non-type imports free of qname
-        pollution that would suppress downstream resolution passes.
+        lookup changed it.  Called by the compiler between parse and
+        sema to redirect re-export facades to the module that actually
+        declares the symbol, so `TypeResolver` can mint canonical
+        `_module_qname` on its first pass -- but only for names whose
+        lookup succeeded (records / enums / protocols), keeping aliases
+        and other non-type imports free of qname pollution that would
+        suppress downstream resolution passes.
         """
         for local_name, (surface, original) in list(self._name_index.items()):
             target = lookup(surface, original)

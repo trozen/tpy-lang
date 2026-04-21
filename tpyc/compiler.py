@@ -679,10 +679,11 @@ class Compiler:
         # because RecordInfo objects live in Compiler.modules for the full
         # compiler lifetime.
         self._resolved_self_ref_records: set[int] = set()
-        # Phase F.5 public-surface -> raw-private-submodule reverse map.
-        # Populated lazily on first `_canonicalize_import_sources` call and
-        # then reused across the compilation; invalidated by re-entering
-        # `_init_shared`.
+        # Public-surface -> raw-private-submodule reverse map used by
+        # `_canonicalize_import_sources` when a dependent's surface
+        # module (e.g. `typing`) is not yet sema-analyzed but its
+        # private backing module is.  Populated lazily on first call
+        # and invalidated by re-entering `_init_shared`.
         self._public_to_raw_cache: dict[str, list[str]] | None = None
 
     @classmethod
@@ -1166,16 +1167,15 @@ class Compiler:
     def _canonicalize_import_sources(self, compiled: CompiledModule) -> None:
         """Rewrite the module's parser import table to defining modules.
 
-        Runs once per module right before `_analyze_module`. By now all
-        dependencies (in topological order) have been sema-analyzed, so
-        `self.modules[dep].exports.{records,enums,protocols}` are
-        populated. Re-export facades share the defining module's
-        RecordInfo / ProtocolInfo / enum NominalType by reference, so a
-        single lookup per imported name suffices -- transitive chains
-        are already flattened in the shared objects. Phase F.5:
-        canonical tuples let `type_resolver` mint `_module_qname` on
-        the first pass, retiring the substitution blocks in
-        `sema/type_ops.py::resolve_type`.
+        Runs once per module right before `_analyze_module`.  By this
+        point all dependencies (in topological order) have been sema-
+        analyzed, so `self.modules[dep].exports.{records,enums,
+        protocols}` are populated.  Re-export facades share the defining
+        module's RecordInfo / ProtocolInfo / enum NominalType by
+        reference, so a single lookup per imported name suffices --
+        transitive chains are already flattened in the shared objects.
+        Canonical tuples let `TypeResolver` mint `_module_qname` on its
+        first pass.
         """
         resolver = compiled.ast.resolver
         if resolver is None:
@@ -1190,8 +1190,8 @@ class Compiler:
 
         The surface module in parser's name_index is the *public*
         identity (`public_module_name` applied at import time, plus the
-        `_PRIVATE_MODULE_PUBLIC_NAMES` overrides). When F.5.1 runs on
-        module M in topological order, M's private-submodule
+        `_PRIVATE_MODULE_PUBLIC_NAMES` overrides).  When this function
+        runs on module M in topological order, M's private-submodule
         dependencies (e.g. `tpy._core._types`) are already analyzed
         but their shared public facade (`tpy`, `typing`) may not be.
         Fall back to scanning the private submodules that collapse to
@@ -1264,16 +1264,33 @@ class Compiler:
                 return (pinfo.module, pinfo.name)
         return None
 
+    def _resolve_module_refs(self, compiled: CompiledModule) -> None:
+        """Run the parser-output ref walker on `compiled.ast`.
+
+        Thin wrapper around `parse.resolve_refs.resolve_refs` so the
+        compilation phase order is legible inline in `_analyze_module`.
+        """
+        from tpyc.parse.resolve_refs import resolve_refs
+        resolve_refs(compiled.ast)
+
     def _analyze_module(self, compiled: CompiledModule) -> None:
         """Analyze a single module.
 
         Args:
             compiled: The compiled module to analyze.
         """
-        # Phase F.5: canonicalize import table to defining modules before
-        # any resolver calls (sema's type_ops.resolve_type_ref delegates
-        # through to the parser's TypeResolver).
+        # Canonicalize the import table to defining modules so the
+        # resolve phase that follows mints authoritative `_module_qname`
+        # values for cross-module references on the first pass.
         self._canonicalize_import_sources(compiled)
+
+        # Resolve every TypeRefNode the parser emitted at annotation
+        # sites.  Runs after canonicalization (cross-module refs need
+        # the canonical tuple) and before sema (sema reads TpyType
+        # everywhere).  Macro-added method bodies are resolved later,
+        # inside `register_record` post-macro-application, because the
+        # methods don't exist yet at this point.
+        self._resolve_module_refs(compiled)
 
         # Create analyzer
         analyzer = SemanticAnalyzer(default_int_type=self.default_int_type)

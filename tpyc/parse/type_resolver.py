@@ -1,23 +1,24 @@
 """
 TypeResolver -- name-to-TpyType resolution for parser-emitted TypeRefNodes.
 
-Split out from parser.py in Phase F.3d so parser doesn't depend on typesys
-type classes / primitive singletons. Parser constructs one TypeResolver
-instance in __init__ and attaches it to TpyModule.resolver at the end of
-each parse() call; sema's type_ops.resolve_type_ref delegates here.
-Parse-time callers (@builtin_decorator stubs, nested defs, macro
-fragments) also go through this object.
+Lives under `parse/` because it is a parser-internal concern: it binds
+the names the walker emits to concrete `TpyType` values, using live
+parser state (registry, imports, local_defs, ...) via a back-reference
+to its owning `Parser`.  Parse-time callers (@builtin_decorator stubs,
+nested defs, type-param bounds, macro fragments) invoke `resolve()`
+directly.  The module-level walker `parse.resolve_refs.resolve_refs`
+calls it once per annotation site after the parser finishes.
 
-The resolver reads parser state (registry, imports, local_defs, ...) via a
-back-reference so container growth during parse -- and re-assignment of
-per-parse containers at the top of each parse() -- is visible on each
-resolve() call.
+The 9 attributes and 2 methods read off the back-reference are
+documented in the `TypeResolver` class docstring -- that coupling stays
+intra-package (parser + resolver evolve together) and does not surface
+in sema.
 """
 from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, Callable
 
-from .typesys import (
+from ..typesys import (
     TpyType, NominalType, PtrType, OwnType, ReadonlyType, AutoReadonlyType,
     AutoOwnType, FinalType, OptionalType, VoidType, UnionType, TupleType,
     CallableType, make_union, make_fn_type,
@@ -26,40 +27,48 @@ from .typesys import (
     BOOL, FLOAT, FLOAT32, BIGINT, SELF, BASIC_SLICE, SLICE,
     ALL_FIXED_INTS,
 )
-from . import qnames
-from .type_def_registry import (
+from .. import qnames
+from ..type_def_registry import (
     TypeDef, get_type_def, find_factory_by_simple_name, find_factory_in_module,
 )
-from .parse.nodes import (
-    ParseError, SourceLocation,
+from .nodes import (
+    ParseError, ResolutionFailure, SourceLocation,
     TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, ResolverInputNode,
 )
-from .parse.imports import _IMPLICIT_MODULES
+from .imports import _IMPLICIT_MODULES
 
 if TYPE_CHECKING:
-    from .parse.parser import Parser
+    from .parser import Parser
 
 
-# Map of fixed-int type names to their singleton instances. Used by the
-# resolver for bare-name lookup and by sema's field-default inferrer
-# (analyzer._infer_field_type_from_default). Parser-side callers that
-# previously reached through here for name-membership checks now use a
-# local _FIXED_INT_NAMES frozenset (Phase F.3f.3).
+# Map of fixed-int type names to their singleton instances.  Used by
+# the resolver for bare-name lookup and by sema's field-default inferrer
+# (`analyzer._infer_field_type_from_default`).  Parser-side callers that
+# only need name membership use a local `_FIXED_INT_NAMES` frozenset
+# instead of pulling in the singleton values.
 _FIXED_INT_MAP: dict[str, TpyType] = {str(t): t for t in ALL_FIXED_INTS}
 
 
 class TypeResolver:
     """Resolves TypeRefNode -> TpyType using live parser state.
 
-    Constructed once per parse() with a back-reference to the Parser; reads
-    registry, imports, local_defs, module_class_names, nested_type_scope,
-    module_type_alias_names, bare_module_imports, reverse_module_aliases from
-    the parser instance each call so growth during parse is visible.
+    Holds a back-reference to its owning `Parser` and reads nine
+    parser attributes each call so container growth during parse --
+    and per-parse re-assignment of mutable containers at the top of
+    each `parse()` -- stays visible:
 
-    Two parser-owned helpers (`_resolve_type_name`,
-    `_raise_unresolved_import_error`) are kept on Parser so FragmentParser can
-    override them for lenient macro-fragment parsing; this resolver calls into
-    them via the parser back-reference.
+        registry, _imports, _type_param_scope, _module_class_names,
+        _module_type_alias_names, _reverse_module_aliases,
+        _nested_type_scope, _local_defs, _bare_module_imports
+
+    Plus two parser-owned helpers that FragmentParser can override
+    for lenient macro-fragment parsing:
+
+        _resolve_type_name(name)
+        _raise_unresolved_import_error(name, node=None, *, loc=None)
+
+    The coupling is intra-package (parser + resolver evolve together);
+    no sema code reaches through here.
     """
 
     def __init__(self, parser: 'Parser'):
@@ -82,10 +91,10 @@ class TypeResolver:
     ) -> None:
         """Canonicalize the parser's import table to (defining_module, name).
 
-        Called by the compiler between parse and sema (Phase F.5) so
-        subsequent resolve() calls see defining-module tuples for
-        re-exported symbols and can mint authoritative `_module_qname`
-        on the first pass.
+        Called by the compiler between parse and sema so subsequent
+        `resolve()` calls see defining-module tuples for re-exported
+        symbols and can mint authoritative `_module_qname` on the first
+        pass.
         """
         self._parser._imports.canonicalize_name_index(lookup)
 
@@ -125,28 +134,23 @@ class TypeResolver:
         self, ref: ResolverInputNode,
         type_param_scope: dict[str, TypeParamKind] | None = None,
     ) -> TpyType:
-        """Resolve like `resolve()` but, on name-resolution errors for a
-        bare TpyTypeRef, construct a `NominalType(name, args)` placeholder
+        """Resolve like `resolve()` but, on a name-resolution failure for a
+        bare `TpyTypeRef`, construct a `NominalType(name, args)` placeholder
         instead of raising. Used by FragmentParser so macro fragments can
         reference symbols not visible to the fragment-level resolver --
         sema re-resolves them in the final context.
 
-        Name-resolution failures are identified by the same message
-        patterns the former FragmentParser override caught: "Unknown
-        type", "Unknown generic type", "Unsupported qualified type".
-        Structural errors (Own-in-union, Callable arity, etc.) still
-        raise. Non-TpyTypeRef inputs (unions/callables/literals) are not
-        leniency targets -- they delegate to `resolve()` unchanged.
-        (Phase F.3f.5d)
+        Failure identification is structural via the `ResolutionFailure`
+        subclass (raised only at the three bare/dotted/generic
+        unknown-name sites). Structural errors (Own-in-union, Callable
+        arity, etc.) surface as plain `ParseError` and still propagate.
+        Non-`TpyTypeRef` inputs are not leniency targets -- they delegate
+        to `resolve()` unchanged.
         """
         try:
             return self.resolve(ref, type_param_scope)
-        except ParseError as e:
+        except ResolutionFailure:
             if not isinstance(ref, TpyTypeRef):
-                raise
-            msg = str(e)
-            if not ("Unknown type" in msg or "Unknown generic type" in msg
-                    or "Unsupported qualified type" in msg):
                 raise
             resolved_args: tuple = tuple(
                 a if isinstance(a, int)
@@ -292,11 +296,9 @@ class TypeResolver:
                         return enum_type
                 # Helpful error for unimported implicit module
                 self._raise_unresolved_qualified_error_str(name, ref.loc)
-                # LOAD-BEARING MESSAGE: `resolve_lenient` pattern-matches
-                # on "Unsupported qualified type" to fall back to a
-                # NominalType placeholder. Keep the string stable or
-                # update `resolve_lenient`'s filter.
-                raise ParseError(f"Unsupported qualified type: {name}", loc=ref.loc)
+                raise ResolutionFailure(
+                    f"Unsupported qualified type: {name}", loc=ref.loc,
+                )
 
             # Bare name resolution
             resolved = parser._resolve_type_name(name)
@@ -308,16 +310,16 @@ class TypeResolver:
             registered = self._resolve_registered_type(
                 resolved_name, loc=ref.loc, resolved=bool(resolved))
             if registered is not None:
-                # Mint _module_qname for cross-module user refs. The
+                # Mint _module_qname for cross-module user refs.  The
                 # builtin path handles type-factory-backed names (list,
-                # Array, ...); the canonical-import path (post-F.5.1)
-                # covers user records / protocols / enums imported from
-                # other modules -- after F.5.1 the tuple points at the
-                # defining module, so `{module}.{original}` is the
-                # authoritative qname. For canonical protocols we also
-                # upgrade is_protocol / is_dynamic_protocol from
-                # TypeDef.protocol (the dep module's sema has already
-                # attached it), replacing the old block-3 substitution.
+                # Array, ...); the canonical-import path covers user
+                # records / protocols / enums imported from other
+                # modules -- `canonicalize_import_table` has already
+                # rewritten the tuple to point at the defining module,
+                # so `{module}.{original}` is the authoritative qname.
+                # For canonical protocols we also upgrade is_protocol /
+                # is_dynamic_protocol from `TypeDef.protocol` (the dep
+                # module's sema has already attached it).
                 if (resolved and isinstance(registered, NominalType)
                         and not registered._module_qname):
                     module, original = resolved
@@ -337,7 +339,7 @@ class TypeResolver:
                                 # diag.txt formats as `file:line: error: ...`
                                 # (ParseError would go through the `Parse
                                 # error: ...` CLI path instead).
-                                from .sema.diagnostics import SemanticError
+                                from ..sema.diagnostics import SemanticError
                                 raise SemanticError(
                                     f"Generic protocol '{registered.name}' requires type arguments: "
                                     f"{registered.name}[{', '.join(proto.type_params)}]",
@@ -350,10 +352,7 @@ class TypeResolver:
                             is_protocol, candidate_qname, is_dynamic_protocol,
                         )
                 return registered
-            # LOAD-BEARING MESSAGE: `resolve_lenient` pattern-matches on
-            # "Unknown type" to fall back to a NominalType placeholder.
-            # Keep the string stable or update `resolve_lenient`'s filter.
-            raise ParseError(f"Unknown type: {name}", loc=ref.loc)
+            raise ResolutionFailure(f"Unknown type: {name}", loc=ref.loc)
 
         # Generic form (name + args) -- bare or dotted
         if "." in name:
@@ -448,10 +447,7 @@ class TypeResolver:
                 qname = self._user_record_qname(dotted, None)
                 return NominalType(dotted, type_args, _module_qname=qname)
 
-        # LOAD-BEARING MESSAGE: `resolve_lenient` pattern-matches on
-        # "Unknown generic type" to fall back to a NominalType placeholder.
-        # Keep the string stable or update `resolve_lenient`'s filter.
-        raise ParseError(f"Unknown generic type: {name}", loc=ref.loc)
+        raise ResolutionFailure(f"Unknown generic type: {name}", loc=ref.loc)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -462,16 +458,14 @@ class TypeResolver:
     ) -> TpyType:
         """Mint `_module_qname` / upgrade protocol flags on a qualified
         (`typing.Sized`) or canonical bare-name resolution using the
-        resolved (module, name) tuple's `TypeDef`.
+        resolved `(module, name)` tuple's `TypeDef`.
 
-        Only NominalTypes without a qname are upgraded. For TypeDefs
+        Only NominalTypes without a qname are upgraded.  For TypeDefs
         carrying a ProtocolInfo payload, `is_protocol` /
-        `is_dynamic_protocol` are also upgraded (mirrors the F.5.3
-        retirement of sema's block-3 substitution), and a bare generic
-        protocol raises `SemanticError` just as block-3 did.
-        Enum-registered NominalTypes come back from
-        `_resolve_registered_type` already qname-bearing and fall
-        through unchanged.
+        `is_dynamic_protocol` are also upgraded, and a bare generic
+        protocol raises `SemanticError`.  Enum-registered NominalTypes
+        come back from `_resolve_registered_type` already qname-bearing
+        and fall through unchanged.
         """
         if not isinstance(registered, NominalType) or registered._module_qname:
             return registered
@@ -487,7 +481,7 @@ class TypeResolver:
         is_dynamic_protocol = registered.is_dynamic_protocol
         if td.protocol is not None:
             if td.protocol.type_params and not registered.type_args:
-                from .sema.diagnostics import SemanticError
+                from ..sema.diagnostics import SemanticError
                 raise SemanticError(
                     f"Generic protocol '{registered.name}' requires type arguments: "
                     f"{registered.name}[{', '.join(td.protocol.type_params)}]"
@@ -505,9 +499,9 @@ class TypeResolver:
     ) -> str | None:
         """Mint `_module_qname` for a user-record reference.
 
-        Cross-module refs use the (post-F.5.1 canonical) import tuple
-        when `canonical=True`; same-module refs pull from
-        `parser.registry.get_record().module`. Returns None when
+        Cross-module refs use the canonicalized import tuple when
+        `canonical=True`; same-module refs pull from
+        `parser.registry.get_record().module`.  Returns None when
         neither source supplies a module (bare placeholders that later
         passes will resolve) or the tuple is not canonicalized.
         """
@@ -573,9 +567,10 @@ class TypeResolver:
     ) -> TpyType | None:
         """Look up a name in the type registry (protocols, aliases, records).
 
-        Raises ParseError for generic protocols used without type arguments,
-        or for completely unknown names. Either `node` or `loc` may be passed
-        for error reporting.
+        Raises SemanticError for generic protocols used without type arguments
+        (matches the cross-module canonical path in `_resolve_ref` so diag
+        output is uniform), or ParseError for completely unknown names.
+        Either `node` or `loc` may be passed for error reporting.
         """
         parser = self._parser
         # Self-reference in a recursive type alias (e.g. list[JsonValue] inside
@@ -592,10 +587,11 @@ class TypeResolver:
                 return NominalType(dotted)
         if (user_protocol := parser.registry.get_protocol(name)) is not None:
             if user_protocol.type_params:
-                raise ParseError(
+                from ..sema.diagnostics import SemanticError
+                raise SemanticError(
                     f"Generic protocol '{name}' requires type arguments: "
                     f"{name}[{', '.join(user_protocol.type_params)}]",
-                    node, loc=loc,
+                    loc=loc,
                 )
             qname = f"{user_protocol.module}.{name}" if user_protocol.module else None
             return NominalType(

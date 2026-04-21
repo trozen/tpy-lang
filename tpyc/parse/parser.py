@@ -22,7 +22,7 @@ from ..type_def_registry import (
     is_bool_type, is_str_type, type_def_of,
     find_factory_by_simple_name, find_factory_in_module,
 )
-from ..type_resolver import TypeResolver
+from .type_resolver import TypeResolver
 
 if TYPE_CHECKING:
     from ..typesys import TpyType
@@ -72,8 +72,8 @@ _BUILTIN_DEC_NAMES = frozenset({"builtin_type", "builtin_decorator", "builtin_fu
 # Fixed-int constructor names recognized syntactically by the parser for
 # default-value validation (_validate_const_default) and the C++ literal
 # simplification in _get_default_value. The actual TpyType lookup happens
-# in sema via type_resolver._FIXED_INT_MAP; here we only need name
-# membership. Kept in sync with typesys.ALL_FIXED_INTS. (Phase F.3f.3)
+# in the TypeResolver via `_FIXED_INT_MAP`; here we only need name
+# membership. Kept in sync with typesys.ALL_FIXED_INTS.
 _FIXED_INT_NAMES: frozenset[str] = frozenset({
     "Int8", "Int16", "Int32", "Int64",
     "UInt8", "UInt16", "UInt32", "UInt64",
@@ -436,17 +436,18 @@ class Parser:
         # Maps short nested type names to dotted names while inside a class body.
         # E.g., while parsing class Message: class Kind(Enum): ..., maps "Kind" -> "Message.Kind"
         self._nested_type_scope: dict[str, str] = {}
-        # Type-ref resolver (Phase F.3d): holds a back-reference to this parser
-        # so it reads live state (registry, imports, local_defs, ...) each call.
-        # Attached to TpyModule.resolver at end of parse(); sema delegates here.
+        # Type-ref resolver: holds a back-reference to this parser so it
+        # reads live state (registry, imports, local_defs, ...) each call.
+        # Attached to TpyModule.resolver at end of parse(); sema delegates
+        # here.
         self._resolver = TypeResolver(self)
-        # Module # tpy: directives, populated by parse() before _parse_module
-        # so class/protocol/enum registration can see cpp_namespace at
-        # registration time (Phase F.3g.1).
+        # Module # tpy: directives, populated by parse() before
+        # _parse_module so class/protocol/enum registration can see
+        # cpp_namespace at registration time.
         self._directives = ModuleDirectives()
-        # True when the module is compiled as an entry point. Overrides the
-        # module name used by `_public_module()` to `"__main__"`
-        # (Phase F.3g.3). Set by parse() from its `is_entry_point` argument.
+        # True when the module is compiled as an entry point. Overrides
+        # the module name used by `_public_module()` to `"__main__"`.
+        # Set by parse() from its `is_entry_point` argument.
         self._is_entry_point: bool = False
 
     def _loc(self, node: ast.AST) -> SourceLocation | None:
@@ -469,24 +470,22 @@ class Parser:
     def _public_module(self) -> str:
         """Return the public module name for records/protocols/enums
         registered from this module, collapsing private submodules via
-        `public_module_name`. Used to populate `RecordInfo.module`,
-        `ProtocolInfo.module`, and enum placeholder qnames at parse time
-        (Phase F.3g).
+        `public_module_name`.  Used to populate `RecordInfo.module`,
+        `ProtocolInfo.module`, and enum placeholder qnames.
 
-        Entry-point modules use `"__main__"` regardless of their
-        on-disk file name, matching sema's convention
-        (analyzer.analyze sets `ctx.module_name = "__main__"` for the
-        entry point) and Python's runtime `__name__` semantics. Parser
-        and sema must agree on the qname so sema's substitution blocks
-        in `sema/type_ops.py::resolve_type` see the authoritative
-        qname on the first pass.
+        Entry-point modules use `"__main__"` regardless of their on-disk
+        file name, matching sema's convention (`analyzer.analyze` sets
+        `ctx.module_name = "__main__"` for the entry point) and Python's
+        runtime `__name__` semantics.  Parser and sema must agree on the
+        qname so the resolver mints authoritative `_module_qname` values
+        on the first pass.
 
         Fallback: when the parser is invoked without a `module_name`
-        (e.g. the `test_parse_type_ref.py` unit harness parses
-        snippets without a module context), return `"__main__"` so
-        qname construction stays well-formed. Compiler-driven parses
-        always set `module_name` + `is_entry_point`, so this branch
-        is only reached from fragment-level tests."""
+        (e.g. the `test_parse_type_ref.py` unit harness parses snippets
+        without a module context), return `"__main__"` so qname
+        construction stays well-formed.  Compiler-driven parses always
+        set `module_name` + `is_entry_point`, so this branch is only
+        reached from fragment-level tests."""
         if self._is_entry_point:
             return "__main__"
         return public_module_name(
@@ -638,16 +637,16 @@ class Parser:
         self._reverse_module_aliases = {}
         tree = ast.parse(source)
         # Scan directives first so cpp_namespace is available while
-        # _parse_module registers records/protocols/enums (Phase F.3g.1).
+        # _parse_module registers records/protocols/enums.
         directives, directive_warnings = _scan_directives(self.source_lines)
         self._directives = directives
         module = self._parse_module(tree)
         module.directives = directives
         module.parse_warnings.extend(directive_warnings)
-        # Attach the ref resolver so sema can resolve TpyTypeRef nodes emitted
-        # at leaf annotation sites. The TypeResolver instance holds a back-ref
-        # to this parser and reads parser state (registry, imports,
-        # local_defs, module_class_names, ...) each call. See Phase F.3d.1.
+        # Attach the ref resolver so sema can resolve TypeRefNodes emitted
+        # at annotation sites.  The TypeResolver instance holds a back-ref
+        # to this parser and reads parser state each call, so sema sees
+        # live containers (registry, imports, local_defs, ...).
         module.resolver = self._resolver
         return module
 
@@ -710,14 +709,13 @@ class Parser:
         self, name: str, type_node: ast.expr,
         type_aliases: 'dict[str, tuple[TpyType | TypeRefNode, SourceLocation | None]]'
     ) -> None:
-        """Parse a type alias RHS as a TypeRefNode (Phase F.3c.2c).
+        """Parse a type alias RHS as a TypeRefNode.
 
-        Sema's `_resolve_pending_type_refs` resolves the ref under a
-        `_pending_alias_name` context so same-body self-references
-        produce a `NominalType(name)` placeholder, mirroring parse-time
-        behaviour. Sema then detects recursive unions and registers the
-        resolved alias in parser.registry so later alias bodies can
-        reference it.
+        Sema's `_resolve_pending_type_refs` resolves the ref with a
+        `pending_alias` kwarg so same-body self-references produce a
+        `NominalType(name)` placeholder.  Sema then detects recursive
+        unions and registers the resolved alias in parser.registry so
+        later alias bodies can reference it.
         """
         ref = self._parse_type_ref(type_node)
         loc = SourceLocation(line=type_node.lineno) if hasattr(type_node, 'lineno') else None
@@ -820,8 +818,6 @@ class Parser:
                     # Prefix nested type names with parent chain and register
                     self._prefix_nested_names(result, result.name)
                     self._register_nested_types(result)
-                    # Phase F.3f.5a: @builtin_type method return-type
-                    # fixup moved to sema/analyzer._resolve_pending_type_refs.
             elif isinstance(node, ast.FunctionDef):
                 seen_non_import = True
                 # Warn if function shadows an imported parser keyword name
@@ -848,7 +844,7 @@ class Parser:
                     # Register for decorator resolution (like @builtin_type for records)
                     # return_type may be None (no annotation) -- FunctionInfo
                     # here is used solely for decorator-key lookup; the value
-                    # is not read for call resolution (Phase F.3f.1).
+                    # is not read for call resolution.
                     self.registry.register_function(FunctionInfo(
                         name=func.name, params=[], return_type=func.return_type,
                         builtin_decorator_key=func.builtin_decorator_key,
@@ -896,8 +892,8 @@ class Parser:
         """Parse Unpack[TypedDict] annotation from **kwargs.
 
         Returns the inner TypedDict reference as a TypeRefNode; sema
-        resolves it via `_resolve_pending_type_refs` and validates it is
-        a TypedDict in registration (Phase F.3c.2).
+        resolves it via `_resolve_pending_type_refs` and validates it
+        is a TypedDict in registration.
         """
         if not isinstance(annotation, ast.Subscript):
             raise ParseError("**kwargs must have Unpack[TypedDict] annotation", error_node)
@@ -1068,8 +1064,6 @@ class Parser:
                 return (bool, "bool")
             if is_str_type(ptype):
                 return (str, "str")
-            # Phase F.3f.5b: qname-based predicate via type_def_of instead
-            # of isinstance(ptype, NominalType) + ptype.qualified_name().
             td = type_def_of(ptype)
             if td is not None and td.qname == qnames.TYPE:
                 return (_NameArg, "type name")
@@ -1319,7 +1313,7 @@ class Parser:
                             type_param_kinds.append(TypeParamKind.INT)
                         else:
                             # Protocol bound -- resolution and protocol-shape
-                            # validation deferred to sema (Phase F.3c.1).
+                            # validation deferred to sema.
                             type_param_kinds.append(TypeParamKind.TYPE)
                             type_param_bounds[tp.name] = self._parse_type_ref(tp.bound)
                     else:
@@ -1338,13 +1332,12 @@ class Parser:
         # `_is_protocol_base` (keyword-matching, robust to shadowing
         # detection). TypedDict marker base is filtered out.
         #
-        # Bases emit as TypeRefNode (Phase F.3c.2b); sema re-resolves in
+        # Bases emit as TypeRefNode; sema re-resolves them in
         # `_resolve_pending_type_refs` under the record's type-param
-        # scope. Parse-time class-body checks that could mask sema-time
-        # base resolution errors (stub-body validation, @native decorator
-        # validation, field-type inference failure) have all been
-        # deferred to sema (Phase F.3d.4), so no parse-time base
-        # resolution side-effect is needed here.
+        # scope.  Class-body checks that could mask base-resolution
+        # errors (stub-body validation, @native decorator validation,
+        # field-type inference failure) all run in sema, so no
+        # parse-time base resolution side-effect is needed.
         bases: 'list[TpyType | TypeRefNode]' = []
         for base in node.bases:
             if is_typed_dict and self._is_typed_dict_base(base):
@@ -1367,9 +1360,8 @@ class Parser:
                 if not isinstance(item.target, ast.Name):
                     raise ParseError("Invalid field declaration", item)
                 field_name = item.target.id
-                # Emit a TypeRefNode (Phase F.3b.5). Sema's
-                # _resolve_pending_type_refs pre-pass resolves it before
-                # any reader consumes fld.type.
+                # Emit a TypeRefNode.  Sema's `_resolve_pending_type_refs`
+                # pre-pass resolves it before any reader consumes fld.type.
                 field_type = self._parse_type_ref(item.annotation, type_param_scope)
                 default_val = None
                 default_expr = None
@@ -1392,12 +1384,10 @@ class Parser:
                 if len(item.targets) != 1 or not isinstance(item.targets[0], ast.Name):
                     raise ParseError("Invalid field declaration", item)
                 field_name = item.targets[0].id
-                # Phase F.3f.2: parser no longer infers field type at parse
-                # time. Always emit the marker; sema's field-resolution
-                # pass runs the inferrer on FieldInfo.default_expr. This
-                # unifies the parse-time success/failure paths (F.3d.4
-                # already moved the failure case) and removes the parser's
-                # direct typesys construction for primitives and records.
+                # Emit a marker; sema's field-resolution pass runs the
+                # inferrer on FieldInfo.default_expr, raising only on
+                # genuine failure.  Keeping inference out of the parser
+                # avoids coupling parser to the full typesys surface.
                 field_type: 'TpyType | TypeRefNode | TpyInferFromDefaultRef' = TpyInferFromDefaultRef(loc=self._loc(item))
                 default_val = self._get_default_value(item.value)
                 default_expr = self._parse_expr(item.value)
@@ -1478,9 +1468,8 @@ class Parser:
 
         # Method-linkage validation (stubs allowed/required per class
         # linkage, @native decorator restrictions) runs at sema time in
-        # `_validate_record_method_linkage` after base resolution.
-        # Phase F.3d.4 moved it from parse-time so that sema-time base
-        # resolution errors (e.g. "'Protocol' requires: from typing
+        # `_validate_record_method_linkage` after base resolution, so
+        # base-resolution errors (e.g. "'Protocol' requires: from typing
         # import Protocol" on a class whose Protocol base is shadowed)
         # fire first instead of being masked here.
 
@@ -1600,8 +1589,8 @@ class Parser:
             if qname == qnames.NATIVE:
                 if not isinstance(pos, str):
                     raise ParseError("@native on protocol requires a C++ concept name string argument", dec)
-                # Phase F.3f.4: store the raw form; sema's register_protocol
-                # applies ensure_qualified() when copying into ProtocolInfo.
+                # Store the raw form; sema's `register_protocol` applies
+                # `ensure_qualified()` when copying into ProtocolInfo.
                 cpp_concept = pos
                 continue
             dec_name = self._decorator_local_name(dec) or "?"
@@ -1675,8 +1664,8 @@ class Parser:
                     param_type = self._parse_type_ref(arg.annotation)
                     params.append((arg.arg, param_type))
 
-                # Phase F.3f.1: return_type=None means no annotation;
-                # sema's _resolve_pending_type_refs substitutes VOID.
+                # return_type=None means no annotation; sema's
+                # `_resolve_pending_type_refs` substitutes VOID.
                 return_type: 'TpyType | TypeRefNode | None' = None
                 if item.returns:
                     return_type = self._parse_type_ref(item.returns)
@@ -1693,8 +1682,8 @@ class Parser:
                 if not isinstance(item.target, ast.Name):
                     raise ParseError("Invalid field declaration in protocol", item)
                 field_name = item.target.id
-                # Emit as TypeRefNode (Phase F.3c.2); sema resolves under
-                # the protocol's type-param scope.
+                # Emit as TypeRefNode; sema resolves under the protocol's
+                # type-param scope.
                 field_type = self._parse_type_ref(item.annotation)
                 fields.append((field_name, field_type))
             elif isinstance(item, ast.Pass):
@@ -1919,7 +1908,7 @@ class Parser:
                 if isinstance(tp, ast.TypeVar):
                     method_type_params.append(tp.name)
                     if tp.bound is not None:
-                        # Protocol bound -- resolution + validation deferred to sema (F.3c.1).
+                        # Protocol bound -- resolution + validation deferred to sema.
                         method_type_param_bounds[tp.name] = self._parse_type_ref(tp.bound)
                 else:
                     raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
@@ -1953,10 +1942,10 @@ class Parser:
                 # Non-static methods must have 'self' as first parameter
                 if arg.arg != "self":
                     raise ParseError(f"First parameter of method '{node.name}' must be 'self'", node)
-                # Emit the self annotation as a TypeRefNode; sema resolves
-                # it in `_resolve_pending_type_refs` and
-                # `sema.method_expansion.expand_methods` validates the
-                # shape + derives flags (Phase F.3b.6.3).
+                # Emit the self annotation as a TypeRefNode; sema
+                # resolves it in `_resolve_pending_type_refs` and
+                # `method_expansion.expand_methods` validates the
+                # shape + derives flags.
                 if arg.annotation is not None:
                     self_annotation = self._parse_type_ref(arg.annotation, type_param_scope)
                 continue
@@ -2018,9 +2007,9 @@ class Parser:
                                               kw_defaults=node.args.kw_defaults,
                                               n_kwonly=len(node.args.kwonlyargs))
 
-        # Get return type. Phase F.3f.1: None means no annotation; sema
-        # substitutes VOID. __init__ is kept at None here (no annotation
-        # by construction); sema treats it the same way.
+        # Return type: None means no annotation; sema substitutes VOID.
+        # __init__ is kept at None here (no annotation by construction);
+        # sema treats it the same way.
         return_type: 'TpyType | TypeRefNode | None' = None
         if node.name != "__init__" and node.returns:
             return_type = self._parse_type_ref(node.returns, type_param_scope)
@@ -2197,7 +2186,7 @@ class Parser:
                             type_param_kinds.append(TypeParamKind.INT)
                         else:
                             type_param_kinds.append(TypeParamKind.TYPE)
-                            # Protocol bound -- resolution + validation deferred to sema (F.3c.1).
+                            # Protocol bound -- resolution + validation deferred to sema.
                             type_param_bounds[tp.name] = self._parse_type_ref(tp.bound)
                     else:
                         type_param_kinds.append(TypeParamKind.TYPE)
@@ -2217,10 +2206,10 @@ class Parser:
             # @builtin_function stubs: params are illustrative only,
             # type annotations not required (sema handles everything)
             for arg in node.args.args:
-                # Phase F.3f.1: @builtin_function params are illustrative
-                # stubs; sema handles the real types specially. Missing
-                # annotations emit a TpyTypeRef("None") placeholder that
-                # the resolver maps to VOID.
+                # @builtin_function params are illustrative stubs; sema
+                # handles the real types specially.  Missing annotations
+                # emit a `TpyTypeRef("None")` placeholder that the
+                # resolver maps to VOID.
                 param_type: 'TpyType | TypeRefNode' = (
                     self._parse_type_ref(arg.annotation, type_param_scope)
                     if arg.annotation
@@ -2279,7 +2268,7 @@ class Parser:
                                               kw_defaults=node.args.kw_defaults,
                                               n_kwonly=len(node.args.kwonlyargs))
 
-        # Phase F.3f.1: None means no annotation; sema substitutes VOID.
+        # None means no annotation; sema substitutes VOID.
         return_type: 'TpyType | TypeRefNode | None' = None
         if node.returns:
             return_type = self._parse_type_ref(node.returns, type_param_scope)
@@ -2385,11 +2374,11 @@ class Parser:
         return len(body) == 1 and isinstance(body[0], ast.Pass)
 
     def _parse_type_annotation(self, node: ast.expr, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyType:
-        """Parse a type annotation.
+        """Parse a type annotation to a TpyType.
 
-        Routes through `_parse_type_ref` (pure syntactic walker, F.3b.1) and
-        `_resolve_type_ref_impl` (resolution + TpyType construction, F.3b.2).
-        External contract unchanged: takes ast.expr, returns TpyType. F.3b.3.
+        Thin wrapper around the walker + resolver composition; kept for
+        the parse-time sites that need a resolved type immediately
+        (type-parameter bounds, FragmentParser).
         """
         if type_param_scope is None:
             type_param_scope = self._type_param_scope
@@ -2397,7 +2386,7 @@ class Parser:
         return self._resolve_type_ref_impl(ref, type_param_scope)
 
     # ------------------------------------------------------------------
-    # Type-reference walker (Phase F.3b.1)
+    # Type-reference walker
     #
     # `_parse_type_ref` mirrors `_parse_type_annotation`'s structural walk
     # but returns a TypeRefNode instead of a TpyType. It resolves names
@@ -2409,10 +2398,8 @@ class Parser:
     # Validation errors that require resolved types (e.g. "Unknown type",
     # "Qualified name with missing module import", Own-in-union, readonly
     # normalization) are deliberately not raised here -- they belong in
-    # the resolver. Only errors provable from syntax alone (malformed
+    # the resolver.  Only errors provable from syntax alone (malformed
     # Callable/Fn/Literal shape) are raised at this layer.
-    #
-    # No call sites use this method yet; wiring happens in F.3b.2 / F.3b.3.
     # ------------------------------------------------------------------
 
     def _parse_type_ref(
@@ -2608,9 +2595,10 @@ class Parser:
         self, ref: ResolverInputNode,
         type_param_scope: dict[str, TypeParamKind] | None = None,
     ) -> TpyType:
-        """Thin delegate to TypeResolver.resolve. Kept for the test
-        equivalence suite and macro fragment self-annotation resolution.
-        Phase F.3d.1 moved the implementation to tpyc/type_resolver.py.
+        """Thin delegate to `TypeResolver.resolve`.  Retained for the
+        walker-vs-resolver equivalence tests and for macro-fragment
+        self-annotation resolution, both of which need a TpyType in
+        hand synchronously.
         """
         return self._resolver.resolve(ref, type_param_scope)
 
@@ -2651,12 +2639,12 @@ class Parser:
             new_params.append((name, t))
         func.params = new_params
         if func.return_type is None:
-            # Phase F.3f.1: "no annotation" sentinel -- route through the
-            # resolver as TpyTypeRef("None") so the same VOID singleton is
-            # substituted without a direct typesys import. This is the
-            # eager (parse-time) branch; the deferred branch is in
-            # sema/analyzer.py::_resolve_pending_type_refs via
-            # _resolve_return_type. Both paths converge on VOID.
+            # "No annotation" sentinel -- route through the resolver as
+            # `TpyTypeRef("None")` so the same VOID singleton is
+            # substituted without a direct typesys import.  The deferred
+            # (sema-side) branch lives in
+            # `_resolve_pending_type_refs._resolve_return_type`; both
+            # paths converge on VOID.
             func.return_type = self._resolve_type_ref_impl(
                 TpyTypeRef(name="None"), resolve_scope)
         elif isinstance(func.return_type, ref_types):
@@ -2669,10 +2657,10 @@ class Parser:
     def _parse_type_args_from_subscript(self, node: ast.Subscript) -> 'tuple[TpyType | TypeRefNode | None, ...]':
         """Extract type arguments from a subscript for generic function calls like first[Int32](x).
 
-        Raises ParseError if any element is structurally not a valid type
-        (e.g. integer literal at a type-args site). Name-resolution
+        Raises ParseError if any element is structurally not a valid
+        type (e.g. integer literal at a type-args site).  Name-resolution
         errors do not fire at parse time; elements emit as TypeRefNode
-        and sema resolves in the pre-pass body walker (Phase F.3c.3).
+        and sema resolves in the pre-pass body walker.
         """
         slices = _extract_subscript_slices(node)
 
@@ -2715,9 +2703,9 @@ class Parser:
     def _try_parse_type_args(self, node: ast.Subscript) -> 'tuple[tuple[TpyType | TypeRefNode | None, ...], str | None]':
         """Try to parse type args from a subscript, capturing parse errors.
 
-        Returns (type_args, parse_error). On success parse_error is None.
-        On failure type_args is empty and parse_error holds the message.
-        Elements may be TypeRefNode pre-sema (Phase F.3c.3).
+        Returns (type_args, parse_error).  On success parse_error is
+        None.  On failure type_args is empty and parse_error holds the
+        message.  Elements may be TypeRefNode pre-sema.
         """
         try:
             return self._parse_type_args_from_subscript(node), None
@@ -2743,10 +2731,10 @@ class Parser:
             # Annotated assignment: x: T = expr
             if not isinstance(node.target, ast.Name):
                 raise ParseError("Invalid assignment target", node)
-            # Emit a TypeRefNode (Phase F.3b.4). The sema writer
-            # (_analyze_var_decl) resolves it to TpyType via
-            # TypeOperations.resolve_type_ref and writes the resolved type
-            # back into stmt.type, so downstream code sees TpyType as before.
+            # Emit a TypeRefNode; sema's `_analyze_var_decl` resolves
+            # it via `TypeOperations.resolve_type_ref` and writes the
+            # resolved type back into stmt.type, so downstream code
+            # sees TpyType.
             var_type_ref = self._parse_type_ref(node.annotation)
             init_expr = self._parse_expr(node.value) if node.value else None
             return TpyVarDecl(node.target.id, var_type_ref, init_expr, loc=loc)
@@ -3570,10 +3558,10 @@ class FragmentParser(Parser):
     def _parse_type_annotation(
         self, node: ast.expr, type_param_scope: dict | None = None,
     ) -> TpyType:
-        # Phase F.3f.5d: walker-then-lenient-resolver. The lenient
-        # fallback (constructing a NominalType placeholder for
-        # unresolved names) lives in TypeResolver.resolve_lenient,
-        # keeping NominalType construction out of the parser.
+        # Walker-then-lenient-resolver.  The lenient fallback
+        # (constructing a NominalType placeholder for unresolved names)
+        # lives in `TypeResolver.resolve_lenient`, keeping NominalType
+        # construction out of the parser.
         if type_param_scope is None:
             type_param_scope = self._type_param_scope
         ref = self._parse_type_ref(node, type_param_scope)
@@ -3609,9 +3597,9 @@ class FragmentParser(Parser):
                 # Route through `_parse_method` so method-specific state
                 # (self_annotation, has_auto_readonly_decorator, @property
                 # flags) gets populated -- otherwise sema's expand_methods
-                # sees a bare TpyFunction and skips expansion (Phase
-                # F.3b.6.6, Gap 2). `class_name` is only used in error
-                # messages; `<macro>` is a synthetic placeholder.
+                # sees a bare TpyFunction and skips expansion.
+                # `class_name` is only used in error messages; `<macro>`
+                # is a synthetic placeholder.
                 # `property_names=None` means @x.setter decorators fall
                 # through to the general decorator handler and surface as
                 # an "Unknown decorator" error, matching the prior free-

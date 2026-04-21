@@ -24,7 +24,6 @@ from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
     TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn, TpyMethodCall, TpyCall, TpyExprStmt,
     TpyNoneLiteral, TpyStrLiteral,
-    TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef,
 )
 from ..namespace import NameBinding, BindingKind
 from ..type_def_registry import (
@@ -34,9 +33,9 @@ from ..type_def_registry import (
 )
 from .diagnostics import SemanticError
 from .method_expansion import expand_methods_for_record
+from .macros import run_macro_phase_for_record
 from .operators import DUNDER_CPP_TEMPLATES
-from ..macro_api import ClassInfo, expr_to_cpp_default
-from ..macro_loader import validate_and_call_macro, call_macro_field_function
+from ..macro_api import expr_to_cpp_default
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -222,14 +221,13 @@ class TypeRegistrar:
         members = tuple(m for m, _, _ in enum.members)
         member_values = tuple((m, v) for m, v, _ in enum.members)
         # Every enum gets a qname so it can be looked up in the TypeDef
-        # registry. For __main__ entry-point enums the `module_name` field
-        # on EnumInfo stays None (codegen uses that to decide whether to
-        # emit a namespace prefix) but the qname uses "__main__" as its
-        # prefix so `type_def_of(t)` always finds the entry.
-        # Phase F.3g.3: qname is built with public_module_name so it matches
-        # parser.registry's enum placeholder qname (the resolver surfaces
-        # that placeholder unchanged post-F.3g.5), avoiding divergence for
-        # enums declared in private submodules like `tpy._core._X`.
+        # registry.  For __main__ entry-point enums the `module_name`
+        # field on EnumInfo stays None (codegen uses that to decide
+        # whether to emit a namespace prefix) but the qname uses
+        # "__main__" as its prefix so `type_def_of(t)` always finds the
+        # entry.  `public_module_name` collapses private submodules
+        # (e.g. `tpy._core._X` -> `tpy`) so the qname matches the
+        # parser-side enum placeholder's qname for same-module refs.
         qname_module_raw = module_name if module_name is not None else "__main__"
         qname_module = public_module_name(qname_module_raw, self.ctx.module_cpp_namespace)
         qname = f"{qname_module}.{enum.name}"
@@ -356,17 +354,15 @@ class TypeRegistrar:
                     del_method.loc or record.loc,
                 )
 
-        # Apply class macros (e.g. @dataclass, @model). Macros see
-        # backfilled field types from the validation loop above and may
-        # add methods via ClassInfo.add_method.
-        self._apply_class_macros(record)
+        # Macro phase: apply class macros (@dataclass, @model, ...)
+        # then resolve any TypeRefNodes in macro-added method bodies.
+        # See `sema/macros.py` for why this runs inside sema.
+        run_macro_phase_for_record(record, self.ctx)
 
         # Expand methods on the final method set (source + macro-added).
         # Runs self-flag derivation, validation, @auto_readonly / property
-        # setter wrapping, and cloning (Phase F.3b.6). Idempotent on
-        # already-expanded clones, so running once per record here is
-        # safe even if the module-level entry point is invoked elsewhere
-        # (Phase F.3b.6.5 closed the macro gap by moving the call here).
+        # setter wrapping, and cloning.  Idempotent on already-expanded
+        # clones, so running once per record here is safe.
         expand_methods_for_record(record)
 
         # Check for duplicate method definitions (second definition silently wins in Python,
@@ -1250,31 +1246,6 @@ class TypeRegistrar:
 
         return None
 
-    def _apply_class_macros(self, record: TpyRecord) -> None:
-        """Apply class macros (from pending_macros) to a record before registration."""
-        if not record.pending_macros:
-            return
-        registry = self.ctx.macro_registry
-        for qname, kwargs in record.pending_macros:
-            parts = qname.rsplit(".", 1)
-            if len(parts) != 2:
-                raise SemanticError(f"Invalid macro name '{qname}'", record.loc)
-            mod_name, func_name = parts
-            macro_fn = registry.get_macro(mod_name, func_name) if registry else None
-            if macro_fn is None:
-                raise SemanticError(f"Unknown macro '{qname}'", record.loc)
-            cls_info = ClassInfo(record, self.ctx)
-            # Call macro-module functions in field defaults (e.g. field() -> Field)
-            for fld in cls_info.fields:
-                if fld.default_expr is not None and isinstance(fld.default_expr, (TpyCall, TpyMethodCall)):
-                    result = call_macro_field_function(
-                        registry, fld.default_expr, fld.loc)
-                    if result is not None:
-                        fld.default_obj = result
-            validate_and_call_macro(macro_fn, cls_info, kwargs, qname, record.loc)
-            cls_info.apply_to_record()
-            record._macro_cls_info = cls_info  # type: ignore[attr-defined]
-
     def _is_inheritable_builtin(self, typ: TpyType) -> bool:
         """Check if a type is a builtin type that can be inherited from."""
         qname = typ.qualified_name()
@@ -1312,9 +1283,9 @@ class TypeRegistrar:
             fields=protocol.fields,
             type_params=protocol.type_params,
             parent_protocols=protocol.parent_protocols,
-            # Phase F.3f.4: parser stores the raw cpp_concept string;
-            # the `::`-prefix normalization happens here so parser does
-            # not need to import typesys.ensure_qualified.
+            # Parser stores the raw cpp_concept string; the `::`-prefix
+            # normalization happens here so parser does not need to
+            # import `typesys.ensure_qualified`.
             cpp_concept=ensure_qualified(protocol.cpp_concept) if protocol.cpp_concept else None,
             is_marker=protocol.cpp_concept is not None and len(resolved_methods) == 0,
             is_dynamic=protocol.is_dynamic,
@@ -1744,12 +1715,6 @@ class TypeRegistrar:
         """
         for stmt in stmts:
             if isinstance(stmt, TpyVarDecl) and stmt.type:
-                # Resolve parser-emitted TypeRefNode (Phase F.3b.4) first so
-                # downstream reads (global scope, _analyze_var_decl) see
-                # TpyType. register_globals runs before top-level statement
-                # analysis, so this is the primary writer for TpyVarDecl.type.
-                if isinstance(stmt.type, (TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef)):
-                    stmt.type = self.type_ops.resolve_type_ref(stmt.type)
                 actual_type = stmt.type
                 # Detect Final[T]: unwrap, record finality, register inner type
                 if isinstance(actual_type, FinalType):

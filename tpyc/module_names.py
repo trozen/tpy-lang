@@ -2,8 +2,7 @@
 
 Leaf utility module: no other tpyc imports, so it can be imported
 freely from parser, sema, typesys, and codegen without creating
-cycles. Originally lived in typesys.py; relocated in Phase F.3f.6 so
-parser's typesys imports reduce to bookkeeping/walker symbols only.
+cycles.
 """
 from __future__ import annotations
 
