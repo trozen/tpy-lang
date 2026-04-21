@@ -1788,11 +1788,14 @@ class StatementGenerator:
             if var_name in self.ctx.overload_param_types:
                 continue
             cpp_type = self.types.type_to_cpp(narrowed_type)
-            var_ref = var_name
-            if var_name in self.ctx.narrowed_vars:
-                var_ref = self.ctx.narrowed_vars[var_name]
-            elif self.ctx.is_indirect_name(TpyName(var_name)):
+            # std::get needs the underlying variant. Previously-extracted T&
+            # aliases in narrowed_vars (from outer if-branch narrowing, match
+            # binds, or inline isinstance facts) point at non-variants, so we
+            # must target the original variable here.
+            if self.ctx.is_indirect_name(TpyName(var_name)):
                 var_ref = f"(*{var_name})"
+            else:
+                var_ref = var_name
             local_name = f"__{var_name}"
             # Value-type union params are const&, so std::get yields const T&.
             # Non-value union params and locals are mutable.

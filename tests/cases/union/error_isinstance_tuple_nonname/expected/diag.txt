@@ -1,0 +1,1 @@
+main.py:14: error: isinstance() tuple elements must be type names

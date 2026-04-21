@@ -16,7 +16,7 @@ void print_copy_param(const std::variant<Cat*, Dog*> pet) {
         std::cout << __pet2.name << "\n";
     } else {
         // elif isinstance(pet2, Cat):
-        if (std::holds_alternative<Cat*>(pet2)) {
+        if (true) {
             auto& __pet2 = *std::get<Cat*>(pet2);
             // print(pet2.name)
             std::cout << __pet2.name << "\n";
@@ -69,7 +69,7 @@ void main() {
     // pet6: Dog | Cat = c2
     std::variant<Cat*, Dog*> pet6{&(c2)};
     // if isinstance(pet6, Cat):
-    if (std::holds_alternative<Cat*>(pet6)) {
+    if (true) {
         auto& __pet6 = *std::get<Cat*>(pet6);
         // pet7 = copy(pet6)
         std::variant<Cat, Dog> __slot_3 = ::tpy::to_value_variant<std::variant<Cat, Dog>>(pet6);

@@ -15,7 +15,7 @@ from ..typesys import (
     LiteralType, LiteralValue, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, ParamInfo, ReadonlyType,
     UNKNOWN_ELEMENT, UnknownElementType, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
-    UnionType, VOID, BIGINT, BOOL, STR, INT32, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own,
+    UnionType, VOID, BIGINT, BOOL, STR, INT32, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own, make_union,
     is_any_str_type, container_to_str_template, error_return_matches,
     is_protocol_union, protocol_union_protocols,
     STRVIEW, MutationCallEdge,
@@ -26,7 +26,7 @@ from ..typesys import (
 from ..parse import (
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
-    TpyTypeParamConstruct, TpyCoerce, TpyLambda,
+    TpyTupleLiteral, TpyTypeParamConstruct, TpyCoerce, TpyLambda,
     TpyDictLiteral, TpySetLiteral,
     TpyVarargPack, TpyStarUnpack, TpyFString, TpyFStringValue,
 )
@@ -1340,15 +1340,50 @@ class CallAnalyzer:
             return resolved
         raise self.ctx.error(f"isinstance() second argument must be a type, got '{name}'", expr)
 
+    def _resolve_isinstance_check_types(
+        self, second_arg: TpyExpr, expr: TpyCall,
+    ) -> list[TpyType]:
+        """Resolve the second arg of isinstance() into a list of check types.
+
+        Accepts a single type name or a tuple of type names:
+            isinstance(x, A)       -> [A]
+            isinstance(x, (A, B))  -> [A, B]
+        """
+        if isinstance(second_arg, TpyTupleLiteral):
+            if not second_arg.elements:
+                raise self.ctx.error(
+                    "isinstance() tuple of types cannot be empty", expr
+                )
+            types: list[TpyType] = []
+            for elem in second_arg.elements:
+                if not isinstance(elem, TpyName):
+                    raise self.ctx.error(
+                        "isinstance() tuple elements must be type names", expr
+                    )
+                types.append(self._resolve_isinstance_type(elem.name, expr))
+            return types
+        if isinstance(second_arg, TpyName):
+            return [self._resolve_isinstance_type(second_arg.name, expr)]
+        raise self.ctx.error(
+            "isinstance() second argument must be a type name "
+            "(or tuple of type names)",
+            expr,
+        )
+
     def _analyze_isinstance(self, expr: TpyCall) -> TpyType:
         """Analyze isinstance(x, T) for union type narrowing or protocol checks.
 
-        Supports two modes:
-        1. Union narrowing: isinstance(x, MemberType) where x has a union type
+        Supports:
+        1. Union narrowing: isinstance(x, MemberType) where x has a union type.
+           Tuple form isinstance(x, (A, B)) narrows to A | B.
         2. Protocol check: isinstance(x, Protocol) where x is a protocol-typed
-           template parameter -- compiles to if constexpr (Concept<T_x>)
+           template parameter -- compiles to if constexpr (Concept<T_x>).
+        3. Static evaluation: isinstance(x, T) where x has a non-union type
+           evaluates at compile time based on the static type of x.
 
-        Sets isinstance_var and isinstance_type on the TpyCall node.
+        Sets isinstance_var and isinstance_type on the TpyCall node for the
+        union/protocol cases. For the static case, sets macro_expansion to a
+        TpyBoolLiteral so codegen emits a constant.
         """
         self._reject_kwargs_for_builtin(expr, "isinstance")
         if len(expr.args) != 2:
@@ -1373,36 +1408,90 @@ class CallAnalyzer:
                     expr, first_arg, second_arg.name, protocol_info
                 )
 
+        check_types = self._resolve_isinstance_check_types(second_arg, expr)
+
+        expr.resolved_function_info = self._isinstance_function_info()
+
+        # If the variable is narrowed to a concrete non-union type (inside an
+        # `if isinstance(v, A)` branch, a match arm, or via assignment
+        # narrowing), the check is statically answerable. Fold the call site
+        # to a constant but keep the full union branch-facts path below so
+        # downstream narrowing / codegen extractions still run.
+        narrowed = self.ctx.func.narrowed_types.get(first_arg.name)
+        static_fold: bool | None = None
+        if narrowed is not None:
+            narrowed_inner = narrowed
+            if isinstance(narrowed_inner, OwnType):
+                narrowed_inner = narrowed_inner.wrapped
+            narrowed_inner = unwrap_readonly(narrowed_inner)
+            # Union alias NominalTypes stand in for their underlying union and
+            # must not be treated as concrete. recursive_union_names is
+            # module-local, so also resolve through the registry to catch
+            # cross-module aliases whose NominalType we see here unresolved.
+            is_union_alias = False
+            if isinstance(narrowed_inner, NominalType) and not narrowed_inner.is_protocol:
+                if narrowed_inner.name in self.ctx.recursive_union_names:
+                    is_union_alias = True
+                else:
+                    alias = self.ctx.registry.get_type_alias(narrowed_inner.name)
+                    if isinstance(alias, (UnionType, OptionalType)):
+                        is_union_alias = True
+            if (not is_union_alias
+                    and not isinstance(narrowed_inner, (UnionType, OptionalType))):
+                static_fold = any(narrowed_inner == t for t in check_types)
+
         effective_type = self.expr.narrowing.effective_union_type(first_arg.name)
         if isinstance(effective_type, OwnType):
             effective_type = effective_type.wrapped
+        if effective_type is not None:
+            effective_type = unwrap_readonly(effective_type)
 
-        if not isinstance(effective_type, UnionType):
+        if effective_type is None:
+            raise self.ctx.error(
+                f"isinstance() cannot resolve the type of '{first_arg.name}'",
+                expr,
+            )
+
+        if isinstance(effective_type, OptionalType):
+            # Optional[T] is a nullable union; isinstance narrowing against
+            # the non-None inner type is not yet plumbed through. Keep the
+            # historical error so users fall back to `x is not None`.
             raise self.ctx.error(
                 f"isinstance() is only supported on union types, "
                 f"got '{effective_type}'",
-                expr
+                expr,
             )
 
-        # Second arg: resolve as type name (not an expression)
-        second_arg = expr.args[1]
-        if not isinstance(second_arg, TpyName):
-            raise self.ctx.error(
-                "isinstance() second argument must be a type name", expr
-            )
+        if not isinstance(effective_type, UnionType):
+            # Non-union: compile-time evaluate against the static type.
+            static_result = any(effective_type == t for t in check_types)
+            expr.macro_expansion = TpyBoolLiteral(value=static_result, loc=expr.loc)
+            return BOOL
 
-        resolved_type = self._resolve_isinstance_type(second_arg.name, expr)
-
-        # Check that the resolved type is a member of the union
-        if not any(m == resolved_type for m in effective_type.members):
+        # Union case: validate that check types are members of the union.
+        non_members = [t for t in check_types
+                       if not any(m == t for m in effective_type.members)]
+        if non_members:
+            if len(non_members) == 1:
+                raise self.ctx.error(
+                    f"Type '{non_members[0]}' is not a member of union "
+                    f"'{effective_type}'",
+                    expr,
+                )
+            names = ", ".join(f"'{t}'" for t in non_members)
             raise self.ctx.error(
-                f"Type '{resolved_type}' is not a member of union '{effective_type}'",
-                expr
+                f"Types {names} are not members of union '{effective_type}'",
+                expr,
             )
 
         expr.isinstance_var = first_arg.name
-        expr.isinstance_type = resolved_type
-        expr.resolved_function_info = self._isinstance_function_info()
+        expr.isinstance_type = (check_types[0] if len(check_types) == 1
+                                else make_union(*check_types))
+        if static_fold is not None:
+            # Folded at the call site, but keep isinstance_var/isinstance_type
+            # so the surrounding if/elif still narrows and codegen emits the
+            # std::get extraction for the then-block.
+            expr.macro_expansion = TpyBoolLiteral(value=static_fold, loc=expr.loc)
         return BOOL
 
     def _analyze_isinstance_protocol(

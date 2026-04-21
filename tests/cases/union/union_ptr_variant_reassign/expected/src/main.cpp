@@ -12,7 +12,7 @@ void main() {
     std::variant<Cat, Dog> __slot_1 = Dog("Rex");
     std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(pet, Dog):
-    if (std::holds_alternative<Dog*>(pet)) {
+    if (true) {
         auto& __pet = *std::get<Dog*>(pet);
         // print(pet.name)
         std::cout << __pet.name << "\n";

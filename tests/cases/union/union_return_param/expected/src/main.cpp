@@ -19,7 +19,7 @@ std::string get_name(const std::variant<Cat*, Dog*> pet) {
         return __pet.name;
     }
     // if isinstance(pet, Cat):
-    if (std::holds_alternative<Cat*>(pet)) {
+    if (true) {
         auto& __pet = *std::get<Cat*>(pet);
         // return pet.name
         return __pet.name;
