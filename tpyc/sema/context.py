@@ -8,21 +8,25 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal, TYPE_CHECKING
 
 from ..macro_loader import MacroRegistry
 from ..parse.nodes import SourceLocation
 from .value_range import ValueRange
 
+if TYPE_CHECKING:
+    from ..parse.type_resolver import TypeResolver
+
 from ..typesys import (
     TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
-    FixedIntType, INT32, BIGINT, NamedType, ReadonlyType, OwnType, OptionalType,
+    INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType, UnionType,
     PendingListType, PendingDictType, PendingSetType,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
     unwrap_readonly, unwrap_ref_type, unwrap_qualifiers,
 )
 from ..namespace import Namespace
+from ..type_def_registry import int_traits_of
 from ..parse import (
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
     TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp, TpyIfExpr,
@@ -478,11 +482,8 @@ class SemanticContext:
     module_name: str = "__main__"
     module_cpp_namespace: str | None = None  # from # tpy: cpp_namespace directive
     user_imported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
-    user_imported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_protocols: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
-    user_imported_type_aliases: dict[str, tuple[str, str]] = field(default_factory=dict)
-    user_imported_enums: dict[str, tuple[str, str]] = field(default_factory=dict)
     top_level_decls: dict[str, int] = field(default_factory=dict)
 
     # --- Final globals ---
@@ -502,12 +503,25 @@ class SemanticContext:
 
     # --- Recursive union aliases (self- or mutually-referencing) ---
     recursive_union_names: set[str] = field(default_factory=set)
+
+    # --- Module resolver (parser-owned) ---
+    # The `TypeResolver` the parser built for this module.  Wired by
+    # `sema.analyzer.analyze()` from `module.resolver`.  Consumed by:
+    #   - `_infer_field_type_from_default` to look up same-module
+    #     records via the parser's registry (not yet in `ctx.registry`
+    #     when the field-default pass runs).
+    #   - `register_record`'s macro post-resolve step (resolves
+    #     TypeRefNodes in bodies of methods added by class macros,
+    #     which join the record after the module-level `resolve_refs`
+    #     walk has already finished).
+    # No other sema code should touch this; the main parser ->
+    # TpyType binding happens via `parse.resolve_refs.resolve_refs`.
+    parser_resolver: 'TypeResolver | None' = None
     # Reverse map: frozenset(members) -> alias name (built lazily)
     _recursive_union_members: dict[frozenset, str] | None = None
 
     def is_recursive_union(self, typ: 'TpyType') -> bool:
         """Check if a union type is a recursive union alias."""
-        from ..typesys import UnionType
         if not isinstance(typ, UnionType) or not self.recursive_union_names:
             return False
         if self._recursive_union_members is None:
@@ -613,7 +627,7 @@ class SemanticContext:
                     f"has non-copyable type '{f.type}')"
                 )
         # Check type arguments for generic instantiations
-        if isinstance(inner, NamedType) and inner.type_args:
+        if isinstance(inner, NominalType) and inner.type_args:
             if record is None or not record.has_copy:
                 for arg in inner.type_args:
                     if isinstance(arg, TpyType) and self.is_type_nocopy(arg):
@@ -648,7 +662,7 @@ class SemanticContext:
         record = self.registry.get_record_for_type(typ)
         if record is not None and record.is_nocopy:
             return True
-        if isinstance(typ, NamedType) and typ.type_args:
+        if isinstance(typ, NominalType) and typ.type_args:
             if record is not None and record.has_copy:
                 return False
             for arg in typ.type_args:
@@ -697,7 +711,7 @@ class SemanticContext:
             if parent_rec.is_nocopy or parent_rec.has_del:
                 return True
             parent = parent_rec.parent
-        if isinstance(typ, NamedType) and typ.type_args:
+        if isinstance(typ, NominalType) and typ.type_args:
             for arg in typ.type_args:
                 if isinstance(arg, TpyType) and self.is_type_non_copyable(arg):
                     return True
@@ -743,10 +757,11 @@ class SemanticContext:
         """Resolve configured default-int, with range-safe fallback for literals."""
         if not isinstance(typ, IntLiteralType):
             return self.default_int_type
+        default_tr = int_traits_of(self.default_int_type)
         if (
-            isinstance(self.default_int_type, FixedIntType)
+            default_tr is not None
             and typ.value is not None
-            and not (self.default_int_type.min_value <= typ.value <= self.default_int_type.max_value)
+            and not (default_tr.min_value <= typ.value <= default_tr.max_value)
         ):
             if warn_node is not None:
                 self.warning(

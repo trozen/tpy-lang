@@ -9,28 +9,33 @@ from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo,
-    TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
-    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, EnumType, IntEnumType, BoolType, SpanType, SpanIterType,
-    FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64, TupleType, final_type_str_to_strview,
-    register_value_type_record, register_send_record, register_sync_record,
+    TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
+    TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type,
+    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, make_span,
+    STRVIEW, INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64, BIGINT, BOOL, TupleType, final_type_str_to_strview,
     register_return_exception, is_return_exception,
     attach_type_param_bounds,
     has_auto_readonly, has_auto_own,
     qualify_exception_name, ensure_qualified,
-    FnType, contains_fn_type, OptionalType, FStrType,
-    public_module_name,
+    OptionalType,
 )
+from ..module_names import public_module_name
 from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
     TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn, TpyMethodCall, TpyCall, TpyExprStmt,
     TpyNoneLiteral, TpyStrLiteral,
 )
 from ..namespace import NameBinding, BindingKind
+from ..type_def_registry import (
+    is_fixed_int_type, is_fstr_type, int_traits_of,
+    attach_dynamic_type_def, TypeCategory, EnumInfo,
+    factory_qnames_in_module,
+)
 from .diagnostics import SemanticError
+from .method_expansion import expand_methods_for_record
+from .macros import run_macro_phase_for_record
 from .operators import DUNDER_CPP_TEMPLATES
-from ..macro_api import ClassInfo, expr_to_cpp_default
-from ..macro_loader import validate_and_call_macro, call_macro_field_function
+from ..macro_api import expr_to_cpp_default
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -40,13 +45,13 @@ if TYPE_CHECKING:
 from tpyc import modules as builtin_modules
 from .. import qnames
 
-def _vararg_span_type(elem_type: 'TpyType') -> SpanType:
+def _vararg_span_type(elem_type: 'TpyType') -> NominalType:
     """Build the sema-level Span type for a *args parameter.
 
     Always Span[readonly[T]] regardless of value/non-value. The distinction
     (std::span<const T> vs tpy::varargs<T>) is handled in codegen only.
     """
-    return SpanType(elem_type, is_readonly=True)
+    return make_span(elem_type, is_readonly=True)
 
 
 _LINKAGE_MAP = {
@@ -79,8 +84,13 @@ def _validate_const_field_default(expr: TpyExpr, loc: object) -> None:
         "(literal, None, or fixed-int constructor like Int32(5))", loc)
 
 
-def build_record_self_type(record: TpyRecord) -> NamedType:
-    """Build a NamedType representing Self for a record, preserving type param kinds."""
+def build_record_self_type(record: TpyRecord, qname: str | None = None) -> NominalType:
+    """Build a NominalType representing Self for a record, preserving type param kinds.
+
+    `qname` is the record's module-qualified name (from RecordInfo.qualified_name);
+    when provided, the resulting NominalType carries `_module_qname` so the
+    TypeDef-backed `is_user_record` resolves on `self`-typed references.
+    """
     if record.type_params:
         type_args = tuple(
             TypeParamRef(
@@ -89,8 +99,8 @@ def build_record_self_type(record: TpyRecord) -> NamedType:
             )
             for i, tp in enumerate(record.type_params)
         )
-        return NamedType(record.name, type_args)
-    return NamedType(record.name)
+        return NominalType(record.name, type_args, _module_qname=qname)
+    return NominalType(record.name, _module_qname=qname)
 
 
 class TypeRegistrar:
@@ -103,9 +113,9 @@ class TypeRegistrar:
 
     def _resolve_type_param_bounds(
         self, raw_bounds: dict[str, TpyType], loc,
-    ) -> dict[str, NamedType]:
+    ) -> dict[str, NominalType]:
         """Resolve parsed type parameter bounds, validating each is a protocol."""
-        resolved: dict[str, NamedType] = {}
+        resolved: dict[str, NominalType] = {}
         for param_name, bound_type in raw_bounds.items():
             resolved_bound = self.type_ops.resolve_type(bound_type)
             if not is_protocol_type(resolved_bound):
@@ -123,9 +133,9 @@ class TypeRegistrar:
         into the global namespace and imported_names tracking.
         """
         # Register tpy types from type factories (Int32, Array, Span, etc.)
-        # Compile-time-only types (factory returns non-NamedType, e.g. FStr -> FStrType)
-        # are also registered as type aliases so the parser resolves them directly.
-        for qname in builtin_modules.get_type_factory_names("tpy"):
+        # Compile-time-only types (e.g. FStr) are also registered as type aliases
+        # so the parser resolves them directly to their NominalType singleton.
+        for qname in factory_qnames_in_module("tpy"):
             simple_name = qname.split(".")[-1]
             if simple_name not in self.ctx.imported_names:
                 self.ctx.imported_names[simple_name] = ("tpy", simple_name)
@@ -153,9 +163,9 @@ class TypeRegistrar:
         """Register a type alias for compile-time-only builtin types.
 
         Compile-time-only types (like FStr) have a type factory but no C++
-        representation. They must be resolved to their singleton at sema time
-        so isinstance checks (e.g. isinstance(ptype, FStrType)) work.
-        Regular builtin types (Int32, basic_slice, etc.) stay as NamedType
+        representation. They're resolved to their singleton at sema time so
+        predicate checks (e.g. is_fstr_type(ptype)) work.
+        Regular builtin types (Int32, basic_slice, etc.) also flow as NominalType
         and use @native for C++ mapping.
         """
         type_obj = builtin_modules.get_builtin_type_obj(f"{module}.{original_name}")
@@ -197,40 +207,50 @@ class TypeRegistrar:
         if enum.is_int_enum and enum.underlying_type_name:
             underlying = self._resolve_int_enum_underlying(enum.underlying_type_name)
             # Validate member values fit in underlying type range
-            if isinstance(underlying, FixedIntType):
+            underlying_tr = int_traits_of(underlying)
+            if underlying_tr is not None:
                 for name, value, loc in enum.members:
-                    if value < underlying.min_value or value > underlying.max_value:
+                    if value < underlying_tr.min_value or value > underlying_tr.max_value:
                         raise SemanticError(
                             f"Enum member '{name}' value {value} is out of range "
-                            f"for {underlying} ({underlying.min_value}..{underlying.max_value})",
+                            f"for {underlying} ({underlying_tr.min_value}..{underlying_tr.max_value})",
                             loc=loc or enum.loc,
                         )
 
         module_name = self.ctx.module_name if self.ctx.module_name != "__main__" else None
-        common_args = dict(
-            name=enum.name,
-            members=tuple(m for m, _, _ in enum.members),
-            member_values=tuple((m, v) for m, v, _ in enum.members),
-            underlying_type=underlying,
-            module_name=module_name,
-        )
-        if enum.is_int_enum:
-            enum_type = IntEnumType(**common_args)
-        else:
-            enum_type = EnumType(**common_args)
+        members = tuple(m for m, _, _ in enum.members)
+        member_values = tuple((m, v) for m, v, _ in enum.members)
+        # Every enum gets a qname so it can be looked up in the TypeDef
+        # registry.  For __main__ entry-point enums the `module_name`
+        # field on EnumInfo stays None (codegen uses that to decide
+        # whether to emit a namespace prefix) but the qname uses
+        # "__main__" as its prefix so `type_def_of(t)` always finds the
+        # entry.  `public_module_name` collapses private submodules
+        # (e.g. `tpy._core._X` -> `tpy`) so the qname matches the
+        # parser-side enum placeholder's qname for same-module refs.
+        qname_module_raw = module_name if module_name is not None else "__main__"
+        qname_module = public_module_name(qname_module_raw, self.ctx.module_cpp_namespace)
+        qname = f"{qname_module}.{enum.name}"
+        enum_type = NominalType(name=enum.name, type_args=(), _module_qname=qname)
         self.ctx.registry.register_enum(enum_type)
         self.ctx.global_ns.bind_enum(enum_type)
+        attach_dynamic_type_def(
+            qname,
+            TypeCategory.ENUM,
+            enum=EnumInfo(
+                members=members,
+                member_values=member_values,
+                underlying_type=underlying,
+                is_int_enum=enum.is_int_enum,
+                module_name=module_name,
+            ),
+            is_value_type=True,
+        )
 
     _INT_ENUM_UNDERLYING_MAP: dict[str, TpyType] = {
         "int": INT32,
-        "Int8": FixedIntType(8, True),
-        "Int16": FixedIntType(16, True),
-        "Int32": INT32,
-        "Int64": FixedIntType(64, True),
-        "UInt8": FixedIntType(8, False),
-        "UInt16": FixedIntType(16, False),
-        "UInt32": FixedIntType(32, False),
-        "UInt64": FixedIntType(64, False),
+        "Int8": INT8, "Int16": INT16, "Int32": INT32, "Int64": INT64,
+        "UInt8": UINT8, "UInt16": UINT16, "UInt32": UINT32, "UInt64": UINT64,
     }
 
     def _resolve_int_enum_underlying(self, type_name: str) -> TpyType:
@@ -248,27 +268,34 @@ class TypeRegistrar:
         # For generic records, skip validation of TypeParamRef types
         is_generic = bool(record.type_params)
 
-        # Check for duplicate method definitions (second definition silently wins in Python,
-        # but it is always a bug and can interfere with @override checks).
-        # @overload stubs are exempt -- multiple stubs + one implementation share the same name.
-        # Parser-cloned @auto_readonly pairs are exempt -- the mutable clone is marked
-        # is_auto_readonly_mutable_clone=True so only those pairs bypass the duplicate check.
-        propagate_clone_names: set[str] = {m.name for m in record.methods if m.is_auto_readonly_mutable_clone or m.is_auto_own_borrowing_clone}
-        overload_names: set[str] = {m.name for m in record.methods if m.is_overload_stub}
-        # Property getter+setter share a name -- exempt from duplicate check
-        property_method_names: set[str] = {m.name for m in record.methods if m.is_property_getter or m.is_property_setter}
-        seen_method_names: set[str] = set()
-        for method in record.methods:
-            if method.name in overload_names or method.name in propagate_clone_names:
-                continue
-            if method.name in property_method_names:
-                continue
-            if method.name in seen_method_names:
-                raise SemanticError(
-                    f"Method '{method.name}' defined twice in class '{record.name}'",
-                    method.loc or record.loc,
-                )
-            seen_method_names.add(method.name)
+        # For non-@builtin_type user records, pre-register a minimal RecordInfo
+        # (name + module + type_params) so that resolve_type's user-record
+        # substitution can mint `_module_qname` on references to the class by
+        # name inside its own methods/fields (e.g. `def __iter__(self) ->
+        # Counter` or `def push(self, x: T) -> Stack[T]`) even while the full
+        # info is still being built. type_params is required so validate_type's
+        # arity check recognizes `Stack[T]` as a valid generic reference. The
+        # full info gets registered below and overwrites this stub.
+        # @builtin_type stubs (list, dict, ...) are skipped -- the parser has
+        # already registered those.
+        #
+        # Direct assignment to `registry.records[...]` (not via the
+        # `register_record()` method) is intentional: `register_record()` also
+        # writes `_qname_index` for `builtin_type_key`-carrying infos, and we
+        # don't want the placeholder to pollute that index. The full
+        # registration at the bottom of this function goes through the normal
+        # path. If `register_record()` grows new side effects, update the
+        # comment here so the skip is still audited.
+        if not record.builtin_type_key:
+            record_module = public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace) or None
+            self.ctx.registry.records[record.name] = RecordInfo(
+                name=record.name,
+                fields=[],
+                module=record_module,
+                defining_module=self.ctx.module_name,
+                type_params=list(record.type_params) if record.type_params else [],
+                type_param_kinds=list(record.type_param_kinds) if record.type_param_kinds else [],
+            )
 
         # Validate field types
         for fld in record.fields:
@@ -281,6 +308,10 @@ class TypeRegistrar:
             self.type_ops.validate_type(fld.type, allow_type_param_ref=is_generic, loc=fld.loc)
             # Protocol types cannot be used as field types
             resolved_fld_type = self.type_ops.resolve_type(fld.type)
+            # Persist the resolved type back so downstream sema/codegen sees
+            # parser-level NominalType placeholders substituted with registered
+            # enums / protocol-flagged types / resolved aliases.
+            fld.type = resolved_fld_type
             if is_protocol_type(resolved_fld_type):
                 raise SemanticError(
                     f"Protocol type '{fld.type.name}' cannot be used as a field type in '{record.name}'. "
@@ -323,8 +354,38 @@ class TypeRegistrar:
                     del_method.loc or record.loc,
                 )
 
-        # Apply class macros (e.g. @dataclass)
-        self._apply_class_macros(record)
+        # Macro phase: apply class macros (@dataclass, @model, ...)
+        # then resolve any TypeRefNodes in macro-added method bodies.
+        # See `sema/macros.py` for why this runs inside sema.
+        run_macro_phase_for_record(record, self.ctx)
+
+        # Expand methods on the final method set (source + macro-added).
+        # Runs self-flag derivation, validation, @auto_readonly / property
+        # setter wrapping, and cloning.  Idempotent on already-expanded
+        # clones, so running once per record here is safe.
+        expand_methods_for_record(record)
+
+        # Check for duplicate method definitions (second definition silently wins in Python,
+        # but it is always a bug and can interfere with @override checks).
+        # Runs post-expansion so the clone flags correctly exempt clone
+        # pairs. @overload stubs are exempt -- multiple stubs + one
+        # implementation share the same name. Property getter+setter share
+        # a name -- also exempt.
+        propagate_clone_names: set[str] = {m.name for m in record.methods if m.is_auto_readonly_mutable_clone or m.is_auto_own_borrowing_clone}
+        overload_names: set[str] = {m.name for m in record.methods if m.is_overload_stub}
+        property_method_names: set[str] = {m.name for m in record.methods if m.is_property_getter or m.is_property_setter}
+        seen_method_names: set[str] = set()
+        for method in record.methods:
+            if method.name in overload_names or method.name in propagate_clone_names:
+                continue
+            if method.name in property_method_names:
+                continue
+            if method.name in seen_method_names:
+                raise SemanticError(
+                    f"Method '{method.name}' defined twice in class '{record.name}'",
+                    method.loc or record.loc,
+                )
+            seen_method_names.add(method.name)
 
         # Validate field defaults are const (after macros have transformed them)
         for fld in record.fields:
@@ -360,7 +421,11 @@ class TypeRegistrar:
                 init_params.append((fld.name, fld.type, default))
 
         # Build the Self type for this record (used to substitute SelfType in methods)
-        record_self_type = build_record_self_type(record)
+        stub_info = self.ctx.registry.get_record(record.name)
+        record_self_type = build_record_self_type(
+            record,
+            qname=stub_info.qualified_name() if stub_info is not None else None,
+        )
 
         # Pre-compute ids of mutable clones from @auto_readonly (flagged by the parser).
         # Used below to prevent implicit_readonly from clobbering is_readonly=False on these
@@ -372,7 +437,7 @@ class TypeRegistrar:
         # attach_type_param_bounds in the method loop below uses resolved versions
         # (with is_protocol=True, _module_qname set from sema registry).
         if record.type_param_bounds:
-            resolved_record_bounds: dict[str, NamedType] = {}
+            resolved_record_bounds: dict[str, NominalType] = {}
             for param_name, bound_type in record.type_param_bounds.items():
                 resolved_bound = self.type_ops.resolve_type(bound_type) if not is_protocol_type(bound_type) else bound_type
                 if not is_protocol_type(resolved_bound):
@@ -432,7 +497,7 @@ class TypeRegistrar:
                 is_native_stub = method.is_stub and (method.native_name or method.cpp_template)
                 # __iter__ returns Iterator[T] which is a protocol -- allow it since
                 # C++ codegen uses auto return type (deduced from body).
-                is_iter_method = method.name == "__iter__" and isinstance(method_return, NamedType) and method_return.qualified_name() in (qnames.ITERATOR, qnames.ITERABLE)
+                is_iter_method = method.name == "__iter__" and isinstance(method_return, NominalType) and method_return.qualified_name() in (qnames.ITERATOR, qnames.ITERABLE)
                 if not (pi and pi.is_dynamic) and not is_native_stub and not is_iter_method and not method.is_generator:
                     raise SemanticError(
                         f"Protocol type '{method_return.name}' cannot be used as a return type in '{record.name}.{method.name}'. "
@@ -441,7 +506,7 @@ class TypeRegistrar:
                     )
             # Generator method: extract yield type from Iterator[T] return type
             if method.is_generator:
-                if not (is_protocol_type(method_return) and isinstance(method_return, NamedType)
+                if not (is_protocol_type(method_return) and isinstance(method_return, NominalType)
                         and method_return.qualified_name() == "typing.Iterator"):
                     raise SemanticError(
                         f"Generator method must have return type 'Iterator[T]', "
@@ -520,7 +585,7 @@ class TypeRegistrar:
                         f"'{method.name}' must return self ('{record.name}'), not None",
                         method.loc or record.loc,
                     )
-                if not (isinstance(method_return, NamedType) and method_return.name == record.name):
+                if not (isinstance(method_return, NominalType) and method_return.name == record.name):
                     raise SemanticError(
                         f"'{method.name}' must return self ('{record.name}'), "
                         f"got '{method_return}'",
@@ -664,7 +729,7 @@ class TypeRegistrar:
                 )
             ret = copy_info.return_type
             inner = ret.wrapped if isinstance(ret, OwnType) else ret
-            if not (isinstance(inner, NamedType) and inner.name == record.name):
+            if not (isinstance(inner, NominalType) and inner.name == record.name):
                 raise SemanticError(
                     f"__copy__ must return {record.name}, got {ret}",
                     copy_loc,
@@ -726,7 +791,7 @@ class TypeRegistrar:
         # Full validation (protocols, circular check) is deferred to validate_record_inheritance.
         provisional_parent = None
         for base in record.bases:
-            if isinstance(base, NamedType) and self.ctx.registry.get_record(base.name) is not None:
+            if isinstance(base, NominalType) and self.ctx.registry.get_record(base.name) is not None:
                 provisional_parent = base
                 break
 
@@ -758,11 +823,32 @@ class TypeRegistrar:
             has_del=record.del_method is not None,
             has_copy=has_copy,
             builtin_type_key=record.builtin_type_key,
+            module=public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace) or None,
+            defining_module=self.ctx.module_name,
         )
         self.ctx.registry.register_record(info)
         self.ctx.global_ns.bind_record(info)
+        # Attach RecordInfo to the TypeDef registry under a stable qname:
+        # - @builtin_type stubs (list, dict, Array, ...) attach onto the
+        #   pre-existing static TypeDef by its builtin_type_key; the static
+        #   entry keeps its category (LIST/ARRAY/...) and picks up the
+        #   stub-contributed methods/fields.
+        # - User records use `{module}.{name}`; entry-point records fall
+        #   back to `__main__.{name}`. Mirrors the enum treatment so every
+        #   record has a queryable TypeDef entry.
+        if info.builtin_type_key:
+            attach_dynamic_type_def(
+                info.builtin_type_key,
+                TypeCategory.RECORD,
+                record=info,
+            )
+        else:
+            attach_dynamic_type_def(
+                info.qualified_name(),
+                TypeCategory.RECORD,
+                record=info,
+            )
         # Local class definition shadows any `from X import name` import
-        self.ctx.user_imported_records.pop(info.name, None)
         if self.ctx.user_imported_functions.pop(info.name, None):
             self.ctx.registry.functions.pop(info.name, None)
 
@@ -790,9 +876,9 @@ class TypeRegistrar:
         This is where we classify bases into parent class vs protocol implementations.
 
         Supports inheritance from:
-        - User-defined classes (NamedType with is_record)
-        - Builtin types (ListType, ArrayType, etc.)
-        - Protocols (NamedType with is_protocol)
+        - User-defined classes (NominalType with is_record)
+        - Builtin types (ArrayType, etc.)
+        - Protocols (NominalType with is_protocol)
         """
         record_info = self.ctx.registry.get_record(record.name)
         if record_info is None:
@@ -802,7 +888,7 @@ class TypeRegistrar:
         # (the C++ inheritance already exists, we just track it for type checking)
         if record_info.is_native and record.bases:
             for base in record.bases:
-                if isinstance(base, NamedType):
+                if isinstance(base, NominalType):
                     # Protocols are fine (express interface conformance, not C++ inheritance)
                     if self.ctx.registry.get_protocol(base.name):
                         continue
@@ -815,13 +901,13 @@ class TypeRegistrar:
 
         # Classify bases into parent class vs protocol implementations
         # We do this here (not in register_record) so forward-referenced protocols are recognized
-        parent: TpyType | None = None  # Can be NamedType or builtin type
-        implemented_protocols: list[NamedType] = []
+        parent: TpyType | None = None  # Can be NominalType or builtin type
+        implemented_protocols: list[NominalType] = []
 
         for base_type in record.bases:
             # Get the base name to check if it's actually a protocol
             base_name = None
-            if isinstance(base_type, NamedType):
+            if isinstance(base_type, NominalType):
                 base_name = base_type.name
 
             # Check if this base is actually a protocol (handles forward references)
@@ -831,21 +917,21 @@ class TypeRegistrar:
 
             if is_protocol_base:
                 # It's a protocol implementation - set the is_protocol flag correctly
-                protocol_type = base_type.with_protocol_flag(True) if isinstance(base_type, NamedType) else base_type
+                protocol_type = base_type.with_protocol_flag(True) if isinstance(base_type, NominalType) else base_type
                 # Set _module_qname from the protocol's registry entry so that
                 # qualified_name() returns the correct module (not just the
                 # _protocol_modules fallback which is first-write-wins)
-                if isinstance(protocol_type, NamedType) and not protocol_type._module_qname:
+                if isinstance(protocol_type, NominalType) and not protocol_type._module_qname:
                     proto_info = self.ctx.registry.get_protocol(base_name)
                     if proto_info and proto_info.module:
                         # Use public module name for qualified_name() comparisons
                         pub_module = public_module_name(proto_info.module)
-                        protocol_type = NamedType(
+                        protocol_type = NominalType(
                             protocol_type.name, protocol_type.type_args, True,
                             f"{pub_module}.{protocol_type.name}",
                             protocol_type.is_dynamic_protocol)
                 implemented_protocols.append(protocol_type)
-            elif isinstance(base_type, NamedType) and base_type.is_record:
+            elif isinstance(base_type, NominalType) and base_type.is_record:
                 # It's a class (user-defined or builtin) - check for multiple inheritance
                 if parent is not None:
                     raise SemanticError(
@@ -866,7 +952,15 @@ class TypeRegistrar:
                         f"Use '{base_type.name}[T]' with appropriate type arguments.",
                         record.loc
                     )
+                # Mint a qname-bearing parent so downstream `is_user_record`
+                # (TypeDef-backed) resolves correctly on the stored reference.
                 parent = base_type
+                if (not base_type._module_qname
+                        and not parent_info.builtin_type_key):
+                    parent = NominalType(base_type.name, base_type.type_args,
+                                         base_type.is_protocol,
+                                         parent_info.qualified_name(),
+                                         base_type.is_dynamic_protocol)
             elif self._is_inheritable_builtin(base_type):
                 # It's a builtin type - check for multiple inheritance
                 if parent is not None:
@@ -888,7 +982,7 @@ class TypeRegistrar:
         record_info.implemented_protocols = implemented_protocols
 
         # Validate parent class (only check circular inheritance for user-defined types)
-        if record_info.parent and isinstance(record_info.parent, NamedType) and record_info.parent.is_user_record:
+        if record_info.parent and isinstance(record_info.parent, NominalType) and record_info.parent.is_user_record:
             # Check for circular inheritance
             if self._has_circular_inheritance(record.name, record_info.parent.name):
                 raise SemanticError(
@@ -919,9 +1013,11 @@ class TypeRegistrar:
                 )
 
             # Check if record implements all protocol methods.
-            # For @builtin_type classes, use the concrete type (e.g. Float32Type)
+            # For @builtin_type classes, use the concrete type (e.g. FLOAT32)
             # so Self-substitution in protocol signatures matches method param types.
-            record_type: TpyType = NamedType(record.name)
+            record_type: TpyType = NominalType(
+                record.name, _module_qname=record_info.qualified_name()
+            )
             if record_info.builtin_type_key:
                 record_type = builtin_modules.get_builtin_type_obj(record_info.builtin_type_key) or record_type
             if not self.protocols.type_conforms_to_protocol(record_type, protocol):
@@ -953,7 +1049,6 @@ class TypeRegistrar:
                         record.loc
                     )
                 record_info.is_value_type = True
-                register_value_type_record(record.name)
                 break
 
         # ReturnException marker: register exception type as return-only
@@ -967,7 +1062,7 @@ class TypeRegistrar:
         # A record is Sync if all its fields are Sync (safe to share across threads).
         # TypeParamRef fields are assumed OK -- enforced at C++ instantiation via concepts.
         # NOTE: Modules are compiled in dependency order, so parent records from
-        # imported modules are already registered in the global sets.
+        # imported modules are already attached to their TypeDef.record payload.
         is_send = all(
             f.type.is_send() or isinstance(f.type, TypeParamRef)
             for f in record_info.fields
@@ -979,10 +1074,8 @@ class TypeRegistrar:
         if record_info.parent is not None:
             is_send = is_send and record_info.parent.is_send()
             is_sync = is_sync and record_info.parent.is_sync()
-        if is_send:
-            register_send_record(record.name)
-        if is_sync:
-            register_sync_record(record.name)
+        record_info.is_send = is_send
+        record_info.is_sync = is_sync
 
     def validate_method_error_returns(self, record: TpyRecord) -> None:
         """Validate @error_return(E) on methods references a ReturnException type.
@@ -1153,31 +1246,6 @@ class TypeRegistrar:
 
         return None
 
-    def _apply_class_macros(self, record: TpyRecord) -> None:
-        """Apply class macros (from pending_macros) to a record before registration."""
-        if not record.pending_macros:
-            return
-        registry = self.ctx.macro_registry
-        for qname, kwargs in record.pending_macros:
-            parts = qname.rsplit(".", 1)
-            if len(parts) != 2:
-                raise SemanticError(f"Invalid macro name '{qname}'", record.loc)
-            mod_name, func_name = parts
-            macro_fn = registry.get_macro(mod_name, func_name) if registry else None
-            if macro_fn is None:
-                raise SemanticError(f"Unknown macro '{qname}'", record.loc)
-            cls_info = ClassInfo(record, self.ctx)
-            # Call macro-module functions in field defaults (e.g. field() -> Field)
-            for fld in cls_info.fields:
-                if fld.default_expr is not None and isinstance(fld.default_expr, (TpyCall, TpyMethodCall)):
-                    result = call_macro_field_function(
-                        registry, fld.default_expr, fld.loc)
-                    if result is not None:
-                        fld.default_obj = result
-            validate_and_call_macro(macro_fn, cls_info, kwargs, qname, record.loc)
-            cls_info.apply_to_record()
-            record._macro_cls_info = cls_info  # type: ignore[attr-defined]
-
     def _is_inheritable_builtin(self, typ: TpyType) -> bool:
         """Check if a type is a builtin type that can be inherited from."""
         qname = typ.qualified_name()
@@ -1187,10 +1255,9 @@ class TypeRegistrar:
 
     def register_protocol(self, protocol: TpyProtocol) -> None:
         """Register a protocol type (without validating parents yet)."""
-        from ..typesys import MethodSignature, ProtocolInfo
         # Resolve implicit readonly and cross-module protocol flags on method
         # signatures. resolve_type backfills is_protocol / _module_qname on
-        # NamedType references to other protocols (e.g. Iterator[T] in
+        # NominalType references to other protocols (e.g. Iterator[T] in
         # Iterable[T].__iter__) so that later signature matches can detect
         # protocol returns.
         resolved_methods = []
@@ -1215,12 +1282,24 @@ class TypeRegistrar:
             fields=protocol.fields,
             type_params=protocol.type_params,
             parent_protocols=protocol.parent_protocols,
-            cpp_concept=protocol.cpp_concept,
+            # Parser stores the raw cpp_concept string; the `::`-prefix
+            # normalization happens here so parser does not need to
+            # import `typesys.ensure_qualified`.
+            cpp_concept=ensure_qualified(protocol.cpp_concept) if protocol.cpp_concept else None,
             is_marker=protocol.cpp_concept is not None and len(resolved_methods) == 0,
             is_dynamic=protocol.is_dynamic,
             module=public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace),
         )
         self.ctx.registry.register_protocol(info)
+        # Attach ProtocolInfo to the TypeDef registry under a stable qname.
+        # User protocols in entry-point modules fall back to `__main__.<name>`,
+        # mirroring the record/enum convention.
+        qname_module = info.module if info.module else "__main__"
+        attach_dynamic_type_def(
+            f"{qname_module}.{info.name}",
+            TypeCategory.PROTOCOL,
+            protocol=info,
+        )
 
         if protocol.is_dynamic:
             # Generic check can run immediately (doesn't need parent info)
@@ -1421,7 +1500,7 @@ class TypeRegistrar:
 
         # Fn is valid as a bare param type but not nested inside Optional/Union
         for pname, ptype in func.params:
-            if not isinstance(ptype, FnType) and contains_fn_type(ptype):
+            if not is_fn_type(ptype) and contains_fn_type(ptype):
                 raise SemanticError(
                     f"Fn type cannot be nested inside another type (Optional, Union, list, etc.). "
                     f"Use Callable for parameter '{pname}' instead",
@@ -1451,7 +1530,7 @@ class TypeRegistrar:
                       keyword_only=is_kwonly))
         # *args with no keyword-only params: append at end
         if func.vararg_name is not None and resolved_vararg_type is not None and (kw_start is None or kw_start >= len(resolved_params)):
-            span_type = SpanType(resolved_vararg_type, is_readonly=True)
+            span_type = make_span(resolved_vararg_type, is_readonly=True)
             param_infos.append(ParamInfo(func.vararg_name, span_type, is_variadic=True))
 
         # **kwargs: Unpack[TypedDict] -- append as TypedDict param at end
@@ -1459,7 +1538,7 @@ class TypeRegistrar:
         if func.kwarg_name is not None and func.kwarg_type is not None:
             resolved_kwarg_type = self.type_ops.resolve_type(func.kwarg_type)
             # Validate no field name conflicts with regular params
-            if isinstance(resolved_kwarg_type, NamedType):
+            if isinstance(resolved_kwarg_type, NominalType):
                 td_record = self.ctx.registry.get_record(resolved_kwarg_type.name)
                 if td_record is not None:
                     param_names = {n for n, _ in resolved_params}
@@ -1511,7 +1590,7 @@ class TypeRegistrar:
                     f"call expression as its body.",
                     func.loc,
                 )
-        elif any(isinstance(p.type, FStrType) for p in info.params) and not func.is_stub:
+        elif any(is_fstr_type(p.type) for p in info.params) and not func.is_stub:
             raise SemanticError(
                 f"Function '{func.name}' has FStr parameter but is not marked @inline. "
                 f"FStr parameters require @inline.",
@@ -1546,7 +1625,14 @@ class TypeRegistrar:
         self.ctx.global_ns.bind_function(info)
         # Local definition shadows any `from X import name` import
         self.ctx.user_imported_functions.pop(info.name, None)
-        self.ctx.user_imported_records.pop(info.name, None)
+
+        # Propagate resolved types back to AST (matches register_record and
+        # register_overload_group). For non-stub functions, _analyze_function
+        # will re-resolve and wrap with make_ref. For stubs, this is the only
+        # site that substitutes parser-level placeholders (imported enums,
+        # user records) with qname-bearing types the codegen expects.
+        func.params = list(resolved_params)
+        func.return_type = resolved_return
 
     def register_overload_group(self, stubs: list[TpyFunction]) -> None:
         """Register a group of @overload stubs as a single overloaded function binding.

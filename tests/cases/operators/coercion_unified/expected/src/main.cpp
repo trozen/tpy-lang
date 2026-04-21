@@ -228,7 +228,7 @@ void test_arraylist_to_span() {
     // print("ArrayList -> Span coercions:")
     std::cout << "ArrayList -> Span coercions:" << "\n";
     // al = ArrayList[Int32, 8]()
-    ::tpystd::tplib::ArrayList<int32_t, 8> al = ::tpystd::tplib::ArrayList<int32_t, 8>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 8> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // al.append(1)
     al.append(1);
     // al.append(2)

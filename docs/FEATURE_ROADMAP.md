@@ -492,10 +492,11 @@ Design space:
 Two type kinds implemented: `Fn` (template-based, zero overhead, monomorphized) and
 `Callable` (type-erased `std::function`). Named function references as values also work.
 
-**Current state**: Done. `FnType` for zero-cost callable template params (monomorphized
-at each call site). `CallableType` for type-erased `std::function<R(Args...)>` (supports
-closures, storable in fields/containers). Named function references can be passed as
-values. Lambda expressions work as both `Fn` and `Callable`.
+**Current state**: Done. `CallableType(is_template=True)` for zero-cost callable template
+params (monomorphized at each call site). `CallableType(is_template=False)` for type-erased
+`std::function<R(Args...)>` (supports closures, storable in fields/containers). Named
+function references can be passed as values. Lambda expressions work as both `Fn` and
+`Callable`.
 
 **Dependencies**: Done.
 
@@ -833,7 +834,7 @@ patterns, and self-referential parameter types without repeating the class name.
 **Current state**: Done. `Self` works in return types and parameter types of record
 methods (instance methods, not `@staticmethod`). Also works in protocol method
 signatures (existing). For generic classes, `Self` resolves to the full generic type
-(e.g. `Stack[T]`). `Self` is substituted to `NamedType(record.name, type_args)` at
+(e.g. `Stack[T]`). `Self` is substituted to `NominalType(record.name, type_args)` at
 registration time -- no codegen changes needed.
 
 Remaining: `self: Own[Self]` for consuming methods (tracked in TODO.md).

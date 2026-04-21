@@ -306,6 +306,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `cli.py` | CLI entry point, argument parsing, error handling |
 | `parse/` | Parser package: `parser.py` (AST builder using Python's `ast`, `FragmentParser` subclass for macro source fragments), `nodes.py` (TurboPython AST node definitions), `imports.py` (import resolution helpers) |
 | `typesys.py` | Type definitions (Int32, BigInt, Float, bool, Void, Str, Char, Bytes, ByteArray, BytesView, Record, Ptr, Own, Optional, List, Array, Span, Tuple) and TypeRegistry |
+| `type_resolver.py` | `TypeResolver` class: resolves parser-emitted `TypeRefNode` (unresolved type-reference AST nodes from the walker) to `TpyType`. Owns primitive lookup, registered-type lookup, generic instantiation, and structural-wrapper construction. Parser constructs one instance and attaches it to `TpyModule.resolver`; sema delegates via `resolver.resolve(ref, scope, pending_alias=...)` |
 | `sema/` | Multi-pass semantic analysis (see below) |
 | `codegen_cpp/` | C++ code generation (see below) |
 | `compiler.py` | Multi-module orchestration: discovery, dependency resolution, compilation order |
@@ -371,14 +372,14 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 
 ### Built-in Modules (`tpyc/modules/`)
 
-All builtin types, functions, and protocols are defined in `.py` stubs under `lib/tpy/`. The `tpyc/modules/` package provides type factories, resolution helpers, and constant tables used by sema and codegen.
+All builtin types, functions, and protocols are defined in `.py` stubs under `lib/tpy/`. The `tpyc/modules/` package provides resolution helpers and constant tables used by sema and codegen. (Generic type factories and per-qname behavior live on `tpyc.type_def_registry.TypeDef`; see `docs/ARCHITECTURE.md` for the nominal/structural split and TypeDef registry design.)
 
 | Module | Purpose |
 |--------|---------|
-| `defs.py` | Data classes (`BuiltinTypeDef`, `ParamDef`, `MethodDef`), dunder C++ templates, operator-to-method tables |
+| `defs.py` | Data classes (`ParamDef`, `MethodDef`), dunder C++ templates, operator-to-method tables |
 | `registry.py` | Builtin module name set, type object lookup from factories |
 | `resolver.py` | User module resolution |
-| `type_resolution.py` | Type factories, generic type lookup, iteration/span helpers |
+| `type_resolution.py` | Method resolution, iterator/span helpers, extends-arg parsing |
 
 ### Runtime (`runtime/`)
 
@@ -421,7 +422,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `slice.hpp` | `BasicSlice` (start, stop) and `Slice` (start, stop, step) types |
 | `file.hpp` | `TextFile`, `BinaryFile` for `open()` builtin, `FileFlags` mode parsing |
 
-Generated code requires C++23 (for `std::ranges` concepts) and uses the GCC statement expression extension (`({ ... })`) for expression-level `@error_return` unwrapping. This extension is supported by GCC, Clang, and all LLVM-based compilers (Intel ICX, ARM armclang, IBM Open XL). It is not supported by MSVC.
+Generated code requires C++23 (for `std::ranges` concepts) and uses the GCC statement expression extension (`({ ...; value; })`) wherever codegen needs expression-level locals: `@error_return` unwrapping, list/dict/set/array comprehensions, chained comparisons with complex intermediates, and the `x in (a, b, c)` membership form with a complex LHS. This extension is supported by GCC, Clang, and all LLVM-based compilers (Intel ICX, ARM armclang, IBM Open XL). It is not supported by MSVC.
 
 ### Libraries (`lib/`)
 
@@ -570,6 +571,7 @@ When implementing new features:
 |------|---------|--------|
 | `docs/LANGUAGE_FEATURES.md` | Comprehensive language feature documentation | **Keep up-to-date** with any development |
 | `docs/STDLIB_ROADMAP.md` | Python stdlib coverage tracker (per-module items, status, blockers) | **Keep up-to-date** when adding/changing stdlib modules |
+| `docs/ARCHITECTURE.md` | Compiler architecture: nominal/structural types, TypeDef registry, sema layout, perf tradeoffs | Update when type-system or sema structure changes |
 | `CLAUDE.md` | Commands, architecture, quick reference | Update when adding major features |
 | `README.md` | Quick start, build flags | Update when CLI changes |
 

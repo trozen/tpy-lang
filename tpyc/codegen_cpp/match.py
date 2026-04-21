@@ -9,11 +9,10 @@ from collections import defaultdict
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, BoolType, FixedIntType, NamedType, OptionalType,
-    StrType, StringType, StrViewType, PendingStrType, UnionType, EnumType,
+    TpyType, NominalType, OptionalType,
+    PendingStrType, UnionType,
     LiteralType,
     unwrap_readonly, is_any_str_type,
-
 )
 from ..parse import (
     TpyStmt, TpyExpr, TpyName, TpyMatch, TpyMatchCase, TpyPattern,
@@ -22,6 +21,7 @@ from ..parse import (
 )
 from .context import INDENT, CodeGenError, escape_cpp_name, escape_cpp_string, escape_cpp_char
 from .string_dispatch import find_best_discriminator, STRING_SWITCH_THRESHOLD
+from ..type_def_registry import is_fixed_int_type, is_bool_type, is_enum_type
 
 if TYPE_CHECKING:
     from ..parse import SourceLocation
@@ -75,7 +75,7 @@ class MatchGenerator:
                 self._gen_match_guarded_union(out, stmt, subject_type, indent)
             else:
                 self._gen_match_switch_union(out, stmt, subject_type, indent)
-        elif isinstance(subject_type, EnumType):
+        elif is_enum_type(subject_type):
             self._gen_match_switch_enum(out, stmt, indent)
         elif isinstance(subject_type, LiteralType):
             base = subject_type.base_type
@@ -84,13 +84,13 @@ class MatchGenerator:
                     self._gen_match_switch_str(out, stmt, indent)
                 else:
                     self._gen_match_if_elif(out, stmt, indent)
-            elif isinstance(base, (FixedIntType, BoolType)):
+            elif is_fixed_int_type(base) or is_bool_type(base):
                 self._gen_match_switch_primitive(out, stmt, indent)
             else:
                 self._gen_match_if_elif(out, stmt, indent)
-        elif isinstance(subject_type, (FixedIntType, BoolType)):
+        elif is_fixed_int_type(subject_type) or is_bool_type(subject_type):
             self._gen_match_switch_primitive(out, stmt, indent)
-        elif isinstance(subject_type, NamedType) and subject_type.is_user_record:
+        elif isinstance(subject_type, NominalType) and subject_type.is_user_record:
             has_guard = any(c.guard is not None for c in stmt.cases)
             if has_guard:
                 self._gen_match_guarded_record(out, stmt, indent)
@@ -1322,17 +1322,17 @@ class MatchGenerator:
         out.write(f"{inner}auto& __match_inner = {deref};\n")
 
         inner_type = subject_type.inner
-        if isinstance(inner_type, EnumType):
+        if is_enum_type(inner_type):
             groups = self._group_switch_arms(inner_cases, kind="enum")
             self.ctx.indent_level += 1
             self._emit_switch_groups(out, groups, inner, subject_expr="__match_inner")
             self.ctx.indent_level -= 1
-        elif isinstance(inner_type, (FixedIntType, BoolType)):
+        elif is_fixed_int_type(inner_type) or is_bool_type(inner_type):
             groups = self._group_switch_arms(inner_cases, kind="primitive")
             self.ctx.indent_level += 1
             self._emit_switch_groups(out, groups, inner, subject_expr="__match_inner")
             self.ctx.indent_level -= 1
-        elif isinstance(inner_type, NamedType) and inner_type.is_user_record:
+        elif isinstance(inner_type, NominalType) and inner_type.is_user_record:
             self._emit_optional_inner_record(out, inner_cases, inner)
         else:
             # str, float, other: if/elif chain on __match_inner

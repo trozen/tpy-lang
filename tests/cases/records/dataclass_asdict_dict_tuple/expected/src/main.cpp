@@ -10,7 +10,7 @@ void main() {
     // d = DictOfDC({"origin": Point(Int32(0), Int32(0)), "end": Point(Int32(1), Int32(2))})
     DictOfDC d = DictOfDC(::tpy::ordered_map<std::string, Point>({{"origin", Point(0, 0)}, {"end", Point(1, 2)}}));
     // print(asdict(d))
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"items", [&]() {
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"items", ({
         ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> __result;
         auto __obj_0 = ::tpy::dict_items(d.items);
         auto __beg_0 = __obj_0.begin();
@@ -21,8 +21,8 @@ void main() {
             const auto& __macro_2 = std::get<1>(__tup_1);
             __result.insert_or_assign(__macro_1, ::tpy::ordered_map<std::string, int32_t>({{"x", __macro_2.x}, {"y", __macro_2.y}}));
         }
-        return __result;
-    }()}})) << "\n";
+        __result;
+    })}})) << "\n";
     // # asdict: tuple with DC element
     // t = TupleOfDC((Point(Int32(1), Int32(2)), Int32(42)))
     TupleOfDC t = TupleOfDC(std::tuple<Point, int32_t>{Point(1, 2), 42});
@@ -37,7 +37,7 @@ void main() {
     // d2 = DictOfDC({"origin": Point(Int32(0), Int32(0))})
     DictOfDC d2 = DictOfDC(::tpy::ordered_map<std::string, Point>({{"origin", Point(0, 0)}}));
     // print(astuple(d2))
-    std::cout << ::tpy::TuplePrinter(std::tuple<::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>>>([&]() {
+    std::cout << ::tpy::TuplePrinter(std::tuple<::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>>>(({
         ::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>> __result;
         auto __obj_1 = ::tpy::dict_items(d2.items);
         auto __beg_1 = __obj_1.begin();
@@ -48,8 +48,8 @@ void main() {
             const auto& __macro_2 = std::get<1>(__tup_2);
             __result.insert_or_assign(__macro_1, std::tuple<int32_t, int32_t>{__macro_2.x, __macro_2.y});
         }
-        return __result;
-    }())) << "\n";
+        __result;
+    }))) << "\n";
     // # astuple: tuple with DC element
     // t3 = TupleOfDC((Point(Int32(1), Int32(2)), Int32(42)))
     TupleOfDC t3 = TupleOfDC(std::tuple<Point, int32_t>{Point(1, 2), 42});

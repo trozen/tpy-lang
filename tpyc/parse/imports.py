@@ -12,7 +12,7 @@ from .nodes import (
     ParseError, SourceLocation, RelativeImportKey,
     TpyImport, ParseWarning,
 )
-from ..typesys import public_module_name
+from ..module_names import public_module_name
 
 # Callback type for resolving star import exports.
 # Takes a module name, returns the set of exported names, or None if not found.
@@ -162,6 +162,13 @@ class ImportProcessor:
         self.imports: dict[str, set[tuple[str, str]] | None] | None = None
         # Reverse index: local_name -> (module_name, original_name) for O(1) lookup
         self._name_index: dict[str, tuple[str, str]] = {}
+        # Local names whose import tuple has been rewritten by
+        # `canonicalize_name_index` to point at the defining module
+        # rather than a re-export facade.  `TypeResolver` consults this
+        # set to gate `_module_qname` minting: parser-level aliases and
+        # builtin-module lookups are NOT canonicalized and so stay as
+        # bare `NominalType` without a qname.
+        self._canonical_imports: set[str] = set()
 
     def _resolve_placeholder_module(self, key: str) -> str:
         """Resolve a relative import placeholder to a public module name.
@@ -199,6 +206,35 @@ class ImportProcessor:
         resolved to the public parent (e.g. tpy._core._types -> tpy, tpy._builtins._list -> tpy).
         """
         return self._name_index.get(local_name)
+
+    def canonicalize_name_index(
+        self, lookup: Callable[[str, str], tuple[str, str] | None],
+    ) -> None:
+        """Rewrite name-index entries to point at defining modules.
+
+        For each `(surface_module, original_name)` tuple, call `lookup`.
+        When it returns a tuple, record the name as canonical
+        (`is_canonical()` becomes True) and replace the entry if the
+        lookup changed it.  Called by the compiler between parse and
+        sema to redirect re-export facades to the module that actually
+        declares the symbol, so `TypeResolver` can mint canonical
+        `_module_qname` on its first pass -- but only for names whose
+        lookup succeeded (records / enums / protocols), keeping aliases
+        and other non-type imports free of qname pollution that would
+        suppress downstream resolution passes.
+        """
+        for local_name, (surface, original) in list(self._name_index.items()):
+            target = lookup(surface, original)
+            if target is None:
+                continue
+            if target != (surface, original):
+                self._name_index[local_name] = target
+            self._canonical_imports.add(local_name)
+
+    def is_canonical(self, local_name: str) -> bool:
+        """True if `local_name`'s import tuple was canonicalized and
+        points at the defining module for a record / enum / protocol."""
+        return local_name in self._canonical_imports
 
     def _index_import(self, module_name: str, original: str, local: str) -> None:
         """Add a name to the reverse lookup index."""

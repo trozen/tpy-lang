@@ -44,8 +44,8 @@ struct Square;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void print_area(::tpystd::tplib::Box<Shape>& b);
-::tpystd::tplib::Box<Shape> make_shape();
+void print_area(::tpystd::tplib::box::Box<Shape>& b);
+::tpystd::tplib::box::Box<Shape> make_shape();
 void main();
 
 // class Circle(Shape):

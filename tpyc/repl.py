@@ -23,7 +23,8 @@ from pathlib import Path
 
 from .parse import ParseError, TpyExprStmt, TpyCoerce
 from .sema import SemanticError, DiagnosticLevel
-from .typesys import VoidType, CharType, is_any_str_type
+from .typesys import VoidType, is_any_str_type
+from .type_def_registry import is_char_type
 from .compiler import Compiler
 from .codegen_cpp.context import get_include_path
 from .repl_backends import (
@@ -392,7 +393,7 @@ class REPLSession:
                 # Only wrap if the expression has a non-void type
                 if expr_type is not None and not isinstance(expr_type, VoidType):
                     # Track if we're printing a string/char for post-processing
-                    is_str_or_char = is_any_str_type(expr_type) or isinstance(expr_type, CharType)
+                    is_str_or_char = is_any_str_type(expr_type) or is_char_type(expr_type)
 
                     # For @error_return calls, unwrap into a temp first
                     # so the error check happens at statement level

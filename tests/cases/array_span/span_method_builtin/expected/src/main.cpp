@@ -51,7 +51,7 @@ void from_readonly_span() {
 // def from_arraylist() -> None:
 void from_arraylist() {
     // al = ArrayList[Int32, 4]()
-    ::tpystd::tplib::ArrayList<int32_t, 4> al = ::tpystd::tplib::ArrayList<int32_t, 4>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 4> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     // al.append(100)
     al.append(100);
     // al.append(200)

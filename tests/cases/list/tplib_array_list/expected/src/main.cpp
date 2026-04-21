@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // # -- basics: empty, append, len, getitem --
     // a = ArrayList[Int32, 8]()
-    ::tpystd::tplib::ArrayList<int32_t, 8> a = ::tpystd::tplib::ArrayList<int32_t, 8>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 8> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // print(len(a))               # 0
     std::cout << ::tpy::__len__(a) << "\n";
     // a.append(10)
@@ -76,7 +76,7 @@ void main() {
     std::cout << a[1] << "\n";
     // # -- copy --
     // b = copy(a)
-    ::tpystd::tplib::ArrayList<int32_t, 8> b = ::tpystd::tplib::ArrayList<int32_t, 8>(a);
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 8> b = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>(a);
     // b[0] = 100
     ::tpy::__setitem__(b, 0, 100);
     // print(a[0])                 # 7 (original unchanged)
@@ -85,7 +85,7 @@ void main() {
     std::cout << b[0] << "\n";
     // # -- iter --
     // c = ArrayList[Int32, 4]()
-    ::tpystd::tplib::ArrayList<int32_t, 4> c = ::tpystd::tplib::ArrayList<int32_t, 4>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 4> c = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     // c.append(1)
     c.append(1);
     // c.append(2)
@@ -124,7 +124,7 @@ void main() {
     // s: Span[Int32] = arr
     std::span<int32_t> s = ::tpy::as_mut_span(arr);
     // d = ArrayList[Int32, 8](s)
-    ::tpystd::tplib::ArrayList<int32_t, 8> d = ::tpystd::tplib::ArrayList<int32_t, 8>(&(s));
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 8> d = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>(&(s));
     // print(len(d))               # 3
     std::cout << ::tpy::__len__(d) << "\n";
     // print(d[0])                 # 10

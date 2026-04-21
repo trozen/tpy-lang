@@ -19,7 +19,7 @@ void main();
 // class Neg:
 struct Neg {
     // inner: Box[Value]
-    ::tpystd::tplib::Box<Value> inner;
+    ::tpystd::tplib::box::Box<Value> inner;
 
 };
 

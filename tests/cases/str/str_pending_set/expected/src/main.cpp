@@ -17,14 +17,14 @@ namespace tpyapp::main {
     // label: str = "x"
     std::string_view label = "x";
     // return {label for _ in range(3)}
-    return [&]() {
+    return ({
         ::tpy::ordered_set<std::string> __result;
         const int32_t __stop_0 = 3;
         for (int32_t _ = 0; _ < __stop_0; ++_) {
             __result.insert(std::string(label));
         }
-        return __result;
-    }();
+        __result;
+    });
 }
 
 void __tpy_init() {

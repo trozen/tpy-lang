@@ -47,7 +47,7 @@ void main() {
     Expr __tmp_1 = Lit(::tpy::BigInt(42));
     std::cout << eval_expr(__tmp_1) << "\n";
     // e = BinOp(Box(BinOp(Box(Lit(10)), "+", Box(Lit(3)))), "-", Box(Lit(1)))
-    BinOp e = BinOp(::tpystd::tplib::Box<Expr>(BinOp(::tpystd::tplib::Box<Expr>(Lit(::tpy::BigInt(10))), "+", ::tpystd::tplib::Box<Expr>(Lit(::tpy::BigInt(3))))), "-", ::tpystd::tplib::Box<Expr>(Lit(::tpy::BigInt(1))));
+    BinOp e = BinOp(::tpystd::tplib::box::Box<Expr>(BinOp(::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(10))), "+", ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(3))))), "-", ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(1))));
     // print(eval_expr(e))
     Expr __tmp_2 = std::move(e);
     std::cout << eval_expr(__tmp_2) << "\n";
@@ -59,7 +59,7 @@ void __tpy_init() {
     initialized = true;
 
     // # D20 mutual recursion with classes defined BEFORE the union alias.
-    // # Exercises the codegen path where Box[Expr] fields carry NamedType("Expr")
+    // # Exercises the codegen path where Box[Expr] fields carry NominalType("Expr")
     // # (alias not yet registered at parse time) rather than the expanded UnionType.
     // from tplib import Box
     ::tpystd::tplib::__tpy_init();

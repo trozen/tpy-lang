@@ -8,14 +8,16 @@ from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, OwnType, ReadonlyType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
-    UnionType, VoidType, FnType, NoneType, NONE,
-    BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
-    Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, LiteralType, LiteralValue, is_any_str_type, SpanType,
+    TpyType, NominalType, OwnType, ReadonlyType, OptionalType, PendingListType, IntLiteralType, is_fn_type, CallableType,
+    UnionType, VoidType, NoneType, NONE,
+    BIGINT, BOOL, STR, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
+    PtrType, LiteralType, LiteralValue, is_any_str_type,
+    is_primitive_type,
     resolve_int_literals, CONST_PARAMS_METHODS,
     error_return_to_cpp, unwrap_ref_type,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
+from ..type_def_registry import is_span, is_char_type, is_str_type
 from ..parse.nodes import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
     TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyName,
@@ -43,9 +45,9 @@ def _infer_literal_default_type(expr: TpyExpr) -> TpyType | None:
     if isinstance(expr, TpyIntLiteral):
         return IntLiteralType(value=expr.value)
     if isinstance(expr, TpyBoolLiteral):
-        return LiteralType(BoolType(), (LiteralValue("bool", expr.value),))
+        return LiteralType(BOOL, (LiteralValue("bool", expr.value),))
     if isinstance(expr, TpyStrLiteral):
-        return LiteralType(StrType(), (LiteralValue("str", expr.value),))
+        return LiteralType(STR, (LiteralValue("str", expr.value),))
     if isinstance(expr, TpyUnaryOp) and expr.op == "-":
         inner = _infer_literal_default_type(expr.operand)
         if isinstance(inner, IntLiteralType) and inner.value is not None:
@@ -78,7 +80,10 @@ def literal_mangled_name(base_name: str, stub_or_info: TpyFunction | FunctionInf
     return f"{base_name}__lit_{'__'.join(parts)}"
 
 
-_FIXED_INT_NAMES = {
+# Zero-arg scalar constructors that codegen to `0` (as opposed to
+# aggregate init `{}`). Covers every fixed-int width plus the three
+# bare numeric/bool builtins -- misnamed `_FIXED_INT_NAMES` historically.
+_SCALAR_ZERO_CTOR_NAMES = {
     "Int8", "Int16", "Int32", "Int64",
     "UInt8", "UInt16", "UInt32", "UInt64",
     "int", "float", "bool",
@@ -92,7 +97,7 @@ def factory_default_to_cpp(field_type: TpyType) -> str:
     containers (list, dict, etc.) use aggregate init.
     """
     inner = field_type.wrapped if isinstance(field_type, OwnType) else field_type
-    if isinstance(inner, NamedType) and inner.is_user_record:
+    if isinstance(inner, NominalType) and inner.is_user_record:
         return f"{inner.to_cpp()}()"
     return "{}"
 
@@ -112,18 +117,18 @@ class FunctionGenerator:
         self.protocols = protocols
         self.statements = statements
 
-    def _collect_fn_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[int, str, FnType]]:
+    def _collect_fn_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[int, str, CallableType]]:
         """Collect Fn-typed parameters: returns (fn_index, param_name, fn_type)."""
         result = []
         idx = 0
         for pname, ptype in params:
-            if isinstance(ptype, FnType):
+            if is_fn_type(ptype):
                 result.append((idx, pname, ptype))
                 idx += 1
         return result
 
     def _gen_fn_template_parts(
-        self, fn_params: list[tuple[int, str, FnType]],
+        self, fn_params: list[tuple[int, str, CallableType]],
     ) -> tuple[list[str], list[str]]:
         """Generate template params and requires clauses for Fn-typed params.
 
@@ -232,7 +237,7 @@ class FunctionGenerator:
         if isinstance(expr, TpyBoolLiteral):
             return "true" if expr.value else "false"
         if isinstance(expr, TpyStrLiteral):
-            if isinstance(ptype, CharType) and len(expr.value) == 1:
+            if is_char_type(ptype) and len(expr.value) == 1:
                 ch = expr.value[0]
                 if ch == "'":
                     return "'\\''"
@@ -263,7 +268,7 @@ class FunctionGenerator:
             if expr.args:
                 return FunctionGenerator.default_to_cpp(expr.args[0], ptype)
             # Zero-arg call: Int32() -> 0, list()/dict()/Record() -> {}
-            if isinstance(expr.func, TpyName) and expr.func_name in _FIXED_INT_NAMES:
+            if isinstance(expr.func, TpyName) and expr.func_name in _SCALAR_ZERO_CTOR_NAMES:
                 return "0"
             return factory_default_to_cpp(ptype)
         return "0"
@@ -303,8 +308,8 @@ class FunctionGenerator:
         fn_idx = 0
         for i, (pname, ptype) in enumerate(params):
             cpp_pname = escape_cpp_name(pname)
-            # FnType params become forwarding-ref template params
-            if isinstance(ptype, FnType):
+            # Fn params become forwarding-ref template params
+            if is_fn_type(ptype):
                 part = f"__F{fn_idx}&& {cpp_pname}"
                 fn_idx += 1
                 if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
@@ -314,8 +319,8 @@ class FunctionGenerator:
             own = unwrap_readonly(unwrap_ref_type(ptype))
             bare_ptype = unwrap_ref_type(ptype)
             # *args parameter: emit tpy::varargs<T>
-            if func and func.vararg_name and pname == func.vararg_name and isinstance(bare_ptype, SpanType):
-                inner_cpp = bare_ptype.inner_element_type.to_cpp()
+            if func and func.vararg_name and pname == func.vararg_name and is_span(bare_ptype):
+                inner_cpp = unwrap_readonly(bare_ptype.type_args[0]).to_cpp()
                 part = f"::tpy::varargs<{inner_cpp}> {escape_cpp_name(pname)}"
                 if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
                     part += f" = {self.default_to_cpp(defaults[i], ptype)}"
@@ -415,8 +420,8 @@ class FunctionGenerator:
         fn_idx = 0
         for i, (pname, ptype) in enumerate(params):
             cpp_pname = escape_cpp_name(pname)
-            # FnType params become forwarding-ref template params (same as gen_params)
-            if isinstance(ptype, FnType):
+            # Fn params become forwarding-ref template params (same as gen_params)
+            if is_fn_type(ptype):
                 part = f"__F{fn_idx}&& {cpp_pname}"
                 fn_idx += 1
                 if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
@@ -430,7 +435,7 @@ class FunctionGenerator:
                 # Own[Protocol] or Iterable[Own[T]] params use forwarding ref
                 # (T&&) to accept rvalue move-only / consuming types.
                 is_own_protocol = isinstance(unwrapped, OwnType)
-                has_own_arg = (isinstance(unwrapped, NamedType) and unwrapped.type_args
+                has_own_arg = (isinstance(unwrapped, NominalType) and unwrapped.type_args
                                and any(isinstance(a, OwnType) for a in unwrapped.type_args))
                 if info and info.has_none:
                     part = f"const T_{pname}* {cpp_pname}"
@@ -499,7 +504,7 @@ class FunctionGenerator:
         # is recognized as a protocol return and gets `auto` in C++.
         if isinstance(unwrapped, OwnType) and is_protocol_type(unwrapped.wrapped):
             unwrapped = unwrapped.wrapped
-        if is_protocol_type(unwrapped) and isinstance(unwrapped, NamedType):
+        if is_protocol_type(unwrapped) and isinstance(unwrapped, NominalType):
             pi = self.ctx.analyzer.registry.get_protocol(unwrapped.name)
             if pi and pi.is_dynamic:
                 base = self.protocols.get_dynamic_base_name(unwrapped.name)
@@ -641,7 +646,7 @@ class FunctionGenerator:
             return True
         if self.protocols.get_all_protocol_params(func.params):
             return True
-        if any(isinstance(pt, FnType) for _, pt in func.params):
+        if any(is_fn_type(pt) for _, pt in func.params):
             return True
         return False
 
@@ -694,7 +699,7 @@ class FunctionGenerator:
         rp = self._get_reassigned_params(func)
         mp = self._get_func_mutated_params(func)
         has_proto_params = bool(proto_params)
-        has_fn_params = any(isinstance(pt, FnType) for _, pt in func.params)
+        has_fn_params = any(is_fn_type(pt) for _, pt in func.params)
 
         dfl = func.defaults if func.defaults else None
         effective_ret = return_type_override or func.return_type
@@ -775,7 +780,7 @@ class FunctionGenerator:
         rp = self._get_reassigned_params(func)
         mp = self._get_func_mutated_params(func)
         has_proto_params = bool(proto_params)
-        has_fn_params = any(isinstance(pt, FnType) for _, pt in func.params)
+        has_fn_params = any(is_fn_type(pt) for _, pt in func.params)
 
         if is_generic or has_proto_params or has_fn_params:
             # Template functions: emit full definition in header so that
@@ -872,7 +877,7 @@ class FunctionGenerator:
         rp = self._get_reassigned_params(func)
         mp = self._get_func_mutated_params(func)
         has_proto_params = bool(proto_params)
-        has_fn_params = any(isinstance(pt, FnType) for _, pt in func.params)
+        has_fn_params = any(is_fn_type(pt) for _, pt in func.params)
 
         if is_generic or has_proto_params or has_fn_params:
             # Generate combined template header for generic functions and/or protocol params
@@ -1435,7 +1440,7 @@ class FunctionGenerator:
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         if not static:
-            local_ns.bind_variable("self", NamedType(record_name))
+            local_ns.bind_variable("self", NominalType(record_name))
         for pname, ptype in method.params:
             local_ns.bind_variable(pname, ptype)
         # Consuming methods on types with __del__: suppress destructor at method entry.
@@ -1486,7 +1491,7 @@ class FunctionGenerator:
         Structural protocol types use decltype(init_expr) since they have no
         concrete C++ type name (they map to C++ concepts).
         """
-        if is_protocol_type(var_type) and isinstance(var_type, NamedType):
+        if is_protocol_type(var_type) and isinstance(var_type, NominalType):
             pi = self.ctx.analyzer.registry.get_protocol(var_type.name)
             if pi and pi.is_dynamic:
                 return self.protocols.get_dynamic_base_name(var_type.name)
@@ -1548,7 +1553,7 @@ class FunctionGenerator:
         is_value = var_type.is_value_type() or self.ctx.is_recursive_union(var_type)
         if is_value:
             # C++ primitives need explicit zero-init; class types (BigInt, string_view) don't
-            init = "{}" if isinstance(var_type, (Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType)) else ""
+            init = "{}" if (is_primitive_type(var_type) or isinstance(var_type, PtrType)) else ""
             out.write(f"{cpp_type} {stmt.name}{init};\n")
         else:
             out.write(f"{cpp_type}* {stmt.name}{{}};\n")
@@ -1579,7 +1584,7 @@ class FunctionGenerator:
         var_type = self._resolve_global_type(stmt)
         cpp_type = var_type.to_cpp()
         # Final[str] -> constexpr std::string_view (string literals are static)
-        if isinstance(var_type, StrType):
+        if is_str_type(var_type):
             cpp_type = "std::string_view"
         if is_constexpr_eligible(var_type):
             init_expr = self._gen_final_init_expr(stmt, var_type)

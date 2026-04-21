@@ -1,20 +1,20 @@
 """Unit tests for cycle_detection module."""
 
 import pytest
-from .typesys import NamedType, ListType, RecordInfo, FieldInfo
+from .typesys import NominalType, RecordInfo, FieldInfo, make_list
 from .cycle_detection import detect_type_cycles, TypeCycle
 
 
-def _named(name: str) -> NamedType:
-    return NamedType(name)
+def _named(name: str) -> NominalType:
+    return NominalType(name)
 
 
-def _box(inner: NamedType) -> NamedType:
-    return NamedType("Box", type_args=(inner,))
+def _box(inner: NominalType) -> NominalType:
+    return NominalType("Box", type_args=(inner,))
 
 
-def _list(inner) -> ListType:
-    return ListType(element_type=inner)
+def _list(inner) -> NominalType:
+    return make_list(element_type=inner)
 
 
 class TestCycleDetection:

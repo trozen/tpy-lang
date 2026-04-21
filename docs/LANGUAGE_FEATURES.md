@@ -2815,7 +2815,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
         right: Box[Expr]
     ```
     The compiler detects cross-type cycles, validates indirection, and generates a C++ wrapper struct that can be forward-declared. `Box(Lit(1))` auto-coerces to `Box[Expr]` via the wrapper's implicit constructor. Works with `isinstance`, `match`/`case`, and mixed unions (primitives + records). Both source orderings supported (alias first or classes first). Cross-module mutual recursion is not yet supported.
-  - **Limitations**: Generic recursive aliases (`type Tree[T] = T | list[Tree[T]]`) are not yet supported.
+  - **Limitations**: Generic recursive aliases (`type Tree[T] = T | list[Tree[T]]`) are not yet supported. Mutual type-alias recursion (`type A = list[B]; type B = list[A]`) is silently accepted by the compiler but generates C++ that fails to compile -- each `using` declaration references the other before it is defined. Use a recursive-union wrapper (as in the `Expr` / `Lit` / `BinOp` example above) for mutually-recursive types instead.
   - **Not yet supported**: `isinstance(x, (A, B))` tuple form, `isinstance(x, Protocol)` on concrete-typed variables
   - **Working**: `match`/`case` pattern matching on union subjects (see Control Flow > Other)
   - **Working**: `@overload` dispatch flattening -- Python-standard `@overload` stubs generate separate C++ overloads. Two modes are supported: **(a) stubs + impl** (multiple bodyless stubs followed by a single implementation whose body is specialized per-stub via dead-branch elim) and **(b) bodied stubs** (each `@overload` variant carries its own body and acts as its own implementation). Each overload compiles to a clean, specialized function with no runtime dispatch overhead.

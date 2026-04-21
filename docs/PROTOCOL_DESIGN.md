@@ -75,7 +75,7 @@ module.protocol("SupportsAdd", methods=[
 # tpyc/typesys.py
 
 @dataclass(frozen=True)
-class NamedType(TpyType):
+class NominalType(TpyType):
     """A user-defined type (record or protocol).
 
     During parsing, is_protocol defaults to False (unknown).
@@ -89,11 +89,11 @@ class NamedType(TpyType):
     def is_record(self) -> bool:
         return not self.is_protocol
 
-    def with_protocol_flag(self, is_protocol: bool) -> 'NamedType':
+    def with_protocol_flag(self, is_protocol: bool) -> 'NominalType':
         """Return a copy with is_protocol set."""
         if self.is_protocol == is_protocol:
             return self
-        return NamedType(self.name, self.type_args, is_protocol)
+        return NominalType(self.name, self.type_args, is_protocol)
 ```
 
 ## 4. Semantic analysis
@@ -107,7 +107,7 @@ def _check_type_compatible(self, arg_type: TpyType, param_type: TpyType) -> bool
         return True
 
     # Protocol matching (structural)
-    if isinstance(param_type, NamedType) and param_type.is_protocol:
+    if isinstance(param_type, NominalType) and param_type.is_protocol:
         return self.protocols.type_conforms_to_protocol(arg_type, param_type)
 
     # ... other rules
@@ -189,10 +189,10 @@ This approach:
 ```python
 # tpyc/modules/builtins.py
 
-from tpyc.typesys import NamedType
+from tpyc.typesys import NominalType
 
 # Sized protocol type for len() parameter
-SIZED = NamedType("Sized", is_protocol=True)
+SIZED = NominalType("Sized", is_protocol=True)
 
 module.function("len", overloads=[
     MethodDef(
@@ -223,7 +223,7 @@ class MethodSignature:
     return_type: TpyType
 
 @dataclass(frozen=True)
-class NamedType(TpyType):
+class NominalType(TpyType):
     """Unified type for records and protocols."""
     name: str
     type_args: tuple[TpyType | int, ...] = ()
@@ -377,7 +377,7 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
 2. **Phase 2**: Protocol matching in sema for function params ✅ **COMPLETE** (included in Phase 1)
 3. **Phase 3**: Generic protocols (`Sequence[T]`) ✅ **COMPLETE**
    - Generic protocol definitions with type_params in ProtocolInfo
-   - NamedType with type_args for instantiated generic protocols
+   - NominalType with type_args for instantiated generic protocols
    - Type parameter substitution in protocol conformance checking
    - Parameterized C++20 concept generation (e.g., `tpy::Sequence<int32_t>`)
    - Indexing support for protocol-typed variables

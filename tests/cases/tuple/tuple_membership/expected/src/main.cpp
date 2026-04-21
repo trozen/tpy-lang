@@ -74,7 +74,7 @@ void test_call_lhs() {
     // call_count = 0
     call_count = 0;
     // if get_val() in (1, 17, 42):
-    if ([&]() -> bool { auto&& __in_lhs = get_val(); return (__in_lhs == 1) || (__in_lhs == 17) || (__in_lhs == 42); }()) {
+    if (({ auto&& __in_lhs = get_val(); (__in_lhs == 1) || (__in_lhs == 17) || (__in_lhs == 42); })) {
         // print("call found")
         std::cout << "call found" << "\n";
     }

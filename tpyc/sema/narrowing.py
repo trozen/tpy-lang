@@ -8,8 +8,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, OptionalType, NoneType, VoidType, PtrType, OwnType, NamedType,
-    TypeParamRef, FixedIntType, BigIntType, IntLiteralType,
+    TpyType, OptionalType, NoneType, VoidType, PtrType, OwnType, NominalType,
+    TypeParamRef, IntLiteralType,
     ReadonlyType, UnionType, unwrap_readonly, unwrap_ref_type, make_union, union_none_narrow,
     is_protocol_type, LiteralType, LiteralValue, is_any_int_type,
 
@@ -96,10 +96,12 @@ class NarrowingTracker:
                     inner = inner.wrapped
                 if isinstance(inner, UnionType):
                     return inner
-        # Expand recursive union alias NamedType to underlying UnionType
-        # (e.g. after Optional narrowing: Tree | None -> Tree -> int | list[Tree])
-        if (isinstance(effective, NamedType)
-                and not effective.is_protocol and not effective.is_module_type
+        # Expand recursive union alias NominalType to underlying UnionType
+        # (e.g. after Optional narrowing: Tree | None -> Tree -> int | list[Tree]).
+        # Alias placeholders are bare parser NominalTypes without a TypeDef
+        # entry -- match by name against recursive_union_names directly.
+        if (isinstance(effective, NominalType)
+                and not effective.is_protocol
                 and effective.name in self.ctx.recursive_union_names):
             alias = self.ctx.registry.get_type_alias(effective.name)
             if alias is not None:
@@ -126,7 +128,7 @@ class NarrowingTracker:
                     return None
                 actual_type = actual_type.inner
 
-            if isinstance(actual_type, NamedType) and actual_type.is_record:
+            if isinstance(actual_type, NominalType) and actual_type.is_record:
                 record = self.ctx.registry.get_record_for_type(actual_type)
                 if not record:
                     return None
@@ -165,11 +167,11 @@ class NarrowingTracker:
                 return elem_type
             if is_protocol_type(actual_type):
                 return self._get_protocol_getitem_type(actual_type)
-            if isinstance(actual_type, NamedType) and actual_type.is_record:
+            if isinstance(actual_type, NominalType) and actual_type.is_record:
                 return self._get_record_getitem_type(actual_type)
         return None
 
-    def _get_protocol_getitem_type(self, protocol: NamedType) -> TpyType | None:
+    def _get_protocol_getitem_type(self, protocol: NominalType) -> TpyType | None:
         """Get __getitem__ return type for a protocol (returns None on failure)."""
         protocol_info = self.ctx.registry.get_protocol(protocol.name)
         if protocol_info is None:
@@ -184,7 +186,7 @@ class NarrowingTracker:
                 return method_sig.return_type
         return None
 
-    def _get_record_getitem_type(self, record_type: NamedType) -> TpyType | None:
+    def _get_record_getitem_type(self, record_type: NominalType) -> TpyType | None:
         """Get __getitem__ return type for a record (returns None on failure)."""
         record = self.ctx.registry.get_record_for_type(record_type)
         if record is None:

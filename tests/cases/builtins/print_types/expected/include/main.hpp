@@ -12,7 +12,7 @@ extern std::string s;
 extern char c;
 extern std::vector<::tpy::BigInt>* items;
 extern std::array<int32_t, 3>* arr;
-extern ::tpystd::tplib::ArrayList<int32_t, 4>* al;
+extern ::tpystd::tplib::array_list::ArrayList<int32_t, 4>* al;
 extern std::optional<int32_t> x;
 extern std::optional<bool> y;
 extern std::optional<double> z;

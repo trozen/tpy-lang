@@ -8,7 +8,7 @@
 
 namespace tpyapp::main {
 
-extern ::tpystd::tplib::ArrayList<int32_t, 8>* al;
+extern ::tpystd::tplib::array_list::ArrayList<int32_t, 8>* al;
 extern std::array<int32_t, 3>* arr;
 extern std::vector<int32_t>* nums;
 inline constexpr std::string_view __name__ = "__main__";

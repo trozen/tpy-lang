@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def test_extend_warns() -> None:
 void test_extend_warns() {
     // a = ArrayList[Node, 16]()
-    ::tpystd::tplib::ArrayList<Node, 16> a = ::tpystd::tplib::ArrayList<Node, 16>();
+    ::tpystd::tplib::array_list::ArrayList<Node, 16> a = ::tpystd::tplib::array_list::ArrayList<Node, 16>();
     // b: list[Node] = [Node(1)]
     std::vector<Node> b = {Node(1)};
     // a.extend(b)  # tpyc: warning(/copies Node elements/)
@@ -21,7 +21,7 @@ void test_extend_warns() {
 // def test_extend_value_type_no_warn() -> None:
 void test_extend_value_type_no_warn() {
     // a = ArrayList[Int32, 16]()
-    ::tpystd::tplib::ArrayList<int32_t, 16> a = ::tpystd::tplib::ArrayList<int32_t, 16>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 16> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 16>();
     // b: list[Int32] = [1, 2]
     std::vector<int32_t> b = {1, 2};
     // a.extend(b)  # tpyc: ok
@@ -35,7 +35,7 @@ void test_ctor_warns() {
     // b: list[Node] = [Node(1)]
     std::vector<Node> b = {Node(1)};
     // a = ArrayList[Node, 16](b)  # tpyc: warning(/copies Node elements/)
-    ::tpystd::tplib::ArrayList<Node, 16> a = ::tpystd::tplib::ArrayList<Node, 16>(&(b));
+    ::tpystd::tplib::array_list::ArrayList<Node, 16> a = ::tpystd::tplib::array_list::ArrayList<Node, 16>(&(b));
     // print(a[0].val)
     std::cout << a[0].val << "\n";
     // print(len(b))
@@ -47,7 +47,7 @@ void test_ctor_last_use_no_warn() {
     // b: list[Node] = [Node(1)]
     std::vector<Node> b = {Node(1)};
     // a = ArrayList[Node, 16](b)  # tpyc: ok -- b's last use
-    ::tpystd::tplib::ArrayList<Node, 16> a = ::tpystd::tplib::ArrayList<Node, 16>(&(b));
+    ::tpystd::tplib::array_list::ArrayList<Node, 16> a = ::tpystd::tplib::array_list::ArrayList<Node, 16>(&(b));
     // print(a[0].val)
     std::cout << a[0].val << "\n";
 }

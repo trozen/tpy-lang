@@ -20,11 +20,14 @@ if TYPE_CHECKING:
 
 def _is_indirecting_type(typ: TpyType) -> bool:
     """Check if a type provides pointer indirection (heap-allocated, incomplete OK)."""
-    from .typesys import NamedType
+    from .typesys import NominalType
+    from .type_def_registry import is_set, is_dict
     type_name = type(typ).__name__
-    if type_name in ('ListType', 'DictType', 'SetType', 'OptionalType', 'PtrType'):
+    if type_name in ('OptionalType', 'PtrType'):
         return True
-    if isinstance(typ, NamedType) and typ.name == "Box":
+    if is_set(typ) or is_dict(typ):
+        return True
+    if isinstance(typ, NominalType) and typ.name in ("Box", "list"):
         return True
     return False
 
@@ -54,8 +57,8 @@ def _walk(
     out: list[tuple[str, bool]],
     expanded_aliases: dict[frozenset, str] | None = None,
 ) -> None:
-    from .typesys import NamedType, UnionType
-    if isinstance(typ, NamedType) and typ.name in target_names and not typ.is_protocol:
+    from .typesys import NominalType, UnionType
+    if isinstance(typ, NominalType) and typ.name in target_names and not typ.is_protocol:
         out.append((typ.name, inside_indirection))
         return
     # Detect expanded union alias: Box[UnionType(Lit, BinOp)] -> ref to "Expr"

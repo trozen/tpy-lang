@@ -10,7 +10,8 @@ from typing import TextIO, TYPE_CHECKING
 import io
 import sys as _sys
 
-from ..typesys import TpyType, NamedType, EnumType, UnionType, OwnType, PendingListType, ListType, ArrayType, PtrType, NoneType, VoidType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names, is_void_like_type
+from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names, is_void_like_type
+from ..type_def_registry import type_def_of, is_enum_type, enum_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
 
@@ -27,6 +28,19 @@ from .string_dispatch import find_best_discriminator, STRING_SWITCH_THRESHOLD
 
 if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
+
+
+def _emits_own_cpp(typ: NominalType) -> bool:
+    """True if this NominalType's C++ emission bypasses its Python name --
+    either via a TypeDef cpp_formatter (builtins like list, str), via a
+    native_name mapping (@native records), or because it has no runtime
+    form (compile-time-only types like FStr). In those cases, an imported
+    `using PythonName = ...;` alias is dead code: the Python name never
+    appears in generated C++."""
+    td = type_def_of(typ)
+    if td is not None and (td.cpp_formatter is not None or td.is_compile_time_only):
+        return True
+    return typ.name in _native_cpp_names
 
 # Maps user-facing platform names to sys.platform prefixes (also in compiler.py)
 _PLATFORM_MAP = {"windows": "win32", "linux": "linux", "macos": "darwin"}
@@ -55,7 +69,7 @@ class _ProtocolDeps:
 
 def _references_nested_type(typ: TpyType) -> bool:
     """Check if a type references a nested type (dotted name)."""
-    if isinstance(typ, (NamedType, EnumType)) and "." in typ.name:
+    if (isinstance(typ, NominalType) or is_enum_type(typ)) and "." in typ.name:
         return True
     return any(_references_nested_type(inner) for inner in typ.inner_types())
 
@@ -129,7 +143,7 @@ class CodeGenerator:
             f for f in module.functions if not f.builtin_decorator_key
         ]
         # Populate native C++ name mappings for this module's codegen.
-        # Must include both own records and imported records so NamedType.to_cpp()
+        # Must include both own records and imported records so NominalType.to_cpp()
         # resolves correctly in all type positions (Ptr[Rect] -> SDL_Rect*, etc.)
         clear_codegen_state()
         for record in module.records:
@@ -145,23 +159,36 @@ class CodeGenerator:
         for enum in module.all_enums():
             if "." in enum.name:
                 _native_cpp_names[enum.name] = enum.name.replace(".", "::")
-        for local_name, (src_mod, original_name) in self.analyzer.ctx.user_imported_records.items():
-            record_info = self.analyzer.registry.get_record(local_name)
-            if record_info and record_info.is_native and record_info.native_name:
+        # Register C++ names for imported records/enums using their canonical
+        # (declaring-module) qname. NominalType.to_cpp() consults these when it
+        # has no qname-based formatter on hand. Iterate the full record/enum
+        # registries; imported_*_qualification filters out locals and builtins.
+        current_module = self.analyzer.ctx.module_name
+        for local_name, record_info in self.analyzer.registry.records.items():
+            if record_info.is_native and record_info.native_name:
                 register_native_cpp_name(local_name, record_info.native_name)
-            elif not (record_info and record_info.is_native):
-                register_native_cpp_name(local_name, qualified_cpp_name(src_mod, original_name))
-        for local_name, (src_mod, original_name) in self.analyzer.ctx.user_imported_enums.items():
-            qualified = qualified_cpp_name(src_mod, original_name)
-            # Register under both alias and original name: alias for NamedType
-            # annotations (parser doesn't know the type), original for EnumType
-            # values (EnumType.name is the original name)
+                continue
+            if record_info.is_native:
+                continue
+            qual = self.analyzer.registry.imported_record_qualification(
+                local_name, current_module)
+            if qual is not None:
+                register_native_cpp_name(local_name, qualified_cpp_name(*qual))
+        for local_name in list(self.analyzer.registry.enums.keys()):
+            qual = self.analyzer.registry.imported_enum_qualification(
+                local_name, current_module)
+            if qual is None:
+                continue
+            qualified = qualified_cpp_name(*qual)
             register_native_cpp_name(local_name, qualified)
+            # For aliased imports, also map the canonical name so references
+            # that go through NominalType.name resolve too.
+            original_name = qual[1]
             if local_name != original_name:
                 register_native_cpp_name(original_name, qualified)
         # Register native names from builtin type records without type_factory
         # (e.g. TextIO -> tpy::TextFile, ValueError -> tpy::ValueError) so
-        # NamedType.to_cpp() resolves even when the type isn't explicitly imported.
+        # NominalType.to_cpp() resolves even when the type isn't explicitly imported.
         # Skip names that shadow local record definitions in the current module.
         local_record_names = {r.name for r in module.records}
         for record_info in self.analyzer.registry.get_native_builtin_records():
@@ -169,7 +196,7 @@ class CodeGenerator:
                 register_native_cpp_name(record_info.name, record_info.native_name)
         # Register imported union type aliases so UnionType.to_cpp() can use
         # the alias name instead of expanding to std::variant<...>
-        for local_name, (_src_mod, original_name) in self.analyzer.ctx.user_imported_type_aliases.items():
+        for local_name in self.analyzer.registry.imported_type_alias_info:
             alias_type = self.analyzer.registry.get_type_alias(local_name)
             if isinstance(alias_type, UnionType):
                 register_union_alias(alias_type.members, local_name)
@@ -185,14 +212,8 @@ class CodeGenerator:
             k: v for k, v in self.analyzer.ctx.user_imported_functions.items()
             if not (fi := self.analyzer.registry.get_function(k)) or not any(f.is_decorator_stub for f in fi)
         }
-        self.ctx.user_imported_records = {
-            k: v for k, v in self.analyzer.ctx.user_imported_records.items()
-            if not (ri := self.analyzer.registry.get_record(k)) or not ri.is_keyword_stub
-        }
         self.ctx.user_imported_protocols = dict(self.analyzer.ctx.user_imported_protocols)
         self.ctx.user_imported_variables = dict(self.analyzer.ctx.user_imported_variables)
-        self.ctx.user_imported_type_aliases = dict(self.analyzer.ctx.user_imported_type_aliases)
-        self.ctx.user_imported_enums = dict(self.analyzer.ctx.user_imported_enums)
         self.ctx.top_level_decls = dict(self.analyzer.ctx.top_level_decls)
         self.ctx.reexported_functions = reexported_functions or {}
         self.ctx.reexported_records = reexported_records or {}
@@ -634,12 +655,17 @@ class CodeGenerator:
         # Imported type alias using-declarations (before function forward
         # decls so signatures can reference alias names like Shape)
         emitted_imported_alias = False
-        for local_name, (src_mod, original_name) in sorted(self.ctx.user_imported_type_aliases.items()):
-            # Skip aliases that resolve to primitive/builtin types -- only
-            # NamedType (records) and UnionType (variants) need a using-declaration
+        for local_name, (src_mod, original_name) in sorted(
+                self.analyzer.registry.imported_type_alias_info.items()):
+            # Skip aliases whose C++ emission bypasses the Python name --
+            # the `using PythonName = ...;` would be dead code. See
+            # _emits_own_cpp above.
             alias_type = self.analyzer.registry.get_type_alias(local_name)
-            if alias_type is not None and not isinstance(alias_type, (NamedType, UnionType)):
-                continue
+            if alias_type is not None:
+                if isinstance(alias_type, NominalType) and _emits_own_cpp(alias_type):
+                    continue
+                if not isinstance(alias_type, (NominalType, UnionType)):
+                    continue
             qualified = qualified_cpp_name(src_mod, original_name)
             if local_name == original_name:
                 hpp.write(f"using {qualified};\n")
@@ -924,7 +950,7 @@ class CodeGenerator:
         enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
         if not enum_type:
             return
-        underlying = enum_type.underlying_type.to_cpp()
+        underlying = enum_info_of(enum_type).underlying_type.to_cpp()
 
         out.write(f"enum class {enum.name} : {underlying} {{\n")
         for member_name, value, _ in enum.members:
@@ -946,7 +972,7 @@ class CodeGenerator:
             enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
             if not enum_type:
                 continue
-            underlying = enum_type.underlying_type.to_cpp()
+            underlying = enum_info_of(enum_type).underlying_type.to_cpp()
             cpp_enum_name = enum.name.replace(".", "::")
             qualified = f"{ns}::{cpp_enum_name}"
             member_count = len(enum.members)
@@ -976,7 +1002,7 @@ class CodeGenerator:
             enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
             if not enum_type:
                 continue
-            underlying = enum_type.underlying_type.to_cpp()
+            underlying = enum_info_of(enum_type).underlying_type.to_cpp()
             cpp_enum_name = enum.name.replace(".", "::")
             qualified = f"{ns}::{cpp_enum_name}"
             member_count = len(enum.members)

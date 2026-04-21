@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // a = ArrayList[Int32, 8]()
-    ::tpystd::tplib::ArrayList<int32_t, 8> a = ::tpystd::tplib::ArrayList<int32_t, 8>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 8> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // a.append(10)
     a.append(10);
     // a.append(20)
@@ -28,7 +28,7 @@ void main() {
     std::cout << ::tpy::print_bool(({ auto&& __itr = ::tpy::__iter__(b); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 99) { __found = true; break; } } __found; })) << "\n";
     // # list comprehension over user NativeIterable
     // doubled = [x * 2 for x in a]
-    std::vector<int32_t> doubled = [&]() {
+    std::vector<int32_t> doubled = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = a;
         auto __beg_0 = __obj_0.begin();
@@ -37,13 +37,13 @@ void main() {
             int32_t x = *__beg_0;
             __result.push_back((::tpy::mul_check<int32_t>(x, 2)));
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(doubled)
     std::cout << ::tpy::ListPrinter(doubled) << "\n";
     // # set comprehension over user NativeIterable
     // unique = {x // 10 for x in a}
-    ::tpy::ordered_set<int32_t> unique = [&]() {
+    ::tpy::ordered_set<int32_t> unique = ({
         ::tpy::ordered_set<int32_t> __result;
         auto& __obj_1 = a;
         auto __beg_1 = __obj_1.begin();
@@ -52,8 +52,8 @@ void main() {
             int32_t x = *__beg_1;
             __result.insert((::tpy::div_floor<int32_t>(x, 10)));
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(len(unique))
     std::cout << ::tpy::__len__(unique) << "\n";
     // # for-loop (universal default path)

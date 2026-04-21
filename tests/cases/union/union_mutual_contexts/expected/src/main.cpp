@@ -55,7 +55,7 @@ void main() {
     Expr __tmp_1 = Lit(::tpy::BigInt(1));
     std::cout << describe_expr(__tmp_1) << "\n";
     // e = BinOp(Box(Lit(2)), Box(Lit(3)))
-    BinOp e = BinOp(::tpystd::tplib::Box<Expr>(Lit(::tpy::BigInt(2))), ::tpystd::tplib::Box<Expr>(Lit(::tpy::BigInt(3))));
+    BinOp e = BinOp(::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(2))), ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(3))));
     // print(describe_expr(e))
     Expr __tmp_2 = std::move(e);
     std::cout << describe_expr(__tmp_2) << "\n";
@@ -66,7 +66,7 @@ void main() {
     std::cout << t << "\n";
     // # Second cycle group: construct Neg (implicit __init__)
     // n = Neg(Box(42))
-    Neg n = Neg(::tpystd::tplib::Box<Value>(42));
+    Neg n = Neg(::tpystd::tplib::box::Box<Value>(42));
     // print(show_value(n))
     Value __tmp_3 = std::move(n);
     std::cout << show_value(__tmp_3) << "\n";

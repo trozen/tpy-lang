@@ -11,20 +11,25 @@ import copy
 import dataclasses
 import re
 import textwrap
-from typing import Any, Literal, NoReturn, Optional
+from typing import Any, Literal, NoReturn, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, FinalType, SelfType,
-    strip_auto_readonly, apply_auto_readonly, has_auto_readonly, strip_auto_own, apply_auto_own, ensure_qualified,
-    TypeParamRef, OptionalType, VoidType, make_union, UnionType, EnumType, TupleType, FnType, CallableType,
-    _contains_self_reference, validate_recursive_union_paths,
-    INT32, VOID, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW, BOOL, FLOAT, FLOAT32, BIGINT, SELF, BASIC_SLICE, SLICE, FieldInfo, RecordInfo, TypeRegistry,
-    FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, BoolType, StrType, LiteralType, LiteralValue,
-    ALL_FIXED_INTS, public_module_name,
+    FieldInfo, RecordInfo, TypeRegistry,
+    FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, LiteralValue,
 )
-from ..modules import lookup_generic_type, lookup_generic_type_in_module, BuiltinTypeDef
+from ..module_names import public_module_name
+from ..type_def_registry import (
+    is_bool_type, is_str_type, type_def_of,
+    find_factory_by_simple_name, find_factory_in_module,
+)
+from .type_resolver import TypeResolver
+
+if TYPE_CHECKING:
+    from ..typesys import TpyType
 from .nodes import (
     ParseError, SourceLocation, ParseWarning, RecordLinkage, FunctionLinkage,
+    TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, TpyInferFromDefaultRef,
+    ResolverInputNode, TypeRefNode,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_ASCII,
     TpyBoolLiteral,
@@ -64,9 +69,15 @@ _PARSER_KEYWORD_MODULES = frozenset({"typing", "enum"})
 # run yet during pre-scan.
 _BUILTIN_DEC_NAMES = frozenset({"builtin_type", "builtin_decorator", "builtin_function"})
 
-# Map of fixed-int type names to their singleton instances (used for expression inference)
-_FIXED_INT_MAP: dict[str, TpyType] = {str(t): t for t in ALL_FIXED_INTS}
-
+# Fixed-int constructor names recognized syntactically by the parser for
+# default-value validation (_validate_const_default) and the C++ literal
+# simplification in _get_default_value. The actual TpyType lookup happens
+# in the TypeResolver via `_FIXED_INT_MAP`; here we only need name
+# membership. Kept in sync with typesys.ALL_FIXED_INTS.
+_FIXED_INT_NAMES: frozenset[str] = frozenset({
+    "Int8", "Int16", "Int32", "Int64",
+    "UInt8", "UInt16", "UInt32", "UInt64",
+})
 
 # Operator-to-string mappings for AST binary, comparison, and unary operators
 _BINOP_TO_STR: dict[type, str] = {
@@ -430,8 +441,6 @@ class Parser:
         # Top-level type alias names pre-scanned, for forward references
         # (e.g. Box[Expr] in a record field before `type Expr = ...` is parsed)
         self._module_type_alias_names: frozenset[str] = frozenset()
-        # Set during type alias RHS parsing to allow self-references
-        self._pending_alias_name: str | None = None
         # Union aliases detected as recursive (self- or mutually-referencing)
         self._recursive_union_names: set[str] = set()
         # All module-level definitions (def, class, assignment) pre-scanned
@@ -440,6 +449,19 @@ class Parser:
         # Maps short nested type names to dotted names while inside a class body.
         # E.g., while parsing class Message: class Kind(Enum): ..., maps "Kind" -> "Message.Kind"
         self._nested_type_scope: dict[str, str] = {}
+        # Type-ref resolver: holds a back-reference to this parser so it
+        # reads live state (registry, imports, local_defs, ...) each call.
+        # Attached to TpyModule.resolver at end of parse(); sema delegates
+        # here.
+        self._resolver = TypeResolver(self)
+        # Module # tpy: directives, populated by parse() before
+        # _parse_module so class/protocol/enum registration can see
+        # cpp_namespace at registration time.
+        self._directives = ModuleDirectives()
+        # True when the module is compiled as an entry point. Overrides
+        # the module name used by `_public_module()` to `"__main__"`.
+        # Set by parse() from its `is_entry_point` argument.
+        self._is_entry_point: bool = False
 
     def _loc(self, node: ast.AST) -> SourceLocation | None:
         """Create a SourceLocation from an AST node."""
@@ -457,6 +479,32 @@ class Parser:
     def _qualify(resolved: tuple[str, str]) -> str:
         """Join a (module, name) resolution to a qualified name string."""
         return f"{resolved[0]}.{resolved[1]}"
+
+    def _public_module(self) -> str:
+        """Return the public module name for records/protocols/enums
+        registered from this module, collapsing private submodules via
+        `public_module_name`.  Used to populate `RecordInfo.module`,
+        `ProtocolInfo.module`, and enum placeholder qnames.
+
+        Entry-point modules use `"__main__"` regardless of their on-disk
+        file name, matching sema's convention (`analyzer.analyze` sets
+        `ctx.module_name = "__main__"` for the entry point) and Python's
+        runtime `__name__` semantics.  Parser and sema must agree on the
+        qname so the resolver mints authoritative `_module_qname` values
+        on the first pass.
+
+        Fallback: when the parser is invoked without a `module_name`
+        (e.g. the `test_parse_type_ref.py` unit harness parses snippets
+        without a module context), return `"__main__"` so qname
+        construction stays well-formed.  Compiler-driven parses always
+        set `module_name` + `is_entry_point`, so this branch is only
+        reached from fragment-level tests."""
+        if self._is_entry_point:
+            return "__main__"
+        return public_module_name(
+            self._imports._module_name,
+            self._directives.cpp_namespace,
+        ) or "__main__"
 
     def _resolve_type_name(self, local_name: str) -> tuple[str, str] | None:
         """Resolve annotation name -> (module, original_name) or None.
@@ -545,92 +593,15 @@ class Parser:
             return ".".join(parts)
         return None
 
-    def _resolve_primitive_type(self, module: str, original: str, node: ast.expr) -> TpyType | None:
-        """Resolve a (module, original_name) pair to a primitive type.
-
-        Returns the type if it's a directly-mapped primitive (int -> BIGINT, etc.),
-        or None if it should fall through to registry lookups.
-        Raises ParseError for names that can't be used as types (Protocol).
-        """
-        if module == "builtins":
-            if original == "int": return BIGINT
-            elif original == "float": return FLOAT
-            elif original == "bool": return BOOL
-            elif original == "str": return STR
-            elif original == "bytes": return BYTES
-            elif original == "bytearray": return BYTEARRAY
-            elif original == "basic_slice": return BASIC_SLICE
-            elif original == "slice": return SLICE
-            elif original == "None": return VOID
-            elif original == "type": return NamedType("type", _module_qname=qnames.TYPE)
-            elif original == "tuple":
-                raise ParseError("tuple requires type arguments: tuple[T1, T2, ...]", node)
-        elif module == "tpy":
-            if (fixed_int := _FIXED_INT_MAP.get(original)) is not None:
-                return fixed_int
-            elif original == "Char":
-                return CHAR
-            elif original == "Float32":
-                return FLOAT32
-            elif original == "String":
-                return STRING
-            elif original == "StrView":
-                return STRVIEW
-            elif original == "BytesView":
-                return BYTESVIEW
-            elif original == "basic_slice":
-                return BASIC_SLICE
-            elif original == "slice":
-                return SLICE
-        elif module == "typing":
-            if original == "Self":
-                return SELF
-            elif original == "Protocol":
-                raise ParseError("'Protocol' cannot be used as a type annotation", node)
-        return None
-
-    def _resolve_registered_type(self, name: str, node: ast.expr, *, resolved: bool = False) -> TpyType | None:
-        """Look up a name in the type registry (protocols, aliases, records).
-
-        Raises ParseError for generic protocols used without type arguments,
-        or for completely unknown names.
-        """
-        # Self-reference in a recursive type alias (e.g. list[JsonValue] inside
-        # the definition of JsonValue). Return a NamedType placeholder that
-        # survives inside container types and is detected post-parse.
-        if self._pending_alias_name is not None and name == self._pending_alias_name:
-            return NamedType(name)
-        # Resolve short nested type names: Kind -> Message.Kind
-        if name in self._nested_type_scope:
-            dotted = self._nested_type_scope[name]
-            if (enum_type := self.registry.get_enum(dotted)) is not None:
-                return enum_type
-            if self.registry.get_record(dotted) is not None:
-                return NamedType(dotted)
-        if (user_protocol := self.registry.get_protocol(name)) is not None:
-            if user_protocol.type_params:
-                raise ParseError(
-                    f"Generic protocol '{name}' requires type arguments: "
-                    f"{name}[{', '.join(user_protocol.type_params)}]",
-                    node
-                )
-            return NamedType(name, is_protocol=True)
-        elif (enum_type := self.registry.get_enum(name)) is not None:
-            return enum_type
-        elif (alias := self.registry.get_type_alias(name)) is not None:
-            return alias
-        elif not resolved:
-            self._raise_unresolved_import_error(name, node)
-        if (resolved or self.registry.is_known_type(name)
-                or name in self._module_class_names
-                or name in self._module_type_alias_names):
-            return NamedType(name)
-        return None
-
-    def _raise_unresolved_import_error(self, raw_name: str, node: ast.expr) -> None:
+    def _raise_unresolved_import_error(
+        self, raw_name: str, node: ast.expr | None = None,
+        *, loc: SourceLocation | None = None,
+    ) -> None:
         """Raise a helpful error for unresolved type names with import hints."""
         if raw_name in get_typing_exports():
-            raise ParseError(f"'{raw_name}' requires: from typing import {raw_name}", node)
+            raise ParseError(
+                f"'{raw_name}' requires: from typing import {raw_name}", node, loc=loc,
+            )
         # In stdlib _core modules, unresolved names may be forward references
         # to types defined later in the same file. Let them through.
         mod = self._imports._module_name
@@ -638,16 +609,9 @@ class Parser:
             if public_module_name(mod) in _IMPLICIT_MODULES:
                 return
         if raw_name in get_tpy_exports():
-            raise ParseError(f"'{raw_name}' requires: from tpy import {raw_name}", node)
-
-    def _raise_unresolved_qualified_error(self, node: ast.expr) -> None:
-        """Raise error for qualified names where the module wasn't imported."""
-        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
-            mod = node.value.id
-            canonical = self._reverse_module_aliases.get(mod, mod)
-            qualified = f"{mod}.{node.attr}"
-            if canonical in _IMPLICIT_MODULES:
-                raise ParseError(f"'{qualified}' requires: import {canonical}", node)
+            raise ParseError(
+                f"'{raw_name}' requires: from tpy import {raw_name}", node, loc=loc,
+            )
 
     def _is_ignorable_for_import_order(self, node: ast.stmt) -> bool:
         """Check if a statement should be ignored for import ordering.
@@ -663,10 +627,21 @@ class Parser:
         return False
 
     def parse(self, source: str, module_name: str | None = None,
-              is_package_init: bool = False) -> TpyModule:
-        """Parse TurboPython source code into a TpyModule."""
+              is_package_init: bool = False,
+              is_entry_point: bool = False) -> TpyModule:
+        """Parse TurboPython source code into a TpyModule.
+
+        `is_entry_point` mirrors the compiler's convention of treating
+        the entry-point module as `__main__` for qname purposes
+        (matching sema's `ctx.module_name = "__main__"` rename and
+        Python's runtime `__name__` convention). It only affects the
+        value returned by `_public_module()` and hence the qnames
+        attached to record / protocol / enum-placeholder registrations;
+        import resolution still uses the original `module_name`.
+        """
         self.source_lines = source.splitlines()
         self._warnings = []
+        self._is_entry_point = is_entry_point
         self._imports = ImportProcessor(self._warn, module_name=module_name,
                                         is_package_init=is_package_init,
                                         star_import_resolver=self._star_import_resolver)
@@ -674,10 +649,18 @@ class Parser:
         self._bare_module_imports = set()
         self._reverse_module_aliases = {}
         tree = ast.parse(source)
-        module = self._parse_module(tree)
+        # Scan directives first so cpp_namespace is available while
+        # _parse_module registers records/protocols/enums.
         directives, directive_warnings = _scan_directives(self.source_lines)
+        self._directives = directives
+        module = self._parse_module(tree)
         module.directives = directives
         module.parse_warnings.extend(directive_warnings)
+        # Attach the ref resolver so sema can resolve TypeRefNodes emitted
+        # at annotation sites.  The TypeResolver instance holds a back-ref
+        # to this parser and reads parser state each call, so sema sees
+        # live containers (registry, imports, local_defs, ...).
+        module.resolver = self._resolver
         return module
 
     # Names that _parse_type_annotation resolves directly (not through registry)
@@ -737,26 +720,19 @@ class Parser:
 
     def _register_type_alias(
         self, name: str, type_node: ast.expr,
-        type_aliases: dict[str, tuple[TpyType, SourceLocation | None]]
+        type_aliases: 'dict[str, tuple[TpyType | TypeRefNode, SourceLocation | None]]'
     ) -> None:
-        """Parse a type annotation node and register as a type alias."""
-        # Allow self-references during RHS parsing (for recursive type aliases)
-        self._pending_alias_name = name
-        try:
-            alias_type = self._parse_type_annotation(type_node)
-        finally:
-            self._pending_alias_name = None
+        """Parse a type alias RHS as a TypeRefNode.
 
-        # Detect recursive type aliases (self-reference inside the RHS)
-        if isinstance(alias_type, UnionType) and _contains_self_reference(alias_type, name):
-            err = validate_recursive_union_paths(name, alias_type.members)
-            if err is not None:
-                raise ParseError(err, type_node)
-            self._recursive_union_names.add(name)
-
-        self.registry.register_type_alias(name, alias_type)
+        Sema's `_resolve_pending_type_refs` resolves the ref with a
+        `pending_alias` kwarg so same-body self-references produce a
+        `NominalType(name)` placeholder.  Sema then detects recursive
+        unions and registers the resolved alias in parser.registry so
+        later alias bodies can reference it.
+        """
+        ref = self._parse_type_ref(type_node)
         loc = SourceLocation(line=type_node.lineno) if hasattr(type_node, 'lineno') else None
-        type_aliases[name] = (alias_type, loc)
+        type_aliases[name] = (ref, loc)
 
     def _parse_module(self, tree: ast.Module) -> TpyModule:
         """Parse a module."""
@@ -832,16 +808,16 @@ class Parser:
                         name=result.name,
                         methods=result.methods,
                         type_params=result.type_params,
+                        is_dynamic=result.is_dynamic,
+                        module=self._public_module(),
                     ))
                 elif isinstance(result, TpyEnum):
                     enums.append(result)
-                    # Register the enum type so it can be used in type annotations
-                    enum_type = EnumType(
-                        name=result.name,
-                        members=tuple(m for m, _, _ in result.members),
-                        member_values=tuple((m, v) for m, v, _ in result.members),
-                    )
-                    self.registry.register_enum(enum_type)
+                    # Register an enum placeholder so it can be used in type
+                    # annotations within the same file. Sema re-registers with
+                    # the fully-populated NominalType + TypeDef.enum payload.
+                    self.registry.register_enum_placeholder(
+                        result.name, module=self._public_module())
                 else:
                     records.append(result)
                     # Register the record type
@@ -850,20 +826,11 @@ class Parser:
                         fields=result.fields,
                         has_init=result.init_method is not None,
                         builtin_type_key=result.builtin_type_key,
+                        module=self._public_module(),
                     ))
                     # Prefix nested type names with parent chain and register
                     self._prefix_nested_names(result, result.name)
                     self._register_nested_types(result)
-                    # Fix up method return types that reference the class by
-                    # name but were parsed before the class was registered
-                    if result.builtin_type_key:
-                        for method in result.methods:
-                            rt = method.return_type
-                            if (isinstance(rt, NamedType) and rt.name == result.name
-                                    and not rt._module_qname):
-                                method.return_type = NamedType(
-                                    rt.name, rt.type_args, rt.is_protocol,
-                                    result.builtin_type_key, rt.is_dynamic_protocol)
             elif isinstance(node, ast.FunctionDef):
                 seen_non_import = True
                 # Warn if function shadows an imported parser keyword name
@@ -880,9 +847,19 @@ class Parser:
                 func = self._parse_function(node)
                 functions.append(func)
                 if func.builtin_decorator_key:
+                    # @builtin_decorator stub signatures drive parse-time
+                    # schema derivation for decorator argument validation
+                    # (_schema_from_stub inspects param types). Resolve
+                    # TypeRefNodes now so _schema_from_stub sees TpyType;
+                    # sema's pre-pass will no-op on already-resolved fields.
+                    # Module-level scope -- no enclosing type params.
+                    self._finalize_function_refs(func, outer_scope=None)
                     # Register for decorator resolution (like @builtin_type for records)
+                    # return_type may be None (no annotation) -- FunctionInfo
+                    # here is used solely for decorator-key lookup; the value
+                    # is not read for call resolution.
                     self.registry.register_function(FunctionInfo(
-                        name=func.name, params=[], return_type=VOID,
+                        name=func.name, params=[], return_type=func.return_type,
                         builtin_decorator_key=func.builtin_decorator_key,
                     ))
                     # Derive arg schema from stub signature
@@ -924,15 +901,19 @@ class Parser:
         """Check if a base class expression refers to typing.TypedDict."""
         return self._resolve_parser_keyword(base) == ("typing", "TypedDict")
 
-    def _parse_unpack_annotation(self, annotation: ast.expr, type_param_scope, error_node) -> 'TpyType':
-        """Parse Unpack[TypedDict] annotation from **kwargs. Returns the inner TypedDict type."""
+    def _parse_unpack_annotation(self, annotation: ast.expr, type_param_scope, error_node) -> 'TpyType | TypeRefNode':
+        """Parse Unpack[TypedDict] annotation from **kwargs.
+
+        Returns the inner TypedDict reference as a TypeRefNode; sema
+        resolves it via `_resolve_pending_type_refs` and validates it
+        is a TypedDict in registration.
+        """
         if not isinstance(annotation, ast.Subscript):
             raise ParseError("**kwargs must have Unpack[TypedDict] annotation", error_node)
         resolved = self._resolve_parser_keyword(annotation.value)
         if resolved != ("typing", "Unpack"):
             raise ParseError("**kwargs must have Unpack[TypedDict] annotation", error_node)
-        inner_type = self._parse_type_annotation(annotation.slice, type_param_scope)
-        return inner_type
+        return self._parse_type_ref(annotation.slice, type_param_scope)
 
     # Valid integer mixin types for IntEnum: class P(int, Enum) or class P(Int8, Enum)
     _INT_MIXIN_TYPES: dict[str, str] = {
@@ -1091,14 +1072,13 @@ class Parser:
         if not func.params:
             return _DecoratorArgSchema()  # bare only
 
-        _type_map: dict[type, tuple[type, str]] = {
-            BoolType: (bool, "bool"), StrType: (str, "str"),
-        }
         def _map_type(ptype: TpyType) -> tuple[type, str] | None:
-            match = _type_map.get(type(ptype))
-            if match:
-                return match
-            if isinstance(ptype, NamedType) and ptype.qualified_name() == qnames.TYPE:
+            if is_bool_type(ptype):
+                return (bool, "bool")
+            if is_str_type(ptype):
+                return (str, "str")
+            td = type_def_of(ptype)
+            if td is not None and td.qname == qnames.TYPE:
                 return (_NameArg, "type name")
             return None
 
@@ -1335,7 +1315,7 @@ class Parser:
         # Also extract bounds: class Foo[T: Comparable]: or class Foo[N: int]:
         type_params = []
         type_param_kinds: list[TypeParamKind] = []
-        type_param_bounds: dict[str, TpyType] = {}
+        type_param_bounds: dict[str, 'TpyType | TypeRefNode'] = {}
         if hasattr(node, 'type_params') and node.type_params:
             for tp in node.type_params:
                 if isinstance(tp, ast.TypeVar):
@@ -1345,13 +1325,10 @@ class Parser:
                         if isinstance(tp.bound, ast.Name) and tp.bound.id == 'int':
                             type_param_kinds.append(TypeParamKind.INT)
                         else:
-                            # Protocol bound -- full validation deferred to sema
-                            # (cross-module protocols aren't in parser registry)
+                            # Protocol bound -- resolution and protocol-shape
+                            # validation deferred to sema.
                             type_param_kinds.append(TypeParamKind.TYPE)
-                            bound_type = self._parse_type_annotation(tp.bound)
-                            if not isinstance(bound_type, NamedType):
-                                raise ParseError(f"Type parameter bound must be a protocol or 'int', got {bound_type}", tp)
-                            type_param_bounds[tp.name] = bound_type
+                            type_param_bounds[tp.name] = self._parse_type_ref(tp.bound)
                     else:
                         type_param_kinds.append(TypeParamKind.TYPE)
                 else:
@@ -1363,15 +1340,23 @@ class Parser:
         old_scope = self._type_param_scope
         self._type_param_scope = type_param_scope
 
-        # Parse base classes/protocols for inheritance (with type params in scope)
-        # Classification into parent class vs protocol is deferred to sema
-        # TypedDict marker base is filtered out (it's not a real parent)
-        bases: list[TpyType] = []
+        # Parse base classes/protocols for inheritance. Classification
+        # into parent class vs protocol happens above via
+        # `_is_protocol_base` (keyword-matching, robust to shadowing
+        # detection). TypedDict marker base is filtered out.
+        #
+        # Bases emit as TypeRefNode; sema re-resolves them in
+        # `_resolve_pending_type_refs` under the record's type-param
+        # scope.  Class-body checks that could mask base-resolution
+        # errors (stub-body validation, @native decorator validation,
+        # field-type inference failure) all run in sema, so no
+        # parse-time base resolution side-effect is needed.
+        bases: 'list[TpyType | TypeRefNode]' = []
         for base in node.bases:
             if is_typed_dict and self._is_typed_dict_base(base):
                 continue
-            base_type = self._parse_type_annotation(base, type_param_scope)
-            bases.append(base_type)
+            ref = self._parse_type_ref(base, type_param_scope)
+            bases.append(ref)
 
         fields = []
         methods = []
@@ -1388,7 +1373,9 @@ class Parser:
                 if not isinstance(item.target, ast.Name):
                     raise ParseError("Invalid field declaration", item)
                 field_name = item.target.id
-                field_type = self._parse_type_annotation(item.annotation, type_param_scope)
+                # Emit a TypeRefNode.  Sema's `_resolve_pending_type_refs`
+                # pre-pass resolves it before any reader consumes fld.type.
+                field_type = self._parse_type_ref(item.annotation, type_param_scope)
                 default_val = None
                 default_expr = None
                 if item.value is not None:
@@ -1410,26 +1397,28 @@ class Parser:
                 if len(item.targets) != 1 or not isinstance(item.targets[0], ast.Name):
                     raise ParseError("Invalid field declaration", item)
                 field_name = item.targets[0].id
-                field_type = self._infer_type_from_expr(item.value)
-                if field_type is None:
-                    raise ParseError(f"Cannot infer type for field '{field_name}'", item)
+                # Emit a marker; sema's field-resolution pass runs the
+                # inferrer on FieldInfo.default_expr, raising only on
+                # genuine failure.  Keeping inference out of the parser
+                # avoids coupling parser to the full typesys surface.
+                field_type: 'TpyType | TypeRefNode | TpyInferFromDefaultRef' = TpyInferFromDefaultRef(loc=self._loc(item))
                 default_val = self._get_default_value(item.value)
-                fields.append(FieldInfo(field_name, field_type, default_val, loc=self._loc(item)))
+                default_expr = self._parse_expr(item.value)
+                fields.append(FieldInfo(field_name, field_type, default_val,
+                                        default_expr=default_expr,
+                                        loc=self._loc(item)))
             elif isinstance(item, ast.FunctionDef):
                 if is_typed_dict:
                     raise ParseError(f"Methods are not allowed on TypedDict '{node.name}'", item)
                 parsed = self._parse_method(item, node.name, type_param_scope, property_names)
                 if parsed.is_property_getter:
                     property_names.add(parsed.name)
-                    # Dual overloads (const + mutable) for correct reference semantics.
-                    # Registration prunes the mutable clone for value-type returns.
+                    # Dual overloads (const + mutable) for correct reference
+                    # semantics; sema.method_expansion performs the actual
+                    # clone. Registration prunes the mutable clone for
+                    # value-type returns.
                     parsed.auto_readonly = True
-                if parsed.auto_readonly:
-                    methods.extend(self._clone_auto_readonly(parsed))
-                elif parsed.auto_own:
-                    methods.extend(self._clone_auto_own(parsed))
-                else:
-                    methods.append(parsed)
+                methods.append(parsed)
             elif isinstance(item, ast.Pass):
                 pass
             elif isinstance(item, ast.Expr) and isinstance(item.value, ast.Constant) and item.value.value is ...:
@@ -1452,12 +1441,8 @@ class Parser:
                     # Register immediately with dotted name so forward references
                     # within the same class body work (e.g., kind: Container.Kind)
                     dotted_name = f"{node.name}.{nested.name}"
-                    enum_type = EnumType(
-                        name=dotted_name,
-                        members=tuple(m for m, _, _ in nested.members),
-                        member_values=tuple((m, v) for m, v, _ in nested.members),
-                    )
-                    self.registry.register_enum(enum_type)
+                    self.registry.register_enum_placeholder(
+                        dotted_name, module=self._public_module())
                     self._nested_type_scope[nested.name] = dotted_name
                     nested_enums.append(nested)
                 else:
@@ -1471,6 +1456,7 @@ class Parser:
                         name=dotted_name,
                         fields=nested.fields,
                         has_init=nested.init_method is not None,
+                        module=self._public_module(),
                     ))
                     self._nested_type_scope[nested.name] = dotted_name
                     nested_records.append(nested)
@@ -1493,24 +1479,12 @@ class Parser:
                 # C++ struct layout matches the init list (avoids -Wreorder).
                 fields = self._reorder_fields_by_init(init_method, fields)
 
-        # Validate method constraints based on class linkage
-        for method in methods:
-            if linkage != RecordLinkage.DEFAULT:
-                # Native class: methods must be stubs
-                if not method.is_stub:
-                    raise ParseError(
-                        f"Methods on @native classes must have '...' body (stub declaration)", node)
-            else:
-                # Non-native class: stubs and @native decorators are not allowed
-                # (@overload stubs are exempt -- they declare overload signatures)
-                if method.is_stub and not method.is_overload_stub:
-                    raise ParseError(
-                        f"Method '{method.name}' cannot have '...' body on a regular class "
-                        f"(only allowed on @native classes)", node)
-                if method.native_name is not None:
-                    raise ParseError(
-                        f"@native(\"...\") decorator on method '{method.name}' is only allowed "
-                        f"on @native classes", node)
+        # Method-linkage validation (stubs allowed/required per class
+        # linkage, @native decorator restrictions) runs at sema time in
+        # `_validate_record_method_linkage` after base resolution, so
+        # base-resolution errors (e.g. "'Protocol' requires: from typing
+        # import Protocol" on a class whose Protocol base is shadowed)
+        # fire first instead of being masked here.
 
         # Restore scopes
         self._type_param_scope = old_scope
@@ -1608,15 +1582,12 @@ class Parser:
                 name=nr.name,
                 fields=nr.fields,
                 has_init=nr.init_method is not None,
+                module=self._public_module(),
             ))
             self._register_nested_types(nr)
         for ne in record.nested_enums:
-            enum_type = EnumType(
-                name=ne.name,
-                members=tuple(m for m, _, _ in ne.members),
-                member_values=tuple((m, v) for m, v, _ in ne.members),
-            )
-            self.registry.register_enum(enum_type)
+            self.registry.register_enum_placeholder(
+                ne.name, module=self._public_module())
 
     def _parse_protocol(self, node: ast.ClassDef) -> TpyProtocol:
         """Parse a protocol definition."""
@@ -1631,7 +1602,9 @@ class Parser:
             if qname == qnames.NATIVE:
                 if not isinstance(pos, str):
                     raise ParseError("@native on protocol requires a C++ concept name string argument", dec)
-                cpp_concept = ensure_qualified(pos)
+                # Store the raw form; sema's `register_protocol` applies
+                # `ensure_qualified()` when copying into ProtocolInfo.
+                cpp_concept = pos
                 continue
             dec_name = self._decorator_local_name(dec) or "?"
             raise ParseError(
@@ -1701,12 +1674,14 @@ class Parser:
                         continue
                     if arg.annotation is None:
                         raise ParseError(f"Protocol method parameter '{arg.arg}' must have type annotation", item)
-                    param_type = self._parse_type_annotation(arg.annotation)
+                    param_type = self._parse_type_ref(arg.annotation)
                     params.append((arg.arg, param_type))
 
-                return_type = VOID
+                # return_type=None means no annotation; sema's
+                # `_resolve_pending_type_refs` substitutes VOID.
+                return_type: 'TpyType | TypeRefNode | None' = None
                 if item.returns:
-                    return_type = self._parse_type_annotation(item.returns)
+                    return_type = self._parse_type_ref(item.returns)
 
                 methods.append(MethodSignature(
                     name=item.name,
@@ -1720,7 +1695,9 @@ class Parser:
                 if not isinstance(item.target, ast.Name):
                     raise ParseError("Invalid field declaration in protocol", item)
                 field_name = item.target.id
-                field_type = self._parse_type_annotation(item.annotation)
+                # Emit as TypeRefNode; sema resolves under the protocol's
+                # type-param scope.
+                field_type = self._parse_type_ref(item.annotation)
                 fields.append((field_name, field_type))
             elif isinstance(item, ast.Pass):
                 pass
@@ -1938,23 +1915,26 @@ class Parser:
 
         # Extract method-level type parameters (e.g. def foo[T](self, x: T) -> T:)
         method_type_params: list[str] = []
-        method_type_param_bounds: dict[str, TpyType] = {}
+        method_type_param_bounds: dict[str, 'TpyType | TypeRefNode'] = {}
         if hasattr(node, 'type_params') and node.type_params:
             for tp in node.type_params:
                 if isinstance(tp, ast.TypeVar):
                     method_type_params.append(tp.name)
                     if tp.bound is not None:
-                        bound_type = self._parse_type_annotation(tp.bound)
-                        if not isinstance(bound_type, NamedType):
-                            raise ParseError(f"Type parameter bound must be a protocol or 'int', got {bound_type}", tp)
-                        method_type_param_bounds[tp.name] = bound_type
+                        # Protocol bound -- resolution + validation deferred to sema.
+                        method_type_param_bounds[tp.name] = self._parse_type_ref(tp.bound)
                 else:
                     raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
 
-        if auto_readonly and method_type_params:
+        # Early @auto_readonly + method type params guard. Sema catches
+        # the self-annotation / per-param paths, but running this at parse
+        # time keeps the diagnostic pinned to the decorator's line rather
+        # than getting shadowed by later parse-time checks (stub bodies,
+        # body validation, etc.).
+        if auto_readonly_dec is not None and method_type_params:
             raise ParseError(
                 f"auto_readonly on methods with method-level type parameters is not yet supported ('{node.name}')",
-                auto_readonly_dec or node,
+                auto_readonly_dec,
             )
 
         # Merge class-level and method-level type param scopes
@@ -1966,8 +1946,7 @@ class Parser:
 
         params = []
         has_self = not is_staticmethod
-        is_consuming = False
-        auto_own = False
+        self_annotation = None  # Resolved self type; consumed by sema.method_expansion.
         # Count non-self params for __exit__ stripping check
         n_non_self = len(node.args.args) - (1 if has_self else 0)
         args_iter = iter(enumerate(node.args.args))
@@ -1976,58 +1955,12 @@ class Parser:
                 # Non-static methods must have 'self' as first parameter
                 if arg.arg != "self":
                     raise ParseError(f"First parameter of method '{node.name}' must be 'self'", node)
-                # Check for self: Own[Self] or self: auto_own[Self] annotation
+                # Emit the self annotation as a TypeRefNode; sema
+                # resolves it in `_resolve_pending_type_refs` and
+                # `method_expansion.expand_methods` validates the
+                # shape + derives flags.
                 if arg.annotation is not None:
-                    self_ann = self._parse_type_annotation(arg.annotation, type_param_scope)
-                    if isinstance(self_ann, OwnType) and isinstance(self_ann.wrapped, SelfType):
-                        if node.name in ("__init__", "__del__"):
-                            raise ParseError(
-                                f"Own[Self] is not allowed on '{node.name}'",
-                                node,
-                            )
-                        if is_readonly:
-                            raise ParseError(
-                                f"Own[Self] cannot be combined with @readonly on method '{node.name}'",
-                                node,
-                            )
-                        is_consuming = True
-                    elif isinstance(self_ann, AutoOwnType) and isinstance(self_ann.wrapped, SelfType):
-                        if node.name in ("__init__", "__del__"):
-                            raise ParseError(
-                                f"auto_own[Self] is not allowed on '{node.name}'",
-                                node,
-                            )
-                        if is_readonly:
-                            raise ParseError(
-                                f"auto_own[Self] cannot be combined with @readonly on method '{node.name}'",
-                                node,
-                            )
-                        auto_own = True
-                    elif isinstance(self_ann, AutoReadonlyType) and isinstance(self_ann.wrapped, SelfType):
-                        if node.name in ("__init__", "__del__"):
-                            raise ParseError(
-                                f"auto_readonly[Self] is not allowed on '{node.name}'",
-                                node,
-                            )
-                        if is_readonly:
-                            raise ParseError(
-                                f"auto_readonly[Self] cannot be combined with @readonly on method '{node.name}'",
-                                node,
-                            )
-                        if auto_readonly_dec is not None:
-                            raise ParseError(
-                                f"'self: auto_readonly[Self]' cannot be combined with the "
-                                f"@auto_readonly decorator on method '{node.name}'",
-                                node,
-                            )
-                        auto_readonly = True
-                    else:
-                        raise ParseError(
-                            f"Only 'Own[Self]', 'auto_own[Self]', or 'auto_readonly[Self]' "
-                            f"is allowed as a type annotation for 'self', "
-                            f"got '{self_ann}'",
-                            node,
-                        )
+                    self_annotation = self._parse_type_ref(arg.annotation, type_param_scope)
                 continue
             # __exit__ exception params (exc_type, exc_val, exc_tb) are stripped --
             # they are always None in TPy (no general exceptions). This allows
@@ -2036,7 +1969,7 @@ class Parser:
                 continue
             if arg.annotation is None:
                 raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
-            param_type = self._parse_type_annotation(arg.annotation, type_param_scope)
+            param_type = self._parse_type_ref(arg.annotation, type_param_scope)
             params.append((arg.arg, param_type))
 
         # __exit__ must have exactly 3 params (exc_type, exc_val, exc_tb) to
@@ -2059,7 +1992,7 @@ class Parser:
                 raise ParseError(
                     f"*{va.arg} must have a type annotation (element type)", node)
             vararg_name = va.arg
-            vararg_type = self._parse_type_annotation(va.annotation, type_param_scope)
+            vararg_type = self._parse_type_ref(va.annotation, type_param_scope)
 
         # Parse keyword-only parameters (after * or *args)
         keyword_only_start = None
@@ -2068,7 +2001,7 @@ class Parser:
             for arg in node.args.kwonlyargs:
                 if arg.annotation is None:
                     raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
-                param_type = self._parse_type_annotation(arg.annotation, type_param_scope)
+                param_type = self._parse_type_ref(arg.annotation, type_param_scope)
                 params.append((arg.arg, param_type))
 
         # **kwargs: Unpack[TypedDict]
@@ -2081,43 +2014,18 @@ class Parser:
             kwarg_type = self._parse_unpack_annotation(kwarg_node.annotation, type_param_scope, node)
             kwarg_name = kwarg_node.arg
 
-        # @auto_readonly decorator: wrap all eligible params with AutoReadonlyType.
-        # This unifies with the per-param annotation path -- the decorator is just
-        # sugar for annotating every non-value, non-already-readonly param.
-        if auto_readonly and auto_readonly_dec is not None:
-            params = [
-                (n, AutoReadonlyType(t) if (not t.is_value_type()
-                     and not isinstance(t, (AutoReadonlyType, ReadonlyType)))
-                 else t)
-                for n, t in params
-            ]
-
-        # Detect per-param auto_readonly[T] (from explicit annotations, not decorator).
-        if not auto_readonly:
-            for _, ptype in params:
-                if has_auto_readonly(ptype):
-                    auto_readonly = True
-                    break
-
-        # Re-check type-param guard for annotation/per-param path (the earlier
-        # guard at decorator time only fires when auto_readonly_dec is set).
-        if auto_readonly and auto_readonly_dec is None and method_type_params:
-            raise ParseError(
-                f"auto_readonly on methods with method-level type parameters "
-                f"is not yet supported ('{node.name}')",
-                node,
-            )
-
         # Parse default parameter values (skip_self for non-static methods)
         defaults = self._parse_param_defaults(node, params, skip_self=has_self,
                                               type_param_scope=type_param_scope,
                                               kw_defaults=node.args.kw_defaults,
                                               n_kwonly=len(node.args.kwonlyargs))
 
-        # Get return type (default to Void for __init__)
-        return_type = VOID
+        # Return type: None means no annotation; sema substitutes VOID.
+        # __init__ is kept at None here (no annotation by construction);
+        # sema treats it the same way.
+        return_type: 'TpyType | TypeRefNode | None' = None
         if node.name != "__init__" and node.returns:
-            return_type = self._parse_type_annotation(node.returns, type_param_scope)
+            return_type = self._parse_type_ref(node.returns, type_param_scope)
 
         if cpp_template is not None:
             if not self._is_stub_body(node.body):
@@ -2149,12 +2057,6 @@ class Parser:
         if node.name == "__next__" and error_return is None:
             error_return = "StopIteration"
 
-        # Property setter: wrap value param in Own (stores into field = ownership transfer)
-        if is_property_setter and params:
-            pname, ptype = params[0]
-            if not isinstance(ptype, OwnType) and not ptype.is_value_type():
-                params[0] = (pname, OwnType(ptype))
-
         method = TpyFunction(
             name=node.name,
             params=params,
@@ -2165,13 +2067,11 @@ class Parser:
             is_property_getter=is_property_getter,
             is_property_setter=is_property_setter,
             property_name=property_setter_name,
-            is_consuming=is_consuming,
             is_inline=is_inline,
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,
             is_pure=is_pure,
-            auto_readonly=auto_readonly,
-            auto_own=auto_own,
+            has_auto_readonly_decorator=auto_readonly_dec is not None,
             is_override=is_override,
             is_overload_stub=is_overload_stub,
             is_stub=is_overload_stub_body if is_overload_stub else is_stub,
@@ -2190,75 +2090,10 @@ class Parser:
             kwarg_type=kwarg_type,
             error_return=error_return,
             is_generator=is_generator,
+            self_annotation=self_annotation,
             loc=self._loc(node)
         )
         return method
-
-    def _clone_auto_readonly(self, method: TpyFunction) -> list[TpyFunction]:
-        """Expand an auto_readonly method into two ordinary overloads.
-
-        Returns [mutable_overload, const_overload].
-        - Mutable: params/return stripped of auto_readonly, is_readonly=False
-        - Const:   params/return with auto_readonly -> readonly, is_readonly=True
-
-        auto_readonly[T] nodes in params and return type specify where readonly
-        is applied in the const overload. The @auto_readonly decorator wraps all
-        eligible params before this runs, so both decorator and per-param
-        annotations go through the same code path.
-        """
-        mutable_params = [(n, strip_auto_readonly(t)) for n, t in method.params]
-        const_params = [(n, apply_auto_readonly(t)) for n, t in method.params]
-        mutable_return = strip_auto_readonly(method.return_type)
-        const_return = apply_auto_readonly(method.return_type)
-        mutable = dataclasses.replace(
-            method,
-            params=mutable_params,
-            return_type=mutable_return,
-            is_readonly=False,
-            auto_readonly=False,
-            auto_readonly_params_resolved=True,
-            is_auto_readonly_mutable_clone=True,
-        )
-        const = dataclasses.replace(
-            method,
-            params=const_params,
-            return_type=const_return,
-            body=copy.deepcopy(method.body),
-            is_readonly=True,
-            auto_readonly=False,
-            auto_readonly_params_resolved=True,
-            defaults=copy.deepcopy(method.defaults),
-        )
-        return [mutable, const]
-
-    def _clone_auto_own(self, method: TpyFunction) -> list[TpyFunction]:
-        """Expand a self: auto_own[Self] method into two ordinary overloads.
-
-        Returns [borrowing_overload, consuming_overload].
-        - Borrowing: is_consuming=False, auto_own=False, return_type=strip_auto_own(original)
-        - Consuming: is_consuming=True,  auto_own=False, return_type=apply_auto_own(original)
-
-        auto_own[T] nodes in the return type specify where Own is applied
-        in the consuming overload. Parts without auto_own[T] are unchanged.
-        """
-        borrowing_return = strip_auto_own(method.return_type)
-        consuming_return = apply_auto_own(method.return_type)
-        borrowing = dataclasses.replace(
-            method,
-            return_type=borrowing_return,
-            is_consuming=False,
-            auto_own=False,
-            is_auto_own_borrowing_clone=True,
-        )
-        consuming = dataclasses.replace(
-            method,
-            return_type=consuming_return,
-            body=copy.deepcopy(method.body),
-            is_consuming=True,
-            auto_own=False,
-            defaults=copy.deepcopy(method.defaults),
-        )
-        return [borrowing, consuming]
 
     _FUNCTION_LINKAGE_MAP: dict[str, FunctionLinkage] = {
         qnames.NATIVE: FunctionLinkage.NATIVE,
@@ -2353,7 +2188,7 @@ class Parser:
         # Bounds: def foo[T: Comparable](): (protocol bound)
         # INT params: def foo[T, N: int](): (integer type parameter, e.g. for Array[T, N])
         type_params = []
-        type_param_bounds: dict[str, TpyType] = {}
+        type_param_bounds: dict[str, 'TpyType | TypeRefNode'] = {}
         type_param_kinds: list[TypeParamKind] = []
         if hasattr(node, 'type_params') and node.type_params:
             for tp in node.type_params:
@@ -2364,10 +2199,8 @@ class Parser:
                             type_param_kinds.append(TypeParamKind.INT)
                         else:
                             type_param_kinds.append(TypeParamKind.TYPE)
-                            bound_type = self._parse_type_annotation(tp.bound)
-                            if not isinstance(bound_type, NamedType):
-                                raise ParseError(f"Type parameter bound must be a protocol or 'int', got {bound_type}", tp)
-                            type_param_bounds[tp.name] = bound_type
+                            # Protocol bound -- resolution + validation deferred to sema.
+                            type_param_bounds[tp.name] = self._parse_type_ref(tp.bound)
                     else:
                         type_param_kinds.append(TypeParamKind.TYPE)
                 else:
@@ -2386,14 +2219,21 @@ class Parser:
             # @builtin_function stubs: params are illustrative only,
             # type annotations not required (sema handles everything)
             for arg in node.args.args:
-                param_type = (self._parse_type_annotation(arg.annotation, type_param_scope)
-                              if arg.annotation else VOID)
+                # @builtin_function params are illustrative stubs; sema
+                # handles the real types specially.  Missing annotations
+                # emit a `TpyTypeRef("None")` placeholder that the
+                # resolver maps to VOID.
+                param_type: 'TpyType | TypeRefNode' = (
+                    self._parse_type_ref(arg.annotation, type_param_scope)
+                    if arg.annotation
+                    else TpyTypeRef(name="None", loc=self._loc(arg))
+                )
                 params.append((arg.arg, param_type))
         else:
             for arg in node.args.args:
                 if arg.annotation is None:
                     raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
-                param_type = self._parse_type_annotation(arg.annotation, type_param_scope)
+                param_type = self._parse_type_ref(arg.annotation, type_param_scope)
                 params.append((arg.arg, param_type))
 
         # Parse *args parameter
@@ -2408,7 +2248,7 @@ class Parser:
                     raise ParseError(
                         f"*{va.arg} must have a type annotation (element type)", node)
                 vararg_name = va.arg
-                vararg_type = self._parse_type_annotation(va.annotation, type_param_scope)
+                vararg_type = self._parse_type_ref(va.annotation, type_param_scope)
 
         # Parse keyword-only parameters (after * or *args)
         keyword_only_start = None
@@ -2417,7 +2257,7 @@ class Parser:
             for arg in node.args.kwonlyargs:
                 if arg.annotation is None:
                     raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
-                param_type = self._parse_type_annotation(arg.annotation, type_param_scope)
+                param_type = self._parse_type_ref(arg.annotation, type_param_scope)
                 params.append((arg.arg, param_type))
         elif vararg_name is None and node.args.vararg is not None:
             # bare * separator with no kwonlyargs -- unusual but valid Python
@@ -2441,9 +2281,10 @@ class Parser:
                                               kw_defaults=node.args.kw_defaults,
                                               n_kwonly=len(node.args.kwonlyargs))
 
-        return_type = VOID
+        # None means no annotation; sema substitutes VOID.
+        return_type: 'TpyType | TypeRefNode | None' = None
         if node.returns:
-            return_type = self._parse_type_annotation(node.returns, type_param_scope)
+            return_type = self._parse_type_ref(node.returns, type_param_scope)
 
         # Validate body vs linkage
         is_stub_body = self._is_stub_body(node.body)
@@ -2512,6 +2353,7 @@ class Parser:
             is_stub=is_overload_stub_body if is_overload_stub else is_stub,
             value_ptr_coercion=value_ptr_coercion,
             type_params=type_params,
+            type_param_kinds=type_param_kinds,
             type_param_bounds=type_param_bounds,
             type_param_defaults=type_param_defaults,
             defaults=defaults,
@@ -2545,316 +2387,298 @@ class Parser:
         return len(body) == 1 and isinstance(body[0], ast.Pass)
 
     def _parse_type_annotation(self, node: ast.expr, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyType:
-        """Parse a type annotation.
+        """Parse a type annotation to a TpyType.
 
-        Args:
-            node: The AST node representing the type annotation.
-            type_param_scope: Dict of type parameter names to their kinds currently in scope.
-                              Falls back to self._type_param_scope if not provided.
+        Thin wrapper around the walker + resolver composition; kept for
+        the parse-time sites that need a resolved type immediately
+        (type-parameter bounds, FragmentParser).
         """
-        # Use instance variable as fallback for type parameter scope
         if type_param_scope is None:
             type_param_scope = self._type_param_scope
+        ref = self._parse_type_ref(node, type_param_scope)
+        return self._resolve_type_ref_impl(ref, type_param_scope)
+
+    # ------------------------------------------------------------------
+    # Type-reference walker
+    #
+    # `_parse_type_ref` mirrors `_parse_type_annotation`'s structural walk
+    # but returns a TypeRefNode instead of a TpyType. It resolves names
+    # only enough to disambiguate structural wrappers (Ptr/Own/Optional/
+    # Callable/Fn/Literal/tuple/...) from user generics; leaf names
+    # (primitives, user records, enums, protocols, type parameters) stay
+    # raw in `TpyTypeRef.name` and are resolved by a later resolver pass.
+    #
+    # Validation errors that require resolved types (e.g. "Unknown type",
+    # "Qualified name with missing module import", Own-in-union, readonly
+    # normalization) are deliberately not raised here -- they belong in
+    # the resolver.  Only errors provable from syntax alone (malformed
+    # Callable/Fn/Literal shape) are raised at this layer.
+    # ------------------------------------------------------------------
+
+    def _parse_type_ref(
+        self, node: ast.expr,
+        type_param_scope: dict[str, TypeParamKind] | None = None,
+    ) -> ResolverInputNode:
+        """Walk an ast.expr for a type annotation and produce a ResolverInputNode
+        (one of the four walker outputs: TpyTypeRef, TpyUnionRef,
+        TpyCallableRef, TpyLiteralRef). TpyInferFromDefaultRef is emitted
+        only at a single field-declaration site, never by this walker."""
+        if type_param_scope is None:
+            type_param_scope = self._type_param_scope
+        loc = self._loc(node)
+
         if isinstance(node, ast.Name):
             name = node.id
-            # Check if this is a type parameter reference
-            if type_param_scope and name in type_param_scope:
-                kind = type_param_scope[name]
-                return TypeParamRef(name, kind=kind)
+            # Eager nested-scope substitution so refs emitted inside a class
+            # body survive to sema-time resolution -- _nested_type_scope is
+            # parse-time-only state, empty by the time sema runs. E.g.
+            # referencing `Kind` inside `class Message: class Kind: ...`
+            # emits TpyTypeRef("Message.Kind", ...) directly.
+            if name in self._nested_type_scope:
+                return TpyTypeRef(self._nested_type_scope[name], (), loc)
+            return TpyTypeRef(name, (), loc)
 
-            resolved = self._resolve_type_name(name)
+        if isinstance(node, ast.Subscript):
+            return self._parse_subscript_type_ref(node, type_param_scope, loc)
 
-            if resolved:
-                primitive = self._resolve_primitive_type(*resolved, node)
-                if primitive is not None:
-                    return primitive
+        if isinstance(node, ast.Attribute):
+            parts: list[str] = []
+            cur: ast.expr = node
+            while isinstance(cur, ast.Attribute):
+                parts.append(cur.attr)
+                cur = cur.value
+            if isinstance(cur, ast.Name):
+                parts.append(cur.id)
+                parts.reverse()
+                return TpyTypeRef(".".join(parts), (), loc)
+            raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
 
-            # Registry lookups (user protocols, type aliases, builtin protocols, user records)
-            resolved_name = resolved[1] if resolved else name
-            registered = self._resolve_registered_type(resolved_name, node, resolved=bool(resolved))
-            if registered is not None:
-                # Set _module_qname for @builtin_type records so cross-module
-                # lookups work (e.g. open() returning TextIO). Only for types
-                # with builtin_type_key -- regular records and aliases don't
-                # need this and would break if mis-tagged. The `resolved`
-                # guard ensures this only fires for names that went through
-                # _resolve_type_name (imports or builtins exports), not for
-                # unresolved forward references.
-                if (resolved and isinstance(registered, NamedType)
-                        and not registered.is_protocol and not registered._module_qname):
-                    btk = self.registry.get_builtin_type_key(registered.name)
-                    if btk:
-                        registered = NamedType(registered.name, registered.type_args,
-                                               registered.is_protocol, btk,
-                                               registered.is_dynamic_protocol)
-                return registered
-            raise ParseError(f"Unknown type: {name}", node)
+        if isinstance(node, ast.Constant) and node.value is None:
+            return TpyTypeRef("None", (), loc)
 
-        elif isinstance(node, ast.Subscript):
-            # Resolve container name (supports both Name and Attribute forms)
-            if isinstance(node.value, ast.Name):
-                resolved = self._resolve_type_name(node.value.id)
-                raw_name = node.value.id
-            elif isinstance(node.value, ast.Attribute):
-                resolved = self._resolve_qualified_type_name(node.value)
-                raw_name = (f"{node.value.value.id}.{node.value.attr}"
-                            if isinstance(node.value.value, ast.Name) else None)
-            else:
-                raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
-
-            if resolved:
-                module, original = resolved
-                if module == "tpy":
-                    if original == "Ptr":
-                        inner = self._parse_type_annotation(node.slice, type_param_scope)
-                        # Ptr[readonly[T]] -> is_readonly=True
-                        if isinstance(inner, ReadonlyType):
-                            return PtrType(inner.wrapped, is_readonly=True)
-                        return PtrType(inner)
-                    elif original == "Own":
-                        inner = self._parse_type_annotation(node.slice, type_param_scope)
-                        return OwnType(inner)
-                    elif original == "readonly":
-                        inner = self._parse_type_annotation(node.slice, type_param_scope)
-                        return ReadonlyType(inner)
-                    elif original == "auto_readonly":
-                        inner = self._parse_type_annotation(node.slice, type_param_scope)
-                        return AutoReadonlyType(inner)
-                    elif original == "auto_own":
-                        inner = self._parse_type_annotation(node.slice, type_param_scope)
-                        return AutoOwnType(inner)
-                    elif original == "Fn":
-                        slices = _extract_subscript_slices(node)
-                        if len(slices) != 2:
-                            raise ParseError(
-                                "Fn requires exactly 2 arguments: Fn[[ParamTypes...], ReturnType]", node)
-                        param_list_node, return_node = slices
-                        if not isinstance(param_list_node, ast.List):
-                            raise ParseError(
-                                "Fn parameter types must be a list: Fn[[Int32, str], bool]", node)
-                        param_types = tuple(
-                            self._parse_type_annotation(p, type_param_scope)
-                            for p in param_list_node.elts
-                        )
-                        return_type = self._parse_type_annotation(return_node, type_param_scope)
-                        return FnType(param_types, return_type)
-                elif module == "builtins":
-                    if original == "tuple":
-                        return self._parse_tuple_type(node, type_param_scope)
-                elif module == "typing":
-                    if original == "Optional":
-                        inner = self._parse_type_annotation(node.slice, type_param_scope)
-                        return OptionalType(inner)
-                    elif original == "Final":
-                        inner = self._parse_type_annotation(node.slice, type_param_scope)
-                        return FinalType(inner)
-                    elif original == "Callable":
-                        slices = _extract_subscript_slices(node)
-                        if len(slices) != 2:
-                            raise ParseError(
-                                "Callable requires exactly 2 arguments: Callable[[ParamTypes...], ReturnType]", node)
-                        param_list_node, return_node = slices
-                        if not isinstance(param_list_node, ast.List):
-                            raise ParseError(
-                                "Callable parameter types must be a list: Callable[[Int32, str], bool]", node)
-                        param_types = tuple(
-                            self._parse_type_annotation(p, type_param_scope)
-                            for p in param_list_node.elts
-                        )
-                        return_type = self._parse_type_annotation(return_node, type_param_scope)
-                        return CallableType(param_types, return_type)
-                    elif original == "Literal":
-                        slices = _extract_subscript_slices(node)
-                        if not slices:
-                            raise ParseError("Literal requires at least one argument", node)
-                        lit_values: list[LiteralValue] = []
-                        tag: str | None = None
-                        for s in slices:
-                            if isinstance(s, ast.Constant) and isinstance(s.value, str):
-                                if tag is not None and tag != "str":
-                                    raise ParseError("Literal cannot mix value types", node)
-                                tag = "str"
-                                lit_values.append(LiteralValue("str", s.value))
-                            elif isinstance(s, ast.Constant) and isinstance(s.value, bool):
-                                if tag is not None and tag != "bool":
-                                    raise ParseError("Literal cannot mix value types", node)
-                                tag = "bool"
-                                lit_values.append(LiteralValue("bool", s.value))
-                            elif isinstance(s, ast.Constant) and isinstance(s.value, int):
-                                if tag is not None and tag != "int":
-                                    raise ParseError("Literal cannot mix value types", node)
-                                tag = "int"
-                                lit_values.append(LiteralValue("int", s.value))
-                            elif (isinstance(s, ast.UnaryOp) and isinstance(s.op, ast.USub)
-                                  and isinstance(s.operand, ast.Constant)
-                                  and isinstance(s.operand.value, int)
-                                  and not isinstance(s.operand.value, bool)):
-                                if tag is not None and tag != "int":
-                                    raise ParseError("Literal cannot mix value types", node)
-                                tag = "int"
-                                lit_values.append(LiteralValue("int", -s.operand.value))
-                            else:
-                                raise ParseError(
-                                    "Literal supports string, int, and bool arguments", node)
-                        base_type = {"str": STR, "int": INT32, "bool": BOOL}[tag]  # type: ignore[index]
-                        return LiteralType(base_type, tuple(lit_values))
-            else:
-                # Qualified name with missing module import
-                if isinstance(node.value, ast.Attribute):
-                    self._raise_unresolved_qualified_error(node.value)
-
-            # Use original name for registry lookups when resolved
-            resolved_container = resolved[1] if resolved else raw_name
-
-            if resolved_container:
-                # Module-defined generic types (list, Array, Span, etc.)
-                if lookup := lookup_generic_type(resolved_container):
-                    # tpy generic types require explicit import
-                    if not resolved and lookup.qualified_name.startswith("tpy."):
-                        self._raise_unresolved_import_error(raw_name, node)
-                    return self._parse_generic_type(node, resolved_container, lookup.type_def, type_param_scope)
-
-                # Generic types from imported modules (user modules, builtin submodules, etc.)
-                if resolved:
-                    source_module, original_name = resolved
-                    if lookup := lookup_generic_type_in_module(original_name, source_module):
-                        return self._parse_generic_type(node, resolved_container, lookup.type_def, type_param_scope)
-                elif not resolved and raw_name:
-                    if import_source := self._imports.get_import_source(raw_name):
-                        source_module, original_name = import_source
-                        if lookup := lookup_generic_type_in_module(original_name, source_module):
-                            return self._parse_generic_type(node, resolved_container, lookup.type_def, type_param_scope)
-
-                # User-defined generic protocols (e.g., Container[Int32])
-                if user_protocol := self.registry.get_protocol(resolved_container):
-                    if user_protocol.type_params:
-                        type_args = self._parse_protocol_type_args(node, resolved_container, user_protocol.type_params, type_param_scope)
-                        return NamedType(resolved_container, type_args, is_protocol=True)
-
-                # User-defined generic records (e.g., Stack[Int32])
-                if not resolved and raw_name:
-                    self._raise_unresolved_import_error(raw_name, node)
-                if (resolved
-                        or self.registry.get_record(resolved_container) is not None
-                        or resolved_container in self._module_class_names):
-                    type_args = self._parse_record_type_args(node, resolved_container, type_param_scope)
-                    return NamedType(resolved_container, type_args)
-
-            # Nested generic records (e.g., Outer.Inner[T])
-            if isinstance(node.value, ast.Attribute):
-                dotted = self._resolve_dotted_class_name(node.value)
-                if dotted is not None and self.registry.get_record(dotted) is not None:
-                    type_args = self._parse_record_type_args(node, dotted, type_param_scope)
-                    return NamedType(dotted, type_args)
-
-            raise ParseError(f"Unknown generic type: {raw_name}", node)
-
-        elif isinstance(node, ast.Attribute):
-            resolved = self._resolve_qualified_type_name(node)
-            if resolved:
-                primitive = self._resolve_primitive_type(*resolved, node)
-                if primitive is not None:
-                    return primitive
-                # Registry lookups for qualified names
-                registered = self._resolve_registered_type(resolved[1], node, resolved=True)
-                if registered is not None:
-                    return registered
-            # Check for nested class type: Outer.Inner (dotted name)
-            dotted = self._resolve_dotted_class_name(node)
-            if dotted is not None:
-                if self.registry.get_record(dotted) is not None:
-                    return NamedType(dotted)
-                enum_type = self.registry.get_enum(dotted)
-                if enum_type is not None:
-                    return enum_type
-            # Not resolved -- check if module exists but wasn't imported
-            self._raise_unresolved_qualified_error(node)
-            qualified = f"{node.value.id}.{node.attr}" if isinstance(node.value, ast.Name) else ast.dump(node)
-            raise ParseError(f"Unsupported qualified type: {qualified}", node)
-
-        elif isinstance(node, ast.Constant) and node.value is None:
-            return VOID
-
-        elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
             arms = _collect_bitor_arms(node)
-            parsed = [self._parse_type_annotation(arm, type_param_scope) for arm in arms]
-
-            # Own[T] cannot appear as a union member in multi-type unions.
-            # Own[T] | None is fine (collapses to Optional[Own[T]]), but
-            # Cat | Own[Dog] is ambiguous (mixed ownership in one variant).
-            non_none = [t for t in parsed if not isinstance(t, VoidType)]
-            if len(non_none) > 1:
-                for t in non_none:
-                    if isinstance(t, OwnType):
-                        unwrapped = [p.wrapped if isinstance(p, OwnType) else p for p in non_none]
-                        raise ParseError(
-                            f"Own[{t.wrapped}] cannot be a union member. "
-                            f"Use Own[...] around the whole union instead: Own[{' | '.join(str(u) for u in unwrapped)}]",
-                            node)
-
-            # Handle readonly normalization:
-            # readonly[A] | readonly[B] -> readonly[A | B]
-            # readonly[A] | B -> error (mixed readonly)
-            readonly_count = sum(1 for t in parsed if isinstance(t, ReadonlyType))
-            non_none_count = sum(1 for t in parsed if not isinstance(t, VoidType))
-            if readonly_count > 0 and readonly_count < non_none_count:
-                raise ParseError("Cannot mix readonly and non-readonly types in a union", node)
-            if readonly_count > 0:
-                unwrapped = [
-                    t.wrapped if isinstance(t, ReadonlyType) else t
-                    for t in parsed
-                ]
-                return ReadonlyType(make_union(*unwrapped))
-
-            return make_union(*parsed)
+            members = tuple(self._parse_type_ref(arm, type_param_scope) for arm in arms)
+            return TpyUnionRef(members, loc)
 
         raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
 
-    def _parse_protocol_type_args(self, node: ast.Subscript, name: str,
-                                    type_params: list[str], type_param_scope: dict[str, TypeParamKind] | None = None) -> tuple[TpyType, ...]:
-        """Parse type arguments for a generic protocol like Sequence[Int32]."""
-        expected_count = len(type_params)
-        slices = _extract_subscript_slices(node)
-
-        if len(slices) != expected_count:
-            raise ParseError(f"{name} requires exactly {expected_count} type parameters", node)
-
-        type_args = tuple(self._parse_type_annotation(s, type_param_scope) for s in slices)
-        return type_args
-
-    def _parse_record_type_args(self, node: ast.Subscript, name: str, type_param_scope: dict[str, TypeParamKind] | None = None) -> tuple[TpyType | int, ...]:
-        """Parse type arguments for a user-defined generic record like Stack[Int32] or Matrix[Int32, 8].
-
-        For records with integer type parameters, integer literals are allowed in type argument positions.
-        The validation of which positions accept integers is done in sema (since the record info
-        may not be registered yet during parsing).
-        """
-        slices = _extract_subscript_slices(node)
-
-        # Parse each type argument (allowing integer literals)
-        type_args: list[TpyType | int] = []
-        for s in slices:
-            # Check for integer literals
-            if isinstance(s, ast.Constant) and isinstance(s.value, int):
-                type_args.append(s.value)
-            # Check for type parameter references that are INT kind (forward as TypeParamRef)
-            elif isinstance(s, ast.Name) and type_param_scope and s.id in type_param_scope:
-                kind = type_param_scope[s.id]
-                type_args.append(TypeParamRef(s.id, kind=kind))
+    def _parse_subscript_type_ref(
+        self, node: ast.Subscript,
+        type_param_scope: dict[str, TypeParamKind] | None,
+        loc: SourceLocation | None,
+    ) -> ResolverInputNode:
+        """Handle ast.Subscript: disambiguate structural wrappers from generics."""
+        if isinstance(node.value, ast.Name):
+            resolved = self._resolve_type_name(node.value.id)
+            raw_name: str | None = node.value.id
+        elif isinstance(node.value, ast.Attribute):
+            resolved = self._resolve_qualified_type_name(node.value)
+            # Build full dotted name from the Attribute chain so 3+ level
+            # (a.b.c.D[T]) nested-class references reach the resolver's
+            # _resolve_dotted_class_name_str path. 2-level stays identical to
+            # the original "value.attr" form.
+            parts: list[str] = []
+            cur: ast.expr = node.value
+            while isinstance(cur, ast.Attribute):
+                parts.append(cur.attr)
+                cur = cur.value
+            if isinstance(cur, ast.Name):
+                parts.append(cur.id)
+                parts.reverse()
+                raw_name = ".".join(parts)
             else:
-                type_args.append(self._parse_type_annotation(s, type_param_scope))
-        return tuple(type_args)
+                raw_name = None
+        else:
+            raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
 
-    def _parse_type_args_from_subscript(self, node: ast.Subscript) -> tuple[TpyType, ...]:
+        # Canonical structural-wrapper names use a `:` separator so they
+        # cannot collide with any Python identifier-based name (including
+        # raw dotted user source like "typing.Optional" written without
+        # `import typing`). The walker emits the canonical form only when
+        # the name actually resolved to the expected module+name pair;
+        # unresolved names fall through to the generic path with the raw
+        # source form, and the resolver's unresolved-name errors fire.
+        if resolved:
+            module, original = resolved
+            if module == "tpy":
+                if original in ("Ptr", "Own", "readonly", "auto_readonly", "auto_own"):
+                    inner_ref = self._parse_type_ref(node.slice, type_param_scope)
+                    return TpyTypeRef(f"tpy:{original}", (inner_ref,), loc)
+                if original == "Fn":
+                    return self._parse_callable_type_ref(node, "Fn", type_param_scope, loc)
+            elif module == "builtins":
+                if original == "tuple":
+                    slices = _extract_subscript_slices(node)
+                    elem_refs = tuple(
+                        self._parse_type_ref(s, type_param_scope) for s in slices
+                    )
+                    return TpyTypeRef("builtins:tuple", elem_refs, loc)
+            elif module == "typing":
+                if original == "Optional":
+                    inner_ref = self._parse_type_ref(node.slice, type_param_scope)
+                    return TpyTypeRef("typing:Optional", (inner_ref,), loc)
+                if original == "Final":
+                    inner_ref = self._parse_type_ref(node.slice, type_param_scope)
+                    return TpyTypeRef("typing:Final", (inner_ref,), loc)
+                if original == "Callable":
+                    return self._parse_callable_type_ref(node, "Callable", type_param_scope, loc)
+                if original == "Literal":
+                    return self._parse_literal_type_ref(node, loc)
+
+        # Not a structural wrapper: generic nominal reference. Resolver handles
+        # the nominal lookup. Keep the raw source name; if the container was
+        # import-resolved we still emit the source form (not the resolved
+        # canonical one) to keep this pass syntactic.
+        name = raw_name if raw_name is not None else (resolved[1] if resolved else None)
+        if name is None:
+            raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
+
+        slices = _extract_subscript_slices(node)
+        arg_refs: list[ResolverInputNode | int] = []
+        for s in slices:
+            if (isinstance(s, ast.Constant) and isinstance(s.value, int)
+                    and not isinstance(s.value, bool)):
+                arg_refs.append(s.value)
+            else:
+                arg_refs.append(self._parse_type_ref(s, type_param_scope))
+        return TpyTypeRef(name, tuple(arg_refs), loc)
+
+    def _parse_callable_type_ref(
+        self, node: ast.Subscript, kind: str,
+        type_param_scope: dict[str, TypeParamKind] | None,
+        loc: SourceLocation | None,
+    ) -> TpyCallableRef:
+        slices = _extract_subscript_slices(node)
+        if len(slices) != 2:
+            raise ParseError(
+                f"{kind} requires exactly 2 arguments: {kind}[[ParamTypes...], ReturnType]",
+                node,
+            )
+        param_list_node, return_node = slices
+        if not isinstance(param_list_node, ast.List):
+            raise ParseError(
+                f"{kind} parameter types must be a list: {kind}[[Int32, str], bool]",
+                node,
+            )
+        params = tuple(
+            self._parse_type_ref(p, type_param_scope) for p in param_list_node.elts
+        )
+        return_type = self._parse_type_ref(return_node, type_param_scope)
+        return TpyCallableRef(kind=kind, params=params, return_type=return_type, loc=loc)
+
+    def _parse_literal_type_ref(
+        self, node: ast.Subscript, loc: SourceLocation | None,
+    ) -> TpyLiteralRef:
+        slices = _extract_subscript_slices(node)
+        if not slices:
+            raise ParseError("Literal requires at least one argument", node)
+        values: list[LiteralValue] = []
+        tag: str | None = None
+        for s in slices:
+            if isinstance(s, ast.Constant) and isinstance(s.value, str):
+                if tag is not None and tag != "str":
+                    raise ParseError("Literal cannot mix value types", node)
+                tag = "str"
+                values.append(LiteralValue("str", s.value))
+            elif isinstance(s, ast.Constant) and isinstance(s.value, bool):
+                if tag is not None and tag != "bool":
+                    raise ParseError("Literal cannot mix value types", node)
+                tag = "bool"
+                values.append(LiteralValue("bool", s.value))
+            elif isinstance(s, ast.Constant) and isinstance(s.value, int):
+                if tag is not None and tag != "int":
+                    raise ParseError("Literal cannot mix value types", node)
+                tag = "int"
+                values.append(LiteralValue("int", s.value))
+            elif (isinstance(s, ast.UnaryOp) and isinstance(s.op, ast.USub)
+                  and isinstance(s.operand, ast.Constant)
+                  and isinstance(s.operand.value, int)
+                  and not isinstance(s.operand.value, bool)):
+                if tag is not None and tag != "int":
+                    raise ParseError("Literal cannot mix value types", node)
+                tag = "int"
+                values.append(LiteralValue("int", -s.operand.value))
+            else:
+                raise ParseError(
+                    "Literal supports string, int, and bool arguments", node)
+        return TpyLiteralRef(values=tuple(values), loc=loc)
+
+    def _resolve_type_ref_impl(
+        self, ref: ResolverInputNode,
+        type_param_scope: dict[str, TypeParamKind] | None = None,
+    ) -> TpyType:
+        """Thin delegate to `TypeResolver.resolve`.  Retained for the
+        walker-vs-resolver equivalence tests and for macro-fragment
+        self-annotation resolution, both of which need a TpyType in
+        hand synchronously.
+        """
+        return self._resolver.resolve(ref, type_param_scope)
+
+    def _finalize_function_refs(
+        self, func: 'TpyFunction',
+        outer_scope: dict[str, TypeParamKind] | None = None,
+    ) -> None:
+        """Resolve TypeRefNodes in a TpyFunction's params / return_type /
+        vararg_type in place, using the current parser state.
+
+        `outer_scope` is the enclosing type-param scope at the call site
+        (e.g. a nested def's enclosing function scope). The function's own
+        `type_params` are merged on top before resolution, so a method's
+        or nested def's own generic params resolve to TypeParamRef
+        correctly. Pass this explicitly rather than relying on
+        `self._type_param_scope` being in the right state -- callers
+        typically invoke this after `_parse_function` has already
+        restored the enclosing scope on the parser instance.
+
+        Used by non-top-level callers of `_parse_function` (nested defs,
+        macro fragment parsing, @builtin_decorator stubs) that need
+        TpyType immediately, without waiting for sema's
+        `_resolve_pending_type_refs` pre-pass. Top-level functions leave
+        refs in place for the sema pre-pass to resolve.
+        """
+        scope: dict[str, TypeParamKind] = dict(outer_scope or {})
+        if func.type_params:
+            kinds = func.type_param_kinds or []
+            for i, name in enumerate(func.type_params):
+                scope[name] = kinds[i] if i < len(kinds) else TypeParamKind.TYPE
+        resolve_scope = scope or None
+
+        ref_types = (TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef)
+        new_params: list = []
+        for name, t in func.params:
+            if isinstance(t, ref_types):
+                t = self._resolve_type_ref_impl(t, resolve_scope)
+            new_params.append((name, t))
+        func.params = new_params
+        if func.return_type is None:
+            # "No annotation" sentinel -- route through the resolver as
+            # `TpyTypeRef("None")` so the same VOID singleton is
+            # substituted without a direct typesys import.  The deferred
+            # (sema-side) branch lives in
+            # `_resolve_pending_type_refs._resolve_return_type`; both
+            # paths converge on VOID.
+            func.return_type = self._resolve_type_ref_impl(
+                TpyTypeRef(name="None"), resolve_scope)
+        elif isinstance(func.return_type, ref_types):
+            func.return_type = self._resolve_type_ref_impl(
+                func.return_type, resolve_scope)
+        if isinstance(func.vararg_type, ref_types):
+            func.vararg_type = self._resolve_type_ref_impl(
+                func.vararg_type, resolve_scope)
+
+    def _parse_type_args_from_subscript(self, node: ast.Subscript) -> 'tuple[TpyType | TypeRefNode | None, ...]':
         """Extract type arguments from a subscript for generic function calls like first[Int32](x).
 
-        Raises ParseError if any element is not a valid type. The caller should catch
-        this for cases where non-type arguments are valid (e.g., Array[Int32, 8]).
+        Raises ParseError if any element is structurally not a valid
+        type (e.g. integer literal at a type-args site).  Name-resolution
+        errors do not fire at parse time; elements emit as TypeRefNode
+        and sema resolves in the pre-pass body walker.
         """
         slices = _extract_subscript_slices(node)
 
-        # Parse each type argument - raise error if any fails
-        type_args: list[TpyType | None] = []
+        # Parse each type argument - raise error if any is structurally invalid.
+        type_args: 'list[TpyType | TypeRefNode | None]' = []
         for s in slices:
             # _ wildcard: infer this type argument
             if isinstance(s, ast.Name) and s.id == '_':
@@ -2863,7 +2687,7 @@ class Parser:
             # Integer constants are not valid type arguments
             if isinstance(s, ast.Constant) and isinstance(s.value, int):
                 raise ParseError(f"Integer '{s.value}' is not a valid type argument", s)
-            type_args.append(self._parse_type_annotation(s))
+            type_args.append(self._parse_type_ref(s))
         return tuple(type_args)
 
     def _parse_comprehension_generator(self, gen: ast.comprehension) -> TpyComprehensionGenerator:
@@ -2889,62 +2713,17 @@ class Parser:
         else:
             raise ParseError("Unsupported comprehension target", gen.target)
 
-    def _try_parse_type_args(self, node: ast.Subscript) -> tuple[tuple[TpyType, ...], str | None]:
+    def _try_parse_type_args(self, node: ast.Subscript) -> 'tuple[tuple[TpyType | TypeRefNode | None, ...], str | None]':
         """Try to parse type args from a subscript, capturing parse errors.
 
-        Returns (type_args, parse_error). On success parse_error is None.
-        On failure type_args is empty and parse_error holds the message.
+        Returns (type_args, parse_error).  On success parse_error is
+        None.  On failure type_args is empty and parse_error holds the
+        message.  Elements may be TypeRefNode pre-sema.
         """
         try:
             return self._parse_type_args_from_subscript(node), None
         except ParseError as e:
             return (), e.message
-
-    def _parse_tuple_type(self, node: ast.Subscript, type_param_scope: dict[str, TypeParamKind] | None = None) -> TupleType:
-        """Parse tuple[T1, T2, ...] type annotation."""
-        slices = _extract_subscript_slices(node)
-        if not slices:
-            raise ParseError("tuple requires at least one type argument: tuple[T1, T2, ...]", node)
-        element_types = tuple(
-            self._parse_type_annotation(s, type_param_scope) for s in slices
-        )
-        return TupleType(element_types)
-
-    def _parse_generic_type(self, node: ast.Subscript, name: str, type_def: BuiltinTypeDef, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyType:
-        """Parse a module-defined generic type using its metadata."""
-        param_kinds = type_def.param_kinds
-        expected_count = len(param_kinds)
-        slices = _extract_subscript_slices(node)
-
-        if len(slices) != expected_count:
-            raise ParseError(f"{name} requires exactly {expected_count} type parameters", node)
-
-        # Parse each parameter according to its kind
-        parsed_args: list[TpyType | int] = []
-        for i, (slice_node, kind) in enumerate(zip(slices, param_kinds)):
-            if kind == TypeParamKind.TYPE:
-                parsed_args.append(self._parse_type_annotation(slice_node, type_param_scope))
-            elif kind == TypeParamKind.INT:
-                if isinstance(slice_node, ast.Constant) and isinstance(slice_node.value, int):
-                    parsed_args.append(slice_node.value)
-                elif isinstance(slice_node, ast.Name) and type_param_scope and slice_node.id in type_param_scope:
-                    # Allow forwarded INT type params (e.g., Array[T, N] where N: int)
-                    param_name = slice_node.id
-                    param_kind = type_param_scope[param_name]
-                    if param_kind == TypeParamKind.INT:
-                        parsed_args.append(TypeParamRef(param_name, kind=TypeParamKind.INT))
-                    else:
-                        raise ParseError(f"{name} parameter {i + 1} requires an integer, got type parameter '{param_name}'", node)
-                else:
-                    raise ParseError(f"{name} parameter {i + 1} must be an integer literal or int type parameter", node)
-
-        assert type_def.type_factory is not None
-        try:
-            return type_def.type_factory(*parsed_args)
-        except ParseError:
-            raise
-        except Exception as e:
-            raise ParseError(f"Failed to construct type {name}: {e}", node) from e
 
     def _parse_body(self, nodes: list[ast.stmt]) -> list[TpyStmt]:
         """Parse a list of statements, flattening any multi-statement expansions."""
@@ -2965,9 +2744,13 @@ class Parser:
             # Annotated assignment: x: T = expr
             if not isinstance(node.target, ast.Name):
                 raise ParseError("Invalid assignment target", node)
-            var_type = self._parse_type_annotation(node.annotation)
+            # Emit a TypeRefNode; sema's `_analyze_var_decl` resolves
+            # it via `TypeOperations.resolve_type_ref` and writes the
+            # resolved type back into stmt.type, so downstream code
+            # sees TpyType.
+            var_type_ref = self._parse_type_ref(node.annotation)
             init_expr = self._parse_expr(node.value) if node.value else None
-            return TpyVarDecl(node.target.id, var_type, init_expr, loc=loc)
+            return TpyVarDecl(node.target.id, var_type_ref, init_expr, loc=loc)
 
         elif isinstance(node, ast.Assign):
             # Simple assignment: x = expr or x.field = expr
@@ -3168,6 +2951,13 @@ class Parser:
             raise ParseError(
                 f"Type parameters are not supported on nested functions", node)
         func = self._parse_function(node)
+        # Nested defs live inside a function body, so sema's top-level
+        # _resolve_pending_type_refs pre-pass doesn't see them. Resolve
+        # refs immediately, passing the enclosing function's type-param
+        # scope so outer generic params still resolve inside the nested
+        # body. _parse_function restored self._type_param_scope to the
+        # enclosing value before returning.
+        self._finalize_function_refs(func, outer_scope=self._type_param_scope)
         return TpyNestedDef(func=func, loc=loc)
 
     def _parse_multi_assign(self, node: ast.Assign,
@@ -3409,14 +3199,21 @@ class Parser:
                     # (for type instantiations like Array[Int32, 8], non-type args are valid
                     # so parse error is stored and sema decides whether to report it)
                     type_args, type_args_parse_error = self._try_parse_type_args(node.func)
-                    # Try to parse as a type annotation (for type instantiation
-                    # like ArrayList[Int32]()). Sema decides whether to use
-                    # call_type or type_args based on whether the name resolves
-                    # to a type or a function.
+                    # Try to parse as a type annotation ref (for type
+                    # instantiation like ArrayList[Int32]()). Sema
+                    # decides whether to use call_type or type_args
+                    # based on whether the name resolves to a type or a
+                    # function. Emits TypeRefNode; sema resolves in the
+                    # pre-pass body walker. try/except catches
+                    # structural parse errors (Callable/Fn/Literal
+                    # shape); name-resolution errors defer to sema,
+                    # which catches them per-call and falls back to
+                    # type_args / subscript_callee just like the
+                    # pre-flip behaviour.
                     call_type = None
                     if self._could_be_type(name):
                         try:
-                            call_type = self._parse_type_annotation(node.func)
+                            call_type = self._parse_type_ref(node.func)
                         except ParseError:
                             pass
                     # Try to parse the subscript as an expression so sema can
@@ -3524,12 +3321,11 @@ class Parser:
                 if name in ("Own", "Fn"):
                     raise ParseError(f"Generic type '{name}' cannot be used as a value", node)
                 # Module-defined generic types
-                from tpyc.modules import lookup_generic_type as _lookup_generic_type
-                if _lookup_generic_type(name) is not None:
+                if find_factory_by_simple_name(name) is not None:
                     raise ParseError(f"Generic type '{name}' cannot be used as a value", node)
                 # Generic types from imported builtin submodules (tpy.mem, etc.)
                 if import_src := self._imports.get_import_source(name):
-                    if lookup_generic_type_in_module(import_src[1], import_src[0]) is not None:
+                    if find_factory_in_module(import_src[1], import_src[0]) is not None:
                         raise ParseError(f"Generic type '{name}' cannot be used as a value", node)
             obj = self._parse_expr(node.value)
             if isinstance(node.slice, ast.Slice):
@@ -3652,7 +3448,7 @@ class Parser:
             if isinstance(expr.operand, (TpyIntLiteral, TpyFloatLiteral)):
                 return
         # Int32(5) etc. -- a fixed-int constructor wrapping a literal
-        if isinstance(expr, TpyCall) and expr.func_name in _FIXED_INT_MAP:
+        if isinstance(expr, TpyCall) and expr.func_name in _FIXED_INT_NAMES:
             if not expr.args:
                 return  # Int32() -> 0
             if len(expr.args) == 1:
@@ -3732,37 +3528,13 @@ class Parser:
             return f"-{inner}"
         elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             # Int32(x) just becomes x in C++
-            if node.func.id in _FIXED_INT_MAP:
+            if node.func.id in _FIXED_INT_NAMES:
                 if not node.args:
                     return "0"
                 return self._get_default_value(node.args[0])
             args = ", ".join(str(self._get_default_value(a)) for a in node.args)
             return f"{node.func.id}({args})"
         return "0"
-
-    def _infer_type_from_expr(self, node: ast.expr) -> Optional[TpyType]:
-        """Infer type from an expression (for field declarations without annotations)."""
-        if isinstance(node, ast.Constant):
-            if isinstance(node.value, int):
-                return BIGINT
-            elif isinstance(node.value, float):
-                return FLOAT
-            elif isinstance(node.value, str):
-                return STR
-        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-            type_name = node.func.id
-            if (fixed_int := _FIXED_INT_MAP.get(type_name)) is not None:
-                return fixed_int
-            if type_name == "int":
-                return BIGINT
-            if type_name == "float":
-                return FLOAT
-            # Check if it's a known record type
-            record_info = self.registry.get_record(type_name)
-            if record_info:
-                return NamedType(type_name)
-        return None
-
 
 # ---------------------------------------------------------------------------
 # FragmentParser -- lightweight parser for macro source fragments
@@ -3773,7 +3545,7 @@ class FragmentParser(Parser):
 
     Differs from Parser in two ways:
     - Resolves tpy/typing exports without explicit imports
-    - Returns NamedType for unresolved type names instead of raising
+    - Returns NominalType for unresolved type names instead of raising
     """
 
     def _resolve_type_name(self, local_name: str) -> tuple[str, str] | None:
@@ -3786,37 +3558,27 @@ class FragmentParser(Parser):
             return ("typing", local_name)
         return None
 
-    def _raise_unresolved_import_error(self, raw_name: str, node: ast.expr) -> None:
-        pass  # Lenient: unresolved imports are not errors in fragments
+    def _raise_unresolved_import_error(
+        self, raw_name: str, node: ast.expr | None = None,
+        *, loc: SourceLocation | None = None,
+    ) -> None:
+        # Lenient: unresolved imports are not errors in fragments. Override
+        # signature matches the base shape so TypeResolver's loc-based call
+        # path (`parser._raise_unresolved_import_error(name, loc=ref.loc)`)
+        # is compatible when a fragment's resolve hits an unresolvable name.
+        pass
 
     def _parse_type_annotation(
         self, node: ast.expr, type_param_scope: dict | None = None,
     ) -> TpyType:
-        try:
-            return super()._parse_type_annotation(node, type_param_scope)
-        except ParseError as e:
-            msg = str(e)
-            # Only catch unresolved-name errors, not structural errors
-            # (e.g., "Fn requires exactly 2 arguments").
-            # "Unsupported qualified type" covers the dotted-name fallback
-            # after _raise_unresolved_qualified_error (which may or may not raise).
-            if not ("Unknown type" in msg or "Unknown generic type" in msg
-                    or "Unsupported qualified type" in msg):
-                raise
-            if isinstance(node, ast.Name):
-                return NamedType(node.id)
-            if isinstance(node, ast.Subscript):
-                raw = node.value.id if isinstance(node.value, ast.Name) else None
-                if raw:
-                    slices = _extract_subscript_slices(node)
-                    type_args = tuple(
-                        self._parse_type_annotation(s, type_param_scope)
-                        for s in slices
-                    )
-                    return NamedType(raw, type_args)
-            if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
-                return NamedType(f"{node.value.id}.{node.attr}")
-            raise
+        # Walker-then-lenient-resolver.  The lenient fallback
+        # (constructing a NominalType placeholder for unresolved names)
+        # lives in `TypeResolver.resolve_lenient`, keeping NominalType
+        # construction out of the parser.
+        if type_param_scope is None:
+            type_param_scope = self._type_param_scope
+        ref = self._parse_type_ref(node, type_param_scope)
+        return self._resolver.resolve_lenient(ref, type_param_scope)
 
     @classmethod
     def parse_fragment(
@@ -3827,7 +3589,7 @@ class FragmentParser(Parser):
         """Parse a TPy source fragment without full module context.
 
         Used by macro quote/add_method_from_source APIs. Unresolved type names
-        become NamedType(name) -- sema resolves them later.
+        become NominalType(name) -- sema resolves them later.
         """
         source = textwrap.dedent(source).strip()
         parser = cls()
@@ -3841,18 +3603,45 @@ class FragmentParser(Parser):
                     f"quote_fun: expected exactly 1 function definition, "
                     f"got {len(funcs)}", tree)
             func_node = funcs[0]
-            # Detect method: first param named 'self' (annotation optional)
+            # Detect method: first param named 'self'.
             args = func_node.args.args
             has_self = bool(args and args[0].arg == "self")
-            if has_self and args[0].annotation is None:
-                args[0].annotation = ast.Constant(value=None)
-            func = parser._parse_function(func_node)
-            # Strip self param -- is_method functions don't include it
             if has_self:
-                func.is_method = True
-                func.params = func.params[1:]
-                if func.defaults and len(func.defaults) > len(func.params):
-                    func.defaults = func.defaults[1:]
+                # Route through `_parse_method` so method-specific state
+                # (self_annotation, has_auto_readonly_decorator, @property
+                # flags) gets populated -- otherwise sema's expand_methods
+                # sees a bare TpyFunction and skips expansion.
+                # `class_name` is only used in error messages; `<macro>`
+                # is a synthetic placeholder.
+                # `property_names=None` means @x.setter decorators fall
+                # through to the general decorator handler and surface as
+                # an "Unknown decorator" error, matching the prior free-
+                # function routing.
+                func = parser._parse_method(
+                    func_node, class_name="<macro>",
+                    type_param_scope=None, property_names=None)
+            else:
+                func = parser._parse_function(func_node)
+            # Macro fragment output is consumed before sema's pre-pass runs,
+            # so resolve refs immediately -- matches _parse_nested_def.
+            # Fragments have no enclosing type-param scope; the function's
+            # own type_params are merged in by _finalize_function_refs.
+            parser._finalize_function_refs(func, outer_scope=None)
+            if has_self and isinstance(
+                    func.self_annotation, (TpyTypeRef, TpyUnionRef,
+                                           TpyCallableRef, TpyLiteralRef)):
+                # _finalize_function_refs doesn't touch self_annotation
+                # (non-fragment call sites feed through
+                # `_resolve_pending_type_refs` per-record). Resolve it here
+                # under the method's own type-param scope so expand_methods
+                # sees TpyType.
+                scope: dict[str, TypeParamKind] = {}
+                if func.type_params:
+                    kinds = func.type_param_kinds or []
+                    for i, name in enumerate(func.type_params):
+                        scope[name] = kinds[i] if i < len(kinds) else TypeParamKind.TYPE
+                func.self_annotation = parser._resolve_type_ref_impl(
+                    func.self_annotation, scope or None)
             return func
         elif kind == "statements":
             return parser._parse_body(tree.body)

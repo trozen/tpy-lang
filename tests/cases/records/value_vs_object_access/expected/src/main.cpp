@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void test_value_types() {
     // # Value type on ArrayList - get_value (copy semantics)
     // nums = ArrayList[Int32, 4]()
-    ::tpystd::tplib::ArrayList<int32_t, 4> nums = ::tpystd::tplib::ArrayList<int32_t, 4>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 4> nums = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     // nums.append(10)
     nums.append(10);
     // nums.append(20)
@@ -35,7 +35,7 @@ void test_value_types() {
 void test_object_types() {
     // # Object type on ArrayList - get_ref (reference semantics)
     // points = ArrayList[Point, 4]()
-    ::tpystd::tplib::ArrayList<Point, 4> points = ::tpystd::tplib::ArrayList<Point, 4>();
+    ::tpystd::tplib::array_list::ArrayList<Point, 4> points = ::tpystd::tplib::array_list::ArrayList<Point, 4>();
     // points.append(Point(1, 2))
     points.append(Point(1, 2));
     // points.append(Point(3, 4))

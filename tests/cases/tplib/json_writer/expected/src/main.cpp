@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def test_basic() -> None:
 void test_basic() {
     // w = JsonWriter()
-    ::tpystd::tplib::json::JsonWriter w = ::tpystd::tplib::json::JsonWriter();
+    ::tpystd::tplib::json::writer::JsonWriter w = ::tpystd::tplib::json::writer::JsonWriter();
     // w.object_start()
     w.object_start();
     // w.key("name")
@@ -31,7 +31,7 @@ void test_basic() {
 // def test_nested() -> None:
 void test_nested() {
     // w = JsonWriter()
-    ::tpystd::tplib::json::JsonWriter w = ::tpystd::tplib::json::JsonWriter();
+    ::tpystd::tplib::json::writer::JsonWriter w = ::tpystd::tplib::json::writer::JsonWriter();
     // w.object_start()
     w.object_start();
     // w.key("scores")
@@ -69,7 +69,7 @@ void test_nested() {
 // def test_escape() -> None:
 void test_escape() {
     // w = JsonWriter()
-    ::tpystd::tplib::json::JsonWriter w = ::tpystd::tplib::json::JsonWriter();
+    ::tpystd::tplib::json::writer::JsonWriter w = ::tpystd::tplib::json::writer::JsonWriter();
     // w.object_start()
     w.object_start();
     // w.key("msg")
@@ -89,7 +89,7 @@ void test_escape() {
 // def test_float() -> None:
 void test_float() {
     // w = JsonWriter()
-    ::tpystd::tplib::json::JsonWriter w = ::tpystd::tplib::json::JsonWriter();
+    ::tpystd::tplib::json::writer::JsonWriter w = ::tpystd::tplib::json::writer::JsonWriter();
     // w.array_start()
     w.array_start();
     // w.write_float(3.14)
@@ -105,7 +105,7 @@ void test_float() {
 // def test_empty() -> None:
 void test_empty() {
     // w = JsonWriter()
-    ::tpystd::tplib::json::JsonWriter w = ::tpystd::tplib::json::JsonWriter();
+    ::tpystd::tplib::json::writer::JsonWriter w = ::tpystd::tplib::json::writer::JsonWriter();
     // w.object_start()
     w.object_start();
     // w.key("obj")
@@ -129,7 +129,7 @@ void test_empty() {
 // def test_pretty_basic() -> None:
 void test_pretty_basic() {
     // w = JsonWriter(indent=2)
-    ::tpystd::tplib::json::JsonWriter w = ::tpystd::tplib::json::JsonWriter(2);
+    ::tpystd::tplib::json::writer::JsonWriter w = ::tpystd::tplib::json::writer::JsonWriter(2);
     // w.object_start()
     w.object_start();
     // w.key("name")
@@ -149,7 +149,7 @@ void test_pretty_basic() {
 // def test_pretty_nested() -> None:
 void test_pretty_nested() {
     // w = JsonWriter(indent=2)
-    ::tpystd::tplib::json::JsonWriter w = ::tpystd::tplib::json::JsonWriter(2);
+    ::tpystd::tplib::json::writer::JsonWriter w = ::tpystd::tplib::json::writer::JsonWriter(2);
     // w.object_start()
     w.object_start();
     // w.key("scores")
@@ -183,7 +183,7 @@ void test_pretty_nested() {
 // def test_pretty_empty() -> None:
 void test_pretty_empty() {
     // w = JsonWriter(indent=2)
-    ::tpystd::tplib::json::JsonWriter w = ::tpystd::tplib::json::JsonWriter(2);
+    ::tpystd::tplib::json::writer::JsonWriter w = ::tpystd::tplib::json::writer::JsonWriter(2);
     // w.object_start()
     w.object_start();
     // w.key("obj")
@@ -207,7 +207,7 @@ void test_pretty_empty() {
 // def test_pretty_4space() -> None:
 void test_pretty_4space() {
     // w = JsonWriter(indent=4)
-    ::tpystd::tplib::json::JsonWriter w = ::tpystd::tplib::json::JsonWriter(4);
+    ::tpystd::tplib::json::writer::JsonWriter w = ::tpystd::tplib::json::writer::JsonWriter(4);
     // w.object_start()
     w.object_start();
     // w.key("x")
@@ -223,7 +223,7 @@ void test_pretty_4space() {
 // def test_pretty_array() -> None:
 void test_pretty_array() {
     // w = JsonWriter(indent=2)
-    ::tpystd::tplib::json::JsonWriter w = ::tpystd::tplib::json::JsonWriter(2);
+    ::tpystd::tplib::json::writer::JsonWriter w = ::tpystd::tplib::json::writer::JsonWriter(2);
     // w.array_start()
     w.array_start();
     // w.write_str("a")

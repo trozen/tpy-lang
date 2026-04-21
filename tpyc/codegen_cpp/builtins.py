@@ -8,11 +8,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
-    NamedType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
-    ListType, ListRepeatType, DictType, SetType, DictKeysViewType, DictValuesViewType, DictItemsViewType,
-    ArrayType, SpanType, TupleType, OwnType, is_protocol_type, unwrap_readonly, is_any_str_type, is_any_bytes_type,
-    BytesType, ByteArrayType, BytesViewType, make_ref,
+    TpyType, IntLiteralType,
+    NominalType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
+    ListRepeatType,
+    TupleType, OwnType, is_protocol_type, unwrap_readonly, is_any_str_type, is_any_bytes_type,
+    make_ref,
     is_float_type, is_integer_type,
 )
 from ..parse import (
@@ -21,6 +21,11 @@ from ..parse import (
 )
 
 from .context import escape_cpp_string, CodeGenError, expand_cpp_template, qualify_native_name
+from ..type_def_registry import (
+    is_dict_view, is_set, is_dict, is_array, is_span, is_list,
+    is_fixed_int_type, is_big_int_type, is_bool_type, is_float32_type, is_float64_type,
+    is_bytearray_type, int_traits_of,
+)
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -204,9 +209,9 @@ class BuiltinGenerator:
             return True
         # IntLiteral can match Int32 (if compile-time) or BigInt (if runtime)
         if isinstance(arg_type, IntLiteralType):
-            if isinstance(param_type, BigIntType):
+            if is_big_int_type(param_type):
                 return self.types.is_runtime_bigint(arg, arg_type)
-            if isinstance(param_type, Int32Type):
+            if is_fixed_int_type(param_type):
                 return not self.types.is_runtime_bigint(arg, arg_type)
         # INT TypeParamRef can match Int32 or BigInt (it's a compile-time constant)
         if isinstance(arg_type, TypeParamRef) and arg_type.kind == TypeParamKind.INT:
@@ -264,11 +269,11 @@ class BuiltinGenerator:
             elif self.types.is_runtime_bigint(arg, arg_type):
                 # BigInt has operator<< for std::ostream, no .to_string() needed
                 parts.append(self._gen_expr_deref(arg))
-            elif isinstance(arg_type, FloatType):
+            elif is_float64_type(arg_type):
                 parts.append(f'::tpy::print_float({self._gen_expr_deref(arg)})')
-            elif isinstance(arg_type, Float32Type):
+            elif is_float32_type(arg_type):
                 parts.append(f'::tpy::print_float(static_cast<double>({self._gen_expr_deref(arg)}))')
-            elif isinstance(arg_type, BoolType):
+            elif is_bool_type(arg_type):
                 # Bool uses Python-style formatting via ::tpy::print_bool
                 parts.append(f'::tpy::print_bool({self._gen_expr_deref(arg)})')
             elif isinstance(arg_type, OptionalType) and arg_type.uses_pointer_repr():
@@ -283,7 +288,7 @@ class BuiltinGenerator:
                 inner = arg_type.inner
                 gen = self._gen_expr_deref(arg)
                 inner_cpp = inner.to_cpp()
-                if isinstance(inner, BoolType):
+                if is_bool_type(inner):
                     parts.append(f'::tpy::print_optional_val<::tpy::print_bool, {inner_cpp}>({gen})')
                 elif is_float_type(inner):
                     parts.append(f'::tpy::print_optional_val<::tpy::print_float, {inner_cpp}>({gen})')
@@ -294,20 +299,20 @@ class BuiltinGenerator:
             elif is_any_str_type(arg_type):
                 # Strings print as-is (not using ListPrinter)
                 parts.append(self._gen_expr_deref(arg))
-            elif isinstance(arg_type, ByteArrayType):
+            elif is_bytearray_type(arg_type):
                 parts.append(f'::tpy::ByteArrayPrinter({self._gen_expr_deref(arg)})')
             elif is_any_bytes_type(arg_type):
                 parts.append(f'::tpy::BytesPrinter({self._gen_expr_deref(arg)})')
-            elif isinstance(arg_type, DictType):
+            elif is_dict(arg_type):
                 # Dict uses DictPrinter for {k: v, ...} formatting
                 parts.append(f'::tpy::DictPrinter({self._gen_expr_deref(arg)})')
-            elif isinstance(arg_type, SetType):
+            elif is_set(arg_type):
                 # Set uses SetPrinter for {a, b, c} or set() formatting
                 parts.append(f'::tpy::SetPrinter({self._gen_expr_deref(arg)})')
-            elif isinstance(arg_type, (DictKeysViewType, DictValuesViewType, DictItemsViewType)):
+            elif is_dict_view(arg_type):
                 # Dict views use their own operator<< for printing
                 parts.append(self._gen_expr_deref(arg))
-            elif isinstance(arg_type, (ListType, ListRepeatType, ArrayType, SpanType)):
+            elif is_array(arg_type) or is_span(arg_type) or is_list(arg_type) or isinstance(arg_type, ListRepeatType):
                 # Sequence containers use ListPrinter for [a, b, c] formatting
                 if isinstance(arg, TpyArrayLiteral):
                     # Array literals need explicit type for ListPrinter CTAD
@@ -322,7 +327,8 @@ class BuiltinGenerator:
                 # FixedInt, Char, Bool, literals, etc. - direct output
                 expr_code = self._gen_expr_deref(arg)
                 # 8-bit integers need cast to avoid char interpretation in std::cout
-                if isinstance(arg_type, FixedIntType) and arg_type.bits == 8:
+                arg_tr = int_traits_of(arg_type)
+                if arg_tr is not None and arg_tr.bits == 8:
                     expr_code = f"static_cast<int>({expr_code})"
                 parts.append(expr_code)
 

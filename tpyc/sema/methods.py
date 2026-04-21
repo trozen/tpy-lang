@@ -9,11 +9,10 @@ import copy
 from typing import TYPE_CHECKING, Callable
 
 from ..typesys import (
-    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingDictType, PendingSetType,
-    DictType, SetType,
+    TpyType, NominalType, OwnType, OptionalType, PendingListType, PendingDictType, PendingSetType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
-    PendingGenericInstanceType, IntLiteralType, FixedIntType, BigIntType, CallableType, unwrap_ref_type, FStrType, is_any_int_type,
+    PendingGenericInstanceType, IntLiteralType, CallableType, unwrap_ref_type, is_any_int_type,
 
 )
 from ..parse import (
@@ -24,13 +23,15 @@ from ..parse import (
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
-from .diagnostics import OPTIONAL_NONE_ACCESS_WARNING
+from .diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
+from ..type_def_registry import is_list, is_fstr_type
 from .overloads import resolve_overload
 from .calls import (
     arity_error_msg, resolve_kwargs, validate_generic_defaults,
     validate_type_param_bounds, prefer_strview_for_literals,
     _enrich_literal_types,
 )
+from .statements import _root_name_of_expr
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -49,7 +50,7 @@ def _contains_type_param_ref_type(typ: TpyType, param_names: set[str]) -> bool:
     """Check if a type contains any TypeParamRef matching the given param names."""
     if isinstance(typ, TypeParamRef):
         return typ.name in param_names
-    if isinstance(typ, NamedType) and typ.type_args:
+    if isinstance(typ, NominalType) and typ.type_args:
         return any(
             _contains_type_param_ref_type(a, param_names)
             for a in typ.type_args if isinstance(a, TpyType)
@@ -63,7 +64,7 @@ def _contains_type_param_ref_type(typ: TpyType, param_names: set[str]) -> bool:
     # TupleType
     if hasattr(typ, 'element_types'):
         return any(_contains_type_param_ref_type(e, param_names) for e in typ.element_types)
-    # DictType
+    # PendingDictType (DictType NominalType handled above via type_args)
     if hasattr(typ, 'key_type') and hasattr(typ, 'value_type'):
         return (_contains_type_param_ref_type(typ.key_type, param_names)
                 or _contains_type_param_ref_type(typ.value_type, param_names))
@@ -118,7 +119,7 @@ def _collect_unresolved(
         if typ.name in param_names and typ.name not in inferred and typ.name not in out:
             out.append(typ.name)
         return
-    if isinstance(typ, NamedType) and typ.type_args:
+    if isinstance(typ, NominalType) and typ.type_args:
         for a in typ.type_args:
             if isinstance(a, TpyType):
                 _collect_unresolved(a, inferred, param_names, out)
@@ -466,7 +467,7 @@ class MethodAnalyzer:
 
     def _try_callable_field_call(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
         """Check if expr.method is a Callable-typed field and analyze the call."""
-        if not isinstance(obj_type, NamedType):
+        if not isinstance(obj_type, NominalType):
             return None
         rec = self.ctx.registry.get_record(obj_type.name)
         if rec is None:
@@ -505,7 +506,6 @@ class MethodAnalyzer:
         for i, (arg, expected_type) in enumerate(zip(expr.args, callable_type.param_types)):
             arg_type = self.expr.analyze_expr_with_hint(arg, expected_type)
             if arg_type != expected_type:
-                from .context import SemanticError
                 try:
                     self.compat.check_type_compatible(
                         arg_type, expected_type,
@@ -632,7 +632,7 @@ class MethodAnalyzer:
             obj_type = obj_type.inner
 
         # List mutation tracking (before deref chain -- applies to direct list types only)
-        if isinstance(obj_type, (PendingListType, ListType)):
+        if isinstance(obj_type, PendingListType) or is_list(obj_type):
             if not self._is_readonly_method(obj_type, expr.method):
                 self.deduction.mark_list_mutated(expr.obj)
 
@@ -707,16 +707,11 @@ class MethodAnalyzer:
                 # and string view sources (receiver mutation invalidates views)
                 info = expr.resolved_function_info
                 if info is not None and not info.is_readonly:
-                    from .statements import _root_name_of_expr
-                    from ..parse.nodes import (
-                        TpyName as _TpyName, TpyMethodCall as _TpyMethodCall,
-                        TpyFieldAccess as _TpyFieldAccess,
-                    )
                     obj_root = _root_name_of_expr(expr.obj)
                     if obj_root is not None:
                         self.ctx.mark_loop_var_mutated(obj_root)
                         is_direct_self_call = (
-                            isinstance(expr.obj, _TpyName) and expr.obj.name == "self"
+                            isinstance(expr.obj, TpyName) and expr.obj.name == "self"
                         )
                         if is_direct_self_call:
                             # self.method() -- entirely deferred to call edges
@@ -745,7 +740,7 @@ class MethodAnalyzer:
                         # the span is a mutable view of self's storage.
                         # Treat as self-mutation conservatively.
                         chain = expr.obj
-                        while isinstance(chain, _TpyMethodCall):
+                        while isinstance(chain, TpyMethodCall):
                             chain = chain.obj
                         chain_root = _root_name_of_expr(chain)
                         if chain_root == "self":
@@ -1186,7 +1181,7 @@ class MethodAnalyzer:
     def try_resolve_pending_from_expected_type(
         self, pending: PendingGenericInstanceType, expected: TpyType,
         loc: 'SourceLocation | None' = None,
-    ) -> NamedType | None:
+    ) -> NominalType | None:
         """Try to resolve a pending generic instance from an expected type.
 
         Used when a pending-type variable is passed to a typed parameter or
@@ -1197,7 +1192,7 @@ class MethodAnalyzer:
         if info is None:
             return None
 
-        # Unwrap Own/Optional/Readonly/Ref to find the inner NamedType
+        # Unwrap Own/Optional/Readonly/Ref to find the inner NominalType
         target = expected
         if isinstance(target, OwnType):
             target = target.wrapped
@@ -1205,7 +1200,7 @@ class MethodAnalyzer:
             target = target.inner
         target = unwrap_readonly(unwrap_ref_type(target))
 
-        if not isinstance(target, NamedType) or target.name != info.record_name:
+        if not isinstance(target, NominalType) or target.name != info.record_name:
             return None
         if not target.type_args or len(target.type_args) != len(info.type_params):
             return None
@@ -1217,7 +1212,10 @@ class MethodAnalyzer:
                 pattern_args.append(info.inferred[tp])
             else:
                 pattern_args.append(TypeParamRef(tp))
-        pattern = NamedType(info.record_name, tuple(pattern_args))
+        pattern = NominalType(
+            info.record_name, tuple(pattern_args),
+            _module_qname=info.record_info.qualified_name(),
+        )
 
         # Match to extract constraints
         if not self.type_ops.match_type_with_inference(pattern, target, info.inferred):
@@ -1225,7 +1223,6 @@ class MethodAnalyzer:
             for tp, expected_arg in zip(info.type_params, target.type_args):
                 if tp in info.inferred and isinstance(expected_arg, TpyType):
                     if info.inferred[tp] != expected_arg:
-                        from .diagnostics import SemanticError
                         raise SemanticError(
                             f"Conflicting type for '{tp}' in '{info.record_name}': "
                             f"previously inferred as '{info.inferred[tp]}', "
@@ -1245,10 +1242,13 @@ class MethodAnalyzer:
 
         return self._eagerly_resolve_pending_generic(info)
 
-    def _eagerly_resolve_pending_generic(self, info: 'PendingGenericInstanceInfo') -> NamedType:
-        """Resolve a pending generic instance to a concrete NamedType."""
+    def _eagerly_resolve_pending_generic(self, info: 'PendingGenericInstanceInfo') -> NominalType:
+        """Resolve a pending generic instance to a concrete NominalType."""
         type_args = tuple(info.inferred[tp] for tp in info.type_params)
-        resolved_type = NamedType(info.record_name, type_args)
+        resolved_type = NominalType(
+            info.record_name, type_args,
+            _module_qname=info.record_info.qualified_name(),
+        )
 
         # Validate type param bounds
         for param_name, type_arg in zip(info.type_params, type_args):
@@ -1365,7 +1365,7 @@ class MethodAnalyzer:
         # For FStr params, validate that f-string literals are passed.
         if method_info.inline_body is not None:
             for i, (pi, arg) in enumerate(zip(method_info.params, expr.args)):
-                if isinstance(pi.type, FStrType) and not isinstance(arg, TpyFString):
+                if is_fstr_type(pi.type) and not isinstance(arg, TpyFString):
                     if isinstance(arg, TpyStrLiteral):
                         expr.args[i] = TpyFString(parts=[arg.value], loc=arg.loc)
                     else:

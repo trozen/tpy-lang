@@ -9,29 +9,12 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
-from typing import Any, Literal, Optional, TYPE_CHECKING
+from typing import Any, Callable, Literal, Optional, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, FieldInfo, FunctionInfo,
-    MethodSignature, TypeParamKind,
-    EnumType, IntEnumType,
+    TpyType, NominalType, FieldInfo, FunctionInfo,
+    MethodSignature, TypeParamKind, LiteralValue,
 )
-
-
-class ParseError(Exception):
-    """Error during parsing."""
-    def __init__(self, message: str, node: Optional[ast.AST] = None):
-        self.node = node
-        self.message = message
-        self.lineno = node.lineno if node and hasattr(node, 'lineno') else None
-        loc = f" at line {self.lineno}" if self.lineno else ""
-        super().__init__(f"{message}{loc}")
-
-    def format(self, filename: str = "<unknown>") -> str:
-        """Format error with file:line prefix."""
-        if self.lineno:
-            return f"{filename}:{self.lineno}: error: {self.message}"
-        return f"{filename}: error: {self.message}"
 
 
 # Source location for error reporting and source mapping
@@ -42,6 +25,125 @@ class SourceLocation:
     line: int  # 1-indexed line number
     column: int = 0  # 0-indexed column
     file: str | None = None  # Source file path (optional)
+
+
+class ParseError(Exception):
+    """Error during parsing.
+
+    Accepts either an ast.AST node (for parse-time errors where the ast is
+    available) or a SourceLocation (for resolver-time errors where only the
+    walked TypeRefNode's loc is known). Lineno is populated from whichever
+    is provided.
+    """
+    def __init__(self, message: str, node: Optional[ast.AST] = None,
+                 *, loc: Optional['SourceLocation'] = None):
+        self.node = node
+        self.message = message
+        if node is not None and hasattr(node, 'lineno'):
+            self.lineno = node.lineno
+        elif loc is not None:
+            self.lineno = loc.line
+        else:
+            self.lineno = None
+        loc_str = f" at line {self.lineno}" if self.lineno else ""
+        super().__init__(f"{message}{loc_str}")
+
+    def format(self, filename: str = "<unknown>") -> str:
+        """Format error with file:line prefix."""
+        if self.lineno:
+            return f"{filename}:{self.lineno}: error: {self.message}"
+        return f"{filename}: error: {self.message}"
+
+
+class ResolutionFailure(ParseError):
+    """Recoverable name-resolution failure raised by `TypeResolver`.
+
+    Signals that a `TpyTypeRef` referred to a name the resolver could not
+    bind ("Unknown type", "Unknown generic type", "Unsupported qualified
+    type").  Lenient callers (macro-fragment resolution) catch this
+    specifically and substitute a `NominalType(name, args)` placeholder;
+    everyone else treats it as a regular `ParseError`.
+    """
+
+
+# Unresolved type-syntax nodes.
+#
+# Parser emits these in annotation positions instead of constructing TpyType
+# directly. Sema's resolve_type_ref walks them against the TypeDef registry,
+# local type-parameter scope, and structural wrappers to produce TpyType.
+#
+# Four node kinds cover all Python type syntax:
+#   - TpyTypeRef       : Name or Name[args]. Handles primitives, generics,
+#                        structural wrappers expressed via subscript
+#                        (Ptr[T], Own[T], Optional[T], Readonly[T], tuple[T1,T2],
+#                        Array[T, N], ...), qualified names (Outer.Inner), type
+#                        parameters, Self, None. Integer args (Array[T, N])
+#                        sit alongside type args.
+#   - TpyUnionRef      : T | U | ... (Python BinOp with BitOr).
+#   - TpyCallableRef   : Callable[[P1, P2], R] or Fn[[P1, P2], R] -- the
+#                        list-shaped param group doesn't fit a uniform args
+#                        tuple.
+#   - TpyLiteralRef    : Literal[v1, v2, ...] where the args are values, not
+#                        types.
+
+@dataclass(frozen=True)
+class TpyTypeRef:
+    """Named type reference with optional type arguments.
+
+    `name` is the raw source identifier, possibly dotted for qualified
+    references ("Outer.Inner", "module.Name"). Resolution (primitive lookup,
+    builtin/user registry lookup, type-parameter substitution, enum/record
+    qname minting) happens in sema.
+    """
+    name: str
+    args: tuple['ResolverInputNode | int', ...] = ()
+    loc: SourceLocation | None = None
+
+
+@dataclass(frozen=True)
+class TpyUnionRef:
+    """Union-syntax type reference: T | U | ..."""
+    members: tuple['ResolverInputNode', ...]
+    loc: SourceLocation | None = None
+
+
+@dataclass(frozen=True)
+class TpyCallableRef:
+    """Callable[[P1, P2], R] or Fn[[P1, P2], R]."""
+    kind: Literal["Callable", "Fn"]
+    params: tuple['ResolverInputNode', ...]
+    return_type: 'ResolverInputNode'
+    loc: SourceLocation | None = None
+
+
+@dataclass(frozen=True)
+class TpyLiteralRef:
+    """Literal[v1, v2, ...] -- values, not types."""
+    values: tuple[LiteralValue, ...]
+    loc: SourceLocation | None = None
+
+
+@dataclass(frozen=True)
+class TpyInferFromDefaultRef:
+    """Pending marker used by the parser on a FieldInfo whose type could
+    not be inferred from its default-value expression at parse time
+    (e.g. `Red = auto()` in a class whose `Enum` base was shadowed).
+
+    Emitted instead of raising "Cannot infer type for field 'X'" at parse
+    time so that any sema-time base resolution errors on the enclosing
+    record fire first. Sema's `_resolve_pending_type_refs` handles this
+    node explicitly in the field loop and surfaces the inference error
+    as a SemanticError only when base resolution has already succeeded.
+    """
+    loc: SourceLocation | None = None
+
+
+# ResolverInputNode is the subset of TypeRefNode that TypeResolver.resolve
+# accepts: four parser-walker outputs (named ref, union, callable, literal).
+# TpyInferFromDefaultRef is NOT a resolver input -- it's a field-storage
+# marker that sema catches explicitly before calling the resolver.
+type ResolverInputNode = TpyTypeRef | TpyUnionRef | TpyCallableRef | TpyLiteralRef
+type TypeRefNode = ResolverInputNode | TpyInferFromDefaultRef
 
 
 # AST node types for TurboPython
@@ -141,7 +243,7 @@ class TpyBinOp(TpyExpr):
     typed_dict_in_field: str | None = None  # Set by sema: "key" in TypedDict -> field presence check
     typed_dict_in_always_true: bool = False  # Set by sema: total=True field, fold to True
     optional_safe_eq: bool = False  # Set by sema: ==/!= with Optional value-type operand(s)
-    int_enum_coercion: 'IntEnumType | None' = None  # Set by sema: IntEnum arithmetic coerced to underlying type
+    int_enum_coercion: 'NominalType | None' = None  # Set by sema: IntEnum arithmetic coerced to underlying type
     divisor_non_zero: bool = False  # Set by sema: divisor provably non-zero, skip div-zero check
 
     def children(self) -> list[TpyExpr]:
@@ -211,8 +313,11 @@ class TpyCall(TpyExpr):
     """
     func: TpyExpr  # TpyName for simple calls; arbitrary TpyExpr for expression callees
     args: list[TpyExpr]
-    call_type: Optional[TpyType] = None  # For generic instantiation like MyContainer[T, N]()
-    type_args: tuple[TpyType, ...] = ()  # Explicit type args for generic function calls: func[T](args)
+    # Between parse and sema's _resolve_pending_type_refs pre-pass,
+    # call_type and type_args may hold TypeRefNode in place of TpyType.
+    # All readers post-pre-pass see TpyType.
+    call_type: 'TpyType | TypeRefNode | None' = None  # For generic instantiation like MyContainer[T, N]()
+    type_args: 'tuple[TpyType | TypeRefNode | None, ...]' = ()  # Explicit type args for generic function calls: func[T](args)
     inferred_type_args: tuple[TpyType, ...] | None = None  # Set by sema for generic function calls
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     subscript_callee: 'TpyExpr | None' = None  # Set by parser: fns[0](args) -> stores TpySubscript(fns, 0) for sema fallback
@@ -221,8 +326,8 @@ class TpyCall(TpyExpr):
     kwarg_td_call: 'TpyExpr | None' = None  # Set by sema: synthetic TypedDict construction for **kwargs
     resolved_import: tuple[str, str] | None = None  # Set by parser: (module, name) for resolved imports
     resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved function overloads
-    enum_from_value: EnumType | None = None  # Set by sema for enum value lookup: Color(0)
-    enum_try_parse: EnumType | None = None   # Set by sema for tpy.try_parse(Color, "Red")
+    enum_from_value: NominalType | None = None  # Set by sema for enum value lookup: Color(0)
+    enum_try_parse: NominalType | None = None   # Set by sema for tpy.try_parse(Color, "Red")
     isinstance_var: str | None = None        # Set by sema: variable name being isinstance-checked
     isinstance_type: TpyType | None = None   # Set by sema: resolved type being checked for
     isinstance_is_protocol: bool = False     # Set by sema: protocol isinstance (if constexpr)
@@ -251,7 +356,8 @@ class TpyMethodCall(TpyExpr):
     kwargs: dict[str, TpyExpr] = field(default_factory=dict)
     double_star_unpack: 'TpyExpr | None' = None  # **expr unpacking at call site
     resolved_import: tuple[str, str] | None = None  # Set by parser: (module, name) for resolved imports
-    type_args: tuple[TpyType, ...] = ()  # Explicit type args for module.func[T](args) syntax
+    # May hold TypeRefNode pre-sema-pre-pass.
+    type_args: 'tuple[TpyType | TypeRefNode | None, ...]' = ()  # Explicit type args for module.func[T](args) syntax
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     is_static_call: bool = False  # Set by sema for ClassName.staticmethod() calls
     super_parent_type: Optional[TpyType] = None  # Set by sema for super().method() calls
@@ -445,7 +551,7 @@ class TpySubscript(TpyExpr):
     obj: TpyExpr
     index: TpyExpr  # TpySlice for slicing, other TpyExpr for single-index
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
-    enum_from_name: 'EnumType | None' = None    # Set by sema for Color["Red"] name lookup
+    enum_from_name: 'NominalType | None' = None    # Set by sema for Color["Red"] name lookup
     bounds_safe: bool = False  # Set by sema: index provably in [0, len(obj)), skip bounds check
     is_stepped_slice: bool = False  # Set by sema: slice has step (a[::2])
     slice_function_info: 'FunctionInfo | None' = None  # Set by sema: resolved __getitem__ for slice
@@ -516,9 +622,15 @@ class VarLinkage(Enum):
 
 @dataclass
 class TpyVarDecl(TpyStmt):
-    """Variable declaration with optional initializer."""
+    """Variable declaration with optional initializer.
+
+    `type` may temporarily hold a TypeRefNode when emitted by the parser at
+    annotation sites; the sema writer (`_analyze_var_decl`) calls
+    `TypeOperations.resolve_type_ref` to produce a TpyType and writes it
+    back in place. All downstream sema/codegen reads see only TpyType.
+    """
     name: str
-    type: Optional[TpyType]
+    type: Optional[TpyType | TypeRefNode]
     init: Optional[TpyExpr]
     linkage: VarLinkage = VarLinkage.DEFAULT
     native_name: str | None = None
@@ -673,7 +785,7 @@ class TpyForEach(TpyStmt):
     iterable: TpyExpr
     body: list[TpyStmt]
     orelse: list[TpyStmt] = field(default_factory=list)
-    enum_iterable: 'EnumType | None' = None  # set by sema when iterating over enum type
+    enum_iterable: 'NominalType | None' = None  # set by sema when iterating over enum type
     elem_type: 'TpyType | None' = None  # set by sema: resolved element type for codegen
     is_tuple_unpack: bool = False  # set by parser: synthetic loop var for tuple destructuring
     const_loop_var: bool = False  # set by sema: loop var is never mutated, safe for const auto&
@@ -962,8 +1074,13 @@ class TpyFunction:
     - type_param_bounds stores bounds for each bounded type param (e.g., {"T": Comparable})
     """
     name: str
-    params: list[tuple[str, TpyType]]
-    return_type: TpyType
+    # Between parse and sema's _resolve_pending_type_refs pre-pass, params
+    # and return_type for top-level (non-method) functions may hold
+    # TypeRefNode in place of TpyType. All readers post-pre-pass see
+    # TpyType.  `return_type` may also be None when no annotation was
+    # provided -- sema substitutes VOID during the pre-pass.
+    params: list[tuple[str, TpyType | TypeRefNode]]
+    return_type: 'TpyType | TypeRefNode | None'
     body: list[TpyStmt]
     is_noalloc: bool = False
     is_inline: bool = False
@@ -979,20 +1096,25 @@ class TpyFunction:
     is_property_setter: bool = False
     property_name: str | None = None  # for setter: which property it belongs to
     is_consuming: bool = False
-    # Transient: True only during parsing for @auto_readonly methods.
-    # After _clone_auto_readonly runs, both clones have auto_readonly=False.
+    # Transient input to sema.method_expansion._clone_auto_readonly:
+    # true for @auto_readonly methods, @property getters, methods with
+    # `self: auto_readonly[Self]`, and methods with per-param
+    # `auto_readonly[T]`. After cloning, both clones carry False.
     auto_readonly: bool = False
-    # Set on the mutable clone produced by _clone_auto_readonly.
-    # Used instead of params-list identity to detect mutable+const clone pairs.
+    # Set on the mutable clone produced by
+    # sema.method_expansion._clone_auto_readonly; used to detect
+    # mutable+const clone pairs without relying on params-list identity.
     is_auto_readonly_mutable_clone: bool = False
     # Set on both clones after _clone_auto_readonly resolves AutoReadonlyType
     # in params. Tells sema/codegen not to blanket-apply readonly to all params
     # (each param already carries ReadonlyType or not from the clone).
     auto_readonly_params_resolved: bool = False
-    # Transient: True when self: auto_own[Self] is detected.
-    # After _clone_auto_own runs, both clones have auto_own=False.
+    # Transient input to sema.method_expansion._clone_auto_own: true when
+    # `self: auto_own[Self]` is detected. After cloning, both clones have
+    # auto_own=False.
     auto_own: bool = False
-    # Set on the borrowing clone produced by _clone_auto_own.
+    # Set on the borrowing clone produced by
+    # sema.method_expansion._clone_auto_own.
     is_auto_own_borrowing_clone: bool = False
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT
     native_name: str | None = None
@@ -1002,14 +1124,23 @@ class TpyFunction:
     is_stub: bool = False
     value_ptr_coercion: bool = False
     type_params: list[str] = field(default_factory=list)
-    type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
+    # Parallel with type_params (like TpyRecord.type_param_kinds). Carries
+    # TypeParamKind.INT for `def f[N: int](...)` so sema-time resolution
+    # of ref-based params can tell INT-kind type params from TYPE-kind.
+    type_param_kinds: list[TypeParamKind] = field(default_factory=list)
+    # Between parse and sema's _resolve_pending_type_refs pre-pass, bounds
+    # may hold TypeRefNode in place of TpyType.  All readers post-pre-pass
+    # see TpyType.
+    type_param_bounds: 'dict[str, TpyType | TypeRefNode]' = field(default_factory=dict)
     type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "tpy.extern.DefaultInt"}
     defaults: list['TpyExpr | None'] = field(default_factory=list)  # len == len(params); None = no default
     keyword_only_start: int | None = None  # index into params where keyword-only begins
     vararg_name: str | None = None  # name of *args parameter
-    vararg_type: 'TpyType | None' = None  # element type T from *args: T
+    vararg_type: 'TpyType | TypeRefNode | None' = None  # element type T from *args: T
     kwarg_name: str | None = None  # name of **kwargs parameter
-    kwarg_type: 'TpyType | None' = None  # TypedDict type from **kwargs: Unpack[TD]
+    # Between parse and sema's _resolve_pending_type_refs pre-pass, kwarg_type
+    # may hold TypeRefNode in place of TpyType.
+    kwarg_type: 'TpyType | TypeRefNode | None' = None  # TypedDict type from **kwargs: Unpack[TD]
     error_return: str | None = None  # @error_return(E) exception type name
     builtin_decorator_key: str | None = None  # @builtin_decorator("tpy.readonly")
     builtin_function_key: str | None = None  # @builtin_function("tpy.extern.native_global")
@@ -1017,6 +1148,17 @@ class TpyFunction:
     generator_yield_type: 'TpyType | None' = None  # Set by sema: T from Iterator[T]
     generator_locals: 'list[tuple[str, TpyType]] | None' = None  # Set by sema: local vars for struct fields
     skip_codegen: bool = False  # Set by sema: @inline function, body inlined at call sites
+    # Preserves the self annotation for methods (e.g. OwnType(SelfType),
+    # AutoOwnType(SelfType), AutoReadonlyType(SelfType)).  Between parse
+    # and sema's _resolve_pending_type_refs pre-pass this may hold a
+    # TypeRefNode; sema resolves before `method_expansion` reads it.
+    # None when self had no explicit annotation or for non-methods.
+    # Carried through `dc_replace` on auto_own / auto_readonly clones.
+    self_annotation: 'TpyType | TypeRefNode | None' = None
+    # Set by the parser when the method carries `@auto_readonly`.
+    # `method_expansion` uses this to drive AutoReadonlyType param
+    # wrapping; cleared on the auto_readonly clones once expanded.
+    has_auto_readonly_decorator: bool = False
     loc: SourceLocation | None = None
 
     @property
@@ -1067,8 +1209,14 @@ class TpyRecord:
     methods: list[TpyFunction] = field(default_factory=list)
     type_params: list[str] = field(default_factory=list)
     type_param_kinds: list[TypeParamKind] = field(default_factory=list)
-    type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
-    bases: list[TpyType] = field(default_factory=list)
+    # Between parse and sema's _resolve_pending_type_refs pre-pass, bounds
+    # may hold TypeRefNode in place of TpyType.  All readers post-pre-pass
+    # see TpyType.
+    type_param_bounds: 'dict[str, TpyType | TypeRefNode]' = field(default_factory=dict)
+    # Between parse and sema's _resolve_pending_type_refs pre-pass, bases
+    # may hold TypeRefNode in place of TpyType.  All readers post-pre-
+    # pass see TpyType.
+    bases: 'list[TpyType | TypeRefNode]' = field(default_factory=list)
     linkage: RecordLinkage = RecordLinkage.DEFAULT
     native_name: str | None = None
     is_nocopy: bool = False
@@ -1103,7 +1251,9 @@ class TpyProtocol:
     """Protocol definition for structural subtyping."""
     name: str
     methods: list[MethodSignature]
-    fields: list[tuple[str, TpyType]] = field(default_factory=list)
+    # Between parse and sema's _resolve_pending_type_refs pre-pass, field
+    # types may hold TypeRefNode in place of TpyType.
+    fields: 'list[tuple[str, TpyType | TypeRefNode]]' = field(default_factory=list)
     type_params: list[str] = field(default_factory=list)
     parent_protocols: list[str] = field(default_factory=list)
     is_dynamic: bool = False
@@ -1167,13 +1317,27 @@ class TpyModule:
     # Modules that had bare `import X` statements (needed for module binding in sema)
     bare_module_imports: set[str] = field(default_factory=set)
     # Type aliases (e.g., Shape = Circle | Rect) -> (resolved type, source location)
-    type_aliases: dict[str, tuple[TpyType, SourceLocation | None]] = field(default_factory=dict)
+    # Between parse and sema's _resolve_pending_type_refs pre-pass, alias
+    # RHS values may hold TypeRefNode in place of TpyType.  Sema resolves
+    # each alias passing `pending_alias=alias_name` through the resolver
+    # API so same-body self-refs become NominalType(name) placeholders,
+    # then detects recursive unions post-resolution.
+    type_aliases: 'dict[str, tuple[TpyType | TypeRefNode, SourceLocation | None]]' = field(default_factory=dict)
     # Parser warnings (e.g., imports after non-import code)
     parse_warnings: list[ParseWarning] = field(default_factory=list)
     # Module-level # tpy: directives
     directives: ModuleDirectives = field(default_factory=ModuleDirectives)
     # Union type aliases that need wrapper-struct representation (self- or mutually-recursive)
     recursive_union_names: set[str] = field(default_factory=set)
+    # Parser resolver: a TypeResolver instance attached at end-of-parse
+    # that resolves a TypeRefNode (emitted by the walker at annotation
+    # sites) to a TpyType.  Sema invokes `resolver.resolve(ref, scope)`
+    # via `TypeOperations.resolve_type_ref` when a writer encounters an
+    # unresolved ref.  Holds a back-reference to the parser so it carries
+    # live resolution state (registry, imports, local_defs,
+    # module_class_names, type_alias_names, reverse_module_aliases,
+    # bare_module_imports).
+    resolver: 'Any | None' = None
 
     def all_records(self) -> list[TpyRecord]:
         """All records including nested, in definition order (depth-first)."""

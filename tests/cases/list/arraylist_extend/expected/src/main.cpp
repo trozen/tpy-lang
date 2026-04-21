@@ -8,13 +8,13 @@ namespace tpyapp::main {
 void main() {
     // # extend from another ArrayList (Spannable)
     // a = ArrayList[Int32, 16]()
-    ::tpystd::tplib::ArrayList<int32_t, 16> a = ::tpystd::tplib::ArrayList<int32_t, 16>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 16> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 16>();
     // a.append(1)
     a.append(1);
     // a.append(2)
     a.append(2);
     // b = ArrayList[Int32, 16]()
-    ::tpystd::tplib::ArrayList<int32_t, 16> b = ::tpystd::tplib::ArrayList<int32_t, 16>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 16> b = ::tpystd::tplib::array_list::ArrayList<int32_t, 16>();
     // b.append(10)
     b.append(10);
     // b.append(20)
@@ -37,7 +37,7 @@ void main() {
     }
     // # extend from Array/Span
     // c = ArrayList[Int32, 8]()
-    ::tpystd::tplib::ArrayList<int32_t, 8> c = ::tpystd::tplib::ArrayList<int32_t, 8>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 8> c = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // arr: Array[Int32, 3] = [100, 200, 300]
     std::array<int32_t, 3> arr = {100, 200, 300};
     // s: Span[Int32] = arr

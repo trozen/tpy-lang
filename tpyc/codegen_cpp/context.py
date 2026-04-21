@@ -10,8 +10,8 @@ from dataclasses import dataclass, field
 from typing import Callable, Literal, TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NamedType, SelfType,
-    BigIntType, BoolType, IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo,
+    TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NominalType, SelfType,
+    IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo,
     is_protocol_type, unwrap_readonly, ensure_qualified, unwrap_ref_type, is_union_or_optional_type,
 
 )
@@ -23,6 +23,7 @@ from ..parse import (
     TpyIfExpr,
 )
 from ..namespace import Namespace, BindingKind
+from ..type_def_registry import is_bool_type
 
 if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
@@ -583,11 +584,8 @@ class CodeGenContext:
     emitted_tpy_inits: set[str] = field(default_factory=set)
     # Maps local_name -> (source_module, original_name) to support import aliases
     user_imported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
-    user_imported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_protocols: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
-    user_imported_type_aliases: dict[str, tuple[str, str]] = field(default_factory=dict)
-    user_imported_enums: dict[str, tuple[str, str]] = field(default_factory=dict)
     top_level_decls: dict[str, int] = field(default_factory=dict)
     current_stmt_line: int = 0
 
@@ -645,7 +643,7 @@ class CodeGenContext:
             if self.is_recursive_union(typ):
                 return f"{var_expr}.value"
             if (isinstance(typ, OptionalType)
-                    and isinstance(typ.inner, NamedType)
+                    and isinstance(typ.inner, NominalType)
                     and typ.inner.name in self.recursive_union_names):
                 return f"{var_expr}.value"
         return var_expr
@@ -1114,7 +1112,7 @@ class CodeGenContext:
         # result is only an rvalue when both operands are rvalues.
         if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
             result_type = self.analyzer.get_expr_type(expr)
-            if not isinstance(result_type, BoolType):
+            if not is_bool_type(result_type):
                 return self.is_rvalue_source(expr.left) and self.is_rvalue_source(expr.right)
         # Constructor calls, literals, ops are rvalues
         if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -1181,7 +1179,7 @@ class CodeGenContext:
         if isinstance(expr, TpySubscript):
             raw_ct = self.analyzer.get_expr_type(expr.obj)
             container_type = unwrap_readonly(raw_ct) if raw_ct is not None else None
-            if isinstance(container_type, NamedType) and container_type.is_user_record:
+            if isinstance(container_type, NominalType) and container_type.is_user_record:
                 return True
         if isinstance(expr, TpyCall):
             return self.is_rvalue_source(expr)

@@ -24,7 +24,7 @@ void main() {
     // pl = PointList([Point(1, 2), None, Point(3, 4)])
     PointList pl = PointList({Point(1, 2), std::nullopt, Point(3, 4)});
     // print(asdict(pl))
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::vector<std::optional<::tpy::ordered_map<std::string, int32_t>>>>({{"items", [&]() {
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::vector<std::optional<::tpy::ordered_map<std::string, int32_t>>>>({{"items", ({
         std::vector<std::optional<::tpy::ordered_map<std::string, int32_t>>> __result;
         auto& __obj_0 = pl.items;
         __result.reserve(__obj_0.size());
@@ -34,10 +34,10 @@ void main() {
             const auto& __macro_1 = *__beg_0;
             __result.push_back((((__macro_1.has_value())) ? (std::optional<::tpy::ordered_map<std::string, int32_t>>(::tpy::ordered_map<std::string, int32_t>({{"x", (*__macro_1).x}, {"y", (*__macro_1).y}}))) : (std::optional<::tpy::ordered_map<std::string, int32_t>>(std::nullopt))));
         }
-        return __result;
-    }()}})) << "\n";
+        __result;
+    })}})) << "\n";
     // print(astuple(pl))
-    std::cout << ::tpy::TuplePrinter(std::tuple<std::vector<std::optional<std::tuple<int32_t, int32_t>>>>([&]() {
+    std::cout << ::tpy::TuplePrinter(std::tuple<std::vector<std::optional<std::tuple<int32_t, int32_t>>>>(({
         std::vector<std::optional<std::tuple<int32_t, int32_t>>> __result;
         auto& __obj_1 = pl.items;
         __result.reserve(__obj_1.size());
@@ -47,8 +47,8 @@ void main() {
             const auto& __macro_1 = *__beg_1;
             __result.push_back((((__macro_1.has_value())) ? (std::optional<std::tuple<int32_t, int32_t>>(std::tuple<int32_t, int32_t>{(*__macro_1).x, (*__macro_1).y})) : (std::optional<std::tuple<int32_t, int32_t>>(std::nullopt))));
         }
-        return __result;
-    }())) << "\n";
+        __result;
+    }))) << "\n";
     // # 4. Deeply nested Optional
     // ml1 = MaybeLine(Line(Point(0, 0), Point(1, 1)))
     MaybeLine ml1 = MaybeLine(Line(Point(0, 0), Point(1, 1)));
@@ -75,7 +75,7 @@ void main() {
     // lp = LabeledPoints({"a": Point(1, 2), "b": None, "c": Point(3, 4)})
     LabeledPoints lp = LabeledPoints(::tpy::ordered_map<std::string, std::optional<Point>>({{"a", Point(1, 2)}, {"b", std::nullopt}, {"c", Point(3, 4)}}));
     // print(asdict(lp))
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, std::optional<::tpy::ordered_map<std::string, int32_t>>>>({{"items", [&]() {
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, std::optional<::tpy::ordered_map<std::string, int32_t>>>>({{"items", ({
         ::tpy::ordered_map<std::string, std::optional<::tpy::ordered_map<std::string, int32_t>>> __result;
         auto __obj_2 = ::tpy::dict_items(lp.items);
         auto __beg_2 = __obj_2.begin();
@@ -86,8 +86,8 @@ void main() {
             const auto& __macro_2 = std::get<1>(__tup_1);
             __result.insert_or_assign(__macro_1, (((__macro_2.has_value())) ? (std::optional<::tpy::ordered_map<std::string, int32_t>>(::tpy::ordered_map<std::string, int32_t>({{"x", (*__macro_2).x}, {"y", (*__macro_2).y}}))) : (std::optional<::tpy::ordered_map<std::string, int32_t>>(std::nullopt))));
         }
-        return __result;
-    }()}})) << "\n";
+        __result;
+    })}})) << "\n";
 }
 
 void __tpy_init() {

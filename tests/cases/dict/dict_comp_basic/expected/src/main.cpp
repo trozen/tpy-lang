@@ -8,14 +8,14 @@ namespace tpyapp::main {
 void main() {
     // # Range to dict
     // squares: dict[Int32, Int32] = {x: x * x for x in range(5)}
-    ::tpy::ordered_map<int32_t, int32_t> squares = [&]() {
+    ::tpy::ordered_map<int32_t, int32_t> squares = ({
         ::tpy::ordered_map<int32_t, int32_t> __result;
         const int32_t __stop_0 = 5;
         for (int32_t x = 0; x < __stop_0; ++x) {
             __result.insert_or_assign(x, (::tpy::mul_check<int32_t>(x, x)));
         }
-        return __result;
-    }();
+        __result;
+    });
     // for k in squares:
     auto& __obj_1 = squares;
     auto __beg_1 = __obj_1.begin();
@@ -29,7 +29,7 @@ void main() {
     // names: list[str] = ["alice", "bob", "charlie"]
     std::vector<std::string> names = {"alice", "bob", "charlie"};
     // name_lens: dict[str, Int32] = {n: len(n) for n in names}
-    ::tpy::ordered_map<std::string, int32_t> name_lens = [&]() {
+    ::tpy::ordered_map<std::string, int32_t> name_lens = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
         auto& __obj_2 = names;
         auto __beg_2 = __obj_2.begin();
@@ -38,8 +38,8 @@ void main() {
             const std::string& n = *__beg_2;
             __result.insert_or_assign(n, ::tpy::__len__(n));
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(name_lens["alice"])
     std::cout << ::tpy::__getitem__(name_lens, "alice") << "\n";
     // print(name_lens["bob"])
@@ -50,7 +50,7 @@ void main() {
     // src: dict[str, Int32] = {"a": 1, "b": 2}
     ::tpy::ordered_map<std::string, int32_t> src = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
     // copy: dict[str, Int32] = {k: v for k, v in src.items()}
-    ::tpy::ordered_map<std::string, int32_t> copy = [&]() {
+    ::tpy::ordered_map<std::string, int32_t> copy = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
         auto __obj_3 = ::tpy::dict_items(src);
         auto __beg_3 = __obj_3.begin();
@@ -61,23 +61,23 @@ void main() {
             int32_t v = std::get<1>(__tup_1);
             __result.insert_or_assign(k, v);
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(copy["a"])
     std::cout << ::tpy::__getitem__(copy, "a") << "\n";
     // print(copy["b"])
     std::cout << ::tpy::__getitem__(copy, "b") << "\n";
     // # 2-arg range
     // r2: dict[Int32, Int32] = {x: x + 10 for x in range(2, 5)}
-    ::tpy::ordered_map<int32_t, int32_t> r2 = [&]() {
+    ::tpy::ordered_map<int32_t, int32_t> r2 = ({
         ::tpy::ordered_map<int32_t, int32_t> __result;
         const int32_t __start_4 = 2;
         const int32_t __stop_5 = 5;
         for (int32_t x = __start_4; x < __stop_5; ++x) {
             __result.insert_or_assign(x, (::tpy::add_check<int32_t>(x, 10)));
         }
-        return __result;
-    }();
+        __result;
+    });
     // for k in r2:
     auto& __obj_6 = r2;
     auto __beg_6 = __obj_6.begin();

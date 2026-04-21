@@ -10,7 +10,7 @@ void main() {
     // items: list[Int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
     // wide: set[Int64] = {x for x in items}
-    ::tpy::ordered_set<int64_t> wide = [&]() {
+    ::tpy::ordered_set<int64_t> wide = ({
         ::tpy::ordered_set<int64_t> __result;
         auto& __obj_0 = items;
         auto __beg_0 = __obj_0.begin();
@@ -19,8 +19,8 @@ void main() {
             int32_t x = *__beg_0;
             __result.insert(static_cast<int64_t>(x));
         }
-        return __result;
-    }();
+        __result;
+    });
     // for v in wide:
     auto& __obj_1 = wide;
     auto __beg_1 = __obj_1.begin();
@@ -32,14 +32,14 @@ void main() {
     }
     // # Int32 -> int (BigInt) widening via annotation
     // big: set[int] = {x * x for x in range(4)}
-    ::tpy::ordered_set<::tpy::BigInt> big = [&]() {
+    ::tpy::ordered_set<::tpy::BigInt> big = ({
         ::tpy::ordered_set<::tpy::BigInt> __result;
         const int32_t __stop_2 = 4;
         for (int32_t x = 0; x < __stop_2; ++x) {
             __result.insert(::tpy::BigInt((::tpy::mul_check<int32_t>(x, x))));
         }
-        return __result;
-    }();
+        __result;
+    });
     // for v in big:
     auto& __obj_3 = big;
     auto __beg_3 = __obj_3.begin();

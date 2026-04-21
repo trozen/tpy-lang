@@ -37,7 +37,7 @@ struct Seconds {
     }
 
     // def __json_encode__(self, writer: JsonWriter) -> None:
-    void __json_encode__(::tpystd::tplib::json::JsonWriter& writer) const {
+    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& writer) const {
         // writer.write_int32(self._value)
         writer.write_int32(this->_value);
     }
@@ -45,7 +45,7 @@ struct Seconds {
     // @staticmethod
     // @error_return(JsonError)
     // def __json_decode__(reader: JsonReader) -> Own[Seconds]:
-    static std::expected<Seconds, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::JsonReader& reader) {
+    static std::expected<Seconds, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& reader) {
         // raw = reader.read_int()
         int64_t raw;
         {
@@ -86,7 +86,7 @@ struct Event {
         return std::format("Event(name={}, when={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->when));
     }
 
-    static std::expected<Event, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::JsonReader& __reader) {
+    static std::expected<Event, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
             auto __try_tmp_2 = __reader.read_object_start();
             if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
@@ -134,7 +134,7 @@ struct Event {
     }
 
     static Event from_json(std::string_view __s) {
-        ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
+        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Event> __result = std::nullopt;
         {
             std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_8;
@@ -157,11 +157,11 @@ struct Event {
     }
 
     static std::expected<Event, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s) {
-        ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
+        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         return Event::__json_decode__(__reader);
     }
 
-    void __json_encode__(::tpystd::tplib::json::JsonWriter& __writer) const {
+    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
         __writer.object_start();
         __writer.key("name");
         __writer.write_str(this->name);
@@ -171,7 +171,7 @@ struct Event {
     }
 
     std::string to_json(int32_t indent = 0) const {
-        ::tpystd::tplib::json::JsonWriter __writer = ::tpystd::tplib::json::JsonWriter(indent);
+        ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
         this->__json_encode__(__writer);
         return __writer.finish();
     }
@@ -265,7 +265,7 @@ struct Schedule {
         return std::format("Schedule(events={}, default_duration={}, deadline={})", ::tpy::list_to_str(this->events), ::tpy::__repr__(this->default_duration), ::tpy::__repr__(this->deadline));
     }
 
-    static std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::JsonReader& __reader) {
+    static std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
             auto __try_tmp_15 = __reader.read_object_start();
             if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(__try_tmp_15.error());
@@ -338,7 +338,7 @@ struct Schedule {
     }
 
     static Schedule from_json(std::string_view __s) {
-        ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
+        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Schedule> __result = std::nullopt;
         {
             std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_25;
@@ -361,11 +361,11 @@ struct Schedule {
     }
 
     static std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s) {
-        ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
+        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         return Schedule::__json_decode__(__reader);
     }
 
-    void __json_encode__(::tpystd::tplib::json::JsonWriter& __writer) const {
+    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
         __writer.object_start();
         __writer.key("events");
         __writer.array_start();
@@ -391,7 +391,7 @@ struct Schedule {
     }
 
     std::string to_json(int32_t indent = 0) const {
-        ::tpystd::tplib::json::JsonWriter __writer = ::tpystd::tplib::json::JsonWriter(indent);
+        ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
         this->__json_encode__(__writer);
         return __writer.finish();
     }

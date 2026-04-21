@@ -9,23 +9,29 @@ from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, TypeParamRef, NamedType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType,
-    ArrayType, SpanType, ListType, PendingListType, PendingViewType, GenExprType, CopyIterType, OwnIterType, SelfType, OptionalType, UnionType,
+    TpyType, TypeParamRef, NominalType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType,
+    make_array, make_list, PendingListType, PendingViewType, GenExprType, SelfType, OptionalType, UnionType,
     TupleType,
-    Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
-    NoneType, VoidType, FnType, CallableType,
+    IntLiteralType, TypeParamKind, BIGINT,
+    NoneType, VoidType, CallableType,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
-    public_module_name, unwrap_ref_type, RefType,
+    unwrap_ref_type, RefType,
     is_callable_type, is_integer_type, is_void_like_type,
 )
 from ..coercions import resolve_coercion, CoercionContext
 from .diagnostics import SemanticError
 from .. import qnames
+from ..type_def_registry import (
+    is_copy_iter, is_own_iter, is_array, is_span, is_list,
+    get_type_def, find_factory_by_simple_name,
+)
+from ..parse import TpyFunction
+from tpyc import modules as builtin_modules
+from .overloads import resolve_overload
 
 if TYPE_CHECKING:
     from ..parse import SourceLocation
     from .context import SemanticContext
-    from tpyc import modules as builtin_modules
 
 
 def _contains_type_param_ref(types: tuple[TpyType, ...]) -> bool:
@@ -46,106 +52,70 @@ class TypeOperations:
         self.ctx = ctx
 
     def resolve_type(self, typ: TpyType, *, protocols_only: bool = False) -> TpyType:
-        """Resolve a type, setting is_protocol flag on NamedType when needed.
+        """Sema-local type normalization.
 
-        During parsing, NamedType may be created with is_protocol=False for
-        names that are actually protocols. This method sets the flag correctly.
-        Also converts NamedType("T") to TypeParamRef("T") when T is a type
-        parameter in the current function or record scope (unless protocols_only).
+        Runs on already-resolved `TpyType` values from the parser-side
+        `TypeResolver` and applies the transformations that depend on
+        sema state:
+
+        - Bare `NominalType` matching a type parameter in the current
+          function / record scope becomes `TypeParamRef` (parser emits
+          `NominalType("T")` because type-param scope is scope-local
+          to sema, not parser).
+        - Compile-time-only aliases (e.g. `FStr` singleton) expand to
+          their target type.
+        - Structural wrappers (`PtrType`, `OwnType`, ...) recurse into
+          their inner types so both transformations above reach deeply
+          nested positions.
 
         Args:
-            protocols_only: If True, only resolve protocol flags -- skip
-                TypeParamRef conversion. Used during record registration when
-                type parameter scope is not yet active.
+            protocols_only: If True, skip TypeParamRef conversion.
+                Used during record registration when the type-parameter
+                scope is not yet active.
         """
-        if isinstance(typ, NamedType):
-            # Convert bare NamedType to TypeParamRef when it matches a type
-            # parameter name in scope (method-level type params in annotations
-            # are parsed as NamedType but should be TypeParamRef).
+        if isinstance(typ, NominalType):
             if not protocols_only and not typ.type_args and not typ.is_protocol:
-                from ..parse import TpyFunction
                 func = self.ctx.func.current_function
                 if isinstance(func, TpyFunction) and typ.name in func.type_params:
                     bound = func.type_param_bounds.get(typ.name)
                     return TypeParamRef(typ.name, bound=bound)
                 if typ.name in (self.ctx.record_ctx.type_params or []):
                     return TypeParamRef(typ.name)
-            # Resolve compile-time-only type aliases (e.g. FStr -> FStrType).
-            # Registered at import time for builtin types with no C++ representation.
             if not typ.type_args and self.ctx.registry.type_aliases:
                 alias = self.ctx.registry.get_type_alias(typ.name)
                 if alias is not None and alias.is_compile_time_only():
                     return alias
-            # Check if this should have is_protocol set.
-            # Only upgrade False -> True, never downgrade (parser may know about
-            # same-file protocols not yet in the sema registry).
-            protocol_info = self.ctx.registry.get_protocol(typ.name)
-            # Generic protocols require type arguments (e.g., Sequence[T] not bare Sequence)
-            if (protocol_info and protocol_info.type_params
-                    and not typ.type_args and not protocols_only):
-                from ..sema.diagnostics import SemanticError
-                raise SemanticError(
-                    f"Generic protocol '{typ.name}' requires type arguments: "
-                    f"{typ.name}[{', '.join(protocol_info.type_params)}]")
-            resolved_is_protocol = typ.is_protocol or (protocol_info is not None)
-            resolved_is_dynamic = bool(protocol_info and protocol_info.is_dynamic)
-            # Set _module_qname for protocols from their ProtocolInfo.module
-            resolved_qname = typ._module_qname
-            if resolved_is_protocol and not resolved_qname and protocol_info and protocol_info.module:
-                resolved_qname = f"{public_module_name(protocol_info.module)}.{typ.name}"
-            needs_flag_update = (typ.is_protocol != resolved_is_protocol
-                                 or typ.is_dynamic_protocol != resolved_is_dynamic
-                                 or typ._module_qname != resolved_qname)
-            # Recursively resolve type arguments
             if typ.type_args:
                 new_args = tuple(
                     self.resolve_type(arg, protocols_only=protocols_only) if isinstance(arg, TpyType) else arg
                     for arg in typ.type_args
                 )
-                # Identity check: NamedType.__eq__ excludes is_dynamic_protocol
-                # (compare=False), so == would miss flag-only changes.
-                args_changed = any(
-                    new is not old for new, old in zip(new_args, typ.type_args)
-                )
-                if args_changed or needs_flag_update:
-                    if needs_flag_update:
-                        # Protocol/qname flag changed -- only for user records/protocols
-                        return NamedType(typ.name, new_args, resolved_is_protocol,
-                                         resolved_qname, resolved_is_dynamic)
-                    # Only type_args changed -- use with_inner_types to preserve subclass
+                if any(new is not old for new, old in zip(new_args, typ.type_args)):
                     new_inner = tuple(a for a in new_args if isinstance(a, TpyType))
                     return typ.with_inner_types(new_inner)
-            elif needs_flag_update:
-                return NamedType(typ.name, typ.type_args, resolved_is_protocol,
-                                 resolved_qname, resolved_is_dynamic)
-        elif isinstance(typ, PtrType):
-            resolved_pointee = self.resolve_type(typ.pointee, protocols_only=protocols_only)
-            if resolved_pointee is not typ.pointee:
-                return PtrType(resolved_pointee, is_readonly=typ.is_readonly)
-        elif isinstance(typ, OwnType):
-            resolved_wrapped = self.resolve_type(typ.wrapped, protocols_only=protocols_only)
-            if resolved_wrapped is not typ.wrapped:
-                return OwnType(resolved_wrapped)
-        elif isinstance(typ, ReadonlyType):
-            resolved_wrapped = self.resolve_type(typ.wrapped, protocols_only=protocols_only)
-            if resolved_wrapped is not typ.wrapped:
-                return ReadonlyType(resolved_wrapped)
-        elif isinstance(typ, AutoReadonlyType):
-            resolved_wrapped = self.resolve_type(typ.wrapped, protocols_only=protocols_only)
-            if resolved_wrapped is not typ.wrapped:
-                return AutoReadonlyType(resolved_wrapped)
-        elif isinstance(typ, AutoOwnType):
-            resolved_wrapped = self.resolve_type(typ.wrapped, protocols_only=protocols_only)
-            if resolved_wrapped is not typ.wrapped:
-                return AutoOwnType(resolved_wrapped)
-        elif isinstance(typ, OptionalType):
-            resolved_inner = self.resolve_type(typ.inner, protocols_only=protocols_only)
-            if resolved_inner is not typ.inner:
-                return OptionalType(resolved_inner, force_pointer_repr=typ.uses_pointer_repr())
-        elif isinstance(typ, UnionType):
-            resolved_members = tuple(self.resolve_type(m, protocols_only=protocols_only) for m in typ.members)
-            if any(new is not old for new, old in zip(resolved_members, typ.members)):
-                return UnionType(resolved_members)
+            return typ
+        if isinstance(typ, PtrType):
+            resolved = self.resolve_type(typ.pointee, protocols_only=protocols_only)
+            return PtrType(resolved, is_readonly=typ.is_readonly) if resolved is not typ.pointee else typ
+        if isinstance(typ, (OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType)):
+            resolved = self.resolve_type(typ.wrapped, protocols_only=protocols_only)
+            return type(typ)(resolved) if resolved is not typ.wrapped else typ
+        if isinstance(typ, OptionalType):
+            resolved = self.resolve_type(typ.inner, protocols_only=protocols_only)
+            if resolved is typ.inner:
+                return typ
+            # Preserve only explicit `force_pointer_repr` (set by generic
+            # substitution).  Do NOT snapshot `typ.uses_pointer_repr()`
+            # here -- it was computed against the unresolved inner and
+            # would freeze the wrong decision when substitution turns
+            # the inner into a value-typed enum.
+            return OptionalType(resolved, force_pointer_repr=typ.force_pointer_repr)
+        if isinstance(typ, UnionType):
+            resolved = tuple(self.resolve_type(m, protocols_only=protocols_only) for m in typ.members)
+            return UnionType(resolved) if any(a is not b for a, b in zip(resolved, typ.members)) else typ
+        if isinstance(typ, TupleType):
+            resolved = tuple(self.resolve_type(e, protocols_only=protocols_only) for e in typ.element_types)
+            return TupleType(resolved) if any(a is not b for a, b in zip(resolved, typ.element_types)) else typ
         return typ
 
     def validate_type(
@@ -158,7 +128,7 @@ class TypeOperations:
             typ: The type to validate.
             allow_type_param_ref: If True, TypeParamRef is allowed (for generic class definitions).
             loc: Optional source location for error messages.
-            allow_forward_ref: If True, unknown NamedType records are allowed (for class registration).
+            allow_forward_ref: If True, unknown NominalType records are allowed (for class registration).
         """
         if isinstance(typ, TypeParamRef):
             if not allow_type_param_ref:
@@ -166,36 +136,73 @@ class TypeOperations:
             if typ.kind == TypeParamKind.INT:
                 raise SemanticError(f"Integer type parameter '{typ.name}' cannot be used as a type annotation", loc)
             return
-        if isinstance(typ, NamedType) and typ.is_record:
+        if isinstance(typ, NominalType) and typ.is_record:
             if typ.qualified_name() == "builtins.type":
                 raise SemanticError("'type' cannot be used as a type annotation", loc)
+            # Unified arity/validity check. See docs/ARCHITECTURE.md:
+            # validity comes from qname/TypeDef/factory/record registry, not
+            # from `_module_qname != None`. Prefer user-record info (may
+            # shadow builtin names), then fall through to the factory
+            # (covers bare-name NominalType like def f(x: list) that the
+            # parser leaves without `_module_qname`).
             record_info = self.ctx.registry.get_record_for_type(typ)
-            if not record_info:
-                if self.ctx.registry.get_enum(typ.name) is not None:
-                    pass  # imported enum -- NamedType will be resolved to EnumType
-                elif not allow_forward_ref:
-                    raise SemanticError(f"Unknown type: {typ.name}", loc)
-                pass
-            elif typ.type_args:
-                # Validate type arguments for generic record
-                if not record_info.is_generic():
-                    raise SemanticError(f"Record '{typ.name}' is not generic, but type arguments were provided", loc)
-                if len(typ.type_args) != len(record_info.type_params):
+            kinds: tuple | None = None
+            if record_info is None:
+                # Primary path: resolve via the fully qualified name the type
+                # already knows. Parser leaves some bare-name builtins without
+                # _module_qname (e.g. `def f(x: list)`), so qualified_name()
+                # returns None or just the simple name; for those we scan
+                # `builtins` + `tpy` by simple name as the factory-aware
+                # fallback. Either way a single TypeDef lookup wins.
+                qn = typ.qualified_name()
+                td = get_type_def(qn) if qn else None
+                if td is None or td.type_factory is None:
+                    td = find_factory_by_simple_name(typ.name)
+                if td is not None and td.type_factory is not None:
+                    kinds = td.param_kinds
+            if record_info is not None:
+                if typ.type_args:
+                    if not record_info.is_generic():
+                        raise SemanticError(f"Record '{typ.name}' is not generic, but type arguments were provided", loc)
+                    if len(typ.type_args) != len(record_info.type_params):
+                        raise SemanticError(
+                            f"Record '{typ.name}' expects {len(record_info.type_params)} type arguments, "
+                            f"got {len(typ.type_args)}",
+                            loc,
+                        )
+                    self.validate_record_type_args(typ, record_info, allow_type_param_ref, loc)
+                elif record_info.is_generic():
                     raise SemanticError(
-                        f"Record '{typ.name}' expects {len(record_info.type_params)} type arguments, "
-                        f"got {len(typ.type_args)}",
+                        f"Generic record '{typ.name}' requires type arguments: "
+                        f"{typ.name}[{', '.join(record_info.type_params)}]",
                         loc,
                     )
-                # Validate each type argument matches its expected kind
-                self.validate_record_type_args(typ, record_info, allow_type_param_ref, loc)
-            elif record_info.is_generic():
-                # Generic record used without type arguments
-                raise SemanticError(
-                    f"Generic record '{typ.name}' requires type arguments: "
-                    f"{typ.name}[{', '.join(record_info.type_params)}]",
-                    loc,
-                )
-            # Container element validation (ListType, ArrayType, SpanType are NamedType subclasses)
+            elif kinds is not None:
+                # Factory-only builtin: primitive singleton (empty kinds) or
+                # generic container (list, dict, set, Array, Span, ...). Arity
+                # mismatch -- including the bare-generic case -- is an error.
+                if len(kinds) != len(typ.type_args):
+                    if not typ.type_args and kinds:
+                        raise SemanticError(
+                            f"Generic type '{typ.name}' requires "
+                            f"{len(kinds)} type argument{'s' if len(kinds) != 1 else ''}",
+                            loc,
+                        )
+                    if typ.type_args and not kinds:
+                        raise SemanticError(
+                            f"Type '{typ.name}' is not generic, but type arguments were provided",
+                            loc,
+                        )
+                    raise SemanticError(
+                        f"Type '{typ.name}' expects {len(kinds)} type argument"
+                        f"{'s' if len(kinds) != 1 else ''}, got {len(typ.type_args)}",
+                        loc,
+                    )
+            elif self.ctx.registry.get_enum(typ.name) is not None:
+                pass  # imported enum -- NominalType will be resolved to EnumType
+            elif not allow_forward_ref:
+                raise SemanticError(f"Unknown type: {typ.name}", loc)
+            # Container element validation (containers are NominalType + TypeDef)
             elem_type = typ.get_element_type()
             if elem_type is not None:
                 self.validate_type(elem_type, allow_type_param_ref, loc)
@@ -255,13 +262,13 @@ class TypeOperations:
                 )
 
     def validate_record_type_args(
-        self, typ: NamedType, record_info: RecordInfo, allow_type_param_ref: bool = False,
+        self, typ: NominalType, record_info: RecordInfo, allow_type_param_ref: bool = False,
         loc: SourceLocation | None = None,
     ) -> None:
         """Validate that type arguments match their expected kinds (TYPE vs INT).
 
         Args:
-            typ: The NamedType with type_args to validate.
+            typ: The NominalType with type_args to validate.
             record_info: The RecordInfo with type_param_kinds.
             allow_type_param_ref: If True, allow TypeParamRef as valid types.
             loc: Optional source location for error messages.
@@ -325,7 +332,7 @@ class TypeOperations:
                 replacement = subst[typ.name]
                 if isinstance(replacement, int):
                     # INT type params: keep as TypeParamRef for expression contexts (codegen uses the name)
-                    # Type-level substitution for ArrayType etc. is handled below
+                    # Type-level substitution for Array etc. is handled below
                     return typ
                 return replacement
             raise SemanticError(f"Unknown type parameter '{typ.name}'")
@@ -338,22 +345,23 @@ class TypeOperations:
             if new_inner.is_value_type():
                 return OptionalType(new_inner, force_pointer_repr=True)
             return OptionalType(new_inner)
-        # Special handling for ArrayType: substitute size if it's a TypeParamRef
-        if isinstance(typ, ArrayType):
-            new_elem = self.substitute_type_params(typ.element_type, subst)
-            new_size = typ.size
-            if isinstance(typ.size, TypeParamRef) and typ.size.name in subst:
-                new_size = subst[typ.size.name]
-            if new_elem != typ.element_type or new_size != typ.size:
-                return ArrayType(new_elem, new_size)
+        # Special handling for Array: substitute size if it's a TypeParamRef
+        if is_array(typ):
+            elem, size = typ.type_args[0], typ.type_args[1]
+            new_elem = self.substitute_type_params(elem, subst)
+            new_size = size
+            if isinstance(size, TypeParamRef) and size.name in subst:
+                new_size = subst[size.name]
+            if new_elem != elem or new_size != size:
+                return make_array(new_elem, new_size)
             return typ
-        # NamedType (user records and module-defined generics like
+        # NominalType (user records and module-defined generics like
         # UninitArrayStorage[T, N]) can have mixed TpyType/int type_args.
         # map_inner_types operates on TpyType -> TpyType, so it can't
-        # substitute int-valued TypeParamRefs.  Same reason ArrayType above
-        # needs direct handling.  Exact type check avoids catching NamedType
-        # subclasses (ListType, DictType, etc.) which don't have int args.
-        if type(typ) is NamedType and typ.type_args:
+        # substitute int-valued TypeParamRefs.  Same reason as Array above
+        # needs direct handling.  Exact type check avoids catching NominalType
+        # subclasses which don't have int args.
+        if type(typ) is NominalType and typ.type_args:
             new_args: list[TpyType | int] = []
             changed = False
             for arg in typ.type_args:
@@ -368,7 +376,7 @@ class TypeOperations:
                 else:
                     new_args.append(arg)  # already-concrete int value
             if changed:
-                return NamedType(typ.name, tuple(new_args), typ.is_protocol,
+                return NominalType(typ.name, tuple(new_args), typ.is_protocol,
                                  typ._module_qname, typ.is_dynamic_protocol)
             return typ
         # Use map_inner_types for types that have inner types
@@ -382,17 +390,15 @@ class TypeOperations:
     def build_type_substitution(self, record_type: TpyType) -> dict[str, TpyType | int]:
         """Build a type parameter substitution map for a generic record instantiation.
 
-        Works for all types: user records and module types (NamedType) use
-        RecordInfo.type_params + type_args; non-NamedType builtins (ListType,
-        ArrayType, etc.) use extract_type_params from the module system.
+        Works for all types: user records and module types (NominalType) use
+        RecordInfo.type_params + type_args; non-NominalType builtins (
+        etc.) use extract_type_params from the module system.
 
         Returns:
             Mapping from type parameter names to concrete types or integers.
             For example: {"T": Int32, "N": 8} for Matrix[Int32, 8].
         """
-        from tpyc import modules as builtin_modules
-
-        if isinstance(record_type, NamedType):
+        if isinstance(record_type, NominalType):
             record_info = self.ctx.registry.get_record_for_type(record_type)
             if not record_info or not record_info.is_generic():
                 return {}
@@ -432,25 +438,25 @@ class TypeOperations:
             return self.is_type_param_ref(typ.wrapped)
         if isinstance(typ, ReadonlyType):
             return self.is_type_param_ref(typ.wrapped)
-        if isinstance(typ, ArrayType):
-            if self.is_type_param_ref(typ.element_type):
+        if is_array(typ):
+            if self.is_type_param_ref(typ.type_args[0]):
                 return True
-            return isinstance(typ.size, TypeParamRef)
-        if isinstance(typ, (ListType, SpanType)):
-            return self.is_type_param_ref(typ.element_type)
+            return isinstance(typ.type_args[1], TypeParamRef)
+        if is_list(typ):
+            return self.is_type_param_ref(typ.type_args[0])
         return False
 
     def is_forwarded_type_param(self, typ: TpyType, type_params: list[str]) -> bool:
         """Check if a type references one of the given type parameters.
 
-        At parse time, type parameters in base class type args appear as NamedType
-        (e.g., Container[T] has T as NamedType("T"), not TypeParamRef("T")).
+        At parse time, type parameters in base class type args appear as NominalType
+        (e.g., Container[T] has T as NominalType("T"), not TypeParamRef("T")).
         This function checks for both forms.
         """
         if isinstance(typ, TypeParamRef):
             return typ.name in type_params
-        if isinstance(typ, NamedType):
-            # A NamedType with no type_args and name matching a type param is a forwarded param
+        if isinstance(typ, NominalType):
+            # A NominalType with no type_args and name matching a type param is a forwarded param
             if not typ.type_args and typ.name in type_params:
                 return True
             # Also check nested type args (e.g., Container[list[T]] or Parent[Sequence[T]])
@@ -471,7 +477,6 @@ class TypeOperations:
         Checks current function's type_param_bounds first, then record's.
         Returns None if no bound is declared.
         """
-        from ..parse import TpyFunction
         # Check current function's type param bounds
         if (self.ctx.func.current_function and isinstance(self.ctx.func.current_function, TpyFunction)
                 and type_param_name in self.ctx.func.current_function.type_param_bounds):
@@ -494,7 +499,6 @@ class TypeOperations:
         """
         # RefType wrapper on param: strip Ref from param side and also strip
         # from arg if present (Ref[T] param accepts both T and Ref[T] args).
-        from ..typesys import RefType, unwrap_ref_type
         if isinstance(param_type, RefType):
             return self.match_type_with_inference(param_type.wrapped, unwrap_ref_type(arg_type), inferred)
         # Ref on arg side is preserved for type param inference -- this lets
@@ -545,11 +549,15 @@ class TypeOperations:
                 param_type.pointee, arg_type.pointee, inferred
             )
 
-        # ListType with nested TypeParamRef (e.g., list[T])
-        if isinstance(param_type, ListType):
-            if isinstance(arg_type, (ListType, PendingListType)):
+        # list[T] with nested TypeParamRef (e.g., list[T])
+        if is_list(param_type):
+            if is_list(arg_type):
                 return self.match_type_with_inference(
-                    param_type.element_type, arg_type.element_type, inferred
+                    param_type.type_args[0], arg_type.type_args[0], inferred
+                )
+            if isinstance(arg_type, PendingListType):
+                return self.match_type_with_inference(
+                    param_type.type_args[0], arg_type.element_type, inferred
                 )
             return False
 
@@ -564,26 +572,26 @@ class TypeOperations:
                 for p, a in zip(param_type.element_types, arg_type.element_types)
             )
 
-        # ArrayType with TypeParamRef element or size (e.g., Array[T, N])
-        if isinstance(param_type, ArrayType):
+        # Array with TypeParamRef element or size (e.g., Array[T, N])
+        if is_array(param_type):
             return self._match_array_with_inference(param_type, arg_type, inferred)
 
-        # SpanType: recurse on element types directly so that readonly propagates into T.
+        # Span: recurse on element types directly so that readonly propagates into T.
         # Span[T] accepts both Span[X] (T=X) and Span[readonly[X]] (T=readonly[X]).
-        # This must come before the NamedType check because SpanType is a NamedType subclass,
+        # Done explicitly (not via the generic NominalType branch) so that readonly
         # and _match_record_with_inference would reject by name if it treated spans differently.
-        if isinstance(param_type, SpanType):
-            if isinstance(arg_type, SpanType):
+        if is_span(param_type):
+            if is_span(arg_type):
                 return self.match_type_with_inference(
-                    param_type.element_type, arg_type.element_type, inferred
+                    param_type.type_args[0], arg_type.type_args[0], inferred
                 )
             return False
 
-        # NamedType (record) with type args (e.g., Box[T] nested)
-        if isinstance(param_type, NamedType) and param_type.is_record and param_type.type_args:
+        # NominalType (record) with type args (e.g., Box[T] nested)
+        if isinstance(param_type, NominalType) and param_type.is_record and param_type.type_args:
             return self._match_record_with_inference(param_type, arg_type, inferred)
 
-        # (PtrType handled above, before ListType)
+        # (PtrType handled above, before list)
 
         # Optional[T] -- unwrap and recurse (bare T can coerce to Optional[T])
         if isinstance(param_type, OptionalType):
@@ -592,7 +600,7 @@ class TypeOperations:
                 param_type.inner, inner_arg, inferred
             )
 
-        # FnType/CallableType with TypeParamRef in param/return (e.g. Fn[[T], U])
+        # CallableType with TypeParamRef in param/return (e.g. Fn[[T], U] or Callable[[T], U])
         if is_callable_type(param_type):
             if not is_callable_type(arg_type):
                 return False
@@ -634,14 +642,13 @@ class TypeOperations:
         inferred: dict[str, TpyType],
     ) -> bool:
         """Match a protocol with TypeParamRef type_args against arg_type (e.g., NativeIterable[T], Iterator[T])."""
-        from tpyc import modules as builtin_modules
-
         # GenExprType satisfies Iterable[T] and Iterator[T];
-        # CopyIterType/OwnIterType satisfy Iterable[T] only.
+        # CopyIter/OwnIter satisfy Iterable[T] only.
         if ((isinstance(arg_type, GenExprType) and param_type.qualified_name() in (qnames.ITERABLE, qnames.ITERATOR))
-                or (isinstance(arg_type, (CopyIterType, OwnIterType)) and param_type.qualified_name() == qnames.ITERABLE)):
+                or ((is_copy_iter(arg_type) or is_own_iter(arg_type)) and param_type.qualified_name() == qnames.ITERABLE)):
             if len(param_type.type_args) == 1:
-                return self.match_type_with_inference(param_type.type_args[0], arg_type.element_type, inferred)
+                elem = arg_type.element_type if isinstance(arg_type, GenExprType) else arg_type.type_args[0]
+                return self.match_type_with_inference(param_type.type_args[0], elem, inferred)
             return True
 
         protocol_name = param_type.name
@@ -698,7 +705,7 @@ class TypeOperations:
             return None
 
         # Protocol-to-protocol: arg is a protocol with concrete type args
-        if is_protocol_type(arg_type) and isinstance(arg_type, NamedType) and arg_type.type_args:
+        if is_protocol_type(arg_type) and isinstance(arg_type, NominalType) and arg_type.type_args:
             arg_protocol_info = self.ctx.registry.get_protocol(arg_type.name)
             if arg_protocol_info is not None:
                 return self._infer_protocol_type_arg_from_protocol(
@@ -709,7 +716,7 @@ class TypeOperations:
             return None
 
         type_subst: dict[str, TpyType] = {}
-        if record.type_params and isinstance(arg_type, NamedType) and arg_type.type_args:
+        if record.type_params and isinstance(arg_type, NominalType) and arg_type.type_args:
             type_subst = dict(zip(record.type_params, arg_type.type_args))
 
         def _substitute(t: TpyType) -> TpyType:
@@ -737,7 +744,7 @@ class TypeOperations:
 
     def _infer_protocol_type_arg_from_protocol(
         self,
-        arg_type: NamedType,
+        arg_type: NominalType,
         arg_protocol: 'ProtocolInfo',
         target_protocol: 'ProtocolInfo',
     ) -> TpyType | None:
@@ -778,40 +785,40 @@ class TypeOperations:
 
     def _match_array_with_inference(
         self,
-        param_type: ArrayType,
+        param_type: NominalType,
         arg_type: TpyType,
         inferred: dict[str, TpyType],
     ) -> bool:
-        """Match ArrayType with TypeParamRef element or size (e.g., Array[T, N])."""
-        if not isinstance(arg_type, ArrayType):
+        """Match Array with TypeParamRef element or size (e.g., Array[T, N])."""
+        if not is_array(arg_type):
             return False
-        if not self.match_type_with_inference(
-            param_type.element_type, arg_type.element_type, inferred
-        ):
+        p_elem, p_size = param_type.type_args[0], param_type.type_args[1]
+        a_elem, a_size = arg_type.type_args[0], arg_type.type_args[1]
+        if not self.match_type_with_inference(p_elem, a_elem, inferred):
             return False
         # Match sizes
-        if isinstance(param_type.size, TypeParamRef):
-            if isinstance(arg_type.size, int):
-                param_name = param_type.size.name
+        if isinstance(p_size, TypeParamRef):
+            if isinstance(a_size, int):
+                param_name = p_size.name
                 if param_name in inferred:
-                    if inferred[param_name] != arg_type.size:
+                    if inferred[param_name] != a_size:
                         return False
                 else:
-                    inferred[param_name] = arg_type.size
+                    inferred[param_name] = a_size
                 return True
-            elif isinstance(arg_type.size, TypeParamRef):
-                return param_type.size.name == arg_type.size.name
+            elif isinstance(a_size, TypeParamRef):
+                return p_size.name == a_size.name
         else:
-            return param_type.size == arg_type.size
+            return p_size == a_size
 
     def _match_record_with_inference(
         self,
-        param_type: NamedType,
+        param_type: NominalType,
         arg_type: TpyType,
         inferred: dict[str, TpyType],
     ) -> bool:
-        """Match a generic record NamedType against arg_type (e.g., Box[T])."""
-        if not (isinstance(arg_type, NamedType) and arg_type.is_record and arg_type.name == param_type.name):
+        """Match a generic record NominalType against arg_type (e.g., Box[T])."""
+        if not (isinstance(arg_type, NominalType) and arg_type.is_record and arg_type.name == param_type.name):
             return False
         if len(param_type.type_args) != len(arg_type.type_args):
             return False
@@ -890,9 +897,9 @@ class TypeOperations:
             if arg_idx >= len(arg_types):
                 break
             ptype = p.type
-            if p.is_variadic and isinstance(unwrap_ref_type(ptype), SpanType):
+            if p.is_variadic and is_span(unwrap_ref_type(ptype)):
                 # Variadic param: match each remaining arg against element type
-                elem_type = unwrap_ref_type(ptype).inner_element_type
+                elem_type = unwrap_readonly(unwrap_ref_type(ptype).type_args[0])
                 while arg_idx < len(arg_types):
                     if not self.match_type_with_inference(elem_type, arg_types[arg_idx], inferred):
                         return None
@@ -924,11 +931,11 @@ class TypeOperations:
             if isinstance(v, IntLiteralType):
                 inferred[k] = self.ctx.default_int_for_literal(v)
             elif isinstance(v, PendingListType):
-                # Resolve PendingListType to ListType
+                # Resolve PendingListType to list
                 elem_type = v.element_type
                 if isinstance(elem_type, IntLiteralType):
                     elem_type = self.ctx.default_int_for_literal(elem_type)
-                inferred[k] = ListType(elem_type)
+                inferred[k] = make_list(elem_type)
 
         # Fill in defaults for unresolved type params
         if func.type_param_defaults:
@@ -988,7 +995,8 @@ class TypeOperations:
             unresolved = [tp for tp in record.type_params if tp not in inferred]
             if unresolved:
                 exp = expected_type.wrapped if isinstance(expected_type, OwnType) else expected_type
-                record_pattern = NamedType(record.name, tuple(TypeParamRef(tp) for tp in record.type_params))
+                record_pattern = NominalType(record.name, tuple(TypeParamRef(tp) for tp in record.type_params),
+                                              _module_qname=record.qualified_name())
                 self.match_type_with_inference(record_pattern, exp, inferred)
 
         # Verify all type params were inferred
@@ -1034,15 +1042,15 @@ class TypeOperations:
                 return None
         return inferred
 
-    def pending_list_matches_array(self, actual: PendingListType, expected: ArrayType) -> bool:
+    def pending_list_matches_array(self, actual: PendingListType, expected: NominalType) -> bool:
         """Check if a pending list literal can match an Array type (including nested arrays)."""
-        if actual.size != expected.size:
+        if actual.size != expected.type_args[1]:
             return False
 
         actual_elem = actual.element_type
-        expected_elem = expected.element_type
+        expected_elem = expected.type_args[0]
 
-        if isinstance(actual_elem, PendingListType) and isinstance(expected_elem, ArrayType):
+        if isinstance(actual_elem, PendingListType) and is_array(expected_elem):
             return self.pending_list_matches_array(actual_elem, expected_elem)
 
         if actual_elem == expected_elem:
@@ -1111,7 +1119,6 @@ class TypeOperations:
 
     def get_deref_target_type(self, typ: TpyType, is_readonly: bool = False) -> TpyType | None:
         """If typ has __deref__(), return resolved return type. Else None."""
-        from .overloads import resolve_overload
         record_info = self.ctx.registry.get_record_for_type(typ)
         if not record_info:
             return None

@@ -34,7 +34,7 @@ void main() {
     std::cout << use_span(::tpy::as_mut_span(nums)) << "\n";
     // # Test with ArrayList[Int32, N] (user/library type)
     // al = ArrayList[Int32, 8]()
-    ::tpystd::tplib::ArrayList<int32_t, 8> al = ::tpystd::tplib::ArrayList<int32_t, 8>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 8> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // al.append(100)
     al.append(100);
     // al.append(200)

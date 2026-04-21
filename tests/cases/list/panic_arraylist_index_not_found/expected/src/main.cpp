@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // a = ArrayList[Int32, 4]()
-    ::tpystd::tplib::ArrayList<int32_t, 4> a = ::tpystd::tplib::ArrayList<int32_t, 4>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 4> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     // a.append(10)
     a.append(10);
     // a.append(20)

@@ -18,18 +18,21 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, TYPE_CHECKING
 
 from .parse import Parser, ParseError, TpyModule, TpyImport, RelativeImportKey, SourceLocation, scan_star_exports
-from .parse.imports import StarImportResolver, NonLiteralAllError
+from .parse.imports import (
+    StarImportResolver, NonLiteralAllError, _PRIVATE_MODULE_PUBLIC_NAMES,
+)
+from .module_names import public_module_name as _public_module_name_of
 from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from .modules.resolver import ModuleResolver, ResolvedModule
-from .modules import get_builtin_module_names, get_type_factory as _get_type_factory
-from .modules.type_resolution import _get_type_factories
+from .modules import get_builtin_module_names
+from .type_def_registry import get_type_def as _get_type_def
 from .codegen_cpp import CodeGenerator, CodeGenOptions
 from .codegen_cpp.context import module_to_cpp_namespace, set_namespace_map, set_include_path_map, get_include_path, clear_namespace_map, module_to_include_path
 from .typesys import TpyType, INT32, INT64, BIGINT, clear_all_compilation_state
 from .macro_loader import MacroRegistry, is_macro_module_source
 
 if TYPE_CHECKING:
-    from .typesys import FunctionInfo, RecordInfo, ProtocolInfo, EnumType, ModuleInfo, ModuleVarInfo
+    from .typesys import FunctionInfo, RecordInfo, ProtocolInfo, NominalType, ModuleInfo, ModuleVarInfo
 
 
 DEFAULT_INT_CHOICES = ("Int32", "Int64", "BigInt")
@@ -747,7 +750,7 @@ class ModuleExports:
     functions: dict[str, list[FunctionInfo]] = field(default_factory=dict)
     records: dict[str, RecordInfo] = field(default_factory=dict)
     protocols: dict[str, ProtocolInfo] = field(default_factory=dict)
-    enums: dict[str, 'EnumType'] = field(default_factory=dict)
+    enums: dict[str, 'NominalType'] = field(default_factory=dict)
     variables: dict[str, TpyType] = field(default_factory=dict)
     type_aliases: dict[str, TpyType] = field(default_factory=dict)
     reexported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
@@ -833,6 +836,12 @@ class Compiler:
         # because RecordInfo objects live in Compiler.modules for the full
         # compiler lifetime.
         self._resolved_self_ref_records: set[int] = set()
+        # Public-surface -> raw-private-submodule reverse map used by
+        # `_canonicalize_import_sources` when a dependent's surface
+        # module (e.g. `typing`) is not yet sema-analyzed but its
+        # private backing module is.  Populated lazily on first call
+        # and invalidated by re-entering `_init_shared`.
+        self._public_to_raw_cache: dict[str, list[str]] | None = None
 
     @classmethod
     def from_source(
@@ -879,7 +888,7 @@ class Compiler:
             resolver_fn = self._make_star_import_resolver() if self.resolver else None
             parser = Parser(decorator_schemas=self._decorator_schemas,
                             star_import_resolver=resolver_fn)
-            ast = parser.parse(source, module_name=entry_name)
+            ast = parser.parse(source, module_name=entry_name, is_entry_point=True)
             self._decorator_schemas.update(parser._decorator_schemas)
             self.modules[entry_name] = CompiledModule(
                 name=entry_name,
@@ -1061,7 +1070,8 @@ class Compiler:
                         star_import_resolver=self._make_star_import_resolver())
         try:
             ast = parser.parse(source, module_name=module_name,
-                               is_package_init=is_package_init)
+                               is_package_init=is_package_init,
+                               is_entry_point=is_entry_point)
         except ParseError as e:
             raise CompileError(e.message, module_name, path, lineno=e.lineno)
         self._decorator_schemas.update(parser._decorator_schemas)
@@ -1311,12 +1321,134 @@ class Compiler:
             result = implicit + [m for m in result if m not in implicit_set]
         self.compile_order = result
 
+    def _canonicalize_import_sources(self, compiled: CompiledModule) -> None:
+        """Rewrite the module's parser import table to defining modules.
+
+        Runs once per module right before `_analyze_module`.  By this
+        point all dependencies (in topological order) have been sema-
+        analyzed, so `self.modules[dep].exports.{records,enums,
+        protocols}` are populated.  Re-export facades share the defining
+        module's RecordInfo / ProtocolInfo / enum NominalType by
+        reference, so a single lookup per imported name suffices --
+        transitive chains are already flattened in the shared objects.
+        Canonical tuples let `TypeResolver` mint `_module_qname` on its
+        first pass.
+        """
+        resolver = compiled.ast.resolver
+        if resolver is None:
+            return
+        resolver.canonicalize_import_table(self._lookup_defining_module)
+
+    def _lookup_defining_module(
+        self, surface_module: str, name: str,
+    ) -> tuple[str, str] | None:
+        """Return the (defining_module, canonical_name) tuple for a
+        re-exported record/enum/protocol, or None if nothing to rewrite.
+
+        The surface module in parser's name_index is the *public*
+        identity (`public_module_name` applied at import time, plus the
+        `_PRIVATE_MODULE_PUBLIC_NAMES` overrides).  When this function
+        runs on module M in topological order, M's private-submodule
+        dependencies (e.g. `tpy._core._types`) are already analyzed
+        but their shared public facade (`tpy`, `typing`) may not be.
+        Fall back to scanning the private submodules that collapse to
+        the surface -- their exports are populated and carry the same
+        RecordInfo / ProtocolInfo / enum NominalType by reference, so
+        the canonical tuple they yield is identical to what the facade
+        would produce later.
+        """
+        result = self._lookup_in_module(surface_module, name)
+        if result is not None:
+            return result
+        for candidate in self._private_submodules_for(surface_module):
+            result = self._lookup_in_module(candidate, name)
+            if result is not None:
+                return result
+        return None
+
+    def _private_submodules_for(self, surface_module: str) -> list[str]:
+        """Enumerate candidate raw private submodules that collapse to
+        `surface_module` under `public_module_name` / the explicit
+        `_PRIVATE_MODULE_PUBLIC_NAMES` overrides. Cached across
+        `_canonicalize_import_sources` calls within a compilation."""
+        if self._public_to_raw_cache is None:
+            self._public_to_raw_cache = self._build_public_to_raw_cache()
+        return self._public_to_raw_cache.get(surface_module, [])
+
+    def _build_public_to_raw_cache(self) -> dict[str, list[str]]:
+        cache: dict[str, list[str]] = {}
+        for raw_name, compiled in self.modules.items():
+            override = _PRIVATE_MODULE_PUBLIC_NAMES.get(raw_name)
+            if override is not None:
+                cache.setdefault(override, []).append(raw_name)
+                continue
+            if "._" not in raw_name:
+                continue
+            cpp_ns = compiled.ast.directives.cpp_namespace
+            public = _public_module_name_of(raw_name, cpp_ns)
+            if public and public != raw_name:
+                cache.setdefault(public, []).append(raw_name)
+        return cache
+
+    def _lookup_in_module(
+        self, module_name: str, name: str,
+    ) -> tuple[str, str] | None:
+        """Resolve a (module, name) against a module's exports. Returns
+        the (defining_module, canonical_name) tuple if `name` is
+        exported as a record / enum / protocol; None otherwise."""
+        compiled = self.modules.get(module_name)
+        if compiled is None:
+            return None
+        exports = compiled.exports
+        if name in exports.records:
+            rinfo = exports.records[name]
+            if rinfo.module:
+                return (rinfo.module, rinfo.name)
+        if name in exports.enums:
+            etype = exports.enums[name]
+            qn = etype._module_qname
+            if qn:
+                # Enum NominalTypes minted in sema.registration.register_enum
+                # (and parser's register_enum_placeholder) always use the
+                # `{module}.{name}` shape; anything else is a bug in the
+                # registration path.
+                dot = qn.rfind('.')
+                assert dot > 0, f"enum qname '{qn}' missing module prefix"
+                return (qn[:dot], qn[dot + 1:])
+        if name in exports.protocols:
+            pinfo = exports.protocols[name]
+            if pinfo.module:
+                return (pinfo.module, pinfo.name)
+        return None
+
+    def _resolve_module_refs(self, compiled: CompiledModule) -> None:
+        """Run the parser-output ref walker on `compiled.ast`.
+
+        Thin wrapper around `parse.resolve_refs.resolve_refs` so the
+        compilation phase order is legible inline in `_analyze_module`.
+        """
+        from tpyc.parse.resolve_refs import resolve_refs
+        resolve_refs(compiled.ast)
+
     def _analyze_module(self, compiled: CompiledModule) -> None:
         """Analyze a single module.
 
         Args:
             compiled: The compiled module to analyze.
         """
+        # Canonicalize the import table to defining modules so the
+        # resolve phase that follows mints authoritative `_module_qname`
+        # values for cross-module references on the first pass.
+        self._canonicalize_import_sources(compiled)
+
+        # Resolve every TypeRefNode the parser emitted at annotation
+        # sites.  Runs after canonicalization (cross-module refs need
+        # the canonical tuple) and before sema (sema reads TpyType
+        # everywhere).  Macro-added method bodies are resolved later,
+        # inside `register_record` post-macro-application, because the
+        # methods don't exist yet at this point.
+        self._resolve_module_refs(compiled)
+
         # Create analyzer
         analyzer = SemanticAnalyzer(default_int_type=self.default_int_type)
         analyzer.ctx.macro_registry = self._macro_registry
@@ -1459,16 +1591,30 @@ class Compiler:
             if record_info:
                 exports.records[record.name] = record_info
 
-        # Re-export imported records from user modules
+        # Re-export imported records from user modules. Iterate the registry
+        # and filter by imported_record_qualification (cross-module, non-builtin).
+        # For aliased imports (`from X import P as MyP`) the record is registered
+        # under both local and canonical names; skip the canonical-name duplicate
+        # when an alias entry exists so re-export matches CPython `from` semantics.
         if can_reexport:
-            for local_name, (source_module, original_name) in analyzer.ctx.user_imported_records.items():
-                if local_name not in exports.records:
-                    # Get the record info from the source module
-                    module_info = analyzer.registry.get_module(source_module)
-                    if module_info and original_name in module_info.records:
-                        exports.records[local_name] = module_info.records[original_name]
-                        # Track re-export source for codegen
-                        exports.reexported_records[local_name] = (source_module, original_name)
+            aliased_record_ids = {
+                id(rinfo) for ln, rinfo in analyzer.registry.records.items()
+                if ln != rinfo.name
+            }
+            for local_name, record_info in analyzer.registry.records.items():
+                if local_name == record_info.name and id(record_info) in aliased_record_ids:
+                    continue
+                qual = analyzer.registry.imported_record_qualification(
+                    local_name, analyzer.ctx.module_name)
+                if qual is None:
+                    continue
+                source_module, original_name = qual
+                if local_name in exports.records:
+                    continue
+                module_info = analyzer.registry.get_module(source_module)
+                if module_info and original_name in module_info.records:
+                    exports.records[local_name] = module_info.records[original_name]
+                    exports.reexported_records[local_name] = (source_module, original_name)
 
         # Export all user-defined protocols
         for protocol in compiled.ast.protocols:
@@ -1491,14 +1637,27 @@ class Compiler:
             if enum_type:
                 exports.enums[enum.name] = enum_type
 
-        # Re-export imported enums from user modules
+        # Re-export imported enums from user modules (same aliasing treatment
+        # as records above).
         if can_reexport:
-            for local_name, (source_module, original_name) in analyzer.ctx.user_imported_enums.items():
-                if local_name not in exports.enums:
-                    module_info = analyzer.registry.get_module(source_module)
-                    if module_info and original_name in module_info.enums:
-                        exports.enums[local_name] = module_info.enums[original_name]
-                        exports.reexported_enums[local_name] = (source_module, original_name)
+            aliased_enum_ids = {
+                id(et) for ln, et in analyzer.registry.enums.items()
+                if ln != et.name
+            }
+            for local_name, enum_type in analyzer.registry.enums.items():
+                if local_name == enum_type.name and id(enum_type) in aliased_enum_ids:
+                    continue
+                qual = analyzer.registry.imported_enum_qualification(
+                    local_name, analyzer.ctx.module_name)
+                if qual is None:
+                    continue
+                source_module, original_name = qual
+                if local_name in exports.enums:
+                    continue
+                module_info = analyzer.registry.get_module(source_module)
+                if module_info and original_name in module_info.enums:
+                    exports.enums[local_name] = module_info.enums[original_name]
+                    exports.reexported_enums[local_name] = (source_module, original_name)
 
         # Export type aliases
         for name, (typ, _loc) in compiled.ast.type_aliases.items():
@@ -1581,38 +1740,39 @@ class Compiler:
         for record in module_info.records.values():
             builtin_qname = record.builtin_type_key or f"{module_info.name}.{record.name}"
             if not record.type_factory:
-                factory = _get_type_factory(builtin_qname)
-                if factory:
-                    record.type_factory = factory
+                td = _get_type_def(builtin_qname)
+                if td is not None and td.type_factory is not None:
+                    record.type_factory = td.type_factory
             for proto in record.implemented_protocols:
                 ext_str = str(proto)
                 if ext_str not in record.extends_protocols:
                     record.extends_protocols.append(ext_str)
             if record.builtin_type_key:
                 analyzer.registry.register_builtin_record(record.builtin_type_key, record)
-        # Resolve NamedType self-references in method signatures.
+        # Resolve NominalType self-references in method signatures.
         # When a @builtin_type class references itself in method params/returns
-        # (e.g. BytesView.find(sub: BytesView)), the parser creates NamedType
+        # (e.g. BytesView.find(sub: BytesView)), the parser creates NominalType
         # because the factory type isn't registered yet. Resolve them now.
         self._resolve_builtin_self_refs(module_info)
 
     def _resolve_builtin_self_refs(self, module_info: 'ModuleInfo') -> None:
-        """Replace NamedType with factory types in builtin record method signatures."""
+        """Replace NominalType with factory types in builtin record method signatures."""
         from dataclasses import replace as dc_replace
-        from .typesys import NamedType
-        factories = _get_type_factories()
-        # Build name -> factory for non-generic builtin types in this module
+        from .typesys import NominalType
+        # Build name -> factory for non-generic builtin types in this module.
+        # Generic entries are skipped: self-refs without type_args only make
+        # sense for zero-arg factories that resolve to a singleton.
         name_to_factory: dict[str, 'Callable[[], TpyType]'] = {}
         for rec in module_info.records.values():
             btk = rec.builtin_type_key
             if btk:
-                entry = factories.get(btk)
-                if entry and not entry[0]:  # non-generic (no type params)
-                    name_to_factory[rec.name] = entry[1]
+                td = _get_type_def(btk)
+                if td is not None and td.type_factory is not None and not td.param_kinds:
+                    name_to_factory[rec.name] = td.type_factory
         if not name_to_factory:
             return
         def resolve(t: TpyType) -> TpyType:
-            if isinstance(t, NamedType) and not t.type_args and t.name in name_to_factory:
+            if isinstance(t, NominalType) and not t.type_args and t.name in name_to_factory:
                 return name_to_factory[t.name]()
             return t.map_inner_types(resolve)
         cache = self._resolved_self_ref_records

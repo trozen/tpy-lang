@@ -164,7 +164,7 @@ void test_comprehension_walrus() {
     std::array<int32_t, 5> items = {1, 2, 3, 4, 5};
     // filtered = [y for x in items if (y := double(x)) > 5]  # tpyc: ok
     int32_t y;
-    std::vector<int32_t> filtered = [&]() {
+    std::vector<int32_t> filtered = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = items;
         __result.reserve(__obj_0.size());
@@ -176,8 +176,8 @@ void test_comprehension_walrus() {
                 __result.push_back(y);
             }
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(filtered)
     std::cout << ::tpy::ListPrinter(filtered) << "\n";
     // print(y)

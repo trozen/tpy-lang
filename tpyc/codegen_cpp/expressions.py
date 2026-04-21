@@ -10,15 +10,22 @@ import io
 from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, StringType, StrViewType, LiteralType, LiteralValue, BytesType, BytesViewType, CharType,
-    NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, DictType, SetType,
-    DictKeysViewType, DictValuesViewType, DictItemsViewType,
+    TpyType, IntLiteralType, LiteralType, LiteralValue,
+    NominalType, PtrType, OwnType, OptionalType, NoneType, make_array,
     PendingListType, ListRepeatType,
-    SpanType, SpanIterType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
-    EnumType, IntEnumType, TupleType, FnType, CallableType,
+    TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
+    TupleType, CallableType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
-    is_float_type,
+    is_float_type, is_readonly_span)
+from ..type_def_registry import (
+    is_dict_view, is_set, is_dict, is_array, is_span, is_list,
+    is_fixed_int_type, is_big_int_type, is_bool_type, is_char_type,
+    is_str_type, is_string_type, is_str_view_type,
+    is_bytes_type, is_bytes_view_type,
+    is_float32_type, is_float64_type, is_bytearray_type,
+    int_traits_of,
+    is_enum_type, is_int_enum_type, enum_info_of,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -267,12 +274,12 @@ class ExpressionGenerator:
             return None
         arg_type = self.ctx.get_expr_type(arg)
         cpp_decl = self._get_cpp_declared_type(arg)
-        # Recursive union alias: NamedType("Expr") and UnionType(members) alias
+        # Recursive union alias: NominalType("Expr") and UnionType(members) alias
         # the same C++ wrapper struct. When ptype is the expanded union and arg
-        # carries the unexpanded NamedType (reverse source ordering -- classes
+        # carries the unexpanded NominalType (reverse source ordering -- classes
         # defined before alias), treat them as the same already-variant value.
         arg_is_same_recursive = (
-            isinstance(arg_type, NamedType)
+            isinstance(arg_type, NominalType)
             and arg_type.name in self.ctx.recursive_union_names
             and self.ctx.recursive_union_name(ptype_union) == arg_type.name
         )
@@ -387,12 +394,12 @@ class ExpressionGenerator:
             return result
         declared = self.ctx.current_func_params.get(name)
         if not (isinstance(declared, OptionalType)
-                and isinstance(declared.inner, StrType)):
+                and is_str_type(declared.inner)):
             return result
         target = target_type
         if isinstance(target, OwnType):
             target = target.wrapped
-        if isinstance(target, OptionalType) and isinstance(target.inner, StrType):
+        if isinstance(target, OptionalType) and is_str_type(target.inner):
             return (f"{result} ? std::make_optional("
                     f"std::string(*{result})) : std::nullopt")
         return result
@@ -483,7 +490,7 @@ class ExpressionGenerator:
             if actual_type.inner.is_value_type():
                 return None
             actual_type = actual_type.inner
-        if isinstance(actual_type, NamedType) and actual_type.is_record:
+        if isinstance(actual_type, NominalType) and actual_type.is_record:
             record = self.ctx.analyzer.registry.get_record_for_type(actual_type)
             if record:
                 for f in record.fields:
@@ -596,10 +603,10 @@ class ExpressionGenerator:
 
     def _gen_covariant_arg(self, arg: TpyExpr, ptype: TpyType) -> str | None:
         """If ptype requires covariant conversion, return the wrapped arg. Otherwise None."""
-        if not isinstance(ptype, NamedType) or not ptype.is_user_record:
+        if not isinstance(ptype, NominalType) or not ptype.is_user_record:
             return None
         arg_type = self.ctx.get_expr_type(arg)
-        if not isinstance(arg_type, NamedType) or not arg_type.is_user_record:
+        if not isinstance(arg_type, NominalType) or not arg_type.is_user_record:
             return None
         if arg_type.name != ptype.name or arg_type.type_args == ptype.type_args:
             return None
@@ -633,7 +640,7 @@ class ExpressionGenerator:
         # Bytes literal passed to bytes/BytesView param: use static storage.
         # The C++ param is std::span<const uint8_t>, so bytes_literal()
         # avoids the heap allocation of a temporary vector.
-        if isinstance(arg, TpyBytesLiteral) and isinstance(ptype, (BytesType, BytesViewType)):
+        if isinstance(arg, TpyBytesLiteral) and (is_bytes_type(ptype) or is_bytes_view_type(ptype)):
             if not arg.value:
                 return "std::span<const uint8_t>{}"
             return self._gen_bytes_literal_span(arg.value)
@@ -642,7 +649,7 @@ class ExpressionGenerator:
             # Auto-consuming iteration: Iterable[Own[T]] param with last-use arg
             # that has consuming __iter__. Generate consuming call instead of copy.
             ptype_inner = unwrap_readonly(unwrap_ref_type(ptype))
-            if (is_protocol_type(ptype_inner) and isinstance(ptype_inner, NamedType)
+            if (is_protocol_type(ptype_inner) and isinstance(ptype_inner, NominalType)
                     and ptype_inner.name == "Iterable"
                     and ptype_inner.type_args
                     and any(isinstance(a, OwnType) for a in ptype_inner.type_args)):
@@ -698,7 +705,7 @@ class ExpressionGenerator:
 
         elif isinstance(expr, TpyFloatLiteral):
             val = repr(expr.value)
-            if isinstance(target_type, Float32Type):
+            if is_float32_type(target_type):
                 if val == "inf":
                     return "std::numeric_limits<float>::infinity()"
                 if val == "-inf":
@@ -730,17 +737,17 @@ class ExpressionGenerator:
             # Unwrap Optional to detect span coercion inside Optional[Span[T]].
             # Single-level unwrap suffices: Span is a value type, never wrapped in Own.
             coerce_target = expr.expected_type
-            if isinstance(coerce_target, OptionalType) and isinstance(coerce_target.inner, SpanType):
+            if isinstance(coerce_target, OptionalType) and is_span(coerce_target.inner):
                 coerce_target = coerce_target.inner
             # Forward coercion target to literals/views so they can pick the
             # right C++ representation (e.g. bytes_literal vs vector<uint8_t>,
             # char literal vs string)
-            if isinstance(expr.expr, (TpyStrLiteral, TpyBytesLiteral)) or isinstance(coerce_target, SpanType) or expr.coercion.name in ("int_literal_to_fixed_int", "float_literal_to_float32"):
+            if isinstance(expr.expr, (TpyStrLiteral, TpyBytesLiteral)) or is_span(coerce_target) or expr.coercion.name in ("int_literal_to_fixed_int", "float_literal_to_float32"):
                 inner_target = coerce_target
             else:
                 inner_target = expr.actual_type
             gen_inner = self.gen_expr(expr.expr, inner_target)
-            if isinstance(coerce_target, SpanType):
+            if is_span(coerce_target):
                 return self._gen_span_coercion(expr.expr, coerce_target, gen_inner)
             # IntLiteralType may be runtime BigInt; sema records this on the coercion.
             if expr.coercion.name == "int_literal_to_fixed_int":
@@ -755,16 +762,16 @@ class ExpressionGenerator:
 
         elif isinstance(expr, TpyStrLiteral):
             # If target type is Char and single char, output as char literal
-            if isinstance(target_type, CharType) and len(expr.value) == 1:
+            if is_char_type(target_type) and len(expr.value) == 1:
                 return f"'{escape_cpp_char(expr.value)}'"
             return f'"{escape_cpp_string(expr.value)}"'
 
         elif isinstance(expr, TpyBytesLiteral):
             if not expr.value:
-                if isinstance(target_type, BytesViewType):
+                if is_bytes_view_type(target_type):
                     return "std::span<const uint8_t>{}"
                 return "std::vector<uint8_t>{}"
-            if isinstance(target_type, BytesViewType):
+            if is_bytes_view_type(target_type):
                 return self._gen_bytes_literal_span(expr.value)
             hex_bytes = ", ".join(f"0x{b:02x}" for b in expr.value)
             return f"std::vector<uint8_t>{{{hex_bytes}}}"
@@ -929,10 +936,10 @@ class ExpressionGenerator:
     def _truthy_for_rendered(self, rendered: str, var_type: TpyType) -> str:
         """Generate truthiness test for an already-rendered, already-dereferenced
         C++ expression. For pointer-locals, dereference before calling."""
-        if isinstance(var_type, IntEnumType):
-            cpp_underlying = var_type.underlying_type.to_cpp()
+        if is_int_enum_type(var_type):
+            cpp_underlying = enum_info_of(var_type).underlying_type.to_cpp()
             return f"(static_cast<{cpp_underlying}>({rendered}) != 0)"
-        if isinstance(var_type, EnumType):
+        if is_enum_type(var_type):
             return "true"
         if isinstance(var_type, OptionalType) and not var_type.uses_pointer_repr():
             return f"::tpy::is_truthy({rendered})"
@@ -941,8 +948,9 @@ class ExpressionGenerator:
         if is_any_bytes_type(var_type):
             return f"(!{rendered}.empty())"
         # Primitive types with implicit C++ bool conversion -- skip __bool__ dispatch.
-        if isinstance(var_type, (BoolType, Int32Type, FixedIntType, BigIntType,
-                                 FloatType, Float32Type, IntLiteralType, CharType)):
+        if (is_bool_type(var_type) or is_fixed_int_type(var_type) or is_big_int_type(var_type)
+                or is_float64_type(var_type) or is_float32_type(var_type)
+                or is_char_type(var_type) or isinstance(var_type, IntLiteralType)):
             return rendered
         record = self.ctx.analyzer.registry.get_record_for_type(var_type)
         if record:
@@ -951,7 +959,7 @@ class ExpressionGenerator:
             if record.get_method_overloads("__len__"):
                 return f"(::tpy::__len__({rendered}) != 0)"
             # User records without __bool__/__len__ are always truthy (Python default).
-            if isinstance(var_type, NamedType) and var_type.is_user_record:
+            if isinstance(var_type, NominalType) and var_type.is_user_record:
                 return "true"
         # Implicit bool conversion (ptr, etc.)
         return rendered
@@ -959,20 +967,20 @@ class ExpressionGenerator:
     def _is_str_view_at_runtime(self, expr: TpyExpr) -> bool:
         """True if this expression produces std::string_view at C++ runtime.
 
-        Cases that produce string_view despite having StrType as their sema type:
+        Cases that produce string_view despite being typed as str in sema:
         - str params: C++ signature uses string_view (via to_cpp_param)
         - str literals: materialized as std::string_view temps in _gen_logical_value;
           treated as string_view here so recursive chain detection works correctly.
           Callers in _gen_if_expr must guard separately: literals are const char*
           there and need no explicit wrapping (C++ handles string?const-char* natively).
-        - StrViewType locals: explicitly typed as string_view
+        - StrView locals: explicitly typed as string_view
         Nested and/or/ternary chains are handled recursively.
         """
         if isinstance(expr, TpyName):
             param_type = self.ctx.current_func_params.get(expr.name)
-            return (isinstance(param_type, StrType)
+            return (is_str_type(param_type)
                     or (isinstance(param_type, LiteralType) and param_type.is_str_base())
-                    or isinstance(self.types.get_resolved_type(expr), StrViewType))
+                    or is_str_view_type(self.types.get_resolved_type(expr)))
         if isinstance(expr, TpyStrLiteral):
             return True
         if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
@@ -981,26 +989,26 @@ class ExpressionGenerator:
         if isinstance(expr, TpyIfExpr):
             return (self._is_str_view_at_runtime(expr.then_expr)
                     and self._is_str_view_at_runtime(expr.else_expr))
-        return isinstance(self.types.get_resolved_type(expr), StrViewType)
+        return is_str_view_type(self.types.get_resolved_type(expr))
 
     def _is_bytes_view_at_runtime(self, expr: TpyExpr) -> bool:
         """True if this expression produces std::span<const uint8_t> at C++ runtime.
 
         bytes params use span via to_cpp_param. Bytes literals with BytesView
-        resolved type use static storage. BytesViewType locals are explicit views.
+        resolved type use static storage. BytesView locals are explicit views.
         """
         if isinstance(expr, TpyBytesLiteral):
-            return isinstance(self.types.get_resolved_type(expr), BytesViewType)
+            return is_bytes_view_type(self.types.get_resolved_type(expr))
         if isinstance(expr, TpyName):
-            return (isinstance(self.ctx.current_func_params.get(expr.name), BytesType)
-                    or isinstance(self.types.get_resolved_type(expr), BytesViewType))
+            return (is_bytes_type(self.ctx.current_func_params.get(expr.name))
+                    or is_bytes_view_type(self.types.get_resolved_type(expr)))
         if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
             return (self._is_bytes_view_at_runtime(expr.left)
                     and self._is_bytes_view_at_runtime(expr.right))
         if isinstance(expr, TpyIfExpr):
             return (self._is_bytes_view_at_runtime(expr.then_expr)
                     and self._is_bytes_view_at_runtime(expr.else_expr))
-        return isinstance(self.types.get_resolved_type(expr), BytesViewType)
+        return is_bytes_view_type(self.types.get_resolved_type(expr))
 
     @staticmethod
     def _gen_bytes_literal_span(value: bytes) -> str:
@@ -1028,7 +1036,7 @@ class ExpressionGenerator:
             # Bare braced-init-lists can't be used with auto&& or as ternary
             # branches -- C++ can't deduce the container type from {1,2} alone.
             # Prefix with the explicit type, same as the list-concat handling.
-            if isinstance(lhs_type, ListType) and isinstance(expr.left, TpyArrayLiteral):
+            if is_list(lhs_type) and isinstance(expr.left, TpyArrayLiteral):
                 left = f"{self.types.type_to_cpp(lhs_type)}{left}"
             # String literals are const char[N] -- auto&& keeps that type and
             # .empty() would fail. Use std::string_view to get a proper str type.
@@ -1059,7 +1067,7 @@ class ExpressionGenerator:
         use_rhs_temp = not isinstance(expr.right, TpyName)
         if use_rhs_temp:
             rhs_type = self.types.get_resolved_type(expr.right)
-            if isinstance(rhs_type, ListType) and isinstance(expr.right, TpyArrayLiteral):
+            if is_list(rhs_type) and isinstance(expr.right, TpyArrayLiteral):
                 right = f"{self.types.type_to_cpp(rhs_type)}{right}"
             rhs_cpp = "std::string_view" if (
                 is_any_str_type(rhs_type) and isinstance(expr.right, TpyStrLiteral)
@@ -1107,17 +1115,17 @@ class ExpressionGenerator:
             and not self.types.involves_variables(expr)
         ):
             resolved = self.types.get_resolved_type(expr)
-            bigint_target = resolved if isinstance(resolved, BigIntType) else None
+            bigint_target = resolved if is_big_int_type(resolved) else None
             return self._gen_int_literal_value(analyzed_type.value, bigint_target)
 
         # First pass: get raw types to detect fixed-int operands
         left_raw = self.types.get_resolved_type(expr.left)
         right_raw = self.types.get_resolved_type(expr.right)
-        # If one operand is a FixedIntType, resolve literals as that type (not BigInt)
-        fixed_context = target_type if isinstance(target_type, FixedIntType) else None
-        if isinstance(left_raw, FixedIntType):
+        # If one operand is a fixed-width int, resolve literals as that type (not BigInt)
+        fixed_context = target_type if is_fixed_int_type(target_type) else None
+        if is_fixed_int_type(left_raw):
             fixed_context = left_raw
-        elif isinstance(right_raw, FixedIntType):
+        elif is_fixed_int_type(right_raw):
             fixed_context = right_raw
         left_type = self.types.get_resolved_type(expr.left, fixed_context)
         right_type = self.types.get_resolved_type(expr.right, fixed_context)
@@ -1154,7 +1162,7 @@ class ExpressionGenerator:
                     joined = " || ".join(conditions)
                     negate = expr.op == "not in"
                     body = f"!({joined})" if negate else joined
-                    return f"[&]() -> bool {{ auto&& __in_lhs = {left}; return {body}; }}()"
+                    return f"({{ auto&& __in_lhs = {left}; {body}; }})"
                 conditions = [f"({left} == {e})" for e in elems]
                 joined = " || ".join(conditions) if conditions else "false"
                 if expr.op == "not in":
@@ -1297,7 +1305,7 @@ class ExpressionGenerator:
                 if folded is not None:
                     return folded
             result_type = self.types.get_resolved_type(expr)
-            if not isinstance(result_type, BoolType):
+            if not is_bool_type(result_type):
                 # Value-context: Python operand semantics via temp + ternary.
                 # `x or y` -> truthy(x) ? x : y
                 # `x and y` -> truthy(x) ? y : x
@@ -1336,17 +1344,23 @@ class ExpressionGenerator:
             # Python's int-to-float promotion for comparisons).
             left_cmp = left_target if left_target is not None else left_type
             right_cmp = right_target if right_target is not None else right_type
-            if isinstance(left_cmp, BigIntType) and is_float_type(right_cmp):
+            if is_big_int_type(left_cmp) and is_float_type(right_cmp):
                 left = f"static_cast<{right_cmp.to_cpp()}>({left})"
-            elif isinstance(right_cmp, BigIntType) and is_float_type(left_cmp):
+            elif is_big_int_type(right_cmp) and is_float_type(left_cmp):
                 right = f"static_cast<{left_cmp.to_cpp()}>({right})"
 
-            # IntEnum coercion: cast enum operand(s) to underlying type
+            # IntEnum coercion: cast enum operand(s) to underlying type.
+            # int_enum_coercion is set by sema only for types that passed
+            # is_int_enum_type, which means they flowed through register_enum
+            # and have a populated TypeDef.enum payload -- enum_info_of is
+            # guaranteed non-None here.
             if expr.int_enum_coercion:
-                underlying_cpp = self.types.type_to_cpp(expr.int_enum_coercion.underlying_type)
-                if isinstance(left_type, IntEnumType):
+                einfo = enum_info_of(expr.int_enum_coercion)
+                assert einfo is not None, "int_enum_coercion set on a type without registered EnumInfo"
+                underlying_cpp = self.types.type_to_cpp(einfo.underlying_type)
+                if is_int_enum_type(left_type):
                     left = f"static_cast<{underlying_cpp}>({left})"
-                if isinstance(right_type, IntEnumType):
+                if is_int_enum_type(right_type):
                     right = f"static_cast<{underlying_cpp}>({right})"
             # Use sema-resolved comparison method when available.
             if expr.resolved_binop:
@@ -1366,7 +1380,7 @@ class ExpressionGenerator:
         right_analyzer_type = self.ctx.analyzer.get_expr_type(expr.right)
         left_is_literal = isinstance(left_analyzer_type, IntLiteralType) and not isinstance(expr.left, TpyName)
         right_is_literal = isinstance(right_analyzer_type, IntLiteralType) and not isinstance(expr.right, TpyName)
-        if (isinstance(target_type, FixedIntType) and left_is_literal and right_is_literal):
+        if (is_fixed_int_type(target_type) and left_is_literal and right_is_literal):
             # Pass target_type to handle nested binops like 1 + (2 + 3)
             left = self.gen_expr(expr.left, target_type)
             right = self.gen_expr(expr.right, target_type)
@@ -1403,14 +1417,14 @@ class ExpressionGenerator:
                 right = self._convert_to_fixed_int_arg(right, right_actual, param_type, expr.right)
             # IntEnum coercion: cast enum operand(s) to underlying type
             if expr.int_enum_coercion:
-                underlying_cpp = self.types.type_to_cpp(expr.int_enum_coercion.underlying_type)
-                if isinstance(left_type, IntEnumType):
+                underlying_cpp = self.types.type_to_cpp(enum_info_of(expr.int_enum_coercion).underlying_type)
+                if is_int_enum_type(left_type):
                     left = f"static_cast<{underlying_cpp}>({left})"
-                if isinstance(right_type, IntEnumType):
+                if is_int_enum_type(right_type):
                     right = f"static_cast<{underlying_cpp}>({right})"
             # C++ can't deduce template params from bare initializer lists,
             # so array literal operands need explicit std::vector<T>{...} prefix
-            if isinstance(receiver_type, ListType):
+            if is_list(receiver_type):
                 cpp_type = self.types.type_to_cpp(receiver_type)
                 if isinstance(expr.left, TpyArrayLiteral):
                     left = f"{cpp_type}{left}"
@@ -1445,7 +1459,7 @@ class ExpressionGenerator:
             return f"({left} {cpp_op} {right})"
 
         # Record types with dunder operators - use generated C++ operator
-        if isinstance(left_type, NamedType) and left_type.is_record:
+        if isinstance(left_type, NominalType) and left_type.is_record:
             left = self.gen_expr_deref(expr.left, left_type)
             right = self.gen_expr_deref(expr.right, right_type)
             # Map Python operators to C++ operators
@@ -1472,24 +1486,33 @@ class ExpressionGenerator:
             left_cmp = left_type.inner
         if isinstance(right_type, OptionalType):
             right_cmp = right_type.inner
-        if isinstance(left_cmp, BigIntType) and is_float_type(right_cmp):
+        if is_big_int_type(left_cmp) and is_float_type(right_cmp):
             left_str = f"static_cast<{right_cmp.to_cpp()}>({left_str})"
-        elif isinstance(right_cmp, BigIntType) and is_float_type(left_cmp):
+        elif is_big_int_type(right_cmp) and is_float_type(left_cmp):
             right_str = f"static_cast<{left_cmp.to_cpp()}>({right_str})"
 
         # IntEnum coercion
         if pair.int_enum_coercion:
-            underlying_cpp = self.types.type_to_cpp(pair.int_enum_coercion.underlying_type)
-            if isinstance(left_type, IntEnumType):
+            underlying_cpp = self.types.type_to_cpp(enum_info_of(pair.int_enum_coercion).underlying_type)
+            if is_int_enum_type(left_type):
                 left_str = f"static_cast<{underlying_cpp}>({left_str})"
-            if isinstance(right_type, IntEnumType):
+            if is_int_enum_type(right_type):
                 right_str = f"static_cast<{underlying_cpp}>({right_str})"
 
         return f"({left_str} {pair.op} {right_str})"
 
     @staticmethod
     def _is_simple_expr(expr: TpyExpr) -> bool:
-        """Check if an expression is side-effect-free (safe to duplicate)."""
+        """Check if an expression is side-effect-free (safe to duplicate).
+
+        TODO: replace with an `is_pure` bit computed during sema and attached
+        to THIR nodes (see docs/IR_DESIGN.md). The current syntactic check
+        misses cases like `Int32(0)` -- a primitive-type constructor call
+        that codegen elides to a bare literal -- so chained-compare endpoint
+        inlining still binds a temp for it.
+        """
+        if isinstance(expr, TpyCoerce):
+            return ExpressionGenerator._is_simple_expr(expr.expr)
         if isinstance(expr, (
             TpyName, TpyIntLiteral, TpyFloatLiteral,
             TpyStrLiteral, TpyBoolLiteral, TpyNoneLiteral,
@@ -1626,44 +1649,74 @@ class ExpressionGenerator:
                 right_target = right_type.inner
 
         # Char literal coercion
-        if left_target is None and isinstance(right_type, CharType):
+        if left_target is None and is_char_type(right_type):
             if not (pair.optional_safe_eq and isinstance(left_type, OptionalType)):
                 left_target = CHAR
-        if right_target is None and isinstance(left_type, CharType):
+        if right_target is None and is_char_type(left_type):
             if not (pair.optional_safe_eq and isinstance(right_type, OptionalType)):
                 right_target = CHAR
 
         return left_target, right_target
 
     def _gen_chained_compare_lambda(self, expr: TpyChainedCompare) -> str:
-        """Complex path: lambda IIFE with temp vars for single evaluation.
+        """Complex path: GCC stmt-expr with temp vars for single evaluation.
 
-        Interleaves operand evaluation with comparisons for short-circuit:
-        operands after a failed comparison are never evaluated.
+        Builds a right-nested ``cmp && ({ bind_next; next_cmp && (...); })``
+        chain so operand evaluation interleaves with comparison: operands
+        after a failed comparison are never evaluated. GCC stmt-expr has no
+        ``return``, so the block's last expression supplies the value.
+
+        Intermediate operands are always bound to ``_cmpI`` temps (they appear
+        in two pairs). Endpoints are bound only when binding is required:
+        - First operand: bound iff non-simple. Inlining a non-simple first
+          operand would reorder side effects relative to ``_cmp1 = op1``.
+        - Last operand: always inlined. It appears only in the innermost
+          compare, after every earlier binding has run; reordering vs the
+          bound ``_cmp{n-1}`` (pure variable read) is unobservable.
         """
         assert expr.pairs is not None
         all_operands = [expr.left] + expr.comparators
-        lines: list[str] = []
-        temps: list[str] = []
-        for i, pair in enumerate(expr.pairs):
-            left_target, right_target = self._comparison_targets(pair)
-            # Generate left operand (or reuse previous right)
+        n = len(expr.pairs)
+        # Chained compares have n >= 2 (n == 1 routes to _gen_chained_compare_inline).
+        assert n >= 2
+
+        def operand_code(i: int) -> str:
             if i == 0:
-                tmp_l = f"_cmp{i}"
-                temps.append(tmp_l)
-                lines.append(f"auto&& {tmp_l} = {self.gen_expr_deref(all_operands[i], left_target)};")
-            # Generate right operand
-            tmp_r = f"_cmp{i + 1}"
-            temps.append(tmp_r)
-            lines.append(f"auto&& {tmp_r} = {self.gen_expr_deref(all_operands[i + 1], right_target)};")
-            # Generate comparison with short-circuit
-            cmp_str = self._gen_comparison_pair(pair, temps[i], tmp_r)
-            if i < len(expr.pairs) - 1:
-                lines.append(f"if (!{cmp_str}) return false;")
+                l_tgt, _ = self._comparison_targets(expr.pairs[0])
+                return self.gen_expr_deref(all_operands[0], l_tgt)
+            _, r_tgt = self._comparison_targets(expr.pairs[i - 1])
+            return self.gen_expr_deref(all_operands[i], r_tgt)
+
+        reprs: list[str] = []
+        bindings: list[str | None] = []
+        for i in range(n + 1):
+            code = operand_code(i)
+            if 0 < i < n:
+                must_bind = True
+            elif i == 0:
+                must_bind = not self._is_simple_expr(all_operands[0])
             else:
-                lines.append(f"return {cmp_str};")
-        body = " ".join(lines)
-        return f"[&]() -> bool {{ {body} }}()"
+                must_bind = False  # last operand always inlined
+            if must_bind:
+                reprs.append(f"_cmp{i}")
+                bindings.append(f"auto&& _cmp{i} = {code};")
+            else:
+                reprs.append(code)
+                bindings.append(None)
+
+        # Innermost compare (last operand inlined, no wrapper needed).
+        inner = self._gen_comparison_pair(expr.pairs[-1], reprs[n - 1], reprs[n])
+
+        # Wrap pairs i = n-2 .. 1: bind intermediate op i+1 + cmp && next.
+        for i in range(n - 2, 0, -1):
+            cmp_str = self._gen_comparison_pair(expr.pairs[i], reprs[i], reprs[i + 1])
+            inner = f"({{ {bindings[i + 1]} {cmp_str} && {inner}; }})"
+
+        # Outer: ops 0 and 1 bindings (if any) + first compare && inner.
+        first_cmp = self._gen_comparison_pair(expr.pairs[0], reprs[0], reprs[1])
+        outer_parts = [b for b in bindings[:2] if b]
+        outer_parts.append(f"{first_cmp} && {inner};")
+        return f"({{ {' '.join(outer_parts)} }})"
 
     def _gen_unaryop(self, expr: TpyUnaryOp, target_type: TpyType | None) -> str:
         """Generate unary operation code."""
@@ -1691,8 +1744,8 @@ class ExpressionGenerator:
             return self.builtins.gen_call_from_fi(unaryop_result.method, operand, [])
 
         # IntEnum: unary negation via static_cast
-        if isinstance(operand_type, IntEnumType) and expr.op == "-":
-            underlying_cpp = self.types.type_to_cpp(operand_type.underlying_type)
+        if is_int_enum_type(operand_type) and expr.op == "-":
+            underlying_cpp = self.types.type_to_cpp(enum_info_of(operand_type).underlying_type)
             return f"(-static_cast<{underlying_cpp}>({operand}))"
 
         # Fallback for IntLiteralType (not in module system)
@@ -1782,7 +1835,7 @@ class ExpressionGenerator:
 
     def _gen_int_literal_value(self, v: int, target_type: TpyType | None) -> str:
         """Emit an integer literal, wrapping in BigInt constructor if needed."""
-        if isinstance(target_type, BigIntType):
+        if is_big_int_type(target_type):
             if -2**31 <= v <= 2**31 - 1:
                 return f"::tpy::BigInt({v})"
             if -2**63 <= v <= 2**63 - 1:
@@ -1886,15 +1939,20 @@ class ExpressionGenerator:
             var_decl_type = self.ctx.var_types.get(orig_var)
             get_ref = self.ctx.variant_data_expr(var_ref, var_decl_type) if var_decl_type else var_ref
             return f"std::holds_alternative<{cpp_type}>({get_ref})"
-        # Enum value lookup: Color(0) -> ::tpy::EnumUtil<Color>::from_value(0)
+        # Enum value lookup: Color(0) -> ::tpy::EnumUtil<Color>::from_value(0).
+        # enum_from_value is set only by sema when resolving via BindingKind.ENUM,
+        # whose binding always points to a registered enum NominalType -- so the
+        # TypeDef.enum payload is guaranteed populated here.
         if expr.enum_from_value is not None:
             enum_type = expr.enum_from_value
             cpp_type = enum_type.to_cpp()
-            underlying_cpp = enum_type.underlying_type.to_cpp()
+            einfo = enum_info_of(enum_type)
+            assert einfo is not None, "enum_from_value set on a type without registered EnumInfo"
+            underlying_cpp = einfo.underlying_type.to_cpp()
             arg = self.gen_expr(expr.args[0])
             # BigInt needs checked conversion to the underlying type
             arg_type = self.types.get_resolved_type(expr.args[0])
-            if isinstance(arg_type, BigIntType):
+            if is_big_int_type(arg_type):
                 arg = f"({arg}).to_fixed_check<{underlying_cpp}>()"
             return f"::tpy::EnumUtil<{cpp_type}>::from_value({arg})"
         # Enum try_parse: try_parse(Color, "Red") -> ::tpy::EnumUtil<Color>::try_parse("Red")
@@ -2031,9 +2089,9 @@ class ExpressionGenerator:
                     # type so subtype data isn't sliced; C++ binds the parent
                     # reference via implicit upcast.
                     temp_type = resolved_ptype
-                    if isinstance(resolved_ptype, NamedType) and resolved_ptype.is_user_record:
+                    if isinstance(resolved_ptype, NominalType) and resolved_ptype.is_user_record:
                         arg_type = self.ctx.get_expr_type(arg)
-                        if (isinstance(arg_type, NamedType) and arg_type.is_user_record
+                        if (isinstance(arg_type, NominalType) and arg_type.is_user_record
                                 and arg_type != resolved_ptype
                                 and self.ctx.analyzer.registry.is_subclass_of(arg_type, resolved_ptype)):
                             temp_type = arg_type
@@ -2101,7 +2159,7 @@ class ExpressionGenerator:
             # Look up resolved init params for auto-move on Own[T] params
             init_params = []
             call_type = expr.call_type
-            record_name = call_type.name if isinstance(call_type, NamedType) else None
+            record_name = call_type.name if isinstance(call_type, NominalType) else None
             if record_name:
                 rec_info = self.ctx.analyzer.registry.get_record(record_name)
                 if rec_info:
@@ -2185,9 +2243,11 @@ class ExpressionGenerator:
                     return f"{cpp_name}{{{args}}}"
                 # @native: constructor call (C++ class)
                 return f"{cpp_name}({args})"
-            # Qualify imported records (use original name for aliases)
-            if expr.func_name in self.ctx.user_imported_records:
-                source_module, original_name = self.ctx.user_imported_records[expr.func_name]
+            # Cross-module constructor: qualify to the declaring module.
+            qual = self.ctx.analyzer.registry.imported_record_qualification(
+                expr.func_name, self.ctx.analyzer.ctx.module_name)
+            if qual is not None:
+                source_module, original_name = qual
                 return f"{qualified_cpp_name(source_module, original_name)}({args})"
             return f"{expr.func_name}({args})"
         # Callable variable call (possibly narrowed from Optional[Callable])
@@ -2242,7 +2302,7 @@ class ExpressionGenerator:
                     # inner type; string_view is not implicitly convertible to
                     # std::string, so wrap when the field stores an owned string
                     result_type = self.types.get_resolved_type(expr)
-                    if isinstance(result_type, (StrType, StringType)):
+                    if is_str_type(result_type) or is_string_type(result_type):
                         default = f"std::string({default})"
                     return f"{obj}.{cpp_field}.value_or({default})"
                 else:
@@ -2267,7 +2327,7 @@ class ExpressionGenerator:
                     return f"std::make_optional({obj}.{cpp_field})"
         # Nested record constructor: Outer.Inner(args) -> Outer::Inner(args)
         if expr.is_nested_constructor and expr.nested_type_name:
-            cpp_name = NamedType(expr.nested_type_name).to_cpp()
+            cpp_name = NominalType(expr.nested_type_name).to_cpp()
             args = ", ".join(self.gen_expr(a) for a in expr.args)
             if expr.kwargs:
                 kwarg_parts = [self.gen_expr(v) for v in expr.kwargs.values()]
@@ -2278,7 +2338,7 @@ class ExpressionGenerator:
             return f"{cpp_name}({args})"
         # Nested enum from_value: Outer.Kind(v) -> Outer::Kind from_value
         if expr.is_nested_enum_constructor and expr.nested_type_name:
-            cpp_name = NamedType(expr.nested_type_name).to_cpp()
+            cpp_name = NominalType(expr.nested_type_name).to_cpp()
             arg = self.gen_expr(expr.args[0])
             return f"::tpy::EnumUtil<{cpp_name}>::from_value({arg})"
         # Callable-typed field invocation: obj.field(args) -> obj.field(args)
@@ -2288,7 +2348,7 @@ class ExpressionGenerator:
             args = ", ".join(self.gen_expr(a) for a in expr.args)
             # Check if the field is Optional[Callable] -- need .value() to unwrap
             obj_type = self.types.get_resolved_type(expr.obj)
-            if isinstance(obj_type, NamedType):
+            if isinstance(obj_type, NominalType):
                 rec = self.ctx.analyzer.registry.get_record(obj_type.name)
                 if rec:
                     for fld in rec.fields:
@@ -2307,7 +2367,7 @@ class ExpressionGenerator:
                             and (_fi.cpp_template is not None or _fi.native_function))
         if not _skip_first_pass:
             _obj_type = self.types.get_resolved_type(expr.obj)
-            if isinstance(_obj_type, NamedType) and _obj_type.is_user_record:
+            if isinstance(_obj_type, NominalType) and _obj_type.is_user_record:
                 _ri = self.ctx.analyzer.registry.get_record_for_type(_obj_type)
                 if _ri and _ri.get_method(expr.method):
                     _skip_first_pass = True
@@ -2525,7 +2585,7 @@ class ExpressionGenerator:
         # User-defined record methods may need temp handling for TypeParamRef params
         # TypeParamRef generates param_val_or_ref_t<T> which is T& for object types
         # Temporaries can't bind to non-const lvalue reference
-        if isinstance(obj_type, NamedType) and obj_type.is_user_record:
+        if isinstance(obj_type, NominalType) and obj_type.is_user_record:
             record_info = self.ctx.analyzer.registry.get_record_for_type(obj_type)
             if record_info:
                 method_info = record_info.get_method(expr.method)
@@ -2652,7 +2712,7 @@ class ExpressionGenerator:
     def _is_overloaded_method(self, expr: TpyMethodCall) -> bool:
         """Check if a method call targets an overloaded method (multiple stubs)."""
         obj_type = self.ctx.get_expr_type(expr.obj)
-        if obj_type is None or not isinstance(obj_type, NamedType):
+        if obj_type is None or not isinstance(obj_type, NominalType):
             return False
         record = self.ctx.analyzer.registry.get_record_for_type(obj_type)
         if record is None:
@@ -2720,10 +2780,11 @@ class ExpressionGenerator:
                 # Enum type-level member access: Color.Red -> Color::Red
                 if binding and binding.kind == BindingKind.ENUM:
                     enum_name = expr.obj.name
-                    # For cross-module enums, use qualified name
-                    if enum_name in self.ctx.user_imported_enums:
-                        src_mod, original = self.ctx.user_imported_enums[enum_name]
-                        enum_name = qualified_cpp_name(src_mod, original)
+                    # Cross-module enum: qualify to declaring module.
+                    enum_qual = self.ctx.analyzer.registry.imported_enum_qualification(
+                        enum_name, self.ctx.analyzer.ctx.module_name)
+                    if enum_qual is not None:
+                        enum_name = qualified_cpp_name(*enum_qual)
                     return f"{enum_name}::{cpp_field}"
 
                 # Nested type access on a record: Container.Kind -> Container::Kind
@@ -2731,19 +2792,21 @@ class ExpressionGenerator:
                     dotted = f"{expr.obj.name}.{expr.field}"
                     if (self.ctx.analyzer.registry.get_enum(dotted) is not None
                             or self.ctx.analyzer.registry.get_record(dotted) is not None):
-                        # For cross-module, use qualified C++ name
-                        if dotted in self.ctx.user_imported_enums:
-                            src_mod, original = self.ctx.user_imported_enums[dotted]
-                            return qualified_cpp_name(src_mod, original)
-                        if dotted in self.ctx.user_imported_records:
-                            src_mod, original = self.ctx.user_imported_records[dotted]
-                            return qualified_cpp_name(src_mod, original)
+                        # Cross-module: qualify to declaring module.
+                        enum_qual = self.ctx.analyzer.registry.imported_enum_qualification(
+                            dotted, self.ctx.analyzer.ctx.module_name)
+                        if enum_qual is not None:
+                            return qualified_cpp_name(*enum_qual)
+                        rec_qual = self.ctx.analyzer.registry.imported_record_qualification(
+                            dotted, self.ctx.analyzer.ctx.module_name)
+                        if rec_qual is not None:
+                            return qualified_cpp_name(*rec_qual)
                         return dotted.replace(".", "::")
 
         # Chained nested type access: Outer.Mid.Inner -> Outer::Mid::Inner
         if isinstance(expr.obj, TpyFieldAccess):
             expr_type = self.ctx.get_expr_type(expr)
-            if isinstance(expr_type, EnumType) and "." in expr_type.name:
+            if is_enum_type(expr_type) and "." in expr_type.name:
                 # Enum member access: Container.Kind.LIST -> Container::Kind::LIST
                 return f"{expr_type.to_cpp()}::{cpp_field}"
 
@@ -2759,12 +2822,17 @@ class ExpressionGenerator:
             actual_obj_type = actual_obj_type.wrapped
         if isinstance(actual_obj_type, OwnType):
             actual_obj_type = actual_obj_type.wrapped
-        if isinstance(actual_obj_type, EnumType):
+        if is_enum_type(actual_obj_type):
             if expr.field == "name":
                 cpp_type = actual_obj_type.to_cpp()
                 return f"::tpy::EnumUtil<{cpp_type}>::name({obj})"
             elif expr.field == "value":
-                return f"static_cast<{actual_obj_type.underlying_type.to_cpp()}>({obj})"
+                # is_enum_type == True implies the TypeDef was registered via
+                # attach_dynamic_type_def(..., enum=EnumInfo(...)), so the
+                # enum payload is always present here.
+                einfo = enum_info_of(actual_obj_type)
+                assert einfo is not None, "is_enum_type==True but enum_info_of returned None"
+                return f"static_cast<{einfo.underlying_type.to_cpp()}>({obj})"
 
         # Narrowed vars (from isinstance std::get) are direct references, not pointers
         is_narrowed = (isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.narrowed_vars) or is_assign_narrowed
@@ -2817,12 +2885,12 @@ class ExpressionGenerator:
             # target.  If multiple container members exist (e.g. list[int] |
             # list[str]), skip -- sema should have caught the ambiguity.
             container_members = [m for m in target_type.members
-                                 if isinstance(m, (ListType, ArrayType))]
+                                 if is_array(m) or is_list(m)]
             if len(container_members) == 1:
                 union_prefix = self.types.type_to_cpp(container_members[0])
                 target_type = container_members[0]
         elif (isinstance(target_type, OptionalType)
-              and isinstance(target_type.inner, (ListType, ArrayType))):
+              and (is_array(target_type.inner) or is_list(target_type.inner))):
             union_prefix = self.types.type_to_cpp(target_type.inner)
             target_type = target_type.inner
         # Some types need explicit element targeting (Array, Span)
@@ -2835,19 +2903,20 @@ class ExpressionGenerator:
         # DictType target means elements are key-value tuples (e.g. dict[K,V]([tuples]));
         # derive TupleType(key, value) so _gen_tuple_literal gets per-element targets.
         if elem_target is None and target_type:
-            if isinstance(target_type, DictType):
-                elem_target = TupleType((target_type.key_type, target_type.value_type))
+            if is_dict(target_type):
+                elem_target = TupleType((target_type.type_args[0], target_type.type_args[1]))
             else:
                 et = target_type.get_element_type()
-                if isinstance(et, (OptionalType, UnionType, TupleType, StrType)):
+                if isinstance(et, (OptionalType, UnionType, TupleType)) or is_str_type(et):
                     elem_target = et
                 # Recursive union element type: pass it as elem_target so nested
-                # array literals trigger union_prefix.
-                elif isinstance(et, NamedType) and not et.is_protocol and not et.is_module_type:
-                    if et.name in self.ctx.recursive_union_names:
-                        alias = self.ctx.analyzer.registry.get_type_alias(et.name)
-                        if alias is not None:
-                            elem_target = alias
+                # array literals trigger union_prefix. Alias placeholders are
+                # bare NominalType (no TypeDef entry) -- match by name directly.
+                elif (isinstance(et, NominalType) and not et.is_protocol
+                        and et.name in self.ctx.recursive_union_names):
+                    alias = self.ctx.analyzer.registry.get_type_alias(et.name)
+                    if alias is not None:
+                        elem_target = alias
         elements = []
         with self._container_element_context():
             for e in expr.elements:
@@ -2864,19 +2933,19 @@ class ExpressionGenerator:
         # Non-copyable element types in list (not Array) targets: use
         # make_vector instead of brace-init (std::initializer_list copies).
         # std::array uses aggregate init which handles move-only types fine.
-        if elements and not isinstance(target_type, ArrayType):
+        if elements and not is_array(target_type):
             check_type = elem_target or (target_type.get_element_type() if target_type else None)
             if check_type is None:
                 check_type = self.ctx.get_expr_type(expr)
-                if isinstance(check_type, ListType):
-                    check_type = check_type.element_type
+                if is_list(check_type):
+                    check_type = check_type.type_args[0]
             if self._is_nocopy_container_element(check_type):
                 cpp_elem = self.types.type_to_cpp(check_type)
                 return self._gen_nocopy_vector(elements, cpp_elem)
 
         literal = f"{{{', '.join(elements)}}}"
         # std::array of std::array needs an extra brace level
-        if isinstance(elem_target, ArrayType):
+        if is_array(elem_target):
             return f"{{{literal}}}"
         # Empty list needs explicit type to avoid ambiguity with T* assignment
         if not expr.elements and target_type and target_type.get_element_type() is not None:
@@ -2890,18 +2959,19 @@ class ExpressionGenerator:
         effective = target_type.wrapped if isinstance(target_type, OwnType) else target_type
         if is_protocol_type(effective) or isinstance(effective, TypeParamRef):
             expr_type = self.ctx.get_expr_type(expr)
-            if isinstance(expr_type, (ArrayType, ListType)):
+            if is_array(expr_type) or is_list(expr_type):
                 return f"{expr_type.to_cpp()}{literal}"
         # Recursive union element type: emit explicit std::vector<T> so the
         # literal is self-describing when assigned to a variant (Tree __tmp = ...).
         # Bare braced-init-lists can't deduce variant constructor alternatives.
         if expr.elements:
             expr_type = self.ctx.get_expr_type(expr)
-            if isinstance(expr_type, ListType):
-                et = expr_type.element_type
-                if isinstance(et, NamedType) and not et.is_protocol and not et.is_module_type:
-                    if et.name in self.ctx.recursive_union_names:
-                        return f"{self.types.type_to_cpp(expr_type)}{literal}"
+            if is_list(expr_type):
+                et = expr_type.type_args[0]
+                # Alias placeholder (bare NominalType) for recursive union.
+                if (isinstance(et, NominalType) and not et.is_protocol
+                        and et.name in self.ctx.recursive_union_names):
+                    return f"{self.types.type_to_cpp(expr_type)}{literal}"
         return literal
 
     def _is_nocopy_container_element(self, typ: TpyType | None) -> bool:
@@ -2918,8 +2988,8 @@ class ExpressionGenerator:
         if isinstance(typ, UnionType):
             return any(self._is_cpp_noncopyable(m) for m in typ.members
                        if not isinstance(m, (NoneType, VoidType)))
-        if (isinstance(typ, NamedType) and not typ.is_protocol
-                and not typ.is_module_type
+        # Alias placeholder (bare NominalType) for recursive union.
+        if (isinstance(typ, NominalType) and not typ.is_protocol
                 and typ.name in self.ctx.recursive_union_names):
             alias = self.ctx.analyzer.registry.get_type_alias(typ.name)
             if isinstance(alias, UnionType):
@@ -2997,9 +3067,10 @@ class ExpressionGenerator:
     def _gen_dict_literal(self, expr: TpyDictLiteral) -> str:
         """Generate dict literal code: {k: v, ...} -> ::tpy::ordered_map<K, V>({{k, v}, ...})"""
         dict_type = self.ctx.get_expr_type(expr)
-        assert isinstance(dict_type, DictType)
-        cpp_key = dict_type.key_type.to_cpp()
-        cpp_val = dict_type.value_type.to_cpp()
+        assert is_dict(dict_type)
+        k_type, v_type = dict_type.type_args[0], dict_type.type_args[1]
+        cpp_key = k_type.to_cpp()
+        cpp_val = v_type.to_cpp()
 
         if not expr.keys:
             return f"::tpy::ordered_map<{cpp_key}, {cpp_val}>()"
@@ -3007,30 +3078,31 @@ class ExpressionGenerator:
         pairs = []
         with self._container_element_context():
             for k, v in zip(expr.keys, expr.values):
-                k_resolved = self.types.get_resolved_type(k, dict_type.key_type)
-                k_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(k, dict_type.key_type), k_resolved, dict_type.key_type)
-                k_cpp = self._to_value_variant_if_needed(k, k_cpp, dict_type.key_type)
-                v_resolved = self.types.get_resolved_type(v, dict_type.value_type)
-                v_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(v, dict_type.value_type), v_resolved, dict_type.value_type)
-                v_cpp = self._to_value_variant_if_needed(v, v_cpp, dict_type.value_type)
+                k_resolved = self.types.get_resolved_type(k, k_type)
+                k_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(k, k_type), k_resolved, k_type)
+                k_cpp = self._to_value_variant_if_needed(k, k_cpp, k_type)
+                v_resolved = self.types.get_resolved_type(v, v_type)
+                v_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(v, v_type), v_resolved, v_type)
+                v_cpp = self._to_value_variant_if_needed(v, v_cpp, v_type)
                 pairs.append(f"{{{k_cpp}, {v_cpp}}}")
         return f"::tpy::ordered_map<{cpp_key}, {cpp_val}>({{{', '.join(pairs)}}})"
 
     def _gen_set_literal(self, expr: TpySetLiteral) -> str:
         """Generate set literal code: {a, b, ...} -> ::tpy::ordered_set<T>({a, b, ...})"""
         set_type = self.ctx.get_expr_type(expr)
-        assert isinstance(set_type, SetType)
-        cpp_elem = set_type.element_type.to_cpp()
+        assert is_set(set_type)
+        cpp_elem = set_type.type_args[0].to_cpp()
 
         if not expr.elements:
             return f"::tpy::ordered_set<{cpp_elem}>()"
 
+        elem_type = set_type.type_args[0]
         elems = []
         with self._container_element_context():
             for e in expr.elements:
-                e_resolved = self.types.get_resolved_type(e, set_type.element_type)
-                e_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(e, set_type.element_type), e_resolved, set_type.element_type)
-                e_cpp = self._to_value_variant_if_needed(e, e_cpp, set_type.element_type)
+                e_resolved = self.types.get_resolved_type(e, elem_type)
+                e_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(e, elem_type), e_resolved, elem_type)
+                e_cpp = self._to_value_variant_if_needed(e, e_cpp, elem_type)
                 elems.append(e_cpp)
         return f"::tpy::ordered_set<{cpp_elem}>({{{', '.join(elems)}}})"
 
@@ -3042,7 +3114,7 @@ class ExpressionGenerator:
         count = self.gen_expr_deref(expr.count)
         count_type = self.ctx.analyzer.get_expr_type(expr.count)
         # BigInt count needs conversion (IntLiteralType is already plain int)
-        if isinstance(count_type, BigIntType):
+        if is_big_int_type(count_type):
             count = f"{count}.to_fixed_check<int32_t>()"
 
         # Determine result type and element type.
@@ -3051,7 +3123,7 @@ class ExpressionGenerator:
         # be constructed from a range (needs contiguous memory from Array/list).
         use_resolved = (target_type is None
                         or is_protocol_type(target_type)
-                        or isinstance(target_type, SpanType))
+                        or is_span(target_type))
         if not use_resolved:
             result_type = target_type
             elem_type = target_type.get_element_type()
@@ -3062,8 +3134,8 @@ class ExpressionGenerator:
         # Resolve IntLiteralType to configured default integer type.
         if isinstance(elem_type, IntLiteralType):
             elem_type = self.ctx.analyzer.ctx.default_int_type
-            if isinstance(result_type, ListType):
-                result_type = ListType(elem_type)
+            if is_list(result_type):
+                result_type = make_list(elem_type)
 
         # Use repeat_range for all list repeats (handles negative counts internally)
         repeat_elems = []
@@ -3087,8 +3159,8 @@ class ExpressionGenerator:
         elem_type = self._resolve_int_literal(expr.result_elem_type)
         cpp_elem = self.types.type_to_cpp(elem_type)
 
-        if isinstance(target_type, ArrayType):
-            return self._gen_array_comprehension(expr, elem_type, cpp_elem, target_type.size)
+        if is_array(target_type):
+            return self._gen_array_comprehension(expr, elem_type, cpp_elem, target_type.type_args[1])
 
         comp_names = self._enter_comp_scope(expr.generator)
         try:
@@ -3104,7 +3176,7 @@ class ExpressionGenerator:
     def _gen_array_comprehension(self, expr: TpyListComprehension,
                                   elem_type: TpyType, cpp_elem: str,
                                   size: int) -> str:
-        """Generate comprehension as IIFE producing std::array with indexed assignment."""
+        """Generate comprehension as GCC stmt-expr producing std::array with indexed assignment."""
         gen = expr.generator
         comp_names = self._enter_comp_scope(gen)
         try:
@@ -3116,7 +3188,7 @@ class ExpressionGenerator:
             ind2 = ind1 + INDENT
 
             buf = io.StringIO()
-            buf.write(f"[&]() {{\n")
+            buf.write(f"({{\n")
             buf.write(f"{ind1}std::array<{cpp_elem}, {size}> __result;\n")
 
             is_range = isinstance(gen.iterable, TpyCall) and gen.iterable.func_name == "range"
@@ -3172,8 +3244,8 @@ class ExpressionGenerator:
                 buf.write(f"{ind2}__result[__idx_{n}] = {insert_code};\n")
 
             buf.write(f"{ind1}}}\n")
-            buf.write(f"{ind1}return __result;\n")
-            buf.write(f"{stmt_ind}}}()")
+            buf.write(f"{ind1}__result;\n")
+            buf.write(f"{stmt_ind}}})")
 
             return buf.getvalue()
         finally:
@@ -3363,7 +3435,7 @@ class ExpressionGenerator:
             buf.write(f"{ind3}{cpp_iter} {cpp_var} = __i++;\n")
         else:
             buf.write(f'{ind2}if (__step == 0) ::tpy::tpy_panic("range() arg 3 must not be zero");\n')
-            if isinstance(elem_type, FixedIntType):
+            if is_fixed_int_type(elem_type):
                 buf.write(f"{ind2}::tpy::range_check_overflow<{cpp_iter}>(__i, __stop, __step);\n")
             buf.write(f"{ind2}while ((__step > 0) ? (__i < __stop) : (__i > __stop)) {{\n")
             buf.write(f"{ind3}{cpp_iter} {cpp_var} = __i;\n")
@@ -3401,7 +3473,7 @@ class ExpressionGenerator:
         container_type: str, insert_stmt: str,
         skip_reserve: bool,
     ) -> str:
-        """Generate comprehension as IIFE: [&]() { container; loop; return; }()"""
+        """Generate comprehension as GCC stmt-expr: ({ container; loop; result; })"""
         cpp_var = escape_cpp_name(gen.var)
 
         stmt_ind = INDENT * self.ctx.indent_level
@@ -3410,7 +3482,7 @@ class ExpressionGenerator:
         ind3 = ind2 + INDENT
 
         buf = io.StringIO()
-        buf.write(f"[&]() {{\n")
+        buf.write(f"({{\n")
         buf.write(f"{ind1}{container_type} __result;\n")
 
         iterable_code = self.gen_expr_deref(gen.iterable)
@@ -3439,8 +3511,8 @@ class ExpressionGenerator:
             buf.write(f"{ind2}{insert_stmt};\n")
 
         buf.write(f"{ind1}}}\n")
-        buf.write(f"{ind1}return __result;\n")
-        buf.write(f"{stmt_ind}}}()")
+        buf.write(f"{ind1}__result;\n")
+        buf.write(f"{stmt_ind}}})")
 
         return buf.getvalue()
 
@@ -3499,7 +3571,7 @@ class ExpressionGenerator:
         assert isinstance(range_call, TpyCall)
         nargs = len(range_call.args)
         cpp_elem = elem_type.to_cpp()
-        is_bigint = isinstance(elem_type, BigIntType)
+        is_bigint = is_big_int_type(elem_type)
 
         if nargs == 1:
             stop_expr = self.gen_expr_deref(range_call.args[0], elem_type)
@@ -3621,11 +3693,10 @@ class ExpressionGenerator:
 
     @staticmethod
     def _is_sized_type(typ: TpyType) -> bool:
-        """Check if a type has .size() in C++ (all STL containers)."""
+        """Check if a type has .size() in C++ (all STL containers + Span)."""
         typ = unwrap_readonly(typ)
-        return isinstance(typ, (ListType, ArrayType, SpanType, DictType, SetType,
-                                DictKeysViewType, DictValuesViewType,
-                                DictItemsViewType))
+        return (is_array(typ) or is_list(typ) or is_span(typ)
+                or is_dict(typ) or is_set(typ) or is_dict_view(typ))
 
     def _wrap_for_owned_slot(self, code: str, resolved: TpyType, slot_type: TpyType | None) -> str:
         """Wrap a str-view expression with std::string() when placed in an owned-str slot.
@@ -3634,10 +3705,10 @@ class ExpressionGenerator:
         A string_view variable that ends up in such a slot is copied at the call site
         rather than promoting the variable's type to std::string for its whole lifetime.
         """
-        if isinstance(resolved, StrViewType):
-            if isinstance(slot_type, StrType):
+        if is_str_view_type(resolved):
+            if is_str_type(slot_type):
                 return f"std::string({code})"
-            if isinstance(slot_type, OptionalType) and isinstance(slot_type.inner, StrType):
+            if isinstance(slot_type, OptionalType) and is_str_type(slot_type.inner):
                 return f"std::string({code})"
         return code
 
@@ -3891,7 +3962,7 @@ class ExpressionGenerator:
                 # *expr unpacking -- wrap in varargs (direct mode from span)
                 inner = self.gen_expr(a.expr)
                 inner_type = self.ctx.get_expr_type(a.expr)
-                if isinstance(inner_type, SpanType):
+                if is_span(inner_type):
                     return f"::tpy::varargs<{elem_cpp}>({inner})"
                 return f"::tpy::varargs<{elem_cpp}>(::tpy::as_mut_span({inner}))"
             gen = self.gen_expr(a)
@@ -3905,24 +3976,24 @@ class ExpressionGenerator:
         temp = self.ctx.temps.create_typed(array_type, init, brace_init=True)
         return f"::tpy::varargs<{elem_cpp}>({temp})"
 
-    def _gen_span_coercion(self, expr: TpyExpr, span_type: SpanType, gen_inner: str) -> str:
+    def _gen_span_coercion(self, expr: TpyExpr, span_type: NominalType, gen_inner: str) -> str:
         """Generate std::span conversion for supported container types."""
         # Span[T] -> Span[readonly[T]]: C++ implicit conversion, no helper needed
         actual_type = self.ctx.get_expr_type(expr)
-        if isinstance(actual_type, SpanType):
+        if is_span(actual_type):
             return gen_inner
         # Spannable[T] protocol type: always uses as_span (readonly)
         if is_protocol_type(actual_type) and actual_type.qualified_name() == "tpy.Spannable":
             return f"::tpy::as_span({gen_inner})"
         # User type with __span__() method: call it directly
-        if isinstance(actual_type, NamedType) and actual_type.is_user_record:
+        if isinstance(actual_type, NominalType) and actual_type.is_user_record:
             if builtin_modules.get_span_element_type(actual_type, registry=self.ctx.analyzer.registry) is not None:
                 if self.ctx.is_indirect_name(expr):
                     gen_inner = f"(*{gen_inner})"
                 return f"{gen_inner}.__span__()"
-        helper = "::tpy::as_span" if span_type.is_readonly else "::tpy::as_mut_span"
+        helper = "::tpy::as_span" if is_readonly_span(span_type) else "::tpy::as_mut_span"
         if isinstance(expr, TpyArrayLiteral):
-            expected_array_type = ArrayType(span_type.element_type, len(expr.elements))
+            expected_array_type = make_array(span_type.type_args[0], len(expr.elements))
             array_expr = f"{expected_array_type.to_cpp()}{gen_inner}"
             return f"{helper}({array_expr})"
         # gen_inner already generated, need to check if source was global
@@ -3931,10 +4002,10 @@ class ExpressionGenerator:
         return f"{helper}({gen_inner})"
 
     def _convert_to_fixed_int_arg(self, gen_expr: str, actual_type: TpyType, expected_type: TpyType, expr: TpyExpr) -> str:
-        """Convert to the target FixedIntType when a runtime BigInt may be present."""
-        if isinstance(expected_type, FixedIntType):
+        """Convert to the target fixed-width int when a runtime BigInt may be present."""
+        if is_fixed_int_type(expected_type):
             cpp_t = expected_type.to_cpp()
-            if isinstance(actual_type, BigIntType):
+            if is_big_int_type(actual_type):
                 if isinstance(expr, TpyIntLiteral):
                     return gen_expr
                 return f"({gen_expr}).to_fixed_check<{cpp_t}>()"
@@ -3976,7 +4047,7 @@ class ExpressionGenerator:
                     fmt_parts.append("{}")
 
                 is_user_type = (
-                    (isinstance(arg_type, NamedType) and not arg_type.is_protocol)
+                    (isinstance(arg_type, NominalType) and arg_type.is_user_record)
                     or isinstance(arg_type, TypeParamRef)
                 )
 
@@ -3991,20 +4062,20 @@ class ExpressionGenerator:
                 elif conv == FSTRING_CONV_STR and is_user_type:
                     gen_arg = f"::tpy::__str__({gen_arg})"
                 # Wrap args that need Python-compatible formatting
-                elif isinstance(arg_type, BoolType):
+                elif is_bool_type(arg_type):
                     if has_spec:
                         gen_arg = f"static_cast<int>({gen_arg})"
                     else:
                         gen_arg = f"::tpy::bool_to_str({gen_arg})"
-                elif isinstance(arg_type, FloatType) and not has_spec:
+                elif is_float64_type(arg_type) and not has_spec:
                     gen_arg = f"::tpy::float_to_str({gen_arg})"
-                elif isinstance(arg_type, Float32Type) and not has_spec:
+                elif is_float32_type(arg_type) and not has_spec:
                     gen_arg = f"::tpy::float_to_str(static_cast<double>({gen_arg}))"
                 elif self.types.is_runtime_bigint(part.expr, arg_type) and not has_spec:
                     gen_arg = f"({gen_arg}).to_string()"
-                elif isinstance(arg_type, FixedIntType) and arg_type.bits == 8:
+                elif (arg_tr := int_traits_of(arg_type)) is not None and arg_tr.bits == 8:
                     gen_arg = f"static_cast<int>({gen_arg})"
-                elif isinstance(arg_type, EnumType):
+                elif is_enum_type(arg_type):
                     gen_arg = f"static_cast<int>({gen_arg})"
                 elif is_user_type:
                     gen_arg = f"::tpy::__str__({gen_arg})"
@@ -4104,7 +4175,7 @@ class ExpressionGenerator:
 
         # C++ can't deduce template params from bare initializer lists,
         # so array literal branches need explicit std::vector<T>{...} prefix.
-        if isinstance(result_type, ListType):
+        if is_list(result_type):
             cpp_type = self.types.type_to_cpp(result_type)
             if isinstance(expr.then_expr, TpyArrayLiteral):
                 then_code = f"{cpp_type}{then_code}"
@@ -4114,9 +4185,9 @@ class ExpressionGenerator:
         # C++ ternary requires both branches to have the same type.
         # When arms have mismatched C++ types (one string_view, one std::string),
         # explicitly convert the string_view arm so the ternary deduces std::string.
-        # Skip when the target is StrViewType -- wrapping would create a dangling
+        # Skip when the target is StrView -- wrapping would create a dangling
         # string_view pointing to a temporary std::string.
-        if isinstance(result_type, StrType) and not isinstance(target_type, StrViewType):
+        if is_str_type(result_type) and not is_str_view_type(target_type):
             then_is_view = self._is_str_view_at_runtime(expr.then_expr)
             else_is_view = self._is_str_view_at_runtime(expr.else_expr)
             if then_is_view != else_is_view:

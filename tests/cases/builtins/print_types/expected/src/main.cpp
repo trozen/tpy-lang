@@ -14,7 +14,7 @@ std::vector<::tpy::BigInt>* items{};
 // arr: Array[Int32, 3] = [10, 20, 30]
 std::array<int32_t, 3>* arr{};
 // al = ArrayList[Int32, 4]()
-::tpystd::tplib::ArrayList<int32_t, 4>* al{};
+::tpystd::tplib::array_list::ArrayList<int32_t, 4>* al{};
 // # Optional values
 // x: Int32 | None = Int32(10)
 std::optional<int32_t> x;
@@ -76,7 +76,7 @@ void __tpy_init() {
     // print(arr)
     std::cout << ::tpy::ListPrinter((*arr)) << "\n";
     // al = ArrayList[Int32, 4]()
-    static ::tpystd::tplib::ArrayList<int32_t, 4> __global_slot_3 = ::tpystd::tplib::ArrayList<int32_t, 4>();
+    static ::tpystd::tplib::array_list::ArrayList<int32_t, 4> __global_slot_3 = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     al = &__global_slot_3;
     // al.append(5)
     al->append(5);

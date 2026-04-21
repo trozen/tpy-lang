@@ -7,26 +7,25 @@ Core expression analysis including literals, names, operators, field access, and
 from __future__ import annotations
 from contextlib import ExitStack
 from collections.abc import Callable as CallableFn
+from dataclasses import replace as dc_replace
 from typing import Literal, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, BoolType, StrType, CharType,
-    NamedType, PtrType, OwnType, ListType, DictType, SetType, ArrayType, PendingListType, ListRepeatType, GenExprType, TupleType, SpanType,
+    TpyType, IntLiteralType, FloatLiteralType,
+    NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_span, make_list, span_as_const, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType, VoidType,
-    ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType, PendingViewType,
-    is_any_bytes_type, BytesType, ByteArrayType, BytesViewType, PendingBytesType,
-    FixedIntType, StringType, StrViewType, make_union,
+    ReadonlyType, unwrap_readonly, is_any_str_type, PendingStrType, PendingViewType,
+    is_any_bytes_type, PendingBytesType,
+    make_union,
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
     PendingDictType, PendingSetType, DictLiteralInfo,
-    resolve_int_literals, FnType, CallableType,
-    FStrType,
+    resolve_int_literals, CallableType, make_fn_type, is_fn_type,
     INT32, FLOAT, STR, FSTR, STRVIEW, CHAR, BOOL, BIGINT, NONE, BASIC_SLICE, SLICE, BYTES, BYTESVIEW, UINT8,
     is_protocol_type, container_to_str_template, contains_type_param,
-    PendingGenericInstanceType, BasicSliceType, SliceType, unwrap_ref_type, make_ref, RefType,
+    PendingGenericInstanceType, unwrap_ref_type, make_ref, RefType,
     is_integer_type, is_any_int_type, is_union_or_optional_type,
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
-    unwrap_own,
-)
+    unwrap_own, is_readonly_span)
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
@@ -42,6 +41,14 @@ from ..parse import (
     TpyNestedDef,
     collect_name_refs,
 )
+from ..type_def_registry import (
+    is_set, is_dict, is_array, is_span, is_list,
+    is_fixed_int_type, is_big_int_type, is_bool_type, is_char_type, is_fstr_type,
+    is_basic_slice_type, is_slice_type,
+    int_traits_of,
+    is_enum_type, is_int_enum_type, enum_info_of,
+    find_factory_by_simple_name,
+)
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
@@ -50,6 +57,8 @@ from .narrowing import NarrowingTracker
 from .numeric_lattice import widen_numeric_types
 from .list_literals import IterableHelper
 from .local_deduction import collect_pending_source_types
+from .operators import DUNDER_CPP_TEMPLATES, _substitute_type_params
+from .overloads import resolve_overload
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -122,18 +131,18 @@ def _collect_body_local_defs(stmts: list[TpyStmt]) -> set[str]:
     return defs
 
 
-def _find_list_member(ut: UnionType) -> ListType | None:
+def _find_list_member(ut: UnionType) -> NominalType | None:
     """Find the list[...] member of a union type, if any."""
     for m in ut.members:
-        if isinstance(m, ListType):
+        if is_list(m):
             return m
     return None
 
 
-def _find_dict_member(ut: UnionType) -> DictType | None:
+def _find_dict_member(ut: UnionType) -> NominalType | None:
     """Find the dict[...] member of a union type, if any."""
     for m in ut.members:
-        if isinstance(m, DictType):
+        if is_dict(m):
             return m
     return None
 
@@ -294,7 +303,7 @@ class ExpressionAnalyzer:
 
         # F-string with FStr hint: keep decomposed for macro consumption.
         # Skip format-validity checks -- the call macro handles per-type dispatch.
-        if isinstance(expr, TpyFString) and isinstance(type_hint, FStrType):
+        if isinstance(expr, TpyFString) and is_fstr_type(type_hint):
             self._analyze_fstring(expr, for_fstr=True)
             self.ctx.set_expr_type(expr, FSTR)
             return FSTR
@@ -316,13 +325,13 @@ class ExpressionAnalyzer:
                 return typ
 
         # Check for generic type constructor (list(), Container[T](), etc.)
-        _generic_lookup = (builtin_modules.lookup_generic_type(expr.func_name)
-                           if isinstance(expr, TpyCall) and isinstance(expr.func, TpyName) else None)
+        _generic_td = (find_factory_by_simple_name(expr.func_name)
+                       if isinstance(expr, TpyCall) and isinstance(expr.func, TpyName) else None)
         is_generic_constructor = (isinstance(expr, TpyCall) and
                                   not expr.args and
                                   expr.call_type is None and
-                                  _generic_lookup is not None and
-                                  bool(_generic_lookup.type_def and _generic_lookup.type_def.type_params))
+                                  _generic_td is not None and
+                                  bool(_generic_td.param_kinds))
 
         # Check for empty list literal []
         is_empty_literal = isinstance(expr, TpyArrayLiteral) and not expr.elements
@@ -335,22 +344,22 @@ class ExpressionAnalyzer:
             # Check if type_hint matches the constructor's generic type
             hint_matches = False
             if is_generic_constructor:
-                lookup = builtin_modules.lookup_generic_type(expr.func_name)  # type: ignore
-                hint_matches = (lookup is not None and
-                                inner_hint.qualified_name() == lookup.qualified_name)
+                td = find_factory_by_simple_name(expr.func_name)  # type: ignore
+                hint_matches = (td is not None and
+                                inner_hint.qualified_name() == td.qname)
             else:
                 # Empty literal [] can match list[T] hint
-                hint_matches = isinstance(inner_hint, ListType)
+                hint_matches = is_list(inner_hint)
 
             if hint_matches:
-                if isinstance(inner_hint, ListType):
+                if is_list(inner_hint):
                     # list[T]: Use PendingListType for potential Array optimization
-                    elem_type = inner_hint.element_type
+                    elem_type = inner_hint.get_element_type()
                     # Set call_type so codegen generates explicit type (e.g., std::vector<int>())
                     if is_generic_constructor:
                         expr.call_type = inner_hint  # type: ignore
                     if self.ctx.func.current_function is None:
-                        typ = ListType(elem_type)
+                        typ = make_list(elem_type)
                     else:
                         literal_id = self.ctx.literal_counter
                         self.ctx.literal_counter += 1
@@ -382,15 +391,15 @@ class ExpressionAnalyzer:
             inner_hint = unwrap_readonly(type_hint)
             if isinstance(inner_hint, OwnType):
                 inner_hint = inner_hint.wrapped
-            if isinstance(inner_hint, (ListType, ArrayType)):
-                result = self._analyze_array_literal(expr, inner_hint.element_type)
+            if is_array(inner_hint) or is_list(inner_hint):
+                result = self._analyze_array_literal(expr, inner_hint.get_element_type())
                 if isinstance(result, PendingListType):
                     info = self.ctx.list_literals.get(result.literal_id)
                     if info:
                         info.has_explicit_annotation = True
                         info.explicit_type = inner_hint
                         if info.coerced_element_type is None:
-                            info.coerced_element_type = inner_hint.element_type
+                            info.coerced_element_type = inner_hint.get_element_type()
                 self.ctx.set_expr_type(expr, result)
                 return result
             # Recursive union type with a list member: propagate the union
@@ -415,8 +424,8 @@ class ExpressionAnalyzer:
             inner_hint = unwrap_readonly(type_hint)
             if isinstance(inner_hint, OwnType):
                 inner_hint = inner_hint.wrapped
-            if isinstance(inner_hint, ListType):
-                typ = self._analyze_list_comprehension(expr, expected_elem=inner_hint.element_type)
+            if is_list(inner_hint):
+                typ = self._analyze_list_comprehension(expr, expected_elem=inner_hint.get_element_type())
                 if isinstance(typ, PendingListType):
                     info = self.ctx.list_literals.get(typ.literal_id)
                     if info:
@@ -424,8 +433,8 @@ class ExpressionAnalyzer:
                         info.explicit_type = inner_hint
                 self.ctx.set_expr_type(expr, typ)
                 return typ
-            if isinstance(inner_hint, ArrayType):
-                typ = self._analyze_list_comprehension(expr, expected_elem=inner_hint.element_type)
+            if is_array(inner_hint):
+                typ = self._analyze_list_comprehension(expr, expected_elem=inner_hint.get_element_type())
                 if isinstance(typ, PendingListType):
                     info = self.ctx.list_literals.get(typ.literal_id)
                     if info:
@@ -439,10 +448,10 @@ class ExpressionAnalyzer:
             inner_hint = unwrap_readonly(type_hint)
             if isinstance(inner_hint, OwnType):
                 inner_hint = inner_hint.wrapped
-            if isinstance(inner_hint, DictType):
+            if is_dict(inner_hint):
                 typ = self._analyze_dict_comprehension(
-                    expr, expected_key=inner_hint.key_type,
-                    expected_value=inner_hint.value_type)
+                    expr, expected_key=inner_hint.type_args[0],
+                    expected_value=inner_hint.type_args[1])
                 self.ctx.set_expr_type(expr, typ)
                 return typ
 
@@ -451,14 +460,14 @@ class ExpressionAnalyzer:
             inner_hint = unwrap_readonly(type_hint)
             if isinstance(inner_hint, OwnType):
                 inner_hint = inner_hint.wrapped
-            if isinstance(inner_hint, DictType):
-                result = self._analyze_dict_literal(expr, inner_hint.key_type, inner_hint.value_type)
+            if is_dict(inner_hint):
+                result = self._analyze_dict_literal(expr, inner_hint.type_args[0], inner_hint.type_args[1])
                 self.ctx.set_expr_type(expr, result)
                 return result
             if isinstance(inner_hint, UnionType) and self.ctx.is_recursive_union(inner_hint):
                 dict_member = _find_dict_member(inner_hint)
                 if dict_member is not None:
-                    result = self._analyze_dict_literal(expr, dict_member.key_type, inner_hint)
+                    result = self._analyze_dict_literal(expr, dict_member.type_args[0], inner_hint)
                     self.ctx.set_expr_type(expr, result)
                     return result
 
@@ -467,9 +476,9 @@ class ExpressionAnalyzer:
             inner_hint = unwrap_readonly(type_hint)
             if isinstance(inner_hint, OwnType):
                 inner_hint = inner_hint.wrapped
-            if isinstance(inner_hint, SetType):
+            if is_set(inner_hint):
                 typ = self._analyze_set_comprehension(
-                    expr, expected_elem=inner_hint.element_type)
+                    expr, expected_elem=inner_hint.type_args[0])
                 self.ctx.set_expr_type(expr, typ)
                 return typ
 
@@ -478,8 +487,8 @@ class ExpressionAnalyzer:
             inner_hint = unwrap_readonly(type_hint)
             if isinstance(inner_hint, OwnType):
                 inner_hint = inner_hint.wrapped
-            if isinstance(inner_hint, SetType):
-                result = self._analyze_set_literal(expr, inner_hint.element_type)
+            if is_set(inner_hint):
+                result = self._analyze_set_literal(expr, inner_hint.type_args[0])
                 self.ctx.set_expr_type(expr, result)
                 return result
 
@@ -598,7 +607,6 @@ class ExpressionAnalyzer:
         decls = self.ctx.if_branch_decls.setdefault(id(loop_stmt), {})
         decls[name] = var_type
         # Mark the original for-loop's var for hoisted codegen (hidden counter)
-        from ..parse import TpyForEach
         if isinstance(orig_stmt, TpyForEach) and name == orig_stmt.var:
             orig_stmt.hoist_loop_var = True
         return True
@@ -610,17 +618,17 @@ class ExpressionAnalyzer:
         element type but different IDs (or different IntLiteralType values) are compatible.
         """
         if isinstance(t, PendingListType):
-            return resolve_int_literals(ListType(t.element_type), self.ctx.default_int_for_literal)
+            return resolve_int_literals(make_list(t.element_type), self.ctx.default_int_for_literal)
         if isinstance(t, PendingDictType):
             k = self.ctx.default_int_for_literal(t.key_type) if isinstance(t.key_type, IntLiteralType) else t.key_type
             k = FLOAT if isinstance(k, FloatLiteralType) else k
             v = self.ctx.default_int_for_literal(t.value_type) if isinstance(t.value_type, IntLiteralType) else t.value_type
             v = FLOAT if isinstance(v, FloatLiteralType) else v
-            return DictType(k, v)
+            return make_dict(k, v)
         if isinstance(t, PendingSetType):
             elem = self.ctx.default_int_for_literal(t.element_type) if isinstance(t.element_type, IntLiteralType) else t.element_type
             elem = FLOAT if isinstance(elem, FloatLiteralType) else elem
-            return SetType(elem)
+            return make_set(elem)
         return t
 
     def _logical_op_result_type(self, left: TpyType, right: TpyType) -> TpyType:
@@ -631,7 +639,7 @@ class ExpressionAnalyzer:
         Different types or bool operands -> return bool.
         """
         # Bool operands: C++ &&/|| already correct
-        if isinstance(left, BoolType) or isinstance(right, BoolType):
+        if is_bool_type(left) or is_bool_type(right):
             return BOOL
         # Resolve int literals to match concrete int type on the other side
         if isinstance(left, IntLiteralType):
@@ -763,7 +771,7 @@ class ExpressionAnalyzer:
 
         # Helper to check if type is any numeric type
         def is_numeric_type(t: TpyType) -> bool:
-            return isinstance(t, (Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType))
+            return is_any_int_type(t) or is_any_float_type(t)
 
         # Identity operators (is / is not) -- only valid with None or enums
         if expr.op in ("is", "is not"):
@@ -775,7 +783,7 @@ class ExpressionAnalyzer:
             if isinstance(right_check, OwnType):
                 right_check = right_check.wrapped
             # Enum identity: lower to ==/!=
-            if isinstance(left_check, EnumType) and isinstance(right_check, EnumType):
+            if is_enum_type(left_check) and is_enum_type(right_check):
                 if left_check.name == right_check.name:
                     expr.op = "==" if expr.op == "is" else "!="
                     return BOOL
@@ -784,10 +792,10 @@ class ExpressionAnalyzer:
                     expr,
                 )
             # Bool literal identity: lower to ==/!=
-            if isinstance(left_check, BoolType) and isinstance(expr.right, TpyBoolLiteral):
+            if is_bool_type(left_check) and isinstance(expr.right, TpyBoolLiteral):
                 expr.op = "==" if expr.op == "is" else "!="
                 return BOOL
-            if isinstance(right_check, BoolType) and isinstance(expr.left, TpyBoolLiteral):
+            if is_bool_type(right_check) and isinstance(expr.left, TpyBoolLiteral):
                 expr.op = "==" if expr.op == "is" else "!="
                 return BOOL
             nullable_types = (OptionalType, PtrType)
@@ -810,9 +818,9 @@ class ExpressionAnalyzer:
 
         # Enum operators: base Enum supports == and != only;
         # IntEnum also supports ordering, comparison with integers, and arithmetic
-        if isinstance(left_effective, EnumType) or isinstance(right_effective, EnumType):
-            left_is_int_enum = isinstance(left_effective, IntEnumType)
-            right_is_int_enum = isinstance(right_effective, IntEnumType)
+        if is_enum_type(left_effective) or is_enum_type(right_effective):
+            left_is_int_enum = is_int_enum_type(left_effective)
+            right_is_int_enum = is_int_enum_type(right_effective)
             is_comparison = expr.op in ("==", "!=", "<", ">", "<=", ">=")
 
             if is_comparison:
@@ -823,7 +831,7 @@ class ExpressionAnalyzer:
                 if right_is_int_enum and is_any_int_type(left_effective):
                     expr.int_enum_coercion = right_effective
                     return BOOL
-                if isinstance(left_effective, EnumType) and isinstance(right_effective, EnumType):
+                if is_enum_type(left_effective) and is_enum_type(right_effective):
                     if left_effective.name != right_effective.name:
                         raise self.ctx.error(
                             f"Cannot compare enum types '{left_effective.name}' and '{right_effective.name}'",
@@ -840,16 +848,16 @@ class ExpressionAnalyzer:
                         expr.int_enum_coercion = left_effective
                     return BOOL
                 # One side is enum, other is not (and not int for IntEnum)
-                enum_name = left_effective.name if isinstance(left_effective, EnumType) else right_effective.name
+                enum_name = left_effective.name if is_enum_type(left_effective) else right_effective.name
                 raise self.ctx.error(
-                    f"Cannot compare '{enum_name}' with '{right_effective if isinstance(left_effective, EnumType) else left_effective}'",
+                    f"Cannot compare '{enum_name}' with '{right_effective if is_enum_type(left_effective) else left_effective}'",
                     expr,
                 )
 
             # Non-comparison ops: IntEnum arithmetic is handled below;
             # base Enum in arithmetic is an error
             if not left_is_int_enum and not right_is_int_enum:
-                enum_name = left_effective.name if isinstance(left_effective, EnumType) else right_effective.name
+                enum_name = left_effective.name if is_enum_type(left_effective) else right_effective.name
                 raise self.ctx.error(
                     f"Operator '{expr.op}' not supported for enum type '{enum_name}'",
                     expr,
@@ -935,13 +943,10 @@ class ExpressionAnalyzer:
             if right_record:
                 contains_overloads = right_record.get_method_overloads("__contains__")
                 if contains_overloads:
-                    from .operators import _substitute_type_params
-                    from .overloads import resolve_overload
                     type_subst = builtin_modules.extract_type_params(right_type)
                     # Substitute type params for generic containers
                     subst_overloads = contains_overloads
                     if type_subst:
-                        from dataclasses import replace as dc_replace
                         subst_overloads = [
                             dc_replace(m, params=[
                                 ParamInfo(p.name, _substitute_type_params(p.type, type_subst))
@@ -954,8 +959,9 @@ class ExpressionAnalyzer:
                     if isinstance(check_left, IntLiteralType):
                         for m in subst_overloads:
                             pt = m.params[0].type
-                            if (isinstance(pt, FixedIntType)
-                                    and pt.min_value <= check_left.value <= pt.max_value):
+                            pt_tr = int_traits_of(pt)
+                            if (pt_tr is not None
+                                    and pt_tr.min_value <= check_left.value <= pt_tr.max_value):
                                 check_left = pt
                                 break
                         else:
@@ -988,7 +994,7 @@ class ExpressionAnalyzer:
             if helper.is_type_iterable(right_type):
                 # For string containers, LHS must be str or Char
                 if is_any_str_type(right_type):
-                    if not (is_any_str_type(left_type) or isinstance(left_type, CharType)):
+                    if not (is_any_str_type(left_type) or is_char_type(left_type)):
                         raise SemanticError(
                             f"Cannot check '{left_type}' membership in str (expected str or Char)",
                             expr.loc
@@ -997,7 +1003,7 @@ class ExpressionAnalyzer:
                     # Non-string collections use std::find which requires ==
                     elem_type = right_type.get_element_type()
                     if elem_type is not None:
-                        equatable = NamedType("Equatable", is_protocol=True)
+                        equatable = NominalType("Equatable", is_protocol=True)
                         if not self.protocols.type_conforms_to_protocol(elem_type, equatable):
                             raise self.ctx.error(
                                 f"'in' requires element type '{elem_type}' to "
@@ -1010,7 +1016,7 @@ class ExpressionAnalyzer:
         # Same non-bool type -> return that type; otherwise -> bool.
         if expr.op in ("&&", "||"):
             result = self._logical_op_result_type(left_type, right_type)
-            if isinstance(result, ListType):
+            if is_list(result):
                 # Both ternary branches must share a C++ type; force sources to
                 # ListType so they don't independently become incompatible Arrays.
                 for t in collect_pending_source_types(self.ctx, expr):
@@ -1024,28 +1030,29 @@ class ExpressionAnalyzer:
         if expr.op in ("+", "-", "*", "//", "%"):
             int_enum_side = None
             other_side = None
-            if isinstance(left_effective, IntEnumType):
+            if is_int_enum_type(left_effective):
                 int_enum_side = left_effective
                 other_side = right_effective
-            elif isinstance(right_effective, IntEnumType):
+            elif is_int_enum_type(right_effective):
                 int_enum_side = right_effective
                 other_side = left_effective
             if int_enum_side is not None:
-                if isinstance(other_side, IntEnumType):
+                if is_int_enum_type(other_side):
                     if other_side.name != int_enum_side.name:
                         raise self.ctx.error(
                             f"Cannot mix arithmetic between '{int_enum_side.name}' "
                             f"and '{other_side.name}'",
                             expr,
                         )
-                if isinstance(other_side, (IntEnumType, IntLiteralType, FixedIntType, BigIntType)):
+                if (is_int_enum_type(other_side) or isinstance(other_side, IntLiteralType)
+                        or is_fixed_int_type(other_side) or is_big_int_type(other_side)):
                     # Coerce IntEnum operands to underlying type so standard
                     # FixedInt binop resolution (with checked arithmetic) handles it
                     expr.int_enum_coercion = int_enum_side
-                    if isinstance(left_effective, IntEnumType):
-                        left_effective = left_effective.underlying_type
-                    if isinstance(right_effective, IntEnumType):
-                        right_effective = right_effective.underlying_type
+                    if is_int_enum_type(left_effective):
+                        left_effective = enum_info_of(left_effective).underlying_type
+                    if is_int_enum_type(right_effective):
+                        right_effective = enum_info_of(right_effective).underlying_type
                     # Fall through to standard binop resolution below
 
         # IntLiteral + IntLiteral -> IntLiteral (stays unresolved until context determines type)
@@ -1088,12 +1095,12 @@ class ExpressionAnalyzer:
             if expr.op in ("//", "%"):
                 self._check_divisor_non_zero(expr)
             # List concat produces a list -- mark pending literals as mutated
-            if isinstance(result.method.return_type, ListType):
+            if is_list(result.method.return_type):
                 self._mark_list_concat_operands_mutated(expr, left_effective, right_effective)
             return result.method.return_type
 
         # Record types (user-defined or module) with dunder methods
-        if isinstance(left_effective, NamedType) and left_effective.is_record:
+        if isinstance(left_effective, NominalType) and left_effective.is_record:
             method_name = builtin_modules.BINOP_TO_METHOD.get(expr.op)
             if method_name:
                 record = self.ctx.registry.get_record_for_type(left_effective)
@@ -1113,7 +1120,6 @@ class ExpressionAnalyzer:
                             # cpp_template instead of raw C++ operator syntax.
                             cpp = method.cpp_template
                             if not cpp and not method.native_function:
-                                from .operators import DUNDER_CPP_TEMPLATES
                                 cpp = DUNDER_CPP_TEMPLATES.get(method_name)
                             resolved_method = FunctionInfo(
                                 name=method_name,
@@ -1253,7 +1259,11 @@ class ExpressionAnalyzer:
 
         # Logical not: validate operand type (Bool, numeric, Optional, or types with __bool__/__len__)
         if expr.op == "!":
-            if isinstance(effective_type, (BoolType, Int32Type, BigIntType, FloatType, Float32Type, IntLiteralType, FloatLiteralType, OptionalType, EnumType)):
+            if (is_bool_type(effective_type)
+                    or is_any_int_type(effective_type)
+                    or is_any_float_type(effective_type)
+                    or isinstance(effective_type, OptionalType)
+                    or is_enum_type(effective_type)):
                 return BOOL
             record = self.ctx.registry.get_record_for_type(effective_type)
             if record and (record.get_method_overloads("__bool__")
@@ -1269,8 +1279,8 @@ class ExpressionAnalyzer:
                 return effective_type
 
         # IntEnum: unary negation returns the underlying integer type
-        if isinstance(effective_type, IntEnumType) and expr.op == "-":
-            return effective_type.underlying_type
+        if is_int_enum_type(effective_type) and expr.op == "-":
+            return enum_info_of(effective_type).underlying_type
 
         # IntLiteralType special cases - preserve literal nature when possible
         if isinstance(effective_type, IntLiteralType):
@@ -1300,7 +1310,7 @@ class ExpressionAnalyzer:
 
     def _is_user_record_type(self, typ: TpyType) -> bool:
         """Check if a type is a user-defined record (not a builtin container)."""
-        return isinstance(typ, NamedType) and typ.is_record and typ.is_user_record
+        return isinstance(typ, NominalType) and typ.is_record and typ.is_user_record
 
     def _validate_comparison(self, expr: TpyBinOp, left_type: TpyType, right_type: TpyType) -> None:
         """Error when comparing user record types that lack the relevant dunder."""
@@ -1342,16 +1352,16 @@ class ExpressionAnalyzer:
 
     def _try_find_field(self, typ: TpyType, expr: TpyFieldAccess) -> TpyType | None:
         """Try to find a field on typ. Returns field type or None."""
-        if isinstance(typ, BasicSliceType):
+        if is_basic_slice_type(typ):
             if expr.field in ("start", "stop"):
                 return OptionalType(INT32)
             return None
-        if isinstance(typ, SliceType):
+        if is_slice_type(typ):
             if expr.field in ("start", "stop", "step"):
                 return OptionalType(INT32)
             return None
 
-        if isinstance(typ, NamedType) and typ.is_record:
+        if isinstance(typ, NominalType) and typ.is_record:
             record = self.ctx.registry.get_record_for_type(typ)
             if not record:
                 return None
@@ -1401,7 +1411,7 @@ class ExpressionAnalyzer:
             return nested_enum
         nested_record = self.ctx.registry.get_record(dotted)
         if nested_record is not None:
-            return NamedType(dotted)
+            return NominalType(dotted)
         return None
 
     def _resolve_nested_chain(self, expr: TpyFieldAccess) -> tuple[str, TpyType] | None:
@@ -1419,19 +1429,19 @@ class ExpressionAnalyzer:
                         return (dotted, nested_enum)
                     nested_record = self.ctx.registry.get_record(dotted)
                     if nested_record is not None:
-                        return (dotted, NamedType(dotted))
+                        return (dotted, NominalType(dotted))
         elif isinstance(expr.obj, TpyFieldAccess):
             parent = self._resolve_nested_chain(expr.obj)
             if parent is not None:
                 dotted_parent, parent_type = parent
-                if isinstance(parent_type, NamedType):
+                if isinstance(parent_type, NominalType):
                     dotted = f"{dotted_parent}.{expr.field}"
                     nested_enum = self.ctx.registry.get_enum(dotted)
                     if nested_enum is not None:
                         return (dotted, nested_enum)
                     nested_record = self.ctx.registry.get_record(dotted)
                     if nested_record is not None:
-                        return (dotted, NamedType(dotted))
+                        return (dotted, NominalType(dotted))
         return None
 
     def _analyze_field_access(self, expr: TpyFieldAccess) -> TpyType:
@@ -1452,7 +1462,7 @@ class ExpressionAnalyzer:
                 # Enum type-level member access: Color.Red -> EnumType
                 if binding and binding.kind == BindingKind.ENUM:
                     enum_type = binding.enum_type
-                    if expr.field in enum_type.members:
+                    if expr.field in enum_info_of(enum_type).members:
                         return enum_type
                     raise self.ctx.error(
                         f"Enum '{enum_type.name}' has no member '{expr.field}'", expr)
@@ -1470,15 +1480,15 @@ class ExpressionAnalyzer:
             if chain is not None:
                 # chain is a (dotted_name, type) for the intermediate nested type
                 dotted_name, chain_type = chain
-                if isinstance(chain_type, EnumType):
-                    if expr.field in chain_type.members:
+                if is_enum_type(chain_type):
+                    if expr.field in enum_info_of(chain_type).members:
                         return chain_type
                     if expr.field in ("name", "value"):
                         pass  # fall through to normal field access
                     else:
                         raise self.ctx.error(
                             f"Enum '{chain_type.name}' has no member '{expr.field}'", expr)
-                elif isinstance(chain_type, NamedType):
+                elif isinstance(chain_type, NominalType):
                     # Try further nesting
                     nested = self._resolve_nested_type_access(dotted_name, expr.field, expr)
                     if nested is not None:
@@ -1510,11 +1520,11 @@ class ExpressionAnalyzer:
             )
 
         # Enum instance property access: c.name -> str, c.value -> underlying type
-        if isinstance(actual_type, EnumType):
+        if is_enum_type(actual_type):
             if expr.field == "name":
                 return STR
             elif expr.field == "value":
-                return actual_type.underlying_type
+                return enum_info_of(actual_type).underlying_type
             raise self.ctx.error(
                 f"Enum value of type '{actual_type.name}' has no attribute '{expr.field}'. "
                 f"Use '{actual_type.name}.{expr.field}' to access enum members", expr)
@@ -1541,8 +1551,8 @@ class ExpressionAnalyzer:
                 if is_readonly_obj:
                     if isinstance(result, PtrType) and not result.is_readonly:
                         result = result.as_const()
-                    elif isinstance(result, SpanType) and not result.is_readonly:
-                        result = result.as_const()
+                    elif is_span(result) and not is_readonly_span(result):
+                        result = span_as_const(result)
                     elif not result.is_value_type():
                         result = ReadonlyType(unwrap_readonly(result))
                 # Ownership propagation: in a consuming method (self: Own[Self]),
@@ -1572,7 +1582,7 @@ class ExpressionAnalyzer:
             current_type = deref_target
             deref_depth += 1
 
-        if isinstance(actual_type, NamedType) and actual_type.is_record:
+        if isinstance(actual_type, NominalType) and actual_type.is_record:
             raise self.ctx.error(f"Record '{actual_type.name}' has no field '{expr.field}'", expr)
         raise self.ctx.error(f"Cannot access field '{expr.field}' on type {obj_type}", expr)
 
@@ -1630,8 +1640,8 @@ class ExpressionAnalyzer:
                     continue
                 # Subclass coercion excluded: storing Child in list[Base] silently
                 # slices objects (same invariance as dict/set).
-                if (isinstance(elem_type, NamedType) and elem_type.is_user_record
-                        and isinstance(expected_elem, NamedType) and expected_elem.is_user_record):
+                if (isinstance(elem_type, NominalType) and elem_type.is_user_record
+                        and isinstance(expected_elem, NominalType) and expected_elem.is_user_record):
                     raise self.ctx.error(
                         f"List literal element {i} has type {elem_type}, "
                         f"incompatible with annotated element type {expected_elem}", expr
@@ -1673,7 +1683,7 @@ class ExpressionAnalyzer:
                     first_type = elem_type
                     continue
                 # Nested lists with IntLiteralType elements are compatible
-                if (isinstance(first_type, ListType) and isinstance(elem_type, ListType) and
+                if (is_list(first_type) and is_list(elem_type) and
                     isinstance(first_type.element_type, IntLiteralType) and
                     isinstance(elem_type.element_type, IntLiteralType)):
                     continue
@@ -1709,7 +1719,7 @@ class ExpressionAnalyzer:
         # Global context (no current function) -> ListType (std::vector)
         # Keep IntLiteralType to allow coercion to Int32 when annotation is present
         if self.ctx.func.current_function is None:
-            return ListType(first_type)
+            return make_list(first_type)
 
         # Function-local context -> create PendingListType for deferred resolution
         literal_id = self.ctx.literal_counter
@@ -1727,7 +1737,7 @@ class ExpressionAnalyzer:
 
         return PendingListType(first_type, size, literal_id)
 
-    _HASHABLE = NamedType("Hashable", is_protocol=True)
+    _HASHABLE = NominalType("Hashable", is_protocol=True)
 
     def _validate_dict_key_type(self, key_type: TpyType, expr: TpyExpr) -> None:
         """Validate that a type can be used as a dict key."""
@@ -1735,12 +1745,12 @@ class ExpressionAnalyzer:
             key_type = key_type.wrapped
         if isinstance(key_type, IntLiteralType):
             return
-        if isinstance(key_type, (EnumType, IntEnumType)):
+        if is_enum_type(key_type):
             return
         if isinstance(key_type, PendingViewType):
             return
         # User records: allow frozen dataclasses (have synthesized __hash__ + __eq__)
-        if isinstance(key_type, NamedType) and key_type.is_user_record:
+        if isinstance(key_type, NominalType) and key_type.is_user_record:
             info = self.ctx.registry.get_record(key_type.name)
             if not (info is not None and info.is_frozen
                     and "__hash__" in info.methods and "__eq__" in info.methods):
@@ -1836,7 +1846,7 @@ class ExpressionAnalyzer:
         common = self._ternary_common_type(expr, then_type, else_type,
                                            widen_numeric_types)
 
-        if isinstance(common, ListType):
+        if is_list(common):
             # Both ternary branches must share a C++ type; force sources to
             # ListType so they don't independently become incompatible Arrays.
             for t in collect_pending_source_types(self.ctx, expr):
@@ -1873,11 +1883,11 @@ class ExpressionAnalyzer:
         if isinstance(t, IntLiteralType) and isinstance(e, IntLiteralType):
             return self.ctx.default_int_for_literal(t, expr.then_expr)
         if isinstance(t, IntLiteralType):
-            if isinstance(e, (FixedIntType, BigIntType, FloatType, Float32Type)):
+            if is_integer_type(e) or is_float_type(e):
                 return e
             t = self.ctx.default_int_for_literal(t, expr.then_expr)
         if isinstance(e, IntLiteralType):
-            if isinstance(t, (FixedIntType, BigIntType, FloatType, Float32Type)):
+            if is_integer_type(t) or is_float_type(t):
                 return t
             e = self.ctx.default_int_for_literal(e, expr.else_expr)
 
@@ -2047,7 +2057,7 @@ class ExpressionAnalyzer:
             value_type = value_type.family.owned_type
 
         self._validate_dict_key_type(key_type, expr)
-        return DictType(key_type, value_type)
+        return make_dict(key_type, value_type)
 
     def _analyze_set_literal(
         self, expr: TpySetLiteral,
@@ -2111,7 +2121,7 @@ class ExpressionAnalyzer:
             elem_type = elem_type.family.owned_type
 
         self._validate_dict_key_type(elem_type, expr)
-        return SetType(elem_type)
+        return make_set(elem_type)
 
     def _analyze_list_repeat(self, expr: TpyListRepeat) -> TpyType:
         """Analyze a list repetition: [elements...] * count"""
@@ -2147,7 +2157,7 @@ class ExpressionAnalyzer:
 
         # Global context -> ListType (no deferred resolution)
         if self.ctx.func.current_function is None:
-            return ListType(first_type)
+            return make_list(first_type)
 
         # Function-local context -> PendingListType for deferred resolution
         # Compute size if count is compile-time constant
@@ -2220,8 +2230,8 @@ class ExpressionAnalyzer:
         if expected_elem is not None and result_elem_type != expected_elem:
             # Subclass coercion excluded: storing Child in list/set[Base] silently
             # slices objects (same invariance as container literals).
-            if (isinstance(result_elem_type, NamedType) and result_elem_type.is_user_record
-                    and isinstance(expected_elem, NamedType) and expected_elem.is_user_record):
+            if (isinstance(result_elem_type, NominalType) and result_elem_type.is_user_record
+                    and isinstance(expected_elem, NominalType) and expected_elem.is_user_record):
                 raise self.ctx.error(
                     f"{kind.capitalize()} comprehension element has type {result_elem_type}, "
                     f"incompatible with annotated element type {expected_elem}", expr
@@ -2252,7 +2262,7 @@ class ExpressionAnalyzer:
                 self.ctx.func.pending_resolutions.append(literal_id)
                 return PendingListType(result_elem_type, array_size, literal_id)
 
-        return SetType(result_elem_type) if kind == "set" else ListType(result_elem_type)
+        return make_set(result_elem_type) if kind == "set" else make_list(result_elem_type)
 
     def _try_comp_array_size(self, expr: TpyListComprehension) -> int | None:
         """Return the compile-time known size if this comprehension can be an Array."""
@@ -2266,8 +2276,8 @@ class ExpressionAnalyzer:
 
         # Array[T, N] source -- size is known from the type
         iterable_type = unwrap_readonly(self.ctx.get_expr_type(gen.iterable))
-        if isinstance(iterable_type, ArrayType):
-            return iterable_type.size
+        if is_array(iterable_type):
+            return iterable_type.type_args[1]
 
         return None
 
@@ -2344,7 +2354,7 @@ class ExpressionAnalyzer:
         self._validate_dict_key_type(key_type, expr)
         expr.result_key_type = key_type
         expr.result_value_type = value_type
-        return DictType(key_type, value_type)
+        return make_dict(key_type, value_type)
 
     def _resolve_comp_iterable(
         self, gen: TpyComprehensionGenerator, expr: TpyExpr
@@ -2508,7 +2518,7 @@ class ExpressionAnalyzer:
 
         # TypedDict subscript: d["key"] -> field type (compile-time string literal only)
         actual_obj = unwrap_readonly(inner_obj_type)
-        if isinstance(actual_obj, NamedType) and actual_obj.is_record:
+        if isinstance(actual_obj, NominalType) and actual_obj.is_record:
             record_info = self.ctx.registry.get_record_for_type(actual_obj)
             if record_info and record_info.is_typed_dict:
                 if not isinstance(expr.index, TpyStrLiteral):
@@ -2543,18 +2553,20 @@ class ExpressionAnalyzer:
                     loc=expr.loc,
                 )
             return make_ref(actual_obj.value_type)
-        if isinstance(actual_obj, DictType):
+        if is_dict(actual_obj):
+            k_type = actual_obj.type_args[0]
+            v_type = actual_obj.type_args[1]
             self.compat.check_type_compatible(
-                index_type, actual_obj.key_type,
-                f"dict key (expected {actual_obj.key_type})",
+                index_type, k_type,
+                f"dict key (expected {k_type})",
                 loc=expr.loc,
             )
-            return make_ref(actual_obj.value_type)
+            return make_ref(v_type)
 
         # Slice-typed variable as index: route through __getitem__ overload
         # resolution (same path as literal a:b syntax but with variable index).
-        if isinstance(index_type, (BasicSliceType, SliceType)):
-            stepped = isinstance(index_type, SliceType)
+        if is_basic_slice_type(index_type) or is_slice_type(index_type):
+            stepped = is_slice_type(index_type)
             if stepped:
                 expr.is_stepped_slice = True
             is_readonly = isinstance(inner_obj_type, ReadonlyType)
@@ -2607,7 +2619,7 @@ class ExpressionAnalyzer:
             return make_ref(ret)
 
         # Records with __getitem__ method
-        if isinstance(actual_type, NamedType) and actual_type.is_record:
+        if isinstance(actual_type, NominalType) and actual_type.is_record:
             ret = self.narrowing._get_record_getitem_type(actual_type)
             if ret is None:
                 raise self.ctx.error(f"Cannot index type {actual_type}: no __getitem__ method", expr)
@@ -2653,8 +2665,8 @@ class ExpressionAnalyzer:
         """Find __getitem__(basic_slice) or __getitem__(slice) overload on any type.
 
         Works for both built-in types (via qualified_name -> registry) and user records.
-        When stepped=False, looks for BasicSliceType param first, falls back to SliceType.
-        When stepped=True, looks for SliceType param first, falls back to BasicSliceType.
+        When stepped=False, looks for basic_slice param first, falls back to slice.
+        When stepped=True, looks for slice param first, falls back to basic_slice.
         Prefers the const overload when is_readonly=True.
         Returns (return_type, FunctionInfo) or None.
         """
@@ -2662,16 +2674,16 @@ class ExpressionAnalyzer:
         if record is None:
             return None
         getitem_overloads = record.methods.get("__getitem__", [])
-        primary = SliceType if stepped else BasicSliceType
-        fallback = BasicSliceType if stepped else SliceType
+        primary = is_slice_type if stepped else is_basic_slice_type
+        fallback = is_basic_slice_type if stepped else is_slice_type
         slice_overloads = [
             fi for fi in getitem_overloads
-            if len(fi.params) == 1 and isinstance(fi.params[0].type, primary)
+            if len(fi.params) == 1 and primary(fi.params[0].type)
         ]
         if not slice_overloads:
             slice_overloads = [
                 fi for fi in getitem_overloads
-                if len(fi.params) == 1 and isinstance(fi.params[0].type, fallback)
+                if len(fi.params) == 1 and fallback(fi.params[0].type)
             ]
         if not slice_overloads:
             return None
@@ -2683,10 +2695,10 @@ class ExpressionAnalyzer:
             ret = self.type_ops.substitute_type_params(ret, type_subst)
         # Propagate readonly to Span return types (source is readonly or
         # Span[readonly[T]] -> sliced result should also be readonly)
-        if isinstance(ret, SpanType) and not ret.is_readonly:
-            src_readonly = isinstance(actual_type, SpanType) and actual_type.is_readonly
+        if is_span(ret) and not is_readonly_span(ret):
+            src_readonly = is_span(actual_type) and is_readonly_span(actual_type)
             if is_readonly or src_readonly:
-                ret = SpanType(ret.element_type, is_readonly=True)
+                ret = make_span(ret.type_args[0], is_readonly=True)
         return ret, func_info
 
     def _find_slice_setitem(self, actual_type: TpyType, *, stepped: bool = False
@@ -2694,7 +2706,7 @@ class ExpressionAnalyzer:
         """Find __setitem__(basic_slice, value) or __setitem__(slice, value) overload.
 
         Similar to _find_slice_getitem but for assignment.
-        No fallback from SliceType to BasicSliceType (or vice versa) -- unlike
+        No fallback from slice to basic_slice (or vice versa) -- unlike
         getitem where a basic_slice can promote to slice for reading, assignment
         semantics differ (stepped requires exact-length match).
         Returns (value_param_type, FunctionInfo) or None.
@@ -2703,10 +2715,10 @@ class ExpressionAnalyzer:
         if record is None:
             return None
         setitem_overloads = record.methods.get("__setitem__", [])
-        target = SliceType if stepped else BasicSliceType
+        target = is_slice_type if stepped else is_basic_slice_type
         slice_overloads = [
             fi for fi in setitem_overloads
-            if len(fi.params) == 2 and isinstance(fi.params[0].type, target)
+            if len(fi.params) == 2 and target(fi.params[0].type)
         ]
         if not slice_overloads:
             return None
@@ -2717,13 +2729,15 @@ class ExpressionAnalyzer:
             value_type = self.type_ops.substitute_type_params(value_type, type_subst)
         return value_type, func_info
 
-    _FORMATTABLE_TYPES = (
-        FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, BoolType,
-        StrType, StringType, StrViewType, PendingStrType, CharType, EnumType,
-    )
+    _STRINGABLE = NominalType("Stringable", is_protocol=True)
+    _REPRESENTABLE = NominalType("Representable", is_protocol=True)
 
-    _STRINGABLE = NamedType("Stringable", is_protocol=True)
-    _REPRESENTABLE = NamedType("Representable", is_protocol=True)
+    @staticmethod
+    def _is_formattable(t: TpyType) -> bool:
+        """True for types that f-string can format directly (no __str__/__repr__ needed)."""
+        return (is_numeric_type(t) or is_char_type(t) or is_any_str_type(t)
+                or isinstance(t, (IntLiteralType, FloatLiteralType))
+                or is_enum_type(t))
 
     def _analyze_fstring(self, expr: TpyFString, *, for_fstr: bool = False) -> TpyType:
         """Analyze f-string parts and return STR (owned string).
@@ -2752,7 +2766,7 @@ class ExpressionAnalyzer:
                             part.expr,
                         )
                 elif conv == FSTRING_CONV_STR:
-                    if not isinstance(resolved, self._FORMATTABLE_TYPES):
+                    if not self._is_formattable(resolved):
                         if not self.protocols.type_conforms_to_protocol(resolved, self._STRINGABLE):
                             if not self.protocols.type_conforms_to_protocol(resolved, self._REPRESENTABLE):
                                 raise self.ctx.error(
@@ -2760,7 +2774,7 @@ class ExpressionAnalyzer:
                                     " (no __str__ or __repr__ method)",
                                     part.expr,
                                 )
-                elif not isinstance(resolved, self._FORMATTABLE_TYPES):
+                elif not self._is_formattable(resolved):
                     if not self.protocols.type_conforms_to_protocol(resolved, self._STRINGABLE):
                         if not self.protocols.type_conforms_to_protocol(resolved, self._REPRESENTABLE):
                             raise self.ctx.error(
@@ -2768,7 +2782,7 @@ class ExpressionAnalyzer:
                                 " (no __str__ or __repr__ method)",
                                 part.expr,
                             )
-                if part.format_spec is not None and isinstance(resolved, (BigIntType, IntLiteralType)):
+                if part.format_spec is not None and (is_big_int_type(resolved) or isinstance(resolved, IntLiteralType)):
                     raise self.ctx.error(
                         "Format specs on int are not yet supported (use a fixed-width type like Int32)",
                         part.expr,
@@ -2785,9 +2799,9 @@ class ExpressionAnalyzer:
             expr
         )
 
-    def _analyze_lambda_with_fn_hint(self, expr: TpyLambda, fn_type: FnType | CallableType) -> FnType | CallableType:
+    def _analyze_lambda_with_fn_hint(self, expr: TpyLambda, fn_type: CallableType) -> CallableType:
         """Analyze a lambda with a Fn/Callable type hint providing parameter types."""
-        type_name = "Fn" if isinstance(fn_type, FnType) else "Callable"
+        type_name = "Fn" if is_fn_type(fn_type) else "Callable"
         if len(expr.param_names) != len(fn_type.param_types):
             raise self.ctx.error(
                 f"Lambda has {len(expr.param_names)} parameter(s) but "
@@ -2815,22 +2829,23 @@ class ExpressionAnalyzer:
         free_names = collect_name_refs(expr.body)
         captured = sorted((free_names - param_set) & outer_locals)
         expr.captured_names = captured
-        # Callable context: captures must be by value (std::function can escape)
-        if isinstance(fn_type, CallableType):
+        # Callable context: captures must be by value (std::function can escape).
+        # Fn (template) stays inline; captures by reference are safe.
+        if isinstance(fn_type, CallableType) and not fn_type.is_template:
             expr.captures_by_value = True
 
         # Check return type compatibility (allow implicit coercions like int literal -> Int32)
         if isinstance(fn_type.return_type, TypeParamRef):
             # Hint has unresolved type param (e.g. from generic builtin map[T,U]):
-            # use the body's inferred type and return a concrete FnType.
+            # use the body's inferred type and return a concrete CallableType.
             # Resolve IntLiteralType so overload resolution sees a concrete int type.
             if isinstance(body_type, IntLiteralType):
                 body_type = self.ctx.default_int_for_literal(body_type)
             expr.inferred_return_type = body_type
             concrete_params = tuple(fn_type.param_types)
-            if isinstance(fn_type, CallableType):
-                return CallableType(concrete_params, body_type)
-            return FnType(concrete_params, body_type)
+            if fn_type.is_template:
+                return make_fn_type(concrete_params, body_type)
+            return CallableType(concrete_params, body_type)
         if body_type != fn_type.return_type:
             try:
                 self.compat.check_type_compatible(
@@ -2849,8 +2864,8 @@ class ExpressionAnalyzer:
     # --- Function references ---
 
     def _try_resolve_function_ref(
-        self, expr: TpyName, hint: FnType | CallableType,
-    ) -> FnType | CallableType | None:
+        self, expr: TpyName, hint: CallableType,
+    ) -> CallableType | None:
         """Try to resolve a name as a function reference matching an Fn/Callable hint.
 
         Returns a concrete Fn/Callable type if a matching function is found,
@@ -2867,8 +2882,9 @@ class ExpressionAnalyzer:
                     if matched is not None:
                         expr.is_function_ref = True
                         expr.function_ref_info = matched
-                        # Escape tracking: passing nested def to Callable marks it as escaping
-                        if (isinstance(hint, CallableType)
+                        # Escape tracking: passing nested def to Callable (type-erased)
+                        # marks it as escaping. Fn (template) stays inline -- no escape.
+                        if (isinstance(hint, CallableType) and not hint.is_template
                                 and expr.name in self.ctx.func.nested_def_names):
                             self.ctx.func.nested_def_escapes.add(expr.name)
                         return self._concrete_fn_type(matched, expr, hint)
@@ -2885,8 +2901,8 @@ class ExpressionAnalyzer:
         return None
 
     def _concrete_fn_type(
-        self, fi: FunctionInfo, expr: TpyName, hint: FnType | CallableType,
-    ) -> FnType | CallableType:
+        self, fi: FunctionInfo, expr: TpyName, hint: CallableType,
+    ) -> CallableType:
         """Build a concrete Fn/Callable type from a matched function's signature.
 
         When the hint has TypeParamRef (e.g. from a generic builtin like map[T,U]),
@@ -2896,8 +2912,8 @@ class ExpressionAnalyzer:
         if not contains_type_param(hint):
             return hint
         # Build concrete param/return types from the matched function info.
-        # Strip Ref from param types and Own from return type -- FnType represents
-        # the logical callable contract. Ref on return type IS preserved so type
+        # Strip Ref from param types and Own from return type -- the Fn type
+        # represents the logical callable contract. Ref on return type IS preserved so type
         # inference can track reference semantics through combinators
         # (e.g. map(identity, pts) infers U=Ref[Point] -> val_or_ref<Point>).
 
@@ -2909,12 +2925,12 @@ class ExpressionAnalyzer:
                 self.type_ops.substitute_type_params(p, subst) for p in param_types
             )
             return_type = self.type_ops.substitute_type_params(return_type, subst)
-        if isinstance(hint, CallableType):
-            return CallableType(param_types, return_type)
-        return FnType(param_types, return_type)
+        if hint.is_template:
+            return make_fn_type(param_types, return_type)
+        return CallableType(param_types, return_type)
 
     def _match_function_to_hint(
-        self, func_infos: list[FunctionInfo], hint: FnType | CallableType, expr: TpyName,
+        self, func_infos: list[FunctionInfo], hint: CallableType, expr: TpyName,
     ) -> FunctionInfo | None:
         """Find a function overload matching the Fn/Callable hint signature.
 
@@ -2977,7 +2993,7 @@ class ExpressionAnalyzer:
         return None
 
     def _infer_generic_ref_type_args(
-        self, fi: FunctionInfo, hint: FnType | CallableType,
+        self, fi: FunctionInfo, hint: CallableType,
     ) -> tuple[tuple[TpyType, ...] | None, str | None]:
         """Try to infer type parameters for a generic function from an Fn/Callable hint.
 

@@ -8,7 +8,7 @@ namespace tpyapp::main {
 std::vector<int32_t>* items{};
 // # Test ArrayList dunders (user/library type)
 // al = ArrayList[Int32, 10]()
-::tpystd::tplib::ArrayList<int32_t, 10>* al{};
+::tpystd::tplib::array_list::ArrayList<int32_t, 10>* al{};
 // # Test Array dunders
 // arr: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
 std::array<int32_t, 3>* arr{};
@@ -45,7 +45,7 @@ void __tpy_init() {
     std::cout << ::tpy::__getitem__((*items), 1) << "\n";
     // # Test ArrayList dunders (user/library type)
     // al = ArrayList[Int32, 10]()
-    static ::tpystd::tplib::ArrayList<int32_t, 10> __global_slot_2 = ::tpystd::tplib::ArrayList<int32_t, 10>();
+    static ::tpystd::tplib::array_list::ArrayList<int32_t, 10> __global_slot_2 = ::tpystd::tplib::array_list::ArrayList<int32_t, 10>();
     al = &__global_slot_2;
     // al.append(Int32(100))
     al->append(100);

@@ -127,6 +127,15 @@ int32_t get_high() {
     return 10;
 }
 
+// def get_top() -> Int32:
+int32_t get_top() {
+    // global call_count
+    // call_count = call_count + Int32(1)
+    call_count = (::tpy::add_check<int32_t>(call_count, 1));
+    // return Int32(20)
+    return 20;
+}
+
 // def test_single_eval() -> None:
 void test_single_eval() {
     // # Function call as intermediate -- must be evaluated exactly once
@@ -134,7 +143,7 @@ void test_single_eval() {
     // call_count = Int32(0)
     call_count = 0;
     // print(Int32(0) < get_mid() < Int32(10))
-    std::cout << ::tpy::print_bool([&]() -> bool { auto&& _cmp0 = 0; auto&& _cmp1 = get_mid(); if (!(_cmp0 < _cmp1)) return false; auto&& _cmp2 = 10; return (_cmp1 < _cmp2); }()) << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && (_cmp1 < 10); })) << "\n";
     // print(call_count)
     std::cout << call_count << "\n";
 }
@@ -147,7 +156,7 @@ void test_short_circuit_operands() {
     // call_count = Int32(0)
     call_count = 0;
     // print(Int32(99) < get_mid() < get_high())
-    std::cout << ::tpy::print_bool([&]() -> bool { auto&& _cmp0 = 99; auto&& _cmp1 = get_mid(); if (!(_cmp0 < _cmp1)) return false; auto&& _cmp2 = get_high(); return (_cmp1 < _cmp2); }()) << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 99; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && (_cmp1 < get_high()); })) << "\n";
     // # get_mid() called (returns 5), 99 < 5 is false -> get_high() skipped
     // print(call_count)
     std::cout << call_count << "\n";
@@ -155,8 +164,36 @@ void test_short_circuit_operands() {
     // call_count = Int32(0)
     call_count = 0;
     // print(Int32(0) < get_mid() < get_high())
-    std::cout << ::tpy::print_bool([&]() -> bool { auto&& _cmp0 = 0; auto&& _cmp1 = get_mid(); if (!(_cmp0 < _cmp1)) return false; auto&& _cmp2 = get_high(); return (_cmp1 < _cmp2); }()) << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && (_cmp1 < get_high()); })) << "\n";
     // # get_mid() called (returns 5), 0 < 5 true -> get_high() called (returns 10), 5 < 10 true
+    // print(call_count)
+    std::cout << call_count << "\n";
+}
+
+// def test_triple_short_circuit() -> None:
+void test_triple_short_circuit() {
+    // # 3-pair chain with complex intermediates: a < f() < g() < h()
+    // # Exercises the inner wrap loop (n >= 3) in chained-compare codegen.
+    // global call_count
+    // # All pass: 0 < 5 < 10 < 20 -- all three helpers evaluate.
+    // call_count = Int32(0)
+    call_count = 0;
+    // print(Int32(0) < get_mid() < get_high() < get_top())
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = get_high(); (_cmp1 < _cmp2) && (_cmp2 < get_top()); }); })) << "\n";
+    // print(call_count)
+    std::cout << call_count << "\n";
+    // # Fail at 2nd compare (get_high() < 3 is false): get_top() must skip.
+    // call_count = Int32(0)
+    call_count = 0;
+    // print(Int32(0) < get_mid() < get_high() < Int32(3))
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = get_high(); (_cmp1 < _cmp2) && (_cmp2 < 3); }); })) << "\n";
+    // print(call_count)
+    std::cout << call_count << "\n";
+    // # Fail at 1st compare (99 < 5 is false): both get_high() and get_top() skip.
+    // call_count = Int32(0)
+    call_count = 0;
+    // print(Int32(99) < get_mid() < get_high() < get_top())
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 99; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = get_high(); (_cmp1 < _cmp2) && (_cmp2 < get_top()); }); })) << "\n";
     // print(call_count)
     std::cout << call_count << "\n";
 }
@@ -192,6 +229,8 @@ void __tpy_init() {
     test_single_eval();
     // test_short_circuit_operands()
     test_short_circuit_operands();
+    // test_triple_short_circuit()
+    test_triple_short_circuit();
 }
 
 } // namespace tpyapp::main

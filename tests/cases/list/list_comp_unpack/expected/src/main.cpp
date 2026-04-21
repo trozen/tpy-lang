@@ -10,7 +10,7 @@ void main() {
     // pairs: list[tuple[str, Int32]] = [("a", 1), ("b", 2), ("c", 3)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}, std::tuple<std::string, int32_t>{"c", 3}};
     // values = [v for k, v in pairs]
-    std::vector<int32_t> values = [&]() {
+    std::vector<int32_t> values = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = pairs;
         __result.reserve(__obj_0.size());
@@ -22,12 +22,12 @@ void main() {
             int32_t v = std::get<1>(__tup_1);
             __result.push_back(v);
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(values)
     std::cout << ::tpy::ListPrinter(values) << "\n";
     // keys = [k for k, v in pairs]
-    std::vector<std::string> keys = [&]() {
+    std::vector<std::string> keys = ({
         std::vector<std::string> __result;
         auto& __obj_1 = pairs;
         __result.reserve(__obj_1.size());
@@ -39,15 +39,15 @@ void main() {
             int32_t v = std::get<1>(__tup_2);
             __result.push_back(k);
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(keys)
     std::cout << ::tpy::ListPrinter(keys) << "\n";
     // # Unpack from dict.items()
     // d: dict[str, Int32] = {"x": 10, "y": 20, "z": 30}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}, {"z", 30}});
     // doubled = [v * 2 for k, v in d.items()]
-    std::vector<int32_t> doubled = [&]() {
+    std::vector<int32_t> doubled = ({
         std::vector<int32_t> __result;
         auto __obj_2 = ::tpy::dict_items(d);
         __result.reserve(__obj_2.size());
@@ -59,13 +59,13 @@ void main() {
             int32_t v = std::get<1>(__tup_3);
             __result.push_back((::tpy::mul_check<int32_t>(v, 2)));
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(doubled)
     std::cout << ::tpy::ListPrinter(doubled) << "\n";
     // # Unpack with filter
     // big_keys = [k for k, v in d.items() if v > 15]
-    std::vector<std::string> big_keys = [&]() {
+    std::vector<std::string> big_keys = ({
         std::vector<std::string> __result;
         auto __obj_3 = ::tpy::dict_items(d);
         __result.reserve(__obj_3.size());
@@ -79,13 +79,13 @@ void main() {
                 __result.push_back(k);
             }
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(big_keys)
     std::cout << ::tpy::ListPrinter(big_keys) << "\n";
     // # Transform both elements
     // labels = [k + "=" + str(v) for k, v in d.items()]
-    std::vector<std::string> labels = [&]() {
+    std::vector<std::string> labels = ({
         std::vector<std::string> __result;
         auto __obj_4 = ::tpy::dict_items(d);
         __result.reserve(__obj_4.size());
@@ -97,13 +97,13 @@ void main() {
             int32_t v = std::get<1>(__tup_5);
             __result.push_back((::tpy::str_concat((::tpy::str_concat(k, "=")), ::tpy::fixed_to_str<int32_t>(v))));
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(labels)
     std::cout << ::tpy::ListPrinter(labels) << "\n";
     // # Discard with _
     // vals_only = [v for _, v in pairs]
-    std::vector<int32_t> vals_only = [&]() {
+    std::vector<int32_t> vals_only = ({
         std::vector<int32_t> __result;
         auto& __obj_5 = pairs;
         __result.reserve(__obj_5.size());
@@ -114,13 +114,13 @@ void main() {
             int32_t v = std::get<1>(__tup_6);
             __result.push_back(v);
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(vals_only)
     std::cout << ::tpy::ListPrinter(vals_only) << "\n";
     // # Filter on first variable
     // filtered = [v for k, v in d.items() if k != "x"]
-    std::vector<int32_t> filtered = [&]() {
+    std::vector<int32_t> filtered = ({
         std::vector<int32_t> __result;
         auto __obj_6 = ::tpy::dict_items(d);
         __result.reserve(__obj_6.size());
@@ -134,15 +134,15 @@ void main() {
                 __result.push_back(v);
             }
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(filtered)
     std::cout << ::tpy::ListPrinter(filtered) << "\n";
     // # 3-element tuple unpack
     // triples: list[tuple[str, Int32, bool]] = [("a", 1, True), ("b", 2, False), ("c", 3, True)]
     std::vector<std::tuple<std::string, int32_t, bool>> triples = {std::tuple<std::string, int32_t, bool>{"a", 1, true}, std::tuple<std::string, int32_t, bool>{"b", 2, false}, std::tuple<std::string, int32_t, bool>{"c", 3, true}};
     // middle = [n for _, n, _ in triples]
-    std::vector<int32_t> middle = [&]() {
+    std::vector<int32_t> middle = ({
         std::vector<int32_t> __result;
         auto& __obj_7 = triples;
         __result.reserve(__obj_7.size());
@@ -153,12 +153,12 @@ void main() {
             int32_t n = std::get<1>(__tup_8);
             __result.push_back(n);
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(middle)
     std::cout << ::tpy::ListPrinter(middle) << "\n";
     // first_and_last = [s + ":" + str(b) for s, _, b in triples]
-    std::vector<std::string> first_and_last = [&]() {
+    std::vector<std::string> first_and_last = ({
         std::vector<std::string> __result;
         auto& __obj_8 = triples;
         __result.reserve(__obj_8.size());
@@ -170,15 +170,15 @@ void main() {
             bool b = std::get<2>(__tup_9);
             __result.push_back((::tpy::str_concat((::tpy::str_concat(s, ":")), std::string(::tpy::bool_to_str(b)))));
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(first_and_last)
     std::cout << ::tpy::ListPrinter(first_and_last) << "\n";
     // # Non-value element type (const auto& binding via dict.items())
     // point_map: dict[str, Point] = {"a": Point(1, 2), "b": Point(3, 4)}
     ::tpy::ordered_map<std::string, Point> point_map = ::tpy::ordered_map<std::string, Point>({{"a", Point(1, 2)}, {"b", Point(3, 4)}});
     // pts = [p for _, p in point_map.items()]
-    std::vector<Point> pts = [&]() {
+    std::vector<Point> pts = ({
         std::vector<Point> __result;
         auto __obj_9 = ::tpy::dict_items(point_map);
         __result.reserve(__obj_9.size());
@@ -189,8 +189,8 @@ void main() {
             const auto& p = std::get<1>(__tup_10);
             __result.push_back(p);
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(pts[0].x)
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
     // print(pts[1].y)

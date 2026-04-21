@@ -8,9 +8,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, BoolType,
-    PendingListType, PendingDictType, PendingSetType, PendingViewType, ListType, DictType, SetType, ArrayType, TypeParamRef, NamedType,
-    UnionType, NoneType, VoidType, EnumType, TupleType,
+    TpyType, IntLiteralType, FloatLiteralType,
+    PendingListType, PendingDictType, PendingSetType, PendingViewType, make_list, make_dict, make_set, TypeParamRef, NominalType,
+    UnionType, NoneType, VoidType, TupleType,
     unwrap_readonly, is_protocol_type, resolve_int_literals,
     is_integer_type, is_float_type, is_void_like_type,
     INT32, BIGINT, FLOAT, FLOAT32, STR, BYTES,
@@ -19,6 +19,11 @@ from ..typesys import (
 from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral, TpyIfExpr
 from ..sema.context import PENDING_CONTAINER_TYPES
 from .context import qualified_cpp_name
+from ..type_def_registry import (
+    is_list,
+    is_fixed_int_type, is_big_int_type, is_bool_type, is_float64_type, is_float32_type,
+    is_enum_type,
+)
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -82,7 +87,7 @@ class TypeResolver:
             # propagate correctly. Bool-result falls through to sema type.
             if expr.op in ("&&", "||"):
                 typ = self.ctx.analyzer.get_expr_type(expr)
-                if isinstance(typ, BoolType):
+                if is_bool_type(typ):
                     return unwrap_readonly(typ)
                 left_resolved = self.get_resolved_type(expr.left)
                 right_resolved = self.get_resolved_type(expr.right)
@@ -108,25 +113,25 @@ class TypeResolver:
             if is_float_type(left_raw) or is_float_type(right_raw):
                 if expr.op == "div" or expr.op in ("+", "-", "*", "//", "%", "**"):
                     # Float64 wins over Float32
-                    if isinstance(left_raw, FloatType) or isinstance(right_raw, FloatType):
+                    if is_float64_type(left_raw) or is_float64_type(right_raw):
                         return FLOAT
-                    return left_raw if isinstance(left_raw, Float32Type) else right_raw
+                    return left_raw if is_float32_type(left_raw) else right_raw
 
             # True division always returns float
             if expr.op == "div":
                 return FLOAT
 
-            # Determine fixed-int context: explicit target or operand is a FixedIntType
-            fixed_ctx = target_type if isinstance(target_type, FixedIntType) else None
-            if isinstance(left_raw, FixedIntType) and not left_is_literal:
+            # Determine fixed-int context: explicit target or operand is a fixed-width int
+            fixed_ctx = target_type if is_fixed_int_type(target_type) else None
+            if is_fixed_int_type(left_raw) and not left_is_literal:
                 fixed_ctx = left_raw
-            elif isinstance(right_raw, FixedIntType) and not right_is_literal:
+            elif is_fixed_int_type(right_raw) and not right_is_literal:
                 fixed_ctx = right_raw
             # Second pass with context for proper literal resolution
             left_type = self.get_resolved_type(expr.left, fixed_ctx)
             right_type = self.get_resolved_type(expr.right, fixed_ctx)
             # If target is fixed-int and both operands are literals, result is that type
-            if isinstance(fixed_ctx, FixedIntType) and left_is_literal and right_is_literal:
+            if is_fixed_int_type(fixed_ctx) and left_is_literal and right_is_literal:
                 return fixed_ctx
             # Pure literal binops without fixed context use configured default-int,
             # with range-safe fallback for out-of-range results.
@@ -135,18 +140,15 @@ class TypeResolver:
                 if isinstance(analyzed, IntLiteralType):
                     return self.ctx.analyzer.ctx.default_int_for_literal(analyzed)
                 return self.ctx.analyzer.ctx.default_int_type
-            # If either operand is FixedIntType (and other is compatible), result is that type
-            if isinstance(left_type, FixedIntType) and isinstance(right_type, (FixedIntType, IntLiteralType)):
+            # If either operand is a fixed-width int (and other is compatible), result is that type
+            if is_fixed_int_type(left_type) and (is_fixed_int_type(right_type) or isinstance(right_type, IntLiteralType)):
                 return left_type
-            if isinstance(right_type, FixedIntType) and isinstance(left_type, (FixedIntType, IntLiteralType)):
+            if is_fixed_int_type(right_type) and (is_fixed_int_type(left_type) or isinstance(left_type, IntLiteralType)):
                 return right_type
             # Otherwise, result is BigInt if either operand is BigInt.
             # For literal-literal arithmetic without stronger context, use the
             # configured default integer type.
-            is_bigint_op = (
-                isinstance(left_type, BigIntType) or
-                isinstance(right_type, BigIntType)
-            )
+            is_bigint_op = is_big_int_type(left_type) or is_big_int_type(right_type)
             if is_bigint_op and expr.op in ("+", "-", "*", "//", "%", "**", "&", "|", "^", "<<", ">>"):
                 return BIGINT
             if (
@@ -175,13 +177,13 @@ class TypeResolver:
             return self.ctx.analyzer.ctx.default_int_for_literal(typ)
         # Resolve FloatLiteralType based on context (Float32 if target, else float64).
         if isinstance(typ, FloatLiteralType):
-            if isinstance(target_type, Float32Type):
+            if is_float32_type(target_type):
                 return FLOAT32
             return FLOAT
         # Resolve IntLiteralType in container element types
-        if isinstance(typ, ListType) and isinstance(typ.element_type, IntLiteralType):
-            elem = self.ctx.analyzer.ctx.default_int_for_literal(typ.element_type)
-            return ListType(elem)
+        if is_list(typ) and isinstance(typ.type_args[0], IntLiteralType):
+            elem = self.ctx.analyzer.ctx.default_int_for_literal(typ.type_args[0])
+            return make_list(elem)
         # Resolve IntLiteralType in tuple element types (recursively for nesting)
         if isinstance(typ, TupleType):
             resolve_lit = self.ctx.analyzer.ctx.default_int_for_literal
@@ -232,11 +234,11 @@ class TypeResolver:
             elem_type = typ.element_type
             if isinstance(elem_type, IntLiteralType):
                 elem_type = self.ctx.analyzer.ctx.default_int_for_literal(elem_type)
-            return ListType(elem_type)
+            return make_list(elem_type)
         if isinstance(typ, PendingDictType):
-            return DictType(typ.key_type, typ.value_type)
+            return make_dict(typ.key_type, typ.value_type)
         if isinstance(typ, PendingSetType):
-            return SetType(typ.element_type)
+            return make_set(typ.element_type)
         return None
 
     def resolve_type(self, typ: TpyType) -> TpyType:
@@ -279,26 +281,26 @@ class TypeResolver:
     def is_fixed_int_arithmetic(self, left_type: TpyType, right_type: TpyType, op: str) -> bool:
         """Check if binary op produces fixed-int result (needs checked arithmetic).
 
-        Only applies when at least one operand is explicitly a FixedIntType.
+        Only applies when at least one operand is explicitly a fixed-width int.
         IntLiteralType alone uses the configured default integer type.
         """
         if op not in ("+", "-", "*", "//", "%", "**"):
             return False
-        has_fixed = isinstance(left_type, FixedIntType) or isinstance(right_type, FixedIntType)
+        has_fixed = is_fixed_int_type(left_type) or is_fixed_int_type(right_type)
         if not has_fixed:
             return False
         def is_fixed_compatible(t: TpyType) -> bool:
-            return isinstance(t, (FixedIntType, IntLiteralType))
+            return is_fixed_int_type(t) or isinstance(t, IntLiteralType)
         return is_fixed_compatible(left_type) and is_fixed_compatible(right_type)
 
     def is_runtime_bigint(self, expr: TpyExpr, expr_type: TpyType) -> bool:
         """Check if expression is stored as BigInt at runtime."""
         resolved = self.get_resolved_type(expr)
-        if isinstance(resolved, BigIntType):
+        if is_big_int_type(resolved):
             return True
         if isinstance(resolved, IntLiteralType):
             resolved_default = self.ctx.analyzer.ctx.default_int_for_literal(resolved)
-            return isinstance(resolved_default, BigIntType)
+            return is_big_int_type(resolved_default)
         return False
 
     def type_to_cpp(self, typ: TpyType) -> str:
@@ -309,18 +311,20 @@ class TypeResolver:
         Native records use their native C++ name directly (no namespace qualification).
         @dynamic protocol types map to the base class name.
         """
-        if isinstance(typ, NamedType) and is_protocol_type(typ):
+        if isinstance(typ, NominalType) and is_protocol_type(typ):
             protocol_info = self.ctx.analyzer.registry.get_protocol(typ.name)
             if protocol_info and protocol_info.is_dynamic:
                 return self.protocols.get_dynamic_base_name(typ.name)
-        if isinstance(typ, NamedType) and typ.is_user_record:
+        if isinstance(typ, NominalType) and typ.is_user_record:
             # Native records use their native C++ name directly (globally visible)
             record_info = self.ctx.analyzer.registry.get_record_for_type(typ)
             if record_info and record_info.is_native:
                 return typ.to_cpp()  # to_cpp() already resolves via _native_cpp_names
-            # Check if this record is imported from a user module
-            if typ.name in self.ctx.user_imported_records:
-                source_module, original_name = self.ctx.user_imported_records[typ.name]
+            # Cross-module user record: qualify to the declaring module (canonical identity).
+            qual = self.ctx.analyzer.registry.imported_record_qualification(
+                typ.name, self.ctx.analyzer.ctx.module_name)
+            if qual is not None:
+                source_module, original_name = qual
                 qualified = qualified_cpp_name(source_module, original_name)
                 if typ.type_args:
                     args = ", ".join(
@@ -329,10 +333,12 @@ class TypeResolver:
                     )
                     return f"{qualified}<{args}>"
                 return qualified
-        # Imported enum types: qualify with source module namespace
-        if isinstance(typ, EnumType):
-            if typ.name in self.ctx.user_imported_enums:
-                source_module, original_name = self.ctx.user_imported_enums[typ.name]
+        # Cross-module enum: qualify to the declaring module (canonical identity).
+        if is_enum_type(typ):
+            qual = self.ctx.analyzer.registry.imported_enum_qualification(
+                typ.name, self.ctx.analyzer.ctx.module_name)
+            if qual is not None:
+                source_module, original_name = qual
                 return qualified_cpp_name(source_module, original_name)
         # Tuple types: qualify element types for imported members
         if isinstance(typ, TupleType):
@@ -351,15 +357,22 @@ class TypeResolver:
         # Resolve PendingViewType to concrete types before codegen
         if isinstance(typ, PendingViewType):
             return self._resolve_pending_view(typ).to_cpp()
-        # For plain NamedType (not subclasses like ListType/ArrayType) with
-        # type_args, recursively resolve args to handle @dynamic protocols
-        if type(typ) is NamedType and typ.type_args:
-            base = typ.to_cpp_base_name()
-            args = ", ".join(
-                self.type_to_cpp(t) if isinstance(t, TpyType) else str(t)
-                for t in typ.type_args
-            )
-            return f"{base}<{args}>"
+        # For plain NominalType (not subclasses like ListType/ArrayType) with
+        # type_args, recursively resolve args to handle @dynamic protocols.
+        # Skip this branch when the TypeDef registry provides a custom
+        # cpp_formatter (e.g. CopyIter/OwnIter -> "auto", dict_keys ->
+        # ::tpy::dict_keys_view<...>) -- fall through to typ.to_cpp() so the
+        # formatter wins.
+        if type(typ) is NominalType and typ.type_args:
+            from tpyc.type_def_registry import type_def_of
+            td = type_def_of(typ)
+            if td is None or td.cpp_formatter is None:
+                base = typ.to_cpp_base_name()
+                args = ", ".join(
+                    self.type_to_cpp(t) if isinstance(t, TpyType) else str(t)
+                    for t in typ.type_args
+                )
+                return f"{base}<{args}>"
         # Default: use the type's built-in to_cpp() method
         return typ.to_cpp()
 

@@ -35,15 +35,15 @@ inline std::ostream& operator<<(std::ostream& os, const Lit& obj) {
 // class BinOp:
 struct BinOp {
     // left: Box[Expr]
-    ::tpystd::tplib::Box<Expr> left;
+    ::tpystd::tplib::box::Box<Expr> left;
     // op: str
     std::string op;
     // right: Box[Expr]
-    ::tpystd::tplib::Box<Expr> right;
+    ::tpystd::tplib::box::Box<Expr> right;
 
     // def __init__(self, left: Own[Box[Expr]], op: str, right: Own[Box[Expr]]) -> None:
     BinOp() = default;
-    explicit BinOp(::tpystd::tplib::Box<Expr>&& left, std::string_view op, ::tpystd::tplib::Box<Expr>&& right) : left(std::move(left)), op(op), right(std::move(right)) {}
+    explicit BinOp(::tpystd::tplib::box::Box<Expr>&& left, std::string_view op, ::tpystd::tplib::box::Box<Expr>&& right) : left(std::move(left)), op(op), right(std::move(right)) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BinOp& obj) {

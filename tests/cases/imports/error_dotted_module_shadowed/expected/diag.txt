@@ -1,1 +1,1 @@
-main.py:6: error: Cannot access field 'unsafe' on type Int32
+main.py:6: error: Record 'Int32' has no field 'unsafe'

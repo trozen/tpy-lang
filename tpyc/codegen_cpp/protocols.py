@@ -9,13 +9,14 @@ from collections import namedtuple
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, TypeParamRef, TypeParamKind, ReadonlyType, VoidType, SelfType,
-    OptionalType, UnionType, StrType, OwnType, MethodSignature, is_protocol_type,
+    TpyType, NominalType, TypeParamRef, TypeParamKind, ReadonlyType, VoidType, SelfType,
+    OptionalType, UnionType, OwnType, MethodSignature, is_protocol_type,
     unwrap_readonly, unwrap_own, is_protocol_union, protocol_union_protocols,
     protocol_union_has_none, unwrap_ref_type,
 )
 from ..parse import TpyProtocol, TpyRecord
 from .context import INDENT, DUNDER_TO_BINARY_OP, qualified_cpp_name
+from ..type_def_registry import is_str_type
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -36,7 +37,7 @@ class ProtocolGenerator:
         During parsing, some types may be classified as records when they're
         actually protocols (e.g., imported protocols). This method fixes that for codegen.
         """
-        if isinstance(typ, NamedType) and not typ.is_protocol:
+        if isinstance(typ, NominalType) and not typ.is_protocol:
             # Check if this is actually a protocol
             protocol_info = self.ctx.analyzer.registry.get_protocol(typ.name)
             if protocol_info is not None:
@@ -47,7 +48,7 @@ class ProtocolGenerator:
         """Check if a type is a static protocol parameter (single or union, optional or not).
 
         Returns True for:
-        - NamedType that is a static protocol
+        - NominalType that is a static protocol
         - OptionalType(static protocol)
         - UnionType of 2+ static protocols (optionally with None)
         Excludes @dynamic protocols.
@@ -91,7 +92,7 @@ class ProtocolGenerator:
             # Optional[Protocol] -- single protocol, nullable
             if isinstance(unwrapped, OptionalType):
                 resolved = self.resolve_type_for_codegen(unwrapped.inner)
-                if is_protocol_type(resolved) and isinstance(resolved, NamedType):
+                if is_protocol_type(resolved) and isinstance(resolved, NominalType):
                     protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
                     if protocol_info and protocol_info.is_dynamic:
                         continue
@@ -103,14 +104,14 @@ class ProtocolGenerator:
                 resolved_members = tuple(self.resolve_type_for_codegen(m) for m in unwrapped.members)
                 resolved_union = UnionType(resolved_members)
                 if is_protocol_union(resolved_union):
-                    protos = [m for m in protocol_union_protocols(resolved_union) if isinstance(m, NamedType)]
+                    protos = [m for m in protocol_union_protocols(resolved_union) if isinstance(m, NominalType)]
                     has_none = protocol_union_has_none(resolved_union)
                     result.append(ProtocolParamInfo(pname, protos, has_none))
                 continue
 
             # Single bare protocol
             resolved = self.resolve_type_for_codegen(unwrapped)
-            if is_protocol_type(resolved) and isinstance(resolved, NamedType):
+            if is_protocol_type(resolved) and isinstance(resolved, NominalType):
                 protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
                 if protocol_info and protocol_info.is_dynamic:
                     continue
@@ -118,7 +119,7 @@ class ProtocolGenerator:
 
         return result
 
-    def get_concept_name(self, protocol: NamedType) -> str:
+    def get_concept_name(self, protocol: NominalType) -> str:
         """Get the C++ concept name for a protocol type.
 
         For @dynamic protocols the concept is renamed to __{Name}_Concept__
@@ -187,7 +188,7 @@ class ProtocolGenerator:
         inherits the protocol base class through the inheritance chain and no adapter
         wrapping is needed.
         """
-        if not isinstance(concrete_type, NamedType) or not concrete_type.is_user_record:
+        if not isinstance(concrete_type, NominalType) or not concrete_type.is_user_record:
             return False
         record_info = self.ctx.analyzer.registry.get_record(concrete_type.name)
         if not record_info:
@@ -204,7 +205,7 @@ class ProtocolGenerator:
     def gen_record_template_header(
         self,
         type_params: list[str],
-        type_param_bounds: dict[str, NamedType],
+        type_param_bounds: dict[str, NominalType],
         type_param_kinds: list[TypeParamKind] | None = None
     ) -> str:
         """Generate template header for a generic record.
@@ -231,7 +232,7 @@ class ProtocolGenerator:
                 template_parts.append(f"typename {tp}")
         return f"template<{', '.join(template_parts)}>"
 
-    def _concept_constraint(self, pname: str, ptype: NamedType) -> str:
+    def _concept_constraint(self, pname: str, ptype: NominalType) -> str:
         """Build the concept constraint expression for a protocol template param.
 
         Returns e.g. '::tpy::Sized<T_items>' or '::tpy::Sequence<T_items, int32_t>'.
@@ -246,7 +247,7 @@ class ProtocolGenerator:
         self,
         type_params: list[str],
         protocol_params: list[ProtocolParamInfo],
-        type_param_bounds: dict[str, NamedType] | None = None,
+        type_param_bounds: dict[str, NominalType] | None = None,
         *, emit_defaults: bool = True,
     ) -> str:
         """Generate template header combining type parameters and concept constraints.
@@ -430,7 +431,7 @@ class ProtocolGenerator:
             any string type (str, StrView, String).
             """
             resolved = subst_type(typ)
-            if isinstance(resolved, StrType):
+            if is_str_type(resolved):
                 return "std::string_view"
             return resolved.to_cpp()
 
@@ -565,7 +566,7 @@ class ProtocolGenerator:
             call_expr = self._dynamic_forward_call(method_sig)
             # Covariant str: inner may return string_view but vtable returns string;
             # explicit construction handles the conversion.
-            if isinstance(method_sig.return_type, StrType):
+            if is_str_type(method_sig.return_type):
                 call_expr = f"std::string({call_expr})"
             out.write(f"{INDENT}{ret_cpp} {method_sig.name}({params_cpp}){const_qual} override {{ {ret_kw}{call_expr}; }}\n")
 
@@ -605,9 +606,20 @@ class ProtocolGenerator:
         return f"inner.{method_sig.name}({args_str})"
 
     def collect_record_types_from_type(self, typ: TpyType, result: set[str]) -> None:
-        """Recursively collect all record type names from a type."""
-        if isinstance(typ, NamedType) and typ.is_user_record:
-            result.add(typ.name)
+        """Recursively collect all user record type names from a type.
+
+        Codegen iterates `TpyProtocol.methods` (parser AST, not rewritten by
+        sema's `register_protocol`), so some NominalTypes here are still bare
+        parser placeholders (no `_module_qname`, no TypeDef entry). For those,
+        `is_user_record` is False; fall back to the record registry directly.
+        """
+        if isinstance(typ, NominalType) and not typ.is_protocol:
+            if typ.is_user_record:
+                result.add(typ.name)
+            else:
+                info = self.ctx.analyzer.registry.get_record(typ.name)
+                if info is not None and info.builtin_type_key is None:
+                    result.add(typ.name)
         for inner in typ.inner_types():
             self.collect_record_types_from_type(inner, result)
 
@@ -621,20 +633,34 @@ class ProtocolGenerator:
 
         When a protocol references Container[Message] where Container has a user-defined
         protocol bound, C++ needs Message to be fully defined to check the constraint.
+        Same placeholder-tolerance story as `collect_record_types_from_type` --
+        accept either a resolved user-record NominalType or a bare placeholder
+        whose name resolves to a non-builtin RecordInfo in the registry.
         """
-        if isinstance(typ, NamedType) and typ.is_user_record and typ.type_args:
+        registry = self.ctx.analyzer.registry
+
+        def is_user_record_nominal(t: TpyType) -> bool:
+            if not isinstance(t, NominalType) or t.is_protocol:
+                return False
+            if t.is_user_record:
+                return True
+            info = registry.get_record(t.name)
+            return info is not None and info.builtin_type_key is None
+
+        if (isinstance(typ, NominalType) and typ.type_args
+                and is_user_record_nominal(typ)):
             record = records_by_name.get(typ.name)
             if record and record.type_param_bounds:
                 # Check if any bound is a user-defined protocol
                 has_user_bound = any(
-                    self.ctx.analyzer.registry.get_protocol(bound.name) is None or
-                    self.ctx.analyzer.registry.get_protocol(bound.name).cpp_concept is None
+                    registry.get_protocol(bound.name) is None or
+                    registry.get_protocol(bound.name).cpp_concept is None
                     for bound in record.type_param_bounds.values()
                 )
                 if has_user_bound:
                     # Collect all type args as needing early definition
                     for type_arg in typ.type_args:
-                        if isinstance(type_arg, NamedType) and type_arg.is_user_record:
+                        if isinstance(type_arg, NominalType) and is_user_record_nominal(type_arg):
                             result.add(type_arg.name)
 
         # Recurse into inner types

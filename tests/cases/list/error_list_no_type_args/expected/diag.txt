@@ -1,0 +1,1 @@
+main.py:8: error: Generic record 'list' requires type arguments: list[T]

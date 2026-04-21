@@ -17,9 +17,9 @@ from typing import Any, Callable, Literal, NoReturn, TYPE_CHECKING
 
 from .parse.nodes import ParseError as _ParseError
 from .typesys import (
-    TpyType, NamedType, OwnType, BoolType,
-    FloatType, Float32Type, FixedIntType, OptionalType, ListType, DictType,
-    TupleType, EnumType, BigIntType, UnionType, SetType,
+    TpyType, NominalType, OwnType,
+    OptionalType,
+    TupleType, UnionType, make_set, make_dict, make_list,
     FieldInfo as InternalFieldInfo,
     INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64,
     ALL_FIXED_INTS,
@@ -296,7 +296,7 @@ class CallMacroContext:
         func = self._ctx.func.current_function
         if not isinstance(func, TpyFunction) or not func.is_method:
             return None
-        return TypeInfo.from_tpy_type(NamedType(record.name))
+        return TypeInfo.from_tpy_type(NominalType(record.name))
 
     @property
     def first_param(self) -> tuple[str, TypeInfo] | None:
@@ -358,7 +358,7 @@ class CallMacroContext:
         Falls back to the short name if the module is unknown.
         """
         tpy_type = type_info._tpy_type
-        if isinstance(tpy_type, NamedType):
+        if isinstance(tpy_type, NominalType):
             qn = tpy_type.qualified_name()
             if qn is not None:
                 return qn
@@ -407,12 +407,14 @@ class TypeInfo:
 
     @property
     def is_int(self) -> bool:
-        return isinstance(self._tpy_type, FixedIntType)
+        from .type_def_registry import is_fixed_int_type
+        return is_fixed_int_type(self._tpy_type)
 
     @property
     def is_int32(self) -> bool:
-        return (isinstance(self._tpy_type, FixedIntType)
-                and self._tpy_type.bits == 32 and self._tpy_type.signed)
+        from .type_def_registry import int_traits_of
+        tr = int_traits_of(self._tpy_type)
+        return tr is not None and tr.bits == 32 and tr.signed
 
     @property
     def is_float(self) -> bool:
@@ -420,31 +422,38 @@ class TypeInfo:
 
     @property
     def is_float32(self) -> bool:
-        return isinstance(self._tpy_type, Float32Type)
+        from .type_def_registry import is_float32_type
+        return is_float32_type(self._tpy_type)
 
     @property
     def is_bool(self) -> bool:
-        return isinstance(self._tpy_type, BoolType)
+        from .type_def_registry import is_bool_type
+        return is_bool_type(self._tpy_type)
 
     @property
     def is_bigint(self) -> bool:
-        return isinstance(self._tpy_type, BigIntType)
+        from .type_def_registry import is_big_int_type
+        return is_big_int_type(self._tpy_type)
 
     @property
     def is_enum(self) -> bool:
-        return isinstance(self._tpy_type, EnumType)
+        from .type_def_registry import is_enum_type
+        return is_enum_type(self._tpy_type)
 
     @property
     def is_list(self) -> bool:
-        return isinstance(self._tpy_type, ListType)
+        from .type_def_registry import is_list as _is_list
+        return _is_list(self._tpy_type)
 
     @property
     def is_dict(self) -> bool:
-        return isinstance(self._tpy_type, DictType)
+        from .type_def_registry import is_dict as _is_dict
+        return _is_dict(self._tpy_type)
 
     @property
     def is_set(self) -> bool:
-        return isinstance(self._tpy_type, SetType)
+        from .type_def_registry import is_set as _is_set
+        return _is_set(self._tpy_type)
 
     @property
     def is_tuple(self) -> bool:
@@ -453,13 +462,15 @@ class TypeInfo:
     @property
     def enum_name(self) -> str:
         """Get the enum class name (only valid when is_enum is True)."""
-        assert isinstance(self._tpy_type, EnumType)
+        from .type_def_registry import is_enum_type
+        assert is_enum_type(self._tpy_type)
         return self._tpy_type.name
 
     @property
     def int_type_name(self) -> str:
         """Get the fixed-int type name e.g. 'Int32' (only valid when is_int)."""
-        assert isinstance(self._tpy_type, FixedIntType)
+        from .type_def_registry import is_fixed_int_type
+        assert is_fixed_int_type(self._tpy_type)
         return str(self._tpy_type)
 
     def unwrap_optional(self) -> TypeInfo | None:
@@ -476,7 +487,7 @@ class TypeInfo:
 
     @staticmethod
     def from_tpy_type(typ: TpyType) -> TypeInfo:
-        from .typesys import ArrayType, RefType
+        from .typesys import RefType
         # Strip sema-internal wrappers -- macros see user-facing types
         if isinstance(typ, OwnType):
             typ = typ.wrapped
@@ -485,23 +496,14 @@ class TypeInfo:
         type_args: list[TypeInfo] = []
         if isinstance(typ, TupleType):
             type_args = [TypeInfo.from_tpy_type(et) for et in typ.element_types]
-        elif isinstance(typ, NamedType) and typ.type_args:
+        elif isinstance(typ, NominalType) and typ.type_args:
             type_args = [TypeInfo.from_tpy_type(ta) for ta in typ.type_args]
-        elif isinstance(typ, ListType):
-            type_args = [TypeInfo.from_tpy_type(typ.element_type)]
-        elif isinstance(typ, DictType):
-            type_args = [TypeInfo.from_tpy_type(typ.key_type),
-                         TypeInfo.from_tpy_type(typ.value_type)]
-        elif isinstance(typ, SetType):
-            type_args = [TypeInfo.from_tpy_type(typ.element_type)]
-        elif isinstance(typ, ArrayType):
-            type_args = [TypeInfo.from_tpy_type(typ.element_type)]
         return TypeInfo(
             name=str(typ),
             type_args=type_args,
             is_optional=isinstance(typ, OptionalType),
             is_value_type=typ.is_value_type(),
-            is_record=isinstance(typ, NamedType) and typ.is_user_record,
+            is_record=isinstance(typ, NominalType) and typ.is_user_record,
             _tpy_type=typ,
         )
 
@@ -670,7 +672,7 @@ class ClassInfo:
         to use these based on its own eligibility checks.
         """
         for base in self._record.bases:
-            if not isinstance(base, NamedType):
+            if not isinstance(base, NominalType):
                 continue
             parent_info = self._ctx.registry.get_record(base.name)
             if parent_info is not None:
@@ -691,6 +693,18 @@ class ClassInfo:
         """
         self.add_method(ast.quote_fun(source))
 
+    # TODO: property getter+setter emission from macros.
+    # FragmentParser parses fragments one at a time, so the setter's
+    # `@getter_name.setter` decorator has no `property_names` context
+    # and falls through as "Unknown decorator".  To support macro-
+    # generated properties, add something like
+    #   add_property_pair(getter_source: str, setter_source: str) -> None
+    # that parses both fragments together, threading the getter name
+    # into FragmentParser so the setter resolves correctly.  The method
+    # expansion pipeline already handles property-setter `Own[T]`
+    # wrapping, so the fix is purely at the FragmentParser routing
+    # layer.  Wait for a real use case before committing to an API shape.
+
     def set_match_args(self, names: list[str]) -> None:
         """Set positional match arg names (mirrors Python's __match_args__)."""
         self._match_args = list(names)
@@ -701,7 +715,7 @@ class ClassInfo:
         Returns (is_frozen, parent_name) or None if no record parent.
         """
         for base in self._record.bases:
-            if not isinstance(base, NamedType):
+            if not isinstance(base, NominalType):
                 continue
             parent_info = self._ctx.registry.get_record(base.name)
             if parent_info is not None:
@@ -1002,7 +1016,7 @@ class TypeBuilder:
     # -- Constructors --
 
     def named(self, name: str) -> TpyType:
-        return NamedType(name)
+        return NominalType(name)
 
     def own(self, inner: TpyType) -> TpyType:
         return OwnType(inner)
@@ -1011,13 +1025,13 @@ class TypeBuilder:
         return OptionalType(inner)
 
     def list(self, element_type: TpyType) -> TpyType:
-        return ListType(element_type)
+        return make_list(element_type)
 
     def dict(self, key_type: TpyType, value_type: TpyType) -> TpyType:
-        return DictType(key_type, value_type)
+        return make_dict(key_type, value_type)
 
     def set(self, element_type: TpyType) -> TpyType:
-        return SetType(element_type)
+        return make_set(element_type)
 
     def tuple(self, element_types: tuple[TpyType, ...] | list[TpyType]) -> TpyType:
         if isinstance(element_types, list):

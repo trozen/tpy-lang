@@ -10,7 +10,7 @@ void main() {
     std::vector<std::optional<Foo>> items = {Foo(1), std::nullopt, Foo(3)};
     // # Field access on narrowed Optional in comprehension ternary
     // xs = [item.x if item is not None else -1 for item in items]
-    std::vector<int32_t> xs = [&]() {
+    std::vector<int32_t> xs = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = items;
         __result.reserve(__obj_0.size());
@@ -20,13 +20,13 @@ void main() {
             const auto& item = *__beg_0;
             __result.push_back((((item.has_value())) ? ((*item).x) : (-1)));
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
     // # Method call on narrowed Optional in comprehension ternary
     // reprs = [repr(item) if item is not None else "none" for item in items]
-    std::vector<std::string> reprs = [&]() {
+    std::vector<std::string> reprs = ({
         std::vector<std::string> __result;
         auto& __obj_1 = items;
         __result.reserve(__obj_1.size());
@@ -36,8 +36,8 @@ void main() {
             const auto& item = *__beg_1;
             __result.push_back((((item.has_value())) ? (::tpy::__repr__(item)) : ("none")));
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(reprs)
     std::cout << ::tpy::ListPrinter(reprs) << "\n";
 }

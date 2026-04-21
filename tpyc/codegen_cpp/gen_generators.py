@@ -9,7 +9,8 @@ from ..parse.nodes import (
     TpyFunction, TpyYield, TpyStmt, TpyWhile, TpyForEach, TpyReturn, TpyVarDecl,
     TpyCall, TpyName, TpyExpr,
 )
-from ..typesys import StrType, TypeParamRef, is_protocol_type, unwrap_ref_type
+from ..typesys import TypeParamRef, is_protocol_type, unwrap_ref_type
+from ..type_def_registry import is_str_type
 from tpyc import modules as builtin_modules
 from .context import INDENT, escape_cpp_name
 
@@ -646,7 +647,7 @@ class GeneratorCodegen:
         for pname, ptype in func.params:
             cpp_name = escape_cpp_name(pname)
             ptype_inner = unwrap_ref_type(ptype)
-            if isinstance(ptype_inner, StrType):
+            if is_str_type(ptype_inner):
                 ctor_params.append((cpp_name, "std::string_view", False))
             else:
                 cpp_type = self.types.type_to_cpp(ptype_inner)

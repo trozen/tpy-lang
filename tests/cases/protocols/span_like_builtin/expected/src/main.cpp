@@ -43,7 +43,7 @@ void test_ro_span() {
 // def test_arraylist() -> None:
 void test_arraylist() {
     // al = ArrayList[Int32, 4]()
-    ::tpystd::tplib::ArrayList<int32_t, 4> al = ::tpystd::tplib::ArrayList<int32_t, 4>();
+    ::tpystd::tplib::array_list::ArrayList<int32_t, 4> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     // al.append(Int32(100))
     al.append(100);
     // al.append(Int32(200))

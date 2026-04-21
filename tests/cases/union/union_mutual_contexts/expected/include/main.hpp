@@ -39,13 +39,13 @@ inline std::ostream& operator<<(std::ostream& os, const Lit& obj) {
 // class BinOp:
 struct BinOp {
     // left: Box[Expr]
-    ::tpystd::tplib::Box<Expr> left;
+    ::tpystd::tplib::box::Box<Expr> left;
     // right: Box[Expr]
-    ::tpystd::tplib::Box<Expr> right;
+    ::tpystd::tplib::box::Box<Expr> right;
 
     // def __init__(self, left: Own[Box[Expr]], right: Own[Box[Expr]]) -> None:
     BinOp() = default;
-    explicit BinOp(::tpystd::tplib::Box<Expr>&& left, ::tpystd::tplib::Box<Expr>&& right) : left(std::move(left)), right(std::move(right)) {}
+    explicit BinOp(::tpystd::tplib::box::Box<Expr>&& left, ::tpystd::tplib::box::Box<Expr>&& right) : left(std::move(left)), right(std::move(right)) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BinOp& obj) {
@@ -56,11 +56,11 @@ inline std::ostream& operator<<(std::ostream& os, const BinOp& obj) {
 // class Neg:
 struct Neg {
     // inner: Box[Value]
-    ::tpystd::tplib::Box<Value> inner;
+    ::tpystd::tplib::box::Box<Value> inner;
 
     // def __init__(self, inner: Own[Box[Value]]) -> None:
     Neg() = default;
-    explicit Neg(::tpystd::tplib::Box<Value>&& inner) : inner(std::move(inner)) {}
+    explicit Neg(::tpystd::tplib::box::Box<Value>&& inner) : inner(std::move(inner)) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Neg& obj) {

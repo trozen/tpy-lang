@@ -9,14 +9,16 @@ from dataclasses import replace as dc_replace
 from typing import Optional
 
 from ..typesys import (
-    TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, StrType, StrViewType, LiteralType, VoidType, VOID,
-    NoneType, INT32, FixedIntType, BigIntType, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
-    FunctionInfo, EnumType, SpanType, is_any_str_type,
-    make_ref, unwrap_ref_type, RefType,
+    TpyType, TypeRegistry, NominalType, UnionType, FinalType, STR, LiteralType, VoidType, VOID,
+    NoneType, INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
+    FunctionInfo, ParamInfo, is_any_str_type, BIGINT, FLOAT,
+    make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType,
     is_integer_type, is_void_like_type,
+    _contains_self_reference, validate_recursive_union_paths,
 )
 from ..namespace import Namespace, NameBinding, BindingKind
-from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call
+from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call, ParseError
+from ..parse.nodes import RecordLinkage
 from .registration import build_record_self_type, _vararg_span_type
 from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
@@ -43,7 +45,14 @@ from ..prescan import ScanResult, scan_reassigned_vars
 from ..liveness import analyze_last_uses
 from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
-from ..typesys import TypeParamRef, TupleType
+from ..cycle_detection import detect_type_cycles
+from ..parse import SourceLocation, is_parser_keyword
+from ..type_def_registry import is_str_type, is_str_view_type
+from ..parse.resolve_refs import (
+    _walk_body, _merged_method_scope, _record_scope,
+    _promote_bare_nominals,
+)
+from .macros import _promote_method_signature
 
 
 def _is_stmt_super_init_call(stmt: TpyStmt) -> bool:
@@ -319,6 +328,11 @@ class SemanticAnalyzer:
         # Set module context
         self.ctx.module_name = module_name
         self.ctx.module_cpp_namespace = getattr(module.directives, 'cpp_namespace', None) if hasattr(module, 'directives') else None
+        # Module resolver -- consumed by `_infer_field_type_from_default`
+        # (same-module record lookup) and the macro post-resolve step in
+        # `register_record` (body TypeRefNodes on macro-added methods).
+        # See `SemanticContext.parser_resolver` docstring.
+        self.ctx.parser_resolver = module.resolver
 
         # Convert parse warnings to diagnostics
         for warning in module.parse_warnings:
@@ -376,29 +390,54 @@ class SemanticAnalyzer:
             alias = module.module_aliases.get(mod_name)
             self.ctx.global_ns.bind_module(mod_name, alias)
 
+        # TypeRefNodes were already resolved before `analyze()` was
+        # called (by `Compiler._resolve_module_refs` between
+        # canonicalization and sema).  Everything downstream can read
+        # TpyType uniformly.
+
+        # Method-linkage validation (stubs allowed/required per record
+        # linkage, @native decorator restrictions) runs here so any
+        # base-resolution errors from the resolve phase fire first.
+        self._validate_record_method_linkage(module)
+
         # Resolve imported type aliases in AST type annotations.
-        # The parser creates NamedType("Shape") for imported aliases since it
+        # The parser creates NominalType("Shape") for imported aliases since it
         # doesn't know about cross-module aliases at parse time. Substitute them
         # with the resolved types before registration/analysis.
-        if self.ctx.user_imported_type_aliases:
+        if self.ctx.registry.imported_type_alias_info:
             self._resolve_imported_aliases(module)
 
-        # Resolve imported enum types in AST type annotations.
-        # Same issue as aliases: parser creates NamedType("Color") for imported
-        # enums since it doesn't have cross-module type info at parse time.
-        if self.ctx.user_imported_enums:
-            self._resolve_imported_enums(module)
-
-        # First pass: register all records and enums (including nested)
-        for record in module.all_records():
-            self.registrar.register_record(record)
+        # First pass: register all enums then records.  Method expansion
+        # (self-flag derivation, wrapping, cloning, validation) runs
+        # inside `register_record` after `_apply_class_macros` so macro-
+        # added methods flow through the same pipeline as regular ones.
+        # Enums are registered first so record field-type resolution
+        # (inside `register_record`) can substitute parser-level
+        # `NominalType("Color")` placeholders with the registered enum
+        # NominalType that carries `_module_qname`.  Records never depend
+        # on each other at registration time, and enums are self-
+        # contained, so this ordering is safe even for nested enums --
+        # nested enum names are already dotted ("Message.Kind") when
+        # `register_enum` sees them, so the parent record need not
+        # exist in the sema registry yet.
         for enum in module.all_enums():
             self.registrar.register_enum(enum)
+        for record in module.all_records():
+            self.registrar.register_record(record)
 
         # Populate macro_ns with exports from macro dep modules.
         # Macros have run during register_record, so we know which macro
         # modules were used and can import their dependencies.
         self._populate_macro_deps(module)
+
+        # Promote bare NominalTypes that macros emitted via
+        # `types.named(...)` to qname-bearing form now that macro_deps
+        # are in ctx.registry.  Macros like `@model` reference types
+        # (JsonReader, JsonWriter) that main.py doesn't import
+        # explicitly; they land in the registry only after
+        # `_populate_macro_deps`, so promotion has to run here rather
+        # than inside `register_record`.
+        self._promote_macro_generated_types(module)
 
         # Register protocols (two phases to allow forward references)
         for protocol in module.protocols:
@@ -432,7 +471,7 @@ class SemanticAnalyzer:
 
         # The parser eagerly expands same-module union aliases, so
         # RecursiveAlias | None becomes UnionType(NoneType, member1, member2, ...)
-        # instead of OptionalType(NamedType("RecursiveAlias")).
+        # instead of OptionalType(NominalType("RecursiveAlias")).
         # Now that recursive aliases are identified, fix up those annotations.
         if module.recursive_union_names:
             self._fix_recursive_optional_annotations(module)
@@ -506,8 +545,6 @@ class SemanticAnalyzer:
         type markers) are registered, so make_ref correctly identifies which
         types need wrapping.
         """
-        from ..typesys import ParamInfo
-
         def _ref_params(params: list) -> list:
             result = []
             for p in params:
@@ -628,7 +665,7 @@ class SemanticAnalyzer:
 
     def _validate_factory_defaults(self, module: TpyModule) -> None:
         """Validate that field(default_factory=X) fields have Default-constructible types."""
-        default_proto = NamedType("Default", (), is_protocol=True)
+        default_proto = NominalType("Default", (), is_protocol=True)
         for record in module.all_records():
             for fld in record.fields:
                 if not fld.is_factory_default:
@@ -641,7 +678,7 @@ class SemanticAnalyzer:
                     )
                 # Validate factory name matches field type
                 expr = fld.default_expr
-                if isinstance(expr, TpyCall) and isinstance(fld.type, NamedType):
+                if isinstance(expr, TpyCall) and isinstance(fld.type, NominalType):
                     if expr.func_name != fld.type.name:
                         raise SemanticError(
                             f"default_factory '{expr.func_name}' does not match "
@@ -706,7 +743,7 @@ class SemanticAnalyzer:
             # Generic T bounded to ValueType: same as value type
             if isinstance(own.wrapped, TypeParamRef):
                 bound = self.type_ops.get_type_param_bound(own.wrapped.name)
-                if (bound is not None and isinstance(bound, NamedType)
+                if (bound is not None and isinstance(bound, NominalType)
                         and bound.qualified_name() == "tpy.ValueType"):
                     continue
             # @nocopy types: Own is the only way to pass them
@@ -832,7 +869,7 @@ class SemanticAnalyzer:
             if func.is_generator:
                 gen_borrows = frozenset(
                     i for i, (_, ptype) in enumerate(func.params)
-                    if not ptype.is_value_type() or isinstance(ptype, (StrType, StrViewType))
+                    if not ptype.is_value_type() or is_str_type(ptype) or is_str_view_type(ptype)
                 )
                 if gen_borrows:
                     func_info.return_borrows_from = func_info.return_borrows_from | gen_borrows
@@ -902,7 +939,7 @@ class SemanticAnalyzer:
                 check_type = raw_type.inner if isinstance(raw_type, OptionalType) else raw_type
                 if cap_name in outer_param_names:
                     # Reject str/StrView parameter captures (string_view dangles)
-                    if isinstance(check_type, (StrType, StrViewType)):
+                    if is_str_type(check_type) or is_str_view_type(check_type):
                         self.ctx.emit_error(
                             f"Escaping closure '{name}' captures str parameter"
                             f" '{cap_name}' which would dangle (string_view into"
@@ -1161,9 +1198,12 @@ class SemanticAnalyzer:
 
         for func in functions:
             if func.builtin_decorator_key:
-                # Register minimal FunctionInfo so the key flows through exports
+                # Register minimal FunctionInfo so the key flows through exports.
+                # return_type comes from func (already VOID-substituted by
+                # _resolve_pending_type_refs); this FunctionInfo is used for
+                # decorator-key lookup, not call resolution.
                 self.ctx.registry.register_function(FunctionInfo(
-                    name=func.name, params=[], return_type=VOID,
+                    name=func.name, params=[], return_type=func.return_type,
                     builtin_decorator_key=func.builtin_decorator_key,
                 ))
                 continue
@@ -1236,8 +1276,6 @@ class SemanticAnalyzer:
         Runs after all records are registered but before type alias registration.
         Tags aliases in module.recursive_union_names (codegen emits wrapper structs).
         """
-        from ..cycle_detection import detect_type_cycles
-
         # Build inputs: record fields and non-recursive union aliases
         record_fields: dict[str, list[tuple[str, TpyType]]] = {}
         for record in module.all_records():
@@ -1282,13 +1320,47 @@ class SemanticAnalyzer:
             for alias_name in cycle.alias_names:
                 module.recursive_union_names.add(alias_name)
 
+    def _validate_record_method_linkage(self, module: TpyModule) -> None:
+        """Check per-record linkage rules against each method:
+        @native classes require stub bodies; regular classes disallow
+        stub bodies (except @overload stubs) and @native("...") decorators.
+
+        Runs after `_resolve_pending_type_refs` so base-resolution
+        errors fire first (previously these checks ran at parse time
+        and could mask those errors).
+        """
+        for record in module.all_records():
+            for method in record.methods:
+                # Use record.loc so the diagnostic points at the class header.
+                if record.linkage != RecordLinkage.DEFAULT:
+                    if not method.is_stub:
+                        raise SemanticError(
+                            "Methods on @native classes must have '...' "
+                            "body (stub declaration)",
+                            loc=record.loc,
+                        )
+                else:
+                    if method.is_stub and not method.is_overload_stub:
+                        raise SemanticError(
+                            f"Method '{method.name}' cannot have '...' body "
+                            f"on a regular class (only allowed on @native classes)",
+                            loc=record.loc,
+                        )
+                    if method.native_name is not None:
+                        raise SemanticError(
+                            f"@native(\"...\") decorator on method '{method.name}' "
+                            f"is only allowed on @native classes",
+                            loc=record.loc,
+                        )
+
+
     def _fix_recursive_optional_annotations(self, module: TpyModule) -> None:
         """Fix annotations where a recursive union alias + None was flattened.
 
         The parser eagerly expands same-module aliases, so `Expr | None`
         (where Expr = Lit | BinOp) becomes UnionType(NoneType, BinOp, Lit)
         -- a 3-member pointer-variant. This method converts those back to
-        OptionalType(NamedType("Expr")) by matching the non-None members
+        OptionalType(NominalType("Expr")) by matching the non-None members
         against the recursive union alias definitions.
 
         Note: only covers module-level declarations (function signatures,
@@ -1319,7 +1391,7 @@ class SemanticAnalyzer:
                     key = frozenset(non_none)
                     alias_name = alias_by_members.get(key)
                     if alias_name is not None:
-                        return OptionalType(NamedType(alias_name))
+                        return OptionalType(NominalType(alias_name))
             return typ.map_inner_types(lambda t: _fix(t))
 
         def _fix_func(func: TpyFunction) -> None:
@@ -1351,19 +1423,22 @@ class SemanticAnalyzer:
     def _validate_type_alias_members(
         self, alias_name: str, typ: TpyType, loc: 'SourceLocation | None'
     ) -> None:
-        """Validate that all NamedType members in a type alias are registered."""
-        # Recursive union aliases have self-referencing NamedType placeholders
+        """Validate that all NominalType members in a type alias are registered."""
+        # Recursive union aliases have self-referencing NominalType placeholders
         # inside their members -- safety was already validated.
         if alias_name in self.ctx.recursive_union_names:
             return
-        from ..parse import SourceLocation
         members: list[TpyType] = []
         if isinstance(typ, UnionType):
             members = list(typ.members)
-        elif isinstance(typ, NamedType):
+        elif isinstance(typ, NominalType):
             members = [typ]
         for m in members:
-            if isinstance(m, NamedType) and not m.is_protocol and not m.is_module_type:
+            # Bare NominalType reference in an alias body -- the registry
+            # lookup is the actual check. Exclude resolved types (which have
+            # a _module_qname) and protocols.
+            if (isinstance(m, NominalType) and not m.is_protocol
+                    and not m._module_qname):
                 if self.ctx.registry.get_record(m.name) is None:
                     raise SemanticError(
                         f"Type alias '{alias_name}' references unknown type '{m.name}'",
@@ -1374,13 +1449,16 @@ class SemanticAnalyzer:
     def _resolve_alias(typ: TpyType, aliases: dict[str, TpyType],
                         _seen: frozenset[str] = frozenset(),
                         _skip: frozenset[str] = frozenset()) -> TpyType:
-        """Recursively substitute alias NamedTypes with their resolved types.
+        """Recursively substitute alias NominalTypes with their resolved types.
 
         Uses _seen to prevent infinite recursion on self-referencing aliases.
         _skip contains recursive union alias names that must not be expanded
-        (their NamedType placeholders are structural).
+        (their NominalType placeholders are structural).
         """
-        if isinstance(typ, NamedType) and not typ.is_protocol and not typ.is_module_type:
+        # Alias placeholders are bare parser NominalTypes (no _module_qname,
+        # no TypeDef entry). Exclude protocols and anything already resolved.
+        if (isinstance(typ, NominalType) and not typ.is_protocol
+                and not typ._module_qname):
             if typ.name in _seen or typ.name in _skip:
                 return typ
             resolved = aliases.get(typ.name)
@@ -1394,8 +1472,7 @@ class SemanticAnalyzer:
         )
 
     def _resolve_imported_aliases(self, module: TpyModule) -> None:
-        """Substitute imported alias NamedTypes in module AST type annotations."""
-        from ..parse.nodes import TpyVarDecl
+        """Substitute imported alias NominalTypes in module AST type annotations."""
         aliases = self.ctx.registry.type_aliases
         skip = frozenset(module.recursive_union_names)
         for func in module.functions:
@@ -1419,43 +1496,6 @@ class SemanticAnalyzer:
             resolved = SemanticAnalyzer._resolve_alias(typ, aliases, _skip=skip)
             if resolved is not typ:
                 func.params[i] = (name, resolved)
-
-    def _resolve_imported_enums(self, module: TpyModule) -> None:
-        """Substitute imported enum NamedTypes in module AST type annotations."""
-        from ..parse.nodes import TpyVarDecl
-        enums = {name: self.ctx.registry.get_enum(name)
-                 for name in self.ctx.user_imported_enums}
-        for func in module.functions:
-            self._resolve_func_enums(func, enums)
-        for record in module.all_records():
-            for f in record.fields:
-                f.type = self._resolve_enum(f.type, enums)
-            for method in record.methods:
-                self._resolve_func_enums(method, enums)
-        for stmt in module.top_level_stmts:
-            if isinstance(stmt, TpyVarDecl) and stmt.type is not None:
-                stmt.type = self._resolve_enum(stmt.type, enums)
-
-    @staticmethod
-    def _resolve_func_enums(func: TpyFunction, enums: dict[str, EnumType]) -> None:
-        """Resolve enum types in a function's signature."""
-        if func.return_type is not None:
-            func.return_type = SemanticAnalyzer._resolve_enum(func.return_type, enums)
-        for i, (name, typ) in enumerate(func.params):
-            resolved = SemanticAnalyzer._resolve_enum(typ, enums)
-            if resolved is not typ:
-                func.params[i] = (name, resolved)
-
-    @staticmethod
-    def _resolve_enum(typ: TpyType, enums: dict[str, EnumType]) -> TpyType:
-        """Recursively substitute NamedType placeholders with EnumType for imported enums."""
-        if isinstance(typ, NamedType) and not typ.is_protocol:
-            resolved = enums.get(typ.name)
-            if resolved is not None:
-                return resolved
-        return typ.map_inner_types(
-            lambda t: SemanticAnalyzer._resolve_enum(t, enums)
-        )
 
     def _analyze_record_methods(self, record: TpyRecord) -> None:
         """Analyze all methods of a record."""
@@ -1487,7 +1527,11 @@ class SemanticAnalyzer:
             local_ns = Namespace(parent=self.ctx.global_ns)
             self.ctx.func.current_ns = local_ns
             if not method.is_staticmethod:
-                self_named = build_record_self_type(record)
+                info = self.ctx.registry.get_record(record.name)
+                self_named = build_record_self_type(
+                    record,
+                    qname=info.qualified_name() if info is not None else None,
+                )
                 self_type = self._normalize_param_type(self_named, method.is_readonly)
                 scope.define("self", self_type)
                 self.ctx.func.var_scope_depth["self"] = scope.depth
@@ -1909,8 +1953,8 @@ class SemanticAnalyzer:
             return
         alias_type = tpy_info.type_aliases.get(original_name)
         if alias_type is not None:
-            self.ctx.registry.register_type_alias(local_name, alias_type)
-            self.ctx.user_imported_type_aliases[local_name] = ("tpy", original_name)
+            self.ctx.registry.register_type_alias(local_name, alias_type,
+                                                  imported_from=("tpy", original_name))
             if local_name != original_name:
                 self.ctx.registry.register_type_alias(original_name, alias_type)
 
@@ -1920,8 +1964,8 @@ class SemanticAnalyzer:
         if not tpy_info or not tpy_info.type_aliases:
             return
         for name, alias_type in tpy_info.type_aliases.items():
-            self.ctx.registry.register_type_alias(name, alias_type)
-            self.ctx.user_imported_type_aliases[name] = ("tpy", name)
+            self.ctx.registry.register_type_alias(name, alias_type,
+                                                  imported_from=("tpy", name))
 
     def _bind_star_reexport(self, original_name: str, local_name: str) -> None:
         """Try to bind a star-imported re-export from a known module.
@@ -1992,18 +2036,15 @@ class SemanticAnalyzer:
             self.ctx.registry.register_record(record_info, local_name)
             if local_name != original_name:
                 self.ctx.registry.register_record(record_info, original_name)
-            self.ctx.user_imported_records[local_name] = (module_name, original_name)
             # Also register nested types so Outer.Inner resolves in the importing module
             prefix = original_name + "."
             for nested_name, nested_info in module_info.records.items():
                 if nested_name.startswith(prefix):
                     self.ctx.registry.register_record(nested_info, nested_name)
-                    self.ctx.user_imported_records[nested_name] = (module_name, nested_name)
             if module_info.enums:
                 for nested_name, nested_enum in module_info.enums.items():
                     if nested_name.startswith(prefix):
                         self.ctx.registry.register_enum(nested_enum, nested_name)
-                        self.ctx.user_imported_enums[nested_name] = (module_name, nested_name)
             return True
 
         # Check for protocol
@@ -2019,16 +2060,15 @@ class SemanticAnalyzer:
         # Check for type alias
         if module_info.type_aliases and original_name in module_info.type_aliases:
             typ = module_info.type_aliases[original_name]
-            self.ctx.registry.register_type_alias(local_name, typ)
-            self.ctx.user_imported_type_aliases[local_name] = (module_name, original_name)
+            self.ctx.registry.register_type_alias(local_name, typ,
+                                                  imported_from=(module_name, original_name))
             # Implicitly import member record types so codegen can qualify them
             if isinstance(typ, UnionType) and module_info.records:
                 for member in typ.members:
-                    if isinstance(member, NamedType) and member.name in module_info.records:
-                        if member.name not in self.ctx.user_imported_records:
+                    if isinstance(member, NominalType) and member.name in module_info.records:
+                        if self.ctx.registry.get_record(member.name) is None:
                             rec = module_info.records[member.name]
                             self.ctx.registry.register_record(rec, member.name)
-                            self.ctx.user_imported_records[member.name] = (module_name, member.name)
             return True
 
         # Check for enum
@@ -2036,12 +2076,11 @@ class SemanticAnalyzer:
             enum_type = module_info.enums[original_name]
             self.ctx.registry.register_enum(enum_type, local_name)
             # Also register under original name: the parser resolves aliases
-            # back to original names for type annotations (NamedType("Color")
+            # back to original names for type annotations (NominalType("Color")
             # even when the alias is "C")
             if local_name != original_name:
                 self.ctx.registry.register_enum(enum_type, original_name)
             self.ctx.global_ns.bind_enum(enum_type, name=local_name)
-            self.ctx.user_imported_enums[local_name] = (module_name, original_name)
             return True
 
         # Check for variable
@@ -2054,7 +2093,6 @@ class SemanticAnalyzer:
 
         # @builtin_type/@builtin_decorator stubs and parser keywords are handled
         # at parse time, not exported by .py files -- silently skip them here.
-        from ..parse import is_parser_keyword
         if is_parser_keyword(module_name, original_name):
             return True
         if (self.ctx.registry.get_builtin_type_key(original_name) or
@@ -2069,6 +2107,53 @@ class SemanticAnalyzer:
             return False
 
         raise self._error(f"'{original_name}' not found in module '{module_name}'")
+
+    def _promote_macro_generated_types(self, module: TpyModule) -> None:
+        """Promote bare `NominalType` placeholders on macro-generated
+        method signatures / bodies / registered `FunctionInfo` to
+        qname-bearing form using the post-macro-deps `ctx.registry`.
+
+        Macros may reference types (JsonReader, JsonWriter, ...) that
+        main.py doesn't import explicitly -- those land in the registry
+        only after `_populate_macro_deps`, so promotion must run here
+        rather than inside `register_record`.
+        """
+        resolver = self.ctx.parser_resolver
+        if resolver is None:
+            return
+        registry = self.ctx.registry
+        for record in module.all_records():
+            # AST-level method (TpyFunction) signatures + bodies.
+            for method in record.methods:
+                _promote_method_signature(method, registry)
+                scope = _merged_method_scope(_record_scope(record), method)
+                _walk_body(method.body, scope, resolver, promote_registry=registry)
+            # Registered FunctionInfo (captured before promotion) --
+            # rebuild ParamInfo / return_type in place so overload
+            # resolution sees the promoted param types.
+            info = registry.get_record(record.name)
+            if info is None:
+                continue
+            for overloads in info.methods.values():
+                for i, finfo in enumerate(overloads):
+                    new_params = [
+                        dc_replace(p, type=_promote_bare_nominals(p.type, registry))
+                        for p in finfo.params
+                    ]
+                    new_return = (
+                        _promote_bare_nominals(finfo.return_type, registry)
+                        if finfo.return_type is not None else finfo.return_type
+                    )
+                    overloads[i] = dc_replace(
+                        finfo,
+                        params=new_params,
+                        return_type=new_return,
+                    )
+        # Top-level functions: walk bodies so nested-def signatures
+        # (resolved at parse time, before F.5 canonicalization) get
+        # their bare NominalTypes promoted.
+        for func in module.functions:
+            _walk_body(func.body, None, resolver, promote_registry=registry)
 
     def _populate_macro_deps(self, module: TpyModule) -> None:
         """Populate macro_ns with exports from MACRO_DEPS of used macro modules.
@@ -2117,7 +2202,6 @@ class SemanticAnalyzer:
                         self.ctx.registry.register_record(record_info, name)
                     self.ctx.macro_ns.bind_imported_name(name, dep_mod_name, name)
                     self.ctx.imported_names.setdefault(name, (dep_mod_name, name))
-                    self.ctx.user_imported_records.setdefault(name, (dep_mod_name, name))
 
             if module_info.functions:
                 for name, func_infos in module_info.functions.items():
@@ -2139,4 +2223,3 @@ class SemanticAnalyzer:
                         self.ctx.registry.register_enum(enum_type, name)
                     self.ctx.macro_ns.bind_enum(enum_type, name=name)
                     self.ctx.imported_names.setdefault(name, (dep_mod_name, name))
-                    self.ctx.user_imported_enums.setdefault(name, (dep_mod_name, name))

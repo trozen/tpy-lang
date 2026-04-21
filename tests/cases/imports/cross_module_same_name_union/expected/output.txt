@@ -1,0 +1,5 @@
+42
+pkg_a
+pkg_b
+pkg_a
+bar
