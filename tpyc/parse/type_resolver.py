@@ -341,7 +341,7 @@ class TypeResolver:
                                 # diag.txt formats as `file:line: error: ...`
                                 # (ParseError would go through the `Parse
                                 # error: ...` CLI path instead).
-                                from ..sema.diagnostics import SemanticError
+                                from ..diagnostics import SemanticError
                                 raise SemanticError(
                                     f"Generic protocol '{registered.name}' requires type arguments: "
                                     f"{registered.name}[{', '.join(proto.type_params)}]",
@@ -485,7 +485,7 @@ class TypeResolver:
         is_dynamic_protocol = registered.is_dynamic_protocol
         if td.protocol is not None:
             if td.protocol.type_params and not registered.type_args:
-                from ..sema.diagnostics import SemanticError
+                from ..diagnostics import SemanticError
                 raise SemanticError(
                     f"Generic protocol '{registered.name}' requires type arguments: "
                     f"{registered.name}[{', '.join(td.protocol.type_params)}]",
@@ -593,7 +593,7 @@ class TypeResolver:
                 return NominalType(dotted, _module_qname=qname)
         if (user_protocol := parser.registry.get_protocol(name)) is not None:
             if user_protocol.type_params:
-                from ..sema.diagnostics import SemanticError
+                from ..diagnostics import SemanticError
                 raise SemanticError(
                     f"Generic protocol '{name}' requires type arguments: "
                     f"{name}[{', '.join(user_protocol.type_params)}]",

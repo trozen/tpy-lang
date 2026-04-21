@@ -12,7 +12,7 @@ from __future__ import annotations
 import pytest
 
 from .parse.nodes import TpyFunction, TpyRecord, RecordLinkage
-from .sema.diagnostics import SemanticError
+from .diagnostics import SemanticError
 from .sema.method_expansion import expand_methods_for_record
 from .typesys import (
     AutoReadonlyType,

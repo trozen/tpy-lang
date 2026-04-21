@@ -374,7 +374,7 @@ class CallMacroContext:
 
     def error(self, msg: str, loc: Any = None) -> NoReturn:
         """Raise a compile error."""
-        from .sema.diagnostics import SemanticError
+        from .diagnostics import SemanticError
         raise SemanticError(msg, loc or self._loc)
 
 
@@ -737,7 +737,7 @@ class ClassInfo:
 
     def error(self, msg: str, loc: Any = None) -> NoReturn:
         """Raise a compile error."""
-        from .sema.diagnostics import SemanticError
+        from .diagnostics import SemanticError
         raise SemanticError(msg, loc or self._record.loc)
 
     # -- Apply mutations back to TpyRecord --

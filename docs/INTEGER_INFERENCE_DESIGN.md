@@ -55,9 +55,9 @@ Supported values:
 CLI:
 
 ```bash
-tpyc --default-int=Int32 ...   # default behavior
-tpyc --default-int=BigInt ...  # CPython-like integer behavior
-tpyc --default-int=Int64 ...   # optional wider fixed-width default
+tpy --default-int=Int32 ...    # default behavior
+tpy --default-int=BigInt ...   # CPython-like integer behavior
+tpy --default-int=Int64 ...    # optional wider fixed-width default
 ```
 
 ### 2. Invocation-Wide Consistency

@@ -3,7 +3,7 @@
 import pytest
 
 from .macro_loader import validate_and_call_macro
-from .sema.diagnostics import SemanticError
+from .diagnostics import SemanticError
 
 
 class _FakeLoc:

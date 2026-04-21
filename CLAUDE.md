@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TurboPython (TPy) is a proof-of-concept compiler (tpyc) that translates Python to C++.
+TurboPython (TPy) is a proof-of-concept toolchain that translates Python to C++.
+It ships two CLIs that share the same argument grammar, differing only in their default action:
+
+- **`tpy`** -- user-facing runner. Bare `tpy` drops into a REPL; `tpy foo.py` runs the program.
+- **`tpyc`** -- compiler front-end. `tpyc foo.py` emits `.hpp`/`.cpp` in `__tpyc__/` without running.
 
 **Goals:**
 
@@ -15,20 +19,20 @@ TurboPython (TPy) is a proof-of-concept compiler (tpyc) that translates Python t
 ## Commands
 
 ```bash
-# Compile and run (debug build, default)
-uv run tpyc -x examples/hello.py
+# Run a program (debug build, default)
+uv run tpy examples/hello.py
 
-# Compile and run (release build, optimized)
-uv run tpyc -xO examples/hello.py
+# Run a program (release build, optimized)
+uv run tpy -O examples/hello.py
 
-# Compile and run a snippet (write to file first, no heredocs)
-uv run tpyc -x /tmp/agents/snippet.py
+# Run a snippet (write to file first, no heredocs)
+uv run tpy /tmp/agents/snippet.py
 
 # Print generated C++ to stdout
-uv run tpyc --dump-code /tmp/agents/snippet.py
+uv run tpy --dump-code /tmp/agents/snippet.py
 
-# Compile to C++ and build binary
-uv run tpyc -b examples/hello.py
+# Compile and build binary (no run)
+uv run tpy -b examples/hello.py
 
 # Compile to C++ only (output in __tpyc__/ next to source)
 uv run tpyc examples/hello.py
@@ -37,26 +41,26 @@ uv run tpyc examples/hello.py
 uv run tpyc examples/hello.py -o out/
 
 # Verbose mode (-v for commands+timing, -vv for generated C++)
-uv run tpyc -x examples/hello.py -vv
+uv run tpy examples/hello.py -vv
 
 # Run inline code
-uv run tpyc -c "print(1 + 2)"
+uv run tpy -c "print(1 + 2)"
 
 # Interactive REPL (auto-detects best backend: clang-repl > clang > gcc > zig)
-uv run tpyc -i
+uv run tpy
 
-# Force a specific C++ compiler
-uv run tpyc -i --cxx gcc
+# Force a specific C++ compiler (REPL)
+uv run tpy --cxx gcc
 
 # Extra library search paths
-uv run tpyc -x -L /my/libs examples/main.py
+uv run tpy -L /my/libs examples/main.py
 
 # Disable standard library
-uv run tpyc -x --no-stdlib examples/main.py
+uv run tpy --no-stdlib examples/main.py
 
 # Build flags: ccache control, parallel jobs, CMake output
-uv run tpyc -x --no-ccache examples/hello.py
-uv run tpyc -x -j4 examples/hello.py
+uv run tpy --no-ccache examples/hello.py
+uv run tpy -j4 examples/hello.py
 
 # Install for development (uses uv package manager)
 uv sync
@@ -64,7 +68,7 @@ uv sync
 
 ## Agent Workflow
 
-Always use `uv run` to invoke Python/tpyc (never bare `python` or `tpyc`). Use the Read/Grep/Glob tools instead of `cat`/`head`/`tail`/`grep`/`rg`/`find`.
+Always use `uv run` to invoke Python/tpy (never bare `python` or `tpy`). Use the Read/Grep/Glob tools instead of `cat`/`head`/`tail`/`grep`/`rg`/`find`.
 
 **For snippets**, write to a file under `/tmp/agents/` (any filename or subdirectory) and run from there. Do NOT use heredocs (`<<EOF`) as they trigger permission prompts for multi-line commands.
 
@@ -74,14 +78,14 @@ To inspect generated C++:
 
 ```bash
 # Write snippet to /tmp/agents/, then dump
-uv run tpyc --dump-code /tmp/agents/scratch.py
+uv run tpy --dump-code /tmp/agents/scratch.py
 ```
 
 To run a snippet quickly:
 
 ```bash
 # Write snippet to /tmp/agents/, then run
-uv run tpyc -x /tmp/agents/scratch.py
+uv run tpy /tmp/agents/scratch.py
 ```
 
 ## Testing

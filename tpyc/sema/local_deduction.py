@@ -44,7 +44,7 @@ from ..typesys import (
     unwrap_ref_type,
 )
 from .context import PENDING_CONTAINER_TYPES
-from .diagnostics import SemanticError
+from ..diagnostics import SemanticError
 from .numeric_lattice import merge_literal_seed_target, numeric_info, widen_numeric_types
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_list, is_fixed_int_type, is_big_int_type,

@@ -48,7 +48,7 @@ from ..typesys import (
     strip_auto_own,
     strip_auto_readonly,
 )
-from .diagnostics import SemanticError
+from ..diagnostics import SemanticError
 
 
 _SELF_BARRED_METHODS = ("__init__", "__del__")

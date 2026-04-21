@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, GenExprType,
     is_protocol_type,
 )
-from .diagnostics import SemanticError
+from ..diagnostics import SemanticError
 
 if TYPE_CHECKING:
     from ..parse import SourceLocation
