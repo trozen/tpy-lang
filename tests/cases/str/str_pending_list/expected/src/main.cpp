@@ -53,15 +53,15 @@ std::vector<std::string> in_list_comp() {
     // label: str = "no"
     std::string_view label = "no";
     // return [label for _ in range(3)]
-    return [&]() {
+    return ({
         std::vector<std::string> __result;
         const int32_t __stop_0 = 3;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t _ = 0; _ < __stop_0; ++_) {
             __result.push_back(std::string(label));
         }
-        return __result;
-    }();
+        __result;
+    });
 }
 
 // def in_nested_tuple_list() -> Own[list[tuple[str, tuple[str, int]]]]:

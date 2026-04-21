@@ -422,7 +422,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `slice.hpp` | `BasicSlice` (start, stop) and `Slice` (start, stop, step) types |
 | `file.hpp` | `TextFile`, `BinaryFile` for `open()` builtin, `FileFlags` mode parsing |
 
-Generated code requires C++23 (for `std::ranges` concepts) and uses the GCC statement expression extension (`({ ... })`) for expression-level `@error_return` unwrapping. This extension is supported by GCC, Clang, and all LLVM-based compilers (Intel ICX, ARM armclang, IBM Open XL). It is not supported by MSVC.
+Generated code requires C++23 (for `std::ranges` concepts) and uses the GCC statement expression extension (`({ ...; value; })`) wherever codegen needs expression-level locals: `@error_return` unwrapping, list/dict/set/array comprehensions, chained comparisons with complex intermediates, and the `x in (a, b, c)` membership form with a complex LHS. This extension is supported by GCC, Clang, and all LLVM-based compilers (Intel ICX, ARM armclang, IBM Open XL). It is not supported by MSVC.
 
 ### Libraries (`lib/`)
 

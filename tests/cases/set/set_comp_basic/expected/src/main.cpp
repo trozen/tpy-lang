@@ -8,14 +8,14 @@ namespace tpyapp::main {
 void main() {
     // # Range to set
     // squares: set[Int32] = {x * x for x in range(5)}
-    ::tpy::ordered_set<int32_t> squares = [&]() {
+    ::tpy::ordered_set<int32_t> squares = ({
         ::tpy::ordered_set<int32_t> __result;
         const int32_t __stop_0 = 5;
         for (int32_t x = 0; x < __stop_0; ++x) {
             __result.insert((::tpy::mul_check<int32_t>(x, x)));
         }
-        return __result;
-    }();
+        __result;
+    });
     // for v in squares:
     auto& __obj_1 = squares;
     auto __beg_1 = __obj_1.begin();
@@ -29,7 +29,7 @@ void main() {
     // items: list[Int32] = [1, 2, 2, 3, 3, 3]
     std::vector<int32_t> items = {1, 2, 2, 3, 3, 3};
     // unique: set[Int32] = {x for x in items}
-    ::tpy::ordered_set<int32_t> unique = [&]() {
+    ::tpy::ordered_set<int32_t> unique = ({
         ::tpy::ordered_set<int32_t> __result;
         auto& __obj_2 = items;
         auto __beg_2 = __obj_2.begin();
@@ -38,15 +38,15 @@ void main() {
             int32_t x = *__beg_2;
             __result.insert(x);
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(len(unique))
     std::cout << ::tpy::__len__(unique) << "\n";
     // # String set from list
     // names: list[str] = ["alice", "bob", "alice", "charlie"]
     std::vector<std::string> names = {"alice", "bob", "alice", "charlie"};
     // name_set: set[str] = {n for n in names}
-    ::tpy::ordered_set<std::string> name_set = [&]() {
+    ::tpy::ordered_set<std::string> name_set = ({
         ::tpy::ordered_set<std::string> __result;
         auto& __obj_3 = names;
         auto __beg_3 = __obj_3.begin();
@@ -55,21 +55,21 @@ void main() {
             const std::string& n = *__beg_3;
             __result.insert(n);
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(len(name_set))
     std::cout << ::tpy::__len__(name_set) << "\n";
     // # 2-arg range
     // r2: set[Int32] = {x for x in range(3, 7)}
-    ::tpy::ordered_set<int32_t> r2 = [&]() {
+    ::tpy::ordered_set<int32_t> r2 = ({
         ::tpy::ordered_set<int32_t> __result;
         const int32_t __start_4 = 3;
         const int32_t __stop_5 = 7;
         for (int32_t x = __start_4; x < __stop_5; ++x) {
             __result.insert(x);
         }
-        return __result;
-    }();
+        __result;
+    });
     // for v in r2:
     auto& __obj_6 = r2;
     auto __beg_6 = __obj_6.begin();

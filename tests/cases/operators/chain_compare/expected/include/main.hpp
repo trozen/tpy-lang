@@ -22,8 +22,10 @@ void test_in_condition();
 void test_as_expression();
 int32_t get_mid();
 int32_t get_high();
+int32_t get_top();
 void test_single_eval();
 void test_short_circuit_operands();
+void test_triple_short_circuit();
 
 void __tpy_init();
 } // namespace tpyapp::main

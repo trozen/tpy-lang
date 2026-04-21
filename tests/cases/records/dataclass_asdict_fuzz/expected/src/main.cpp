@@ -36,7 +36,7 @@ void main() {
     // poly = Polygon([Point(Int32(0), Int32(0)), Point(Int32(1), Int32(0)), Point(Int32(0), Int32(1))])
     Polygon poly = Polygon({Point(0, 0), Point(1, 0), Point(0, 1)});
     // print(asdict(poly))
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>({{"vertices", [&]() {
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>({{"vertices", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_0 = poly.vertices;
         __result.reserve(__obj_0.size());
@@ -46,13 +46,13 @@ void main() {
             const auto& __macro_1 = *__beg_0;
             __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_1.x}, {"y", __macro_1.y}}));
         }
-        return __result;
-    }()}})) << "\n";
+        __result;
+    })}})) << "\n";
     // # 6. Mixed types + list
     // d = Drawing("sketch", [Point(Int32(1), Int32(2))])
     Drawing d = Drawing("sketch", {Point(1, 2)});
     // print(asdict(d))
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::variant<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, std::variant<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>({{"title", d.title}, {"shapes", [&]() {
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::variant<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, std::variant<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>({{"title", d.title}, {"shapes", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_1 = d.shapes;
         __result.reserve(__obj_1.size());
@@ -62,8 +62,8 @@ void main() {
             const auto& __macro_1 = *__beg_1;
             __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_1.x}, {"y", __macro_1.y}}));
         }
-        return __result;
-    }()}}))) << "\n";
+        __result;
+    })}}))) << "\n";
     // # 7. Deeply nested
     // w = Wrapper(NamedPoint("deep", Point(Int32(9), Int32(8))))
     Wrapper w = Wrapper(NamedPoint("deep", Point(9, 8)));
@@ -78,7 +78,7 @@ void main() {
     // c = Container([])
     Container c = Container(std::vector<Point>{});
     // print(asdict(c))
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>({{"items", [&]() {
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>({{"items", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_2 = c.items;
         __result.reserve(__obj_2.size());
@@ -88,13 +88,13 @@ void main() {
             const auto& __macro_1 = *__beg_2;
             __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_1.x}, {"y", __macro_1.y}}));
         }
-        return __result;
-    }()}})) << "\n";
+        __result;
+    })}})) << "\n";
     // # 10. Multiple list fields (mixed field types)
     // ml = MultiList([Point(Int32(1), Int32(2))], ["a", "b"])
     MultiList ml = MultiList({Point(1, 2)}, {"a", "b"});
     // print(asdict(ml))
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::variant<std::vector<::tpy::ordered_map<std::string, int32_t>>, std::vector<std::string>>>(::tpy::ordered_map<std::string, std::variant<std::vector<::tpy::ordered_map<std::string, int32_t>>, std::vector<std::string>>>({{"points", [&]() {
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::variant<std::vector<::tpy::ordered_map<std::string, int32_t>>, std::vector<std::string>>>(::tpy::ordered_map<std::string, std::variant<std::vector<::tpy::ordered_map<std::string, int32_t>>, std::vector<std::string>>>({{"points", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_3 = ml.points;
         __result.reserve(__obj_3.size());
@@ -104,13 +104,13 @@ void main() {
             const auto& __macro_1 = *__beg_3;
             __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_1.x}, {"y", __macro_1.y}}));
         }
-        return __result;
-    }()}, {"labels", ml.labels}}))) << "\n";
+        __result;
+    })}, {"labels", ml.labels}}))) << "\n";
     // # 11. Dict with dataclass values
     // dd = DictOfDC({"origin": Point(Int32(0), Int32(0)), "end": Point(Int32(1), Int32(2))})
     DictOfDC dd = DictOfDC(::tpy::ordered_map<std::string, Point>({{"origin", Point(0, 0)}, {"end", Point(1, 2)}}));
     // print(asdict(dd))
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"items", [&]() {
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"items", ({
         ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> __result;
         auto __obj_4 = ::tpy::dict_items(dd.items);
         auto __beg_4 = __obj_4.begin();
@@ -121,10 +121,10 @@ void main() {
             const auto& __macro_2 = std::get<1>(__tup_1);
             __result.insert_or_assign(__macro_1, ::tpy::ordered_map<std::string, int32_t>({{"x", __macro_2.x}, {"y", __macro_2.y}}));
         }
-        return __result;
-    }()}})) << "\n";
+        __result;
+    })}})) << "\n";
     // print(astuple(dd))
-    std::cout << ::tpy::TuplePrinter(std::tuple<::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>>>([&]() {
+    std::cout << ::tpy::TuplePrinter(std::tuple<::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>>>(({
         ::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>> __result;
         auto __obj_5 = ::tpy::dict_items(dd.items);
         auto __beg_5 = __obj_5.begin();
@@ -135,8 +135,8 @@ void main() {
             const auto& __macro_2 = std::get<1>(__tup_2);
             __result.insert_or_assign(__macro_1, std::tuple<int32_t, int32_t>{__macro_2.x, __macro_2.y});
         }
-        return __result;
-    }())) << "\n";
+        __result;
+    }))) << "\n";
     // # 12. Tuple with mixed types (DC + scalar)
     // tm = TupleMixed((Point(Int32(1), Int32(2)), Int32(42)))
     TupleMixed tm = TupleMixed(std::tuple<Point, int32_t>{Point(1, 2), 42});

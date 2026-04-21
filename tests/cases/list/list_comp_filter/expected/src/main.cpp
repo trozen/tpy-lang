@@ -10,7 +10,7 @@ void main() {
     // data: list[Int32] = [3, -1, 4, -2, 5]
     std::vector<int32_t> data = {3, -1, 4, -2, 5};
     // pos = [x for x in data if x > 0]
-    std::vector<int32_t> pos = [&]() {
+    std::vector<int32_t> pos = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = data;
         __result.reserve(__obj_0.size());
@@ -22,13 +22,13 @@ void main() {
                 __result.push_back(x);
             }
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(pos)
     std::cout << ::tpy::ListPrinter(pos) << "\n";
     // # Filter with transformation
     // evens = [x * x for x in range(10) if x % 2 == 0]
-    std::vector<int32_t> evens = [&]() {
+    std::vector<int32_t> evens = ({
         std::vector<int32_t> __result;
         const int32_t __stop_1 = 10;
         if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
@@ -37,13 +37,13 @@ void main() {
                 __result.push_back((::tpy::mul_check<int32_t>(x, x)));
             }
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(evens)
     std::cout << ::tpy::ListPrinter(evens) << "\n";
     // # Multiple conditions (all must be true)
     // result = [x for x in range(20) if x % 2 == 0 if x % 3 == 0]
-    std::vector<int32_t> result = [&]() {
+    std::vector<int32_t> result = ({
         std::vector<int32_t> __result;
         const int32_t __stop_2 = 20;
         if (__stop_2 > 0) __result.reserve(static_cast<size_t>(__stop_2));
@@ -52,15 +52,15 @@ void main() {
                 __result.push_back(x);
             }
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
     // # Filter strings by length
     // words: list[str] = ["hi", "hello", "hey", "howdy", "yo"]
     std::vector<std::string> words = {"hi", "hello", "hey", "howdy", "yo"};
     // short = [w for w in words if len(w) <= 3]
-    std::vector<std::string> short_ = [&]() {
+    std::vector<std::string> short_ = ({
         std::vector<std::string> __result;
         auto& __obj_3 = words;
         __result.reserve(__obj_3.size());
@@ -72,8 +72,8 @@ void main() {
                 __result.push_back(w);
             }
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(short)
     std::cout << ::tpy::ListPrinter(short_) << "\n";
 }

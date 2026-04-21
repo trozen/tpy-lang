@@ -43,14 +43,14 @@ namespace tpyapp::main {
     // label: str = "no"
     std::string_view label = "no";
     // return {label: label for _ in range(3)}
-    return [&]() {
+    return ({
         ::tpy::ordered_map<std::string, std::string> __result;
         const int32_t __stop_0 = 3;
         for (int32_t _ = 0; _ < __stop_0; ++_) {
             __result.insert_or_assign(std::string(label), std::string(label));
         }
-        return __result;
-    }();
+        __result;
+    });
 }
 
 void __tpy_init() {

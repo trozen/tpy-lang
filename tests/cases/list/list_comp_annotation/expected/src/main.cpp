@@ -9,7 +9,7 @@ std::vector<::tpy::BigInt> make_bigints() {
     // items: list[Int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
     // return [x for x in items]
-    return [&]() {
+    return ({
         std::vector<::tpy::BigInt> __result;
         auto& __obj_0 = items;
         __result.reserve(__obj_0.size());
@@ -19,8 +19,8 @@ std::vector<::tpy::BigInt> make_bigints() {
             int32_t x = *__beg_0;
             __result.push_back(::tpy::BigInt(x));
         }
-        return __result;
-    }();
+        __result;
+    });
 }
 
 // def accept_wide(items: list[Int64]) -> None:
@@ -35,7 +35,7 @@ void main() {
     // items: list[Int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
     // big: list[int] = [x for x in items]
-    std::vector<::tpy::BigInt> big = [&]() {
+    std::vector<::tpy::BigInt> big = ({
         std::vector<::tpy::BigInt> __result;
         auto& __obj_0 = items;
         __result.reserve(__obj_0.size());
@@ -45,13 +45,13 @@ void main() {
             int32_t x = *__beg_0;
             __result.push_back(::tpy::BigInt(x));
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(big)
     std::cout << ::tpy::ListPrinter(big) << "\n";
     // # Widen Int32 -> Int64
     // wide: list[Int64] = [x for x in items]
-    std::vector<int64_t> wide = [&]() {
+    std::vector<int64_t> wide = ({
         std::vector<int64_t> __result;
         auto& __obj_1 = items;
         __result.reserve(__obj_1.size());
@@ -61,8 +61,8 @@ void main() {
             int32_t x = *__beg_1;
             __result.push_back(static_cast<int64_t>(x));
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(wide)
     std::cout << ::tpy::ListPrinter(wide) << "\n";
     // # Return type propagation (Own[list[int]] from Int32 source)
@@ -72,7 +72,7 @@ void main() {
     std::cout << ::tpy::ListPrinter(result) << "\n";
     // # Annotation with expression (coercion applies to element expr result)
     // doubled: list[int] = [x * 2 for x in items]
-    std::vector<::tpy::BigInt> doubled = [&]() {
+    std::vector<::tpy::BigInt> doubled = ({
         std::vector<::tpy::BigInt> __result;
         auto& __obj_2 = items;
         __result.reserve(__obj_2.size());
@@ -82,13 +82,13 @@ void main() {
             int32_t x = *__beg_2;
             __result.push_back(::tpy::BigInt((::tpy::mul_check<int32_t>(x, 2))));
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(doubled)
     std::cout << ::tpy::ListPrinter(doubled) << "\n";
     // # Annotation + filter: coercion inside conditional push_back
     // big_pos: list[int] = [x for x in items if x > 15]
-    std::vector<::tpy::BigInt> big_pos = [&]() {
+    std::vector<::tpy::BigInt> big_pos = ({
         std::vector<::tpy::BigInt> __result;
         auto& __obj_3 = items;
         __result.reserve(__obj_3.size());
@@ -100,13 +100,13 @@ void main() {
                 __result.push_back(::tpy::BigInt(x));
             }
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(big_pos)
     std::cout << ::tpy::ListPrinter(big_pos) << "\n";
     // # Comprehension as function argument (temp variable for rvalue binding)
     // accept_wide([x for x in items])
-    std::vector<int64_t> __tmp_1 = [&]() {
+    std::vector<int64_t> __tmp_1 = ({
         std::vector<int64_t> __result;
         auto& __obj_4 = items;
         __result.reserve(__obj_4.size());
@@ -116,12 +116,12 @@ void main() {
             int32_t x = *__beg_4;
             __result.push_back(static_cast<int64_t>(x));
         }
-        return __result;
-    }();
+        __result;
+    });
     accept_wide(__tmp_1);
     // # No annotation: element type inferred from iterable (no coercion)
     // same = [x + 1 for x in items]
-    std::vector<int32_t> same = [&]() {
+    std::vector<int32_t> same = ({
         std::vector<int32_t> __result;
         auto& __obj_5 = items;
         __result.reserve(__obj_5.size());
@@ -131,8 +131,8 @@ void main() {
             int32_t x = *__beg_5;
             __result.push_back((::tpy::add_check<int32_t>(x, 1)));
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(same)
     std::cout << ::tpy::ListPrinter(same) << "\n";
 }

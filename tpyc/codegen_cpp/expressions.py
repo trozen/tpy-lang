@@ -1162,7 +1162,7 @@ class ExpressionGenerator:
                     joined = " || ".join(conditions)
                     negate = expr.op == "not in"
                     body = f"!({joined})" if negate else joined
-                    return f"[&]() -> bool {{ auto&& __in_lhs = {left}; return {body}; }}()"
+                    return f"({{ auto&& __in_lhs = {left}; {body}; }})"
                 conditions = [f"({left} == {e})" for e in elems]
                 joined = " || ".join(conditions) if conditions else "false"
                 if expr.op == "not in":
@@ -1503,7 +1503,16 @@ class ExpressionGenerator:
 
     @staticmethod
     def _is_simple_expr(expr: TpyExpr) -> bool:
-        """Check if an expression is side-effect-free (safe to duplicate)."""
+        """Check if an expression is side-effect-free (safe to duplicate).
+
+        TODO: replace with an `is_pure` bit computed during sema and attached
+        to THIR nodes (see docs/IR_DESIGN.md). The current syntactic check
+        misses cases like `Int32(0)` -- a primitive-type constructor call
+        that codegen elides to a bare literal -- so chained-compare endpoint
+        inlining still binds a temp for it.
+        """
+        if isinstance(expr, TpyCoerce):
+            return ExpressionGenerator._is_simple_expr(expr.expr)
         if isinstance(expr, (
             TpyName, TpyIntLiteral, TpyFloatLiteral,
             TpyStrLiteral, TpyBoolLiteral, TpyNoneLiteral,
@@ -1650,34 +1659,64 @@ class ExpressionGenerator:
         return left_target, right_target
 
     def _gen_chained_compare_lambda(self, expr: TpyChainedCompare) -> str:
-        """Complex path: lambda IIFE with temp vars for single evaluation.
+        """Complex path: GCC stmt-expr with temp vars for single evaluation.
 
-        Interleaves operand evaluation with comparisons for short-circuit:
-        operands after a failed comparison are never evaluated.
+        Builds a right-nested ``cmp && ({ bind_next; next_cmp && (...); })``
+        chain so operand evaluation interleaves with comparison: operands
+        after a failed comparison are never evaluated. GCC stmt-expr has no
+        ``return``, so the block's last expression supplies the value.
+
+        Intermediate operands are always bound to ``_cmpI`` temps (they appear
+        in two pairs). Endpoints are bound only when binding is required:
+        - First operand: bound iff non-simple. Inlining a non-simple first
+          operand would reorder side effects relative to ``_cmp1 = op1``.
+        - Last operand: always inlined. It appears only in the innermost
+          compare, after every earlier binding has run; reordering vs the
+          bound ``_cmp{n-1}`` (pure variable read) is unobservable.
         """
         assert expr.pairs is not None
         all_operands = [expr.left] + expr.comparators
-        lines: list[str] = []
-        temps: list[str] = []
-        for i, pair in enumerate(expr.pairs):
-            left_target, right_target = self._comparison_targets(pair)
-            # Generate left operand (or reuse previous right)
+        n = len(expr.pairs)
+        # Chained compares have n >= 2 (n == 1 routes to _gen_chained_compare_inline).
+        assert n >= 2
+
+        def operand_code(i: int) -> str:
             if i == 0:
-                tmp_l = f"_cmp{i}"
-                temps.append(tmp_l)
-                lines.append(f"auto&& {tmp_l} = {self.gen_expr_deref(all_operands[i], left_target)};")
-            # Generate right operand
-            tmp_r = f"_cmp{i + 1}"
-            temps.append(tmp_r)
-            lines.append(f"auto&& {tmp_r} = {self.gen_expr_deref(all_operands[i + 1], right_target)};")
-            # Generate comparison with short-circuit
-            cmp_str = self._gen_comparison_pair(pair, temps[i], tmp_r)
-            if i < len(expr.pairs) - 1:
-                lines.append(f"if (!{cmp_str}) return false;")
+                l_tgt, _ = self._comparison_targets(expr.pairs[0])
+                return self.gen_expr_deref(all_operands[0], l_tgt)
+            _, r_tgt = self._comparison_targets(expr.pairs[i - 1])
+            return self.gen_expr_deref(all_operands[i], r_tgt)
+
+        reprs: list[str] = []
+        bindings: list[str | None] = []
+        for i in range(n + 1):
+            code = operand_code(i)
+            if 0 < i < n:
+                must_bind = True
+            elif i == 0:
+                must_bind = not self._is_simple_expr(all_operands[0])
             else:
-                lines.append(f"return {cmp_str};")
-        body = " ".join(lines)
-        return f"[&]() -> bool {{ {body} }}()"
+                must_bind = False  # last operand always inlined
+            if must_bind:
+                reprs.append(f"_cmp{i}")
+                bindings.append(f"auto&& _cmp{i} = {code};")
+            else:
+                reprs.append(code)
+                bindings.append(None)
+
+        # Innermost compare (last operand inlined, no wrapper needed).
+        inner = self._gen_comparison_pair(expr.pairs[-1], reprs[n - 1], reprs[n])
+
+        # Wrap pairs i = n-2 .. 1: bind intermediate op i+1 + cmp && next.
+        for i in range(n - 2, 0, -1):
+            cmp_str = self._gen_comparison_pair(expr.pairs[i], reprs[i], reprs[i + 1])
+            inner = f"({{ {bindings[i + 1]} {cmp_str} && {inner}; }})"
+
+        # Outer: ops 0 and 1 bindings (if any) + first compare && inner.
+        first_cmp = self._gen_comparison_pair(expr.pairs[0], reprs[0], reprs[1])
+        outer_parts = [b for b in bindings[:2] if b]
+        outer_parts.append(f"{first_cmp} && {inner};")
+        return f"({{ {' '.join(outer_parts)} }})"
 
     def _gen_unaryop(self, expr: TpyUnaryOp, target_type: TpyType | None) -> str:
         """Generate unary operation code."""
@@ -3137,7 +3176,7 @@ class ExpressionGenerator:
     def _gen_array_comprehension(self, expr: TpyListComprehension,
                                   elem_type: TpyType, cpp_elem: str,
                                   size: int) -> str:
-        """Generate comprehension as IIFE producing std::array with indexed assignment."""
+        """Generate comprehension as GCC stmt-expr producing std::array with indexed assignment."""
         gen = expr.generator
         comp_names = self._enter_comp_scope(gen)
         try:
@@ -3149,7 +3188,7 @@ class ExpressionGenerator:
             ind2 = ind1 + INDENT
 
             buf = io.StringIO()
-            buf.write(f"[&]() {{\n")
+            buf.write(f"({{\n")
             buf.write(f"{ind1}std::array<{cpp_elem}, {size}> __result;\n")
 
             is_range = isinstance(gen.iterable, TpyCall) and gen.iterable.func_name == "range"
@@ -3205,8 +3244,8 @@ class ExpressionGenerator:
                 buf.write(f"{ind2}__result[__idx_{n}] = {insert_code};\n")
 
             buf.write(f"{ind1}}}\n")
-            buf.write(f"{ind1}return __result;\n")
-            buf.write(f"{stmt_ind}}}()")
+            buf.write(f"{ind1}__result;\n")
+            buf.write(f"{stmt_ind}}})")
 
             return buf.getvalue()
         finally:
@@ -3434,7 +3473,7 @@ class ExpressionGenerator:
         container_type: str, insert_stmt: str,
         skip_reserve: bool,
     ) -> str:
-        """Generate comprehension as IIFE: [&]() { container; loop; return; }()"""
+        """Generate comprehension as GCC stmt-expr: ({ container; loop; result; })"""
         cpp_var = escape_cpp_name(gen.var)
 
         stmt_ind = INDENT * self.ctx.indent_level
@@ -3443,7 +3482,7 @@ class ExpressionGenerator:
         ind3 = ind2 + INDENT
 
         buf = io.StringIO()
-        buf.write(f"[&]() {{\n")
+        buf.write(f"({{\n")
         buf.write(f"{ind1}{container_type} __result;\n")
 
         iterable_code = self.gen_expr_deref(gen.iterable)
@@ -3472,8 +3511,8 @@ class ExpressionGenerator:
             buf.write(f"{ind2}{insert_stmt};\n")
 
         buf.write(f"{ind1}}}\n")
-        buf.write(f"{ind1}return __result;\n")
-        buf.write(f"{stmt_ind}}}()")
+        buf.write(f"{ind1}__result;\n")
+        buf.write(f"{stmt_ind}}})")
 
         return buf.getvalue()
 

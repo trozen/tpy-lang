@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // # Single condition -- integer sets have deterministic order
     // evens: set[Int32] = {x for x in range(10) if x % 2 == 0}
-    ::tpy::ordered_set<int32_t> evens = [&]() {
+    ::tpy::ordered_set<int32_t> evens = ({
         ::tpy::ordered_set<int32_t> __result;
         const int32_t __stop_0 = 10;
         for (int32_t x = 0; x < __stop_0; ++x) {
@@ -16,8 +16,8 @@ void main() {
                 __result.insert(x);
             }
         }
-        return __result;
-    }();
+        __result;
+    });
     // for v in evens:
     auto& __obj_1 = evens;
     auto __beg_1 = __obj_1.begin();
@@ -31,7 +31,7 @@ void main() {
     // words: list[str] = ["hello", "hi", "world", "hey", "wow"]
     std::vector<std::string> words = {"hello", "hi", "world", "hey", "wow"};
     // long_words: set[str] = {w for w in words if len(w) > 2}
-    ::tpy::ordered_set<std::string> long_words = [&]() {
+    ::tpy::ordered_set<std::string> long_words = ({
         ::tpy::ordered_set<std::string> __result;
         auto& __obj_2 = words;
         auto __beg_2 = __obj_2.begin();
@@ -42,8 +42,8 @@ void main() {
                 __result.insert(w);
             }
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(len(long_words))
     std::cout << ::tpy::__len__(long_words) << "\n";
     // print("hello" in long_words)

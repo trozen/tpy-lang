@@ -65,6 +65,11 @@ def get_high() -> Int32:
     call_count = call_count + Int32(1)
     return Int32(10)
 
+def get_top() -> Int32:
+    global call_count
+    call_count = call_count + Int32(1)
+    return Int32(20)
+
 def test_single_eval() -> None:
     # Function call as intermediate -- must be evaluated exactly once
     global call_count
@@ -86,6 +91,23 @@ def test_short_circuit_operands() -> None:
     # get_mid() called (returns 5), 0 < 5 true -> get_high() called (returns 10), 5 < 10 true
     print(call_count)
 
+def test_triple_short_circuit() -> None:
+    # 3-pair chain with complex intermediates: a < f() < g() < h()
+    # Exercises the inner wrap loop (n >= 3) in chained-compare codegen.
+    global call_count
+    # All pass: 0 < 5 < 10 < 20 -- all three helpers evaluate.
+    call_count = Int32(0)
+    print(Int32(0) < get_mid() < get_high() < get_top())
+    print(call_count)
+    # Fail at 2nd compare (get_high() < 3 is false): get_top() must skip.
+    call_count = Int32(0)
+    print(Int32(0) < get_mid() < get_high() < Int32(3))
+    print(call_count)
+    # Fail at 1st compare (99 < 5 is false): both get_high() and get_top() skip.
+    call_count = Int32(0)
+    print(Int32(99) < get_mid() < get_high() < get_top())
+    print(call_count)
+
 test_basic()
 test_variables()
 test_mixed_ops()
@@ -98,3 +120,4 @@ test_in_condition()
 test_as_expression()
 test_single_eval()
 test_short_circuit_operands()
+test_triple_short_circuit()

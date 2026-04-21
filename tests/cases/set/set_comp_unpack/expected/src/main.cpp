@@ -10,7 +10,7 @@ void main() {
     // pairs: list[tuple[str, Int32]] = [("apple", 3), ("banana", 1), ("cherry", 5)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"apple", 3}, std::tuple<std::string, int32_t>{"banana", 1}, std::tuple<std::string, int32_t>{"cherry", 5}};
     // names: set[str] = {k for k, _ in pairs}
-    ::tpy::ordered_set<std::string> names = [&]() {
+    ::tpy::ordered_set<std::string> names = ({
         ::tpy::ordered_set<std::string> __result;
         auto& __obj_0 = pairs;
         auto __beg_0 = __obj_0.begin();
@@ -20,8 +20,8 @@ void main() {
             std::string k = std::get<0>(__tup_1);
             __result.insert(k);
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(len(names))
     std::cout << ::tpy::__len__(names) << "\n";
     // print("apple" in names)
@@ -34,7 +34,7 @@ void main() {
     // pairs2: list[tuple[str, Int32]] = [("a", 10), ("b", 20), ("c", 10)]
     std::vector<std::tuple<std::string, int32_t>> pairs2 = {std::tuple<std::string, int32_t>{"a", 10}, std::tuple<std::string, int32_t>{"b", 20}, std::tuple<std::string, int32_t>{"c", 10}};
     // vals: set[Int32] = {v for _, v in pairs2}
-    ::tpy::ordered_set<int32_t> vals = [&]() {
+    ::tpy::ordered_set<int32_t> vals = ({
         ::tpy::ordered_set<int32_t> __result;
         auto& __obj_1 = pairs2;
         auto __beg_1 = __obj_1.begin();
@@ -44,8 +44,8 @@ void main() {
             int32_t v = std::get<1>(__tup_2);
             __result.insert(v);
         }
-        return __result;
-    }();
+        __result;
+    });
     // print(len(vals))
     std::cout << ::tpy::__len__(vals) << "\n";
     // for v in vals:

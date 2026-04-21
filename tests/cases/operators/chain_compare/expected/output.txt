@@ -26,3 +26,9 @@ False
 1
 True
 2
+True
+3
+False
+2
+False
+1

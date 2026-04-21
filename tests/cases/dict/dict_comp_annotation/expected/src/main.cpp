@@ -10,7 +10,7 @@ void main() {
     // items: list[Int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
     // widened: dict[int, int] = {x: x * x for x in items}
-    ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> widened = [&]() {
+    ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> widened = ({
         ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> __result;
         auto& __obj_0 = items;
         auto __beg_0 = __obj_0.begin();
@@ -19,8 +19,8 @@ void main() {
             int32_t x = *__beg_0;
             __result.insert_or_assign(::tpy::BigInt(x), ::tpy::BigInt((::tpy::mul_check<int32_t>(x, x))));
         }
-        return __result;
-    }();
+        __result;
+    });
     // for k in widened:
     auto& __obj_1 = widened;
     auto __beg_1 = __obj_1.begin();
@@ -32,14 +32,14 @@ void main() {
     }
     // # Int32 -> Int64 widening via annotation
     // wide64: dict[Int32, Int64] = {x: x * 2 for x in range(3)}
-    ::tpy::ordered_map<int32_t, int64_t> wide64 = [&]() {
+    ::tpy::ordered_map<int32_t, int64_t> wide64 = ({
         ::tpy::ordered_map<int32_t, int64_t> __result;
         const int32_t __stop_2 = 3;
         for (int32_t x = 0; x < __stop_2; ++x) {
             __result.insert_or_assign(x, static_cast<int64_t>((::tpy::mul_check<int32_t>(x, 2))));
         }
-        return __result;
-    }();
+        __result;
+    });
     // for k in wide64:
     auto& __obj_3 = wide64;
     auto __beg_3 = __obj_3.begin();
