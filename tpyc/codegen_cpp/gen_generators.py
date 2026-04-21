@@ -464,7 +464,7 @@ class GeneratorCodegen:
 
         Returns a dict keyed by id(TpyForEach) with field info for each loop.
         """
-        from ..sema.diagnostics import SemanticError
+        from ..diagnostics import SemanticError
         from tpyc.modules import get_error_return_next_element_type
 
         result: dict[int, GeneratorForInfo] = {}
@@ -614,7 +614,7 @@ class GeneratorCodegen:
         # template structs. Generic simple generators (single yield) work fine.
         proto_params = self.functions.protocols.get_all_protocol_params(func.params)
         if func.type_params or proto_params:
-            from ..sema.diagnostics import SemanticError
+            from ..diagnostics import SemanticError
             raise SemanticError(
                 "generic generator functions with multiple yield points "
                 "are not yet supported",

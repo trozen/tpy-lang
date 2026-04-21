@@ -1366,8 +1366,6 @@ class Compiler:
                 continue
             for importing_module, lineno in importers:
                 if importing_module == compiled.name or (compiled.is_entry_point and importing_module == ModuleResolver.get_module_name(self.entry_point)):
-                    from .parse import SourceLocation
-                    from .sema.diagnostics import Diagnostic, DiagnosticLevel
                     analyzer.ctx.diagnostics.append(Diagnostic(
                         DiagnosticLevel.WARNING,
                         f"import '{shadowed_name}' shadows builtin module",

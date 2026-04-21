@@ -34,7 +34,7 @@ from ..modules import extract_type_params
 from ..namespace import BindingKind
 from ..coercions import CoercionContext, VALUE_TO_PTR
 from .context import PENDING_CONTAINER_TYPES, addr_taken_roots
-from .diagnostics import SemanticError
+from ..diagnostics import SemanticError
 from .overloads import type_matches_numeric, resolve_overload
 from .statements import _root_name_of_expr
 from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo

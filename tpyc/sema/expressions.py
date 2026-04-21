@@ -47,12 +47,12 @@ from ..type_def_registry import (
     is_basic_slice_type, is_slice_type,
     int_traits_of,
     is_enum_type, is_int_enum_type, enum_info_of,
-    find_factory_by_simple_name,
+    find_factory_by_simple_name, protocol_info_of,
 )
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
-from .diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
+from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .narrowing import NarrowingTracker
 from .numeric_lattice import widen_numeric_types
 from .list_literals import IterableHelper
@@ -1389,7 +1389,7 @@ class ExpressionAnalyzer:
         if isinstance(typ, TypeParamRef):
             bound = self.type_ops.get_type_param_bound(typ.name)
             if bound is not None and is_protocol_type(bound):
-                protocol_info = self.ctx.registry.get_protocol(bound.name)
+                protocol_info = protocol_info_of(bound)
                 if protocol_info:
                     for field_name, field_type in protocol_info.fields or []:
                         if field_name == expr.field:

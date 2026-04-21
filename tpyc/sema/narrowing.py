@@ -22,7 +22,8 @@ from ..parse import (
 from .value_range import ValueRange
 from ..prescan import match_is_none, _expr_to_narrowing_key
 from ..namespace import BindingKind
-from .diagnostics import OPTIONAL_VALUE_TRUTHINESS_WARNING
+from ..diagnostics import OPTIONAL_VALUE_TRUTHINESS_WARNING
+from ..type_def_registry import protocol_info_of
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -144,7 +145,7 @@ class NarrowingTracker:
             if isinstance(actual_type, TypeParamRef):
                 bound = self.type_ops.get_type_param_bound(actual_type.name)
                 if bound is not None and is_protocol_type(bound):
-                    protocol_info = self.ctx.registry.get_protocol(bound.name)
+                    protocol_info = protocol_info_of(bound)
                     if protocol_info:
                         for field_name, field_type in protocol_info.fields or []:
                             if field_name == expr.field:
@@ -173,7 +174,7 @@ class NarrowingTracker:
 
     def _get_protocol_getitem_type(self, protocol: NominalType) -> TpyType | None:
         """Get __getitem__ return type for a protocol (returns None on failure)."""
-        protocol_info = self.ctx.registry.get_protocol(protocol.name)
+        protocol_info = protocol_info_of(protocol)
         if protocol_info is None:
             return None
         type_subst: dict[str, TpyType] = {}

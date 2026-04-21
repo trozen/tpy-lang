@@ -26,7 +26,7 @@ from ..parse.nodes import (
 )
 from .expressions import _collect_body_name_refs
 
-from .diagnostics import Scope, Diagnostic, SemanticError
+from ..diagnostics import Scope, Diagnostic, SemanticError
 from .context import SemanticContext, RecordContext, MODULE_INIT_CONTEXT
 from .type_ops import TypeOperations
 from .operators import OperatorResolver
@@ -47,7 +47,7 @@ from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
 from ..cycle_detection import detect_type_cycles
 from ..parse import SourceLocation, is_parser_keyword
-from ..type_def_registry import is_str_type, is_str_view_type
+from ..type_def_registry import is_str_type, is_str_view_type, protocol_info_of
 from ..parse.resolve_refs import (
     _walk_body, _merged_method_scope, _record_scope,
     _promote_bare_nominals,
@@ -633,7 +633,7 @@ class SemanticAnalyzer:
         """
         visited: set[str] = set()
         for proto_type in record_info.implemented_protocols:
-            proto_info = self.ctx.registry.get_protocol(proto_type.name)
+            proto_info = protocol_info_of(proto_type)
             # Only @dynamic protocols generate C++ virtual bases
             if proto_info is None or not proto_info.is_dynamic:
                 continue

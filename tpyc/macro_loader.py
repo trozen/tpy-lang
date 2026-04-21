@@ -104,7 +104,7 @@ def call_macro_field_function(
     If the call's resolved_import points to a loaded macro module, looks up
     the function, extracts kwargs, and calls it. Returns None if not resolvable.
     """
-    from .sema.diagnostics import SemanticError
+    from .diagnostics import SemanticError
 
     resolved = getattr(call, 'resolved_import', None)
     if resolved is None:
@@ -154,7 +154,7 @@ def validate_and_call_macro(
     """
     # Deferred: sema.registration imports macro_loader, so importing
     # diagnostics at module level would create a circular import.
-    from .sema.diagnostics import SemanticError
+    from .diagnostics import SemanticError
 
     sig = inspect.signature(macro_fn)
     params = sig.parameters
@@ -241,7 +241,7 @@ _EXTRACTABLE_TYPES = (str, int, float, bool)
 def _extract_macro_arg_value(macro_arg: Any, expected_type: type, param_name: str,
                               macro_name: str, loc: Any) -> Any:
     """Extract a Python value from a MacroArg for simple-typed parameters."""
-    from .sema.diagnostics import SemanticError
+    from .diagnostics import SemanticError
     from .parse import TpyStrLiteral, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral
 
     expr = macro_arg.expr
@@ -272,7 +272,7 @@ def expand_call_macro(
     from the MacroArg automatically. Wraps unexpected exceptions as SemanticError.
     """
     # Deferred: sema.registration imports macro_loader
-    from .sema.diagnostics import SemanticError
+    from .diagnostics import SemanticError
     from .macro_api import MacroError, ast as _ast_builder
 
     _ast_builder.reset_tmp_counter()

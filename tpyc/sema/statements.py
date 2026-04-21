@@ -40,7 +40,7 @@ from ..prescan import ScanResult, scan_reassigned_vars
 from ..liveness import analyze_last_uses
 from ..parse.nodes import VarLinkage
 from .context import addr_taken_roots
-from .diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
+from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from .match import MatchAnalyzer
 from .narrowing import NarrowingTracker
 from .scope_tracker import ScopeTracker
@@ -66,7 +66,7 @@ from ..type_def_registry import (
     is_char_type, is_str_type, is_string_type, is_str_view_type,
     is_bytes_type, is_bytearray_type, is_bytes_view_type,
     is_fixed_int_type, is_big_int_type,
-    find_factory_by_simple_name,
+    find_factory_by_simple_name, protocol_info_of,
 )
 
 
@@ -2197,7 +2197,7 @@ class StatementAnalyzer:
         # Protocol types can only be used for function parameters, not variables
         # Exception: @dynamic protocols can be used as variable types
         if stmt.type and is_protocol_type(stmt.type):
-            protocol_info = self.ctx.registry.get_protocol(stmt.type.name)
+            protocol_info = protocol_info_of(stmt.type)
             if not protocol_info or not protocol_info.is_dynamic:
                 raise self.ctx.error(
                     f"Protocol type '{stmt.type.name}' cannot be used as a variable type. "

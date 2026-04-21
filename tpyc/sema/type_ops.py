@@ -19,11 +19,11 @@ from ..typesys import (
     is_callable_type, is_integer_type, is_void_like_type,
 )
 from ..coercions import resolve_coercion, CoercionContext
-from .diagnostics import SemanticError
+from ..diagnostics import SemanticError
 from .. import qnames
 from ..type_def_registry import (
     is_copy_iter, is_own_iter, is_array, is_span, is_list,
-    get_type_def, find_factory_by_simple_name,
+    get_type_def, find_factory_by_simple_name, protocol_info_of,
 )
 from ..parse import TpyFunction
 from tpyc import modules as builtin_modules
@@ -214,7 +214,7 @@ class TypeOperations:
         elif isinstance(typ, OptionalType):
             self.validate_type(typ.inner, allow_type_param_ref, loc)
             if is_protocol_type(typ.inner):
-                proto_def = self.ctx.registry.get_protocol(typ.inner.name)
+                proto_def = protocol_info_of(typ.inner)
                 if proto_def and proto_def.is_dynamic:
                     raise SemanticError(
                         f"Optional[{typ.inner.name}] is not supported for @dynamic protocols. "
@@ -233,7 +233,7 @@ class TypeOperations:
                 )
             if protocols:
                 for p in protocols:
-                    proto_def = self.ctx.registry.get_protocol(p.name)
+                    proto_def = protocol_info_of(p)
                     if proto_def and proto_def.is_dynamic:
                         raise SemanticError(
                             f"@dynamic protocol '{p.name}' cannot be used in a protocol union; "
@@ -706,7 +706,7 @@ class TypeOperations:
 
         # Protocol-to-protocol: arg is a protocol with concrete type args
         if is_protocol_type(arg_type) and isinstance(arg_type, NominalType) and arg_type.type_args:
-            arg_protocol_info = self.ctx.registry.get_protocol(arg_type.name)
+            arg_protocol_info = protocol_info_of(arg_type)
             if arg_protocol_info is not None:
                 return self._infer_protocol_type_arg_from_protocol(
                     arg_type, arg_protocol_info, protocol_info)
@@ -806,10 +806,10 @@ class TypeOperations:
                 else:
                     inferred[param_name] = a_size
                 return True
-            elif isinstance(a_size, TypeParamRef):
+            if isinstance(a_size, TypeParamRef):
                 return p_size.name == a_size.name
-        else:
-            return p_size == a_size
+            return False
+        return p_size == a_size
 
     def _match_record_with_inference(
         self,

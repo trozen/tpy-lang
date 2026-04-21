@@ -28,7 +28,7 @@ from .. import qnames
 from ..type_def_registry import (
     is_copy_iter, is_own_iter, is_set, is_dict, is_array, is_span, is_list,
     is_fixed_int_type, is_big_int_type, is_char_type, is_str_category,
-    is_enum_type,
+    is_enum_type, protocol_info_of,
 )
 from ..typesys import is_numeric_type
 
@@ -151,7 +151,7 @@ class ProtocolChecker:
                 return self.type_conforms_to_protocol(bound, protocol)
 
         # Unified lookup - all protocols (builtin and user) are in the registry
-        protocol_info = self.ctx.registry.get_protocol(protocol.name)
+        protocol_info = protocol_info_of(protocol)
         if protocol_info is None:
             return False
 
@@ -374,8 +374,7 @@ class ProtocolChecker:
         need type parameter resolution for generic protocols like Iterable[T].
         """
         if is_protocol_type(actual):
-            # Protocol type - check methods in protocol definition via unified registry
-            protocol_info = self.ctx.registry.get_protocol(actual.name)
+            protocol_info = protocol_info_of(actual)
             if protocol_info is None:
                 return False
 
@@ -617,8 +616,7 @@ class ProtocolChecker:
         # Default Self to the protocol type if not specified
         actual_self = self_type if self_type is not None else protocol
 
-        # Unified lookup - all protocols are in the registry
-        protocol_info = self.ctx.registry.get_protocol(protocol.name)
+        protocol_info = protocol_info_of(protocol)
         if protocol_info is None:
             return None
 
@@ -658,7 +656,7 @@ class ProtocolChecker:
 
         Returns the method's return type if found and args match, None otherwise.
         """
-        protocol_info = self.ctx.registry.get_protocol(protocol.name)
+        protocol_info = protocol_info_of(protocol)
         if protocol_info is None:
             return None
 
@@ -797,7 +795,7 @@ class ProtocolChecker:
         if record_info is None:
             return []
 
-        protocol_info = self.ctx.registry.get_protocol(protocol.name)
+        protocol_info = protocol_info_of(protocol)
         if protocol_info is None:
             return []
 

@@ -29,9 +29,9 @@ from ..namespace import NameBinding, BindingKind
 from ..type_def_registry import (
     is_fixed_int_type, is_fstr_type, int_traits_of,
     attach_dynamic_type_def, TypeCategory, EnumInfo,
-    factory_qnames_in_module,
+    factory_qnames_in_module, protocol_info_of,
 )
-from .diagnostics import SemanticError
+from ..diagnostics import SemanticError
 from .method_expansion import expand_methods_for_record
 from .macros import run_macro_phase_for_record
 from .operators import DUNDER_CPP_TEMPLATES
@@ -493,7 +493,7 @@ class TypeRegistrar:
             # Exceptions: @dynamic protocols, and @native/@cpp_template stub methods
             # (C++ handles the actual return type).
             if is_protocol_type(method_return):
-                pi = self.ctx.registry.get_protocol(method_return.name)
+                pi = protocol_info_of(method_return)
                 is_native_stub = method.is_stub and (method.native_name or method.cpp_template)
                 # __iter__ returns Iterator[T] which is a protocol -- allow it since
                 # C++ codegen uses auto return type (deduced from body).
@@ -1005,7 +1005,7 @@ class TypeRegistrar:
 
         # Validate protocol implementations
         for protocol in record_info.implemented_protocols:
-            protocol_info = self.ctx.registry.get_protocol(protocol.name)
+            protocol_info = protocol_info_of(protocol)
             if protocol_info is None:
                 raise SemanticError(
                     f"Protocol '{protocol.name}' not defined for implementation in '{record.name}'",
@@ -1474,7 +1474,7 @@ class TypeRegistrar:
                     )
                 func.generator_yield_type = resolved_return.type_args[0]
             else:
-                pi = self.ctx.registry.get_protocol(resolved_return.name)
+                pi = protocol_info_of(resolved_return)
                 is_native_stub = func.is_stub and (func.native_name or func.cpp_template)
                 if not (pi and pi.is_dynamic) and not is_native_stub:
                     raise SemanticError(

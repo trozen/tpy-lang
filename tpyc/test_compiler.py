@@ -6,7 +6,7 @@ import pytest
 
 from . import get_lib_dir, get_runtime_dir
 from .compiler import Compiler, BuildLayout
-from .sema.diagnostics import SemanticError
+from .diagnostics import SemanticError
 from .typesys import (
     INT32, INT64, BIGINT, BOOL, FLOAT, STR, STRVIEW, CHAR, VOID,
     PtrType, make_span, make_list, make_dict, make_array, OptionalType,

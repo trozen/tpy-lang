@@ -22,18 +22,14 @@ imports (`FieldInfo`, `RecordInfo`, `TypeRegistry`, `FunctionInfo`,
 `MethodSignature`, `ProtocolInfo`, `TypeParamKind`, `LiteralValue`)
 are bookkeeping only; zero `TpyType` constructors or singletons.
 
-**Known layering deviation:** `parse/resolve_refs.py` and
-`parse/type_resolver.py` both raise `SemanticError` (from
-`sema/diagnostics.py`) for resolution-time errors like unknown
-types, bare-generic arity mismatches, and protocol-requires-type-
-arguments. `sema/diagnostics.py` itself imports from `parse` (for
-`TpyExpr`, `SourceLocation`), so it is effectively a "shared
-diagnostics" module living under `sema/` rather than a clean leaf.
-The resolve phase uses `SemanticError` (not `ParseError`) so the
-CLI emits `file:line: error: msg` for resolution errors, matching
-analyze-phase diagnostics. Extracting `SemanticError` to a neutral
-`tpyc/diagnostics.py` would let the resolve phase be truly parse-
-internal; see `TODO.md` for the cleanup entry.
+Error classes (`SemanticError`, `Scope`, `Diagnostic`,
+`DiagnosticLevel`, `TypedExpr`) live in a neutral `tpyc/diagnostics.py`
+that depends only on `typesys` and `parse.nodes`. Both the resolve
+phase (`parse/resolve_refs.py`, `parse/type_resolver.py`) and the
+analyze phase (everything in `sema/`) raise `SemanticError` so the
+CLI emits `file:line: error: msg` uniformly across resolution and
+analysis errors. The `tpyc.sema` package re-exports the diagnostics
+classes for backward compatibility.
 
 `Compiler._canonicalize_import_sources` rewrites each module's
 import table from surface names (`from tplib import ArrayList`) to
@@ -201,7 +197,8 @@ Top-level analyzers (one module each):
 `match`, `registration`, `list_literals`, `local_deduction`,
 `init_tracker`, `scope_tracker`, `flow_facts`, `value_range`,
 `numeric_lattice`, `mutation_propagation`, `method_expansion`,
-`macros`, `diagnostics`, `context`.
+`macros`, `context`. Error classes live in `tpyc/diagnostics.py`
+(see "Compilation pipeline").
 
 ### Circular imports
 
