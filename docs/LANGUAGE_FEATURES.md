@@ -1,7 +1,7 @@
 # TurboPython Language Features
 
 > **For coding agents**: when this file is installed in a downstream
-> project (via `tpyc --install-agent-docs`), it ships alongside
+> project (via `tpy --install-agent-docs`), it ships alongside
 > `TPY_FOR_AGENTS.md` -- a concise bootstrap covering the Python-to-TPy
 > delta, ownership rules, and idiomatic patterns. Start there; use this
 > file for depth on specific features. Only trust sections marked
@@ -91,7 +91,7 @@ def setup() -> Config:
 
 Compiler flag can set project-wide default:
 ```bash
-tpyc --default-profile=noalloc src/
+tpy --default-profile=noalloc src/
 ```
 
 ---
@@ -121,7 +121,7 @@ list[T]     → etl::vector<T, N>
 
 Usage:
 ```bash
-tpyc --cxx=trading src/order_handler.py
+tpy --cxx=trading src/order_handler.py
 ```
 
 This allows the same TurboPython source to target different environments without code changes.
@@ -4814,7 +4814,7 @@ Send/Sync rules for built-in types:
 
 ## Interactive REPL
 
-- **Working**: `tpyc -i` launches an interactive session
+- **Working**: bare `tpy` (or `tpyc -i` / `tpy -i`) launches an interactive session
 - Supports function and class definitions that persist across inputs
 - Expressions are evaluated and printed automatically
 - Multi-line input with automatic continuation detection (`if`/`else`/`elif`/`except`/`finally`)

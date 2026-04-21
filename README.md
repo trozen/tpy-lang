@@ -1,6 +1,6 @@
 # TurboPython (TPy)
 
-A proof-of-concept compiler (tpyc) that translates Python to C++.
+A proof-of-concept compiler that translates Python to C++.
 
 **Goals:**
 
@@ -34,8 +34,8 @@ for i in range(40):
 ```
 
 ```bash
-$ tpyc -xO fib.py        # compile to C++ and run (optimized)
-$ tpyc --dump-code fib.py # inspect generated C++
+$ tpy -O fib.py          # compile to C++ and run (optimized)
+$ tpy --dump-code fib.py # inspect generated C++
 ```
 
 Reference types (classes, `list`, `dict`, ...) are passed by reference to functions, but stored
@@ -72,7 +72,7 @@ Source files are valid Python -- your IDE, linter, and type checker work as-is.
 git clone https://github.com/trozen/tpy-poc.git && cd tpy-poc
 uv sync
 
-uv run tpyc -x examples/hello.py
+uv run tpy examples/hello.py
 ```
 
 ### For use
@@ -85,25 +85,22 @@ uv tool install ".[bundled]"   # bundles zig as C++ compiler
 
 Or with pip: `pip install .` / `pip install ".[bundled]"`
 
-The `tpyc` command is then available globally:
-
-```bash
-tpyc -c "print(1 + 2)"
-```
-
-Use `tpyc --cxx list` to see available C++ compilers.
+Two commands are installed: `tpy` (runs programs, drops to a REPL with no args) and `tpyc` (compile-only; emits `.hpp`/`.cpp`).
 
 ## Quick Start
 
 ```bash
-tpyc -c "print(1 + 2)"          # run inline code
-tpyc -x examples/hello.py       # compile and run a file
-tpyc -xO examples/hello.py      # release build (optimized)
-tpyc -i                          # interactive REPL
-tpyc --dump-code file.py         # inspect generated C++
-tpyc --cxx list                  # show available C++ compilers
-tpyc -x -j4 examples/hello.py   # parallel compilation (4 jobs)
-tpyc --install-agent-docs docs/ # install TPy agent docs into your project
+tpy                              # interactive REPL
+tpy -c "print(1 + 2)"            # run inline code
+tpy examples/hello.py            # compile and run a file
+tpy -O examples/hello.py         # release build (optimized)
+tpy --dump-code file.py          # inspect generated C++
+tpy --cxx list                   # show available C++ compilers
+tpy -j4 examples/hello.py        # parallel compilation (4 jobs)
+tpy --install-agent-docs docs/   # install TPy agent docs into your project
+
+tpyc examples/hello.py           # compile only -- emit .hpp/.cpp into __tpyc__/
+tpyc -o out/ examples/hello.py   # compile only, custom output directory
 ```
 
 A `sources.cmake` file is generated alongside the C++ output for easy CMake integration.
@@ -136,10 +133,10 @@ uv run pytest
 uv run pytest -k hello
 
 # View built-in type documentation
-uv run tpyc --print-types | glow -p
+uv run tpy --print-types | glow -p
 ```
 
 See `CLAUDE.md` for architecture, test structure, and development guidelines.
 See `docs/LANGUAGE_FEATURES.md` for comprehensive language documentation.
 See `docs/TPY_FOR_AGENTS.md` for the agent-facing bootstrap (also installable
-into downstream projects via `tpyc --install-agent-docs`).
+into downstream projects via `tpy --install-agent-docs`).

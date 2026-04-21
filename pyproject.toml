@@ -14,7 +14,8 @@ dependencies = []
 bundled = ["ziglang>=0.13"]
 
 [project.scripts]
-tpyc = "tpyc.cli:main"
+tpyc = "tpyc.cli:main_tpyc"
+tpy = "tpyc.cli:main_tpy"
 
 [tool.uv]
 package = true

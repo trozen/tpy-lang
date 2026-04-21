@@ -1,7 +1,21 @@
 """
-TurboPython Compiler CLI
+TurboPython CLI
 
-Usage:
+Two entry points share this module:
+
+  tpy   -- user-facing runner (default: run script, or REPL with no args)
+  tpyc  -- compiler (default: emit .hpp/.cpp)
+
+Both accept the same flags; only the default action differs.
+
+Usage (tpy -- runner):
+    tpy                        # Start interactive REPL (auto-detect backend)
+    tpy input.py               # Run the program
+    tpy -c "print(1 + 2)"      # Run an inline snippet
+    tpy -b input.py            # Compile and build binary (no run)
+    tpy --dump-code input.py   # Print generated C++ to stdout
+
+Usage (tpyc -- compiler):
     tpyc input.py              # Compile to C++ in __tpyc__/
     tpyc input.py -o out/      # Compile to C++ in out/
     tpyc input.py --build      # Compile to C++ and build binary
@@ -43,10 +57,10 @@ def _fmt_ms(seconds: float) -> str:
     return f"{ms / 1000:.1f}s"
 
 
-def _print_info() -> None:
+def _print_info(prog_name: str) -> None:
     """Print compiler version, paths, and environment info."""
     commit = get_git_commit()
-    print(f"tpyc {__version__} ({commit})")
+    print(f"{prog_name} {__version__} ({commit})")
     print()
 
     # Paths
@@ -102,9 +116,9 @@ class ProgressPrinter:
             if config.ccache:
                 cxx += " + ccache"
             job_s = "job" if n_jobs == 1 else "jobs"
-            sys.stderr.write(f"TurboPython compiler v{__version__} ({cxx}, {variant}, {n_jobs} {job_s})\n")
+            sys.stderr.write(f"TurboPython v{__version__} ({cxx}, {variant}, {n_jobs} {job_s})\n")
         else:
-            sys.stderr.write(f"TurboPython compiler v{__version__}\n")
+            sys.stderr.write(f"TurboPython v{__version__}\n")
         sys.stderr.flush()
 
     def analyzed(self, user_modules: list[str], n_stdlib: int,
@@ -163,14 +177,26 @@ def get_module_name(input_path: Path) -> str:
     return name
 
 
-def main() -> int:
+def _run_cli(is_runner: bool) -> int:
+    prog_name = "tpy" if is_runner else "tpyc"
     parser = argparse.ArgumentParser(
-        prog="tpyc",
-        description="TurboPython Compiler - compiles TurboPython to C++"
+        prog=prog_name,
+        description=(
+            "TurboPython - run programs or start an interactive REPL"
+            if is_runner else
+            "TurboPython Compiler - compiles TurboPython to C++"
+        ),
     )
     parser.add_argument("--version", action="version",
                         version=f"%(prog)s {__version__} ({get_git_commit()})")
     parser.add_argument("input", nargs="?", help="Input TurboPython source file (.py)")
+    # REMAINDER captures everything after the input positional, including flags
+    # like -O, matching `python script.py -O`. Limitation: flags that also
+    # exist as tpy options (e.g. -O) AND appear *before* the input positional
+    # are still consumed by tpy -- with `-c CMD`, there is no input positional
+    # to separate them. Use `--` to force forwarding: `tpy -c CMD -- -O arg`.
+    parser.add_argument("script_args", nargs=argparse.REMAINDER,
+                        help="Arguments forwarded to the running program as sys.argv[1:]")
     parser.add_argument("-c", dest="cmd", metavar="CMD", help="Execute CMD as a TurboPython program string")
     parser.add_argument("-o", "--output", help="Output directory (default: __tpyc__/ next to source)")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Verbose output (-v commands+timing, -vv +generated C++)")
@@ -223,6 +249,24 @@ def main() -> int:
 
     args = parser.parse_args()
 
+    # tpy (runner) default action: bare `tpy` -> REPL; `tpy foo.py` -> run.
+    # Explicit actions (-b, -x, --dump-code, -i) and informational flags
+    # take precedence -- we only set a default when nothing else was requested.
+    # Piped stdin counts as input (matches `python < script.py`).
+    if is_runner:
+        has_input = bool(args.input or args.cmd) or not sys.stdin.isatty()
+        has_action = (
+            args.build or args.exec or args.dump_code or args.repl
+            or args.info or args.print_types
+            or args.install_agent_docs is not None
+            or args.cxx == "list"
+        )
+        if not has_action:
+            if has_input:
+                args.exec = True
+            else:
+                args.repl = True
+
     # Build library search paths
     lib_dir = get_lib_dir()
     lib_dirs: list[Path] = []
@@ -233,7 +277,7 @@ def main() -> int:
 
     # Handle --info
     if args.info:
-        _print_info()
+        _print_info(prog_name)
         return 0
 
     # Handle --cxx list
@@ -271,10 +315,13 @@ def main() -> int:
         dump_builtin_types()
         return 0
 
-    # Handle -c: implies -x unless --dump-code or -b is set
+    # Handle -c: implies -x unless --dump-code or -b is set.
+    # With -c, a positional ends up in args.input due to nargs="?" -- treat it
+    # as the first forwarded script arg instead (matches `python -c CMD a b`).
     if args.cmd is not None:
         if args.input:
-            parser.error("-c cannot be combined with an input file")
+            args.script_args = [args.input, *args.script_args]
+            args.input = None
         if not args.dump_code and not args.build:
             args.exec = True
 
@@ -285,6 +332,12 @@ def main() -> int:
     # Require input file for non-REPL modes
     if not args.cmd and not args.input:
         parser.error("the following arguments are required: input (or -c CMD)")
+
+    # script_args only makes sense when the program is actually run.
+    # In compile-only / --build / --dump-code modes, reject them with
+    # argparse's native "unrecognized arguments" phrasing.
+    if args.script_args and not args.exec:
+        parser.error(f"unrecognized arguments: {' '.join(args.script_args)}")
 
     # Handle inline/stdin source
     reading_from_stdin = args.cmd is not None or args.input == "-"
@@ -361,7 +414,7 @@ def main() -> int:
         n_warnings = 0
         for diag in compiler.diagnostics:
             n_warnings += 1
-            warning_messages.append(diag.format("tpyc"))
+            warning_messages.append(diag.format(prog_name))
         for compiled in compiled_modules:
             source_name = "<stdin>" if reading_from_stdin else os.path.relpath(compiled.path)
             if compiled.analyzer:
@@ -552,7 +605,7 @@ def main() -> int:
             if args.exec:
                 progress.separator()
                 t_run_start = time.monotonic()
-                result = subprocess.run([str(binary_path)])
+                result = subprocess.run([str(binary_path), *args.script_args])
                 t_run = time.monotonic() - t_run_start
 
                 if args.verbose >= 1:
@@ -591,5 +644,15 @@ def main() -> int:
         return 1
 
 
+def main_tpyc() -> int:
+    """Entry point for the `tpyc` command (compiler mode)."""
+    return _run_cli(is_runner=False)
+
+
+def main_tpy() -> int:
+    """Entry point for the `tpy` command (runner mode)."""
+    return _run_cli(is_runner=True)
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main_tpyc())
