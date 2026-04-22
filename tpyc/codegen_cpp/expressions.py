@@ -810,6 +810,14 @@ class ExpressionGenerator:
                 # Pointer indirection for non-value-type globals is handled by
                 # is_indirect_name() -> gen_expr_deref() at call sites.
                 source_module, original_name = self.ctx.user_imported_variables[expr.name]
+                # native_global variables use a user-specified C++ symbol name
+                # (e.g. "engine::score") that's independent of the module's
+                # cpp_namespace -- look it up in the source module's ModuleInfo.
+                source_info = self.ctx.analyzer.registry.get_module(source_module)
+                if source_info is not None:
+                    var_info = source_info.variables.get(original_name)
+                    if var_info is not None and var_info.native_cpp_name is not None:
+                        return var_info.native_cpp_name
                 return qualified_cpp_name(source_module, original_name)
             result = escape_cpp_name(expr.name)
             # Generator body: optional-wrapped fields need dereference
@@ -2715,29 +2723,10 @@ class ExpressionGenerator:
                 or not cpp_decl.uses_pointer_repr()
             ):
                 obj = f"(*{obj})"
-        deref_chain = ".__deref__()" * expr.deref_depth
-        # Optional with runtime null check -- must come before deref fast path
-        if expr.needs_optional_runtime_check and is_optional_ptr:
-            if isinstance(expr.obj, TpyFieldAccess):
-                return f"::tpy::deref_optional_check({obj}){deref_chain}.{expr.method}{method_targs}({args})"
-            # For pointer-globals with wrapper storage, this yields raw `T*`.
-            ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
-            return f"::tpy::deref_check({ptr_expr}){deref_chain}.{expr.method}{method_targs}({args})"
-        # User-defined Deref: emit .__deref__() calls before method call
-        is_narrowed = (isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.narrowed_vars) or is_assign_narrowed
-        if deref_chain and obj_type and not obj_type.is_pointer():
-            is_indirect = self.ctx.is_indirect_name(expr.obj) and not is_narrowed
-            if is_indirect or is_optional_ptr:
-                return f"{obj}->{deref_chain[1:]}.{expr.method}{method_targs}({args})"
-            return f"{obj}{deref_chain}.{expr.method}{method_targs}({args})"
-        if obj_type and obj_type.is_pointer():
-            if expr.ptr_non_null:
-                return f"{obj}->{expr.method}{method_targs}({args})"
-            return f"::tpy::deref_check({obj}).{expr.method}{method_targs}({args})"
-        use_arrow = ((self.ctx.is_indirect_name(expr.obj) and not is_narrowed and not is_consuming)
-                     or is_optional_ptr)
-        accessor = "->" if use_arrow else "."
-        # Use native method name if available (for @native/@native_c class methods)
+        # Resolve C++ method name: @native rename > literal-mangled overload > Python name.
+        # Applied in all lowering paths below (pointer, deref, plain) so native
+        # renames are honored uniformly -- including property accessors, which
+        # reach this function via TpyFieldAccess.property_getter_call.
         if expr.resolved_function_info and expr.resolved_function_info.native_name:
             cpp_method = expr.resolved_function_info.native_name
         elif (expr.resolved_function_info
@@ -2746,6 +2735,28 @@ class ExpressionGenerator:
             cpp_method = literal_mangled_name(expr.method, expr.resolved_function_info)
         else:
             cpp_method = expr.method
+        deref_chain = ".__deref__()" * expr.deref_depth
+        # Optional with runtime null check -- must come before deref fast path
+        if expr.needs_optional_runtime_check and is_optional_ptr:
+            if isinstance(expr.obj, TpyFieldAccess):
+                return f"::tpy::deref_optional_check({obj}){deref_chain}.{cpp_method}{method_targs}({args})"
+            # For pointer-globals with wrapper storage, this yields raw `T*`.
+            ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
+            return f"::tpy::deref_check({ptr_expr}){deref_chain}.{cpp_method}{method_targs}({args})"
+        # User-defined Deref: emit .__deref__() calls before method call
+        is_narrowed = (isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.narrowed_vars) or is_assign_narrowed
+        if deref_chain and obj_type and not obj_type.is_pointer():
+            is_indirect = self.ctx.is_indirect_name(expr.obj) and not is_narrowed
+            if is_indirect or is_optional_ptr:
+                return f"{obj}->{deref_chain[1:]}.{cpp_method}{method_targs}({args})"
+            return f"{obj}{deref_chain}.{cpp_method}{method_targs}({args})"
+        if obj_type and obj_type.is_pointer():
+            if expr.ptr_non_null:
+                return f"{obj}->{cpp_method}{method_targs}({args})"
+            return f"::tpy::deref_check({obj}).{cpp_method}{method_targs}({args})"
+        use_arrow = ((self.ctx.is_indirect_name(expr.obj) and not is_narrowed and not is_consuming)
+                     or is_optional_ptr)
+        accessor = "->" if use_arrow else "."
         return f"{obj}{accessor}{escape_cpp_name(cpp_method)}{method_targs}({args})"
 
     def _is_overloaded_method(self, expr: TpyMethodCall) -> bool:
@@ -2811,6 +2822,9 @@ class ExpressionGenerator:
                     module_info = self.ctx.analyzer.registry.get_module(module_name)
                     if module_info and expr.field in module_info.variables:
                         var_info = module_info.variables[expr.field]
+                        # native_global variables use a user-specified C++ symbol name
+                        if var_info.native_cpp_name is not None:
+                            return var_info.native_cpp_name
                         # Non-value-type globals are T* pointers -- dereference for value access
                         if var_info.is_pointer:
                             return f"(*{var_info.cpp_expr})"

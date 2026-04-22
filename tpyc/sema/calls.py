@@ -37,7 +37,7 @@ from .context import PENDING_CONTAINER_TYPES, addr_taken_roots
 from ..diagnostics import SemanticError
 from .overloads import type_matches_numeric, resolve_overload
 from .statements import _root_name_of_expr
-from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo
+from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo, _is_static_str
 from ..macro_loader import expand_call_macro
 
 if TYPE_CHECKING:
@@ -3528,6 +3528,7 @@ class CallAnalyzer:
                     type=TypeInfo.from_tpy_type(expr_type),
                     format_spec=part.format_spec,
                     conversion=part.conversion,
+                    is_static_str=_is_static_str(part.expr, self.ctx),
                 ))
         return parts
 

@@ -1,0 +1,1 @@
+Uses @native rename on a method of a native C++ class; no CPython equivalent.

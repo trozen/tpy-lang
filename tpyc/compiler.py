@@ -757,6 +757,9 @@ class ModuleExports:
     reexported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
     reexported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
     reexported_enums: dict[str, tuple[str, str]] = field(default_factory=dict)
+    # Names of variables declared Final[T] in this module. Kept separate from
+    # `variables` because FinalType is stripped at sema registration time.
+    final_variables: set[str] = field(default_factory=set)
 
 
 @dataclass
@@ -1680,6 +1683,8 @@ class Compiler:
                 source_module, original_name = analyzer.ctx.user_imported_variables[name]
                 exports.reexported_variables[name] = (source_module, original_name)
             exports.variables[name] = var_type
+            if name in analyzer.ctx.final_globals:
+                exports.final_variables.add(name)
 
     def _exports_to_module_info(self, name: str, exports: ModuleExports,
                                compiled: 'CompiledModule | None' = None) -> 'ModuleInfo':
@@ -1693,8 +1698,19 @@ class Compiler:
             ModuleInfo suitable for registry storage.
         """
         from .typesys import ModuleInfo, ModuleVarInfo, FinalType
+        from .parse import TpyVarDecl, VarLinkage
 
         functions = dict(exports.functions)
+
+        # Collect native_global declarations from this module's top-level
+        # statements so use sites in other modules can emit the correct
+        # absolute-qualified C++ name instead of the module-namespace-based one.
+        native_globals_by_name: dict[str, str] = {}
+        if compiled is not None:
+            for stmt in compiled.ast.top_level_stmts:
+                if isinstance(stmt, TpyVarDecl) and stmt.linkage != VarLinkage.DEFAULT:
+                    cpp_name = stmt.native_name or stmt.name
+                    native_globals_by_name[stmt.name] = f"::{cpp_name}"
 
         # Create ModuleVarInfo with generated cpp_expr
         # For re-exported variables, use the source module's namespace
@@ -1706,9 +1722,18 @@ class Compiler:
                 cpp_expr = f"{module_to_cpp_namespace(source_module)}::{original_name}"
             else:
                 cpp_expr = f"{ns}::{k}"
-            # Non-Final non-value-type globals are stored as T* pointers in C++
-            is_ptr = not isinstance(v, FinalType) and not v.is_value_type()
-            variables[k] = ModuleVarInfo(k, v, cpp_expr, is_pointer=is_ptr)
+            # Non-Final non-value-type globals are stored as T* pointers in C++;
+            # native_globals are declared directly via `extern T name;` so they
+            # don't add the pointer indirection layer regardless of value-type-ness.
+            is_native_global = k in native_globals_by_name
+            is_ptr = (not isinstance(v, FinalType)
+                      and not v.is_value_type()
+                      and not is_native_global)
+            variables[k] = ModuleVarInfo(
+                k, v, cpp_expr, is_pointer=is_ptr,
+                native_cpp_name=native_globals_by_name.get(k),
+                is_final=k in exports.final_variables,
+            )
 
         is_native = compiled.ast.directives.native_module if compiled else False
         gen_header = not is_native

@@ -3117,6 +3117,15 @@ class ModuleVarInfo:
     type: TpyType
     cpp_expr: str  # C++ expression to access the variable
     is_pointer: bool = False  # True for non-value-type module globals (stored as T* in C++)
+    # For native_global variables: the absolute-qualified C++ name to emit at
+    # use sites (e.g. "::engine::score" or "::DG_FrameCount"). Overrides the
+    # module-namespace-based cpp_expr for cross-module references. None for
+    # regular globals.
+    native_cpp_name: str | None = None
+    # True if the variable was declared Final[T] in its source module. The
+    # FinalType wrapper is stripped during registration, so this flag is how
+    # downstream modules recover "this reference is a compile-time constant".
+    is_final: bool = False
 
 
 @dataclass

@@ -3043,8 +3043,11 @@ class StatementAnalyzer:
                 or (isinstance(stripped_value, UnionType) and stripped_value.uses_pointer_repr()
                     and not self.ctx.is_recursive_union(stripped_value))
             )
+            # Ptr[T] target takes the address of the source (`_a(&a)`), no copy.
+            target_is_ptr = isinstance(unwrap_qualifiers(target_type), PtrType)
             if ((isinstance(value_type, RefType) or is_own_from_name or is_compound_ref)
                     and stmt.loc is not None
+                    and not target_is_ptr
                     and not self.compat.is_copy_call(stmt.value)):
                 inner = unwrap_qualifiers(value_type)
                 dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"

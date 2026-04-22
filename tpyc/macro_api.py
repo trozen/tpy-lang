@@ -24,7 +24,9 @@ from .typesys import (
     INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64,
     ALL_FIXED_INTS,
     is_float_type,
+    unwrap_final,
 )
+from .type_def_registry import is_str_type, is_str_view_type
 from .typesys import (
     VOID as _VOID, STR as _STR, STRVIEW as _STRVIEW, BOOL as _BOOL,
     FLOAT as _FLOAT, FLOAT32 as _FLOAT32, BIGINT as _BIGINT,
@@ -165,29 +167,57 @@ class MacroFStringPart:
     type: TypeInfo
     format_spec: str | None = None
     conversion: int = -1  # FSTRING_CONV_NONE
+    is_static_str: bool = False
 
     @property
     def is_string_literal(self) -> bool:
         """True if the expression is a string literal (static storage in C++)."""
         return isinstance(self.expr, TpyStrLiteral)
 
-    @property
-    def is_static_str(self) -> bool:
-        """True if the expression resolves to static string storage at compile time.
 
-        Detects direct string literals and ternary expressions where both
-        branches are static strings (recursively).
-        """
-        return _is_static_str(self.expr)
+def _is_static_str(expr: TpyExpr, ctx: 'SemanticContext | None' = None) -> bool:
+    """Check if an expression resolves to static string storage at compile time.
 
-
-def _is_static_str(expr: TpyExpr) -> bool:
-    """Check if an expression resolves to static string storage at compile time."""
+    Detects:
+    * direct string literals,
+    * ternary expressions whose branches are both static strings,
+    * name references to module-level ``Final[str]`` constants, including
+      those imported transitively from other modules (``from m import X``).
+    """
     if isinstance(expr, TpyStrLiteral):
         return True
     if isinstance(expr, TpyIfExpr):
-        return _is_static_str(expr.then_expr) and _is_static_str(expr.else_expr)
+        return _is_static_str(expr.then_expr, ctx) and _is_static_str(expr.else_expr, ctx)
+    if isinstance(expr, TpyName) and ctx is not None:
+        return _name_is_final_str(expr.name, ctx)
     return False
+
+
+def _name_is_final_str(name: str, ctx: 'SemanticContext') -> bool:
+    """True when ``name`` refers to a module-level Final[str] constant."""
+    # Local module declaration -- locally-declared Finals never appear in
+    # user_imported_variables, so this branch is terminal.
+    if name in ctx.final_globals:
+        local_type = ctx.global_scope.lookup(name)
+        return local_type is not None and _is_str_like(local_type)
+    # Imported from another module
+    source = ctx.user_imported_variables.get(name)
+    if source is None:
+        return False
+    source_module, original_name = source
+    module_info = ctx.registry.get_module(source_module)
+    if module_info is None:
+        return False
+    var_info = module_info.variables.get(original_name)
+    if var_info is None:
+        return False
+    return var_info.is_final and _is_str_like(var_info.type)
+
+
+def _is_str_like(typ: TpyType) -> bool:
+    """True for `str` / `StrView` / Final wrappers thereof."""
+    inner = unwrap_final(typ)
+    return is_str_type(inner) or is_str_view_type(inner)
 
 
 # ---------------------------------------------------------------------------
