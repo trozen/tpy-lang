@@ -1,0 +1,4 @@
+main.py:25: warning: isinstance() check against descendant type 'Dog' on 'Animal' folds to False (static dispatch; use @dynamic for runtime type checks)
+main.py:28: warning: isinstance() check against descendant type 'Dog' on 'Animal' folds to False (static dispatch; use @dynamic for runtime type checks)
+main.py:33: warning: isinstance() check against descendant type 'Dog' on 'Animal' folds to False (static dispatch; use @dynamic for runtime type checks)
+main.py:33: warning: isinstance() check against descendant type 'Cat' on 'Animal' folds to False (static dispatch; use @dynamic for runtime type checks)

@@ -1,0 +1,1 @@
+main.py:38: warning: isinstance() check against descendant type 'Puppy' on 'Dog' folds to False (static dispatch; use @dynamic for runtime type checks)

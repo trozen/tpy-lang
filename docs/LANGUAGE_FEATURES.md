@@ -2815,6 +2815,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - `isinstance(x, T)` narrowing in if/elif/else branches: narrows union variable to member type
   - `isinstance(x, (A, B))` tuple form narrows `x` to `A | B`, composes with `and`/`or`/`not` and match-case guards
   - `isinstance(x, T)` where `x` is already narrowed to a concrete non-union type folds to a compile-time bool (no runtime `holds_alternative`), covering nested redundant checks, exhaustive elif tails, and post-assignment-narrowing checks
+  - `isinstance(child, Parent)` on user-record inheritance hierarchies folds at compile time by walking `Child`'s base chain. True for same-type and any ancestor; False for unrelated types and downcasts. Downcast checks (`isinstance(parent, Child)`) emit a warning since static dispatch means slicing at the boundary has removed the Child fields -- use `@dynamic` for runtime type checks. `Ptr[T]` is folded the same as `T` (static pointee type is authoritative)
   - `assert isinstance(x, T)` narrowing: `std::get<T>` extraction persists for the rest of the scope
   - Early-return narrowing for recursive unions: `if isinstance(t, T): return ...` with no else block extracts the remaining member at the outer scope, so code after the guard uses the narrowed type
   - Compound conditions: `isinstance(x, T) and x.field > 0` narrows `x` on the RHS of `and`

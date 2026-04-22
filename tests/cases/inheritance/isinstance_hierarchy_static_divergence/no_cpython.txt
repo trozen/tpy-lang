@@ -1,0 +1,3 @@
+Intentional static-dispatch divergence from CPython: isinstance on a
+Ptr[Parent] holding a Child reports False under tpyc (static fold) vs
+True under CPython (runtime dispatch).

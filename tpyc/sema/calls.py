@@ -1370,6 +1370,64 @@ class CallAnalyzer:
             expr,
         )
 
+    def _isinstance_unwrap(self, typ: TpyType) -> TpyType:
+        """Strip Own/readonly/Ptr layers so isinstance sees the pointee type.
+
+        Ptr is treated identically to a value variable: static dispatch makes
+        the static pointee type authoritative, so `Ptr[Parent]` and `Parent`
+        behave the same for isinstance folding.
+        """
+        inner = typ
+        if isinstance(inner, OwnType):
+            inner = inner.wrapped
+        inner = unwrap_readonly(inner)
+        if isinstance(inner, PtrType):
+            inner = unwrap_readonly(inner.pointee)
+        return inner
+
+    def _is_union_alias(self, typ: TpyType) -> bool:
+        """True if a NominalType stands in for a union alias (recursive or
+        cross-module)."""
+        if not (isinstance(typ, NominalType) and not typ.is_protocol):
+            return False
+        if typ.name in self.ctx.recursive_union_names:
+            return True
+        alias = self.ctx.registry.get_type_alias(typ.name)
+        return isinstance(alias, (UnionType, OptionalType))
+
+    def _evaluate_static_isinstance(
+        self, var_type: TpyType, check_types: list[TpyType], expr: TpyCall,
+    ) -> bool:
+        """Fold isinstance(var, check_types) against a concrete var_type.
+
+        Walks the user-record inheritance chain via TypeRegistry.is_subclass_of,
+        so `isinstance(child, Parent)` is True when Parent is any ancestor.
+        Downcast checks (`isinstance(parent, Child)`) fold to False with a
+        warning -- tpyc uses static dispatch, so any slicing at the boundary
+        has already removed the Child fields. Every offending check type
+        warns, so tuple forms like `isinstance(a, (Dog, Cat))` surface all
+        mistakes at once.
+
+        TODO: TypeParamRef bounds are not walked -- is_subclass_of short-
+        circuits on non-user-record types, so `isinstance(x, Animal)` where
+        `x: T` with `T: Dog` silently folds to False. Bounded generic
+        isinstance should either walk the bound or error explicitly.
+        """
+        reg = self.ctx.registry
+        result = False
+        for ct in check_types:
+            if var_type == ct or reg.is_subclass_of(var_type, ct):
+                result = True
+                continue
+            if reg.is_subclass_of(ct, var_type):
+                self.ctx.warning(
+                    f"isinstance() check against descendant type '{ct}' on "
+                    f"'{var_type}' folds to False (static dispatch; use "
+                    f"@dynamic for runtime type checks)",
+                    expr,
+                )
+        return result
+
     def _analyze_isinstance(self, expr: TpyCall) -> TpyType:
         """Analyze isinstance(x, T) for union type narrowing or protocol checks.
 
@@ -1420,31 +1478,15 @@ class CallAnalyzer:
         narrowed = self.ctx.func.narrowed_types.get(first_arg.name)
         static_fold: bool | None = None
         if narrowed is not None:
-            narrowed_inner = narrowed
-            if isinstance(narrowed_inner, OwnType):
-                narrowed_inner = narrowed_inner.wrapped
-            narrowed_inner = unwrap_readonly(narrowed_inner)
-            # Union alias NominalTypes stand in for their underlying union and
-            # must not be treated as concrete. recursive_union_names is
-            # module-local, so also resolve through the registry to catch
-            # cross-module aliases whose NominalType we see here unresolved.
-            is_union_alias = False
-            if isinstance(narrowed_inner, NominalType) and not narrowed_inner.is_protocol:
-                if narrowed_inner.name in self.ctx.recursive_union_names:
-                    is_union_alias = True
-                else:
-                    alias = self.ctx.registry.get_type_alias(narrowed_inner.name)
-                    if isinstance(alias, (UnionType, OptionalType)):
-                        is_union_alias = True
-            if (not is_union_alias
-                    and not isinstance(narrowed_inner, (UnionType, OptionalType))):
-                static_fold = any(narrowed_inner == t for t in check_types)
+            narrowed_inner = self._isinstance_unwrap(narrowed)
+            if not self._is_union_alias(narrowed_inner) and not isinstance(
+                    narrowed_inner, (UnionType, OptionalType)):
+                static_fold = self._evaluate_static_isinstance(
+                    narrowed_inner, check_types, expr)
 
         effective_type = self.expr.narrowing.effective_union_type(first_arg.name)
-        if isinstance(effective_type, OwnType):
-            effective_type = effective_type.wrapped
         if effective_type is not None:
-            effective_type = unwrap_readonly(effective_type)
+            effective_type = self._isinstance_unwrap(effective_type)
 
         if effective_type is None:
             raise self.ctx.error(
@@ -1463,15 +1505,27 @@ class CallAnalyzer:
             )
 
         if not isinstance(effective_type, UnionType):
-            # Non-union: compile-time evaluate against the static type.
-            static_result = any(effective_type == t for t in check_types)
-            expr.macro_expansion = TpyBoolLiteral(value=static_result, loc=expr.loc)
+            # Non-union: compile-time evaluate against the static type,
+            # walking the inheritance hierarchy. Reuse the narrowed-path
+            # fold if it already ran so we don't warn twice.
+            if static_fold is None:
+                static_fold = self._evaluate_static_isinstance(
+                    effective_type, check_types, expr)
+            expr.macro_expansion = TpyBoolLiteral(value=static_fold, loc=expr.loc)
             return BOOL
 
         # Union case: validate that check types are members of the union.
         non_members = [t for t in check_types
                        if not any(m == t for m in effective_type.members)]
         if non_members:
+            # If the narrowed-path fold already answered via hierarchy walk
+            # (e.g. `isinstance(x, Puppy)` inside an `if isinstance(x, Dog):`
+            # branch on a `Dog | Cat` union), the check types don't have to
+            # be declared-union members -- emit the constant and bypass the
+            # narrowing setup (we can't narrow a union to a non-member).
+            if static_fold is not None:
+                expr.macro_expansion = TpyBoolLiteral(value=static_fold, loc=expr.loc)
+                return BOOL
             if len(non_members) == 1:
                 raise self.ctx.error(
                     f"Type '{non_members[0]}' is not a member of union "
