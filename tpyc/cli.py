@@ -16,17 +16,21 @@ Usage (tpy -- runner):
     tpy --dump-code input.py   # Print generated C++ to stdout
 
 Usage (tpyc -- compiler):
-    tpyc input.py              # Compile to C++ in __tpyc__/
-    tpyc input.py -o out/      # Compile to C++ in out/
-    tpyc input.py --build      # Compile to C++ and build binary
-    tpyc input.py --exec       # Compile, build, and run
-    tpyc --exec <<EOF          # Read from stdin, build, and run
-    tpyc --dump-code <<EOF     # Print generated C++ to stdout
-    tpyc --repl                # Start interactive REPL (auto-detect backend)
-    tpyc --repl --cxx gcc      # Force gcc backend
-    tpyc --repl file.py        # Load file then start REPL
-    tpyc --repl -v             # REPL with timing
-    tpyc --repl -vv            # REPL with timing + generated C++
+    tpyc input.py                # Compile to C++ in __tpyc__/
+    tpyc input.py -o out/        # Compile to C++ in out/
+    tpyc input.py --build        # Compile to C++ and build binary
+    tpyc input.py --exec         # Compile, build, and run
+    tpyc input.py -x -- a b      # Run with program args (sys.argv[1:] = ["a","b"])
+    tpyc --exec <<EOF            # Read from stdin, build, and run
+    tpyc --dump-code <<EOF       # Print generated C++ to stdout
+    tpyc --repl                  # Start interactive REPL (auto-detect backend)
+    tpyc --repl --cxx gcc        # Force gcc backend
+    tpyc --repl file.py          # Load file then start REPL
+    tpyc --repl -v               # REPL with timing
+    tpyc --repl -vv              # REPL with timing + generated C++
+
+For tpyc, program arguments for --exec must be passed after `--` so tpyc's
+own options can appear in any position (e.g. `tpyc foo.py -o out/ -x`).
 """
 
 from __future__ import annotations
@@ -177,6 +181,22 @@ def get_module_name(input_path: Path) -> str:
     return name
 
 
+def _split_tpyc_argv(argv: list[str]) -> tuple[list[str], list[str]]:
+    """Split tpyc argv on the first `--` separator.
+
+    Returns (compiler_argv, script_args). Only the first `--` is honored; any
+    later `--` tokens are preserved as literal program args.
+
+    Raises ValueError if `--` is the first token (nothing for tpyc to parse).
+    """
+    if "--" not in argv:
+        return argv, []
+    i = argv.index("--")
+    if i == 0 and argv[1:]:
+        raise ValueError("input file must appear before '--'")
+    return argv[:i], argv[i + 1:]
+
+
 def _run_cli(is_runner: bool) -> int:
     prog_name = "tpy" if is_runner else "tpyc"
     parser = argparse.ArgumentParser(
@@ -190,13 +210,18 @@ def _run_cli(is_runner: bool) -> int:
     parser.add_argument("--version", action="version",
                         version=f"%(prog)s {__version__} ({get_git_commit()})")
     parser.add_argument("input", nargs="?", help="Input TurboPython source file (.py)")
-    # REMAINDER captures everything after the input positional, including flags
-    # like -O, matching `python script.py -O`. Limitation: flags that also
-    # exist as tpy options (e.g. -O) AND appear *before* the input positional
-    # are still consumed by tpy -- with `-c CMD`, there is no input positional
-    # to separate them. Use `--` to force forwarding: `tpy -c CMD -- -O arg`.
-    parser.add_argument("script_args", nargs=argparse.REMAINDER,
-                        help="Arguments forwarded to the running program as sys.argv[1:]")
+    if is_runner:
+        # tpy: REMAINDER captures everything after the input positional, including
+        # flags like -O, matching `python script.py -O`. Limitation: flags that
+        # also exist as tpy options (e.g. -O) AND appear *before* the input
+        # positional are still consumed by tpy -- with `-c CMD`, there is no
+        # input positional to separate them. Use `--` to force forwarding:
+        # `tpy -c CMD -- -O arg`.
+        parser.add_argument("script_args", nargs=argparse.REMAINDER,
+                            help="Arguments forwarded to the running program as sys.argv[1:]")
+    # tpyc: no REMAINDER positional -- tpyc's own options must be parseable in
+    # any position (including after the input file). Program args for --exec
+    # are pre-split off from argv on `--` before parse_args runs below.
     parser.add_argument("-c", dest="cmd", metavar="CMD", help="Execute CMD as a TurboPython program string")
     parser.add_argument("-o", "--output", help="Output directory (default: __tpyc__/ next to source)")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Verbose output (-v commands+timing, -vv +generated C++)")
@@ -255,7 +280,17 @@ def _run_cli(is_runner: bool) -> int:
     parser.add_argument("--info", action="store_true",
                         help="Print compiler version, paths, and environment info")
 
-    args = parser.parse_args()
+    if is_runner:
+        args = parser.parse_args()
+    else:
+        # tpyc: program args (for --exec) must follow `--`, so tpyc's own
+        # options can appear anywhere -- including after the input file.
+        try:
+            tpyc_argv, script_args = _split_tpyc_argv(sys.argv[1:])
+        except ValueError as e:
+            parser.error(str(e))
+        args = parser.parse_args(tpyc_argv)
+        args.script_args = script_args
 
     # tpy (runner) default action: bare `tpy` -> REPL; `tpy foo.py` -> run.
     # Explicit actions (-b, -x, --dump-code, -i) and informational flags
@@ -324,8 +359,10 @@ def _run_cli(is_runner: bool) -> int:
         return 0
 
     # Handle -c: implies -x unless --dump-code or -b is set.
-    # With -c, a positional ends up in args.input due to nargs="?" -- treat it
-    # as the first forwarded script arg instead (matches `python -c CMD a b`).
+    # With -c, a positional ends up in args.input due to nargs="?" -- prepend
+    # it to forwarded script args (matches `python -c CMD a b`). For tpyc,
+    # args.script_args may already contain tokens from a post-`--` separator;
+    # the input positional precedes them in sys.argv[1:] order.
     if args.cmd is not None:
         if args.input:
             args.script_args = [args.input, *args.script_args]
@@ -342,8 +379,10 @@ def _run_cli(is_runner: bool) -> int:
         parser.error("the following arguments are required: input (or -c CMD)")
 
     # script_args only makes sense when the program is actually run.
-    # In compile-only / --build / --dump-code modes, reject them with
-    # argparse's native "unrecognized arguments" phrasing.
+    # For tpy (runner), these come from REMAINDER after the input positional.
+    # For tpyc, they come either from after a `--` separator or from the -c
+    # shuffle above. In compile-only / --build / --dump-code modes, reject
+    # them with argparse's native "unrecognized arguments" phrasing.
     if args.script_args and not args.exec:
         parser.error(f"unrecognized arguments: {' '.join(args.script_args)}")
 
