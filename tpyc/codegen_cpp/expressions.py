@@ -2397,6 +2397,8 @@ class ExpressionGenerator:
                 if isinstance(arg, TpyTypeParamConstruct):
                     assert ptype is not None, f"No param type for TpyTypeParamConstruct at arg {i}"
                     gen_args.append(f"{self.types.type_to_cpp(ptype)}{{}}")
+                elif isinstance(arg, TpyVarargPack):
+                    gen_args.append(self._gen_vararg_pack(arg))
                 else:
                     # @dynamic protocol params in method calls
                     if ptype is not None:

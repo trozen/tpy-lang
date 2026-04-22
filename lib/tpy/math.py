@@ -7,12 +7,6 @@
 # - `nan` constant. `Final[float] = float('nan')` and similar non-literal
 #   initializers currently constexpr-panic. Blocked on the "Final initializer
 #   overflow / div-by-zero" entry in TODO.md Bugs.
-# - Variadic `hypot(*coords)`, `gcd(*ints)`, `lcm(*ints)`. TPy supports
-#   `*args` but `_gen_method_call` doesn't handle `TpyVarargPack`, so
-#   `math.hypot(x, y)` currently fails codegen. Currently shipped as binary
-#   forms. See "Variadic call codegen missing in `_gen_method_call`" in
-#   TODO.md Bugs (and the related Refactor item about a shared arg-binding
-#   helper).
 # - `Iterable[float]` parameter types for `prod`, `fsum`, `sumprod`, `dist`.
 #   CPython accepts any iterable for all four (including generators,
 #   `range(...)`, tuples, user iterators). Currently typed as `list[float]`
@@ -152,7 +146,16 @@ def tan(x: float) -> float: ...
 def fabs(x: float) -> float: ...
 
 @native("std::hypot")
-def hypot(x: float, y: float) -> float: ...
+def _hypot2(x: float, y: float) -> float: ...
+
+def hypot(*coords: float) -> float:
+    if len(coords) == 0:
+        return 0.0
+    # Hypot-fold is overflow-safe: hypot(hypot(a, b), c) == sqrt(a^2 + b^2 + c^2).
+    result = fabs(coords[0])
+    for c in coords[1:]:
+        result = _hypot2(result, c)
+    return result
 
 @native("std::atan2")
 def atan2(y: float, x: float) -> float: ...
@@ -208,7 +211,7 @@ def radians(x: float) -> float:
 def degrees(x: float) -> float:
     return x * (180.0 / pi)
 
-def gcd(a: int, b: int) -> int:
+def _gcd2(a: int, b: int) -> int:
     if a < 0:
         a = -a
     if b < 0:
@@ -219,15 +222,33 @@ def gcd(a: int, b: int) -> int:
         a = t
     return a
 
-def lcm(a: int, b: int) -> int:
-    if a == 0 or b == 0:
+def gcd(*ints: int) -> int:
+    if len(ints) == 0:
         return 0
-    # (a // gcd(a, b)) * b keeps the intermediate bounded by max(|a|, |b|);
-    # the naive a*b first would blow up for large BigInts.
-    r: int = (a // gcd(a, b)) * b
-    if r < 0:
-        r = -r
-    return r
+    result = ints[0]
+    if result < 0:
+        result = -result
+    for x in ints[1:]:
+        if result == 1:
+            return 1
+        result = _gcd2(result, x)
+    return result
+
+def lcm(*ints: int) -> int:
+    if len(ints) == 0:
+        return 1
+    result = ints[0]
+    if result < 0:
+        result = -result
+    for x in ints[1:]:
+        if result == 0 or x == 0:
+            return 0
+        # (a // gcd(a, b)) * b keeps the intermediate bounded by max(|a|, |b|);
+        # the naive a*b first would blow up for large BigInts.
+        result = (result // _gcd2(result, x)) * x
+        if result < 0:
+            result = -result
+    return result
 
 def factorial(n: int) -> int:
     if n < 0:
@@ -316,29 +337,23 @@ def fsum(iterable: list[float]) -> float:
 def sumprod(p: list[float], q: list[float]) -> float:
     if len(p) != len(q):
         raise ValueError("sumprod(): input lengths differ")
-    s: float = 0.0
-    i: Int32 = 0
-    n: Int32 = Int32(len(p))
-    while i < n:
+    s = 0.0
+    for i in range(len(p)):
         s = s + p[i] * q[i]
-        i = i + 1
     return s
 
 def dist(p: list[float], q: list[float]) -> float:
     if len(p) != len(q):
         raise ValueError("dist(): input lengths differ")
-    n: Int32 = Int32(len(p))
-    if n == 0:
+    if len(p) == 0:
         return 0.0
     # Fold via hypot to avoid overflow when coordinates are large: the naive
     # sqrt(sum((pi - qi)**2)) overflows when any (pi - qi)**2 exceeds
     # DBL_MAX. std::hypot(a, b) is IEEE overflow-safe, and hypot-folding is
     # mathematically equivalent: hypot(hypot(d0, d1), d2) == sqrt(d0^2 + d1^2 + d2^2).
-    result: float = fabs(p[0] - q[0])
-    i: Int32 = 1
-    while i < n:
-        result = hypot(result, p[i] - q[i])
-        i = i + 1
+    result = fabs(p[0] - q[0])
+    for i in range(1, len(p)):
+        result = _hypot2(result, p[i] - q[i])
     return result
 
 @type_param_default(T=DefaultInt)
