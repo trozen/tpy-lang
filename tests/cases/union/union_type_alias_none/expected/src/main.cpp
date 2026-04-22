@@ -18,7 +18,7 @@ std::string describe(const std::variant<std::monostate, Circle*, Rect*> s) {
         return "circle";
     }
     // assert isinstance(s, Rect)
-    if (!(std::holds_alternative<Rect*>(s))) ::tpy::tpy_panic("assertion failed");
+    if (!(true)) ::tpy::tpy_panic("assertion failed");
     auto& __s = *std::get<Rect*>(s);
     // return "rect"
     return "rect";

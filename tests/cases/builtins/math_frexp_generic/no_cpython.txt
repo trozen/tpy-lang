@@ -1,0 +1,2 @@
+math.frexp[T](x) is TPy-specific syntax -- CPython's math.frexp is a
+built-in function, not subscriptable.

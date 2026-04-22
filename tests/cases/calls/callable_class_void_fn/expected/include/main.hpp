@@ -12,6 +12,9 @@ struct Doubler;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      __fn(__a0);
+  }
 void apply_and_discard(__F0&& f, int32_t x);
 void main();
 

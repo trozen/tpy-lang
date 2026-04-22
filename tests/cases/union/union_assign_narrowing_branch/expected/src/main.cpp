@@ -27,7 +27,7 @@ void main() {
     // print(c.radius)
     std::cout << ::tpy::print_float((*std::get<Circle*>(c)).radius) << "\n";
     // if isinstance(c, Circle):
-    if (std::holds_alternative<Circle*>(c)) {
+    if (true) {
         auto& __c = *std::get<Circle*>(c);
         // print("yes circle")
         std::cout << "yes circle" << "\n";

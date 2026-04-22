@@ -88,6 +88,7 @@ struct varargs<T, true> {
     T& operator[](int32_t i) const { return data_[i]; }
     int32_t size() const { return size_; }
     bool empty() const { return size_ == 0; }
+    T* data() const { return data_; }
 
     using iterator = T*;
     T* begin() const { return data_; }

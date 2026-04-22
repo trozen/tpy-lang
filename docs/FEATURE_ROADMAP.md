@@ -119,6 +119,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | F5 | Self-interpret (TPy eval in tpyc) | XL | Not started | [V](#self-interpret-tpy-eval-in-tpyc) |
 | F6 | Alternative backends | XL | Not started | [V](#alternative-backends) |
 | F7 | Decorator definitions in library code | M-L | Phase 1 done | [V](#decorator-definitions-in-library-code) |
+| F8 | Compile-time conditional compilation / build profiles | M | Not started | [V](#compile-time-conditional-compilation--build-profiles) |
 
 ### Phase G: Concurrency (Future)
 
@@ -1452,6 +1453,74 @@ constraints remain in parse methods.
 
 **Effort**: M (Phase 2: target validation + combination constraints in schema),
 L (Phase 3: decorator definitions in `.py` files)
+
+---
+
+### Compile-Time Conditional Compilation / Build Profiles
+
+A feature-flag system that lets modules pick between implementations at compile
+time. The initial driver is stdlib: the `re` module needs to swap between
+`_bindings.cppstd.re` (std::regex, zero deps), `_bindings.pcre2.re` (PCRE2, closest to
+CPython semantics), and potentially a vendored SRE port, without changing user
+code. Similar needs exist elsewhere -- allocator choice, `@noalloc` profile
+gating, stdlib variants for embedded targets, debug vs release behavior,
+target-specific backends.
+
+Surface sketch (to be designed):
+
+```python
+# Library module picks an implementation at compile time
+# tpy: if feature(re_backend) == "pcre2"
+from _bindings.pcre2.re import *  # tpy: re-export
+# tpy: elif feature(re_backend) == "std"
+from _bindings.cppstd.re import *
+# tpy: else
+from _bindings.sre.re import *
+# tpy: endif
+```
+
+Or via a static `if` the compiler folds at sema time:
+
+```python
+from tpy import feature
+
+if feature("re_backend") == "pcre2":
+    from _bindings.pcre2.re import *
+else:
+    from _bindings.cppstd.re import *
+```
+
+Flags set via `tpyc --feature re_backend=pcre2`, project config
+(`pyproject.toml` or a dedicated `tpyc.toml`), or `# tpy:` module-level
+directives for local overrides.
+
+**Why it matters**: avoids forcing one stdlib backend on everyone; lets
+embedded users strip out features; cleanly swaps implementations for
+experimentation and benchmarking. Without this, we either pick one backend and
+live with its limits, or ask users to rewrite imports (`import _bindings.pcre2.re
+as re`) -- the latter scales poorly across a real project.
+
+**Scope considerations**:
+- Per-module vs global: likely both. Project-wide default plus per-module
+  override via `# tpy:` directive.
+- Type-system implications: if two branches expose different types (PCRE2's
+  `Pattern` vs std::regex's), downstream type checking must see exactly one
+  branch. Simplest: require both branches to present a structurally identical
+  surface (or a shared protocol).
+- Interaction with the macro system (F2): feature queries could be exposed to
+  macros, letting macro-authored modules adapt.
+- Interaction with `@noalloc` and other profile gates (IV): those are per-
+  function/class attributes today; a generalized profile system may subsume
+  them.
+
+**Current state**: Not started. `# tpy:` directives exist (module-level flags
+like `profile=noalloc`) but are not evaluated as conditionals.
+
+**Dependencies**: Design coordination with macro system (F2) and profile
+gates. No hard blockers.
+
+**Effort**: M (design + parser/sema support for static `if` or directive-based
+blocks; feature-flag resolution pipeline; CLI + project-config surface).
 
 ---
 

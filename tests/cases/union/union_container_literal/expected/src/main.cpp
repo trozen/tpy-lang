@@ -115,7 +115,7 @@ void main() {
             std::cout << "dog:" << " " << __a.name << "\n";
         } else {
             // elif isinstance(a, Cat):
-            if (std::holds_alternative<Cat>(a)) {
+            if (true) {
                 auto& __a = std::get<Cat>(a);
                 // print("cat:", a.name)
                 std::cout << "cat:" << " " << __a.name << "\n";

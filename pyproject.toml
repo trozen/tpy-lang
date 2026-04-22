@@ -36,6 +36,7 @@ path = "tpyc/_build_hook.py"
 "lib/tpy" = "tpyc/_data/lib/tpy"
 "docs/TPY_FOR_AGENTS.md" = "tpyc/_data/docs/TPY_FOR_AGENTS.md"
 "docs/LANGUAGE_FEATURES.md" = "tpyc/_data/docs/LANGUAGE_FEATURES.md"
+"docs/STDLIB_ROADMAP.md" = "tpyc/_data/docs/STDLIB_ROADMAP.md"
 "tpyc/_buildinfo.py" = "tpyc/_buildinfo.py"
 
 [tool.pyright]

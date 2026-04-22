@@ -11,6 +11,10 @@ void main() {
     std::cout << ::tpy::print_bool((tpystd::math::pi > 3.14)) << "\n";
     // print(math.pi < 3.15)
     std::cout << ::tpy::print_bool((tpystd::math::pi < 3.15)) << "\n";
+    // print(math.tau > 6.28)
+    std::cout << ::tpy::print_bool((tpystd::math::tau > 6.28)) << "\n";
+    // print(math.tau < 6.29)
+    std::cout << ::tpy::print_bool((tpystd::math::tau < 6.29)) << "\n";
     // print(math.e > 2.71)
     std::cout << ::tpy::print_bool((tpystd::math::e > 2.71)) << "\n";
     // print(math.e < 2.72)
@@ -19,7 +23,8 @@ void main() {
     std::cout << ::tpy::print_bool((tpystd::math::inf > 1e+308)) << "\n";
     // # hypot
     // h = math.hypot(3.0, 4.0)
-    double h = ::std::hypot(3.0, 4.0);
+    std::array<double, 2> __tmp_1{3.0, 4.0};
+    double h = ::tpystd::math::hypot(::tpy::varargs<double>(__tmp_1));
     // print(h > 4.99)
     std::cout << ::tpy::print_bool((h > 4.99)) << "\n";
     // print(h < 5.01)
@@ -42,6 +47,15 @@ void main() {
     std::cout << ::tpy::from_float_check<int32_t>(3.7) << "\n";
     // print(math.trunc(-2.3))
     std::cout << ::tpy::from_float_check<int32_t>(-(2.3)) << "\n";
+    // # atan (single-arg inverse tangent)
+    // a1 = math.atan(1.0)
+    double a1 = ::std::atan(1.0);
+    // print(a1 > 0.78)
+    std::cout << ::tpy::print_bool((a1 > 0.78)) << "\n";
+    // print(a1 < 0.79)
+    std::cout << ::tpy::print_bool((a1 < 0.79)) << "\n";
+    // print(math.atan(0.0) == 0.0)
+    std::cout << ::tpy::print_bool((::std::atan(0.0) == 0.0)) << "\n";
     // # atan2
     // a = math.atan2(1.0, 1.0)
     double a = ::std::atan2(1.0, 1.0);
@@ -56,7 +70,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # math module: pi, e, inf, hypot, radians, degrees, trunc, atan2
+    // # math module: pi, tau, e, inf, hypot, radians, degrees, trunc, atan, atan2
     // import math
     ::tpystd::math::__tpy_init();
     // main()

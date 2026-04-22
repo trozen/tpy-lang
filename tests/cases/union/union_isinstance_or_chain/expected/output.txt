@@ -1,0 +1,9 @@
+hit
+hit
+ab
+ab
+c
+a-flag
+b-flag
+none
+reachable

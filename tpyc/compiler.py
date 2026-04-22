@@ -15,7 +15,7 @@ import shutil
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterable, TYPE_CHECKING
+from typing import Any, Callable, Iterable, TYPE_CHECKING
 
 from .parse import Parser, ParseError, TpyModule, TpyImport, RelativeImportKey, SourceLocation, scan_star_exports
 from .parse.imports import (
@@ -186,6 +186,44 @@ def _is_zig(compiler: list[str]) -> bool:
     return "zig" in os.path.basename(compiler[0])
 
 
+def _derive_c_compiler(cxx: list[str]) -> list[str]:
+    """Derive the matching C compiler command from a C++ compiler command.
+
+    Used when building bundled C dependencies (e.g. PCRE2). The C and C++
+    drivers share a toolchain but differ in default language: g++ would
+    reject PCRE2's implicit ``void*`` conversions that gcc accepts.
+
+    Mappings:
+      ['g++']            -> ['gcc']
+      ['g++-14']         -> ['gcc-14']
+      ['clang++']        -> ['clang']
+      ['clang++-18']     -> ['clang-18']
+      ['zig', 'c++']     -> ['zig', 'cc']
+      ['/p/g++-14']      -> ['/p/gcc-14']
+
+    Falls back to the original command if the pattern isn't recognized
+    (e.g. an unusual binary name); the C++ driver may still compile most C
+    correctly even if it grumbles.
+    """
+    if not cxx:
+        return cxx
+    head = cxx[0]
+    rest = cxx[1:]
+    # Zig: ['zig', 'c++'] -> ['zig', 'cc']
+    if _is_zig(cxx) and rest and rest[0] == "c++":
+        return [head, "cc", *rest[1:]]
+    base = os.path.basename(head)
+    dirname = os.path.dirname(head)
+    if base.startswith("g++"):
+        c_base = "gcc" + base[3:]
+    elif base.startswith("clang++"):
+        c_base = "clang" + base[7:]
+    else:
+        return cxx
+    new_head = os.path.join(dirname, c_base) if dirname else c_base
+    return [new_head, *rest]
+
+
 def _cxx_aliases(binary: str, is_best: bool, family_prefix: str) -> list[str]:
     """Compute --cxx aliases for a compiler binary.
 
@@ -257,6 +295,21 @@ def list_compilers() -> None:
         print(f"  {marker} {binary:<{name_width}}  {detail}")
     print(f"\n  auto selects: {auto_display}")
     print("  A path to any C++ compiler binary is also accepted.")
+
+
+def discover_runtime_cpp_sources(runtime_cpp_dir: Path) -> list[Path]:
+    """List TPy-owned .cpp files under `runtime_cpp_dir/src/` (recursively).
+
+    These are compiled and linked into every TPy binary alongside user-
+    generated .cpp files. They exist for stdlib helpers that need direct
+    access to C system struct layouts (e.g. sockets / getaddrinfo) and
+    can't be expressed header-only without leaking system-header macros
+    into downstream TUs. Returns [] if the directory doesn't exist.
+    """
+    src_dir = runtime_cpp_dir / "src"
+    if not src_dir.is_dir():
+        return []
+    return sorted(src_dir.rglob("*.cpp"))
 
 
 def get_or_build_pch(
@@ -416,6 +469,9 @@ class BuildLayout:
         extra_objects: list[str] | None = None,
         extra_include_dirs: list[Path] | None = None,
         force_includes: list[Path] | None = None,
+        extra_link_flags: list[str] | None = None,
+        c_sources: list[tuple[Path, list[str]]] | None = None,
+        runtime_cpp_sources: list[Path] | None = None,
     ) -> list[list[str]]:
         """Build C++ compilation commands: per-file compile steps + a link step.
 
@@ -432,6 +488,19 @@ class BuildLayout:
             extra_objects: Pre-compiled object files to include in the link step.
             extra_include_dirs: Additional include directories (-I flags).
             force_includes: Headers to force-include via -include flag.
+            extra_link_flags: Additional link-line flags (e.g. -lpcre2-8 from
+                              third-party deps in system mode).
+            c_sources: Bundled C source files to compile with the C compiler
+                       (derived from config.compiler), each paired with its
+                       own list of compile flags. Used to build vendored C
+                       deps like PCRE2 inline with the user binary.
+            runtime_cpp_sources: TPy-owned C++ runtime sources (typically
+                       discovered under runtime/cpp/src/ via
+                       `discover_runtime_cpp_sources`). Compiled with the
+                       same C++ toolchain + include paths as generated user
+                       code; .o files go into a `runtime/` subdir of the
+                       build dir (prefix avoids stem collisions with user
+                       modules of the same name).
         """
         if config is None:
             config = CppCompilerConfig()
@@ -474,12 +543,54 @@ class BuildLayout:
                 *prefix, *common,
                 "-c", "-o", str(obj), str(cpp),
             ])
+
+        # Bundled C source files (e.g. PCRE2 in bundled mode). Compiled with
+        # the C compiler derived from config.compiler -- C++ drivers reject
+        # implicit void* conversions that PCRE2 relies on.
+        if c_sources:
+            c_compiler = _derive_c_compiler(config.compiler)
+            third_party_dir = self.build_dir / "third_party"
+            third_party_dir.mkdir(parents=True, exist_ok=True)
+            for c_file, c_extra_flags in c_sources:
+                obj = third_party_dir / (c_file.stem + ".o")
+                obj_files.append(str(obj))
+                prefix = ["ccache"] if config.ccache else []
+                cmds.append([
+                    *prefix, *c_compiler,
+                    *(opt_flags or []),
+                    *c_extra_flags,
+                    "-c", "-o", str(obj), str(c_file),
+                ])
+
+        # TPy-owned runtime .cpp files. Same C++ toolchain + include paths
+        # as user code. Object names derive from the path relative to
+        # runtime/cpp/src/ to avoid collisions with user modules whose
+        # .cpp happens to share a stem.
+        if runtime_cpp_sources:
+            rt_src_root = runtime_include_dir.parent / "src"
+            rt_obj_dir = self.build_dir / "runtime"
+            rt_obj_dir.mkdir(parents=True, exist_ok=True)
+            for rt_cpp in runtime_cpp_sources:
+                try:
+                    rel = rt_cpp.relative_to(rt_src_root)
+                    obj_name = "rt_" + str(rel).replace(os.sep, "_").removesuffix(".cpp") + ".o"
+                except ValueError:
+                    obj_name = "rt_" + rt_cpp.stem + ".o"
+                obj = rt_obj_dir / obj_name
+                obj_files.append(str(obj))
+                prefix = ["ccache"] if config.ccache else []
+                cmds.append([
+                    *prefix, *common,
+                    "-c", "-o", str(obj), str(rt_cpp),
+                ])
+
         cmds.append([
             *config.compiler,
             "-o", str(output),
             *obj_files,
             *(extra_objects or []),
             *config.link_flags,
+            *(extra_link_flags or []),
         ])
         return cmds
 
@@ -490,17 +601,26 @@ class BuildLayout:
         link_flags: list[str] | None = None,
         extra_include_dirs: list[Path] | None = None,
         bundle_runtime: bool = True,
+        third_party_libs: list[Any] | None = None,
+        runtime_cpp_sources: list[Path] | None = None,
     ) -> Path:
         """Generate a .cmake include file with source/include/link variables.
 
         Produces sources.cmake that sets:
           TPYC_SOURCES      -- list of generated .cpp files
           TPYC_INCLUDE_DIRS -- include directories (generated headers + runtime)
-          TPYC_LIBRARIES    -- link libraries (from # tpy: link() directives)
+          TPYC_LIBRARIES    -- link libraries (from # tpy: link() directives,
+                               extended at configure time by third-party
+                               selectors)
           TPYC_CXX_STANDARD -- required C++ standard (23)
 
         When bundle_runtime is True (default), the runtime headers are copied
         into the output directory so the result is self-contained.
+
+        third_party_libs (list of `tpyc.build.third_party.ThirdPartyLib`)
+        gets the 3-mode CMake selector emitted for each. When bundle_runtime
+        is True, vendored source trees are also copied alongside the runtime
+        so the output is fully self-contained.
 
         Users include() this from their CMakeLists.txt.
         """
@@ -517,17 +637,39 @@ class BuildLayout:
         include_dirs = []
         include_dirs.append(f"{cmake_dir}/{self.include_dir.relative_to(self.root_dir)}")
 
+        runtime_cpp_dir = runtime_include_dir.parent  # .../runtime/cpp
+        runtime_src_dir = runtime_cpp_dir / "src"
+
         if bundle_runtime:
             bundled_dir = self.root_dir / "runtime" / "include"
             if bundled_dir.exists():
                 shutil.rmtree(bundled_dir)
             shutil.copytree(runtime_include_dir, bundled_dir)
             include_dirs.append(f"{cmake_dir}/runtime/include")
+            # Bundle runtime sources too so the sources.cmake is self-contained
+            # (references paths under `runtime/src/` rather than reaching back
+            # into the original toolchain checkout).
+            if runtime_cpp_sources and runtime_src_dir.is_dir():
+                bundled_src = self.root_dir / "runtime" / "src"
+                if bundled_src.exists():
+                    shutil.rmtree(bundled_src)
+                shutil.copytree(runtime_src_dir, bundled_src)
+                for rt_cpp in runtime_cpp_sources:
+                    try:
+                        rel = rt_cpp.relative_to(runtime_src_dir)
+                        sources.append(f"{cmake_dir}/runtime/src/{rel}")
+                    except ValueError:
+                        sources.append(str(rt_cpp))
         else:
             try:
                 include_dirs.append(f"{cmake_dir}/{os.path.relpath(runtime_include_dir, self.root_dir)}")
             except ValueError:
                 include_dirs.append(str(runtime_include_dir))
+            for rt_cpp in (runtime_cpp_sources or []):
+                try:
+                    sources.append(f"{cmake_dir}/{os.path.relpath(rt_cpp, self.root_dir)}")
+                except ValueError:
+                    sources.append(str(rt_cpp))
 
         for extra_d in (extra_include_dirs or []):
             try:
@@ -568,6 +710,21 @@ class BuildLayout:
             lines.append(f"    {lib}")
         lines.append(")")
         lines.append("")
+
+        # Third-party libraries (PCRE2 etc.). Each lib emits a 3-mode
+        # selector that appends to TPYC_LIBRARIES and, in bundled mode,
+        # add_subdirectory()s the vendored copy.
+        if third_party_libs:
+            from .build.third_party import (
+                emit_cmake_snippet, bundle_source_tree, collect_licenses,
+            )
+            for lib in third_party_libs:
+                lines.append(emit_cmake_snippet(lib))
+                lines.append("")
+                if bundle_runtime:
+                    bundle_source_tree(lib, self.root_dir)
+            if bundle_runtime:
+                collect_licenses(third_party_libs, self.root_dir)
 
         lines.append("set(TPYC_CXX_STANDARD 23)")
         lines.append("")
@@ -1922,3 +2079,23 @@ class Compiler:
                     seen.add(flag)
                     flags.append(flag)
         return flags
+
+    def collect_third_party_deps(self) -> list[str]:
+        """Collect third-party library names declared by `# tpy: link_third_party`.
+
+        Filters by current platform, deduplicates while preserving order.
+        Names map to entries in ``tpyc.build.third_party._FACTORIES``.
+        """
+        seen: set[str] = set()
+        names: list[str] = []
+        for compiled in self.modules.values():
+            for name, platform_filter in compiled.ast.directives.third_party_deps:
+                if platform_filter is not None:
+                    mapped = _PLATFORM_MAP.get(
+                        platform_filter.lower(), platform_filter)
+                    if not sys.platform.startswith(mapped):
+                        continue
+                if name not in seen:
+                    seen.add(name)
+                    names.append(name)
+        return names

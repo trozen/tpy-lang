@@ -238,6 +238,14 @@ def _run_cli(is_runner: bool) -> int:
     parser.add_argument("--no-bundle-runtime", dest="bundle_runtime",
                         action="store_false", default=True,
                         help="Don't copy runtime headers into the output directory")
+    parser.add_argument(
+        "--pcre2", choices=["bundled", "system", "auto", "none"], default="bundled",
+        help="PCRE2 source for the `re` module: bundled (vendored, default), "
+             "system (find_package / -lpcre2-8), auto (system, fall back to "
+             "bundled), or none (disabled -- any module that imports `re` "
+             "becomes a compile error, useful for embedded targets that want "
+             "to strip out regex)",
+    )
     parser.add_argument("-j", "--jobs", type=int, default=None,
                         help="Parallel compile jobs (default: number of CPUs)")
     parser.add_argument("--no-main", dest="no_main", action="store_true",
@@ -492,12 +500,35 @@ def _run_cli(is_runner: bool) -> int:
         # Generate sources.cmake for CMake integration
         runtime_dir = get_runtime_dir()
         link_flags = compiler.collect_link_flags()
+
+        # Resolve third-party deps (e.g. PCRE2 declared via
+        # `# tpy: link("pcre2", managed=True)`) into concrete build inputs.
+        # DisabledLibError is raised when the user passed `--<lib>=none` but
+        # a module in the compile graph needs that lib -- surface it as a
+        # clean compile error.
+        from .build.third_party import resolve_build_plan, DisabledLibError
+        third_party_modes = {"pcre2": args.pcre2}
+        try:
+            third_party_plan = resolve_build_plan(
+                dep_names=compiler.collect_third_party_deps(),
+                runtime_cpp_dir=runtime_dir / "cpp",
+                modes=third_party_modes,
+            )
+        except DisabledLibError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+
+        from .compiler import discover_runtime_cpp_sources
+        runtime_cpp_sources = discover_runtime_cpp_sources(runtime_dir / "cpp")
+
         cmake_layout = BuildLayout(output_dir, module_name, flat=explicit_output)
         cmake_layout.generate_cmake(
             runtime_include_dir=runtime_dir / "cpp" / "include",
             cpp_files=all_cpp_paths,
             link_flags=link_flags,
             bundle_runtime=args.bundle_runtime and not building and explicit_output,
+            third_party_libs=third_party_plan.libs,
+            runtime_cpp_sources=runtime_cpp_sources or None,
         )
 
         # Build if requested
@@ -536,6 +567,10 @@ def _run_cli(is_runner: bool) -> int:
                 opt_flags=opt_flags,
                 config=cpp_config,
                 force_includes=pch_includes or None,
+                extra_include_dirs=third_party_plan.extra_include_dirs or None,
+                extra_link_flags=third_party_plan.extra_link_flags or None,
+                c_sources=third_party_plan.c_sources or None,
+                runtime_cpp_sources=runtime_cpp_sources or None,
             )
 
             compile_steps = compile_cmds[:-1]

@@ -2775,6 +2775,8 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Mixed `readonly`/non-`readonly` in unions is a parse error
   - Generic functions returning `T | U` where `T == U` at instantiation produce a sema error (duplicate variant members)
   - `isinstance(x, T)` narrowing in if/elif/else branches: narrows union variable to member type
+  - `isinstance(x, (A, B))` tuple form narrows `x` to `A | B`, composes with `and`/`or`/`not` and match-case guards
+  - `isinstance(x, T)` where `x` is already narrowed to a concrete non-union type folds to a compile-time bool (no runtime `holds_alternative`), covering nested redundant checks, exhaustive elif tails, and post-assignment-narrowing checks
   - `assert isinstance(x, T)` narrowing: `std::get<T>` extraction persists for the rest of the scope
   - Early-return narrowing for recursive unions: `if isinstance(t, T): return ...` with no else block extracts the remaining member at the outer scope, so code after the guard uses the narrowed type
   - Compound conditions: `isinstance(x, T) and x.field > 0` narrows `x` on the RHS of `and`
@@ -2816,7 +2818,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
     ```
     The compiler detects cross-type cycles, validates indirection, and generates a C++ wrapper struct that can be forward-declared. `Box(Lit(1))` auto-coerces to `Box[Expr]` via the wrapper's implicit constructor. Works with `isinstance`, `match`/`case`, and mixed unions (primitives + records). Both source orderings supported (alias first or classes first). Cross-module mutual recursion is not yet supported.
   - **Limitations**: Generic recursive aliases (`type Tree[T] = T | list[Tree[T]]`) are not yet supported. Mutual type-alias recursion (`type A = list[B]; type B = list[A]`) is silently accepted by the compiler but generates C++ that fails to compile -- each `using` declaration references the other before it is defined. Use a recursive-union wrapper (as in the `Expr` / `Lit` / `BinOp` example above) for mutually-recursive types instead.
-  - **Not yet supported**: `isinstance(x, (A, B))` tuple form, `isinstance(x, Protocol)` on concrete-typed variables
+  - **Not yet supported**: `isinstance(x, Protocol)` on concrete-typed variables
   - **Working**: `match`/`case` pattern matching on union subjects (see Control Flow > Other)
   - **Working**: `@overload` dispatch flattening -- Python-standard `@overload` stubs generate separate C++ overloads. Two modes are supported: **(a) stubs + impl** (multiple bodyless stubs followed by a single implementation whose body is specialized per-stub via dead-branch elim) and **(b) bodied stubs** (each `@overload` variant carries its own body and acts as its own implementation). Each overload compiles to a clean, specialized function with no runtime dispatch overhead.
     - Works for free functions and methods, including cross-module imports
@@ -4452,6 +4454,35 @@ insort_left(a, Int32(4))        # a = [1, 3, 4, 5, 7]
 
 ### Standard Library Modules
 
+For the full per-module coverage tracker (status, priority, per-item status,
+blockers, implementation policy), see `docs/STDLIB_ROADMAP.md`. The subsections
+below cover only modules with a stable working surface.
+
+**Implementation policy summary** (see STDLIB_ROADMAP.md for detail): stdlib
+modules are pure TPy by default. Native C++ code is used only for OS/libc
+primitives, bindings to existing C++ libraries, or benchmarked hot inner
+loops -- everything else is .py. If the language is missing something that
+blocks a clean pure-TPy implementation, the right fix is to extend the
+language, not drop into C++.
+
+Currently working with a stable surface:
+
+| Module | Notes |
+|---|---|
+| `math` | Partial (~50%). Thin libc bindings + pure TPy helpers |
+| `time` | Stub (`time()`, `sleep()`). More planned |
+| `sys` | Stub (`argv` only). More planned |
+| `random` | Stub (`random()`, `seed()`). Target: pure-TPy Mersenne Twister |
+| `bisect` | Done. Pure TPy over the `Comparable` protocol |
+| `functools` | Partial. 3-arg `reduce(func, a, initial)` only. See STDLIB_ROADMAP.md for blocked items |
+| `struct` | Partial (`unpack`, `unpack_from`, `calcsize`) via compile-time macros |
+| `enum` | Partial (`Enum`, `IntEnum`, `auto()`) via class macro |
+| `dataclasses` | Partial (~75%; `@dataclass(frozen, order)`, `field()`, `asdict()`, `astuple()`) via class macro |
+| `typing` | Partial (`Protocol`, `Self`, `Sized`, `Iterator`, `Iterable`, `TypedDict`, `Unpack`, etc.) |
+
+Everything else in CPython's stdlib is missing or blocked -- consult
+STDLIB_ROADMAP.md before relying on a module name.
+
 #### `time` module (Working)
 
 ```python
@@ -4681,13 +4712,15 @@ Compiler directives are special comments that must appear in the file preamble (
 # tpy: include(<sys/time.h>, platform="linux")  # platform-filtered include
 # tpy: link("SDL2")                         # add -lSDL2 linker flag
 # tpy: link("m", platform="linux")          # platform-filtered: only link on Linux
+# tpy: link("pcre2", managed=True)          # declare dependency on a registered third-party lib
 # tpy: native_module                        # declaration-only module (no .hpp/.cpp generated)
 # tpy: cpp_namespace("myproject::core")      # override C++ namespace
 ```
 
 **Directives:**
 - **`include(path)`** / **`include(path, platform=name)`** -- adds a C/C++ `#include` to the generated header. Quoted paths use `#include "..."`, angle-bracket paths (`<...>`) use `#include <...>`. Optional `platform` filter: `"linux"`, `"macos"`, `"windows"`. In `native_module` modules, includes are propagated to importing modules' headers.
-- **`link(lib)` / `link(lib, platform=name)`** -- adds `-llib` linker flag. Optional `platform` filter: `"linux"`, `"macos"`, `"windows"`.
+- **`link(lib)` / `link(lib, platform=name)`** -- adds `-llib` linker flag. Raw, unconditional. Optional `platform` filter: `"linux"`, `"macos"`, `"windows"`.
+- **`link(lib, managed=True)`** -- declares a dependency on a registered third-party C/C++ library (defined in `tpyc/build/third_party.py`). The build layer resolves this to concrete include dirs, link flags, and vendored-source inclusion based on the user-selected mode (`tpyc --<lib>={bundled,system,auto,none}`). Higher-level than raw `link()`: one declaration covers all modes consistently across direct-compile (`tpyc -x`/`-b`) and CMake-emit paths. The `none` mode triggers a compile error if anything in the build graph declares the dependency -- useful for embedded targets that want to strip out an optional module. Used today by `lib/tpy/_bindings/pcre2.py` for the `re` stdlib module; future stdlib C-binding modules (`gzip` -> zlib, etc.) will use the same directive. Composes with `platform=`.
 - **`native_module`** -- marks the module as declaration-only: no `.hpp` or `.cpp` is generated. Use for modules that only declare `@native` bindings to existing C/C++ types. Each module must declare this explicitly (it does not propagate from parent packages). When combined with `cpp_namespace`, bare `@native` entities are auto-prefixed with the namespace.
 - **`cpp_namespace(name)`** -- overrides the C++ namespace for the module (replaces the default `tpyapp::module_name`). In `__init__.py`, child modules inherit the namespace with their relative name appended (e.g., `cpp_namespace("mypkg")` in `__init__.py` makes `pkg/foo.py` use `mypkg::foo`).
 

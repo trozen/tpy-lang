@@ -13,10 +13,19 @@ int32_t double_(int32_t x);
 int32_t negate(int32_t x);
 int32_t add(int32_t a, int32_t b);
 template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
 int32_t apply(__F0&& f, int32_t x);
 template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
+      { __fn(__a0, __a1) } -> std::convertible_to<int32_t>;
+  }
 int32_t apply2(__F0&& f, int32_t a, int32_t b);
 template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      __fn(__a0);
+  }
 void run_void(__F0&& f, int32_t x);
 void print_val(int32_t x);
 void main();

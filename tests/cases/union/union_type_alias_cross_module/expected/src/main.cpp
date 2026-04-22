@@ -13,7 +13,7 @@ std::string describe(const std::variant<::tpyapp::shapes::Circle*, ::tpyapp::sha
         return "circle";
     }
     // assert isinstance(s, Rect)
-    if (!(std::holds_alternative<::tpyapp::shapes::Rect*>(s))) ::tpy::tpy_panic("assertion failed");
+    if (!(true)) ::tpy::tpy_panic("assertion failed");
     auto& __s = *std::get<::tpyapp::shapes::Rect*>(s);
     // return "rect"
     return "rect";

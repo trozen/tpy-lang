@@ -15,7 +15,7 @@ void describe(const Canvas& c) {
         std::cout << __s.radius << "\n";
     } else {
         // elif isinstance(s, Square):
-        if (std::holds_alternative<const Square*>(s)) {
+        if (true) {
             auto& __s = *std::get<const Square*>(s);
             // print(s.side)
             std::cout << __s.side << "\n";

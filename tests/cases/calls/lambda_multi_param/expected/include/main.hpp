@@ -10,6 +10,9 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
+      { __fn(__a0, __a1) } -> std::convertible_to<int32_t>;
+  }
 int32_t combine(__F0&& f, int32_t a, int32_t b);
 void main();
 

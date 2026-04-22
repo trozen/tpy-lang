@@ -32,6 +32,7 @@ from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLev
 from tpyc.compiler import (
     Compiler, CompileError, BuildLayout, CppCompilerConfig, get_or_build_pch,
 )
+from tpyc.build.third_party import resolve_build_plan
 
 # Default options for tests: emit source comments for easier debugging
 TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True, comment_line_numbers=False)
@@ -152,12 +153,26 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
     pch_header = get_pch_header()
     pch_include = [] if pch_header is None else ["-include", str(pch_header)]
 
+    # Add include dirs for any third-party deps declared by stdlib modules
+    # (e.g. `# tpy: link_third_party("pcre2")` in _bindings/pcre2.py needs the
+    # PCRE2 header on -I). We always resolve in bundled mode here -- the
+    # cache key includes runtime + lib hashes so the cache is per-mode-implicit.
+    third_party_plan = resolve_build_plan(
+        dep_names=compiler.collect_third_party_deps(),
+        runtime_cpp_dir=RUNTIME_DIR.parent,
+        modes={},  # use each lib's default_mode (bundled for pcre2)
+    )
+    third_party_includes: list[str] = []
+    for d in third_party_plan.extra_include_dirs:
+        third_party_includes += ["-I", str(d)]
+
     common = [
         *CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}",
         *CPP_CONFIG.extra_flags,
         *CPP_CONFIG.warn_flags,
         "-I", str(RUNTIME_DIR),
         "-I", str(layout.include_dir),
+        *third_party_includes,
         *pch_include,
     ]
 
@@ -190,17 +205,101 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
 
     relpaths = {rel for rel, _ in results}
     objects = [obj for _, obj in results]
+
+    # Also pre-compile bundled C deps (e.g. PCRE2 .c files). These are
+    # referenced by stdlib .o files (e.g. re.o links against pcre2_*),
+    # so any test linking the stdlib cache needs them available -- even
+    # tests that don't import the relevant module, because the cache .o
+    # set is shared. Compiled with the C compiler derived from the C++ one.
+    #
+    # No opt_flags applied here, mirroring the .cpp pre-compile above:
+    # tests always run a single shared cache regardless of build variant.
+    # End-user `tpyc -xO` builds go through `BuildLayout.build_cpp_commands`
+    # (not this cache) and DO get -O3 on the same .c sources.
+    if third_party_plan.c_sources:
+        from tpyc.compiler import _derive_c_compiler
+        c_compiler = _derive_c_compiler(CPP_CONFIG.compiler)
+        for c_src, c_flags in third_party_plan.c_sources:
+            obj_path = obj_dir / (c_src.stem + ".o")
+            prefix = ["ccache"] if CPP_CONFIG.ccache else []
+            cmd = [*prefix, *c_compiler, *CPP_CONFIG.extra_flags,
+                   *c_flags, "-c", "-o", str(obj_path), str(c_src)]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise RuntimeError(
+                    f"third-party pre-compilation failed for {c_src.name}:\n"
+                    f"{result.stderr}"
+                )
+            objects.append(str(obj_path))
+
+    # TPy-owned runtime .cpp files (e.g. socket / getaddrinfo helper). Always
+    # pre-compiled and linked into every test binary -- same rationale as the
+    # stdlib .o above: avoids recompiling per-case. Cache key is invalidated
+    # via _runtime_hash() which includes runtime/cpp/src/. Parallelized the
+    # same way as the stdlib compile above; errors handled the same way too
+    # -- one bad runtime source degrades the whole cache to empty with a
+    # warning, matching the stdlib-failure path, rather than propagating an
+    # uncaught RuntimeError to pytest.
+    from tpyc.compiler import discover_runtime_cpp_sources
+    runtime_cpp_sources = discover_runtime_cpp_sources(RUNTIME_DIR.parent)
+    if runtime_cpp_sources:
+        rt_src_root = RUNTIME_DIR.parent / "src"
+
+        def _compile_runtime_one(rt_cpp: Path) -> str:
+            """Compile a single runtime .cpp to .o; raise on failure."""
+            try:
+                rel = rt_cpp.relative_to(rt_src_root)
+                obj_name = "rt_" + str(rel).replace(os.sep, "_").removesuffix(".cpp") + ".o"
+            except ValueError:
+                obj_name = "rt_" + rt_cpp.stem + ".o"
+            obj_path = obj_dir / obj_name
+            prefix = ["ccache"] if CPP_CONFIG.ccache else []
+            cmd = [*prefix, *common, "-c", "-o", str(obj_path), str(rt_cpp)]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise RuntimeError(
+                    f"runtime .cpp pre-compilation failed for "
+                    f"{rt_cpp.name}:\n{result.stderr}"
+                )
+            return str(obj_path)
+
+        rt_max = max(1, min(max_workers, len(runtime_cpp_sources)))
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=rt_max) as ex:
+                rt_objs = list(ex.map(_compile_runtime_one, runtime_cpp_sources))
+        except RuntimeError as exc:
+            print(f"WARNING: {exc}", file=sys.stderr)
+            return _StdlibCache(objects=[], cpp_relpaths=set())
+        objects.extend(rt_objs)
+
     return _StdlibCache(objects=objects, cpp_relpaths=relpaths)
 
 
 _SHARED_CACHE_ROOT_ENV = "TPYC_SHARED_CACHE_DIR"
-_DEFAULT_SHARED_CACHE_ROOT = Path("/tmp/tpyc-cache")
+
+
+def _default_shared_cache_root() -> Path:
+    """Default shared-cache root, following XDG Base Directory on Linux/macOS
+    and %LOCALAPPDATA% on Windows.
+
+    Preference order: `$XDG_CACHE_HOME/tpyc` > `%LOCALAPPDATA%\\tpyc\\cache`
+    (Windows) > `~/.cache/tpyc`. Matches ccache / cargo / uv / pip convention;
+    persists across reboots, unlike /tmp.
+    """
+    xdg = os.environ.get("XDG_CACHE_HOME")
+    if xdg:
+        return Path(xdg) / "tpyc"
+    if sys.platform == "win32":
+        local_app = os.environ.get("LOCALAPPDATA")
+        if local_app:
+            return Path(local_app) / "tpyc" / "cache"
+    return Path.home() / ".cache" / "tpyc"
 
 
 def _shared_cache_root() -> Path:
     """Root dir for shared caches (overridable via TPYC_SHARED_CACHE_DIR)."""
     override = os.environ.get(_SHARED_CACHE_ROOT_ENV)
-    return Path(override) if override else _DEFAULT_SHARED_CACHE_ROOT
+    return Path(override) if override else _default_shared_cache_root()
 
 
 @functools.cache
@@ -425,9 +524,11 @@ def get_stdlib_cache() -> _StdlibCache | None:
 
     Persists across pytest invocations and is shared across xdist workers via
     a content-addressed dir under $TPYC_SHARED_CACHE_DIR/stdlib-objs/<key>/
-    (default /tmp/tpyc-cache/stdlib-objs/<key>/). Cache key invalidates when
-    runtime headers, lib/tpy stdlib, or C++ build config change. Falls back
-    to a per-process tempdir if the shared root is unwritable.
+    (default $XDG_CACHE_HOME/tpyc/stdlib-objs/<key>/, i.e. ~/.cache/tpyc/
+    stdlib-objs/<key>/ on Linux/macOS; %LOCALAPPDATA%\\tpyc\\cache\\stdlib-objs\\
+    <key>\\ on Windows). Cache key invalidates when runtime headers, lib/tpy
+    stdlib, or C++ build config change. Falls back to a per-process tempdir if
+    the shared root is unwritable.
     """
     global _stdlib_cache, _stdlib_cache_initialized
     if _stdlib_cache_initialized:
@@ -506,6 +607,12 @@ class CompileResult:
     cast_safe_facts: dict[tuple[int, str], bool] | None = None
     # Linker flags from # tpy: link() directives
     link_flags: list[str] = field(default_factory=list)
+    # Third-party (link_third_party) build inputs: include dirs for the C
+    # bindings, extra link flags (system mode), and bundled C source files
+    # to compile into the test binary (e.g. PCRE2 .c files in bundled mode).
+    third_party_include_dirs: list[Path] = field(default_factory=list)
+    third_party_link_flags: list[str] = field(default_factory=list)
+    third_party_c_sources: list[tuple[Path, list[str]]] = field(default_factory=list)
 
 
 def _validate_default_int_name(name: str) -> str:
@@ -611,13 +718,23 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         div_zero_facts = ctx.div_zero_facts if ctx else None
         cast_safe_facts = ctx.cast_safe_facts if ctx else None
         link_flags = compiler.collect_link_flags()
+        # Resolve third-party deps in bundled mode (default for tests). When
+        # a system-mode test variant is needed, switch the modes dict here.
+        tp_plan = resolve_build_plan(
+            dep_names=compiler.collect_third_party_deps(),
+            runtime_cpp_dir=RUNTIME_DIR.parent,
+            modes={},
+        )
         return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path,
                              all_modules=all_modules, declared_var_types=declared_var_types,
                              ptr_deref_facts=ptr_deref_facts,
                              subscript_bounds_facts=subscript_bounds_facts,
                              div_zero_facts=div_zero_facts,
                              cast_safe_facts=cast_safe_facts,
-                             link_flags=link_flags)
+                             link_flags=link_flags,
+                             third_party_include_dirs=list(tp_plan.extra_include_dirs),
+                             third_party_link_flags=list(tp_plan.extra_link_flags),
+                             third_party_c_sources=list(tp_plan.c_sources))
 
     except CompileError as e:
         return CompileResult(success=False, diagnostics=e.format() + "\n")
@@ -819,8 +936,22 @@ def _hash_files(paths: list[Path]) -> str:
 
 @functools.cache
 def _runtime_hash() -> str:
-    """Hash of all runtime headers under runtime/cpp/include/. Session-cached."""
+    """Hash of all runtime headers under runtime/cpp/include/, TPy-owned
+    runtime .cpp files under runtime/cpp/src/, and vendored third_party/
+    source trees. Session-cached.
+
+    Including third_party/ ensures that bumping a vendored library version
+    (PCRE2 etc.) invalidates the stdlib .o cache automatically, so the
+    next test run rebuilds with the new sources. Including src/ does the
+    same for TPy-owned runtime helpers.
+    """
     files = sorted(p for p in RUNTIME_DIR.rglob("*") if p.is_file())
+    runtime_src_dir = RUNTIME_DIR.parent / "src"
+    if runtime_src_dir.is_dir():
+        files += sorted(p for p in runtime_src_dir.rglob("*") if p.is_file())
+    third_party_dir = RUNTIME_DIR.parent / "third_party"
+    if third_party_dir.is_dir():
+        files += sorted(p for p in third_party_dir.rglob("*") if p.is_file())
     return _hash_files(files)
 
 
@@ -907,7 +1038,9 @@ def build_and_run(build_dir: Path, module_name: str,
                   link_flags: list[str] | None = None,
                   build_variant: str = "debug",
                   precompiled_objects: list[str] | None = None,
-                  exclude_cpp_relpaths: set[str] | None = None) -> RunResult:
+                  exclude_cpp_relpaths: set[str] | None = None,
+                  extra_link_flags: list[str] | None = None,
+                  c_sources: list[tuple[Path, list[str]]] | None = None) -> RunResult:
     """Compile generated C++ and run, capturing all output (including panics).
 
     Args:
@@ -965,6 +1098,8 @@ def build_and_run(build_dir: Path, module_name: str,
         extra_objects=precompiled_objects,
         extra_include_dirs=extra_include_dirs or None,
         force_includes=all_force_includes or None,
+        extra_link_flags=extra_link_flags or None,
+        c_sources=c_sources or None,
     )
     for cmd in compile_cmds:
         result = subprocess.run(cmd, capture_output=True, text=True)

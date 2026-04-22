@@ -80,7 +80,7 @@ struct Zoo {
             return __p.name;
         } else {
             // elif isinstance(p, Cat):
-            if (std::holds_alternative<const Cat*>(p)) {
+            if (true) {
                 auto& __p = *std::get<const Cat*>(p);
                 // return p.name
                 return __p.name;
@@ -101,7 +101,7 @@ struct Zoo {
             return __p.name;
         } else {
             // elif isinstance(p, Cat):
-            if (std::holds_alternative<Cat*>(p)) {
+            if (true) {
                 auto& __p = *std::get<Cat*>(p);
                 // return p.name
                 return __p.name;

@@ -12,6 +12,7 @@ from . import get_docs_dir
 _DOC_FILES: list[tuple[str, str]] = [
     ("TPY_FOR_AGENTS.md", "TPY_FOR_AGENTS.md"),
     ("LANGUAGE_FEATURES.md", "TPY_LANGUAGE_FEATURES.md"),
+    ("STDLIB_ROADMAP.md", "TPY_STDLIB_ROADMAP.md"),
 ]
 
 
@@ -54,6 +55,8 @@ When writing or modifying `.py` files compiled by tpyc:
   patterns. Read this before writing TPy code.
 - Consult `{path_prefix}/TPY_LANGUAGE_FEATURES.md` for depth on specific
   features. Only sections marked **Working** are usable today.
+- Check `{path_prefix}/TPY_STDLIB_ROADMAP.md` before using a Python stdlib
+  module -- coverage is partial and some modules are missing or blocked.
 
 These files are bundled from the installed tpyc toolchain. Refresh with
 `tpyc --install-agent-docs {path_prefix}` after upgrading tpyc.

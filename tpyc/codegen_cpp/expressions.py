@@ -1804,10 +1804,15 @@ class ExpressionGenerator:
             if true_branch:
                 facts[expr.isinstance_var] = expr.isinstance_type
             else:
-                # False branch: compute remaining union members
+                # False branch: compute remaining union members.
+                # Tuple form stores check types as a UnionType.
+                check_type = expr.isinstance_type
+                check_members = (set(check_type.members)
+                                 if isinstance(check_type, UnionType)
+                                 else {check_type})
                 var_type = self.ctx.get_expr_type(expr.args[0])
                 if isinstance(var_type, UnionType):
-                    remaining = [m for m in var_type.members if m != expr.isinstance_type]
+                    remaining = [m for m in var_type.members if m not in check_members]
                     if remaining:
                         facts[expr.isinstance_var] = (
                             remaining[0] if len(remaining) == 1 else make_union(*remaining))
@@ -1924,21 +1929,33 @@ class ExpressionGenerator:
                 if isinstance(check_type, UnionType) and concrete in check_type.members:
                     return "true"
                 return "false"
-            cpp_type = self.types.type_to_cpp(expr.isinstance_type)
-            var_name = expr.isinstance_var
-            if var_name in self.ctx.narrowed_vars:
-                var_name = self.ctx.narrowed_vars[var_name]
-            name_node = TpyName(var_name)
-            var_ref = self.gen_expr_deref(name_node) if self.ctx.is_indirect_name(name_node) else var_name
-            # Pointer-variant unions: holds_alternative<T*> or <const T*>
+            # holds_alternative needs the original variant; narrowed_vars
+            # aliases (extracted member refs or std::get expressions) are not
+            # variants, so we deliberately skip that lookup here.
             orig_var = expr.isinstance_var
+            name_node = TpyName(orig_var)
+            var_ref = self.gen_expr_deref(name_node) if self.ctx.is_indirect_name(name_node) else orig_var
+            # Tuple form: isinstance(x, (A, B)) -> union of check types
+            if isinstance(expr.isinstance_type, UnionType):
+                check_members = list(expr.isinstance_type.members)
+            else:
+                check_members = [expr.isinstance_type]
             if orig_var in self.ctx.ptr_variant_locals:
                 const_pfx = "const " if orig_var in self.ctx.const_indirect_locals else ""
-                return f"std::holds_alternative<{const_pfx}{cpp_type}*>({var_ref})"
-            # Recursive union wrapper: access .data for variant operations
-            var_decl_type = self.ctx.var_types.get(orig_var)
-            get_ref = self.ctx.variant_data_expr(var_ref, var_decl_type) if var_decl_type else var_ref
-            return f"std::holds_alternative<{cpp_type}>({get_ref})"
+                checks = [
+                    f"std::holds_alternative<{const_pfx}{self.types.type_to_cpp(m)}*>({var_ref})"
+                    for m in check_members
+                ]
+            else:
+                var_decl_type = self.ctx.var_types.get(orig_var)
+                get_ref = self.ctx.variant_data_expr(var_ref, var_decl_type) if var_decl_type else var_ref
+                checks = [
+                    f"std::holds_alternative<{self.types.type_to_cpp(m)}>({get_ref})"
+                    for m in check_members
+                ]
+            if len(checks) == 1:
+                return checks[0]
+            return "(" + " || ".join(checks) + ")"
         # Enum value lookup: Color(0) -> ::tpy::EnumUtil<Color>::from_value(0).
         # enum_from_value is set only by sema when resolving via BindingKind.ENUM,
         # whose binding always points to a registered enum NominalType -- so the
@@ -2380,6 +2397,8 @@ class ExpressionGenerator:
                 if isinstance(arg, TpyTypeParamConstruct):
                     assert ptype is not None, f"No param type for TpyTypeParamConstruct at arg {i}"
                     gen_args.append(f"{self.types.type_to_cpp(ptype)}{{}}")
+                elif isinstance(arg, TpyVarargPack):
+                    gen_args.append(self._gen_vararg_pack(arg))
                 else:
                     # @dynamic protocol params in method calls
                     if ptype is not None:

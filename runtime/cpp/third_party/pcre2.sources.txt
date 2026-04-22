@@ -1,0 +1,54 @@
+# PCRE2 8-bit build sources.
+#
+# Canonical list for libpcre2-8, taken from PCRE2's upstream
+# NON-AUTOTOOLS-BUILD documentation. tpyc/build/pcre2.py reads this file
+# to drive compilation when PCRE2 is built in bundled mode. Keep in
+# sync with upstream when bumping the vendored PCRE2 version.
+#
+# Files in src/ NOT listed here and why they're excluded:
+#   * Standalone tools with their own main():
+#         pcre2grep.c, pcre2test.c, pcre2demo.c
+#   * Test harnesses:
+#         pcre2_jit_test.c, pcre2posix_test.c, pcre2_fuzzsupport.c
+#   * Build helpers (we ship the pre-generated output):
+#         pcre2_dftables.c  (generates pcre2_chartables.c at build time)
+#   * Separate library (POSIX wrapper, different .a):
+#         pcre2posix.c
+#   * Files meant to be `#include`d from other .c files, not compiled
+#     directly -- compiling them would produce duplicate symbols:
+#         pcre2_printint.c      (#include'd by pcre2test, pcre2_dftables)
+#         pcre2_jit_match.c     (#include'd by pcre2_jit_compile.c)
+#         pcre2_jit_misc.c      (#include'd by pcre2_jit_compile.c)
+#         pcre2_ucptables.c     (#include'd by pcre2_tables.c)
+#
+# Format: one filename per line, relative to the vendored `src/` dir.
+# Blank lines and `#` comments ignored.
+
+pcre2_auto_possess.c
+pcre2_chartables.c
+pcre2_chkdint.c
+pcre2_compile.c
+pcre2_config.c
+pcre2_context.c
+pcre2_convert.c
+pcre2_dfa_match.c
+pcre2_error.c
+pcre2_extuni.c
+pcre2_find_bracket.c
+pcre2_jit_compile.c
+pcre2_maketables.c
+pcre2_match.c
+pcre2_match_data.c
+pcre2_newline.c
+pcre2_ord2utf.c
+pcre2_pattern_info.c
+pcre2_script_run.c
+pcre2_serialize.c
+pcre2_string_utils.c
+pcre2_study.c
+pcre2_substitute.c
+pcre2_substring.c
+pcre2_tables.c
+pcre2_ucd.c
+pcre2_valid_utf.c
+pcre2_xclass.c
