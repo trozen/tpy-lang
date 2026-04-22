@@ -50,7 +50,7 @@ from ..parse import SourceLocation, is_parser_keyword
 from ..type_def_registry import is_str_type, is_str_view_type, protocol_info_of
 from ..parse.resolve_refs import (
     _walk_body, _merged_method_scope, _record_scope,
-    _promote_bare_nominals,
+    promote_bare_nominals,
 )
 from .macros import _promote_method_signature
 
@@ -2137,11 +2137,11 @@ class SemanticAnalyzer:
             for overloads in info.methods.values():
                 for i, finfo in enumerate(overloads):
                     new_params = [
-                        dc_replace(p, type=_promote_bare_nominals(p.type, registry))
+                        dc_replace(p, type=promote_bare_nominals(p.type, registry))
                         for p in finfo.params
                     ]
                     new_return = (
-                        _promote_bare_nominals(finfo.return_type, registry)
+                        promote_bare_nominals(finfo.return_type, registry)
                         if finfo.return_type is not None else finfo.return_type
                     )
                     overloads[i] = dc_replace(

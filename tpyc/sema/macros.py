@@ -24,7 +24,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..parse.nodes import TpyCall, TpyMethodCall
-from ..parse.resolve_refs import resolve_method_body_refs, _promote_bare_nominals
+from ..parse.resolve_refs import resolve_method_body_refs, promote_bare_nominals
 from ..macro_api import ClassInfo
 from ..macro_loader import validate_and_call_macro, call_macro_field_function
 from ..diagnostics import SemanticError
@@ -106,13 +106,13 @@ def _promote_method_signature(method, registry: 'TypeRegistry') -> None:
     """Promote bare NominalType placeholders in a method's signature to
     qname-bearing form, in place."""
     method.params = [
-        (name, _promote_bare_nominals(t, registry)) for name, t in method.params
+        (name, promote_bare_nominals(t, registry)) for name, t in method.params
     ]
     if method.return_type is not None:
-        method.return_type = _promote_bare_nominals(method.return_type, registry)
+        method.return_type = promote_bare_nominals(method.return_type, registry)
     if method.vararg_type is not None:
-        method.vararg_type = _promote_bare_nominals(method.vararg_type, registry)
+        method.vararg_type = promote_bare_nominals(method.vararg_type, registry)
     if method.kwarg_type is not None:
-        method.kwarg_type = _promote_bare_nominals(method.kwarg_type, registry)
+        method.kwarg_type = promote_bare_nominals(method.kwarg_type, registry)
     if method.self_annotation is not None:
-        method.self_annotation = _promote_bare_nominals(method.self_annotation, registry)
+        method.self_annotation = promote_bare_nominals(method.self_annotation, registry)
