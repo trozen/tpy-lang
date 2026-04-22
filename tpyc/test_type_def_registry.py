@@ -219,6 +219,35 @@ def test_pending_types_are_not_concrete_containers():
     assert not is_set(pending_set),   "is_set must reject PendingSetType"
 
 
+def test_pending_types_do_not_inherit_registry_behavior():
+    """Pending* types delegate `qualified_name()` to their resolved builtin,
+    so `type_def_of(pending_list)` returns the `list` TypeDef. But base
+    `TpyType` methods (subscript_borrows, needs_explicit_element_target,
+    is_value_type, is_expensive_copy, param_needs_copy_for_reassign)
+    must NOT inherit that registry behavior -- pending types haven't been
+    resolved yet and should report class defaults. Regression test for
+    the `_nominal_td` guard on the base class methods.
+    """
+    pending_list = ts.PendingListType(ts.INT32, 0, 0)
+    pending_dict = ts.PendingDictType(ts.STR, ts.INT32, 0)
+    pending_set = ts.PendingSetType(ts.INT32, 0)
+
+    resolved_list = ts.make_list(ts.INT32)
+    # Baseline: the resolved form DOES pick up registry behavior.
+    assert resolved_list.subscript_borrows() is True
+
+    # The pending form must NOT pick it up despite sharing the qname.
+    for pending in (pending_list, pending_dict, pending_set):
+        assert pending.subscript_borrows() is False, (
+            f"{type(pending).__name__}.subscript_borrows() leaked "
+            f"list/dict/set TypeDef value"
+        )
+        assert pending.needs_explicit_element_target() is False
+        assert pending.is_value_type() is False
+        assert pending.is_expensive_copy() is False
+        assert pending.param_needs_copy_for_reassign() is False
+
+
 # =========================================================================
 # Primitive hard-coded snapshot (Phase D step 0).
 #

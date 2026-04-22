@@ -556,6 +556,32 @@ Working but not previously listed:
 
 See `docs/LANGUAGE_FEATURES.md` for comprehensive documentation of all language features, including what's working, planned, and open for design.
 
+## LSP Target (Future)
+
+An LSP for TPy is a possible future direction, **not a project goal** and not something to drive design decisions on its own. Do not start LSP work; it is blocked on the IR migration (`docs/IR_DESIGN.md`) regardless -- THIR is the natural LSP data source, and building LSP support on the current analyzer-coupled structure would only make the migration harder.
+
+Treat the invariants below as **tie-breakers** when design choices are otherwise close, not as constraints that should override compiler-centric reasoning:
+
+- **Diagnostics carry structured source locations** (file + span + severity), not only formatted strings. An LSP surfaces diagnostics in editor UI and cannot recover structured info from text.
+- **Parser output is the downstream boundary.** Downstream phases should depend on `TpyModule` / TPy AST nodes, not on CPython `ast` specifics. An LSP will eventually need an error-recovering front-end (CPython's `ast` is all-or-nothing, brutal for live editing); that swap stays cheap only if the surface is narrow.
+- **Avoid hard-coded "single entry point" assumptions** in sema / module resolution where a workspace (multi-entry) model works just as well. LSPs operate on workspaces, not a main module.
+- **Keep type representations introspectable and printable.** Hover, completions, and signature help all need to render types back to the user; opaque or lossy representations bite later.
+
+## Compiler Front-end Performance
+
+The tpyc front-end (parse + sema + codegen, CPython-hosted) is fast enough for realistic dev workflow at this stage -- cold compile of ~100kloc of user code finishes well under a minute, and the C++ back-end dominates total build time anyway.
+
+**Do not proactively optimize the front-end.** No incremental caching, self-hosting, LLVM backend, or hot-path tuning until real workloads demand it. The compiler is at too early a stage; any cache layer or micro-optimization will bitrot as data structures churn. In particular, the planned THIR/MIR migration (`docs/IR_DESIGN.md`) will substantially reshape the phase boundaries, and it is the proper foundation for future incremental/caching work -- THIR is explicitly designed as an immutable, self-contained per-module artifact, which is the natural cache boundary. Don't build a separate incremental scheme on top of the pre-IR compiler.
+
+**Until the IR migration lands**, prefer cheap hygiene that doesn't fight the migration direction:
+
+- Keep per-module analysis state actually per-module. Avoid global mutable state accumulated across modules; caches hanging off type objects that span modules make both the THIR migration and any future invalidation painful.
+- Don't add new analyzer-dependent fields or side tables to codegen. New sema -> codegen facts should be materialized on AST nodes (or clearly flagged as transitional), so the eventual THIR-lowering pass has a single place to translate them.
+- Keep the Phase-1 (per-module body analysis) / Phase-2 (call-graph fixpoint: mutation propagation, `is_readonly` inference, deferred borrow checks) split clean. The migration plan materializes Phase-2 facts into THIR nodes and consumes them in MIR; blurring the boundary today makes that translation harder.
+- Keep per-module Phase-1 analysis independent of other modules' bodies (signatures only). Post-IR-migration this opens the door to parallel Phase-1 across modules; don't introduce dependencies today that would design that option out.
+
+**Watch for algorithmic cliffs.** The worst front-end regressions come from accidentally quadratic scaling in size-proportional places -- overload resolution (call sites * overloads per group), protocol conformance checking (types * protocols * methods), mutation propagation (transitive closure). These are invisible on small codebases and brutal on large ones. Changes touching these areas should consider worst-case size scaling even when benchmarks on the existing test corpus look fine.
+
 ## Development Guidelines
 
 When implementing new features:

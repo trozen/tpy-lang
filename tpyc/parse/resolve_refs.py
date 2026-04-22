@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 _REF_TYPES = (TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef)
 
 
-def _promote_bare_nominals(typ: TpyType, registry) -> TpyType:
+def promote_bare_nominals(typ: TpyType, registry) -> TpyType:
     """Return `typ` with every bare `NominalType` whose short name
     resolves in `registry` replaced by its qname-bearing counterpart.
     Recurses into structural wrappers.  Closes the bridge from macro-
@@ -60,7 +60,7 @@ def _promote_bare_nominals(typ: TpyType, registry) -> TpyType:
                     typ.name, typ.type_args, typ.is_protocol,
                     qname, typ.is_dynamic_protocol,
                 )
-    return typ.map_inner_types(lambda t: _promote_bare_nominals(t, registry))
+    return typ.map_inner_types(lambda t: promote_bare_nominals(t, registry))
 
 
 def _infer_field_type_from_default(
@@ -188,7 +188,7 @@ def _walk_body(stmts, call_scope, resolver, *, promote_registry=None):
                 # asks (post-macro-deps pass).  Parse-time walks use
                 # `promote_registry=None` so we don't traverse every
                 # already-resolved type on every module-level walk.
-                stmt.type = _promote_bare_nominals(stmt.type, promote_registry)
+                stmt.type = promote_bare_nominals(stmt.type, promote_registry)
         for expr in stmt.exprs():
             _walk_expr_calls(expr, call_scope, resolver)
         for body in stmt.sub_bodies():
@@ -204,17 +204,17 @@ def _walk_body(stmts, call_scope, resolver, *, promote_registry=None):
             # cross-module picture.
             if promote_registry is not None:
                 stmt.func.params = [
-                    (n, _promote_bare_nominals(t, promote_registry))
+                    (n, promote_bare_nominals(t, promote_registry))
                     for n, t in stmt.func.params
                 ]
                 if stmt.func.return_type is not None:
-                    stmt.func.return_type = _promote_bare_nominals(
+                    stmt.func.return_type = promote_bare_nominals(
                         stmt.func.return_type, promote_registry)
                 if stmt.func.vararg_type is not None:
-                    stmt.func.vararg_type = _promote_bare_nominals(
+                    stmt.func.vararg_type = promote_bare_nominals(
                         stmt.func.vararg_type, promote_registry)
                 if stmt.func.kwarg_type is not None:
-                    stmt.func.kwarg_type = _promote_bare_nominals(
+                    stmt.func.kwarg_type = promote_bare_nominals(
                         stmt.func.kwarg_type, promote_registry)
             nested_scope = _func_scope(stmt.func) or call_scope
             _walk_body(stmt.func.body, nested_scope, resolver, promote_registry=promote_registry)

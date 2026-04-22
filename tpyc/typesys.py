@@ -255,10 +255,24 @@ class TpyType:
         """Return the fully qualified type name for module lookup, or None if not a module type."""
         return None
 
+    def _nominal_td(self) -> Optional["TypeDef"]:
+        """Return TypeDef for NominalType instances only.
+
+        Pending* types and LiteralType delegate `qualified_name()` to
+        their resolved form but should not inherit behavior from the
+        registry -- their class overrides (or base-class defaults) are
+        the source of truth. Structural wrappers with registered
+        TypeDefs (currently just `tpy.Ptr`) have their own method
+        overrides, so falling through to defaults here is also correct.
+        """
+        from tpyc.type_def_registry import type_def_of
+        if not isinstance(self, NominalType):
+            return None
+        return type_def_of(self)
+
     def is_compile_time_only(self) -> bool:
         """Return True if this type exists only at compile time (no C++ representation)."""
-        from tpyc.type_def_registry import type_def_of
-        td = type_def_of(self)
+        td = self._nominal_td()
         if td is not None:
             return td.is_compile_time_only
         return False
@@ -272,8 +286,7 @@ class TpyType:
         Object types (RecordType, etc.) return False and should
         use reference semantics when accessed from containers.
         """
-        from tpyc.type_def_registry import type_def_of
-        td = type_def_of(self)
+        td = self._nominal_td()
         if td is not None:
             return td.is_value_type
         return False
@@ -290,8 +303,7 @@ class TpyType:
 
     def is_expensive_copy(self) -> bool:
         """Return True if copying this value type involves heap allocation."""
-        from tpyc.type_def_registry import type_def_of
-        td = type_def_of(self)
+        td = self._nominal_td()
         if td is not None:
             return td.is_expensive_copy
         return False
@@ -301,8 +313,7 @@ class TpyType:
         storage (i.e. the result is a view into the container, not an owned copy).
         Source-mutation tracking at the call site ensures the borrow stays valid.
         User-defined types can opt in once borrow-source annotation (6.7) is implemented."""
-        from tpyc.type_def_registry import type_def_of
-        td = type_def_of(self)
+        td = self._nominal_td()
         if td is not None:
             return td.subscript_borrows
         return False
@@ -313,8 +324,8 @@ class TpyType:
         Default: value types are Send (copied, no aliasing). Override for
         pointer-like types (Ptr, Span) and containers (list, dict).
         """
-        from tpyc.type_def_registry import type_def_of, resolve_send_sync
-        td = type_def_of(self)
+        from tpyc.type_def_registry import resolve_send_sync
+        td = self._nominal_td()
         if td is not None:
             resolved = resolve_send_sync(td.is_send, self.type_args)
             if resolved is not None:
@@ -327,8 +338,8 @@ class TpyType:
         Default: value types are Sync (no mutable shared state). Override for
         mutable containers (list, dict) and pointer types.
         """
-        from tpyc.type_def_registry import type_def_of, resolve_send_sync
-        td = type_def_of(self)
+        from tpyc.type_def_registry import resolve_send_sync
+        td = self._nominal_td()
         if td is not None:
             resolved = resolve_send_sync(td.is_sync, self.type_args)
             if resolved is not None:
@@ -364,8 +375,7 @@ class TpyType:
         per-primitive overrides like str -> std::string_view). Otherwise
         defaults: value types = to_cpp(), non-value = to_cpp() + "&".
         """
-        from tpyc.type_def_registry import type_def_of
-        td = type_def_of(self)
+        td = self._nominal_td()
         if td is not None and td.param_cpp_formatter is not None:
             return td.param_cpp_formatter(self.type_args)
         if self.is_value_type():
@@ -387,8 +397,7 @@ class TpyType:
         Object types are passed by const reference: const T& name
         Use for constructor params and other contexts where mutation is not needed.
         """
-        from tpyc.type_def_registry import type_def_of
-        td = type_def_of(self)
+        td = self._nominal_td()
         if td is not None and td.param_cpp_formatter is not None:
             return f"{td.param_cpp_formatter(self.type_args)} {name}"
         if self.is_value_type():
@@ -414,16 +423,14 @@ class TpyType:
         Types passed as const ref (BigInt, str) cannot be reassigned in-place,
         so the codegen renames the param and emits a local mutable copy.
         """
-        from tpyc.type_def_registry import type_def_of
-        td = type_def_of(self)
+        td = self._nominal_td()
         if td is not None:
             return td.param_needs_copy_for_reassign
         return False
 
     def get_element_type(self) -> Optional['TpyType']:
         """Return the element type for container types, or None for non-containers."""
-        from tpyc.type_def_registry import type_def_of
-        td = type_def_of(self)
+        td = self._nominal_td()
         if td is not None and td.element_of is not None:
             return td.element_of(self.type_args)
         return None
@@ -434,8 +441,7 @@ class TpyType:
         Array and Span need explicit conversions in their initializer lists.
         Dynamic containers (list, etc.) handle implicit conversions.
         """
-        from tpyc.type_def_registry import type_def_of
-        td = type_def_of(self)
+        td = self._nominal_td()
         if td is not None:
             return td.needs_explicit_element_target
         return False
