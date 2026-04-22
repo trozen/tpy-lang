@@ -1615,6 +1615,16 @@ class ExpressionAnalyzer:
             # element type. The element type will be inferred from subsequent usage
             # (e.g. .append(v), xs[i] = v, param context, return context).
 
+            # Reuse an existing PendingListType for this expr if one was
+            # already created. analyze_expr can be called multiple times for
+            # the same arg expr (pre-overload arg-type collection, then post-
+            # overload _typecheck_call_args). Without this cache, each call
+            # mints a new literal_id and a new ListLiteralInfo added to
+            # pending_resolutions -- coercion writes to one, but the resolver
+            # still fails on the stale one.
+            cached = self.ctx.get_expr_type(expr)
+            if isinstance(cached, PendingListType) and cached.size == 0:
+                return cached
             literal_id = self.ctx.literal_counter
             self.ctx.literal_counter += 1
             info = ListLiteralInfo(
@@ -1626,7 +1636,9 @@ class ExpressionAnalyzer:
             )
             self.ctx.list_literals[literal_id] = info
             self.ctx.func.pending_resolutions.append(literal_id)
-            return PendingListType(UNKNOWN_ELEMENT, 0, literal_id)
+            typ = PendingListType(UNKNOWN_ELEMENT, 0, literal_id)
+            self.ctx.set_expr_type(expr, typ)
+            return typ
 
         # Analyze all elements, propagating expected type as hint when available
         if expected_elem is not None:

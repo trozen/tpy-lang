@@ -3,7 +3,9 @@
 # T/U (summing str lengths into Int32), the empty-input + initial case that
 # just returns the seed, and a reference-type accumulator (list[Int32]) that
 # verifies copy(initial) actually copies rather than aliasing the caller's
-# seed.
+# seed. Also exercises non-list iterables: literal list, range(), empty list
+# literal -- unblocked by the list-literal-vs-Iterable[T] conformance work
+# and the post-overload-resolution element-type coercion.
 from functools import reduce
 from tpy import Int32
 
@@ -37,5 +39,10 @@ def main() -> None:
     built = reduce(lambda acc, x: acc + [x], nums, init)
     print(built)   # [100, 1, 2, 3]
     print(init)    # [100] -- seed untouched
+
+    # Iterable[T] inputs -- list literal and range() pass directly without
+    # needing to bind to a typed local first.
+    print(reduce(add, [1, 2, 3], 0))  # 6
+    print(reduce(add, range(1, 5), 0))  # 10 (range(1,5) = 1+2+3+4)
 
 main()

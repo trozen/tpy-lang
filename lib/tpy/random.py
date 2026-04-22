@@ -44,12 +44,11 @@
 #
 # TODO -- Tier 3 (genuinely blocked on language work or missing
 # primitives):
-#   - `choices(pop, weights=, cum_weights=, k=)`: soft block on list-literal
-#     conformance to `Iterable[float]` for `weights=` (TODO.md:53). Ship
-#     today as `list[float]` and document the CPython-compat regression
-#     when we do.
-#   - `sample(pop, k, counts=None)`: same `Iterable[T]` gap, plus a more
-#     involved algorithm.
+#   - `choices(pop, weights=, cum_weights=, k=)`: mechanical sigs +
+#     weighted-selection wiring. The list-literal-vs-Iterable[T]
+#     conformance gap that used to block this is now resolved.
+#   - `sample(pop, k, counts=None)`: more involved algorithm (reservoir /
+#     Floyd's) + same signature shape.
 #   - `seed(None)` implicit auto-seed / `SystemRandom`: both need an OS
 #     entropy primitive (~10-line `@native` to `getentropy(3)` /
 #     `std::random_device`). Independent of the `os` module.

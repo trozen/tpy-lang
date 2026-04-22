@@ -54,6 +54,16 @@ void main() {
     std::cout << ::tpy::ListPrinter(built) << "\n";
     // print(init)    # [100] -- seed untouched
     std::cout << ::tpy::ListPrinter(init) << "\n";
+    // # Iterable[T] inputs -- list literal and range() pass directly without
+    // # needing to bind to a typed local first.
+    // print(reduce(add, [1, 2, 3], 0))  # 6
+    auto __tmp_7 = std::array<int32_t, 3>{1, 2, 3};
+    int32_t __tmp_8 = 0;
+    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, __tmp_7, __tmp_8) << "\n";
+    // print(reduce(add, range(1, 5), 0))  # 10 (range(1,5) = 1+2+3+4)
+    auto __tmp_9 = ::tpy::Range<int32_t>(1, 5);
+    int32_t __tmp_10 = 0;
+    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, __tmp_9, __tmp_10) << "\n";
 }
 
 void __tpy_init() {
@@ -66,7 +76,9 @@ void __tpy_init() {
     // # T/U (summing str lengths into Int32), the empty-input + initial case that
     // # just returns the seed, and a reference-type accumulator (list[Int32]) that
     // # verifies copy(initial) actually copies rather than aliasing the caller's
-    // # seed.
+    // # seed. Also exercises non-list iterables: literal list, range(), empty list
+    // # literal -- unblocked by the list-literal-vs-Iterable[T] conformance work
+    // # and the post-overload-resolution element-type coercion.
     // from functools import reduce
     ::tpystd::functools::__tpy_init();
     // main()

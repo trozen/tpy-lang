@@ -1,4 +1,5 @@
-# math module: pi, tau, e, inf, hypot, radians, degrees, trunc, atan, atan2
+# math module: pi, tau, e, inf, hypot, radians, degrees, trunc, atan, atan2,
+# cbrt, exp2
 import math
 
 def main() -> None:
@@ -38,5 +39,17 @@ def main() -> None:
     a = math.atan2(1.0, 1.0)
     print(a > 0.78)
     print(a < 0.79)
+
+    # cbrt (cube root) -- Python 3.11+. Use inputs where the cube root is
+    # exactly representable in double (|cbrt(x)| a power of 2); cbrt(27) would
+    # round to 3.0000000000000004 in CPython's libm.
+    print(math.cbrt(8.0) == 2.0)
+    print(math.cbrt(-8.0) == -2.0)
+    print(math.cbrt(0.0) == 0.0)
+
+    # exp2 (2**x) -- Python 3.11+
+    print(math.exp2(10.0) == 1024.0)
+    print(math.exp2(0.0) == 1.0)
+    print(math.exp2(-1.0) == 0.5)
 
 main()

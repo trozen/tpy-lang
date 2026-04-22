@@ -108,16 +108,15 @@ class ProtocolChecker:
             return self.type_conforms_to_protocol(FLOAT, protocol)
 
         # PendingListType: delegate to list[T] (resolves to list or Array, both conform).
-        # Empty literal (UNKNOWN_ELEMENT) with a single-type-arg protocol: trivially
-        # conforms -- no elements to check. Also push the protocol's element type
-        # into the pending list's coercion slot so the pending-list resolver can
-        # finalize it (otherwise it errors "Cannot infer element type").
+        # Empty literal (UNKNOWN_ELEMENT) with a single-type-arg protocol trivially
+        # conforms -- no elements to check. The pending-list coercion slot needed
+        # to finalize the element type is written by the caller AFTER overload
+        # resolution picks a winner (see CallAnalyzer._maybe_coerce_empty_list_to_protocol
+        # in sema/calls.py); doing it here would cement the first-probed overload's
+        # element type even if that overload is later rejected.
         if isinstance(actual, PendingListType):
             if (isinstance(actual.element_type, UnknownElementType)
                     and protocol.type_args and len(protocol.type_args) == 1):
-                info = self.ctx.list_literals.get(actual.literal_id)
-                if info is not None and info.coerced_element_type is None:
-                    info.coerced_element_type = protocol.type_args[0]
                 return True
             return self.type_conforms_to_protocol(make_list(actual.element_type), protocol)
 

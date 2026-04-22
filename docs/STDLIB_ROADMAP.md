@@ -349,7 +349,7 @@ Current: `lib/tpy/math.py` -- native C++ wrappers. Sufficient for numerics-heavy
 | `pi`, `tau`, `e`, `inf`, `nan` | Done | Constants as `Final[float]`. `nan` is `Final[float] = float("nan")` -- the `float(str)` literal forms (`"nan"`, `"inf"`, `"-inf"`, plus case/whitespace variants) fold at codegen to constexpr `std::numeric_limits<double>::quiet_NaN()` / `::infinity()`, bypassing the non-constexpr `tpy::float_from_str` runtime |
 | `log`, `log10`, `log2` | Done | `log(x, base)` is pure-TPy overload |
 | `log1p`, `expm1` | Done | Thin `std::log1p` / `std::expm1` |
-| `sqrt`, `pow`, `exp` | Done | |
+| `sqrt`, `cbrt`, `pow`, `exp`, `exp2` | Done | `cbrt` / `exp2` are Python 3.11+ |
 | `floor`, `ceil`, `trunc` | Done | Return `int` (BigInt) / generic `T` |
 | `sin`, `cos`, `tan` | Done | |
 | `asin`, `acos`, `atan`, `atan2` | Done | |
@@ -383,7 +383,7 @@ Tests: `math_module`, `math_extended`, `math_log_base`, `math_hyperbolic`,
 (covers `float("nan"/"inf"/"-inf")` fold).
 
 **Remaining gaps to reach 100%:**
-- `math.prod` int variant. Current signature `Iterable[float]` coerces each element to float; an `Iterable[int]` overload would return an exact BigInt product (matches CPython's polymorphic behavior, where `math.prod(range(1, 6)) == 120` not `120.0`).
+- `math.prod` int variant. Current signature `Iterable[float]` coerces each element to float; an `Iterable[int]` overload would return an exact BigInt product (matches CPython's polymorphic behavior, where `math.prod(range(1, 6)) == 120` not `120.0`). Attempted and reverted -- blocked on overload resolution not considering kwargs (TODO.md), so `math.prod([], start=1.0)` can't be disambiguated to the float overload.
 - Tuples as `Iterable[T]`. Tuples don't iterate today in TPy regardless of protocol context -- real CPython compat gap but bundled scope (needs coordinated sema + codegen + runtime story, not just a conformance flag flip). See TODO.md.
 
 ### time
@@ -626,7 +626,7 @@ or closure infrastructure:
 
 | Item | Status | Notes |
 |---|---|---|
-| `reduce(func, a, initial)` | Done | Pure TPy. `list[T]` surface (same `Iterable[T]` gap as `math.prod`) |
+| `reduce(func, a, initial)` | Done | Pure TPy. Takes `Iterable[T]` -- accepts list literals, `range()`, bound list/iter vars |
 | `reduce(func, a)` | Blocked | 2-arg form; blocked on overload + `Fn` resolution. See TODO.md |
 | `cmp_to_key` | Blocked | Pure TPy; blocked on readonly-through-generics. See TODO.md |
 | `total_ordering` | Missing | Class macro -- reuses `build_order` from `_macro_helpers.py`. Unblocked, a few hours of work |
@@ -693,9 +693,11 @@ Sketch:
     # ...
 
 Soft gaps for full CPython compat (neither gates the core MT port):
-- `Iterable[T]` conformance for list literals (TODO.md:53) constrains
-  `choices` / `sample` signatures. Workaround: declare as `list[T]` (same
-  compromise as `math.prod` / `fsum` / `dist`).
+- `choices` / `sample` kwarg iterables (`weights=`, `cum_weights=`, `counts=`)
+  ship as `list[float]`/`list[int]` rather than `Iterable[T]`. The list-
+  literal-vs-protocol conformance gap that blocked this has been closed
+  (see functools/math stdlib updates); remaining work is a mechanical
+  signature swap plus mixed-positional+kwarg argument wiring.
 - OS entropy primitive for implicit auto-seed and `SystemRandom`: ~10-line
   `@native` binding to `getentropy(3)` / `std::random_device`. Independent
   of the `os` module.
@@ -722,7 +724,7 @@ Soft gaps for full CPython compat (neither gates the core MT port):
 | `Random` class (per-instance state) | Done | Per-instance 624-word state; module-level functions delegate to `_inst: Random` singleton |
 | `choice(seq)`, `shuffle(seq)` | Missing | Tier 2: works today for value-type T; deferred pending one pass of verification |
 | `getstate()`, `setstate(state)` | Missing | Tier 2; CPython tuple shape awkward, `list[UInt32]` variant viable |
-| `choices(pop, weights=, cum_weights=, k=)` | Missing | Tier 3: soft `Iterable[T]` gap for list-literal weights (TODO.md:53) |
+| `choices(pop, weights=, cum_weights=, k=)` | Missing | Tier 3. The `Iterable[T]` conformance gap that previously blocked this is resolved; remaining work is a mechanical signature swap plus weighted-selection wiring |
 | `sample(pop, k, counts=None)` | Missing | Tier 3: same `Iterable[T]` gap + complex algorithm |
 | `binomialvariate(n, p)` | Missing | Tier 3: BTRS state machine; defer until demand |
 | `SystemRandom` class | Missing | Tier 3: depends on OS entropy primitive |
@@ -928,8 +930,8 @@ CPython's algorithm (sift-up/sift-down) line-for-line; heap items ordered by
 | `heapify` | Done | O(n) bottom-up construction |
 | `heappushpop` | Done | Push then pop in one step |
 | `heapreplace` | Done | Pop then push in one step |
-| `nsmallest(n, a)` | Done | Heap-based O(n + k log n). Takes `list[T]` (should be `Iterable[T]` to match CPython -- same gap as `math.prod`/`fsum`) |
-| `nlargest(n, a)` | Done | Sort-based O(n log n). Size-k-heap variant (O(n log k)) is a perf follow-up. Same `list[T]` vs `Iterable[T]` gap |
+| `nsmallest(n, a)` | Done | Heap-based O(n + k log n). Takes `list[T]` (CPython accepts `Iterable[T]`). Body uses `a.copy()` which requires list semantics; a switch to `Iterable[T]` would need `list(a)` materialization plus a story for the empty-input generic-T case (CPython returns `[]`; TPy would error on T inference). Deferred to when empty-iterable generic inference is resolved |
+| `nlargest(n, a)` | Done | Sort-based O(n log n). Size-k-heap variant (O(n log k)) is a perf follow-up. Same `list[T]` vs `Iterable[T]` gap as `nsmallest` |
 | `merge(*iterables, key=None, reverse=False)` | Missing | N-way merge; needs a generator-based iterator-heads heap (variadic-in-method-call gap is now fixed) |
 | `key=` arg on `nlargest`/`nsmallest` | Missing | Needs `Callable[[T], K: Comparable]` threading; straightforward add once prioritized |
 

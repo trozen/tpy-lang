@@ -2437,6 +2437,7 @@ class CallAnalyzer:
             self._check_error_return_handled(expr, matched)
             self._record_mutation_call_edges(expr)
             for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):
+                self._maybe_coerce_empty_list_to_protocol(arg_t, ptype)
                 self.check_own_param(arg, arg_t, pname, ptype)
                 if arg_t != ptype:
                     expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
@@ -2720,6 +2721,40 @@ class CallAnalyzer:
         self._check_error_return_handled(expr, func)
         return func.return_type
 
+    def _maybe_coerce_empty_list_to_protocol(
+        self, arg_type: TpyType, ptype: TpyType
+    ) -> None:
+        """Pin empty list literal's element type from a protocol param target.
+
+        Runs post-overload-resolution. Mirrors the list-literal-vs-list[T]
+        coercion in `local_deduction` but for protocol targets like
+        `Iterable[T]` / `Sequence[T]`. Without this, the pending-list resolver
+        errors "Cannot infer element type" for `f([])` where `f` takes
+        `Iterable[T]`. Kept out of `type_conforms_to_protocol` to keep that
+        check pure -- writing the coerced element type during overload probes
+        would cement the first-probed overload's element type even if that
+        overload is later rejected.
+        """
+        if not (isinstance(arg_type, PendingListType)
+                and isinstance(arg_type.element_type, UnknownElementType)):
+            return
+        inner = unwrap_readonly(unwrap_ref_type(ptype))
+        if not (is_protocol_type(inner) and isinstance(inner, NominalType)
+                and inner.type_args and len(inner.type_args) == 1):
+            return
+        elem_type = inner.type_args[0]
+        # Skip abstract/unresolved element types: pinning to a TypeParamRef or
+        # UnknownElementType (which can happen when generic inference for T
+        # fails on an all-empty-iterable call site) would just move the error
+        # from the pending-list resolver ("Cannot infer") to codegen
+        # ("UnknownElementType should be resolved"). Let the pending-list
+        # resolver produce its clearer user-facing error instead.
+        if isinstance(elem_type, (TypeParamRef, UnknownElementType)):
+            return
+        info = self.ctx.list_literals.get(arg_type.literal_id)
+        if info is not None and info.coerced_element_type is None:
+            info.coerced_element_type = elem_type
+
     def _typecheck_call_args(self, expr: TpyCall, func: FunctionInfo) -> None:
         """Type-check call arguments against function parameters (non-variadic)."""
         # Reject *unpacking on non-variadic functions
@@ -2729,6 +2764,7 @@ class CallAnalyzer:
                     f"Cannot use *unpacking: '{func.name}' does not accept *args", arg)
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
             arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
+            self._maybe_coerce_empty_list_to_protocol(arg_type, ptype)
             arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 
             if (isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType)
@@ -2951,6 +2987,7 @@ class CallAnalyzer:
                 check_ptype = resolved_ptype.pointee if vpc_active else resolved_ptype
 
                 arg_type = self.expr.analyze_expr_with_hint(arg, check_ptype)
+                self._maybe_coerce_empty_list_to_protocol(arg_type, check_ptype)
                 arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 
                 if (isinstance(arg_type, OwnType) and not isinstance(check_ptype, OwnType)

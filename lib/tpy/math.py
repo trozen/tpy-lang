@@ -4,20 +4,19 @@
 # Pending items to reach full CPython `math` parity. Each is blocked on a
 # specific compiler gap tracked in TODO.md; once fixed, update this module.
 #
-# - `Iterable[float]` parameter types for `prod`, `fsum`, `sumprod`, `dist`.
-#   CPython accepts any iterable for all four (including generators,
-#   `range(...)`, tuples, user iterators). Currently typed as `list[float]`
-#   as a workaround -- passing e.g. `range(5)` or a tuple errors today,
-#   which is a real CPython compat regression. Blocked on "List literals
-#   don't conform to Iterable[T] / Sequence[T] protocol parameters" in
-#   TODO.md Bugs.
-# - Strict-pairwise iteration for `sumprod` / `dist`. CPython's
-#   implementations use `zip(p, q, strict=True)` -- length mismatch raises
-#   `ValueError`. Once the Iterable conformance gap above is fixed, we need
-#   either a `zip_strict(...)` helper or inline pairwise `__next__` driving
-#   to detect mismatch without needing random access. Today the `list[float]`
-#   workaround gives us upfront `len()` checks for free.
-# - Int-typed overloads for `prod`. Currently `list[float]` only.
+# - `prod` int overload. Current `Iterable[float]` signature coerces each
+#   element to float; CPython's `math.prod` is polymorphic and returns int
+#   for all-int input (`math.prod(range(1, 6)) == 120`, not `120.0`).
+#   Attempted twice; blocked on "Overload resolution ignores keyword
+#   arguments" in TODO.md -- `math.prod([], start=1.0)` can't be
+#   disambiguated to the float overload when positional args alone (`[]`)
+#   conform to both. A generic `prod[T: Numeric]` is the cleaner long-term
+#   answer (blocked on a broader `Numeric` protocol -- see TODO.md).
+# - Tuple inputs to `prod`, `fsum`, `sumprod`, `dist`. CPython accepts
+#   tuples for all four (`math.prod((1.0, 2.0, 3.0))`). Currently fails
+#   conformance to `Iterable[float]`. Blocked on the "Tuple iteration +
+#   Iterable conformance bundle" TODO.md entry -- needs coordinated sema,
+#   codegen, and runtime work (std::tuple has no begin/end).
 # - Generic over int type for `gcd`, `isqrt` (result bounded by input, so
 #   generic is safe). Currently `int`-only forces BigInt allocation for
 #   small-int callers under --default-int=Int32. Pure-TPy generic is
@@ -75,11 +74,17 @@ def log2(x: float) -> float: ...
 @native("std::sqrt")
 def sqrt(x: float) -> float: ...
 
+@native("std::cbrt")
+def cbrt(x: float) -> float: ...
+
 @native("std::pow")
 def pow(x: float, y: float) -> float: ...
 
 @native("std::exp")
 def exp(x: float) -> float: ...
+
+@native("std::exp2")
+def exp2(x: float) -> float: ...
 
 @native("std::expm1")
 def expm1(x: float) -> float: ...
