@@ -2169,6 +2169,10 @@ class ExpressionGenerator:
                     and (expr.resolved_function_info.cpp_template
                          or expr.resolved_function_info.native_function)):
                 ctor = expr.resolved_function_info
+                # float("nan"/"inf"/...) -> constexpr numeric_limits fold.
+                folded = self.builtins._try_float_str_fold(ctor, expr.args)
+                if folded is not None:
+                    return folded
                 gen_args = []
                 for a, (_, ptype) in zip(expr.args, ctor.params):
                     gen_args.append(self.gen_call_arg(a, ptype, inline_template=True))
@@ -2270,6 +2274,10 @@ class ExpressionGenerator:
         # Callable variable call (possibly narrowed from Optional[Callable])
         fi = expr.resolved_function_info
         if fi and (fi.cpp_template or fi.native_function):
+            # float("nan"/"inf"/...) -> constexpr numeric_limits fold.
+            folded = self.builtins._try_float_str_fold(fi, expr.args)
+            if folded is not None:
+                return folded
             gen_args = [self.gen_call_arg(a, ptype)
                         for a, (_, ptype) in zip(expr.args, fi.params)]
             return self.builtins.gen_call_from_fi(fi, None, gen_args)
@@ -2489,6 +2497,18 @@ class ExpressionGenerator:
             if fi and fi.cpp_template and not fi.type_params:
                 gen_args = [self.builtins._gen_expr_deref(arg, ptype)
                             for arg, (_, ptype) in zip(expr.args, fi.params)]
+                return self.builtins.gen_call_from_fi(fi, None, gen_args)
+            # Type constructor with @native (e.g., builtins.float("nan")). Route
+            # through gen_call_from_fi with None receiver -- the receiver is a
+            # module namespace, not a value, so it must not be prepended to the
+            # native call's args. Falls through to gen_method_from_function_info
+            # otherwise, which would emit e.g. float_from_str(builtins, "nan").
+            if fi and fi.native_function and module_info and expr.method in module_info.records:
+                folded = self.builtins._try_float_str_fold(fi, expr.args)
+                if folded is not None:
+                    return folded
+                gen_args = [self.gen_call_arg(a, p.type)
+                            for a, p in zip(expr.args, fi.params)]
                 return self.builtins.gen_call_from_fi(fi, None, gen_args)
 
         # Check for builtin method with native_function or cpp_template first

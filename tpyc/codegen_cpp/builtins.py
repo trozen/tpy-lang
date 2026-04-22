@@ -32,6 +32,24 @@ if TYPE_CHECKING:
     from .types import TypeResolver
 
 
+# float(str) special-value tokens that fold to constexpr numeric_limits at
+# codegen, bypassing the non-constexpr runtime tpy::float_from_str. Matches
+# CPython's case-insensitive, whitespace-trimming semantics. Note: CPython
+# preserves the sign bit for float("-nan"), so emitting -quiet_NaN() (IEEE 754
+# sign-bit flip) is bit-for-bit equivalent, not just functionally-isnan.
+_FLOAT_STR_CONSTANTS: dict[str, str] = {
+    "nan": "std::numeric_limits<double>::quiet_NaN()",
+    "+nan": "std::numeric_limits<double>::quiet_NaN()",
+    "-nan": "-std::numeric_limits<double>::quiet_NaN()",
+    "inf": "std::numeric_limits<double>::infinity()",
+    "+inf": "std::numeric_limits<double>::infinity()",
+    "-inf": "-std::numeric_limits<double>::infinity()",
+    "infinity": "std::numeric_limits<double>::infinity()",
+    "+infinity": "std::numeric_limits<double>::infinity()",
+    "-infinity": "-std::numeric_limits<double>::infinity()",
+}
+
+
 class BuiltinGenerator:
     """Generates C++ code for builtin functions and type constructors."""
 
@@ -174,6 +192,24 @@ class BuiltinGenerator:
         return [self._gen_expr_deref(arg, ptype)
                 for arg, (_, ptype) in zip(expr.args, fi.params)]
 
+    @staticmethod
+    def _try_float_str_fold(fi: FunctionInfo, args: list[TpyExpr]) -> str | None:
+        """Fold `float("nan"/"inf"/"-inf"/...)` to a constexpr numeric_limits.
+
+        Returns the C++ expression string if the call resolves to the builtin
+        `float.__init__(str)` with a recognized special-value literal arg;
+        otherwise None (caller proceeds with the normal native dispatch that
+        emits `tpy::float_from_str(...)`).
+        """
+        if not (fi.is_method and fi.name == "__init__" and len(args) == 1):
+            return None
+        if fi.owning_type_qname != "builtins.float":
+            return None
+        arg = args[0]
+        if not isinstance(arg, TpyStrLiteral):
+            return None
+        return _FLOAT_STR_CONSTANTS.get(arg.value.strip().lower())
+
     def gen_template_or_native_call(self, args: list[TpyExpr],
                                     overloads: list[FunctionInfo], *,
                                     fi: FunctionInfo | None = None,
@@ -185,6 +221,18 @@ class BuiltinGenerator:
         type_args: inferred type arguments for generic calls.
         """
         if fi and (fi.cpp_template or fi.native_name):
+            # float("nan"/"inf"/"-inf"/aliases) -> constexpr numeric_limits fold.
+            # Defensive: gen_template_or_native_call is currently called for
+            # free functions / module functions, not record __init__, so this
+            # won't fire for float.__init__ today (that path goes through
+            # _gen_call / _gen_method_call direct calls to gen_call_from_fi,
+            # which have their own fold invocations). Kept here so a future
+            # caller that passes fi=float.__init__ through this entry point
+            # still folds correctly. Gated on fi.is_method + fi.owning_type_qname
+            # so user shadows of `float` don't fold.
+            folded = self._try_float_str_fold(fi, args)
+            if folded is not None:
+                return folded
             if fi.cpp_template:
                 # Template strings handle move semantics themselves (may embed std::move)
                 gen_args = [self._gen_expr_deref(arg, ptype)

@@ -2921,6 +2921,14 @@ class FunctionInfo:
     error_return_type: Optional[str] = None  # @error_return(E) exception type name
     builtin_decorator_key: Optional[str] = None  # e.g. "tpy.readonly" -- links .py function to decorator semantics
     qualified_name: str = ""  # Full dotted path, e.g. "builtins.print", "tpy.copy", "__main__.foo"
+    # For methods: qname of the enclosing record, e.g. "builtins.float".
+    # Populated by record-method registration (sema/registration.py) and
+    # preserved across dataclass_replace. NOT uniformly set on ad-hoc
+    # FunctionInfo constructions in sema/calls.py and sema/methods.py
+    # (virtual calls, partial application, callable fields, protocol method
+    # bindings, etc.). Readers using this for qname-based dispatch should
+    # tolerate None (treat as "unknown / no qname-based match").
+    owning_type_qname: str | None = None
     mutated_params: Optional[frozenset[int]] = None  # Param indices proven mutated; None = unknown (conservative)
     structural_mutated_params: Optional[frozenset[int]] = None
     # Like mutated_params, but only structural mutations (append/insert/clear/del/etc.) that

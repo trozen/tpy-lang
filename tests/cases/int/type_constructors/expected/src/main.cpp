@@ -56,9 +56,9 @@ void __tpy_init() {
     // print(float("1e3"))    # 1000.0
     std::cout << ::tpy::print_float(::tpy::float_from_str("1e3")) << "\n";
     // print(float("inf"))    # inf
-    std::cout << ::tpy::print_float(::tpy::float_from_str("inf")) << "\n";
+    std::cout << ::tpy::print_float(std::numeric_limits<double>::infinity()) << "\n";
     // print(float("-inf"))   # -inf
-    std::cout << ::tpy::print_float(::tpy::float_from_str("-inf")) << "\n";
+    std::cout << ::tpy::print_float(-std::numeric_limits<double>::infinity()) << "\n";
     // # --- bool constructors ---
     // # bool(float)
     // print(bool(0.0))      # False

@@ -4,9 +4,6 @@
 # Pending items to reach full CPython `math` parity. Each is blocked on a
 # specific compiler gap tracked in TODO.md; once fixed, update this module.
 #
-# - `nan` constant. `Final[float] = float('nan')` and similar non-literal
-#   initializers currently constexpr-panic. Blocked on the "Final initializer
-#   overflow / div-by-zero" entry in TODO.md Bugs.
 # - `Iterable[float]` parameter types for `prod`, `fsum`, `sumprod`, `dist`.
 #   CPython accepts any iterable for all four (including generators,
 #   `range(...)`, tuples, user iterators). Currently typed as `list[float]`
@@ -21,8 +18,6 @@
 #   to detect mismatch without needing random access. Today the `list[float]`
 #   workaround gives us upfront `len()` checks for free.
 # - Int-typed overloads for `prod`. Currently `list[float]` only.
-# - `perm(n)` one-arg form (equivalent to `factorial(n)`). Requires
-#   `Optional[int]` default with kw-only semantics.
 # - Generic over int type for `gcd`, `isqrt` (result bounded by input, so
 #   generic is safe). Currently `int`-only forces BigInt allocation for
 #   small-int callers under --default-int=Int32. Pure-TPy generic is
@@ -61,6 +56,7 @@ pi: Final[float] = 3.141592653589793
 tau: Final[float] = 6.283185307179586
 e: Final[float] = 2.718281828459045
 inf: Final[float] = 1e309
+nan: Final[float] = float("nan")
 
 @overload
 @native("std::log")
@@ -272,6 +268,11 @@ def isqrt(n: int) -> int:
         y = (x + n // x) // 2
     return x
 
+@overload
+def perm(n: int) -> int:
+    return factorial(n)
+
+@overload
 def perm(n: int, k: int) -> int:
     if n < 0 or k < 0:
         raise ValueError("perm() arguments must be non-negative")

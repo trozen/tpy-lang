@@ -21,6 +21,13 @@ def main() -> None:
     print(math.isnan(nan))
     print(math.isfinite(nan))
 
+    # math.nan is accessible as a Final[float] constant (constexpr nan)
+    print(math.isnan(math.nan))
+    print(math.isfinite(math.nan))
+    # NaN never equals itself (IEEE 754); isclose(nan, nan) is False in CPython
+    print(math.nan == math.nan)
+    print(math.isclose(math.nan, math.nan))
+
     # copysign
     print(math.copysign(3.0, -1.0))
     print(math.copysign(-3.0, 1.0))
@@ -73,6 +80,9 @@ def main() -> None:
     print(math.perm(5, 2))
     print(math.perm(5, 5))
     print(math.perm(5, 6))
+    # perm(n) one-arg form == factorial(n)
+    print(math.perm(0))
+    print(math.perm(5))
     print(math.comb(5, 0))
     print(math.comb(5, 2))
     print(math.comb(10, 5))

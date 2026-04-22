@@ -8,6 +8,10 @@ True
 False
 True
 False
+True
+False
+False
+False
 -3.0
 3.0
 -0.0
@@ -40,6 +44,8 @@ True
 20
 120
 0
+1
+120
 1
 10
 252

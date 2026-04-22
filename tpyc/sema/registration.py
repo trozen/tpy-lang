@@ -450,6 +450,13 @@ class TypeRegistrar:
 
         # Register all methods
         methods = {}
+        # Compute the record's qname once so method FunctionInfos can carry it
+        # (enables qname-based identification at codegen, e.g. peephole folds).
+        if record.builtin_type_key:
+            owning_type_qname = record.builtin_type_key
+        else:
+            _mod = public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace) or self.ctx.module_name
+            owning_type_qname = f"{_mod}.{record.name}"
         for method in record.methods:
             method_has_type_params = bool(method.type_params)
             allow_tpref = is_generic or method_has_type_params
@@ -630,6 +637,7 @@ class TypeRegistrar:
                 error_return_type=(qualify_exception_name(method.error_return, self.ctx.registry)
                                    if method.error_return else None),
                 kwarg_name=method.kwarg_name,
+                owning_type_qname=owning_type_qname,
             )
             # @inline: store the body expression for call-site inlining.
             # Body must be a single call statement. Cloned and substituted at call sites.
@@ -689,6 +697,7 @@ class TypeRegistrar:
                 return_type=record_self_type,
                 is_method=True,
                 is_readonly=False,
+                owning_type_qname=owning_type_qname,
             )]
 
         # Attach resolved bounds to TypeParamRef instances in RecordInfo method
@@ -710,6 +719,7 @@ class TypeRegistrar:
                             is_staticmethod=func_info.is_staticmethod, linkage=func_info.linkage,
                             native_name=func_info.native_name, cpp_template=func_info.cpp_template,
                             type_params=func_info.type_params, type_param_bounds=func_info.type_param_bounds,
+                            owning_type_qname=func_info.owning_type_qname,
                         )
 
         # Validate __copy__ signature

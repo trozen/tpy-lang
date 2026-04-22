@@ -121,7 +121,7 @@ Examples of the policy in action:
 | Module | Priority | Status | % | Approach | Blockers / Notes |
 |---|---|---|---|---|---|
 | [`builtins`](#builtins) | P0 | Partial | ~70% | mixed | Implicit import. Core types + most common functions + key exceptions present. Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, most specialized exceptions (`IndexError`, `KeyError`, `TypeError`, etc. -- currently panic), `hasattr`/`getattr`/`setattr` (dynamic attr), `callable`, `id`, `type(x)` runtime. See [builtins](#builtins) for per-item status |
-| [`math`](#math) | P0 | Partial | ~90% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present and correct for in-spec args; gaps are `nan` constant (blocked on Final-initializer constant folding) and signature-restricted iterables on `prod`/`fsum`/`sumprod`/`dist` (blocked on list-literal-vs-protocol conformance) -- real CPython compat regressions, not UX nits |
+| [`math`](#math) | P0 | Partial | ~95% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present and correct for in-spec args; the remaining gap is signature-restricted iterables on `prod`/`fsum`/`sumprod`/`dist` (blocked on list-literal-vs-protocol conformance) -- real CPython compat regressions, not UX nits |
 | [`time`](#time) | P0 | Stub | ~10% | mixed | Thin clock/sleep syscalls + pure TPy. Missing perf_counter/monotonic/struct_time/strftime |
 | [`sys`](#sys) | P0 | Stub | ~5% | mixed | Thin syscall bindings + pure TPy. Only `argv`; needs stdout/stderr/exit/path/version_info |
 | [`os`](#os) | P0 | Missing | 0% | -- | Needs filesystem wrapper + path handling |
@@ -346,8 +346,7 @@ Current: `lib/tpy/math.py` -- native C++ wrappers. Sufficient for numerics-heavy
 
 | Item | Status | Notes |
 |---|---|---|
-| `pi`, `tau`, `e`, `inf` | Done | Constants as `Final[float]` |
-| `nan` | Missing | NaN isn't a float literal; `Final[float] = ...` non-literal initializers currently constexpr-panic (TODO.md bug #52) |
+| `pi`, `tau`, `e`, `inf`, `nan` | Done | Constants as `Final[float]`. `nan` is `Final[float] = float("nan")` -- the `float(str)` literal forms (`"nan"`, `"inf"`, `"-inf"`, plus case/whitespace variants) fold at codegen to constexpr `std::numeric_limits<double>::quiet_NaN()` / `::infinity()`, bypassing the non-constexpr `tpy::float_from_str` runtime |
 | `log`, `log10`, `log2` | Done | `log(x, base)` is pure-TPy overload |
 | `log1p`, `expm1` | Done | Thin `std::log1p` / `std::expm1` |
 | `sqrt`, `pow`, `exp` | Done | |
@@ -369,7 +368,7 @@ Current: `lib/tpy/math.py` -- native C++ wrappers. Sufficient for numerics-heavy
 | `gcd`, `lcm` | Done | Variadic `gcd(*ints)` / `lcm(*ints)` over BigInt. Internal `_gcd2` binary helper; `lcm` uses `(a // gcd(a,b)) * b` to keep the intermediate bounded by `max(|a|, |b|)`. Generic-over-int-type is a follow-up (see math.py header) |
 | `factorial` | Done | Pure-TPy over BigInt; raises `ValueError` on negative |
 | `isqrt` | Done | Pure-TPy Newton's method over BigInt |
-| `perm`, `comb` | Done | Pure-TPy over BigInt; binary form (`k` is required positional, not optional as in CPython) |
+| `perm`, `comb` | Done | Pure-TPy over BigInt. `perm` has both one-arg (`perm(n) == factorial(n)`) and two-arg overloads via `@overload`. `comb` is binary only |
 | `isclose` | Done | Pure-TPy; `rel_tol` / `abs_tol` are kw-only to match CPython |
 | `prod` | Done | Pure-TPy; `start` is kw-only to match CPython. Takes `list[float]` as a workaround -- CPython accepts any iterable; should be `Iterable[float]`. Blocked on list-literal-vs-protocol conformance (TODO.md). Int variant is a follow-up |
 | `fsum` | Done | Pure-TPy Neumaier compensated summation. Takes `list[float]` (should be `Iterable[float]` to match CPython) |
@@ -379,13 +378,13 @@ Current: `lib/tpy/math.py` -- native C++ wrappers. Sufficient for numerics-heavy
 
 Tests: `math_module`, `math_extended`, `math_log_base`, `math_hyperbolic`,
 `math_numeric`, `math_special`, `math_fma`, `math_frexp_generic`,
-`math_variadic` in `tests/cases/builtins/`.
+`math_variadic` in `tests/cases/builtins/`; `float_special_values` in
+`tests/cases/float/` (covers `float("nan"/"inf"/"-inf")` fold).
 
-**Remaining gaps to reach 100% (minus `nan`):**
+**Remaining gaps to reach 100%:**
 - `Iterable[float]` signatures for `prod`, `fsum`, `sumprod`, `dist` -- CPython accepts any iterable (generators, `range(...)`, tuples, user iterators) for all four. Current `list[float]` signatures are a real CPython compat regression, not just a UX nit. Blocked on list-literal-vs-protocol conformance (TODO.md).
 - Strict-pairwise iteration for `sumprod` / `dist` -- CPython uses `zip(p, q, strict=True)` internally so length mismatch raises `ValueError` without needing random access. Once Iterable conformance is fixed, we need either a `zip_strict` helper or inline pairwise `__next__` driving. Today the `list[float]` workaround gets us upfront `len()` checks for free.
 - `math.prod` int variant (currently only `list[float]`).
-- `math.perm(n)` one-arg form (equivalent to `factorial(n)`) -- optional second arg blocks on `Optional[int]` default with kw-only.
 
 ### time
 

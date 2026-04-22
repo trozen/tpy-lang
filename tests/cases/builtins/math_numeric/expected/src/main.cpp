@@ -31,6 +31,16 @@ void main() {
     std::cout << ::tpy::print_bool(::std::isnan(nan)) << "\n";
     // print(math.isfinite(nan))
     std::cout << ::tpy::print_bool(::std::isfinite(nan)) << "\n";
+    // # math.nan is accessible as a Final[float] constant (constexpr nan)
+    // print(math.isnan(math.nan))
+    std::cout << ::tpy::print_bool(::std::isnan(tpystd::math::nan)) << "\n";
+    // print(math.isfinite(math.nan))
+    std::cout << ::tpy::print_bool(::std::isfinite(tpystd::math::nan)) << "\n";
+    // # NaN never equals itself (IEEE 754); isclose(nan, nan) is False in CPython
+    // print(math.nan == math.nan)
+    std::cout << ::tpy::print_bool((tpystd::math::nan == tpystd::math::nan)) << "\n";
+    // print(math.isclose(math.nan, math.nan))
+    std::cout << ::tpy::print_bool(::tpystd::math::isclose(tpystd::math::nan, tpystd::math::nan, 1e-09, 0.0)) << "\n";
     // # copysign
     // print(math.copysign(3.0, -1.0))
     std::cout << ::tpy::print_float(::std::copysign(3.0, -(1.0))) << "\n";
@@ -122,6 +132,11 @@ void main() {
     std::cout << ::tpystd::math::perm(::tpy::BigInt(5), ::tpy::BigInt(5)) << "\n";
     // print(math.perm(5, 6))
     std::cout << ::tpystd::math::perm(::tpy::BigInt(5), ::tpy::BigInt(6)) << "\n";
+    // # perm(n) one-arg form == factorial(n)
+    // print(math.perm(0))
+    std::cout << ::tpystd::math::perm(::tpy::BigInt(0)) << "\n";
+    // print(math.perm(5))
+    std::cout << ::tpystd::math::perm(::tpy::BigInt(5)) << "\n";
     // print(math.comb(5, 0))
     std::cout << ::tpystd::math::comb(::tpy::BigInt(5), ::tpy::BigInt(0)) << "\n";
     // print(math.comb(5, 2))

@@ -1129,6 +1129,7 @@ class ExpressionAnalyzer:
                                 native_name=method.native_name,
                                 native_function=method.native_function,
                                 is_method=True,
+                                owning_type_qname=method.owning_type_qname,
                             )
                             expr.resolved_binop = ResolvedBinop(
                                 method=resolved_method,
