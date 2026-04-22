@@ -14,7 +14,7 @@ void test_single() {
     // print(p.x)
     std::cout << ::tpy::deref_check(p).x << "\n";
     // print(p.y)
-    std::cout << ::tpy::deref_check(p).y << "\n";
+    std::cout << p->y << "\n";
     // unsafe_drop(p)
     ::tpy::destroy_at(p);
     // unsafe_free(p)
@@ -31,9 +31,9 @@ void test_mutate() {
     // p.x = Int32(100)
     ::tpy::deref_check(p).x = 100;
     // p.y = Int32(200)
-    ::tpy::deref_check(p).y = 200;
+    p->y = 200;
     // print(p.x, p.y)
-    std::cout << ::tpy::deref_check(p).x << " " << ::tpy::deref_check(p).y << "\n";
+    std::cout << p->x << " " << p->y << "\n";
     // unsafe_drop(p)
     ::tpy::destroy_at(p);
     // unsafe_free(p)

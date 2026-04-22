@@ -6,7 +6,7 @@
 |---------|--------|-------|
 | Regular f-strings -> `std::format` | **Done** | Format string + args validated at compile time, per-type wrapping, `!s`/`!r`, format specs |
 | `FStr` compile-time-only type | **Done** | Keeps f-string decomposed (format template + typed parts) instead of lowering to `std::format` |
-| Call macro decomposition (`MacroArg.as_fstring()`) | **Done** | `is_static_str` detection for literal/ternary-of-literal optimization |
+| Call macro decomposition (`MacroArg.as_fstring()`) | **Done** | `is_static_str` detection for literals, ternaries of literals, and `Final[str]` name references (local or imported) |
 | Tuple-based dispatch | **Done** | Heterogeneous `std::tuple` with per-type wrapping to native generic functions |
 | Macro context introspection | **Done** | `first_param`, `get_field_type`, `get_method_return_type`, `qualified_name` -- auto-discover logger by name with qualified type check |
 | `FStr[wrap_fn]` protocol-based wrapping | **Planned** | Per-type wrapping via overload set, eliminates `@inline` requirement. See design below |
@@ -127,8 +127,10 @@ Works for both methods and free functions.
 
 `MacroArg.as_fstring()` returns `(format_template, [MacroFStringPart])`. Each
 part carries the expression AST node, its resolved type, and format spec.
-`MacroFStringPart.is_static_str` detects string literals and ternary-of-literals
-(recursively) for static storage optimization.
+`MacroFStringPart.is_static_str` is True for: string literals, ternaries of
+literals (recursively), and name references that resolve to a module-level
+`Final[str]` constant -- local or imported. Used to route parts through
+zero-alloc wrappers (pointer-only) versus copying wrappers in log-style macros.
 
 F-string validity checks (formattable types, `__str__`/`__repr__`) are skipped
 for FStr context (`for_fstr=True`) -- the macro handles per-type dispatch.
@@ -295,7 +297,8 @@ Forces explicit decisions about how each type enters the log buffer.
 ### StaticStr
 
 String literals inside FStr context have type `StaticStr` instead of `str`.
-The compiler already detects literals and ternary-of-literals (`_is_static_str`).
+The compiler already detects literals, ternaries of literals, and `Final[str]`
+name references (`_is_static_str`).
 `StaticStr` maps to `const char*` or a pointer wrapper -- static storage
 duration, zero cost.
 

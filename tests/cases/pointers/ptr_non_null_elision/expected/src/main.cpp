@@ -16,7 +16,7 @@ void read_via_param(Point* p) {
     // print(p.x)
     std::cout << ::tpy::deref_check(p).x << "\n";
     // print(p.sum())
-    std::cout << ::tpy::deref_check(p).sum() << "\n";
+    std::cout << p->sum() << "\n";
 }
 
 // def main() -> None:

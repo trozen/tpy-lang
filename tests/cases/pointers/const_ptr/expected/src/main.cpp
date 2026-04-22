@@ -27,7 +27,7 @@ void test_ptr_to_const_ptr() {
     // print(mp.x)
     std::cout << ::tpy::deref_check(mp).x << "\n";
     // print(mp.y)
-    std::cout << ::tpy::deref_check(mp).y << "\n";
+    std::cout << mp->y << "\n";
     // # Modify through mutable pointer
     // modify_via_ptr(mp, 100)
     modify_via_ptr(mp, 100);
@@ -57,7 +57,7 @@ void test_const_ptr_preserves_value() {
     // mp.x = 999
     ::tpy::deref_check(mp).x = 999;
     // print(cp.x)
-    std::cout << ::tpy::deref_check(cp).x << "\n";
+    std::cout << cp->x << "\n";
 }
 
 void __tpy_init() {

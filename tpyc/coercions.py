@@ -8,7 +8,7 @@ from typing import Callable, Optional
 
 from .typesys import (
     TpyType, IntLiteralType, FloatLiteralType,
-    NominalType, PtrType, is_readonly_ptr,
+    NominalType, PtrType, OptionalType, is_readonly_ptr,
     is_readonly_span, PendingListType, TypeParamRef, TypeParamKind, ReadonlyType,
     is_integer_type, unwrap_readonly,
 )
@@ -332,13 +332,31 @@ COERCIONS: list[Coercion] = [
         codegen=lambda e, _a, _b, _c: f"std::string({e})",
         protocol_safe=True,
     ),
-    # StrView -> str (allocates -- str is now std::string)
+    # StrView -> str. At ARG position both lower to std::string_view, so the
+    # transfer is identity; elsewhere (INIT/ASSIGN/RETURN) the target is owned
+    # std::string and materialization is required.
     Coercion(
         name="strview_to_str",
         from_type=is_str_view_type,
         to_type=is_str_type,
-        codegen=lambda e, _a, _b, _c: f"std::string({e})",
+        codegen=lambda e, _a, _b, c: e if c == CoercionContext.ARG else f"std::string({e})",
         protocol_safe=True,
+    ),
+    # Optional[StrView] <-> Optional[str] at arg position: both params lower to
+    # `std::optional<std::string_view>`, so the transfer is identity. Only safe
+    # in ARG context -- non-arg `str` is std::string, which would require a
+    # per-element construction.
+    Coercion(
+        name="optional_strview_to_str_arg",
+        from_type=lambda t: isinstance(t, OptionalType) and is_str_view_type(t.inner),
+        to_type=lambda t: isinstance(t, OptionalType) and is_str_type(t.inner),
+        contexts={CoercionContext.ARG},
+    ),
+    Coercion(
+        name="optional_str_to_strview_arg",
+        from_type=lambda t: isinstance(t, OptionalType) and is_str_type(t.inner),
+        to_type=lambda t: isinstance(t, OptionalType) and is_str_view_type(t.inner),
+        contexts={CoercionContext.ARG},
     ),
 
     # bytearray <-> bytes identity coercions (both map to std::vector<uint8_t>)

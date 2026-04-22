@@ -1,0 +1,1 @@
+main.py:11: error: Type mismatch in argument 's': expected str | None, got int | None

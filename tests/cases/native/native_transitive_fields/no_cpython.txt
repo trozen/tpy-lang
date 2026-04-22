@@ -1,0 +1,1 @@
+Requires real C++ native types accessed via get_s(); no CPython equivalent.

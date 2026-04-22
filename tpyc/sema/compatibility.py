@@ -319,7 +319,25 @@ class TypeCompatibility:
                     and not actual_inner.is_value_type()
                     and not isinstance(actual_inner, (OptionalType, PtrType, NoneType))):
                 self._mark_addr_taken(source_expr)
-            return self._check_compat(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx)
+            # Optional[A] -> Optional[B] via a whole-Optional coercion rule
+            # (e.g. str <-> StrView at arg position, where both lower to
+            # `std::optional<std::string_view>`). Try before stripping to the
+            # inner, since the inner check can't see that the wrappers share
+            # a C++ representation.
+            if isinstance(actual_inner, OptionalType):
+                ctx_for_coerce = coercion_ctx or context
+                if isinstance(ctx_for_coerce, CoercionContext):
+                    whole = resolve_coercion(actual_inner, expected, ctx_for_coerce)
+                    if whole is not None:
+                        return whole
+            result = self._check_compat(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx)
+            # Rewrap inner-mismatch errors with the declared Optional types so
+            # the diagnostic reads `expected str | None, got StrView | None`
+            # rather than the truncated `expected str, got StrView | None`.
+            if isinstance(result, CompatError) and isinstance(actual, OptionalType):
+                return CompatError(
+                    f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
+            return result
 
         # Optional[T] -> Optional[T] already handled by == check above
         # Optional[T] -> T: error (cannot implicitly unwrap)

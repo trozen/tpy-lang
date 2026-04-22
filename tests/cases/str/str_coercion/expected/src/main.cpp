@@ -47,7 +47,7 @@ void main() {
     take_string(std::string(sv));
     // # StrView -> str (allocates)
     // take_str(sv)  # view
-    take_str(std::string(sv));
+    take_str(sv);
     // # Char -> str
     // c: Char = "X"
     char c = 'X';

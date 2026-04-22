@@ -155,7 +155,7 @@ void __tpy_init() {
     // print(global_ptr.a)
     std::cout << ::tpy::deref_check(global_ptr).a << "\n";
     // print(global_ptr.b)
-    std::cout << ::tpy::deref_check(global_ptr).b << "\n";
+    std::cout << global_ptr->b << "\n";
     // # Test 9: Int32 += with global default-int value
     // counter: Int32 = 10
     counter = 10;

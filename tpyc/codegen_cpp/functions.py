@@ -279,6 +279,7 @@ class FunctionGenerator:
                    use_readonly_params: bool = False,
                    reassigned_params: set[str] | None = None,
                    mutated_params: frozenset[int] | None = None,
+                   addr_escapes_params: frozenset[int] = frozenset(),
                    defaults: list | None = None,
                    emit_defaults: bool = False,
                    class_type_params: set[str] | None = None,
@@ -340,9 +341,10 @@ class FunctionGenerator:
                 # Rename param so the body can declare a mutable local with the original name
                 part = ptype.to_cpp_param(f"__param_{cpp_pname}")
             elif const_params:
-                if mutated_params is not None and i in mutated_params:
-                    # Param directly mutated (method call, field write) -- keep
-                    # non-const even in const methods.
+                if (mutated_params is not None and i in mutated_params) or i in addr_escapes_params:
+                    # Param directly mutated (method call, field write) or its
+                    # address escapes into a mutable Ptr[T] field -- keep
+                    # non-const even in const methods / constructors.
                     part = ptype.to_cpp_param(cpp_pname)
                 elif (use_readonly_params
                         and self.ctx.is_ptr_variant_union(own)):
@@ -350,6 +352,7 @@ class FunctionGenerator:
                 else:
                     part = ptype.to_cpp_const_param(cpp_pname)
             elif (mutated_params is not None and i not in mutated_params
+                    and i not in addr_escapes_params
                     and (ptype.is_ref_param()
                          or self.ctx.is_ptr_variant_union(own))
                     and not isinstance(unwrap_ref_type(ptype), TypeParamRef)
@@ -542,6 +545,7 @@ class FunctionGenerator:
         mutated_params: 'frozenset[int] | None',
         reassigned_params: 'set[str] | None' = None,
         use_const_params: bool = False,
+        addr_escapes_params: 'frozenset[int]' = frozenset(),
     ) -> set[str]:
         """Return the set of param names that will be emitted as const T& in C++.
 
@@ -554,6 +558,8 @@ class FunctionGenerator:
             for i, (pname, ptype) in enumerate(params):
                 if mutated_params is not None and i in mutated_params:
                     continue
+                if i in addr_escapes_params:
+                    continue
                 unwrapped = unwrap_readonly(unwrap_ref_type(ptype))
                 if ((unwrapped.is_ref_param()
                      or self.ctx.is_ptr_variant_union(unwrapped))
@@ -565,6 +571,7 @@ class FunctionGenerator:
         for i, (pname, ptype) in enumerate(params):
             inner = unwrap_ref_type(ptype)
             if (i not in mutated_params
+                    and i not in addr_escapes_params
                     and (inner.is_ref_param()
                          or self.ctx.is_ptr_variant_union(inner))
                     and not isinstance(inner, TypeParamRef)
@@ -593,6 +600,15 @@ class FunctionGenerator:
             return overloads[-1].mutated_params
         return None
 
+    def _get_func_addr_escapes(self, func: TpyFunction) -> frozenset[int]:
+        """Return param indices whose address escapes via a mutable Ptr[T] field."""
+        if func.is_stub and not func.is_overload_stub:
+            return frozenset()
+        overloads = self.ctx.analyzer.registry.get_function(func.name)
+        if overloads:
+            return overloads[-1].addr_escapes_params
+        return frozenset()
+
     def _get_method_mutated_params(self, method: TpyFunction, record_name: str) -> frozenset[int] | None:
         """Return finalized mutated_params for a record method, or None if unavailable."""
         if method.is_stub or method.is_overload_stub:
@@ -603,6 +619,17 @@ class FunctionGenerator:
             if overloads:
                 return overloads[-1].mutated_params
         return None
+
+    def _get_method_addr_escapes(self, method: TpyFunction, record_name: str) -> frozenset[int]:
+        """Return method param indices whose address escapes via a mutable Ptr[T] field."""
+        if method.is_stub or method.is_overload_stub:
+            return frozenset()
+        record_info = self.ctx.analyzer.registry.get_record(record_name)
+        if record_info:
+            overloads = record_info.get_method_overloads(method.name)
+            if overloads:
+                return overloads[-1].addr_escapes_params
+        return frozenset()
 
     def _get_method_genuine_mutated_params(self, method: TpyFunction, record_name: str) -> frozenset[int] | None:
         """Return genuinely mutated params for const method codegen.
@@ -698,6 +725,7 @@ class FunctionGenerator:
         is_generic = bool(func.type_params)
         rp = self._get_reassigned_params(func)
         mp = self._get_func_mutated_params(func)
+        ae = self._get_func_addr_escapes(func)
         has_proto_params = bool(proto_params)
         has_fn_params = any(is_fn_type(pt) for _, pt in func.params)
 
@@ -715,7 +743,8 @@ class FunctionGenerator:
                                                      defaults=dfl, emit_defaults=True)
                       if has_proto_params or has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
-                                           mutated_params=mp, defaults=dfl, emit_defaults=True,
+                                           mutated_params=mp, addr_escapes_params=ae,
+                                           defaults=dfl, emit_defaults=True,
                                            use_readonly_params=func.is_readonly, func=func))
             out.write(f"{ret_type} {name}({params});\n")
         else:
@@ -726,7 +755,8 @@ class FunctionGenerator:
                                                      defaults=dfl, emit_defaults=True)
                       if has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
-                                           mutated_params=mp, defaults=dfl, emit_defaults=True,
+                                           mutated_params=mp, addr_escapes_params=ae,
+                                           defaults=dfl, emit_defaults=True,
                                            use_readonly_params=func.is_readonly, func=func))
             out.write(f"{ret_type} {name}({params});\n")
 
@@ -876,6 +906,7 @@ class FunctionGenerator:
         is_generic = bool(func.type_params)
         rp = self._get_reassigned_params(func)
         mp = self._get_func_mutated_params(func)
+        ae = self._get_func_addr_escapes(func)
         has_proto_params = bool(proto_params)
         has_fn_params = any(is_fn_type(pt) for _, pt in func.params)
 
@@ -892,6 +923,7 @@ class FunctionGenerator:
                       if has_proto_params or has_dynamic
                       else self.gen_params(func.params, func.type_params,
                                            reassigned_params=rp, mutated_params=mp,
+                                           addr_escapes_params=ae,
                                            use_readonly_params=func.is_readonly, func=func))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params}) {{\n")
         else:
@@ -900,6 +932,7 @@ class FunctionGenerator:
             params = (self.gen_params_with_protocols(func.params, mutated_params=mp) if has_dynamic
                       else self.gen_params(func.params, func.type_params,
                                            reassigned_params=rp, mutated_params=mp,
+                                           addr_escapes_params=ae,
                                            use_readonly_params=func.is_readonly, func=func))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params}) {{\n")
 
@@ -907,7 +940,8 @@ class FunctionGenerator:
         for pname, ptype in func.params:
             local_ns.bind_variable(pname, ptype)
         crp = self._build_const_ref_params(
-            func.params, mp, rp, use_const_params=func.is_readonly)
+            func.params, mp, rp, use_const_params=func.is_readonly,
+            addr_escapes_params=ae)
         self.statements.gen_body(out, func.body, func.params, func.return_type,
                                  func, local_ns,
                                  const_ref_params=crp)
@@ -1363,6 +1397,7 @@ class FunctionGenerator:
                             or method.name in CONST_PARAMS_METHODS)
         rp = self._get_reassigned_params(method)
         mp = self._get_method_mutated_params(method, record_name)
+        ae = self._get_method_addr_escapes(method, record_name)
         # For const methods, use genuine mutations only (direct Phase 1 minus
         # return-borrow) to avoid false positives from transitive propagation
         # or return-borrow marking.
@@ -1383,6 +1418,7 @@ class FunctionGenerator:
             if use_const_params:
                 params = self.gen_params(method.params, method.type_params, const_params=True,
                                          mutated_params=gmp,
+                                         addr_escapes_params=ae,
                                          use_readonly_params=const,
                                          defaults=dfl, emit_defaults=True,
                                          class_type_params=ctp, func=method)
@@ -1390,6 +1426,7 @@ class FunctionGenerator:
                 use_ro = const and not method.auto_readonly_params_resolved
                 params = self.gen_params(method.params, method.type_params,
                                          reassigned_params=rp, mutated_params=mp,
+                                         addr_escapes_params=ae,
                                          use_readonly_params=use_ro,
                                          defaults=dfl, emit_defaults=True,
                                          class_type_params=ctp, func=method)
@@ -1451,7 +1488,8 @@ class FunctionGenerator:
         prev_consuming = self.ctx.in_consuming_method
         self.ctx.in_consuming_method = method.is_consuming
         method_crp = self._build_const_ref_params(
-            method.params, mp, rp, use_const_params)
+            method.params, mp, rp, use_const_params,
+            addr_escapes_params=ae)
         if use_const_params and not static:
             method_crp.add("self")
         self.statements.gen_body(out, method.body, method.params, method.return_type,

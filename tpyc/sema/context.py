@@ -403,6 +403,14 @@ class FunctionTrackingState:
     # --- Pointer provenance tracking ---
     param_provenance_vars: set[str] = field(default_factory=set)
     non_null_ptr_vars: set[str] = field(default_factory=set)
+    # Narrowing accumulated during a single statement's expression analysis;
+    # flushed into non_null_ptr_vars at the statement boundary. Deferred so
+    # sibling accesses within an unspecified-order expression (e.g. `p.x + p.y`,
+    # `p.x = p.x + 1`) keep their individual checks -- C++ leaves arithmetic
+    # and RHS-vs-LHS sub-expression order unspecified (C++17 only sequences
+    # RHS-before-LHS for the whole assignment, not for sub-expressions),
+    # so within-statement elision would be unsafe.
+    pending_non_null_ptr_vars: set[str] = field(default_factory=set)
 
     # --- Consumed variable tracking ---
     consumed_vars: set[str] = field(default_factory=set)
@@ -427,6 +435,11 @@ class FunctionTrackingState:
     current_struct_mutated_param_names: set[str] = field(default_factory=set)
     current_returned_param_names: set[str] = field(default_factory=set)
     current_consumed_own_params: set[str] = field(default_factory=set)
+    # Params whose address has been observed escaping into a mutable Ptr[T]
+    # field via `FIELD = PARAM`. Finalized to FunctionInfo.addr_escapes_params
+    # at body-analysis end; consumed by param-signature codegen to suppress
+    # the `const T&` default so the `&param -> T*` store type-checks.
+    current_addr_escape_param_names: set[str] = field(default_factory=set)
 
 
 @dataclass

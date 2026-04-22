@@ -863,6 +863,10 @@ class SemanticAnalyzer:
                 i for i, pname in enumerate(param_list)
                 if pname in self.ctx.func.current_returned_param_names
             )
+            func_info.addr_escapes_params = frozenset(
+                i for i, pname in enumerate(param_list)
+                if pname in self.ctx.func.current_addr_escape_param_names
+            )
             # Generator functions: the returned struct stores non-value params
             # as T& references (or &ref lambda captures), and str params as
             # string_view, so the result borrows from those params
@@ -1712,6 +1716,10 @@ class SemanticAnalyzer:
                     if "self" in self.ctx.func.current_returned_param_names:
                         returned = returned | frozenset([-1])
                     method_fi.return_borrows_from = returned
+                    method_fi.addr_escapes_params = frozenset(
+                        i for i, pname in enumerate(param_list)
+                        if pname in self.ctx.func.current_addr_escape_param_names
+                    )
 
             self._warn_unconsumed_own_params(method)
             self._store_analysis_results(method, scan)

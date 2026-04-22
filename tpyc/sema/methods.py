@@ -692,6 +692,9 @@ class MethodAnalyzer:
                             self.ctx.ptr_deref_facts[
                                 (expr.loc.line, obj_key)
                             ] = expr.ptr_non_null
+                        # Post-access narrowing: queued for flush at statement
+                        # boundary (see pending_non_null_ptr_vars docstring).
+                        self.ctx.func.pending_non_null_ptr_vars.add(obj_key)
                 # Enforce readonly: cannot call non-readonly method on readonly receiver
                 if is_readonly_receiver:
                     info = expr.resolved_function_info

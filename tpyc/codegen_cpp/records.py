@@ -258,10 +258,13 @@ class RecordGenerator:
                         )
                         out.write(f"{INDENT}{template_header}")
                 else:
+                    init_ae = self.functions._get_method_addr_escapes(
+                        record.init_method, record.name)
                     cpp_params = self.functions.gen_params(
                         record.init_method.params,
                         record.init_method.type_params,
                         const_params=True,
+                        addr_escapes_params=init_ae,
                         defaults=init_defaults,
                         emit_defaults=True,
                         class_type_params=set(record.type_params) if record.type_params else None,

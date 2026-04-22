@@ -43,6 +43,10 @@ class InitTracker:
         self.ctx.func.rvalue_vars = set(state.rvalue_vars)
         self.ctx.func.param_provenance_vars = set(state.param_provenance_vars)
         self.ctx.func.non_null_ptr_vars = set(state.non_null_ptr_vars)
+        # Invariant: pending post-access ptr-narrowing flushes at statement
+        # boundary (see `analyze_stmt` try/finally). Any entries surviving a
+        # restore would leak into a branch they don't belong to.
+        self.ctx.func.pending_non_null_ptr_vars.clear()
         self.ctx.func.narrowed_types = dict(state.narrowed_types)
         self.ctx.func.consumed_vars = set(state.consumed_vars)
         self.ctx.func.borrow_tracker.restore_from_frozen(state.borrows)

@@ -5017,7 +5017,7 @@ Send/Sync rules for built-in types:
   - Remaining: AST splicing in quote (embed computed AST nodes), hygiene
 - **Phase 3 done**: FStr f-string decomposition for zero-copy logging. See `docs/FSTR_DESIGN.md` for full design, limitations, and future direction (`FStr[wrap_fn]`).
   - `FStr` compile-time-only type, `@inline` decorator for call-site body inlining
-  - `MacroArg.as_fstring()` for call macro decomposition, `MacroFStringPart.is_static_str` for literal detection
+  - `MacroArg.as_fstring()` for call macro decomposition, `MacroFStringPart.is_static_str` for detecting static-storage expressions (literals, ternaries of literals, `Final[str]` name references)
   - Tuple-based dispatch to native generic functions via `std::apply`
   - `CallMacroContext` introspection: `first_param`, `get_field_type`, `get_method_return_type`, `qualified_name` -- macros discover fields/methods by name on first param (self for methods) with qualified type checking
 

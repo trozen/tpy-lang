@@ -597,6 +597,19 @@ class StatementAnalyzer:
 
     def analyze_stmt(self, stmt: TpyStmt) -> None:
         """Analyze a statement."""
+        try:
+            self._analyze_stmt_dispatch(stmt)
+        finally:
+            # Flush post-access ptr narrowing queued during expression analysis.
+            # See FunctionTrackingState.pending_non_null_ptr_vars for rationale
+            # (deferred to statement boundary so within-statement sibling
+            # accesses keep their individual null checks).
+            pending = self.ctx.func.pending_non_null_ptr_vars
+            if pending:
+                self.ctx.func.non_null_ptr_vars |= pending
+                pending.clear()
+
+    def _analyze_stmt_dispatch(self, stmt: TpyStmt) -> None:
         if isinstance(stmt, TpyVarDecl):
             self._analyze_var_decl(stmt)
         elif isinstance(stmt, TpyTupleUnpack):
@@ -3069,6 +3082,14 @@ class StatementAnalyzer:
             # Own[T] param stored in a field/container — mark as consumed
             if isinstance(stmt.value, TpyName) and stmt.value.name in self.ctx.func.current_param_names:
                 self.ctx.mark_own_param_consumed(stmt.value.name)
+                # Address-escape tracking: storing a param into a mutable Ptr[T]
+                # takes its address. Suppress the perf-default `const T&` param
+                # emission so the `&param -> T*` store type-checks.
+                tgt_inner = unwrap_qualifiers(target_type)
+                if (isinstance(stmt.target, TpyFieldAccess)
+                        and isinstance(tgt_inner, PtrType)
+                        and not tgt_inner.is_readonly):
+                    self.ctx.func.current_addr_escape_param_names.add(stmt.value.name)
         if isinstance(stmt.target, TpyName):
             # Track param rebinding (subsequent mutations target the new local, not the arg)
             if stmt.target.name in self.ctx.func.current_param_names:

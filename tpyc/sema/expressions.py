@@ -1546,6 +1546,12 @@ class ExpressionAnalyzer:
                             self.ctx.ptr_deref_facts[
                                 (expr.loc.line, obj_key)
                             ] = expr.ptr_non_null
+                        # Post-access narrowing: a successful deref here means
+                        # the pointer is non-null for *subsequent statements*;
+                        # queued for flush at statement boundary rather than
+                        # applied immediately to avoid unsafe elision between
+                        # unspecified-order siblings in the same expression.
+                        self.ctx.func.pending_non_null_ptr_vars.add(obj_key)
                 # Propagate readonly: accessing a non-value field through a
                 # readonly reference yields a readonly result.
                 # Ptr[T] fields become Ptr[readonly[T]], Span[T] -> Span[readonly[T]].

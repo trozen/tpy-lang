@@ -2936,6 +2936,12 @@ class FunctionInfo:
     # tolerate None (treat as "unknown / no qname-based match").
     owning_type_qname: str | None = None
     mutated_params: Optional[frozenset[int]] = None  # Param indices proven mutated; None = unknown (conservative)
+    # Param indices whose address escapes into a mutable Ptr[T] field via
+    # `self.FIELD = PARAM`. Used to suppress the `const T&` perf-default param
+    # emission that would otherwise trigger `const T* -> T*` in the member
+    # initializer list. Populated during body analysis; never propagated
+    # transitively (escape is a per-body structural fact).
+    addr_escapes_params: frozenset[int] = frozenset()
     structural_mutated_params: Optional[frozenset[int]] = None
     # Like mutated_params, but only structural mutations (append/insert/clear/del/etc.) that
     # invalidate element references. Excludes element-ref taking (a=items[0]) and field writes.

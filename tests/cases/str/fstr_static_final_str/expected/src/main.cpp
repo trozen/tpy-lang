@@ -13,7 +13,7 @@ void main() {
     // # VERSION (imported Final[str]) -> static
     // # dynamic (non-final) -> dynamic
     // label(f"hello {NAME} v{VERSION} ({dynamic})")
-    ::tpyapp::label_infra::emit("hello {} v{} ({})", {::tpyapp::label_infra::tag("static", std::string(NAME)), ::tpyapp::label_infra::tag("static", std::string(::tpyapp::const_mod::VERSION)), ::tpyapp::label_infra::tag("dynamic", dynamic)});
+    ::tpyapp::label_infra::emit("hello {} v{} ({})", {::tpyapp::label_infra::tag("static", NAME), ::tpyapp::label_infra::tag("static", ::tpyapp::const_mod::VERSION), ::tpyapp::label_infra::tag("dynamic", dynamic)});
 }
 
 void __tpy_init() {

@@ -9,7 +9,7 @@ void read_via_ptr(Point* p) {
     // print(p.x)
     std::cout << ::tpy::deref_check(p).x << "\n";
     // print(p.y)
-    std::cout << ::tpy::deref_check(p).y << "\n";
+    std::cout << p->y << "\n";
 }
 
 // def read_via_constptr(p: Ptr[readonly[Point]]) -> None:
@@ -17,7 +17,7 @@ void read_via_constptr(const Point* p) {
     // print(p.x)
     std::cout << ::tpy::deref_check(p).x << "\n";
     // print(p.y)
-    std::cout << ::tpy::deref_check(p).y << "\n";
+    std::cout << p->y << "\n";
 }
 
 // def test_null_constructors() -> None:
