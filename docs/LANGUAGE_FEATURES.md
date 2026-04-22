@@ -181,6 +181,44 @@ def mutate_point(p: Point) -> None:
 
 ## Types
 
+### TurboPython -> C++ Type Mapping
+
+Full mapping of TurboPython types to their C++ representation. Where parameter representation differs from storage, both are shown.
+
+| TurboPython | C++ |
+|-------------|-----|
+| `int` | `tpy::BigInt` (arbitrary precision) |
+| `Int8/16/32/64` | `int8_t/int16_t/int32_t/int64_t` |
+| `UInt8/16/32/64` | `uint8_t/uint16_t/uint32_t/uint64_t` |
+| `float` / `Float64` | `double` (IEEE 754) |
+| `Float32` | `float` (IEEE 754 single precision) |
+| `bool` | `bool` |
+| `str` | `std::string` (parameters: `std::string_view`) |
+| `String` | `std::string` (parameters: `const std::string&`) |
+| `StrView` | `std::string_view` |
+| `Char` | `char` |
+| `None` | `void` (return type) |
+| `Optional[T]` | `std::optional<T>` |
+| `tuple[T1, T2, ...]` | `std::tuple<T1, T2, ...>` |
+| `dict[K, V]` | `tpy::ordered_map<K, V>` |
+| `set[T]` | `tpy::ordered_set<T>` |
+| `list[T]` | `std::vector<T>` |
+| `Array[T, N]` | `std::array<T, N>` |
+| `Span[T]` | `std::span<T>` |
+| `Span[readonly[T]]` | `std::span<const T>` |
+| `SpanIter[T]` | `tpy::SpanIter<T>` |
+| `A \| B` (value types) | `std::variant<A, B>` |
+| `A \| B` (non-value, params/returns/locals) | `std::variant<A*, B*>` (pointer variant) |
+| `A \| B` (non-value, fields/containers) | `std::variant<A, B>` (value variant) |
+| `Ptr[T]` | `T*` |
+| `Ptr[readonly[T]]` | `const T*` |
+| `Own[T]` | `T` (by value, for returns/params) |
+| `bytes` | `std::vector<uint8_t>` |
+| `bytearray` | `std::vector<uint8_t>` (mutable) |
+| `BytesView` | `std::span<const uint8_t>` |
+| `basic_slice` | `tpy::BasicSlice` (start, stop) |
+| `slice` | `tpy::Slice` (start, stop, step) |
+
 ### Numeric
 - **Working**: `int` (Python's int -> `tpy::BigInt` arbitrary precision, custom runtime implementation)
 - **Working**: `float` (Python's float -> `double`, 64-bit IEEE 754)
