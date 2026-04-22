@@ -7,10 +7,11 @@ Generates C++ code from TurboPython expressions.
 from __future__ import annotations
 import contextlib
 import io
+from dataclasses import replace as dc_replace
 from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, IntLiteralType, LiteralType, LiteralValue,
+    TpyType, IntLiteralType, FloatLiteralType, LiteralType, LiteralValue,
     NominalType, PtrType, OwnType, OptionalType, NoneType, make_array,
     PendingListType, ListRepeatType,
     TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
@@ -2438,6 +2439,20 @@ class ExpressionGenerator:
                     if union_arg is not None:
                         gen_args.append(union_arg)
                         continue
+                    # Rvalue list literal -> protocol/TypeParamRef param: must
+                    # materialize to a named temp. C++ can't deduce a template
+                    # parameter from a braced-init-list, and protocol-typed
+                    # params expand to template T_xs&. Concrete ref-param
+                    # targets (list[T]&, dict[K,V]&, etc.) accept inline
+                    # braced-init natively, so don't hoist there -- it would
+                    # just bloat generated code.
+                    if (ptype is not None
+                            and self.ctx.is_temporary_expr(arg)
+                            and (is_protocol_type(ptype) or isinstance(ptype, TypeParamRef))):
+                        init_expr = self.gen_expr(arg, ptype)
+                        temp_name = self.ctx.temps.create(ptype, init_expr)
+                        gen_args.append(temp_name)
+                        continue
                     gen_args.append(self.gen_call_arg(arg, ptype,
                                                       inline_template=_is_native_stub))
             args = ", ".join(gen_args)
@@ -3007,13 +3022,42 @@ class ExpressionGenerator:
         if union_prefix is not None:
             return f"{union_prefix}{literal}"
         # When the target is a protocol/generic param, C++ can't deduce the type
-        # from a bare brace-init-list. Emit a typed literal using the expression's
-        # own resolved type.
+        # from a bare brace-init-list. Emit a typed literal using the target's
+        # element type (e.g. Iterable[float]'s float). Going through expr_type
+        # risks picking up unresolved literal element types (FloatLiteralType,
+        # IntLiteralType) whose to_cpp() emits the literal value -- that's
+        # what used to turn `math.prod([1.0, 2.0, 3.0])` into
+        # `std::vector<1.0>{1.0, 2.0, 3.0}`.
         effective = target_type.wrapped if isinstance(target_type, OwnType) else target_type
         if is_protocol_type(effective) or isinstance(effective, TypeParamRef):
             expr_type = self.ctx.get_expr_type(expr)
             if is_array(expr_type) or is_list(expr_type):
-                return f"{expr_type.to_cpp()}{literal}"
+                # When expr_type carries an unresolved literal element
+                # (FloatLiteralType, IntLiteralType), its to_cpp() emits the
+                # literal value into the template-arg slot (`std::vector<1.0>`).
+                # Substitute the protocol's element type to produce a
+                # well-formed typed literal, keeping the container flavor
+                # (array/vector) the resolver chose.
+                container_type = expr_type
+                if (is_protocol_type(effective) and isinstance(effective, NominalType)
+                        and effective.type_args and len(effective.type_args) == 1
+                        and isinstance(expr_type, NominalType)
+                        and expr_type.type_args):
+                    elem = expr_type.type_args[0]
+                    # FloatLiteralType.to_cpp() returns repr(value) ("1.0");
+                    # IntLiteralType.to_cpp() similarly emits the literal int.
+                    # Both are the only built-in TpyType classes whose to_cpp()
+                    # intentionally returns a value instead of a type name --
+                    # they should never reach codegen unresolved, but they can
+                    # when a protocol target bypasses normal bidirectional
+                    # inference. Extend this tuple if new "literal-like" types
+                    # get added to typesys.py.
+                    if isinstance(elem, (FloatLiteralType, IntLiteralType)):
+                        container_type = dc_replace(
+                            expr_type,
+                            type_args=(effective.type_args[0],) + expr_type.type_args[1:],
+                        )
+                return f"{container_type.to_cpp()}{literal}"
         # Recursive union element type: emit explicit std::vector<T> so the
         # literal is self-describing when assigned to a variant (Tree __tmp = ...).
         # Bare braced-init-lists can't deduce variant constructor alternatives.

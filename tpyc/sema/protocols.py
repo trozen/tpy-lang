@@ -12,7 +12,7 @@ import re
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, OwnType, ReadonlyType, RefType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, PropertyInfo, is_protocol_type,
-    ListRepeatType, GenExprType, make_list, TupleType, OptionalType, IntLiteralType, FloatLiteralType, PendingListType, BIGINT, FLOAT,
+    ListRepeatType, GenExprType, make_list, TupleType, OptionalType, IntLiteralType, FloatLiteralType, PendingListType, UnknownElementType, BIGINT, FLOAT,
     impl_proto_matches_name, get_protocol_qname,
 )
 from ..coercions import is_protocol_safe_coercion, resolve_coercion, CoercionContext
@@ -107,8 +107,18 @@ class ProtocolChecker:
         if isinstance(actual, FloatLiteralType):
             return self.type_conforms_to_protocol(FLOAT, protocol)
 
-        # PendingListType: delegate to list[T] (resolves to list or Array, both conform)
+        # PendingListType: delegate to list[T] (resolves to list or Array, both conform).
+        # Empty literal (UNKNOWN_ELEMENT) with a single-type-arg protocol: trivially
+        # conforms -- no elements to check. Also push the protocol's element type
+        # into the pending list's coercion slot so the pending-list resolver can
+        # finalize it (otherwise it errors "Cannot infer element type").
         if isinstance(actual, PendingListType):
+            if (isinstance(actual.element_type, UnknownElementType)
+                    and protocol.type_args and len(protocol.type_args) == 1):
+                info = self.ctx.list_literals.get(actual.literal_id)
+                if info is not None and info.coerced_element_type is None:
+                    info.coerced_element_type = protocol.type_args[0]
+                return True
             return self.type_conforms_to_protocol(make_list(actual.element_type), protocol)
 
         # GenExprType: satisfies Iterable[T] and Iterator[T]

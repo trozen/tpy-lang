@@ -121,7 +121,7 @@ Examples of the policy in action:
 | Module | Priority | Status | % | Approach | Blockers / Notes |
 |---|---|---|---|---|---|
 | [`builtins`](#builtins) | P0 | Partial | ~70% | mixed | Implicit import. Core types + most common functions + key exceptions present. Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, most specialized exceptions (`IndexError`, `KeyError`, `TypeError`, etc. -- currently panic), `hasattr`/`getattr`/`setattr` (dynamic attr), `callable`, `id`, `type(x)` runtime. See [builtins](#builtins) for per-item status |
-| [`math`](#math) | P0 | Partial | ~95% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present and correct for in-spec args; the remaining gap is signature-restricted iterables on `prod`/`fsum`/`sumprod`/`dist` (blocked on list-literal-vs-protocol conformance) -- real CPython compat regressions, not UX nits |
+| [`math`](#math) | P0 | Done | ~99% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for prod/fsum/sumprod/dist). Remaining gaps are minor: int-typed `prod` variant (exact BigInt product on all-int iterables) and tuple as iterable (blocked on tuple-iteration bundle) |
 | [`time`](#time) | P0 | Stub | ~10% | mixed | Thin clock/sleep syscalls + pure TPy. Missing perf_counter/monotonic/struct_time/strftime |
 | [`sys`](#sys) | P0 | Stub | ~5% | mixed | Thin syscall bindings + pure TPy. Only `argv`; needs stdout/stderr/exit/path/version_info |
 | [`os`](#os) | P0 | Missing | 0% | -- | Needs filesystem wrapper + path handling |
@@ -370,21 +370,21 @@ Current: `lib/tpy/math.py` -- native C++ wrappers. Sufficient for numerics-heavy
 | `isqrt` | Done | Pure-TPy Newton's method over BigInt |
 | `perm`, `comb` | Done | Pure-TPy over BigInt. `perm` has both one-arg (`perm(n) == factorial(n)`) and two-arg overloads via `@overload`. `comb` is binary only |
 | `isclose` | Done | Pure-TPy; `rel_tol` / `abs_tol` are kw-only to match CPython |
-| `prod` | Done | Pure-TPy; `start` is kw-only to match CPython. Takes `list[float]` as a workaround -- CPython accepts any iterable; should be `Iterable[float]`. Blocked on list-literal-vs-protocol conformance (TODO.md). Int variant is a follow-up |
-| `fsum` | Done | Pure-TPy Neumaier compensated summation. Takes `list[float]` (should be `Iterable[float]` to match CPython) |
-| `sumprod` | Done | Pure-TPy; raises `ValueError` on length mismatch via upfront `len()`. Takes `list[float]` (should be `Iterable[float]` to match CPython, plus strict-pairwise iteration -- see Remaining gaps below) |
-| `dist` | Done | Pure-TPy Euclidean distance via hypot-fold (overflow-safe for coordinates up to `DBL_MAX`). Same `list[float]` -> `Iterable[float]` gap as `sumprod` |
+| `prod` | Done | Pure-TPy; `start` is kw-only to match CPython. Takes `Iterable[float]`. Int variant is a follow-up (currently all iterables are coerced element-wise to float) |
+| `fsum` | Done | Pure-TPy Neumaier compensated summation. Takes `Iterable[float]` |
+| `sumprod` | Done | Pure-TPy; raises `ValueError` on length mismatch via iterator lockstep drive (mirrors CPython's `zip(..., strict=True)`). Takes `Iterable[float]` |
+| `dist` | Done | Pure-TPy Euclidean distance via hypot-fold (overflow-safe for coordinates up to `DBL_MAX`). Takes `Iterable[float]` |
 | `gamma`, `lgamma`, `erf`, `erfc` | Done | Thin natives (`std::tgamma` etc.) |
 
 Tests: `math_module`, `math_extended`, `math_log_base`, `math_hyperbolic`,
 `math_numeric`, `math_special`, `math_fma`, `math_frexp_generic`,
-`math_variadic` in `tests/cases/builtins/`; `float_special_values` in
-`tests/cases/float/` (covers `float("nan"/"inf"/"-inf")` fold).
+`math_variadic`, `math_iterable`, `panic_sumprod_mismatch` in
+`tests/cases/builtins/`; `float_special_values` in `tests/cases/float/`
+(covers `float("nan"/"inf"/"-inf")` fold).
 
 **Remaining gaps to reach 100%:**
-- `Iterable[float]` signatures for `prod`, `fsum`, `sumprod`, `dist` -- CPython accepts any iterable (generators, `range(...)`, tuples, user iterators) for all four. Current `list[float]` signatures are a real CPython compat regression, not just a UX nit. Blocked on list-literal-vs-protocol conformance (TODO.md).
-- Strict-pairwise iteration for `sumprod` / `dist` -- CPython uses `zip(p, q, strict=True)` internally so length mismatch raises `ValueError` without needing random access. Once Iterable conformance is fixed, we need either a `zip_strict` helper or inline pairwise `__next__` driving. Today the `list[float]` workaround gets us upfront `len()` checks for free.
-- `math.prod` int variant (currently only `list[float]`).
+- `math.prod` int variant. Current signature `Iterable[float]` coerces each element to float; an `Iterable[int]` overload would return an exact BigInt product (matches CPython's polymorphic behavior, where `math.prod(range(1, 6)) == 120` not `120.0`).
+- Tuples as `Iterable[T]`. Tuples don't iterate today in TPy regardless of protocol context -- real CPython compat gap but bundled scope (needs coordinated sema + codegen + runtime story, not just a conformance flag flip). See TODO.md.
 
 ### time
 

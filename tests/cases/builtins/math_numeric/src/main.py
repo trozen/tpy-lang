@@ -99,9 +99,9 @@ def main() -> None:
     # prod
     print(math.prod([2.0, 3.0, 4.0]))
     print(math.prod([1.0, 2.0, 3.0], start=10.0))
-    # Empty with explicit float start: CPython returns int 1 without start,
-    # but tpy statically dispatches on list[float] and start=1.0 gives 1.0
-    # in both environments.
+    # Empty input: CPython returns the start value (1 without start, 1.0 with
+    # start=1.0). TPy's Iterable[float] signature always returns float, so
+    # start=1.0 gives 1.0 in both environments.
     print(math.prod([], start=1.0))
 
     # fsum: sum of 10 x 0.1 should be exactly 1.0 with Neumaier

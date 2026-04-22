@@ -48,7 +48,7 @@
 #   `base == 2` to dispatch to `log2` (one fewer transcendental call).
 #   Minor; consider if benchmarks warrant.
 
-from typing import Final, overload
+from typing import Final, Iterable, overload
 from tpy import Int32
 from tpy.extern import native, cpp_template, type_param_default, DefaultInt
 
@@ -310,19 +310,13 @@ def isclose(a: float, b: float, *, rel_tol: float = 1e-09, abs_tol: float = 0.0)
         max_ab = fabs(b)
     return diff <= abs_tol or diff <= rel_tol * max_ab
 
-# Below, `iterable: list[float]` / `p: list[float]` etc. would ideally be
-# `Iterable[float]` (prod/fsum -- iteration only) and `Sequence[float]`
-# (sumprod/dist -- need __len__ + __getitem__). Currently blocked by
-# bidirectional-inference / protocol-conformance gaps for list literals:
-# see TODO.md (list-literal vs Iterable/Sequence protocol conformance).
-
-def prod(iterable: list[float], *, start: float = 1.0) -> float:
+def prod(iterable: Iterable[float], *, start: float = 1.0) -> float:
     result: float = start
     for x in iterable:
         result = result * x
     return result
 
-def fsum(iterable: list[float]) -> float:
+def fsum(iterable: Iterable[float]) -> float:
     # Neumaier summation: more accurate than naive + compensated for large swings.
     s: float = 0.0
     c: float = 0.0
@@ -335,27 +329,63 @@ def fsum(iterable: list[float]) -> float:
         s = t
     return s + c
 
-def sumprod(p: list[float], q: list[float]) -> float:
-    if len(p) != len(q):
-        raise ValueError("sumprod(): input lengths differ")
-    s = 0.0
-    for i in range(len(p)):
-        s = s + p[i] * q[i]
-    return s
+def sumprod(p: Iterable[float], q: Iterable[float]) -> float:
+    # Manual two-iterator drive with length-mismatch detection; CPython uses
+    # zip(p, q, strict=True) internally. We don't have strict=True yet, so
+    # open-code it.
+    s: float = 0.0
+    ip = iter(p)
+    iq = iter(q)
+    while True:
+        try:
+            a = next(ip)
+        except StopIteration:
+            try:
+                next(iq)
+            except StopIteration:
+                return s
+            raise ValueError("sumprod(): input lengths differ")
+        try:
+            b = next(iq)
+        except StopIteration:
+            raise ValueError("sumprod(): input lengths differ")
+        s = s + a * b
 
-def dist(p: list[float], q: list[float]) -> float:
-    if len(p) != len(q):
-        raise ValueError("dist(): input lengths differ")
-    if len(p) == 0:
-        return 0.0
+def dist(p: Iterable[float], q: Iterable[float]) -> float:
     # Fold via hypot to avoid overflow when coordinates are large: the naive
-    # sqrt(sum((pi - qi)**2)) overflows when any (pi - qi)**2 exceeds
-    # DBL_MAX. std::hypot(a, b) is IEEE overflow-safe, and hypot-folding is
+    # sqrt(sum((pi - qi)**2)) overflows when any (pi - qi)**2 exceeds DBL_MAX.
+    # std::hypot(a, b) is IEEE overflow-safe, and hypot-folding is
     # mathematically equivalent: hypot(hypot(d0, d1), d2) == sqrt(d0^2 + d1^2 + d2^2).
-    result = fabs(p[0] - q[0])
-    for i in range(1, len(p)):
-        result = _hypot2(result, p[i] - q[i])
-    return result
+    ip = iter(p)
+    iq = iter(q)
+    # Seed with first pair (or return 0.0 for empty inputs).
+    try:
+        p0 = next(ip)
+    except StopIteration:
+        try:
+            next(iq)
+        except StopIteration:
+            return 0.0
+        raise ValueError("dist(): input lengths differ")
+    try:
+        q0 = next(iq)
+    except StopIteration:
+        raise ValueError("dist(): input lengths differ")
+    result: float = fabs(p0 - q0)
+    while True:
+        try:
+            pi = next(ip)
+        except StopIteration:
+            try:
+                next(iq)
+            except StopIteration:
+                return result
+            raise ValueError("dist(): input lengths differ")
+        try:
+            qi = next(iq)
+        except StopIteration:
+            raise ValueError("dist(): input lengths differ")
+        result = _hypot2(result, pi - qi)
 
 @type_param_default(T=DefaultInt)
 @cpp_template("::tpy::from_float_check<{T}>({0})")

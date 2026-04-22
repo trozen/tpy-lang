@@ -160,37 +160,53 @@ void main() {
     std::cout << ::tpy::print_bool(::tpystd::math::isclose(tpystd::math::inf, -(tpystd::math::inf), 1e-09, 0.0)) << "\n";
     // # prod
     // print(math.prod([2.0, 3.0, 4.0]))
-    std::cout << ::tpy::print_float(::tpystd::math::prod({2.0, 3.0, 4.0}, 1.0)) << "\n";
+    auto __tmp_13 = std::array<double, 3>{2.0, 3.0, 4.0};
+    std::cout << ::tpy::print_float(::tpystd::math::prod(__tmp_13, 1.0)) << "\n";
     // print(math.prod([1.0, 2.0, 3.0], start=10.0))
-    std::cout << ::tpy::print_float(::tpystd::math::prod({1.0, 2.0, 3.0}, 10.0)) << "\n";
-    // # Empty with explicit float start: CPython returns int 1 without start,
-    // # but tpy statically dispatches on list[float] and start=1.0 gives 1.0
-    // # in both environments.
+    auto __tmp_14 = std::array<double, 3>{1.0, 2.0, 3.0};
+    std::cout << ::tpy::print_float(::tpystd::math::prod(__tmp_14, 10.0)) << "\n";
+    // # Empty input: CPython returns the start value (1 without start, 1.0 with
+    // # start=1.0). TPy's Iterable[float] signature always returns float, so
+    // # start=1.0 gives 1.0 in both environments.
     // print(math.prod([], start=1.0))
-    std::cout << ::tpy::print_float(::tpystd::math::prod(std::vector<double>{}, 1.0)) << "\n";
+    auto __tmp_15 = std::vector<double>{};
+    std::cout << ::tpy::print_float(::tpystd::math::prod(__tmp_15, 1.0)) << "\n";
     // # fsum: sum of 10 x 0.1 should be exactly 1.0 with Neumaier
     // t = math.fsum([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
-    double t = ::tpystd::math::fsum({0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1});
+    auto __tmp_16 = std::array<double, 10>{0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
+    double t = ::tpystd::math::fsum(__tmp_16);
     // print(t > 0.999999 and t < 1.000001)
     std::cout << ::tpy::print_bool(((t > 0.999999) && (t < 1.000001))) << "\n";
     // # sumprod
     // print(math.sumprod([1.0, 2.0, 3.0], [4.0, 5.0, 6.0]))
-    std::cout << ::tpy::print_float(::tpystd::math::sumprod({1.0, 2.0, 3.0}, {4.0, 5.0, 6.0})) << "\n";
+    auto __tmp_17 = std::array<double, 3>{1.0, 2.0, 3.0};
+    auto __tmp_18 = std::array<double, 3>{4.0, 5.0, 6.0};
+    std::cout << ::tpy::print_float(::tpystd::math::sumprod(__tmp_17, __tmp_18)) << "\n";
     // # dist
     // print(math.dist([0.0, 0.0], [3.0, 4.0]))
-    std::cout << ::tpy::print_float(::tpystd::math::dist({0.0, 0.0}, {3.0, 4.0})) << "\n";
+    auto __tmp_19 = std::array<double, 2>{0.0, 0.0};
+    auto __tmp_20 = std::array<double, 2>{3.0, 4.0};
+    std::cout << ::tpy::print_float(::tpystd::math::dist(__tmp_19, __tmp_20)) << "\n";
     // print(math.dist([1.0, 2.0, 3.0], [4.0, 6.0, 3.0]))
-    std::cout << ::tpy::print_float(::tpystd::math::dist({1.0, 2.0, 3.0}, {4.0, 6.0, 3.0})) << "\n";
+    auto __tmp_21 = std::array<double, 3>{1.0, 2.0, 3.0};
+    auto __tmp_22 = std::array<double, 3>{4.0, 6.0, 3.0};
+    std::cout << ::tpy::print_float(::tpystd::math::dist(__tmp_21, __tmp_22)) << "\n";
     // print(math.dist([0.0], [0.0]))
-    std::cout << ::tpy::print_float(::tpystd::math::dist({0.0}, {0.0})) << "\n";
+    auto __tmp_23 = std::array<double, 1>{0.0};
+    auto __tmp_24 = std::array<double, 1>{0.0};
+    std::cout << ::tpy::print_float(::tpystd::math::dist(__tmp_23, __tmp_24)) << "\n";
     // # n=1 with p[0] > q[0]: verifies the fabs() in the hypot-fold base case.
     // print(math.dist([1.0], [3.0]))
-    std::cout << ::tpy::print_float(::tpystd::math::dist({1.0}, {3.0})) << "\n";
+    auto __tmp_25 = std::array<double, 1>{1.0};
+    auto __tmp_26 = std::array<double, 1>{3.0};
+    std::cout << ::tpy::print_float(::tpystd::math::dist(__tmp_25, __tmp_26)) << "\n";
     // # Overflow safety: naive sqrt(sum((pi-qi)**2)) would overflow since
     // # 1e200 * 1e200 == inf. Hypot-fold handles this. std::hypot is required
     // # to be faithfully rounded so the exact value is deterministic.
     // print(math.dist([1e200, 1e200], [0.0, 0.0]))
-    std::cout << ::tpy::print_float(::tpystd::math::dist({1e+200, 1e+200}, {0.0, 0.0})) << "\n";
+    auto __tmp_27 = std::array<double, 2>{1e+200, 1e+200};
+    auto __tmp_28 = std::array<double, 2>{0.0, 0.0};
+    std::cout << ::tpy::print_float(::tpystd::math::dist(__tmp_27, __tmp_28)) << "\n";
 }
 
 void __tpy_init() {
