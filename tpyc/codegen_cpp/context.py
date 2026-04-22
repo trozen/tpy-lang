@@ -19,7 +19,7 @@ from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat, TpyListComprehension,
     TpyGeneratorExpression,
-    TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall, TpySubscript, TpyCall, TpyName, TpyFieldAccess,
+    TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall, TpySubscript, TpySlice, TpyCall, TpyName, TpyFieldAccess,
     TpyIfExpr,
 )
 from ..namespace import Namespace, BindingKind
@@ -244,6 +244,10 @@ def is_lvalue_iterable(
     if isinstance(expr, TpyFieldAccess):
         return is_lvalue_iterable(expr.obj, get_record, get_type)
     if isinstance(expr, TpySubscript):
+        # Slicing (a[1:]) returns an rvalue span/view, not a reference into obj.
+        # Only single-index subscripting (a[0]) returns T& and inherits lvalueness from obj.
+        if isinstance(expr.index, TpySlice):
+            return False
         return is_lvalue_iterable(expr.obj, get_record, get_type)
     if isinstance(expr, (TpyMethodCall, TpyCall)):
         if isinstance(expr, TpyCall) and expr.call_type is not None:

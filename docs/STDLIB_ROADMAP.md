@@ -121,7 +121,7 @@ Examples of the policy in action:
 | Module | Priority | Status | % | Approach | Blockers / Notes |
 |---|---|---|---|---|---|
 | [`builtins`](#builtins) | P0 | Partial | ~70% | mixed | Implicit import. Core types + most common functions + key exceptions present. Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, most specialized exceptions (`IndexError`, `KeyError`, `TypeError`, etc. -- currently panic), `hasattr`/`getattr`/`setattr` (dynamic attr), `callable`, `id`, `type(x)` runtime. See [builtins](#builtins) for per-item status |
-| [`math`](#math) | P0 | Partial | ~98% | mixed | Thin libc bindings + pure TPy wrappers. Missing `nan` constant (blocked on TODO.md bug #52) and variadic `hypot`/`gcd`/`lcm` (blocked on codegen gap -- see TODO.md) |
+| [`math`](#math) | P0 | Partial | ~90% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present and correct for in-spec args; gaps are `nan` constant (blocked on Final-initializer constant folding) and signature-restricted iterables on `prod`/`fsum`/`sumprod`/`dist` (blocked on list-literal-vs-protocol conformance) -- real CPython compat regressions, not UX nits |
 | [`time`](#time) | P0 | Stub | ~10% | mixed | Thin clock/sleep syscalls + pure TPy. Missing perf_counter/monotonic/struct_time/strftime |
 | [`sys`](#sys) | P0 | Stub | ~5% | mixed | Thin syscall bindings + pure TPy. Only `argv`; needs stdout/stderr/exit/path/version_info |
 | [`os`](#os) | P0 | Missing | 0% | -- | Needs filesystem wrapper + path handling |
@@ -147,7 +147,7 @@ Examples of the policy in action:
 | [`logging`](#logging) | P2 | Missing | 0% | -- | Module-level state + handler architecture |
 | [`configparser`](#configparser) | P2 | Missing | 0% | -- | Depends on `io` |
 | [`urllib.parse`](#urllibparse) | P2 | Missing | 0% | -- | Pure-TPy candidate; no network dependency |
-| [`heapq`](#heapq) | P2 | Partial | ~90% | pure | Pure TPy over `list[T: Comparable]`. All non-variadic ops done; `merge(*iterables)` blocked on the same variadic-in-method-call gap as `math.hypot` |
+| [`heapq`](#heapq) | P2 | Partial | ~90% | pure | Pure TPy over `list[T: Comparable]`. All non-variadic ops done; `merge(*iterables)` unblocked by variadic-in-method-call fix, still needs a generator-based iterator-heads heap |
 | [`copy`](#copy) | P2 | Missing | 0% | -- | `copy()` deep semantics need intrinsic support |
 | [`textwrap`](#textwrap) | P2 | Missing | 0% | -- | Pure TPy candidate |
 | [`decimal`](#decimal) | P2 | Missing | 0% | -- | Large surface; candidate for BigInt-based pure impl or native lib |
@@ -357,7 +357,7 @@ Current: `lib/tpy/math.py` -- native C++ wrappers. Sufficient for numerics-heavy
 | `sinh`, `cosh`, `tanh` | Done | |
 | `asinh`, `acosh`, `atanh` | Done | |
 | `fabs` | Done | |
-| `hypot` | Partial (binary) | Binary only; variadic form blocked on codegen gap (`TpyVarargPack` unhandled in `_gen_method_call`) |
+| `hypot` | Done | Variadic `hypot(*coords)`; internal `_hypot2` native binding to `std::hypot` + overflow-safe hypot-fold |
 | `radians`, `degrees` | Done | Pure-TPy |
 | `isnan`, `isinf`, `isfinite` | Done | Thin `std::isnan` / `std::isinf` / `std::isfinite` |
 | `copysign` | Done | |
@@ -366,7 +366,7 @@ Current: `lib/tpy/math.py` -- native C++ wrappers. Sufficient for numerics-heavy
 | `ulp` | Done | `tpy::stdlib::math::ulp` helper matching CPython edge cases for nan/inf/0 |
 | `modf` | Done | `tpy::stdlib::math::modf` wrapper returning `std::tuple<double, double>` |
 | `frexp` | Done | Generic over the exponent type: `frexp[T](x) -> tuple[float, T]`. Default T is `DefaultInt` (Int32 under default config); users can pick `Int64` or `int` (BigInt) for wider ranges |
-| `gcd`, `lcm` | Partial (binary) | Pure-TPy over BigInt, binary form. `lcm` uses `(a // gcd(a,b)) * b` to keep the intermediate bounded by `max(|a|, |b|)`. Variadic blocked on the same codegen gap as `hypot`. Generic-over-int-type is a follow-up (see math.py header) |
+| `gcd`, `lcm` | Done | Variadic `gcd(*ints)` / `lcm(*ints)` over BigInt. Internal `_gcd2` binary helper; `lcm` uses `(a // gcd(a,b)) * b` to keep the intermediate bounded by `max(|a|, |b|)`. Generic-over-int-type is a follow-up (see math.py header) |
 | `factorial` | Done | Pure-TPy over BigInt; raises `ValueError` on negative |
 | `isqrt` | Done | Pure-TPy Newton's method over BigInt |
 | `perm`, `comb` | Done | Pure-TPy over BigInt; binary form (`k` is required positional, not optional as in CPython) |
@@ -378,11 +378,10 @@ Current: `lib/tpy/math.py` -- native C++ wrappers. Sufficient for numerics-heavy
 | `gamma`, `lgamma`, `erf`, `erfc` | Done | Thin natives (`std::tgamma` etc.) |
 
 Tests: `math_module`, `math_extended`, `math_log_base`, `math_hyperbolic`,
-`math_numeric`, `math_special`, `math_fma`, `math_frexp_generic` in
-`tests/cases/builtins/`.
+`math_numeric`, `math_special`, `math_fma`, `math_frexp_generic`,
+`math_variadic` in `tests/cases/builtins/`.
 
 **Remaining gaps to reach 100% (minus `nan`):**
-- Variadic `hypot(*coords)`, `gcd(*ints)`, `lcm(*ints)` -- blocked on codegen gap. The `TpyVarargPack` arg is handled in `_gen_call` (simple function-name calls) but not in `_gen_method_call` (module-qualified calls like `math.hypot(...)`). Fix is likely a few-line copy of the dispatch into `_gen_method_call`. Tracked in TODO.md.
 - `Iterable[float]` signatures for `prod`, `fsum`, `sumprod`, `dist` -- CPython accepts any iterable (generators, `range(...)`, tuples, user iterators) for all four. Current `list[float]` signatures are a real CPython compat regression, not just a UX nit. Blocked on list-literal-vs-protocol conformance (TODO.md).
 - Strict-pairwise iteration for `sumprod` / `dist` -- CPython uses `zip(p, q, strict=True)` internally so length mismatch raises `ValueError` without needing random access. Once Iterable conformance is fixed, we need either a `zip_strict` helper or inline pairwise `__next__` driving. Today the `list[float]` workaround gets us upfront `len()` checks for free.
 - `math.prod` int variant (currently only `list[float]`).
@@ -932,7 +931,7 @@ CPython's algorithm (sift-up/sift-down) line-for-line; heap items ordered by
 | `heapreplace` | Done | Pop then push in one step |
 | `nsmallest(n, a)` | Done | Heap-based O(n + k log n). Takes `list[T]` (should be `Iterable[T]` to match CPython -- same gap as `math.prod`/`fsum`) |
 | `nlargest(n, a)` | Done | Sort-based O(n log n). Size-k-heap variant (O(n log k)) is a perf follow-up. Same `list[T]` vs `Iterable[T]` gap |
-| `merge(*iterables, key=None, reverse=False)` | Missing | N-way merge; needs variadic in method-call position (same blocker as `math.hypot` variadic) plus a generator-based iterator-heads heap |
+| `merge(*iterables, key=None, reverse=False)` | Missing | N-way merge; needs a generator-based iterator-heads heap (variadic-in-method-call gap is now fixed) |
 | `key=` arg on `nlargest`/`nsmallest` | Missing | Needs `Callable[[T], K: Comparable]` threading; straightforward add once prioritized |
 
 Design note: CPython's `heapq` operates on any mutable sequence; TPy restricts

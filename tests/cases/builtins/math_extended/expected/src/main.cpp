@@ -23,7 +23,8 @@ void main() {
     std::cout << ::tpy::print_bool((tpystd::math::inf > 1e+308)) << "\n";
     // # hypot
     // h = math.hypot(3.0, 4.0)
-    double h = ::std::hypot(3.0, 4.0);
+    std::array<double, 2> __tmp_1{3.0, 4.0};
+    double h = ::tpystd::math::hypot(::tpy::varargs<double>(__tmp_1));
     // print(h > 4.99)
     std::cout << ::tpy::print_bool((h > 4.99)) << "\n";
     // print(h < 5.01)
