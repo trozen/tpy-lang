@@ -47,7 +47,10 @@ Each folder under `tests/cases/` becomes one parametrized item of `test_case` wi
 
 The exec and cpy phases auto-skip when the compiler produces byte-identical generated code AND the recorded fingerprints match the current sources. Fingerprints split into:
 
-- **Session-level** (`tests/.session_fingerprints.json`, single file): hash of `runtime/cpp/include/**` and hash of `lib/cpy/tpy/**`. When either changes, all per-case skips are invalidated by a single-file diff.
+- **Session-level** (`tests/.session_fingerprints.json`, single file) -- any change invalidates per-case skips of the affected phase:
+  - `runtime` -- hash of `runtime/cpp/include/**`, affects every binary.
+  - `libtpy` -- hash of `lib/tpy/**`. The stdlib is compiled into every binary, but the user's `main.cpp` snapshot won't reflect stdlib-only codegen changes, so exec must re-run when it changes.
+  - `cpy_stubs` -- hash of `lib/cpy/tpy/**`, affects every CPython run.
 - **Per-case** (`tests/cases/<case>/expected/.fingerprints`, optional keys): hash of the case's `main.py` (`main`) and hash of any hand-written C++ companion files in `src/` (`extra_src`). Cases with neither companions nor a CPython phase end up with no file.
 
 Parallel execution (`-n auto`) is configured in `pyproject.toml` via `addopts`. Worker count auto-caps to the cgroup v2 CPU quota. The exec phase also reuses a persistent content-addressed cache of compiled stdlib object files (see `tpyc/` code for the cache-key derivation).

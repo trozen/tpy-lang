@@ -818,7 +818,7 @@ def pytest_configure(config):
     recorded = read_session_fingerprints()
     if recorded:
         current = compute_session_fingerprints()
-        stale = [k for k in ("runtime", "cpy_stubs") if current[k] != recorded.get(k)]
+        stale = [k for k in ("runtime", "libtpy", "cpy_stubs") if current[k] != recorded.get(k)]
         if stale:
             print(
                 f"WARNING: session fingerprint stale ({', '.join(stale)}); "
@@ -898,6 +898,11 @@ def find_force_includes(case_dir: Path) -> list[Path]:
 #
 # Session-level (tests/.session_fingerprints.json, single source of truth):
 #   - runtime    -- hash of runtime/cpp/include/** (affects every binary)
+#   - libtpy     -- hash of lib/tpy/**             (stdlib source compiled into
+#                                                   every binary; the user's
+#                                                   main.cpp snapshot won't
+#                                                   reflect stdlib-only codegen
+#                                                   changes, so exec must re-run)
 #   - cpy_stubs  -- hash of lib/cpy/tpy/**         (affects every CPython run)
 #
 # Per-case (tests/cases/<case>/expected/.fingerprints, optional keys):
@@ -905,7 +910,7 @@ def find_force_includes(case_dir: Path) -> list[Path]:
 #                   (native-interop companion sources; omitted when there are none)
 #   - main       -- hash of main.py
 #
-# Skip exec when: runtime + extra_src both match recorded AND output exists.
+# Skip exec when: runtime + libtpy + extra_src all match recorded AND output exists.
 # Skip cpy  when: cpy_stubs + main both match recorded AND output.txt exists.
 # Generated code is verified to match expected/include + expected/src in the
 # comp phase, so the binary derived from those would be identical too.
@@ -963,8 +968,12 @@ def _cpy_stubs_hash() -> str:
 
 
 def compute_session_fingerprints() -> dict[str, str]:
-    """Compute current session-level fingerprints (runtime + cpy stubs)."""
-    return {"runtime": _runtime_hash(), "cpy_stubs": _cpy_stubs_hash()}
+    """Compute current session-level fingerprints (runtime + libtpy + cpy stubs)."""
+    return {
+        "runtime": _runtime_hash(),
+        "libtpy": _libtpy_hash(),
+        "cpy_stubs": _cpy_stubs_hash(),
+    }
 
 
 def read_session_fingerprints() -> dict[str, str]:

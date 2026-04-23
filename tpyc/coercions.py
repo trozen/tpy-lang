@@ -8,7 +8,7 @@ from typing import Callable, Optional
 
 from .typesys import (
     TpyType, IntLiteralType, FloatLiteralType,
-    NominalType, PtrType, OptionalType, is_readonly_ptr,
+    NominalType, PtrType, OptionalType, OwnType, is_readonly_ptr,
     is_readonly_span, PendingListType, TypeParamRef, TypeParamKind, ReadonlyType,
     is_integer_type, unwrap_readonly,
 )
@@ -332,31 +332,47 @@ COERCIONS: list[Coercion] = [
         codegen=lambda e, _a, _b, _c: f"std::string({e})",
         protocol_safe=True,
     ),
-    # StrView -> str. At ARG position both lower to std::string_view, so the
-    # transfer is identity; elsewhere (INIT/ASSIGN/RETURN) the target is owned
-    # std::string and materialization is required.
+    # StrView -> str. At ARG position plain `str` params lower to
+    # std::string_view, so the transfer is identity; but `Own[str]` params
+    # (e.g. list[str].append's value) lower to std::string by value, and
+    # INIT/ASSIGN/RETURN targets are also owned std::string -- both need
+    # materialization.
     Coercion(
         name="strview_to_str",
         from_type=is_str_view_type,
         to_type=is_str_type,
-        codegen=lambda e, _a, _b, c: e if c == CoercionContext.ARG else f"std::string({e})",
+        codegen=lambda e, _a, b, c: (
+            e if c == CoercionContext.ARG and not isinstance(b, OwnType)
+            else f"std::string({e})"
+        ),
         protocol_safe=True,
     ),
-    # Optional[StrView] <-> Optional[str] at arg position: both params lower to
-    # `std::optional<std::string_view>`, so the transfer is identity. Only safe
-    # in ARG context -- non-arg `str` is std::string, which would require a
-    # per-element construction.
+    # Optional[StrView] <-> Optional[str]: plain `Optional[str]` params at ARG
+    # lower to `std::optional<std::string_view>`, so the transfer is identity;
+    # but `Own[Optional[str]]` params (e.g. list[Optional[str]].append) and
+    # non-ARG contexts (INIT/ASSIGN/RETURN) target `std::optional<std::string>`
+    # and need per-element materialization. Statement-expression pattern hoists
+    # the source into a local so the conditional evaluates the expression
+    # exactly once.
     Coercion(
-        name="optional_strview_to_str_arg",
+        name="optional_strview_to_str",
         from_type=lambda t: isinstance(t, OptionalType) and is_str_view_type(t.inner),
         to_type=lambda t: isinstance(t, OptionalType) and is_str_type(t.inner),
-        contexts={CoercionContext.ARG},
+        codegen=lambda e, _a, b, c: (
+            e if c == CoercionContext.ARG and not isinstance(b, OwnType)
+            else (f"({{ auto __tpy_ov = ({e}); "
+                  f"__tpy_ov ? std::make_optional(std::string(*__tpy_ov)) : std::nullopt; }})")
+        ),
     ),
     Coercion(
-        name="optional_str_to_strview_arg",
+        name="optional_str_to_strview",
         from_type=lambda t: isinstance(t, OptionalType) and is_str_type(t.inner),
         to_type=lambda t: isinstance(t, OptionalType) and is_str_view_type(t.inner),
-        contexts={CoercionContext.ARG},
+        codegen=lambda e, _a, b, c: (
+            e if c == CoercionContext.ARG and not isinstance(b, OwnType)
+            else (f"({{ auto __tpy_ov = ({e}); "
+                  f"__tpy_ov ? std::make_optional(std::string_view(*__tpy_ov)) : std::nullopt; }})")
+        ),
     ),
 
     # bytearray <-> bytes identity coercions (both map to std::vector<uint8_t>)

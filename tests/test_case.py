@@ -186,6 +186,7 @@ def test_case(case_dir, main_src, request):
     session_now = compute_session_fingerprints()
     session_recorded = read_session_fingerprints()
     runtime_unchanged = session_now["runtime"] == session_recorded.get("runtime")
+    libtpy_unchanged = session_now["libtpy"] == session_recorded.get("libtpy")
     cpy_stubs_unchanged = session_now["cpy_stubs"] == session_recorded.get("cpy_stubs")
 
     case_fps = read_fingerprints(case_dir)
@@ -198,6 +199,7 @@ def test_case(case_dir, main_src, request):
         not force_exec
         and expected_runtime_file.exists()
         and runtime_unchanged
+        and libtpy_unchanged
         and extra_src_unchanged
     )
 
