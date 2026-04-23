@@ -47,3 +47,9 @@ class DefaultInt: pass
 # (linkage, extern name) through the macro system instead of special handling.
 @builtin_function("tpy.extern.native_global")
 def native_global(name: str = "", binding: str = "", array: bool = False): ...
+
+# Per-field C++ rename on @native classes. Used in the default-value slot of
+# an annotated field on an @native class; the compiler extracts the rename
+# string and drops the expression (no initializer is emitted for native fields).
+@builtin_function("tpy.extern.native_field")
+def native_field(name: str): ...

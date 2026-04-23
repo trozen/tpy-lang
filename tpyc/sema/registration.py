@@ -387,6 +387,36 @@ class TypeRegistrar:
                 )
             seen_method_names.add(method.name)
 
+        # Extract native_field() renames on @native classes. The call is not a
+        # real default -- it's stripped here so the const validation below
+        # doesn't see it. A bogus default_value ("native_field(\"...\")") is
+        # also set by the parser's generic call handler; clear that too.
+        for fld in record.fields:
+            if not isinstance(fld.default_expr, TpyCall):
+                continue
+            if fld.default_expr.resolved_import != ("tpy.extern", "native_field"):
+                continue
+            call = fld.default_expr
+            if not is_native:
+                raise SemanticError(
+                    "native_field() is only allowed on @native classes",
+                    fld.loc,
+                )
+            if len(call.args) != 1 or call.kwargs:
+                raise SemanticError(
+                    "native_field() takes exactly 1 positional string argument",
+                    fld.loc,
+                )
+            arg = call.args[0]
+            if not isinstance(arg, TpyStrLiteral):
+                raise SemanticError(
+                    "native_field() argument must be a string literal",
+                    fld.loc,
+                )
+            fld.native_name = arg.value
+            fld.default_expr = None
+            fld.default_value = None
+
         # Validate field defaults are const (after macros have transformed them)
         for fld in record.fields:
             if fld.default_expr is not None and not fld.is_factory_default:

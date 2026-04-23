@@ -23,6 +23,7 @@ from tpy.extern import native, export
 | `@native(binding="C")` -- import C function | **Done** |
 | `@native(binding="C")` -- import C struct | **Done** |
 | `@native` class -- import C++ class (fields, stub methods) | **Done** |
+| `native_field("cpp_name")` -- per-field C++ rename on `@native` classes | **Done** |
 | `@export(binding="C")` -- export TPy function | **Done** |
 | `native_global()` -- import C/C++ global variable | **Done** |
 | `# tpy: native_module` | **Done** |
@@ -105,6 +106,27 @@ All methods on a `@native` class must be stubs (`...` body). Non-native methods 
 **Construction:**
 - C++ classes: constructor call syntax -- `Vec2(1.0, 2.0)` -> `b2::Vec2(1.0, 2.0)`
 - C structs (`binding="C"`): aggregate init -- `Rect(0, 0, 800, 600)` -> `SDL_Rect{0, 0, 800, 600}`
+
+**Per-field rename (`native_field`).** When the external C/C++ field name differs from the Python name (e.g. C struct `sin_family`/`sin_port` conventions, or C++ `m_x` member-prefix conventions), use `native_field("cpp_name")` in the field's default-value slot:
+
+```python
+from tpy.extern import native, native_field
+
+# C++ class: friendlier Python names over m_-prefixed C++ members
+@native
+class Vec2:
+    x: Int32 = native_field("m_x")
+    y: Int32 = native_field("m_y")
+
+# C struct binding (e.g. under lib/tpy/_bindings/): expose POSIX field names
+# under idiomatic Python names
+@native("sockaddr_in", binding="C")
+class SockAddrIn:
+    family: UInt16 = native_field("sin_family")
+    port:   UInt16 = native_field("sin_port")
+```
+
+Field reads and writes emit the renamed C/C++ member (`v.x` -> `v.m_x`, `a.port` -> `a.sin_port`). Constructor calls are positional (aggregate init for C structs, constructor args for C++ classes) so the rename does not affect construction. `native_field` is rejected on non-`@native` classes and requires exactly one positional string literal argument.
 
 ### Global variables
 

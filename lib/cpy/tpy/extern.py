@@ -37,6 +37,11 @@ def native_global(name: str = "", binding: str = "", array: bool = False):
     return None
 
 
+def native_field(name: str):
+    """Rename a field on an @native class. No-op in CPython."""
+    return None
+
+
 def value_ptr_coercion(func):
     """Enable T -> Ptr[T] coercion at call sites. No-op in CPython."""
     return func

@@ -2848,6 +2848,28 @@ class ExpressionGenerator:
             return f"std::get<{cpp_type}>({get_ref})", True
         return obj_code, False
 
+    def _native_field_cpp_name(self, obj_type, field_name: str) -> str | None:
+        """Return native_field() rename for field_name on a @native record, or None."""
+        # OwnType is stripped by get_expr_type before reaching codegen, so it
+        # doesn't appear here; the remaining wrappers can.
+        t = obj_type
+        while True:
+            if isinstance(t, ReadonlyType):
+                t = t.wrapped
+            elif isinstance(t, PtrType):
+                t = t.pointee
+            elif isinstance(t, OptionalType):
+                t = t.inner
+            else:
+                break
+        record = self.ctx.analyzer.registry.get_record_for_type(t)
+        if record is None or not record.is_native:
+            return None
+        for fld in record.fields:
+            if fld.name == field_name and fld.native_name is not None:
+                return fld.native_name
+        return None
+
     def _gen_field_access(self, expr: TpyFieldAccess) -> str:
         """Generate field access code."""
         cpp_field = escape_cpp_name(expr.field)
@@ -2912,6 +2934,11 @@ class ExpressionGenerator:
         obj, is_assign_narrowed = self._apply_assign_narrowing(expr.obj, obj)
         # Check if obj is a pointer type or global - use -> instead of .
         obj_type = self.ctx.get_expr_type(expr.obj)
+
+        # @native record field rename: native_field("m_x") overrides the Python name.
+        native_cpp_field = self._native_field_cpp_name(obj_type, expr.field)
+        if native_cpp_field is not None:
+            cpp_field = native_cpp_field
 
         # Enum instance property access: c.name, c.value
         actual_obj_type = obj_type

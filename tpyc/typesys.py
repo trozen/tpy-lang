@@ -2745,6 +2745,7 @@ class FieldInfo:
     default_expr: Optional[Any] = None  # TpyExpr from parser (avoid circular import)
     is_factory_default: bool = False  # True for field(default_factory=...)
     loc: Optional[Any] = None  # SourceLocation from parse.py (avoid circular import)
+    native_name: Optional[str] = None  # C++ member name override from native_field(...)
 
 
 @dataclass

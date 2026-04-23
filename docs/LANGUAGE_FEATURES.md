@@ -4627,14 +4627,14 @@ Cross-module imports of native functions work normally -- the compiler re-declar
 Import existing C++ classes and C structs so TPy code can declare their fields, call their methods, and pass them to native functions. No struct definition is generated -- the compiler trusts the external type exists.
 
 ```python
-from tpy.extern import native
+from tpy.extern import native, native_field
 from tpy import Int32, Float
 
 # @native -- C++ class import (constructor call syntax)
 @native
 class Vec2:
-    x: Int32
-    y: Int32
+    x: Int32 = native_field("m_x")     # field rename: v.x -> v.m_x
+    y: Int32 = native_field("m_y")
     def sum(self) -> Int32: ...        # stub method (... body)
     def dot(self, other: Vec2) -> Int32: ...
     @staticmethod
@@ -4677,6 +4677,7 @@ Generated C++:
 - Methods on native classes must have `...` body (stub declarations); methods with real bodies produce a parse error
 - `@native("cpp_name")` on methods allows renaming individual methods (generates `obj.cpp_name(args)`)
 - `@native("ns::func", function=True)` on methods generates a free function call with self as first arg: `::ns::func(obj, args)`
+- `native_field("cpp_name")` in a field's default-value slot renames individual fields (e.g. `x: Int32 = native_field("m_x")` emits `v.m_x`); rejected on non-`@native` classes
 - `@property` composes with `@native`/`@cpp_template` on native class methods -- property access syntax (`obj.prop`, `obj.prop = x`) desugars to the native/template method call
 
 ### Final Constants (Working)
