@@ -37,11 +37,11 @@ void main() {
     // update_same_name(Int32(10), Int32(20))
     update_same_name(10, 20);
     // print(opentop)
-    std::cout << opentop << "\n";
+    std::cout << ::opentop << "\n";
     // update_renamed(Int32(30), Int32(40))
     update_renamed(30, 40);
     // print(counter)
-    std::cout << g_counter << "\n";
+    std::cout << ::g_counter << "\n";
 }
 
 void __tpy_init() {

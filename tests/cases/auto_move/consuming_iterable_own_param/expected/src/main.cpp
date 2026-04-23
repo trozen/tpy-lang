@@ -9,7 +9,7 @@ void main() {
     // items: list[Item] = [Item(1), Item(2), Item(3)]
     std::vector<Item> items = {Item(1), Item(2), Item(3)};
     // out = collect(items)
-    std::vector<Item> out = collect(tpy::own_iter(std::move(items)));
+    std::vector<Item> out = collect(::tpy::own_iter(std::move(items)));
     // for r in out:
     auto& __obj_0 = out;
     auto __beg_0 = __obj_0.begin();

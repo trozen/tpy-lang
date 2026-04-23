@@ -9,7 +9,7 @@ void main() {
     // d: dict[str, Int32] = {"a": 1, "b": 2, "c": 3}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
     // keys = list(d)
-    std::vector<std::string> keys = ::tpy::construct<std::vector<std::string>>(tpy::own_iter_dict(std::move(d)));
+    std::vector<std::string> keys = ::tpy::construct<std::vector<std::string>>(::tpy::own_iter_dict(std::move(d)));
     // print(keys)
     std::cout << ::tpy::ListPrinter(keys) << "\n";
 }

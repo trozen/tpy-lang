@@ -13,7 +13,7 @@ void main() {
     // second: list[Item] = []
     std::vector<Item> second = std::vector<Item>{};
     // for x in items:
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto __obj_0 = ::tpy::own_iter(std::move(items));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {

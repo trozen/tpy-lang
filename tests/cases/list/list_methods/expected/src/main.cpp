@@ -116,7 +116,7 @@ void test_extend() {
     // more: list[Int32] = [7, 8]
     std::vector<int32_t> more = {7, 8};
     // nums.extend(more)
-    ::tpy::list_extend(nums, tpy::own_iter(std::move(more)));
+    ::tpy::list_extend(nums, ::tpy::own_iter(std::move(more)));
     // print_list(nums)
     print_list(nums);
     // # Extend with Array variable
@@ -130,7 +130,7 @@ void test_extend() {
     // extra: list[Int32] = [11, 12]
     std::vector<int32_t> extra = {11, 12};
     // nums.extend(extra)
-    ::tpy::list_extend(nums, tpy::own_iter(std::move(extra)));
+    ::tpy::list_extend(nums, ::tpy::own_iter(std::move(extra)));
     // print_list(nums)
     print_list(nums);
 }

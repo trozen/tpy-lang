@@ -343,22 +343,13 @@ class Pattern:
         return self._do_match(subject, UInt64(0),
                               PCRE2_ANCHORED | PCRE2_ENDANCHORED)
 
-    def finditer(self, subject: str) -> Own[list[Own[Match]]]:
+    def finditer(self, subject: str) -> Own[list[Match]]:
         """All non-overlapping matches as a list.
 
         TODO(v2): return a true generator like CPython (lazy iteration).
         Today materializes the full list -- fine for typical cases, real
-        memory cost on huge subjects.
-
-        TODO(compiler): the inner `Own[...]` is redundant -- the list owns
-        Match values by storage. Trying `list[Match]` here triggers a
-        codegen namespace-qualification bug: the consuming-iteration
-        codepath in findall emits `tpy::own_iter(...)` unqualified, which
-        resolves to `tpystd::tpy::own_iter` (non-existent) instead of
-        global `::tpy::own_iter` because `tpystd::tpy` (from lib/tpy/tpy/)
-        shadows it in `tpystd::re` scope. Once fixed (emit leading `::`
-        for runtime function calls), drop the inner Own."""
-        out: list[Own[Match]] = []
+        memory cost on huge subjects."""
+        out: list[Match] = []
         offset = UInt64(0)
         sub_len = UInt64(len(subject))
         s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
@@ -477,13 +468,18 @@ class Pattern:
             ovec = _pcre_ovec(md.get())
             mstart = unsafe_load(ovec, 0)
             mend = unsafe_load(ovec, UInt32(1))
-            out.append(subject[Int32.trunc(offset):Int32.trunc(mstart)])
+            # TODO(compiler): the `String(...)` wraps are a workaround for
+            # list[str].append(strview) not materializing implicit
+            # string_view -> std::string at the append call site. See
+            # TODO.md "list[str].append(strview) fails to materialize...".
+            # Once fixed, drop to `out.append(subject[...])`.
+            out.append(String(subject[Int32.trunc(offset):Int32.trunc(mstart)]))
             if mend == mstart:
                 offset = mend + UInt64(1)
             else:
                 offset = mend
             splits += Int32(1)
-        out.append(subject[Int32.trunc(offset):])
+        out.append(String(subject[Int32.trunc(offset):]))
         return out      # md drops at end of scope
 
 

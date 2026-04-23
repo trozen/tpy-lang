@@ -44,14 +44,12 @@ class SockaddrIn:
 
 # ---------- Socket lifecycle ----------
 
-# All @native names below use a leading `::` to force global-scope lookup
-# at codegen time. Without it, a call site inside namespace
-# `tpystd::socket` (our public facade) would first try to resolve `socket`
-# as the namespace itself (-> "expected primary-expression") and `close`
-# / `bind` / `recv` / ... as Socket methods (-> recursive call). The
-# leading `::` sidesteps both C++ name-lookup paths. Ideally TPy codegen
-# would emit `::` automatically for @native function calls; same TODO
-# item as the re.py `tpy::own_iter` note.
+# All @native names below use a leading `::` to bind to libc's global
+# symbols (`::socket`, `::bind`, ...). Without the `::` prefix, the rename
+# would be treated as relative to this module's `cpp_namespace` and emit
+# `::tpystd::_bindings::posix_socket::socket` -- no such symbol. Absolute
+# renames (containing `::` anywhere in the string) opt out of the
+# namespace prefix, which is what we want for libc bindings.
 
 @native("::socket")
 def socket(domain: Int32, type_: Int32, protocol: Int32) -> Int32: ...

@@ -23,11 +23,11 @@ void main() {
     // set_same_name(Int32(10))
     set_same_name(10);
     // print(opentop)
-    std::cout << opentop << "\n";
+    std::cout << ::opentop << "\n";
     // set_renamed(Int32(20))
     set_renamed(20);
     // print(counter)
-    std::cout << g_counter << "\n";
+    std::cout << ::g_counter << "\n";
 }
 
 void __tpy_init() {

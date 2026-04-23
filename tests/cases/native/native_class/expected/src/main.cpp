@@ -15,7 +15,7 @@ void main() {
     // print(v.y)
     std::cout << v.y << "\n";
     // print(vec2_sum(take_ptr(v)))
-    std::cout << vec2_sum(&v) << "\n";
+    std::cout << ::vec2_sum(&v) << "\n";
     // print(v.sum())
     std::cout << v.sum() << "\n";
     // print(v.dot(Vec2(Int32(1), Int32(2))))
@@ -31,7 +31,7 @@ void main() {
     // print(c.r)
     std::cout << c.r << "\n";
     // print(color_brightness(take_ptr(c)))
-    std::cout << color_brightness(&c) << "\n";
+    std::cout << ::color_brightness(&c) << "\n";
     // print(c.brightness())
     std::cout << c.brightness() << "\n";
 }

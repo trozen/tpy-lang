@@ -33,7 +33,9 @@ from tpy.extern import native, export
 | Cross-module native imports | **Done** |
 | Package re-exports of native functions | **Done** |
 | Include propagation from native modules | **Done** |
-| Auto-prefix bare `@native` with `cpp_namespace` | **Done** |
+| Auto-prefix `@native` with `cpp_namespace` (bare or rename without `::`) | **Done** |
+| Absolute opt-out via `@native("::name")` or `@native("ns::name")` | **Done** |
+| Call-site `::` qualification for `@native` functions | **Done** |
 | Duplicate symbol detection | **Done** |
 | `@export(binding="C")` class -- export C struct | Planned |
 | C header generation (`--emit-c-header`) | Planned |
@@ -66,7 +68,7 @@ def sdl_init(flags: Int32) -> Int32: ...
 def global_func(x: Int32) -> Int32: ...
 ```
 
-Functions must have a `...` (stub) body. The optional string argument specifies the C/C++ symbol name. Without it, the Python function name is used, prefixed by `cpp_namespace` if the module is a `native_module` (see below).
+Functions must have a `...` (stub) body. The optional string argument specifies the C/C++ symbol name. See [Rename resolution](#rename-resolution) below for how the string interacts with `cpp_namespace`.
 
 ### Classes
 
@@ -118,7 +120,9 @@ frame_count: Int32 = native_global("DG_FrameCount", binding="C")
 # C global array (decays to pointer)
 data: Ptr[Int32] = native_global("shared_data", binding="C", array=True)
 
-# Bare -- uses Python name, prefixed by cpp_namespace in native_module
+# Bare -- uses Python name as the global C++ symbol
+# (native globals emit at :: regardless of the module's cpp_namespace,
+# matching C ABI conventions for externally-linked variables)
 tick: Int32 = native_global()
 ```
 
@@ -210,34 +214,13 @@ Marks a module as declaration-only. No `.hpp` or `.cpp` is generated. All `@nati
 
 Each module that should be declaration-only must have its own `# tpy: native_module` directive -- it does not propagate from package `__init__.py` to child modules.
 
-**Auto-prefix with `cpp_namespace`:** When a `native_module` also has `# tpy: cpp_namespace("ns")`, bare `@native` entities (without an explicit name) are auto-prefixed with the namespace:
-
-```python
-# tpy: native_module
-# tpy: cpp_namespace("engine::core")
-# tpy: include("<engine/core/types.hpp>")
-
-from tpy.extern import native, native_global
-
-@native                          # -> engine::core::Session
-class Session:
-    pass
-
-@native                          # -> engine::core::init_scope
-def init_scope() -> None: ...
-
-score: Int32 = native_global()   # -> engine::core::score
-
-@native("other::Thing")          # explicit override
-class Thing:
-    pass
-```
+See [Rename resolution](#rename-resolution) below for how `@native` renames interact with `cpp_namespace`.
 
 `@export` is not allowed in `native_module` modules (they are declaration-only).
 
 ### `# tpy: cpp_namespace("ns")`
 
-Overrides the C++ namespace for the module's generated code (default: `tpyapp::module_name`). In `native_module` modules, also serves as the auto-prefix for bare `@native` entities.
+Overrides the C++ namespace for the module's generated code (default: `tpyapp::module_name`). Also drives the [rename resolution](#rename-resolution) rule for `@native` entities in the module.
 
 ### `# tpy: include("header")`
 
@@ -306,7 +289,44 @@ def helper_add(x: Int32) -> Int32:
     return x + Int32(1)
 ```
 
-When the string is omitted, the Python name is used. In `native_module` modules with `cpp_namespace`, bare `@native` names are auto-prefixed: `@native def foo` in a module with `cpp_namespace("ns")` -> `ns::foo`.
+### Rename resolution
+
+The rename string interacts with the module's `cpp_namespace` directive (if any). The rule covers both the no-rename case (`@native`) and the explicit-rename case (`@native("name")`), and applies to module-level `@native` functions, records, and protocols. C-linkage (`binding="C"`) and `@builtin_type` records are exempt -- their symbol names are unchanged by this rule.
+
+| Form | Interpretation | Emitted C++ (in `cpp_namespace("mylib")`) |
+|------|----------------|-------------------------------------------|
+| `@native` (no rename) | relative to `cpp_namespace` | `::mylib::PythonName` |
+| `@native("foo")` (no `::` in string) | relative to `cpp_namespace` | `::mylib::foo` |
+| `@native("a::b")` (contains `::`) | absolute -- `cpp_namespace` ignored | `::a::b` |
+| `@native("::foo")` (leading `::`) | absolute to global scope | `::foo` |
+
+**Rule of thumb:** any `::` in the rename string opts out of the namespace prefix. Use `@native("::libc_name")` to bind to libc or other global-scope symbols from inside a namespaced module (e.g. `@native("::socket")` in a `cpp_namespace("tpystd::_bindings::posix_socket")` module).
+
+```python
+# tpy: cpp_namespace("engine::core")
+# tpy: include("<engine/core/types.hpp>")
+
+from tpy.extern import native
+
+@native                          # -> ::engine::core::Session
+class Session: ...
+
+@native                          # -> ::engine::core::init_scope
+def init_scope() -> None: ...
+
+@native("init_scope_v2")         # -> ::engine::core::init_scope_v2 (relative)
+def init_scope2() -> None: ...
+
+@native("other::Thing")          # -> ::other::Thing (absolute, contains ::)
+class Thing: ...
+
+@native("::global_helper")       # -> ::global_helper (absolute, leading ::)
+def global_helper() -> None: ...
+```
+
+### Call-site qualification
+
+All `@native` function calls (C++ linkage) emit their symbol absolute-qualified -- codegen prepends `::` at every call site. This prevents C++ unqualified lookup from binding to a namespace member, class method, or ADL hit before finding the intended external symbol. C-linkage `@native(binding="C")` and `@export(binding="C")` are exempt: their declarations are namespace-scoped `extern "C"`, so the prefix would force global-scope lookup and miss the declaration.
 
 ## Errors
 

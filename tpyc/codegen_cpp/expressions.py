@@ -580,7 +580,7 @@ class ExpressionGenerator:
         for fi in record.get_method_overloads("__iter__"):
             if fi.is_consuming:
                 if fi.native_name:
-                    return f"{fi.native_name}(std::move({gen_code}))"
+                    return f"{qualify_native_name(fi.native_name)}(std::move({gen_code}))"
                 else:
                     return f"std::move({gen_code}).__iter__()"
         return None
@@ -805,7 +805,7 @@ class ExpressionGenerator:
             # Native global name substitution (Python name -> C/C++ name)
             # Skip if shadowed by a local variable
             if expr.name in self.ctx.native_global_names and expr.name not in self.ctx.local_scope_names:
-                return self.ctx.native_global_names[expr.name]
+                return qualify_native_name(self.ctx.native_global_names[expr.name])
             # Check if this is an imported variable from a user module
             if expr.name in self.ctx.user_imported_variables:
                 # Don't qualify if shadowed by a local variable
@@ -2155,15 +2155,36 @@ class ExpressionGenerator:
                 mangled = expr.func_name
 
             func_cpp_name = escape_cpp_name(mangled)
-            if func_info.is_native_import or func_info.is_extern_c:
-                # @native/@export: use the C/C++ symbol name directly.
-                # For @native(binding="C"), the calling module's header has a local re-declaration
-                # so no namespace qualification is needed (works for same-module,
-                # cross-module, and package re-export cases).
+            if func_info.is_native_c or func_info.is_extern_c:
+                # @native(binding="C") / @export(binding="C"): C-linkage
+                # symbols are declared `extern "C"` in the calling module's
+                # namespace (via re-declaration in the generated header),
+                # so unqualified lookup resolves them. A leading `::` would
+                # force global-scope lookup and miss the namespace-scoped
+                # declaration.
+                func_cpp_name = func_info.native_name or func_info.name
+            elif func_info.is_native_import:
+                # @native (C++ linkage): emit absolute-qualified so C++
+                # unqualified lookup can't bind to a lexical collision in
+                # the caller's scope (class method, namespace-member, ADL).
                 func_cpp_name = qualify_native_name(func_info.native_name or func_info.name)
             elif expr.func_name in self.ctx.user_imported_functions:
                 source_module, original_name = self.ctx.user_imported_functions[expr.func_name]
                 func_cpp_name = qualified_cpp_name(source_module, mangled if is_literal_mangled else original_name)
+            elif expr.func_name in self.ctx.analyzer.imported_names:
+                # Implicit builtin-module function (e.g. pure-TPy helper in
+                # tpystd::builtins). Only qualify when the resolved function
+                # actually lives in that imported module -- if the user
+                # defined a local shadowing function, func_info.qualified_name
+                # points to the local module and we leave emission
+                # unqualified (C++ picks up the local definition by name).
+                # Forward-looking: all current builtins are @native or
+                # @cpp_template (handled above), so this branch is inert
+                # today but unblocks pure-TPy builtins.
+                source_module, original_name = self.ctx.analyzer.imported_names[expr.func_name]
+                fi_qname = func_info.qualified_name or ""
+                if fi_qname.startswith(source_module + "."):
+                    func_cpp_name = qualified_cpp_name(source_module, mangled if is_literal_mangled else original_name)
 
             # For generic TPy functions, emit explicit type args to avoid C++ deduction
             # issues with ::tpy::param_val_or_ref_t<T> parameters.  Skip for @native
@@ -2481,13 +2502,10 @@ class ExpressionGenerator:
                 func_name = fi.native_name or fi.name
                 # @native (C++ import): symbol comes from external headers,
                 # use the native name directly (not module-qualified).
-                # Always prefix with :: for absolute lookup since we're
-                # inside a namespace.
+                # qualify_native_name forces leading :: so lookup can't
+                # bind to a namespace member or class method by accident.
                 if fi.is_native:
-                    qualified = qualify_native_name(func_name)
-                    if not qualified.startswith("::"):
-                        qualified = f"::{qualified}"
-                    return f"{qualified}({args})"
+                    return f"{qualify_native_name(func_name)}({args})"
                 # @native(binding="C") / @export: extern "C" declaration lives in the
                 # module namespace, use module-qualified path
                 return f"{qualified_cpp_name(expr.user_module_call, func_name)}({args})"
@@ -4390,7 +4408,11 @@ class ExpressionGenerator:
             source_module, original_name = self.ctx.user_imported_functions[expr.name]
             return qualified_cpp_name(source_module, original_name) + targs
         # Native functions: use native C++ name
-        if fi.is_native_import or fi.is_extern_c:
+        if fi.is_native:
             return qualify_native_name(fi.native_name or fi.name) + targs
+        if fi.is_native_c or fi.is_extern_c:
+            # C-linkage: declaration is namespace-scoped extern "C"; don't
+            # force global-scope lookup.
+            return (fi.native_name or fi.name) + targs
         # Same-module function
         return escape_cpp_name(expr.name) + targs

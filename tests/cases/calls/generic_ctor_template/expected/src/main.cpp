@@ -13,14 +13,14 @@ void main() {
     std::cout << ::tpy::__len__(items) << "\n";
     // # set[T] constructor -- {T} resolved to int32_t
     // s = set[Int32](items)
-    ::tpy::ordered_set<int32_t> s = ::tpy::set_construct<int32_t>(tpy::own_iter(std::move(items)));
+    ::tpy::ordered_set<int32_t> s = ::tpy::set_construct<int32_t>(::tpy::own_iter(std::move(items)));
     // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
     // # dict[K,V] constructor -- {K}/{V} resolved
     // pairs: list[tuple[str, Int32]] = [("a", Int32(1)), ("b", Int32(2))]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}};
     // d = dict[str, Int32](pairs)
-    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(tpy::own_iter(std::move(pairs)));
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
     // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
     // # Inferred type (no explicit [T]) -- same resolution path

@@ -12,7 +12,7 @@ void main() {
     // print(v.x)
     std::cout << v.x << "\n";
     // print(vec2_sum(take_ptr(v)))
-    std::cout << vec2_sum(&v) << "\n";
+    std::cout << ::vec2_sum(&v) << "\n";
     // print(v.sum())
     std::cout << v.sum() << "\n";
     // r = MyRect(Int32(0), Int32(0), Int32(40), Int32(30))

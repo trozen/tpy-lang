@@ -176,12 +176,19 @@ def qualified_cpp_name(module_name: str, name: str) -> str:
 
 
 def qualify_native_name(name: str) -> str:
-    """Ensure a C++ native name is fully qualified (prefixed with ::).
+    """Force @native call-site emission to absolute global scope.
 
-    Names already starting with :: or without :: are returned as-is.
-    Example: "tpy::__len__" -> "::tpy::__len__", "abs" -> "abs"
+    Any non-empty name gets a leading `::` so C++ unqualified lookup can't
+    bind it to a member function, enclosing-namespace symbol, or ADL hit
+    before finding the intended native symbol. Idempotent: names that
+    already start with `::` are left alone.
+
+    Example: "socket" -> "::socket", "tpy::__len__" -> "::tpy::__len__",
+    "::already_global" -> "::already_global".
     """
-    return ensure_qualified(name)
+    if not name or name.startswith("::"):
+        return name
+    return f"::{name}"
 
 
 def loop_var_binding(

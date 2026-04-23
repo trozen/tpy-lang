@@ -1909,62 +1909,70 @@ class Compiler:
         pass
 
     def _apply_native_namespace_prefix(self) -> None:
-        """Auto-prefix bare @native entities with cpp_namespace.
+        """Validate native_module contents and auto-prefix @native renames.
 
-        When a native_module has cpp_namespace set and a @native entity has no
-        explicit native_name, sets native_name to "ns::python_name".
+        Two passes per module:
+          1. For native_module only: validate that only @native/@builtin
+             entities are present (declaration-only constraint).
+          2. For any module with cpp_namespace: auto-prefix module-level
+             @native renames that are either empty or contain no `::`.
+             Rule: the rename is treated as relative to cpp_namespace
+             unless it contains `::` (any occurrence = absolute opt-out).
+             Applies to functions, records, and native_global declarations
+             with C++ linkage. C-linkage is skipped (global scope by ABI).
+             @builtin_type records are skipped -- their emission goes
+             through TypeDef.cpp_formatter and the rename is informational.
         """
-        from .parse.nodes import FunctionLinkage as FL, RecordLinkage as RL, VarLinkage, TpyVarDecl
+        # Note: TpyVarDecl.linkage is populated by sema (statements.py), not
+        # the parser, so an auto-prefix loop for native_global here would be
+        # dead code. Native globals are intentionally emitted at global C++
+        # scope (`::name`) -- they model externally-linked symbols whose C
+        # ABI names don't depend on the importing module's cpp_namespace.
+        from .parse.nodes import FunctionLinkage as FL, RecordLinkage as RL
+        def _needs_prefix(rename: str | None) -> bool:
+            return not rename or "::" not in rename
         for compiled in self.modules.values():
-            if not compiled.ast.directives.native_module:
-                continue
-            # Validate: only @native/@builtin entities allowed in native_module
-            for func in compiled.ast.functions:
-                if func.linkage == FL.EXPORT_C:
+            if compiled.ast.directives.native_module:
+                for func in compiled.ast.functions:
+                    if func.linkage == FL.EXPORT_C:
+                        raise CompileError(
+                            f"@export not allowed in native_module "
+                            f"('{compiled.name}' is declaration-only)",
+                            compiled.name, compiled.path,
+                            lineno=func.loc.line if func.loc else None)
+                    if (func.linkage == FL.DEFAULT
+                            and not func.builtin_function_key
+                            and not func.builtin_decorator_key
+                            and not func.cpp_template):
+                        raise CompileError(
+                            f"non-native function '{func.name}' not allowed "
+                            f"in native_module ('{compiled.name}' is declaration-only)",
+                            compiled.name, compiled.path,
+                            lineno=func.loc.line if func.loc else None)
+                for record in compiled.ast.records:
+                    if record.linkage == RL.DEFAULT and not record.builtin_type_key:
+                        raise CompileError(
+                            f"non-native class '{record.name}' not allowed "
+                            f"in native_module ('{compiled.name}' is declaration-only)",
+                            compiled.name, compiled.path,
+                            lineno=record.loc.line if record.loc else None)
+                for proto in compiled.ast.protocols:
                     raise CompileError(
-                        f"@export not allowed in native_module "
-                        f"('{compiled.name}' is declaration-only)",
+                        f"protocol '{proto.name}' not allowed in "
+                        f"native_module ('{compiled.name}' is declaration-only)",
                         compiled.name, compiled.path,
-                        lineno=func.loc.line if func.loc else None)
-                if (func.linkage == FL.DEFAULT
-                        and not func.builtin_function_key
-                        and not func.builtin_decorator_key
-                        and not func.cpp_template):
-                    raise CompileError(
-                        f"non-native function '{func.name}' not allowed "
-                        f"in native_module ('{compiled.name}' is declaration-only)",
-                        compiled.name, compiled.path,
-                        lineno=func.loc.line if func.loc else None)
-            for record in compiled.ast.records:
-                if record.linkage == RL.DEFAULT and not record.builtin_type_key:
-                    raise CompileError(
-                        f"non-native class '{record.name}' not allowed "
-                        f"in native_module ('{compiled.name}' is declaration-only)",
-                        compiled.name, compiled.path,
-                        lineno=record.loc.line if record.loc else None)
-            for proto in compiled.ast.protocols:
-                raise CompileError(
-                    f"protocol '{proto.name}' not allowed in "
-                    f"native_module ('{compiled.name}' is declaration-only)",
-                    compiled.name, compiled.path,
-                    lineno=proto.loc.line if proto.loc else None)
+                        lineno=proto.loc.line if proto.loc else None)
             ns = compiled.ast.directives.cpp_namespace
             if not ns:
                 continue
-            # Auto-prefix bare @native functions (C++ linkage only --
-            # C-linkage symbols can't have namespace-qualified names)
             for func in compiled.ast.functions:
-                if func.linkage == FL.NATIVE and not func.native_name:
-                    func.native_name = f"{ns}::{func.name}"
-            # Auto-prefix bare @native records (C++ only)
+                if func.linkage == FL.NATIVE and _needs_prefix(func.native_name):
+                    func.native_name = f"{ns}::{func.native_name or func.name}"
             for record in compiled.ast.records:
-                if record.linkage == RL.NATIVE and not record.native_name:
-                    record.native_name = f"{ns}::{record.name}"
-            # Auto-prefix bare native_global() declarations (C++ only)
-            for stmt in (compiled.ast.top_level_stmts or []):
-                if isinstance(stmt, TpyVarDecl):
-                    if stmt.linkage == VarLinkage.NATIVE and not stmt.native_name:
-                        stmt.native_name = f"{ns}::{stmt.name}"
+                if (record.linkage == RL.NATIVE
+                        and record.builtin_type_key is None
+                        and _needs_prefix(record.native_name)):
+                    record.native_name = f"{ns}::{record.native_name or record.name}"
 
     def _build_namespace_map(self) -> dict[str, str]:
         """Build module_name -> C++ namespace mapping from # tpy: namespace directives.

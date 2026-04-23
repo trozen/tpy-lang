@@ -19,7 +19,7 @@ void main() {
     // nums2: list[Int32] = [40, 50]
     std::vector<int32_t> nums2 = {40, 50};
     // b2 = Bag(nums2)
-    Bag b2 = Bag(tpy::own_iter(std::move(nums2)));
+    Bag b2 = Bag(::tpy::own_iter(std::move(nums2)));
     // print(b2.items)
     std::cout << ::tpy::ListPrinter(b2.items) << "\n";
 }

@@ -15,16 +15,16 @@ void __tpy_init() {
     // from tpy.unsafe import unsafe_load, unsafe_store
     // # Read array elements
     // print(unsafe_load(scores, UInt32(0)))
-    std::cout << g_scores[0] << "\n";
+    std::cout << ::g_scores[0] << "\n";
     // print(unsafe_load(scores, UInt32(2)))
-    std::cout << g_scores[2] << "\n";
+    std::cout << ::g_scores[2] << "\n";
     // print(unsafe_load(ids, UInt32(1)))
-    std::cout << g_ids[1] << "\n";
+    std::cout << ::g_ids[1] << "\n";
     // # Write and read back
     // unsafe_store(scores, UInt32(0), Int16(99))
-    g_scores[0] = 99;
+    ::g_scores[0] = 99;
     // print(unsafe_load(scores, UInt32(0)))
-    std::cout << g_scores[0] << "\n";
+    std::cout << ::g_scores[0] << "\n";
 }
 
 } // namespace tpyapp::main

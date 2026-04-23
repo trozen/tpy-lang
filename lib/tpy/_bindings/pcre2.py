@@ -30,22 +30,22 @@ from tpy.extern import native
 # `runtime/cpp/include/tpy/stdlib/pcre2_h.hpp` (matches upstream pcre2.h
 # layout; the real struct definitions live in PCRE2's own .c files).
 
-@native("pcre2_code_8")
+@native("::pcre2_code_8")
 class Code: ...
 
-@native("pcre2_match_data_8")
+@native("::pcre2_match_data_8")
 class MatchData: ...
 
-@native("pcre2_match_context_8")
+@native("::pcre2_match_context_8")
 class MatchContext: ...
 
 # Context types we never construct -- passed as `Ptr[...] | None = None`
 # to the PCRE2 functions that accept an optional context override. Caller
 # always passes `None` (= default contexts).
-@native("pcre2_compile_context_8")
+@native("::pcre2_compile_context_8")
 class CompileContext: ...
 
-@native("pcre2_general_context_8")
+@native("::pcre2_general_context_8")
 class GeneralContext: ...
 
 
@@ -93,41 +93,41 @@ PCRE2_UNSET:                        Final[UInt64] = 0xFFFFFFFFFFFFFFFF
 # `Ptr[X] | None`; the facade passes `None` at every call site, which
 # codegens to `nullptr` at the C boundary.
 
-@native("pcre2_compile_8")
+@native("::pcre2_compile_8")
 def compile(pattern_data: Ptr[readonly[UInt8]], pattern_len: UInt64,
             flags: UInt32,
             errcode_out: Ptr[Int32], erroff_out: Ptr[UInt64],
             ccontext: Ptr[CompileContext]) -> Ptr[Code]: ...
 
-@native("pcre2_code_free_8")
+@native("::pcre2_code_free_8")
 def code_free(code: Ptr[Code]) -> None: ...
 
-@native("pcre2_jit_compile_8")
+@native("::pcre2_jit_compile_8")
 def jit_compile(code: Ptr[Code], opts: UInt32) -> Int32: ...
 
 # Render a PCRE2 numeric error into a human-readable message. Writes into
 # the caller-provided buffer and returns the number of bytes written
 # (negative on error). `PCRE2_UCHAR8` is `uint8_t` -- same as `Ptr[UInt8]`'s
 # underlying C type, so no cast needed.
-@native("pcre2_get_error_message_8")
+@native("::pcre2_get_error_message_8")
 def get_error_message(errcode: Int32, buf: Ptr[UInt8], buflen: UInt64) -> Int32: ...
 
 
 # ---------- Match contexts and match-data blocks ----------
 
-@native("pcre2_match_context_create_8")
+@native("::pcre2_match_context_create_8")
 def match_context_create(
     gcontext: Ptr[GeneralContext]) -> Ptr[MatchContext]: ...
 
-@native("pcre2_match_context_free_8")
+@native("::pcre2_match_context_free_8")
 def match_context_free(mctx: Ptr[MatchContext]) -> None: ...
 
-@native("pcre2_match_data_create_from_pattern_8")
+@native("::pcre2_match_data_create_from_pattern_8")
 def match_data_create_from_pattern(
     code: Ptr[Code],
     gcontext: Ptr[GeneralContext]) -> Ptr[MatchData]: ...
 
-@native("pcre2_match_data_free_8")
+@native("::pcre2_match_data_free_8")
 def match_data_free(md: Ptr[MatchData]) -> None: ...
 
 
@@ -136,7 +136,7 @@ def match_data_free(md: Ptr[MatchData]) -> None: ...
 # pcre2_match returns >0 on success (count of matched groups including
 # group 0), 0 if the ovector was too small (we always size correctly via
 # match_data_create_from_pattern), or negative on no-match / error.
-@native("pcre2_match_8")
+@native("::pcre2_match_8")
 def match(code: Ptr[Code],
           subject_data: Ptr[readonly[UInt8]], subject_len: UInt64,
           start_offset: UInt64, opts: UInt32,
@@ -144,7 +144,7 @@ def match(code: Ptr[Code],
 
 # Returns Ptr[UInt64] -- pointer into the match-data block holding the
 # ovector (pairs of (start, end) byte offsets, length 2*group_count).
-@native("pcre2_get_ovector_pointer_8")
+@native("::pcre2_get_ovector_pointer_8")
 def get_ovector_pointer(md: Ptr[MatchData]) -> Ptr[readonly[UInt64]]: ...
 
 
@@ -153,7 +153,7 @@ def get_ovector_pointer(md: Ptr[MatchData]) -> Ptr[readonly[UInt64]]: ...
 # pcre2_pattern_info(code, what, where) -- writes the requested info into
 # `where` (typed appropriately for the selector). We only use it to fetch
 # the capture count (uint32_t).
-@native("pcre2_pattern_info_8")
+@native("::pcre2_pattern_info_8")
 def pattern_info_u32(code: Ptr[Code], what: UInt32, out: Ptr[UInt32]) -> Int32: ...
 
 
@@ -164,7 +164,7 @@ def pattern_info_u32(code: Ptr[Code], what: UInt32, out: Ptr[UInt32]) -> Int32: 
 # *outlen is updated to the size needed and PCRE2_ERROR_NOMEMORY returned;
 # the caller can resize and retry. `mcache` is an optional match_data cache
 # we don't use -- pass None.
-@native("pcre2_substitute_8")
+@native("::pcre2_substitute_8")
 def substitute(code: Ptr[Code],
                subject_data: Ptr[readonly[UInt8]], subject_len: UInt64,
                start_offset: UInt64, opts: UInt32,
