@@ -298,7 +298,14 @@ COERCIONS: list[Coercion] = [
         codegen=lambda e, _a, _b, _c: f"::tpy::char_to_str({e})",
     ),
 
-    # String <-> str identity coercions (both map to std::string)
+    # String <-> str (both lower to std::string in non-ARG contexts, but `str`
+    # params lower to std::string_view at ARG). string -> str is always safe
+    # (std::string implicitly converts to std::string_view). str -> String
+    # materializes at ARG (where str is string_view and String is const
+    # std::string& / std::string) and is identity elsewhere (both std::string).
+    # The ARG wrap skips plain string literals -- `"foo"` is const char* which
+    # binds to const std::string& directly, so `std::string("foo")` is only a
+    # cosmetic change. Non-literal sources (names, calls, slices) need the wrap.
     Coercion(
         name="string_to_str",
         from_type=is_string_type,
@@ -309,6 +316,10 @@ COERCIONS: list[Coercion] = [
         name="str_to_string",
         from_type=is_str_type,
         to_type=is_string_type,
+        codegen=lambda e, _a, _b, c: (
+            e if c != CoercionContext.ARG or (e.startswith('"') and e.endswith('"'))
+            else f"std::string({e})"
+        ),
     ),
 
     # String -> StrView (safe implicit, C++ handles std::string -> string_view)
@@ -360,8 +371,8 @@ COERCIONS: list[Coercion] = [
         to_type=lambda t: isinstance(t, OptionalType) and is_str_type(t.inner),
         codegen=lambda e, _a, b, c: (
             e if c == CoercionContext.ARG and not isinstance(b, OwnType)
-            else (f"({{ auto __tpy_ov = ({e}); "
-                  f"__tpy_ov ? std::make_optional(std::string(*__tpy_ov)) : std::nullopt; }})")
+            else (f"({{ auto __ov = ({e}); "
+                  f"__ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }})")
         ),
     ),
     Coercion(
@@ -370,8 +381,8 @@ COERCIONS: list[Coercion] = [
         to_type=lambda t: isinstance(t, OptionalType) and is_str_view_type(t.inner),
         codegen=lambda e, _a, b, c: (
             e if c == CoercionContext.ARG and not isinstance(b, OwnType)
-            else (f"({{ auto __tpy_ov = ({e}); "
-                  f"__tpy_ov ? std::make_optional(std::string_view(*__tpy_ov)) : std::nullopt; }})")
+            else (f"({{ auto __ov = ({e}); "
+                  f"__ov ? std::make_optional(std::string_view(*__ov)) : std::nullopt; }})")
         ),
     ),
 

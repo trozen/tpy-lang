@@ -390,7 +390,17 @@ class ExpressionGenerator:
     def _maybe_convert_opt_str_param(self, name: str, result: str,
                                       target_type: TpyType | None) -> str:
         """Convert Optional[str] param (optional<string_view>) to optional<string>
-        when needed by the target type."""
+        when needed by the target type.
+
+        Complements the `optional_strview_to_str` coercion: that coercion fires
+        when the TPy types differ (Optional[StrView] source, Optional[str]
+        target). This shim handles the case where TPy types match (both
+        Optional[str]) but the C++ representations differ -- `Optional[str]`
+        lowers to `std::optional<std::string_view>` at ARG and
+        `std::optional<std::string>` elsewhere. The coercion system doesn't
+        see the ARG/non-ARG split for same-TPy-type transitions, so a
+        dedicated path patches names whose declared param type is an
+        Optional[str]."""
         if target_type is None:
             return result
         declared = self.ctx.current_func_params.get(name)

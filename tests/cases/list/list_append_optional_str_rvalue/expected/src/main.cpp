@@ -25,15 +25,15 @@ void main() {
     // local = maybe_prefix(subject, True)
     std::optional<std::string_view> local = maybe_prefix(subject, true);
     // items.append(local)
-    items.push_back(({ auto __tpy_ov = (local); __tpy_ov ? std::make_optional(std::string(*__tpy_ov)) : std::nullopt; }));
+    items.push_back(({ auto __ov = (local); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
     // items.append(maybe_prefix(subject, True))
-    items.push_back(({ auto __tpy_ov = (maybe_prefix(subject, true)); __tpy_ov ? std::make_optional(std::string(*__tpy_ov)) : std::nullopt; }));
+    items.push_back(({ auto __ov = (maybe_prefix(subject, true)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
     // items.append(maybe_prefix(subject, False))
-    items.push_back(({ auto __tpy_ov = (maybe_prefix(subject, false)); __tpy_ov ? std::make_optional(std::string(*__tpy_ov)) : std::nullopt; }));
+    items.push_back(({ auto __ov = (maybe_prefix(subject, false)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
     // items.insert(1, maybe_prefix(subject, True))
-    ::tpy::list_insert(items, 1, ({ auto __tpy_ov = (maybe_prefix(subject, true)); __tpy_ov ? std::make_optional(std::string(*__tpy_ov)) : std::nullopt; }));
+    ::tpy::list_insert(items, 1, ({ auto __ov = (maybe_prefix(subject, true)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
     // items[0] = maybe_prefix(subject, False)
-    ::tpy::__setitem__(items, 0, ({ auto __tpy_ov = (maybe_prefix(subject, false)); __tpy_ov ? std::make_optional(std::string(*__tpy_ov)) : std::nullopt; }));
+    ::tpy::__setitem__(items, 0, ({ auto __ov = (maybe_prefix(subject, false)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
     // print(items)
     std::cout << ::tpy::ListPrinter(items) << "\n";
 }
