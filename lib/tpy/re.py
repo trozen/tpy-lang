@@ -468,18 +468,13 @@ class Pattern:
             ovec = _pcre_ovec(md.get())
             mstart = unsafe_load(ovec, 0)
             mend = unsafe_load(ovec, UInt32(1))
-            # TODO(compiler): the `String(...)` wraps are a workaround for
-            # list[str].append(strview) not materializing implicit
-            # string_view -> std::string at the append call site. See
-            # TODO.md "list[str].append(strview) fails to materialize...".
-            # Once fixed, drop to `out.append(subject[...])`.
-            out.append(String(subject[Int32.trunc(offset):Int32.trunc(mstart)]))
+            out.append(subject[Int32.trunc(offset):Int32.trunc(mstart)])
             if mend == mstart:
                 offset = mend + UInt64(1)
             else:
                 offset = mend
             splits += Int32(1)
-        out.append(String(subject[Int32.trunc(offset):]))
+        out.append(subject[Int32.trunc(offset):])
         return out      # md drops at end of scope
 
 
