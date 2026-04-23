@@ -188,6 +188,8 @@ Note: `@nocopy` and `__del__` are orthogonal to default-constructibility. A `@no
 
 Ternary expressions (`self.x = a if cond else b`) already go to the init-list as a single expression and are the preferred way to handle conditional initialization without a body assignment.
 
+**Top-level body assignments for `@nocopy` + `__del__` fields:** the field init RHS must not reference a body-local. These types have no default ctor (Decision 3), so the field cannot be default-initialized in the MIL and reassigned; the initializer must itself run in the MIL (move-construction). The MIL-hoist path accepts only constructor parameters and module-level references in the RHS; a local-referencing RHS is rejected with a clean sema error recommending a `@staticmethod` factory returning `Own[Self]` on the field's type to encapsulate the computation.
+
 ### Decision 3: `= default` Constructor
 
 **Question**: Should every class with a parameterized `__init__` also get `ClassName() = default;`?
@@ -197,6 +199,8 @@ Currently this is emitted unconditionally. It enables `ClassName{}` and `std::op
 **Chosen approach: Only emit when all fields are default-constructible.**
 
 Check each field type. If any field is non-default-constructible (e.g., `@nocopy` without default ctor), skip the `= default` line. Need to track default-constructibility as a type property.
+
+Additionally, `@nocopy` records that also define `__del__` are themselves treated as non-default-constructible -- their auto `= default;` is suppressed. A default-initialized instance of such a type would leave pointer fields indeterminate and then run `__del__` on garbage. The suppression cascades: a record holding a `@nocopy + __del__` field also loses its auto `= default;` via the default-constructibility predicate.
 
 ### Decision 4: Uninitialized Field Detection
 

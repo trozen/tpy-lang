@@ -18,6 +18,7 @@ from ..typesys import (
 from ..parse import (
     TpyRecord, TpyEnum, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
     TpyMethodCall, TpyFieldAccess, TpyName, TpyCoerce, TpyNestedDef, is_super_del_call,
+    collect_name_refs, collect_top_level_local_names,
 )
 from ..namespace import Namespace
 
@@ -241,7 +242,15 @@ class RecordGenerator:
                 if has_required_params or proto_params:
                     if all_protocols_optional:
                         out.write(f"{INDENT}{cpp_rec_name}() : {cpp_rec_name}(static_cast<std::nullptr_t*>(nullptr)) {{}}\n")
-                    elif self._all_fields_default_constructible(record):
+                    elif self._all_fields_default_constructible(record) and not (
+                        record.is_nocopy and record.del_method is not None
+                    ):
+                        # @nocopy + __del__ records have no safe default state:
+                        # default-init leaves their fields indeterminate, and
+                        # the destructor reads them. Without the auto ctor,
+                        # callers and enclosing records must initialize
+                        # explicitly (MIL-hoist into move-construction when
+                        # the field is another record's nocopy member).
                         out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
                 if proto_params or has_dynamic:
                     cpp_params = self.functions.gen_params_with_protocols(
@@ -299,9 +308,12 @@ class RecordGenerator:
             # No __init__: for plain records, omit constructor declaration so the
             # struct stays a C++ aggregate (supports both Type() and Type(a,b,c)).
             # Records with __del__/@nocopy get user-declared copy/move ops which
-            # suppress the implicit default ctor, so they still need = default.
+            # suppress the implicit default ctor, so they still need = default --
+            # except @nocopy + __del__, which has no safe default state (see the
+            # guard on the parameterized-ctor path above for the full rationale).
             if record_info and (record_info.is_nocopy or record_info.has_del or record_info.has_copy):
-                out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
+                if not (record_info.is_nocopy and record_info.has_del):
+                    out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
 
         # Copy/move ops for @nocopy, __del__, or __copy__ classes.
         if record_info and record_info.has_copy:
@@ -709,6 +721,12 @@ class RecordGenerator:
         nested_def_names = {
             s.func.name for s in init_method.body if isinstance(s, TpyNestedDef)
         }
+        # Body-locals: any field-init whose RHS references one of these must
+        # stay in the body (the MIL runs before the constructor body, so the
+        # local isn't in scope there). Captures e.g. `self._x = OwnedBar(tmp)`
+        # which would otherwise hoist into `Foo() : _x(OwnedBar(tmp)) { auto
+        # tmp = ...; }` and fail C++.
+        local_names = collect_top_level_local_names(init_method.body)
         try:
             inits = []
             for stmt in init_method.body:
@@ -722,9 +740,40 @@ class RecordGenerator:
                             # Skip if value is a nested def (lambda defined in body)
                             if isinstance(source_expr, TpyName) and source_expr.name in nested_def_names:
                                 continue
-                            # Skip if value references a body-local variable
-                            # (not available in the C++ member initializer list)
-                            if isinstance(source_expr, TpyName) and source_expr.name not in param_names:
+                            # Skip if a bare-name RHS isn't a constructor param.
+                            # Conservative historical check -- catches `self.x = tmp`
+                            # where tmp is a local. The deeper walk below handles
+                            # compound RHS like `self._x = OwnedBar(tmp)`.
+                            blocked_by_bare_name = (
+                                isinstance(source_expr, TpyName)
+                                and source_expr.name not in param_names
+                            )
+                            blocked_by_body_local = bool(collect_name_refs(stmt.value) & local_names)
+                            if blocked_by_bare_name or blocked_by_body_local:
+                                # @nocopy + __del__ fields have no default ctor (see
+                                # codegen of the wrapper struct); a body-assignment
+                                # for them would default-init the field in the MIL
+                                # to an uncompilable state and produce a cryptic
+                                # C++ error. Reject cleanly here with guidance.
+                                if field_name in own_field_names:
+                                    fld_rec = self.ctx.analyzer.registry.get_record_for_type(field_types[field_name])
+                                    if fld_rec is not None and fld_rec.is_nocopy and fld_rec.has_del:
+                                        raise CodeGenError(
+                                            f"field '{field_name}' of @nocopy + __del__ type "
+                                            f"'{fld_rec.name}' must be initialized before any local "
+                                            f"variable is bound in this constructor. The assigned "
+                                            f"expression references a local defined earlier in the "
+                                            f"body; the field has no default constructor, so the "
+                                            f"initializer cannot run later than the member "
+                                            f"initializer list.\n"
+                                            f"  Constructor order: super().__init__() -> field "
+                                            f"assignments (self.x = ...) -> other logic.\n"
+                                            f"  To pre-compute arguments, move the logic into a "
+                                            f"@staticmethod factory on '{fld_rec.name}' that returns "
+                                            f"Own[{fld_rec.name}], and assign directly: "
+                                            f"`self.{field_name} = {fld_rec.name}.factory(ctor_params)`",
+                                            stmt.loc
+                                        )
                                 continue
                             # Only add to member init list if it's this class's own field
                             if field_name in own_field_names:
@@ -843,6 +892,11 @@ class RecordGenerator:
         record_info = self.ctx.analyzer.ctx.registry.get_record(typ.name)
         if record_info is None:
             return False
+        # @nocopy + __del__ has no safe default state; its default ctor is
+        # suppressed by codegen, so fields of this type block the enclosing
+        # record from being C++-default-constructible.
+        if record_info.is_nocopy and record_info.has_del:
+            return False
         if not record_info.has_init:
             return True  # aggregate: always C++ default-constructible
         # Non-generic record with __init__: default-constructible iff parent and all own fields are
@@ -865,6 +919,8 @@ class RecordGenerator:
         nested_def_names = {
             s.func.name for s in init_method.body if isinstance(s, TpyNestedDef)
         }
+        # Body-local variable names (see `_extract_field_inits` for rationale).
+        local_names = collect_top_level_local_names(init_method.body)
 
         non_init = []
         for stmt in init_method.body:
@@ -885,7 +941,8 @@ class RecordGenerator:
                                 source_expr = source_expr.expr
                             is_nested = isinstance(source_expr, TpyName) and source_expr.name in nested_def_names
                             is_body_local = isinstance(source_expr, TpyName) and source_expr.name not in param_names
-                            if not is_nested and not is_body_local:
+                            has_local_ref = bool(collect_name_refs(stmt.value) & local_names)
+                            if not is_nested and not is_body_local and not has_local_ref:
                                 is_own_field_init = True
             if not is_own_field_init:
                 non_init.append(stmt)

@@ -1,0 +1,4 @@
+held 101 tag 42
+taken 101 tag 42
+after take
+drop 101

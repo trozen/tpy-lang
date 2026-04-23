@@ -1384,3 +1384,24 @@ def collect_name_refs(expr: TpyExpr) -> set[str]:
         else:
             stack.extend(node.children())
     return names
+
+
+def collect_top_level_local_names(stmts: list[TpyStmt]) -> set[str]:
+    """Collect names bound by top-level statements in a function body.
+
+    Covers the forms that introduce locals at this scope: `x: T = ...`
+    (TpyVarDecl), `x = ...` (TpyAssign with a bare-name target), and
+    `a, b = ...` (TpyTupleUnpack). Does NOT descend into control flow:
+    names bound inside `if`, `for`, `while`, etc. are not included --
+    callers reasoning about the top-level MIL/init split only need
+    names visible at statement depth 0.
+    """
+    names: set[str] = set()
+    for s in stmts:
+        if isinstance(s, TpyVarDecl):
+            names.add(s.name)
+        elif isinstance(s, TpyAssign) and isinstance(s.target, TpyName):
+            names.add(s.target.name)
+        elif isinstance(s, TpyTupleUnpack):
+            names.update(t for t in s.targets if t is not None)
+    return names

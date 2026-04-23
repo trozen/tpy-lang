@@ -64,15 +64,6 @@ from tpy import take_ptr
 # at call sites (Rust-style). When that lands, these constructors can
 # collapse to bare `0`/`1`/`256` (the values are compile-time-known to
 # fit the unsigned target).
-# TODO(compiler): `Ptr[_PcreCompileContext]()` / `Ptr[_PcreGeneralContext]()`
-# / `Ptr[_PcreMatchData]()` at the 4 call sites that pass a null
-# context-pointer to PCRE2 are a workaround for TODO.md Bugs "None as a
-# value for a Ptr[X]-typed parameter should codegen to nullptr". Today,
-# typing the binding param as `Ptr[X] | None` codegens `std::optional<X*>`
-# (breaks the C ABI), and bare `None` isn't accepted for `Ptr[X]` params.
-# Default-constructing `Ptr[X]()` gives nullptr (per _containers.py), so
-# that's what we pass. When sema accepts `None` as a Ptr value, collapse
-# all four sites to just `None`.
 # TODO(compiler): aliased import block here is a workaround for two related
 # gaps in TODO.md "Bugs":
 #   * `from _bindings import pcre2` doesn't bind the submodule -- forces
@@ -86,8 +77,6 @@ from _bindings.pcre2 import (
     Code as _PcreCode,
     MatchData as _PcreMatchData,
     MatchContext as _PcreMatchContext,
-    CompileContext as _PcreCompileContext,
-    GeneralContext as _PcreGeneralContext,
     PCRE2_CASELESS, PCRE2_MULTILINE, PCRE2_DOTALL, PCRE2_EXTENDED, PCRE2_UTF, PCRE2_UCP,
     PCRE2_ANCHORED, PCRE2_ENDANCHORED,
     PCRE2_SUBSTITUTE_GLOBAL, PCRE2_SUBSTITUTE_OVERFLOW_LENGTH,
@@ -107,18 +96,28 @@ from _bindings.pcre2 import (
 )
 
 
-# ---------- RAII wrapper for pcre2_match_data ----------
-# Match-data handles are created/destroyed in every match call (_do_match,
-# finditer, split) -- dozens of error paths where a manual _pcre_md_free
-# could be forgotten. Wrapping the pointer in an @nocopy owning type makes
-# the free automatic on scope exit, including implicit drops on return /
-# raise. PCRE2's _pcre_md_free is null-safe, so no null check in __del__.
+# ---------- RAII wrappers for PCRE2 handles ----------
+# Every handle is wrapped in an @nocopy owning type so the corresponding
+# free runs automatically on scope exit (returns, raises, field-holding
+# record destruction). All three free functions are null-safe, so __del__
+# needs no null check.
 #
-# Pattern's `_code` / `_mctx` stay as raw Ptr with explicit free in
-# Pattern.__del__: they're created once in __init__ and freed once in
-# __del__, no error paths. Adding wrappers for them would hit a TPy
-# codegen bug where nocopy-field initializers that reference local vars
-# get lifted into the C++ MIL (where the locals are out of scope).
+# Holding these as *fields* (rather than locals) has a subtlety: the
+# enclosing record's parameterized ctor default-inits each field before
+# running the body, and a default-inited @nocopy+__del__ leaves its
+# pointer indeterminate. If the body then does `self._field = Wrapper(x)`
+# for a body-local `x`, that's a move-assign, and the generated move-
+# assign destroys self first -> ~Wrapper() reads garbage -> crash. The
+# workaround used here: each wrapper exposes a static factory returning
+# Own[Self] that bundles the allocation and any error-check. The
+# enclosing record then writes `self._x = Wrapper.make_...(args)` -- all
+# free names on the RHS are the class name + ctor params + module-level
+# helpers, no body-locals -- which MIL-hoists into move-construction.
+# (A simpler shape -- ctor takes high-level args and delegates to a
+# staticmethod returning a raw Ptr[T] -- is blocked by TPy's pointer-
+# return-from-local safety check. Own[Self] returns bypass that check.)
+
+
 @nocopy
 class _OwnedMatchData:
     _p: Ptr[_PcreMatchData]
@@ -128,6 +127,83 @@ class _OwnedMatchData:
         _pcre_md_free(self._p)
     def get(self) -> Ptr[_PcreMatchData]:
         return self._p
+
+
+# ---------- re.error exception ----------
+# Must be defined BEFORE _OwnedCode because its make_compiled staticmethod
+# is emitted inline in the generated header and throws `error`, which
+# requires a complete type at the throw site (not just a forward decl).
+# See "User Exception subclass doesn't auto-inherit native __init__" in
+# TODO.md for why `__init__` is declared explicitly, and the
+# `tpy::Exception(std::string)`-only-overload entry for the `String`
+# parameter type instead of `str`.
+class error(Exception):
+    """Raised when PCRE2 rejects a pattern at compile time, or hits a
+    match-time error (rare). Catchable as a normal exception.
+
+    Caller-side gap that still bites: `except re.error:` is blocked by
+    the qualified-except-clause limitation (TODO.md Bugs). Users today
+    must `from re import error` (no alias) then `except error:`.
+    """
+    def __init__(self, message: String = "") -> None:
+        super().__init__(message)
+
+
+# Convert a PCRE2 negative error code into a human-readable message via
+# pcre2_get_error_message. Buffer is stack-allocated 256 bytes via
+# UninitArrayStorage -- RAII, no manual free.
+def _pcre2_error_msg(errcode: Int32) -> str:
+    buf = UninitArrayStorage[UInt8, 256]()
+    n = _pcre_get_error_message(errcode, buf.ptr(), 256)
+    if n < 0:
+        return "unknown error"
+    return unsafe_str_from_buf(unsafe_cast(buf.ptr()), UInt64(n))
+
+
+@nocopy
+class _OwnedCode:
+    _p: Ptr[_PcreCode]
+    def __init__(self, p: Ptr[_PcreCode]) -> None:
+        self._p = p
+    def __del__(self) -> None:
+        _pcre_code_free(self._p)
+    def get(self) -> Ptr[_PcreCode]:
+        return self._p
+
+    # Factory returning Own[Self] so the enclosing record can initialize
+    # its field with a local-free RHS (`self._code = _OwnedCode.make_compiled(
+    # pattern, flags)`) that MIL-hoists into move-construction. An
+    # alternative shape -- `__init__(pattern, flags)` delegating to a
+    # `staticmethod -> Ptr[_PcreCode]` -- runs into TPy's "pointer-return
+    # from local" safety check, which `Own[Self]` returns bypass.
+    @staticmethod
+    def make_compiled(pattern: str, flags: Int32) -> Own[_OwnedCode]:
+        errcode: Int32 = 0
+        erroff: UInt64 = 0
+        opts = _to_pcre2_opts(flags)
+        p_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(pattern))
+        code = _pcre_compile(p_data, UInt64(len(pattern)),
+                             opts, take_ptr(errcode), take_ptr(erroff),
+                             None)
+        if code is None:
+            msg = _pcre2_error_msg(errcode)
+            raise error(f"compile error at offset {erroff}: {msg}")
+        return _OwnedCode(code)
+
+
+@nocopy
+class _OwnedMatchContext:
+    _p: Ptr[_PcreMatchContext]
+    def __init__(self, p: Ptr[_PcreMatchContext]) -> None:
+        self._p = p
+    def __del__(self) -> None:
+        _pcre_mctx_free(self._p)
+    def get(self) -> Ptr[_PcreMatchContext]:
+        return self._p
+
+    @staticmethod
+    def make_default() -> Own[_OwnedMatchContext]:
+        return _OwnedMatchContext(_pcre_mctx_create(None))
 
 
 # ---------- Public flag constants (CPython-compatible bit values) ----------
@@ -170,49 +246,6 @@ def _to_pcre2_opts(flags: Int32) -> UInt32:
     if (flags & ASCII) != 0:
         opts &= ~(PCRE2_UTF | PCRE2_UCP)
     return opts
-
-
-# ---------- re.error exception ----------
-
-class error(Exception):
-    """Raised when PCRE2 rejects a pattern at compile time, or hits a
-    match-time error (rare). Catchable as a normal exception.
-
-    Two compiler-gap workarounds in this declaration, each with its own
-    cleanup path:
-
-      1. The `__init__` is declared explicitly. CPython auto-inherits
-         `Exception.__init__`; TPy doesn't yet -- see TODO.md Bugs
-         "User Exception subclass doesn't auto-inherit native __init__".
-         When fixed, drop this method and `class error(Exception): pass`
-         is enough.
-
-      2. The parameter is typed `String` (std::string) rather than `str`
-         (std::string_view). The inherited `tpy::Exception(std::string)`
-         C++ constructor has no string_view overload, so calling
-         `super().__init__(message)` with a string_view fails to compile.
-         When that's fixed (either by adding a string_view-taking
-         constructor in core.hpp, or by codegen materializing
-         string_view -> string at the super() call site), this can become
-         the more idiomatic `def __init__(self, message: str = "")`.
-
-    Caller-side gap that still bites: `except re.error:` is blocked by
-    the qualified-except-clause limitation (TODO.md Bugs). Users today
-    must `from re import error` (no alias) then `except error:`.
-    """
-    def __init__(self, message: String = "") -> None:
-        super().__init__(message)
-
-
-# Convert a PCRE2 negative error code into a human-readable message via
-# pcre2_get_error_message. Buffer is stack-allocated 256 bytes via
-# UninitArrayStorage -- RAII, no manual free.
-def _pcre2_error_msg(errcode: Int32) -> str:
-    buf = UninitArrayStorage[UInt8, 256]()
-    n = _pcre_get_error_message(errcode, buf.ptr(), 256)
-    if n < 0:
-        return "unknown error"
-    return unsafe_str_from_buf(unsafe_cast(buf.ptr()), UInt64(n))
 
 
 # ---------- Match ----------
@@ -278,11 +311,11 @@ class Match:
 # ---------- Pattern ----------
 
 class Pattern:
-    """Compiled regex. Holds the PCRE2 code + match context handles, freed
-    in __del__."""
+    """Compiled regex. Holds the PCRE2 code + match-context handles; the
+    _OwnedCode / _OwnedMatchContext wrappers free them on destruction."""
 
-    _code: Ptr[_PcreCode]
-    _mctx: Ptr[_PcreMatchContext]
+    _code: _OwnedCode
+    _mctx: _OwnedMatchContext
     pattern: str
     flags: Int32
 
@@ -291,42 +324,28 @@ class Pattern:
     # see "Final[X] = SOME_NAMED_CONST rejected as default-parameter value"
     # in TODO.md Bugs. Same for every other signature in this file.
     def __init__(self, pattern: str, flags: Int32 = 0) -> None:
-        # Plain local vars serve as out-parameter slots for PCRE2 to write
-        # the error code + offset on compile failure; take_ptr gives the
-        # Ptr[T] without explicit storage allocation.
-        errcode: Int32 = 0
-        erroff: UInt64 = 0
-        opts = _to_pcre2_opts(flags)
-        p_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(pattern))
-        code = _pcre_compile(p_data, UInt64(len(pattern)),
-                             opts, take_ptr(errcode), take_ptr(erroff),
-                             Ptr[_PcreCompileContext]())
-        if code is None:
-            msg = _pcre2_error_msg(errcode)
-            raise error(f"compile error at offset {erroff}: {msg}")
-        self._code = code
-        self._mctx = _pcre_mctx_create(Ptr[_PcreGeneralContext]())
+        # Both field initializers reference only ctor params / module-level
+        # names -- no body-locals -- so they MIL-hoist into move-construction
+        # (safe on @nocopy+__del__ fields). The multi-step compile logic
+        # lives in a staticmethod factory on _OwnedCode.
+        self._code = _OwnedCode.make_compiled(pattern, flags)
+        self._mctx = _OwnedMatchContext.make_default()
         # JIT-compile for ~10x match speedup. Failure here is non-fatal --
         # PCRE2 falls back to interpreted matching on patterns the JIT
         # can't handle.
-        _pcre_jit_compile(self._code, PCRE2_JIT_COMPLETE)
+        _pcre_jit_compile(self._code.get(), PCRE2_JIT_COMPLETE)
         self.pattern = pattern
         self.flags = flags
 
-    def __del__(self) -> None:
-        _pcre_mctx_free(self._mctx)
-        _pcre_code_free(self._code)
-
     def _do_match(self, subject: str, start_offset: UInt64,
                   opts: UInt32) -> Optional[Own[Match]]:
-        md_raw = _pcre_md_create(self._code,
-                                 Ptr[_PcreGeneralContext]())
+        md_raw = _pcre_md_create(self._code.get(), None)
         if md_raw is None:
             raise error("out of memory allocating match data")
         md = _OwnedMatchData(md_raw)
         s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
-        rc = _pcre_match(self._code, s_data, UInt64(len(subject)),
-                         start_offset, opts, md.get(), self._mctx)
+        rc = _pcre_match(self._code.get(), s_data, UInt64(len(subject)),
+                         start_offset, opts, md.get(), self._mctx.get())
         if rc < 0:
             if rc == PCRE2_ERROR_NOMATCH:
                 return None            # md drops here, frees automatically
@@ -354,13 +373,12 @@ class Pattern:
         sub_len = UInt64(len(subject))
         s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
         while offset <= sub_len:
-            md_raw = _pcre_md_create(self._code,
-                                     Ptr[_PcreGeneralContext]())
+            md_raw = _pcre_md_create(self._code.get(), None)
             if md_raw is None:
                 raise error("out of memory allocating match data")
             md = _OwnedMatchData(md_raw)
-            rc = _pcre_match(self._code, s_data, sub_len, offset,
-                             UInt32(0), md.get(), self._mctx)
+            rc = _pcre_match(self._code.get(), s_data, sub_len, offset,
+                             UInt32(0), md.get(), self._mctx.get())
             if rc < 0:
                 if rc == PCRE2_ERROR_NOMATCH:
                     break          # md drops at end of iteration
@@ -422,8 +440,8 @@ class Pattern:
         outbuf = UninitHeapStorage[UInt8](UInt32.trunc(cap))
         opts = PCRE2_SUBSTITUTE_GLOBAL | PCRE2_SUBSTITUTE_OVERFLOW_LENGTH
         rc = _pcre_substitute(
-            self._code, sub_data, UInt64(len(subject)),
-            UInt64(0), opts, Ptr[_PcreMatchData](), self._mctx,
+            self._code.get(), sub_data, UInt64(len(subject)),
+            UInt64(0), opts, None, self._mctx.get(),
             repl_data, UInt64(len(repl)),
             outbuf.ptr(), take_ptr(outlen),
         )
@@ -435,9 +453,9 @@ class Pattern:
             # the sizing pass for nothing.
             outbuf = UninitHeapStorage[UInt8](UInt32.trunc(outlen))
             rc = _pcre_substitute(
-                self._code, sub_data, UInt64(len(subject)),
-                UInt64(0), PCRE2_SUBSTITUTE_GLOBAL, Ptr[_PcreMatchData](),
-                self._mctx, repl_data, UInt64(len(repl)),
+                self._code.get(), sub_data, UInt64(len(subject)),
+                UInt64(0), PCRE2_SUBSTITUTE_GLOBAL, None,
+                self._mctx.get(), repl_data, UInt64(len(repl)),
                 outbuf.ptr(), take_ptr(outlen),
             )
         if rc < 0:
@@ -451,16 +469,15 @@ class Pattern:
         splits: Int32 = 0
         sub_len = UInt64(len(subject))
         s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
-        md_raw = _pcre_md_create(self._code,
-                                 Ptr[_PcreGeneralContext]())
+        md_raw = _pcre_md_create(self._code.get(), None)
         if md_raw is None:
             raise error("out of memory allocating match data")
         md = _OwnedMatchData(md_raw)
         while offset <= sub_len:
             if maxsplit > Int32(0) and splits >= maxsplit:
                 break
-            rc = _pcre_match(self._code, s_data, sub_len, offset,
-                             UInt32(0), md.get(), self._mctx)
+            rc = _pcre_match(self._code.get(), s_data, sub_len, offset,
+                             UInt32(0), md.get(), self._mctx.get())
             if rc < 0:
                 if rc == PCRE2_ERROR_NOMATCH:
                     break

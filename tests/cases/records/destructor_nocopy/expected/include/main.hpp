@@ -22,7 +22,6 @@ struct Handle {
     bool __tpy_owned_ = true;
 
     // def __init__(self, id: Int32):
-    Handle() = default;
     explicit Handle(int32_t id) : id(id) {}
     // non-copyable (@nocopy)
     Handle(const Handle&) = delete;

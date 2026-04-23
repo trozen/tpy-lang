@@ -30,6 +30,7 @@ from .nodes import (
     ParseWarning, TpyModule,
     is_super_del_call,
     collect_name_refs,
+    collect_top_level_local_names,
 )
 
 from .imports import (
@@ -65,6 +66,7 @@ __all__ = [
     "ParseWarning", "TpyModule",
     "is_super_del_call",
     "collect_name_refs",
+    "collect_top_level_local_names",
     # imports
     "is_parser_keyword", "_IMPLICIT_MODULES",
     "get_builtins_exports", "get_typing_exports", "get_tpy_exports",

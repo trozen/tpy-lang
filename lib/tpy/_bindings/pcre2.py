@@ -88,10 +88,10 @@ PCRE2_UNSET:                        Final[UInt64] = 0xFFFFFFFFFFFFFFFF
 
 # ---------- Compile / free ----------
 # Every binding below is a pure `@native` 1:1 mirror of PCRE2's C ABI.
-# Arguments match pcre2.h exactly -- in particular, context-pointer args
+# Arguments match pcre2.h exactly. Context-pointer args
 # (pcre2_compile_context*, pcre2_general_context*, etc.) are typed as
-# `Ptr[X] | None`; the facade passes `None` at every call site, which
-# codegens to `nullptr` at the C boundary.
+# bare `Ptr[X]`; callers pass `None` (codegens to `nullptr`). Typing them
+# as `Ptr[X] | None` would codegen `std::optional<X*>` and break the C ABI.
 
 @native("::pcre2_compile_8")
 def compile(pattern_data: Ptr[readonly[UInt8]], pattern_len: UInt64,

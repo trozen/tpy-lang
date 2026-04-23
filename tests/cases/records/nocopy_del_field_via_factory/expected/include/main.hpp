@@ -8,10 +8,11 @@
 namespace tpyapp::main {
 
 struct Resource;
+struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void use_all(::tpy::varargs<Resource> args);
+void take(Holder&& h);
 void main();
 
 // @nocopy
@@ -43,10 +44,40 @@ struct Resource {
         // print("drop", self.id)
         std::cout << "drop" << " " << this->id << "\n";
     }
+
+    // @staticmethod
+    // def make(seed: Int32) -> Own[Resource]:
+    static Resource make(int32_t seed) {
+        // base = seed + Int32(100)
+        int32_t base = (::tpy::add_check<int32_t>(seed, 100));
+        // return Resource(base)
+        return Resource(base);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
     ::tpy::print_object_default(os, "Resource", obj);
+    return os;
+}
+
+// class Holder:
+struct Holder {
+    // _r: Resource
+    Resource _r;
+    // tag: Int32
+    int32_t tag;
+
+    // def __init__(self, seed: Int32, tag: Int32) -> None:
+    explicit Holder(int32_t seed, int32_t tag) : _r(Resource::make(seed)), tag(tag) {}
+    // non-copyable (field '_r')
+    Holder(const Holder&) = delete;
+    Holder& operator=(const Holder&) = delete;
+    Holder(Holder&&) = default;
+    Holder& operator=(Holder&&) = default;
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
+    ::tpy::print_object_default(os, "Holder", obj);
     return os;
 }
 

@@ -321,8 +321,12 @@ class TypeResolver:
             if record_info and record_info.is_native:
                 return typ.to_cpp()  # to_cpp() already resolves via _native_cpp_names
             # Cross-module user record: qualify to the declaring module (canonical identity).
-            qual = self.ctx.analyzer.registry.imported_record_qualification(
-                typ.name, self.ctx.analyzer.ctx.module_name)
+            # Use the type-aware variant so records reachable only via an inferred
+            # cross-module return type (e.g. `import mod; p = mod.f()` where
+            # `f() -> Own[Pattern]`) still qualify -- short-name lookup would
+            # miss because `Pattern` isn't in the caller's local registry.
+            qual = self.ctx.analyzer.registry.imported_record_qualification_for_type(
+                typ, self.ctx.analyzer.ctx.module_name)
             if qual is not None:
                 source_module, original_name = qual
                 qualified = qualified_cpp_name(source_module, original_name)

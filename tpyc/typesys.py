@@ -3308,6 +3308,13 @@ class TypeRegistry:
     ) -> tuple[str, str] | None:
         """For a user-imported record: return (defining_module, canonical_name), else None.
 
+        Short-name lookup in the current module's registry -- use this when the
+        caller is iterating `registry.records` or knows the record was imported
+        into the current module by name. For a lookup that also resolves records
+        only reachable through an inferred cross-module type (e.g. the return
+        type of `import mod; p = mod.f()`), use
+        `imported_record_qualification_for_type`.
+
         Reads `RecordInfo.defining_module` -- the actual (uncollapsed) submodule
         where the class was declared. Both codegen (which qualifies C++ namespace
         via `_namespace_map` / `cpp_namespace` directives) and compiler.py's
@@ -3316,7 +3323,23 @@ class TypeRegistry:
         public name); they differ only for private submodules like
         `tpy._builtins._bytes` where `module` collapses to `tpy` / `builtins`.
         """
-        record_info = self.records.get(name)
+        return self._record_qualification(self.records.get(name), current_module)
+
+    def imported_record_qualification_for_type(
+        self, typ: 'NominalType', current_module: str
+    ) -> tuple[str, str] | None:
+        """Qname-aware variant of `imported_record_qualification`.
+
+        Resolves the record via `get_record_for_type` (which consults the
+        cross-module qname index), so a NominalType whose record lives in a
+        module the caller only imported as `import mod` (no `from mod import X`)
+        still qualifies correctly.
+        """
+        return self._record_qualification(self.get_record_for_type(typ), current_module)
+
+    def _record_qualification(
+        self, record_info: 'RecordInfo | None', current_module: str
+    ) -> tuple[str, str] | None:
         if record_info is None or record_info.defining_module is None:
             return None
         source_module = record_info.defining_module

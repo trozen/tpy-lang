@@ -1,0 +1,3 @@
+main.py:26: error: field '_r' of @nocopy + __del__ type 'Resource' must be initialized before any local variable is bound in this constructor. The assigned expression references a local defined earlier in the body; the field has no default constructor, so the initializer cannot run later than the member initializer list.
+  Constructor order: super().__init__() -> field assignments (self.x = ...) -> other logic.
+  To pre-compute arguments, move the logic into a @staticmethod factory on 'Resource' that returns Own[Resource], and assign directly: `self._r = Resource.factory(ctor_params)`

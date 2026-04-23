@@ -1340,6 +1340,8 @@ struct Handle {
 };
 ```
 
+**`@nocopy` + `__del__` default ctor suppression:** When a `@nocopy` type also has `__del__`, the auto `ClassName() = default;` is **not** emitted. A default-initialized instance would leave pointer fields indeterminate, and the destructor would read them. Without the default ctor, such types can only be constructed via a parameterized ctor, and enclosing records that hold them as fields must MIL-initialize (the field appears in the member initializer list), not default-init-then-assign in the body. The default-ctor suppression cascades: a record holding a `@nocopy + __del__` field automatically loses its own auto `= default;` too. Field initializers whose RHS references a body-local variable cannot MIL-hoist and are rejected with a clean sema error; the recommended shape is a `@staticmethod` factory returning `Own[Self]` that bundles any multi-step or error-checked allocation. See `lib/tpy/re.py` (`_OwnedCode.make_compiled`, `_OwnedMatchContext.make_default`) for the canonical pattern.
+
 **`__copy__` escape hatch:** A class that would be implicitly nocopy (due to nocopy fields)
 can define `__copy__` to remain copyable. The method takes no parameters (besides self) and
 returns `Own[ClassName]`. The compiler generates a C++ copy constructor that delegates to
