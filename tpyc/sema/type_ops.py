@@ -104,12 +104,7 @@ class TypeOperations:
             resolved = self.resolve_type(typ.inner, protocols_only=protocols_only)
             if resolved is typ.inner:
                 return typ
-            # Preserve only explicit `force_pointer_repr` (set by generic
-            # substitution).  Do NOT snapshot `typ.uses_pointer_repr()`
-            # here -- it was computed against the unresolved inner and
-            # would freeze the wrong decision when substitution turns
-            # the inner into a value-typed enum.
-            return OptionalType(resolved, force_pointer_repr=typ.force_pointer_repr)
+            return typ.with_inner(resolved)
         if isinstance(typ, UnionType):
             resolved = tuple(self.resolve_type(m, protocols_only=protocols_only) for m in typ.members)
             return UnionType(resolved) if any(a is not b for a, b in zip(resolved, typ.members)) else typ

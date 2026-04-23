@@ -3,7 +3,7 @@
 from .typesys import (
     UnionType, make_union, OptionalType, VoidType, NoneType,
     INT32, STR, BOOL, VOID,
-    ReadonlyType,
+    ReadonlyType, TypeParamRef, NominalType, strip_template_repr,
     is_void_like_type,
 )
 
@@ -136,3 +136,60 @@ class TestMakeUnion:
         # make_union just gets the unwrapped types
         result = make_union(INT32, STR)
         assert isinstance(result, UnionType)
+
+
+class TestOptionalForcePointerRepr:
+    """Regression guards for the force_pointer_repr flag (Phase E bug class).
+
+    The flag must survive every structural transform of an OptionalType.
+    A silent drop miscompiles generic Optional returns with value-typed
+    concrete T (tests/cases/none_safety/generic_optional is the integration
+    proof).
+    """
+
+    def test_with_inner_preserves_flag(self):
+        t = OptionalType(TypeParamRef("T"), force_pointer_repr=True)
+        out = t.with_inner(INT32)
+        assert isinstance(out, OptionalType)
+        assert out.inner == INT32
+        assert out.force_pointer_repr is True
+
+    def test_with_inner_default_has_no_flag(self):
+        t = OptionalType(NominalType("Foo"))
+        out = t.with_inner(INT32)
+        assert out.force_pointer_repr is False
+
+    def test_with_inner_types_preserves_flag(self):
+        t = OptionalType(TypeParamRef("T"), force_pointer_repr=True)
+        out = t.with_inner_types((INT32,))
+        assert isinstance(out, OptionalType)
+        assert out.force_pointer_repr is True
+
+    def test_uses_pointer_repr_forced_for_value_inner(self):
+        t = OptionalType(INT32, force_pointer_repr=True)
+        assert t.uses_pointer_repr() is True
+
+    def test_uses_pointer_repr_natural_for_value_inner(self):
+        t = OptionalType(INT32)
+        assert t.uses_pointer_repr() is False
+
+    def test_strip_template_repr_drops_flag(self):
+        t = OptionalType(INT32, force_pointer_repr=True)
+        out = strip_template_repr(t)
+        assert isinstance(out, OptionalType)
+        assert out.inner == INT32
+        assert out.force_pointer_repr is False
+
+    def test_strip_template_repr_passthrough_without_flag(self):
+        t = OptionalType(INT32)
+        assert strip_template_repr(t) is t
+
+    def test_strip_template_repr_passthrough_non_optional(self):
+        assert strip_template_repr(INT32) is INT32
+
+    def test_flag_excluded_from_equality(self):
+        a = OptionalType(INT32, force_pointer_repr=True)
+        b = OptionalType(INT32)
+        # compare=False on the flag is load-bearing: sema treats the two as
+        # the same TPy type; codegen reads the flag separately for ABI.
+        assert a == b

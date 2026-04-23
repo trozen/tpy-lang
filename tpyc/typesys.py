@@ -1678,12 +1678,40 @@ class OptionalType(TpyType):
 
     For non-value inner types, maps to T* (nullable pointer) in locals/params/returns.
     The canonical storage form (std::optional<T>) is reserved for future class members.
+
+    force_pointer_repr invariants
+    -----------------------------
+    The flag locks codegen to T* even when the concrete inner is a value type.
+    It is set by `sema/type_ops.py::substitute_type_params` when a generic
+    template committed to T* ABI (unbounded TypeParamRef param/return) is
+    instantiated with a value-typed concrete T (e.g. Container[Int32].get()
+    must return int32_t*, not std::optional<int32_t>, to match the emitted
+    C++ template's signature).
+
+    The flag is load-bearing beyond the call site: once set on a resolved
+    return type, it flows through sema into the receiver variable's type,
+    and codegen_cpp/statements.py reads uses_pointer_repr() during variable
+    declaration to pick T* storage + register in pointer_locals. Silently
+    dropping the flag during any structural transform miscompiles any
+    `v = container.get()` pattern.
+
+    Three rules for constructing OptionalType, to keep the invariant sound:
+
+    1. Fresh construction (no pre-existing Optional on the input side):
+       plain `OptionalType(inner)`. Flag defaults to False.
+    2. Transforming an existing Optional (resolve, substitute, rewrap inner):
+       use `self.with_inner(new_inner)` -- preserves the flag automatically.
+    3. Deliberately crossing an ABI boundary (builtin generic whose hand-written
+       C++ returns std::optional despite a T*-committed template signature):
+       call the module-level `strip_template_repr(t)`. The name flags intent.
+
+    Removing the flag outright is not a small refactor: it would require a
+    structural replacement for the provenance it tracks (e.g. two classes,
+    TPy-level monomorphization, or conditional-ABI templates). Deferred to
+    the THIR/MIR migration.
     """
     inner: TpyType
-    # Locks representation to T* even when the concrete inner type is a value type.
-    # Set during generic type substitution when the template used T* (unbounded
-    # TypeParamRef) but the concrete type would normally use std::optional<T>.
-    # Excluded from eq/hash: codegen concern only.
+    # Excluded from eq/hash: codegen concern only; see class docstring.
     force_pointer_repr: bool = field(default=False, compare=False, hash=False)
 
     def to_cpp(self) -> str:
@@ -1762,8 +1790,29 @@ class OptionalType(TpyType):
     def inner_types(self) -> tuple['TpyType', ...]:
         return (self.inner,)
 
+    def with_inner(self, new_inner: 'TpyType') -> 'OptionalType':
+        """Return a new OptionalType with the same repr commitment and a different inner.
+
+        Use this for any structural transform (resolve, substitute, rewrap) of an
+        existing Optional. Preserves force_pointer_repr mechanically so callers
+        cannot accidentally drop it.
+        """
+        return OptionalType(new_inner, force_pointer_repr=self.force_pointer_repr)
+
     def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return OptionalType(types[0], force_pointer_repr=self.force_pointer_repr)
+        return self.with_inner(types[0])
+
+
+def strip_template_repr(t: TpyType) -> TpyType:
+    """Drop force_pointer_repr -- callee's C++ actually uses value repr despite
+    the template's T*-committed signature.
+
+    Used only at known ABI boundaries (builtin generic functions like `iter()`
+    whose hand-written C++ returns std::optional<T> rather than T*).
+    """
+    if isinstance(t, OptionalType) and t.force_pointer_repr:
+        return OptionalType(t.inner)
+    return t
 
 
 @dataclass(frozen=True)

@@ -10,7 +10,7 @@ from dataclasses import replace as dc_replace
 from typing import Callable, NoReturn, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NominalType, OwnType, OptionalType, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
+    TpyType, NominalType, OwnType, OptionalType, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
     IntLiteralType, resolve_int_literals,
     LiteralType, LiteralValue, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, ParamInfo, ReadonlyType,
@@ -2460,9 +2460,8 @@ class CallAnalyzer:
                             expr,
                         )
                 ret = matched.return_type
-                if (overload.is_builtin_function and overload.type_params
-                        and isinstance(ret, OptionalType) and ret.force_pointer_repr):
-                    ret = OptionalType(ret.inner)
+                if overload.is_builtin_function and overload.type_params:
+                    ret = strip_template_repr(ret)
                 return ret
             return matched.return_type
 
@@ -3039,12 +3038,10 @@ class CallAnalyzer:
         # Resolve return type
         resolved_return = self.type_ops.substitute_type_params(func.return_type, type_subst)
 
-        # Built-in generic functions (e.g. iter) delegate to concrete methods
-        # whose C++ returns std::optional<T>, not T*. Strip force_pointer_repr
-        # that substitute_type_params sets for unbounded TypeParamRef -> value type.
-        if (func.is_builtin_function and func.type_params
-                and isinstance(resolved_return, OptionalType) and resolved_return.force_pointer_repr):
-            resolved_return = OptionalType(resolved_return.inner)
+        # Builtin generics (e.g. iter) delegate to concrete C++ that returns
+        # std::optional<T>, not T*, despite the template-committed signature.
+        if func.is_builtin_function and func.type_params:
+            resolved_return = strip_template_repr(resolved_return)
 
         # Detect duplicate union members after generic substitution:
         # e.g. T | U | str with T=U=Int32 would emit std::variant<int, int, str> (ill-formed)
