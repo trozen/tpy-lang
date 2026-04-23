@@ -700,7 +700,7 @@ class TypeOperations:
         (e.g. Iterator[Int32]) matching a different protocol (e.g. Iterable[T]),
         looks up the arg protocol's method signatures and matches them.
         """
-        protocol_info = self.ctx.registry.get_protocol(protocol_name)
+        protocol_info = self.ctx.registry.scan_by_short_name(protocol_name)
         if protocol_info is None or not protocol_info.type_params:
             return None
 

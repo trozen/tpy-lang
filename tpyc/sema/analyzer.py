@@ -648,7 +648,7 @@ class SemanticAnalyzer:
         if proto_name in visited:
             return False
         visited.add(proto_name)
-        proto_info = self.ctx.registry.get_protocol(proto_name)
+        proto_info = self.ctx.registry.scan_by_short_name(proto_name)
         if proto_info is None:
             return False
         for sig in proto_info.methods:

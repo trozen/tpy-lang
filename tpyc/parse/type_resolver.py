@@ -395,7 +395,7 @@ class TypeResolver:
             self._raise_unresolved_qualified_error_str(name, ref.loc)
 
         # User-defined generic protocols
-        if user_protocol := parser.registry.get_protocol(resolved_container):
+        if user_protocol := parser.registry.scan_by_short_name(resolved_container):
             if user_protocol.type_params:
                 expected = len(user_protocol.type_params)
                 if len(ref.args) != expected:
@@ -591,7 +591,7 @@ class TypeResolver:
             if parser.registry.get_record(dotted) is not None:
                 qname = self._user_record_qname(dotted, None)
                 return NominalType(dotted, _module_qname=qname)
-        if (user_protocol := parser.registry.get_protocol(name)) is not None:
+        if (user_protocol := parser.registry.scan_by_short_name(name)) is not None:
             if user_protocol.type_params:
                 from ..diagnostics import SemanticError
                 raise SemanticError(

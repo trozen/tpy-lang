@@ -22,7 +22,7 @@ from .context import qualified_cpp_name
 from ..type_def_registry import (
     is_list,
     is_fixed_int_type, is_big_int_type, is_bool_type, is_float64_type, is_float32_type,
-    is_enum_type,
+    is_enum_type, protocol_info_of,
 )
 
 if TYPE_CHECKING:
@@ -312,7 +312,7 @@ class TypeResolver:
         @dynamic protocol types map to the base class name.
         """
         if isinstance(typ, NominalType) and is_protocol_type(typ):
-            protocol_info = self.ctx.analyzer.registry.get_protocol(typ.name)
+            protocol_info = protocol_info_of(typ)
             if protocol_info and protocol_info.is_dynamic:
                 return self.protocols.get_dynamic_base_name(typ.name)
         if isinstance(typ, NominalType) and typ.is_user_record:

@@ -17,7 +17,7 @@ from ..typesys import (
     error_return_to_cpp, unwrap_ref_type,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
-from ..type_def_registry import is_span, is_char_type, is_str_type
+from ..type_def_registry import is_span, is_char_type, is_str_type, protocol_info_of
 from ..parse.nodes import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
     TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyName,
@@ -455,7 +455,7 @@ class FunctionGenerator:
                 inner_unwrapped = unwrapped.inner if isinstance(unwrapped, OptionalType) else unwrapped
                 resolved = self.protocols.resolve_type_for_codegen(inner_unwrapped)
                 if (is_protocol_type(resolved)
-                        and (pi := self.ctx.analyzer.registry.get_protocol(resolved.name))
+                        and (pi := protocol_info_of(resolved))
                         and pi.is_dynamic):
                     base_type = self.protocols.get_dynamic_base_name(resolved.name)
                     if (isinstance(ptype, ReadonlyType)
@@ -508,7 +508,7 @@ class FunctionGenerator:
         if isinstance(unwrapped, OwnType) and is_protocol_type(unwrapped.wrapped):
             unwrapped = unwrapped.wrapped
         if is_protocol_type(unwrapped) and isinstance(unwrapped, NominalType):
-            pi = self.ctx.analyzer.registry.get_protocol(unwrapped.name)
+            pi = protocol_info_of(unwrapped)
             if pi and pi.is_dynamic:
                 base = self.protocols.get_dynamic_base_name(unwrapped.name)
                 if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
@@ -662,7 +662,7 @@ class FunctionGenerator:
                 unwrapped = unwrapped.inner
             resolved = self.protocols.resolve_type_for_codegen(unwrapped)
             if is_protocol_type(resolved):
-                protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
+                protocol_info = protocol_info_of(resolved)
                 if protocol_info and protocol_info.is_dynamic:
                     return True
         return False
@@ -1303,7 +1303,7 @@ class FunctionGenerator:
             return {}
         result: dict[str, bool] = {}
         for proto in record_info.implemented_protocols:
-            proto_info = self.ctx.analyzer.registry.get_protocol(proto.name)
+            proto_info = protocol_info_of(proto)
             if proto_info and proto_info.is_dynamic:
                 all_methods = self.protocols.collect_concept_methods(proto.name)
                 for method_sig in all_methods:
@@ -1530,7 +1530,7 @@ class FunctionGenerator:
         concrete C++ type name (they map to C++ concepts).
         """
         if is_protocol_type(var_type) and isinstance(var_type, NominalType):
-            pi = self.ctx.analyzer.registry.get_protocol(var_type.name)
+            pi = protocol_info_of(var_type)
             if pi and pi.is_dynamic:
                 return self.protocols.get_dynamic_base_name(var_type.name)
             # Structural protocol: use decltype(init_expr) to let C++ deduce

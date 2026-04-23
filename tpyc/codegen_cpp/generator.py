@@ -11,7 +11,7 @@ import io
 import sys as _sys
 
 from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names, is_void_like_type
-from ..type_def_registry import type_def_of, is_enum_type, enum_info_of
+from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
 
@@ -404,7 +404,7 @@ class CodeGenerator:
             if record_name in deps.module_record_names:
                 record = deps.records_by_name[record_name]
                 for bound in record.type_param_bounds.values():
-                    proto_info = self.analyzer.registry.get_protocol(bound.name)
+                    proto_info = protocol_info_of(bound)
                     if proto_info is None or proto_info.cpp_concept is None:
                         deps.bound_protocols.add(bound.name)
 
@@ -440,7 +440,7 @@ class CodeGenerator:
             if record_name in deps.module_record_names:
                 record = deps.records_by_name[record_name]
                 for bound in record.type_param_bounds.values():
-                    proto_info = self.analyzer.registry.get_protocol(bound.name)
+                    proto_info = protocol_info_of(bound)
                     if proto_info is None or proto_info.cpp_concept is None:
                         deps.prereq_protocols.add(bound.name)
 

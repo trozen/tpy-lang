@@ -27,6 +27,7 @@ from ..type_def_registry import (
     is_float32_type, is_float64_type, is_bytearray_type,
     int_traits_of,
     is_enum_type, is_int_enum_type, enum_info_of,
+    protocol_info_of,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -589,7 +590,7 @@ class ExpressionGenerator:
         unwrapped_ptype = unwrap_readonly(ptype)
         if not is_protocol_type(unwrapped_ptype):
             return None
-        protocol_info = self.ctx.analyzer.registry.get_protocol(unwrapped_ptype.name)
+        protocol_info = protocol_info_of(unwrapped_ptype)
         if not protocol_info or not protocol_info.is_dynamic:
             return None
         arg_type = self.ctx.get_expr_type(arg)

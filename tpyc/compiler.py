@@ -1619,7 +1619,7 @@ class Compiler:
 
         # Export all user-defined protocols
         for protocol in compiled.ast.protocols:
-            protocol_info = analyzer.registry.get_protocol(protocol.name)
+            protocol_info = analyzer.registry.scan_by_short_name(protocol.name)
             if protocol_info:
                 exports.protocols[protocol.name] = protocol_info
 

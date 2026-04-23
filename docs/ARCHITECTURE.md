@@ -95,7 +95,15 @@ all behavior (`cpp_formatter`, `is_send`/`is_sync`, `element_of`,
 ```python
 type_def_of(t).subscript_borrows
 type_def_of(t).category == TypeCategory.FIXED_INT
+protocol_info_of(t)  # None-safe read of td.protocol
 ```
+
+For string-only callers that can't synthesize a `TpyType` (parent-protocol
+names in `TpyProtocol.parent_protocols`, `except`-clause exception types,
+`isinstance(x, T)` second-arg TpyName, bare `protocol_name: str` params),
+`TypeRegistry.scan_by_short_name(name)` resolves the name through the
+current analyzer's module-local alias table. It is the only short-name
+protocol lookup path; there is no parallel payload dict.
 
 Static entries (primitives, builtin generics, `tpy.Ptr` under
 `TypeCategory.STRUCTURAL_WRAPPER`) are populated once at module load
@@ -105,7 +113,8 @@ via `attach_dynamic_type_def(qname, category, ...)` and reset
 between compilations by `clear_dynamic_type_defs()`.
 
 Conformance tests in `tpyc/test_type_def_registry.py` pin the
-invariants: `PRIMITIVE_SNAPSHOT`, `ENUM_SNAPSHOT`, `FACTORY_SNAPSHOT`.
+invariants: `PRIMITIVE_SNAPSHOT`, `ENUM_SNAPSHOT`, `FACTORY_SNAPSHOT`,
+`PROTOCOL_SNAPSHOT`.
 
 ### Identity invariants
 
@@ -245,11 +254,13 @@ cosmetic. Left as one cohesive module.
 ## Safety techniques
 
 - **Conformance tests** in `tpyc/test_type_def_registry.py`:
-  `PRIMITIVE_SNAPSHOT`, `ENUM_SNAPSHOT`, `FACTORY_SNAPSHOT` pin
-  intrinsic per-qname behavior (`is_value_type`, `is_send`/`is_sync`,
-  `subscript_borrows`, `to_cpp`, trait accessors, factory
-  param-kinds). Compared against the live `TpyType` instance; values
-  are independent of the implementation path.
+  `PRIMITIVE_SNAPSHOT`, `ENUM_SNAPSHOT`, `FACTORY_SNAPSHOT`,
+  `PROTOCOL_SNAPSHOT` pin intrinsic per-qname behavior
+  (`is_value_type`, `is_send`/`is_sync`, `subscript_borrows`,
+  `to_cpp`, trait accessors, factory param-kinds, per-protocol
+  `cpp_concept` / `is_marker` / `is_readonly` / method-name set).
+  Compared against the live `TpyType` instance; values are
+  independent of the implementation path.
 - **Byte-identical generated C++** at any boundary: every case under
   `tests/cases/**/expected/` has pinned `include/*.hpp` and
   `src/*.cpp`. The fingerprint cache in `test_case` catches drift

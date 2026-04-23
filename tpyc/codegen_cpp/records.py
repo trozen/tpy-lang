@@ -26,7 +26,7 @@ from .functions import factory_default_to_cpp
 from ..type_def_registry import (
     is_span_iter, is_array,
     is_big_int_type, is_bytes_type, int_traits_of,
-    is_enum_type, enum_info_of,
+    is_enum_type, enum_info_of, protocol_info_of,
 )
 
 if TYPE_CHECKING:
@@ -161,7 +161,7 @@ class RecordGenerator:
             bases.append(record_info.parent.to_cpp())
         if record_info:
             for proto in record_info.implemented_protocols:
-                proto_info = self.ctx.analyzer.registry.get_protocol(proto.name)
+                proto_info = protocol_info_of(proto)
                 if proto_info and proto_info.is_dynamic:
                     bases.append(self.protocols.get_dynamic_base_name(proto.name))
         # Use short name for nested types (e.g., "Inner" not "Outer.Inner")

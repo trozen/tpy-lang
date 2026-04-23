@@ -39,6 +39,7 @@ from ..type_def_registry import (
     is_list,
     is_fixed_int_type, is_big_int_type, is_bytes_type, is_str_type,
     is_str_view_type, is_bytes_view_type, is_string_type,
+    protocol_info_of,
 )
 from .type_resolution import resolve_stmt_binding_type
 from ..prescan import match_is_none
@@ -620,7 +621,7 @@ class StatementGenerator:
         """Check if the type is a @dynamic protocol (needs adapter slot codegen)."""
         if target_type is None or not is_protocol_type(target_type):
             return False
-        protocol_info = self.ctx.analyzer.registry.get_protocol(target_type.name)
+        protocol_info = protocol_info_of(target_type)
         return protocol_info is not None and protocol_info.is_dynamic
 
     def _get_nullproto_constexpr_guards(self, condition: TpyExpr) -> list[str]:

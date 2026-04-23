@@ -1460,7 +1460,7 @@ class CallAnalyzer:
         # Check if second arg is a static protocol name
         second_arg = expr.args[1]
         if isinstance(second_arg, TpyName):
-            protocol_info = self.ctx.registry.get_protocol(second_arg.name)
+            protocol_info = self.ctx.registry.scan_by_short_name(second_arg.name)
             if protocol_info is not None and not protocol_info.is_dynamic:
                 return self._analyze_isinstance_protocol(
                     expr, first_arg, second_arg.name, protocol_info

@@ -1591,7 +1591,7 @@ class MethodAnalyzer:
         Searches inherited methods too, so a @readonly method from a parent
         protocol is correctly recognized.
         """
-        proto_info = self.ctx.registry.get_protocol(protocol_name)
+        proto_info = self.ctx.registry.scan_by_short_name(protocol_name)
         if proto_info is None:
             return False
         if proto_info.is_readonly:

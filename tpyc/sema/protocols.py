@@ -68,7 +68,7 @@ class ProtocolChecker:
         if not all(m.is_readonly for m in proto_info.methods):
             return False
         for parent_name in proto_info.parent_protocols:
-            parent = self.ctx.registry.get_protocol(parent_name)
+            parent = self.ctx.registry.scan_by_short_name(parent_name)
             if parent is None:
                 return False  # unknown parent -- conservatively non-readonly
             if not self.is_all_readonly(parent):
@@ -540,7 +540,7 @@ class ProtocolChecker:
             return []  # Prevent cycles
         visited.add(protocol_name)
 
-        protocol_info = self.ctx.registry.get_protocol(protocol_name)
+        protocol_info = self.ctx.registry.scan_by_short_name(protocol_name)
         if protocol_info is None:
             return []
 
@@ -568,7 +568,7 @@ class ProtocolChecker:
             return []  # Prevent cycles
         visited.add(protocol_name)
 
-        protocol_info = self.ctx.registry.get_protocol(protocol_name)
+        protocol_info = self.ctx.registry.scan_by_short_name(protocol_name)
         if protocol_info is None:
             return []
 
@@ -595,7 +595,7 @@ class ProtocolChecker:
             return True
         visited.add(protocol_name)
 
-        protocol_info = self.ctx.registry.get_protocol(protocol_name)
+        protocol_info = self.ctx.registry.scan_by_short_name(protocol_name)
         if protocol_info is None:
             return False
 

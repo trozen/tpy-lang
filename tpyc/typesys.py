@@ -3167,7 +3167,13 @@ class TypeRegistry:
         self._qname_index: dict[str, RecordInfo] = {}       # builtins only
         self._user_qname_index: dict[str, RecordInfo] = {}  # user records only
         self.functions: dict[str, list[FunctionInfo]] = {}  # User-defined functions (single or @overload group)
-        self.protocols: dict[str, ProtocolInfo] = {}
+        # Module-local short-name -> ProtocolInfo. Keyed by the name under
+        # which the protocol is *visible in the current module* (its own
+        # short name or an import alias). Read exclusively through
+        # `scan_by_short_name`; qname-keyed reads go through
+        # `type_def_registry.protocol_info_of(typ)` / `TypeDef.protocol`,
+        # which is the authoritative payload store.
+        self._protocols_by_local_name: dict[str, ProtocolInfo] = {}
         self.modules: dict[str, ModuleInfo] = {}  # module_name -> ModuleInfo
         self.type_aliases: dict[str, 'TpyType'] = {}  # alias_name -> resolved type
         # Source tracking for imported aliases: local_name -> (declaring_module, original_name).
@@ -3230,14 +3236,22 @@ class TypeRegistry:
         return self.functions.get(name)
 
     def register_protocol(self, info: ProtocolInfo, name: str | None = None) -> None:
-        """Register a protocol type.
+        """Register a protocol's local-name binding in this analyzer's
+        registry.
+
+        The authoritative qname-keyed ProtocolInfo payload lives on the
+        `TypeDef.protocol` entry attached by
+        `sema.registration.register_protocol` via `attach_dynamic_type_def`;
+        this registration only maintains the module-local name -> info
+        table consulted by `scan_by_short_name`.
 
         Args:
             info: The protocol info to register.
             name: Optional name to register under (defaults to info.name).
-                  Used for imported protocols that may have a local alias.
+                  Used for imported protocols that may have a local alias
+                  (e.g. `from typing import Sized as MySized`).
         """
-        self.protocols[name or info.name] = info
+        self._protocols_by_local_name[name or info.name] = info
         if info.module:
             register_protocol_module(info.name, info.module)
 
@@ -3500,8 +3514,22 @@ class TypeRegistry:
             return self._qname_index.get(qname)
         return None
 
-    def get_protocol(self, name: str) -> Optional[ProtocolInfo]:
-        return self.protocols.get(name)
+    def scan_by_short_name(self, name: str) -> Optional[ProtocolInfo]:
+        """Resolve a module-local short name (or import alias) to a
+        ProtocolInfo.
+
+        Intended for callers that only have a bare string (parent-protocol
+        names in `TpyProtocol.parent_protocols`, `except`-clause exception
+        types, `isinstance(x, T)` second-arg TpyName, compile-time
+        protocol-name lookups in codegen). Callers that already have a
+        `NominalType` should go through `protocol_info_of(typ)` instead,
+        which is qname-keyed via the TypeDef registry.
+
+        The authoritative payload store is `TypeDef.protocol`; this table
+        only exists to translate names that haven't yet been resolved
+        against the current module's imports.
+        """
+        return self._protocols_by_local_name.get(name)
 
     def get_enum(self, name: str) -> Optional['NominalType']:
         return self.enums.get(name)
@@ -3510,7 +3538,7 @@ class TypeRegistry:
         """Check if a name refers to a known type."""
         if name in self._fundamental_types:
             return True
-        if name in self.records or name in self.protocols or name in self.type_aliases or name in self.enums:
+        if name in self.records or name in self._protocols_by_local_name or name in self.type_aliases or name in self.enums:
             return True
         # Check the TypeDef registry for builtin types defined in .py stubs.
         # `td.type_factory is not None` matches the old factory-table membership

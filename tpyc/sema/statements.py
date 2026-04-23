@@ -1323,7 +1323,7 @@ class StatementAnalyzer:
             if h.exception_type is None:
                 has_bare = True
                 continue
-            proto = self.ctx.registry.get_protocol(h.exception_type)
+            proto = self.ctx.registry.scan_by_short_name(h.exception_type)
             is_cf_catch_all = (
                 proto is not None
                 and f"{proto.module}.{proto.name}" == qnames.RETURN_EXCEPTION
@@ -1401,7 +1401,7 @@ class StatementAnalyzer:
         ns_types_before = self._save_ns_var_types()
 
         # Detect except ReturnException catch-all
-        proto = self.ctx.registry.get_protocol(handler.exception_type)
+        proto = self.ctx.registry.scan_by_short_name(handler.exception_type)
         is_return_exception_catch_all = (
             proto is not None
             and f"{proto.module}.{proto.name}" == qnames.RETURN_EXCEPTION

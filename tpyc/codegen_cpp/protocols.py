@@ -16,7 +16,7 @@ from ..typesys import (
 )
 from ..parse import TpyProtocol, TpyRecord
 from .context import INDENT, DUNDER_TO_BINARY_OP, qualified_cpp_name
-from ..type_def_registry import is_str_type
+from ..type_def_registry import is_str_type, protocol_info_of
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -38,10 +38,12 @@ class ProtocolGenerator:
         actually protocols (e.g., imported protocols). This method fixes that for codegen.
         """
         if isinstance(typ, NominalType) and not typ.is_protocol:
-            # Check if this is actually a protocol
-            protocol_info = self.ctx.analyzer.registry.get_protocol(typ.name)
-            if protocol_info is not None:
-                return typ.with_protocol_flag(is_protocol=True)
+            # Check if this is actually a protocol. Probe with the protocol
+            # flag set so `protocol_info_of`'s qname-derived TypeDef lookup
+            # matches the authoritative `{module}.{name}` key.
+            probe = typ.with_protocol_flag(is_protocol=True)
+            if protocol_info_of(probe) is not None:
+                return probe
         return typ
 
     def is_static_protocol_param(self, typ: TpyType) -> bool:
@@ -58,7 +60,7 @@ class ProtocolGenerator:
         if isinstance(unwrapped, OptionalType):
             resolved = self.resolve_type_for_codegen(unwrapped.inner)
             if is_protocol_type(resolved):
-                protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
+                protocol_info = protocol_info_of(resolved)
                 if protocol_info and protocol_info.is_dynamic:
                     return False
                 return True
@@ -71,7 +73,7 @@ class ProtocolGenerator:
         # Single bare protocol
         resolved = self.resolve_type_for_codegen(unwrapped)
         if is_protocol_type(resolved):
-            protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
+            protocol_info = protocol_info_of(resolved)
             if protocol_info and protocol_info.is_dynamic:
                 return False
             return True
@@ -93,7 +95,7 @@ class ProtocolGenerator:
             if isinstance(unwrapped, OptionalType):
                 resolved = self.resolve_type_for_codegen(unwrapped.inner)
                 if is_protocol_type(resolved) and isinstance(resolved, NominalType):
-                    protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
+                    protocol_info = protocol_info_of(resolved)
                     if protocol_info and protocol_info.is_dynamic:
                         continue
                     result.append(ProtocolParamInfo(pname, [resolved], True))
@@ -112,7 +114,7 @@ class ProtocolGenerator:
             # Single bare protocol
             resolved = self.resolve_type_for_codegen(unwrapped)
             if is_protocol_type(resolved) and isinstance(resolved, NominalType):
-                protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
+                protocol_info = protocol_info_of(resolved)
                 if protocol_info and protocol_info.is_dynamic:
                     continue
                 result.append(ProtocolParamInfo(pname, [resolved], False))
@@ -127,7 +129,7 @@ class ProtocolGenerator:
         Non-dynamic protocols keep their original name.
         """
         # Unified lookup via registry
-        protocol_info = self.ctx.analyzer.registry.get_protocol(protocol.name)
+        protocol_info = protocol_info_of(protocol)
         if protocol_info and protocol_info.cpp_concept:
             return protocol_info.cpp_concept
         is_dynamic = protocol_info is not None and protocol_info.is_dynamic
@@ -175,7 +177,7 @@ class ProtocolGenerator:
             if name in visited:
                 continue
             visited.add(name)
-            info = self.ctx.analyzer.registry.get_protocol(name)
+            info = self.ctx.analyzer.registry.scan_by_short_name(name)
             if info:
                 stack.extend(info.parent_protocols)
         return False
@@ -194,7 +196,7 @@ class ProtocolGenerator:
         if not record_info:
             return False
         for p in record_info.implemented_protocols:
-            pi = self.ctx.analyzer.registry.get_protocol(p.name)
+            pi = protocol_info_of(p)
             if pi and pi.is_dynamic:
                 if p.name == proto_name:
                     return True
@@ -311,7 +313,7 @@ class ProtocolGenerator:
             return []
         visited.add(protocol_name)
 
-        protocol_info = self.ctx.analyzer.registry.get_protocol(protocol_name)
+        protocol_info = self.ctx.analyzer.registry.scan_by_short_name(protocol_name)
         if protocol_info is None:
             return []
 
@@ -334,7 +336,7 @@ class ProtocolGenerator:
         True when the protocol-level is_readonly flag is set, or when every
         method (including inherited ones) is individually @readonly.
         """
-        pi = self.ctx.analyzer.registry.get_protocol(protocol_name)
+        pi = self.ctx.analyzer.registry.scan_by_short_name(protocol_name)
         if pi is None:
             return False
         if pi.is_readonly:
@@ -350,7 +352,7 @@ class ProtocolGenerator:
             return []
         visited.add(protocol_name)
 
-        protocol_info = self.ctx.analyzer.registry.get_protocol(protocol_name)
+        protocol_info = self.ctx.analyzer.registry.scan_by_short_name(protocol_name)
         if protocol_info is None:
             return []
 
@@ -385,7 +387,7 @@ class ProtocolGenerator:
         Returns True if a concept was emitted, False if skipped.
         """
         # Skip protocols backed by runtime C++ concepts
-        protocol_info = self.ctx.analyzer.registry.get_protocol(protocol.name)
+        protocol_info = self.ctx.analyzer.registry.scan_by_short_name(protocol.name)
         if protocol_info and protocol_info.cpp_concept:
             return False
         self.ctx.emit_preceding_comments(out, protocol.loc)
@@ -489,7 +491,7 @@ class ProtocolGenerator:
         When this protocol extends other @dynamic protocols, the base class
         inherits from their bases (e.g., NamedPet : Pet).
         """
-        protocol_info = self.ctx.analyzer.registry.get_protocol(protocol.name)
+        protocol_info = self.ctx.analyzer.registry.scan_by_short_name(protocol.name)
         if protocol_info is None:
             return
 
@@ -499,7 +501,7 @@ class ProtocolGenerator:
         dynamic_parent_bases: list[str] = []
         parent_dynamic_methods: set[str] = set()
         for parent_name in protocol_info.parent_protocols:
-            parent_info = self.ctx.analyzer.registry.get_protocol(parent_name)
+            parent_info = self.ctx.analyzer.registry.scan_by_short_name(parent_name)
             if parent_info and parent_info.is_dynamic:
                 dynamic_parent_bases.append(self.get_dynamic_base_name(parent_name))
                 for m in self.collect_concept_methods(parent_name):
@@ -529,7 +531,7 @@ class ProtocolGenerator:
         Emitted at global scope (outside user namespace), following the EnumUtil
         pattern. Uses fully-qualified names for concept and base class.
         """
-        protocol_info = self.ctx.analyzer.registry.get_protocol(protocol.name)
+        protocol_info = self.ctx.analyzer.registry.scan_by_short_name(protocol.name)
         if protocol_info is None:
             return
 
@@ -653,8 +655,7 @@ class ProtocolGenerator:
             if record and record.type_param_bounds:
                 # Check if any bound is a user-defined protocol
                 has_user_bound = any(
-                    registry.get_protocol(bound.name) is None or
-                    registry.get_protocol(bound.name).cpp_concept is None
+                    (pi := protocol_info_of(bound)) is None or pi.cpp_concept is None
                     for bound in record.type_param_bounds.values()
                 )
                 if has_user_bound:

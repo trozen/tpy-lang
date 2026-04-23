@@ -900,7 +900,7 @@ class TypeRegistrar:
             for base in record.bases:
                 if isinstance(base, NominalType):
                     # Protocols are fine (express interface conformance, not C++ inheritance)
-                    if self.ctx.registry.get_protocol(base.name):
+                    if self.ctx.registry.scan_by_short_name(base.name):
                         continue
                     base_record = self.ctx.registry.get_record(base.name)
                     if not base_record or not base_record.is_native:
@@ -922,7 +922,7 @@ class TypeRegistrar:
 
             # Check if this base is actually a protocol (handles forward references)
             is_protocol_base = False
-            if base_name and self.ctx.registry.get_protocol(base_name) is not None:
+            if base_name and self.ctx.registry.scan_by_short_name(base_name) is not None:
                 is_protocol_base = True
 
             if is_protocol_base:
@@ -932,7 +932,7 @@ class TypeRegistrar:
                 # qualified_name() returns the correct module (not just the
                 # _protocol_modules fallback which is first-write-wins)
                 if isinstance(protocol_type, NominalType) and not protocol_type._module_qname:
-                    proto_info = self.ctx.registry.get_protocol(base_name)
+                    proto_info = self.ctx.registry.scan_by_short_name(base_name)
                     if proto_info and proto_info.module:
                         # Use public module name for qualified_name() comparisons
                         pub_module = public_module_name(proto_info.module)
@@ -1328,7 +1328,7 @@ class TypeRegistrar:
         surface (methods + fields from all ancestor protocols).
         """
         for parent_name in protocol.parent_protocols:
-            parent_info = self.ctx.registry.get_protocol(parent_name)
+            parent_info = self.ctx.registry.scan_by_short_name(parent_name)
             if parent_info is None:
                 raise SemanticError(
                     f"Protocol '{protocol.name}' inherits from '{parent_name}', "
@@ -1392,7 +1392,7 @@ class TypeRegistrar:
         if protocol_name in visited:
             return []
         visited.add(protocol_name)
-        protocol_info = self.ctx.registry.get_protocol(protocol_name)
+        protocol_info = self.ctx.registry.scan_by_short_name(protocol_name)
         if protocol_info is None:
             return []
         methods_by_name: dict[str, MethodSignature] = {}
@@ -1412,7 +1412,7 @@ class TypeRegistrar:
         if protocol_name in visited:
             return []
         visited.add(protocol_name)
-        protocol_info = self.ctx.registry.get_protocol(protocol_name)
+        protocol_info = self.ctx.registry.scan_by_short_name(protocol_name)
         if protocol_info is None:
             return []
         fields_by_name: dict[str, tuple[str, TpyType]] = {}

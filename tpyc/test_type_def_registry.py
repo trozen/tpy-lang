@@ -1198,3 +1198,421 @@ def test_fixed_int_names_stay_in_sync():
     )
     assert StatementGenerator._FIXED_INT_NAMES == expected
     assert MACRO_FIXED_INT_NAMES == expected
+
+
+# =========================================================================
+# Protocol snapshot (TypeRegistry.protocols retirement).
+#
+# Hand-written golden table of ProtocolInfo fields for every stdlib
+# protocol the compiler registers when `typing` + `tpy` are imported.
+# The retirement of the short-name `TypeRegistry.protocols` dict in
+# favor of qname-keyed `TypeDef.protocol` is an invariance refactor:
+# every qname below must still resolve to the same ProtocolInfo
+# payload after each migration step (flipping callers to
+# `protocol_info_of`, reshaping storage, deleting the legacy dict).
+#
+# Mirrors PRIMITIVE_SNAPSHOT (primitive migration) and ENUM_SNAPSHOT
+# (enum migration). Hand-maintained -- regenerating from the registry
+# would defeat the check.
+# =========================================================================
+
+
+PROTOCOL_SNAPSHOT: dict[str, dict] = {
+    # typing.* protocols (tpy._typing, collapsed via cpp_namespace="tpystd::typing")
+    "typing.Sized": dict(
+        name="Sized", module="typing",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=(), parent_protocols=(),
+        methods=("__len__",),
+    ),
+    "typing.Sequence": dict(
+        name="Sequence", module="typing",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=("T",), parent_protocols=(),
+        methods=("__getitem__", "__len__"),
+    ),
+    "typing.MutableSequence": dict(
+        name="MutableSequence", module="typing",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=("T",), parent_protocols=(),
+        methods=("__getitem__", "__len__", "__setitem__"),
+    ),
+    "typing.Iterator": dict(
+        name="Iterator", module="typing",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=("T",), parent_protocols=(),
+        methods=("__iter__", "__next__"),
+    ),
+    "typing.Iterable": dict(
+        name="Iterable", module="typing",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=("T",), parent_protocols=(),
+        methods=("__iter__",),
+    ),
+    # tpy.* structural protocols (tpy._core._types)
+    "tpy.Truthy": dict(
+        name="Truthy", module="tpy",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=(), parent_protocols=(),
+        methods=("__bool__",),
+    ),
+    "tpy.Stringable": dict(
+        name="Stringable", module="tpy",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=(), parent_protocols=(),
+        methods=("__str__",),
+    ),
+    "tpy.Representable": dict(
+        name="Representable", module="tpy",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=(), parent_protocols=(),
+        methods=("__repr__",),
+    ),
+    "tpy.Hashable": dict(
+        name="Hashable", module="tpy",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=(), parent_protocols=(),
+        methods=("__hash__",),
+    ),
+    "tpy.Comparable": dict(
+        name="Comparable", module="tpy",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=(), parent_protocols=(),
+        methods=("__lt__",),
+    ),
+    "tpy.Equatable": dict(
+        name="Equatable", module="tpy",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=(), parent_protocols=(),
+        methods=("__eq__",),
+    ),
+    "tpy.Deref": dict(
+        name="Deref", module="tpy",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=("T",), parent_protocols=(),
+        methods=("__deref__",),
+    ),
+    "tpy.Spannable": dict(
+        name="Spannable", module="tpy",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=("T",), parent_protocols=(),
+        methods=("__span__",),
+    ),
+    # tpy.* @native marker / concept-backed protocols
+    "tpy.NativeIterable": dict(
+        name="NativeIterable", module="tpy",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept="::tpy::NativeIterable",
+        type_params=("T",), parent_protocols=(),
+        methods=("__iter__",),
+    ),
+    "tpy.NativeRangeConstructible": dict(
+        name="NativeRangeConstructible", module="tpy",
+        is_dynamic=False, is_marker=True, is_readonly=False,
+        cpp_concept="::tpy::NativeRangeConstructible",
+        type_params=("T",), parent_protocols=(),
+        methods=(),
+    ),
+    "tpy.ValueType": dict(
+        name="ValueType", module="tpy",
+        is_dynamic=False, is_marker=True, is_readonly=False,
+        cpp_concept="::tpy::ValueType",
+        type_params=(), parent_protocols=(),
+        methods=(),
+    ),
+    "tpy.Send": dict(
+        name="Send", module="tpy",
+        is_dynamic=False, is_marker=True, is_readonly=False,
+        cpp_concept="::tpy::Send",
+        type_params=(), parent_protocols=(),
+        methods=(),
+    ),
+    "tpy.Sync": dict(
+        name="Sync", module="tpy",
+        is_dynamic=False, is_marker=True, is_readonly=False,
+        cpp_concept="::tpy::Sync",
+        type_params=(), parent_protocols=(),
+        methods=(),
+    ),
+    "tpy.Default": dict(
+        name="Default", module="tpy",
+        is_dynamic=False, is_marker=True, is_readonly=False,
+        cpp_concept="::std::default_initializable",
+        type_params=(), parent_protocols=(),
+        methods=(),
+    ),
+    "tpy.ReturnException": dict(
+        name="ReturnException", module="tpy",
+        is_dynamic=False, is_marker=True, is_readonly=False,
+        cpp_concept="::tpy::ReturnException",
+        type_params=(), parent_protocols=(),
+        methods=(),
+    ),
+    "tpy.Covariant": dict(
+        name="Covariant", module="tpy",
+        is_dynamic=False, is_marker=True, is_readonly=False,
+        cpp_concept="::tpy::Covariant",
+        type_params=("T",), parent_protocols=(),
+        methods=(),
+    ),
+    "tpy.AnyFixedInt": dict(
+        name="AnyFixedInt", module="tpy",
+        is_dynamic=False, is_marker=True, is_readonly=False,
+        cpp_concept="::tpy::AnyFixedInt",
+        type_params=(), parent_protocols=(),
+        methods=(),
+    ),
+    "tpy.AnyFixedSigned": dict(
+        name="AnyFixedSigned", module="tpy",
+        is_dynamic=False, is_marker=True, is_readonly=False,
+        cpp_concept="::tpy::AnyFixedSigned",
+        type_params=(), parent_protocols=(),
+        methods=(),
+    ),
+    "tpy.AnyFixedUnsigned": dict(
+        name="AnyFixedUnsigned", module="tpy",
+        is_dynamic=False, is_marker=True, is_readonly=False,
+        cpp_concept="::tpy::AnyFixedUnsigned",
+        type_params=(), parent_protocols=(),
+        methods=(),
+    ),
+}
+
+
+_PROTOCOL_SNAPSHOT_SOURCE = """\
+from typing import Sized, Iterable, Iterator, Sequence, MutableSequence
+from tpy import (
+    Truthy, Stringable, Representable, Hashable, Comparable, Equatable,
+    Deref, Spannable,
+    NativeIterable, NativeRangeConstructible, ValueType, Send, Sync,
+    Default, ReturnException, Covariant,
+    AnyFixedInt, AnyFixedSigned, AnyFixedUnsigned,
+)
+"""
+
+
+@pytest.fixture(scope="module")
+def _protocol_snapshot_compiled():
+    """Compile a source that imports every protocol in PROTOCOL_SNAPSHOT.
+
+    Scoped to the module so the compile runs once; the conftest autouse
+    fixture clears dynamic state around each test, so individual tests
+    that need the populated registry recompile via this fixture.
+    """
+    from tpyc import get_lib_dir
+    from tpyc.compiler import Compiler
+    compiler = Compiler.from_source(
+        _PROTOCOL_SNAPSHOT_SOURCE, lib_dirs=[get_lib_dir() / "tpy"]
+    )
+    compiler.compile()
+    return compiler
+
+
+@pytest.fixture
+def _protocol_registry(_protocol_snapshot_compiled):
+    """Per-test fixture: recompile the snapshot source so the TypeDef
+    registry is populated inside the test's `clear_all_compilation_state`
+    window. The module-scoped fixture above is retained for any future
+    callers that legitimately want the pre-clear state."""
+    from tpyc import get_lib_dir
+    from tpyc.compiler import Compiler
+    compiler = Compiler.from_source(
+        _PROTOCOL_SNAPSHOT_SOURCE, lib_dirs=[get_lib_dir() / "tpy"]
+    )
+    compiler.compile()
+    return compiler
+
+
+def test_protocol_snapshot_covers_every_compiled_protocol(_protocol_registry):
+    """Every PROTOCOL-category TypeDef the snapshot compile populates must
+    have a PROTOCOL_SNAPSHOT entry (and vice versa). Guards against silent
+    drift: a new stdlib protocol without a snapshot entry, or a snapshot
+    entry pointing at a qname the registration path no longer creates."""
+    live = {
+        qn for qn, td in _type_defs.items()
+        if td.category is TypeCategory.PROTOCOL and td.protocol is not None
+    }
+    missing = live - set(PROTOCOL_SNAPSHOT)
+    assert not missing, (
+        f"Protocol qnames registered by the snapshot compile without a "
+        f"PROTOCOL_SNAPSHOT entry: {sorted(missing)}. Add them with "
+        f"their expected ProtocolInfo fields."
+    )
+    extra = set(PROTOCOL_SNAPSHOT) - live
+    assert not extra, (
+        f"PROTOCOL_SNAPSHOT entries that the compile didn't register: "
+        f"{sorted(extra)}. Either the registration path regressed or the "
+        f"snapshot names a qname that no longer exists."
+    )
+
+
+@pytest.mark.parametrize("qname", sorted(PROTOCOL_SNAPSHOT))
+def test_protocol_type_def_matches_snapshot(qname, _protocol_registry):
+    """Hand-coded expected values for every stdlib protocol survive the
+    retirement of TypeRegistry.protocols. Reading goes through
+    `TypeDef.protocol` (qname-keyed), which is authoritative; after each
+    migration step, every field below must still match."""
+    td = get_type_def(qname)
+    assert td is not None, f"No TypeDef for {qname}"
+    assert td.category is TypeCategory.PROTOCOL, (
+        f"{qname}: TypeDef.category={td.category}, expected PROTOCOL"
+    )
+    info = td.protocol
+    assert info is not None, f"{qname}: TypeDef.protocol payload missing"
+    expected = PROTOCOL_SNAPSHOT[qname]
+
+    assert info.name == expected["name"]
+    assert info.module == expected["module"]
+    assert info.is_dynamic == expected["is_dynamic"]
+    assert info.is_marker == expected["is_marker"]
+    assert info.is_readonly == expected["is_readonly"]
+    assert info.cpp_concept == expected["cpp_concept"]
+    assert tuple(info.type_params) == expected["type_params"]
+    assert tuple(info.parent_protocols) == expected["parent_protocols"]
+    assert tuple(sorted(m.name for m in info.methods)) == expected["methods"]
+
+
+@pytest.mark.parametrize("qname", sorted(PROTOCOL_SNAPSHOT))
+def test_protocol_info_of_matches_type_def(qname, _protocol_registry):
+    """`protocol_info_of(NominalType(qname))` must return the same
+    ProtocolInfo instance as the direct `TypeDef.protocol` lookup. This
+    pins the migration target: all callers eventually route through
+    `protocol_info_of` and must see identical data."""
+    from tpyc.type_def_registry import protocol_info_of
+    td = get_type_def(qname)
+    assert td is not None and td.protocol is not None
+    # Synthesize a NominalType carrying the qname; protocol_info_of goes
+    # through `type_def_of(t)` which keys on `qualified_name()`.
+    module, _, short = qname.rpartition(".")
+    inst = ts.NominalType(
+        name=short, type_args=(), is_protocol=True, _module_qname=qname,
+    )
+    info = protocol_info_of(inst)
+    assert info is td.protocol, (
+        f"{qname}: protocol_info_of returned {info!r}, TypeDef.protocol={td.protocol!r}"
+    )
+
+
+def test_scan_by_short_name_honors_import_alias():
+    """`register_protocol(info, local_name)` must make `scan_by_short_name`
+    resolve both the protocol's canonical short name and any local import
+    alias to the same `ProtocolInfo`.
+
+    The alias path is the load-bearing reason the short-name
+    `_protocols_by_local_name` table exists at all; without it the
+    short-name helper could be replaced by a scan over qnames. Pin the
+    semantics here so the helper's contract doesn't silently regress when
+    the storage layer evolves further (e.g. a future move to TypeDef
+    discovery).
+
+    Uses a synthetic ProtocolInfo rather than a real compile so the test
+    stays fast and doesn't depend on the multi-module import plumbing.
+    """
+    registry = ts.TypeRegistry()
+    info = ts.ProtocolInfo(
+        name="Sized",
+        methods=[],
+        module="typing",
+    )
+    registry.register_protocol(info, "MySized")
+
+    # Alias resolves to the original ProtocolInfo.
+    assert registry.scan_by_short_name("MySized") is info
+
+    # Canonical name is NOT auto-aliased when a local name is provided;
+    # only the explicit binding is recorded.
+    assert registry.scan_by_short_name("Sized") is None
+
+    # A second registration without a local-name override exposes the
+    # canonical short name too -- mimicking the typical stdlib-import
+    # path in `compiler.py::_analyze_module`.
+    registry.register_protocol(info)
+    assert registry.scan_by_short_name("Sized") is info
+    assert registry.scan_by_short_name("MySized") is info  # alias still works
+
+    # Unknown name returns None, not a random collision.
+    assert registry.scan_by_short_name("Nonexistent") is None
+
+
+def test_resolve_type_for_codegen_does_not_promote_record_to_protocol():
+    """`ProtocolGenerator.resolve_type_for_codegen` probes `protocol_info_of`
+    with `is_protocol=True` set on the NominalType. When `_module_qname`
+    points at a RECORD-category TypeDef (short name happens to collide with
+    a protocol in another module), the probe must return None and the
+    type must stay classified as a record.
+
+    The pre-P.1 path used a short-name `registry.get_protocol(typ.name)`
+    lookup that would have matched the collision and silently promoted
+    the record. Pinning the qname-driven behavior here prevents a
+    regression to the short-name semantics during any future reshape of
+    `resolve_type_for_codegen`.
+    """
+    from tpyc.type_def_registry import (
+        attach_dynamic_type_def, TypeCategory,
+    )
+    # A user record at `user_mod.Widget`.
+    record_qname = "user_mod.Widget"
+    record_info = ts.RecordInfo(
+        name="Widget",
+        module="user_mod",
+        fields=[],
+        methods={},
+    )
+    attach_dynamic_type_def(record_qname, TypeCategory.RECORD, record=record_info)
+
+    # An unrelated protocol also named `Widget` in a different module --
+    # this would have short-name-matched under the old lookup.
+    protocol_qname = "other_mod.Widget"
+    protocol_info = ts.ProtocolInfo(
+        name="Widget", methods=[], module="other_mod",
+    )
+    attach_dynamic_type_def(protocol_qname, TypeCategory.PROTOCOL,
+                            protocol=protocol_info)
+
+    # NominalType bound to the record qname, not flagged as protocol.
+    record_nominal = ts.NominalType(
+        name="Widget", type_args=(), is_protocol=False,
+        _module_qname=record_qname,
+    )
+
+    # Build a minimal ProtocolGenerator with just enough context to call
+    # resolve_type_for_codegen; the method only reaches into
+    # `protocol_info_of`, not into `ctx.analyzer.*`.
+    from tpyc.codegen_cpp.protocols import ProtocolGenerator
+
+    class _StubCtx:
+        pass
+
+    pg = ProtocolGenerator(_StubCtx())
+    resolved = pg.resolve_type_for_codegen(record_nominal)
+
+    # Record must NOT be flipped to a protocol.
+    assert resolved is record_nominal, (
+        "resolve_type_for_codegen must leave a record-qname NominalType "
+        "unchanged even when a protocol of the same short name exists "
+        f"elsewhere; got {resolved!r}"
+    )
+    assert resolved.is_protocol is False
+
+    # Sanity: a placeholder NominalType (no _module_qname) whose short
+    # name resolves to the `other_mod` protocol via `_protocol_modules`
+    # *should* get flipped -- this is the legitimate promotion case.
+    from tpyc.typesys import register_protocol_module
+    register_protocol_module("Widget", "other_mod")
+    placeholder = ts.NominalType(name="Widget", type_args=(), is_protocol=False)
+    promoted = pg.resolve_type_for_codegen(placeholder)
+    assert promoted.is_protocol is True
+    assert promoted.qualified_name() == protocol_qname
