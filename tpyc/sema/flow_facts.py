@@ -153,6 +153,7 @@ class FlowFacts:
     init_terminated: bool = False
     rvalue_vars: frozenset[str] = frozenset()
     param_provenance_vars: frozenset[str] = frozenset()
+    trusted_call_return_vars: frozenset[str] = frozenset()
     non_null_ptr_vars: frozenset[str] = frozenset()
     narrowed_types: frozenset[tuple[str, TpyType]] = frozenset()
     consumed_vars: frozenset[str] = frozenset()
@@ -178,6 +179,10 @@ class FlowFacts:
             ),
             param_provenance_vars=_merge_sets(
                 then.param_provenance_vars, else_.param_provenance_vars,
+                then_term, else_term, _MergePolicy.INTERSECT,
+            ),
+            trusted_call_return_vars=_merge_sets(
+                then.trusted_call_return_vars, else_.trusted_call_return_vars,
                 then_term, else_term, _MergePolicy.INTERSECT,
             ),
             non_null_ptr_vars=_merge_sets(

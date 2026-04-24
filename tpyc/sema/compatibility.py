@@ -1162,6 +1162,24 @@ class TypeCompatibility:
         # Constructors, function calls, literals -- local storage
         return False
 
+    def is_trusted_call_return_expr(self, expr: TpyExpr) -> bool:
+        """Whether this RHS binds the LHS to a non-dangling call return.
+
+        A trusted binding lets ``return x`` succeed even when x is a local,
+        because the value it holds came from a call whose direct return
+        was accepted. Propagates across TpyCoerce and aliasing locals.
+        """
+        if isinstance(expr, TpyCoerce):
+            return self.is_trusted_call_return_expr(expr.expr)
+        if isinstance(expr, TpyName):
+            return expr.name in self.ctx.func.trusted_call_return_vars
+        if isinstance(expr, (TpyCall, TpyMethodCall)):
+            return not self.is_dangling_return(expr)
+        if isinstance(expr, TpyIfExpr):
+            return (self.is_trusted_call_return_expr(expr.then_expr)
+                    and self.is_trusted_call_return_expr(expr.else_expr))
+        return False
+
     def is_mutable_lvalue(self, expr: TpyExpr) -> bool:
         """Check if an expression is a mutable lvalue (can get a mutable Ptr).
 
@@ -1256,8 +1274,9 @@ class TypeCompatibility:
                 return False
 
             # Check if it's a parameter (safe)
-            if self.ctx.func.current_function:
-                for pname, ptype in self.ctx.func.current_function.params:
+            func = self.ctx.func.current_function
+            if isinstance(func, TpyFunction):
+                for pname, _ptype in func.params:
                     if pname == expr.name:
                         return False  # Parameter - safe to return reference
 
@@ -1269,6 +1288,10 @@ class TypeCompatibility:
 
             # Storage derives from parameter/global -- safe
             if expr.name in self.ctx.func.param_provenance_vars:
+                return False
+
+            # Local bound from a call whose direct return is non-dangling -- safe
+            if expr.name in self.ctx.func.trusted_call_return_vars:
                 return False
 
             # Local variable - dangling

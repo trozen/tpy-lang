@@ -30,6 +30,7 @@ class InitTracker:
             init_terminated=self.ctx.func.init_terminated,
             rvalue_vars=frozenset(self.ctx.func.rvalue_vars),
             param_provenance_vars=frozenset(self.ctx.func.param_provenance_vars),
+            trusted_call_return_vars=frozenset(self.ctx.func.trusted_call_return_vars),
             non_null_ptr_vars=frozenset(self.ctx.func.non_null_ptr_vars),
             narrowed_types=frozenset(self.ctx.func.narrowed_types.items()),
             consumed_vars=frozenset(self.ctx.func.consumed_vars),
@@ -42,6 +43,7 @@ class InitTracker:
         self.ctx.func.init_terminated = state.init_terminated
         self.ctx.func.rvalue_vars = set(state.rvalue_vars)
         self.ctx.func.param_provenance_vars = set(state.param_provenance_vars)
+        self.ctx.func.trusted_call_return_vars = set(state.trusted_call_return_vars)
         self.ctx.func.non_null_ptr_vars = set(state.non_null_ptr_vars)
         # Invariant: pending post-access ptr-narrowing flushes at statement
         # boundary (see `analyze_stmt` try/finally). Any entries surviving a
@@ -64,6 +66,13 @@ class InitTracker:
             self.ctx.func.param_provenance_vars.add(name)
         else:
             self.ctx.func.param_provenance_vars.discard(name)
+
+    def mark_trusted_call_return(self, name: str, is_trusted: bool) -> None:
+        """Track whether a variable was last assigned from a non-dangling call."""
+        if is_trusted:
+            self.ctx.func.trusted_call_return_vars.add(name)
+        else:
+            self.ctx.func.trusted_call_return_vars.discard(name)
 
     def mark_non_null_ptr(self, name: str, is_non_null: bool) -> None:
         """Track whether a pointer variable is provably non-null."""
@@ -94,6 +103,7 @@ class InitTracker:
         self.ctx.func.init_terminated = False
         self.ctx.func.rvalue_vars = set(before.rvalue_vars)
         self.ctx.func.param_provenance_vars = set(before.param_provenance_vars)
+        self.ctx.func.trusted_call_return_vars = set(before.trusted_call_return_vars)
         self.ctx.func.non_null_ptr_vars = set(before.non_null_ptr_vars)
         self.ctx.func.narrowed_types = dict(before.narrowed_types)
         self.ctx.func.consumed_vars = set(before.consumed_vars)

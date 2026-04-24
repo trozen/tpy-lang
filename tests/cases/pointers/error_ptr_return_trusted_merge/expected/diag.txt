@@ -1,0 +1,1 @@
+main.py:28: error: Cannot return pointer to local or temporary value; the returned pointer would dangle

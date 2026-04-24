@@ -2744,6 +2744,8 @@ class StatementAnalyzer:
         provenance_type = var_type
         if stmt.init and (not provenance_type.is_value_type() or isinstance(provenance_type, PtrType)):
             self.init.mark_provenance(stmt.name, self.compat.is_param_derived_expr(stmt.init))
+            self.init.mark_trusted_call_return(
+                stmt.name, self.compat.is_trusted_call_return_expr(stmt.init))
         # Track non-null pointer provenance for null-check elision
         if stmt.init and isinstance(var_type, PtrType):
             # Unwrap coercion (e.g. Ptr[T] -> Ptr[readonly[T]]) to find the source expression
@@ -3306,6 +3308,8 @@ class StatementAnalyzer:
         # Track provenance for non-value-type and pointer-type name targets
         if isinstance(stmt.target, TpyName) and (not target_type.is_value_type() or isinstance(target_type, PtrType)):
             self.init.mark_provenance(stmt.target.name, self.compat.is_param_derived_expr(stmt.value))
+            self.init.mark_trusted_call_return(
+                stmt.target.name, self.compat.is_trusted_call_return_expr(stmt.value))
         # Track non-null pointer provenance for null-check elision
         if isinstance(stmt.target, TpyName) and isinstance(target_type, PtrType):
             # Unwrap coercion (e.g. Ptr[T] -> Ptr[readonly[T]]) to find the source expression
