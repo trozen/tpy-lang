@@ -537,16 +537,15 @@ class StatementAnalyzer:
                                 and rec is not None
                             )
                             if not in_any_init:
-                                check = info
-                                while check is not None:
+                                # Walk self + MRO ancestors for a readonly field declaration.
+                                records_to_check = [info, *self.ctx.registry.iter_ancestor_records(info)]
+                                for check in records_to_check:
                                     for fld in check.fields:
                                         if fld.name == target.field and isinstance(fld.type, ReadonlyType):
                                             raise self.ctx.error(
                                                 f"Cannot assign to readonly field '{target.field}'",
                                                 target,
                                             )
-                                    check = (self.ctx.registry.get_record_for_type(check.parent)
-                                             if check.parent is not None else None)
 
     def _find_consuming_iter(self, iterable_type: TpyType) -> FunctionInfo | None:
         """Find the consuming __iter__ overload for a type, if any.

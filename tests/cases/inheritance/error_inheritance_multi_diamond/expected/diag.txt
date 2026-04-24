@@ -1,0 +1,1 @@
+main.py:19: error: Diamond inheritance not supported: 'A' is reachable from multiple bases of 'D' (via 'B' and 'C'). Use @dynamic for runtime polymorphism.

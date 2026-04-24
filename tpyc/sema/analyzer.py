@@ -294,7 +294,7 @@ class SemanticAnalyzer:
         # inference code but need namespace entry to distinguish from tpy types
         python_builtin_types = ["int", "str", "bool", "float", "bytes", "bytearray",
                                 "list", "dict", "set",
-                                "slice",
+                                "slice", "super",
                                 "BaseException", "Exception", "StopIteration",
                                 "TextIO"]
         for name in python_builtin_types:
@@ -700,8 +700,8 @@ class SemanticAnalyzer:
             # __copy__ opts out of propagation
             if info.has_copy:
                 continue
-            # Check parent
-            if info.parent is not None and self._is_type_nocopy(info.parent):
+            # Check parents (any nocopy parent propagates to the child)
+            if any(self._is_type_nocopy(p) for p in info.parents):
                 info.is_nocopy = True
                 continue
             # Check fields
@@ -1655,10 +1655,18 @@ class SemanticAnalyzer:
                             "super().__del__() must be the last statement in __del__",
                             self.ctx.func.super_del_call
                         )
-                elif record_info and record_info.parent:
-                    # No super().__del__() but there is a parent class - check if parent has __del__
-                    parent_info = self.ctx.registry.get_record(record_info.parent.name) if hasattr(record_info.parent, 'name') else None
-                    if parent_info and parent_info.get_method("__del__") is not None:
+                elif record_info and record_info.parents:
+                    # No super().__del__() but parent(s) may have __del__. Any parent
+                    # with __del__ runs automatically after this destructor.
+                    parent_has_del = False
+                    for p in record_info.parents:
+                        if not hasattr(p, 'name'):
+                            continue
+                        parent_info = self.ctx.registry.get_record(p.name)
+                        if parent_info and parent_info.get_method("__del__") is not None:
+                            parent_has_del = True
+                            break
+                    if parent_has_del:
                         self.ctx.warning(
                             "Parent class has __del__() which will be called automatically by C++ "
                             "after this destructor runs. Unlike Python, you do not need "
@@ -1875,19 +1883,21 @@ class SemanticAnalyzer:
             raise first_error
 
     def _collect_all_fields(self, record_info: RecordInfo) -> dict[str, FieldInfo]:
-        """Collect all fields from a record and its ancestors."""
+        """Collect all fields from a record and its ancestors, walking MRO base-first.
+
+        Child fields override ancestor fields with the same name (last-write-wins
+        in dict semantics, consistent with Python attribute shadowing).
+        """
         result: dict[str, FieldInfo] = {}
-        parent = record_info.parent
-        if parent is not None:
-            parent_rec = self.ctx.registry.get_record_for_type(parent)
-            if parent_rec is not None:
-                result.update(self._collect_all_fields(parent_rec))
+        for anc_rec in self.ctx.registry.iter_ancestor_records(record_info, reverse=True):
+            for f in anc_rec.fields:
+                result[f.name] = f
         for f in record_info.fields:
             result[f.name] = f
         return result
 
     def _type_has_del_or_nocopy(self, field_type: TpyType) -> bool:
-        """Check if a type (or any ancestor) has __del__ or is @nocopy."""
+        """Check if a type (or any ancestor in its MRO) has __del__ or is @nocopy."""
         inner = field_type
         if isinstance(inner, OwnType):
             inner = inner.wrapped
@@ -1897,14 +1907,9 @@ class SemanticAnalyzer:
             return False
         if rec.is_nocopy or rec.has_del:
             return True
-        parent = rec.parent
-        while parent is not None:
-            parent_rec = self.ctx.registry.get_record_for_type(parent)
-            if parent_rec is None:
-                break
-            if parent_rec.has_del or parent_rec.is_nocopy:
+        for anc_rec in self.ctx.registry.iter_ancestor_records(rec):
+            if anc_rec.has_del or anc_rec.is_nocopy:
                 return True
-            parent = parent_rec.parent
         return False
 
     def _analyze_top_level(self, stmts: list[TpyStmt]) -> None:

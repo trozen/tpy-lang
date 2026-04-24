@@ -13,7 +13,7 @@ Defines the core types available in TurboPython:
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional, TYPE_CHECKING
+from typing import Any, Callable, Iterator, Optional, TYPE_CHECKING
 
 from .module_names import public_module_name
 
@@ -918,6 +918,69 @@ def same_nominal_symbol_loose(a: 'TpyType', b: 'TpyType') -> bool:
     if a._module_qname is None or b._module_qname is None:
         return True
     return a._module_qname == b._module_qname
+
+
+def same_base_type(a: 'TpyType', b: 'TpyType') -> bool:
+    """Type equivalence for inheritance graph walks.
+
+    NominalTypes go through `same_nominal_symbol_loose` so pre-resolve parent
+    placeholders still match their resolved counterparts; everything else
+    uses Python equality.
+    """
+    if isinstance(a, NominalType) and isinstance(b, NominalType):
+        return same_nominal_symbol_loose(a, b)
+    return a == b
+
+
+class C3LinearizationError(Exception):
+    """Raised when C3 merge fails (no valid linearization)."""
+
+
+def c3_linearize(bases_with_mros: list[tuple['TpyType', list['TpyType']]]) -> list['TpyType']:
+    """Compute C3 linearization of a class's ancestors (self excluded).
+
+    Per C3: merge of [L(B1), ..., L(Bn), [B1, ..., Bn]] where L(Bi) = Bi followed
+    by Bi's own linearized ancestors. Raises C3LinearizationError if no valid
+    linearization exists.
+    """
+    if not bases_with_mros:
+        return []
+    # Per C3: merge of [L(B1), ..., L(Bn), [B1, ..., Bn]], where L(Bi) includes Bi.
+    lists: list[list[TpyType]] = []
+    for base, base_mro in bases_with_mros:
+        lists.append([base] + list(base_mro))
+    lists.append([b for b, _ in bases_with_mros])
+
+    result: list[TpyType] = []
+    # Filter out any empty lists that may have been passed in.
+    lists = [lst for lst in lists if lst]
+    while lists:
+        head = None
+        for lst in lists:
+            candidate = lst[0]
+            # A valid head appears only at positions[0] across all lists -- not in any tail.
+            in_tail = any(
+                any(same_base_type(x, candidate) for x in other[1:])
+                for other in lists
+            )
+            if not in_tail:
+                head = candidate
+                break
+        if head is None:
+            raise C3LinearizationError(
+                "C3 linearization failed: inconsistent base-class ordering across parents"
+            )
+        result.append(head)
+        new_lists: list[list[TpyType]] = []
+        for lst in lists:
+            if lst and same_base_type(lst[0], head):
+                rest = lst[1:]
+                if rest:
+                    new_lists.append(rest)
+            else:
+                new_lists.append(lst)
+        lists = new_lists
+    return result
 
 
 @dataclass(frozen=True)
@@ -2841,7 +2904,8 @@ class RecordInfo:
     type_param_kinds: list[TypeParamKind] = field(default_factory=list)  # [TYPE, INT] for class Matrix[T, N: int]
     type_param_bounds: dict[str, 'NominalType'] = field(default_factory=dict)  # {"T": Comparable} (must be protocols)
     type_factory: "Optional[Callable[..., TpyType]]" = None  # Factory to create concrete type from params
-    parent: Optional['TpyType'] = None  # Parent type (NominalType or builtin TpyType)
+    parents: list['TpyType'] = field(default_factory=list)  # Direct base classes in source order (equals MRO tail order, enforced by _check_multi_base_order).
+    mro_ancestors: list['TpyType'] = field(default_factory=list)  # C3 linearization of ancestors (self excluded), populated by validate_record_inheritance
     implemented_protocols: list['NominalType'] = field(default_factory=list)  # Explicit protocol implementations
     extends_protocols: list[str] = field(default_factory=list)  # Protocol extensions: ["NativeIterable[T]"]
     native_name: Optional[str] = None  # C++ name for @native/@native_c records (e.g., "SDL_Rect")
@@ -3464,10 +3528,26 @@ class TypeRegistry:
         return None
 
     def get_all_fields(self, record: RecordInfo) -> list[FieldInfo]:
-        """Get all fields for a record including inherited, in parent-first order."""
-        if record.parent is None or not isinstance(record.parent, NominalType):
+        """Get all fields for a record including inherited, in base-first order.
+
+        Post-registration (mro_ancestors populated) walks the MRO so multi-base
+        records contribute all parents' fields -- required by sema/match.py
+        callers that bind pattern fields to ancestry slots.
+
+        Pre-registration (during macro execution) falls back to a parent-chain
+        walk: mro_ancestors is not yet computed and `parents` only holds the
+        provisional single parent set in register_record. Under the v1 invariant
+        this matches the old single-parent behavior exactly.
+        """
+        if record.mro_ancestors:
+            result: list[FieldInfo] = []
+            for anc_rec in self.iter_ancestor_records(record, reverse=True):
+                result.extend(anc_rec.fields)
+            result.extend(record.fields)
+            return result
+        if not record.parents or not isinstance(record.parents[0], NominalType):
             return list(record.fields)
-        parent = self.get_record(record.parent.name)
+        parent = self.get_record(record.parents[0].name)
         if parent is None:
             return list(record.fields)
         return self.get_all_fields(parent) + list(record.fields)
@@ -3508,8 +3588,77 @@ class TypeRegistry:
                     seen.add(r.name)
         return result
 
+    def iter_ancestor_records(self, record: RecordInfo, *, reverse: bool = False) -> Iterator[RecordInfo]:
+        """Yield each RecordInfo in record.mro_ancestors, skipping non-user-record
+        ancestors and unresolved references. reverse=True walks root-first (for
+        base-first field layout); default is MRO order (nearest-first)."""
+        seq = reversed(record.mro_ancestors) if reverse else record.mro_ancestors
+        for anc in seq:
+            if isinstance(anc, NominalType):
+                rec = self.get_record_for_type(anc)
+                if rec is not None:
+                    yield rec
+
+    def compute_mro_ancestors(self, record: RecordInfo) -> list['TpyType']:
+        """Compute C3 linearization of a record's ancestors (self excluded).
+
+        Pre-resolved parents in `record.parents` are fed to c3_linearize along
+        with each parent's already-computed mro_ancestors. Parents that are
+        builtin TpyTypes (non-user records) are treated as leaves -- they
+        contribute themselves but no further ancestors.
+
+        Callers are responsible for storing the result on record_info.mro_ancestors
+        and for surfacing C3LinearizationError as a user-facing diagnostic.
+        """
+        if not record.parents:
+            return []
+        bases_with_mros: list[tuple[TpyType, list[TpyType]]] = []
+        for p in record.parents:
+            parent_info = None
+            if isinstance(p, NominalType) and p.is_user_record:
+                parent_info = self.get_record_for_type(p)
+            if parent_info is not None:
+                bases_with_mros.append((p, list(parent_info.mro_ancestors)))
+            else:
+                bases_with_mros.append((p, []))
+        return c3_linearize(bases_with_mros)
+
+    def detect_diamond(self, record: RecordInfo) -> Optional[tuple[str, str, str]]:
+        """Return (shared_ancestor_name, first_parent_name, second_parent_name) if a
+        diamond is present in record's base hierarchy, else None.
+
+        A diamond exists when some type is reachable from more than one of record's
+        direct parents. Non-virtual C++ MI would duplicate the shared subobject, so
+        D22 rejects diamonds and directs users to @dynamic for runtime polymorphism.
+        """
+        if len(record.parents) < 2:
+            return None
+        ancestries: list[list[TpyType]] = []
+        for p in record.parents:
+            ancestry: list[TpyType] = [p]
+            if isinstance(p, NominalType) and p.is_user_record:
+                p_info = self.get_record_for_type(p)
+                if p_info is not None:
+                    ancestry.extend(p_info.mro_ancestors)
+            ancestries.append(ancestry)
+
+        def _type_label(t: TpyType) -> str:
+            return t.name if isinstance(t, NominalType) else str(t)
+
+        for i in range(len(ancestries)):
+            for j in range(i + 1, len(ancestries)):
+                for anc in ancestries[i]:
+                    for other in ancestries[j]:
+                        if same_base_type(anc, other):
+                            return (
+                                _type_label(anc),
+                                _type_label(record.parents[i]),
+                                _type_label(record.parents[j]),
+                            )
+        return None
+
     def is_subclass_of(self, child: 'TpyType', parent: 'TpyType') -> bool:
-        """Check if child is a subclass of parent (walking the inheritance chain).
+        """Check if child is a subclass of parent (walking the MRO).
 
         Compares name + type_args at each level so generic parents are
         matched correctly (e.g. IntContainer -> Container[Int32]).
@@ -3517,41 +3666,29 @@ class TypeRegistry:
         if not (isinstance(child, NominalType) and child.is_user_record
                 and isinstance(parent, NominalType) and parent.is_user_record):
             return False
-        current_info = self.get_record_for_type(child)
-        visited: set[str] = set()
-        while current_info and current_info.parent and current_info.name not in visited:
-            visited.add(current_info.name)
-            p = current_info.parent
-            # Parent references recorded pre-qname-mint may be bare; the
-            # `parent` argument may be qname-bearing.  `loose` matches
-            # strictly when both have qnames (keeps cross-module
-            # shadowing honest) and permissively when either is bare.
-            if same_nominal_symbol_loose(p, parent):
+        child_info = self.get_record_for_type(child)
+        if child_info is None:
+            return False
+        # MRO-based membership. Parent references recorded pre-qname-mint may
+        # be bare; `parent` argument may be qname-bearing. `loose` matches
+        # strictly when both have qnames (keeps cross-module shadowing honest)
+        # and permissively when either is bare.
+        for ancestor in child_info.mro_ancestors:
+            if same_nominal_symbol_loose(ancestor, parent):
                 return True
-            if isinstance(p, NominalType) and p.is_user_record:
-                current_info = self.get_record_for_type(p)
-            else:
-                break
         return False
 
     def is_subclass_of_record(self, child: RecordInfo, parent: RecordInfo) -> bool:
         """Check if child record inherits from parent (by record identity)."""
-        current: RecordInfo | None = child
-        visited: set[str] = set()
-        while current and current.parent and isinstance(current.parent, NominalType):
-            pname = current.parent.name
-            if pname in visited:
-                break
-            visited.add(pname)
-            current = self.find_record(pname)
-            if current is parent:
+        for rec in self.iter_ancestor_records(child):
+            if rec is parent:
                 return True
         return False
 
     def get_method_overloads_with_parents(
         self, record: RecordInfo, method_name: str,
     ) -> list['FunctionInfo']:
-        """Look up method overloads on a record, walking the parent chain.
+        """Look up method overloads on a record, walking the MRO.
 
         Returns the first match found (own methods take precedence over inherited).
         Does NOT apply type substitution for generic parents -- callers that need
@@ -3560,10 +3697,10 @@ class TypeRegistry:
         overloads = record.get_method_overloads(method_name)
         if overloads:
             return overloads
-        if record.parent:
-            parent_info = self.get_record_for_type(record.parent)
-            if parent_info:
-                return self.get_method_overloads_with_parents(parent_info, method_name)
+        for anc_info in self.iter_ancestor_records(record):
+            overloads = anc_info.get_method_overloads(method_name)
+            if overloads:
+                return overloads
         return []
 
     def get_record_for_type(self, tpy_type: 'TpyType') -> Optional[RecordInfo]:

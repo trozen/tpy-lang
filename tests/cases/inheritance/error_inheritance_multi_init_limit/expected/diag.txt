@@ -1,0 +1,1 @@
+main.py:20: error: Multi-base class 'Combined' has __init__ on more than one base (HasInitA, HasInitB). Not yet supported -- restructure so at most one base has __init__ (the rest default-construct). BaseN.__init__(self, ...) support is a planned follow-up.

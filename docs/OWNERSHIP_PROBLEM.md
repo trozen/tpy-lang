@@ -10,7 +10,7 @@ The type system already supports:
 - Containers: `list[T]` (vector), `Array[T, N]` (fixed-size), `Span[T]` (read-only view)
 - Pointers: `Ptr[T]` (raw mutable pointer), `Ptr[readonly[T]]` (raw const pointer)
 - Ownership transfer: `Own[T]` (return by value with move semantics)
-- Generics, protocols (concepts), single inheritance
+- Generics, protocols (concepts), single and multiple inheritance (static MI)
 
 Records (user-defined classes) are currently stack-allocated C++ structs. They are passed to functions by reference and returned by value via `Own[T]`.
 

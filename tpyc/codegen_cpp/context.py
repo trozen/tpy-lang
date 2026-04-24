@@ -788,15 +788,10 @@ class CodeGenContext:
         record_info = self.analyzer.registry.get_record(record_name)
         if record_info is None:
             return False
-        parent = record_info.parent
-        while parent is not None:
-            parent_rec = self.analyzer.registry.get_record_for_type(parent)
-            if parent_rec is None:
-                break
-            if parent_rec.has_del:
-                return True
-            parent = parent_rec.parent
-        return False
+        return any(
+            anc_rec.has_del
+            for anc_rec in self.analyzer.registry.iter_ancestor_records(record_info)
+        )
 
     def record_or_ancestor_has_del(self, record_name: str) -> bool:
         """Check if the named record or any ancestor has __del__."""

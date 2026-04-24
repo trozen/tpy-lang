@@ -1,0 +1,1 @@
+main.py:14: error: Field 'id' declared on both 'HasId' and 'HasIdStr' (ancestors of 'Combined'); merging not supported.

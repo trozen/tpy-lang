@@ -161,9 +161,11 @@ class TestRegistryLookup:
         _attach_record_td(main_base)
 
         pkg_base = RecordInfo(name="Base", fields=[], module="pkg")
+        base_ref = NominalType("Base", _module_qname="pkg.Base")
         pkg_child = RecordInfo(
             name="Child", fields=[], module="pkg",
-            parent=NominalType("Base", _module_qname="pkg.Base"),
+            parents=[base_ref],
+            mro_ancestors=[base_ref],
         )
         reg.register_module(ModuleInfo(
             name="pkg", records={"Base": pkg_base, "Child": pkg_child},

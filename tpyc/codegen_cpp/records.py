@@ -72,10 +72,12 @@ class RecordGenerator:
         dependencies: dict[str, set[str]] = {r.name: set() for r in records}
         for record in records:
             record_info = self.ctx.analyzer.registry.get_record(record.name)
-            if (record_info and record_info.parent and
-                isinstance(record_info.parent, NominalType) and record_info.parent.is_user_record and
-                record_info.parent.name in record_by_name):
-                dependencies[record.name].add(record_info.parent.name)
+            if record_info is None:
+                continue
+            for p in record_info.parents:
+                if (isinstance(p, NominalType) and p.is_user_record
+                        and p.name in record_by_name):
+                    dependencies[record.name].add(p.name)
 
         # Topological sort (Kahn's algorithm)
         result = []
@@ -122,8 +124,8 @@ class RecordGenerator:
         for f in record_info.fields:
             if self._is_field_type_nocopy(f.type):
                 return f.name
-        if record_info.parent is not None:
-            parent_rec = self.ctx.analyzer.registry.get_record_for_type(record_info.parent)
+        for p in record_info.parents:
+            parent_rec = self.ctx.analyzer.registry.get_record_for_type(p)
             if parent_rec is not None and parent_rec.is_nocopy:
                 return None  # parent nocopy, not a field
         return None
@@ -156,11 +158,11 @@ class RecordGenerator:
             out.write(f"{template_header}\n")
 
         # Generate struct with optional inheritance
-        # Collect base classes: user-defined parent + @dynamic protocol bases
+        # Collect base classes: user-defined parents (in source / C3 order) + @dynamic protocol bases
         bases = []
-        if record_info and record_info.parent:
-            bases.append(record_info.parent.to_cpp())
         if record_info:
+            for p in record_info.parents:
+                bases.append(p.to_cpp())
             for proto in record_info.implemented_protocols:
                 proto_info = protocol_info_of(proto)
                 if proto_info and proto_info.is_dynamic:
@@ -574,9 +576,9 @@ class RecordGenerator:
 
         # --- Custom move constructor ---
         init_parts = []
-        if record_info and record_info.parent:
-            parent_cpp = record_info.parent.to_cpp()
-            init_parts.append(f"{parent_cpp}(std::move(other))")
+        if record_info:
+            for p in record_info.parents:
+                init_parts.append(f"{p.to_cpp()}(std::move(other))")
         for fld in record.fields:
             cpp_fld = escape_cpp_name(fld.name)
             init_parts.append(f"{cpp_fld}(std::move(other.{cpp_fld}))")
@@ -656,8 +658,8 @@ class RecordGenerator:
 
         # Build member init list: transfer each field from __other
         init_parts = []
-        if record_info.parent:
-            parent_cpp = self.types.type_to_cpp(record_info.parent)
+        for p in record_info.parents:
+            parent_cpp = self.types.type_to_cpp(p)
             init_parts.append(f"{parent_cpp}(std::move(__other))")
         for fld in record.fields:
             cpp_fld = escape_cpp_name(fld.name)
@@ -849,9 +851,10 @@ class RecordGenerator:
         if not all(self._fld_type_cpp_default_constructible(fld.type) for fld in record.fields):
             return False
         record_info = self.ctx.analyzer.ctx.registry.get_record(record.name)
-        if record_info is not None and record_info.parent is not None:
-            if not self._fld_type_cpp_default_constructible(record_info.parent):
-                return False
+        if record_info is not None:
+            for p in record_info.parents:
+                if not self._fld_type_cpp_default_constructible(p):
+                    return False
         return True
 
     def _fld_type_cpp_default_constructible(self, typ: TpyType) -> bool:
@@ -899,9 +902,9 @@ class RecordGenerator:
             return False
         if not record_info.has_init:
             return True  # aggregate: always C++ default-constructible
-        # Non-generic record with __init__: default-constructible iff parent and all own fields are
-        if record_info.parent is not None:
-            if not self._fld_type_cpp_default_constructible(record_info.parent):
+        # Non-generic record with __init__: default-constructible iff all parents and own fields are
+        for p in record_info.parents:
+            if not self._fld_type_cpp_default_constructible(p):
                 return False
         return all(self._fld_type_cpp_default_constructible(f.type) for f in record_info.fields)
 

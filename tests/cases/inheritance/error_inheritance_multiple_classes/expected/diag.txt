@@ -1,1 +1,0 @@
-main.py:9: error: Multiple class inheritance not allowed in 'C'. Use protocols for multiple interfaces.

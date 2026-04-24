@@ -18,6 +18,8 @@ from ..typesys import (
     has_auto_readonly, has_auto_own,
     qualify_exception_name, ensure_qualified,
     OptionalType,
+    C3LinearizationError,
+    same_base_type,
 )
 from ..module_names import public_module_name
 from ..parse import (
@@ -845,7 +847,7 @@ class TypeRegistrar:
             type_params=record.type_params,
             type_param_kinds=record.type_param_kinds,
             type_param_bounds=record.type_param_bounds,
-            parent=provisional_parent,
+            parents=[provisional_parent] if provisional_parent is not None else [],
             implemented_protocols=[],
             native_name=ensure_qualified(record.native_name) if record.native_name else None,
             is_native=is_native,
@@ -939,9 +941,9 @@ class TypeRegistrar:
                             record.loc
                         )
 
-        # Classify bases into parent class vs protocol implementations
-        # We do this here (not in register_record) so forward-referenced protocols are recognized
-        parent: TpyType | None = None  # Can be NominalType or builtin type
+        # Classify bases into class-parents vs protocol implementations.
+        # We do this here (not in register_record) so forward-referenced protocols are recognized.
+        parents_collected: list[TpyType] = []
         implemented_protocols: list[NominalType] = []
 
         for base_type in record.bases:
@@ -972,13 +974,6 @@ class TypeRegistrar:
                             protocol_type.is_dynamic_protocol)
                 implemented_protocols.append(protocol_type)
             elif isinstance(base_type, NominalType) and base_type.is_record:
-                # It's a class (user-defined or builtin) - check for multiple inheritance
-                if parent is not None:
-                    raise SemanticError(
-                        f"Multiple class inheritance not allowed in '{record.name}'. "
-                        f"Use protocols for multiple interfaces.",
-                        record.loc
-                    )
                 # Check if parent is generic and requires type args
                 parent_info = self.ctx.registry.get_record_for_type(base_type)
                 if parent_info is None:
@@ -1001,15 +996,9 @@ class TypeRegistrar:
                                          base_type.is_protocol,
                                          parent_info.qualified_name(),
                                          base_type.is_dynamic_protocol)
+                parents_collected.append(parent)
             elif self._is_inheritable_builtin(base_type):
-                # It's a builtin type - check for multiple inheritance
-                if parent is not None:
-                    raise SemanticError(
-                        f"Multiple class inheritance not allowed in '{record.name}'. "
-                        f"Use protocols for multiple interfaces.",
-                        record.loc
-                    )
-                parent = base_type
+                parents_collected.append(base_type)
             else:
                 raise SemanticError(
                     f"Invalid base type '{base_type}' in '{record.name}'. "
@@ -1017,18 +1006,51 @@ class TypeRegistrar:
                     record.loc
                 )
 
-        # Update RecordInfo with classified bases
-        record_info.parent = parent
+        # Update RecordInfo with classified bases.
+        record_info.parents = parents_collected
         record_info.implemented_protocols = implemented_protocols
 
-        # Validate parent class (only check circular inheritance for user-defined types)
-        if record_info.parent and isinstance(record_info.parent, NominalType) and record_info.parent.is_user_record:
-            # Check for circular inheritance
-            if self._has_circular_inheritance(record.name, record_info.parent.name):
-                raise SemanticError(
-                    f"Circular inheritance detected: '{record.name}' inherits from '{record_info.parent.name}'",
-                    record.loc
-                )
+        # Reject circular inheritance across any ancestor chain before C3 runs
+        # (C3 would fail as "inconsistent ordering" but the message would be less targeted).
+        for p in record_info.parents:
+            if isinstance(p, NominalType) and p.is_user_record:
+                if self._has_circular_inheritance(record.name, p.name):
+                    raise SemanticError(
+                        f"Circular inheritance detected: '{record.name}' inherits from '{p.name}'",
+                        record.loc
+                    )
+
+        # Reject diamond inheritance with a targeted diagnostic before running C3.
+        # Under v1's single-parent gate this is a no-op (detect_diamond early-returns
+        # for len(parents) < 2); D22's gate flip automatically activates it.
+        diamond = self.ctx.registry.detect_diamond(record_info)
+        if diamond is not None:
+            anc_name, p1_name, p2_name = diamond
+            raise SemanticError(
+                f"Diamond inheritance not supported: '{anc_name}' is reachable from "
+                f"multiple bases of '{record.name}' (via '{p1_name}' and '{p2_name}'). "
+                f"Use @dynamic for runtime polymorphism.",
+                record.loc,
+            )
+
+        # Compute C3 linearization. Under v1's single-parent invariant this is trivially
+        # [parent] + parent.mro_ancestors, but the algorithm runs as-is so D22's multi-base
+        # path works without further plumbing. Circular-inheritance was already rejected
+        # above, so compute_mro_ancestors cannot recurse infinitely here.
+        try:
+            record_info.mro_ancestors = self.ctx.registry.compute_mro_ancestors(record_info)
+        except C3LinearizationError as exc:
+            raise SemanticError(
+                f"Inconsistent base-class ordering in '{record.name}': {exc}",
+                record.loc,
+            ) from exc
+
+        # For multi-base classes only: cross-base conflict checks.
+        if len(record_info.parents) >= 2:
+            self._check_multi_base_order(record, record_info)
+            self._check_multi_base_field_conflicts(record, record_info)
+            self._check_multi_base_method_conflicts(record, record_info)
+            self._check_multi_base_init_limit(record, record_info)
 
         # Coordinate method hiding and @override checks.
         # @override methods are handled by _check_override_annotations (which emits a more
@@ -1036,7 +1058,7 @@ class TypeRegistrar:
         override_method_names = {m.name for m in record.methods if m.is_override}
 
         # Check for method hiding (child defines method with same name as parent)
-        if record_info.parent:
+        if record_info.parents:
             self._check_method_hiding(record, record_info, override_method_names)
 
         # Validate @override annotations (error if no match; warn if non-polymorphic)
@@ -1111,9 +1133,9 @@ class TypeRegistrar:
             f.type.is_sync() or isinstance(f.type, TypeParamRef)
             for f in record_info.fields
         )
-        if record_info.parent is not None:
-            is_send = is_send and record_info.parent.is_send()
-            is_sync = is_sync and record_info.parent.is_sync()
+        for p in record_info.parents:
+            is_send = is_send and p.is_send()
+            is_sync = is_sync and p.is_sync()
         record_info.is_send = is_send
         record_info.is_sync = is_sync
 
@@ -1141,12 +1163,12 @@ class TypeRegistrar:
         record_info = self.ctx.registry.get_record(record.name)
         if record_info is None or not record_info.is_value_type:
             return
-        if record_info.parent is not None and not record_info.parent.is_value_type():
-            raise SemanticError(
-                f"ValueType class '{record.name}': parent '{record_info.parent}' "
-                f"is not a value type",
-                record.loc
-            )
+        for p in record_info.parents:
+            if not p.is_value_type():
+                raise SemanticError(
+                    f"ValueType class '{record.name}': parent '{p}' is not a value type",
+                    record.loc
+                )
         for fld in record_info.fields:
             if not self._is_field_value_type(fld.type):
                 raise SemanticError(
@@ -1168,20 +1190,131 @@ class TypeRegistrar:
             return True
         return False
 
+    def _check_multi_base_order(self, record: TpyRecord, record_info: RecordInfo) -> None:
+        """Verify that source base-declaration order matches C3 linearization order.
+
+        C3's local precedence invariant normally guarantees this, so the check is
+        defensive -- but it also enforces Q4-style "no silent reordering": if ever
+        the two diverge (e.g. due to a transitional linearization bug), the user
+        sees an error directing them to reorder, rather than codegen silently
+        emitting a different C++ subobject construction order.
+        """
+        positions = [
+            next(i for i, anc in enumerate(record_info.mro_ancestors) if same_base_type(p, anc))
+            for p in record_info.parents
+        ]
+        for i in range(1, len(positions)):
+            if positions[i] <= positions[i - 1]:
+                src_names = [
+                    p.name if isinstance(p, NominalType) else str(p)
+                    for p in record_info.parents
+                ]
+                raise SemanticError(
+                    f"Base-class order for '{record.name}' differs from C3 linearization: "
+                    f"source order {src_names} is not MRO-compatible. Reorder bases to match MRO.",
+                    record.loc
+                )
+
+    def _check_multi_base_field_conflicts(self, record: TpyRecord, record_info: RecordInfo) -> None:
+        """Error when two ancestors in the MRO declare a field with the same name.
+
+        Diamonds were rejected earlier, so each ancestor appears only once in the
+        MRO; any same-name field across ancestors is a genuine conflict (two
+        independent bases happen to pick the same name). In non-virtual C++ MI the
+        two subobjects would both hold the field, and `self.x` would be ambiguous.
+        """
+        first_source: dict[str, str] = {}
+        for anc_rec in self.ctx.registry.iter_ancestor_records(record_info):
+            for f in anc_rec.fields:
+                if f.name in first_source and first_source[f.name] != anc_rec.name:
+                    raise SemanticError(
+                        f"Field '{f.name}' declared on both '{first_source[f.name]}' and "
+                        f"'{anc_rec.name}' (ancestors of '{record.name}'); merging not supported.",
+                        record.loc
+                    )
+                first_source.setdefault(f.name, anc_rec.name)
+
+    def _check_multi_base_init_limit(self, record: TpyRecord, record_info: RecordInfo) -> None:
+        """v1 D22 restriction: at most one base may define (or inherit) __init__.
+
+        Bases without __init__ default-construct automatically in C++. Multi-base
+        classes where two or more bases have __init__ would require the child body
+        to explicitly call BaseN.__init__(self, ...) for each base -- syntax that
+        tpyc does not yet support for non-static methods. Tracked in TODO.md.
+        """
+        bases_with_init: list[str] = []
+        for p in record_info.parents:
+            if not isinstance(p, NominalType):
+                continue
+            p_info = self.ctx.registry.get_record_for_type(p)
+            if p_info is None:
+                continue
+            if self.ctx.registry.get_method_overloads_with_parents(p_info, "__init__"):
+                bases_with_init.append(p_info.name)
+        if len(bases_with_init) >= 2:
+            raise SemanticError(
+                f"Multi-base class '{record.name}' has __init__ on more than one base "
+                f"({', '.join(bases_with_init)}). Not yet supported -- restructure so at "
+                f"most one base has __init__ (the rest default-construct). "
+                f"BaseN.__init__(self, ...) support is a planned follow-up.",
+                record.loc
+            )
+
+    def _check_multi_base_method_conflicts(self, record: TpyRecord, record_info: RecordInfo) -> None:
+        """Error when two direct-parent chains provide the same method name and
+        the child does not override it.
+
+        For each direct parent p, compute the set of method names reachable via p
+        (p's own methods plus everything visible up p's own MRO). Any method that
+        appears in more than one parent's set must be overridden by the child.
+        __init__/__del__ are exempt: they are never polymorphically inherited, and
+        the child's body must explicitly call each base's constructor/destructor.
+        """
+        parent_method_sets: list[tuple[str, set[str]]] = []
+        for p in record_info.parents:
+            if not isinstance(p, NominalType):
+                continue
+            p_rec = self.ctx.registry.get_record_for_type(p)
+            if p_rec is None:
+                continue
+            names: set[str] = set(p_rec.methods.keys())
+            for anc_rec in self.ctx.registry.iter_ancestor_records(p_rec):
+                names.update(anc_rec.methods.keys())
+            parent_method_sets.append((p_rec.name, names))
+
+        own_methods = set(record_info.methods.keys())
+        for i in range(len(parent_method_sets)):
+            for j in range(i + 1, len(parent_method_sets)):
+                p1_name, p1_methods = parent_method_sets[i]
+                p2_name, p2_methods = parent_method_sets[j]
+                for m in sorted(p1_methods & p2_methods):
+                    if m in ("__init__", "__del__"):
+                        continue
+                    if m in own_methods:
+                        continue
+                    raise SemanticError(
+                        f"Method '{m}' defined by both '{p1_name}' and '{p2_name}' "
+                        f"(bases of '{record.name}'); '{record.name}' must override to disambiguate.",
+                        record.loc
+                    )
+
     def _has_circular_inheritance(self, record_name: str, parent_name: str) -> bool:
-        """Check if record_name would be in the inheritance chain of parent_name."""
-        visited = set()
-        current = parent_name
-        while current:
+        """Check if record_name is reachable from parent_name via any ancestor chain."""
+        visited: set[str] = set()
+        stack: list[str] = [parent_name]
+        while stack:
+            current = stack.pop()
             if current == record_name:
                 return True
             if current in visited:
-                return False  # Already detected a cycle elsewhere
+                continue
             visited.add(current)
             parent_info = self.ctx.registry.get_record(current)
             if parent_info is None:
-                return False
-            current = parent_info.parent.name if parent_info.parent else None
+                continue
+            for p in parent_info.parents:
+                if isinstance(p, NominalType):
+                    stack.append(p.name)
         return False
 
     def _check_method_hiding(self, record: TpyRecord, record_info: RecordInfo,
@@ -1194,11 +1327,7 @@ class TypeRegistrar:
 
         skip_names: method names to skip (e.g. @override methods handled separately).
         """
-        if not record_info.parent:
-            return
-
-        parent_info = self.ctx.registry.get_record_for_type(record_info.parent)
-        if not parent_info:
+        if not record_info.parents:
             return
 
         # Methods explicitly marked as hiding parent versions
@@ -1213,8 +1342,8 @@ class TypeRegistrar:
             if method_name in hides:
                 continue
 
-            # Check if any ancestor has this method
-            ancestor_with_method = self._find_ancestor_with_method(parent_info, method_name)
+            # Check if any MRO ancestor has this method
+            ancestor_with_method = self._find_mro_ancestor_with_method(record_info, method_name)
             if ancestor_with_method:
                 self.ctx.warning(
                     f"Method '{record.name}.{method_name}' hides "
@@ -1234,10 +1363,8 @@ class TypeRegistrar:
         """
         override_methods = {m.name: m for m in record.methods if m.is_override}
 
-        parent_info = self.ctx.registry.get_record_for_type(record_info.parent) if record_info.parent else None
-
         for method_name, method in override_methods.items():
-            found_in_parent = self._find_ancestor_with_method(parent_info, method_name) if parent_info else None
+            found_in_parent = self._find_mro_ancestor_with_method(record_info, method_name)
 
             # Check each explicitly implemented protocol for the method
             found_in_protocol: str | None = None
@@ -1269,21 +1396,11 @@ class TypeRegistrar:
                     method.loc or record.loc,
                 )
 
-    def _find_ancestor_with_method(self, record_info: RecordInfo, method_name: str) -> str | None:
-        """Find the nearest ancestor that defines a method with the given name.
-
-        Returns the ancestor's name if found, None otherwise.
-        """
-        # Check this record's own methods
-        if record_info.get_method(method_name) is not None:
-            return record_info.name
-
-        # Check parent recursively
-        if record_info.parent:
-            parent_info = self.ctx.registry.get_record_for_type(record_info.parent)
-            if parent_info:
-                return self._find_ancestor_with_method(parent_info, method_name)
-
+    def _find_mro_ancestor_with_method(self, record_info: RecordInfo, method_name: str) -> str | None:
+        """Find the nearest MRO ancestor (excluding record_info itself) that defines method_name."""
+        for anc_rec in self.ctx.registry.iter_ancestor_records(record_info):
+            if anc_rec.get_method(method_name) is not None:
+                return anc_rec.name
         return None
 
     def _is_inheritable_builtin(self, typ: TpyType) -> bool:

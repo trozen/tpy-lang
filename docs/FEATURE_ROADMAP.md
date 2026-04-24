@@ -90,7 +90,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D19 | Recursive type aliases | M | Done (non-generic) | [I](#recursive-type-aliases) |
 | D20 | Mutual recursion (cross-type cycles) | M-L | Done (same-module) | [I](#mutual-recursion) |
 | D21 | TypedDict | M | Done | [VII](#typeddict) |
-| D22 | Multiple inheritance (mixins) | L | Not started | [VII](#multiple-inheritance) |
+| D22 | Multiple inheritance (mixins) | L | v1 done; v2 follow-ups | [VII](#multiple-inheritance) |
 | D23 | Nested classes | M | Done | [VII](#nested-classes) |
 
 ### Phase E: Advanced Safety
@@ -2590,42 +2590,58 @@ functionality. Diamond inheritance (where two bases share a common grandparent) 
 a future extension. `super()` with MRO-aware dispatch is the hard part -- initial
 implementation can require explicit `Base.method(self)` calls for disambiguation.
 
-**Current state**: Not started. Single inheritance works. Protocols cover the
-interface-composition use case; multiple inheritance adds implementation reuse.
+**Current state**: Working (v1, 2026-04). Static multiple inheritance: `class Child(A, B, ...)`
+emits non-virtual C++ multiple inheritance. C3 linearization (MRO) is computed at sema
+registration; method resolution, field inheritance, and `isinstance` fold compile-time
+via MRO membership. Diamonds are rejected with a diagnostic pointing at `@dynamic`.
 
-**Design direction (from 2026-04 discussion)**: static MI, not virtual. Consistent
-with tpyc's "don't pay for what you don't use" philosophy: plain classes already
-use C++ struct extension with static dispatch (no vtable). Proposed approach:
+**v1 shipped** (static, non-virtual):
+- C3 linearization + diamond rejection (`Diamond inheritance not supported: '{anc}' is
+  reachable from multiple bases of '{record}' (via '{p1}' and '{p2}'). Use @dynamic for
+  runtime polymorphism.`).
+- Cross-base conflict detection: field-conflict error, method-conflict error (requires
+  child override for disambiguation).
+- Source-order / MRO-order consistency check (base decls must match C3 linearization).
+- `super()` in multi-base: allowed when the method is unambiguous across direct parents;
+  `__del__` rejected outright (C++ auto-invokes each base destructor). `__init__` relies
+  on the single-init-base restriction for unambiguous resolution.
+- `isinstance(child, Mixin)` folds to True at compile time for any base in the MRO;
+  downcasts still warn/fold to False (the existing hierarchy-isinstance behavior).
 
-- `class Child(A, B, ...)` emits non-virtual C++ multiple inheritance.
-- C3 linearization (MRO) computed at sema registration time, used for method
-  resolution, field merging (error on conflict), and `super()` dispatch. All
-  compile-time.
-- `isinstance(x, Mixin)` across MI resolves at compile time via the class's
-  linearization -- same trick as `isinstance(x, StaticProtocol)` today
-  (`if constexpr` / compile-time True/False). Free, no RTTI.
-- Diamonds rejected in v1 with a diagnostic pointing at `@dynamic`. Virtual
-  inheritance only needed when opting into runtime polymorphism.
-- What this explicitly **does not** give: `list[Mixin]` with heterogeneous
-  concrete types, upcasting to a mixin parameter across calls -- these require
-  `@dynamic` (for the vtable) or explicit boxing. Same trade-offs as single
-  inheritance today.
+**v1 restrictions** (with targeted diagnostics):
+- Multi-base classes may have `__init__` on at most one base (the rest default-
+  construct). See v2 follow-up below.
+- Same-name fields across bases are rejected outright. See v2 follow-up below.
+- MRO-aware cooperative `super()` (Python's cross-chain super) not implemented;
+  initial design explicitly allows deferral. See v2 follow-up below.
+- Heterogeneous `list[Mixin]` / upcasting to a mixin parameter still require
+  `@dynamic` (separate TODO) or explicit boxing -- same trade-offs as single
+  inheritance.
 
-Prerequisites for this design: the `isinstance` gaps listed in TODO.md (especially
-`isinstance(child, Parent)` on inheritance hierarchies), since static MI leans on
-compile-time hierarchy walks. Also benefits from: `@dynamic` on concrete classes
-(TODO.md) so users who do need runtime polymorphism have a remedy that doesn't
-require refactoring into a `Protocol`.
+**v2 follow-ups** (planned; not blocking v1):
+- **`BaseN.method(self, ...)` for non-static methods.** Today `_analyze_static_method_call`
+  in `tpyc/sema/methods.py` rejects `ClassName.method(args)` unless the method is
+  `@staticmethod`. Extend that path so when `ClassName` is an ancestor of the current
+  record and the first arg type matches `self`, the call routes through instance-method
+  machinery (sema binds `self` to first arg; codegen emits `ClassName::method(self, args)`).
+  Unblocks multi-base classes where multiple bases have `__init__` (construction via
+  explicit per-base `BaseN.__init__(self, ...)` calls) and matches CPython's
+  explicit-unbound-method form.
+- **Private same-name fields across bases.** The `_check_multi_base_field_conflicts`
+  hard error makes sense for public fields (`self.x` would be ambiguous in non-virtual
+  MI) but is too strict for private fields (`_x` / `__x`) where each base subobject
+  legitimately owns its own. Minimal first step: lift the error for underscore-prefixed
+  fields and require `BaseN._field` for reads; keep the hard error for public fields.
+  Depends on the `BaseN.method(self)` work above for the disambiguation spelling.
+- **MRO-aware cooperative `super()`.** Full C3 super chain so `super().foo()` in a
+  diamond-free MI class walks the MRO, not just the single matching direct parent. The
+  initial design explicitly carved this out as deferrable; current v1 requires either
+  unambiguous resolution (one parent defines the method) or an explicit `BaseN.method`
+  call. Revisit alongside the `BaseN.method(self)` work.
 
-Predecessor work done 2026-04: silent-slicing warnings + rvalue-arg slicing
-codegen fix. The "upcast narrows ..." warning and improved def-site method-hiding
-warning both surface divergences that static MI would inherit; fixing them first
-gives a clean baseline.
-
-**Dependencies**: `isinstance` gaps (TODO.md) should be closed first.
-
-**Effort**: L (MRO computation, C++ multiple base codegen, `super()` disambiguation,
-diamond detection/rejection, constructor ordering)
+**Effort**: L (v1 shipped on branch `mi-c3-mro`). v2 follow-ups: M (all three items share
+the `BaseN.method(self)` unbound-method-call machinery; land that first, then fields and
+cooperative super fall out mostly mechanically).
 
 ---
 

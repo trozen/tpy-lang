@@ -24,6 +24,25 @@ from tpyc.type_def_registry import is_span, is_span_iter, is_copy_iter, is_own_i
 from tpyc.modules.defs import ParamDef, MethodDef
 
 
+def _compose_parent_subst(
+    parent: "NominalType", parent_info: "RecordInfo",
+    type_subst: "dict[str, TpyType]",
+) -> "dict[str, TpyType]":
+    """Extend type_subst with parent's type-parameter bindings from parent.type_args.
+
+    Each parent_info.type_params[i] maps to parent.type_args[i], composed through
+    the existing subst so TypeParamRefs from the child level get resolved first.
+    """
+    result = dict(type_subst)
+    if parent.type_args and parent_info.type_params:
+        for param_name, arg in zip(parent_info.type_params, parent.type_args):
+            if isinstance(arg, TypeParamRef) and arg.name in type_subst:
+                result[param_name] = type_subst[arg.name]
+            else:
+                result[param_name] = arg
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Concrete type name resolution
 # ---------------------------------------------------------------------------
@@ -281,15 +300,19 @@ def _find_error_return_next_element(
                 return type_subst[inner.name]
             return inner
 
-    # Walk parent chain
-    if record.parent and isinstance(record.parent, NominalType) and record.parent.is_user_record:
-        parent_args = list(record.parent.type_args) if record.parent.type_args else None
+    # Walk each parent chain (first match wins; diamond-free guarantees uniqueness)
+    for parent in record.parents:
+        if not (isinstance(parent, NominalType) and parent.is_user_record):
+            continue
+        parent_args = list(parent.type_args) if parent.type_args else None
         if type_subst and parent_args:
             parent_args = [
                 type_subst[a.name] if isinstance(a, TypeParamRef) and a.name in type_subst else a
                 for a in parent_args
             ]
-        return _find_error_return_next_element(record.parent.name, parent_args, registry)
+        result = _find_error_return_next_element(parent.name, parent_args, registry)
+        if result is not None:
+            return result
 
     return None
 
@@ -391,19 +414,18 @@ def _find_record_iter_element(
     if result is not None:
         return result
 
-    # Walk parent chain (recursive)
-    if record.parent and isinstance(record.parent, NominalType) and record.parent.is_user_record:
-        parent_info = registry.get_record(record.parent.name)
-        if parent_info:
-            parent_subst = dict(type_subst)
-            if record.parent.type_args and parent_info.type_params:
-                for param_name, arg in zip(parent_info.type_params, record.parent.type_args):
-                    if isinstance(arg, TypeParamRef) and arg.name in type_subst:
-                        parent_subst[param_name] = type_subst[arg.name]
-                    else:
-                        parent_subst[param_name] = arg
-            return _find_record_iter_element(parent_info, parent_subst, registry,
-                                             allow_protocol_return=allow_protocol_return)
+    # Walk each parent chain (first match wins)
+    for parent in record.parents:
+        if not (isinstance(parent, NominalType) and parent.is_user_record):
+            continue
+        parent_info = registry.get_record(parent.name)
+        if parent_info is None:
+            continue
+        parent_subst = _compose_parent_subst(parent, parent_info, type_subst)
+        result = _find_record_iter_element(parent_info, parent_subst, registry,
+                                           allow_protocol_return=allow_protocol_return)
+        if result is not None:
+            return result
 
     return None
 
@@ -528,17 +550,16 @@ def _find_span_method_return_type(
                 elem = type_subst[elem.name]
             return make_span(elem, is_readonly=is_readonly_span(ret))
 
-    # Walk parent chain
-    if record.parent and isinstance(record.parent, NominalType) and record.parent.is_user_record:
-        parent_info = registry.get_record(record.parent.name)
-        if parent_info:
-            parent_subst = dict(type_subst)
-            if record.parent.type_args and parent_info.type_params:
-                for param_name, arg in zip(parent_info.type_params, record.parent.type_args):
-                    if isinstance(arg, TypeParamRef) and arg.name in type_subst:
-                        parent_subst[param_name] = type_subst[arg.name]
-                    else:
-                        parent_subst[param_name] = arg
-            return _find_span_method_return_type(parent_info, parent_subst, registry)
+    # Walk each parent chain (first match wins)
+    for parent in record.parents:
+        if not (isinstance(parent, NominalType) and parent.is_user_record):
+            continue
+        parent_info = registry.get_record(parent.name)
+        if parent_info is None:
+            continue
+        parent_subst = _compose_parent_subst(parent, parent_info, type_subst)
+        result = _find_span_method_return_type(parent_info, parent_subst, registry)
+        if result is not None:
+            return result
 
     return None

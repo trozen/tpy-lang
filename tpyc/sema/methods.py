@@ -436,9 +436,9 @@ class MethodAnalyzer:
         if ctx.record_ctx.record is None:
             raise ctx.error("super() can only be used inside a class method", expr)
 
-        # Validate: class must have a parent
+        # Validate: class must have at least one parent
         record_info = ctx.registry.get_record(ctx.record_ctx.record.name)
-        if record_info is None or record_info.parent is None:
+        if record_info is None or not record_info.parents:
             raise ctx.error(
                 f"super() requires a parent class, but '{ctx.record_ctx.record.name}' has no parent",
                 expr
@@ -448,7 +448,50 @@ class MethodAnalyzer:
         if expr.args:
             raise ctx.error("super() takes no arguments (Python 3 style)", expr)
 
-        return SuperType(record_info.parent, ctx.record_ctx.record.name)
+        # For multi-base classes, parent_type is a placeholder -- _analyze_super_method_call
+        # re-resolves it per method name. Single-base path uses it directly.
+        return SuperType(record_info.parents[0], ctx.record_ctx.record.name)
+
+    def _resolve_super_parent_type(self, expr: TpyMethodCall, super_type: SuperType) -> TpyType:
+        """Pick which parent super().<method>() dispatches to.
+
+        Single-base: uses super_type.parent_type directly. Multi-base (D22 v1):
+        rejects super().__del__() outright (C++ invokes each base's destructor
+        automatically) and resolves the target by searching each direct parent's
+        MRO for the method; requires an unambiguous match.
+        """
+        child_rec = self.ctx.registry.get_record(super_type.child_record_name)
+        if child_rec is None or len(child_rec.parents) < 2:
+            return super_type.parent_type
+
+        if expr.method == "__del__":
+            raise self.ctx.error(
+                f"super().__del__() is not allowed in multi-base class "
+                f"'{super_type.child_record_name}'. C++ invokes each base's destructor "
+                f"automatically; remove this call.",
+                expr
+            )
+
+        matching_parents: list[TpyType] = [
+            p for p in child_rec.parents
+            if (p_info := self.ctx.registry.get_record_for_type(p)) is not None
+            and self.ctx.registry.get_method_overloads_with_parents(p_info, expr.method)
+        ]
+        if not matching_parents:
+            raise self.ctx.error(
+                f"No base of '{super_type.child_record_name}' defines method "
+                f"'{expr.method}'",
+                expr
+            )
+        if len(matching_parents) > 1:
+            names = [p.name if isinstance(p, NominalType) else str(p) for p in matching_parents]
+            raise self.ctx.error(
+                f"super().{expr.method}() is ambiguous in '{super_type.child_record_name}': "
+                f"defined on multiple bases ({', '.join(names)}). "
+                f"Call it explicitly: BaseN.{expr.method}(self, ...).",
+                expr
+            )
+        return matching_parents[0]
 
     def _try_resolve_method(self, expr: TpyMethodCall, obj_type: TpyType,
                             is_readonly_receiver: bool = False,
@@ -527,10 +570,6 @@ class MethodAnalyzer:
 
     def analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a method call."""
-        # super().method() calls
-        if isinstance(expr.obj, TpyCall) and expr.obj.func_name == "super":
-            return self._analyze_super_method_call(expr)
-
         if isinstance(expr.obj, TpyName):
             # ClassName.staticmethod() pattern
             result = self._analyze_static_method_call(expr)
@@ -603,6 +642,12 @@ class MethodAnalyzer:
                     return result
 
         obj_type = self.expr.analyze_expr(expr.obj)
+
+        # super().method() calls: the receiver resolves to SuperType via the
+        # builtins.super qname dispatch in calls.py (supersedes the old bare-string
+        # intercept so user `def super()` shadows normally).
+        if isinstance(obj_type, SuperType):
+            return self._analyze_super_method_call(expr, obj_type)
 
         # Pending generic instance: accumulate constraints from method calls
         if isinstance(obj_type, PendingGenericInstanceType):
@@ -1641,18 +1686,19 @@ class MethodAnalyzer:
 
         return None
 
-    def _analyze_super_method_call(self, expr: TpyMethodCall) -> TpyType:
+    def _analyze_super_method_call(self, expr: TpyMethodCall, super_type: SuperType) -> TpyType:
         """Analyze a super().method() call.
 
         The method is looked up in the parent class and type arguments are
-        substituted for generic parent classes.
-        """
-        # Analyze super() to get the SuperType
-        assert isinstance(expr.obj, TpyCall) and expr.obj.func_name == "super"
-        super_type = self._analyze_super_call_static(self.ctx, expr.obj)
-        assert isinstance(super_type, SuperType)
+        substituted for generic parent classes. `super_type` is produced by
+        analyze_expr on the receiver (see calls.py qname dispatch on
+        `builtins.super`).
 
-        parent_type = super_type.parent_type
+        Multi-base (D22): __del__ is rejected outright; other methods are legal
+        when exactly one direct-parent chain provides them -- ambiguous calls
+        get an error directing the user to BaseN.method(self, ...).
+        """
+        parent_type = self._resolve_super_parent_type(expr, super_type)
         parent_info = self.ctx.registry.get_record_for_type(parent_type)
         if parent_info is None:
             raise self.ctx.error(f"Parent class '{parent_type}' not found", expr)
@@ -1718,12 +1764,16 @@ class MethodAnalyzer:
             and self.ctx.func.current_function.is_readonly
         )
 
-        # Look up the method in the parent class
-        # For __init__, we already have init_overloads; for other methods, look up
+        # Look up the method in the parent class.
+        # For __init__, we already have init_overloads; for other methods, walk
+        # the parent's MRO so inherited methods (not defined on parent_info itself)
+        # still resolve -- fixes super().foo() when foo lives on parent's ancestor.
         if expr.method == "__init__":
             overloads = init_overloads
         else:
-            overloads = parent_info.get_method_overloads(expr.method)
+            overloads = self.ctx.registry.get_method_overloads_with_parents(
+                parent_info, expr.method
+            )
         if not overloads:
             raise self.ctx.error(
                 f"Parent class '{parent_type}' has no method '{expr.method}'",

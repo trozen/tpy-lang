@@ -1,0 +1,1 @@
+main.py:16: error: Method 'greet' defined by both 'Speaker' and 'Greeter' (bases of 'Both'); 'Both' must override to disambiguate.

@@ -704,12 +704,6 @@ class CallAnalyzer:
         if not isinstance(expr.func, TpyName):
             return self._analyze_expr_callee(expr)
 
-        # Handle super() call
-        if expr.func_name == "super":
-            # Lazy: methods.py imports calls at module load; cycle breaks here.
-            from .methods import MethodAnalyzer
-            return MethodAnalyzer._analyze_super_call_static(self.ctx, expr)
-
         # Type aliases: builtin type aliases (e.g. Float64 = float) resolve
         # to the underlying type's constructor. Other aliases are not callable.
         # Exception: recursive union aliases are callable as wrapper constructors.
@@ -850,6 +844,10 @@ class CallAnalyzer:
                         return self._analyze_tpy_try_parse(expr)
                     if qname == "builtins.isinstance":
                         return self._analyze_isinstance(expr)
+                    if qname == "builtins.super":
+                        # Lazy: methods.py imports calls at module load; cycle breaks here.
+                        from .methods import MethodAnalyzer
+                        return MethodAnalyzer._analyze_super_call_static(self.ctx, expr)
                     if qname == "builtins.print":
                         for kw_name in expr.kwargs:
                             if kw_name not in ("end", "sep"):

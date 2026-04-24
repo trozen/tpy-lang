@@ -1,0 +1,2 @@
+main.py:20: warning: Method 'Both.foo' overrides 'A.foo' but the override is non-polymorphic. 'A'-typed references will call 'A.foo', not 'Both.foo'. Use a @dynamic protocol for runtime dispatch.
+main.py:24: warning: Method 'Both.bar' overrides 'B.bar' but the override is non-polymorphic. 'B'-typed references will call 'B.bar', not 'Both.bar'. Use a @dynamic protocol for runtime dispatch.

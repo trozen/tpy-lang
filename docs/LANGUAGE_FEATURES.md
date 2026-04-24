@@ -3583,12 +3583,64 @@ struct Dog : Animal {
 ```
 
 **Key points:**
-- Single class inheritance only (multiple class inheritance is an error)
+- Single and multiple class inheritance both supported (static MI, non-virtual; see below)
 - Use `super().__init__(args)` to call the parent constructor
 - Method override works by simply defining a method with the same name
 - Inherited fields and methods are accessible via `self.field` and `self.method()`
 - Use `@override` (from `typing`) to explicitly annotate overrides -- errors on typos,
   warns when the override is non-polymorphic (see `@override` below)
+
+#### Multiple Inheritance (D22, v1)
+
+**Working**: Static multiple inheritance -- `class Widget(Named, Counted): ...` emits
+`struct Widget : Named, Counted { ... }`. C3 linearization (MRO) is computed at
+sema-registration time and drives `isinstance`, method lookup, and field inheritance.
+
+```python
+class Named:
+    name: str
+
+    def describe(self) -> str:
+        return self.name
+
+class Counted:
+    count: Int32
+
+    def inc(self) -> None:
+        self.count = self.count + 1
+
+class Widget(Named, Counted):
+    def __init__(self, name: str, count: Int32) -> None:
+        self.name = name
+        self.count = count
+
+w = Widget("button", Int32(5))
+print(w.describe())  # inherited from Named
+w.inc()              # inherited from Counted
+isinstance(w, Named)    # True -- folded at compile time
+isinstance(w, Counted)  # True -- folded at compile time
+```
+
+**v1 restrictions** (rejected at sema with targeted diagnostics):
+- **Diamonds** (`class D(B, C)` where `B(A)` and `C(A)`) -- rejected; non-virtual C++ MI
+  would duplicate the shared subobject. Users who need runtime polymorphism should make
+  the shared ancestor a `@dynamic` protocol.
+- **Field conflicts** -- two bases declaring the same field name cannot be merged.
+  Rename in one of the bases or restructure.
+- **Method conflicts** -- two bases defining the same method require the child to override
+  that method; the child's version shadows both.
+- **Multi-`__init__` bases** -- at most one base may define (or inherit) `__init__`.
+  The rest default-construct automatically. `BaseN.__init__(self, ...)` for explicit
+  per-base construction is a planned follow-up.
+- **`super()` in multi-base** -- `super().method()` is legal only when exactly one base
+  defines the method (unambiguous resolution). `super().__del__()` is rejected in
+  multi-base classes because C++ invokes each base's destructor automatically.
+- **Source / MRO order** -- direct bases must be declared in an order consistent with
+  C3 linearization; mismatches are rejected.
+
+**Not supported** (planned v2 follow-ups, see `docs/FEATURE_ROADMAP.md` D22): MRO-aware
+cooperative `super()`, explicit `BaseN.method(self, ...)` for non-static methods (would
+lift the single-`__init__`-base and same-name-field restrictions).
 
 #### Implicit Upcasting
 
@@ -4006,9 +4058,9 @@ class Car(Vehicle, Printable, Measurable):
 ```
 
 **Rules:**
-- At most one class parent (single inheritance)
+- Multiple class parents allowed (see "Multiple Inheritance (D22, v1)" above for restrictions)
 - Multiple protocol implementations allowed
-- Class parent must come first in the base list: `class Child(Parent, Protocol1, Protocol2)`
+- Class parents must come before protocols in the base list: `class Child(Parent, Protocol1, Protocol2)`
 - All declared protocol methods must be implemented (compiler validates)
 - Protocols provide no implementation - they're pure interfaces
 

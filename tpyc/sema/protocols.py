@@ -707,22 +707,23 @@ class ProtocolChecker:
         for fld in record_info.fields:
             if fld.name == field_name:
                 return fld
-        # Check parent class
-        if record_info.parent:
-            parent_info = self.ctx.registry.get_record_for_type(record_info.parent)
-            if parent_info:
-                inherited = self.lookup_record_field(parent_info, field_name)
-                if inherited:
-                    # Substitute parent's type params with concrete type args
-                    type_subst = self._get_parent_type_subst(record_info.parent, parent_info)
-                    if type_subst:
-                        substituted_type = self.type_ops.substitute_type_params(inherited.type, type_subst)
-                        return FieldInfo(
-                            name=inherited.name,
-                            type=substituted_type,
-                            default_value=inherited.default_value
-                        )
-                    return inherited
+        # Walk each direct parent's chain (source / MRO order; diamond-free invariant
+        # guarantees no ancestor contributes twice).
+        for parent_type in record_info.parents:
+            parent_info = self.ctx.registry.get_record_for_type(parent_type)
+            if parent_info is None:
+                continue
+            inherited = self.lookup_record_field(parent_info, field_name)
+            if inherited:
+                type_subst = self._get_parent_type_subst(parent_type, parent_info)
+                if type_subst:
+                    substituted_type = self.type_ops.substitute_type_params(inherited.type, type_subst)
+                    return FieldInfo(
+                        name=inherited.name,
+                        type=substituted_type,
+                        default_value=inherited.default_value
+                    )
+                return inherited
         return None
 
     def lookup_record_method(self, record_info: RecordInfo, method_name: str) -> FunctionInfo | None:
@@ -746,10 +747,13 @@ class ProtocolChecker:
         prop = record_info.properties.get(prop_name)
         if prop:
             return prop
-        if record_info.parent:
-            parent_info = self.ctx.registry.get_record_for_type(record_info.parent)
-            if parent_info:
-                return self.lookup_record_property(parent_info, prop_name)
+        for parent_type in record_info.parents:
+            parent_info = self.ctx.registry.get_record_for_type(parent_type)
+            if parent_info is None:
+                continue
+            inherited = self.lookup_record_property(parent_info, prop_name)
+            if inherited:
+                return inherited
         return None
 
     def lookup_record_method_overloads(
@@ -768,15 +772,18 @@ class ProtocolChecker:
         if overloads:
             return (overloads, {})
 
-        # Check parent (user-defined or builtin) -- unified recursive path
-        if record_info.parent:
-            parent_info = self.ctx.registry.get_record_for_type(record_info.parent)
-            if parent_info:
-                inherited, parent_subst = self.lookup_record_method_overloads(parent_info, method_name)
-                if inherited:
-                    type_subst = self._get_parent_type_subst(record_info.parent, parent_info)
-                    combined_subst = {**parent_subst, **type_subst}
-                    return (inherited, combined_subst)
+        # Check parents (user-defined or builtin) -- unified recursive path over each base.
+        # Multi-base conflict-check in registration ensures we don't silently pick between
+        # two conflicting definitions here, so first-match-wins is safe.
+        for parent_type in record_info.parents:
+            parent_info = self.ctx.registry.get_record_for_type(parent_type)
+            if parent_info is None:
+                continue
+            inherited, parent_subst = self.lookup_record_method_overloads(parent_info, method_name)
+            if inherited:
+                type_subst = self._get_parent_type_subst(parent_type, parent_info)
+                combined_subst = {**parent_subst, **type_subst}
+                return (inherited, combined_subst)
 
         return ([], {})
 

@@ -654,12 +654,12 @@ class SemanticContext:
                             f"non-copyable type '{typ}' (type argument "
                             f"'{arg}' is non-copyable)"
                         )
-        # Check parent
-        if record.parent is not None:
-            parent_rec = self.registry.get_record_for_type(record.parent)
+        # Check parents
+        for p in record.parents:
+            parent_rec = self.registry.get_record_for_type(p)
             if parent_rec is not None and parent_rec.is_nocopy:
                 return (
-                    f"non-copyable type '{typ}' (parent '{record.parent}' "
+                    f"non-copyable type '{typ}' (parent '{p}' "
                     f"is non-copyable)"
                 )
         # Explicitly decorated with @nocopy (or builtin nocopy)
@@ -719,17 +719,14 @@ class SemanticContext:
             return False
         if record.is_nocopy or record.has_del:
             return True
-        # Inheritance: parent's deleted copy is inherited by the child.
-        parent = record.parent
-        while parent is not None:
-            parent_rec = self.registry.get_record_for_type(parent)
-            if parent_rec is None:
-                break
-            if parent_rec.has_copy:
-                break  # parent re-enables copy; stop the walk
-            if parent_rec.is_nocopy or parent_rec.has_del:
+        # Inheritance: recurse into each direct parent so each parent's own logic
+        # (including its has_copy barrier up its chain) applies independently.
+        # For multi-base, any direct parent being non-copyable makes the child
+        # non-copyable; for single-parent, parent.has_copy correctly short-circuits
+        # the parent's recursion, matching the old `break`-on-has_copy behavior.
+        for p in record.parents:
+            if self.is_type_non_copyable(p):
                 return True
-            parent = parent_rec.parent
         if isinstance(typ, NominalType) and typ.type_args:
             for arg in typ.type_args:
                 if isinstance(arg, TpyType) and self.is_type_non_copyable(arg):
