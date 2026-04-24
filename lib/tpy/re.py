@@ -102,20 +102,12 @@ from _bindings.pcre2 import (
 # record destruction). All three free functions are null-safe, so __del__
 # needs no null check.
 #
-# Holding these as *fields* (rather than locals) has a subtlety: the
-# enclosing record's parameterized ctor default-inits each field before
-# running the body, and a default-inited @nocopy+__del__ leaves its
-# pointer indeterminate. If the body then does `self._field = Wrapper(x)`
-# for a body-local `x`, that's a move-assign, and the generated move-
-# assign destroys self first -> ~Wrapper() reads garbage -> crash. The
-# workaround used here: each wrapper exposes a static factory returning
-# Own[Self] that bundles the allocation and any error-check. The
-# enclosing record then writes `self._x = Wrapper.make_...(args)` -- all
-# free names on the RHS are the class name + ctor params + module-level
-# helpers, no body-locals -- which MIL-hoists into move-construction.
-# (A simpler shape -- ctor takes high-level args and delegates to a
-# staticmethod returning a raw Ptr[T] -- is blocked by TPy's pointer-
-# return-from-local safety check. Own[Self] returns bypass that check.)
+# @nocopy+__del__ wrappers have their auto default ctor suppressed, so
+# the enclosing record's field init must MIL-hoist (RHS references only
+# ctor params / module-level names, no body-locals). That's why _OwnedCode
+# takes high-level args in __init__ and delegates the multi-step PCRE2
+# call sequence to a staticmethod returning Ptr[_PcreCode] -- the
+# dangling-return check trusts locals bound from call returns.
 
 
 @nocopy
@@ -130,8 +122,8 @@ class _OwnedMatchData:
 
 
 # ---------- re.error exception ----------
-# Must be defined BEFORE _OwnedCode because its make_compiled staticmethod
-# is emitted inline in the generated header and throws `error`, which
+# Must be defined BEFORE _OwnedCode because its _compile staticmethod is
+# emitted inline in the generated header and throws `error`, which
 # requires a complete type at the throw site (not just a forward decl).
 # See "User Exception subclass doesn't auto-inherit native __init__" in
 # TODO.md for why `__init__` is declared explicitly, and the
@@ -163,21 +155,15 @@ def _pcre2_error_msg(errcode: Int32) -> str:
 @nocopy
 class _OwnedCode:
     _p: Ptr[_PcreCode]
-    def __init__(self, p: Ptr[_PcreCode]) -> None:
-        self._p = p
+    def __init__(self, pattern: str, flags: Int32) -> None:
+        self._p = _OwnedCode._compile(pattern, flags)
     def __del__(self) -> None:
         _pcre_code_free(self._p)
     def get(self) -> Ptr[_PcreCode]:
         return self._p
 
-    # Factory returning Own[Self] so the enclosing record can initialize
-    # its field with a local-free RHS (`self._code = _OwnedCode.make_compiled(
-    # pattern, flags)`) that MIL-hoists into move-construction. An
-    # alternative shape -- `__init__(pattern, flags)` delegating to a
-    # `staticmethod -> Ptr[_PcreCode]` -- runs into TPy's "pointer-return
-    # from local" safety check, which `Own[Self]` returns bypass.
     @staticmethod
-    def make_compiled(pattern: str, flags: Int32) -> Own[_OwnedCode]:
+    def _compile(pattern: str, flags: Int32) -> Ptr[_PcreCode]:
         errcode: Int32 = 0
         erroff: UInt64 = 0
         opts = _to_pcre2_opts(flags)
@@ -188,22 +174,18 @@ class _OwnedCode:
         if code is None:
             msg = _pcre2_error_msg(errcode)
             raise error(f"compile error at offset {erroff}: {msg}")
-        return _OwnedCode(code)
+        return code
 
 
 @nocopy
 class _OwnedMatchContext:
     _p: Ptr[_PcreMatchContext]
-    def __init__(self, p: Ptr[_PcreMatchContext]) -> None:
-        self._p = p
+    def __init__(self) -> None:
+        self._p = _pcre_mctx_create(None)
     def __del__(self) -> None:
         _pcre_mctx_free(self._p)
     def get(self) -> Ptr[_PcreMatchContext]:
         return self._p
-
-    @staticmethod
-    def make_default() -> Own[_OwnedMatchContext]:
-        return _OwnedMatchContext(_pcre_mctx_create(None))
 
 
 # ---------- Public flag constants (CPython-compatible bit values) ----------
@@ -326,10 +308,9 @@ class Pattern:
     def __init__(self, pattern: str, flags: Int32 = 0) -> None:
         # Both field initializers reference only ctor params / module-level
         # names -- no body-locals -- so they MIL-hoist into move-construction
-        # (safe on @nocopy+__del__ fields). The multi-step compile logic
-        # lives in a staticmethod factory on _OwnedCode.
-        self._code = _OwnedCode.make_compiled(pattern, flags)
-        self._mctx = _OwnedMatchContext.make_default()
+        # (safe on @nocopy+__del__ fields).
+        self._code = _OwnedCode(pattern, flags)
+        self._mctx = _OwnedMatchContext()
         # JIT-compile for ~10x match speedup. Failure here is non-fatal --
         # PCRE2 falls back to interpreted matching on patterns the JIT
         # can't handle.

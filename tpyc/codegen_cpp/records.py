@@ -771,9 +771,12 @@ class RecordGenerator:
                                             f"  Constructor order: super().__init__() -> field "
                                             f"assignments (self.x = ...) -> other logic.\n"
                                             f"  To pre-compute arguments, move the logic into a "
-                                            f"@staticmethod factory on '{fld_rec.name}' that returns "
-                                            f"Own[{fld_rec.name}], and assign directly: "
-                                            f"`self.{field_name} = {fld_rec.name}.factory(ctor_params)`",
+                                            f"@staticmethod on '{fld_rec.name}'. Two shapes work: "
+                                            f"(a) factory returning Own[Self] -- "
+                                            f"`self.{field_name} = {fld_rec.name}.factory(ctor_params)`; "
+                                            f"(b) helper returning a raw Ptr[T] called from "
+                                            f"'{fld_rec.name}.__init__' -- takes high-level args and "
+                                            f"assigns via `self.{field_name} = {fld_rec.name}(high_level_args)`",
                                             stmt.loc
                                         )
                                 continue
