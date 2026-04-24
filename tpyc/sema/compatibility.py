@@ -21,19 +21,39 @@ from ..typesys import (
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
     TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
-    TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyFunction,
-    TpyIfExpr, TpyTupleLiteral, SourceLocation
+    TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyStrLiteral, TpyBytesLiteral,
+    TpyFunction, TpyIfExpr, TpyTupleLiteral, SourceLocation
 )
 from ..coercions import resolve_coercion, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN
 from ..modules import get_span_return_type
 from .context import addr_taken_roots
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from ..type_def_registry import (
-    is_set, is_dict, is_array, is_span, is_list, is_str_view_type, int_traits_of,
+    is_set, is_dict, is_array, is_span, is_span_iter, is_list,
+    is_str_view_type, is_bytes_view_type, is_borrowing_view_type, int_traits_of,
     is_big_int_type, is_str_category, is_bytes_category, is_str_type, is_string_type,
     protocol_info_of,
 )
 from .overloads import type_matches_numeric
+
+
+def _dangling_view_message(return_type: TpyType) -> str | None:
+    """Error message for returning a view that borrows from a local, or None
+    if return_type is not a borrowing-view type.
+    """
+    if is_str_view_type(return_type):
+        return ("Cannot return StrView referencing a local or temporary; "
+                "use str or String to return an owned copy")
+    if is_bytes_view_type(return_type):
+        return ("Cannot return BytesView referencing a local or temporary; "
+                "use bytes or bytearray to return an owned copy")
+    if is_span(return_type):
+        return ("Cannot return Span referencing a local or temporary; "
+                "use list or Array to return an owned copy")
+    if is_span_iter(return_type):
+        return ("Cannot return SpanIter referencing a local or temporary; "
+                "the underlying Span would dangle after the function returns")
+    return None
 
 
 def _container_elem_matches(actual_elem: TpyType, expected_elem: TpyType) -> bool:
@@ -1116,23 +1136,28 @@ class TypeCompatibility:
                 return False
         return True
 
-    def _strview_constructor_arg(self, expr: TpyExpr) -> TpyExpr | None:
-        """If expr is a ``StrView(x)`` constructor call, return x.
+    def _view_constructor_arg(self, expr: TpyExpr) -> TpyExpr | None:
+        """If expr is a borrowing-view constructor call, return the borrowed-from arg.
 
-        StrView borrows from its source, so provenance/dangling predicates
-        should recurse into the wrapped argument rather than treating the
-        constructor call as an opaque value.
+        StrView / BytesView / Span[T] / SpanIter[T] all borrow from their
+        first argument, so provenance/dangling predicates should recurse
+        into that argument rather than treating the constructor call as
+        an opaque value.
         """
         if not isinstance(expr, TpyCall) or not expr.args:
             return None
-        if not isinstance(expr.func, TpyName) or expr.func_name != "StrView":
-            return None
-        return expr.args[0]
+        if expr.call_type is not None and is_borrowing_view_type(expr.call_type):
+            return expr.args[0]
+        return None
 
     def is_param_derived_expr(self, expr: TpyExpr) -> bool:
         """Check if an expression's root storage derives from parameters or globals."""
         if isinstance(expr, TpyCoerce):
             return self.is_param_derived_expr(expr.expr)
+        # String / bytes literals live in rodata; None literal is a nullptr.
+        # All three have non-local, permanent storage -- safe to borrow from.
+        if isinstance(expr, (TpyStrLiteral, TpyBytesLiteral, TpyNoneLiteral)):
+            return True
         if isinstance(expr, TpyName):
             # Parameters are param-derived
             func = self.ctx.func.current_function
@@ -1159,9 +1184,9 @@ class TypeCompatibility:
         # Pointer constructors derive provenance from their argument (address-taking)
         if isinstance(expr, TpyCall) and expr.call_type is not None and expr.call_type.is_pointer() and expr.args:
             return self.is_param_derived_expr(expr.args[0])
-        sv_arg = self._strview_constructor_arg(expr)
-        if sv_arg is not None:
-            return self.is_param_derived_expr(sv_arg)
+        view_arg = self._view_constructor_arg(expr)
+        if view_arg is not None:
+            return self.is_param_derived_expr(view_arg)
         # Function/method calls with return_borrows_from: result is param-derived if
         # the borrowed-from argument(s) are themselves param-derived.
         # None = unanalyzed (skip); frozenset() = returns new value (loop body never
@@ -1242,9 +1267,9 @@ class TypeCompatibility:
                     return False  # Ptr[T]() -> nullptr, always safe
                 return self.is_dangling_return(expr.args[0])
 
-            sv_arg = self._strview_constructor_arg(expr)
-            if sv_arg is not None:
-                return self.is_dangling_return(sv_arg)
+            view_arg = self._view_constructor_arg(expr)
+            if view_arg is not None:
+                return self.is_dangling_return(view_arg)
 
             # @value_ptr_coercion functions (e.g. take_ptr): result borrows
             # from the arg value, so dangling depends on the arg.
@@ -1365,24 +1390,17 @@ class TypeCompatibility:
                     expr
                 )
             return
-        # StrView is a value type but holds an interior pointer -- returning
-        # a StrView referencing a local would dangle after the function returns.
-        if is_str_view_type(return_type):
+        # Value types that hold an interior pointer -- returning one that
+        # borrows from a local would dangle after the function returns.
+        view_msg = _dangling_view_message(return_type)
+        if view_msg is not None:
             inner = expr.expr if isinstance(expr, TpyCoerce) else expr
-            sv_arg = self._strview_constructor_arg(inner)
-            if sv_arg is not None:
-                if self.is_dangling_return(sv_arg):
-                    raise self.ctx.error(
-                        "Cannot return StrView referencing a local or temporary; "
-                        "use str or String to return an owned copy",
-                        inner
-                    )
+            view_arg = self._view_constructor_arg(inner)
+            if view_arg is not None:
+                if self.is_dangling_return(view_arg):
+                    raise self.ctx.error(view_msg, inner)
             elif self.is_dangling_return(expr):
-                raise self.ctx.error(
-                    "Cannot return StrView referencing a local or temporary; "
-                    "use str or String to return an owned copy",
-                    expr
-                )
+                raise self.ctx.error(view_msg, expr)
             return
         if isinstance(return_type, TupleType):
             if isinstance(expr, TpyTupleLiteral):

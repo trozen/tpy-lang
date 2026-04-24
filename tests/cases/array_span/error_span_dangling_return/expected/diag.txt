@@ -1,0 +1,1 @@
+main.py:9: error: Cannot return Span referencing a local or temporary; use list or Array to return an owned copy

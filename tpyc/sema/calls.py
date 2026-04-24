@@ -54,7 +54,7 @@ from tpyc import modules as builtin_modules
 from ..modules import _resolve_concrete_type_name
 from .. import qnames
 from ..type_def_registry import (
-    is_array, is_span, is_list,
+    is_array, is_span, is_list, is_borrowing_view_type,
     is_fixed_int_type, is_bool_type, is_char_type, is_fstr_type,
     is_str_type, is_big_int_type,
     int_traits_of,
@@ -2155,6 +2155,12 @@ class CallAnalyzer:
                         )
                 expr.resolved_function_info = _resolve_cpp_template_type_params(ctor, result_type=ret)
                 self._check_cast_safe(expr, ctor, arg_types, ret)
+                # Borrowing views (StrView/BytesView/Span/SpanIter) need call_type
+                # populated so downstream dangling/provenance checks can see
+                # through the constructor. Other builtin constructors leave
+                # call_type unset to preserve their existing codegen paths.
+                if is_borrowing_view_type(ret):
+                    expr.call_type = ret
                 return ret
 
         # Fallback: try protocol-aware overload resolution (e.g. bool(obj) via Truthy)
@@ -2172,6 +2178,8 @@ class CallAnalyzer:
             ret = record_type or matched.return_type
             expr.resolved_function_info = _resolve_cpp_template_type_params(matched, result_type=ret)
             self._check_cast_safe(expr, matched, arg_types, ret)
+            if is_borrowing_view_type(ret):
+                expr.call_type = ret
             return ret
 
         # bool(obj) __len__ fallback: types with __len__ but no __bool__

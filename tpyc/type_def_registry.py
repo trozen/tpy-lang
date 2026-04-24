@@ -414,6 +414,14 @@ def is_basic_slice_type(t: "TpyType") -> bool: return _is_qn(t, "tpy.basic_slice
 def is_slice_type(t: "TpyType") -> bool:   return _is_qn(t, "builtins.slice")
 
 
+# Value types that carry an interior pointer into source storage.
+# Returning one that borrows from a local would dangle, so these participate
+# in dangling-reference and provenance tracking alongside reference types.
+def is_borrowing_view_type(t: "TpyType") -> bool:
+    return (is_str_view_type(t) or is_bytes_view_type(t)
+            or is_span(t) or is_span_iter(t))
+
+
 # Trait accessors. Return the dataclass or None if the type isn't in the
 # corresponding category. Callers should prefer these over reading .bits /
 # .signed / .min_value / .max_value from subclasses directly.

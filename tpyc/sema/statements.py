@@ -65,6 +65,7 @@ from ..type_def_registry import (
     is_dict, is_array, is_span, is_list,
     is_char_type, is_str_type, is_string_type, is_str_view_type,
     is_bytes_type, is_bytearray_type, is_bytes_view_type,
+    is_borrowing_view_type,
     is_fixed_int_type, is_big_int_type,
     find_factory_by_simple_name, protocol_info_of,
 )
@@ -74,15 +75,16 @@ def _needs_provenance_tracking(t: TpyType) -> bool:
     """Whether a local of this type participates in param-provenance / trusted-call tracking.
 
     Non-value types are reference types and always track provenance.
-    PtrType is a value type but carries an address. StrView is a value
-    type with an interior pointer into its source storage.
-    PendingViewType covers unresolved str/bytes locals -- if they settle
-    into view semantics the tracking is required; if they settle into
-    owned (String/bytes) the extra tracking is harmless.
+    PtrType is a value type but carries an address. Borrowing views
+    (StrView / BytesView / Span / SpanIter) are value types with an
+    interior pointer into their source storage. PendingViewType covers
+    unresolved str/bytes locals -- if they settle into view semantics
+    the tracking is required; if they settle into owned (String/bytes)
+    the extra tracking is harmless.
     """
     return (not t.is_value_type()
             or isinstance(t, PtrType)
-            or is_str_view_type(t)
+            or is_borrowing_view_type(t)
             or isinstance(t, PendingViewType))
 
 
@@ -3500,6 +3502,14 @@ class StatementAnalyzer:
                 f"Augmented assignment on property '{stmt.target.field}' is not yet supported",
                 stmt,
             )
+        # Aug-assign replaces the target's value with a freshly computed one
+        # (owned str/bytes concat, reallocated list, etc.), so any prior
+        # param-derived / trusted-call provenance is now stale and must be
+        # cleared -- otherwise a later `return` as a view would pass the
+        # dangling check despite pointing into local storage.
+        if isinstance(stmt.target, TpyName) and _needs_provenance_tracking(target_type):
+            self.init.mark_provenance(stmt.target.name, False)
+            self.init.mark_trusted_call_return(stmt.target.name, False)
         value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
         # Track mutation of for-each loop variables and parameters
         aug_root = _root_name_of_expr(stmt.target)
