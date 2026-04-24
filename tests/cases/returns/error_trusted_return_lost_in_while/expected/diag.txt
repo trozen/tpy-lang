@@ -1,0 +1,1 @@
+main.py:21: error: Cannot return local or temporary as reference. Object type 'Point' is returned by reference. Use Own[Point] to return by value.

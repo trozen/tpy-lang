@@ -818,14 +818,11 @@ class StatementAnalyzer:
                 self._apply_range_facts(range_true)
                 for s in stmt.body:
                     self.analyze_stmt(s)
-            # Vars reassigned from unknown inside the body lose non-null provenance
-            body_end_nn_ptr = frozenset(self.ctx.func.non_null_ptr_vars)
-            self.init.restore(before)
+            self.init.apply_loop_exit_facts(before)
             # Re-add all walrus vars (condition always evaluates fully)
             self.ctx.func.definitely_assigned |= all_walrus_w
             # Loop might not execute — consumption inside is not definite
             self.ctx.func.current_consumed_own_params = consumed_before_loop
-            self.ctx.func.non_null_ptr_vars &= body_end_nn_ptr
             # Restore namespace to pre-loop state (scope was already restored
             # by loop_scope context manager)
             self._restore_ns_var_types(ns_types_before_while)
@@ -846,10 +843,8 @@ class StatementAnalyzer:
                     with self.scopes.loop_var(inner_scope, stmt.var, elem_type, inner_scope.depth, is_foreach=True):
                         for s in stmt.body:
                             self.analyze_stmt(s)
-                body_end_nn_ptr = frozenset(self.ctx.func.non_null_ptr_vars)
-                self.init.restore(before)
+                self.init.apply_loop_exit_facts(before)
                 self.ctx.func.current_consumed_own_params = consumed_before_loop
-                self.ctx.func.non_null_ptr_vars &= body_end_nn_ptr
                 self._restore_ns_var_types(ns_types_before_foreach)
                 self._sync_promoted_var_types()
                 self._propagate_for_loop_scope(stmt, inner_scope, elem_type)
@@ -1073,11 +1068,9 @@ class StatementAnalyzer:
                     if deferred:
                         for idx in sorted(deferred, reverse=True):
                             del self.ctx.diagnostics[idx]
-                body_end_nn_ptr = frozenset(self.ctx.func.non_null_ptr_vars)
-                self.init.restore(before)
+                self.init.apply_loop_exit_facts(before)
                 # Loop might not execute — consumption inside is not definite
                 self.ctx.func.current_consumed_own_params = consumed_before_loop
-                self.ctx.func.non_null_ptr_vars &= body_end_nn_ptr
                 self._restore_ns_var_types(ns_types_before_foreach)
                 self._sync_promoted_var_types()
                 self._propagate_for_loop_scope(stmt, inner_scope, elem_type)

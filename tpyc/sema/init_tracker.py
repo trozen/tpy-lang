@@ -114,3 +114,25 @@ class InitTracker:
 
     def merge_branches(self, then_state: FlowFacts, else_state: FlowFacts) -> None:
         self.restore(FlowFacts.merge(then_state, else_state))
+
+    def apply_loop_exit_facts(self, before: FlowFacts) -> None:
+        """Apply post-loop state for a may-execute-zero-times loop.
+
+        Call with live post-body state still in ``ctx.func.*``. Monotone
+        kill-facts (pointer non-null, parameter provenance, trusted-call
+        return, type narrowing) survive iff they held both before the loop
+        AND at body exit, so a reassignment that cleared a fact is not
+        undone by ``restore(before)``.
+
+        Single-pass conservative approximation -- proper fixpoint belongs
+        with the THIR/MIR migration (see ``docs/IR_DESIGN.md``).
+        """
+        body_end_nn_ptr = frozenset(self.ctx.func.non_null_ptr_vars)
+        body_end_param_prov = frozenset(self.ctx.func.param_provenance_vars)
+        body_end_trusted = frozenset(self.ctx.func.trusted_call_return_vars)
+        body_end_narrowed = frozenset(self.ctx.func.narrowed_types.items())
+        self.restore(before)
+        self.ctx.func.non_null_ptr_vars &= body_end_nn_ptr
+        self.ctx.func.param_provenance_vars &= body_end_param_prov
+        self.ctx.func.trusted_call_return_vars &= body_end_trusted
+        self.ctx.func.narrowed_types = dict(body_end_narrowed & before.narrowed_types)

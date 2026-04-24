@@ -928,6 +928,17 @@ At branch join points, merge loan states conservatively across reachable predece
 The key win over the current AST-based checker is that the analysis is attached to CFG
 edges and explicit places rather than string roots and ad hoc freeze/restore snapshots.
 
+Loop headers are merge nodes with pre-loop and back-edge predecessors. Monotone
+kill-facts (pointer non-null, parameter provenance, trusted-call-return, type
+narrowing) must be meet-merged at the header rather than restored from the pre-loop
+snapshot: a fact that the body clears must not re-appear after loop exit. The
+current AST-based checker applies a single-pass intersection for all four sets at
+loop exit (`tpyc/sema/init_tracker.py::apply_loop_exit_facts`), which is sound for
+post-loop uses but remains optimistic for mid-body uses (body analysis starts from
+the pre-loop snapshot). In MIR this falls out of standard forward dataflow at the
+header and should become a hard correctness requirement for Pass 3, with no
+mid-body approximation.
+
 This replaces the current `BorrowTracker` in `sema/context.py` with path-sensitive
 analysis. The key improvement: an `if` branch that moves a variable does not conflict
 with an `else` branch that borrows it, because they are on different paths.
