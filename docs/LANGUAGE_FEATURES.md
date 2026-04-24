@@ -3590,7 +3590,7 @@ struct Dog : Animal {
 - Use `@override` (from `typing`) to explicitly annotate overrides -- errors on typos,
   warns when the override is non-polymorphic (see `@override` below)
 
-#### Multiple Inheritance (D22, v1)
+#### Multiple Inheritance (D22)
 
 **Working**: Static multiple inheritance -- `class Widget(Named, Counted): ...` emits
 `struct Widget : Named, Counted { ... }`. C3 linearization (MRO) is computed at
@@ -3600,28 +3600,59 @@ sema-registration time and drives `isinstance`, method lookup, and field inherit
 class Named:
     name: str
 
+    def __init__(self, name: str) -> None:
+        self.name = name
+
     def describe(self) -> str:
         return self.name
 
 class Counted:
     count: Int32
 
+    def __init__(self, count: Int32) -> None:
+        self.count = count
+
     def inc(self) -> None:
         self.count = self.count + 1
 
 class Widget(Named, Counted):
     def __init__(self, name: str, count: Int32) -> None:
-        self.name = name
-        self.count = count
+        # Every base with __init__ must be invoked explicitly.
+        Named.__init__(self, name)
+        Counted.__init__(self, count)
 
 w = Widget("button", Int32(5))
-print(w.describe())  # inherited from Named
-w.inc()              # inherited from Counted
+print(w.describe())     # inherited from Named
+w.inc()                 # inherited from Counted
 isinstance(w, Named)    # True -- folded at compile time
 isinstance(w, Counted)  # True -- folded at compile time
 ```
 
-**v1 restrictions** (rejected at sema with targeted diagnostics):
+**`BaseN.method(self, ...)`** calls an ancestor class's instance method explicitly,
+mirroring CPython's unbound-method form. The first argument must literally be `self`
+(not an arbitrary expression), and `BaseN` must be a strict ancestor of the current
+record. Method lookup walks `BaseN`'s own MRO, so inherited methods resolve even when
+`BaseN` doesn't declare them directly. Use cases:
+
+- Disambiguate when both bases define the same method (the child's override can
+  still call `Left.describe(self)` and `Right.describe(self)` to compose).
+- Call every base's `__init__` when more than one base defines one.
+- Prefer over `super()` when `super()` would be ambiguous across bases.
+
+```python
+class Left:
+    def describe(self) -> str: return "left"
+
+class Right:
+    def describe(self) -> str: return "right"
+
+class Both(Left, Right):
+    def describe(self) -> str:
+        # Cross-base conflict requires an override; delegate via the unbound form.
+        return Left.describe(self) + "+" + Right.describe(self)
+```
+
+**Rules and restrictions** (rejected at sema with targeted diagnostics):
 - **Diamonds** (`class D(B, C)` where `B(A)` and `C(A)`) -- rejected; non-virtual C++ MI
   would duplicate the shared subobject. Users who need runtime polymorphism should make
   the shared ancestor a `@dynamic` protocol.
@@ -3629,18 +3660,25 @@ isinstance(w, Counted)  # True -- folded at compile time
   Rename in one of the bases or restructure.
 - **Method conflicts** -- two bases defining the same method require the child to override
   that method; the child's version shadows both.
-- **Multi-`__init__` bases** -- at most one base may define (or inherit) `__init__`.
-  The rest default-construct automatically. `BaseN.__init__(self, ...)` for explicit
-  per-base construction is a planned follow-up.
+- **`__init__` coverage** -- if any base defines `__init__`, the child must define its
+  own `__init__` and invoke every such base explicitly via
+  `BaseN.__init__(self, ...)` (or `super().__init__(...)` when only one base has it).
+  Base-init calls must be top-level statements in `__init__`; nesting in control flow
+  is rejected. Writing the calls in an order other than declaration order emits a
+  warning: C++ always runs base constructors (and their argument expressions) in
+  declaration order, so source order is misleading.
+- **`BaseN.__init__(self, ...)` scope** -- only legal inside the child's own `__init__`.
+- **`BaseN.__del__(self)`** -- rejected outright; C++ invokes each base destructor
+  automatically.
 - **`super()` in multi-base** -- `super().method()` is legal only when exactly one base
   defines the method (unambiguous resolution). `super().__del__()` is rejected in
-  multi-base classes because C++ invokes each base's destructor automatically.
+  multi-base classes for the same reason.
 - **Source / MRO order** -- direct bases must be declared in an order consistent with
   C3 linearization; mismatches are rejected.
 
-**Not supported** (planned v2 follow-ups, see `docs/FEATURE_ROADMAP.md` D22): MRO-aware
-cooperative `super()`, explicit `BaseN.method(self, ...)` for non-static methods (would
-lift the single-`__init__`-base and same-name-field restrictions).
+**Not supported** (planned v2 follow-ups, see `docs/FEATURE_ROADMAP.md` D22): private
+same-name fields across bases (`BaseN._field` read access) and MRO-aware cooperative
+`super()` that walks the full MRO instead of just the single matching direct parent.
 
 #### Implicit Upcasting
 
@@ -4058,7 +4096,7 @@ class Car(Vehicle, Printable, Measurable):
 ```
 
 **Rules:**
-- Multiple class parents allowed (see "Multiple Inheritance (D22, v1)" above for restrictions)
+- Multiple class parents allowed (see "Multiple Inheritance (D22)" above for restrictions)
 - Multiple protocol implementations allowed
 - Class parents must come before protocols in the base list: `class Child(Parent, Protocol1, Protocol2)`
 - All declared protocol methods must be implemented (compiler validates)

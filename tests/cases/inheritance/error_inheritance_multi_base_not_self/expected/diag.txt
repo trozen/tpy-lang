@@ -1,0 +1,1 @@
+main.py:13: error: 'Parent.foo(...)' must pass 'self' as the first argument (e.g. 'Parent.foo(self, ...)')

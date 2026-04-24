@@ -1,0 +1,1 @@
+main.py:18: error: 'Unrelated' is not an ancestor of 'Child'; cannot call 'Unrelated.bar(self, ...)' here

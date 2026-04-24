@@ -50,7 +50,7 @@ struct Child : Base<T> {
     template<typename U>
     ::tpy::val_or_cref_t<U> wrap(const U& other) const {
         // return super().transform(other)
-        return Base<T>::template transform<U>(other);
+        return this->Base<T>::template transform<U>(other);
     }
 };
 

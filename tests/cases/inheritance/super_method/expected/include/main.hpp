@@ -59,7 +59,7 @@ struct Dog : Animal {
     std::string full_speak() const {
         // # Call overridden parent method via super()
         // parent_speak = super().speak()
-        std::string parent_speak = Animal::speak();
+        std::string parent_speak = this->Animal::speak();
         // return parent_speak
         return parent_speak;
     }

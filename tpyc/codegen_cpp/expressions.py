@@ -2590,12 +2590,22 @@ class ExpressionGenerator:
         if expr.inferred_type_args and not expr.user_module_call and not expr.is_static_call:
             method_targs = "<" + ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in expr.inferred_type_args) + ">"
 
-        # Handle super().method() -> ParentClass::method(args)
+        # Handle super().method() -> this->ParentClass::method(args).
+        # Explicit `this->` makes the receiver unambiguous to readers and
+        # leaves no room for a same-named local/namespace entity to capture
+        # the call.
         if expr.super_parent_type is not None:
             parent_cpp = expr.super_parent_type.to_cpp()
             # C++ requires 'template' keyword before dependent template names
             template_kw = "template " if method_targs else ""
-            return f"{parent_cpp}::{template_kw}{expr.method}{method_targs}({args})"
+            return f"this->{parent_cpp}::{template_kw}{expr.method}{method_targs}({args})"
+        # Handle unbound-self dispatch: BaseN.method(self, args) -> this->BaseN::method(args).
+        # sema stripped `self` from expr.args so the arg shape matches the
+        # resolved FunctionInfo; the explicit receiver matches the super() form.
+        if expr.unbound_self_parent_type is not None:
+            parent_cpp = expr.unbound_self_parent_type.to_cpp()
+            template_kw = "template " if method_targs else ""
+            return f"this->{parent_cpp}::{template_kw}{expr.method}{method_targs}({args})"
         # Handle ClassName.staticmethod() -> ClassName::staticmethod()
         if expr.is_static_call and isinstance(expr.obj, TpyName):
             # @cpp_template on static methods: expand the template directly

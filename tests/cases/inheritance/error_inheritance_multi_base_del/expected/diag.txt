@@ -1,0 +1,1 @@
+main.py:13: error: 'Parent.__del__(self)' is not callable via the unbound-self form. C++ invokes each base destructor automatically.

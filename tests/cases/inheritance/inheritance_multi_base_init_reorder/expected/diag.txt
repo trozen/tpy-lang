@@ -1,0 +1,1 @@
+main.py:25: warning: Base __init__ calls in 'Child.__init__' are written out of declaration order ('Left' after 'Right', but 'Left' is declared before 'Right'). C++ runs base constructors -- and evaluates their argument expressions -- in declaration order regardless; rewrite the calls in declaration order to match runtime behavior.

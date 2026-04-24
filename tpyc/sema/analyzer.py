@@ -17,7 +17,7 @@ from ..typesys import (
     _contains_self_reference, validate_recursive_union_paths,
 )
 from ..namespace import Namespace, NameBinding, BindingKind
-from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call, ParseError
+from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call, is_base_init_call, ParseError
 from ..parse.nodes import RecordLinkage
 from .registration import build_record_self_type, _vararg_span_type
 from ..parse.nodes import (
@@ -55,13 +55,6 @@ from ..parse.resolve_refs import (
 from .macros import _promote_method_signature
 
 
-def _is_stmt_super_init_call(stmt: TpyStmt) -> bool:
-    """Check if a statement is a super().__init__() call."""
-    if isinstance(stmt, TpyExprStmt):
-        expr = stmt.expr
-        if isinstance(expr, TpyMethodCall) and expr.method == "__init__":
-            return expr.super_parent_type is not None
-    return False
 
 
 def _expr_contains_self_method_call(expr: TpyExpr) -> bool:
@@ -1736,6 +1729,13 @@ class SemanticAnalyzer:
             self.ctx.func.current_function = None
             self.ctx.func.current_ns = None
 
+        # Multi-base init-call coverage check. Runs after all method bodies
+        # are analyzed so expr.unbound_self_parent_type is set on any
+        # BaseN.__init__(self, ...) calls in the child __init__.
+        record_info_for_init = self.ctx.registry.get_record(record.name)
+        if record_info_for_init is not None:
+            self.registrar.validate_multi_base_init_calls(record, record_info_for_init)
+
         self.ctx.record_ctx = RecordContext()
 
     def _check_init_field_assignments(self, method: TpyFunction, record: TpyRecord) -> None:
@@ -1773,7 +1773,7 @@ class SemanticAnalyzer:
         split_idx = len(method.body)
 
         for i, stmt in enumerate(method.body):
-            if _is_stmt_super_init_call(stmt):
+            if is_base_init_call(stmt):
                 continue
             # Skip docstrings (TpyExprStmt wrapping a string literal)
             if isinstance(stmt, TpyExprStmt) and isinstance(stmt.expr, TpyStrLiteral):

@@ -903,7 +903,17 @@ class MethodAnalyzer:
         return None
 
     def _analyze_static_method_call(self, expr: TpyMethodCall) -> TpyType | None:
-        """Check for ClassName.staticmethod() pattern. Returns type or None if not a static call."""
+        """Check for ClassName.staticmethod() or BaseN.method(self, ...) pattern.
+
+        Returns the call's type, or None if ClassName is not a record binding
+        (fall-through to other method-call dispatch).
+
+        Routes (checked in order):
+        1. ClassName.staticmethod(args) -- static-method call.
+        2. BaseN.method(self, args) where BaseN is an ancestor of the current
+           record: rebinds to instance-method machinery, dispatches statically
+           to BaseN's definition. First arg must literally be 'self'.
+        """
         assert isinstance(expr.obj, TpyName)
         if self.ctx.func.current_ns is None:
             return None
@@ -922,11 +932,15 @@ class MethodAnalyzer:
         if record_info is None:
             return None
 
-        overloads = record_info.get_method_overloads(expr.method)
+        # Walk record_info's MRO: inherited instance methods resolve for the
+        # BaseN.method(self, ...) form, and inherited static methods keep the
+        # long-standing static-call path.
+        overloads = self.ctx.registry.get_method_overloads_with_parents(
+            record_info, expr.method)
         if not overloads:
             return None
         if not overloads[0].is_staticmethod:
-            raise self.ctx.error(f"Method '{expr.method}' requires an instance (not a static method)", expr)
+            return self._analyze_unbound_self_method_call(expr, record_info, overloads)
 
         if record_info.is_generic():
             return self._analyze_generic_static_method_call(expr, record_info, overloads)
@@ -944,6 +958,149 @@ class MethodAnalyzer:
 
         return_type = self._resolve_and_check_args(expr, overloads, {})
         expr.is_static_call = True
+        return return_type
+
+    def _analyze_unbound_self_method_call(
+        self, expr: TpyMethodCall, record_info, overloads: list[FunctionInfo],
+    ) -> TpyType:
+        """Handle `BaseN.method(self, ...)` calls on an ancestor class.
+
+        `record_info` is the class named on the left of the dot; `overloads`
+        are the MRO-walked non-static overloads of `expr.method` (caller has
+        already dispatched on staticmethod).
+
+        Rules:
+        - The enclosing context must be an instance method (self in scope).
+        - ClassName must be a strict ancestor of the current record.
+        - First arg must syntactically be the name `self` -- arbitrary unbound
+          calls (e.g. `Named.describe(other_instance)`) are rejected.
+        """
+        parent_name = record_info.name
+        method_name = expr.method
+
+        # Must be inside an instance method
+        current_rec_parse = self.ctx.record_ctx.record
+        current_fn = self.ctx.func.current_function
+        if (current_rec_parse is None
+                or current_fn is None
+                or not isinstance(current_fn, TpyFunction)
+                or not current_fn.is_method
+                or current_fn.is_staticmethod):
+            raise self.ctx.error(
+                f"Method '{parent_name}.{method_name}' requires an instance "
+                f"(not a static method)",
+                expr,
+            )
+        current_rec = self.ctx.registry.get_record(current_rec_parse.name)
+        assert current_rec is not None, (
+            f"registry missing RecordInfo for '{current_rec_parse.name}' "
+            f"while analyzing its methods"
+        )
+
+        # __del__ compiles to a C++ destructor (not a callable member); __init__
+        # compiles to a constructor and is only reachable as a base initializer
+        # from within the child's __init__ body.
+        if method_name == "__del__":
+            raise self.ctx.error(
+                f"'{parent_name}.__del__(self)' is not callable via the unbound-self "
+                f"form. C++ invokes each base destructor automatically.",
+                expr,
+            )
+        if method_name == "__init__" and current_fn.name != "__init__":
+            raise self.ctx.error(
+                f"'{parent_name}.__init__(self, ...)' can only be called inside "
+                f"'__init__'",
+                expr,
+            )
+
+        # Ancestor check (strict: excludes current record itself)
+        if not self.ctx.registry.is_subclass_of_record(current_rec, record_info):
+            raise self.ctx.error(
+                f"'{parent_name}' is not an ancestor of '{current_rec.name}'; "
+                f"cannot call '{parent_name}.{method_name}(self, ...)' here",
+                expr,
+            )
+
+        # First arg must be the literal name 'self'.
+        if not expr.args or not (isinstance(expr.args[0], TpyName)
+                                 and expr.args[0].name == "self"):
+            raise self.ctx.error(
+                f"'{parent_name}.{method_name}(...)' must pass 'self' as the first "
+                f"argument (e.g. '{parent_name}.{method_name}(self, ...)')",
+                expr,
+            )
+
+        # Caller passed MRO-walked overloads and dispatched on staticmethod, so
+        # `overloads` is the authoritative list of non-static candidates here.
+        assert overloads and not overloads[0].is_staticmethod
+
+        # Find the concrete parent instantiation (for generic parents) by walking
+        # the current record's MRO for a record_info match.
+        parent_type: TpyType | None = None
+        for anc_type in current_rec.mro_ancestors:
+            if isinstance(anc_type, NominalType):
+                anc_info = self.ctx.registry.get_record_for_type(anc_type)
+                if anc_info is record_info:
+                    parent_type = anc_type
+                    break
+        if parent_type is None:
+            # Fallback: unparameterized nominal (non-generic ancestor).
+            parent_type = NominalType(
+                record_info.name,
+                _module_qname=record_info.qualified_name(),
+            )
+
+        type_subst = self.protocols.get_parent_type_subst(parent_type, record_info)
+
+        # Rebind to instance-method machinery via a temp TpyMethodCall with
+        # obj=self and self dropped from args. _resolve_and_check_args mutates
+        # the temp's args (coercions), so copy them back after. self itself
+        # is then dropped from expr.args so codegen sees the same shape as
+        # super().method(...) -- base-qualified call with method args only.
+        self_arg = expr.args[0]
+        # Analyze self so downstream (mutation tracking, type queries) has a type.
+        self.expr.analyze_expr(self_arg)
+        fake_expr = TpyMethodCall(
+            obj=self_arg,
+            method=method_name,
+            args=list(expr.args[1:]),
+            kwargs=expr.kwargs,
+            type_args=expr.type_args,
+            type_args_parse_error=expr.type_args_parse_error,
+            loc=expr.loc,
+        )
+
+        method_info = overloads[0]
+        if method_info.is_generic():
+            if len(overloads) > 1:
+                raise self.ctx.error(
+                    f"Overloaded generic methods are not supported for '{method_name}'",
+                    expr)
+            return_type = self._analyze_generic_method_call(
+                fake_expr, method_info, record_info, type_subst)
+        else:
+            return_type = self._resolve_and_check_args(
+                fake_expr, overloads, type_subst)
+
+        # Readonly self: a @readonly context calling a non-readonly ancestor
+        # method would mutate self through a const receiver.
+        is_readonly_context = (
+            isinstance(self.ctx.func.current_function, TpyFunction)
+            and self.ctx.func.current_function.is_readonly
+        )
+        resolved_info = fake_expr.resolved_function_info
+        if is_readonly_context and resolved_info is not None and not resolved_info.is_readonly:
+            raise self.ctx.error(
+                f"Cannot call non-readonly method '{method_name}' on readonly reference",
+                expr)
+
+        # Drop self from the outer expr so codegen emits Parent::method(args)
+        # with args matching resolved_function_info.params shape.
+        expr.args = fake_expr.args
+        expr.kwargs = fake_expr.kwargs
+        expr.resolved_function_info = resolved_info
+        expr.inferred_type_args = fake_expr.inferred_type_args
+        expr.unbound_self_parent_type = parent_type
         return return_type
 
     def _analyze_generic_static_method_call(
@@ -1781,7 +1938,7 @@ class MethodAnalyzer:
             )
 
         # Build type substitution for generic parent (e.g., Container[Int32] -> {"T": Int32})
-        type_subst = self.protocols._get_parent_type_subst(parent_type, parent_info)
+        type_subst = self.protocols.get_parent_type_subst(parent_type, parent_info)
 
         # Check if the method has its own type parameters (generic method)
         method_info = overloads[0]

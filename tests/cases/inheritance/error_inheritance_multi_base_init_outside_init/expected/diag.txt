@@ -1,0 +1,1 @@
+main.py:20: error: 'Parent.__init__(self, ...)' can only be called inside '__init__'

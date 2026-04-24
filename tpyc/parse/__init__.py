@@ -29,6 +29,7 @@ from .nodes import (
     RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol, TpyEnum,
     ParseWarning, TpyModule,
     is_super_del_call,
+    is_base_init_call,
     collect_name_refs,
     collect_top_level_local_names,
 )
@@ -65,6 +66,7 @@ __all__ = [
     "RelativeImportKey", "TpyImport", "TpyFunction", "TpyRecord", "TpyProtocol", "TpyEnum",
     "ParseWarning", "TpyModule",
     "is_super_del_call",
+    "is_base_init_call",
     "collect_name_refs",
     "collect_top_level_local_names",
     # imports

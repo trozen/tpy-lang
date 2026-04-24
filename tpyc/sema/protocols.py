@@ -715,7 +715,7 @@ class ProtocolChecker:
                 continue
             inherited = self.lookup_record_field(parent_info, field_name)
             if inherited:
-                type_subst = self._get_parent_type_subst(parent_type, parent_info)
+                type_subst = self.get_parent_type_subst(parent_type, parent_info)
                 if type_subst:
                     substituted_type = self.type_ops.substitute_type_params(inherited.type, type_subst)
                     return FieldInfo(
@@ -781,13 +781,13 @@ class ProtocolChecker:
                 continue
             inherited, parent_subst = self.lookup_record_method_overloads(parent_info, method_name)
             if inherited:
-                type_subst = self._get_parent_type_subst(parent_type, parent_info)
+                type_subst = self.get_parent_type_subst(parent_type, parent_info)
                 combined_subst = {**parent_subst, **type_subst}
                 return (inherited, combined_subst)
 
         return ([], {})
 
-    def _get_parent_type_subst(
+    def get_parent_type_subst(
         self, parent_type: TpyType, parent_info: RecordInfo
     ) -> dict[str, TpyType | int]:
         """Build substitution map from parent's type parameters to concrete type args.

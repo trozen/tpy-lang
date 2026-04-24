@@ -1,1 +1,1 @@
-main.py:20: error: Multi-base class 'Combined' has __init__ on more than one base (HasInitA, HasInitB). Not yet supported -- restructure so at most one base has __init__ (the rest default-construct). BaseN.__init__(self, ...) support is a planned follow-up.
+main.py:21: error: Multi-base class 'Combined' inherits __init__ from bases (HasInitA, HasInitB); define 'Combined.__init__' and invoke each base's __init__ explicitly (via BaseN.__init__(self, ...) or super().__init__(...) when unambiguous).

@@ -1050,7 +1050,9 @@ class TypeRegistrar:
             self._check_multi_base_order(record, record_info)
             self._check_multi_base_field_conflicts(record, record_info)
             self._check_multi_base_method_conflicts(record, record_info)
-            self._check_multi_base_init_limit(record, record_info)
+            # Every base with __init__ must be invoked explicitly from the
+            # child's __init__. Deferred to validate_multi_base_init_calls so
+            # the check can inspect the already-analyzed __init__ body.
 
         # Coordinate method hiding and @override checks.
         # @override methods are handled by _check_override_annotations (which emits a more
@@ -1234,15 +1236,19 @@ class TypeRegistrar:
                     )
                 first_source.setdefault(f.name, anc_rec.name)
 
-    def _check_multi_base_init_limit(self, record: TpyRecord, record_info: RecordInfo) -> None:
-        """v1 D22 restriction: at most one base may define (or inherit) __init__.
+    def validate_multi_base_init_calls(self, record: TpyRecord, record_info: RecordInfo) -> None:
+        """Every base with __init__ must be called explicitly from the child's
+        __init__, either via super().__init__(...) (when unambiguous) or
+        BaseN.__init__(self, ...).
 
-        Bases without __init__ default-construct automatically in C++. Multi-base
-        classes where two or more bases have __init__ would require the child body
-        to explicitly call BaseN.__init__(self, ...) for each base -- syntax that
-        tpyc does not yet support for non-static methods. Tracked in TODO.md.
+        Runs after __init__ body analysis so unbound-self calls have been
+        resolved (expr.unbound_self_parent_type set by MethodAnalyzer).
+        Scope: multi-base classes only. Single-base inheritance uses the
+        existing super().__init__() path.
         """
-        bases_with_init: list[str] = []
+        if len(record_info.parents) < 2:
+            return
+        bases_with_init: list[tuple[str, NominalType]] = []
         for p in record_info.parents:
             if not isinstance(p, NominalType):
                 continue
@@ -1250,15 +1256,96 @@ class TypeRegistrar:
             if p_info is None:
                 continue
             if self.ctx.registry.get_method_overloads_with_parents(p_info, "__init__"):
-                bases_with_init.append(p_info.name)
-        if len(bases_with_init) >= 2:
+                bases_with_init.append((p_info.name, p))
+        if not bases_with_init:
+            return
+
+        # Child must define __init__ to call them.
+        if record.init_method is None:
+            names = ", ".join(n for n, _ in bases_with_init)
             raise SemanticError(
-                f"Multi-base class '{record.name}' has __init__ on more than one base "
-                f"({', '.join(bases_with_init)}). Not yet supported -- restructure so at "
-                f"most one base has __init__ (the rest default-construct). "
-                f"BaseN.__init__(self, ...) support is a planned follow-up.",
-                record.loc
+                f"Multi-base class '{record.name}' inherits __init__ from bases ({names}); "
+                f"define '{record.name}.__init__' and invoke each base's __init__ explicitly "
+                f"(via BaseN.__init__(self, ...) or super().__init__(...) when unambiguous).",
+                record.loc,
             )
+
+        def base_name_of(stmt: TpyStmt) -> str | None:
+            if not isinstance(stmt, TpyExprStmt):
+                return None
+            expr = stmt.expr
+            if not (isinstance(expr, TpyMethodCall) and expr.method == "__init__"):
+                return None
+            pt = expr.unbound_self_parent_type or expr.super_parent_type
+            if pt is None:
+                return None
+            pt_info = self.ctx.registry.get_record_for_type(pt)
+            return pt_info.name if pt_info is not None else None
+
+        call_sequence: list[tuple[str, TpyExprStmt]] = []
+        for stmt in record.init_method.body:
+            n = base_name_of(stmt)
+            if n is not None:
+                assert isinstance(stmt, TpyExprStmt)
+                call_sequence.append((n, stmt))
+        called_base_names: set[str] = {n for n, _ in call_sequence}
+
+        # Treat base inits nested in control flow as a distinct, more actionable
+        # error so users aren't misled by a generic "missing calls" message when
+        # they did write the call but placed it inside an if/loop/try branch.
+        nested_base_names: set[str] = set()
+        def walk_nested(stmts: list[TpyStmt]) -> None:
+            for stmt in stmts:
+                sub = getattr(stmt, "sub_bodies", None)
+                if sub is None:
+                    continue
+                for body in sub():
+                    for inner in body:
+                        n = base_name_of(inner)
+                        if n is not None and n not in called_base_names:
+                            nested_base_names.add(n)
+                    walk_nested(body)
+        walk_nested(record.init_method.body)
+
+        if nested_base_names:
+            raise SemanticError(
+                f"Base __init__ calls must be top-level statements in "
+                f"'{record.name}.__init__', not nested in control flow; "
+                f"found nested call(s) for: {', '.join(sorted(nested_base_names))}.",
+                record.init_method.loc,
+            )
+
+        missing = [n for n, _ in bases_with_init if n not in called_base_names]
+        if missing:
+            raise SemanticError(
+                f"Multi-base class '{record.name}' must call __init__ on every base that "
+                f"defines one; missing calls for: {', '.join(missing)}. "
+                f"Invoke each via 'BaseN.__init__(self, ...)' (or 'super().__init__(...)' "
+                f"when unambiguous).",
+                record.init_method.loc,
+            )
+
+        # Warn when the source order of the calls disagrees with declaration
+        # order. Codegen hoists them into the MIL in declaration order regardless
+        # (C++ runs base ctors that way no matter how the list is written), so
+        # the user's source order is misleading: argument evaluation order
+        # shifts too.
+        declared_rank: dict[str, int] = {n: i for i, (n, _) in enumerate(bases_with_init)}
+        for i in range(1, len(call_sequence)):
+            prev_name, _ = call_sequence[i - 1]
+            curr_name, curr_stmt = call_sequence[i]
+            if prev_name in declared_rank and curr_name in declared_rank:
+                if declared_rank[curr_name] < declared_rank[prev_name]:
+                    self.ctx.warning(
+                        f"Base __init__ calls in '{record.name}.__init__' are written "
+                        f"out of declaration order ('{curr_name}' after '{prev_name}', "
+                        f"but '{curr_name}' is declared before '{prev_name}'). C++ runs "
+                        f"base constructors -- and evaluates their argument expressions "
+                        f"-- in declaration order regardless; rewrite the calls in "
+                        f"declaration order to match runtime behavior.",
+                        curr_stmt,
+                    )
+                    break
 
     def _check_multi_base_method_conflicts(self, record: TpyRecord, record_info: RecordInfo) -> None:
         """Error when two direct-parent chains provide the same method name and

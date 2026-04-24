@@ -1,5 +1,6 @@
-# D22 v1 restriction: at most one base may define/inherit __init__. Lifting this
-# is tracked in TODO.md (explicit BaseN.__init__(self, ...) call support).
+# When multiple bases define __init__, the child must define its own __init__
+# and invoke each base's __init__ explicitly (BaseN.__init__(self, ...) or
+# super().__init__(...) when unambiguous).
 from tpy import Int32
 
 
@@ -17,5 +18,5 @@ class HasInitB:
         self.b = b
 
 
-class Combined(HasInitA, HasInitB):  # tpyc: error(/Multi-base class 'Combined' has __init__ on more than one base/)
+class Combined(HasInitA, HasInitB):  # tpyc: error(/Multi-base class 'Combined' inherits __init__ from bases/)
     pass

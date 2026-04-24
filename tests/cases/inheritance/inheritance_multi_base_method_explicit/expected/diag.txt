@@ -1,0 +1,1 @@
+main.py:17: warning: Method 'Both.describe' hides 'Left.describe' -- any 'Left' reference will call 'Left.describe', not 'Both.describe' (differs from Python's dynamic dispatch); make 'Left' a @dynamic protocol for runtime dispatch

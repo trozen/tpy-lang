@@ -18,7 +18,7 @@ from ..typesys import (
 from ..parse import (
     TpyRecord, TpyEnum, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
     TpyMethodCall, TpyFieldAccess, TpyName, TpyCoerce, TpyNestedDef, is_super_del_call,
-    collect_name_refs, collect_top_level_local_names,
+    is_base_init_call, collect_name_refs, collect_top_level_local_names,
 )
 from ..namespace import Namespace
 
@@ -215,7 +215,7 @@ class RecordGenerator:
             self.ctx.current_func_params = {
                 pname: ptype for pname, ptype in record.init_method.params}
             self.ctx.in_method = True
-            base_init = self._extract_base_init(record.init_method, record)
+            base_inits = self._extract_base_inits(record.init_method, record)
             inits = self._extract_field_inits(record.init_method, record)
             self.ctx.current_func_params = saved_func_params
             self.ctx.in_method = saved_in_method
@@ -285,10 +285,8 @@ class RecordGenerator:
                 # No params: generate default constructor with body
                 out.write(f"{INDENT}{cpp_rec_name}()")
 
-            # Build member init list: base init (if any) + field inits
-            all_inits = []
-            if base_init:
-                all_inits.append(base_init)
+            # Build member init list: base inits (if any) + field inits
+            all_inits = list(base_inits)
             all_inits.extend(f"{escape_cpp_name(name)}({val})" for name, val in inits)
             if all_inits:
                 out.write(" : ")
@@ -542,15 +540,6 @@ class RecordGenerator:
         out.write(f"{INDENT}return os;\n")
         out.write("}\n")
 
-    def _is_super_init_call(self, stmt: TpyStmt) -> bool:
-        """Check if a statement is a super().__init__() call."""
-        if isinstance(stmt, TpyExprStmt):
-            expr = stmt.expr
-            if isinstance(expr, TpyMethodCall) and expr.method == "__init__":
-                if expr.super_parent_type is not None:
-                    return True
-        return False
-
     def _gen_move_and_destructor(self, out: TextIO, record: TpyRecord) -> None:
         """Generate a C++ destructor with drop-flag protection from a __del__ method.
 
@@ -679,25 +668,47 @@ class RecordGenerator:
         friend_tparams = ", ".join("typename" for _ in record_info.type_params)
         out.write(f"{INDENT}template<{friend_tparams}> friend struct {cpp_name};\n")
 
-    def _extract_base_init(self, init_method: TpyFunction, record: TpyRecord) -> str | None:
-        """Extract super().__init__() call and return base class initializer string.
+    def _extract_base_inits(self, init_method: TpyFunction, record: TpyRecord) -> list[str]:
+        """Extract base-init calls (super().__init__() and BaseN.__init__(self, ...))
+        and return C++ base initializer strings in declaration order.
 
-        Returns the C++ base initializer (e.g., "Animal(name, age)") or None if
-        no super().__init__() is present.
+        Returns zero or one entry for single-base classes (the super() call, if
+        present), and one entry per base with an explicit init call for
+        multi-base classes. C++ runs base constructors in declaration order
+        regardless of how the initializer list is written; emitting in that
+        order avoids -Wreorder when the user writes BaseN.__init__(self, ...)
+        calls in non-declaration order in the child __init__ body.
         """
-        for stmt in init_method.body:
-            if self._is_super_init_call(stmt):
-                if not isinstance(stmt, TpyExprStmt):
-                    raise CodeGenError("Expected expression statement for super().__init__()", stmt.loc)
-                expr = stmt.expr
-                if not isinstance(expr, TpyMethodCall):
-                    raise CodeGenError("Expected method call for super().__init__()", stmt.loc)
-                parent_type = expr.super_parent_type
-                if parent_type is None:
-                    raise CodeGenError("super().__init__() call without resolved parent type", stmt.loc)
-                args = ", ".join(self.expressions.gen_expr(a) for a in expr.args)
-                return f"{parent_type.to_cpp()}({args})"
-        return None
+        record_info = self.ctx.analyzer.registry.get_record(record.name)
+        parent_order: dict[int, int] = {}
+        if record_info is not None:
+            for idx, parent in enumerate(record_info.parents):
+                p_info = self.ctx.analyzer.registry.get_record_for_type(parent)
+                if p_info is not None:
+                    parent_order[id(p_info)] = idx
+
+        entries: list[tuple[int, str]] = []
+        for src_idx, stmt in enumerate(init_method.body):
+            if not is_base_init_call(stmt):
+                continue
+            if not isinstance(stmt, TpyExprStmt):
+                raise CodeGenError("Expected expression statement for base __init__ call", stmt.loc)
+            expr = stmt.expr
+            if not isinstance(expr, TpyMethodCall):
+                raise CodeGenError("Expected method call for base __init__", stmt.loc)
+            parent_type = expr.super_parent_type or expr.unbound_self_parent_type
+            if parent_type is None:
+                raise CodeGenError("base __init__ call without resolved parent type", stmt.loc)
+            args = ", ".join(self.expressions.gen_expr(a) for a in expr.args)
+            code = f"{parent_type.to_cpp()}({args})"
+            # Unknown-parent entries sort after all known ones (preserves source
+            # order between them via src_idx). Shouldn't happen for well-formed
+            # programs, but avoids hiding codegen bugs behind a silent drop.
+            p_info = self.ctx.analyzer.registry.get_record_for_type(parent_type)
+            rank = parent_order.get(id(p_info), len(parent_order) + src_idx) if p_info else len(parent_order) + src_idx
+            entries.append((rank, code))
+        entries.sort(key=lambda e: e[0])
+        return [code for _, code in entries]
 
     def _extract_field_inits(self, init_method: TpyFunction, record: TpyRecord) -> list[tuple[str, str]]:
         """Extract field initializations from __init__ body.
@@ -931,7 +942,7 @@ class RecordGenerator:
         non_init = []
         for stmt in init_method.body:
             # Skip super().__init__() calls - handled as base initializer
-            if self._is_super_init_call(stmt):
+            if is_base_init_call(stmt):
                 continue
             is_own_field_init = False
             if isinstance(stmt, TpyAssign):

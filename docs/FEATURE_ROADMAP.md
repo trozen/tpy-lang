@@ -90,7 +90,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D19 | Recursive type aliases | M | Done (non-generic) | [I](#recursive-type-aliases) |
 | D20 | Mutual recursion (cross-type cycles) | M-L | Done (same-module) | [I](#mutual-recursion) |
 | D21 | TypedDict | M | Done | [VII](#typeddict) |
-| D22 | Multiple inheritance (mixins) | L | v1 done; v2 follow-ups | [VII](#multiple-inheritance) |
+| D22 | Multiple inheritance (mixins) | L | v2.1 done; v2.2/v2.3 follow-ups | [VII](#multiple-inheritance) |
 | D23 | Nested classes | M | Done | [VII](#nested-classes) |
 
 ### Phase E: Advanced Safety
@@ -2590,12 +2590,14 @@ functionality. Diamond inheritance (where two bases share a common grandparent) 
 a future extension. `super()` with MRO-aware dispatch is the hard part -- initial
 implementation can require explicit `Base.method(self)` calls for disambiguation.
 
-**Current state**: Working (v1, 2026-04). Static multiple inheritance: `class Child(A, B, ...)`
+**Current state**: Working. Static multiple inheritance: `class Child(A, B, ...)`
 emits non-virtual C++ multiple inheritance. C3 linearization (MRO) is computed at sema
 registration; method resolution, field inheritance, and `isinstance` fold compile-time
 via MRO membership. Diamonds are rejected with a diagnostic pointing at `@dynamic`.
+Multiple bases may declare `__init__`; the child must invoke each explicitly via
+`BaseN.__init__(self, ...)` (or `super().__init__(...)` when unambiguous).
 
-**v1 shipped** (static, non-virtual):
+**Shipped** (static, non-virtual):
 - C3 linearization + diamond rejection (`Diamond inheritance not supported: '{anc}' is
   reachable from multiple bases of '{record}' (via '{p1}' and '{p2}'). Use @dynamic for
   runtime polymorphism.`).
@@ -2603,69 +2605,49 @@ via MRO membership. Diamonds are rejected with a diagnostic pointing at `@dynami
   child override for disambiguation).
 - Source-order / MRO-order consistency check (base decls must match C3 linearization).
 - `super()` in multi-base: allowed when the method is unambiguous across direct parents;
-  `__del__` rejected outright (C++ auto-invokes each base destructor). `__init__` relies
-  on the single-init-base restriction for unambiguous resolution.
+  `__del__` rejected outright (C++ auto-invokes each base destructor).
 - `isinstance(child, Mixin)` folds to True at compile time for any base in the MRO;
   downcasts still warn/fold to False (the existing hierarchy-isinstance behavior).
+- **`BaseN.method(self, ...)`** for non-static methods: routes
+  `ClassName.method(args)` through instance-method machinery when `ClassName` is a
+  strict ancestor of the current record and the first arg is literally `self`. Method
+  lookup walks `ClassName`'s MRO so inherited definitions resolve. Codegen emits
+  `ClassName::method(args)` inside the child method body (the implicit `this->`
+  qualifies the call). `BaseN.__init__(self, ...)` is only legal inside the child's own
+  `__init__`; `BaseN.__del__(self)` is rejected.
+- Multi-base `__init__` coverage validator: every base with `__init__` must be invoked
+  explicitly from the child's `__init__` (either form). Base-init calls must be
+  top-level statements; nesting in control flow is rejected with a targeted error.
+  C++ MIL is emitted in declaration order regardless of how the user writes the calls
+  (avoids `-Wreorder` in generated code); out-of-declaration-order source is flagged
+  with a sema warning since C++ evaluates init arguments in MIL order too.
 
-**v1 restrictions** (with targeted diagnostics):
-- Multi-base classes may have `__init__` on at most one base (the rest default-
-  construct). See v2 follow-up below.
-- Same-name fields across bases are rejected outright. See v2 follow-up below.
+**Restrictions** (with targeted diagnostics):
+- Same-name fields across bases are rejected outright. See v2.2 below.
 - MRO-aware cooperative `super()` (Python's cross-chain super) not implemented;
-  initial design explicitly allows deferral. See v2 follow-up below.
+  current behavior dispatches only to the single unambiguously-matching direct parent.
+  See v2.3 below.
 - Heterogeneous `list[Mixin]` / upcasting to a mixin parameter still require
   `@dynamic` (separate TODO) or explicit boxing -- same trade-offs as single
   inheritance.
 
-**v2 follow-ups** (planned; not blocking v1). Ordered by dependency; start at v2.1.
+**v2 follow-ups** (planned).
 
-**v2.1 -- `BaseN.method(self, ...)` for non-static methods.** Foundation for the other
-two items. Today `_analyze_static_method_call` (`tpyc/sema/methods.py:860`) rejects
-`ClassName.method(args)` unless the method is `@staticmethod`. Extend that path so when
-`ClassName` is an ancestor of the current record and the first arg is literally `self`,
-the call routes through instance-method machinery (bind `self` to first arg; codegen
-emits `ClassName::method(self, args)`). Unblocks multi-base classes with multiple
-`__init__` bases (explicit per-base `BaseN.__init__(self, ...)`) and matches CPython's
-explicit-unbound-method form.
-
-Phase plan (locked):
-1. **P1 (sema)** -- extend `_analyze_static_method_call`. Route on (ancestor + literal
-   `self`); look up method via `get_method_overloads_with_parents` so inherited methods
-   resolve.
-2. **P2 (codegen)** -- emit `ClassName::method(self, args)`. One site in
-   `codegen_cpp/expressions.py` / `functions.py`.
-3. **P3** -- drop `_check_multi_base_init_limit`. Replace with "every base with
-   `__init__` must be called explicitly from the child's `__init__`" validator.
-4. **P4 (tests)** -- happy-path (two `__init__` bases, child calls both), error cases
-   (missing base init, non-ancestor class, non-`self` first arg).
-
-Design decisions (locked 2026-04-24):
-- **Form of `self`**: literal `self` only. Arbitrary unbound calls like
-  `Named.describe(other_instance)` remain rejected. Keeps intent tight; generalizing is
-  a further extension.
-- **Inherited methods**: `B.foo(self)` is legal even when `B` doesn't literally define
-  `foo` -- resolution walks `B`'s MRO, matching CPython semantics.
-- **Style preference vs `super()`**: none. Both spellings are legal when both apply;
-  users pick based on readability.
-
-**v2.2 -- Private same-name fields across bases** (follows v2.1). The
+**v2.2 -- Private same-name fields across bases.** The
 `_check_multi_base_field_conflicts` hard error makes sense for public fields (`self.x`
 would be ambiguous in non-virtual MI) but is too strict for private fields (`_x` /
 `__x`) where each base subobject legitimately owns its own. Lift the error for
-underscore-prefixed fields; require `BaseN._field` for reads (reuses v2.1 unbound
-member-access machinery). Keep the hard error for public fields.
+underscore-prefixed fields; require `BaseN._field` for reads (reuses the existing
+unbound-member-access machinery, extended from method calls to field access). Keep the
+hard error for public fields.
 
-**v2.3 -- MRO-aware cooperative `super()`** (independent of v2.1/2.2). Full C3 super
-chain so `super().foo()` in a diamond-free MI class walks the MRO, not just the single
-matching direct parent. Plug into `_resolve_super_parent_type` (`tpyc/sema/methods.py`).
-The initial design carved this out as deferrable; current v1 requires either
-unambiguous resolution (one parent defines the method) or an explicit `BaseN.method`
-call.
+**v2.3 -- MRO-aware cooperative `super()`** (independent of v2.2). Full C3 super chain
+so `super().foo()` in a diamond-free MI class walks the MRO, not just the single
+matching direct parent. Plug into `_resolve_super_parent_type`
+(`tpyc/sema/methods.py`). Current behavior requires either unambiguous resolution (one
+parent defines the method) or an explicit `BaseN.method(self, ...)` call.
 
-**Effort**: L (v1 shipped on branch `mi-c3-mro`, merged to master). v2 follow-ups: M
-total -- v2.1 is the big piece (unbound-method-call machinery); v2.2 and v2.3 fall out
-mostly mechanically once v2.1 lands.
+**Effort**: L (shipped through v2.1). v2.2 and v2.3 each M.
 
 ---
 

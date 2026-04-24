@@ -37,7 +37,7 @@ struct Child : Base {
     // def value_plus_one(self) -> Int32:
     int32_t value_plus_one() const {
         // return super().value() + 1  # tpyc: ok
-        return (::tpy::add_check<int32_t>(Base::value(), 1));
+        return (::tpy::add_check<int32_t>(this->Base::value(), 1));
     }
 };
 

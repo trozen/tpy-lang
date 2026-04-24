@@ -361,6 +361,7 @@ class TpyMethodCall(TpyExpr):
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     is_static_call: bool = False  # Set by sema for ClassName.staticmethod() calls
     super_parent_type: Optional[TpyType] = None  # Set by sema for super().method() calls
+    unbound_self_parent_type: Optional[TpyType] = None  # Set by sema for BaseN.method(self, ...) calls on an ancestor
     user_module_call: Optional[str] = None  # Set by sema for module.func() calls to user modules
     builtin_module_call: Optional[str] = None  # Set by sema for builtin module.func() calls (canonical module name)
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
@@ -1366,6 +1367,18 @@ def is_super_del_call(stmt: TpyStmt) -> bool:
         expr = stmt.expr
         if isinstance(expr, TpyMethodCall) and expr.method == "__del__":
             return expr.super_parent_type is not None
+    return False
+
+
+def is_base_init_call(stmt: TpyStmt) -> bool:
+    """True for super().__init__(...) or BaseN.__init__(self, ...). Both forms
+    belong in the init section and hoist into the C++ member initializer list.
+    """
+    if isinstance(stmt, TpyExprStmt):
+        expr = stmt.expr
+        if isinstance(expr, TpyMethodCall) and expr.method == "__init__":
+            return (expr.super_parent_type is not None
+                    or expr.unbound_self_parent_type is not None)
     return False
 
 

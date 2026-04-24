@@ -65,7 +65,7 @@ struct D : B, C {
     // def describe(self) -> str:
     std::string describe() const {
         // return super().foo() + " + " + super().bar()
-        return (::tpy::str_concat((::tpy::str_concat(B::foo(), " + ")), C::bar()));
+        return (::tpy::str_concat((::tpy::str_concat(this->B::foo(), " + ")), this->C::bar()));
     }
 };
 
