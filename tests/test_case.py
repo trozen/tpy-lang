@@ -8,8 +8,10 @@ reproduce the same stdout, so re-running adds no signal.
 
 Flags:
     --force-exec         Run exec/cpy phases unconditionally (bypass auto-skip).
-    UPDATE_EXPECTED=1    Regenerate all expected files + fingerprints. Implies
-                         unconditional exec/cpy so outputs are refreshed.
+    --clean              Wipe shared PCH + stdlib .o caches; implies --force-exec.
+    --update-snapshots   Regenerate expected files + fingerprints; implies
+                         --force-exec. Equivalent to UPDATE_EXPECTED=1.
+    UPDATE_EXPECTED=1    Env-var form of --update-snapshots (for CI / wrappers).
 """
 
 import shutil
@@ -68,7 +70,11 @@ def test_case(case_dir, main_src, request):
     is_error = case_dir.name.startswith("error_")
     is_panic = case_dir.name.startswith("panic_")
     is_warn = case_dir.name.startswith("warn_")
-    force_exec = request.config.getoption("--force-exec") or UPDATE_EXPECTED
+    force_exec = (
+        request.config.getoption("--force-exec")
+        or request.config.getoption("--clean")
+        or UPDATE_EXPECTED
+    )
 
     # In update mode, clear stale artifacts so nothing lingers from a previous run
     if UPDATE_EXPECTED:

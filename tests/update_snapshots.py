@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Update expected snapshots by running tests with UPDATE_EXPECTED=1.
+"""Thin wrapper around `pytest --update-snapshots`.
 
 Usage:
     python tests/update_snapshots.py                   # update all cases
@@ -8,12 +8,12 @@ Usage:
 
 Any other arguments (e.g. -n auto) are passed directly to pytest.
 
-UPDATE_EXPECTED=1 implies unconditional exec + CPython phases so that
-output.txt, panic.txt, diagnostics, generated code, and the per-case
-.fingerprints file are all regenerated in one pass.
+Equivalent to `uv run pytest tests/test_case.py -v --update-snapshots`.
+--update-snapshots implies --force-exec so output.txt, panic.txt,
+diagnostics, generated code, and the per-case .fingerprints file are
+regenerated in one pass.
 """
 import argparse
-import os
 import subprocess
 import sys
 
@@ -22,13 +22,9 @@ parser.add_argument("-k", "--pattern", help="Case name pattern (passed to pytest
 
 args, extra_pytest_args = parser.parse_known_args()
 
-pytest_args = ["pytest", "tests/test_case.py", "-v"]
+pytest_args = ["pytest", "tests/test_case.py", "-v", "--update-snapshots"]
 if args.pattern:
     pytest_args.extend(["-k", args.pattern])
 pytest_args.extend(extra_pytest_args)
 
-result = subprocess.run(
-    pytest_args,
-    env={**os.environ, "UPDATE_EXPECTED": "1"},
-)
-sys.exit(result.returncode)
+sys.exit(subprocess.run(pytest_args).returncode)

@@ -767,6 +767,30 @@ def pytest_addoption(parser):
         default=False,
         help="Run exec and cpython phases unconditionally, bypassing fingerprint-based auto-skip.",
     )
+    parser.addoption(
+        "--clean",
+        action="store_true",
+        default=False,
+        help=(
+            "Wipe shared PCH and stdlib object caches before running. Implies --force-exec. "
+            "Use to recover from suspected cache corruption or to re-verify runtime builds."
+        ),
+    )
+    parser.addoption(
+        "--update-snapshots",
+        action="store_true",
+        default=False,
+        help=(
+            "Regenerate expected files (diag.txt, generated code, output.txt, .fingerprints) "
+            "instead of comparing. Implies --force-exec. Equivalent to UPDATE_EXPECTED=1."
+        ),
+    )
+    parser.addoption(
+        "--no-ccache",
+        action="store_true",
+        default=False,
+        help="Do not invoke ccache for this run. Does not wipe the ccache store.",
+    )
 
 
 def _cgroup_cpu_quota() -> int | None:
@@ -800,10 +824,36 @@ def pytest_configure(config):
     if not is_master:
         return
 
-    if CPP_CONFIG.ccache:
+    if config.getoption("--no-ccache"):
+        # Every compile path is gated on CPP_CONFIG.ccache, so flipping it
+        # to False is sufficient -- we stop prepending `ccache` entirely
+        # rather than spawning it with CCACHE_DISABLE=1 as a pass-through.
+        CPP_CONFIG.ccache = False
+        print("C++ compilation: ccache disabled via --no-ccache")
+    elif CPP_CONFIG.ccache:
         print("C++ compilation: using ccache")
     else:
         print("C++ compilation: ccache not found (install for faster re-runs)")
+
+    if config.getoption("--update-snapshots"):
+        global UPDATE_EXPECTED
+        UPDATE_EXPECTED = True
+        # Propagate to xdist workers (subprocesses inherit os.environ, and
+        # their conftest import reads the env var at module load time).
+        os.environ["UPDATE_EXPECTED"] = "1"
+
+    if config.getoption("--clean"):
+        root = _shared_cache_root()
+        wiped = []
+        for sub in ("pch", "stdlib-objs"):
+            target = root / sub
+            if target.exists():
+                shutil.rmtree(target, ignore_errors=True)
+                wiped.append(sub)
+        if wiped:
+            print(f"--clean: wiped {root}/{{{','.join(wiped)}}}")
+        else:
+            print(f"--clean: no cache dirs to wipe under {root}")
 
     if UPDATE_EXPECTED:
         # Refresh the single source-of-truth session fingerprint file once on

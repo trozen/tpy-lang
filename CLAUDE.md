@@ -60,15 +60,19 @@ Parallel execution (`-n auto`) is configured in `pyproject.toml` via `addopts`. 
 ```bash
 uv run pytest                              # All tests (exec/cpy auto-skip when unchanged)
 uv run pytest --force-exec                 # Force exec + cpy unconditionally
+uv run pytest --clean                      # Wipe shared PCH + stdlib .o caches (implies --force-exec)
+uv run pytest --no-ccache                  # Bypass ccache for this run (does not wipe it)
+uv run pytest --update-snapshots           # Regenerate expected files (implies --force-exec)
+uv run pytest --update-snapshots -k hello  # Regenerate for a specific case
 uv run pytest tpyc/                        # Unit tests only (no C++ toolchain)
 uv run pytest -k hello                     # Pattern-matched cases
 uv run pytest -k "bool_type or bool_conversion"
 
-uv run python tests/update_snapshots.py          # Update all expected snapshots
-uv run python tests/update_snapshots.py -k hello # Update specific case(s)
+uv run python tests/update_snapshots.py          # Thin wrapper around --update-snapshots
+uv run python tests/update_snapshots.py -k hello # Same, for a specific case
 ```
 
-`UPDATE_EXPECTED=1` (set by `update_snapshots.py`) implies `--force-exec` so output.txt, panic.txt, generated code, and `.fingerprints` are all regenerated in one pass.
+`--update-snapshots` (or the equivalent `UPDATE_EXPECTED=1` env var) implies `--force-exec` so output.txt, panic.txt, generated code, and `.fingerprints` are all regenerated in one pass.
 
 ### Agent testing workflow
 
