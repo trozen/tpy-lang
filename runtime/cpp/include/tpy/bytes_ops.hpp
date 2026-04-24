@@ -10,9 +10,11 @@
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
+#include <ranges>
 #include <span>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 #include "core.hpp"
@@ -104,6 +106,46 @@ inline uint8_t int_to_byte(int32_t v) {
 
 inline Bytes bytes_copy(BytesView src) {
     return Bytes(src.begin(), src.end());
+}
+
+template<typename Arg>
+void bytes_extend_byte_iterable(Bytes& self, Arg&& arg) {
+    if constexpr (std::ranges::input_range<std::remove_cvref_t<Arg>>) {
+        // insert(end, begin, end) lets libstdc++ memcpy trivially-copyable
+        // uint8_t payloads instead of running a per-element push_back loop.
+        self.insert(self.end(), std::ranges::begin(arg), std::ranges::end(arg));
+    } else {
+        for (;;) {
+            auto __r = arg.__next__();
+            if (!__r.has_value()) break;
+            self.push_back(*__r);
+        }
+    }
+}
+
+// TODO(hot-path): per-element int_to_byte range check; revisit alongside a
+// @not_hot_path / unchecked variant. Prefer the UInt8 overload when possible.
+template<typename Arg>
+void bytes_extend_int_iterable(Bytes& self, Arg&& arg) {
+    if constexpr (std::ranges::input_range<std::remove_cvref_t<Arg>>) {
+        if constexpr (std::ranges::sized_range<std::remove_cvref_t<Arg>>) {
+            self.reserve(self.size() + std::ranges::size(arg));
+        }
+        for (auto&& v : arg) self.push_back(int_to_byte(v));
+    } else {
+        for (;;) {
+            auto __r = arg.__next__();
+            if (!__r.has_value()) break;
+            self.push_back(int_to_byte(*__r));
+        }
+    }
+}
+
+template<typename Arg>
+Bytes bytes_from_int_iterable(Arg&& arg) {
+    Bytes result;
+    bytes_extend_int_iterable(result, std::forward<Arg>(arg));
+    return result;
 }
 
 inline Bytes bytes_from_str(std::string_view s) {

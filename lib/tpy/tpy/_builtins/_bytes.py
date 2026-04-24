@@ -16,12 +16,26 @@ class bytes(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @overload
     @native("tpy::bytes_copy", function=True)
     def __init__(self, x: bytes) -> None: ...
+    # Concrete bytes/bytearray/BytesView overloads must precede Iterable[UInt8]
+    # below: bytearray conforms to Iterable[UInt8] via extends, and first-pass
+    # overload resolution is first-match-wins -- the concrete overloads need to
+    # be picked before the generic construct<> path to stay on bytes_copy.
+    @overload
+    @native("tpy::bytes_copy", function=True)
+    def __init__(self, x: bytearray) -> None: ...
     @overload
     @native("tpy::bytes_copy", function=True)
     def __init__(self, x: BytesView) -> None: ...
     @overload
     @native("tpy::bytes_from_size", function=True)
     def __init__(self, x: Int32) -> None: ...
+    @overload
+    @cpp_template("::tpy::construct<std::vector<uint8_t>>({0})")
+    def __init__(self, x: Iterable[UInt8]) -> None: ...
+    # TODO(hot-path): the Int32 overload below is per-element range-checked.
+    @overload
+    @native("tpy::bytes_from_int_iterable", function=True)
+    def __init__(self, x: Iterable[Int32]) -> None: ...
 
     @native("tpy::__iter__", function=True)
     @readonly
@@ -178,6 +192,7 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @overload
     @cpp_template("std::vector<uint8_t>()")
     def __init__(self) -> None: ...
+    # Concrete overloads first, same rationale as in `bytes` above.
     @overload
     @native("tpy::bytes_copy", function=True)
     def __init__(self, x: bytes) -> None: ...
@@ -190,6 +205,13 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @overload
     @native("tpy::bytes_from_size", function=True)
     def __init__(self, x: Int32) -> None: ...
+    @overload
+    @cpp_template("::tpy::construct<std::vector<uint8_t>>({0})")
+    def __init__(self, x: Iterable[UInt8]) -> None: ...
+    # TODO(hot-path): the Int32 overload below is per-element range-checked.
+    @overload
+    @native("tpy::bytes_from_int_iterable", function=True)
+    def __init__(self, x: Iterable[Int32]) -> None: ...
 
     @native("tpy::__iter__", function=True)
     @readonly
@@ -259,8 +281,13 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @native("push_back")
     def append(self, value: UInt8) -> None: ...
 
-    @cpp_template("({self}).insert(({self}).end(), ({0}).begin(), ({0}).end())")
+    @overload
+    @cpp_template("::tpy::bytes_extend_byte_iterable({self}, {0})")
     def extend(self, other: Iterable[UInt8]) -> None: ...
+    # TODO(hot-path): the Int32 overload below is per-element range-checked.
+    @overload
+    @cpp_template("::tpy::bytes_extend_int_iterable({self}, {0})")
+    def extend(self, other: Iterable[Int32]) -> None: ...
 
     @overload
     @native("tpy::bytearray_pop", function=True)

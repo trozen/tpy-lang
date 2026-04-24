@@ -470,6 +470,8 @@ log(f"x={x}")
 - **Working**: `BytesView` (`tpy.BytesView`) -- non-owning read-only view -> `std::span<const uint8_t>`
 - **Working**: Byte literals (`b"hello"`, `b"\x00\xff"`) -- use static storage (C++ string literal) when used as `BytesView` or function arguments (zero heap allocation)
 - **Working**: `bytes(n)` zero-fill constructor, `bytes(b)` / `bytearray(b)` copy constructors
+- **Working**: `bytes(iter)` / `bytearray(iter)` from `Iterable[UInt8]` (fast path) or `Iterable[Int32]` (runtime range-checked 0..255); generator expressions work too
+- **Working**: `bytearray.extend(iter)` accepts `Iterable[UInt8]` or `Iterable[Int32]` (range-checked)
 - **Working**: Subscript (`b[i]` -> `UInt8`), `len()`, `in` operator
 - **Working**: Concatenation (`+`), repetition (`*`), equality (`==`)
 - **Working**: `decode()` -> `str`, `hex()` -> `str`
@@ -2447,6 +2449,28 @@ print(sum_all(nums))  # 6
 - **API methods use `Iterable[T]`**: `str.join()`, `list()` constructor, `dict()` constructor accept `Iterable[T]`; `list.extend()` and `list +=` accept `Iterable[Own[T]]` (triggers copy warnings for reference-type elements).
 
 See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design rationale.
+
+#### Working: Element-Type Widening at Protocol Positions
+
+When a container satisfies a protocol parameterized by an element type (e.g. `list[A]` vs `Iterable[B]`), the element conformance uses **widening only** -- iteration widens each element into the target element type, but narrowing is rejected:
+
+```python
+from typing import Iterable
+from tpy import Int32, Int64, UInt8
+
+def take_int32(it: Iterable[Int32]) -> None: ...
+def take_int64(it: Iterable[Int64]) -> None: ...
+def take_uint8(it: Iterable[UInt8]) -> None: ...
+
+xs: list[Int32] = [1, 2, 3]
+take_int32(xs)        # OK: exact element match
+take_int64(xs)        # OK: Int32 widens to Int64
+take_uint8(xs)        # Error: Int32 does not widen to UInt8 (narrowing)
+```
+
+**Unannotated integer list literals resolve to the configured default int type** (typically `Int32`). `[1, 2, 3]` passed to a function expecting `Iterable[UInt8]` does *not* match, regardless of whether the literal values would fit -- the concrete list is `list[Int32]`, not `list[UInt8]`. To target a narrow iterable, annotate the source (`xs: list[UInt8] = [1, 2, 3]`) or construct explicitly.
+
+Supported element widenings: fixed-width int -> wider fixed-width int (same signedness, strict bit growth; or unsigned -> strictly wider signed), fixed int -> `BigInt`, fixed/`BigInt` -> `float`/`Float32`, `Float32` -> `float`. `readonly[T]` is transparent at element positions (the const qualifier is carried by the container, not the element-type match).
 
 #### Working: Lazy Iteration via `Iterator[T]`
 

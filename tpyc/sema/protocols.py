@@ -15,7 +15,7 @@ from ..typesys import (
     ListRepeatType, GenExprType, make_list, TupleType, OptionalType, IntLiteralType, FloatLiteralType, PendingListType, UnknownElementType, BIGINT, FLOAT,
     impl_proto_matches_name, get_protocol_qname,
 )
-from ..coercions import is_protocol_safe_coercion, resolve_coercion, CoercionContext
+from ..coercions import is_protocol_safe_coercion, is_protocol_type_arg_widening
 
 if TYPE_CHECKING:
     from ..typesys import TypeRegistry
@@ -280,7 +280,12 @@ class ProtocolChecker:
                         continue
                     if actual_type_arg == protocol.type_args[0]:
                         return True
-                    if resolve_coercion(actual_type_arg, protocol.type_args[0], CoercionContext.RETURN) is not None:
+                    # Widening-only at the element level: list[Int16] satisfies
+                    # Iterable[Int32], list[Int32] satisfies Iterable[BigInt],
+                    # but list[Int32] does NOT satisfy Iterable[UInt8].
+                    if is_protocol_type_arg_widening(
+                        actual_type_arg, protocol.type_args[0], self.ctx.default_int_type,
+                    ):
                         return True
             elif ext == protocol.name and not protocol.type_args:
                 return True

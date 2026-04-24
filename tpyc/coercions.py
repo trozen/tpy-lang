@@ -531,6 +531,42 @@ def is_protocol_safe_coercion(actual: TpyType, expected: TpyType) -> bool:
     return False
 
 
+def is_protocol_type_arg_widening(
+    actual: TpyType, expected: TpyType, default_int_type: TpyType,
+) -> bool:
+    """Check if actual->expected is a lossless widening at a protocol type-arg position.
+
+    Used for container conformance (e.g. list[A] satisfies Iterable[B]) where
+    the caller iterates actual and each element implicitly widens into expected.
+    Narrowing is rejected (list[Int32] must NOT satisfy Iterable[UInt8]).
+
+    At this position `actual` is an element type of a container, never a scalar.
+    IntLiteralType's concrete value is therefore meaningless (it describes the
+    first element only, not the whole sequence), so we treat it as the compiler's
+    default int type and fall through to the standard int->int widening rules.
+    """
+    # readonly is a container-level qualifier at element positions.
+    actual = unwrap_readonly(actual)
+    expected = unwrap_readonly(expected)
+    if isinstance(actual, IntLiteralType):
+        actual = default_int_type
+    elif isinstance(actual, FloatLiteralType):
+        return is_float64_type(expected) or is_float32_type(expected)
+    if actual == expected:
+        return True
+    if is_fixed_int_type(actual):
+        if is_fixed_int_type(expected):
+            return _is_safe_widening(actual, expected)
+        if is_big_int_type(expected) or is_float64_type(expected) or is_float32_type(expected):
+            return True
+    if is_big_int_type(actual):
+        if is_float64_type(expected) or is_float32_type(expected):
+            return True
+    if is_float32_type(actual) and is_float64_type(expected):
+        return True
+    return False
+
+
 def _deref_codegen(e: str, actual: TpyType, _expected: TpyType, _ctx: CoercionContext) -> str:
     if isinstance(actual, PtrType):
         return f"::tpy::deref_check({e})"

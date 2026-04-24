@@ -1,0 +1,1 @@
+main.py:9: error: bytes() cannot convert PendingList[Int64, 2]#0
