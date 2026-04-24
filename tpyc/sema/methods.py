@@ -25,7 +25,7 @@ from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
 from ..diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
 from ..type_def_registry import is_list, is_fstr_type
-from .overloads import resolve_overload
+from .overloads import resolve_overload, OverloadAmbiguityError
 from .calls import (
     arity_error_msg, resolve_kwargs, validate_generic_defaults,
     validate_type_param_bounds, prefer_strview_for_literals,
@@ -382,15 +382,26 @@ class MethodAnalyzer:
                 for m in overloads
             ]
             enriched_types = _enrich_literal_types(arg_types, expr.args, resolved_overloads)
-            resolved = resolve_overload(
-                resolved_overloads, enriched_types,
-                protocol_checker=self.protocols.type_conforms_to_protocol,
-                deref_checker=self.type_ops.get_deref_coercion_target,
-                default_int_type=self.ctx.default_int_type,
-                subclass_checker=self.ctx.registry.is_subclass_of,
-                is_readonly_receiver=is_readonly_receiver,
-                is_consuming_receiver=is_consuming_receiver,
-            )
+            try:
+                resolved = resolve_overload(
+                    resolved_overloads, enriched_types,
+                    protocol_checker=self.protocols.type_conforms_to_protocol,
+                    protocol_classifier=self.protocols.classify_protocol_conformance,
+                    deref_checker=self.type_ops.get_deref_coercion_target,
+                    default_int_type=self.ctx.default_int_type,
+                    subclass_checker=self.ctx.registry.is_subclass_of,
+                    is_readonly_receiver=is_readonly_receiver,
+                    is_consuming_receiver=is_consuming_receiver,
+                    type_ops=self.type_ops,
+                )
+            except OverloadAmbiguityError as e:
+                sigs = "; ".join(
+                    f"{c.name}({', '.join(str(p.type) for p in c.params)})"
+                    for c in e.candidates
+                )
+                raise self.ctx.error(
+                    f"Ambiguous overload for '{expr.method}': "
+                    f"multiple candidates match equally: {sigs}", expr)
             if resolved is None:
                 arg_strs = ", ".join(str(t) for t in arg_types)
                 raise self.ctx.error(

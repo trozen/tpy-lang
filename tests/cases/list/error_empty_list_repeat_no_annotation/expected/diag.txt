@@ -1,1 +1,1 @@
-main.py:2: error: Empty array literal requires explicit type annotation
+main.py:2: error: Cannot infer element type for list 'x'; add a type annotation (e.g., x: list[T] = []) or use the list so the type can be inferred

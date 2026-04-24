@@ -183,14 +183,117 @@ chose not to support that combination.
 
 ### Call resolution
 
-At call sites, the compiler resolves against **stub signatures** (not the implementation).
-The existing two-pass overload resolution engine (`sema/overloads.py`) handles this.
+At call sites the compiler resolves against **stub signatures** (not the
+implementation). Resolution runs in two passes in `sema/overloads.py`;
+declaration order of the stubs does not affect the winner.
 
 ```python
 d = Dog("Rex")
 result = describe(d)  # resolves to stub 1: describe(Dog) -> str
 # result type: str (not str | Int32)
 ```
+
+#### First pass: strict tier-ranked matching
+
+Each candidate overload classifies every argument into a `(tier, widening_cost)`
+pair. Candidates with any argument that fails to classify are rejected. The
+survivors are ranked by the score vector `(aggregate tier counts, total
+widening cost)` and the lowest-scoring candidate wins. A unique winner in
+this pass skips pass two entirely.
+
+**Specificity tiers** (`MatchTier` in `sema/overloads.py`, strongest first --
+lower numeric value beats higher):
+
+| # | Tier | Matches |
+|---|------|---------|
+| 1 | `EXACT_CONCRETE` | `arg == param` after stripping `Readonly` / `Own` / `Ref` / `Optional`; also `IntLiteral` -> fixed-int in range, `None` -> `Void`, `Callable` -> `Fn`, pending views -> resolved views. |
+| 2 | `EXACT_GENERIC_SHAPE` | Generic param with concrete outer container and `TypeParamRef` inside: `list[T]` matching `list[Int32]`, `Ptr[T]`, `tuple[T, T]`, etc. The outer shape pins the match before `T` is substituted. |
+| 3 | `PROTOCOL_EXPLICIT` | Protocol conformance via declared `extends` / `implemented_protocols` / protocol-to-protocol inheritance, plus compiler-intrinsic short-circuits: `GenExpr` / `CopyIter` / `OwnIter` satisfying `Iterable`; `Enum` satisfying `Hashable` / `Comparable` / `Equatable`; `Tuple` satisfying `Hashable`; `ValueType` / `Default` marker protocols; `Stringable` (satisfied by any type with `__str__` **or** `__repr__`, mirroring Python's `object.__str__ -> __repr__` fallback). |
+| 4 | `PROTOCOL_STRUCTURAL` | Protocol conformance proved only by walking required methods/fields. |
+| 5 | `GENERIC_PROTOCOL_EXPLICIT` | Generic overload whose protocol param contains `TypeParamRef`, matching via an explicit (tier 3) conformance path after inference. |
+| 6 | `GENERIC_PROTOCOL_STRUCTURAL` | Same, but structural conformance. |
+| 7 | `GENERIC_WILDCARD` | Bare `TypeParamRef` param (possibly wrapped in `Ref` / `Readonly`). Accepts any argument. |
+
+**Ranking rule.** The primary sort key is the negated per-tier count vector
+(more high-tier matches first, lexicographically). The secondary key is the
+sum of per-argument widening costs.
+
+**Widening cost** (`_scalar_widening_cost` / `_type_args_widening_cost`) is 0
+for exact matches and positive when an argument is widening to a param type
+at the same tier:
+
+- Fixed-int -> wider fixed-int: `max(1, (target_bits - source_bits) / 8)` plus
+  a sign-flip penalty if the signedness differs.
+- Fixed-int -> `BigInt`: 8.
+- Fixed-int -> float: 16.
+- Float -> wider float: 1.
+- `IntLiteralType` and `UnknownElementType` (empty-list element) bias toward
+  `default_int_type`: the cost is computed as if the source were
+  `default_int_type`. This is how `sum([])` resolves to the `Iterable[Int32]`
+  overload at cost 0 under the default config, matching CPython's
+  `sum([]) == 0` (int).
+- For protocol params, cost is aggregated over matched type-arg positions
+  (e.g. `list[Int32]` vs `Iterable[Int64]` scores 4 on the single element
+  slot). Non-parameterised containers fall back to their `get_element_type()`,
+  so `bytearray` vs `Iterable[UInt8]` scores 0 and vs `Iterable[Int32]` scores
+  positive.
+
+**Concrete-over-generic invariant.** Because generic tiers (2, 5, 6, 7) all
+rank weaker than their concrete counterparts (1, 3, 4), concrete overloads
+always beat equally-matching generics. Stub ordering cannot change this.
+
+**Ambiguity.** When the top candidates tie on both score components AND have
+distinct signatures, the compiler refuses to pick arbitrarily. Declaration
+order is **not** used as a tiebreaker. The call site reports:
+
+```
+Ambiguous overload for 'describe': multiple candidates match equally:
+  describe(Greeter); describe(Farewell)
+```
+
+Signatures that collapse to identical param-type tuples (e.g. a substituted
+generic and its concrete twin in the unified pool) are deduped before the
+ambiguity check -- picking either produces identical codegen.
+
+#### Second pass: coercion fallback
+
+Runs only when the first pass produced zero candidates. Accepts implicit
+coercions (narrowing conversions, `Callable` -> `Fn`, `Deref[T]`, subclass
+upcasts) and ranks by count of non-coercion matches first, then by number of
+narrowing conversions, with an `IntLiteralType` penalty derived from
+`default_int_type` to break ties deterministically.
+
+#### Worked example: `sum([])`
+
+1. Arg type is `PendingListType(UnknownElement, size=0)`.
+2. Candidates after pre-substitution: `sum(Iterable[Int32|Int64|int|float|Float32])`.
+   The generic `sum[T: AnyFixedInt](Iterable[T])` fails inference (no element
+   info) and is dropped.
+3. Each candidate classifies as `PROTOCOL_EXPLICIT` (the empty
+   `PendingListType` shortcut in `protocols.py::classify_protocol_conformance`
+   returns `EXPLICIT` for any single-type-arg protocol).
+4. `_type_args_widening_cost` extracts the element via `get_element_type()`
+   (returns `UnknownElement`), then `_scalar_widening_cost(UnknownElement, <elem>,
+   default_int=Int32)` gives 0 for `Int32`, 4 for `Int64`, 8 for `int`
+   (`BigInt`), 16 for `float` / `Float32`.
+5. Score vectors: all tie on tier counts (one `PROTOCOL_EXPLICIT` each) and
+   differ only on total cost. The `Int32` candidate wins at cost 0.
+6. Codegen emits `tpy::builtin_sum<int32_t>(std::vector<int32_t>{})`.
+
+The same mechanism makes `sum([1, 2, 3])` resolve to `Int32` via the
+`IntLiteralType` branch of `_scalar_widening_cost`.
+
+#### Testing
+
+- Unit tests: `tpyc/test_overloads.py` pins `MatchTier` ordering, the cost
+  model, `_score`, and the `_classify_strict_match` contract.
+- Integration tests for the key invariants: `tests/cases/calls/overload_concrete_beats_protocol`
+  (concrete wins regardless of stub order), `tests/cases/calls/error_overload_ambiguous`
+  (ambiguity -> diagnostic), `tests/cases/calls/overload_iterable_empty_literal`
+  and `tests/cases/builtins/sum_basic` (empty-list default-int biasing),
+  `tests/cases/bytes/from_iterable` (non-parameterised container element-type
+  fallback for `bytearray` -> `Iterable[UInt8]`),
+  `tests/cases/str/str_repr_only` (Stringable broadening).
 
 ## Codegen: Dead Branch Elimination
 

@@ -302,6 +302,19 @@ class _ModuleInitSentinel:
 MODULE_INIT_CONTEXT = _ModuleInitSentinel()
 
 
+def is_body_like_scope(current_function: 'TpyFunction | _ModuleInitSentinel | None') -> bool:
+    """True when the current context supports pending-type resolution.
+
+    Real function bodies and ``MODULE_INIT_CONTEXT`` both have a
+    ``FunctionTrackingState`` with ``pending_resolutions`` plumbed through
+    and ``deduction.resolve_all()`` runs at the end of both (see
+    ``analyzer._analyze_top_level``). Class bodies, registration-time
+    contexts, and no-context states do not, so empty literals and similar
+    late-typed constructs must reject there.
+    """
+    return isinstance(current_function, TpyFunction) or current_function is MODULE_INIT_CONTEXT
+
+
 @dataclass
 class RecordContext:
     """State for the record currently being analyzed (type params, bounds)."""

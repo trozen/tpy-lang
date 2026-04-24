@@ -4,22 +4,19 @@
 namespace tpyapp::main {
 
 
+// @overload
+// def describe(x: Dog) -> str:  # tpyc: ok
+std::string describe(Dog& x) {
+    // return "dog: " + x.name()
+    return (::tpy::str_concat("dog: ", x.name()));
+}
+
 // def main() -> None:
 void main() {
-    // t: Tag = Tag("hello")
-    Tag t = Tag("hello");
-    // print(repr(t))
-    std::cout << ::tpy::__repr__(t) << "\n";
-    // print(f"{t!r}")
-    std::cout << std::format("{}", ::tpy::__repr__(t)) << "\n";
-    // print(t)
-    std::cout << t << "\n";
-    // print(str(t))
-    std::cout << std::string(::tpy::__str__(t)) << "\n";
-    // print(f"{t}")
-    std::cout << std::format("{}", ::tpy::__str__(t)) << "\n";
-    // print(f"{t!s}")
-    std::cout << std::format("{}", ::tpy::__str__(t)) << "\n";
+    // d = Dog()
+    Dog d = Dog();
+    // print(describe(d))
+    std::cout << describe(d) << "\n";
 }
 
 void __tpy_init() {

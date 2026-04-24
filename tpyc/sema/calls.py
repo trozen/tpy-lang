@@ -35,7 +35,7 @@ from ..namespace import BindingKind
 from ..coercions import CoercionContext, VALUE_TO_PTR
 from .context import PENDING_CONTAINER_TYPES, addr_taken_roots
 from ..diagnostics import SemanticError
-from .overloads import type_matches_numeric, resolve_overload
+from .overloads import type_matches_numeric, resolve_overload, OverloadAmbiguityError
 from .statements import _root_name_of_expr
 from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo, _is_static_str
 from ..macro_loader import expand_call_macro
@@ -2158,11 +2158,16 @@ class CallAnalyzer:
                 return ret
 
         # Fallback: try protocol-aware overload resolution (e.g. bool(obj) via Truthy)
-        matched = resolve_overload(
-            init_overloads, arg_types,
-            protocol_checker=self.protocols.type_conforms_to_protocol,
-            subclass_checker=self.ctx.registry.is_subclass_of,
-        )
+        try:
+            matched = resolve_overload(
+                init_overloads, arg_types,
+                protocol_checker=self.protocols.type_conforms_to_protocol,
+                protocol_classifier=self.protocols.classify_protocol_conformance,
+                subclass_checker=self.ctx.registry.is_subclass_of,
+                type_ops=self.type_ops,
+            )
+        except OverloadAmbiguityError as e:
+            raise self._ambiguous_overload_error(expr, init_overloads[0].name, e)
         if matched:
             ret = record_type or matched.return_type
             expr.resolved_function_info = _resolve_cpp_template_type_params(matched, result_type=ret)
@@ -2425,10 +2430,15 @@ class CallAnalyzer:
 
         # Unified resolution: score all candidates (non-generic + resolved generics)
         enriched_types = _enrich_literal_types(arg_types, expr.args, candidates)
-        matched = resolve_overload(candidates, enriched_types, protocol_checker,
-                                   deref_checker=self.type_ops.get_deref_coercion_target,
-                                   default_int_type=self.ctx.default_int_type,
-                                   subclass_checker=self.ctx.registry.is_subclass_of)
+        try:
+            matched = resolve_overload(candidates, enriched_types, protocol_checker,
+                                       deref_checker=self.type_ops.get_deref_coercion_target,
+                                       default_int_type=self.ctx.default_int_type,
+                                       subclass_checker=self.ctx.registry.is_subclass_of,
+                                       protocol_classifier=self.protocols.classify_protocol_conformance,
+                                       type_ops=self.type_ops)
+        except OverloadAmbiguityError as e:
+            raise self._ambiguous_overload_error(expr, overloads[0].name, e)
         if matched is not None:
             expr.resolved_function_info = matched
             self._validate_lvalue_params(expr)
@@ -2587,12 +2597,17 @@ class CallAnalyzer:
                     candidates.append(func)
 
             enriched_types = _enrich_literal_types(arg_types, expr.args, candidates)
-            matched = resolve_overload(
-                candidates, enriched_types,
-                protocol_checker=self.protocols.type_conforms_to_protocol,
-                default_int_type=self.ctx.default_int_type,
-                subclass_checker=self.ctx.registry.is_subclass_of,
-            )
+            try:
+                matched = resolve_overload(
+                    candidates, enriched_types,
+                    protocol_checker=self.protocols.type_conforms_to_protocol,
+                    protocol_classifier=self.protocols.classify_protocol_conformance,
+                    default_int_type=self.ctx.default_int_type,
+                    subclass_checker=self.ctx.registry.is_subclass_of,
+                    type_ops=self.type_ops,
+                )
+            except OverloadAmbiguityError as e:
+                raise self._ambiguous_overload_error(expr, expr.func_name, e)
             if matched is not None:
                 original = generic_originals.get(id(matched))
                 if original is not None:
@@ -2600,12 +2615,23 @@ class CallAnalyzer:
                 return self._analyze_single_function_call(expr, matched)
 
             # No match in unified pool. Fall back to original resolution
-            # (structural matching for generics) to preserve error messages.
-            matched = resolve_overload(
-                func_infos, enriched_types,
-                protocol_checker=self.protocols.type_conforms_to_protocol,
-                subclass_checker=self.ctx.registry.is_subclass_of,
-            )
+            # (structural matching for generics) to preserve error messages:
+            # a structural hit on the un-resolved generic overload lets
+            # _analyze_single_function_call below raise the targeted diagnostic
+            # (e.g. "unsafe_cast() requires a type argument"). Intentionally
+            # does not pass type_ops (inference would reject the same
+            # overload) or default_int_type (the per-literal cost penalty only
+            # affects ranking among multiple matches, which this fallback
+            # treats as first-match-wins anyway).
+            try:
+                matched = resolve_overload(
+                    func_infos, enriched_types,
+                    protocol_checker=self.protocols.type_conforms_to_protocol,
+                    protocol_classifier=self.protocols.classify_protocol_conformance,
+                    subclass_checker=self.ctx.registry.is_subclass_of,
+                )
+            except OverloadAmbiguityError as e:
+                raise self._ambiguous_overload_error(expr, expr.func_name, e)
             if matched is not None:
                 return self._analyze_single_function_call(expr, matched)
             for func in func_infos:
@@ -2618,6 +2644,24 @@ class CallAnalyzer:
             raise self.ctx.error(
                 f"No matching @overload for {expr.func_name}({arg_type_strs})", expr)
         return self._analyze_single_function_call(expr, func_infos[0])
+
+    def _ambiguous_overload_error(
+        self, expr: TpyCall, func_name: str, err: OverloadAmbiguityError,
+    ) -> SemanticError:
+        """Build a located diagnostic from an ``OverloadAmbiguityError``.
+
+        Turns the exception-carried tied candidates into an actionable message
+        anchored at the call site; callers ``raise`` the returned error.
+        """
+        sigs = "; ".join(
+            f"{c.name}({', '.join(str(p.type) for p in c.params)})"
+            for c in err.candidates
+        )
+        return self.ctx.error(
+            f"Ambiguous overload for '{func_name}': "
+            f"multiple candidates match equally: {sigs}",
+            expr,
+        )
 
     def _unsafe_cast_diagnostics(self, expr: TpyCall, arg_type: TpyType) -> None:
         """Targeted diagnostics for unsafe_cast when overload resolution fails."""

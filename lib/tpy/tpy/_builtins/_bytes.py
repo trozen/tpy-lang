@@ -16,10 +16,6 @@ class bytes(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @overload
     @native("tpy::bytes_copy", function=True)
     def __init__(self, x: bytes) -> None: ...
-    # Concrete bytes/bytearray/BytesView overloads must precede Iterable[UInt8]
-    # below: bytearray conforms to Iterable[UInt8] via extends, and first-pass
-    # overload resolution is first-match-wins -- the concrete overloads need to
-    # be picked before the generic construct<> path to stay on bytes_copy.
     @overload
     @native("tpy::bytes_copy", function=True)
     def __init__(self, x: bytearray) -> None: ...

@@ -5,6 +5,7 @@ Protocol conformance checking and method/field lookups.
 """
 
 from __future__ import annotations
+from enum import Enum
 from typing import TYPE_CHECKING
 
 import re
@@ -54,6 +55,24 @@ def record_extends_any(actual: TpyType, protocol_name: str, registry: 'TypeRegis
     return False
 
 
+class ProtocolConformanceKind(Enum):
+    """How a type conforms to a protocol.
+
+    EXPLICIT: declared ``extends`` / ``implemented_protocols``, protocol-to-protocol
+    inheritance, or a compiler-intrinsic short-circuit (GenExpr/CopyIter/OwnIter
+    satisfying Iterable, Enum satisfying Hashable/Comparable/Equatable,
+    ValueType, Default, etc.). All of these represent intentional conformance
+    rather than an accidental method-set match.
+
+    STRUCTURAL: conformance proved only by walking the protocol's required
+    methods/fields and checking that ``actual`` has a matching signature for
+    each. Used as overload-resolution specificity signal -- explicit beats
+    structural when both match.
+    """
+    EXPLICIT = "explicit"
+    STRUCTURAL = "structural"
+
+
 class ProtocolChecker:
     """Protocol conformance checking and method/field lookups."""
 
@@ -78,6 +97,17 @@ class ProtocolChecker:
     def type_conforms_to_protocol(self, actual: TpyType, protocol: NominalType) -> bool:
         """Check if actual type conforms to a protocol.
 
+        Thin bool wrapper over ``classify_protocol_conformance``; see there for
+        the two conformance mechanisms (explicit / structural) and how generic
+        protocols and Self are handled.
+        """
+        return self.classify_protocol_conformance(actual, protocol) is not None
+
+    def classify_protocol_conformance(
+        self, actual: TpyType, protocol: NominalType,
+    ) -> ProtocolConformanceKind | None:
+        """Check if actual type conforms to a protocol and return how.
+
         Two conformance mechanisms work in parallel:
         1. Explicit extends: type declares extends=["Protocol[T]"]
         2. Structural: type has all methods required by the protocol
@@ -94,18 +124,24 @@ class ProtocolChecker:
         - Self is substituted with the actual type being checked
         - e.g., checking Int32 against Addable with __add__(Self) -> Self
           expects __add__(Int32) -> Int32
+
+        Returns EXPLICIT for compiler-intrinsic matches (e.g. Enum<->Hashable,
+        GenExpr<->Iterable, Tuple<->Hashable, bounded-TypeParamRef shortcuts)
+        and for declared ``extends`` / protocol-to-protocol inheritance.
+        Returns STRUCTURAL only when the method/field walk at the tail is the
+        sole path that succeeded. Returns None when actual does not conform.
         """
         # Unwrap ownership/const/ref wrappers -- readonly[T], Own[T], Ref[T]
         # conform to any protocol that T conforms to
         if isinstance(actual, (ReadonlyType, OwnType, RefType)):
-            return self.type_conforms_to_protocol(actual.wrapped, protocol)
+            return self.classify_protocol_conformance(actual.wrapped, protocol)
 
         # IntLiteralType: check if default int type conforms
         if isinstance(actual, IntLiteralType):
-            return self.type_conforms_to_protocol(BIGINT, protocol)
+            return self.classify_protocol_conformance(BIGINT, protocol)
         # FloatLiteralType: check if float64 conforms
         if isinstance(actual, FloatLiteralType):
-            return self.type_conforms_to_protocol(FLOAT, protocol)
+            return self.classify_protocol_conformance(FLOAT, protocol)
 
         # PendingListType: delegate to list[T] (resolves to list or Array, both conform).
         # Empty literal (UNKNOWN_ELEMENT) with a single-type-arg protocol trivially
@@ -117,16 +153,18 @@ class ProtocolChecker:
         if isinstance(actual, PendingListType):
             if (isinstance(actual.element_type, UnknownElementType)
                     and protocol.type_args and len(protocol.type_args) == 1):
-                return True
-            return self.type_conforms_to_protocol(make_list(actual.element_type), protocol)
+                return ProtocolConformanceKind.EXPLICIT
+            return self.classify_protocol_conformance(make_list(actual.element_type), protocol)
 
         # GenExprType: satisfies Iterable[T] and Iterator[T]
         if isinstance(actual, GenExprType):
             if protocol.qualified_name() in (qnames.ITERABLE, qnames.ITERATOR):
                 if protocol.type_args and len(protocol.type_args) == 1:
-                    return self.type_ops.types_match_for_inference(actual.element_type, protocol.type_args[0])
-                return True
-            return False
+                    if self.type_ops.types_match_for_inference(actual.element_type, protocol.type_args[0]):
+                        return ProtocolConformanceKind.EXPLICIT
+                    return None
+                return ProtocolConformanceKind.EXPLICIT
+            return None
 
         # CopyIter / OwnIter: satisfies Iterable[T] only (not Iterator).
         # Both have C++ begin/end but are not exposed as Iterator to prevent
@@ -134,65 +172,90 @@ class ProtocolChecker:
         if is_copy_iter(actual) or is_own_iter(actual):
             if protocol.qualified_name() == qnames.ITERABLE:
                 if protocol.type_args and len(protocol.type_args) == 1:
-                    return self.type_ops.types_match_for_inference(actual.type_args[0], protocol.type_args[0])
-                return True
-            return False
+                    if self.type_ops.types_match_for_inference(actual.type_args[0], protocol.type_args[0]):
+                        return ProtocolConformanceKind.EXPLICIT
+                    return None
+                return ProtocolConformanceKind.EXPLICIT
+            return None
 
         # Enum/IntEnum: hashable, comparable, and equatable at C++ level
         if is_enum_type(actual):
             if protocol.qualified_name() in (qnames.HASHABLE, qnames.COMPARABLE, qnames.EQUATABLE):
-                return True
+                return ProtocolConformanceKind.EXPLICIT
 
-        # Tuple: hashable if all element types are hashable
+        # Tuple: hashable if all element types are hashable. Tuple<->Hashable
+        # is compiler-intrinsic; downgrade to STRUCTURAL if any element only
+        # structurally conforms, so the weakest link shows through in
+        # specificity ranking.
         if isinstance(actual, TupleType):
             if protocol.qualified_name() == qnames.HASHABLE:
-                return all(
-                    self.type_conforms_to_protocol(et, protocol)
-                    for et in actual.element_types
-                )
+                kind = ProtocolConformanceKind.EXPLICIT
+                for et in actual.element_types:
+                    elem_kind = self.classify_protocol_conformance(et, protocol)
+                    if elem_kind is None:
+                        return None
+                    if elem_kind is ProtocolConformanceKind.STRUCTURAL:
+                        kind = ProtocolConformanceKind.STRUCTURAL
+                return kind
 
         # Bounded type parameter: T: Sized conforms to Sized (and any protocol its bound conforms to)
         if isinstance(actual, TypeParamRef):
             if protocol.qualified_name() in (qnames.STRINGABLE, qnames.REPRESENTABLE):
-                return True
+                return ProtocolConformanceKind.EXPLICIT
             bound = self.type_ops.get_type_param_bound(actual.name)
             if bound is not None and is_protocol_type(bound):
-                return self.type_conforms_to_protocol(bound, protocol)
+                return self.classify_protocol_conformance(bound, protocol)
+
+        # Stringable: Python semantics dictate every type has __str__ via the
+        # object.__str__ default that falls back to __repr__. The C++ runtime
+        # (tpy::__str__ in runtime/cpp/include/tpy/dunder.hpp) implements this
+        # chain, so sema admits any type with either __str__ or __repr__ as
+        # conforming. This collapses the historical str.__init__(Stringable)
+        # vs str.__init__(Representable) overload pair into a single overload
+        # whose codegen template handles both branches via the runtime.
+        if protocol.qualified_name() == qnames.STRINGABLE:
+            record_info = self.ctx.registry.get_record_for_type(actual)
+            if record_info is not None:
+                if (record_info.get_method_overloads("__str__")
+                        or record_info.get_method_overloads("__repr__")):
+                    return ProtocolConformanceKind.EXPLICIT
 
         # Unified lookup - all protocols (builtin and user) are in the registry
         protocol_info = protocol_info_of(protocol)
         if protocol_info is None:
-            return False
+            return None
 
         # Protocol-to-protocol: check if actual inherits from protocol (or is same protocol)
         if is_protocol_type(actual):
             if actual.name == protocol.name:
-                return actual.type_args == protocol.type_args
+                return (ProtocolConformanceKind.EXPLICIT
+                        if actual.type_args == protocol.type_args else None)
             # Check if actual protocol inherits from the required protocol
             if self.protocol_inherits_from(actual.name, protocol.name):
-                return True
+                return ProtocolConformanceKind.EXPLICIT
 
         # Marker protocols require explicit extends declaration
         if protocol_info.is_marker:
             # ValueType: any type with value semantics conforms implicitly
             if protocol.qualified_name() == "tpy.ValueType" and actual.is_value_type():
-                return True
+                return ProtocolConformanceKind.EXPLICIT
             # Default: types that support default construction
             if protocol.qualified_name() == "tpy.Default" and self._is_default_constructible(actual):
-                return True
-            return self._check_record_extends(actual, protocol)
+                return ProtocolConformanceKind.EXPLICIT
+            return (ProtocolConformanceKind.EXPLICIT
+                    if self._check_record_extends(actual, protocol) else None)
 
         # For builtin types, extends_protocols strings are maintained by the compiler
         # and are always consistent with the actual C++ implementation. Treat as
         # authoritative to avoid re-checking methods we know exist.
         if self._check_builtin_extends(actual, protocol):
-            return True
+            return ProtocolConformanceKind.EXPLICIT
 
         # Build type substitution map
         type_subst: dict[str, TpyType] = {"Self": actual}
         if protocol_info.type_params and protocol.type_args:
             if len(protocol_info.type_params) != len(protocol.type_args):
-                return False
+                return None
             type_subst.update(dict(zip(protocol_info.type_params, protocol.type_args)))
 
         # Collect all required methods (including inherited)
@@ -209,16 +272,16 @@ class ProtocolChecker:
                 actual, method_sig.name, expected_params, expected_return,
                 require_readonly=method_readonly,
             ):
-                return False
+                return None
 
         # Collect all required fields (including inherited)
         all_fields = self.collect_protocol_fields(protocol.name)
         for field_name, field_type in all_fields:
             expected_type = self.type_ops.substitute_types(field_type, type_subst)
             if not self.type_has_field_with_type(actual, field_name, expected_type):
-                return False
+                return None
 
-        return True
+        return ProtocolConformanceKind.STRUCTURAL
 
     def _check_record_extends(self, actual: TpyType, protocol: NominalType) -> bool:
         """Check if a type extends a protocol via record-level declarations.

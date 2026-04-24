@@ -53,6 +53,7 @@ from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
+from .context import is_body_like_scope
 from .narrowing import NarrowingTracker
 from .numeric_lattice import widen_numeric_types
 from .list_literals import IterableHelper
@@ -1609,7 +1610,7 @@ class ExpressionAnalyzer:
                 annotation is list[Int32 | None].
         """
         if not expr.elements:
-            if not isinstance(self.ctx.func.current_function, TpyFunction):
+            if not is_body_like_scope(self.ctx.func.current_function):
                 raise self.ctx.error("Empty array literal requires explicit type annotation", expr)
             # Empty list with no annotation -- create PendingListType with unknown
             # element type. The element type will be inferred from subsequent usage
@@ -1963,7 +1964,7 @@ class ExpressionAnalyzer:
     ) -> TpyType:
         """Analyze a dict literal {key: value, ...}"""
         if not expr.keys:
-            if not isinstance(self.ctx.func.current_function, TpyFunction):
+            if not is_body_like_scope(self.ctx.func.current_function):
                 raise self.ctx.error(
                     "Empty dict literal requires explicit type annotation", expr)
             literal_id = self.ctx.literal_counter

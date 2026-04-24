@@ -15,15 +15,10 @@ void main() {
     // # Same pattern for builtin-overloads dispatch: `sum([])` routes through
     // # _analyze_builtin_function_overloads, a different call path than pick().
     // # Both paths now call _maybe_coerce_empty_list_to_protocol post-resolution.
-    // #
-    // # ORDER-DEPENDENT: empty list matches multiple `sum` overloads trivially
-    // # (Iterable[int], Iterable[float]); resolve_overload picks the first
-    // # listed. It happens to be Iterable[int] in lib/tpy/tpy/_builtins/_funcs.py,
-    // # so `sum([]) == 0` (int), matching CPython. If that stub is reordered
-    // # (float first), `sum([])` would silently return 0.0 instead -- a
-    // # CPython-compat regression. See TODO.md "Generic type param inference
-    // # rejects empty iterable literals" for the principled long-term fix
-    // # (default T via an AnyInt/Numeric lattice rather than stub ordering).
+    // # The empty-list element type defaults to the configured default_int_type
+    // # (Int32) via the overload-ranking cost model, so sum([]) resolves to the
+    // # Int32 overload and returns 0 -- matching CPython. This is now principled
+    // # (cost-based), not declaration-order-dependent.
     // print(sum([]))
     std::cout << ::tpy::builtin_sum<int32_t>(std::vector<int32_t>{}) << "\n";
 }

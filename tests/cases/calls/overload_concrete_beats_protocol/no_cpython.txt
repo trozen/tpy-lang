@@ -1,0 +1,3 @@
+CPython's @overload dispatch shim needs @runtime_checkable on Protocol
+parents, but tpyc rejects the decorator -- mutually exclusive. The tier
+ranker behavior this test guards is tpyc-specific anyway.
