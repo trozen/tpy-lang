@@ -1116,6 +1116,19 @@ class TypeCompatibility:
                 return False
         return True
 
+    def _strview_constructor_arg(self, expr: TpyExpr) -> TpyExpr | None:
+        """If expr is a ``StrView(x)`` constructor call, return x.
+
+        StrView borrows from its source, so provenance/dangling predicates
+        should recurse into the wrapped argument rather than treating the
+        constructor call as an opaque value.
+        """
+        if not isinstance(expr, TpyCall) or not expr.args:
+            return None
+        if not isinstance(expr.func, TpyName) or expr.func_name != "StrView":
+            return None
+        return expr.args[0]
+
     def is_param_derived_expr(self, expr: TpyExpr) -> bool:
         """Check if an expression's root storage derives from parameters or globals."""
         if isinstance(expr, TpyCoerce):
@@ -1140,9 +1153,15 @@ class TypeCompatibility:
             return self.is_param_derived_expr(expr.obj)
         if isinstance(expr, TpySubscript):
             return self.is_param_derived_expr(expr.obj)
+        if isinstance(expr, TpyIfExpr):
+            return (self.is_param_derived_expr(expr.then_expr)
+                    and self.is_param_derived_expr(expr.else_expr))
         # Pointer constructors derive provenance from their argument (address-taking)
         if isinstance(expr, TpyCall) and expr.call_type is not None and expr.call_type.is_pointer() and expr.args:
             return self.is_param_derived_expr(expr.args[0])
+        sv_arg = self._strview_constructor_arg(expr)
+        if sv_arg is not None:
+            return self.is_param_derived_expr(sv_arg)
         # Function/method calls with return_borrows_from: result is param-derived if
         # the borrowed-from argument(s) are themselves param-derived.
         # None = unanalyzed (skip); frozenset() = returns new value (loop body never
@@ -1222,6 +1241,10 @@ class TypeCompatibility:
                 if not expr.args:
                     return False  # Ptr[T]() -> nullptr, always safe
                 return self.is_dangling_return(expr.args[0])
+
+            sv_arg = self._strview_constructor_arg(expr)
+            if sv_arg is not None:
+                return self.is_dangling_return(sv_arg)
 
             # @value_ptr_coercion functions (e.g. take_ptr): result borrows
             # from the arg value, so dangling depends on the arg.
@@ -1346,11 +1369,9 @@ class TypeCompatibility:
         # a StrView referencing a local would dangle after the function returns.
         if is_str_view_type(return_type):
             inner = expr.expr if isinstance(expr, TpyCoerce) else expr
-            # StrView(x) constructor: check the wrapped argument
-            if (isinstance(inner, TpyCall) and inner.args and isinstance(inner.func, TpyName)
-                    and (inner.func_name == "StrView"
-                         or is_str_view_type(getattr(inner, 'call_type', None)))):
-                if self.is_dangling_return(inner.args[0]):
+            sv_arg = self._strview_constructor_arg(inner)
+            if sv_arg is not None:
+                if self.is_dangling_return(sv_arg):
                     raise self.ctx.error(
                         "Cannot return StrView referencing a local or temporary; "
                         "use str or String to return an owned copy",

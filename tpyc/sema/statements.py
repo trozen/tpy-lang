@@ -70,6 +70,22 @@ from ..type_def_registry import (
 )
 
 
+def _needs_provenance_tracking(t: TpyType) -> bool:
+    """Whether a local of this type participates in param-provenance / trusted-call tracking.
+
+    Non-value types are reference types and always track provenance.
+    PtrType is a value type but carries an address. StrView is a value
+    type with an interior pointer into its source storage.
+    PendingViewType covers unresolved str/bytes locals -- if they settle
+    into view semantics the tracking is required; if they settle into
+    owned (String/bytes) the extra tracking is harmless.
+    """
+    return (not t.is_value_type()
+            or isinstance(t, PtrType)
+            or is_str_view_type(t)
+            or isinstance(t, PendingViewType))
+
+
 def _is_dangling_temporary_arg(expr: TpyExpr) -> bool:
     """Check if an expression is a temporary whose storage won't survive.
 
@@ -997,9 +1013,10 @@ class StatementAnalyzer:
                         # to the for statement, but it dies when the loop ends. Use body depth
                         # so that escaping to any outer-scoped variable is caught.
                         iter_depth = inner_scope.depth
-                    # Track provenance for non-value-type loop vars from param-derived iterables
+                    # Track provenance for loop vars whose type participates in
+                    # provenance tracking, when iterating over a param-derived iterable.
                     track_loop_prov = (
-                        not unwrap_readonly(elem_type).is_value_type()
+                        _needs_provenance_tracking(unwrap_readonly(elem_type))
                         and self.compat.is_param_derived_expr(stmt.iterable)
                     )
                     if track_loop_prov:
@@ -2731,10 +2748,7 @@ class StatementAnalyzer:
                     self.ctx.func.ever_owned_locals.add(stmt.name)
                 else:
                     self.ctx.func.owned_locals.discard(stmt.name)
-        # Track provenance for non-value types and pointer types
-        # (pointers are value types but carry address provenance)
-        provenance_type = var_type
-        if stmt.init and (not provenance_type.is_value_type() or isinstance(provenance_type, PtrType)):
+        if stmt.init and _needs_provenance_tracking(var_type):
             self.init.mark_provenance(stmt.name, self.compat.is_param_derived_expr(stmt.init))
             self.init.mark_trusted_call_return(
                 stmt.name, self.compat.is_trusted_call_return_expr(stmt.init))
@@ -3297,8 +3311,7 @@ class StatementAnalyzer:
             if isinstance(stmt.value, TpyName):
                 self.ctx.mark_loop_var_mutated(stmt.value.name)
 
-        # Track provenance for non-value-type and pointer-type name targets
-        if isinstance(stmt.target, TpyName) and (not target_type.is_value_type() or isinstance(target_type, PtrType)):
+        if isinstance(stmt.target, TpyName) and _needs_provenance_tracking(target_type):
             self.init.mark_provenance(stmt.target.name, self.compat.is_param_derived_expr(stmt.value))
             self.init.mark_trusted_call_return(
                 stmt.target.name, self.compat.is_trusted_call_return_expr(stmt.value))

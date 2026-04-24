@@ -1,0 +1,1 @@
+main.py:12: error: Cannot return StrView referencing a local or temporary; use str or String to return an owned copy
