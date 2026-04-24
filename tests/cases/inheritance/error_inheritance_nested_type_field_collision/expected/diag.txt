@@ -1,0 +1,1 @@
+main.py:8: error: Class 'Container' declares both a nested type 'Kind' and a field/method 'Kind'; the generated C++ would be ambiguous -- rename one of them

@@ -1045,23 +1045,8 @@ class MethodAnalyzer:
         # `overloads` is the authoritative list of non-static candidates here.
         assert overloads and not overloads[0].is_staticmethod
 
-        # Find the concrete parent instantiation (for generic parents) by walking
-        # the current record's MRO for a record_info match.
-        parent_type: TpyType | None = None
-        for anc_type in current_rec.mro_ancestors:
-            if isinstance(anc_type, NominalType):
-                anc_info = self.ctx.registry.get_record_for_type(anc_type)
-                if anc_info is record_info:
-                    parent_type = anc_type
-                    break
-        if parent_type is None:
-            # Fallback: unparameterized nominal (non-generic ancestor).
-            parent_type = NominalType(
-                record_info.name,
-                _module_qname=record_info.qualified_name(),
-            )
-
-        type_subst = self.protocols.get_parent_type_subst(parent_type, record_info)
+        parent_type, type_subst = self.protocols.resolve_ancestor_instantiation(
+            current_rec, record_info)
 
         # Rebind to instance-method machinery via a temp TpyMethodCall with
         # obj=self and self dropped from args. _resolve_and_check_args mutates

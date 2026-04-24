@@ -9,7 +9,6 @@ from tpy import Int32, Int64, Float64, Char, StrView, readonly, error_return, Re
 
 
 class JsonError(Exception, ReturnException):
-    message: str
     pos: Int32
 
     def __init__(self, message: str = "", pos: Int32 = -1) -> None:

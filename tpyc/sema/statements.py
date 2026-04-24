@@ -173,8 +173,15 @@ def _root_name_of_expr(expr: TpyExpr) -> str | None:
 
     e.g. p.inner.v -> "p", c.items[0] -> "c", x -> "x".
     Returns None for non-name roots (calls, literals, etc.).
+
+    Unbound-self field access (BaseN.field, set by sema) reports "self"
+    since the implicit receiver is `this` -- the syntactic root name is
+    the ancestor class, but the mutation travels through self.
     """
     while isinstance(expr, (TpyFieldAccess, TpySubscript)):
+        if (isinstance(expr, TpyFieldAccess)
+                and expr.unbound_self_parent_type is not None):
+            return "self"
         expr = expr.obj
     return expr.name if isinstance(expr, TpyName) else None
 
@@ -516,6 +523,14 @@ class StatementAnalyzer:
 
     def _enforce_readonly_assignment_target(self, target: TpyExpr) -> None:
         """Reject assignments through readonly references, frozen fields, and readonly field declarations."""
+        # BaseN.field = v goes through `this`, but the syntactic receiver
+        # (BaseN) has no value type, so the obj_type branch below can't
+        # catch it -- gate on the current method's @readonly flag directly.
+        if (isinstance(target, TpyFieldAccess)
+                and target.unbound_self_parent_type is not None):
+            cur = self.ctx.func.current_function
+            if isinstance(cur, TpyFunction) and cur.is_readonly:
+                raise self.ctx.error("Cannot mutate readonly reference", target)
         if isinstance(target, (TpyFieldAccess, TpySubscript)):
             obj_type = self.ctx.get_expr_type(target.obj)
             if obj_type is not None:

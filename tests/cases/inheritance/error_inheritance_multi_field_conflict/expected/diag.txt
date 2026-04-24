@@ -1,1 +1,1 @@
-main.py:14: error: Field 'id' declared on both 'HasId' and 'HasIdStr' (ancestors of 'Combined'); merging not supported.
+main.py:17: error: Ambiguous field 'id' inherited from {HasId, HasIdStr} in 'Combined'; use 'HasId.id' or 'HasIdStr.id'

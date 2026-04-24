@@ -1,0 +1,1 @@
+main.py:13: warning: Field 'token' in 'Child' shadows inherited field from 'Parent'; use 'Parent.token' to access the ancestor's

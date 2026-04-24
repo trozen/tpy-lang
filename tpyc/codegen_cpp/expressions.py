@@ -2888,6 +2888,12 @@ class ExpressionGenerator:
         if expr.property_getter_call is not None:
             return self._gen_method_call(expr.property_getter_call)
 
+        # Explicit `this->` + base qualifier picks the specific ancestor
+        # subobject in non-virtual MI; without it, `field` would be ambiguous.
+        if expr.unbound_self_parent_type is not None:
+            parent_cpp = expr.unbound_self_parent_type.to_cpp()
+            return f"this->{parent_cpp}::{cpp_field}"
+
         # Check for module variable access (e.g., sys.argv) and enum member access
         if isinstance(expr.obj, TpyName):
             if self.ctx.current_ns:

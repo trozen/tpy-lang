@@ -49,7 +49,7 @@ from ..type_def_registry import (
     is_enum_type, is_int_enum_type, enum_info_of,
     find_factory_by_simple_name, protocol_info_of,
 )
-from ..namespace import BindingKind
+from ..namespace import BindingKind, NameBinding
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
@@ -1367,6 +1367,22 @@ class ExpressionAnalyzer:
             record = self.ctx.registry.get_record_for_type(typ)
             if not record:
                 return None
+            # Multi-base same-name ambiguity: when the child doesn't declare
+            # the field itself and more than one direct-parent branch reaches
+            # it, unqualified access could silently pick the first hit --
+            # reject instead so the user disambiguates via `BaseN.field`.
+            child_owns_field = any(f.name == expr.field for f in record.fields)
+            if not child_owns_field and len(record.parents) > 1:
+                branches = self.protocols.find_field_parent_branches(record, expr.field)
+                if len(branches) > 1:
+                    names = ", ".join(branches)
+                    first, second = branches[0], branches[1]
+                    raise self.ctx.error(
+                        f"Ambiguous field '{expr.field}' inherited from {{{names}}} "
+                        f"in '{record.name}'; use '{first}.{expr.field}' "
+                        f"or '{second}.{expr.field}'",
+                        expr,
+                    )
             type_subst = self.type_ops.build_type_substitution(typ)
             field_info = self.protocols.lookup_record_field(record, expr.field)
             if field_info:
@@ -1446,6 +1462,77 @@ class ExpressionAnalyzer:
                         return (dotted, NominalType(dotted))
         return None
 
+    def _try_unbound_self_field_access(
+        self, expr: TpyFieldAccess, binding: NameBinding,
+    ) -> TpyType | None:
+        """Handle `BaseN.field` accessing an ancestor subobject's field.
+
+        Returns the resolved field type, or None when the access is not an
+        unbound-self form (not inside an instance method, or BaseN doesn't
+        resolve to a known record) so the caller can fall through to the
+        regular field-access path.
+        """
+        assert isinstance(expr.obj, TpyName)
+        current_rec_parse = self.ctx.record_ctx.record
+        current_fn = self.ctx.func.current_function
+        if (current_rec_parse is None
+                or current_fn is None
+                or not isinstance(current_fn, TpyFunction)
+                or not current_fn.is_method
+                or current_fn.is_staticmethod):
+            return None
+        current_rec = self.ctx.registry.get_record(current_rec_parse.name)
+        if current_rec is None:
+            return None
+
+        record_info = None
+        if binding.kind == BindingKind.RECORD:
+            record_info = self.ctx.registry.get_record(expr.obj.name)
+        elif binding.kind == BindingKind.IMPORTED_NAME:
+            import_info = self.ctx.imported_names.get(expr.obj.name)
+            if import_info:
+                qname = f"{import_info[0]}.{import_info[1]}"
+                record_info = self.ctx.registry.get_builtin_record(qname)
+                if record_info is None:
+                    record_info = self.ctx.registry.get_record(qname)
+        if record_info is None:
+            return None
+
+        # Walk BaseN's own MRO so `B.foo` resolves a field B inherits from
+        # its own parent, matching Python's `B.foo` semantics.
+        field_info = self.protocols.lookup_record_field(record_info, expr.field)
+        if field_info is None:
+            return None
+
+        # BaseN has the field but isn't an ancestor: the user clearly meant
+        # unbound-self, so emit a targeted error rather than letting the
+        # caller fall through to a generic "can't treat class as value".
+        if not self.ctx.registry.is_subclass_of_record(current_rec, record_info):
+            raise self.ctx.error(
+                f"'{record_info.name}' is not an ancestor of '{current_rec.name}'; "
+                f"cannot access '{record_info.name}.{expr.field}' here",
+                expr,
+            )
+
+        parent_type, type_subst = self.protocols.resolve_ancestor_instantiation(
+            current_rec, record_info)
+        field_type = field_info.type
+        if type_subst:
+            field_type = self.type_ops.substitute_type_params(field_type, type_subst)
+
+        # Readonly self propagates into non-value reads so writes through
+        # the result are rejected and references come back const.
+        if current_fn.is_readonly and not field_type.is_value_type():
+            if isinstance(field_type, PtrType) and not field_type.is_readonly:
+                field_type = field_type.as_const()
+            elif is_span(field_type) and not is_readonly_span(field_type):
+                field_type = span_as_const(field_type)
+            elif not isinstance(field_type, ReadonlyType):
+                field_type = ReadonlyType(field_type)
+
+        expr.unbound_self_parent_type = parent_type
+        return make_ref(field_type)
+
     def _analyze_field_access(self, expr: TpyFieldAccess) -> TpyType:
         """Analyze a field access."""
         # Check for module variable access (e.g., sys.argv)
@@ -1475,6 +1562,9 @@ class ExpressionAnalyzer:
                     nested = self._resolve_nested_type_access(expr.obj.name, expr.field, expr)
                     if nested is not None:
                         return nested
+                    unbound = self._try_unbound_self_field_access(expr, binding)
+                    if unbound is not None:
+                        return unbound
 
         # Handle chained nested type access: Outer.Mid.Inner.field
         if isinstance(expr.obj, TpyFieldAccess):

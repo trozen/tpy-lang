@@ -398,6 +398,7 @@ class TpyFieldAccess(TpyExpr):
     property_setter: bool = False  # Set by sema: assignment target is a property setter
     property_getter_call: 'TpyMethodCall | None' = None  # Set by sema: getter method call for codegen
     property_setter_call: 'TpyMethodCall | None' = None  # Set by sema: setter method call for codegen
+    unbound_self_parent_type: Optional[TpyType] = None  # Set by sema for BaseN.field access on an ancestor subobject
 
     def children(self) -> list[TpyExpr]:
         return [self.obj]

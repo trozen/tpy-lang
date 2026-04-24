@@ -1,0 +1,1 @@
+Uses BaseN.field -- see LANGUAGE_FEATURES.md "CPython compatibility note for BaseN.field".

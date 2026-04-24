@@ -1,5 +1,6 @@
-# Field conflict across multi-base ancestry: two independent bases declaring
-# the same name can't be merged in non-virtual C++ MI without ambiguous access.
+# Multi-base same-name fields are legal in v2.2, but unqualified `self.x`
+# is ambiguous when two ancestor branches each contribute the field.
+# The user must disambiguate via `BaseN.x`.
 from tpy import Int32
 
 
@@ -11,5 +12,6 @@ class HasIdStr:
     id: str
 
 
-class Combined(HasId, HasIdStr):  # tpyc: error(/Field 'id' declared on both 'HasId' and 'HasIdStr'/)
-    pass
+class Combined(HasId, HasIdStr):
+    def read_id(self) -> Int32:
+        return self.id  # tpyc: error(/Ambiguous field 'id' inherited from/)

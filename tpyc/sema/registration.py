@@ -911,6 +911,28 @@ class TypeRegistrar:
                     record.loc,
                 )
 
+        # C++ lookup cannot disambiguate a member and a nested type sharing
+        # a name inside the same struct: `Outer::Foo::A` would resolve to
+        # the member, not the enum, and `EnumUtil<Outer::Foo>` fails to
+        # compile. No local rename rescues this; reject the collision.
+        # Nested names are the dotted form (set by Parser._prefix_nested_names),
+        # so strip the prefix for the short-name comparison.
+        nested_type_names = {
+            nr.name.rsplit(".", 1)[-1] for nr in record.nested_records
+        }
+        nested_type_names.update(
+            ne.name.rsplit(".", 1)[-1] for ne in record.nested_enums
+        )
+        collisions = nested_type_names & user_names
+        if collisions:
+            collide = sorted(collisions)[0]
+            raise SemanticError(
+                f"Class '{record.name}' declares both a nested type '{collide}' "
+                f"and a field/method '{collide}'; the generated C++ would be "
+                f"ambiguous -- rename one of them",
+                record.loc,
+            )
+
     def validate_record_inheritance(self, record: TpyRecord) -> None:
         """Validate inheritance relationships for a record.
 
@@ -1045,11 +1067,14 @@ class TypeRegistrar:
                 record.loc,
             ) from exc
 
-        # For multi-base classes only: cross-base conflict checks.
+        # Needs MRO, so cannot run earlier.
+        self._check_field_shadowing(record, record_info)
+
         if len(record_info.parents) >= 2:
             self._check_multi_base_order(record, record_info)
-            self._check_multi_base_field_conflicts(record, record_info)
             self._check_multi_base_method_conflicts(record, record_info)
+            # Same-name fields across ancestors are legal; ambiguity at
+            # `self.x` fires from _try_find_field instead.
             # Every base with __init__ must be invoked explicitly from the
             # child's __init__. Deferred to validate_multi_base_init_calls so
             # the check can inspect the already-analyzed __init__ body.
@@ -1217,24 +1242,18 @@ class TypeRegistrar:
                     record.loc
                 )
 
-    def _check_multi_base_field_conflicts(self, record: TpyRecord, record_info: RecordInfo) -> None:
-        """Error when two ancestors in the MRO declare a field with the same name.
-
-        Diamonds were rejected earlier, so each ancestor appears only once in the
-        MRO; any same-name field across ancestors is a genuine conflict (two
-        independent bases happen to pick the same name). In non-virtual C++ MI the
-        two subobjects would both hold the field, and `self.x` would be ambiguous.
-        """
-        first_source: dict[str, str] = {}
-        for anc_rec in self.ctx.registry.iter_ancestor_records(record_info):
-            for f in anc_rec.fields:
-                if f.name in first_source and first_source[f.name] != anc_rec.name:
-                    raise SemanticError(
-                        f"Field '{f.name}' declared on both '{first_source[f.name]}' and "
-                        f"'{anc_rec.name}' (ancestors of '{record.name}'); merging not supported.",
-                        record.loc
+    def _check_field_shadowing(self, record: TpyRecord, record_info: RecordInfo) -> None:
+        """Warn when the record's own field shadows an inherited one."""
+        for fld in record.fields:
+            for anc_rec in self.ctx.registry.iter_ancestor_records(record_info):
+                if any(af.name == fld.name for af in anc_rec.fields):
+                    self.ctx.warning_from_loc(
+                        f"Field '{fld.name}' in '{record.name}' shadows "
+                        f"inherited field from '{anc_rec.name}'; use "
+                        f"'{anc_rec.name}.{fld.name}' to access the ancestor's",
+                        fld.loc or record.loc,
                     )
-                first_source.setdefault(f.name, anc_rec.name)
+                    break
 
     def validate_multi_base_init_calls(self, record: TpyRecord, record_info: RecordInfo) -> None:
         """Every base with __init__ must be called explicitly from the child's

@@ -90,7 +90,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D19 | Recursive type aliases | M | Done (non-generic) | [I](#recursive-type-aliases) |
 | D20 | Mutual recursion (cross-type cycles) | M-L | Done (same-module) | [I](#mutual-recursion) |
 | D21 | TypedDict | M | Done | [VII](#typeddict) |
-| D22 | Multiple inheritance (mixins) | L | v2.1 done; v2.2/v2.3 follow-ups | [VII](#multiple-inheritance) |
+| D22 | Multiple inheritance (mixins) | L | v2.2 done; v2.3 follow-up | [VII](#multiple-inheritance) |
 | D23 | Nested classes | M | Done | [VII](#nested-classes) |
 
 ### Phase E: Advanced Safety
@@ -2623,7 +2623,6 @@ Multiple bases may declare `__init__`; the child must invoke each explicitly via
   with a sema warning since C++ evaluates init arguments in MIL order too.
 
 **Restrictions** (with targeted diagnostics):
-- Same-name fields across bases are rejected outright. See v2.2 below.
 - MRO-aware cooperative `super()` (Python's cross-chain super) not implemented;
   current behavior dispatches only to the single unambiguously-matching direct parent.
   See v2.3 below.
@@ -2631,15 +2630,20 @@ Multiple bases may declare `__init__`; the child must invoke each explicitly via
   `@dynamic` (separate TODO) or explicit boxing -- same trade-offs as single
   inheritance.
 
-**v2 follow-ups** (planned).
-
-**v2.2 -- Private same-name fields across bases.** The
-`_check_multi_base_field_conflicts` hard error makes sense for public fields (`self.x`
-would be ambiguous in non-virtual MI) but is too strict for private fields (`_x` /
-`__x`) where each base subobject legitimately owns its own. Lift the error for
-underscore-prefixed fields; require `BaseN._field` for reads (reuses the existing
-unbound-member-access machinery, extended from method calls to field access). Keep the
-hard error for public fields.
+**v2.2 -- same-name fields across bases (shipped).** Two ancestors may declare
+fields with the same name, regardless of privacy. Each subobject legitimately
+owns its own slot; the user disambiguates reads, writes, and augmented
+assignments via `BaseN.field` (the unbound-self field form, mirroring v2.1
+`BaseN.method(self, ...)`). Entry points:
+`ExpressionAnalyzer._try_unbound_self_field_access` in `tpyc/sema/expressions.py`
+(strict-ancestor check, walks BaseN's MRO via `lookup_record_field`, substitutes
+generic parent type params, propagates readonly); codegen emits
+`this->BaseN::field` in `tpyc/codegen_cpp/expressions.py:_gen_field_access`.
+Unqualified `self.field` errors with an "ambiguous, use `A.field` / `B.field`"
+diagnostic when more than one direct parent's MRO reaches the name
+(`ExpressionAnalyzer._try_find_field` + `ProtocolAnalyzer.find_field_parent_branches`).
+A child field that shadows an inherited one emits a warning at the child's decl
+site (any inheritance shape, not just multi-base).
 
 **v2.3 -- MRO-aware cooperative `super()`** (independent of v2.2). Full C3 super chain
 so `super().foo()` in a diamond-free MI class walks the MRO, not just the single
@@ -2647,7 +2651,7 @@ matching direct parent. Plug into `_resolve_super_parent_type`
 (`tpyc/sema/methods.py`). Current behavior requires either unambiguous resolution (one
 parent defines the method) or an explicit `BaseN.method(self, ...)` call.
 
-**Effort**: L (shipped through v2.1). v2.2 and v2.3 each M.
+**Effort**: L (shipped through v2.2). v2.3 is M.
 
 ---
 

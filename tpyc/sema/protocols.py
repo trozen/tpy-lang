@@ -789,6 +789,25 @@ class ProtocolChecker:
                 return inherited
         return None
 
+    def find_field_parent_branches(
+        self, record_info: RecordInfo, field_name: str
+    ) -> list[str]:
+        """Return the names of direct parents whose MRO reaches `field_name`.
+
+        Used to detect same-name ambiguity across multi-base inheritance: when
+        the child doesn't declare the field itself and more than one direct
+        parent's MRO contributes it, unqualified access is ambiguous and the
+        user must disambiguate via `BaseN.field`.
+        """
+        result: list[str] = []
+        for parent_type in record_info.parents:
+            parent_info = self.ctx.registry.get_record_for_type(parent_type)
+            if parent_info is None:
+                continue
+            if self.lookup_record_field(parent_info, field_name) is not None:
+                result.append(parent_info.name)
+        return result
+
     def lookup_record_method(self, record_info: RecordInfo, method_name: str) -> FunctionInfo | None:
         """Look up a method in a record, including inherited methods.
 
@@ -866,6 +885,31 @@ class ProtocolChecker:
                 return {}
             return dict(zip(parent_info.type_params, parent_type.type_args))
         return builtin_modules.extract_type_params(parent_type)
+
+    def resolve_ancestor_instantiation(
+        self, current_rec: RecordInfo, ancestor_info: RecordInfo,
+    ) -> tuple[TpyType, dict[str, TpyType | int]]:
+        """Find the concrete NominalType for `ancestor_info` on current_rec's
+        MRO, plus its type-param substitution.
+
+        Handles generic ancestors where the same `ancestor_info` may appear
+        with different type args on the MRO. Falls back to an unparameterized
+        nominal when no instantiation carries the ancestor (simple non-generic
+        inheritance).
+        """
+        parent_type: TpyType | None = None
+        for anc_type in current_rec.mro_ancestors:
+            if isinstance(anc_type, NominalType):
+                anc_info = self.ctx.registry.get_record_for_type(anc_type)
+                if anc_info is ancestor_info:
+                    parent_type = anc_type
+                    break
+        if parent_type is None:
+            parent_type = NominalType(
+                ancestor_info.name,
+                _module_qname=ancestor_info.qualified_name(),
+            )
+        return parent_type, self.get_parent_type_subst(parent_type, ancestor_info)
 
     def get_protocol_conformance_issues(self, record_type: NominalType, protocol: NominalType) -> list[str]:
         """Get human-readable list of conformance issues for a record against a protocol.

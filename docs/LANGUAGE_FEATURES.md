@@ -3652,14 +3652,46 @@ class Both(Left, Right):
         return Left.describe(self) + "+" + Right.describe(self)
 ```
 
+**`BaseN.field`** accesses an ancestor's field slot on the current instance
+(read, write, and augmented assignment), parallel to `BaseN.method(self, ...)`.
+Same-name fields across ancestors are legal -- each subobject keeps its own
+storage -- and `BaseN.field` is how the user distinguishes them.
+
+```python
+class RateLimiter:
+    count: Int32
+
+class CacheStats:
+    count: Int32
+
+class Service(RateLimiter, CacheStats):
+    def tick_req(self) -> None:
+        RateLimiter.count += 1          # writes RateLimiter's subobject slot
+    def tick_cache(self) -> None:
+        CacheStats.count = CacheStats.count + 1
+```
+
+Unqualified `self.count` in `Service` is rejected with an ambiguity error
+listing the contributing ancestors. `BaseN` must be a strict ancestor; field
+lookup walks `BaseN`'s own MRO so `BaseN.field` resolves fields `BaseN`
+inherits from *its* ancestor.
+
 **Rules and restrictions** (rejected at sema with targeted diagnostics):
 - **Diamonds** (`class D(B, C)` where `B(A)` and `C(A)`) -- rejected; non-virtual C++ MI
   would duplicate the shared subobject. Users who need runtime polymorphism should make
   the shared ancestor a `@dynamic` protocol.
-- **Field conflicts** -- two bases declaring the same field name cannot be merged.
-  Rename in one of the bases or restructure.
 - **Method conflicts** -- two bases defining the same method require the child to override
   that method; the child's version shadows both.
+- **Ambiguous `self.field`** -- when more than one direct-parent branch reaches a
+  same-name field, unqualified access is rejected; disambiguate with `BaseN.field`
+  or add a child override.
+- **Field shadowing** (warning, not error) -- a child field that shadows an
+  inherited same-name field emits a warning pointing at `AncestorN.field` for
+  access to the ancestor's slot. Applies to any inheritance shape.
+- **Nested-type / field name collision** -- a class declaring both a nested
+  type and a field/method with the same name is rejected: the generated C++
+  is unsalvageable (the member shadows the nested type name, so even
+  `Outer::Foo::A` stops naming the type).
 - **`__init__` coverage** -- if any base defines `__init__`, the child must define its
   own `__init__` and invoke every such base explicitly via
   `BaseN.__init__(self, ...)` (or `super().__init__(...)` when only one base has it).
@@ -3676,9 +3708,26 @@ class Both(Left, Right):
 - **Source / MRO order** -- direct bases must be declared in an order consistent with
   C3 linearization; mismatches are rejected.
 
-**Not supported** (planned v2 follow-ups, see `docs/FEATURE_ROADMAP.md` D22): private
-same-name fields across bases (`BaseN._field` read access) and MRO-aware cooperative
-`super()` that walks the full MRO instead of just the single matching direct parent.
+**CPython compatibility note for `BaseN.field`**: this form has no CPython
+equivalent. Python's object model has no subobjects -- a class hierarchy
+collapses into a single attribute namespace via MRO lookup. `BaseN.method(self, ...)`
+works in both because `Base.foo(self)` is a valid Python unbound-method call,
+but `BaseN.field = v` in CPython sets a *class attribute* on `BaseN` (shared
+across all instances), not a per-instance subobject slot. A program that uses
+`BaseN.field` will silently produce different results under CPython the moment
+a second instance exists. If CPython parity matters, prefer one of:
+
+- Rename one of the colliding fields in the base (the shadow warning exists
+  to nudge you toward this).
+- Wrap the ancestor field access in a child `@property` that reads/writes the
+  inherited slot by name -- the property body can use `self.field` safely when
+  only one branch actually contributes.
+- Otherwise, mark the source file with a `no_cpython.txt` marker if you're
+  testing under both runtimes, and accept that CPython is not a valid target.
+
+**Not supported** (planned v2.3, see `docs/FEATURE_ROADMAP.md` D22): MRO-aware
+cooperative `super()` that walks the full MRO instead of just the single
+matching direct parent.
 
 #### Implicit Upcasting
 

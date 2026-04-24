@@ -1,0 +1,1 @@
+main.py:17: error: 'Unrelated' is not an ancestor of 'Child'; cannot access 'Unrelated.value' here
