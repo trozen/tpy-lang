@@ -2618,30 +2618,54 @@ via MRO membership. Diamonds are rejected with a diagnostic pointing at `@dynami
   `@dynamic` (separate TODO) or explicit boxing -- same trade-offs as single
   inheritance.
 
-**v2 follow-ups** (planned; not blocking v1):
-- **`BaseN.method(self, ...)` for non-static methods.** Today `_analyze_static_method_call`
-  in `tpyc/sema/methods.py` rejects `ClassName.method(args)` unless the method is
-  `@staticmethod`. Extend that path so when `ClassName` is an ancestor of the current
-  record and the first arg type matches `self`, the call routes through instance-method
-  machinery (sema binds `self` to first arg; codegen emits `ClassName::method(self, args)`).
-  Unblocks multi-base classes where multiple bases have `__init__` (construction via
-  explicit per-base `BaseN.__init__(self, ...)` calls) and matches CPython's
-  explicit-unbound-method form.
-- **Private same-name fields across bases.** The `_check_multi_base_field_conflicts`
-  hard error makes sense for public fields (`self.x` would be ambiguous in non-virtual
-  MI) but is too strict for private fields (`_x` / `__x`) where each base subobject
-  legitimately owns its own. Minimal first step: lift the error for underscore-prefixed
-  fields and require `BaseN._field` for reads; keep the hard error for public fields.
-  Depends on the `BaseN.method(self)` work above for the disambiguation spelling.
-- **MRO-aware cooperative `super()`.** Full C3 super chain so `super().foo()` in a
-  diamond-free MI class walks the MRO, not just the single matching direct parent. The
-  initial design explicitly carved this out as deferrable; current v1 requires either
-  unambiguous resolution (one parent defines the method) or an explicit `BaseN.method`
-  call. Revisit alongside the `BaseN.method(self)` work.
+**v2 follow-ups** (planned; not blocking v1). Ordered by dependency; start at v2.1.
 
-**Effort**: L (v1 shipped on branch `mi-c3-mro`). v2 follow-ups: M (all three items share
-the `BaseN.method(self)` unbound-method-call machinery; land that first, then fields and
-cooperative super fall out mostly mechanically).
+**v2.1 -- `BaseN.method(self, ...)` for non-static methods.** Foundation for the other
+two items. Today `_analyze_static_method_call` (`tpyc/sema/methods.py:860`) rejects
+`ClassName.method(args)` unless the method is `@staticmethod`. Extend that path so when
+`ClassName` is an ancestor of the current record and the first arg is literally `self`,
+the call routes through instance-method machinery (bind `self` to first arg; codegen
+emits `ClassName::method(self, args)`). Unblocks multi-base classes with multiple
+`__init__` bases (explicit per-base `BaseN.__init__(self, ...)`) and matches CPython's
+explicit-unbound-method form.
+
+Phase plan (locked):
+1. **P1 (sema)** -- extend `_analyze_static_method_call`. Route on (ancestor + literal
+   `self`); look up method via `get_method_overloads_with_parents` so inherited methods
+   resolve.
+2. **P2 (codegen)** -- emit `ClassName::method(self, args)`. One site in
+   `codegen_cpp/expressions.py` / `functions.py`.
+3. **P3** -- drop `_check_multi_base_init_limit`. Replace with "every base with
+   `__init__` must be called explicitly from the child's `__init__`" validator.
+4. **P4 (tests)** -- happy-path (two `__init__` bases, child calls both), error cases
+   (missing base init, non-ancestor class, non-`self` first arg).
+
+Design decisions (locked 2026-04-24):
+- **Form of `self`**: literal `self` only. Arbitrary unbound calls like
+  `Named.describe(other_instance)` remain rejected. Keeps intent tight; generalizing is
+  a further extension.
+- **Inherited methods**: `B.foo(self)` is legal even when `B` doesn't literally define
+  `foo` -- resolution walks `B`'s MRO, matching CPython semantics.
+- **Style preference vs `super()`**: none. Both spellings are legal when both apply;
+  users pick based on readability.
+
+**v2.2 -- Private same-name fields across bases** (follows v2.1). The
+`_check_multi_base_field_conflicts` hard error makes sense for public fields (`self.x`
+would be ambiguous in non-virtual MI) but is too strict for private fields (`_x` /
+`__x`) where each base subobject legitimately owns its own. Lift the error for
+underscore-prefixed fields; require `BaseN._field` for reads (reuses v2.1 unbound
+member-access machinery). Keep the hard error for public fields.
+
+**v2.3 -- MRO-aware cooperative `super()`** (independent of v2.1/2.2). Full C3 super
+chain so `super().foo()` in a diamond-free MI class walks the MRO, not just the single
+matching direct parent. Plug into `_resolve_super_parent_type` (`tpyc/sema/methods.py`).
+The initial design carved this out as deferrable; current v1 requires either
+unambiguous resolution (one parent defines the method) or an explicit `BaseN.method`
+call.
+
+**Effort**: L (v1 shipped on branch `mi-c3-mro`, merged to master). v2 follow-ups: M
+total -- v2.1 is the big piece (unbound-method-call machinery); v2.2 and v2.3 fall out
+mostly mechanically once v2.1 lands.
 
 ---
 
