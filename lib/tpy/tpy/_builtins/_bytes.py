@@ -282,11 +282,11 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     def append(self, value: UInt8) -> None: ...
 
     @overload
-    @cpp_template("::tpy::bytes_extend_byte_iterable({self}, {0})")
+    @native("tpy::extend", function=True)
     def extend(self, other: Iterable[UInt8]) -> None: ...
     # TODO(hot-path): the Int32 overload below is per-element range-checked.
     @overload
-    @cpp_template("::tpy::bytes_extend_int_iterable({self}, {0})")
+    @native("tpy::bytes_extend_int_iterable", function=True)
     def extend(self, other: Iterable[Int32]) -> None: ...
 
     @overload

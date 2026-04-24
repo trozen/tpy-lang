@@ -147,6 +147,13 @@ class Coercion:
     forbid_return_local: bool = False
     # Lossless coercion safe for protocol return type matching.
     protocol_safe: bool = False
+    # Lossless widening (actual->expected) at a container element position:
+    # iterating actual yields values that widen implicitly into expected.
+    # "Lossless" follows Python/CPython's informal notion: large fixed-ints
+    # to Float32 and BigInt to float/Float32 lose mantissa precision but are
+    # still considered widenings at this position (same as implicit int->float
+    # promotion in Python arithmetic).
+    widening_safe: bool = False
     check_range: Optional[Callable[[TpyType, TpyType], bool]] = None
     codegen: Callable[[str, TpyType, TpyType, CoercionContext], str] = lambda expr, _a, _e, _c: expr
 
@@ -190,6 +197,7 @@ COERCIONS: list[Coercion] = [
         from_type=is_fixed_int_type,
         to_type=is_fixed_int_type,
         type_match=_is_safe_widening,
+        widening_safe=True,
         codegen=lambda e, _a, b, _c: f"static_cast<{b.to_cpp()}>({e})",
     ),
 
@@ -198,6 +206,7 @@ COERCIONS: list[Coercion] = [
         name="fixed_int_to_bigint",
         from_type=is_fixed_int_type,
         to_type=is_big_int_type,
+        widening_safe=True,
         codegen=lambda e, _a, _b, _c: f"::tpy::BigInt({e})",
     ),
     # BigInt to fixed-width integer (narrowing, runtime checked)
@@ -219,12 +228,14 @@ COERCIONS: list[Coercion] = [
         name="fixed_int_to_float",
         from_type=is_fixed_int_type,
         to_type=is_float64_type,
+        widening_safe=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
     Coercion(
         name="bigint_to_float",
         from_type=is_big_int_type,
         to_type=is_float64_type,
+        widening_safe=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
 
@@ -253,12 +264,14 @@ COERCIONS: list[Coercion] = [
         name="fixed_int_to_float32",
         from_type=is_fixed_int_type,
         to_type=is_float32_type,
+        widening_safe=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
     ),
     Coercion(
         name="bigint_to_float32",
         from_type=is_big_int_type,
         to_type=is_float32_type,
+        widening_safe=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
     ),
     # Float32 -> float (widening, lossless)
@@ -266,6 +279,7 @@ COERCIONS: list[Coercion] = [
         name="float32_to_float",
         from_type=is_float32_type,
         to_type=is_float64_type,
+        widening_safe=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
     # float -> Float32 (narrowing, but allowed for convenience -- matches C++ behavior)
@@ -551,19 +565,15 @@ def is_protocol_type_arg_widening(
     if isinstance(actual, IntLiteralType):
         actual = default_int_type
     elif isinstance(actual, FloatLiteralType):
+        # No default_float concept: any float target is a lossless widening
+        # of an abstract float literal.
         return is_float64_type(expected) or is_float32_type(expected)
     if actual == expected:
         return True
-    if is_fixed_int_type(actual):
-        if is_fixed_int_type(expected):
-            return _is_safe_widening(actual, expected)
-        if is_big_int_type(expected) or is_float64_type(expected) or is_float32_type(expected):
+    for c in COERCIONS:
+        if (c.widening_safe and c.from_type(actual) and c.to_type(expected)
+                and c.type_match(actual, expected)):
             return True
-    if is_big_int_type(actual):
-        if is_float64_type(expected) or is_float32_type(expected):
-            return True
-    if is_float32_type(actual) and is_float64_type(expected):
-        return True
     return False
 
 

@@ -34,7 +34,7 @@ def main() -> None:
     print(ba)
 
     # bytearray.extend with a generator of UInt8 (exercises the __next__ fallback
-    # in bytes_extend_byte_iterable since generators aren't input_range).
+    # in tpy::extend since generators aren't std::ranges::input_range).
     ba.extend(v for v in ys)
     print(ba)
 

@@ -19,6 +19,7 @@
 
 #include "core.hpp"
 #include "container_ops.hpp"
+#include "ranges.hpp"
 
 namespace tpy {
 
@@ -106,21 +107,6 @@ inline uint8_t int_to_byte(int32_t v) {
 
 inline Bytes bytes_copy(BytesView src) {
     return Bytes(src.begin(), src.end());
-}
-
-template<typename Arg>
-void bytes_extend_byte_iterable(Bytes& self, Arg&& arg) {
-    if constexpr (std::ranges::input_range<std::remove_cvref_t<Arg>>) {
-        // insert(end, begin, end) lets libstdc++ memcpy trivially-copyable
-        // uint8_t payloads instead of running a per-element push_back loop.
-        self.insert(self.end(), std::ranges::begin(arg), std::ranges::end(arg));
-    } else {
-        for (;;) {
-            auto __r = arg.__next__();
-            if (!__r.has_value()) break;
-            self.push_back(*__r);
-        }
-    }
 }
 
 // TODO(hot-path): per-element int_to_byte range check; revisit alongside a

@@ -185,4 +185,23 @@ Container construct(Arg&& arg) {
     }
 }
 
+/**
+ * extend - Append elements from an iterable to an existing container.
+ * Dual-dispatch on input_range vs __next__() protocol, matching `construct`.
+ * Uses the container's iterator-pair insert for ranges (memcpy for
+ * trivially-copyable payloads).
+ */
+template<typename Container, typename Arg>
+void extend(Container& c, Arg&& arg) {
+    if constexpr (std::ranges::input_range<std::remove_cvref_t<Arg>>) {
+        c.insert(c.end(), std::ranges::begin(arg), std::ranges::end(arg));
+    } else {
+        for (;;) {
+            auto __r = arg.__next__();
+            if (!__r.has_value()) break;
+            c.push_back(unwrap_ref_move(*__r));
+        }
+    }
+}
+
 } // namespace tpy

@@ -55,20 +55,20 @@ void main() {
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
     // # bytearray.extend with UInt8 iterable
     // ba.extend(ys)
-    ::tpy::bytes_extend_byte_iterable(ba, ys);
+    ::tpy::extend(ba, ys);
     // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
     // # bytearray.extend with another bytearray (exercises range-path specialization)
     // other = bytearray([50, 60])
     std::vector<uint8_t> other = ::tpy::bytes_from_int_iterable(std::array<int32_t, 2>{50, 60});
     // ba.extend(other)
-    ::tpy::bytes_extend_byte_iterable(ba, other);
+    ::tpy::extend(ba, other);
     // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
     // # bytearray.extend with a generator of UInt8 (exercises the __next__ fallback
-    // # in bytes_extend_byte_iterable since generators aren't input_range).
+    // # in tpy::extend since generators aren't std::ranges::input_range).
     // ba.extend(v for v in ys)
-    ::tpy::bytes_extend_byte_iterable(ba, [&ys]() {
+    ::tpy::extend(ba, [&ys]() {
         auto& __src = ys;
         return ::tpy::make_generator<uint8_t>(
             [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<uint8_t> {
