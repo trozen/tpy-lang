@@ -128,9 +128,12 @@ Safe sources:
 - Parameters (caller owns the storage)
 - Globals (static lifetime)
 - `self` (receiver, caller manages lifetime)
-- `param_provenance_vars` (derived from parameter via assignment chain)
+- String / bytes / None literals (rodata / nullptr -- permanent)
+- `safe_to_return_vars` (current binding is non-dangling; see Provenance
+  tracking below)
 - Field access / subscript on safe object (recursive check)
 - `take_ptr(safe_expr)` (pointer to safe storage)
+- Ternary where both arms are safe
 
 **Scope escape detection** (`check_escape`): When assigning to a variable at scope
 depth D from a source at scope depth D+N, the source may be freed before the target.
@@ -141,10 +144,31 @@ The tracker compares `var_scope_depth` entries. Two outcomes:
 - **Error**: source is a loop variable or lvalue-initialized (aliases other storage).
   Hard error requiring `copy()`.
 
-**Provenance tracking** (`param_provenance_vars`): When `x = param` or `x = param.field`,
-`x` is added to `param_provenance_vars`. This makes `return x` safe even though `x`
-is technically a local -- its storage derives from the caller. Propagates through
-simple assignment chains but not through function calls or complex expressions.
+**Provenance tracking** (`param_provenance_vars`, `safe_to_return_vars`): two
+flow-sensitive sets, both merged with INTERSECT at branch/loop joins, with the
+hard invariant `param_provenance_vars` is a subset of `safe_to_return_vars`.
+
+- `param_provenance_vars` is the narrow set: `x = param` or `x = param.field`
+  adds `x`. Used by `is_param_derived_expr` for `return_borrows_from` lifetime
+  inference and loop-var provenance. Soundness here requires "rooted at a
+  param/global on every path", so the merge must intersect.
+- `safe_to_return_vars` is the broad set: `x = anything-safe` adds `x`, where
+  "anything-safe" is `is_safe_to_return_expr(rhs)` (param-derived OR
+  non-dangling call return OR literal OR ternary with both arms safe OR
+  field/subscript chain on a safe root). This is the set `is_dangling_return`
+  consults for locals.
+
+The subset invariant is what makes asymmetric merges work. Without it,
+`sv: StrView = param` on one branch and `sv = trusted_call(...)` on another
+would land `sv` only in `param_provenance_vars` on the first branch and only
+in `trusted_call_return_vars` (the old narrow second set) on the second --
+intersecting each set independently would drop `sv` from both, even though
+the var is safe on every path. Materializing the disjunction at write time in
+`safe_to_return_vars` and then intersecting preserves the safety property
+across the merge.
+
+Propagates through simple assignment chains, ternaries, and field/subscript
+chains. Function calls propagate via `return_borrows_from`.
 
 ### 2. Ptr Non-Null Provenance Elision
 

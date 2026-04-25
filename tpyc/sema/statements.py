@@ -2767,8 +2767,8 @@ class StatementAnalyzer:
                     self.ctx.func.owned_locals.discard(stmt.name)
         if stmt.init and _needs_provenance_tracking(var_type):
             self.init.mark_provenance(stmt.name, self.compat.is_param_derived_expr(stmt.init))
-            self.init.mark_trusted_call_return(
-                stmt.name, self.compat.is_trusted_call_return_expr(stmt.init))
+            self.init.mark_safe_to_return(
+                stmt.name, self.compat.is_safe_to_return_expr(stmt.init))
         # Track non-null pointer provenance for null-check elision
         if stmt.init and isinstance(var_type, PtrType):
             # Unwrap coercion (e.g. Ptr[T] -> Ptr[readonly[T]]) to find the source expression
@@ -3330,8 +3330,8 @@ class StatementAnalyzer:
 
         if isinstance(stmt.target, TpyName) and _needs_provenance_tracking(target_type):
             self.init.mark_provenance(stmt.target.name, self.compat.is_param_derived_expr(stmt.value))
-            self.init.mark_trusted_call_return(
-                stmt.target.name, self.compat.is_trusted_call_return_expr(stmt.value))
+            self.init.mark_safe_to_return(
+                stmt.target.name, self.compat.is_safe_to_return_expr(stmt.value))
         # Track non-null pointer provenance for null-check elision
         if isinstance(stmt.target, TpyName) and isinstance(target_type, PtrType):
             # Unwrap coercion (e.g. Ptr[T] -> Ptr[readonly[T]]) to find the source expression
@@ -3519,12 +3519,12 @@ class StatementAnalyzer:
             )
         # Aug-assign replaces the target's value with a freshly computed one
         # (owned str/bytes concat, reallocated list, etc.), so any prior
-        # param-derived / trusted-call provenance is now stale and must be
+        # param-derived / safe-to-return provenance is now stale and must be
         # cleared -- otherwise a later `return` as a view would pass the
         # dangling check despite pointing into local storage.
         if isinstance(stmt.target, TpyName) and _needs_provenance_tracking(target_type):
             self.init.mark_provenance(stmt.target.name, False)
-            self.init.mark_trusted_call_return(stmt.target.name, False)
+            self.init.mark_safe_to_return(stmt.target.name, False)
         value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
         # Track mutation of for-each loop variables and parameters
         aug_root = _root_name_of_expr(stmt.target)

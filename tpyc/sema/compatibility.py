@@ -1150,6 +1150,26 @@ class TypeCompatibility:
             return expr.args[0]
         return None
 
+    def _name_is_param_or_global(self, name: str) -> bool:
+        """True if the name refers to caller-owned storage that outlives the call.
+
+        Used by is_safe_to_return_expr and is_dangling_return to keep the
+        self/param/non-shadowed-global checks in one place. is_param_derived_expr
+        intentionally diverges by omitting the self check (self is the receiver,
+        not a "parameter" for borrow-contract purposes).
+        """
+        if name == "self":
+            return True
+        func = self.ctx.func.current_function
+        if isinstance(func, TpyFunction):
+            for pname, _ptype in func.params:
+                if pname == name:
+                    return True
+        if name in self.ctx.global_scope.bindings:
+            if not self._is_local_shadow(name):
+                return True
+        return False
+
     def is_param_derived_expr(self, expr: TpyExpr) -> bool:
         """Check if an expression's root storage derives from parameters or globals."""
         if isinstance(expr, TpyCoerce):
@@ -1206,22 +1226,46 @@ class TypeCompatibility:
         # Constructors, function calls, literals -- local storage
         return False
 
-    def is_trusted_call_return_expr(self, expr: TpyExpr) -> bool:
-        """Whether this RHS binds the LHS to a non-dangling call return.
+    def is_safe_to_return_expr(self, expr: TpyExpr) -> bool:
+        """Whether binding a local to this RHS makes the local safe to return.
 
-        A trusted binding lets ``return x`` succeed even when x is a local,
-        because the value it holds came from a call whose direct return
-        was accepted. Propagates across TpyCoerce and aliasing locals.
+        Recurses through composite forms so a per-call-site OR doesn't miss
+        ``sv = p if cond else pick(q)`` (neither arm uniformly param-derived
+        nor uniformly a trusted call). Must be a superset of
+        is_param_derived_expr to maintain the subset invariant on which
+        flow-merge intersection relies.
         """
         if isinstance(expr, TpyCoerce):
-            return self.is_trusted_call_return_expr(expr.expr)
+            return self.is_safe_to_return_expr(expr.expr)
+        # String / bytes / None literals live in rodata / are nullptr --
+        # permanent storage, safe to return. Mirrors is_param_derived_expr.
+        if isinstance(expr, (TpyStrLiteral, TpyBytesLiteral, TpyNoneLiteral)):
+            return True
         if isinstance(expr, TpyName):
-            return expr.name in self.ctx.func.trusted_call_return_vars
+            return (self._name_is_param_or_global(expr.name)
+                    or expr.name in self.ctx.func.safe_to_return_vars)
+        if isinstance(expr, TpyFieldAccess):
+            return self.is_safe_to_return_expr(expr.obj)
+        if isinstance(expr, TpySubscript):
+            return self.is_safe_to_return_expr(expr.obj)
+        if isinstance(expr, TpyIfExpr):
+            return (self.is_safe_to_return_expr(expr.then_expr)
+                    and self.is_safe_to_return_expr(expr.else_expr))
+        # Pointer constructors derive safety from their argument (address-taking).
+        if isinstance(expr, TpyCall) and expr.call_type is not None and expr.call_type.is_pointer() and expr.args:
+            return self.is_safe_to_return_expr(expr.args[0])
+        view_arg = self._view_constructor_arg(expr)
+        if view_arg is not None:
+            return self.is_safe_to_return_expr(view_arg)
+        # Calls with return_borrows_from are not handled explicitly here:
+        # is_dangling_return already recurses into the borrowed args, so a
+        # call whose return borrows from a param-derived (or otherwise safe)
+        # arg is non-dangling and lands in this branch as safe. If
+        # is_dangling_return is ever tightened for return_borrows_from, mirror
+        # the explicit arm from is_param_derived_expr to preserve the
+        # superset invariant.
         if isinstance(expr, (TpyCall, TpyMethodCall)):
             return not self.is_dangling_return(expr)
-        if isinstance(expr, TpyIfExpr):
-            return (self.is_trusted_call_return_expr(expr.then_expr)
-                    and self.is_trusted_call_return_expr(expr.else_expr))
         return False
 
     def is_mutable_lvalue(self, expr: TpyExpr) -> bool:
@@ -1314,35 +1358,12 @@ class TypeCompatibility:
             # (the callee is responsible for not returning dangling refs)
             return False
 
-        # Local variable (not a parameter or global) - would dangle after function returns
+        # Locals dangle unless their root or current binding is safe.
         if isinstance(expr, TpyName):
-            # 'self' in a method is safe - refers to the receiver object
-            # (its lifetime is managed by the caller)
-            if expr.name == "self":
+            if self._name_is_param_or_global(expr.name):
                 return False
-
-            # Check if it's a parameter (safe)
-            func = self.ctx.func.current_function
-            if isinstance(func, TpyFunction):
-                for pname, _ptype in func.params:
-                    if pname == expr.name:
-                        return False  # Parameter - safe to return reference
-
-            # Check if it's a global (safe - lives forever), but only
-            # if the name isn't shadowed by a local binding
-            if expr.name in self.ctx.global_scope.bindings:
-                if not self._is_local_shadow(expr.name):
-                    return False
-
-            # Storage derives from parameter/global -- safe
-            if expr.name in self.ctx.func.param_provenance_vars:
+            if expr.name in self.ctx.func.safe_to_return_vars:
                 return False
-
-            # Local bound from a call whose direct return is non-dangling -- safe
-            if expr.name in self.ctx.func.trusted_call_return_vars:
-                return False
-
-            # Local variable - dangling
             return True
 
         # Field access - safe only if the object itself is safe

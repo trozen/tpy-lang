@@ -3,8 +3,8 @@ FlowFacts -- immutable snapshot of flow-sensitive analysis state.
 
 Captures the flow-sensitive properties that must be saved, restored,
 and merged at branch/loop boundaries: definite assignment, termination,
-rvalue tracking, parameter provenance, pointer non-null status, type
-narrowing, and consumed-variable tracking.
+rvalue tracking, parameter provenance, safe-to-return locals, pointer
+non-null status, type narrowing, and consumed-variable tracking.
 """
 
 from __future__ import annotations
@@ -153,7 +153,7 @@ class FlowFacts:
     init_terminated: bool = False
     rvalue_vars: frozenset[str] = frozenset()
     param_provenance_vars: frozenset[str] = frozenset()
-    trusted_call_return_vars: frozenset[str] = frozenset()
+    safe_to_return_vars: frozenset[str] = frozenset()
     non_null_ptr_vars: frozenset[str] = frozenset()
     narrowed_types: frozenset[tuple[str, TpyType]] = frozenset()
     consumed_vars: frozenset[str] = frozenset()
@@ -181,8 +181,8 @@ class FlowFacts:
                 then.param_provenance_vars, else_.param_provenance_vars,
                 then_term, else_term, _MergePolicy.INTERSECT,
             ),
-            trusted_call_return_vars=_merge_sets(
-                then.trusted_call_return_vars, else_.trusted_call_return_vars,
+            safe_to_return_vars=_merge_sets(
+                then.safe_to_return_vars, else_.safe_to_return_vars,
                 then_term, else_term, _MergePolicy.INTERSECT,
             ),
             non_null_ptr_vars=_merge_sets(

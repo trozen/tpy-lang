@@ -414,13 +414,16 @@ class FunctionTrackingState:
     nested_def_nodes: dict[str, 'TpyNestedDef'] = field(default_factory=dict)
 
     # --- Pointer provenance tracking ---
+    # Invariant: param_provenance_vars is a subset of safe_to_return_vars.
+    # Both sets merge with INTERSECT at branch/loop joins. The subset
+    # invariant is what lets a local stay safe-to-return when different
+    # branches reach the join via different safe sources (e.g. one branch
+    # param-derived, another a trusted call return) -- the OR-of-sources
+    # is materialized in safe_to_return_vars at write time, so intersection
+    # preserves it even though intersecting param_provenance_vars alone
+    # would lose it.
     param_provenance_vars: set[str] = field(default_factory=set)
-    # Locals whose last assignment was a non-dangling call return. Kept
-    # separate from param_provenance_vars because "non-dangling" is weaker
-    # than "derives from a param/global": is_param_derived_expr feeds
-    # return_borrows_from lifetime reasoning and loop-var provenance,
-    # where trust-without-a-concrete-source would be unsound.
-    trusted_call_return_vars: set[str] = field(default_factory=set)
+    safe_to_return_vars: set[str] = field(default_factory=set)
     non_null_ptr_vars: set[str] = field(default_factory=set)
     # Narrowing accumulated during a single statement's expression analysis;
     # flushed into non_null_ptr_vars at the statement boundary. Deferred so
