@@ -1,6 +1,5 @@
-# Multi-base super().method() must resolve methods that the matching parent
-# inherits (not just its own methods). Here `foo` lives on A; B inherits it
-# without overriding; D(B, C) calls super().foo() and must pick B's chain.
+# `foo` is defined on A and inherited by B; super().foo() skips past B in D's
+# MRO and resolves to A directly. `bar` is owned by C, so super().bar() picks C.
 from tpy import Int32
 
 

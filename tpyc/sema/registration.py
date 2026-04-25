@@ -1257,8 +1257,10 @@ class TypeRegistrar:
 
     def validate_multi_base_init_calls(self, record: TpyRecord, record_info: RecordInfo) -> None:
         """Every base with __init__ must be called explicitly from the child's
-        __init__, either via super().__init__(...) (when unambiguous) or
-        BaseN.__init__(self, ...).
+        __init__. BaseN.__init__(self, ...) covers each base by name;
+        super().__init__(...) covers only the MRO-first base with __init__
+        (v2.3: MRO-aware resolution), so other bases still need explicit
+        BaseN.__init__ calls.
 
         Runs after __init__ body analysis so unbound-self calls have been
         resolved (expr.unbound_self_parent_type set by MethodAnalyzer).
@@ -1285,7 +1287,7 @@ class TypeRegistrar:
             raise SemanticError(
                 f"Multi-base class '{record.name}' inherits __init__ from bases ({names}); "
                 f"define '{record.name}.__init__' and invoke each base's __init__ explicitly "
-                f"(via BaseN.__init__(self, ...) or super().__init__(...) when unambiguous).",
+                f"(via BaseN.__init__(self, ...); super().__init__(...) covers the MRO-first base only).",
                 record.loc,
             )
 
@@ -1339,8 +1341,8 @@ class TypeRegistrar:
             raise SemanticError(
                 f"Multi-base class '{record.name}' must call __init__ on every base that "
                 f"defines one; missing calls for: {', '.join(missing)}. "
-                f"Invoke each via 'BaseN.__init__(self, ...)' (or 'super().__init__(...)' "
-                f"when unambiguous).",
+                f"Invoke each via 'BaseN.__init__(self, ...)'; 'super().__init__(...)' "
+                f"covers the MRO-first base only.",
                 record.init_method.loc,
             )
 

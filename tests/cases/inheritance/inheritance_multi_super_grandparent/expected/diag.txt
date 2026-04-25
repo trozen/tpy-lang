@@ -1,0 +1,1 @@
+main.py:18: warning: Method 'C.tag' hides 'GA.tag' -- any 'GA' reference will call 'GA.tag', not 'C.tag' (differs from Python's dynamic dispatch); make 'GA' a @dynamic protocol for runtime dispatch

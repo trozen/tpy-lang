@@ -3693,8 +3693,9 @@ inherits from *its* ancestor.
   is unsalvageable (the member shadows the nested type name, so even
   `Outer::Foo::A` stops naming the type).
 - **`__init__` coverage** -- if any base defines `__init__`, the child must define its
-  own `__init__` and invoke every such base explicitly via
-  `BaseN.__init__(self, ...)` (or `super().__init__(...)` when only one base has it).
+  own `__init__` and invoke every such base explicitly via `BaseN.__init__(self, ...)`.
+  `super().__init__(...)` covers the MRO-first `__init__` base only, so other
+  `__init__` bases still need their own `BaseN.__init__` call.
   Base-init calls must be top-level statements in `__init__`; nesting in control flow
   is rejected. Writing the calls in an order other than declaration order emits a
   warning: C++ always runs base constructors (and their argument expressions) in
@@ -3702,9 +3703,16 @@ inherits from *its* ancestor.
 - **`BaseN.__init__(self, ...)` scope** -- only legal inside the child's own `__init__`.
 - **`BaseN.__del__(self)`** -- rejected outright; C++ invokes each base destructor
   automatically.
-- **`super()` in multi-base** -- `super().method()` is legal only when exactly one base
-  defines the method (unambiguous resolution). `super().__del__()` is rejected in
-  multi-base classes for the same reason.
+- **`super()` in multi-base** -- MRO-aware resolution: `super().method()` walks the
+  child's C3 MRO and dispatches to the first ancestor whose *own* method table
+  defines `method` (matching Python's `__dict__` walk; inherited methods on an
+  ancestor don't count). With `class Child(Speaker, Greeter)`, both defining
+  `greet`, `super().greet()` resolves to `Speaker.greet`. If only a grandparent
+  defines the method, codegen targets the grandparent directly. See "Limitation:
+  single-hop super" below. `super().__del__()` is still rejected in multi-base
+  classes (C++ auto-invokes each base's destructor). `super().__init__()` covers
+  the MRO-first base with `__init__`; other bases with `__init__` still need
+  explicit `BaseN.__init__(self, ...)` calls to satisfy the coverage rule.
 - **Source / MRO order** -- direct bases must be declared in an order consistent with
   C3 linearization; mismatches are rejected.
 
@@ -3725,9 +3733,15 @@ a second instance exists. If CPython parity matters, prefer one of:
 - Otherwise, mark the source file with a `no_cpython.txt` marker if you're
   testing under both runtimes, and accept that CPython is not a valid target.
 
-**Not supported** (planned v2.3, see `docs/FEATURE_ROADMAP.md` D22): MRO-aware
-cooperative `super()` that walks the full MRO instead of just the single
-matching direct parent.
+**Limitation: single-hop super()**. v2.3's MRO-aware resolution only applies
+at the child's `super()` call site -- it picks the first MRO-ordered ancestor
+that defines the method. It does NOT replicate Python's full cooperative
+`super()` chain, where `super()` inside an *ancestor* method dispatches based
+on the runtime MRO of the most-derived instance. TPy dispatches statically:
+`A.foo`'s `super().foo()` is compiled against A's own parents, so if `A.foo`
+calls `super().foo()` and A has no further parent with `foo`, the chain stops
+at A regardless of whether A is used standalone or as a base of `C(A, B)`. To
+chain through multiple ancestors, call them explicitly via `BaseN.method(self, ...)`.
 
 #### Implicit Upcasting
 

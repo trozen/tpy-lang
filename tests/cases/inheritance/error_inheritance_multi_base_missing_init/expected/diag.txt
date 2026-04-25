@@ -1,1 +1,1 @@
-main.py:21: error: Multi-base class 'Child' must call __init__ on every base that defines one; missing calls for: Right. Invoke each via 'BaseN.__init__(self, ...)' (or 'super().__init__(...)' when unambiguous).
+main.py:21: error: Multi-base class 'Child' must call __init__ on every base that defines one; missing calls for: Right. Invoke each via 'BaseN.__init__(self, ...)'; 'super().__init__(...)' covers the MRO-first base only.

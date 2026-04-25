@@ -1,7 +1,5 @@
-# Multi-base constructor: one base with __init__, one aggregate mixin.
-# D22 v1 restricts multi-base classes to at most one __init__ base so
-# super().__init__() in the child is unambiguous. The aggregate base
-# (Counted) is default-constructed automatically.
+# Only Named has __init__; super().__init__() resolves to it. The aggregate
+# base (Counted) is default-constructed automatically.
 from tpy import Int32
 
 

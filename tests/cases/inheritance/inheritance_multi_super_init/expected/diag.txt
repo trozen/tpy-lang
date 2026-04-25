@@ -1,1 +1,1 @@
-main.py:15: warning: returns a copy of str field 'self.name'; use -> StrView for zero-copy access or -> String to silence this warning
+main.py:13: warning: returns a copy of str field 'self.name'; use -> StrView for zero-copy access or -> String to silence this warning

@@ -1,6 +1,5 @@
 # When multiple bases define __init__, the child must define its own __init__
-# and invoke each base's __init__ explicitly (BaseN.__init__(self, ...) or
-# super().__init__(...) when unambiguous).
+# and invoke each base explicitly via BaseN.__init__(self, ...).
 from tpy import Int32
 
 

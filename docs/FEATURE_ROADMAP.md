@@ -90,7 +90,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D19 | Recursive type aliases | M | Done (non-generic) | [I](#recursive-type-aliases) |
 | D20 | Mutual recursion (cross-type cycles) | M-L | Done (same-module) | [I](#mutual-recursion) |
 | D21 | TypedDict | M | Done | [VII](#typeddict) |
-| D22 | Multiple inheritance (mixins) | L | v2.2 done; v2.3 follow-up | [VII](#multiple-inheritance) |
+| D22 | Multiple inheritance (mixins) | L | Done | [VII](#multiple-inheritance) |
 | D23 | Nested classes | M | Done | [VII](#nested-classes) |
 
 ### Phase E: Advanced Safety
@@ -145,6 +145,8 @@ don't get lost.
 | Final for non-primitive types | A1 | `Final[list[T]]` -- needs deep immutability |
 | Cross-module Final references | A1 | Use imported Finals in initializers |
 | Virtual methods in inheritance | B4 | `@dynamic` protocols cover the use case; class-based virtual dispatch is a distant future consideration |
+| Diamond multiple inheritance | D22 | Currently rejected outright; users redirect to `@dynamic`. Would need C++ `virtual public` codegen and a sema design for shared-subobject field/init semantics. |
+| Full cooperative `super()` chain | D22 | v2.3 ships single-hop MRO-aware resolution; full Python cooperative super (where `super()` inside an ancestor method dispatches via the runtime instance's MRO) would need per-most-derived-type method specialization or runtime MRO -- both fight TPy's static dispatch. |
 | `__exit__` exception args + return | D4 | Pass `(exc_type, exc_val, exc_tb)` to `__exit__`, return `True` to suppress. Exceptions are done (C1/C2); needs runtime type-info passing |
 | `@contextmanager` decorator | D4 | `yield`-based context managers via `contextlib.contextmanager`. Generators done (F3); now implementable |
 | `async with` | D4 | `__aenter__`/`__aexit__` async context managers. Blocked on async (G1) |
@@ -2587,15 +2589,17 @@ requires `virtual` base classes. TPy should start with the simple non-diamond ca
 
 **Scope**: Mixin-style multiple inheritance where base classes provide independent
 functionality. Diamond inheritance (where two bases share a common grandparent) is
-a future extension. `super()` with MRO-aware dispatch is the hard part -- initial
-implementation can require explicit `Base.method(self)` calls for disambiguation.
+a future extension. `super()` uses MRO-aware single-hop resolution (v2.3); full
+Pythonic cooperative `super()` chaining (see "Non-goals" below) is not planned.
 
 **Current state**: Working. Static multiple inheritance: `class Child(A, B, ...)`
 emits non-virtual C++ multiple inheritance. C3 linearization (MRO) is computed at sema
 registration; method resolution, field inheritance, and `isinstance` fold compile-time
 via MRO membership. Diamonds are rejected with a diagnostic pointing at `@dynamic`.
 Multiple bases may declare `__init__`; the child must invoke each explicitly via
-`BaseN.__init__(self, ...)` (or `super().__init__(...)` when unambiguous).
+`BaseN.__init__(self, ...)` -- `super().__init__(...)` covers only the MRO-first
+`__init__` base, so multi-base classes with >1 `__init__` bases still need explicit
+calls for the rest.
 
 **Shipped** (static, non-virtual):
 - C3 linearization + diamond rejection (`Diamond inheritance not supported: '{anc}' is
@@ -2623,12 +2627,15 @@ Multiple bases may declare `__init__`; the child must invoke each explicitly via
   with a sema warning since C++ evaluates init arguments in MIL order too.
 
 **Restrictions** (with targeted diagnostics):
-- MRO-aware cooperative `super()` (Python's cross-chain super) not implemented;
-  current behavior dispatches only to the single unambiguously-matching direct parent.
-  See v2.3 below.
-- Heterogeneous `list[Mixin]` / upcasting to a mixin parameter still require
-  `@dynamic` (separate TODO) or explicit boxing -- same trade-offs as single
-  inheritance.
+- Diamond inheritance is rejected outright; users with shared ancestors should
+  make the shared base a `@dynamic` protocol. Tracked in "Future Extensions".
+- Full Pythonic cooperative `super()` chaining is not implemented; v2.3 provides
+  MRO-aware single-hop resolution at the child's `super()` call site only.
+  Tracked in "Future Extensions".
+
+The static-vs-dynamic tradeoff that all class hierarchies hit -- heterogeneous
+containers, polymorphic mixin parameters -- is not a D22 gap; it is the
+language-wide answer that `@dynamic` is for.
 
 **v2.2 -- same-name fields across bases (shipped).** Two ancestors may declare
 fields with the same name, regardless of privacy. Each subobject legitimately
@@ -2645,13 +2652,19 @@ diagnostic when more than one direct parent's MRO reaches the name
 A child field that shadows an inherited one emits a warning at the child's decl
 site (any inheritance shape, not just multi-base).
 
-**v2.3 -- MRO-aware cooperative `super()`** (independent of v2.2). Full C3 super chain
-so `super().foo()` in a diamond-free MI class walks the MRO, not just the single
-matching direct parent. Plug into `_resolve_super_parent_type`
-(`tpyc/sema/methods.py`). Current behavior requires either unambiguous resolution (one
-parent defines the method) or an explicit `BaseN.method(self, ...)` call.
+**v2.3 -- MRO-aware `super()` resolution (shipped).** `super().method()` in a
+multi-base child walks the child's C3 MRO and dispatches to the first ancestor
+whose *own* method table defines `method` (matching Python's `__dict__` walk;
+inherited methods on an ancestor don't count, so codegen may target a
+grandparent directly). Entry point: `_resolve_super_parent_type` in
+`tpyc/sema/methods.py`. Two direct parents both defining the method is no
+longer an ambiguity error; the MRO-first one wins. `super().__init__()`
+covers one `__init__` base (the MRO-first one) -- the coverage validator
+still requires explicit `BaseN.__init__(self, ...)` calls for other bases.
+`super().__del__()` remains rejected in multi-base. Single-hop only; full
+cooperative chaining is tracked in "Future Extensions".
 
-**Effort**: L (shipped through v2.2). v2.3 is M.
+**Effort**: L (shipped through v2.3).
 
 ---
 
