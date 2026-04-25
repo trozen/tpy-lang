@@ -1,0 +1,3 @@
+CPython's typing.@overload shim dispatches by positional-arg isinstance() only;
+kwargs do not participate in overload selection. This test relies on kwargs
+selecting the matching overload by name, so CPython and TPy diverge by design.

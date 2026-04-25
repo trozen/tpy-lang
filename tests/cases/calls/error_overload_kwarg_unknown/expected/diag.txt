@@ -1,0 +1,1 @@
+main.py:21: error: 'pick' got unexpected keyword argument 'bogus'

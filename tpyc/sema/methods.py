@@ -345,12 +345,11 @@ class MethodAnalyzer:
             raise self.ctx.error(
                 f"'{expr.method}' does not accept **kwargs", expr)
 
-        # Resolve kwargs before arity check
+        # Resolve kwargs before arity check. For the single-overload path we
+        # expand kwargs here; the multi-overload path defers resolution to
+        # after overload resolution so kwargs can participate in tier ranking.
         has_kwonly = any(p.keyword_only for p in (overloads[0].params if len(overloads) == 1 else []))
-        if expr.kwargs or has_kwonly:
-            if len(overloads) > 1:
-                raise self.ctx.error(
-                    f"Keyword arguments not supported for overloaded method '{expr.method}'", expr)
+        if len(overloads) == 1 and (expr.kwargs or has_kwonly):
             target = overloads[0]
             resolved_target = (self.type_ops.substitute_method_type_params(target, type_subst)
                                if type_subst else target)
@@ -377,6 +376,9 @@ class MethodAnalyzer:
                     lambda msg: self.ctx.error(msg, expr))
         else:
             arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+            kwarg_types: dict[str, TpyType] | None = None
+            if expr.kwargs:
+                kwarg_types = {k: self.expr.analyze_expr(v) for k, v in expr.kwargs.items()}
             resolved_overloads = [
                 self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
                 for m in overloads
@@ -393,6 +395,7 @@ class MethodAnalyzer:
                     is_readonly_receiver=is_readonly_receiver,
                     is_consuming_receiver=is_consuming_receiver,
                     type_ops=self.type_ops,
+                    kwarg_types=kwarg_types,
                 )
             except OverloadAmbiguityError as e:
                 sigs = "; ".join(
@@ -403,11 +406,32 @@ class MethodAnalyzer:
                     f"Ambiguous overload for '{expr.method}': "
                     f"multiple candidates match equally: {sigs}", expr)
             if resolved is None:
+                if kwarg_types:
+                    accepted_names = {p.name for o in overloads for p in o.params}
+                    for kw_name in kwarg_types:
+                        if kw_name not in accepted_names:
+                            raise self.ctx.error(
+                                f"'{expr.method}' got unexpected keyword argument '{kw_name}'",
+                                expr)
                 arg_strs = ", ".join(str(t) for t in arg_types)
                 raise self.ctx.error(
                     f"No matching overload for '{expr.method}' with argument types ({arg_strs})", expr)
             expr.resolved_function_info = resolved
-            self._check_and_coerce_args(expr, resolved.params, arg_types,
+            coerce_arg_types: list[TpyType] | None = arg_types
+            if expr.kwargs:
+                # Winner picked; expand kwargs into positional slots against its signature.
+                expr.args = resolve_kwargs(
+                    expr.args, expr.kwargs, resolved.params, expr.method,
+                    lambda msg: self.ctx.error(msg, expr),
+                    call_loc=expr.loc,
+                )
+                expr.kwargs = {}
+                # Pre-analyzed types no longer align with expanded expr.args;
+                # discard any stale empty-list inference cache so
+                # _check_and_coerce_args re-analyzes every arg with a param hint.
+                self.ctx.func.pre_analyzed_method_args.pop(id(expr), None)
+                coerce_arg_types = None
+            self._check_and_coerce_args(expr, resolved.params, coerce_arg_types,
                                         target_is_readonly=resolved.is_readonly)
             # Overloaded methods with generic defaults: find unresolved counterpart
             if type_subst:

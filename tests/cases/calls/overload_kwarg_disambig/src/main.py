@@ -1,0 +1,35 @@
+# Keyword arguments participate in overload resolution tier ranking.
+#
+# Before the fix, resolve_overload only saw positional args; _resolve_call_kwargs
+# ran post-resolution against the already-picked winner. Two overloads that
+# share a positional shape but differ only in a kwarg's type would either
+# tie at the top of scoring (ambiguous) or pick the first-declared overload
+# and then fail the kwarg type-check. With the fix, per-overload expansion
+# inserts each kwarg's type at its matching param slot so the kwarg can
+# break the tie.
+from typing import overload
+from tpy import Int32
+
+
+@overload
+def pick(x: Int32, *, tag: str = "") -> str:
+    return tag + ":" + str(x)
+
+
+@overload
+def pick(x: Int32, *, tag: Int32 = 0) -> Int32:
+    return x + tag
+
+
+def main() -> None:
+    # Positional arg alone is ambiguous (Int32 matches both overloads at the
+    # same tier); the kwarg's type picks the winner. Before the fix,
+    # resolve_overload didn't see kwargs -- both calls raised "Ambiguous
+    # overload" since the positional signatures are identical.
+    a: str = pick(Int32(10), tag="label")
+    print(a)                                # label:10
+    b: Int32 = pick(Int32(10), tag=Int32(5))
+    print(b)                                # 15
+
+
+main()

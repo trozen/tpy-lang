@@ -283,6 +283,24 @@ narrowing conversions, with an `IntLiteralType` penalty derived from
 The same mechanism makes `sum([1, 2, 3])` resolve to `Int32` via the
 `IntLiteralType` branch of `_scalar_widening_cost`.
 
+#### Keyword arguments
+
+When a call supplies keyword arguments, each candidate overload independently
+expands the positional `arg_types` list by inserting kwarg types at their
+matching param slots (`_expand_arg_types_with_kwargs` in
+`sema/overloads.py`). Overloads that don't declare a given kwarg name (or
+where a kwarg collides with a filled positional slot, or a required kwonly
+is missing) are rejected at the candidate level. Defaulted positional gaps
+between the last positional and the rightmost kwarg are filled with the
+param's own type so the gap doesn't skew cross-overload scoring. The
+kwarg's type then participates in tier ranking like any other arg, so a
+call like `f(xs, start=1.0)` cleanly picks the `Iterable[float]` overload
+over an otherwise-tied `Iterable[int]` sibling. A kwarg name that no
+overload accepts produces a targeted *"got unexpected keyword argument"*
+diagnostic before the generic *"no matching overload"* fallback. Applies
+to both free-function and method `@overload` groups; not to overloaded
+builtins (which still reject kwargs at the call-site gate).
+
 #### Testing
 
 - Unit tests: `tpyc/test_overloads.py` pins `MatchTier` ordering, the cost
@@ -293,7 +311,13 @@ The same mechanism makes `sum([1, 2, 3])` resolve to `Int32` via the
   and `tests/cases/builtins/sum_basic` (empty-list default-int biasing),
   `tests/cases/bytes/from_iterable` (non-parameterised container element-type
   fallback for `bytearray` -> `Iterable[UInt8]`),
-  `tests/cases/str/str_repr_only` (Stringable broadening).
+  `tests/cases/str/str_repr_only` (Stringable broadening),
+  `tests/cases/calls/overload_kwarg_disambig` (kwarg type breaks positional
+  tie on free functions), `tests/cases/calls/overload_kwarg_method` (same
+  on methods), `tests/cases/calls/overload_kwarg_distinct_names`
+  (overloads with distinct kwonly names + defaulted positional gap),
+  `tests/cases/calls/error_overload_kwarg_unknown` (targeted
+  unexpected-kwarg diagnostic).
 
 ## Codegen: Dead Branch Elimination
 

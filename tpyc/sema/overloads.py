@@ -559,6 +559,74 @@ def type_matches_with_coercion(
     return False
 
 
+def _expand_arg_types_with_kwargs(
+    arg_types: list[TpyType],
+    kwarg_types: dict[str, TpyType],
+    overload: FunctionInfo,
+) -> list[TpyType] | None:
+    """Expand positional arg_types by inserting kwarg types at their param slots.
+
+    Mirrors ``resolve_kwargs`` index-mapping logic but operates on types so
+    ``resolve_overload`` can score kwargs-disambiguated candidates. Returns
+    ``None`` when the overload cannot accept the given kwargs (unknown name,
+    duplicate of a positional, or missing required param); the overload is
+    then rejected at the candidate level.
+
+    Defaulted positional gaps between the last positional arg and the rightmost
+    kwarg are filled with the param's own type -- trivially matches itself and
+    does not skew cross-overload scoring.
+    """
+    name_to_index = {p.name: i for i, p in enumerate(overload.params) if not p.is_variadic}
+
+    # One pass over kwargs: validate name, reject positional collisions,
+    # and track the rightmost explicitly-provided slot.
+    rightmost = len(arg_types) - 1
+    for kw_name in kwarg_types:
+        idx = name_to_index.get(kw_name)
+        if idx is None:
+            return None
+        if idx < len(arg_types) and not overload.params[idx].keyword_only:
+            return None
+        if idx > rightmost:
+            rightmost = idx
+
+    # Variadic: positional args feed *args; kwargs feed kwonly slots.
+    # Append kwonly types in declaration order so _classify_overload can
+    # score them at the right positions. Defensive: the parser currently
+    # blocks `*args` on `@overload` (parser.py raises "*args is not supported
+    # on @overload stubs"), so this branch is unreachable from user code
+    # today. Kept correct in case that gate ever opens.
+    if overload.has_variadic:
+        result = list(arg_types)
+        for p in overload.params:
+            if not p.keyword_only:
+                continue
+            if p.name in kwarg_types:
+                result.append(kwarg_types[p.name])
+            elif not p.has_default:
+                return None
+        return result
+
+    result: list[TpyType] = []
+    for i in range(rightmost + 1):
+        p = overload.params[i]
+        if i < len(arg_types):
+            result.append(arg_types[i])
+        elif p.name in kwarg_types:
+            result.append(kwarg_types[p.name])
+        elif p.has_default:
+            result.append(p.type)
+        else:
+            return None
+
+    # Required kwonly beyond rightmost must be in kwargs
+    for i, p in enumerate(overload.params):
+        if i > rightmost and p.keyword_only and not p.has_default and p.name not in kwarg_types:
+            return None
+
+    return result
+
+
 def _classify_overload(
     overload: FunctionInfo,
     arg_types: list[TpyType],
@@ -566,6 +634,7 @@ def _classify_overload(
     classifier: ProtocolClassifier | None,
     default_int_type: TpyType | None,
     type_ops: 'TypeOperations | None',
+    kwarg_types: dict[str, TpyType] | None = None,
 ) -> tuple[tuple[MatchTier, int], ...] | None:
     """Classify every arg against ``overload``'s params, returning a
     per-arg tier vector on match or ``None`` if any arg rejects.
@@ -575,6 +644,11 @@ def _classify_overload(
     ``_classify_generic_param_match`` is used for the TPR params; other
     params fall through to the regular strict classifier.
     """
+    if kwarg_types:
+        expanded = _expand_arg_types_with_kwargs(arg_types, kwarg_types, overload)
+        if expanded is None:
+            return None
+        arg_types = expanded
     if len(arg_types) < overload.min_args or len(arg_types) > overload.max_args:
         return None
     has_tpr = overload.is_generic() and any(
@@ -613,6 +687,7 @@ def resolve_overload(
     is_consuming_receiver: bool | None = None,
     protocol_classifier: ProtocolClassifier | None = None,
     type_ops: 'TypeOperations | None' = None,
+    kwarg_types: dict[str, TpyType] | None = None,
 ) -> FunctionInfo | None:
     """Two-pass overload resolution: strict tier-ranked match, then coercions.
 
@@ -621,6 +696,10 @@ def resolve_overload(
     ``type_ops`` enables the generic first-pass path (inference + tier
     ranking); when omitted, generic overloads fall back to the legacy
     structural match (first-match-wins in declaration order).
+
+    ``kwarg_types`` maps kwarg names to their analyzed types; per-overload
+    expansion inserts them at the matching param slots so kwargs can
+    disambiguate overloads that positional args tie on.
 
     Returns the winning ``FunctionInfo`` or ``None`` (no match, or ambiguous
     -- genuine ties at the top of the first-pass score are refused rather
@@ -659,7 +738,10 @@ def resolve_overload(
                 _contains_type_param_ref(p.type) for p in overload.params):
             # Legacy structural-match fallback for generic overloads when the
             # caller hasn't plumbed type_ops (e.g. the error-message-preservation
-            # path in calls.py).
+            # path in calls.py). Kwargs aren't supported on this fallback path
+            # because it uses raw structural matching without arity expansion.
+            if kwarg_types:
+                continue
             if (first_generic_match_fallback is None
                     and len(arg_types) >= overload.min_args
                     and len(arg_types) <= overload.max_args
@@ -669,6 +751,7 @@ def resolve_overload(
             continue
         per_arg = _classify_overload(
             overload, arg_types, protocol_checker, classifier, default_int_type, type_ops,
+            kwarg_types=kwarg_types,
         )
         if per_arg is not None:
             scored_candidates.append((_score(per_arg), overload))
@@ -700,17 +783,23 @@ def resolve_overload(
 
     # Second pass: allow coercions, prefer overload with most non-coercion
     # matches and fewest narrowing conversions (BigInt->Int32 is lossy).
-    candidates: list[tuple[int, int, FunctionInfo]] = []
+    candidates: list[tuple[int, int, FunctionInfo, list[TpyType]]] = []
     for overload in overloads:
-        if len(arg_types) < overload.min_args or len(arg_types) > overload.max_args:
+        effective_args = arg_types
+        if kwarg_types:
+            expanded = _expand_arg_types_with_kwargs(arg_types, kwarg_types, overload)
+            if expanded is None:
+                continue
+            effective_args = expanded
+        if len(effective_args) < overload.min_args or len(effective_args) > overload.max_args:
             continue
         if all(type_matches_with_coercion(arg_t, ptype, protocol_checker, deref_checker, subclass_checker)
-               for arg_t, (_, ptype) in zip(arg_types, overload.params)):
-            score = sum(1 for arg_t, (_, ptype) in zip(arg_types, overload.params)
+               for arg_t, (_, ptype) in zip(effective_args, overload.params)):
+            score = sum(1 for arg_t, (_, ptype) in zip(effective_args, overload.params)
                         if type_matches_numeric(arg_t, ptype))
-            narrowing = sum(1 for arg_t, (_, ptype) in zip(arg_types, overload.params)
+            narrowing = sum(1 for arg_t, (_, ptype) in zip(effective_args, overload.params)
                            if is_big_int_type(arg_t) and is_fixed_int_type(unwrap_ref_type(ptype)))
-            candidates.append((score, narrowing, overload))
+            candidates.append((score, narrowing, overload, effective_args))
 
     if candidates:
         if default_int_type is None:
@@ -742,12 +831,12 @@ def resolve_overload(
         # Covers both same-return (e.g. range(IntLiteral) over many fixed-int
         # overloads) and different-return cases (IntLiteral->FixedInt narrowing).
         if len(candidates) > 1:
-            for i, (score, narrowing, overload) in enumerate(candidates):
+            for i, (score, narrowing, overload, effective_args) in enumerate(candidates):
                 extra = sum(
                     _int_literal_penalty(arg_t, ptype)
-                    for arg_t, (_, ptype) in zip(arg_types, overload.params)
+                    for arg_t, (_, ptype) in zip(effective_args, overload.params)
                 )
-                candidates[i] = (score, narrowing + extra, overload)
+                candidates[i] = (score, narrowing + extra, overload, effective_args)
         # Best: most numeric matches, then fewest narrowing conversions
         candidates.sort(key=lambda x: (-x[0], x[1]))
         return candidates[0][2]

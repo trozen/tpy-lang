@@ -2588,6 +2588,10 @@ class CallAnalyzer:
             else:
                 arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
 
+            kwarg_types: dict[str, TpyType] | None = None
+            if expr.kwargs:
+                kwarg_types = {k: self.expr.analyze_expr(v) for k, v in expr.kwargs.items()}
+
             # Build candidate pool: non-generic originals + resolved generics
             candidates = []
             generic_originals: dict[int, FunctionInfo] = {}
@@ -2613,6 +2617,7 @@ class CallAnalyzer:
                     default_int_type=self.ctx.default_int_type,
                     subclass_checker=self.ctx.registry.is_subclass_of,
                     type_ops=self.type_ops,
+                    kwarg_types=kwarg_types,
                 )
             except OverloadAmbiguityError as e:
                 raise self._ambiguous_overload_error(expr, expr.func_name, e)
@@ -2637,6 +2642,7 @@ class CallAnalyzer:
                     protocol_checker=self.protocols.type_conforms_to_protocol,
                     protocol_classifier=self.protocols.classify_protocol_conformance,
                     subclass_checker=self.ctx.registry.is_subclass_of,
+                    kwarg_types=kwarg_types,
                 )
             except OverloadAmbiguityError as e:
                 raise self._ambiguous_overload_error(expr, expr.func_name, e)
@@ -2648,6 +2654,16 @@ class CallAnalyzer:
                         return self._analyze_single_function_call(expr, func)
                     except SemanticError:
                         continue
+            # Targeted diagnostic: a kwarg name that no overload accepts is
+            # the most actionable failure cause; report it instead of a
+            # bare arg-types listing that omits the kwarg.
+            if kwarg_types:
+                accepted_names: set[str] = {p.name for f in func_infos for p in f.params}
+                for kw_name in kwarg_types:
+                    if kw_name not in accepted_names:
+                        raise self.ctx.error(
+                            f"'{expr.func_name}' got unexpected keyword argument '{kw_name}'",
+                            expr)
             arg_type_strs = ", ".join(str(unwrap_own(t)) for t in arg_types)
             raise self.ctx.error(
                 f"No matching @overload for {expr.func_name}({arg_type_strs})", expr)
