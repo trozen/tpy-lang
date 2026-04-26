@@ -24,10 +24,10 @@ struct SimpleBuffer {
     // def __init__(self) -> None:
     SimpleBuffer() : _data({10, 20, 30, 0}), _n(3) {}
 
-    auto begin() { return this->__iter__().begin(); }
-    auto end() { return this->__iter__().end(); }
-    auto begin() const { return this->__iter__().begin(); }
-    auto end() const { return this->__iter__().end(); }
+    auto begin() { return this->__span__().begin(); }
+    auto end() { return this->__span__().end(); }
+    auto begin() const { return this->__span__().begin(); }
+    auto end() const { return this->__span__().end(); }
 
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[Int32]]:

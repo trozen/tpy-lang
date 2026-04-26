@@ -1,5 +1,7 @@
-# Test that types with both __span__ and __iter__ compile without warning.
-# __iter__ takes precedence for iteration in codegen.
+# Test that a type with both __span__ and a non-SpanIter __iter__ compiles
+# cleanly: for-loops use __iter__/__next__ (the universal default), and no
+# begin/end is synthesized -- emitting __span__-based begin/end would
+# silently diverge from the user's __iter__ ordering.
 from tpy import Int32, Own, Span, auto_readonly
 
 class MyIter:

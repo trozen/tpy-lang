@@ -354,48 +354,42 @@ class RecordGenerator:
         if has_next and not has_iter:
             out.write(f"\n{INDENT}auto& __iter__() {{ return *this; }}\n")
 
-        # Synthesize begin()/end() so span-backed user types satisfy
-        # std::ranges::input_range. Two sources feed this:
-        # (1) __iter__() -> SpanIter[T]: delegate begin/end to the iterator.
-        # (2) __span__() -> Span[...] (only when no user __iter__ exists):
-        #     delegate begin/end to the returned span. Skipped when the user
-        #     has their own __iter__ because begin/end-via-__span__ would
-        #     diverge from the user's __iter__ semantics (different
-        #     ordering, filtering, etc.) -- safer to let the type not
-        #     satisfy input_range than to quietly contradict the user.
-        # The returned span's iterators point into the underlying storage
-        # (owned by self), not into the prvalue span, so the iterators remain
-        # valid for the lifetime of self.
-        # Must appear before user methods so that concept constraints see a
+        # Synthesize begin()/end() from __span__() so span-backed user types
+        # satisfy std::ranges::input_range. The returned span's iterators
+        # point into the underlying storage (owned by self), not into the
+        # prvalue span, so they remain valid for the lifetime of self even
+        # though the span itself is a temporary.
+        #
+        # Skipped when the user has a __iter__ whose semantics differ from
+        # __span__ -- otherwise comprehensions/genexprs (which call
+        # begin/end) would silently diverge from for-loops (which use
+        # __iter__/__next__). __iter__ returning SpanIter[T] is the
+        # equivalent case: SpanIter iterates the same underlying span,
+        # so begin/end-via-__span__ matches __iter__/__next__ semantically.
+        #
+        # Must appear before user methods so concept constraints see a
         # consistent declaration state when evaluated inside method bodies.
-        # has_iter reflects user-defined __iter__ only; the synthesized
-        # __iter__() for pure iterators (above) is intentionally excluded.
         has_begin = self._has_method_or_field(record, "begin")
         has_end = self._has_method_or_field(record, "end")
         if not has_begin and not has_end:
             record_info = self.ctx.analyzer.registry.get_record(record.name)
-            synthesized = False
-            if has_iter and record_info and "__iter__" in record_info.methods:
-                iter_overloads = record_info.methods["__iter__"]
-                if iter_overloads and is_span_iter(iter_overloads[0].return_type):
-                    out.write(f"\n{INDENT}auto begin() {{ return this->__iter__().begin(); }}\n")
-                    out.write(f"{INDENT}auto end() {{ return this->__iter__().end(); }}\n")
-                    out.write(f"{INDENT}auto begin() const {{ return this->__iter__().begin(); }}\n")
-                    out.write(f"{INDENT}auto end() const {{ return this->__iter__().end(); }}\n")
-                    synthesized = True
-            if (not synthesized and not has_iter
-                    and record_info and "__span__" in record_info.methods):
-                out.write(f"\n{INDENT}auto begin() {{ return this->__span__().begin(); }}\n")
-                out.write(f"{INDENT}auto end() {{ return this->__span__().end(); }}\n")
-                # Only emit const overloads when a readonly __span__ exists;
-                # otherwise `this->__span__()` on `const this` fails to compile.
-                span_overloads = record_info.methods["__span__"]
-                has_readonly_span = any(
-                    getattr(m, "is_readonly", False) for m in span_overloads
-                )
-                if has_readonly_span:
-                    out.write(f"{INDENT}auto begin() const {{ return this->__span__().begin(); }}\n")
-                    out.write(f"{INDENT}auto end() const {{ return this->__span__().end(); }}\n")
+            if record_info and "__span__" in record_info.methods:
+                iter_diverges = False
+                if has_iter:
+                    iter_overloads = record_info.methods.get("__iter__")
+                    iter_diverges = not (
+                        iter_overloads
+                        and is_span_iter(iter_overloads[0].return_type)
+                    )
+                if not iter_diverges:
+                    out.write(f"\n{INDENT}auto begin() {{ return this->__span__().begin(); }}\n")
+                    out.write(f"{INDENT}auto end() {{ return this->__span__().end(); }}\n")
+                    # Only emit const overloads when a readonly __span__ exists;
+                    # otherwise `this->__span__()` on `const this` fails to compile.
+                    span_overloads = record_info.methods["__span__"]
+                    if any(m.is_readonly for m in span_overloads):
+                        out.write(f"{INDENT}auto begin() const {{ return this->__span__().begin(); }}\n")
+                        out.write(f"{INDENT}auto end() const {{ return this->__span__().end(); }}\n")
 
         # Generate methods (excluding __init__ and __del__)
         dynamic_overrides = self.functions._get_dynamic_override_info(record.name)

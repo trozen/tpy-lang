@@ -1127,6 +1127,20 @@ class TypeRegistrar:
                     record.loc
                 )
 
+        # NativeIterable's C++ concept requires `std::ranges::begin(t)`/`end(t)`,
+        # which TPy can only guarantee for built-ins backed by hand-written C++
+        # ranges. Use Spannable[T] for span-backed types or Iterable[T] otherwise.
+        if not record_info.is_native:
+            for protocol in record_info.implemented_protocols:
+                if protocol.qualified_name() == qnames.NATIVE_ITERABLE:
+                    raise SemanticError(
+                        f"Class '{record.name}' cannot implement NativeIterable: "
+                        f"NativeIterable is reserved for @native types. "
+                        f"Use Spannable[T] for span-backed types, or Iterable[T] "
+                        f"for general iteration.",
+                        record.loc
+                    )
+
         # ValueType marker: set flag (field validation deferred to a second pass
         # so that all ValueType records in the module are registered first)
         for protocol in record_info.implemented_protocols:
