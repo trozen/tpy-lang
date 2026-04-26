@@ -768,6 +768,12 @@ must be declared explicitly or loaded from metadata. See
   each root in `addr_taken_roots(return_expr)` (rules 1/4). Rule 3 (transitive):
   when returning the result of a call whose `return_borrows_from` is known, the
   source args are also marked via `mark_param_returned`.
+- The inference gate fires for non-value-type returns and additionally for
+  borrowing value views (`StrView`, `BytesView`, `Span[T]`, `SpanIter[T]`) --
+  views borrow from a source even when returned by value, so the borrow contract
+  must be tracked. For view returns, `mark_param_mutated` is skipped (the caller
+  cannot write through a view; tracking the borrow without the mutation flag
+  preserves auto-const inference on the enclosing method).
 - Call-site registration: in `TpyVarDecl` handler in `sema/statements.py` for both
   first declarations and reassignments, and in the for-each handler when the iterable
   is a call. When `fi.return_borrows_from` is non-empty, the result is registered as

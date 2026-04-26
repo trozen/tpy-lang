@@ -3082,6 +3082,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   - Phase 2 propagates `self_mutated` through the call graph via call edges: `self.method()`, `self.field.method()`, and for-each iteration over self fields are all deferred to Phase 2, which only marks self as mutated when the callee actually mutates its self
   - Post-pass (`infer_method_const`) marks all non-self-mutating methods as `is_readonly`, and the codegen sync pass copies the flag to AST nodes
   - Exceptions: `__init__`, `__del__`, in-place operators, consuming methods (`Own[Self]` receiver), and methods that override non-const C++ virtuals from `@dynamic` protocols are never inferred const
+  - Methods whose return value borrows from `self` (e.g. `def get(self) -> Span[Int32]: return self.field`) are skipped to avoid silently degrading the declared mutable return type to its readonly counterpart -- with one exception: when the return type is an inherently-const view (`StrView`, `BytesView`, `Span[readonly[T]]`, `SpanIter[readonly[T]]`), const-ifying the method does not change the return type, and auto-const fires
   - `@readonly(False)` opts out of const inference for a specific method
   - Limitation: container-mediated aliases not tracked (e.g., `[param]` into list then iterate)
 - **Working**: `readonly[T]` type modifier (per-parameter constness)

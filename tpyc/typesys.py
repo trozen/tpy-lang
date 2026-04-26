@@ -2243,6 +2243,25 @@ def span_is_readonly(t: 'TpyType') -> bool:
     return is_span(t) and isinstance(t.type_args[0], ReadonlyType)
 
 
+def view_is_inherently_const(t: 'TpyType') -> bool:
+    """Distinguish views that auto-const inference can safely return.
+
+    Mutable Span[T] / SpanIter[T] would silently degrade to their readonly
+    counterpart under const inference -- a real return-type change behind
+    the user's back. StrView, BytesView, Span[readonly[T]], and
+    SpanIter[readonly[T]] are inherently const, so const-ifying their
+    enclosing method is a no-op on the declared return type.
+    """
+    from tpyc.type_def_registry import is_str_view_type, is_bytes_view_type, is_span_iter
+    if is_str_view_type(t) or is_bytes_view_type(t):
+        return True
+    if span_is_readonly(t):
+        return True
+    if is_span_iter(t):
+        return isinstance(t.type_args[0], ReadonlyType)
+    return False
+
+
 def span_inner_element(t: 'TpyType') -> 'TpyType':
     """Unwrapped element type of a Span (strips ReadonlyType). Caller must
     have confirmed `is_span(t)`."""

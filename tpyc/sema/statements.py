@@ -692,32 +692,39 @@ class StatementAnalyzer:
                     # Escape tracking: returning a nested def marks it as escaping
                     if stmt.value.name in self.ctx.func.nested_def_names:
                         self.ctx.func.nested_def_escapes.add(stmt.value.name)
-                if expected is not None and not expected.is_value_type():
-                    for ret_root in addr_taken_roots(stmt.value):
-                        self.ctx.mark_param_mutated(ret_root)
-                        self.ctx.mark_param_returned(ret_root)  # 8b: track which param storage the return borrows
-                    # 8b rule 3: transitive return -- if returning the result of a call
-                    # whose return_borrows_from is known, propagate the borrow contract.
-                    # e.g. `return inner(items)` where inner borrows param 0 -> mark items.
-                    ret_inner = stmt.value.expr if isinstance(stmt.value, TpyCoerce) else stmt.value
-                    if isinstance(ret_inner, (TpyCall, TpyMethodCall)):
-                        fi_ret = ret_inner.resolved_function_info
-                        if fi_ret is not None and fi_ret.return_borrows_from:
-                            ret_args = ret_inner.args
-                            ret_obj = getattr(ret_inner, 'obj', None)
-                            for idx in fi_ret.return_borrows_from:
-                                if idx == -1 and ret_obj is not None:
-                                    src = _borrow_storage_root(ret_obj)
-                                elif idx >= 0 and idx < len(ret_args):
-                                    src = _borrow_storage_root(ret_args[idx])
-                                else:
-                                    src = None
-                                if src is not None:
-                                    # A @readonly callee returns const ref -- the source
-                                    # param is not mutated through the return value.
-                                    if not fi_ret.is_readonly:
-                                        self.ctx.mark_param_mutated(src)
-                                    self.ctx.mark_param_returned(src)
+                # Returning a borrowing view does not give the caller write
+                # access to the source, so we record borrow provenance but
+                # must not raise self_mutated -- that would suppress auto-const
+                # on the enclosing method and break const callers.
+                if expected is not None:
+                    returns_borrowing_view = is_borrowing_view_type(expected)
+                    if not expected.is_value_type() or returns_borrowing_view:
+                        for ret_root in addr_taken_roots(stmt.value):
+                            if not returns_borrowing_view:
+                                self.ctx.mark_param_mutated(ret_root)
+                            self.ctx.mark_param_returned(ret_root)  # 8b: track which param storage the return borrows
+                        # 8b rule 3: transitive return -- if returning the result of a call
+                        # whose return_borrows_from is known, propagate the borrow contract.
+                        # e.g. `return inner(items)` where inner borrows param 0 -> mark items.
+                        ret_inner = stmt.value.expr if isinstance(stmt.value, TpyCoerce) else stmt.value
+                        if isinstance(ret_inner, (TpyCall, TpyMethodCall)):
+                            fi_ret = ret_inner.resolved_function_info
+                            if fi_ret is not None and fi_ret.return_borrows_from:
+                                ret_args = ret_inner.args
+                                ret_obj = getattr(ret_inner, 'obj', None)
+                                for idx in fi_ret.return_borrows_from:
+                                    if idx == -1 and ret_obj is not None:
+                                        src = _borrow_storage_root(ret_obj)
+                                    elif idx >= 0 and idx < len(ret_args):
+                                        src = _borrow_storage_root(ret_args[idx])
+                                    else:
+                                        src = None
+                                    if src is not None:
+                                        # Read-only sources (readonly callees, view returns)
+                                        # don't propagate mutation to their borrowed-from arg.
+                                        if not returns_borrowing_view and not fi_ret.is_readonly:
+                                            self.ctx.mark_param_mutated(src)
+                                        self.ctx.mark_param_returned(src)
             self.init.mark_terminated()
         elif isinstance(stmt, TpyYield):
             self._analyze_yield(stmt)
