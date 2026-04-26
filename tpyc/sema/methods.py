@@ -31,7 +31,7 @@ from .calls import (
     validate_type_param_bounds, prefer_strview_for_literals,
     _enrich_literal_types,
 )
-from .statements import _root_name_of_expr
+from .statements import _root_name_of_expr, _is_self_call_deferred
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -71,37 +71,6 @@ def _contains_type_param_ref_type(typ: TpyType, param_names: set[str]) -> bool:
     # UnionType
     if hasattr(typ, 'members'):
         return any(_contains_type_param_ref_type(m, param_names) for m in typ.members)
-    return False
-
-
-def _is_self_call_deferred(
-    expr_obj: 'TpyExpr', obj_root: str | None,
-    loop_var_iterable: dict[str, str],
-) -> bool:
-    """Check if a method call receiver traces to self through field accesses or loop vars.
-
-    When True, self-mutation is deferred to Phase 2 via call edges
-    (receiver_is_self=True) instead of being marked directly in Phase 1.
-    This enables readonly inference for methods that call non-mutating
-    methods on fields or loop elements.
-    """
-    if obj_root == "self":
-        # Verify the chain is purely field accesses (no subscripts like
-        # self.items[0].method()). _root_name_of_expr strips both FieldAccess
-        # and Subscript, so obj_root=="self" doesn't rule out subscripts.
-        # Subscript-rooted calls are not deferred because the call edge in
-        # calls.py also only walks TpyFieldAccess.
-        chain = expr_obj
-        while isinstance(chain, TpyFieldAccess):
-            chain = chain.obj
-        return isinstance(chain, TpyName) and chain.name == "self"
-    if obj_root is not None:
-        # loop_var.method() where loop_var iterates over self.field
-        iterable = loop_var_iterable.get(obj_root)
-        if iterable is not None:
-            root = iterable.split(".")[0] if "." in iterable else iterable
-            if root == "self":
-                return True
     return False
 
 
@@ -1955,6 +1924,10 @@ class MethodAnalyzer:
         # Build type substitution for generic parent (e.g., Container[Int32] -> {"T": Int32})
         type_subst = self.protocols.get_parent_type_subst(parent_type, parent_info)
 
+        # Must be set before arg resolution: mutation-call-edge recording
+        # treats super() receivers as self for self-mutation propagation.
+        expr.super_parent_type = parent_type
+
         # Check if the method has its own type parameters (generic method)
         method_info = overloads[0]
         if method_info.is_generic():
@@ -1969,7 +1942,6 @@ class MethodAnalyzer:
             raise self.ctx.error(
                 f"Cannot call non-readonly method '{expr.method}' on readonly reference",
                 expr)
-        expr.super_parent_type = parent_type
         return return_type
 
     @staticmethod

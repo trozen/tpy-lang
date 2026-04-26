@@ -186,6 +186,37 @@ def _root_name_of_expr(expr: TpyExpr) -> str | None:
     return expr.name if isinstance(expr, TpyName) else None
 
 
+def _is_self_call_deferred(
+    expr_obj: TpyExpr, obj_root: str | None,
+    loop_var_iterable: dict[str, str],
+) -> bool:
+    """Check if a method call receiver traces to self through field accesses or loop vars.
+
+    When True, self-mutation is deferred to Phase 2 via call edges
+    (receiver_is_self=True) instead of being marked directly in Phase 1.
+    This enables readonly inference for methods that call non-mutating
+    methods on fields or loop elements.
+    """
+    if obj_root == "self":
+        # Verify the chain is purely field accesses (no subscripts like
+        # self.items[0].method()). _root_name_of_expr strips both FieldAccess
+        # and Subscript, so obj_root=="self" doesn't rule out subscripts.
+        # Subscript-rooted calls are not deferred because the call edge in
+        # calls.py also only walks TpyFieldAccess.
+        chain = expr_obj
+        while isinstance(chain, TpyFieldAccess):
+            chain = chain.obj
+        return isinstance(chain, TpyName) and chain.name == "self"
+    if obj_root is not None:
+        # loop_var.method() where loop_var iterates over self.field
+        iterable = loop_var_iterable.get(obj_root)
+        if iterable is not None:
+            root = iterable.split(".")[0] if "." in iterable else iterable
+            if root == "self":
+                return True
+    return False
+
+
 # Map raw owned types (by qname) and pending view types (by class) to their
 # ViewTypeFamily. Owned types share the NominalType class, so dispatch on qname.
 _VIEW_OWNED_QNAME_TO_FAMILY: dict[str, ViewTypeFamily] = {

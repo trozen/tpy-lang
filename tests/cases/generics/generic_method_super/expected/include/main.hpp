@@ -48,7 +48,7 @@ struct Child : Base<T> {
 
     // def wrap[U](self, other: U) -> U:
     template<typename U>
-    ::tpy::val_or_cref_t<U> wrap(const U& other) const {
+    ::tpy::val_or_ref_t<U> wrap(::tpy::param_val_or_ref_t<U> other) {
         // return super().transform(other)
         return this->Base<T>::template transform<U>(other);
     }

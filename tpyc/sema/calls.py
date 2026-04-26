@@ -36,7 +36,7 @@ from ..coercions import CoercionContext, VALUE_TO_PTR
 from .context import PENDING_CONTAINER_TYPES, addr_taken_roots
 from ..diagnostics import SemanticError
 from .overloads import type_matches_numeric, resolve_overload, OverloadAmbiguityError
-from .statements import _root_name_of_expr
+from .statements import _root_name_of_expr, _is_self_call_deferred
 from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo, _is_static_str
 from ..macro_loader import expand_call_macro
 
@@ -2043,25 +2043,19 @@ class CallAnalyzer:
         name_to_idx = self.ctx.func.current_param_name_to_idx
         rebound = self.ctx.func.current_rebound_params
 
-        # Detect receivers rooted at self so Phase 2 can propagate self-mutation.
-        # Covers: self.method(), self.field.method(), and loop_var.method()
-        # where loop_var iterates over a self field.
+        # Receivers effectively rooted at self: self.method(), self.field.method(),
+        # loop_var.method() over self.field, and super().method() (the synthetic
+        # super() proxy resolves to self). Phase 2 propagates self-mutation through
+        # these.
         receiver_is_self = False
         if isinstance(expr, TpyMethodCall):
-            obj = expr.obj
-            # Walk through field access chain to find self at the root
-            while isinstance(obj, TpyFieldAccess):
-                obj = obj.obj
-            if isinstance(obj, TpyName):
-                if obj.name == "self":
+            if expr.super_parent_type is not None:
+                receiver_is_self = True
+            else:
+                obj_root = _root_name_of_expr(expr.obj)
+                if obj_root is not None and _is_self_call_deferred(
+                        expr.obj, obj_root, self.ctx.func.loop_var_iterable):
                     receiver_is_self = True
-                else:
-                    # Loop variable iterating over self.field
-                    iterable = self.ctx.func.loop_var_iterable.get(obj.name)
-                    if iterable is not None:
-                        root = iterable.split(".")[0] if "." in iterable else iterable
-                        if root == "self":
-                            receiver_is_self = True
 
         # Nothing to record if no params flow through and no self-call
         if not name_to_idx and not receiver_is_self:
