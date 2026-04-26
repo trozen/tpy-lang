@@ -311,6 +311,7 @@ def next[T](it: Iterator[T]) -> T: ...
 
 # TODO: make non-native once regular functions can return protocol types
 @readonly
+@type_param_default(T=DefaultInt)
 @native("tpy::__iter__")
 def iter[T](x: Iterable[T]) -> Iterator[T]: ...
 
@@ -434,11 +435,13 @@ def round(x: int, ndigits: Int32) -> int: ...
 
 @pure
 @readonly
+@type_param_default(T=DefaultInt)
 @native("tpy::builtin_all")
 def all[T: Truthy](iterable: Iterable[T]) -> bool: ...
 
 @pure
 @readonly
+@type_param_default(T=DefaultInt)
 @native("tpy::builtin_any")
 def any[T: Truthy](iterable: Iterable[T]) -> bool: ...
 
@@ -511,6 +514,7 @@ def sum(iterable: Iterable[float], start: float) -> float: ...
 @overload
 @pure
 @readonly
+@type_param_default(T=DefaultInt)
 @cpp_template("::tpy::builtin_sorted<{T}>({0})")
 def sorted[T: Comparable](iterable: Iterable[T]) -> Own[list[T]]: ...
 
@@ -566,11 +570,13 @@ def oct(x: int) -> str: ...
 
 @overload
 @readonly
+@type_param_default(T=DefaultInt)
 @cpp_template("::tpy::builtin_enumerate<{T}>({0})")
 def enumerate[T](iterable: Iterable[T]) -> Iterator[tuple[Int32, T]]: ...
 
 @overload
 @readonly
+@type_param_default(T=DefaultInt)
 @cpp_template("::tpy::builtin_enumerate_start<{T}>({0}, {1})")
 def enumerate[T](iterable: Iterable[T], start: Int32) -> Iterator[tuple[Int32, T]]: ...
 
@@ -578,6 +584,7 @@ def enumerate[T](iterable: Iterable[T], start: Int32) -> Iterator[tuple[Int32, T
 # -- reversed --
 
 @readonly
+@type_param_default(T=DefaultInt)
 @cpp_template("::tpy::builtin_reversed<{T}>({0})")
 def reversed[T](seq: Sequence[T]) -> Iterator[T]: ...
 

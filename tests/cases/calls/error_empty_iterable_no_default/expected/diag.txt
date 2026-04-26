@@ -1,0 +1,1 @@
+main.py:15: error: Cannot infer type arguments for 'f'. Specify explicitly: f[T](...)

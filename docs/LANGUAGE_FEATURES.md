@@ -2894,7 +2894,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
     - Exhaustiveness check: stubs must cover all union variants per parameter when all stubs include that parameter (missing variants are a sema error). Short-arity stubs that skip a parameter are covered by the impl's default.
     - `isinstance(x, T)` checks in if/elif/else are statically resolved to `true`/`false` per overload
     - `match`/`case` on union subjects selects only the matching arm per overload
-    - Call-site overload resolution is tier-ranked in two passes (`sema/overloads.py`, see `docs/OVERLOAD_DESIGN.md#call-resolution` for the full algorithm). First pass: each candidate classifies every arg into a `(tier, widening_cost)` pair, strongest-first tiers being `EXACT_CONCRETE > EXACT_GENERIC_SHAPE > PROTOCOL_EXPLICIT > PROTOCOL_STRUCTURAL > GENERIC_PROTOCOL_EXPLICIT > GENERIC_PROTOCOL_STRUCTURAL > GENERIC_WILDCARD`; candidates are sorted by aggregate tier counts with widening cost as the tiebreaker, and genuine ties become an `Ambiguous overload for 'f': ...` diagnostic rather than a declaration-order pick. Second pass (coercion fallback) runs only when no strict match exists. Concrete overloads always rank above equally-matching generics, so stub order cannot change the winner. Empty-list literals (`sum([])`, `any([])`, ...) and bare int literals bias their element-type cost toward `default_int_type`, which makes `sum([]) == 0` resolve to the `Int32` overload at cost 0 under the default config.
+    - Call-site overload resolution is tier-ranked in two passes (`sema/overloads.py`, see `docs/OVERLOAD_DESIGN.md#call-resolution` for the full algorithm). First pass: each candidate classifies every arg into a `(tier, widening_cost)` pair, strongest-first tiers being `EXACT_CONCRETE > EXACT_GENERIC_SHAPE > PROTOCOL_EXPLICIT > PROTOCOL_STRUCTURAL > GENERIC_PROTOCOL_EXPLICIT > GENERIC_PROTOCOL_STRUCTURAL > GENERIC_WILDCARD`; candidates are sorted by aggregate tier counts with widening cost as the tiebreaker, and genuine ties become an `Ambiguous overload for 'f': ...` diagnostic rather than a declaration-order pick. Second pass (coercion fallback) runs only when no strict match exists. Concrete overloads always rank above equally-matching generics, so stub order cannot change the winner. Empty-container literals carry an `UnknownElementType` placeholder for their element type; ranking against multi-overload builtins (e.g. `sum([])`) treats it as `default_int_type` so `sum([]) == 0` picks the `Int32` overload at cost 0. Single-generic builtins (`sorted`, `all`, `any`, `iter`, `enumerate`, `reversed`) and user-defined generics use a different mechanism -- see `@type_param_default` below.
     - `Literal["r", "w", ...]` parameter annotations for literal-value-based dispatch: `open(path, "rb")` can resolve to a different return type than `open(path, "r")`. Supports string, integer (including negative), and bool values. Multiple values per `Literal[...]` annotation supported. Mixed value types in a single `Literal[...]` are rejected. Literal arguments dispatch to `Literal` overloads; variables fall through to plain type overloads. Equality narrowing on `Literal`-typed parameters: `if mode == "rb":` narrows to `Literal["rb"]`, enabling dispatch to more specific stubs within branches. `match`/`case` on `Literal`-typed parameters with exhaustiveness checking and subject narrowing per arm. Literal overload flattening: each stub gets a per-literal C++ specialization with name mangling and dead branch elimination, enabling different return types per literal value for both functions and methods. Multi-value dead branch elimination: `or`/`and` chains (`mode == "r" or mode == "w"`) and `in`/`not in` operators (`mode in {"r", "w"}`) are folded when all values of a multi-value `Literal` are covered or contradicted. Requires `from typing import Literal`.
     - `from typing import overload` import required
     - CPython compatible: mode (a) stubs are no-ops in CPython, implementation runs with isinstance checks. Mode (b) uses a runtime dispatch shim (`lib/cpy/typing.py`) that dispatches by arity and `isinstance` on type annotations. Tests using `@native` stubs mixed with mode (b) skip the CPython phase since `@native` has no CPython implementation.
@@ -3350,6 +3350,27 @@ Supports inference from arguments (`c.identity(42)`) and explicit type args (`c.
 class Container[T]:
     def is_sorted[T: Comparable](self) -> bool: ...  # only when T is Comparable
 ```
+
+### Default Type Parameters (`@type_param_default`)
+
+**Working**: TPy extension that opts a generic function into falling back to a default type when inference has no other evidence. Required for empty-container literal calls -- `[]`, `set()`, `{}` carry an `UnknownElementType` placeholder that matches `Iterable[T]` / `Sequence[T]` but pins T to nothing.
+
+```python
+from tpy.extern import type_param_default, DefaultInt
+
+@type_param_default(T=DefaultInt)
+def f[T](xs: Iterable[T]) -> str:
+    return "ok"
+
+f([])           # T defaults to the configured --default-int (Int32)
+f([1, 2, 3])    # T = Int32 (inferred from elements; default not consulted)
+```
+
+The fallback fires when (a) T was never inferred, or (b) T inferred only to `UnknownElementType`. `DefaultInt` is the sole supported sentinel today and resolves to the `--default-int` config (`Int32` by default). Bounds still apply -- the default must satisfy them.
+
+Several stdlib generics are tagged so their empty-literal calls "just work": `sorted[T: Comparable]`, `all[T: Truthy]`, `any[T: Truthy]`, `iter[T]`, `enumerate[T]`, `reversed[T]`, plus `round[T]` and `math.frexp[T]`.
+
+Without the tag, calling such a generic with only an empty container produces a clean `Cannot infer type arguments for 'f'. Specify explicitly: f[T](...)` diagnostic. Workaround if you can't tag the function: bind to a typed local first (`xs: list[int] = []; f(xs)`).
 
 ---
 

@@ -1,0 +1,10 @@
+[]
+True
+False
+ok
+7
+ok
+ok
+enumerate done
+iter done
+reversed done

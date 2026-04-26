@@ -52,3 +52,16 @@ def builtin_type(key: str):
     def decorator(cls):
         return cls
     return decorator
+
+
+def type_param_default(**kwargs):
+    """Set defaults for generic type parameters (e.g. T=DefaultInt). No-op in CPython."""
+    def decorator(func):
+        return func
+    return decorator
+
+
+# Sentinel used as @type_param_default(T=DefaultInt). Tpyc resolves it to
+# the configured --default-int type; under CPython it has no compile-time
+# meaning and just needs to be importable.
+DefaultInt = int

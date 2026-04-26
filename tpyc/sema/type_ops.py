@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, TypeParamRef, NominalType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType,
     make_array, make_list, PendingListType, PendingViewType, GenExprType, SelfType, OptionalType, UnionType,
     TupleType,
-    IntLiteralType, TypeParamKind, BIGINT,
+    IntLiteralType, TypeParamKind, BIGINT, UnknownElementType,
     NoneType, VoidType, CallableType,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
     unwrap_ref_type, RefType,
@@ -514,6 +514,14 @@ class TypeOperations:
         if isinstance(param_type, TypeParamRef):
             if param_type.name in inferred:
                 existing = inferred[param_type.name]
+                # UnknownElementType is a "no info" placeholder from an empty
+                # container literal. Either side can be it; the concrete side
+                # wins so `f([1], [])` and `f([], [1])` infer T identically.
+                if isinstance(existing, UnknownElementType):
+                    inferred[param_type.name] = arg_type
+                    return True
+                if isinstance(arg_type, UnknownElementType):
+                    return True
                 if isinstance(existing, IntLiteralType) and is_integer_type(arg_type):
                     inferred[param_type.name] = arg_type
                     return True
@@ -710,9 +718,15 @@ class TypeOperations:
         if record is None:
             return None
 
+        # NominalType carries type_args directly; pending containers
+        # (PendingListType etc.) need extract_type_params to surface them.
         type_subst: dict[str, TpyType] = {}
-        if record.type_params and isinstance(arg_type, NominalType) and arg_type.type_args:
-            type_subst = dict(zip(record.type_params, arg_type.type_args))
+        if record.type_params:
+            if isinstance(arg_type, NominalType) and arg_type.type_args:
+                type_subst = dict(zip(record.type_params, arg_type.type_args))
+            else:
+                extracted = builtin_modules.extract_type_params(arg_type)
+                type_subst = {tp: extracted[tp] for tp in record.type_params if tp in extracted}
 
         def _substitute(t: TpyType) -> TpyType:
             t = unwrap_ref_type(t)
@@ -932,19 +946,30 @@ class TypeOperations:
                     elem_type = self.ctx.default_int_for_literal(elem_type)
                 inferred[k] = make_list(elem_type)
 
-        # Fill in defaults for unresolved type params
+        # An empty container literal pins T to UnknownElementType but
+        # carries no real evidence -- treat it like an absent arg so the
+        # @type_param_default fallback applies.
         if func.type_param_defaults:
             for tp in func.type_params:
-                if tp not in inferred and tp in func.type_param_defaults:
-                    sentinel = func.type_param_defaults[tp]
-                    if sentinel == qnames.DEFAULT_INT:
-                        inferred[tp] = self.ctx.default_int_type
-                    else:
-                        raise ValueError(f"Unknown type_param_default sentinel: {sentinel!r}")
+                if tp not in func.type_param_defaults:
+                    continue
+                current = inferred.get(tp)
+                if current is not None and not isinstance(current, UnknownElementType):
+                    continue
+                sentinel = func.type_param_defaults[tp]
+                if sentinel == qnames.DEFAULT_INT:
+                    inferred[tp] = self.ctx.default_int_type
+                else:
+                    raise ValueError(f"Unknown type_param_default sentinel: {sentinel!r}")
 
-        # Check all type params were inferred
+        # Reject leftover UnknownElementType: letting it ride through
+        # substituted param types surfaces later as the indirect
+        # pending-list resolver error; failing here lets the caller emit
+        # a clean "Cannot infer type arguments" diagnostic instead.
         for tp in func.type_params:
             if tp not in inferred:
+                return None
+            if isinstance(inferred[tp], UnknownElementType):
                 return None
 
         # Validate type parameter bounds

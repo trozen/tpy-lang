@@ -2537,7 +2537,12 @@ class CallAnalyzer:
                         f"{expr.func_name}() requires a mutable pointer, got {arg_t}", expr
                     )
 
-        # Check for bound violations on generic overloads (give specific error)
+        # Check for bound violations on generic overloads (give specific error).
+        # Skip type args that resolved to UnknownElementType -- the only signal
+        # was an empty container literal with no @type_param_default fallback;
+        # "??? does not satisfy <bound>" misleads, and the downstream
+        # _analyze_single_function_call retry will surface the cleaner
+        # "Cannot infer type arguments" diagnostic.
         for overload in generic:
             if not overload.type_param_bounds:
                 continue
@@ -2553,6 +2558,8 @@ class CallAnalyzer:
                 self.type_ops.match_type_with_inference(ret, exp, inferred)
             for param_name, type_arg in inferred.items():
                 if param_name in overload.type_param_bounds:
+                    if isinstance(type_arg, UnknownElementType):
+                        continue
                     bound = overload.type_param_bounds[param_name]
                     if not protocol_checker(type_arg, bound):
                         raise self.ctx.error(

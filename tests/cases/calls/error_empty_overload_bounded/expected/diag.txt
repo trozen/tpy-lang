@@ -1,0 +1,1 @@
+main.py:23: error: Cannot infer type arguments for 'g'. Specify explicitly: g[T](...)
