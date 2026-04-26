@@ -263,6 +263,19 @@ class NarrowingTracker:
                 inner = self._optional_inner_type(effective)
                 if is_protocol_type(inner):
                     return {name: inner}, {}
+            # Bare-protocol isinstance: narrowing to a *child* protocol
+            # (e.g. Iterable[T] -> NativeIterable[T]) lets downstream codegen
+            # (for-loop dispatch, `in` operator) see the refined protocol via
+            # protocol_narrowings. Only narrow when the check protocol
+            # inherits from the declared one -- otherwise the source's
+            # interface is lost (e.g. Sequence[T] -> Hashable would drop
+            # __len__ from sema's view, even though both constraints hold
+            # in the C++ `if constexpr` branch).
+            if (expr.isinstance_is_protocol
+                    and is_protocol_type(effective) and is_protocol_type(check_type)
+                    and self.protocols.protocol_inherits_from(
+                        check_type.name, effective.name)):
+                return {name: check_type}, {}
 
         # is None / is not None on union or optional types
         match = match_is_none(expr)

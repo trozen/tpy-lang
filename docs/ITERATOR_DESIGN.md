@@ -57,7 +57,7 @@ for x in expr:
                                                 x = unwrap_ref(*r); ... }
 ```
 
-Only a concrete type `is_native_iterable(T)` (i.e. extends the `NativeIterable[T]` marker) reaches branch 5 for the container form; user records fall through to branch 6 unless they opt in via an `Iterable[T] | NativeIterable[T]` param and `isinstance(x, NativeIterable)` narrowing (see "NativeIterable fast-path narrowing" below). Spannable protocol params also reach branch 5, because the compiler synthesizes `begin()`/`end()` on records that declare `__span__()`.
+Only a concrete type `is_native_iterable(T)` (i.e. extends the `NativeIterable[T]` marker) reaches branch 5 for the container form; user records fall through to branch 6 unless they opt in via a plain `Iterable[T]` param and `isinstance(x, NativeIterable)` narrowing (see "NativeIterable fast-path narrowing" below). Spannable protocol params also reach branch 5, because the compiler synthesizes `begin()`/`end()` on records that declare `__span__()`.
 
 Two implementation details are load-bearing:
 
@@ -68,10 +68,10 @@ Two implementation details are load-bearing:
 
 `NativeIterable[T]` is primarily a marker protocol used internally (sema recognizes built-in containers that extend it; codegen uses it to select C++ range-for over the `__iter__`/`__next__` adapter). It is NOT recommended as a plain parameter type -- plain `Iterable[T]` handles the common case.
 
-Users who want explicit control over iteration strategy (e.g. writing a hot loop where they know the argument has real `begin`/`end`) can use the narrowing idiom:
+Users who want explicit control over iteration strategy (e.g. writing a hot loop where they know the argument has real `begin`/`end`) can narrow a plain `Iterable[T]` param:
 
 ```python
-def sum_fast(it: Iterable[T] | NativeIterable[T]) -> T:
+def sum_fast(it: Iterable[T]) -> T:
     total: T = ...
     if isinstance(it, NativeIterable):
         # narrowed to NativeIterable[T] -- C++ range-for (begin/end)
@@ -81,7 +81,9 @@ def sum_fast(it: Iterable[T] | NativeIterable[T]) -> T:
         for x in it: ...
 ```
 
-Sema's protocol-isinstance narrowing is stored in `then_type_facts` and propagated into codegen via `CodeGenContext.protocol_narrowings` (save/restored around every if/elif/else/while body). `codegen_cpp/types.py::get_resolved_type(TpyName)` consults it first, so the for-loop dispatch inside each branch sees the narrower type and picks the matching peephole.
+Because `NativeIterable[T]` extends `Iterable[T]`, sema threads the source's element type through `parent_protocols` to produce the narrowed `NativeIterable[Int32]`; codegen emits `if constexpr (::tpy::NativeIterable<T_it, int32_t>)` with both template args. The older `Iterable[T] | NativeIterable[T]` union form still works but is no longer required. Sema's protocol-isinstance narrowing is stored in `then_type_facts` and propagated into codegen via `CodeGenContext.protocol_narrowings` (save/restored around every if/elif/else/while body). `codegen_cpp/types.py::get_resolved_type(TpyName)` consults it first, so the for-loop dispatch inside each branch sees the narrower type and picks the matching peephole.
+
+The narrowing only fires when the check protocol inherits from the declared one (via `ProtocolChecker.protocol_inherits_from`); cross-protocol checks against an unrelated multi-arg protocol are rejected at sema with a clear error rather than silently emitting a wrong-arity C++ concept.
 
 Automatic dispatch (emitting both branches inside every `Iterable[T]` template, gated by `if constexpr (NativeIterable<T>)`) is a planned follow-up; benchmark-gated since modern inlining often erases the difference.
 
@@ -304,9 +306,7 @@ This path is not user-extensible — it requires the C++ type to support `std::r
 
 - **No `next()` builtin**: Direct `obj.__next__()` calls require `try/except StopIteration`. The `next()` builtin function is not yet implemented.
 
-- **`NativeIterable` sema is structural, C++ concept is strict.** The sema conformance check matches any type with `__iter__` (the stub's only method); the C++ concept requires `std::ranges::begin`/`end`. Matters for the `Iterable[T] | NativeIterable[T]` narrowing idiom -- sema may allow the union to accept a type that doesn't satisfy the C++ concept, in which case the narrowed branch doesn't compile. Tightening sema to require explicit `extends NativeIterable` is tracked in TODO.md as a bounded follow-up.
-
-- **`match/case` doesn't save/restore `protocol_narrowings`.** Protocol-isinstance narrowing inside a `case` guard leaks past the case boundary. Same pattern fixed for `if/while`; TODO.md tracks the match/case version.
+- **`match/case` guard-derived `protocol_narrowings` aren't applied to case bodies.** `_emit_case_body` save/restores the dict around bodies (so persistent narrowings don't leak across cases), but isinstance checks inside a `case` guard expression don't push protocol facts into `protocol_narrowings`, so the case body sees the unrefined type.
 
 ---
 

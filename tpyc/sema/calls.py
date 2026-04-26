@@ -1583,11 +1583,27 @@ class CallAnalyzer:
                     f"but variable is typed as '{var_type} | None'",
                     expr
                 )
-            type_args = var_type.type_args if isinstance(var_type, NominalType) and var_type.name == protocol_name else None
-            qname = var_type._module_qname if (
-                isinstance(var_type, NominalType) and var_type.name == protocol_name
-            ) else (f"{protocol_info.module}.{protocol_name}"
-                    if protocol_info and protocol_info.module else None)
+            if var_type.name == protocol_name:
+                type_args = var_type.type_args
+                qname = var_type._module_qname
+            else:
+                # Cross-protocol narrowing (e.g. Iterable[T] -> NativeIterable):
+                # derive the target's type_args from the source via the
+                # target's parent_protocols inheritance chain. Without this,
+                # codegen emits the C++ concept with the wrong template-arg
+                # count (one arg vs. expected `<T_x, ElemT>`).
+                type_args = self._derive_narrowed_type_args(var_type, protocol_info)
+                if type_args is None and protocol_info.type_params:
+                    raise self.ctx.error(
+                        f"isinstance() narrowing from '{var_type}' to protocol "
+                        f"'{protocol_name}' requires '{protocol_name}' to inherit "
+                        f"from '{var_type.name}' with a directly-derivable type "
+                        f"argument mapping; otherwise the C++ concept would be "
+                        f"emitted with the wrong template-arg count",
+                        expr,
+                    )
+                qname = (f"{protocol_info.module}.{protocol_name}"
+                        if protocol_info and protocol_info.module else None)
             protocol_type = NominalType(
                 protocol_name, is_protocol=True, type_args=type_args,
                 _module_qname=qname,
@@ -1625,6 +1641,38 @@ class CallAnalyzer:
         expr.isinstance_is_protocol = True
         expr.resolved_function_info = self._isinstance_function_info()
         return BOOL
+
+    def _derive_narrowed_type_args(
+        self, source_type: NominalType, target_info: 'ProtocolInfo',
+    ) -> tuple[TpyType, ...] | None:
+        """Map a source parent protocol's type_args onto the target's type_params.
+
+        For `class NativeIterable[T](Iterable[T])` and source `Iterable[Int32]`,
+        finds the matching parent ref in target_info.parent_protocols, builds a
+        target-param -> source-arg substitution from the parent ref's TypeParamRef
+        positions, then returns the substituted target type_params.
+
+        Returns None when source has no type args, target has no type params,
+        no matching direct parent exists, or the parent ref's args aren't simple
+        TypeParamRefs (transitive / re-parameterizing inheritance not handled).
+        """
+        if not source_type.type_args or not target_info.type_params:
+            return None
+        matching_parent = next(
+            (p for p in target_info.parent_protocols if p.name == source_type.name),
+            None,
+        )
+        if matching_parent is None or len(matching_parent.type_args) != len(source_type.type_args):
+            return None
+        subst: dict[str, TpyType] = {}
+        for parent_arg, source_arg in zip(matching_parent.type_args, source_type.type_args):
+            if not isinstance(parent_arg, TypeParamRef) or not isinstance(source_arg, TpyType):
+                return None
+            subst[parent_arg.name] = source_arg
+        try:
+            return tuple(subst[tp] for tp in target_info.type_params)
+        except KeyError:
+            return None
 
     @staticmethod
     def _isinstance_function_info() -> FunctionInfo:

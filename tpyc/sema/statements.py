@@ -1225,16 +1225,19 @@ class StatementAnalyzer:
     def _filter_union_codegen_facts(
         self, facts: dict[str, TpyType],
     ) -> dict[str, TpyType]:
-        """Keep union-origin and Literal narrowing facts for codegen.
+        """Keep union-origin, Literal, and protocol narrowing facts for codegen.
 
         Optional narrowing is handled implicitly by std::optional in C++,
         so only UnionType variables need explicit std::get<T> extraction.
         LiteralType facts are passed through for dead branch elimination.
+        Protocol facts (e.g. Iterable[T] -> NativeIterable[T] via isinstance)
+        feed protocol_narrowings so downstream dispatch sees the refined type.
         """
         return {
             name: ty for name, ty in facts.items()
             if (isinstance(unwrap_readonly(self.narrowing.declared_type_for_name(name)), UnionType)
-                or isinstance(ty, LiteralType))
+                or isinstance(ty, LiteralType)
+                or is_protocol_type(ty))
         }
 
     def _analyze_raise(self, stmt: TpyRaise) -> None:

@@ -2405,13 +2405,13 @@ class ArrayList[T, N: int]:
 
 **Use `Iterable[T]` (from `typing`) for ordinary function parameters.** It's the Python-standard convention and the compiler handles the common cases.
 
-**Advanced: manual fast-path via isinstance narrowing.** Power users who want explicit control over the iteration strategy (e.g. different loop bodies per branch, or deterministic opt-in to range-for for a specific hot function) can write a union and narrow:
+**Advanced: manual fast-path via isinstance narrowing.** Power users who want explicit control over the iteration strategy (e.g. different loop bodies per branch, or deterministic opt-in to range-for for a specific hot function) can narrow a plain `Iterable[T]` parameter:
 
 ```python
 from typing import Iterable
 from tpy import NativeIterable, Int32
 
-def sum_fast(it: Iterable[Int32] | NativeIterable[Int32]) -> Int32:
+def sum_fast(it: Iterable[Int32]) -> Int32:
     total: Int32 = 0
     if isinstance(it, NativeIterable):
         # Narrowed to NativeIterable[Int32] -> C++ range-for (begin/end).
@@ -2424,7 +2424,7 @@ def sum_fast(it: Iterable[Int32] | NativeIterable[Int32]) -> Int32:
     return total
 ```
 
-This pattern is an escape hatch, not the recommended default -- ordinary code should stick with plain `Iterable[T]`. Automatic dispatch inside `Iterable[T]`-typed templates is tracked as a future codegen improvement.
+The element type is threaded through the parent-protocol relationship (`NativeIterable[T]` extends `Iterable[T]`), so the emitted `if constexpr` carries both template args. The older `Iterable[T] | NativeIterable[T]` union form still works but is no longer needed. This pattern is an escape hatch, not the recommended default -- ordinary code should stick with plain `Iterable[T]`. Automatic dispatch inside `Iterable[T]`-typed templates is tracked as a future codegen improvement.
 
 ```python
 from typing import Iterable
@@ -2448,9 +2448,8 @@ print(sum_all(nums))  # 6
   only guarantee for built-ins backed by hand-written C++ ranges. Non-`@native`
   records that declare `implements NativeIterable` are rejected at sema with a
   suggestion to use `Spannable[T]` or `Iterable[T]`. User types reach the
-  fast path via the `Iterable[T] | NativeIterable[T]` + isinstance narrowing
-  idiom (the cleaner `Iterable[T]` + isinstance form has a codegen gap and
-  isn't recommended yet).
+  fast path via `isinstance(it, NativeIterable)` narrowing on a plain
+  `Iterable[T]` parameter (see the example above).
 - **Codegen-side `begin()/end()` synthesis**: User records with `__span__()` get compiler-synthesized `begin()/end()` (delegating to the returned span) so they satisfy `std::ranges::input_range` for C++ interop. Skipped when the type also has a `__iter__` that's not `SpanIter[T]` -- otherwise comprehensions and range-for would silently diverge from for-loops (which use `__iter__/__next__`). The span's iterators are raw `T*` into the underlying storage owned by self, so the prvalue span dying is harmless.
 - **Built-in conformance**: All built-in container types (`list`, `dict`, `set`, `Span`, `Array`, `str`, `bytes`, etc.) extend both `NativeIterable[T]` and `Iterable[T]`.
 - **Codegen optimization**: For concrete built-in NativeIterable types and for `NativeIterable[T]` / `Spannable[T]` protocol parameters, the compiler emits C++ range-based-for (`for (auto x : c)`). Everything else falls to the universal `::tpy::__iter__()` + `__next__()` loop.
@@ -2816,7 +2815,7 @@ Protocols serve as **compiler traits**—letting the compiler discover type capa
 - `Sequence[T]` for types supporting `len()` and indexing ✓ (working)
 - `for` loops work on `Iterable[T]`-typed parameters ✓ (working)
 - `for` loops work on `NativeIterable[T]`-typed parameters (typically via
-  `Iterable[T] | NativeIterable[T]` + isinstance narrowing) ✓ (working)
+  `Iterable[T]` + `isinstance(x, NativeIterable)` narrowing) ✓ (working)
 - `for` loops work on `Iterator[T]`-typed parameters ✓ (working)
 - Implicit coercion to `Span[T]` works on types extending `Spannable[T]` ✓ (working)
 - `for` loops work on `Iterator[T]`-typed parameters ✓ (working)
