@@ -11,6 +11,7 @@
 | 3+4 | Source-based macro authoring: `quote()` / `add_method_from_source` for writing macro output as TPy source strings instead of AST builder calls | Done |
 | 5 | CPython compatibility: `lib/cpy/tpyc/macro_api.py` backend targeting Python `ast` module | Dropped |
 | 6 | TpyMini VM: tree-walking interpreter for self-hosted compiler | Not started |
+| 7 | Builder-trace macros: `@builder_macro` / `@builder_method` / `@builder_returns` / `@builder_terminal`, `BuilderContext`, sema sub-pass. First use case: `argparse` | Designed |
 
 ### Future Extensions
 
@@ -29,6 +30,10 @@
 | AST splicing in `quote()` | Embed computed `Expr`/`Stmt` objects into quoted source via `${expr}` syntax. Requires custom parse pass. Enables mixing static method shapes with dynamic AST fragments (e.g., computed comparison chains). Deferred -- f-string interpolation covers common cases |
 | Companion type creation | `cls.add_companion_type(name, ...)` -- macros can add methods but not new types. Would let macros generate helper types (e.g. key enums for JSON field dispatch via `try_parse` + `match`/`case`). Requires nested class support in parser/sema/codegen first |
 | CPython macro compat | CPython backend for macro API was dropped -- maintaining parity between compiler AST and CPython `exec`-based codegen (frozen fields, factory defaults, `super()` in exec'd code) was not worth the effort. Could be revisited if CPython test coverage of macro-generated code becomes important |
+| Branch-aware terminal proof | Builder-trace v1 forbids tracked symbols inside conditionals/loops; a structural check that every reachable path contains exactly one terminal would relax this |
+| Cross-function builder helpers | Allow factored helpers (`def add_common(parser): parser.add_argument(...)`) via a decorator that marks the parameter as a tracked builder symbol the macro can dispatch into |
+| Builder state caching | Cache top-level builder-trace state by binding name so e.g. `ArgumentParser(parents=[base])` can replay `base`'s registrations |
+| Argparse `type=` arbitrary types | `ArgType[T]` protocol with `from_arg(s: str) -> T`; lets users plug custom CLI types (`Path`, `Port`, etc.) without macro changes -- defined when v2 work starts |
 
 ---
 
@@ -36,7 +41,7 @@
 
 - Enable library-level code generation without compiler changes
 - All macro definitions must be valid Python (runnable in CPython)
-- Two macro kinds: class macros (Phase 1) and call-site macros (Phase 2)
+- Three macro kinds: class macros (Phase 1), call-site macros (Phase 2), builder-trace macros (Phase 7)
 
 ## Architecture (Phase 1)
 
@@ -44,11 +49,13 @@
 
 | File | Purpose |
 |------|---------|
-| `tpyc/macro_api.py` | Public API: metadata (`ClassInfo`, `FieldInfo`, `TypeInfo`), builders (`ast`, `types`), type aliases (`Expr`, `Stmt`, `Function`, `Type`), decorators (`class_macro`, `call_macro`) |
-| `tpyc/macro_loader.py` | `MacroRegistry`, `validate_and_call_macro`, `call_macro_field_function`, `expand_call_macro` |
+| `tpyc/macro_api.py` | Public API: metadata (`ClassInfo`, `FieldInfo`, `TypeInfo`, `BuilderContext`), builders (`ast`, `types`), type aliases (`Expr`, `Stmt`, `Function`, `Type`), decorators (`class_macro`, `call_macro`, `builder_macro`, `builder_method`, `builder_returns`, `builder_terminal`) |
+| `tpyc/macro_loader.py` | `MacroRegistry`, `validate_and_call_macro`, `call_macro_field_function`, `expand_call_macro`, `validate_builder_macro`, `expand_builder_method`, `expand_builder_terminal` |
+| `tpyc/sema/builder_trace.py` | `BuilderTraceExpander` -- pre-body sub-pass that detects builder constructor calls, dispatches method calls to handlers, and splices synthesized records and parse functions back into the body (Phase 7) |
 | `lib/tpy/_macro_helpers.py` | Shared macro helpers: `build_init`, `build_eq`, `build_repr`, `build_hash`, `build_order` |
 | `lib/tpy/dataclasses.py` | `@dataclass` class macro, `Field`/`field()`, `asdict`/`astuple` call macros |
 | `lib/tpy/enum.py` | `Enum`, `IntEnum`, `auto()` -- resolved via import tracking, not yet macro-driven |
+| `lib/tpy/argparse.py` | `ArgumentParser` builder-trace macro (Phase 7); first user of the `@builder_macro` mechanism |
 
 ### How It Works
 
@@ -77,6 +84,37 @@
 7. Macro returns a replacement `TpyExpr` (e.g. `TpyDictLiteral`)
 8. Stored on `expr.macro_expansion`; sema analyzes the expansion
 9. Codegen checks `macro_expansion` and emits it instead of the original call
+
+### How Builder-Trace Macros Work (Phase 7)
+
+1. Parser sees `parser = ArgumentParser(...)` -- parses as a normal call + assignment
+2. `BuilderTraceExpander` runs as a pre-body sub-pass inside `_analyze_function()`
+   and `_analyze_record_methods()`, before `_prescan_and_analyze_body()` (and once
+   for `module.top_level_stmts`)
+3. The expander scans body statements for assignments whose RHS is a constructor
+   call to a class registered as `@builder_macro` in the macro registry
+4. Each match instantiates the macro state class and binds the LHS name as a
+   tracked symbol. `__init__(self, ctx: BuilderContext, args: list[MacroArg])`
+   stores macro-evaluated kwargs in plain Python attributes
+5. Subsequent statements are walked linearly. Method calls on tracked symbols
+   dispatch to the corresponding handler:
+   - `@builder_method` -- void; mutates state
+   - `@builder_returns(ChildClass)` -- returns a sub-builder; LHS becomes a
+     new tracked symbol bound to a fresh `ChildClass` instance
+   - `@builder_terminal` -- closes the trace, emits synthesized declarations
+     (records and module-scope functions), and replaces the call site
+6. Any other use of a tracked symbol (passed to a function, returned, indexed,
+   used in a conditional, reassigned) is a hard error with a precise diagnostic.
+   v1 also forbids the symbol appearing inside conditionals/loops/`try`
+7. Synthesized records and functions are registered through the existing
+   registrar (`registrar.register_record`, `registrar.register_function`) on
+   terminal expansion, before normal sema continues -- this is what lets
+   `args = parser.parse_args()` type-check with `args` as the synthesized
+   record type
+8. The original builder-call statements are deleted from the body; the rewritten
+   body proceeds through normal `_prescan_and_analyze_body()`
+9. Phase 2 (call-graph fixpoint) sees the synthesized parse function as
+   ordinary; no special-casing in mutation propagation or codegen
 
 ### Macro API
 
@@ -144,6 +182,45 @@ class CallMacroContext:
 `add_method` injects a `TpyFunction` AST node (power user API). For common patterns,
 use the shared builder functions from `_macro_helpers` (`build_init`, `build_eq`,
 `build_repr`, `build_hash`, `build_order`) to generate complete method bodies.
+
+Builder-trace macros (Phase 7) receive a `BuilderContext` carrying macro-time
+literal evaluators, code emission helpers, and diagnostics:
+
+```python
+class BuilderContext:
+    # Diagnostics
+    def warning(msg, loc=None) -> None: ...
+    def error(msg, loc=None) -> NoReturn: ...
+    @property
+    def call_loc(self) -> Loc: ...
+    @property
+    def function_being_traced(self) -> str: ...
+
+    # Macro-time literal evaluators (the primitives)
+    def eval_literal_or_final(expr) -> object: ...
+    def eval_sequence_of_literal_or_final(expr) -> list[object]: ...
+
+    # Typed kwarg / positional extractors (over the primitives above)
+    def positional_strs(args) -> list[str]: ...
+    def positional_str(args, i) -> str: ...
+    def kwarg_str(args, name, default=None) -> str | None: ...
+    def kwarg_int(args, name, default=None) -> int | None: ...
+    def kwarg_bool(args, name, default=False) -> bool: ...
+    def kwarg_str_or_int(args, name, default=None) -> str | int | None: ...
+    def kwarg_type(args, name, default=None) -> TypeInfo | None: ...
+    def kwarg_list_literal(args, name, default=None) -> list[MacroArg] | None: ...
+    def kwarg_macroarg(args, name, default=None) -> MacroArg | None: ...
+
+    # Code emission
+    def fresh_module_name(hint: str) -> str: ...
+    def emit_record(name, fields, methods=None) -> TypeInfo: ...
+    def emit_function(name, params, return_type, body) -> str: ...
+    def replace_call(fn_name, args) -> None: ...
+```
+
+`AstBuilder` (`ast`) and `TypeBuilder` (`types`) are reused unchanged; emission
+helpers thread synthesized records and functions through the existing registrar
+so codegen sees them as ordinary declarations.
 
 ### Macro Module Format
 
@@ -314,7 +391,7 @@ class Point:
     y: Int32
 ```
 
-### 5. Builder pattern
+### 5. Builder pattern (class-macro form)
 
 ```python
 @builder
@@ -324,6 +401,10 @@ class Config:
     timeout: Float64 = 30.0
 ```
 
+A class macro that emits fluent `set_*` methods. Distinct from builder-trace
+macros (use case 7), which trace a builder pattern at the call site rather
+than annotating the class.
+
 ### 6. Compile-time regex validation (call-site macro, Phase 2)
 
 ```python
@@ -331,7 +412,38 @@ r = regex("[a-z]+")       # ok
 r2 = regex("[invalid(")   # compile error: malformed regex pattern
 ```
 
-## Two Macro Kinds
+### 7. CLI parsing (builder-trace macro, Phase 7)
+
+`argparse` mirrors CPython's surface as a builder-trace macro:
+
+```python
+from argparse import ArgumentParser
+
+def main(argv: list[str]) -> Int32:
+    parser = ArgumentParser(description="Frobnicate")
+    parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument("-n", "--count", type=int, default=1)
+    parser.add_argument("files", nargs="+")
+    args = parser.parse_args(argv)
+    if args.verbose:
+        print(args.count, args.files)
+    return 0
+```
+
+The macro synthesizes a per-call-site record (`verbose: bool`, `count: int`,
+`files: list[str]`) and a parse function. `args` is statically typed; IDEs see
+the fields; no runtime reflection.
+
+v1 surface: `add_argument` with `store` / `store_true` / `store_false` /
+`count` / `append` / `extend` / `store_const` actions; `nargs` in
+`?` / `*` / `+` / integer; `type=` from `int` / `float` / `str`;
+`default=` / `const=` / `choices=` / `required=` / `help=` / `dest=`.
+
+v2: subparsers (tagged-union code emission), argument groups, `parents=`,
+`type=` for arbitrary types via an `ArgType[T]` protocol with
+`from_arg(s: str) -> T`, custom formatters from a fixed set.
+
+## Three Macro Kinds
 
 ### Class macros (decorator macros) -- Phase 1, done
 
@@ -362,6 +474,52 @@ def asdict(ctx: CallMacroContext, obj: MacroArg) -> TpyExpr:
 
 Kwargs annotated with simple types (`str`, `int`, `bool`) are auto-extracted
 from literals. Macros raise `MacroError` for compile errors.
+
+### Builder-trace macros (call-chain macros) -- Phase 7, designed
+
+Applied to a class whose constructor opens a *trace*: the compiler tracks the
+bound symbol through the enclosing function body and dispatches method calls
+on it to handlers on a Python state class. A `@builder_terminal` method
+closes the trace and synthesizes module-level declarations (a typed record +
+a parse function), splicing the result back into the body.
+
+```python
+@builder_macro
+class ArgumentParser:
+    def __init__(self, ctx: BuilderContext, args: list[MacroArg]) -> None:
+        self.description = ctx.kwarg_str(args, "description")
+        self.arguments: list[ArgSpec] = []
+
+    @builder_method
+    def add_argument(self, ctx, args) -> None:
+        self.arguments.append(_parse_arg_spec(ctx, args))
+
+    @builder_terminal
+    def parse_args(self, ctx, args) -> TypeInfo:
+        ns = ctx.emit_record(
+            ctx.fresh_module_name("args"),
+            [(s.dest, s.field_type) for s in self.arguments],
+        )
+        fn = ctx.emit_function(
+            ctx.fresh_module_name("parse"),
+            [("argv", types.list(types.str))],
+            ns,
+            _emit_parse_body(self),
+        )
+        ctx.replace_call(fn, args)
+        return ns
+```
+
+v1 trace rules (hard-error otherwise):
+
+- Tracked symbol may only appear in method calls handled by registered handlers
+- No reassignment, no escape, no use inside conditionals/loops/`try`
+- Exactly one `@builder_terminal` reached on the linear path through the body
+- Macro-time kwargs (`default=`, `type=`, `choices=`, ...) must be literals or
+  `Final` constants; non-literal expressions are a hard error
+
+Use cases beyond argparse: any builder pattern with statically-knowable
+configuration (logging setup, route registration, schema declaration).
 
 ## Execution Model
 
