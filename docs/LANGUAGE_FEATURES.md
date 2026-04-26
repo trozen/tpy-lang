@@ -1808,10 +1808,10 @@ struct Container {
 - Bounded type parameters (`T: PrintableAndSized`) can use methods from all ancestor protocols
 - The generated C++ concept includes requirements from all parent protocols
 - Multiple inheritance is supported (e.g., inheriting from both `Printable` and `Sized`)
-
-**Limitations:**
-- Generic parent protocols are not yet supported (`class Child(Sequence[T], Protocol)` is an error)
-- Parent protocols must be non-generic (inheriting from `Sized` works, but not `Sequence[T]`)
+- Generic parent protocols are supported: `class Counted[T](Iterable[T], Protocol)`
+  inherits the parent's methods/fields with the parent's type parameters
+  substituted by the child's. The arity of the parent reference must match
+  the parent's declared type parameters.
 
 #### Working: Protocol Fields
 
@@ -2442,7 +2442,15 @@ print(sum_all(nums))  # 6
 ```
 
 **Key characteristics**:
-- **Marker protocol, native-only**: `NativeIterable` is reserved for `@native` types -- its C++ concept requires `std::ranges::begin(t)`/`end(t)`, which TPy can only guarantee for built-ins backed by hand-written C++ ranges. Non-`@native` records that declare `implements NativeIterable` are rejected at sema with a suggestion to use `Spannable[T]` or `Iterable[T]`. User types reach the fast path only via the `Iterable[T] | NativeIterable[T]` + isinstance narrowing idiom (built-in arms hit it; user-type arms fall to universal default).
+- **Marker protocol, native-only**: `NativeIterable[T]` extends `Iterable[T]`
+  and has no direct methods of its own. It is reserved for `@native` types --
+  its C++ concept requires `std::ranges::begin(t)`/`end(t)`, which TPy can
+  only guarantee for built-ins backed by hand-written C++ ranges. Non-`@native`
+  records that declare `implements NativeIterable` are rejected at sema with a
+  suggestion to use `Spannable[T]` or `Iterable[T]`. User types reach the
+  fast path via the `Iterable[T] | NativeIterable[T]` + isinstance narrowing
+  idiom (the cleaner `Iterable[T]` + isinstance form has a codegen gap and
+  isn't recommended yet).
 - **Codegen-side `begin()/end()` synthesis**: User records with `__span__()` get compiler-synthesized `begin()/end()` (delegating to the returned span) so they satisfy `std::ranges::input_range` for C++ interop. Skipped when the type also has a `__iter__` that's not `SpanIter[T]` -- otherwise comprehensions and range-for would silently diverge from for-loops (which use `__iter__/__next__`). The span's iterators are raw `T*` into the underlying storage owned by self, so the prvalue span dying is harmless.
 - **Built-in conformance**: All built-in container types (`list`, `dict`, `set`, `Span`, `Array`, `str`, `bytes`, etc.) extend both `NativeIterable[T]` and `Iterable[T]`.
 - **Codegen optimization**: For concrete built-in NativeIterable types and for `NativeIterable[T]` / `Spannable[T]` protocol parameters, the compiler emits C++ range-based-for (`for (auto x : c)`). Everything else falls to the universal `::tpy::__iter__()` + `__next__()` loop.

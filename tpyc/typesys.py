@@ -3235,13 +3235,16 @@ class ProtocolInfo:
     - is_marker indicates protocols with no methods (require explicit extends)
 
     For protocol inheritance:
-    - parent_protocols stores names of parent protocols this protocol extends
+    - parent_protocols stores resolved NominalType references to parent
+      protocols this protocol extends. Generic parents like `Iterable[T]`
+      carry their type args in NominalType.type_args (referencing the
+      child protocol's own type parameters).
     """
     name: str
     methods: list[MethodSignature]
     fields: list[tuple[str, TpyType]] = field(default_factory=list)
     type_params: list[str] = field(default_factory=list)
-    parent_protocols: list[str] = field(default_factory=list)
+    parent_protocols: list['NominalType'] = field(default_factory=list)
     cpp_concept: str | None = None  # C++ concept name for builtin protocols
     is_marker: bool = False  # Marker protocols require explicit extends
     is_readonly: bool = False  # All methods are read-only (safe for readonly[T] args)

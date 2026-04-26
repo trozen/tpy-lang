@@ -369,6 +369,9 @@ def resolve_refs(module: TpyModule) -> None:
     # protocol's own type-param scope.
     for protocol in module.protocols:
         scope = _protocol_scope(protocol)
+        protocol.parent_protocols = [
+            _resolve(p, scope) for p in protocol.parent_protocols
+        ]
         protocol.fields = [
             (fname, _resolve(ftype, scope)) for fname, ftype in protocol.fields
         ]

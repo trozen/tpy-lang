@@ -1492,7 +1492,7 @@ class TypeRegistrar:
             found_in_protocol: str | None = None
             found_in_dynamic_protocol = False
             for proto_type in record_info.implemented_protocols:
-                all_proto_methods = self._collect_all_protocol_methods(proto_type.name)
+                all_proto_methods = self.protocols.collect_protocol_methods(proto_type.name)
                 if any(m.name == method_name for m in all_proto_methods):
                     found_in_protocol = proto_type.name
                     found_in_dynamic_protocol = getattr(proto_type, 'is_dynamic_protocol', False)
@@ -1596,19 +1596,21 @@ class TypeRegistrar:
         Also validates object safety for @dynamic protocols over the full inherited
         surface (methods + fields from all ancestor protocols).
         """
-        for parent_name in protocol.parent_protocols:
-            parent_info = self.ctx.registry.scan_by_short_name(parent_name)
+        for parent in protocol.parent_protocols:
+            parent_info = self.ctx.registry.scan_by_short_name(parent.name)
             if parent_info is None:
                 raise SemanticError(
-                    f"Protocol '{protocol.name}' inherits from '{parent_name}', "
+                    f"Protocol '{protocol.name}' inherits from '{parent.name}', "
                     f"which is not a defined protocol",
                     protocol.loc
                 )
-            # Generic protocols can't be inherited without type args
-            if parent_info.type_params:
+            # Generic-arity mismatches (missing args, wrong count) are caught
+            # earlier by the type-ref resolver. The only case that reaches here
+            # is type args supplied to a non-generic parent.
+            if not parent_info.type_params and parent.type_args:
                 raise SemanticError(
-                    f"Protocol '{protocol.name}' inherits from generic protocol '{parent_name}' "
-                    f"without type arguments. Generic protocol inheritance is not yet supported.",
+                    f"Protocol '{protocol.name}' inherits from non-generic protocol "
+                    f"'{parent.name}' with {len(parent.type_args)} type argument(s)",
                     protocol.loc
                 )
 
@@ -1621,8 +1623,8 @@ class TypeRegistrar:
         Checks the full inherited surface (methods + fields from all ancestors),
         since codegen emits all inherited members into the C++ base class.
         """
-        all_methods = self._collect_all_protocol_methods(protocol.name)
-        all_fields = self._collect_all_protocol_fields(protocol.name)
+        all_methods = self.protocols.collect_protocol_methods(protocol.name)
+        all_fields = self.protocols.collect_protocol_fields(protocol.name)
 
         if not all_methods and not all_fields:
             raise SemanticError(
@@ -1652,46 +1654,6 @@ class TypeRegistrar:
                     f"in field '{field_name}'",
                     protocol.loc
                 )
-
-    def _collect_all_protocol_methods(self, protocol_name: str,
-                                       visited: set[str] | None = None) -> list[MethodSignature]:
-        """Collect methods from a protocol and all ancestors."""
-        if visited is None:
-            visited = set()
-        if protocol_name in visited:
-            return []
-        visited.add(protocol_name)
-        protocol_info = self.ctx.registry.scan_by_short_name(protocol_name)
-        if protocol_info is None:
-            return []
-        methods_by_name: dict[str, MethodSignature] = {}
-        for method in protocol_info.methods:
-            methods_by_name[method.name] = method
-        for parent_name in protocol_info.parent_protocols:
-            for method in self._collect_all_protocol_methods(parent_name, visited):
-                if method.name not in methods_by_name:
-                    methods_by_name[method.name] = method
-        return list(methods_by_name.values())
-
-    def _collect_all_protocol_fields(self, protocol_name: str,
-                                      visited: set[str] | None = None) -> list[tuple[str, TpyType]]:
-        """Collect fields from a protocol and all ancestors."""
-        if visited is None:
-            visited = set()
-        if protocol_name in visited:
-            return []
-        visited.add(protocol_name)
-        protocol_info = self.ctx.registry.scan_by_short_name(protocol_name)
-        if protocol_info is None:
-            return []
-        fields_by_name: dict[str, tuple[str, TpyType]] = {}
-        for field_name, field_type in protocol_info.fields:
-            fields_by_name[field_name] = (field_name, field_type)
-        for parent_name in protocol_info.parent_protocols:
-            for field_name, field_type in self._collect_all_protocol_fields(parent_name, visited):
-                if field_name not in fields_by_name:
-                    fields_by_name[field_name] = (field_name, field_type)
-        return list(fields_by_name.values())
 
     def register_function(self, func: TpyFunction) -> None:
         """Register a function."""

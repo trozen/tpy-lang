@@ -1613,29 +1613,10 @@ class Parser:
         if is_dynamic and cpp_concept is not None:
             raise ParseError("@dynamic and @native cannot be combined on a protocol", node)
 
-        # Extract parent protocols (excluding Protocol itself)
-        parent_protocols = []
-        for base in node.bases:
-            if self._is_protocol_base(base):
-                continue
-            if isinstance(base, ast.Name):
-                parent_protocols.append(base.id)
-            elif isinstance(base, ast.Subscript):
-                # Generic parent protocols like Parent[T] are not yet supported
-                base_name = None
-                if isinstance(base.value, ast.Name):
-                    base_name = base.value.id
-                elif isinstance(base.value, ast.Attribute) and isinstance(base.value.value, ast.Name):
-                    base_name = f"{base.value.value.id}.{base.value.attr}"
-                if base_name:
-                    raise ParseError(
-                        f"Generic parent protocols are not yet supported: {base_name}[...]. "
-                        f"Use non-generic parent protocols instead.",
-                        base
-                    )
-
         # Extract type parameters from Python 3.12+ syntax: class Foo[T](Protocol):
-        # Note: Protocols don't support INT type params (only TYPE)
+        # Note: Protocols don't support INT type params (only TYPE).
+        # Set scope before parsing bases so generic parents like `Iterable[T]`
+        # can reference the protocol's own type params.
         type_params = []
         if hasattr(node, 'type_params') and node.type_params:
             for tp in node.type_params:
@@ -1644,9 +1625,27 @@ class Parser:
                 else:
                     raise ParseError(f"Only simple type parameters supported in protocols, got {type(tp).__name__}", node)
 
-        # Set type param scope for parsing method signatures (all TYPE kind for protocols)
+        # Set type param scope for parsing parent protocols and method signatures
+        # (all TYPE kind for protocols).
         old_scope = self._type_param_scope
         self._type_param_scope = {tp: TypeParamKind.TYPE for tp in type_params} if type_params else None
+
+        # Extract parent protocols (excluding Protocol itself). Both bare
+        # (`Sized`) and generic (`Iterable[T]`) parents are accepted. Sema
+        # resolves the TypeRefNode entries to NominalType under the protocol's
+        # type-param scope (see resolve_refs.py).
+        parent_protocols: 'list[NominalType | TypeRefNode]' = []
+        for base in node.bases:
+            if self._is_protocol_base(base):
+                continue
+            ref = self._parse_type_ref(base, self._type_param_scope)
+            if not isinstance(ref, TpyTypeRef):
+                raise ParseError(
+                    f"Protocol parents must be simple type references "
+                    f"(`Name` or `Name[...]`), got {type(ref).__name__}",
+                    base
+                )
+            parent_protocols.append(ref)
 
         methods = []
         fields = []

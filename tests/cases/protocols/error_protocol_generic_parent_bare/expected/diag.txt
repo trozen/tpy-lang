@@ -1,1 +1,1 @@
-main.py:9: error: Protocol 'Child' inherits from generic protocol 'Parent' without type arguments. Generic protocol inheritance is not yet supported.
+main.py:9: error: Generic protocol 'Parent' requires type arguments: Parent[T]

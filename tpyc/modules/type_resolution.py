@@ -20,7 +20,7 @@ from tpyc.typesys import (
     TpyType, CHAR, OwnType, GenExprType,
     is_any_str_type, is_protocol_type, unwrap_ref_type,
 )
-from tpyc.type_def_registry import is_span, is_span_iter, is_copy_iter, is_own_iter, is_iterator_adapter
+from tpyc.type_def_registry import is_span, is_span_iter, is_copy_iter, is_own_iter, is_iterator_adapter, protocol_info_of
 from tpyc.modules.defs import ParamDef, MethodDef
 
 
@@ -357,6 +357,55 @@ def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "Tpy
     return None
 
 
+def _ancestor_iter_element(
+    proto: "NominalType", visited: "set[str] | None" = None,
+) -> "TpyType | None":
+    """Walk parent protocols looking for an ancestor whose qname is in
+    ITERABLE_PROTOCOL_QNAMES; return the inherited element type with the
+    inheritance binding chain applied.
+
+    For `class Counted[T](Iterable[T], Protocol)` instantiated as
+    `Counted[Int32]`, the element type is `Int32` -- read off Iterable's
+    type_args after substituting Counted's own T->Int32 binding.
+    """
+    if visited is None:
+        visited = set()
+    info = protocol_info_of(proto)
+    if info is None:
+        return None
+    qname = proto.qualified_name() or proto.name
+    if qname in visited:
+        return None
+    visited.add(qname)
+
+    self_subst: dict[str, TpyType] = {}
+    if info.type_params and proto.type_args:
+        for name, arg in zip(info.type_params, proto.type_args):
+            if isinstance(arg, TpyType):
+                self_subst[name] = arg
+
+    for parent in info.parent_protocols:
+        resolved_args = tuple(
+            self_subst.get(arg.name, arg) if isinstance(arg, TypeParamRef) else arg
+            for arg in parent.type_args
+        )
+        resolved_parent = NominalType(
+            name=parent.name,
+            type_args=resolved_args,
+            is_protocol=True,
+            _module_qname=parent._module_qname,
+        )
+        if resolved_parent.qualified_name() in ITERABLE_PROTOCOL_QNAMES:
+            if resolved_args:
+                first = resolved_args[0]
+                return first if isinstance(first, TpyType) else None
+            return None
+        result = _ancestor_iter_element(resolved_parent, visited)
+        if result is not None:
+            return result
+    return None
+
+
 def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
     """Unified element-type accessor for any iterable type.
 
@@ -384,6 +433,14 @@ def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> 
             first = tpy_type.type_args[0]
             return first if isinstance(first, TpyType) else None
         return None
+
+    # Protocol-typed iterables that inherit from one of the above (e.g.
+    # `class Counted[T](Iterable[T], Protocol)`). Walks parent protocols and
+    # resolves the inherited element type via the inheritance binding chain.
+    if is_protocol_type(tpy_type) and isinstance(tpy_type, NominalType):
+        ancestor_elem = _ancestor_iter_element(tpy_type)
+        if ancestor_elem is not None:
+            return ancestor_elem
 
     # String types -> Char
     if is_any_str_type(tpy_type):

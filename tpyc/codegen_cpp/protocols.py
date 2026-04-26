@@ -179,7 +179,7 @@ class ProtocolGenerator:
             visited.add(name)
             info = self.ctx.analyzer.registry.scan_by_short_name(name)
             if info:
-                stack.extend(info.parent_protocols)
+                stack.extend(p.name for p in info.parent_protocols)
         return False
 
     def directly_implements_dynamic(self, concrete_type: TpyType, proto_name: str) -> bool:
@@ -305,30 +305,8 @@ class ProtocolGenerator:
             result += f"  requires {' && '.join(requires_parts)}\n"
         return result
 
-    def collect_concept_methods(self, protocol_name: str, visited: set[str] | None = None) -> list[MethodSignature]:
-        """Collect methods from a protocol and all its parents for concept generation."""
-        if visited is None:
-            visited = set()
-        if protocol_name in visited:
-            return []
-        visited.add(protocol_name)
-
-        protocol_info = self.ctx.analyzer.registry.scan_by_short_name(protocol_name)
-        if protocol_info is None:
-            return []
-
-        # Start with direct methods
-        methods_by_name: dict[str, MethodSignature] = {}
-        for method in protocol_info.methods:
-            methods_by_name[method.name] = method
-
-        # Add inherited methods (only if not already defined directly)
-        for parent_name in protocol_info.parent_protocols:
-            for method in self.collect_concept_methods(parent_name, visited):
-                if method.name not in methods_by_name:
-                    methods_by_name[method.name] = method
-
-        return list(methods_by_name.values())
+    def collect_concept_methods(self, protocol_name: str) -> list[MethodSignature]:
+        return self.ctx.analyzer.protocols.collect_protocol_methods(protocol_name)
 
     def is_protocol_const(self, protocol_name: str) -> bool:
         """Check if a protocol is functionally const (all methods are readonly).
@@ -344,30 +322,8 @@ class ProtocolGenerator:
         all_methods = self.collect_concept_methods(protocol_name)
         return bool(all_methods) and all(m.is_readonly for m in all_methods)
 
-    def collect_concept_fields(self, protocol_name: str, visited: set[str] | None = None) -> list[tuple[str, TpyType]]:
-        """Collect fields from a protocol and all its parents for concept generation."""
-        if visited is None:
-            visited = set()
-        if protocol_name in visited:
-            return []
-        visited.add(protocol_name)
-
-        protocol_info = self.ctx.analyzer.registry.scan_by_short_name(protocol_name)
-        if protocol_info is None:
-            return []
-
-        # Start with direct fields
-        fields_by_name: dict[str, tuple[str, TpyType]] = {}
-        for field_name, field_type in protocol_info.fields:
-            fields_by_name[field_name] = (field_name, field_type)
-
-        # Add inherited fields (only if not already defined directly)
-        for parent_name in protocol_info.parent_protocols:
-            for field_name, field_type in self.collect_concept_fields(parent_name, visited):
-                if field_name not in fields_by_name:
-                    fields_by_name[field_name] = (field_name, field_type)
-
-        return list(fields_by_name.values())
+    def collect_concept_fields(self, protocol_name: str) -> list[tuple[str, TpyType]]:
+        return self.ctx.analyzer.protocols.collect_protocol_fields(protocol_name)
 
     def gen_concept_decl(self, out: TextIO, protocol: TpyProtocol) -> None:
         """Generate a C++20 concept for a user-defined protocol.
@@ -500,11 +456,11 @@ class ProtocolGenerator:
         # Collect @dynamic parent bases and their already-declared methods
         dynamic_parent_bases: list[str] = []
         parent_dynamic_methods: set[str] = set()
-        for parent_name in protocol_info.parent_protocols:
-            parent_info = self.ctx.analyzer.registry.scan_by_short_name(parent_name)
+        for parent in protocol_info.parent_protocols:
+            parent_info = self.ctx.analyzer.registry.scan_by_short_name(parent.name)
             if parent_info and parent_info.is_dynamic:
-                dynamic_parent_bases.append(self.get_dynamic_base_name(parent_name))
-                for m in self.collect_concept_methods(parent_name):
+                dynamic_parent_bases.append(self.get_dynamic_base_name(parent.name))
+                for m in self.collect_concept_methods(parent.name):
                     parent_dynamic_methods.add(m.name)
 
         # Methods to declare in this base class (exclude those in @dynamic parents)

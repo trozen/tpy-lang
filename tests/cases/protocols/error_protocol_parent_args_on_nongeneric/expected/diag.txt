@@ -1,0 +1,1 @@
+main.py:8: error: Protocol 'Child' inherits from non-generic protocol 'Sized' with 1 type argument(s)

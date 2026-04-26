@@ -1,0 +1,1 @@
+main.py:14: error: Pair requires exactly 2 type parameters

@@ -1314,10 +1314,20 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     # tpy.* @native marker / concept-backed protocols
     "tpy.NativeIterable": dict(
         name="NativeIterable", module="tpy",
-        is_dynamic=False, is_marker=False, is_readonly=False,
+        is_dynamic=False, is_marker=True, is_readonly=False,
         cpp_concept="::tpy::NativeIterable",
-        type_params=("T",), parent_protocols=(),
-        methods=("__iter__",),
+        type_params=("T",),
+        parent_protocols=(
+            ts.NominalType(
+                name="Iterable",
+                type_args=(ts.TypeParamRef(
+                    name="T", bound=None, kind=ts.TypeParamKind.TYPE,
+                ),),
+                is_protocol=True,
+                _module_qname="typing.Iterable",
+            ),
+        ),
+        methods=(),
     ),
     "tpy.NativeRangeConstructible": dict(
         name="NativeRangeConstructible", module="tpy",

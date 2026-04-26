@@ -1,1 +1,0 @@
-main.py:5: error: Generic parent protocols are not yet supported: Sequence[...]. Use non-generic parent protocols instead.

@@ -1257,7 +1257,10 @@ class TpyProtocol:
     # types may hold TypeRefNode in place of TpyType.
     fields: 'list[tuple[str, TpyType | TypeRefNode]]' = field(default_factory=list)
     type_params: list[str] = field(default_factory=list)
-    parent_protocols: list[str] = field(default_factory=list)
+    # Parent protocols. Parser emits TypeRefNode (TpyTypeRef) entries; sema's
+    # resolve_refs pass replaces them in place with NominalType. Generic
+    # parents like `Iterable[T]` carry their type args in NominalType.type_args.
+    parent_protocols: 'list[NominalType | TypeRefNode]' = field(default_factory=list)
     is_dynamic: bool = False
     cpp_concept: str | None = None
     loc: SourceLocation | None = None

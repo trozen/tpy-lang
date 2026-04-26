@@ -6,5 +6,5 @@ class Parent[T](Protocol):
     def get(self) -> T: ...
 
 
-class Child(Parent, Protocol):  # tpyc: error(/generic protocol.*without type arguments/)
+class Child(Parent, Protocol):  # tpyc: error(/Generic protocol .* requires type arguments/)
     pass

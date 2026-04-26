@@ -647,8 +647,8 @@ class SemanticAnalyzer:
         for sig in proto_info.methods:
             if sig.name == method_name and not sig.is_readonly:
                 return True
-        for parent_name in proto_info.parent_protocols:
-            if self._proto_hierarchy_has_nonconst(parent_name, method_name, visited):
+        for parent in proto_info.parent_protocols:
+            if self._proto_hierarchy_has_nonconst(parent.name, method_name, visited):
                 return True
         return False
 

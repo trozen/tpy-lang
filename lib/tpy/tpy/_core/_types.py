@@ -54,8 +54,7 @@ class Spannable[T](Protocol):
 # --- Marker protocols (no methods, map to runtime C++ concepts) ---
 
 @native("tpy::NativeIterable")
-class NativeIterable[T](Protocol):
-    def __iter__(self) -> Iterator[T]: ...
+class NativeIterable[T](Iterable[T], Protocol): ...
 
 @native("tpy::NativeRangeConstructible")
 class NativeRangeConstructible[T](Protocol): ...
