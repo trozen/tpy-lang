@@ -28,7 +28,7 @@ struct Module {
 
     // # Auto-discover via _logger field
     // def log_auto(self, tag: str, n: Int32) -> None:
-    void log_auto(std::string_view tag, int32_t n) const {
+    void log_auto(std::string_view tag, int32_t n) {
         // log(f"tag={tag} n={n}")
         ::mylog::log_dispatch(this->_logger, "tag={} n={}", std::tuple<::mylog::DeferredStr, int32_t>{::mylog::defer_str(tag), n});
     }

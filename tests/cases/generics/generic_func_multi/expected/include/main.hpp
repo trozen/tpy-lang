@@ -14,7 +14,7 @@ extern Pair<std::string, int32_t>* p2;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename A, typename B>
-Pair<B, A> swap_pair(Pair<A, B>& p);
+Pair<B, A> swap_pair(const Pair<A, B>& p);
 template<typename A, typename B>
 Pair<A, B> create_pair(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b);
 
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
 
 // def swap_pair[A, B](p: Pair[A, B]) -> Own[Pair[B, A]]:
 template<typename A, typename B>
-Pair<B, A> swap_pair(Pair<A, B>& p) {
+Pair<B, A> swap_pair(const Pair<A, B>& p) {
     // return Pair[B, A](p.second, p.first)
     return Pair<B, A>(p.second, p.first);
 }

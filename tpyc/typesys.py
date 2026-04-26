@@ -3091,10 +3091,24 @@ class FunctionInfo:
     # None = not yet analyzed; True/False = Phase 1 direct fact; finalized by Phase 2.
     direct_self_mutated: Optional[bool] = None
     self_mutated: bool = True  # conservative default until Phase 2 resolves
+    # Back-pointer to the canonical registry FunctionInfo. Set on ephemeral
+    # copies produced by type-param substitution / cpp_template fill-in so
+    # mutation propagation reads facts from the canonical (which evolves
+    # through Phase 1 + Phase 2) rather than from a stale snapshot.
+    # compare/repr=False to keep dataclass equality and reprs unaffected.
+    canonical_fi: Optional['FunctionInfo'] = field(default=None, compare=False, repr=False)
+    # Auto-const inference must skip the mutable clone of an @auto_readonly
+    # pair: flipping it to is_readonly=True would merge it with the const
+    # sibling and break overload resolution.
+    is_auto_readonly_mutable_clone: bool = False
     kwarg_name: Optional[str] = None  # name of **kwargs param (TypedDict type)
     # FStr inlining: body expression to inline at call sites.
     # Set during method body analysis for methods with FStr params.
     inline_body: Optional[Any] = None  # TpyExpr: body expression for @inline functions
+
+    @property
+    def root(self) -> 'FunctionInfo':
+        return self.canonical_fi or self
 
     @property
     def has_fstr_param(self) -> bool:

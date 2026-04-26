@@ -1133,6 +1133,7 @@ class MethodAnalyzer:
             type_param_bounds=all_bounds,
             cpp_template=method.cpp_template,
             native_name=method.native_name,
+            canonical_fi=method.root,
         )
         temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc), args=expr.args,
                             kwargs=expr.kwargs,
@@ -1365,6 +1366,7 @@ class MethodAnalyzer:
             name=expr.method,
             params=method.params,
             return_type=return_type,
+            canonical_fi=method.root,
         )
         return return_type
 
@@ -1705,6 +1707,7 @@ class MethodAnalyzer:
             type_params=new_params,
             type_param_bounds={k: v for k, v in method_info.type_param_bounds.items()
                                if k in new_params},
+            canonical_fi=method_info.root,
         )
 
         # Pre-substitute class params in the method signature so inference

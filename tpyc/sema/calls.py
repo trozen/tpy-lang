@@ -313,7 +313,7 @@ def _resolve_cpp_template_type_params(
                 template = template.replace(placeholder, typ.to_cpp_stored())
     if template == fi.cpp_template:
         return fi
-    return dc_replace(fi, cpp_template=template)
+    return dc_replace(fi, cpp_template=template, canonical_fi=fi.root)
 
 
 def _has_type_param_ref(t: TpyType) -> bool:
@@ -684,6 +684,7 @@ class CallAnalyzer:
                 params=resolved_ctor.params,
                 return_type=return_type,
                 is_readonly=False,
+                canonical_fi=ctor.root,
             )
             self._check_borrow_arg_conflicts(expr)
             self._check_loop_var_arg_mutation(expr)
@@ -2081,8 +2082,12 @@ class CallAnalyzer:
             if resolved in name_to_idx and resolved not in rebound:
                 param_map[i] = name_to_idx[resolved]
         if param_map or receiver_is_self:
+            # Edge stores the canonical so Phase 2 reads facts as they evolve.
+            callee = fi.root
+            assert callee.canonical_fi is None, (
+                f"non-collapsed canonical_fi chain on {callee.name}")
             self.ctx.func.current_call_edges.append(
-                MutationCallEdge(callee_fi=fi, param_map=param_map,
+                MutationCallEdge(callee_fi=callee, param_map=param_map,
                                  receiver_is_self=receiver_is_self)
             )
 
@@ -2260,7 +2265,8 @@ class CallAnalyzer:
         )
         if is_safe:
             safe_template = f"static_cast<{target.to_cpp()}>({{0}})"
-            expr.resolved_function_info = dc_replace(ctor, cpp_template=safe_template)
+            expr.resolved_function_info = dc_replace(
+                ctor, cpp_template=safe_template, canonical_fi=ctor.root)
         if expr.loc:
             self.ctx.cast_safe_facts[(expr.loc.line, str(target))] = is_safe
 

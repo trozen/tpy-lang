@@ -31,7 +31,7 @@ struct Processor {
     }
 
     // def process(self) -> Int32:
-    int32_t process() {
+    int32_t process() const {
         // return self.wrap(Int32(99))
         return this->wrap<int32_t>(99);
     }

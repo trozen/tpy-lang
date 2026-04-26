@@ -94,13 +94,8 @@ def _resolve_single(fi: FunctionInfo) -> None:
         callee_smp = edge.callee_fi.structural_mutated_params
         if callee_mp is None:
             # Unknown callee -- conservative: mark all flowing params as mutated.
-            # Skip sentinel -1 (self passed as arg): unknown callees are often
-            # ephemeral FIs (substituted generics, constructor wrappers) that
-            # lack mutation facts but rarely mutate their args.  Self-mutation
-            # through method receivers is tracked separately via receiver_is_self.
             for _callee_idx, caller_idx in edge.param_map.items():
-                if caller_idx >= 0:
-                    result.add(caller_idx)
+                result.add(caller_idx)
             if edge.receiver_is_self:
                 self_mutated = True
         else:
@@ -119,8 +114,7 @@ def _resolve_single(fi: FunctionInfo) -> None:
         elif callee_mp is None:
             # Unknown callee: conservative -- treat all flowing params as structurally mutated
             for _callee_idx, caller_idx in edge.param_map.items():
-                if caller_idx >= 0:
-                    struct_result.add(caller_idx)
+                struct_result.add(caller_idx)
     # Sentinel -1 means "self" was passed as a function argument and the
     # callee mutated that parameter.  Convert to self_mutated flag.
     if -1 in result:
@@ -164,8 +158,7 @@ def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
                 callee_smp = edge.callee_fi.structural_mutated_params
                 if callee_mp is None:
                     for _callee_idx, caller_idx in edge.param_map.items():
-                        if caller_idx >= 0:
-                            result.add(caller_idx)
+                        result.add(caller_idx)
                     if edge.receiver_is_self:
                         self_mutated = True
                 else:
@@ -180,8 +173,7 @@ def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
                             struct_result.add(caller_idx)
                 elif callee_mp is None:
                     for _callee_idx, caller_idx in edge.param_map.items():
-                        if caller_idx >= 0:
-                            struct_result.add(caller_idx)
+                        struct_result.add(caller_idx)
             # Sentinel -1 means "self" was passed as a function argument
             if -1 in result:
                 self_mutated = True
@@ -207,13 +199,10 @@ def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
             for edge in (fi.call_edges or []):
                 if edge.callee_fi.mutated_params is None:
                     for _callee_idx, caller_idx in edge.param_map.items():
-                        if caller_idx >= 0:
-                            result.add(caller_idx)
-                            struct_result.add(caller_idx)
+                        result.add(caller_idx)
+                        struct_result.add(caller_idx)
                     if edge.receiver_is_self:
                         fi.self_mutated = True
-            # Defensive: -1 shouldn't appear here (filtered by >= 0 above
-            # and cleaned in prior iterations), but handle consistently.
             if -1 in result:
                 fi.self_mutated = True
                 result.discard(-1)
@@ -248,6 +237,11 @@ def infer_method_const(all_fis: list[FunctionInfo]) -> None:
         if fi.is_readonly:
             continue
         if fi.is_consuming:
+            continue
+        if fi.is_auto_readonly_mutable_clone:
+            # The const sibling is already skipped by the is_readonly check
+            # above. Flipping the mutable clone too would give the pair two
+            # identical signatures and break overload resolution.
             continue
         if fi.name in _NEVER_INFER_CONST:
             continue

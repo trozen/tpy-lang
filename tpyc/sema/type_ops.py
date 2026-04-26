@@ -1135,6 +1135,7 @@ class TypeOperations:
             return_borrows_from=method.return_borrows_from,
             mutated_params=method.mutated_params,
             structural_mutated_params=method.structural_mutated_params,
+            canonical_fi=method.root,
         )
 
     def get_deref_target_type(self, typ: TpyType, is_readonly: bool = False) -> TpyType | None:

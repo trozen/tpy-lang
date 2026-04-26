@@ -310,8 +310,15 @@ Allowed:
 1. **No `@tpy.readonly` form** -- only bare `@readonly` works, not the
    qualified module form.
 
-2. **No automatic inference** -- regular (non-dunder) methods require explicit
-   `@readonly`. Future: bottom-up inference from method body analysis.
+2. **Automatic inference** -- methods that never mutate `self` (transitively
+   through call edges) are emitted as `const` C++ member functions even without
+   an explicit `@readonly`. Two-phase: Phase 1 records direct mutations and
+   call edges per body; Phase 2 propagates `self_mutated` through the
+   intra-module call graph to a fixpoint. See `LANGUAGE_FEATURES.md` for the
+   full rule set, including which methods are exempted (constructors,
+   `__del__`, in-place operators, consuming methods, `@auto_readonly` mutable
+   clones, methods overriding non-const `@dynamic` virtuals, and methods
+   whose return value borrows from `self`).
 
 3. **Container-mediated aliases** -- resolved by type-embedded refactor.
    ReadonlyType propagates through subscript (`readonly[list[T]][i]` ->

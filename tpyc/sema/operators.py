@@ -155,12 +155,13 @@ class OperatorResolver:
                 for p in method.params
             ]
             new_return = _substitute_type_params(method.return_type, type_subst)
-            method = dc_replace(method, params=new_params, return_type=new_return)
+            method = dc_replace(method, params=new_params, return_type=new_return,
+                                canonical_fi=method.root)
         # Unwrap Ref from return type -- Ref is a codegen-level concern,
         # sema expression types should not carry it.
         ret = unwrap_ref_type(method.return_type)
         if ret is not method.return_type:
-            method = dc_replace(method, return_type=ret)
+            method = dc_replace(method, return_type=ret, canonical_fi=method.root)
             # Rebuild receiver_type from subst to resolve IntLiteralType elements.
             # Use inner_types() as the source of truth for the reconstruction -- it
             # defines exactly how many (and which) inner types the type has. params_map

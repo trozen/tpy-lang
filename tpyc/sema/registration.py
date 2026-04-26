@@ -670,6 +670,7 @@ class TypeRegistrar:
                                    if method.error_return else None),
                 kwarg_name=method.kwarg_name,
                 owning_type_qname=owning_type_qname,
+                is_auto_readonly_mutable_clone=method.is_auto_readonly_mutable_clone,
             )
             # @inline: store the body expression for call-site inlining.
             # Body must be a single call statement. Cloned and substituted at call sites.
@@ -744,15 +745,8 @@ class TypeRegistrar:
                     new_return = attach_type_param_bounds(func_info.return_type, record.type_param_bounds)
                     if (any(np.type is not op.type for np, op in zip(new_params, func_info.params))
                             or new_return is not func_info.return_type):
-                        method_list[i] = FunctionInfo(
-                            name=func_info.name, params=new_params, return_type=new_return,
-                            is_readonly=func_info.is_readonly, is_consuming=func_info.is_consuming,
-                            is_method=func_info.is_method,
-                            is_staticmethod=func_info.is_staticmethod, linkage=func_info.linkage,
-                            native_name=func_info.native_name, cpp_template=func_info.cpp_template,
-                            type_params=func_info.type_params, type_param_bounds=func_info.type_param_bounds,
-                            owning_type_qname=func_info.owning_type_qname,
-                        )
+                        method_list[i] = dc_replace(
+                            func_info, params=new_params, return_type=new_return)
 
         # Validate __copy__ signature
         has_copy = "__copy__" in methods
