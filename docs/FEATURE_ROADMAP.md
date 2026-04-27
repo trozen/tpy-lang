@@ -92,6 +92,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D21 | TypedDict | M | Done | [VII](#typeddict) |
 | D22 | Multiple inheritance (mixins) | L | Done | [VII](#multiple-inheritance) |
 | D23 | Nested classes | M | Done | [VII](#nested-classes) |
+| D24 | Class-level constants (`Final[T] = value`, `@native` extern) | S-M | Not started | [VII](#class-level-constants) |
 
 ### Phase E: Advanced Safety
 
@@ -2330,6 +2331,51 @@ users must use explicit `get_x()`/`set_x()` methods, which is un-Pythonic.
 **Dependencies**: None.
 
 **Effort**: M (done)
+
+---
+
+### Class-Level Constants
+
+```python
+# Pure-TPy class constant
+class HttpClient:
+    TIMEOUT: Final[int] = 30
+    DEFAULT_HEADERS: Final[StrView] = "User-Agent: tpy"
+
+    def fetch(self, url: StrView) -> None:
+        timeout = HttpClient.TIMEOUT
+        ...
+
+# @native extern binding (the original motivating use case)
+# tpy: native_module
+# tpy: cpp_namespace("x::core")
+# tpy: include("<x/build_opts.hpp>")
+@native
+class BuildOpts:
+    FLAG: Final[bool]            # binds to ::x::core::BuildOpts::FLAG
+```
+
+`Final[T] = value` in a class body declares a class-scoped immutable constant
+(PEP 591 implicit-`ClassVar` rule). On `@native` classes, `Final[T]` without
+an initializer binds to a C++ `static` member declared in the user's header.
+Use site emits `<cpp_qname>::<member>`.
+
+**Why it matters**: TPy currently has only instance fields and module-level
+globals -- no class-scoped storage. The `@native` case is the loudest symptom
+(forces `native_global("ns::Class::FIELD")` with the namespace duplicated), but
+the gap is general -- idiomatic Python class constants (`MyClass.TIMEOUT`,
+lookup tables on a type) hit the same wall today, with the misleading error
+`'ClassName' is not a variable` at every use site.
+
+**Current state**: Not started. Design in `docs/CLASSVAR_DESIGN.md`. v1 ships
+`Final[T] = value` (class constant) and `@native`-only `Final[T]` no-value
+(extern binding). `ClassVar[...]` recognition, MRO walk for `Child.X`, and
+mutable static state are deferred to v2.
+
+**Dependencies**: None. Reuses module-level `Final` allow-list, `RecordInfo`
+plumbing (`native_name`, `module`), and `_get_qualified_cpp_name`.
+
+**Effort**: S-M
 
 ---
 
