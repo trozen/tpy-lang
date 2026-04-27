@@ -1,5 +1,5 @@
 # Error: print() rejects unsupported keyword arguments
 def main() -> None:
-    print("hello", file="out.txt")  # tpyc: error(/does not support keyword argument 'file'/)
+    print("hello", bogus=42)  # tpyc: error(/does not support keyword argument 'bogus'/)
 
 main()

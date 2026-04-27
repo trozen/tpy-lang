@@ -1311,6 +1311,13 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
         type_params=("T",), parent_protocols=(),
         methods=("__span__",),
     ),
+    "tpy.Writable": dict(
+        name="Writable", module="tpy",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=(), parent_protocols=(),
+        methods=("flush", "write"),
+    ),
     # tpy.* @native marker / concept-backed protocols
     "tpy.NativeIterable": dict(
         name="NativeIterable", module="tpy",
@@ -1406,7 +1413,7 @@ _PROTOCOL_SNAPSHOT_SOURCE = """\
 from typing import Sized, Iterable, Iterator, Sequence, MutableSequence
 from tpy import (
     Truthy, Stringable, Representable, Hashable, Comparable, Equatable,
-    Deref, Spannable,
+    Deref, Spannable, Writable,
     NativeIterable, NativeRangeConstructible, ValueType, Send, Sync,
     Default, ReturnException, Covariant,
     AnyFixedInt, AnyFixedSigned, AnyFixedUnsigned,

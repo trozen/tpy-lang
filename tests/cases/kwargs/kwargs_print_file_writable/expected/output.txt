@@ -1,0 +1,18 @@
+captured 17 pieces:
+  len=5
+  len=1
+  len=5
+  len=1
+  len=1
+  len=1
+  len=8
+  len=2
+  len=1
+  len=2
+  len=1
+  len=1
+  len=1
+  len=1
+  len=1
+  len=2
+  len=1

@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def greet(name: str, *, greeting: str = "Hello", punctuation: str = "!") -> None:
 void greet(std::string_view name, std::string_view greeting, std::string_view punctuation) {
     // print(greeting, name, sep="", end="")
-    std::cout << greeting << "" << name;
+    std::cout << greeting << name;
     // print(punctuation)
     std::cout << punctuation << "\n";
 }

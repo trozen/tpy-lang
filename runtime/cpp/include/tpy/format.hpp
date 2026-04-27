@@ -6,11 +6,12 @@
 
 #pragma once
 
+#include <cassert>
 #include <cctype>
+#include <charconv>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
-#include <format>
 #include <iostream>
 #include <iomanip>
 #include <optional>
@@ -18,6 +19,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <type_traits>
 #include <vector>
 
@@ -54,81 +56,48 @@ struct print_float {
 };
 
 inline std::string format_float(double value) {
-    // Handle special cases
+    // Special cases
     if (std::isnan(value)) return "nan";
     if (std::isinf(value)) return value > 0 ? "inf" : "-inf";
 
+    // Python switches to scientific for |x| < 1e-4 or |x| >= 1e16; otherwise
+    // it uses fixed notation. std::to_chars's `shortest` form picks the
+    // shortest of the two, which doesn't always agree with Python -- so we
+    // pick the format ourselves and hand it to to_chars (no precision arg ->
+    // shortest round-tripping form within that format).
     double abs_val = std::fabs(value);
+    bool use_scientific = (abs_val != 0.0 && abs_val < 1e-4) || abs_val >= 1e16;
 
-    // Python uses scientific notation for very small or very large numbers
-    // Threshold: |value| < 0.0001 or |value| >= 1e16
-    bool use_scientific = (abs_val != 0.0 && abs_val < 0.0001) || abs_val >= 1e16;
+    // 32 bytes covers the worst case: scientific
+    // "-1.7976931348623157e+308" (~24 chars), fixed up to ~22 chars within
+    // our [1e-4, 1e16) band. Exponent padding is done on the std::string
+    // afterwards, not in this buffer.
+    char buf[32];
+    auto r = std::to_chars(
+        buf, buf + sizeof(buf), value,
+        use_scientific ? std::chars_format::scientific : std::chars_format::fixed);
+    assert(r.ec == std::errc{});
+    std::string s(buf, r.ptr);
 
     if (use_scientific) {
-        // Use scientific notation - find shortest representation
-        for (int prec = 1; prec <= 17; ++prec) {
-            std::ostringstream oss;
-            oss << std::scientific << std::setprecision(prec - 1) << value;
-            std::string s = oss.str();
-
-            // Normalize: remove leading zeros in exponent, use 'e' not 'e+'
-            // C++ outputs "1.000000e+05", Python outputs "1e+05" or "1e-05"
-            double parsed = std::stod(s);
-            if (parsed == value) {
-                // Simplify the representation to match Python
-                // Find 'e' and process
-                auto e_pos = s.find('e');
-                if (e_pos != std::string::npos) {
-                    std::string mantissa = s.substr(0, e_pos);
-                    std::string exponent = s.substr(e_pos);
-
-                    // Trim trailing zeros from mantissa (keep at least one digit after .)
-                    auto dot = mantissa.find('.');
-                    if (dot != std::string::npos) {
-                        auto last_nonzero = mantissa.find_last_not_of('0');
-                        if (last_nonzero != std::string::npos && last_nonzero > dot) {
-                            mantissa = mantissa.substr(0, last_nonzero + 1);
-                        } else {
-                            mantissa = mantissa.substr(0, dot);  // Remove decimal entirely if just zeros
-                        }
-                    }
-
-                    // Simplify exponent: e+05 -> e+05, e-05 -> e-05
-                    // Remove leading zeros: e+05 -> e+5 (but Python keeps them... check)
-                    s = mantissa + exponent;
-                }
-                return s;
+        // std::to_chars emits the exponent with no leading zeros (e.g. "1e-5");
+        // Python pads single-digit exponents to two digits ("1e-05").
+        auto e_pos = s.find('e');
+        if (e_pos != std::string::npos) {
+            std::size_t digits_pos = e_pos + 2;  // skip 'e' and sign
+            std::size_t digit_count = s.size() - digits_pos;
+            if (digit_count < 2) {
+                s.insert(digits_pos, std::string(2 - digit_count, '0'));
             }
         }
     } else {
-        // Use fixed notation - find shortest representation
-        for (int prec = 1; prec <= 17; ++prec) {
-            std::ostringstream oss;
-            oss << std::fixed << std::setprecision(prec) << value;
-            std::string s = oss.str();
-
-            // Check if this representation round-trips
-            double parsed = std::stod(s);
-            if (parsed == value) {
-                // Trim trailing zeros, but keep at least one digit after decimal
-                auto dot = s.find('.');
-                if (dot != std::string::npos) {
-                    auto last_nonzero = s.find_last_not_of('0');
-                    if (last_nonzero != std::string::npos && last_nonzero > dot) {
-                        s = s.substr(0, last_nonzero + 1);
-                    } else {
-                        s = s.substr(0, dot + 2);
-                    }
-                }
-                return s;
-            }
+        // Whole numbers come back without a decimal point (e.g. "1");
+        // Python's repr() always shows ".0" for floats.
+        if (s.find('.') == std::string::npos) {
+            s += ".0";
         }
     }
-
-    // Fallback: use default precision
-    std::ostringstream oss;
-    oss << value;
-    return oss.str();
+    return s;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const print_float& pf) {

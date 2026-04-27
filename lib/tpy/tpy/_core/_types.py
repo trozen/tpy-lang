@@ -51,6 +51,12 @@ class Spannable[T](Protocol):
     def __span__(self) -> Span[readonly[T]]: ...
 
 
+class Writable(Protocol):
+    def write(self, text: str) -> Int32: ...
+
+    def flush(self) -> None: ...
+
+
 # --- Marker protocols (no methods, map to runtime C++ concepts) ---
 
 @native("tpy::NativeIterable")

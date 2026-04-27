@@ -4217,7 +4217,7 @@ class Car(Vehicle, Printable, Measurable):
 ## Built-in Functions
 
 - **Working**: `print()`, `len()`, `hash()`, `range()`, `chr()`, `ord()`, `pow()`, `round()`, `divmod()`, `next()`, `copy()` -- most builtins (`len`, `repr`, `hash`, `chr`, `ord`, `abs`, `min`, `max`, `pow`, `divmod`, `next`) defined in `lib/tpy/builtins/` via `@native`/`@cpp_template`
-  - `print("x", end="")` supported (`end` must be a string literal; dynamic `end` not yet supported)
+  - `print(*args, sep=" ", end="\n", file=sys.stdout, flush=False)`. `sep`/`end` accept any string-typed expression (literal or runtime). `file=` accepts any value satisfying the `Writable` protocol (`write(str) -> Int32` + `flush() -> None`); `sys.stdout`, `sys.stderr`, `open(...)` results, and user records all qualify. `flush=` requires a bool literal.
   - Container printing matches Python format: bools as `True`/`False`, floats with `.0`, strings in `'quotes'`
 - **Working**: `str()`, `repr()`, f-strings on containers (tuple, list, dict, Array, Span) -- uses runtime to_str helpers matching `print()` format
   - Generic type parameters use `ValuePrinter` for runtime dispatch (bool/float correctly formatted)

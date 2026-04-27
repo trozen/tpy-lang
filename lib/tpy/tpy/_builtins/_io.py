@@ -20,6 +20,9 @@ class TextIO:
     @native("readlines")
     def readlines(self) -> list[str]: ...
 
+    @native("flush")
+    def flush(self) -> None: ...
+
     @native("close")
     def close(self) -> None: ...
 

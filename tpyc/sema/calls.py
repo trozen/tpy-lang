@@ -850,28 +850,7 @@ class CallAnalyzer:
                         from .methods import MethodAnalyzer
                         return MethodAnalyzer._analyze_super_call_static(self.ctx, expr)
                     if qname == "builtins.print":
-                        for kw_name in expr.kwargs:
-                            if kw_name not in ("end", "sep"):
-                                raise self.ctx.error(
-                                    f"print() does not support keyword argument '{kw_name}'", expr)
-                        for kw_name in ("end", "sep"):
-                            if kw_name in expr.kwargs:
-                                if not isinstance(expr.kwargs[kw_name], TpyStrLiteral):
-                                    raise self.ctx.error(
-                                        f"print() '{kw_name}' argument must be a string literal", expr)
-                                self.expr.analyze_expr(expr.kwargs[kw_name])
-                        for arg in expr.args:
-                            self.expr.analyze_expr(arg)
-                        expr.resolved_function_info = FunctionInfo(
-                            name="print",
-                            params=[],
-                            return_type=VOID,
-                            is_readonly=True,
-                            is_builtin_function=True,
-                            special_handling=True,
-                            qualified_name="builtins.print",
-                        )
-                        return VOID
+                        return self._analyze_print_call(expr)
                     # Check for user module function (registered via _register_user_module_import)
                     if func_infos := self.ctx.registry.get_function(expr.func_name):
                         # Builtin-supplemented functions route through builtin path
@@ -1128,29 +1107,56 @@ class CallAnalyzer:
         if qname == "builtins.isinstance":
             return self._analyze_isinstance(expr)
         if qname == "builtins.print":
-            for kw_name in expr.kwargs:
-                if kw_name not in ("end", "sep"):
-                    raise self.ctx.error(
-                        f"print() does not support keyword argument '{kw_name}'", expr)
-            for kw_name in ("end", "sep"):
-                if kw_name in expr.kwargs:
-                    if not isinstance(expr.kwargs[kw_name], TpyStrLiteral):
-                        raise self.ctx.error(
-                            f"print() '{kw_name}' argument must be a string literal", expr)
-                    self.expr.analyze_expr(expr.kwargs[kw_name])
-            for arg in expr.args:
-                self.expr.analyze_expr(arg)
-            expr.resolved_function_info = FunctionInfo(
-                name="print",
-                params=[],
-                return_type=VOID,
-                is_readonly=True,
-                is_builtin_function=True,
-                special_handling=True,
-                qualified_name="builtins.print",
-            )
-            return VOID
+            return self._analyze_print_call(expr)
         raise self.ctx.error(f"Unknown special builtin: '{qname}'", expr)
+
+    def _analyze_print_call(self, expr: TpyCall) -> TpyType:
+        """Validate and type-check builtins.print() with sep=/end=/file=/flush=.
+
+        sep/end accept any string-typed expression. flush must be a bool
+        literal. file must satisfy the Writable protocol.
+        """
+        allowed_kwargs = ("end", "sep", "file", "flush")
+        for kw_name in expr.kwargs:
+            if kw_name not in allowed_kwargs:
+                raise self.ctx.error(
+                    f"print() does not support keyword argument '{kw_name}'", expr)
+        for kw_name in ("end", "sep"):
+            if kw_name in expr.kwargs:
+                kw_type = self.expr.analyze_expr(expr.kwargs[kw_name])
+                if not is_any_str_type(unwrap_readonly(kw_type)):
+                    raise self.ctx.error(
+                        f"print() '{kw_name}' argument must be a string; "
+                        f"got '{kw_type}'", expr)
+        if "flush" in expr.kwargs:
+            flush_expr = expr.kwargs["flush"]
+            if not isinstance(flush_expr, TpyBoolLiteral):
+                raise self.ctx.error(
+                    "print() 'flush' argument must be a bool literal "
+                    "(True or False)", expr)
+            self.expr.analyze_expr(flush_expr)
+        if "file" in expr.kwargs:
+            file_expr = expr.kwargs["file"]
+            file_type = self.expr.analyze_expr(file_expr)
+            actual = unwrap_readonly(unwrap_own(file_type))
+            writable_proto = NominalType("Writable", (), is_protocol=True)
+            if not self.protocols.type_conforms_to_protocol(actual, writable_proto):
+                raise self.ctx.error(
+                    f"print() 'file' argument must satisfy the Writable protocol "
+                    f"(write(str) -> Int32, flush() -> None); got '{actual}'",
+                    expr)
+        for arg in expr.args:
+            self.expr.analyze_expr(arg)
+        expr.resolved_function_info = FunctionInfo(
+            name="print",
+            params=[],
+            return_type=VOID,
+            is_readonly=True,
+            is_builtin_function=True,
+            special_handling=True,
+            qualified_name="builtins.print",
+        )
+        return VOID
 
     def _get_module_function_overloads(self, module_name: str, func_name: str) -> list[FunctionInfo] | None:
         """Look up function overloads in a module using the unified registry."""

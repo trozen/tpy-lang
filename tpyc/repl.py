@@ -299,20 +299,18 @@ class REPLSession:
     def _should_accumulate(self, source: str) -> bool:
         """Check if input should be accumulated for future compilations.
 
-        Accumulates everything except print() calls, which are output
-        side-effects that shouldn't be replayed.
+        Accumulates definitions/assignments. Skips inputs containing any
+        expression-statement call (`print(x)`, `sys.stderr.write(...)`,
+        `f.write(...)`, etc.) -- their side effects shouldn't be replayed.
         """
         try:
             tree = ast.parse(source)
             if not tree.body:
                 return False
 
-            # Don't accumulate if ANY statement is a print() call
             for stmt in tree.body:
                 if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call):
-                    func = stmt.value.func
-                    if isinstance(func, ast.Name) and func.id == "print":
-                        return False
+                    return False
 
             return True
         except SyntaxError:
@@ -497,6 +495,13 @@ class REPLSession:
         if not result.success:
             error_msg = result.stderr or "Unknown error\n"
             return False, source_output + error_msg
+
+        # Surface anything the program wrote to stderr (sys.stderr.write, ...)
+        # to the REPL host's stderr; Python's interactive interpreter does the
+        # same. Compiler / runtime errors take the not-success path above.
+        if result.stderr:
+            sys.stderr.write(result.stderr)
+            sys.stderr.flush()
 
         # For strings/chars, wrap output in quotes like Python's REPL
         program_output = result.stdout

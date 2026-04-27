@@ -1,0 +1,3 @@
+default sink
+explicit stdout
+after stderr write

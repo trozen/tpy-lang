@@ -103,6 +103,13 @@ public:
         return static_cast<int32_t>(text.size());
     }
 
+    void flush() {
+        if (!flags_.writable) tpy_panic("flush(): file not opened for writing");
+        fs_.flush();
+    }
+
+    std::ostream& sink() { return fs_; }
+
     std::string readline() {
         if (!flags_.readable) tpy_panic("readline(): file not opened for reading");
         std::string line;

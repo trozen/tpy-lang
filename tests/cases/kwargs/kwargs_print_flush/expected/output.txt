@@ -1,0 +1,5 @@
+flush via stdout
+no-flush via stdout
+flushes after no-flush: 0
+flushes after flush=True: 1
+flushes after flush=False: 1

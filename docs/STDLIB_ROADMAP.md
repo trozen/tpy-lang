@@ -123,7 +123,7 @@ Examples of the policy in action:
 | [`builtins`](#builtins) | P0 | Partial | ~70% | mixed | Implicit import. Core types + most common functions + key exceptions present. Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, most specialized exceptions (`IndexError`, `KeyError`, `TypeError`, etc. -- currently panic), `hasattr`/`getattr`/`setattr` (dynamic attr), `callable`, `id`, `type(x)` runtime. See [builtins](#builtins) for per-item status |
 | [`math`](#math) | P0 | Done | ~99% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for prod/fsum/sumprod/dist). Remaining gaps are minor: int-typed `prod` variant (exact BigInt product on all-int iterables) and tuple as iterable (blocked on tuple-iteration bundle) |
 | [`time`](#time) | P0 | Stub | ~10% | mixed | Thin clock/sleep syscalls + pure TPy. Missing perf_counter/monotonic/struct_time/strftime |
-| [`sys`](#sys) | P0 | Stub | ~5% | mixed | Thin syscall bindings + pure TPy. Only `argv`; needs stdout/stderr/exit/path/version_info |
+| [`sys`](#sys) | P0 | Stub | ~15% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr` done; needs `stdin`/`exit`/`path`/`version_info` |
 | [`os`](#os) | P0 | Missing | 0% | -- | Needs filesystem wrapper + path handling |
 | [`os.path`](#ospath) | P0 | Missing | 0% | -- | Independent of `os`; candidate for pure TPy over C++ `<filesystem>` |
 | [`pathlib`](#pathlib) | P0 | Missing | 0% | -- | Class-heavy; depends on filesystem bindings |
@@ -409,13 +409,14 @@ Tests: `time_module`, `time_sleep`, `time_import`.
 
 ### sys
 
-Current: `lib/tpy/sys.py` -- native; only `argv`.
+Current: `lib/tpy/sys.py` -- native; `argv`, `stdout`, `stderr`.
 
 | Item | Status | Notes |
 |---|---|---|
 | `argv` | Done | List populated at runtime init |
+| `stdout`, `stderr` | Done | Backed by `tpy::StdStream` (wraps `std::cout` / `std::cerr`); satisfy the `Writable` protocol so they work as `print(file=...)` targets and expose `write(str) -> Int32` / `flush()` |
+| `stdin` | Missing | Needs read-side protocol; lower priority than write |
 | `exit(code)` | Missing | Native wrapper for `std::exit` |
-| `stdout`, `stderr`, `stdin` | Missing | Needs `io` protocol |
 | `platform` | Missing | Compile-time constant |
 | `version`, `version_info` | Missing | Already in `tpy.version`; could re-export |
 | `path` | Missing | List; relates to import machinery (TPy resolves at compile time, so semantics differ) |
@@ -425,7 +426,7 @@ Current: `lib/tpy/sys.py` -- native; only `argv`.
 | `getsizeof` | Missing | Hard: sizes differ from CPython (inline fields vs boxed) |
 | `executable` | Missing | `argv[0]` / `/proc/self/exe` |
 
-Tests: `sys_argv`.
+Tests: `sys_argv`, `kwargs_print_file_std`.
 
 ### os
 

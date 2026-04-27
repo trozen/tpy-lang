@@ -1,1 +1,1 @@
-main.py:3: error: print() does not support keyword argument 'file'
+main.py:3: error: print() does not support keyword argument 'bogus'

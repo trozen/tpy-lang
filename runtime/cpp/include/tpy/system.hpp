@@ -1,13 +1,16 @@
 /**
  * TurboPython Runtime - System Utilities
  *
- * Time functions and sys.argv.
+ * Time functions, sys.argv, and sys.stdout / sys.stderr wrappers.
  */
 
 #pragma once
 
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
+#include <iostream>
+#include <ostream>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -70,5 +73,36 @@ inline void init_sys_argv(int argc, char* argv[]) {
         sys_argv.emplace_back(argv[i]);
     }
 }
+
+/**
+ * StdStream - non-owning wrapper around std::cout / std::cerr.
+ *
+ * Backs sys.stdout / sys.stderr; satisfies the Writable protocol so it works
+ * as a `print(file=...)` target alongside TextFile and user types.
+ */
+class StdStream {
+    std::ostream* sink_;
+
+public:
+    explicit StdStream(std::ostream& s) : sink_(&s) {}
+
+    int32_t write(std::string_view text) {
+        sink_->write(text.data(), static_cast<std::streamsize>(text.size()));
+        return static_cast<int32_t>(text.size());
+    }
+
+    void flush() { sink_->flush(); }
+
+    std::ostream& sink() const { return *sink_; }
+
+    friend std::ostream& operator<<(std::ostream& os, const StdStream& s) {
+        if (s.sink_ == &std::cout) return os << "<sys.stdout>";
+        if (s.sink_ == &std::cerr) return os << "<sys.stderr>";
+        return os << "<StdStream>";
+    }
+};
+
+inline StdStream get_sys_stdout() { return StdStream(std::cout); }
+inline StdStream get_sys_stderr() { return StdStream(std::cerr); }
 
 } // namespace tpy

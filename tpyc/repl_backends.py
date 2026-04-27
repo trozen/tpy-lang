@@ -264,7 +264,8 @@ class CompileBackend(REPLBackend):
             return BackendResult(False, stderr=output, t_build=t_build, t_run=t_run,
                                  build_cached=build_cached)
 
-        return BackendResult(True, stdout=result.stdout, t_build=t_build, t_run=t_run,
+        return BackendResult(True, stdout=result.stdout, stderr=result.stderr,
+                             t_build=t_build, t_run=t_run,
                              build_cached=build_cached)
 
     def cleanup(self) -> None:
@@ -449,7 +450,8 @@ class ClangReplBackend(REPLBackend):
         # Update state on success
         self._prev_cpp_body_lines = cpp_body
 
-        return BackendResult(True, stdout=stdout_output, t_build=t_build, t_run=t_run)
+        return BackendResult(True, stdout=stdout_output, stderr=stderr_output,
+                             t_build=t_build, t_run=t_run)
 
     def cleanup(self) -> None:
         if self._proc and self._proc.poll() is None:

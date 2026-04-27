@@ -103,6 +103,9 @@
 // File I/O: TextFile for open() builtin (depends on core)
 #include "file.hpp"
 
+// Output-sink dispatch for print(file=...) (depends on system, file)
+#include "as_ostream.hpp"
+
 // Expose types in global namespace for TurboPython generated code
 using ::tpy::UninitArrayStorage;
 using ::tpy::UninitHeapStorage;

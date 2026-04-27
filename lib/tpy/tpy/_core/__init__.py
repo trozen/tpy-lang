@@ -2,7 +2,7 @@
 from ._types import (
     # Structural protocols
     Truthy, Stringable, Representable, Hashable, Comparable, Equatable,
-    Deref, Spannable,
+    Deref, Spannable, Writable,
     # Marker protocols
     NativeIterable, NativeRangeConstructible, ValueType, Send, Sync,
     Default, Covariant, ReturnException,

@@ -17,7 +17,7 @@ from ..typesys import (
 )
 from ..parse import (
     TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyNoneLiteral, TpyCoerce,
-    TpyFieldAccess,
+    TpyBoolLiteral, TpyFieldAccess,
 )
 
 from .context import escape_cpp_string, CodeGenError, expand_cpp_template, qualify_native_name
@@ -270,32 +270,56 @@ class BuiltinGenerator:
         return False
 
     def gen_print(self, args: list[TpyExpr], kwargs: dict[str, TpyExpr] = None) -> str:
-        """Generate std::cout call for print()."""
+        """Generate stream call for print().
+
+        Default sink is std::cout. With `file=`, uses ::tpy::as_ostream(<f>)
+        to dispatch on the static type (TextFile, StdStream, std::ostream&,
+        or generic Writable via streambuf adapter). With `flush=True`,
+        appends `<< std::flush` to the chain. sep= and end= accept literals
+        or runtime string expressions.
+        """
         kwargs = kwargs or {}
 
-        # Determine line ending (default is newline)
-        end_str = "\\n"
-        if "end" in kwargs:
-            end_expr = kwargs["end"]
-            if isinstance(end_expr, TpyStrLiteral):
-                end_str = escape_cpp_string(end_expr.value)
+        # sep / end resolve to a single ready-to-emit C++ token (or None to
+        # skip emission). Literals shorten to a quoted string; runtime exprs
+        # render via _gen_expr_deref. Empty literals are skipped entirely so
+        # `print(..., sep="")` doesn't emit a redundant `<< ""`.
+        def chain_token(kw_name: str, default_literal: str) -> str | None:
+            kw_expr = kwargs.get(kw_name)
+            if kw_expr is None:
+                return f'"{default_literal}"' if default_literal else None
+            if isinstance(kw_expr, TpyStrLiteral):
+                lit = escape_cpp_string(kw_expr.value)
+                return f'"{lit}"' if lit else None
+            return self._gen_expr_deref(kw_expr)
 
-        # Determine separator (default is space)
-        sep_str = " "
-        if "sep" in kwargs:
-            sep_expr = kwargs["sep"]
-            if isinstance(sep_expr, TpyStrLiteral):
-                sep_str = escape_cpp_string(sep_expr.value)
+        end_token = chain_token("end", "\\n")
+        sep_token = chain_token("sep", " ")
+
+        # Sink: default cout, or as_ostream(file) when file= is provided.
+        if "file" in kwargs:
+            sink = f"::tpy::as_ostream({self._gen_expr_deref(kwargs['file'])})"
+        else:
+            sink = "std::cout"
+
+        # flush=True appends `<< std::flush` to the chain.
+        flush_expr = kwargs.get("flush")
+        flush_on = isinstance(flush_expr, TpyBoolLiteral) and flush_expr.value
 
         if not args:
-            if end_str:
-                return f'std::cout << "{end_str}"'
-            return ""
+            tail = []
+            if end_token is not None:
+                tail.append(end_token)
+            if flush_on:
+                tail.append("std::flush")
+            if not tail:
+                return ""
+            return f"{sink} << " + " << ".join(tail)
 
         parts = []
         for i, arg in enumerate(args):
-            if i > 0:
-                parts.append(f'"{sep_str}"')
+            if i > 0 and sep_token is not None:
+                parts.append(sep_token)
 
             arg_type = unwrap_readonly(self.types.get_resolved_type(arg))
             if isinstance(arg_type, OwnType):
@@ -380,8 +404,10 @@ class BuiltinGenerator:
                     expr_code = f"static_cast<int>({expr_code})"
                 parts.append(expr_code)
 
-        # Add end string
-        if end_str:
-            parts.append(f'"{end_str}"')
+        if end_token is not None:
+            parts.append(end_token)
 
-        return "std::cout << " + " << ".join(parts)
+        if flush_on:
+            parts.append("std::flush")
+
+        return f"{sink} << " + " << ".join(parts)

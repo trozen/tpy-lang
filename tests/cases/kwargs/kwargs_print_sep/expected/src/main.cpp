@@ -10,7 +10,7 @@ void main() {
     // print("a", "b", "c", sep=",")
     std::cout << "a" << "," << "b" << "," << "c" << "\n";
     // print("x", "y", sep="")
-    std::cout << "x" << "" << "y" << "\n";
+    std::cout << "x" << "y" << "\n";
     // print("hello", "world", sep=" -- ")
     std::cout << "hello" << " -- " << "world" << "\n";
 }

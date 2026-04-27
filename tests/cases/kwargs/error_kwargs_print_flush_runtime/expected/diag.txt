@@ -1,0 +1,1 @@
+main.py:4: error: print() 'flush' argument must be a bool literal (True or False)
