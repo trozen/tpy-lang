@@ -4725,6 +4725,7 @@ Currently working with a stable surface:
 | `struct` | Partial (`unpack`, `unpack_from`, `calcsize`) via compile-time macros |
 | `enum` | Partial (`Enum`, `IntEnum`, `auto()`) via class macro |
 | `dataclasses` | Partial (~75%; `@dataclass(frozen, order)`, `field()`, `asdict()`, `astuple()`) via class macro |
+| `argparse` | Partial (~70%; `ArgumentParser`, all 7 actions, all 4 nargs forms, `type=int\|float\|str`, `choices`/`required`/`dest`/`help`, `Optional[T]` for absent scalar flags) via builder-trace macro |
 | `typing` | Partial (`Protocol`, `Self`, `Sized`, `Iterator`, `Iterable`, `TypedDict`, `Unpack`, etc.) |
 
 Everything else in CPython's stdlib is missing or blocked -- consult
@@ -5229,6 +5230,12 @@ Send/Sync rules for built-in types:
   - `MacroArg.as_fstring()` for call macro decomposition, `MacroFStringPart.is_static_str` for detecting static-storage expressions (literals, ternaries of literals, `Final[str]` name references)
   - Tuple-based dispatch to native generic functions via `std::apply`
   - `CallMacroContext` introspection: `first_param`, `get_field_type`, `get_method_return_type`, `qualified_name` -- macros discover fields/methods by name on first param (self for methods) with qualified type checking
+- **Phase 7 done**: Builder-trace macros (`@builder_macro` on a class describes a state machine the compiler walks at compile time)
+  - `@builder_macro` / `@builder_method` / `@builder_returns(child)` / `@builder_terminal` decorators -- the terminal closes the trace and synthesizes module-level declarations
+  - `BuilderContext` API surface: diagnostics, macro-time literal evaluators, typed positional / kwarg extractors, and code emission (`fresh_module_name`, `emit_record`, `emit_function`, `replace_call`)
+  - `BuilderTraceExpander` runs as a pre-body sub-pass before `_prescan_and_analyze_body`; trace symbols have no runtime existence (each ctor + method statement is dropped, the terminal call is rewritten to call a synthesized free function)
+  - Full v1 trace rules: tracked symbols may only appear as the receiver of registered builder method calls, may not be reassigned, escape, or be referenced inside control-flow blocks / lambdas / nested defs; exactly one terminal must be reached
+  - First user: `lib/tpy/argparse.py` (see stdlib table above for the slice). v2 work tracked in `docs/MACRO_DESIGN.md`
 
 ### Compile-Time Hooks (Extensible Metaprogramming -- Future Design)
 

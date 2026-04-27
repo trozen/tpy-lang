@@ -1,0 +1,1 @@
+Macro module imports tpyc.macro_api which is unavailable under CPython.

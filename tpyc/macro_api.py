@@ -109,6 +109,72 @@ def call_macro(fn: Callable) -> Callable:
 
 
 # ---------------------------------------------------------------------------
+# Builder-trace macros (Phase 7)
+# ---------------------------------------------------------------------------
+# A @builder_macro class describes a state machine that the compiler walks
+# while analyzing a function body. The compiler tracks the symbol bound by
+# the constructor and dispatches subsequent method calls on it to the
+# class's @builder_method / @builder_returns / @builder_terminal handlers.
+# A terminal closes the trace by emitting synthesized declarations and
+# rewriting the original call site.
+
+def builder_macro(cls: type) -> type:
+    """Mark a class as a builder-trace macro.
+
+    The class's ``__init__(self, ctx: BuilderContext, args: MacroArgs)`` is
+    invoked when the compiler sees a constructor call to it. Methods marked
+    ``@builder_method`` / ``@builder_returns(child)`` / ``@builder_terminal``
+    are dispatched on subsequent method calls of the bound symbol.
+    """
+    cls._is_builder_macro = True
+    return cls
+
+
+def builder_method(fn: Callable) -> Callable:
+    """Mark a method as a void builder step that mutates state."""
+    fn._is_builder_method = True
+    return fn
+
+
+def builder_returns(child_class: type) -> Callable[[Callable], Callable]:
+    """Mark a method as returning a sub-builder.
+
+    The decorated method's return value (a fresh ``child_class`` instance)
+    becomes a new tracked symbol in the trace, allowing chained builder
+    calls.
+
+    The expander dispatches sub-builder method calls using the handlers
+    declared on the *declared* ``child_class`` -- subclass dispatch is
+    not supported. If a handler returns an instance of a subclass of
+    ``child_class``, methods declared only on the subclass will not be
+    found by the expander. Always declare the exact return type.
+
+    The LHS name receiving the sub-builder must not already be a
+    tracked builder symbol; reassignment is rejected.
+    """
+    def decorate(fn: Callable) -> Callable:
+        fn._is_builder_returns = True
+        fn._builder_child_class = child_class
+        return fn
+    return decorate
+
+
+def builder_terminal(fn: Callable) -> Callable:
+    """Mark a method as the trace terminator.
+
+    A terminal handler:
+
+    * Emits synthesized declarations through ``ctx.emit_record`` /
+      ``ctx.emit_function``,
+    * Rewrites the original call site via ``ctx.replace_call``,
+    * Returns the ``TypeInfo`` for the call's result type (so the LHS in
+      ``x = builder.terminal(...)`` is statically typed).
+    """
+    fn._is_builder_terminal = True
+    return fn
+
+
+# ---------------------------------------------------------------------------
 # Macro module dependency declaration
 # ---------------------------------------------------------------------------
 
@@ -406,6 +472,339 @@ class CallMacroContext:
         """Raise a compile error."""
         from .diagnostics import SemanticError
         raise SemanticError(msg, loc or self._loc)
+
+
+# ---------------------------------------------------------------------------
+# MacroArgs -- positional + keyword args delivered to builder handlers
+# ---------------------------------------------------------------------------
+
+@dataclass
+class MacroArgs:
+    """Positional and keyword arguments passed to a builder handler.
+
+    Each value is a ``MacroArg`` (raw expression + resolved type).
+    Use the ``BuilderContext`` extractors (``positional_str``,
+    ``kwarg_int``, ...) to pull macro-time values out of these.
+    """
+    positional: list[MacroArg] = field(default_factory=list)
+    kwargs: dict[str, MacroArg] = field(default_factory=dict)
+
+
+# ---------------------------------------------------------------------------
+# BuilderContext -- API surface for @builder_macro handlers
+# ---------------------------------------------------------------------------
+
+# Sentinel: distinguishes "kwarg absent, use default" from "kwarg
+# explicitly set to None". Macro authors never see this -- it stays
+# inside the BuilderContext extractors.
+_UNSET = object()
+
+
+class BuilderContext:
+    """Context passed to @builder_macro handlers.
+
+    Provides:
+
+    * **Diagnostics**: ``warning(msg, loc=None)`` / ``error(msg, loc=None)``.
+    * **Macro-time literal evaluators**: ``eval_literal_or_final(expr)`` and
+      ``eval_sequence_of_literal_or_final(expr)`` -- the primitives over
+      which all kwarg extractors are built.
+    * **Typed extractors**: ``positional_str(args, i)``, ``kwarg_str``,
+      ``kwarg_int``, ``kwarg_bool``, ``kwarg_str_or_int``, ``kwarg_type``,
+      ``kwarg_list_literal``, ``kwarg_macroarg``.
+    * **Code emission**: ``fresh_module_name(hint)``, ``emit_record``,
+      ``emit_function``, ``replace_call``.
+
+    Construction is internal -- the BuilderTraceExpander wires up
+    ``_expander``, ``_ctx``, ``_call_loc``, and ``_function_being_traced``.
+
+    The code-emission methods are intentionally macro-kind-agnostic --
+    they only depend on the module, the registrar, and the per-module
+    fresh-name counter on SemanticContext. When a class-macro or
+    call-macro consumer needs to emit sibling records or top-level
+    helper functions, lift these methods into a shared ``ModuleEmitter``
+    helper that ``ClassInfo`` and ``CallMacroContext`` can hold a
+    reference to. Tracked as "Top-level companion records / functions"
+    in docs/MACRO_DESIGN.md's Macro System Future Work table.
+    """
+
+    def __init__(
+        self, expander: Any, ctx: 'SemanticContext',
+        call_loc: Any, function_being_traced: str,
+    ) -> None:
+        self._expander = expander
+        self._ctx = ctx
+        self._call_loc = call_loc
+        self._function_being_traced = function_being_traced
+
+    # -- Diagnostics --
+
+    @property
+    def call_loc(self) -> Any:
+        """Source location of the call currently being expanded."""
+        return self._call_loc
+
+    @property
+    def function_being_traced(self) -> str:
+        """Name of the enclosing function whose body is being traced."""
+        return self._function_being_traced
+
+    def warning(self, msg: str, loc: Any = None) -> None:
+        """Emit a compiler warning at the current call site (or `loc`)."""
+        self._ctx.warning_from_loc(msg, loc or self._call_loc)
+
+    def error(self, msg: str, loc: Any = None) -> NoReturn:
+        """Raise a compile error at the current call site (or `loc`)."""
+        from .diagnostics import SemanticError
+        raise SemanticError(msg, loc or self._call_loc)
+
+    # -- Macro-time literal evaluators (the primitives) --
+
+    def eval_literal_or_final(self, expr: TpyExpr) -> object:
+        """Evaluate an expression to a Python value at macro time.
+
+        Accepts int/str/float/bool/None literals and unary minus on
+        numeric literals. The name is forward-looking: ``Final[...]``
+        constant references will resolve here once the lookup-by-name
+        path is wired (today the resolver returns _UNSET for any name,
+        so only literals work). Raises ``MacroError`` if the expression
+        is not statically knowable.
+        """
+        return _eval_literal_or_final(expr, self._ctx, self._call_loc)
+
+    def eval_sequence_of_literal_or_final(self, expr: TpyExpr) -> list[object]:
+        """Evaluate a tuple/list literal whose elements are all
+        ``eval_literal_or_final``-compatible.
+        """
+        if isinstance(expr, (TpyTupleLiteral, TpyArrayLiteral)):
+            return [self.eval_literal_or_final(e) for e in expr.elements]
+        raise MacroError(
+            f"expected a tuple or list literal, got {type(expr).__name__}",
+            loc=self._call_loc,
+        )
+
+    # -- Typed positional extractors --
+
+    def positional_strs(self, args: MacroArgs) -> list[str]:
+        """Extract every positional arg as a string literal value.
+
+        Errors if any positional is not a string literal.
+        """
+        out: list[str] = []
+        for i, ma in enumerate(args.positional):
+            v = self.eval_literal_or_final(ma.expr)
+            if not isinstance(v, str):
+                raise MacroError(
+                    f"positional argument #{i} must be a string, got {type(v).__name__}",
+                    loc=getattr(ma.expr, "loc", None) or self._call_loc,
+                )
+            out.append(v)
+        return out
+
+    def positional_str(self, args: MacroArgs, i: int) -> str:
+        if i >= len(args.positional):
+            raise MacroError(
+                f"missing positional argument #{i}", loc=self._call_loc)
+        ma = args.positional[i]
+        v = self.eval_literal_or_final(ma.expr)
+        if not isinstance(v, str):
+            raise MacroError(
+                f"positional argument #{i} must be a string, got {type(v).__name__}",
+                loc=getattr(ma.expr, "loc", None) or self._call_loc,
+            )
+        return v
+
+    # -- Typed kwarg extractors --
+
+    def _get_kwarg(self, args: MacroArgs, name: str) -> MacroArg | None:
+        return args.kwargs.get(name)
+
+    def kwarg_str(
+        self, args: MacroArgs, name: str, default: Any = _UNSET,
+    ) -> str | None:
+        ma = self._get_kwarg(args, name)
+        if ma is None:
+            return None if default is _UNSET else default
+        v = self.eval_literal_or_final(ma.expr)
+        if v is None:
+            return None
+        if not isinstance(v, str):
+            raise MacroError(
+                f"keyword argument '{name}' must be a string, got {type(v).__name__}",
+                loc=getattr(ma.expr, "loc", None) or self._call_loc,
+            )
+        return v
+
+    def kwarg_int(
+        self, args: MacroArgs, name: str, default: Any = _UNSET,
+    ) -> int | None:
+        ma = self._get_kwarg(args, name)
+        if ma is None:
+            return None if default is _UNSET else default
+        v = self.eval_literal_or_final(ma.expr)
+        if v is None:
+            return None
+        if not isinstance(v, int) or isinstance(v, bool):
+            raise MacroError(
+                f"keyword argument '{name}' must be an int, got {type(v).__name__}",
+                loc=getattr(ma.expr, "loc", None) or self._call_loc,
+            )
+        return v
+
+    def kwarg_bool(
+        self, args: MacroArgs, name: str, default: bool = False,
+    ) -> bool:
+        ma = self._get_kwarg(args, name)
+        if ma is None:
+            return default
+        v = self.eval_literal_or_final(ma.expr)
+        if not isinstance(v, bool):
+            raise MacroError(
+                f"keyword argument '{name}' must be a bool, got {type(v).__name__}",
+                loc=getattr(ma.expr, "loc", None) or self._call_loc,
+            )
+        return v
+
+    def kwarg_str_or_int(
+        self, args: MacroArgs, name: str, default: Any = _UNSET,
+    ) -> Any:
+        ma = self._get_kwarg(args, name)
+        if ma is None:
+            return None if default is _UNSET else default
+        v = self.eval_literal_or_final(ma.expr)
+        if v is None:
+            return None
+        if isinstance(v, bool) or not isinstance(v, (str, int)):
+            raise MacroError(
+                f"keyword argument '{name}' must be a string or int, got {type(v).__name__}",
+                loc=getattr(ma.expr, "loc", None) or self._call_loc,
+            )
+        return v
+
+    def kwarg_type(
+        self, args: MacroArgs, name: str, default: Any = _UNSET,
+    ) -> TypeInfo | None:
+        """Extract a kwarg whose value is a type reference (e.g. ``type=int``)."""
+        ma = self._get_kwarg(args, name)
+        if ma is None:
+            return None if default is _UNSET else default
+        return ma.type
+
+    def kwarg_list_literal(
+        self, args: MacroArgs, name: str, default: Any = _UNSET,
+    ) -> list[MacroArg] | None:
+        """Extract a kwarg that must be a tuple or list literal.
+
+        Returns the element ``MacroArg``s wrapped in MacroArg form so the
+        caller can inspect each element's type and expression.
+        """
+        ma = self._get_kwarg(args, name)
+        if ma is None:
+            return None if default is _UNSET else default
+        if not isinstance(ma.expr, (TpyTupleLiteral, TpyArrayLiteral)):
+            raise MacroError(
+                f"keyword argument '{name}' must be a tuple or list literal",
+                loc=getattr(ma.expr, "loc", None) or self._call_loc,
+            )
+        # Wrap each element with an unknown type -- callers that need
+        # concrete element types should use eval_sequence_of_literal_or_final
+        # or apply their own per-element extractors.
+        return [MacroArg(expr=e, type=TypeInfo("?", _tpy_type=None))
+                for e in ma.expr.elements]
+
+    def kwarg_macroarg(
+        self, args: MacroArgs, name: str, default: Any = _UNSET,
+    ) -> MacroArg | None:
+        """Return the raw MacroArg for a kwarg, or ``default`` if absent."""
+        ma = self._get_kwarg(args, name)
+        if ma is None:
+            return None if default is _UNSET else default
+        return ma
+
+    # -- Code emission --
+
+    def fresh_module_name(self, hint: str) -> str:
+        """Synthesize a unique module-private name for a generated record
+        or function. Names start with an underscore so they aren't exported.
+        """
+        return self._expander.fresh_module_name(hint)
+
+    def emit_record(
+        self, name: str, fields: list[tuple[str, TpyType]],
+        methods: list[Function] | None = None,
+    ) -> TypeInfo:
+        """Synthesize and register a record type.
+
+        ``fields`` is a list of ``(name, type)`` pairs. Returns the
+        ``TypeInfo`` for the new type so handlers can use it as the return
+        type of an emitted function.
+        """
+        return self._expander.emit_record(name, fields, methods or [],
+                                          loc=self._call_loc)
+
+    def emit_function(
+        self, name: str, params: list[tuple[str, TpyType]],
+        return_type: TpyType, body: list[Stmt],
+    ) -> str:
+        """Synthesize and register a free function. Returns its module-
+        private name (which is also what ``replace_call`` expects).
+        """
+        return self._expander.emit_function(name, params, return_type, body,
+                                            loc=self._call_loc)
+
+    def replace_call(self, fn_name: str, args: MacroArgs) -> None:
+        """Rewrite the trace's terminal call site to ``fn_name(<args>)``.
+
+        Positional and keyword args from ``args`` are passed through
+        unchanged.
+        """
+        self._expander.replace_call(fn_name, args, loc=self._call_loc)
+
+
+def _eval_literal_or_final(
+    expr: TpyExpr, ctx: 'SemanticContext', loc: Any,
+) -> object:
+    """Implementation of BuilderContext.eval_literal_or_final."""
+    if isinstance(expr, TpyBoolLiteral):
+        return expr.value
+    if isinstance(expr, TpyIntLiteral):
+        return expr.value
+    if isinstance(expr, TpyFloatLiteral):
+        return expr.value
+    if isinstance(expr, TpyStrLiteral):
+        return expr.value
+    if isinstance(expr, TpyNoneLiteral):
+        return None
+    if isinstance(expr, TpyUnaryOp) and expr.op == "-":
+        inner = _eval_literal_or_final(expr.operand, ctx, loc)
+        if isinstance(inner, bool) or not isinstance(inner, (int, float)):
+            raise MacroError(
+                f"unary minus requires a numeric literal, got {type(inner).__name__}",
+                loc=getattr(expr, "loc", None) or loc,
+            )
+        return -inner
+    if isinstance(expr, TpyName):
+        # Final[...] global with a literal initializer -- look it up.
+        v = _resolve_final_literal(expr.name, ctx)
+        if v is not _UNSET:
+            return v
+    raise MacroError(
+        f"expected a literal or Final constant, got {type(expr).__name__}",
+        loc=getattr(expr, "loc", None) or loc,
+    )
+
+
+def _resolve_final_literal(name: str, ctx: 'SemanticContext') -> object:
+    """Resolve a name to the Python value of a Final[...] literal global,
+    or return _UNSET if not resolvable.
+
+    Final-literal evaluation requires walking the module's top-level
+    decls to find the initializer expression. v1 doesn't yet thread
+    that through to BuilderContext, so this always returns _UNSET --
+    builder kwargs must currently be literal expressions, not Final
+    references. Add init-expr lookup here when the use case appears.
+    """
+    return _UNSET
 
 
 # ---------------------------------------------------------------------------

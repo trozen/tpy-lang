@@ -1,0 +1,1 @@
+main.py:12: error: builder-trace symbol 'cfg' may not be used inside a control-flow block, lambda, or nested def

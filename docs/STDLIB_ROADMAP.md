@@ -143,7 +143,7 @@ Examples of the policy in action:
 | [`csv`](#csv) | P1 | Missing | 0% | -- | Depends on `io` |
 | [`base64`](#base64) | P1 | Partial | ~95% | pure | Pure-TPy b64/b32/b16 encode+decode + urlsafe/standard variants + altchars=/validate=/casefold=/map01= kwargs + encodebytes/decodebytes. bytes/bytearray/str accepted on decoders (matches CPython). Missing: b85/a85 (rare, separate algorithms); `memoryview` depends on builtin gap |
 | [`hashlib`](#hashlib) | P1 | Partial | ~20% | pure | SHA-256 pure-TPy. MD5/SHA-1/SHA-512 are straight follow-ups (same class pattern, different round functions / endian). BLAKE2/SHA-3 later. Optional OpenSSL backend also later |
-| [`argparse`](#argparse) | P1 | Missing | 0% | -- | Dynamic-type heavy; may need macro approach |
+| [`argparse`](#argparse) | P1 | Partial | ~70% | macro | Builder-trace macro (Phase 7); positionals/optional flags, all 7 actions, all 4 nargs, type=int\|float\|str, choices/required/dest/help, Optional[T] for absent flags. Missing: --help printer, fixed-width int types, subparsers, mutually-exclusive groups, custom type via ArgType[T] |
 | [`logging`](#logging) | P2 | Missing | 0% | -- | Module-level state + handler architecture |
 | [`configparser`](#configparser) | P2 | Missing | 0% | -- | Depends on `io` |
 | [`urllib.parse`](#urllibparse) | P2 | Missing | 0% | -- | Pure-TPy candidate; no network dependency |
@@ -904,7 +904,38 @@ Tests: `cases/stdlib/hashlib`.
 
 ### argparse
 
-**Missing.** Dynamic-type heavy; may benefit from a macro-driven redesign.
+Current: `lib/tpy/argparse.py` -- builder-trace macro (Phase 7 of the
+macro system; see `docs/MACRO_DESIGN.md`). The compiler walks the
+``ArgumentParser`` builder calls at compile time and synthesizes a
+per-call-site record + parse function, so ``args`` is statically typed.
+
+| Item | Status | Notes |
+|---|---|---|
+| Positional arguments | Done | Default str type |
+| Optional flags (`-x` / `--foo`) | Done | One or more aliases per add_argument |
+| `type=int\|float\|str` | Done | int maps to BigInt to match CPython |
+| `default=<literal>` | Done | Macro-time literals only (no list defaults yet) |
+| `const=<literal>` | Done | For `store_const` and `store + nargs='?'` |
+| `action=` | Done | `store` / `store_true` / `store_false` / `count` / `append` / `extend` / `store_const` |
+| `nargs=` | Done | `'?'` / `'*'` / `'+'` / positive int. Variable nargs positionals must be last |
+| `choices=(...)` | Done | Macro-time literal sequence |
+| `required=True` | Done | Optional flags only |
+| `dest=` | Done | Override synthesized record field name |
+| `help=` (data) | Done | Stored at macro time |
+| Optional[T] field for absent flag | Done | When no `default=` and not `required=` |
+| ArgumentParser `description=` | Done | |
+| `--help` / `-h` auto-generation | Missing | First v2 item; needs synthesizing a help-printer fn |
+| `type=Int32 / Int64 / UInt8 / ...` | Missing | TPy fixed-width int types in `type=` |
+| Subparsers | Missing | Tagged-union codegen; common in non-trivial CLIs |
+| `metavar=` | Missing | Help-text display name; pairs with --help work |
+| `prog=` / `usage=` / `epilog=` | Missing | Help-text customization |
+| `add_mutually_exclusive_group()` | Missing | At-most-one constraint across flags |
+| Custom `type=` via `ArgType[T]` | Missing | Protocol with `from_arg(s: str) -> T` for Path, datetime, user records |
+| List-literal defaults (`default=[1, 2, 3]`) | Missing | Extend `eval_literal_or_final` to lists |
+| `parents=`, argument groups, `BooleanOptionalAction`, `allow_abbrev`, `fromfile_prefix_chars`, custom formatter classes, `action=<callable>` | Future | Tier-3; full tier table in MACRO_DESIGN.md's argparse Future Work section |
+| Absent-list args yield `[]` (CPython: `None`); `parse_args()` requires explicit argv (CPython: defaults to `sys.argv[1:]`) | v1 divergence | Both blocked on macro_deps for builder-trace macros (macro-system future work) |
+
+Tests: `cases/argparse/{basic,optional_flags,value_free_actions,list_and_const_actions,choices_required_dest,nargs,empty_parser,positional_nargs_optional,qualified_import,two_parsers_same_module}` plus `error_argparse_*` cases pinning macro-time validation and `panic_empty_parser_extra_args` for the runtime-error path.
 
 ### logging
 

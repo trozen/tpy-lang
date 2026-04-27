@@ -1,0 +1,1 @@
+main.py:14: error: builder-trace symbol 'cfg_builder' may only appear as the receiver of a registered @builder_method call

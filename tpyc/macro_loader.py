@@ -315,6 +315,52 @@ def expand_call_macro(
     return result
 
 
+def _wrap_macro_call(
+    fn: Callable, what: str, loc: Any, args: tuple, kwargs: dict,
+) -> Any:
+    """Invoke a builder-macro Python callable, wrapping unexpected
+    exceptions as SemanticError. Mirrors expand_call_macro's pattern.
+    """
+    from .diagnostics import SemanticError
+    from .macro_api import MacroError, ast as _ast_builder
+    _ast_builder.reset_tmp_counter()
+    try:
+        return fn(*args, **kwargs)
+    except MacroError as e:
+        raise SemanticError(str(e), e.loc or loc) from e
+    except SemanticError:
+        raise
+    except Exception as e:
+        raise SemanticError(
+            f"{what}: macro raised {type(e).__name__}: {e}", loc) from e
+
+
+def validate_builder_macro(
+    macro_cls: type, ctx_obj: Any, args: Any, qname: str, loc: Any,
+) -> Any:
+    """Instantiate a @builder_macro state class.
+
+    ``macro_cls`` is the user-defined class. ``ctx_obj`` is a
+    ``BuilderContext`` (passed positionally to ``__init__``). ``args`` is
+    a ``MacroArgs`` value carrying the constructor's positional + kw
+    arguments. Returns the constructed state instance.
+    """
+    return _wrap_macro_call(
+        macro_cls, qname, loc, (ctx_obj, args), {})
+
+
+def expand_builder_method(
+    handler: Callable, qname: str, ctx_obj: Any, args: Any, loc: Any,
+) -> Any:
+    """Invoke a @builder_method / @builder_returns / @builder_terminal
+    handler bound to its state instance. Returns the handler's return
+    value (None for void steps; child instance for builder_returns;
+    TypeInfo for builder_terminal).
+    """
+    return _wrap_macro_call(
+        handler, qname, loc, (ctx_obj, args), {})
+
+
 class MacroRegistry:
     """Registry of loaded class macros.
 
@@ -325,6 +371,8 @@ class MacroRegistry:
     def __init__(self, search_dirs: list[Path] | None = None) -> None:
         self._macros: dict[tuple[str, str], Callable] = {}
         self._call_macros: dict[tuple[str, str], Callable] = {}
+        # Builder-trace macros: (module, name) -> class object
+        self._builder_macros: dict[tuple[str, str], type] = {}
         self._modules: dict[str, Any] = {}
         self._loaded_modules: set[str] = set()
         # module_name -> {dep_module: names_or_None}
@@ -343,6 +391,10 @@ class MacroRegistry:
 
     def get_call_macro(self, module: str, name: str) -> Callable | None:
         return self._call_macros.get((module, name))
+
+    def get_builder_macro(self, module: str, name: str) -> type | None:
+        """Look up a @builder_macro state class by (module, name)."""
+        return self._builder_macros.get((module, name))
 
     def get_export(self, module: str, name: str) -> Any | None:
         """Look up any exported name from a loaded macro module."""
@@ -421,9 +473,13 @@ class MacroRegistry:
             self._macro_deps[module_name] = _macro_api._pending_macro_deps
             _macro_api._pending_macro_deps = None
 
-        # Scan for @class_macro and @call_macro decorated functions
+        # Scan for @class_macro and @call_macro decorated functions, and
+        # @builder_macro decorated classes.
         for attr_name in dir(mod):
             obj = getattr(mod, attr_name)
+            if isinstance(obj, type) and getattr(obj, '_is_builder_macro', False):
+                self._builder_macros[(module_name, attr_name)] = obj
+                continue
             if callable(obj):
                 if getattr(obj, '_is_class_macro', False):
                     self.register(module_name, attr_name, obj)

@@ -1,0 +1,10 @@
+a.txt
+b.txt
+2
+10
+20
+x
+y
+z
+auto
+none

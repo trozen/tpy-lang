@@ -1,0 +1,3 @@
+Builder-trace macros run only at compile time inside tpyc; the smoke
+macro module imports tpyc.macro_api which is not available under the
+plain CPython phase.

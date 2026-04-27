@@ -3168,8 +3168,12 @@ class Parser:
                         kwargs[kw.arg] = self._parse_expr(kw.value)
 
             if isinstance(node.func, ast.Name):
-                return TpyCall(TpyName(node.func.id, loc=loc), args, kwargs=kwargs,
+                call = TpyCall(TpyName(node.func.id, loc=loc), args, kwargs=kwargs,
                                double_star_unpack=double_star_unpack, loc=loc)
+                # Set resolved_import so downstream passes (e.g. the
+                # builder-trace expander) can identify imported callables.
+                self._resolve_call_import(call, node)
+                return call
             elif isinstance(node.func, ast.Attribute):
                 # ClassName[TypeArgs].method(args) -- static call with explicit class type args
                 if (isinstance(node.func.value, ast.Subscript)
@@ -3186,8 +3190,14 @@ class Parser:
                         )
                     # No type args and no error: fall through (e.g., variable[index].method())
                 obj = self._parse_expr(node.func.value)
-                return TpyMethodCall(obj, node.func.attr, args, kwargs=kwargs,
-                                     double_star_unpack=double_star_unpack, loc=loc)
+                mcall = TpyMethodCall(obj, node.func.attr, args, kwargs=kwargs,
+                                      double_star_unpack=double_star_unpack, loc=loc)
+                # Set resolved_import for qualified module calls
+                # (``mod.func()``) so downstream passes -- e.g. the
+                # builder-trace expander -- can identify imported
+                # callables without re-walking the import table.
+                self._resolve_call_import(mcall, node)
+                return mcall
             elif isinstance(node.func, ast.Subscript):
                 # Could be generic type instantiation (Stack[Int32]()) or generic function call (First[Int32](x))
                 # Parse both call_type and type_args - sema decides which applies based on whether

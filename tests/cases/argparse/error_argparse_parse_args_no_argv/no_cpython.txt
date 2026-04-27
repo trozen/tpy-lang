@@ -1,0 +1,2 @@
+Macro-time error test: CPython argparse's parse_args() falls back to
+sys.argv[1:], which our v1 macro doesn't support.

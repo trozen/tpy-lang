@@ -600,6 +600,13 @@ class SemanticContext:
     # --- Extern symbol tracking ---
     extern_symbols: dict[str, str] = field(default_factory=dict)
 
+    # --- Builder-trace fresh-name counters ---
+    # hint -> next index. Shared across BuilderTraceExpander instances
+    # so two functions that each open an ArgumentParser trace don't
+    # both mint __tpy_builder_argparse_args_1, which would collide as
+    # a top-level record/function name in the synthesized module.
+    builder_trace_fresh_counters: dict[str, int] = field(default_factory=dict)
+
     # --- Diagnostics ---
     diagnostics: list[Diagnostic] = field(default_factory=list)
 

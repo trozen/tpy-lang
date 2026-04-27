@@ -1,0 +1,1 @@
+main.py:8: error: builder-trace symbol 'cfg_builder' was never closed by a @builder_terminal call before the end of 'main'

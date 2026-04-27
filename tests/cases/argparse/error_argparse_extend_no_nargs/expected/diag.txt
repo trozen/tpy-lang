@@ -1,0 +1,1 @@
+main.py:9: error: argparse: action='extend' requires nargs= (otherwise the converted value gets iterated, which is rarely what callers want)

@@ -53,6 +53,7 @@ from ..parse.resolve_refs import (
     promote_bare_nominals,
 )
 from .macros import _promote_method_signature
+from .builder_trace import BuilderTraceExpander
 
 
 
@@ -321,6 +322,9 @@ class SemanticAnalyzer:
         # Set module context
         self.ctx.module_name = module_name
         self.ctx.module_cpp_namespace = getattr(module.directives, 'cpp_namespace', None) if hasattr(module, 'directives') else None
+        # Builder-trace expansion (phase 7) needs to splice synthesized
+        # records/functions into the module while bodies are being analyzed.
+        self._module = module
         # Module resolver -- consumed by `_infer_field_type_from_default`
         # (same-module record lookup) and the macro post-resolve step in
         # `register_record` (body TypeRefNodes on macro-added methods).
@@ -808,6 +812,10 @@ class SemanticAnalyzer:
         # Track consuming method for ownership propagation through fields
         prev_consuming = self.ctx.in_consuming_method
         self.ctx.in_consuming_method = func.is_consuming
+
+        # Builder-trace expansion: rewrite the body, splicing synthesized
+        # records and functions into the module before normal sema runs.
+        self._expand_builder_trace_body(func, func.name)
 
         # Shared core: bind params, prescan, analyze body
         scan = self.stmts._prescan_and_analyze_body(func, resolved_params, scope, local_ns)
@@ -1591,6 +1599,9 @@ class SemanticAnalyzer:
             prev_consuming = self.ctx.in_consuming_method
             self.ctx.in_consuming_method = method.is_consuming
 
+            # Builder-trace expansion (see _analyze_function for the same hook).
+            self._expand_builder_trace_body(method, f"{record.name}.{method.name}")
+
             # Shared core: bind params, prescan, analyze body
             scan = self.stmts._prescan_and_analyze_body(method, resolved_params, scope, local_ns)
 
@@ -1927,6 +1938,9 @@ class SemanticAnalyzer:
         # New local variables will be added to global_ns as they're declared
         self.ctx.func.current_ns = self.ctx.global_ns
 
+        # Builder-trace expansion at module level (see _analyze_function).
+        self._expand_builder_trace_top_level(stmts)
+
         # Pre-scan for codegen
         self.top_level_scan_result = scan_reassigned_vars(stmts)
         # Last-use analysis for auto-move (shared with codegen)
@@ -2120,6 +2134,43 @@ class SemanticAnalyzer:
             return False
 
         raise self._error(f"'{original_name}' not found in module '{module_name}'")
+
+    def _expand_builder_trace_body(self, func: TpyFunction, function_qname: str) -> None:
+        """Run BuilderTraceExpander on a function/method body in place.
+
+        No-op when the macro registry has no @builder_macro classes or
+        the body is empty.
+        """
+        if not func.body:
+            return
+        if (self.ctx.macro_registry is None
+                or not self.ctx.macro_registry._builder_macros):
+            return
+        expander = BuilderTraceExpander(
+            ctx=self.ctx, registrar=self.registrar,
+            module=self._module, function_being_traced=function_qname,
+        )
+        new_body = expander.expand(func.body)
+        if new_body is not None:
+            func.body = new_body
+
+    def _expand_builder_trace_top_level(self, stmts: list[TpyStmt]) -> None:
+        """Run BuilderTraceExpander on module top-level statements in place.
+
+        Mutates ``stmts`` directly (the caller passed in module.top_level_stmts).
+        """
+        if not stmts:
+            return
+        if (self.ctx.macro_registry is None
+                or not self.ctx.macro_registry._builder_macros):
+            return
+        expander = BuilderTraceExpander(
+            ctx=self.ctx, registrar=self.registrar,
+            module=self._module, function_being_traced="<module>",
+        )
+        new_stmts = expander.expand(stmts)
+        if new_stmts is not None:
+            stmts[:] = new_stmts
 
     def _promote_macro_generated_types(self, module: TpyModule) -> None:
         """Promote bare `NominalType` placeholders on macro-generated

@@ -1,0 +1,1 @@
+main.py:8: error: argparse: type= cannot be combined with action='store_true'

@@ -11,9 +11,13 @@
 | 3+4 | Source-based macro authoring: `quote()` / `add_method_from_source` for writing macro output as TPy source strings instead of AST builder calls | Done |
 | 5 | CPython compatibility: `lib/cpy/tpyc/macro_api.py` backend targeting Python `ast` module | Dropped |
 | 6 | TpyMini VM: tree-walking interpreter for self-hosted compiler | Not started |
-| 7 | Builder-trace macros: `@builder_macro` / `@builder_method` / `@builder_returns` / `@builder_terminal`, `BuilderContext`, sema sub-pass. First use case: `argparse` | Designed |
+| 7 | Builder-trace macros: `@builder_macro` / `@builder_method` / `@builder_returns` / `@builder_terminal`, `BuilderContext`, sema sub-pass. First use case: `argparse` | Done |
 
-### Future Extensions
+### Macro System Future Work
+
+Compiler-side macro infrastructure. Per-macro-module future work
+(e.g. argparse's v2 list) lives with that macro's use-case section
+below.
 
 | Feature | Notes |
 |---------|-------|
@@ -28,12 +32,14 @@
 | `TpyBlockExpr` | Block expression: sequence of statements + result expression. Codegen hoists statements to enclosing scope |
 | Generic mapping detection in `asdict`/`astuple` | Currently only built-in `dict[K, V]` is recursed. A `CallMacroContext.get_mapping_key_value_types()` method could detect any type with `.items() -> Iterable[tuple[K, V]]`, enabling recursion into user-defined mapping types |
 | AST splicing in `quote()` | Embed computed `Expr`/`Stmt` objects into quoted source via `${expr}` syntax. Requires custom parse pass. Enables mixing static method shapes with dynamic AST fragments (e.g., computed comparison chains). Deferred -- f-string interpolation covers common cases |
-| Companion type creation | `cls.add_companion_type(name, ...)` -- macros can add methods but not new types. Would let macros generate helper types (e.g. key enums for JSON field dispatch via `try_parse` + `match`/`case`). Requires nested class support in parser/sema/codegen first |
+| Top-level companion records / functions | Lift the module-level emission methods (``emit_record``, ``emit_function``, ``replace_call``, ``fresh_module_name``) from ``BuilderContext`` into a shared ``ModuleEmitter`` helper held by ``ClassInfo`` and ``CallMacroContext`` too. Lets a class macro generate sibling records and free functions next to the decorated class (e.g. a key enum for JSON field dispatch, or a factory helper). Implementable today -- the BuilderTraceExpander prototype already does the work; only the home of the API would change. Caveats: the emission ordering caveats in ``emit_record``'s docstring (skipped inheritance / value-type validation) apply here too |
+| Nested companion types | ``cls.add_companion_type(name, ...)`` -- generate types nested *inside* the decorated class (rather than as siblings). Requires nested-class support in parser/sema/codegen first; the top-level companion item above is the simpler precursor |
 | CPython macro compat | CPython backend for macro API was dropped -- maintaining parity between compiler AST and CPython `exec`-based codegen (frozen fields, factory defaults, `super()` in exec'd code) was not worth the effort. Could be revisited if CPython test coverage of macro-generated code becomes important |
+| Eval Final-typed kwargs | `BuilderContext.eval_literal_or_final()` advertises Final-constant support but the resolver returns `_UNSET` for any name today. Threading the module's Final-init expressions through to the expander would let macro authors accept `Final[str]` etc. as kwarg values |
+| `macro_deps` for builder-trace macros | Today `macro_deps()` only fires for macro modules used via class macros (records with `pending_macros`); builder-trace macros bypass that path. Wiring it would let `argparse` import `tpy` (for `copy()`) and `sys` (for `sys.argv`) into the user's module namespace, unblocking the two argparse divergences below |
 | Branch-aware terminal proof | Builder-trace v1 forbids tracked symbols inside conditionals/loops; a structural check that every reachable path contains exactly one terminal would relax this |
 | Cross-function builder helpers | Allow factored helpers (`def add_common(parser): parser.add_argument(...)`) via a decorator that marks the parameter as a tracked builder symbol the macro can dispatch into |
-| Builder state caching | Cache top-level builder-trace state by binding name so e.g. `ArgumentParser(parents=[base])` can replay `base`'s registrations |
-| Argparse `type=` arbitrary types | `ArgType[T]` protocol with `from_arg(s: str) -> T`; lets users plug custom CLI types (`Path`, `Port`, etc.) without macro changes -- defined when v2 work starts |
+| Builder state caching | Cache top-level builder-trace state by binding name so e.g. `ArgumentParser(parents=[base])` can replay `base`'s registrations -- prerequisite for `argparse` `parents=` support |
 
 ---
 
@@ -434,14 +440,46 @@ The macro synthesizes a per-call-site record (`verbose: bool`, `count: int`,
 `files: list[str]`) and a parse function. `args` is statically typed; IDEs see
 the fields; no runtime reflection.
 
-v1 surface: `add_argument` with `store` / `store_true` / `store_false` /
-`count` / `append` / `extend` / `store_const` actions; `nargs` in
-`?` / `*` / `+` / integer; `type=` from `int` / `float` / `str`;
-`default=` / `const=` / `choices=` / `required=` / `help=` / `dest=`.
+v1 surface (done): `add_argument` with `store` / `store_true` /
+`store_false` / `count` / `append` / `extend` / `store_const` actions;
+`nargs` in `?` / `*` / `+` / integer; `type=` from `int` / `float` /
+`str`; `default=` / `const=` / `choices=` / `required=` / `help=` /
+`dest=`. Optional scalar flags without `default=` produce `Optional[T]`
+fields. `help=` is accepted and stored at macro time but no `--help`
+printer is emitted yet.
 
-v2: subparsers (tagged-union code emission), argument groups, `parents=`,
-`type=` for arbitrary types via an `ArgType[T]` protocol with
-`from_arg(s: str) -> T`, custom formatters from a fixed set.
+#### argparse Future Work
+
+Priority-ordered. STDLIB_ROADMAP.md mirrors this as the per-feature
+status table for the `argparse` module.
+
+| Tier | Feature | Notes |
+|------|---------|-------|
+| 1 | `--help` / `-h` auto-generation | Synthesize a help-printer that walks the registered specs to produce a usage line + per-argument help text and exits when `-h` / `--help` appears in argv. `help=` data is already collected at macro time |
+| 1 | `type=` for fixed-width ints / `Float32` | `Int32` / `Int64` / `UInt8` / ... / `Float32`. Same shape as the v1 `int` / `float` / `str` cases, just more entries in the allowed-types set with matching field types and conversion calls |
+| 1 | Subparsers | `add_subparsers()` + `add_parser(name)`. Tagged-union codegen: each sub-parser builds its own per-name record; the top-level result is `Union[NameA, NameB, ...]` discriminated by the chosen subcommand. Sema sees the union; `match`/`case` narrows |
+| 2 | `metavar=` | Display name in the synthesized help text; pairs with `--help` |
+| 2 | `prog=` / `usage=` / `epilog=` | `ArgumentParser`-level help-string customization; reuses the help-printer infrastructure |
+| 2 | `add_mutually_exclusive_group()` | At-most-one constraint across a set of flags; fail at parse time if more than one is seen |
+| 2 | Custom `type=` via `ArgType[T]` | Protocol with `from_arg(s: str) -> T`. Lets users plug `Path`, `datetime`, custom records without macro changes |
+| 2 | List-literal defaults | `default=[1, 2, 3]` -- extend `eval_literal_or_final` to recurse into list / tuple literals at macro time |
+| 3 | `parents=` | Compose parsers by replaying a base parser's registrations. Needs the **Builder state caching** macro-system feature |
+| 3 | `BooleanOptionalAction` | Python 3.9+: paired `--foo` / `--no-foo` from a single `add_argument`. Synthesis is straightforward; defer until users ask |
+| 3 | `add_argument_group()` | Help-formatting feature; hooks into the `--help` printer once it lands |
+| 3 | `allow_abbrev` | Long-flag prefix matching (`--ver` matches `--verbose`); non-trivial collision rules |
+| 3 | `fromfile_prefix_chars` | Read additional args from a file prefixed with `@`. Niche |
+| 3 | Custom formatter classes | `RawDescriptionHelpFormatter` etc.; depends on the help printer being pluggable |
+| 3 | `action=<callable>` | CPython's escape hatch for arbitrary action classes. Hard to model under builder-trace because the action object is opaque to the macro |
+
+Known v1 divergences from CPython argparse (all blocked on macro-
+system future work, mostly the `macro_deps` for builder-trace macros
+item):
+
+| Divergence | TPy v1 | CPython | Unblock |
+|------------|--------|---------|---------|
+| Absent optional list-typed args (`action='append'`/`'extend'` or `store` with `nargs=N/*/+`) | field is `[]` | field is `None` | macro_deps so synthesized code can call `tpy.copy()` to move a typed accumulator into an `Optional[list[T]]` field without an implicit-copy warning |
+| `parser.parse_args()` with no args | macro-time error | uses `sys.argv[1:]` | macro_deps so synthesized code can reference `sys.argv` |
+| Parse-time errors (unrecognized arg, missing required, wrong nargs count, invalid choice, type-conversion failure) | raises `ValueError` -- propagates as TPy panic if uncaught | prints usage to stderr and `sys.exit(2)` (raises `SystemExit`) | macro_deps so synthesized code can call `sys.exit`; plus the Tier-1 ``--help`` printer to format the usage line. Until both land, every panic test against parse-time errors needs to live in a `panic_*` case (which auto-skips the cpy phase) |
 
 ## Three Macro Kinds
 
@@ -475,7 +513,7 @@ def asdict(ctx: CallMacroContext, obj: MacroArg) -> TpyExpr:
 Kwargs annotated with simple types (`str`, `int`, `bool`) are auto-extracted
 from literals. Macros raise `MacroError` for compile errors.
 
-### Builder-trace macros (call-chain macros) -- Phase 7, designed
+### Builder-trace macros (call-chain macros) -- Phase 7, done
 
 Applied to a class whose constructor opens a *trace*: the compiler tracks the
 bound symbol through the enclosing function body and dispatches method calls

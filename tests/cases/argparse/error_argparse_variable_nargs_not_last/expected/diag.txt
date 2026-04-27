@@ -1,0 +1,1 @@
+main.py:11: error: argparse: positional 'files' with nargs='+' must be the last positional
