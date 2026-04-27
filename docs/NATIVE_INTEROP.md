@@ -254,7 +254,7 @@ Adds an `#include` directive. Quoted paths use `#include "..."`, angle-bracket p
 # tpy: include(<sys/time.h>, platform="linux")
 ```
 
-In `native_module` modules, includes are propagated to importing modules instead of going into a separate header. In regular modules, includes go into the module's own generated header.
+In `native_module` modules, includes propagate transitively into any consumer whose generated C++ reaches a type defined in this module -- whether named explicitly in the consumer's imports or surfaced only through field/method chains on imported types. Native-to-native chains follow the same rule: a hand-written native header that forward-declares a type from another native module does not need to be edited; the consumer header pulls in both. In regular modules, includes go into the module's own generated header.
 
 ### `# tpy: link("library")`
 

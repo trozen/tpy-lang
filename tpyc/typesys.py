@@ -3298,6 +3298,11 @@ class ModuleInfo:
     protocols: dict[str, ProtocolInfo] = field(default_factory=dict)  # protocol_name -> ProtocolInfo
     type_aliases: dict[str, 'TpyType'] = field(default_factory=dict)  # alias_name -> resolved type
     enums: dict[str, 'NominalType'] = field(default_factory=dict)  # enum_name -> NominalType (enum-kind)
+    # Defining modules whose symbols this module's generated code references.
+    # Computed by sema.reach_analysis. Used by codegen to propagate native-
+    # module `# tpy: include(...)` directives transitively across native-to-
+    # native chains (which have no .hpp to chain through).
+    reached: set[str] = field(default_factory=set)
 
     def has_export(self, name: str) -> bool:
         """Check if a name is exported by this module."""

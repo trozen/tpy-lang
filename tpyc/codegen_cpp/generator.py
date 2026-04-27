@@ -1127,46 +1127,68 @@ class CodeGenerator:
                 include_path = self._module_to_include_path(implicit_mod)
                 out.write(f'#include "{include_path}"\n')
                 included.add(implicit_mod)
-        # Include user module headers (including parent packages for dotted imports)
-        for user_mod in sorted(self.ctx.user_module_imports):
-            module_info = self.analyzer.registry.get_module(user_mod)
-            # Skip builtin modules
-            if module_info and module_info.is_builtin:
-                continue
-            # Native modules that generate no header: propagate their
-            # # tpy: include() directives directly to the importing module
-            if module_info and not module_info.generates_header:
-                for inc, platform in module_info.includes:
-                    if not _platform_matches(platform):
-                        continue
-                    if inc not in included:
-                        if inc.startswith('<') and inc.endswith('>'):
-                            out.write(f'#include {inc}\n')
-                        else:
-                            out.write(f'#include "{inc}"\n')
-                        included.add(inc)
-                continue
-            # Skip implicit stdlib native modules (decorator stubs, no C++ content)
-            if user_mod in self.ctx.implicit_stdlib_modules and module_info and module_info.is_native_module:
-                continue
-            # Skip implicit stdlib modules already included above
-            if user_mod in included:
-                continue
-            # For dotted imports, include parent package headers first
-            parts = user_mod.split('.')
+        # Include user module headers (including parent packages for dotted imports).
+        # Driven by the union of user_module_imports (today's literal-import set)
+        # and module_reached (types referenced through field/method chains).
+        # For native modules we recurse through their own reach so that
+        # # tpy: include() directives flow across native-to-native chains --
+        # natives have no .hpp to chain through, so the consumer must emit
+        # them all directly.
+        chase_visited: set[str] = set()
+
+        def emit_native_includes(info) -> None:
+            for inc, platform in info.includes:
+                if not _platform_matches(platform):
+                    continue
+                if inc in included:
+                    continue
+                if inc.startswith('<') and inc.endswith('>'):
+                    out.write(f'#include {inc}\n')
+                else:
+                    out.write(f'#include "{inc}"\n')
+                included.add(inc)
+
+        def emit_non_native(mod_name: str) -> None:
+            if mod_name == self.ctx.module_name or mod_name in included:
+                return
+            # Parent package headers first, for dotted modules
+            parts = mod_name.split('.')
             for i in range(1, len(parts)):
                 parent_pkg = '.'.join(parts[:i])
                 if parent_pkg == self.ctx.module_name:
-                    continue  # don't self-include
+                    continue
                 if parent_pkg in self.ctx.all_user_modules and parent_pkg not in included:
-                    include_path = self._module_to_include_path(parent_pkg)
-                    out.write(f'#include "{include_path}"\n')
+                    out.write(f'#include "{self._module_to_include_path(parent_pkg)}"\n')
                     included.add(parent_pkg)
-            # Then include the module itself (skip self-include)
-            if user_mod != self.ctx.module_name and user_mod not in included:
-                include_path = self._module_to_include_path(user_mod)
-                out.write(f'#include "{include_path}"\n')
-                included.add(user_mod)
+            out.write(f'#include "{self._module_to_include_path(mod_name)}"\n')
+            included.add(mod_name)
+
+        def visit(mod_name: str) -> None:
+            if mod_name in chase_visited or mod_name == self.ctx.module_name:
+                return
+            chase_visited.add(mod_name)
+            mod_info = self.analyzer.registry.get_module(mod_name)
+            if mod_info is None:
+                return
+            if mod_info.is_builtin:
+                return
+            if not mod_info.generates_header:
+                # Skip implicit stdlib native shims (decorator stubs, no C++)
+                if mod_name in self.ctx.implicit_stdlib_modules:
+                    return
+                emit_native_includes(mod_info)
+                # Natives have no .hpp to chain through, so the consumer must
+                # see every reach the native exposes -- recurse explicitly.
+                for next_mod in sorted(mod_info.reached):
+                    visit(next_mod)
+                return
+            # Non-native: emit the hpp; preprocessor handles its transitive deps.
+            emit_non_native(mod_name)
+
+        seed = set(self.ctx.user_module_imports)
+        seed.update(self.analyzer.ctx.reached)
+        for user_mod in sorted(seed):
+            visit(user_mod)
         # Include macro dependency module headers (from MACRO_DEPS)
         for dep_mod in sorted(self.ctx.macro_dep_modules):
             if dep_mod in included or dep_mod == self.ctx.module_name:

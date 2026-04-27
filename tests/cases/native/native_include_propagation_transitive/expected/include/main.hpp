@@ -4,13 +4,14 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
-#include "tpystd/tplib.hpp"
-#include "tpystd/tplib/box.hpp"
+#include <x/a.hpp>
+#include <x/s.hpp>
 
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+bool f(::xcore::S* s);
 void main();
 
 void __tpy_init();

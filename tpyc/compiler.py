@@ -23,6 +23,7 @@ from .parse.imports import (
 )
 from .module_names import public_module_name as _public_module_name_of
 from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
+from .sema.reach_analysis import compute_reached_symbols
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
 from .type_def_registry import get_type_def as _get_type_def
@@ -760,6 +761,9 @@ class ModuleExports:
     # Names of variables declared Final[T] in this module. Kept separate from
     # `variables` because FinalType is stripped at sema registration time.
     final_variables: set[str] = field(default_factory=set)
+    # Defining modules this module's generated code references. Populated
+    # by sema.reach_analysis after analysis; threaded into ModuleInfo.reached.
+    reached: set[str] = field(default_factory=set)
 
 
 @dataclass
@@ -1538,6 +1542,13 @@ class Compiler:
         # Extract exports from the analyzed module
         self._extract_exports(compiled, analyzer)
 
+        # Compute reached external symbols for include propagation. Stored
+        # on analyzer.ctx for codegen and on compiled.exports so downstream
+        # modules' _exports_to_module_info can carry it on ModuleInfo.
+        reached = compute_reached_symbols(compiled.ast, analyzer, module_name)
+        analyzer.ctx.reached = reached
+        compiled.exports.reached = reached
+
     def _extract_exports(self, compiled: CompiledModule, analyzer: SemanticAnalyzer) -> None:
         """Extract exports from an analyzed module.
 
@@ -1750,6 +1761,7 @@ class Compiler:
             protocols=exports.protocols,
             type_aliases=exports.type_aliases,
             enums=exports.enums,
+            reached=set(exports.reached),
         )
 
     def _index_builtin_type_records(self, module_info: 'ModuleInfo',
@@ -1869,7 +1881,7 @@ class Compiler:
             reexported_functions=compiled.exports.reexported_functions,
             reexported_records=compiled.exports.reexported_records,
             reexported_variables=compiled.exports.reexported_variables,
-            reexported_enums=compiled.exports.reexported_enums
+            reexported_enums=compiled.exports.reexported_enums,
         )
 
         if not hpp_code:
@@ -1897,7 +1909,7 @@ class Compiler:
             reexported_functions=compiled.exports.reexported_functions,
             reexported_records=compiled.exports.reexported_records,
             reexported_variables=compiled.exports.reexported_variables,
-            reexported_enums=compiled.exports.reexported_enums
+            reexported_enums=compiled.exports.reexported_enums,
         )
 
     def _propagate_package_directives(self) -> None:

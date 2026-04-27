@@ -5,6 +5,7 @@
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
 #include "tpystd/tplib.hpp"
+#include "tpystd/tplib/array_list.hpp"
 
 namespace tpyapp::main {
 

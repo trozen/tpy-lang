@@ -6,6 +6,7 @@
 #include "tpystd/typing/_typing.hpp"
 #include "tpystd/tplib.hpp"
 #include "tpystd/tplib/json.hpp"
+#include "tpystd/tplib/json/parser.hpp"
 
 namespace tpyapp::main {
 

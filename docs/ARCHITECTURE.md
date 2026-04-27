@@ -206,8 +206,19 @@ Top-level analyzers (one module each):
 `match`, `registration`, `list_literals`, `local_deduction`,
 `init_tracker`, `scope_tracker`, `flow_facts`, `value_range`,
 `numeric_lattice`, `mutation_propagation`, `method_expansion`,
-`macros`, `context`. Error classes live in `tpyc/diagnostics.py`
-(see "Compilation pipeline").
+`macros`, `reach_analysis`, `context`. Error classes live in
+`tpyc/diagnostics.py` (see "Compilation pipeline").
+
+`reach_analysis` runs after body analysis as a small post-pass that
+scans the analyzed module for cross-module `NominalType._module_qname`
+references and stores the set of reached defining modules on
+`SemanticContext.reached`. Codegen consumes this to drive transitive
+`# tpy: include(...)` propagation through native records: when a
+consumer reaches a native record only via a field/method chain (and
+not via a direct import), the chain of native-module headers it
+depends on is emitted into the consumer header. Native-to-native
+chains are followed explicitly in codegen since natives have no
+`.hpp` to chain through.
 
 ### Circular imports
 

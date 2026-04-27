@@ -520,6 +520,10 @@ class SemanticContext:
     user_imported_protocols: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
     top_level_decls: dict[str, int] = field(default_factory=dict)
+    # Defining modules this module's code references. Populated by
+    # sema.reach_analysis after analysis completes; consumed by codegen
+    # to drive transitive include emission.
+    reached: set[str] = field(default_factory=set)
 
     # --- Final globals ---
     final_globals: set[str] = field(default_factory=set)
