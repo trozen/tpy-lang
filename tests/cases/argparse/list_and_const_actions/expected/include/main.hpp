@@ -4,6 +4,7 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/sys.hpp"
 
 namespace tpyapp::main {
 
@@ -12,17 +13,18 @@ struct __tpy_builder_argparse_args_1;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t main();
+void __tpy_builder_argparse_help_1();
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv);
 
 // args = parser.parse_args(
 struct __tpy_builder_argparse_args_1 {
-    std::vector<std::string> tag;
-    std::vector<::tpy::BigInt> num;
+    std::optional<std::vector<std::string>> tag;
+    std::optional<std::vector<::tpy::BigInt>> num;
     std::string mode;
 
     // args = parser.parse_args(
     __tpy_builder_argparse_args_1() = default;
-    explicit __tpy_builder_argparse_args_1(std::vector<std::string>&& tag, std::vector<::tpy::BigInt>&& num, std::string_view mode) : tag(tag), num(num), mode(mode) {}
+    explicit __tpy_builder_argparse_args_1(std::optional<std::vector<std::string>>&& tag, std::optional<std::vector<::tpy::BigInt>>&& num, std::string_view mode) : tag(tag), num(num), mode(mode) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_1& obj) {

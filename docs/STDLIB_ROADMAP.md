@@ -143,7 +143,7 @@ Examples of the policy in action:
 | [`csv`](#csv) | P1 | Missing | 0% | -- | Depends on `io` |
 | [`base64`](#base64) | P1 | Partial | ~95% | pure | Pure-TPy b64/b32/b16 encode+decode + urlsafe/standard variants + altchars=/validate=/casefold=/map01= kwargs + encodebytes/decodebytes. bytes/bytearray/str accepted on decoders (matches CPython). Missing: b85/a85 (rare, separate algorithms); `memoryview` depends on builtin gap |
 | [`hashlib`](#hashlib) | P1 | Partial | ~20% | pure | SHA-256 pure-TPy. MD5/SHA-1/SHA-512 are straight follow-ups (same class pattern, different round functions / endian). BLAKE2/SHA-3 later. Optional OpenSSL backend also later |
-| [`argparse`](#argparse) | P1 | Partial | ~70% | macro | Builder-trace macro (Phase 7); positionals/optional flags, all 7 actions, all 4 nargs, type=int\|float\|str, choices/required/dest/help, Optional[T] for absent flags. Missing: --help printer, fixed-width int types, subparsers, mutually-exclusive groups, custom type via ArgType[T] |
+| [`argparse`](#argparse) | P1 | Partial | ~80% | macro | Builder-trace macro (Phase 7); positionals/optional flags, all 7 actions, all 4 nargs, type=int\|float\|str + fixed-width ints, choices/required/dest/help, Optional[T]/Optional[list[T]] for absent flags, bare parse_args() reads sys.argv[1:], --help/-h auto-generation. Missing: Float32 type, subparsers, mutually-exclusive groups, custom type via ArgType[T], prog=/usage=/epilog= |
 | [`logging`](#logging) | P2 | Missing | 0% | -- | Module-level state + handler architecture |
 | [`configparser`](#configparser) | P2 | Missing | 0% | -- | Depends on `io` |
 | [`urllib.parse`](#urllibparse) | P2 | Missing | 0% | -- | Pure-TPy candidate; no network dependency |
@@ -409,14 +409,14 @@ Tests: `time_module`, `time_sleep`, `time_import`.
 
 ### sys
 
-Current: `lib/tpy/sys.py` -- native; `argv`, `stdout`, `stderr`.
+Current: `lib/tpy/sys.py` -- native; `argv`, `stdout`, `stderr`, `exit`.
 
 | Item | Status | Notes |
 |---|---|---|
 | `argv` | Done | List populated at runtime init |
 | `stdout`, `stderr` | Done | Backed by `tpy::StdStream` (wraps `std::cout` / `std::cerr`); satisfy the `Writable` protocol so they work as `print(file=...)` targets and expose `write(str) -> Int32` / `flush()` |
 | `stdin` | Missing | Needs read-side protocol; lower priority than write |
-| `exit(code)` | Missing | Native wrapper for `std::exit` |
+| `exit(code)` | Done | `Int32` arg lowered to `std::exit(int)` via `tpy::sys_exit`; `[[noreturn]]` |
 | `platform` | Missing | Compile-time constant |
 | `version`, `version_info` | Missing | Already in `tpy.version`; could re-export |
 | `path` | Missing | List; relates to import machinery (TPy resolves at compile time, so semantics differ) |
@@ -925,8 +925,10 @@ per-call-site record + parse function, so ``args`` is statically typed.
 | `help=` (data) | Done | Stored at macro time |
 | Optional[T] field for absent flag | Done | When no `default=` and not `required=` |
 | ArgumentParser `description=` | Done | |
-| `--help` / `-h` auto-generation | Missing | First v2 item; needs synthesizing a help-printer fn |
-| `type=Int32 / Int64 / UInt8 / ...` | Missing | TPy fixed-width int types in `type=` |
+| `--help` / `-h` auto-generation | Done | Pre-rendered help printer + argv prelude that exits via `sys.exit(0)`. `prog` hardcoded to `"prog"` until `prog=` kwarg lands |
+| `add_help=False` opt-out | Missing | Today the `-h` / `--help` flag names are reserved unconditionally; opt-out would let users register their own |
+| `type=Int32 / Int64 / UInt8 / ...` | Done | All eight fixed-width ints accepted; field carries the matching primitive |
+| `type=Float32` | Missing | Codegen gap: `Float32(runtime_str)` doesn't lower to `float32_from_str`. Land that, then add `"Float32"` to `_ALLOWED_TYPES` |
 | Subparsers | Missing | Tagged-union codegen; common in non-trivial CLIs |
 | `metavar=` | Missing | Help-text display name; pairs with --help work |
 | `prog=` / `usage=` / `epilog=` | Missing | Help-text customization |
@@ -934,9 +936,9 @@ per-call-site record + parse function, so ``args`` is statically typed.
 | Custom `type=` via `ArgType[T]` | Missing | Protocol with `from_arg(s: str) -> T` for Path, datetime, user records |
 | List-literal defaults (`default=[1, 2, 3]`) | Missing | Extend `eval_literal_or_final` to lists |
 | `parents=`, argument groups, `BooleanOptionalAction`, `allow_abbrev`, `fromfile_prefix_chars`, custom formatter classes, `action=<callable>` | Future | Tier-3; full tier table in MACRO_DESIGN.md's argparse Future Work section |
-| Absent-list args yield `[]` (CPython: `None`); `parse_args()` requires explicit argv (CPython: defaults to `sys.argv[1:]`) | v1 divergence | Both blocked on macro_deps for builder-trace macros (macro-system future work) |
+| Parse-time error wording / `prog` name still differ from CPython | v1 divergence | Stderr+`sys.exit(2)` shape now matches; phrasing parity (e.g. "the following arguments are required") + `os.path.basename(sys.argv[0])` for `prog` are Tier 2 (`prog=` + message tweaks) |
 
-Tests: `cases/argparse/{basic,optional_flags,value_free_actions,list_and_const_actions,choices_required_dest,nargs,empty_parser,positional_nargs_optional,qualified_import,two_parsers_same_module}` plus `error_argparse_*` cases pinning macro-time validation and `panic_empty_parser_extra_args` for the runtime-error path.
+Tests: `cases/argparse/{basic,optional_flags,value_free_actions,list_and_const_actions,choices_required_dest,nargs,empty_parser,positional_nargs_optional,qualified_import,two_parsers_same_module,optional_list_absent,no_argv_uses_sys_argv,fixed_width_types,help_basic,explicit_sys_import}` plus `error_argparse_*` cases pinning macro-time validation and `panic_argparse_*` cases (`empty_parser_extra_args`, `missing_required`, `invalid_choice`) for parse-error stderr+`sys.exit(2)` paths.
 
 ### logging
 

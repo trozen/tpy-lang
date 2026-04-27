@@ -1,1 +1,0 @@
-main.py:11: error: argparse: parse_args() requires explicit argv in this compiler (CPython's sys.argv[1:] fallback is not yet supported); pass argv[1:] explicitly

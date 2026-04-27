@@ -30,3 +30,11 @@ def _get_sys_stderr() -> _StdStream: ...
 
 stdout: _StdStream = _get_sys_stdout()
 stderr: _StdStream = _get_sys_stderr()
+
+
+# TODO: declare as ``NoReturn`` once TPy gains the type. Today the
+# binding is ``-> None``, so sema treats call sites as normal returns
+# and won't flag dead code after a ``sys.exit()``. The C++ shim is
+# ``[[noreturn]]``, so the runtime behavior is correct.
+@native("tpy::sys_exit")
+def exit(code: Int32) -> None: ...

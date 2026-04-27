@@ -396,6 +396,10 @@ class MacroRegistry:
         """Look up a @builder_macro state class by (module, name)."""
         return self._builder_macros.get((module, name))
 
+    def builder_macro_modules(self) -> set[str]:
+        """Module names that have any registered @builder_macro classes."""
+        return {mod for mod, _ in self._builder_macros}
+
     def get_export(self, module: str, name: str) -> Any | None:
         """Look up any exported name from a loaded macro module."""
         mod = self._modules.get(module)

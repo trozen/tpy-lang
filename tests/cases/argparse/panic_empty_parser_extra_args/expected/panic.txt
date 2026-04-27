@@ -1,1 +1,2 @@
-TurboPython panic: uncaught tpy::ValueError: argparse: unrecognized arguments: unexpected
+usage: prog [-h]
+prog: error: unrecognized arguments: unexpected

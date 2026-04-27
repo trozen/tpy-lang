@@ -4725,7 +4725,7 @@ Currently working with a stable surface:
 | `struct` | Partial (`unpack`, `unpack_from`, `calcsize`) via compile-time macros |
 | `enum` | Partial (`Enum`, `IntEnum`, `auto()`) via class macro |
 | `dataclasses` | Partial (~75%; `@dataclass(frozen, order)`, `field()`, `asdict()`, `astuple()`) via class macro |
-| `argparse` | Partial (~70%; `ArgumentParser`, all 7 actions, all 4 nargs forms, `type=int\|float\|str`, `choices`/`required`/`dest`/`help`, `Optional[T]` for absent scalar flags) via builder-trace macro |
+| `argparse` | Partial (~80%; `ArgumentParser`, all 7 actions, all 4 nargs forms, `type=int\|float\|str` + fixed-width ints, `choices`/`required`/`dest`/`help`, `Optional[T]` / `Optional[list[T]]` for absent flags, bare `parse_args()` reads `sys.argv[1:]`, `--help`/`-h` auto-generation, parse errors via stderr + `sys.exit(2)`) via builder-trace macro |
 | `typing` | Partial (`Protocol`, `Self`, `Sized`, `Iterator`, `Iterable`, `TypedDict`, `Unpack`, etc.) |
 
 Everything else in CPython's stdlib is missing or blocked -- consult

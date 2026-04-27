@@ -1,0 +1,13 @@
+usage: prog [-h] [--count COUNT] [--name NAME] [--verbose] [--tag TAG] file
+
+A test program.
+
+positional arguments:
+  file           input file path
+
+options:
+  -h, --help     show this help message and exit
+  --count COUNT  repetition count
+  --name NAME    greeting target
+  --verbose, -v  increase verbosity
+  --tag TAG      tag to apply (multi)

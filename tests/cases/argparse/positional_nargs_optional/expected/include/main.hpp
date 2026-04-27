@@ -4,6 +4,7 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/sys.hpp"
 
 namespace tpyapp::main {
 
@@ -13,7 +14,9 @@ struct __tpy_builder_argparse_args_2;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t main();
+void __tpy_builder_argparse_help_1();
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv);
+void __tpy_builder_argparse_help_2();
 __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<std::string>& argv);
 
 // a1 = parser.parse_args([])

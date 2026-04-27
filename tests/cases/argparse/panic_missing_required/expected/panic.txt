@@ -1,0 +1,2 @@
+usage: prog [-h] file
+prog: error: missing required positional argument(s)

@@ -18,9 +18,23 @@ int32_t main() {
 }
 
 // args = parser.parse_args(["--mode", "fast", "--level", "2"])
+void __tpy_builder_argparse_help_1() {
+    std::cout << "usage: prog [-h] --mode MODE [--level SEVERITY]\n\noptions:\n  -h, --help        show this help message and exit\n  --mode MODE       execution mode\n  --level SEVERITY" << "\n";
+    ::tpy::sys_exit(0);
+}
+
+// args = parser.parse_args(["--mode", "fast", "--level", "2"])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv) {
     std::string_view mode = "";
     ::tpy::BigInt severity = ::tpy::BigInt(0);
+    std::string_view __tpy_argparse_usage = "usage: prog [-h] --mode MODE [--level SEVERITY]";
+    int32_t __tpy_argparse_h = 0;
+    while ((__tpy_argparse_h < ::tpy::__len__(argv))) {
+        if (((argv[__tpy_argparse_h] == "-h") || (argv[__tpy_argparse_h] == "--help"))) {
+            __tpy_builder_argparse_help_1();
+        }
+        __tpy_argparse_h = (::tpy::add_check<int32_t>(__tpy_argparse_h, 1));
+    }
     bool __tpy_argparse_seen_mode = false;
     int32_t __tpy_argparse_i = 0;
     int32_t __tpy_argparse_pi = 0;
@@ -28,34 +42,39 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
         std::string_view __tpy_argparse_tok = argv[__tpy_argparse_i];
         if ((__tpy_argparse_tok == "--mode")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
-                throw ::tpy::ValueError((::tpy::str_concat("argparse: missing value for ", __tpy_argparse_tok)));
+                ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n";
+                ::tpy::sys_exit(2);
             }
             std::string_view __tpy_argparse_v_mode = ::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1)));
             if ((!((__tpy_argparse_v_mode == "fast") || (__tpy_argparse_v_mode == "slow")))) {
-                throw ::tpy::ValueError((::tpy::str_concat("argparse: invalid choice for --mode: ", std::string(__tpy_argparse_v_mode))));
+                ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "invalid choice for --mode: ")), std::string(__tpy_argparse_v_mode))) << "\n";
+                ::tpy::sys_exit(2);
             }
             mode = __tpy_argparse_v_mode;
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 2));
             __tpy_argparse_seen_mode = true;
         } else {
-            ::tpy::BigInt __tpy_argparse_v_severity;
             if ((__tpy_argparse_tok == "--level")) {
                 if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
-                    throw ::tpy::ValueError((::tpy::str_concat("argparse: missing value for ", __tpy_argparse_tok)));
+                    ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n";
+                    ::tpy::sys_exit(2);
                 }
-                __tpy_argparse_v_severity = ::tpy::BigInt::from_str(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1))));
+                ::tpy::BigInt __tpy_argparse_v_severity = ::tpy::BigInt::from_str(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1))));
                 if ((!((__tpy_argparse_v_severity == 0) || (__tpy_argparse_v_severity == 1) || (__tpy_argparse_v_severity == 2)))) {
-                    throw ::tpy::ValueError((::tpy::str_concat("argparse: invalid choice for --level: ", (__tpy_argparse_v_severity).to_string())));
+                    ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "invalid choice for --level: ")), (__tpy_argparse_v_severity).to_string())) << "\n";
+                    ::tpy::sys_exit(2);
                 }
                 severity = __tpy_argparse_v_severity;
                 __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 2));
             } else {
-                throw ::tpy::ValueError((::tpy::str_concat("argparse: unknown argument: ", __tpy_argparse_tok)));
+                ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n";
+                ::tpy::sys_exit(2);
             }
         }
     }
     if ((!(__tpy_argparse_seen_mode))) {
-        throw ::tpy::ValueError("argparse: missing required argument: --mode");
+        ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat("prog: error: ", "missing required argument: --mode")) << "\n";
+        ::tpy::sys_exit(2);
     }
     return __tpy_builder_argparse_args_1(mode, severity);
 }
@@ -65,6 +84,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    ::tpystd::sys::__tpy_init();
     // from argparse import ArgumentParser
     // main()
     main();

@@ -13,6 +13,8 @@ def main() -> Int32:
     args = parser.parse_args(
         ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
     )
+    assert args.tag is not None
+    assert args.num is not None
     print(args.tag[0])
     print(args.tag[1])
     print(args.num[0])

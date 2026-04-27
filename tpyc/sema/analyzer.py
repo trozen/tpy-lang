@@ -2234,18 +2234,33 @@ class SemanticAnalyzer:
         # Collect all macro dep modules from records that have macros.
         # Maps dep_module -> name_filter (None = all exports, list = specific names).
         dep_modules: dict[str, list[str] | None] = {}
+
+        def _merge(mod_name: str) -> None:
+            for dep, names in macro_reg.get_deps(mod_name).items():
+                if dep not in dep_modules:
+                    dep_modules[dep] = names
+                elif dep_modules[dep] is None or names is None:
+                    dep_modules[dep] = None  # None wins (all exports)
+                else:
+                    dep_modules[dep] = list(set(dep_modules[dep]) | set(names))
+
+        # Class macros: triggered by records carrying pending_macros.
         for record in module.all_records():
             if not record.pending_macros:
                 continue
             for qname, _kwargs in record.pending_macros:
                 mod_name = qname.rsplit(".", 1)[0] if "." in qname else ""
-                for dep, names in macro_reg.get_deps(mod_name).items():
-                    if dep not in dep_modules:
-                        dep_modules[dep] = names
-                    elif dep_modules[dep] is None or names is None:
-                        dep_modules[dep] = None  # None wins (all exports)
-                    else:
-                        dep_modules[dep] = list(set(dep_modules[dep]) | set(names))
+                _merge(mod_name)
+
+        # Builder-trace macros: expanded later (during body analysis), so
+        # there's no equivalent of pending_macros to inspect here. Use the
+        # import set as a proxy -- if this module imports a module that
+        # has any @builder_macro classes registered, eagerly bring its
+        # deps into macro_ns so synthesized code can reference them.
+        builder_macro_modules = macro_reg.builder_macro_modules()
+        for imported in module.imports:
+            if imported in builder_macro_modules:
+                _merge(imported)
 
         if not dep_modules:
             return
@@ -2257,6 +2272,13 @@ class SemanticAnalyzer:
             module_info = self.ctx.registry.get_module(dep_mod_name)
             if module_info is None:
                 continue
+
+            # Bind the module name itself so synthesized code can use
+            # the qualified form (e.g. ``sys.argv`` / ``tpy.copy``).
+            # Module attribute access then resolves through ModuleInfo
+            # without polluting the user's namespace with every export.
+            if name_filter is None and dep_mod_name not in self.ctx.macro_ns:
+                self.ctx.macro_ns.bind_module(dep_mod_name)
 
             if module_info.records:
                 for name, record_info in module_info.records.items():

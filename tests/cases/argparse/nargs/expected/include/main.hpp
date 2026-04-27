@@ -4,6 +4,7 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/sys.hpp"
 
 namespace tpyapp::main {
 
@@ -15,9 +16,13 @@ struct __tpy_builder_argparse_args_4;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t main();
+void __tpy_builder_argparse_help_1();
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv);
+void __tpy_builder_argparse_help_2();
 __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<std::string>& argv);
+void __tpy_builder_argparse_help_3();
 __tpy_builder_argparse_args_3 __tpy_builder_argparse_parse_3(const std::vector<std::string>& argv);
+void __tpy_builder_argparse_help_4();
 __tpy_builder_argparse_args_4 __tpy_builder_argparse_parse_4(const std::vector<std::string>& argv);
 
 // a1 = p1.parse_args(["a.txt", "b.txt"])
@@ -36,12 +41,12 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 
 // a2 = p2.parse_args(["--coord", "10", "20", "--tag", "x", "y", "--tag", "z"])
 struct __tpy_builder_argparse_args_2 {
-    std::vector<::tpy::BigInt> coord;
-    std::vector<std::string> tag;
+    std::optional<std::vector<::tpy::BigInt>> coord;
+    std::optional<std::vector<std::string>> tag;
 
     // a2 = p2.parse_args(["--coord", "10", "20", "--tag", "x", "y", "--tag", "z"])
     __tpy_builder_argparse_args_2() = default;
-    explicit __tpy_builder_argparse_args_2(std::vector<::tpy::BigInt>&& coord, std::vector<std::string>&& tag) : coord(coord), tag(tag) {}
+    explicit __tpy_builder_argparse_args_2(std::optional<std::vector<::tpy::BigInt>>&& coord, std::optional<std::vector<std::string>>&& tag) : coord(coord), tag(tag) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_2& obj) {

@@ -62,6 +62,19 @@ inline std::vector<std::string> get_sys_argv() {
 }
 
 /**
+ * sys_exit - Terminate the program with the given exit code.
+ *
+ * Equivalent to Python's sys.exit(code) for an integer argument.
+ * Static destructors and atexit handlers run; thread-local
+ * destructors and finally clauses do NOT (this is std::exit, not
+ * a thrown SystemExit). Acceptable for a v1 binding driven by
+ * argparse's --help / parse-error paths.
+ */
+[[noreturn]] inline void sys_exit(int code) {
+    std::exit(code);
+}
+
+/**
  * init_sys_argv - Initialize sys_argv from main()'s argc/argv.
  *
  * Called at program startup before __tpy_init().

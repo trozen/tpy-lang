@@ -14,9 +14,24 @@ int32_t main() {
 }
 
 // p.parse_args(["unexpected"])
+void __tpy_builder_argparse_help_1() {
+    std::cout << "usage: prog [-h]\n\noptions:\n  -h, --help  show this help message and exit" << "\n";
+    ::tpy::sys_exit(0);
+}
+
+// p.parse_args(["unexpected"])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv) {
+    std::string_view __tpy_argparse_usage = "usage: prog [-h]";
+    int32_t __tpy_argparse_h = 0;
+    while ((__tpy_argparse_h < ::tpy::__len__(argv))) {
+        if (((argv[__tpy_argparse_h] == "-h") || (argv[__tpy_argparse_h] == "--help"))) {
+            __tpy_builder_argparse_help_1();
+        }
+        __tpy_argparse_h = (::tpy::add_check<int32_t>(__tpy_argparse_h, 1));
+    }
     if ((::tpy::__len__(argv) != 0)) {
-        throw ::tpy::ValueError((::tpy::str_concat("argparse: unrecognized arguments: ", ::tpy::__getitem__(argv, 0))));
+        ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unrecognized arguments: ")), ::tpy::__getitem__(argv, 0))) << "\n";
+        ::tpy::sys_exit(2);
     }
     return __tpy_builder_argparse_args_1();
 }
@@ -26,6 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    ::tpystd::sys::__tpy_init();
     // from argparse import ArgumentParser
     // main()
     main();

@@ -1,0 +1,2 @@
+usage: prog [-h] [--mode MODE]
+prog: error: invalid choice for --mode: bogus

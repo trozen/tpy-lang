@@ -19,7 +19,7 @@ from .parse.nodes import ParseError as _ParseError
 from .typesys import (
     TpyType, NominalType, OwnType,
     OptionalType,
-    TupleType, UnionType, make_set, make_dict, make_list,
+    TupleType, UnionType, make_set, make_dict, make_list, make_span,
     FieldInfo as InternalFieldInfo,
     INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64,
     ALL_FIXED_INTS,
@@ -1455,6 +1455,9 @@ class TypeBuilder:
 
     def list(self, element_type: TpyType) -> TpyType:
         return make_list(element_type)
+
+    def span(self, element_type: TpyType) -> TpyType:
+        return make_span(element_type)
 
     def dict(self, key_type: TpyType, value_type: TpyType) -> TpyType:
         return make_dict(key_type, value_type)

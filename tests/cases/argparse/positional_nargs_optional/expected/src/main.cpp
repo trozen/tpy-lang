@@ -21,8 +21,22 @@ int32_t main() {
 }
 
 // a1 = parser.parse_args([])
+void __tpy_builder_argparse_help_1() {
+    std::cout << "usage: prog [-h] [name]\n\npositional arguments:\n  [name]\n\noptions:\n  -h, --help  show this help message and exit" << "\n";
+    ::tpy::sys_exit(0);
+}
+
+// a1 = parser.parse_args([])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv) {
     std::string_view name = "anon";
+    std::string_view __tpy_argparse_usage = "usage: prog [-h] [name]";
+    int32_t __tpy_argparse_h = 0;
+    while ((__tpy_argparse_h < ::tpy::__len__(argv))) {
+        if (((argv[__tpy_argparse_h] == "-h") || (argv[__tpy_argparse_h] == "--help"))) {
+            __tpy_builder_argparse_help_1();
+        }
+        __tpy_argparse_h = (::tpy::add_check<int32_t>(__tpy_argparse_h, 1));
+    }
     int32_t __tpy_argparse_i = 0;
     int32_t __tpy_argparse_pi = 0;
     while ((__tpy_argparse_i < ::tpy::__len__(argv))) {
@@ -33,7 +47,8 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
                 __tpy_argparse_pi = (::tpy::add_check<int32_t>(__tpy_argparse_pi, 1));
                 __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
             } else {
-                throw ::tpy::ValueError((::tpy::str_concat("argparse: unexpected positional argument: ", __tpy_argparse_tok)));
+                ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unexpected positional argument: ")), __tpy_argparse_tok)) << "\n";
+                ::tpy::sys_exit(2);
             }
         }
     }
@@ -41,8 +56,22 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
 }
 
 // a2 = parser2.parse_args(["alice"])
+void __tpy_builder_argparse_help_2() {
+    std::cout << "usage: prog [-h] [name]\n\npositional arguments:\n  [name]\n\noptions:\n  -h, --help  show this help message and exit" << "\n";
+    ::tpy::sys_exit(0);
+}
+
+// a2 = parser2.parse_args(["alice"])
 __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<std::string>& argv) {
     std::string_view name = "anon";
+    std::string_view __tpy_argparse_usage = "usage: prog [-h] [name]";
+    int32_t __tpy_argparse_h = 0;
+    while ((__tpy_argparse_h < ::tpy::__len__(argv))) {
+        if (((argv[__tpy_argparse_h] == "-h") || (argv[__tpy_argparse_h] == "--help"))) {
+            __tpy_builder_argparse_help_2();
+        }
+        __tpy_argparse_h = (::tpy::add_check<int32_t>(__tpy_argparse_h, 1));
+    }
     int32_t __tpy_argparse_i = 0;
     int32_t __tpy_argparse_pi = 0;
     while ((__tpy_argparse_i < ::tpy::__len__(argv))) {
@@ -53,7 +82,8 @@ __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<s
                 __tpy_argparse_pi = (::tpy::add_check<int32_t>(__tpy_argparse_pi, 1));
                 __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
             } else {
-                throw ::tpy::ValueError((::tpy::str_concat("argparse: unexpected positional argument: ", __tpy_argparse_tok)));
+                ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unexpected positional argument: ")), __tpy_argparse_tok)) << "\n";
+                ::tpy::sys_exit(2);
             }
         }
     }
@@ -65,6 +95,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    ::tpystd::sys::__tpy_init();
     // from argparse import ArgumentParser
     // main()
     main();

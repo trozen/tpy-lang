@@ -36,7 +36,7 @@ below.
 | Nested companion types | ``cls.add_companion_type(name, ...)`` -- generate types nested *inside* the decorated class (rather than as siblings). Requires nested-class support in parser/sema/codegen first; the top-level companion item above is the simpler precursor |
 | CPython macro compat | CPython backend for macro API was dropped -- maintaining parity between compiler AST and CPython `exec`-based codegen (frozen fields, factory defaults, `super()` in exec'd code) was not worth the effort. Could be revisited if CPython test coverage of macro-generated code becomes important |
 | Eval Final-typed kwargs | `BuilderContext.eval_literal_or_final()` advertises Final-constant support but the resolver returns `_UNSET` for any name today. Threading the module's Final-init expressions through to the expander would let macro authors accept `Final[str]` etc. as kwarg values |
-| `macro_deps` for builder-trace macros | Today `macro_deps()` only fires for macro modules used via class macros (records with `pending_macros`); builder-trace macros bypass that path. Wiring it would let `argparse` import `tpy` (for `copy()`) and `sys` (for `sys.argv`) into the user's module namespace, unblocking the two argparse divergences below |
+| ~~`macro_deps` for builder-trace macros~~ | Done. `_populate_macro_deps` now also fires for any imported module that has `@builder_macro` classes registered, and binds the dep module name itself (via `bind_module`) so synthesized code can use the qualified form (`sys.argv`, `tpy.copy`) |
 | Branch-aware terminal proof | Builder-trace v1 forbids tracked symbols inside conditionals/loops; a structural check that every reachable path contains exactly one terminal would relax this |
 | Cross-function builder helpers | Allow factored helpers (`def add_common(parser): parser.add_argument(...)`) via a decorator that marks the parameter as a tracked builder symbol the macro can dispatch into |
 | Builder state caching | Cache top-level builder-trace state by binding name so e.g. `ArgumentParser(parents=[base])` can replay `base`'s registrations -- prerequisite for `argparse` `parents=` support |
@@ -455,11 +455,12 @@ status table for the `argparse` module.
 
 | Tier | Feature | Notes |
 |------|---------|-------|
-| 1 | `--help` / `-h` auto-generation | Synthesize a help-printer that walks the registered specs to produce a usage line + per-argument help text and exits when `-h` / `--help` appears in argv. `help=` data is already collected at macro time |
-| 1 | `type=` for fixed-width ints / `Float32` | `Int32` / `Int64` / `UInt8` / ... / `Float32`. Same shape as the v1 `int` / `float` / `str` cases, just more entries in the allowed-types set with matching field types and conversion calls |
+| 1 | ~~`--help` / `-h` auto-generation~~ | Done. The terminal handler synthesizes a help-printer fn (pre-rendered usage + sections, no macro state retained at runtime). The parse fn opens with a prelude that scans argv for ``-h`` / ``--help`` and calls the help fn (which prints + ``sys.exit(0)``). User add_argument calls that re-use ``-h`` / ``--help`` are rejected at macro time |
+| 1 | ~~`type=` for fixed-width ints~~ / `Float32` | Fixed-width ints (`Int8` / `Int16` / `Int32` / `Int64` / `UInt8` / `UInt16` / `UInt32` / `UInt64`) done. `Float32` blocked on a codegen gap: `Float32(runtime_str)` doesn't lower to `float32_from_str` the way `Int32(runtime_str)` lowers to `from_str_check<int32_t>`. Land that lowering, then add `"Float32"` to `_ALLOWED_TYPES` |
 | 1 | Subparsers | `add_subparsers()` + `add_parser(name)`. Tagged-union codegen: each sub-parser builds its own per-name record; the top-level result is `Union[NameA, NameB, ...]` discriminated by the chosen subcommand. Sema sees the union; `match`/`case` narrows |
+| 2 | `add_help=False` | Opt out of the auto-generated `-h` / `--help` printer. Today the names are reserved unconditionally; honoring `add_help=False` would let users register their own `--help` flag |
 | 2 | `metavar=` | Display name in the synthesized help text; pairs with `--help` |
-| 2 | `prog=` / `usage=` / `epilog=` | `ArgumentParser`-level help-string customization; reuses the help-printer infrastructure |
+| 2 | `prog=` / `usage=` / `epilog=` | `ArgumentParser`-level help-string customization; reuses the help-printer infrastructure. `prog` currently hardcoded to `"prog"` -- CPython uses `os.path.basename(sys.argv[0])`, fix is to render the usage line at runtime with `sys.argv[0]` once we have a basename helper |
 | 2 | `add_mutually_exclusive_group()` | At-most-one constraint across a set of flags; fail at parse time if more than one is seen |
 | 2 | Custom `type=` via `ArgType[T]` | Protocol with `from_arg(s: str) -> T`. Lets users plug `Path`, `datetime`, custom records without macro changes |
 | 2 | List-literal defaults | `default=[1, 2, 3]` -- extend `eval_literal_or_final` to recurse into list / tuple literals at macro time |
@@ -471,15 +472,13 @@ status table for the `argparse` module.
 | 3 | Custom formatter classes | `RawDescriptionHelpFormatter` etc.; depends on the help printer being pluggable |
 | 3 | `action=<callable>` | CPython's escape hatch for arbitrary action classes. Hard to model under builder-trace because the action object is opaque to the macro |
 
-Known v1 divergences from CPython argparse (all blocked on macro-
-system future work, mostly the `macro_deps` for builder-trace macros
-item):
+Known v1 divergences from CPython argparse:
 
 | Divergence | TPy v1 | CPython | Unblock |
 |------------|--------|---------|---------|
-| Absent optional list-typed args (`action='append'`/`'extend'` or `store` with `nargs=N/*/+`) | field is `[]` | field is `None` | macro_deps so synthesized code can call `tpy.copy()` to move a typed accumulator into an `Optional[list[T]]` field without an implicit-copy warning |
-| `parser.parse_args()` with no args | macro-time error | uses `sys.argv[1:]` | macro_deps so synthesized code can reference `sys.argv` |
-| Parse-time errors (unrecognized arg, missing required, wrong nargs count, invalid choice, type-conversion failure) | raises `ValueError` -- propagates as TPy panic if uncaught | prints usage to stderr and `sys.exit(2)` (raises `SystemExit`) | macro_deps so synthesized code can call `sys.exit`; plus the Tier-1 ``--help`` printer to format the usage line. Until both land, every panic test against parse-time errors needs to live in a `panic_*` case (which auto-skips the cpy phase) |
+| ~~Absent optional list-typed args~~ | resolved | field is `None` | done -- accumulator + post-loop `tpy.copy(acc)` reconciliation |
+| ~~`parser.parse_args()` with no args~~ | resolved | uses `sys.argv[1:]` | done -- bare call rewrites to `synth_parse(list(sys.argv[1:]))` |
+| ~~Parse-time errors~~ | resolved | prints usage + ``prog: error: ...`` to stderr and `sys.exit(2)` | done -- the synthesized parse fn ``print(usage, "prog: error: " + msg, sep="\n", file=sys.stderr)`` then ``sys.exit(2)``. Wording / prog name still differ from CPython; covered by ``panic_argparse_*`` cases (cpy phase auto-skips for ``panic_*`` tests) until ``prog=`` and message parity land |
 
 ## Three Macro Kinds
 

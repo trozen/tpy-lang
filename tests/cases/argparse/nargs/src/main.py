@@ -20,6 +20,8 @@ def main() -> Int32:
     p2.add_argument("--coord", nargs=2, type=int)
     p2.add_argument("--tag", action="extend", nargs="+")
     a2 = p2.parse_args(["--coord", "10", "20", "--tag", "x", "y", "--tag", "z"])
+    assert a2.coord is not None
+    assert a2.tag is not None
     print(a2.coord[0])
     print(a2.coord[1])
     print(a2.tag[0])
