@@ -1,0 +1,20 @@
+null
+true
+false
+42
+-7
+0
+3.14
+"hello"
+{"name": "Alice", "age": 30}
+[1, 2, 3]
+{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}], "count": 2}
+[1, 2, 3]
+[1.0, 2.0, 3.0]
+[1, null, "x"]
+{"a": null}
+"line1\nline2"
+"quote\""
+{}
+[]
+{"a": 2, "b": 1, "c": 3}

@@ -70,6 +70,10 @@ class JsonReader:
         self._pos = 0
         self._len = len(data)
 
+    def position(self) -> Int32:
+        """Current byte offset into the input. Used for error reporting."""
+        return self._pos
+
     def _skip_ws(self) -> None:
         while self._pos < self._len:
             c = self._data[self._pos]
@@ -224,6 +228,16 @@ class JsonReader:
         return float(raw)
 
     @error_return(JsonError)
+    def read_number_raw(self) -> StrView:
+        """Read the raw text of a JSON number without parsing it.
+
+        Returns a view into the input. Caller decides int vs float (e.g. by
+        scanning for '.', 'e', 'E') and parses accordingly. Used by the
+        stdlib `json` wrapper to preserve BigInt precision.
+        """
+        return self._read_number_raw()
+
+    @error_return(JsonError)
     def read_bool(self) -> bool:
         self._skip_ws()
         if self._pos + 4 <= self._len and self._data[self._pos:self._pos + 4] == "true":
@@ -376,6 +390,10 @@ class JsonReader:
                         chunk_start = i
                         continue
                     code = self._parse_hex4(i + 1)
+                    # TODO: chr(code) truncates to 1 byte; codepoints > 0xFF
+                    # silently lose their high bits. Need a chr that emits
+                    # multi-byte UTF-8 for the BMP, plus surrogate-pair
+                    # handling for codepoints > 0xFFFF.
                     result = result + chr(code)
                     i += 4
                 else:
@@ -390,6 +408,8 @@ class JsonReader:
         return result
 
     def _parse_hex4(self, pos: Int32) -> Int32:
+        # TODO: invalid hex digits silently contribute 0 instead of raising
+        # JsonError. CPython rejects with `Invalid \uXXXX escape`.
         result: Int32 = 0
         i: Int32 = 0
         while i < 4:
@@ -405,6 +425,9 @@ class JsonReader:
             i += 1
         return result
 
+    # TODO: shape validation is loose -- accepts malformed numbers like
+    # `1.`, `1e`, `1..2`, and leading zeros (`01`) that CPython rejects.
+    # Tighten when the BigInt/float parsers stop being lenient.
     @error_return(JsonError)
     def _read_number_raw(self) -> StrView:
         self._skip_ws()

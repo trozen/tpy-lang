@@ -122,9 +122,18 @@ class JsonWriter:
         self._buf += str(v)
         self._needs_comma = True
 
+    def write_bigint(self, v: int) -> None:
+        if self._indent > 0:
+            self._pretty_sep()
+        elif self._needs_comma:
+            self._buf += ", "
+        self._buf += str(v)
+        self._needs_comma = True
+
     def write_float(self, v: Float64) -> None:
-        # NOTE: nan/inf produce invalid JSON ("nan", "inf"). JSON has no
-        # special float values. Callers should validate before writing.
+        # TODO: nan/inf produce invalid JSON ("nan", "inf"). JSON has no
+        # special float values; CPython raises ValueError (or with
+        # allow_nan=True emits NaN/Infinity). Validate or escape.
         if self._indent > 0:
             self._pretty_sep()
         elif self._needs_comma:

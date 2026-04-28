@@ -128,7 +128,7 @@ Examples of the policy in action:
 | [`os.path`](#ospath) | P0 | Missing | 0% | -- | Independent of `os`; candidate for pure TPy over C++ `<filesystem>` |
 | [`pathlib`](#pathlib) | P0 | Missing | 0% | -- | Class-heavy; depends on filesystem bindings |
 | [`io`](#io) | P0 | Missing | 0% | -- | Protocol design needed; unlocks json/csv/pickle/configparser |
-| [`json`](#json) | P0 | Missing | 0% | -- | tplib.json exists (TPy-native). Stdlib-compat wrapper would need `io` |
+| [`json`](#json) | P0 | Partial | ~70% | pure | `loads` / `dumps` + `JSONDecodeError` done over a recursive union `JsonValue`. CPython byte-compatible across cpy phase. Missing: `load(fp)` / `dump(obj, fp)` (needs `io`), `JSONEncoder` / `JSONDecoder`, most `dumps`/`loads` kwargs |
 | [`re`](#re) | P0 | Partial | ~50% | pure | Pure-TPy facade over `_bindings.pcre2` raw bindings. PCRE2 vendored under `runtime/cpp/third_party/pcre2/` (5MB) and built bundled by default; `--pcre2={bundled,system,auto}` selects backend. compile/search/match/fullmatch/findall/sub/split + Pattern/Match classes + IGNORECASE/MULTILINE/DOTALL/VERBOSE/ASCII flags + `re.error`. Missing: named-group accessors, `count` arg on sub, true generator finditer, bytes input, compile cache |
 | [`collections`](#collections) | P0 | Missing | 0% | -- | OrderedDict trivial (have ordered_map); deque needs C++ struct; Counter/defaultdict/namedtuple need macros |
 | [`itertools`](#itertools) | P0 | Missing | 0% | -- | C++ primitives exist in `runtime/itertools.hpp`; needs Python-surface module |
@@ -488,20 +488,24 @@ as the protocol backbone, or do we need `IOBase`-style abstract bases with
 
 ### json
 
-**Missing** as a stdlib-compat module. TPy has `tplib.json` (macro-based, typed
-deserialization via `@model`). A `json` shim that mirrors CPython's API
-(`loads`, `dumps`, `load`, `dump`) would need an untyped JSON value type and
-`io` support.
+**Partial.** `lib/tpy/json.py` is a pure-TPy wrapper over `tplib.json`'s
+`JsonReader` / `JsonWriter`. Untyped values are represented by a recursive
+union alias `JsonValue = None | bool | int | float | str | list[JsonValue] |
+dict[str, JsonValue]` -- ints stay BigInt, floats stay double, no precision
+loss. CPython byte-compatible output for the `loads` / `dumps` surface across
+all primitive types and nested containers (verified via the cpy phase in
+`tests/cases/stdlib/json_*`). For typed deserialization into user records,
+`tplib.json` with the `@model` decorator remains faster.
 
-Options:
-- (a) Build `json` as a thin wrapper over `tplib.json` with a `dict[str, Any]`-like value type.
-- (b) Keep `tplib.json` as the primary path and document it as the replacement.
-
-| Item | Status |
-|---|---|
-| `loads`, `dumps` | Missing |
-| `load(fp)`, `dump(obj, fp)` | Missing (needs `io`) |
-| `JSONEncoder`, `JSONDecoder` | Missing |
+| Item | Status | Notes |
+|---|---|---|
+| `loads(s)` | Done | Returns `Own[JsonValue]`. Raises `JSONDecodeError` on malformed input or trailing data. |
+| `dumps(obj, *, indent, sort_keys)` | Done | `indent` and `sort_keys` kwargs supported. CPython byte-compatible for ASCII. |
+| `JSONDecodeError` | Done | Subclasses `ValueError` (matches CPython). Thrown via normal `try`/`except`. Carries `msg`, `doc`, `pos`, `lineno`, `colno`. |
+| `load(fp)`, `dump(obj, fp)` | Missing | Needs `io` |
+| `JSONEncoder`, `JSONDecoder` | Missing | Extension hooks; not yet implemented |
+| `dumps` kwargs `ensure_ascii`, `separators`, `allow_nan`, `default`, `cls`, `skipkeys` | Missing | Current behavior is `ensure_ascii=False` (raw UTF-8) with CPython default separators |
+| `loads` kwargs `object_hook`, `object_pairs_hook`, `parse_float`, `parse_int`, `parse_constant` | Missing | -- |
 
 ### re
 

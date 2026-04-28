@@ -1,0 +1,2 @@
+CPython escapes non-ASCII to \uXXXX by default; TPy emits raw UTF-8.
+Tracked in the json module's "Not yet supported" list (ensure_ascii kwarg).
