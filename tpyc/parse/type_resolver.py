@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Callable
 
 from ..typesys import (
     TpyType, NominalType, PtrType, OwnType, ReadonlyType, AutoReadonlyType,
-    AutoOwnType, FinalType, OptionalType, VoidType, UnionType, TupleType,
+    AutoOwnType, FinalType, ClassVarType, OptionalType, VoidType, UnionType, TupleType,
     CallableType, make_union, make_fn_type,
     TypeParamRef, TypeParamKind, LiteralType,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW,
@@ -232,7 +232,7 @@ class TypeResolver:
         # generic path where the resolver's unresolved-name error fires.
         if ref.args and name in (
             "tpy:Ptr", "tpy:Own", "tpy:readonly", "tpy:auto_readonly",
-            "tpy:auto_own", "typing:Optional", "typing:Final",
+            "tpy:auto_own", "typing:Optional", "typing:Final", "typing:ClassVar",
         ):
             inner_arg = ref.args[0]
             assert not isinstance(inner_arg, int), \
@@ -254,6 +254,8 @@ class TypeResolver:
                 return OptionalType(inner)
             if name == "typing:Final":
                 return FinalType(inner)
+            if name == "typing:ClassVar":
+                return ClassVarType(inner)
 
         # tuple
         if name == "builtins:tuple" and ref.args:

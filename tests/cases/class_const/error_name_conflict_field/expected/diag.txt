@@ -1,0 +1,1 @@
+main.py:7: error: name 'LIMIT' on 'C' is both a class constant and an instance field

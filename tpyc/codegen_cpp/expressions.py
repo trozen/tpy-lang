@@ -2884,6 +2884,19 @@ class ExpressionGenerator:
         """Generate field access code."""
         cpp_field = escape_cpp_name(expr.field)
 
+        # Class constant access: <cpp_qname>::<member>. Sema sets
+        # `class_constant_owner` on `<RecordName>.<field>` accesses that
+        # resolve to a class constant.
+        if expr.class_constant_owner is not None:
+            owner = expr.class_constant_owner
+            if owner.is_native and owner.native_name:
+                cpp_qname = owner.native_name
+            else:
+                qual = self.ctx.analyzer.registry.imported_record_qualification(
+                    owner.name, self.ctx.analyzer.ctx.module_name)
+                cpp_qname = qualified_cpp_name(*qual) if qual else escape_cpp_name(owner.name)
+            return f"{cpp_qname}::{cpp_field}"
+
         # Property getter: delegate to normal method call codegen
         if expr.property_getter_call is not None:
             return self._gen_method_call(expr.property_getter_call)

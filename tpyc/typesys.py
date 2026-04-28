@@ -1518,12 +1518,12 @@ def has_auto_own(t: 'TpyType') -> bool:
 
 
 @dataclass(frozen=True)
-class FinalType(TpyType):
-    """Final type modifier -- marks a binding as immutable constant (Final[T]).
+class _TypeModifierWrapper(TpyType):
+    """Shared boilerplate for thin annotation wrappers (Final[T], ClassVar[T]).
 
-    Thin wrapper stripped during semantic analysis. The inner type is
-    registered in the scope; finality is tracked via is_final on the
-    VarDecl node and the final_globals set in SemanticContext.
+    These are stripped during sema; codegen never sees them. All trait
+    queries pass through to the inner type. Subclasses override `__str__`
+    and `with_inner_types` to round-trip the right wrapper class.
     """
     wrapped: TpyType
 
@@ -1539,11 +1539,18 @@ class FinalType(TpyType):
     def is_sync(self) -> bool:
         return self.wrapped.is_sync()
 
-    def __str__(self) -> str:
-        return f"Final[{self.wrapped}]"
-
     def inner_types(self) -> tuple['TpyType', ...]:
         return (self.wrapped,)
+
+
+@dataclass(frozen=True)
+class FinalType(_TypeModifierWrapper):
+    """Final[T] -- immutable binding (PEP 591). Sema tracks finality via
+    `is_final` on the VarDecl node and `final_globals` in SemanticContext;
+    on class-body fields it routes to `RecordInfo.class_constants`.
+    """
+    def __str__(self) -> str:
+        return f"Final[{self.wrapped}]"
 
     def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
         return FinalType(types[0])
@@ -1554,6 +1561,18 @@ def unwrap_final(typ: 'TpyType') -> 'TpyType':
     if isinstance(typ, FinalType):
         return typ.wrapped
     return typ
+
+
+@dataclass(frozen=True)
+class ClassVarType(_TypeModifierWrapper):
+    """ClassVar[T] (PEP 526) -- class-scoped storage, not an instance field.
+    Only valid in class-body annotations; v1 errors with a Phase-7 hint.
+    """
+    def __str__(self) -> str:
+        return f"ClassVar[{self.wrapped}]"
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return ClassVarType(types[0])
 
 
 # --- Type-kind predicate helpers (None-safe) ---
@@ -1662,6 +1681,24 @@ def is_constexpr_eligible(typ: 'TpyType') -> bool:
     """
     from .type_def_registry import is_str_type, is_str_view_type
     return is_primitive_type(typ) or is_str_type(typ) or is_str_view_type(typ)
+
+
+def is_final_allowed_inner(typ: 'TpyType') -> bool:
+    """Inner-type allow-list for Final[T] annotations -- shared between
+    module-level Final globals and class-body class constants.
+
+    Constexpr-eligible primitives + tuple. BigInt is not allowed (not
+    constexpr-constructible).
+    """
+    from .type_def_registry import is_char_type, is_str_view_type
+    return (is_numeric_type(typ) or is_char_type(typ)
+            or is_str_view_type(typ) or isinstance(typ, TupleType))
+
+
+FINAL_INNER_TYPE_ERROR = (
+    "only primitive types (int, float, bool, str, StrView, Char, IntN) "
+    "and tuple are allowed"
+)
 
 
 def final_type_str_to_strview(t: 'TpyType') -> 'TpyType':
@@ -2919,6 +2956,7 @@ class RecordInfo:
     init_params: list[tuple[str, TpyType, Optional[str]]] = field(default_factory=list)  # (name, type, default)
     methods: dict[str, list['FunctionInfo']] = field(default_factory=dict)  # method_name -> list of overloads
     properties: dict[str, 'PropertyInfo'] = field(default_factory=dict)  # property_name -> PropertyInfo
+    class_constants: dict[str, FieldInfo] = field(default_factory=dict)  # class-scoped Final/ClassVar storage; partitioned out of `fields` during sema registration
     type_params: list[str] = field(default_factory=list)  # ["T", "U"] for class Stack[T, U]
     type_param_kinds: list[TypeParamKind] = field(default_factory=list)  # [TYPE, INT] for class Matrix[T, N: int]
     type_param_bounds: dict[str, 'NominalType'] = field(default_factory=dict)  # {"T": Comparable} (must be protocols)

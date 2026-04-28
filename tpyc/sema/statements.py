@@ -17,6 +17,7 @@ from ..typesys import (
     ViewTypeFamily, VIEW_TYPE_FAMILIES, STR_FAMILY, BYTES_FAMILY,
     PendingGenericInstanceType, contains_fn_type,
     INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, is_protocol_type, is_protocol_union, final_type_str_to_strview,
+    is_final_allowed_inner, FINAL_INNER_TYPE_ERROR,
     qualify_exception_name, is_return_exception, is_exception_type,
     FunctionInfo, ParamInfo,
     make_ref, unwrap_ref_type, RefType,
@@ -1981,6 +1982,32 @@ class StatementAnalyzer:
                             f"name '{name}' is a parameter and cannot be declared global", stmt)
             self.ctx.func.global_declarations.add(name)
 
+    def validate_compile_time_constant(
+        self, init: TpyExpr, target_type: 'TpyType | None', label: str, loc: object,
+    ) -> None:
+        """Validate that `init` is a compile-time constant; raise a uniform
+        diagnostic otherwise. Shared between module-level `Final` decls and
+        class constants -- callers pass `label` (e.g. `"Final variable 'X'"`
+        or `"class constant 'C.X'"`) to customize the noun phrase.
+        """
+        bad = self._find_nonconstant_leaf(init, target_type)
+        if bad is None:
+            return
+        prefix = f"{label} requires a compile-time constant initializer"
+        if isinstance(bad, TpyName) and bad.name in self.ctx.user_imported_variables:
+            src_mod, _ = self.ctx.user_imported_variables[bad.name]
+            raise self.ctx.error(
+                f"{prefix}; cross-module Final references are not yet supported "
+                f"('{bad.name}' is imported from '{src_mod}')",
+                loc,
+            )
+        if bad is not init and isinstance(bad, TpyName):
+            raise self.ctx.error(
+                f"{prefix}; '{bad.name}' is not a Final constant",
+                loc,
+            )
+        raise self.ctx.error(prefix, loc)
+
     def _find_nonconstant_leaf(self, expr: TpyExpr, target_type: 'TpyType | None' = None) -> 'TpyExpr | None':
         """Find the first non-constant sub-expression in a Final initializer.
 
@@ -2261,12 +2288,9 @@ class StatementAnalyzer:
                     stmt
                 )
             inner = stmt.type
-            if not (is_numeric_type(inner) or is_char_type(inner)
-                    or is_str_view_type(inner) or isinstance(inner, TupleType)):
+            if not is_final_allowed_inner(inner):
                 raise self.ctx.error(
-                    f"Final[{inner}] is not supported; "
-                    f"only primitive types (int, float, bool, str, StrView, Char, IntN) "
-                    f"and tuple are allowed",
+                    f"Final[{inner}] is not supported; {FINAL_INNER_TYPE_ERROR}",
                     stmt
                 )
 
@@ -2453,29 +2477,9 @@ class StatementAnalyzer:
             # Deferred Final constant check: runs after init analysis so that
             # @call_macro expansions are available via macro_expansion attr.
             if stmt.is_final:
-                bad_leaf = self._find_nonconstant_leaf(stmt.init, stmt.type)
-                if bad_leaf is not None:
-                    if (isinstance(bad_leaf, TpyName)
-                            and bad_leaf.name in self.ctx.user_imported_variables):
-                        src_mod, _ = self.ctx.user_imported_variables[bad_leaf.name]
-                        raise self.ctx.error(
-                            f"Final variable '{stmt.name}' requires a compile-time constant initializer; "
-                            f"cross-module Final references are not yet supported "
-                            f"('{bad_leaf.name}' is imported from '{src_mod}')",
-                            stmt
-                        )
-                    # Name the offending sub-expression when it differs from
-                    # the top-level init (e.g. one operand in A + X + Y).
-                    if bad_leaf is not stmt.init and isinstance(bad_leaf, TpyName):
-                        raise self.ctx.error(
-                            f"Final variable '{stmt.name}' requires a compile-time constant initializer; "
-                            f"'{bad_leaf.name}' is not a Final constant",
-                            stmt
-                        )
-                    raise self.ctx.error(
-                        f"Final variable '{stmt.name}' requires a compile-time constant initializer",
-                        stmt
-                    )
+                self.validate_compile_time_constant(
+                    stmt.init, stmt.type, f"Final variable '{stmt.name}'", stmt,
+                )
                 self.ctx.analyzed_finals.add(stmt.name)
 
             # Track container literal to variable mapping for mutation/type inference.
@@ -3071,6 +3075,15 @@ class StatementAnalyzer:
             self._analyze_slice_assign(stmt)
             return
         target_type = self.expr.analyze_expr(stmt.target)
+        # Class constants are Final in v1: reject reassignment via `MyClass.X = ...`.
+        # Mutable ClassVar with assignable storage lands in Phase 7.
+        if (isinstance(stmt.target, TpyFieldAccess)
+                and stmt.target.class_constant_owner is not None):
+            raise self.ctx.error(
+                f"Cannot reassign Final class constant "
+                f"'{stmt.target.class_constant_owner.name}.{stmt.target.field}'",
+                stmt,
+            )
         value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
         # Property setter: validate and tag for codegen
         if isinstance(stmt.target, TpyFieldAccess) and stmt.target.is_property_access:

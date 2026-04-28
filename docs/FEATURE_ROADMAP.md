@@ -92,7 +92,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D21 | TypedDict | M | Done | [VII](#typeddict) |
 | D22 | Multiple inheritance (mixins) | L | Done | [VII](#multiple-inheritance) |
 | D23 | Nested classes | M | Done | [VII](#nested-classes) |
-| D24 | Class-level constants (`Final[T] = value`, `@native` extern) | S-M | Not started | [VII](#class-level-constants) |
+| D24 | Class-level constants (`Final` + `ClassVar`, `@native` extern, MRO, generics) | L | v1 done | [VII](#class-level-constants) |
 
 ### Phase E: Advanced Safety
 
@@ -2358,7 +2358,10 @@ class BuildOpts:
 `Final[T] = value` in a class body declares a class-scoped immutable constant
 (PEP 591 implicit-`ClassVar` rule). On `@native` classes, `Final[T]` without
 an initializer binds to a C++ `static` member declared in the user's header.
-Use site emits `<cpp_qname>::<member>`.
+Use site emits `<cpp_qname>::<member>`. Mutable `ClassVar[T] = value`,
+instance-side `obj.X` reads, MRO walk for `Child.X`, subclass override,
+generic classes with class constants, and `native_field("rename")` ship in
+later phases of the same design (10 phases total).
 
 **Why it matters**: TPy currently has only instance fields and module-level
 globals -- no class-scoped storage. The `@native` case is the loudest symptom
@@ -2367,15 +2370,20 @@ the gap is general -- idiomatic Python class constants (`MyClass.TIMEOUT`,
 lookup tables on a type) hit the same wall today, with the misleading error
 `'ClassName' is not a variable` at every use site.
 
-**Current state**: Not started. Design in `docs/CLASSVAR_DESIGN.md`. v1 ships
-`Final[T] = value` (class constant) and `@native`-only `Final[T]` no-value
-(extern binding). `ClassVar[...]` recognition, MRO walk for `Child.X`, and
-mutable static state are deferred to v2.
+**Current state**: v1 done (Phases 1-4). Design in `docs/CLASSVAR_DESIGN.md`
+covers all 10 phases. v1 ships `Final[T] = value` (class constant), `@native`
+extern `Final[T]` no-value binding, forward refs within a class body, full
+validation gates (name conflicts, subclass override, generic-class rejection,
+`obj.X` rejected with Phase-5 hint, `Child.X` rejected with Phase-6 hint,
+reassignment to Final rejected). Remaining phases land additively against
+the same plumbing (Phase 5 `obj.X`, Phase 6 MRO walk, Phase 7 mutable
+`ClassVar`, Phase 8 subclass override, Phase 9 generics, Phase 10
+`native_field` rename).
 
 **Dependencies**: None. Reuses module-level `Final` allow-list, `RecordInfo`
 plumbing (`native_name`, `module`), and `_get_qualified_cpp_name`.
 
-**Effort**: S-M
+**Effort**: L (S-M for v1; remainder split across Phases 5-10)
 
 ---
 

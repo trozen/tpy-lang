@@ -1,0 +1,1 @@
+main.py:8: error: Final initializer conflicts with C++-owned storage; use `Final[T]` without value to bind to an extern static, or remove `@native` if you want TPy to own the constant

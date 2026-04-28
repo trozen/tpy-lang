@@ -1,0 +1,1 @@
+main.py:16: error: class constant 'C.LIMIT' must be accessed as 'C.LIMIT', not through an instance

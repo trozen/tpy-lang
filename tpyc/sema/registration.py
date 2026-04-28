@@ -11,7 +11,8 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type,
-    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, make_span,
+    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, ClassVarType, make_span,
+    is_final_allowed_inner, FINAL_INNER_TYPE_ERROR,
     STRVIEW, INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64, BIGINT, BOOL, TupleType, final_type_str_to_strview,
     register_return_exception, is_return_exception,
     attach_type_param_bounds,
@@ -262,6 +263,135 @@ class TypeRegistrar:
             raise SemanticError(f"Unknown IntEnum underlying type: '{type_name}'")
         return result
 
+    def _check_class_constant_conflicts(
+        self, record: TpyRecord, class_constants: dict[str, FieldInfo],
+    ) -> None:
+        """Reject class-constant names that collide with instance fields,
+        methods, nested types, or class constants on any ancestor.
+
+        Runs after `_partition_class_constants` so `record.fields` only holds
+        instance fields. The ancestor walk is BFS over `record.bases` using
+        already-registered parent `RecordInfo`s (parents are guaranteed to be
+        registered first by the compiler-pipeline topological sort).
+        """
+        same_class_names: dict[str, str] = {}
+        for fld in record.fields:
+            same_class_names[fld.name] = "instance field"
+        for method in record.methods:
+            same_class_names.setdefault(method.name, "method")
+        for nested in record.nested_records:
+            same_class_names.setdefault(nested.name.rsplit(".", 1)[-1], "nested record")
+        for nested in record.nested_enums:
+            same_class_names.setdefault(nested.name.rsplit(".", 1)[-1], "nested enum")
+        for cc_name, cc_fld in class_constants.items():
+            kind = same_class_names.get(cc_name)
+            if kind is not None:
+                article = "an" if kind[:1] in "aeiou" else "a"
+                raise SemanticError(
+                    f"name '{cc_name}' on '{record.name}' is both a class constant "
+                    f"and {article} {kind}",
+                    loc=cc_fld.loc,
+                )
+        if not class_constants:
+            return
+        cc_keys = class_constants.keys()
+        seen_bases: set[str] = set()
+        queue: list[NominalType] = [b for b in record.bases if isinstance(b, NominalType)]
+        while queue:
+            base = queue.pop(0)
+            if base.name in seen_bases:
+                continue
+            seen_bases.add(base.name)
+            parent = self.ctx.registry.get_record(base.name)
+            if parent is None:
+                continue
+            collisions = cc_keys & parent.class_constants.keys()
+            if collisions:
+                cc_name = next(iter(collisions))
+                raise SemanticError(
+                    f"cannot override Final class constant '{cc_name}' "
+                    f"from base '{parent.name}'",
+                    loc=class_constants[cc_name].loc,
+                )
+            for grandparent in parent.parents:
+                if isinstance(grandparent, NominalType):
+                    queue.append(grandparent)
+
+    def _partition_class_constants(self, record: TpyRecord) -> dict[str, FieldInfo]:
+        """Split class-body Final/ClassVar annotations off `record.fields` into
+        a class_constants dict (PEP 591 implicit-`ClassVar` rule for
+        `Final[T] = value`; mutable `ClassVar` lands in Phase 7).
+
+        Mutates `record.fields` in place to drop routed entries so the rest of
+        register_record (and downstream sema/codegen) only sees instance fields.
+        Returns the dict to attach to RecordInfo.class_constants.
+        """
+        is_native = record.linkage != RecordLinkage.DEFAULT
+        is_native_c = record.linkage == RecordLinkage.NATIVE_C
+        is_generic = bool(record.type_params)
+
+        class_constants: dict[str, FieldInfo] = {}
+        remaining: list[FieldInfo] = []
+        partitioned_any = False
+        for fld in record.fields:
+            if isinstance(fld.type, ClassVarType):
+                raise SemanticError(
+                    "ClassVar at class level is not yet supported; "
+                    "use `Final[T] = value` for class constants",
+                    loc=fld.loc,
+                )
+            if not isinstance(fld.type, FinalType):
+                remaining.append(fld)
+                continue
+            partitioned_any = True
+            if is_generic:
+                raise SemanticError(
+                    "class constants on generic classes are not yet supported",
+                    loc=fld.loc,
+                )
+            if is_native_c:
+                raise SemanticError(
+                    "`@native_c` classes have no static members; "
+                    "declare a free `native_global` instead",
+                    loc=fld.loc,
+                )
+            if is_native and fld.default_expr is not None:
+                raise SemanticError(
+                    "Final initializer conflicts with C++-owned storage; "
+                    "use `Final[T]` without value to bind to an extern static, "
+                    "or remove `@native` if you want TPy to own the constant",
+                    loc=fld.loc,
+                )
+            if not is_native and fld.default_expr is None:
+                raise SemanticError(
+                    "Final[T] without an initializer in a class body is not yet supported; "
+                    "use `Final[T] = value` for a class constant",
+                    loc=fld.loc,
+                )
+            inner = final_type_str_to_strview(fld.type.wrapped)
+            if not is_final_allowed_inner(inner):
+                raise SemanticError(
+                    f"Final[{inner}] is not supported; {FINAL_INNER_TYPE_ERROR}",
+                    loc=fld.loc,
+                )
+            if fld.name in class_constants:
+                raise SemanticError(
+                    f"Duplicate class constant '{fld.name}' in '{record.name}'",
+                    loc=fld.loc,
+                )
+            class_constants[fld.name] = FieldInfo(
+                name=fld.name,
+                type=inner,
+                default_value=fld.default_value,
+                default_expr=fld.default_expr,
+                is_factory_default=fld.is_factory_default,
+                loc=fld.loc,
+                native_name=fld.native_name,
+            )
+        if partitioned_any:
+            record.fields[:] = remaining
+        return class_constants
+
     def register_record(self, record: TpyRecord) -> None:
         """Register a record type."""
         is_native = record.linkage != RecordLinkage.DEFAULT
@@ -298,6 +428,12 @@ class TypeRegistrar:
                 type_params=list(record.type_params) if record.type_params else [],
                 type_param_kinds=list(record.type_param_kinds) if record.type_param_kinds else [],
             )
+
+        # Partition class-body Final/ClassVar annotations into class_constants
+        # (PEP 591 implicit-ClassVar rule for `Final[T] = value`). The remainder
+        # of register_record only sees instance fields.
+        class_constants = self._partition_class_constants(record)
+        self._check_class_constant_conflicts(record, class_constants)
 
         # Validate field types
         for fld in record.fields:
@@ -838,6 +974,7 @@ class TypeRegistrar:
             init_params=init_params,
             methods=methods,
             properties=properties,
+            class_constants=class_constants,
             type_params=record.type_params,
             type_param_kinds=record.type_param_kinds,
             type_param_bounds=record.type_param_bounds,

@@ -1,0 +1,1 @@
+main.py:10: error: `@native_c` classes have no static members; declare a free `native_global` instead

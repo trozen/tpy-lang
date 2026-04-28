@@ -2520,6 +2520,9 @@ class Parser:
                 if original == "Final":
                     inner_ref = self._parse_type_ref(node.slice, type_param_scope)
                     return TpyTypeRef("typing:Final", (inner_ref,), loc)
+                if original == "ClassVar":
+                    inner_ref = self._parse_type_ref(node.slice, type_param_scope)
+                    return TpyTypeRef("typing:ClassVar", (inner_ref,), loc)
                 if original == "Callable":
                     return self._parse_callable_type_ref(node, "Callable", type_param_scope, loc)
                 if original == "Literal":

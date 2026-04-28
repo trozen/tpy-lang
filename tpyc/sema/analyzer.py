@@ -512,7 +512,13 @@ class SemanticAnalyzer:
         if module.top_level_stmts:
             self._analyze_top_level(module.top_level_stmts)
 
-        # Fifth pass: analyze record methods (including nested records)
+        # Fifth pass: analyze class-constant initializers. Runs after
+        # `_analyze_top_level` so module-level Final globals are in scope, and
+        # before `_analyze_record_methods` so methods see typed constants.
+        for record in module.all_records():
+            self._analyze_class_constants(record)
+
+        # Sixth pass: analyze record methods (including nested records)
         for record in module.all_records():
             self._analyze_record_methods(record)
 
@@ -1513,6 +1519,55 @@ class SemanticAnalyzer:
             resolved = SemanticAnalyzer._resolve_alias(typ, aliases, _skip=skip)
             if resolved is not typ:
                 func.params[i] = (name, resolved)
+
+    def _analyze_class_constants(self, record: TpyRecord) -> None:
+        """Analyze each class constant's initializer and validate it is a
+        compile-time constant. Earlier constants in declaration order are
+        bound into the class-body namespace so later constants can reference
+        them (e.g. `B: Final[int] = A + 1`).
+        """
+        record_info = self.ctx.registry.get_record(record.name)
+        if record_info is None or not record_info.class_constants:
+            return
+
+        # Class-body context: synthetic module-init scope so the const-validity
+        # check (`_find_nonconstant_leaf`) accepts Final names via
+        # `analyzed_finals`, and so name resolution inherits module-level
+        # bindings. Class-constant names get added to scope/ns as analysis
+        # progresses (so later constants can forward-ref earlier ones).
+        self.ctx.reset_function_tracking()
+        self.ctx.func.current_function = MODULE_INIT_CONTEXT
+        self.ctx.func.current_scope = Scope(parent=self.ctx.global_scope)
+        self.ctx.func.current_ns = Namespace(parent=self.ctx.global_ns)
+        self.ctx.is_top_level = True
+
+        # Class-constant names get added to `analyzed_finals` so the
+        # const-validity check accepts forward refs. Track adds and roll
+        # back at the end -- avoids cloning the full module Finals set.
+        added_finals: list[str] = []
+
+        try:
+            for cc_name, cc_fld in record_info.class_constants.items():
+                if cc_fld.default_expr is None:
+                    # @native extern binding: no initializer to analyze.
+                    continue
+                self.expr.analyze_expr_with_hint(cc_fld.default_expr, cc_fld.type)
+                self.stmts.validate_compile_time_constant(
+                    cc_fld.default_expr, cc_fld.type,
+                    f"class constant '{record.name}.{cc_name}'",
+                    cc_fld.loc,
+                )
+                # Bind so later class constants in the same body can reference it.
+                self.ctx.func.current_scope.define(cc_name, cc_fld.type)
+                self.ctx.func.current_ns.bind_variable(cc_name, cc_fld.type)
+                self.ctx.analyzed_finals.add(cc_name)
+                added_finals.append(cc_name)
+        finally:
+            self.ctx.analyzed_finals.difference_update(added_finals)
+            self.ctx.func.current_function = None
+            self.ctx.func.current_scope = None
+            self.ctx.func.current_ns = None
+            self.ctx.is_top_level = False
 
     def _analyze_record_methods(self, record: TpyRecord) -> None:
         """Analyze all methods of a record."""

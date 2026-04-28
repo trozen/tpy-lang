@@ -1,0 +1,1 @@
+main.py:8: error: Final[T] without an initializer in a class body is not yet supported; use `Final[T] = value` for a class constant

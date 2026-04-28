@@ -1,0 +1,1 @@
+main.py:8: error: ClassVar at class level is not yet supported; use `Final[T] = value` for class constants
