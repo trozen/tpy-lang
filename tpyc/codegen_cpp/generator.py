@@ -195,11 +195,18 @@ class CodeGenerator:
             if record_info.name not in local_record_names:
                 register_native_cpp_name(record_info.name, record_info.native_name)
         # Register imported union type aliases so UnionType.to_cpp() can use
-        # the alias name instead of expanding to std::variant<...>
-        for local_name in self.analyzer.registry.imported_type_alias_info:
+        # the alias name instead of expanding to std::variant<...>. Skip
+        # recursive aliases here; the iter_imported_recursive_unions loop
+        # below registers them with their qualified C++ name so cross-module
+        # consumers emit the right type.
+        for local_name, (source_module, original_name) in self.analyzer.registry.imported_type_alias_info.items():
             alias_type = self.analyzer.registry.get_type_alias(local_name)
-            if isinstance(alias_type, UnionType):
-                register_union_alias(alias_type.members, local_name)
+            if not isinstance(alias_type, UnionType):
+                continue
+            source_info = self.analyzer.registry.modules.get(source_module)
+            if source_info is not None and original_name in source_info.recursive_union_names:
+                continue
+            register_union_alias(alias_type.members, local_name)
         # Filter user_module_imports to only include actual user modules (not builtins without user files)
         if actual_user_modules is not None:
             self.ctx.user_module_imports = {k: v for k, v in module.user_module_imports.items() if k in actual_user_modules}
@@ -220,15 +227,26 @@ class CodeGenerator:
         self.ctx.reexported_variables = reexported_variables or {}
         self.ctx.reexported_enums = reexported_enums or {}
         self.ctx.macro_dep_modules = set(self.analyzer.ctx.macro_dep_modules)
-        self.ctx.init_recursive_unions(module.recursive_union_names, module.type_aliases)
-        # Register recursive union aliases early so that record field rendering
-        # resolves e.g. Box[UnionType(Lit, BinOp)] -> Box<Expr>
+        self.ctx.init_recursive_unions(
+            module.recursive_union_names,
+            module.type_aliases,
+            imported_modules=self.analyzer.registry.modules,
+        )
+        # Register recursive union aliases so record field rendering resolves
+        # e.g. Box[UnionType(Lit, BinOp)] -> Box<Expr>. Local aliases use the
+        # unqualified name; imported aliases are qualified to the defining
+        # module's namespace so cross-module consumers emit the right C++ type.
         for name in module.recursive_union_names:
             entry = module.type_aliases.get(name)
             if entry is not None:
                 typ = entry[0]
                 if isinstance(typ, UnionType):
                     register_union_alias(typ.members, name)
+        for info in self.ctx.iter_imported_recursive_unions():
+            register_union_alias(
+                info.full_members,
+                qualified_cpp_name(info.origin, info.name),
+            )
         hpp = io.StringIO()
         cpp = io.StringIO()
 

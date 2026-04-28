@@ -754,6 +754,10 @@ class ModuleExports:
     enums: dict[str, 'NominalType'] = field(default_factory=dict)
     variables: dict[str, TpyType] = field(default_factory=dict)
     type_aliases: dict[str, TpyType] = field(default_factory=dict)
+    # Subset of type_aliases that are recursive union aliases (compile to a
+    # C++ wrapper struct). Cross-module consumers need this to qualify the
+    # alias name with the defining module's namespace.
+    recursive_union_names: set[str] = field(default_factory=set)
     reexported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
     reexported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
     reexported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
@@ -1674,6 +1678,7 @@ class Compiler:
         # Export type aliases
         for name, (typ, _loc) in compiled.ast.type_aliases.items():
             exports.type_aliases[name] = typ
+        exports.recursive_union_names = set(compiled.ast.recursive_union_names)
 
         # Export global variables (from top-level statements)
         # These are tracked in the global scope, but we must exclude imported variables
@@ -1760,6 +1765,7 @@ class Compiler:
             records=exports.records,
             protocols=exports.protocols,
             type_aliases=exports.type_aliases,
+            recursive_union_names=set(exports.recursive_union_names),
             enums=exports.enums,
             reached=set(exports.reached),
         )

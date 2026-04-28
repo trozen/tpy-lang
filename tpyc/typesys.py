@@ -3335,6 +3335,7 @@ class ModuleInfo:
     records: dict[str, RecordInfo] = field(default_factory=dict)  # type_name -> RecordInfo (exported types)
     protocols: dict[str, ProtocolInfo] = field(default_factory=dict)  # protocol_name -> ProtocolInfo
     type_aliases: dict[str, 'TpyType'] = field(default_factory=dict)  # alias_name -> resolved type
+    recursive_union_names: set[str] = field(default_factory=set)  # subset of type_aliases that are recursive union aliases
     enums: dict[str, 'NominalType'] = field(default_factory=dict)  # enum_name -> NominalType (enum-kind)
     # Defining modules whose symbols this module's generated code references.
     # Computed by sema.reach_analysis. Used by codegen to propagate native-

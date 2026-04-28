@@ -525,7 +525,14 @@ class FunctionGenerator:
             # Non-dynamic protocol return (e.g. Iterator[T] from __iter__):
             # use auto, C++ deduces the type from the return expression.
             return "auto"
-        if const:
+        # Recursive union wrapper structs are value types; bypass UnionType's
+        # to_cpp_return() (which would emit a pointer-variant) so the return
+        # uses the wrapper struct name -- including the qualified form for
+        # cross-module aliases via types.type_to_cpp().
+        if (isinstance(unwrap_ref_type(unwrap_readonly(return_type)), UnionType)
+                and self.ctx.is_recursive_union(unwrap_ref_type(unwrap_readonly(return_type)))):
+            ret = self.types.type_to_cpp(unwrap_ref_type(unwrap_readonly(return_type)))
+        elif const:
             ret = return_type.to_cpp_return_const()
         else:
             ret = return_type.to_cpp_return()

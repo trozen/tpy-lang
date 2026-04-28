@@ -560,8 +560,12 @@ class SemanticContext:
     _recursive_union_members: dict[frozenset, str] | None = None
 
     def is_recursive_union(self, typ: 'TpyType') -> bool:
-        """Check if a union type is a recursive union alias."""
-        if not isinstance(typ, UnionType) or not self.recursive_union_names:
+        """Check if a union type is a recursive union alias.
+
+        Recognizes both aliases declared in the current module and those
+        imported transitively from other modules.
+        """
+        if not isinstance(typ, UnionType):
             return False
         if self._recursive_union_members is None:
             self._recursive_union_members = {}
@@ -569,6 +573,13 @@ class SemanticContext:
                 alias = self.registry.get_type_alias(name)
                 if alias is not None and isinstance(alias, UnionType):
                     self._recursive_union_members[frozenset(alias.members)] = name
+            for module_info in self.registry.modules.values():
+                for alias_name in module_info.recursive_union_names:
+                    alias = module_info.type_aliases.get(alias_name)
+                    if isinstance(alias, UnionType):
+                        self._recursive_union_members[frozenset(alias.members)] = alias_name
+        if not self._recursive_union_members:
+            return False
         return frozenset(typ.members) in self._recursive_union_members
 
     # --- Control flow (persistent) ---
