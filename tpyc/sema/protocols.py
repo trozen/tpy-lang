@@ -862,6 +862,19 @@ class ProtocolChecker:
                 result.append(parent_info.name)
         return result
 
+    def find_class_constant_parent_branches(
+        self, record_info: RecordInfo, field_name: str
+    ) -> list[str]:
+        """Class-constant counterpart to `find_field_parent_branches`."""
+        result: list[str] = []
+        for parent_type in record_info.parents:
+            parent_info = self.ctx.registry.get_record_for_type(parent_type)
+            if parent_info is None:
+                continue
+            if self.ctx.registry.find_class_constant_owner(parent_info, field_name) is not None:
+                result.append(parent_info.name)
+        return result
+
     def lookup_record_method(self, record_info: RecordInfo, method_name: str) -> FunctionInfo | None:
         """Look up a method in a record, including inherited methods.
 

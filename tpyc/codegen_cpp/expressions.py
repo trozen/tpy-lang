@@ -2898,17 +2898,39 @@ class ExpressionGenerator:
         cpp_field = escape_cpp_name(expr.field)
 
         # Class constant access: <cpp_qname>::<member>. Sema sets
-        # `class_constant_owner` on `<RecordName>.<field>` accesses that
-        # resolve to a class constant.
+        # `class_constant_owner` on accesses that resolve to a class constant
+        # (including MRO walks where the owner is a transitive ancestor that
+        # may not appear in the current module's short-name registry, so we
+        # qualify directly from the RecordInfo).
         if expr.class_constant_owner is not None:
             owner = expr.class_constant_owner
             if owner.is_native and owner.native_name:
                 cpp_qname = owner.native_name
             else:
-                qual = self.ctx.analyzer.registry.imported_record_qualification(
-                    owner.name, self.ctx.analyzer.ctx.module_name)
+                qual = self.ctx.analyzer.registry.record_qualification(
+                    owner, self.ctx.analyzer.ctx.module_name)
                 cpp_qname = qualified_cpp_name(*qual) if qual else escape_cpp_name(owner.name)
-            return f"{cpp_qname}::{cpp_field}"
+            qualified = f"{cpp_qname}::{cpp_field}"
+            # The constant doesn't depend on `obj`, but evaluating `obj` may
+            # still be required for two reasons: (a) Python-style AttributeError
+            # parity -- `c.X` where `c` is `None` must panic, matching CPython
+            # rather than silently succeeding; (b) the receiver may have side
+            # effects (`f().X`, `lst[i].X`). Both fold into a GCC statement
+            # expression that yields the constant.
+            check: str | None = None
+            if expr.needs_optional_runtime_check:
+                obj_cpp = self.gen_expr(expr.obj)
+                if isinstance(expr.obj, TpyFieldAccess):
+                    check = f"::tpy::deref_optional_check({obj_cpp})"
+                else:
+                    ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj_cpp)
+                    check = f"::tpy::deref_check({ptr_expr})"
+            elif not isinstance(expr.obj, TpyName):
+                obj_cpp = self.gen_expr(expr.obj)
+                check = f"static_cast<void>({obj_cpp})"
+            if check is not None:
+                return f"({{ {check}; {qualified}; }})"
+            return qualified
 
         # Property getter: delegate to normal method call codegen
         if expr.property_getter_call is not None:

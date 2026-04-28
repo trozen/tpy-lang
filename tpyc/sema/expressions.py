@@ -1402,7 +1402,10 @@ class ExpressionAnalyzer:
                 if type_subst:
                     prop_type = self.type_ops.substitute_type_params(prop_type, type_subst)
                 return prop_type
-            return None
+            # Class constant fallback for instance-side reads (`obj.X`,
+            # `self.X`); codegen emits the declaring class's qualified name
+            # regardless of which class the user accessed through.
+            return self._lookup_class_constant_owner(record, expr)
 
         if isinstance(typ, TypeParamRef):
             bound = self.type_ops.get_type_param_bound(typ.name)
@@ -1462,16 +1465,39 @@ class ExpressionAnalyzer:
                         return (dotted, NominalType(dotted))
         return None
 
+    def _lookup_class_constant_owner(
+        self, record: RecordInfo, expr: TpyFieldAccess,
+    ) -> TpyType | None:
+        """Resolve `expr.field` against `record.class_constants`, walking
+        `mro_ancestors` to the declaring ancestor when not declared directly.
+        Sets `expr.class_constant_owner` to the *declaring* record so codegen
+        emits `<declaring_qname>::<member>` regardless of the access path.
+        """
+        owner = self.ctx.registry.find_class_constant_owner(record, expr.field)
+        if owner is None:
+            return None
+        # Multi-base same-name ambiguity: mirror the instance-field check in
+        # `_try_find_field` so C3 linearization doesn't silently pick one
+        # branch when more than one parent contributes the constant.
+        if owner is not record and len(record.parents) > 1:
+            branches = self.protocols.find_class_constant_parent_branches(record, expr.field)
+            if len(branches) > 1:
+                names = ", ".join(branches)
+                first, second = branches[0], branches[1]
+                raise self.ctx.error(
+                    f"Ambiguous class constant '{expr.field}' inherited from {{{names}}} "
+                    f"in '{record.name}'; use '{first}.{expr.field}' "
+                    f"or '{second}.{expr.field}'",
+                    expr,
+                )
+        expr.class_constant_owner = owner
+        return owner.class_constants[expr.field].type
+
     def _try_class_constant_access(
         self, expr: TpyFieldAccess, binding: NameBinding,
     ) -> TpyType | None:
-        """Resolve `<RecordName>.<field>` against the record's class_constants.
-
-        v1 matches only on the directly-named record (MRO walk for inherited
-        class constants is deferred). Sets `expr.class_constant_owner` so
-        codegen emits `<cpp_qname>::<member>`. When the constant exists on an
-        ancestor but not the directly-named record, raise a targeted error
-        pointing at the declaring class.
+        """Resolve `<RecordName>.<field>` against the record's class_constants
+        (with MRO walk via `_lookup_class_constant_owner`).
         """
         assert isinstance(expr.obj, TpyName)
         record_info: RecordInfo | None = None
@@ -1485,20 +1511,7 @@ class ExpressionAnalyzer:
                                or self.ctx.registry.find_module_record(src_mod, src_name))
         if record_info is None:
             return None
-        fld = record_info.class_constants.get(expr.field)
-        if fld is None:
-            for ancestor in record_info.mro_ancestors:
-                ancestor_record = self.ctx.registry.get_record_for_type(ancestor)
-                if ancestor_record and expr.field in ancestor_record.class_constants:
-                    raise self.ctx.error(
-                        f"no class constant '{expr.field}' on '{record_info.name}'; "
-                        f"declared on '{ancestor_record.name}' "
-                        f"(use '{ancestor_record.name}.{expr.field}')",
-                        expr,
-                    )
-            return None
-        expr.class_constant_owner = record_info
-        return fld.type
+        return self._lookup_class_constant_owner(record_info, expr)
 
     def _try_unbound_self_field_access(
         self, expr: TpyFieldAccess, binding: NameBinding,
@@ -1668,6 +1681,11 @@ class ExpressionAnalyzer:
         while deref_depth <= 8:
             result = self._try_find_field(current_type, expr)
             if result is not None:
+                # Class constants emit `<owner_qname>::<member>` ignoring
+                # `obj`, so deref state, ptr-non-null narrowing,
+                # ownership-from-self, and field-path narrowing don't apply.
+                if expr.class_constant_owner is not None:
+                    return make_ref(result)
                 expr.deref_depth = deref_depth
                 if deref_depth > 0 and isinstance(actual_type, PtrType):
                     obj_key = _expr_to_narrowing_key(expr.obj)
@@ -1722,16 +1740,6 @@ class ExpressionAnalyzer:
             deref_depth += 1
 
         if isinstance(actual_type, NominalType) and actual_type.is_record:
-            # Targeted error for `obj.X` where X is a class constant: instance-side
-            # reads land in Phase 5; v1 requires `<ClassName>.X`.
-            owner_record = self.ctx.registry.get_record(actual_type.name)
-            if owner_record is not None and expr.field in owner_record.class_constants:
-                raise self.ctx.error(
-                    f"class constant '{owner_record.name}.{expr.field}' "
-                    f"must be accessed as '{owner_record.name}.{expr.field}', "
-                    f"not through an instance",
-                    expr,
-                )
             raise self.ctx.error(f"Record '{actual_type.name}' has no field '{expr.field}'", expr)
         raise self.ctx.error(f"Cannot access field '{expr.field}' on type {obj_type}", expr)
 

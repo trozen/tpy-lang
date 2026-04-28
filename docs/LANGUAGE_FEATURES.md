@@ -4922,9 +4922,85 @@ VERSION: Final[tuple[Int32, Int32, Int32]] = (1, 2, 3)
 - BigInt (`int`), tuple: `const T NAME = VALUE;` in source, `extern const` in header
 
 **Restrictions (v1):**
-- Module-level only (not in functions or classes)
+- Module level (class-level `Final[T] = value` is documented in the next section; not yet supported in function bodies)
 - Supported types: primitives (int, float, bool, str, StrView, Char, IntN) and tuple (no `Final[list[T]]`, `Final[SomeRecord]`)
 - Must use explicit type: `Final[T]` (bare `Final` not yet supported)
+
+### Class-Level Final Constants (Working)
+
+`Final[T] = value` in a class body declares a class-scoped immutable
+constant (PEP 591's implicit-`ClassVar` rule). Reads through the class,
+through an instance, or through a child class all resolve to the
+*declaring* class.
+
+```python
+from typing import Final
+from tpy import Int32
+
+class HttpClient:
+    TIMEOUT: Final[Int32] = 30
+    DEFAULT_HEADERS: Final[str] = "User-Agent: tpy"
+
+    def fetch(self) -> None:
+        timeout = HttpClient.TIMEOUT   # Class-name access
+        also_timeout = self.TIMEOUT    # Instance-side read
+
+class AuthClient(HttpClient):
+    pass
+
+# Inherited reads: Child.X resolves through the MRO to Parent.
+print(AuthClient.TIMEOUT)              # emits HttpClient::TIMEOUT
+print(AuthClient().TIMEOUT)            # emits HttpClient::TIMEOUT
+
+# `@native` extern binding -- Final[T] without an initializer binds to a
+# C++ static member declared in the user's header.
+# tpy: native_module
+# tpy: cpp_namespace("x::core")
+# tpy: include("<x/build_opts.hpp>")
+@native
+class BuildOpts:
+    FLAG: Final[bool]    # binds to ::x::core::BuildOpts::FLAG
+```
+
+**Semantics:**
+- Reads through `Class.X`, `obj.X`, `self.X`, and `Child.X` (MRO walk) all
+  resolve to the same constant; codegen emits `<DeclaringClass>::X`
+- Mutation rejected through both `Class.X = ...` and `obj.X = ...`
+- `obj.X = ...` on a Final class constant rejected with the same message
+  as module-level Final reassignment
+- When `obj` has side effects (e.g. `f().LIMIT`, `lst[i].LIMIT`), the
+  receiver is still evaluated -- codegen wraps the access in a GCC
+  statement expression so the constant is the yielded value
+- `obj: C | None; obj.X` matches CPython's `AttributeError` on `None`:
+  warns and panics at runtime if `obj` is `None`. Narrowing (`if obj is
+  not None: obj.X`) drops both the warning and the check
+- Multi-base inheritance: `class C(A, B)` where both `A` and `B` declare
+  the same constant rejects unqualified `C.X` with the same "ambiguous"
+  error as instance-field ambiguity; user must disambiguate via `A.X` /
+  `B.X`
+- Subclass redeclaration of a parent's `Final` class constant rejected
+- Cross-module access works including the inherited case: `from mod import
+  Child` where `LIMIT` is on `Parent` emits the parent's fully-qualified
+  namespace even though `Parent` was never imported
+
+**C++ mapping (regular classes):**
+- `static constexpr T NAME = VALUE;` for constexpr-eligible types (numeric,
+  Char, StrView, bool, literal-tuple)
+- `@native` classes don't emit class-body declarations; the user's header
+  owns the storage
+
+**Restrictions (v1, Phases 1-6):**
+- Inner type allow-list: numeric / `Char` / `StrView` / `bool` / tuple
+  (same as module-level Final)
+- `Final[T]` without an initializer is currently only supported on
+  `@native` classes (PEP 591 instance-final on regular classes lands as a
+  separate feature)
+- `ClassVar[...]` in a class body rejected -- mutable class storage,
+  generic class constants, and `native_field("rename")` on class constants
+  ship in later phases
+
+See `docs/CLASSVAR_DESIGN.md` for the full 10-phase plan and edge-case
+table.
 
 ### Native Global Variables (Working)
 

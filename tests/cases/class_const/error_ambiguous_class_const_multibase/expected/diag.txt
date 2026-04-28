@@ -1,0 +1,1 @@
+main.py:21: error: Ambiguous class constant 'LIMIT' inherited from {A, B} in 'C'; use 'A.LIMIT' or 'B.LIMIT'

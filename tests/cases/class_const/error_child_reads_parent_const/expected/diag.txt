@@ -1,1 +1,0 @@
-main.py:16: error: no class constant 'LIMIT' on 'Child'; declared on 'Parent' (use 'Parent.LIMIT')

@@ -2,12 +2,14 @@
 
 ## Progress
 
-v1 (Phases 1-4) lands the storage split and `ClassName.X` access for
-`Final[T] = value` plus `@native` extern bindings. Phases 5+ are additive
-against the same plumbing (the separate `class_constants` dict, the
-`_analyze_field_access` branch, the qualified-name codegen helper) and
-are sketched in [Later Phases](#later-phases) so v2 readers can push back
-early.
+v1 (Phases 1-4) landed the storage split and `ClassName.X` access for
+`Final[T] = value` plus `@native` extern bindings. Phases 5-6 add
+instance-side reads (`obj.X`) and MRO walk for inherited reads
+(`Child.X` -> `Parent::X`) by extending the same plumbing -- the
+separate `class_constants` dict, the `_analyze_field_access` branch,
+and the qualified-name codegen helper. Phases 7+ remain additive
+against the same surface and are sketched in
+[Later Phases](#later-phases).
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -15,8 +17,8 @@ early.
 | 2 | Sema registration: detect `Final[T]` on a class-body field, validate per the rules in [Forms Supported](#forms-supported), route to `RecordInfo.class_constants` (separate dict from `fields`); reject mutation, name conflicts, subclass overrides | Done (v1) |
 | 3 | Sema + codegen for `ClassName.MEMBER` access: new branch in `_analyze_field_access`; codegen emits `static constexpr` / `static inline const` members on regular classes, no class-body emission for `@native`, qualified `<cpp_qname>::<member>` at all use sites | Done (v1) |
 | 4 | Tests + validation polish for v1 (see [Test Plan](#test-plan)) | Done (v1) |
-| 5 | `obj.X` instance-side reads: fallthrough in `_try_find_field` to `class_constants` (and ancestors after Phase 6) | Planned |
-| 6 | MRO walk: `Child.X` resolves through `mro_ancestors` to the declaring ancestor; emit `<owner_qname>::<member>` | Planned |
+| 5 | `obj.X` instance-side reads: fallthrough in `_try_find_field` to `class_constants` (walks MRO via the same path as Phase 6) | Done |
+| 6 | MRO walk: `Child.X` resolves through `mro_ancestors` to the declaring ancestor; emit `<owner_qname>::<member>` | Done |
 | 7 | Mutable `ClassVar[T] = value`: recognize `ClassVarType` in `register_record`, allow mutation, codegen `static inline T X = value` | Planned |
 | 8 | Subclass override semantics: `Final` blocks override; non-final `ClassVar` shadows with type compatibility check | Planned |
 | 9 | Generic classes with class constants: T-independent first (9a), T-dependent per-monomorphization (9b) | Planned |
@@ -73,7 +75,7 @@ The `Final[T]` (no value) reading on `@native` classes is the one place we devia
 2. **Class constants are not instance fields.** Distinct storage in `RecordInfo` (`class_constants: dict[str, FieldInfo]`), distinct codegen path, distinct member access path. Mixing them in the same list invites bugs in field iteration, `__init__` synthesis, and serialization.
 3. **`@native` reuses the same syntax surface.** Same `Final[T]` annotation, same `ClassName.X` access -- the `@native` decorator is the only thing that changes the codegen path (extern reference vs. local definition).
 4. **No mutation of `Final`.** Reuse the existing `Final` reassignment guard (`statements.py:2362-2367`) -- extend it to class constants. Mutable `ClassVar` (without `Final`) lands in Phase 7.
-5. **Restrict v1 to `ClassName.X` reads.** `obj.X` instance-side reads of class attributes are a Python-native feature but require a fall-through path in `_try_find_field` (after fields, before properties). Restricting to `ClassName.X` for v1 keeps the field-access codegen path narrow; instance-side reads land in Phase 5.
+5. **Class-scoped reads, instance-scoped through fall-through.** `ClassName.X` is the primary read form; `obj.X` (Phase 5) and `Child.X` walking up to a declaring `Parent.X` (Phase 6) both fall through the same `class_constants` lookup. Codegen always emits the *declaring* class's qualified C++ name (`<owner_qname>::<member>`), so the access path doesn't depend on which class is named at the call site.
 
 ---
 
@@ -126,7 +128,7 @@ if binding and binding.kind in (BindingKind.RECORD, BindingKind.IMPORTED_NAME):
         return field_info.type
 ```
 
-For v1, lookup is on the directly-named record only -- no MRO walk. `Child.X` finds `X` only if declared on `Child`; users must write `Parent.X` for inherited constants. This keeps the lookup symmetric with the no-override rule.
+v1 looked only at the directly-named record. Phase 6 adds an `mro_ancestors` walk so `Child.X` resolves through the inheritance chain to the declaring ancestor; the access path sets `class_constant_owner` to that ancestor so codegen always emits the declaring class's qualified name.
 
 This eliminates the misleading "is not a variable" error for the natural `ClassName.MEMBER` form.
 
@@ -162,31 +164,52 @@ sema/codegen change without re-stating shared infrastructure (the
 qualified-name emission helper). Sub-designs here are deliberately terse --
 they get fleshed out at implementation time.
 
-### Phase 5: Instance-Side Reads (`obj.X`)
+### Phase 5 + 6: Instance-Side Reads and MRO Walk (Done)
 
-Python lets `instance.CLASS_CONST` fall back to the class. Drop the v1
-`obj.X` rejection: in instance attribute resolution (`_try_find_field`
-under `_analyze_field_access`), after instance fields don't match, check
-`record.class_constants` (and ancestors, once Phase 6 lands).
+Phases 5 and 6 share the same plumbing -- a single `Registry`-level
+helper `find_class_constant_owner(record, field_name)` walks
+`record.class_constants` then `iter_ancestor_records(record)` and returns
+the declaring `RecordInfo` (or `None`). All three sema entry points use
+it:
 
-Codegen continues to emit `<cpp_qname>::<member>` -- C++ permits
-`obj.STATIC` syntax but the qualified form is unambiguous and matches the
-`ClassName.X` path. Mutation through an instance (`obj.X = ...`) is
-rejected on `Final` constants exactly like `MyClass.X = ...`; for non-final
-`ClassVar` (Phase 7) it routes to the same static storage.
+- **Phase 5** (`obj.X`, `self.X`): `_try_find_field` falls through to the
+  helper after instance fields and properties miss. Codegen emits
+  `<declaring_qname>::<member>` ignoring `obj`. Mutation through the
+  instance (`obj.X = ...`) is rejected by the existing Final reassignment
+  guard.
+- **Phase 6** (`Child.X`): `_try_class_constant_access` uses the same
+  helper, so `Child.X` resolves through the MRO to the declaring ancestor
+  -- including multi-level (`Grandchild` -> `Mid` -> `Grand`). Codegen
+  emits the *declaring* class's qname, never the looked-up class's, so it
+  doesn't rely on C++ inheriting statics into derived class scope.
 
-### Phase 6: MRO Walk for `Child.X`
+Edge cases handled:
 
-When `X` is not declared directly on the named class, walk `mro_ancestors`
-to find the declaring class. Use site emits `<declaring_owner_qname>::<member>`,
-not the looked-up class's qname (so `Child.PARENT_CONST` emits
-`Parent::PARENT_CONST`, not `Child::PARENT_CONST`). This avoids relying on
-C++ inheriting statics into derived class scope -- the qualified name is
-always the declaring class's, regardless of Python-level access path.
-
-Combined with Phase 5, this makes the standard Python idiom work:
-`instance.PARENT_CONST` resolves through both instance-side fallback and
-MRO walk to `<parent_qname>::PARENT_CONST`.
+- **Cross-module inherited constants**. The codegen path qualifies via
+  `Registry.record_qualification(owner, current_module)` (which reads
+  `RecordInfo.defining_module` directly) instead of the short-name
+  `imported_record_qualification` lookup -- so a transitive ancestor that
+  the accessing module never imported still emits the correct
+  `::<defining_module>::<Parent>::<X>`.
+- **Optional receiver matches CPython's `AttributeError`-on-`None`**.
+  `obj: C | None; obj.X` warns ("Potential None access") and codegen
+  wraps the access in `({ ::tpy::deref_check(obj); <Owner>::<X>; })` so
+  reading through a `None` panics rather than silently succeeding (which
+  would diverge from CPython). Narrowing (`if obj is not None: obj.X`)
+  drops both the warning and the runtime check.
+- **Side effects on `obj`**. When `expr.obj` is a non-name expression
+  (e.g. `f().LIMIT`, `lst[i].LIMIT`), codegen wraps the access in a GCC
+  statement expression `({ static_cast<void>(<obj_cpp>); <Owner>::<X>; })`
+  so the receiver is evaluated for its effects and the constant is the
+  yielded value. Plain-name receivers emit the bare qualified form.
+- **Multi-base ambiguity**. `class C(A, B)` where both `A` and `B`
+  declare the same class constant rejects unqualified `C.X` with the
+  same message shape as the instance-field ambiguity check; the helper
+  `find_class_constant_parent_branches` (in `protocols.py`, mirrors the
+  instance-field counterpart) walks each direct parent's MRO via
+  `find_class_constant_owner` and returns the contributing branches.
+  The check fires only when the constant isn't declared directly on the
+  child.
 
 ### Phase 7: Mutable `ClassVar[T] = value`
 
@@ -361,8 +384,8 @@ struct Counter {
 | `X: Final[T] = value` and `X: T` (instance field) on same class | error -- "name 'X' is both a class constant and an instance field" | v1 |
 | Subclass redeclares a parent's class `Final` | error -- "cannot override Final class constant 'X' from base 'B'" | v1 |
 | Subclass redeclares a parent's non-final `ClassVar` | shadow with optional warning; child storage independent of parent's | 8 |
-| `obj.X` instance-side read where `X` is a class constant | error in v1 -- "class constants must be accessed as `<ClassName>.X`"; supported in Phase 5 | v1 -> 5 |
-| `Child.X` where `X` is declared on `Parent` only | error in v1 -- "no class constant 'X' on 'Child'; declared on 'Parent' (use `Parent.X`)"; supported in Phase 6 | v1 -> 6 |
+| `obj.X` instance-side read where `X` is a class constant | resolves through `_try_find_field` -> `class_constants` (with MRO); codegen emits `<declaring_qname>::<X>` and ignores the instance | 5 |
+| `Child.X` where `X` is declared on `Parent` only | resolves via `mro_ancestors` walk to the declaring ancestor; codegen emits `Parent::X` | 6 |
 | Cross-module access via `from mod import MyClass; MyClass.X` | works -- existing `IMPORTED_NAME` binding path resolves through to the record | v1 |
 | Chained module access `import mod; mod.MyClass.X` | falls through to a generic field-not-found error today (lookup helper only handles bare-`TpyName` LHS); revisit with cross-module v1.x polish | v1 -> later |
 | Mutation `MyClass.X = ...` on `Final` | error -- reuses existing `Cannot reassign Final variable` path | v1 |
@@ -389,10 +412,8 @@ struct Counter {
 - `error_reassign_final_class_const/` -- mutation rejected.
 - `error_final_no_value_regular/` -- helpful error pointing at the right form.
 - `error_classvar_at_class_level/` -- `ClassVar[...]` rejected with "lands in Phase 7" hint.
-- `error_obj_reads_class_const/` -- `obj.X` rejected with "use `<ClassName>.X`" hint (relaxed in Phase 5).
 - `error_name_conflict_field/` -- class constant and instance field share a name.
 - `error_subclass_override_final/` -- child re-declares parent's Final.
-- `error_child_reads_parent_const/` -- v1 requires explicit `Parent.X`; `Child.X` rejected when only declared on `Parent` (relaxed in Phase 6).
 - `error_generic_class_const/` -- generic class with `Final[T] = ...` rejected (relaxed in Phase 9).
 
 V1 native cases under `tests/cases/native/`:
@@ -401,10 +422,19 @@ V1 native cases under `tests/cases/native/`:
 - `error_native_final_with_value/` -- TPy initializer on `@native` class rejected.
 - `error_native_c_final/` -- `@native_c` class with `Final[T]` rejected.
 
+### Phase 5 + 6 cases under `tests/cases/class_const/`:
+
+- `obj_reads_class_const/` -- read class constant via an instance and via `self`; codegen emits qualified `ClassName::X`.
+- `child_reads_parent_const/` -- `Child.X` resolves through MRO to `Parent::X`; instance-side read through a child also resolves to the declaring parent.
+- `child_reads_grandparent_const/` -- multi-level MRO walk to a grandparent.
+- `cross_module_inherited_const/` -- importing `Child` from a module where `LIMIT` is on `Parent`; codegen must qualify the declaring ancestor's namespace even though `Parent` was never imported into the accessing module.
+- `optional_reads_class_const/` -- `obj: C | None; obj.X` warns and emits a runtime null-check before yielding the constant, matching CPython's `AttributeError`-on-`None`. Narrowing drops both the warning and the check.
+- `obj_with_side_effects_reads_class_const/` -- `f().X` and `lst[i].X` evaluate the receiver for its side effects via a GCC statement expression, then yield the qualified constant.
+- `error_reassign_class_const_via_instance/` -- `obj.X = ...` on a `Final` class constant still rejected by the existing reassignment guard.
+- `error_ambiguous_class_const_multibase/` -- `class C(A, B)` where both `A` and `B` declare `X`: rejected with the same message shape as instance-field ambiguity.
+
 ### Later-phase cases (added when the phase ships):
 
-- **Phase 5**: `obj_reads_class_const/` -- read class constant via instance; verify codegen emits qualified `ClassName::X`.
-- **Phase 6**: `child_reads_parent_const/` -- `Child.X` resolves through MRO to `Parent::X`; multi-level inheritance variant.
 - **Phase 7**: `classvar_mutable/` -- `ClassVar[T] = value`, read and mutate via `ClassName.X`. `classvar_final_explicit/` -- `ClassVar[Final[T]] = value` aliases `Final[T] = value`. `error_classvar_no_value/` -- `ClassVar[T]` without initializer rejected. `error_classvar_native/` -- `ClassVar` on `@native` class rejected.
 - **Phase 8**: `subclass_shadow_classvar/` -- child redeclares non-final `ClassVar`, both storages observable. `error_subclass_shadow_type_mismatch/` -- shadow with incompatible type rejected.
 - **Phase 9a**: `generic_class_const_t_independent/` -- `class C[T]: MAX: Final[Int32] = 10` with multiple instantiations.

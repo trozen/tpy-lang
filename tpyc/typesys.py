@@ -3530,6 +3530,17 @@ class TypeRegistry:
         """
         return self._record_qualification(self.get_record_for_type(typ), current_module)
 
+    def record_qualification(
+        self, record_info: 'RecordInfo', current_module: str
+    ) -> tuple[str, str] | None:
+        """RecordInfo-aware variant of `imported_record_qualification`.
+
+        Use when the caller already holds the `RecordInfo` (e.g. resolved via
+        an MRO walk, where the declaring ancestor may not be in the current
+        module's short-name registry). Bypasses the registry lookup entirely.
+        """
+        return self._record_qualification(record_info, current_module)
+
     def _record_qualification(
         self, record_info: 'RecordInfo | None', current_module: str
     ) -> tuple[str, str] | None:
@@ -3678,6 +3689,18 @@ class TypeRegistry:
                 rec = self.get_record_for_type(anc)
                 if rec is not None:
                     yield rec
+
+    def find_class_constant_owner(self, record: RecordInfo, field_name: str) -> 'RecordInfo | None':
+        """Return the record that declares `field_name` as a class constant,
+        starting from `record` and walking its MRO ancestors. None if not
+        declared on `record` or any ancestor.
+        """
+        if field_name in record.class_constants:
+            return record
+        for ancestor in self.iter_ancestor_records(record):
+            if field_name in ancestor.class_constants:
+                return ancestor
+        return None
 
     def compute_mro_ancestors(self, record: RecordInfo) -> list['TpyType']:
         """Compute C3 linearization of a record's ancestors (self excluded).
