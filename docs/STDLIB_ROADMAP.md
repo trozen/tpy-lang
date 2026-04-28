@@ -143,7 +143,7 @@ Examples of the policy in action:
 | [`csv`](#csv) | P1 | Missing | 0% | -- | Depends on `io` |
 | [`base64`](#base64) | P1 | Partial | ~95% | pure | Pure-TPy b64/b32/b16 encode+decode + urlsafe/standard variants + altchars=/validate=/casefold=/map01= kwargs + encodebytes/decodebytes. bytes/bytearray/str accepted on decoders (matches CPython). Missing: b85/a85 (rare, separate algorithms); `memoryview` depends on builtin gap |
 | [`hashlib`](#hashlib) | P1 | Partial | ~20% | pure | SHA-256 pure-TPy. MD5/SHA-1/SHA-512 are straight follow-ups (same class pattern, different round functions / endian). BLAKE2/SHA-3 later. Optional OpenSSL backend also later |
-| [`argparse`](#argparse) | P1 | Partial | ~80% | macro | Builder-trace macro (Phase 7); positionals/optional flags, all 7 actions, all 4 nargs, type=int\|float\|str + fixed-width ints, choices/required/dest/help, Optional[T]/Optional[list[T]] for absent flags, bare parse_args() reads sys.argv[1:], --help/-h auto-generation. Missing: Float32 type, subparsers, mutually-exclusive groups, custom type via ArgType[T], prog=/usage=/epilog= |
+| [`argparse`](#argparse) | P1 | Partial | ~85% | macro | Builder-trace macro (Phase 7); positionals/optional flags, all 7 actions, all 4 nargs, type=int\|float\|str + fixed-width ints, choices/required/dest/help/metavar, Optional[T]/Optional[list[T]] for absent flags, list-literal defaults, bare parse_args() reads sys.argv[1:], --help/-h auto-generation, add_help=False opt-out, prog=/usage=/epilog= help customization. Missing: Float32 type, subparsers, mutually-exclusive groups, custom type via ArgType[T] |
 | [`logging`](#logging) | P2 | Missing | 0% | -- | Module-level state + handler architecture |
 | [`configparser`](#configparser) | P2 | Missing | 0% | -- | Depends on `io` |
 | [`urllib.parse`](#urllibparse) | P2 | Missing | 0% | -- | Pure-TPy candidate; no network dependency |
@@ -915,7 +915,7 @@ per-call-site record + parse function, so ``args`` is statically typed.
 | Positional arguments | Done | Default str type |
 | Optional flags (`-x` / `--foo`) | Done | One or more aliases per add_argument |
 | `type=int\|float\|str` | Done | int maps to BigInt to match CPython |
-| `default=<literal>` | Done | Macro-time literals only (no list defaults yet) |
+| `default=<literal>` | Done | Scalar literals plus list literals for list-typed actions (append/extend or store + nargs=*/+/<int>) |
 | `const=<literal>` | Done | For `store_const` and `store + nargs='?'` |
 | `action=` | Done | `store` / `store_true` / `store_false` / `count` / `append` / `extend` / `store_const` |
 | `nargs=` | Done | `'?'` / `'*'` / `'+'` / positive int. Variable nargs positionals must be last |
@@ -923,22 +923,23 @@ per-call-site record + parse function, so ``args`` is statically typed.
 | `required=True` | Done | Optional flags only |
 | `dest=` | Done | Override synthesized record field name |
 | `help=` (data) | Done | Stored at macro time |
+| `metavar=` | Done | Per-arg display name override for usage / help |
 | Optional[T] field for absent flag | Done | When no `default=` and not `required=` |
 | ArgumentParser `description=` | Done | |
-| `--help` / `-h` auto-generation | Done | Pre-rendered help printer + argv prelude that exits via `sys.exit(0)`. `prog` hardcoded to `"prog"` until `prog=` kwarg lands |
-| `add_help=False` opt-out | Missing | Today the `-h` / `--help` flag names are reserved unconditionally; opt-out would let users register their own |
+| `--help` / `-h` auto-generation | Done | Pre-rendered help printer + argv prelude that exits via `sys.exit(0)` |
+| `add_help=False` opt-out | Done | Suppresses both the auto printer and the `-h` / `--help` reservation, so users can register their own |
+| `prog=` / `usage=` / `epilog=` | Done | Help-text customization. `prog=` substitutes through usage and the `<prog>: error:` parse-error prefix; `usage=` overrides the auto-generated tail; `epilog=` appends after the options block |
+| **TODO**: runtime-derived `prog` default | Missing | CPython uses `os.path.basename(sys.argv[0])` when `prog=` is omitted; we hardcode `"prog"`. Closing this needs a `basename` helper in the TPy stdlib + switching the help printer from a pre-rendered literal to a runtime template. Tracked in MACRO_DESIGN.md's argparse Future Work |
+| **TODO**: terminal-width-aware help wrap | Missing | Help wraps at a hardcoded 80 cols; CPython argparse uses `shutil.get_terminal_size().columns` at runtime. The cpy-phase test pins `COLUMNS=80` so the comparison is deterministic, but a user running our binary in a 200-col terminal still sees help wrapped at 80 while CPython would wrap at 200. Pairs with the runtime-derived `prog` refactor -- both need the help printer to become a runtime template instead of a pre-rendered literal |
 | `type=Int32 / Int64 / UInt8 / ...` | Done | All eight fixed-width ints accepted; field carries the matching primitive |
 | `type=Float32` | Missing | Codegen gap: `Float32(runtime_str)` doesn't lower to `float32_from_str`. Land that, then add `"Float32"` to `_ALLOWED_TYPES` |
 | Subparsers | Missing | Tagged-union codegen; common in non-trivial CLIs |
-| `metavar=` | Missing | Help-text display name; pairs with --help work |
-| `prog=` / `usage=` / `epilog=` | Missing | Help-text customization |
 | `add_mutually_exclusive_group()` | Missing | At-most-one constraint across flags |
 | Custom `type=` via `ArgType[T]` | Missing | Protocol with `from_arg(s: str) -> T` for Path, datetime, user records |
-| List-literal defaults (`default=[1, 2, 3]`) | Missing | Extend `eval_literal_or_final` to lists |
 | `parents=`, argument groups, `BooleanOptionalAction`, `allow_abbrev`, `fromfile_prefix_chars`, custom formatter classes, `action=<callable>` | Future | Tier-3; full tier table in MACRO_DESIGN.md's argparse Future Work section |
-| Parse-time error wording / `prog` name still differ from CPython | v1 divergence | Stderr+`sys.exit(2)` shape now matches; phrasing parity (e.g. "the following arguments are required") + `os.path.basename(sys.argv[0])` for `prog` are Tier 2 (`prog=` + message tweaks) |
+| Parse-time error wording still differs from CPython | v1 divergence | Stderr+`sys.exit(2)` shape matches; runtime-derived `prog` (`os.path.basename(sys.argv[0])`) and message phrasing parity (e.g. "the following arguments are required") are Tier 2 |
 
-Tests: `cases/argparse/{basic,optional_flags,value_free_actions,list_and_const_actions,choices_required_dest,nargs,empty_parser,positional_nargs_optional,qualified_import,two_parsers_same_module,optional_list_absent,no_argv_uses_sys_argv,fixed_width_types,help_basic,explicit_sys_import}` plus `error_argparse_*` cases pinning macro-time validation and `panic_argparse_*` cases (`empty_parser_extra_args`, `missing_required`, `invalid_choice`) for parse-error stderr+`sys.exit(2)` paths.
+Tests: `cases/argparse/{basic,optional_flags,value_free_actions,list_and_const_actions,choices_required_dest,nargs,empty_parser,positional_nargs_optional,qualified_import,two_parsers_same_module,optional_list_absent,no_argv_uses_sys_argv,fixed_width_types,help_basic,help_usage_wrap,explicit_sys_import,prog_epilog,usage_override,metavar,add_help_false,list_default}` plus `error_argparse_*` cases pinning macro-time validation and `panic_argparse_*` cases (`empty_parser_extra_args`, `missing_required`, `invalid_choice`, `prog_unknown_arg`) for parse-error stderr+`sys.exit(2)` paths. Help-output cases that pass `prog=` explicitly (`prog_epilog`, `usage_override`, `help_usage_wrap`) run under both backends and assert byte-identical output vs CPython's stdlib argparse; the remaining help cases (`help_basic`, `metavar`) carry `no_cpython.txt` because their hardcoded `"prog"` default differs from CPython's `basename(sys.argv[0])`.
 
 ### logging
 

@@ -3270,8 +3270,15 @@ class StatementGenerator:
 
         Python's AST represents both as orelse=[If(...)]. We distinguish
         them by column: elif keeps the same column, nested else: if is
-        indented deeper.
+        indented deeper. Macro-emitted bodies have their locs stripped
+        (builder_trace's `_strip_fragment_locs`) so user diagnostics
+        don't pick up fragment line numbers; in that case both locs
+        are None and we fall back to treating the chain as elif --
+        macros emit structurally-equivalent chains and benefit from
+        the flat ``else if`` codegen.
         """
+        if outer.loc is None and inner.loc is None:
+            return True
         if outer.loc is None or inner.loc is None:
             return False
         return inner.loc.column == outer.loc.column

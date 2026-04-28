@@ -1,0 +1,19 @@
+usage: frobnicator [-h] [--alpha ALPHA] [--bravo BRAVO] [--charlie CHARLIE]
+                   [--delta DELTA] [--echo ECHO] [--foxtrot FOXTROT]
+                   [--golf GOLF]
+                   input
+
+Many-flag CLI to exercise usage-line wrap.
+
+positional arguments:
+  input
+
+options:
+  -h, --help         show this help message and exit
+  --alpha ALPHA      alpha flag
+  --bravo BRAVO      bravo flag
+  --charlie CHARLIE  charlie flag
+  --delta DELTA      delta flag
+  --echo ECHO        echo flag
+  --foxtrot FOXTROT  foxtrot flag
+  --golf GOLF        golf flag

@@ -563,11 +563,14 @@ class BuilderContext:
     def eval_literal_or_final(self, expr: TpyExpr) -> object:
         """Evaluate an expression to a Python value at macro time.
 
-        Accepts int/str/float/bool/None literals and unary minus on
-        numeric literals. The name is forward-looking: ``Final[...]``
-        constant references will resolve here once the lookup-by-name
-        path is wired (today the resolver returns _UNSET for any name,
-        so only literals work). Raises ``MacroError`` if the expression
+        Accepts int/str/float/bool/None literals, unary minus on
+        numeric literals, and tuple/list literals whose elements are
+        themselves ``eval_literal_or_final``-compatible (returns a
+        Python ``list`` in that case -- nested lists work the same
+        way). The name is forward-looking: ``Final[...]`` constant
+        references will resolve here once the lookup-by-name path is
+        wired (today the resolver returns _UNSET for any name, so
+        only literals work). Raises ``MacroError`` if the expression
         is not statically knowable.
         """
         return _eval_literal_or_final(expr, self._ctx, self._call_loc)
@@ -783,6 +786,8 @@ def _eval_literal_or_final(
                 loc=getattr(expr, "loc", None) or loc,
             )
         return -inner
+    if isinstance(expr, (TpyTupleLiteral, TpyArrayLiteral)):
+        return [_eval_literal_or_final(e, ctx, loc) for e in expr.elements]
     if isinstance(expr, TpyName):
         # Final[...] global with a literal initializer -- look it up.
         v = _resolve_final_literal(expr.name, ctx)

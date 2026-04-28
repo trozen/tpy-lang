@@ -565,6 +565,10 @@ def run_cpython(src_file: Path) -> str:
     # its own stdlib, and tpy types come from the cpy stubs.
     src_dir = src_file.parent
     env["PYTHONPATH"] = f"{CPY_LIB_DIR}{os.pathsep}{src_dir}"
+    # Pin terminal width so CPython argparse (and any other terminal-aware
+    # stdlib code) wraps at the same column we pre-render against. Without
+    # this, the cpy phase is non-deterministic across developer terminals.
+    env["COLUMNS"] = "80"
 
     result = subprocess.run(
         [sys.executable, str(src_file)],

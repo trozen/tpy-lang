@@ -4725,7 +4725,7 @@ Currently working with a stable surface:
 | `struct` | Partial (`unpack`, `unpack_from`, `calcsize`) via compile-time macros |
 | `enum` | Partial (`Enum`, `IntEnum`, `auto()`) via class macro |
 | `dataclasses` | Partial (~75%; `@dataclass(frozen, order)`, `field()`, `asdict()`, `astuple()`) via class macro |
-| `argparse` | Partial (~80%; `ArgumentParser`, all 7 actions, all 4 nargs forms, `type=int\|float\|str` + fixed-width ints, `choices`/`required`/`dest`/`help`, `Optional[T]` / `Optional[list[T]]` for absent flags, bare `parse_args()` reads `sys.argv[1:]`, `--help`/`-h` auto-generation, parse errors via stderr + `sys.exit(2)`) via builder-trace macro |
+| `argparse` | Partial (~85%; `ArgumentParser` with `prog=`/`usage=`/`epilog=`/`add_help=`, all 7 actions, all 4 nargs forms, `type=int\|float\|str` + fixed-width ints, `choices`/`required`/`dest`/`help`/`metavar`, scalar + list-literal defaults, `Optional[T]` / `Optional[list[T]]` for absent flags, bare `parse_args()` reads `sys.argv[1:]`, `--help`/`-h` auto-generation with CPython-style 80-col usage wrap, parse errors via stderr + `sys.exit(2)`) via builder-trace macro. Open: `Float32` type, subparsers, mutually-exclusive groups, `ArgType[T]`, runtime-derived `prog` default |
 | `typing` | Partial (`Protocol`, `Self`, `Sized`, `Iterator`, `Iterable`, `TypedDict`, `Unpack`, etc.) |
 
 Everything else in CPython's stdlib is missing or blocked -- consult

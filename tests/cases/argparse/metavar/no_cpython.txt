@@ -1,0 +1,2 @@
+Help text formatting differs from CPython argparse on details
+(spacing, exact column widths).

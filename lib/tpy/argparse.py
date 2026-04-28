@@ -24,6 +24,15 @@ from tpyc.macro_api import (
 macro_deps("tpy", "sys")
 
 
+# Default ``prog`` used in synthesized usage / help / error text when
+# the user doesn't pass ``prog=`` to ``ArgumentParser``. Hardcoded for
+# v1; CPython uses ``os.path.basename(sys.argv[0])`` -- runtime-derived
+# prog is Tier 2 follow-up. Defined up here (before any helper that
+# uses it as a default-arg) so module load order is well-defined.
+_DEFAULT_PROG = "prog"
+_DEFAULT_ERROR_PREFIX = f"{_DEFAULT_PROG}: error: "
+
+
 # ---------------------------------------------------------------------------
 # Internal: ArgSpec -- one registered argument
 # ---------------------------------------------------------------------------
@@ -35,25 +44,27 @@ class _ArgSpec:
     """
     __slots__ = (
         "is_flag", "flag_names", "name", "dest",
-        "arg_type", "action", "default", "has_default",
+        "type_info", "action", "default", "has_default",
         "const", "has_const",
         "choices", "required",
         "nargs",
         "help_text",
+        "metavar",
     )
 
     def __init__(
         self, *, is_flag: bool, flag_names: list[str], name: str,
-        dest: str, arg_type: str, action: str, default, has_default: bool,
+        dest: str, type_info: TypeInfo, action: str, default, has_default: bool,
         const=None, has_const: bool = False,
         choices: list | None = None, required: bool = False,
         nargs=None, help_text: str | None = None,
+        metavar: str | None = None,
     ) -> None:
         self.is_flag = is_flag
         self.flag_names = flag_names
         self.name = name
         self.dest = dest
-        self.arg_type = arg_type   # "str" | "int" | "float" (only for value-taking actions)
+        self.type_info = type_info  # resolved ``type=`` (defaults to str)
         self.action = action
         self.default = default
         self.has_default = has_default
@@ -63,6 +74,7 @@ class _ArgSpec:
         self.required = required   # always True for positionals; user-controllable for flags
         self.nargs = nargs         # None | "?" | "*" | "+" | int
         self.help_text = help_text  # source text for the `--help` printer
+        self.metavar = metavar     # display name override for usage / help
 
     @property
     def is_list_field(self) -> bool:
@@ -125,8 +137,10 @@ class _ArgSpec:
             return types.bool
         if self.action == "count":
             return types.bigint
-        scalar = _scalar_type(self.arg_type) if self.action != "store_const" \
-            else _python_value_type(self.const)
+        if self.action == "store_const":
+            scalar = _python_value_type_info(self.const).raw_type
+        else:
+            scalar = self.type_info.raw_type
         if self.is_optional_list_field:
             return types.optional(types.list(scalar))
         if self.is_list_field:
@@ -139,27 +153,6 @@ class _ArgSpec:
 # ---------------------------------------------------------------------------
 # Internal: resolution helpers
 # ---------------------------------------------------------------------------
-
-# Limited set of types accepted by ``type=`` in this slice. v2 will
-# add user-pluggable types via an ArgType[T] protocol. ``_FIXED_INT_TPY_TYPES``
-# is the source of truth -- ``_FIXED_INT_TYPES`` and ``_ALLOWED_TYPES``
-# derive from it.
-#
-# Float32 isn't included yet -- ``Float32(runtime_str)`` doesn't lower
-# to ``float32_from_str`` the way ``Int32(runtime_str)`` lowers to
-# ``from_str_check<int32_t>``, so the synthesized parse function would
-# emit a plain C-style ``float(string)`` cast that fails at C++
-# compile time. Add Float32 once the codegen gap closes.
-_FIXED_INT_TPY_TYPES = {
-    "Int8": types.int8, "Int16": types.int16,
-    "Int32": types.int32, "Int64": types.int64,
-    "UInt8": types.uint8, "UInt16": types.uint16,
-    "UInt32": types.uint32, "UInt64": types.uint64,
-}
-_FIXED_INT_TYPES: frozenset[str] = frozenset(_FIXED_INT_TPY_TYPES.keys())
-_ALLOWED_TYPES: frozenset[str] = frozenset(
-    {"str", "int", "float"} | _FIXED_INT_TYPES
-)
 
 # Actions that consume value(s) from argv and apply ``type=`` to them.
 _VALUE_TAKING_ACTIONS: frozenset[str] = frozenset({"store", "append", "extend"})
@@ -175,65 +168,80 @@ _LIST_ACTIONS: frozenset[str] = frozenset({"append", "extend"})
 _ALLOWED_ACTIONS: frozenset[str] = _VALUE_TAKING_ACTIONS | _VALUE_FREE_ACTIONS
 
 
-def _scalar_type(arg_type: str):
-    """Map a Python type-name string to the TPy type for the record field.
+# Default ``type=`` is ``str`` (CPython parity). Cached as a TypeInfo
+# so callers don't have to special-case the absent-kwarg path.
+_STR_TYPE_INFO: TypeInfo = TypeInfo.from_tpy_type(types.str)
 
-    ``type=int`` maps to BigInt (Python's arbitrary-precision int) and
-    ``type=str`` maps to ``String`` (owned), both matching CPython
-    argparse's behavior under the cpy phase. ``String`` over ``StrView``
-    in particular keeps the synthesized record self-contained -- the
-    field's lifetime is independent of whatever backed argv. A future
-    macro extension can opt into ``StrView`` fields for zero-alloc
-    parsing once a use case justifies it.
 
-    Fixed-width int (Int8..Int64, UInt8..UInt64) and Float32 map to
-    the corresponding TPy primitive, so ``type=Int32`` produces an
-    Int32 field rather than a BigInt one. CPython's argparse can run
-    the same source via ``lib/cpy/`` shims (the user's ``Int32`` etc.
-    are plain ``int`` callables there).
+def _is_allowed_arg_type(ti: TypeInfo) -> bool:
+    """Whether ``type=<ti>`` is supported as a value-taking arg type.
+
+    Keyed on TypeInfo's category helpers rather than name lookup so
+    new acceptable types (e.g. ``Float32`` once its codegen lowering
+    exists) get picked up via the type system, not a string table.
+    Float32 is excluded for now -- ``Float32(runtime_str)`` doesn't
+    lower to ``float32_from_str`` the way ``Int32(runtime_str)`` lowers
+    to ``from_str_check<int32_t>``, so the synthesized parse fn would
+    emit an invalid C++ cast.
     """
-    if arg_type in _FIXED_INT_TPY_TYPES:
-        return _FIXED_INT_TPY_TYPES[arg_type]
-    if arg_type == "int":
-        return types.bigint
-    if arg_type == "float":
-        return types.float64
-    return types.str  # default & "str"
+    return ti.is_str or ti.is_bigint or ti.is_int or ti.is_float
 
 
-def _python_value_type(value):
-    """TPy type for a Python value extracted via eval_literal_or_final.
+def _arg_type_name(ti: TypeInfo) -> str:
+    """User-facing / source-text name for an arg type.
 
-    Used to derive a record field type from a const= literal. Mirrors
-    _scalar_type's choice of BigInt for ints so const= and type= give
-    the same field type for the same conceptual value.
+    Doubles as the constructor expression for value coercion: ``int(s)``
+    for BigInt, ``Int32(s)`` for fixed-width, ``float(s)`` for Float64.
+    The ``str`` case is handled by callers that skip wrapping (no
+    constructor needed when the field stays a plain string).
+    """
+    if ti.is_str:
+        return "str"
+    if ti.is_bigint:
+        return "int"
+    if ti.is_int:
+        return ti.int_type_name
+    if ti.is_float:
+        return "float"
+    if ti.is_float32:
+        return "Float32"
+    # Should not occur once _is_allowed_arg_type gates entries; the
+    # raw_type's own repr is the safest fallback for diagnostics.
+    return str(ti.raw_type)
+
+
+def _python_value_type_info(value) -> TypeInfo:
+    """TypeInfo for a Python literal value extracted via
+    eval_literal_or_final. Used to derive a record field type from a
+    ``const=`` literal so ``store_const`` and ``store + type=`` agree
+    on the field type for the same conceptual value.
     """
     if isinstance(value, bool):
-        return types.bool
+        return TypeInfo.from_tpy_type(types.bool)
     if isinstance(value, int):
-        return types.bigint
+        return TypeInfo.from_tpy_type(types.bigint)
     if isinstance(value, float):
-        return types.float64
+        return TypeInfo.from_tpy_type(types.float64)
     if isinstance(value, str):
-        return types.str
+        return TypeInfo.from_tpy_type(types.str)
     raise MacroError(
         f"argparse: const= must be a bool/int/float/str literal, "
         f"got {type(value).__name__}"
     )
 
 
-def _resolve_type_kwarg(ctx: BuilderContext, args: MacroArgs) -> str:
-    """Read ``type=`` and return its name as a string. Defaults to "str"."""
+def _resolve_type_info(ctx: BuilderContext, args: MacroArgs) -> TypeInfo:
+    """Read ``type=`` and return its TypeInfo. Defaults to ``str``."""
     ti = ctx.kwarg_type(args, "type")
     if ti is None:
-        return "str"
-    if ti.name in _ALLOWED_TYPES:
-        return ti.name
-    ctx.error(
-        f"argparse: unsupported type={ti.name!r}; "
-        f"supported: int, float, str, "
-        f"Int8/16/32/64, UInt8/16/32/64"
-    )
+        return _STR_TYPE_INFO
+    if not _is_allowed_arg_type(ti):
+        ctx.error(
+            f"argparse: unsupported type={ti.name!r}; "
+            f"supported: int, float, str, "
+            f"Int8/16/32/64, UInt8/16/32/64"
+        )
+    return ti
 
 
 def _dest_for_flags(flag_names: list[str], explicit_dest: str | None) -> str:
@@ -277,6 +285,30 @@ def _resolve_nargs_kwarg(ctx: BuilderContext, args: MacroArgs):
     return v
 
 
+def _check_default_elem(ctx: BuilderContext, value, ti: TypeInfo) -> None:
+    """Validate a single element of a list-typed ``default=`` against
+    the spec's resolved ``type=``. Bool literals are rejected upfront
+    even for int / float types, since Python's ``isinstance(True, int)``
+    quirk would otherwise let ``default=[True]`` slip through.
+    """
+    name = _arg_type_name(ti)
+    if isinstance(value, bool):
+        ctx.error(f"argparse: list default element must be {name}, got bool")
+    if ti.is_str:
+        ok = isinstance(value, str)
+    elif ti.is_bigint or ti.is_int:
+        ok = isinstance(value, int)
+    elif ti.is_float or ti.is_float32:
+        ok = isinstance(value, (int, float))
+    else:
+        ok = True  # _is_allowed_arg_type already gated unsupported types
+    if not ok:
+        ctx.error(
+            f"argparse: list default element must be {name}, "
+            f"got {type(value).__name__}"
+        )
+
+
 def _action_implicit_default(action: str):
     """Default value applied when the user omits default= for a value-
     free action. Mirrors CPython argparse where it can: store_true
@@ -301,6 +333,17 @@ def _action_implicit_default(action: str):
 class ArgumentParser:
     def __init__(self, ctx: BuilderContext, args: MacroArgs) -> None:
         self.description: str | None = ctx.kwarg_str(args, "description")
+        # Help-text customization. ``prog`` substitutes for the
+        # default ``"prog"`` placeholder in the usage line and
+        # parse-error prefix; ``usage`` overrides the auto-generated
+        # usage line entirely (CPython prefixes it with ``"usage: "``);
+        # ``epilog`` is appended after the options block in --help.
+        # ``add_help`` controls whether the ``-h`` / ``--help`` printer
+        # is auto-emitted and the flag names reserved.
+        self.prog: str | None = ctx.kwarg_str(args, "prog")
+        self.usage: str | None = ctx.kwarg_str(args, "usage")
+        self.epilog: str | None = ctx.kwarg_str(args, "epilog")
+        self.add_help: bool = ctx.kwarg_bool(args, "add_help", True)
         self.specs: list[_ArgSpec] = []
         self._dest_seen: set[str] = set()
 
@@ -311,6 +354,7 @@ class ArgumentParser:
             ctx.error("argparse: add_argument() requires at least one name")
 
         help_text = ctx.kwarg_str(args, "help")
+        metavar = ctx.kwarg_str(args, "metavar")
         explicit_dest = ctx.kwarg_str(args, "dest")
         required_kw = ctx.kwarg_bool(args, "required", False)
         choices_arg = ctx.kwarg_macroarg(args, "choices")
@@ -342,7 +386,7 @@ class ArgumentParser:
             ctx.error(
                 f"argparse: type= cannot be combined with action={action!r}"
             )
-        arg_type = _resolve_type_kwarg(ctx, args)
+        type_info = _resolve_type_info(ctx, args)
 
         nargs = _resolve_nargs_kwarg(ctx, args)
         if nargs is not None and action in _VALUE_FREE_ACTIONS and action != "store_const":
@@ -388,11 +432,27 @@ class ArgumentParser:
 
         # Default handling. ``default=`` is a literal at macro time;
         # absent for required positionals, None-typed for absent flags
-        # without explicit default.
+        # without explicit default. List literals are accepted only
+        # for list-typed actions (append / extend / store + nargs=*/+/N).
         default_arg = ctx.kwarg_macroarg(args, "default")
         if default_arg is not None:
             default = ctx.eval_literal_or_final(default_arg.expr)
             has_default = True
+            if isinstance(default, list):
+                list_action_ok = (
+                    action in _LIST_ACTIONS
+                    or (action == "store"
+                        and (isinstance(nargs, int) or nargs in ("*", "+")))
+                )
+                if not list_action_ok:
+                    ctx.error(
+                        f"argparse: list default is only valid for "
+                        f"list-typed actions (append/extend or store + "
+                        f"nargs=*/+/<int>); got action={action!r}, "
+                        f"nargs={nargs!r}"
+                    )
+                for v in default:
+                    _check_default_elem(ctx, v, type_info)
         else:
             default = _action_implicit_default(action)
             has_default = default is not None
@@ -420,10 +480,11 @@ class ArgumentParser:
             dest = explicit_dest if explicit_dest is not None else name
             spec = _ArgSpec(
                 is_flag=False, flag_names=[], name=name, dest=dest,
-                arg_type=arg_type, action=action,
+                type_info=type_info, action=action,
                 default=default, has_default=has_default,
                 choices=choices, required=True,
                 nargs=nargs, help_text=help_text,
+                metavar=metavar,
             )
         else:
             # Optional flag(s). Absent flags fall back to their default
@@ -433,21 +494,23 @@ class ArgumentParser:
             # value when the flag carries one.
             name = flags[0]
             dest = _dest_for_flags(flags, explicit_dest)
-            for f in flags:
-                if f in ("-h", "--help"):
-                    ctx.error(
-                        "argparse: -h / --help is reserved by the auto-"
-                        "generated help printer; remove it from your "
-                        "add_argument() call (custom add_help=False is "
-                        "not supported yet)"
-                    )
+            if self.add_help:
+                for f in flags:
+                    if f in ("-h", "--help"):
+                        ctx.error(
+                            "argparse: -h / --help is reserved by the "
+                            "auto-generated help printer; pass "
+                            "add_help=False to ArgumentParser() to "
+                            "register your own"
+                        )
             spec = _ArgSpec(
                 is_flag=True, flag_names=list(flags), name=name, dest=dest,
-                arg_type=arg_type, action=action,
+                type_info=type_info, action=action,
                 default=default, has_default=has_default,
                 const=const, has_const=has_const,
                 choices=choices, required=required_kw,
                 nargs=nargs, help_text=help_text,
+                metavar=metavar,
             )
 
         if spec.dest in self._dest_seen:
@@ -487,20 +550,33 @@ class ArgumentParser:
         record_fields = [(s.dest, s.field_type) for s in self.specs]
         record_type = ctx.emit_record(record_name, record_fields)
 
-        # Synthesize the help-printer first so the parse fn's
-        # `-h` / `--help` detection prelude can reference its name.
-        # Pre-render the entire help text at macro time -- the printer
-        # body is just `print(<literal>); sys.exit(0)`.
-        help_fn_name = ctx.fresh_module_name("argparse_help")
-        help_text = _format_help_text(self.specs, self.description)
-        ctx.emit_function(
-            help_fn_name, [], types.void,
-            ast.quote(f"print({help_text!r})\nsys.exit(Int32(0))"),
+        prog = self.prog if self.prog is not None else _DEFAULT_PROG
+
+        # Render usage once and reuse it for both the parse-error path
+        # and the help-printer body so we don't walk specs twice.
+        usage_text = _format_usage(
+            self.specs, prog=prog, usage=self.usage,
+            include_help_opt=self.add_help,
         )
 
-        usage_text = _format_usage(self.specs)
+        # Synthesize the help-printer (when add_help=True) so the parse
+        # fn's `-h` / `--help` detection prelude can reference its name.
+        # Pre-render the entire help text at macro time -- the printer
+        # body is just `print(<literal>); sys.exit(0)`.
+        help_fn_name: str | None = None
+        if self.add_help:
+            help_fn_name = ctx.fresh_module_name("argparse_help")
+            help_text = _format_help_text(
+                self.specs, self.description,
+                usage_text=usage_text, epilog=self.epilog,
+            )
+            ctx.emit_function(
+                help_fn_name, [], types.void,
+                ast.quote(f"print({help_text!r})\nsys.exit(Int32(0))"),
+            )
         body = _build_parse_body(
             self.specs, record_name, help_fn_name, usage_text,
+            prog=prog, add_help=self.add_help,
         )
 
         # ``argv`` is ``list[str]`` rather than ``Span[str]`` so an
@@ -523,8 +599,8 @@ class ArgumentParser:
 # ---------------------------------------------------------------------------
 
 def _build_parse_body(
-    specs: list[_ArgSpec], record_name: str, help_fn_name: str,
-    usage_text: str,
+    specs: list[_ArgSpec], record_name: str, help_fn_name: str | None,
+    usage_text: str, *, prog: str, add_help: bool,
 ) -> list:
     """Generate the full body of the synthesized parse function.
 
@@ -544,24 +620,30 @@ def _build_parse_body(
     """
     init_stmts: list = []
     src_lines: list[str] = []
+    error_prefix = f"{prog}: error: "
 
     # Usage line bound as a local so each parse-error site can write
-    # `usage + "\\nprog: error: <msg>"` to stderr without re-rendering.
+    # `usage + "\\n<prog>: error: <msg>"` to stderr without re-rendering.
+    # The prefix itself is inlined as a literal at each emit site
+    # (threaded as a Python string through the helpers) so the
+    # generated code stays compact when prog is at its default.
     src_lines.append(f"__tpy_argparse_usage = {usage_text!r}")
 
-    # Help-detection prelude: scan argv for ``-h`` / ``--help`` BEFORE
-    # any other dispatch. The synthesized help fn prints help and
-    # calls sys.exit(0), so the loop never returns from the call --
-    # but its return type is ``None``, so sema sees normal flow and
-    # the post-call increment compiles fine.
-    src_lines.append("__tpy_argparse_h = 0")
-    src_lines.append("while __tpy_argparse_h < len(argv):")
-    src_lines.append(
-        '    if argv[__tpy_argparse_h] == "-h" '
-        'or argv[__tpy_argparse_h] == "--help":'
-    )
-    src_lines.append(f"        {help_fn_name}()")
-    src_lines.append("    __tpy_argparse_h = __tpy_argparse_h + 1")
+    # Help-detection prelude (only when add_help=True): scan argv for
+    # ``-h`` / ``--help`` BEFORE any other dispatch. The synthesized
+    # help fn prints help and calls sys.exit(0), so the loop never
+    # returns from the call -- but its return type is ``None``, so
+    # sema sees normal flow and the post-call increment compiles fine.
+    if add_help:
+        assert help_fn_name is not None
+        src_lines.append("__tpy_argparse_h = 0")
+        src_lines.append("while __tpy_argparse_h < len(argv):")
+        src_lines.append(
+            '    if argv[__tpy_argparse_h] == "-h" '
+            'or argv[__tpy_argparse_h] == "--help":'
+        )
+        src_lines.append(f"        {help_fn_name}()")
+        src_lines.append("    __tpy_argparse_h = __tpy_argparse_h + 1")
 
     # Empty parser: no add_argument() was called. Reject any argv
     # tokens (matching CPython argparse) and return an empty record
@@ -571,6 +653,7 @@ def _build_parse_body(
         src_lines.append("if len(argv) != 0:")
         src_lines.extend(_error_emit_lines(
             "    ", '"unrecognized arguments: " + argv[0]',
+            error_prefix=error_prefix,
         ))
         src_lines.append(f"return {record_name}()")
         return ast.quote("\n".join(src_lines))
@@ -602,7 +685,8 @@ def _build_parse_body(
         kw = "if" if first else "elif"
         first = False
         src_lines.append(f"    {kw} {match_expr}:")
-        for line in _flag_handler_lines(s, indent="        "):
+        for line in _flag_handler_lines(s, indent="        ",
+                                         error_prefix=error_prefix):
             src_lines.append(line)
         if s.required:
             src_lines.append(f"        __tpy_argparse_seen_{s.dest} = True")
@@ -616,18 +700,22 @@ def _build_parse_body(
             inner_kw = "if" if inner_first else "elif"
             inner_first = False
             src_lines.append(f"        {inner_kw} __tpy_argparse_pi == {pi}:")
-            for line in _positional_handler_lines(s, indent="            "):
+            for line in _positional_handler_lines(
+                s, indent="            ", error_prefix=error_prefix,
+            ):
                 src_lines.append(line)
         src_lines.append("        else:")
         src_lines.extend(_error_emit_lines(
             "            ",
             '"unexpected positional argument: " + __tpy_argparse_tok',
+            error_prefix=error_prefix,
         ))
     elif not first:
         src_lines.append("    else:")
         src_lines.extend(_error_emit_lines(
             "        ",
             '"unknown argument: " + __tpy_argparse_tok',
+            error_prefix=error_prefix,
         ))
 
     # --- 4. Post-loop validation ---
@@ -642,6 +730,7 @@ def _build_parse_body(
         src_lines.append(f"if __tpy_argparse_pi < {required_positional_count}:")
         src_lines.extend(_error_emit_lines(
             "    ", '"missing required positional argument(s)"',
+            error_prefix=error_prefix,
         ))
     # nargs='+' on the trailing positional must have got at least
     # one value; the dispatch sets pi only when consumed, so the
@@ -650,6 +739,7 @@ def _build_parse_body(
         src_lines.append(f"if not __tpy_argparse_seen_{s.dest}:")
         src_lines.extend(_error_emit_lines(
             "    ", repr(f"missing required argument: {s.flag_names[0]}"),
+            error_prefix=error_prefix,
         ))
 
     # --- 4b. Optional[list[T]] reconciliation ---
@@ -686,7 +776,7 @@ def _spec_init_stmts(spec: _ArgSpec) -> list:
         # accumulator the flag handler writes into, and a seen flag
         # so the post-loop reconciliation can distinguish "absent"
         # from "present with zero values".
-        elem = _scalar_type(spec.arg_type)
+        elem = spec.type_info.raw_type
         return [
             ast.var_decl(
                 spec.dest, types.optional(types.list(elem)), ast.none_lit()
@@ -697,15 +787,45 @@ def _spec_init_stmts(spec: _ArgSpec) -> list:
             *ast.quote(f"{_seen_local(spec)} = False"),
         ]
     if spec.is_list_field:
-        elem = _scalar_type(spec.arg_type)
+        elem = spec.type_info.raw_type
+        if spec.has_default:
+            # Non-empty list literal default. Element-typed list
+            # initializer with each element wrapped through the
+            # spec's value-conversion (handles fixed-width int
+            # constructor wrapping the same way scalar defaults do).
+            elements = [_render_default_elem(v, spec.type_info)
+                        for v in spec.default]
+            return [ast.var_decl(
+                spec.dest, types.list(elem), ast.list_lit(elements),
+            )]
         return [ast.var_decl(spec.dest, types.list(elem), ast.list_lit())]
     if spec.is_optional_field:
-        scalar = _scalar_type(spec.arg_type) if spec.action != "store_const" \
-            else _python_value_type(spec.const)
+        if spec.action == "store_const":
+            scalar = _python_value_type_info(spec.const).raw_type
+        else:
+            scalar = spec.type_info.raw_type
         return [ast.var_decl(
             spec.dest, types.optional(scalar), ast.none_lit()
         )]
     return ast.quote(f"{spec.dest} = {_default_expr_src(spec)}")
+
+
+def _render_default_elem(value, ti: TypeInfo):
+    """AST expression for one element of a list-typed default.
+
+    Mirrors ``_default_expr_src``'s fixed-width-int wrapping at the
+    AST level: ``Int32(1)`` rather than a bare ``1`` so the typed list
+    annotation stays consistent regardless of options.json defaults.
+    """
+    if ti.is_str:
+        return ast.str_lit(str(value))
+    if ti.is_bigint:
+        return ast.int_lit(int(value))
+    if ti.is_float or ti.is_float32:
+        return ast.float_lit(float(value))
+    # Fixed-width int: wrap with the constructor so the literal type
+    # matches the field type regardless of options.json's default_int.
+    return ast.call(_arg_type_name(ti), [ast.int_lit(int(value))])
 
 
 def _acc_local(spec: _ArgSpec) -> str:
@@ -724,7 +844,10 @@ def _list_target(spec: _ArgSpec) -> str:
     return _acc_local(spec) if spec.is_optional_list_field else spec.dest
 
 
-def _flag_handler_lines(spec: _ArgSpec, *, indent: str) -> list[str]:
+def _flag_handler_lines(
+    spec: _ArgSpec, *, indent: str,
+    error_prefix: str = _DEFAULT_ERROR_PREFIX,
+) -> list[str]:
     """Source lines that consume the matched flag plus its values
     (per nargs/action) and advance __tpy_argparse_i.
     """
@@ -743,7 +866,7 @@ def _flag_handler_lines(spec: _ArgSpec, *, indent: str) -> list[str]:
         L.append(f"{indent}__tpy_argparse_i = __tpy_argparse_i + 1")
         return L
     if a == "store_const":
-        const_repr = _literal_repr(spec.const, _python_type_name(spec.const))
+        const_repr = _literal_repr(spec.const)
         L.append(f"{indent}{spec.dest} = {const_repr}")
         L.append(f"{indent}__tpy_argparse_i = __tpy_argparse_i + 1")
         return L
@@ -757,11 +880,14 @@ def _flag_handler_lines(spec: _ArgSpec, *, indent: str) -> list[str]:
         L.append(f"{indent}if __tpy_argparse_i + 1 >= len(argv):")
         L.extend(_error_emit_lines(
             f"{indent}    ", '"missing value for " + __tpy_argparse_tok',
+            error_prefix=error_prefix,
         ))
         if spec.choices:
             tmp = f"__tpy_argparse_v_{spec.dest}"
             L.append(f"{indent}{tmp} = {value_expr}")
-            for line in _choices_check_lines(spec, tmp, indent=indent):
+            for line in _choices_check_lines(
+                spec, tmp, indent=indent, error_prefix=error_prefix,
+            ):
                 L.append(line)
             if a == "store":
                 L.append(f"{indent}{spec.dest} = {tmp}")
@@ -788,7 +914,9 @@ def _flag_handler_lines(spec: _ArgSpec, *, indent: str) -> list[str]:
         if spec.choices:
             tmp = f"__tpy_argparse_v_{spec.dest}"
             L.append(f"{indent}    {tmp} = {value_expr}")
-            for line in _choices_check_lines(spec, tmp, indent=indent + "    "):
+            for line in _choices_check_lines(
+                spec, tmp, indent=indent + "    ", error_prefix=error_prefix,
+            ):
                 L.append(line)
             L.append(f"{indent}    {spec.dest} = {tmp}")
         else:
@@ -796,7 +924,7 @@ def _flag_handler_lines(spec: _ArgSpec, *, indent: str) -> list[str]:
         L.append(f"{indent}    __tpy_argparse_i = __tpy_argparse_i + 2")
         L.append(f"{indent}else:")
         if spec.has_const:
-            const_repr = _literal_repr(spec.const, _python_type_name(spec.const))
+            const_repr = _literal_repr(spec.const)
             L.append(f"{indent}    {spec.dest} = {const_repr}")
         # else: leave field at its initial default
         L.append(f"{indent}    __tpy_argparse_i = __tpy_argparse_i + 1")
@@ -819,7 +947,9 @@ def _flag_handler_lines(spec: _ArgSpec, *, indent: str) -> list[str]:
     if spec.choices:
         tmp = f"__tpy_argparse_v_{spec.dest}"
         L.append(f"{indent}    {tmp} = {inner_value}")
-        for line in _choices_check_lines(spec, tmp, indent=indent + "    "):
+        for line in _choices_check_lines(
+            spec, tmp, indent=indent + "    ", error_prefix=error_prefix,
+        ):
             L.append(line)
         L.append(f"{indent}    {target}.append({tmp})")
     else:
@@ -831,12 +961,14 @@ def _flag_handler_lines(spec: _ArgSpec, *, indent: str) -> list[str]:
         L.extend(_error_emit_lines(
             f"{indent}    ",
             f'__tpy_argparse_tok + " requires exactly {spec.nargs} value(s)"',
+            error_prefix=error_prefix,
         ))
     elif spec.nargs == "+":
         L.append(f"{indent}if {consumed} == 0:")
         L.extend(_error_emit_lines(
             f"{indent}    ",
             '__tpy_argparse_tok + " requires at least one value"',
+            error_prefix=error_prefix,
         ))
     L.append(f"{indent}__tpy_argparse_i = __tpy_argparse_j")
     if spec.is_optional_list_field:
@@ -844,7 +976,10 @@ def _flag_handler_lines(spec: _ArgSpec, *, indent: str) -> list[str]:
     return L
 
 
-def _positional_handler_lines(spec: _ArgSpec, *, indent: str) -> list[str]:
+def _positional_handler_lines(
+    spec: _ArgSpec, *, indent: str,
+    error_prefix: str = _DEFAULT_ERROR_PREFIX,
+) -> list[str]:
     """Source lines that handle one positional slot when the loop
     falls through to the else branch. Each branch advances both
     __tpy_argparse_i and __tpy_argparse_pi.
@@ -855,7 +990,9 @@ def _positional_handler_lines(spec: _ArgSpec, *, indent: str) -> list[str]:
         if spec.choices:
             tmp = f"__tpy_argparse_v_{spec.dest}"
             L.append(f"{indent}{tmp} = {value_expr}")
-            for line in _choices_check_lines(spec, tmp, indent=indent):
+            for line in _choices_check_lines(
+                spec, tmp, indent=indent, error_prefix=error_prefix,
+            ):
                 L.append(line)
             L.append(f"{indent}{spec.dest} = {tmp}")
         else:
@@ -869,6 +1006,7 @@ def _positional_handler_lines(spec: _ArgSpec, *, indent: str) -> list[str]:
         L.extend(_error_emit_lines(
             f"{indent}    ",
             repr(f"positional {spec.name!r} requires {N} value(s)"),
+            error_prefix=error_prefix,
         ))
         L.append(f"{indent}__tpy_argparse_k = 0")
         L.append(f"{indent}while __tpy_argparse_k < {N}:")
@@ -877,7 +1015,9 @@ def _positional_handler_lines(spec: _ArgSpec, *, indent: str) -> list[str]:
         if spec.choices:
             tmp = f"__tpy_argparse_v_{spec.dest}"
             L.append(f"{indent}    {tmp} = {inner_value}")
-            for line in _choices_check_lines(spec, tmp, indent=indent + "    "):
+            for line in _choices_check_lines(
+                spec, tmp, indent=indent + "    ", error_prefix=error_prefix,
+            ):
                 L.append(line)
             L.append(f"{indent}    {spec.dest}.append({tmp})")
         else:
@@ -900,7 +1040,9 @@ def _positional_handler_lines(spec: _ArgSpec, *, indent: str) -> list[str]:
     if spec.choices:
         tmp = f"__tpy_argparse_v_{spec.dest}"
         L.append(f"{indent}{tmp} = {value_expr}")
-        for line in _choices_check_lines(spec, tmp, indent=indent):
+        for line in _choices_check_lines(
+            spec, tmp, indent=indent, error_prefix=error_prefix,
+        ):
             L.append(line)
         L.append(f"{indent}{spec.dest}.append({tmp})")
     else:
@@ -914,7 +1056,9 @@ def _positional_handler_lines(spec: _ArgSpec, *, indent: str) -> list[str]:
     if spec.choices:
         tmp = f"__tpy_argparse_v_{spec.dest}"
         L.append(f"{indent}    {tmp} = {inner_value}")
-        for line in _choices_check_lines(spec, tmp, indent=indent + "    "):
+        for line in _choices_check_lines(
+            spec, tmp, indent=indent + "    ", error_prefix=error_prefix,
+        ):
             L.append(line)
         L.append(f"{indent}    {spec.dest}.append({tmp})")
     else:
@@ -935,67 +1079,59 @@ def _default_expr_src(spec: _ArgSpec) -> str:
     # For fixed-width primitives, wrap with the constructor so the
     # literal carries the field's type rather than the default int /
     # float literal type.
+    ti = spec.type_info
     if spec.has_default:
-        rendered = _literal_repr(spec.default, spec.arg_type)
-        if spec.arg_type in _FIXED_INT_TYPES:
-            return f"{spec.arg_type}({rendered})"
+        rendered = _literal_repr(spec.default)
+        if ti.is_int:
+            return f"{_arg_type_name(ti)}({rendered})"
         return rendered
     if spec.action in ("store_true", "store_false"):
         return "False" if spec.action == "store_true" else "True"
     if spec.action == "count":
         return "0"
-    if spec.arg_type == "int":
+    if ti.is_bigint:
         return "0"
-    if spec.arg_type == "float":
+    if ti.is_float or ti.is_float32:
         return "0.0"
-    if spec.arg_type in _FIXED_INT_TYPES:
+    if ti.is_int:
         # Use the constructor form so the literal type matches the
         # field type regardless of options.json's default_int.
-        return f"{spec.arg_type}(0)"
+        return f"{_arg_type_name(ti)}(0)"
     return '""'
 
 
-def _choices_check_lines(spec: _ArgSpec, value_var: str, *, indent: str) -> list[str]:
+def _choices_check_lines(
+    spec: _ArgSpec, value_var: str, *, indent: str,
+    error_prefix: str = _DEFAULT_ERROR_PREFIX,
+) -> list[str]:
     """Source-text lines that emit a parse error to stderr + exit(2)
     if value_var is not in the spec's choices=. Empty when no choices=.
     """
     if not spec.choices:
         return []
-    options = ", ".join(_literal_repr(c, _python_type_name(c)) for c in spec.choices)
+    options = ", ".join(_literal_repr(c) for c in spec.choices)
     out = [f"{indent}if {value_var} not in ({options},):"]
     out.extend(_error_emit_lines(
         f"{indent}    ",
         f'"invalid choice for {spec.name}: " + str({value_var})',
+        error_prefix=error_prefix,
     ))
     return out
 
 
-def _python_type_name(value) -> str:
-    """Map a Python value to its arg_type-style name. Used to render
-    a const literal with the right repr fall-back."""
-    if isinstance(value, bool):
-        return "bool"
-    if isinstance(value, int):
-        return "int"
-    if isinstance(value, float):
-        return "float"
-    return "str"
-
-
 def _value_expr_src(spec: _ArgSpec, source_expr: str) -> str:
-    """Wrap a source expression with the spec's type conversion."""
-    if spec.arg_type == "int":
-        return f"int({source_expr})"
-    if spec.arg_type == "float":
-        return f"float({source_expr})"
-    if spec.arg_type in _FIXED_INT_TYPES:
-        # Fixed-width int constructors accept a string at runtime and
-        # parse it (panicking on overflow / invalid).
-        return f"{spec.arg_type}({source_expr})"
-    return source_expr
+    """Wrap a source expression with the spec's type conversion.
+
+    Fixed-width int / BigInt / float constructors all accept a string
+    at runtime and parse it (panicking on overflow / invalid). The
+    ``str`` case skips wrapping since argv tokens are already strings.
+    """
+    if spec.type_info.is_str:
+        return source_expr
+    return f"{_arg_type_name(spec.type_info)}({source_expr})"
 
 
-def _literal_repr(value, arg_type: str) -> str:
+def _literal_repr(value) -> str:
     """Source-text rendering of a literal default. Macro-time literal
     values flow through eval_literal_or_final, so values are plain
     Python int / float / str / bool / None.
@@ -1009,19 +1145,23 @@ def _literal_repr(value, arg_type: str) -> str:
     return repr(value)
 
 
-def _error_emit_lines(indent: str, msg_expr: str) -> list[str]:
+def _error_emit_lines(
+    indent: str, msg_expr: str, *, error_prefix: str = _DEFAULT_ERROR_PREFIX,
+) -> list[str]:
     """Render the parse-error sequence at ``indent``.
 
-    Prints ``<usage>\\nprog: error: <msg>`` to stderr and calls
+    Prints ``<usage>\\n<prog>: error: <msg>`` to stderr and calls
     ``sys.exit(Int32(2))``. ``msg_expr`` is a TPy source expression
     for the error message (string-typed, may concat a runtime
-    token). The synthesized parse fn binds ``__tpy_argparse_usage``
-    near its top, so each error site reuses the formatted line
-    without re-rendering.
+    token). The ``error_prefix`` parameter is a Python string baked
+    in at macro time so the generated code keeps the prefix as a
+    plain string literal -- threading it through the helpers (rather
+    than via a runtime local) keeps generated output stable for
+    callers that don't pass ``prog=``.
     """
     return [
         f'{indent}print(__tpy_argparse_usage, '
-        f'"prog: error: " + {msg_expr}, sep="\\n", file=sys.stderr)',
+        f'{error_prefix!r} + {msg_expr}, sep="\\n", file=sys.stderr)',
         f"{indent}sys.exit(Int32(2))",
     ]
 
@@ -1030,9 +1170,6 @@ def _error_emit_lines(indent: str, msg_expr: str) -> list[str]:
 # Help-text formatting (also reused by parse-error path)
 # ---------------------------------------------------------------------------
 
-# Hardcoded for v1. CPython uses ``os.path.basename(sys.argv[0])`` --
-# adding ``prog=`` to ArgumentParser is Tier 2 future work.
-_DEFAULT_PROG = "prog"
 _HELP_OPT_FORM = "-h, --help"
 _HELP_OPT_DESC = "show this help message and exit"
 
@@ -1040,9 +1177,12 @@ _HELP_OPT_DESC = "show this help message and exit"
 def _metavar_for(spec: _ArgSpec) -> str:
     """Metavar shown in usage / help for a value-taking arg.
 
-    Flags use the dest in uppercase (matching CPython); positionals
-    use their literal name. ``metavar=`` override is Tier 2.
+    Honors an explicit ``metavar=`` override; otherwise flags use the
+    dest in uppercase (matching CPython) and positionals use their
+    literal name.
     """
+    if spec.metavar is not None:
+        return spec.metavar
     return spec.dest.upper() if spec.is_flag else spec.name
 
 
@@ -1079,7 +1219,7 @@ def _flag_usage_token(spec: _ArgSpec) -> str:
 
 
 def _positional_usage_token(spec: _ArgSpec) -> str:
-    return _nargs_pattern(spec.name, spec.nargs)
+    return _nargs_pattern(_metavar_for(spec), spec.nargs)
 
 
 def _flag_help_signature(spec: _ArgSpec) -> str:
@@ -1095,24 +1235,106 @@ def _flag_help_signature(spec: _ArgSpec) -> str:
     return ", ".join(f"{f} {pattern}" for f in spec.flag_names)
 
 
-def _format_usage(specs: list[_ArgSpec], prog: str = _DEFAULT_PROG) -> str:
-    """Render just the usage line. Reused by parse-error path."""
-    parts = ["usage:", prog, "[-h]"]
+_USAGE_TEXT_WIDTH = 80
+_USAGE_PREFIX = "usage: "
+
+
+def _format_usage(
+    specs: list[_ArgSpec], *,
+    prog: str = _DEFAULT_PROG,
+    usage: str | None = None,
+    include_help_opt: bool = True,
+) -> str:
+    """Render just the usage line. Reused by parse-error path.
+
+    When ``usage`` is provided, it overrides the auto-generated tail
+    after ``"usage: "`` (matching CPython's ``ArgumentParser(usage=)``
+    behavior). When ``include_help_opt`` is False, the ``[-h]`` token
+    is omitted from the auto-generated form.
+
+    Long usage lines wrap at ``_USAGE_TEXT_WIDTH`` (80) cols, matching
+    CPython argparse's behavior when stdout isn't a TTY. Continuation
+    lines are indented to align past the prog name (or past
+    ``"usage: "`` when prog is too long for that to fit).
+    """
+    if usage is not None:
+        return _USAGE_PREFIX + usage
+    opt_parts: list[str] = []
+    if include_help_opt:
+        opt_parts.append("[-h]")
     for s in specs:
         if s.is_flag:
-            parts.append(_flag_usage_token(s))
-    for s in specs:
-        if not s.is_flag:
-            parts.append(_positional_usage_token(s))
-    return " ".join(parts)
+            opt_parts.append(_flag_usage_token(s))
+    pos_parts = [_positional_usage_token(s) for s in specs if not s.is_flag]
+
+    # Try the single-line form first.
+    flat = " ".join([prog, *opt_parts, *pos_parts]).rstrip()
+    if len(_USAGE_PREFIX) + len(flat) <= _USAGE_TEXT_WIDTH:
+        return _USAGE_PREFIX + flat
+
+    # Wrap. Mirrors CPython argparse.HelpFormatter._format_usage:
+    # short prog stays on row 1 (continuation aligns past it); long
+    # prog gets its own row (continuation aligns past "usage: ").
+    if len(_USAGE_PREFIX) + len(prog) <= 0.75 * _USAGE_TEXT_WIDTH:
+        indent = " " * (len(_USAGE_PREFIX) + len(prog) + 1)
+        opt_lines = _wrap_usage_parts(
+            [prog, *opt_parts], indent, prefix=_USAGE_PREFIX,
+        )
+        pos_lines = _wrap_usage_parts(pos_parts, indent, prefix=None)
+        body = "\n".join(opt_lines + pos_lines)
+    else:
+        indent = " " * len(_USAGE_PREFIX)
+        wrapped = _wrap_usage_parts(
+            [*opt_parts, *pos_parts], indent, prefix=None,
+        )
+        body = "\n".join([prog, *wrapped])
+    return _USAGE_PREFIX + body
+
+
+def _wrap_usage_parts(
+    parts: list[str], indent: str, *, prefix: str | None,
+) -> list[str]:
+    """Greedy-wrap usage tokens to ``_USAGE_TEXT_WIDTH``.
+
+    First line uses ``prefix`` as starter (the caller prepends the
+    prefix; this function strips ``indent`` from the first line so
+    the prefix lines up); continuation lines are emitted with
+    ``indent`` already prepended. When ``prefix`` is None, every line
+    starts with ``indent`` (no special-cased first row). Empty
+    ``parts`` returns an empty list.
+    """
+    if not parts:
+        return []
+    lines: list[str] = []
+    line: list[str] = []
+    indent_length = len(indent)
+    line_len = (len(prefix) if prefix is not None else indent_length) - 1
+    for part in parts:
+        if line and line_len + 1 + len(part) > _USAGE_TEXT_WIDTH:
+            lines.append(indent + " ".join(line))
+            line = []
+            line_len = indent_length - 1
+        line.append(part)
+        line_len += len(part) + 1
+    if line:
+        lines.append(indent + " ".join(line))
+    if prefix is not None:
+        # First line carries the prefix instead of the indent; caller
+        # prepends prefix once at the very start of the usage block.
+        lines[0] = lines[0][indent_length:]
+    return lines
 
 
 def _format_help_text(
-    specs: list[_ArgSpec], description: str | None,
-    prog: str = _DEFAULT_PROG,
+    specs: list[_ArgSpec], description: str | None, *,
+    usage_text: str,
+    epilog: str | None = None,
 ) -> str:
     """Render the full --help output: usage line, description (if
-    any), per-section listings of positionals and options.
+    any), per-section listings of positionals and options, optional
+    epilog. Only emitted when ``add_help=True``, so the auto
+    ``-h, --help`` row is always present. The caller pre-renders
+    ``usage_text`` so it isn't walked twice.
     """
     flags = [s for s in specs if s.is_flag]
     positionals = [s for s in specs if not s.is_flag]
@@ -1120,14 +1342,14 @@ def _format_help_text(
     pos_rows = [(_positional_usage_token(s), s.help_text or "")
                 for s in positionals]
     flag_rows = [(_flag_help_signature(s), s.help_text or "") for s in flags]
-    # Match CPython's ``self._action_max_length + 2``: align all
-    # rows (including the auto ``-h, --help`` entry) to the longest
+    # Match CPython's ``self._action_max_length + 2``: align all rows
+    # (including the auto ``-h, --help`` entry) to the longest
     # signature plus two spaces of separation.
-    rows_with_help = [_HELP_OPT_FORM, *(sig for sig, _ in pos_rows),
-                      *(sig for sig, _ in flag_rows)]
-    pad = max(len(s) for s in rows_with_help) + 2
+    sigs = [_HELP_OPT_FORM, *(sig for sig, _ in pos_rows),
+            *(sig for sig, _ in flag_rows)]
+    pad = max(len(s) for s in sigs) + 2
 
-    lines = [_format_usage(specs, prog), ""]
+    lines = [usage_text, ""]
     if description:
         lines.append(description)
         lines.append("")
@@ -1142,4 +1364,9 @@ def _format_help_text(
     lines.append(f"  {_HELP_OPT_FORM.ljust(pad)}{_HELP_OPT_DESC}")
     for sig, text in flag_rows:
         lines.append(f"  {sig.ljust(pad)}{text}".rstrip())
+
+    if epilog:
+        if lines and lines[-1] != "":
+            lines.append("")
+        lines.append(epilog)
     return "\n".join(lines)

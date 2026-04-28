@@ -1,1 +1,1 @@
-main.py:10: error: argparse: -h / --help is reserved by the auto-generated help printer; remove it from your add_argument() call (custom add_help=False is not supported yet)
+main.py:10: error: argparse: -h / --help is reserved by the auto-generated help printer; pass add_help=False to ArgumentParser() to register your own

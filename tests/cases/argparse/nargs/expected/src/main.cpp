@@ -136,23 +136,21 @@ __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<s
             }
             __tpy_argparse_i = __tpy_argparse_j;
             __tpy_argparse_seen_coord = true;
-        } else {
-            if ((__tpy_argparse_tok == "--tag")) {
-                int32_t __tpy_argparse_j = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
-                while (((__tpy_argparse_j < ::tpy::__len__(argv)) && (!(::tpy::str_startswith(::tpy::__getitem__(argv, __tpy_argparse_j), "-"))))) {
-                    __tpy_argparse_acc_tag.push_back(::tpy::__getitem__(argv, __tpy_argparse_j));
-                    __tpy_argparse_j = (::tpy::add_check<int32_t>(__tpy_argparse_j, 1));
-                }
-                if (((::tpy::sub_check<int32_t>((::tpy::sub_check<int32_t>(__tpy_argparse_j, __tpy_argparse_i)), 1)) == 0)) {
-                    ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", __tpy_argparse_tok)), " requires at least one value")) << "\n";
-                    ::tpy::sys_exit(2);
-                }
-                __tpy_argparse_i = __tpy_argparse_j;
-                __tpy_argparse_seen_tag = true;
-            } else {
-                ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n";
+        } else if ((__tpy_argparse_tok == "--tag")) {
+            int32_t __tpy_argparse_j = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
+            while (((__tpy_argparse_j < ::tpy::__len__(argv)) && (!(::tpy::str_startswith(::tpy::__getitem__(argv, __tpy_argparse_j), "-"))))) {
+                __tpy_argparse_acc_tag.push_back(::tpy::__getitem__(argv, __tpy_argparse_j));
+                __tpy_argparse_j = (::tpy::add_check<int32_t>(__tpy_argparse_j, 1));
+            }
+            if (((::tpy::sub_check<int32_t>((::tpy::sub_check<int32_t>(__tpy_argparse_j, __tpy_argparse_i)), 1)) == 0)) {
+                ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", __tpy_argparse_tok)), " requires at least one value")) << "\n";
                 ::tpy::sys_exit(2);
             }
+            __tpy_argparse_i = __tpy_argparse_j;
+            __tpy_argparse_seen_tag = true;
+        } else {
+            ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n";
+            ::tpy::sys_exit(2);
         }
     }
     if (__tpy_argparse_seen_coord) {

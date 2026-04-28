@@ -1,0 +1,1 @@
+main.py:8: error: argparse: list default is only valid for list-typed actions (append/extend or store + nargs=*/+/<int>); got action='store', nargs=None

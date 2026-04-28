@@ -443,10 +443,15 @@ the fields; no runtime reflection.
 v1 surface (done): `add_argument` with `store` / `store_true` /
 `store_false` / `count` / `append` / `extend` / `store_const` actions;
 `nargs` in `?` / `*` / `+` / integer; `type=` from `int` / `float` /
-`str`; `default=` / `const=` / `choices=` / `required=` / `help=` /
-`dest=`. Optional scalar flags without `default=` produce `Optional[T]`
-fields. `help=` is accepted and stored at macro time but no `--help`
-printer is emitted yet.
+`str` plus all eight fixed-width ints (`Int8`..`Int64`,
+`UInt8`..`UInt64`); `default=` (scalar literals + list literals for
+list-typed actions) / `const=` / `choices=` / `required=` / `help=` /
+`dest=` / `metavar=`. Optional scalar flags without `default=` produce
+`Optional[T]` fields. ArgumentParser kwargs `description=` / `prog=` /
+`usage=` / `epilog=` / `add_help=` are honored; `--help` / `-h` are
+auto-emitted (with an `add_help=False` opt-out). The synthesized
+parse-error path prints `<usage>\n<prog>: error: <msg>` to stderr and
+exits with `sys.exit(2)`.
 
 #### argparse Future Work
 
@@ -458,12 +463,13 @@ status table for the `argparse` module.
 | 1 | ~~`--help` / `-h` auto-generation~~ | Done. The terminal handler synthesizes a help-printer fn (pre-rendered usage + sections, no macro state retained at runtime). The parse fn opens with a prelude that scans argv for ``-h`` / ``--help`` and calls the help fn (which prints + ``sys.exit(0)``). User add_argument calls that re-use ``-h`` / ``--help`` are rejected at macro time |
 | 1 | ~~`type=` for fixed-width ints~~ / `Float32` | Fixed-width ints (`Int8` / `Int16` / `Int32` / `Int64` / `UInt8` / `UInt16` / `UInt32` / `UInt64`) done. `Float32` blocked on a codegen gap: `Float32(runtime_str)` doesn't lower to `float32_from_str` the way `Int32(runtime_str)` lowers to `from_str_check<int32_t>`. Land that lowering, then add `"Float32"` to `_ALLOWED_TYPES` |
 | 1 | Subparsers | `add_subparsers()` + `add_parser(name)`. Tagged-union codegen: each sub-parser builds its own per-name record; the top-level result is `Union[NameA, NameB, ...]` discriminated by the chosen subcommand. Sema sees the union; `match`/`case` narrows |
-| 2 | `add_help=False` | Opt out of the auto-generated `-h` / `--help` printer. Today the names are reserved unconditionally; honoring `add_help=False` would let users register their own `--help` flag |
-| 2 | `metavar=` | Display name in the synthesized help text; pairs with `--help` |
-| 2 | `prog=` / `usage=` / `epilog=` | `ArgumentParser`-level help-string customization; reuses the help-printer infrastructure. `prog` currently hardcoded to `"prog"` -- CPython uses `os.path.basename(sys.argv[0])`, fix is to render the usage line at runtime with `sys.argv[0]` once we have a basename helper |
+| 2 | ~~`add_help=False`~~ | Done. Suppresses the auto help printer + prelude when False, and lifts the `-h` / `--help` reservation so users can register their own |
+| 2 | ~~`metavar=`~~ | Done. Per-arg display-name override; flows through `_metavar_for` into both usage and help-section rendering |
+| 2 | ~~`prog=` / `usage=` / `epilog=`~~ | Done for the explicit kwarg path. `prog=` substitutes through usage and the `<prog>: error:` parse-error prefix; `usage=` overrides the auto-generated tail (CPython prepends `"usage: "`); `epilog=` appended after the options block |
+| 2 | **TODO: runtime-derived `prog` default** | When `prog=` is omitted, CPython uses `os.path.basename(sys.argv[0])`; we hardcode the literal `"prog"`. Closing this needs (a) a `basename`-equivalent helper in the TPy stdlib (currently absent) and (b) a refactor of the help printer from a fully pre-rendered literal to a runtime template (`"usage: " + basename(sys.argv[0]) + " " + <rest>`). Test cases that depend on the help output currently carry `no_cpython.txt` to skip the cpy phase; once this lands, those can drop the file |
 | 2 | `add_mutually_exclusive_group()` | At-most-one constraint across a set of flags; fail at parse time if more than one is seen |
 | 2 | Custom `type=` via `ArgType[T]` | Protocol with `from_arg(s: str) -> T`. Lets users plug `Path`, `datetime`, custom records without macro changes |
-| 2 | List-literal defaults | `default=[1, 2, 3]` -- extend `eval_literal_or_final` to recurse into list / tuple literals at macro time |
+| 2 | ~~List-literal defaults~~ | Done. `default=[...]` accepted for list-typed actions (`append` / `extend` / `store + nargs=*/+/<int>`); `_eval_literal_or_final` recurses into tuple / list literals, and the synthesized list-typed init renders the literal with type-appropriate element constructors |
 | 3 | `parents=` | Compose parsers by replaying a base parser's registrations. Needs the **Builder state caching** macro-system feature |
 | 3 | `BooleanOptionalAction` | Python 3.9+: paired `--foo` / `--no-foo` from a single `add_argument`. Synthesis is straightforward; defer until users ask |
 | 3 | `add_argument_group()` | Help-formatting feature; hooks into the `--help` printer once it lands |

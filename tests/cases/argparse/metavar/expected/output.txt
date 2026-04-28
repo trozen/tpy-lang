@@ -1,0 +1,11 @@
+usage: prog [-h] [--count N] [--names NAME] PATH
+
+Test metavar override.
+
+positional arguments:
+  PATH          file path
+
+options:
+  -h, --help    show this help message and exit
+  --count N     count
+  --names NAME  names

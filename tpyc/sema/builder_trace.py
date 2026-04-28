@@ -25,7 +25,9 @@ from ..parse.nodes import (
 )
 from ..typesys import (
     FieldInfo, NominalType, OwnType, TpyType, VOID, STR, STRVIEW, BOOL, BIGINT,
-    FLOAT, INT32, make_list,
+    FLOAT, FLOAT32,
+    INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64,
+    make_list,
 )
 from ..diagnostics import SemanticError
 from ..macro_api import (
@@ -104,6 +106,20 @@ def _macro_arg_from_expr(expr: TpyExpr) -> MacroArg:
     return MacroArg(expr=expr, type=_typeinfo_from_literal(expr))
 
 
+# Bare-name builtins recognized as ``type=`` references in builder
+# macros. Mapping these to their real TpyType lets macros use
+# TypeInfo's category helpers (``is_int``, ``is_bigint``, ``is_float``,
+# ...) instead of name-string comparisons. User-defined types still
+# fall through to a placeholder until full type-name resolution lands
+# in builder-trace.
+_BUILTIN_TYPE_NAMES: dict[str, TpyType] = {
+    "str": STR, "int": BIGINT, "float": FLOAT, "bool": BOOL,
+    "Int8": INT8, "Int16": INT16, "Int32": INT32, "Int64": INT64,
+    "UInt8": UINT8, "UInt16": UINT16, "UInt32": UINT32, "UInt64": UINT64,
+    "Float32": FLOAT32,
+}
+
+
 def _typeinfo_from_literal(expr: TpyExpr) -> TypeInfo:
     if isinstance(expr, TpyBoolLiteral):
         return TypeInfo.from_tpy_type(BOOL)
@@ -116,8 +132,11 @@ def _typeinfo_from_literal(expr: TpyExpr) -> TypeInfo:
     if isinstance(expr, TpyNoneLiteral):
         return TypeInfo("None", _tpy_type=None)
     if isinstance(expr, TpyName):
-        # Bare name (e.g. type=int): leave as a placeholder TypeInfo.
-        # Phase D wires real type-name resolution.
+        builtin = _BUILTIN_TYPE_NAMES.get(expr.name)
+        if builtin is not None:
+            return TypeInfo.from_tpy_type(builtin)
+        # User-defined types stay as placeholders until full type-name
+        # resolution lands in builder-trace.
         return TypeInfo(expr.name, _tpy_type=None)
     return TypeInfo("?", _tpy_type=None)
 

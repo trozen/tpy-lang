@@ -1,0 +1,2 @@
+usage: myapp [--count N]
+myapp: error: unknown argument: --unknown

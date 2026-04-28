@@ -1,0 +1,10 @@
+usage: myapp [--count N] FILE
+
+Frobnicate widgets.
+
+positional arguments:
+  file           input file path
+
+options:
+  -h, --help     show this help message and exit
+  --count COUNT  repetition count
