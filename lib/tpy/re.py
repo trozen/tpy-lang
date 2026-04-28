@@ -60,12 +60,12 @@ from tpy import take_ptr
 # -- `Int32 -> UInt64` is deliberately not automatic because negative
 # signed values don't round-trip through unsigned. This file surfaces the
 # friction heavily because PCRE2's C API uses `size_t` / `uint32_t`
-# throughout. See TODO.md entry on treating integer literals as untyped
+# throughout. See BUGS.md entry on treating integer literals as untyped
 # at call sites (Rust-style). When that lands, these constructors can
 # collapse to bare `0`/`1`/`256` (the values are compile-time-known to
 # fit the unsigned target).
 # TODO(compiler): aliased import block here is a workaround for two related
-# gaps in TODO.md "Bugs":
+# entries in BUGS.md:
 #   * `from _bindings import pcre2` doesn't bind the submodule -- forces
 #     `from _bindings.pcre2 import X` for every used symbol;
 #   * `pcre2.MatchData` qualified type names rejected in annotations --
@@ -126,7 +126,7 @@ class _OwnedMatchData:
 # emitted inline in the generated header and throws `error`, which
 # requires a complete type at the throw site (not just a forward decl).
 # See "User Exception subclass doesn't auto-inherit native __init__" in
-# TODO.md for why `__init__` is declared explicitly, and the
+# BUGS.md for why `__init__` is declared explicitly, and the
 # `tpy::Exception(std::string)`-only-overload entry for the `String`
 # parameter type instead of `str`.
 class error(Exception):
@@ -134,7 +134,7 @@ class error(Exception):
     match-time error (rare). Catchable as a normal exception.
 
     Caller-side gap that still bites: `except re.error:` is blocked by
-    the qualified-except-clause limitation (TODO.md Bugs). Users today
+    the qualified-except-clause limitation (BUGS.md). Users today
     must `from re import error` (no alias) then `except error:`.
     """
     def __init__(self, message: String = "") -> None:
@@ -304,7 +304,7 @@ class Pattern:
     # TODO(compiler): `flags: Int32 = 0` should read `= NOFLAG`
     # but Final-named-constant-as-default-arg-value is rejected by sema --
     # see "Final[X] = SOME_NAMED_CONST rejected as default-parameter value"
-    # in TODO.md Bugs. Same for every other signature in this file.
+    # in BUGS.md. Same for every other signature in this file.
     def __init__(self, pattern: str, flags: Int32 = 0) -> None:
         # Both field initializers reference only ctor params / module-level
         # names -- no body-locals -- so they MIL-hoist into move-construction
@@ -387,7 +387,7 @@ class Pattern:
         # TODO(compiler): the natural form `for m in self.finditer(subject):`
         # fails C++ compilation -- "cannot bind non-const lvalue reference
         # to rvalue" -- because finditer returns `Own[list[Match]]`. See
-        # TODO.md Bugs entry "Iterating directly over a call that returns
+        # BUGS.md entry "Iterating directly over a call that returns
         # Own[list[T]]". When the codegen fix lands (use `auto&&` for the
         # iteration temp on rvalue iterables), drop the `matches` local.
         matches = self.finditer(subject)
@@ -415,7 +415,7 @@ class Pattern:
         # scope exit, including the raise path and on retry-reassignment.
         # `cap` stays as an explicit UInt64(...) cast because len() returns
         # Int32; the signed->unsigned conversion isn't automatic in TPy
-        # (cross-sign widening is unsigned->signed-only). See TODO.md.
+        # (cross-sign widening is unsigned->signed-only). See BUGS.md.
         cap = UInt64(len(subject) * 2 + len(repl) + 16)
         outlen: UInt64 = cap
         outbuf = UninitHeapStorage[UInt8](UInt32.trunc(cap))

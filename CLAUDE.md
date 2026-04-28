@@ -28,7 +28,7 @@ It ships two CLIs that share the same argument grammar, differing only in their 
 
 **Add tests** when adding new features or making changes that affect generated code. Cover happy path, errors/warnings, edge cases, and regression guards.
 
-**Report pre-existing bugs** discovered during implementation. Do not silently ignore bugs in adjacent code just because your change didn't cause them.
+**Report pre-existing bugs** discovered during implementation. Do not silently ignore bugs in adjacent code just because your change didn't cause them. Check `BUGS.md` first -- if the issue is already tracked, reference the entry; otherwise add a new entry there (not in `TODO.md`).
 
 ### Common commands
 
@@ -272,5 +272,6 @@ Features this doc references or assumes, with one-line explanations and deeper-d
 | `CLAUDE.md` | Commands, architecture overview, agent rules | Update when adding major features |
 | `README.md` | Quick start, build flags | Update when CLI changes |
 | `TODO.md` | Current priorities | Check before starting non-trivial work |
+| `BUGS.md` | Known compiler defects (incorrect output, crashes, miscompiles, rejection of valid code, missing safety diagnostics). Has a `## Compiler bugs` section and a `## Safety / borrow checker` section -- file borrow-checker / view-lifetime gaps in the latter | Add new bug entries here, not in TODO.md |
 
 **Before committing**: If code adds new features or changes behavior, update `docs/LANGUAGE_FEATURES.md` in the same commit to reflect the current state (Working/Planned/Open status).

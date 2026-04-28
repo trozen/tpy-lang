@@ -29,7 +29,7 @@
 #   `@model` decorator -- you declare a record class for the shape and
 #   parse directly into it, with no per-level narrowing.
 #
-# Followup (TODO.md): once `isinstance` accepts type aliases / generic
+# Followup (BUGS.md): once `isinstance` accepts type aliases / generic
 # types, exposing `JsonObject = dict[str, JsonValue]` and `JsonList =
 # list[JsonValue]` here will make the natural pattern --
 # `if isinstance(d, JsonObject): d["k"]` -- work without writing a

@@ -7,7 +7,7 @@
 #   - No 2-arg `reduce(func, a)` (uses `a[0]` as seed). Blocked on an overload-
 #     resolution sema bug: when a function is overloaded and one parameter is
 #     typed `Fn[...]`, neither named-function refs nor lambdas resolve against
-#     the `Fn` context. See TODO.md "Overload resolution + Fn param: named
+#     the `Fn` context. See BUGS.md "Overload resolution + Fn param: named
 #     functions and lambdas don't resolve". Once that's fixed, add the 2-arg
 #     overload back (raises on empty input).
 #   - Higher-arity / closure-heavy items (partial, lru_cache, singledispatch,
@@ -16,7 +16,7 @@
 #     generic `U` is lowered as `std::string_view` (param form) rather than
 #     `std::string` (storage form), and the lambda's owned-string result
 #     becomes a dangling view. Use an explicit non-generic wrapper or switch
-#     to Int/bytes until the compiler bug lands. See TODO.md "Generic U over
+#     to Int/bytes until the compiler bug lands. See BUGS.md "Generic U over
 #     str drops lifetime".
 # tpy: cpp_namespace("tpystd::functools")
 from typing import Iterable

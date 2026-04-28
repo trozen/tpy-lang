@@ -14,20 +14,20 @@ Phase 1 scope:
 
 TODO -- v1 compiler follow-ups. Rough edges where a specific TPy compiler
 bug forced a CPython-incompatible shape or awkward workaround. Each bug
-is tracked in the top-level TODO.md; we list them here too so the
-module's rough edges are discoverable from one place. Reclaim these as
-the corresponding compiler fixes land:
+is tracked in BUGS.md (or TODO.md for the @native qualification one); we
+list them here too so the module's rough edges are discoverable from one
+place. Reclaim these as the corresponding compiler fixes land:
 
   * **CPython's `accept() -> (sock, (host, port))` shape.** Blocked on
     "tuple construction of @nocopy/Own elements is broken in both
-    wrapping shapes" (TODO.md Bugs): neither `tuple[Own[Socket], ...]`
+    wrapping shapes" (BUGS.md): neither `tuple[Own[Socket], ...]`
     nor `Own[tuple[Socket, ...]]` codegens correctly (copy-construct and
     tuple-of-references-to-locals respectively). Phase 1 `accept()`
     returns `Own[Socket]` only; the peer address is available via
     `.getpeername()` on the returned Socket.
 
   * **CPython's `socket.socket(...)` module-level factory.** Blocked on
-    "@native function calls emit unqualified names" (TODO.md Bugs). A
+    "Always fully-qualify @native references" (TODO.md Refactor). A
     module-level `def socket(...)` in namespace `tpystd::socket` collides
     with `@native("socket")` resolution at every internal call site.
     Workaround used throughout `_bindings/posix_socket.py`: every @native
@@ -41,16 +41,16 @@ the corresponding compiler fixes land:
     in-process connected pair until the fix lands.
 
   * **`except socket.SocketError:`.** Blocked on "qualified except-
-    clause" (TODO.md Bugs). Users must `from socket import SocketError`
+    clause" (BUGS.md). Users must `from socket import SocketError`
     and then catch the bare name.
 
   * **Readable defaults (`listen(backlog=_DEFAULT_BACKLOG)` etc.).**
     Blocked on "Final[X] = SOME_NAMED_CONST as default-param value"
-    (TODO.md Bugs). Values are inlined as `Int32(128)` etc. until the
+    (BUGS.md). Values are inlined as `Int32(128)` etc. until the
     fix lands.
 
   * **`from _bindings import posix_socket`.** Blocked on submodule-binding
-    gap (TODO.md Bugs). The top-of-file import block aliases every
+    gap (BUGS.md). The top-of-file import block aliases every
     symbol with a `_raw_` prefix (`socket as _raw_socket`,
     `close as _raw_close`, ...) instead of using the natural submodule-
     qualified form.
@@ -199,7 +199,7 @@ SHUT_RDWR: Final[Int32] = 2
 class SocketError(Exception):
     """Raised on any libc socket-call failure. Carries errno + strerror."""
     # Explicit __init__ + String param are compiler-gap workarounds mirroring
-    # re.error; see module TODO and TODO.md.
+    # re.error; see module TODO above and BUGS.md.
     def __init__(self, message: String = "") -> None:
         super().__init__(message)
 

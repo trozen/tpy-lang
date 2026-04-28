@@ -5,7 +5,7 @@ Each entry captures the design impact, current state, dependencies, and rough ef
 
 Effort scale: **S** (days), **M** (1-2 weeks), **L** (2-4 weeks), **XL** (4+ weeks).
 
-For tactical items and bugs, see `TODO.md`.
+For tactical items see `TODO.md`; for known compiler defects see `BUGS.md`.
 For current feature status, see `LANGUAGE_FEATURES.md`.
 
 ---

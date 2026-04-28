@@ -2,16 +2,18 @@
 # tpy: include("<tpy/stdlib/math.hpp>")
 #
 # Pending items to reach full CPython `math` parity. Each is blocked on a
-# specific compiler gap tracked in TODO.md; once fixed, update this module.
+# specific compiler gap tracked in TODO.md / BUGS.md; once fixed, update
+# this module.
 #
 # - `prod` int overload. Current `Iterable[float]` signature coerces each
 #   element to float; CPython's `math.prod` is polymorphic and returns int
 #   for all-int input (`math.prod(range(1, 6)) == 120`, not `120.0`).
-#   Attempted twice; blocked on "Overload resolution ignores keyword
-#   arguments" in TODO.md -- `math.prod([], start=1.0)` can't be
-#   disambiguated to the float overload when positional args alone (`[]`)
-#   conform to both. A generic `prod[T: Numeric]` is the cleaner long-term
-#   answer (blocked on a broader `Numeric` protocol -- see TODO.md).
+#   Attempted twice; blocked on "Overload resolution doesn't use keyword
+#   arguments to disambiguate" in BUGS.md -- `math.prod([], start=1.0)`
+#   can't be disambiguated to the float overload when positional args
+#   alone (`[]`) conform to both. A generic `prod[T: Numeric]` is the
+#   cleaner long-term answer (blocked on a broader `Numeric` protocol --
+#   see TODO.md).
 # - Tuple inputs to `prod`, `fsum`, `sumprod`, `dist`. CPython accepts
 #   tuples for all four (`math.prod((1.0, 2.0, 3.0))`). Currently fails
 #   conformance to `Iterable[float]`. Blocked on the "Tuple iteration +

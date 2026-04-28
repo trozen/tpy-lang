@@ -355,7 +355,7 @@ semantics guarantee). No special cleanup needed.
 
 Borrow tracking for view-type drain iterators depends on the general "view type
 borrow tracking for user types" feature (currently only built-in view types --
-`Span[T]`, `Ptr[T]` -- are tracked). See `TODO.md` Safety section.
+`Span[T]`, `Ptr[T]` -- are tracked). See `BUGS.md` Safety / borrow checker section.
 
 ---
 

@@ -24,16 +24,8 @@
 #     F8 feature-flag system (see FEATURE_ROADMAP.md). Drop-in replacement
 #     for the pure-TPy inner loop; pure-TPy stays as deps-free default.
 #
-# Language / compiler gaps hit while porting SHA-256 (see TODO.md for
+# Language / compiler gaps hit while porting SHA-256 (see BUGS.md for
 # detail; none of them are hashlib-specific, but they shaped this file):
-#   - Cross-module method lookup requires the class to be imported into
-#     the caller. Users of this module must `from hashlib import sha256,
-#     SHA256` (the class name) to call methods on the returned object.
-#     Tracked in TODO.md ("Cross-module method lookup"). This also
-#     forces `tests/cases/stdlib/hashlib/` to be marked no_cpython:
-#     CPython's `hashlib` has no `SHA256` name, so the same import that
-#     satisfies TPy fails under CPython. Once the compiler gap is fixed,
-#     drop the `SHA256` import and delete the no_cpython.txt marker.
 #   - Default parameter value `b""` rejected as non-constant; we use
 #     `bytes | None = None` instead.
 #   - Free function with a `bytearray` param + `.append()` inside gets

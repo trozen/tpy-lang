@@ -76,11 +76,13 @@
 # on purpose):
 #   - `vonmisesvariate` uses inline `x - floor(x/TWOPI) * TWOPI` instead of
 #     Python's `%`, because TPy's `%` on floats is C's fmod (truncation)
-#     semantics while CPython uses floor (TODO.md:56). When TODO.md:56 is
-#     fixed, revert to the straightforward `% _TWOPI` form.
+#     semantics while CPython uses floor (BUGS.md "`tpy::fmod` /
+#     `tpy::fmod_f32` use C's `std::fmod`"). When that's fixed, revert to
+#     the straightforward `% _TWOPI` form.
 #   - `Random.__init__(seed_value: UInt32 = UInt32(5489))` inlines the
 #     literal default because named-const defaults (`_DEFAULT_SEED`) are
-#     rejected by sema (TODO.md:72). When TODO.md:72 is fixed, switch to
+#     rejected by sema (BUGS.md "Final[X] = SOME_NAMED_CONST rejected as
+#     default-parameter value"). When that's fixed, switch to
 #     `seed_value: UInt32 = _DEFAULT_SEED` for readability.
 #   - MT tempering uses `UInt32.mul_wrap(y, 1 << n)` instead of the direct
 #     `y << n` because TPy's `<<` on UInt32 is overflow-checked. A
@@ -489,7 +491,7 @@ class Random:
         f: float = (q + z) / (1.0 + q * z)
         u3: float = self.random()
         # CPython uses Python's floor-semantics `%`; TPy's `%` on floats is
-        # truncation (TODO.md:56). Inline floor-mod to match CPython output.
+        # truncation. Inline floor-mod to match CPython output.
         mu_mod: float = mu - math.floor(mu / _TWOPI) * _TWOPI
         theta: float = 0.0
         if u3 > 0.5:

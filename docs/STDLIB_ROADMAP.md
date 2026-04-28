@@ -186,20 +186,20 @@ unblock.
 | `tuple[T1, T2, ...]` satisfying `Comparable` when all `Ti` are Comparable (built-in `<` works; protocol conformance missing) | heapq/bisect/sort on tuples, `list[tuple[priority, payload]]` priority queues, `sorted(list[tuple])` | S |
 | Generic `list[T].pop()` (and similar move-out returns) for reference-type T -- currently emits `val_or_ref_t<T> = T&` bound to rvalue | Reference-type heaps/stacks/queues in stdlib and user code; blocks `generic_stack` example with class elements | S-M (codegen) |
 
-### Existing TODO.md bugs that gate pure-TPy stdlib work
+### Existing BUGS.md entries that gate pure-TPy stdlib work
 
 Under the implementation policy (pure TPy over thin native bindings), several
 known compiler bugs block clean stdlib modules. These were lower-priority as
 isolated issues but become **stdlib prerequisites** when stdlib development
 ramps up.
 
-| TODO.md bug | Effect on stdlib | Blocks |
+| Tracker entry | Effect on stdlib | Blocks |
 |---|---|---|
-| Variable re-exports through `native_module` facades don't produce usable `VARIABLE` bindings downstream (bug in Bugs section) | Any stdlib module that exposes module-level constants through a facade (re-export via `__init__.py`) can't be used via the idiomatic `from module import CONST` | `sys` (stdout/stderr as objects), `math` constants, `time` constants, any singleton instance |
-| Init chain doesn't propagate transitively through `native_module` facades | Non-trivial module-level init (building a lookup table, opening stdout/stderr) is silently not run when reached via a facade import | `logging` (root logger), `locale`, `sys.stdout` wrapping |
-| `import pkg.sub` followed by attribute access (`pkg.sub.X`) not supported | Forces `from pkg.sub import X` everywhere. Any stdlib module that users canonically access as `os.path.join(...)` or `logging.info(...)` is painful | `os.path`, `logging.*` module-level functions, `http.client`, `urllib.parse`, any stdlib with sub-packages |
-| Module-level mutable state across compilation units | Single source of truth for per-process state. Verified working for regular stdlib modules with a reference-type module-level singleton (e.g. `random`'s shared RNG instance); still needs checking for facade-routed or reassignment-based patterns | `logging` (handlers registry), `sys.path`, `warnings` |
-| Non-native functions in builtin modules can't be called from user code (bug: codegen emits unqualified names) | Can't mix pure-TPy functions into a native-facade module. Forces workaround through `@cpp_template` / `@native` shims | `itertools` (would want to re-export C++ generators as pure-TPy functions), any facade that mixes thin bindings + pure helpers |
+| BUGS.md "Variable re-exports through native_module facades don't produce usable VARIABLE bindings downstream" | Any stdlib module that exposes module-level constants through a facade (re-export via `__init__.py`) can't be used via the idiomatic `from module import CONST` | `sys` (stdout/stderr as objects), `math` constants, `time` constants, any singleton instance |
+| BUGS.md "Init chain doesn't propagate transitively through native_module facades" | Non-trivial module-level init (building a lookup table, opening stdout/stderr) is silently not run when reached via a facade import | `logging` (root logger), `locale`, `sys.stdout` wrapping |
+| BUGS.md "`import pkg.sub` followed by attribute access (`pkg.sub.X`) not supported" | Forces `from pkg.sub import X` everywhere. Any stdlib module that users canonically access as `os.path.join(...)` or `logging.info(...)` is painful | `os.path`, `logging.*` module-level functions, `http.client`, `urllib.parse`, any stdlib with sub-packages |
+| _open verification, no entry yet_: Module-level mutable state across compilation units. Verified working for regular stdlib modules with a reference-type module-level singleton (e.g. `random`'s shared RNG instance); still needs checking for facade-routed or reassignment-based patterns -- file as a bug if a real failure is reproduced. | Single source of truth for per-process state | `logging` (handlers registry), `sys.path`, `warnings` |
+| TODO.md Refactor "Always fully-qualify `@native` references in generated C++" -- non-native functions in builtin modules can't be called from user code because codegen emits unqualified names that collide with `@native` lookup | Can't mix pure-TPy functions into a native-facade module. Forces workaround through `@cpp_template` / `@native` shims | `itertools` (would want to re-export C++ generators as pure-TPy functions), any facade that mixes thin bindings + pure helpers |
 
 Recommendation: bundle these as a **"stdlib enablement"** workstream and fix
 them before doing meaningful `random` / `logging` / `os.path` work. Each is
@@ -261,8 +261,8 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 
 | Item | Status | Notes |
 |---|---|---|
-| `isinstance` | Done | Some CPython cases missing -- see TODO.md "isinstance gaps" |
-| `repr` | Done | User-type fallback partial; see TODO.md "repr() on union types" |
+| `isinstance` | Done | Some CPython cases missing -- see TODO.md entries on protocol/union isinstance in ternary expressions and `@runtime_checkable` |
+| `repr` | Done | User-type fallback partial; see BUGS.md "repr() and f-string {} don't work on union types" |
 | `issubclass` | Missing | |
 | `callable` | Missing | Compile-time evaluable under static dispatch |
 | `hasattr`, `getattr`, `setattr`, `delattr` | Missing | Needs dynamic attribute support (see LANGUAGE_FEATURES) |
@@ -383,7 +383,7 @@ Tests: `math_module`, `math_extended`, `math_log_base`, `math_hyperbolic`,
 (covers `float("nan"/"inf"/"-inf")` fold).
 
 **Remaining gaps to reach 100%:**
-- `math.prod` int variant. Current signature `Iterable[float]` coerces each element to float; an `Iterable[int]` overload would return an exact BigInt product (matches CPython's polymorphic behavior, where `math.prod(range(1, 6)) == 120` not `120.0`). Attempted and reverted -- blocked on overload resolution not considering kwargs (TODO.md), so `math.prod([], start=1.0)` can't be disambiguated to the float overload.
+- `math.prod` int variant. Current signature `Iterable[float]` coerces each element to float; an `Iterable[int]` overload would return an exact BigInt product (matches CPython's polymorphic behavior, where `math.prod(range(1, 6)) == 120` not `120.0`). Attempted and reverted -- blocked on overload resolution not considering kwargs (BUGS.md "Overload resolution doesn't use keyword arguments to disambiguate"), so `math.prod([], start=1.0)` can't be disambiguated to the float overload.
 - Tuples as `Iterable[T]`. Tuples don't iterate today in TPy regardless of protocol context -- real CPython compat gap but bundled scope (needs coordinated sema + codegen + runtime story, not just a conformance flag flip). See TODO.md.
 
 ### time
@@ -611,29 +611,30 @@ Existing builtins `enumerate`, `zip`, `reversed`, `map`, `filter` live in
 | `groupby`, `accumulate`, `pairwise`, `batched` | Missing | Wrapper / pure |
 
 Key question: whether the module is pure TPy re-exporting C++ generators
-(requires fixing "non-native functions in builtin modules can't be called
-from user code" -- see TODO.md bugs) or `@native` thin shims.
+(requires fixing the @native qualification gap -- TODO.md Refactor "Always
+fully-qualify @native references" -- so non-native functions in a facade
+module are reachable from user code) or `@native` thin shims.
 
 ### functools
 
 Current: `lib/tpy/functools.py` -- pure-TPy 3-arg `reduce` only. Landing the
-rest is gated on specific compiler fixes tracked in TODO.md, not on macro
-or closure infrastructure:
+rest is gated on specific compiler fixes tracked in BUGS.md / TODO.md, not on
+macro or closure infrastructure:
 
 - **2-arg `reduce(func, a)`** (CPython uses `a[0]` as the seed and raises on
   empty) requires overload resolution + `Fn[...]` param to resolve named
   function refs and lambdas in the callable slot. Currently both fail.
-  See TODO.md "Overload resolution + `Fn[...]` param".
+  See BUGS.md "Overload resolution + `Fn[...]` param".
 - **`cmp_to_key`** requires either `copy()` to strip readonly through
   generic `T`, arithmetic on `readonly[FixedInt]`, or an opt-out from the
-  unconditional readonly deduction on comparison dunders. See TODO.md
+  unconditional readonly deduction on comparison dunders. See BUGS.md
   "Readonly propagation through generic T blocks storing callable cmp/key".
 
 | Item | Status | Notes |
 |---|---|---|
 | `reduce(func, a, initial)` | Done | Pure TPy. Takes `Iterable[T]` -- accepts list literals, `range()`, bound list/iter vars |
-| `reduce(func, a)` | Blocked | 2-arg form; blocked on overload + `Fn` resolution. See TODO.md |
-| `cmp_to_key` | Blocked | Pure TPy; blocked on readonly-through-generics. See TODO.md |
+| `reduce(func, a)` | Blocked | 2-arg form; blocked on overload + `Fn` resolution. See BUGS.md |
+| `cmp_to_key` | Blocked | Pure TPy; blocked on readonly-through-generics. See BUGS.md |
 | `total_ordering` | Missing | Class macro -- reuses `build_order` from `_macro_helpers.py`. Unblocked, a few hours of work |
 | `wraps`, `update_wrapper` | Missing | No-op identity call_macro (TPy functions don't carry runtime `__name__`/`__doc__`). Unblocked, trivial |
 | `partial` | Missing | Full variadic form needs function-macro or `*args` forwarding on user classes |
@@ -658,8 +659,10 @@ primitive is an OS entropy source for seeding when no explicit seed is given
 `choice`, `shuffle`, `sample`, `gauss`, etc. -- is pure TPy over the MT core.
 
 **Unblocked (engine landed).** Earlier drafts flagged the MT port as gated
-on the `native_module`-facade bugs (TODO.md:47, :48) and "module-level
-mutable state across compilation units." Verified those don't apply here:
+on the `native_module`-facade bugs ("Variable re-exports through native_module
+facades" / "Init chain doesn't propagate transitively through native_module
+facades" in BUGS.md) and "module-level mutable state across compilation
+units." Verified those don't apply here:
 `random.py` is a regular stdlib module, not a facade, so it compiles to one
 TU with a module-level `_inst: Random` whose state is genuinely shared
 across all importers. The one real limitation -- TPy rejects reassigning a
@@ -725,7 +728,7 @@ Soft gaps for full CPython compat (neither gates the core MT port):
 | `weibullvariate(alpha, beta)` | Done | |
 | `gammavariate(alpha, beta)` | Done | Cheng 1977 (alpha>1) + Ahrens-Dieter (0<alpha<1) + exponential (alpha==1) |
 | `betavariate(alpha, beta)` | Done | Composed over `gammavariate` |
-| `vonmisesvariate(mu, kappa)` | Done | Floor-mod workaround for TODO.md:56 (`%` sign semantics) |
+| `vonmisesvariate(mu, kappa)` | Done | Floor-mod workaround for BUGS.md "tpy::fmod uses C semantics" (`%` sign semantics) |
 | `Random` class (per-instance state) | Done | Per-instance 624-word state; module-level functions delegate to `_inst: Random` singleton |
 | `choice(seq)`, `shuffle(seq)` | Missing | Tier 2: works today for value-type T; deferred pending one pass of verification |
 | `getstate()`, `setstate(state)` | Missing | Tier 2; CPython tuple shape awkward, `list[UInt32]` variant viable |
@@ -902,7 +905,8 @@ little-endian for MD5). Needed new shared primitives to get here:
 
 Design note: `hashlib.sha256(data=None)` takes `bytes | None = None`
 instead of CPython's `b""` default because TPy sema rejects non-literal
-constant defaults (see TODO.md). Callers pass either nothing or bytes;
+constant defaults (see BUGS.md "Default parameter value `b\"\"` rejected").
+Callers pass either nothing or bytes;
 behavior matches CPython.
 
 Tests: `cases/stdlib/hashlib`.
@@ -1069,8 +1073,8 @@ Architecture (mirrors the re / PCRE2 split):
 
 | Item | Status | Notes |
 |---|---|---|
-| `Socket(family, type, proto)` | Done | `@nocopy`, RAII close in `__del__`. No module-level `socket()` factory -- blocked on @native-name-collision codegen bug (TODO.md); use `Socket(AF_INET, SOCK_STREAM)` or `create_connection`/`create_server` |
-| `bind`, `connect`, `listen`, `accept` | Done | `accept() -> Own[Socket]` instead of CPython's `(sock, (host, port))` -- blocked on tuple-of-@nocopy codegen bug (TODO.md). Callers get the peer via `.getpeername()` on the returned Socket |
+| `Socket(family, type, proto)` | Done | `@nocopy`, RAII close in `__del__`. No module-level `socket()` factory -- blocked on @native-name-collision codegen bug (TODO.md "Always fully-qualify @native references"); use `Socket(AF_INET, SOCK_STREAM)` or `create_connection`/`create_server` |
+| `bind`, `connect`, `listen`, `accept` | Done | `accept() -> Own[Socket]` instead of CPython's `(sock, (host, port))` -- blocked on tuple-of-@nocopy codegen bug (BUGS.md "Tuple construction of @nocopy/Own[T] elements"). Callers get the peer via `.getpeername()` on the returned Socket |
 | `send`, `sendall`, `recv` | Done | `send` returns `Int32` (truncated from `ssize_t`); realistic per-call sends are well under 2 GiB. `recv` returns a fresh `bytes` |
 | `close`, `shutdown`, `fileno` | Done | |
 | `setsockopt_int` | Done | Int-valued options only; struct options (`SO_RCVTIMEO`, `SO_LINGER`) deferred |
