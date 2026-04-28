@@ -16,7 +16,7 @@ from ..typesys import (
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType,
     resolve_int_literals,
     error_return_to_cpp, qualify_exception_name, is_return_exception,
-    unwrap_ref_type, RefType,
+    unwrap_ref_type, RefType, unwrap_qualifiers,
     is_void_like_type,
 )
 from ..parse import (
@@ -432,6 +432,11 @@ class StatementGenerator:
                             return self._make_return(indent, f"::tpy::optional_to_ptr({ret_expr})")
                     # Take address of lvalue
                     return self._make_return(indent, f"&({ret_expr})")
+                # Recursive union wrapper struct: `return None` constructs the
+                # monostate variant (NoneType is one of the wrapper's members).
+                if isinstance(ret_value, TpyNoneLiteral):
+                    if self.ctx.is_recursive_union(unwrap_qualifiers(ret_type)):
+                        return self._make_return(indent, "std::monostate{}")
                 # Pointer-variant union return: return variant<T*...>
                 if self.ctx.is_ptr_variant_union(ret_type):
                     if isinstance(ret_value, TpyNoneLiteral):

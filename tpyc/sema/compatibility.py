@@ -27,6 +27,7 @@ from ..parse import (
 from ..coercions import resolve_coercion, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN
 from ..modules import get_span_return_type
 from .context import addr_taken_roots
+from .numeric_lattice import numeric_info
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_span_iter, is_list,
@@ -104,6 +105,27 @@ def _contains_semantic_ref(t: TpyType) -> bool:
     if isinstance(t, RefType):
         return True
     return any(_contains_semantic_ref(inner) for inner in t.inner_types())
+
+
+def _is_natural_union_member(actual: TpyType, a_info, member: TpyType) -> bool:
+    """True if `member` is the natural target for `actual` in a union match,
+    i.e. selecting it does not require a category-crossing widening.
+
+    `a_info` must be `numeric_info(actual)` (passed in to avoid recomputing).
+    """
+    if member == actual:
+        return True
+    m_info = numeric_info(member)
+    if a_info is None or m_info is None:
+        return False
+    if a_info.family == m_info.family:
+        return True
+    # Literal families naturally land on their concrete counterpart.
+    if a_info.family == "int_literal" and m_info.family == "int":
+        return True
+    if a_info.family == "float_literal" and m_info.family == "float":
+        return True
+    return False
 
 
 class CompatError:
@@ -309,9 +331,23 @@ class TypeCompatibility:
                     return result
             return None
 
-        # T -> Union[T, ...]: actual must match at least one member
+        # T -> Union[T, ...]: actual must match at least one member.
+        # Iterate twice so a category-crossing widening (e.g. int -> float)
+        # never wins when an in-category member exists. Without this, an int
+        # going into `int | float` would silently coerce to float when float
+        # happens to be earlier in the canonical member order.
         if isinstance(expected, UnionType):
+            actual_unwrapped = unwrap_own(actual)
+            a_info = numeric_info(actual_unwrapped)
             for member in expected.members:
+                if not _is_natural_union_member(actual_unwrapped, a_info, member):
+                    continue
+                result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx)
+                if not isinstance(result, CompatError):
+                    return result
+            for member in expected.members:
+                if _is_natural_union_member(actual_unwrapped, a_info, member):
+                    continue
                 result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx)
                 if not isinstance(result, CompatError):
                     return result

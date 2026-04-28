@@ -1,0 +1,10 @@
+42
+3.14
+int
+float
+None
+null
+[1, 2.5, 3, 4.5]
+list
+{'i': 7, 'f': 0.25, 's': 'hi', 'n': None}
+dict

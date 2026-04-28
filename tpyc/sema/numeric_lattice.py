@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..typesys import (
-    TpyType, IntLiteralType,
+    TpyType, IntLiteralType, FloatLiteralType,
     BIGINT, FLOAT, FLOAT32,
     is_float_type,
 )
@@ -24,7 +24,7 @@ from ..type_def_registry import (
 @dataclass(frozen=True)
 class NumericTypeInfo:
     """Classification metadata for numeric-like types."""
-    family: str  # "int_literal" | "int" | "float" | "bool"
+    family: str  # "int_literal" | "float_literal" | "int" | "float" | "bool"
     rank: int
 
 
@@ -32,6 +32,8 @@ def numeric_info(typ: TpyType) -> NumericTypeInfo | None:
     """Return numeric metadata for known numeric-like types."""
     if isinstance(typ, IntLiteralType):
         return NumericTypeInfo("int_literal", 0)
+    if isinstance(typ, FloatLiteralType):
+        return NumericTypeInfo("float_literal", 0)
     if is_fixed_int_type(typ):
         # Rank scales with bit width: Int8=8, Int16=9, Int32=10, Int64=11
         tr = int_traits_of(typ)
@@ -104,8 +106,13 @@ def widen_numeric_types(a: TpyType, b: TpyType) -> TpyType | None:
     if info_a.family == "bool" or info_b.family == "bool":
         return None
 
-    # IntLiteral is handled by merge_literal_seed_target, not here.
-    if info_a.family == "int_literal" or info_b.family == "int_literal":
+    # Literal families are handled by merge_literal_seed_target, not here.
+    # Defensive: callers (local_deduction, _ternary_common_type) already
+    # resolve literals to concrete types before delegating; this guards
+    # against future callers that forget.
+    if info_a.family in ("int_literal", "float_literal"):
+        return None
+    if info_b.family in ("int_literal", "float_literal"):
         return None
 
     # Both float-family -> widen to the higher-rank float
