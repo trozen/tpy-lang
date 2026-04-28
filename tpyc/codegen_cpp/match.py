@@ -9,7 +9,7 @@ from collections import defaultdict
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NominalType, OptionalType,
+    TpyType, NominalType, NoneType, OptionalType,
     PendingStrType, UnionType,
     LiteralType,
     unwrap_readonly, is_any_str_type,
@@ -257,6 +257,15 @@ class MatchGenerator:
                 self._gen_switch_default_arm(
                     out, pattern, as_name, as_raw_name, case.body,
                     indent, inner, case.type_facts)
+
+            elif isinstance(pattern, TpyLiteralPattern) and pattern.value is None:
+                idx = self._variant_index(subject_type, NoneType())
+                out.write(f"{indent}case {idx}: {{\n")
+                self.ctx.indent_level += 1
+                self._emit_case_body(out, case.body, case.type_facts)
+                self.ctx.indent_level -= 1
+                out.write(f"{inner}break;\n")
+                out.write(f"{indent}}}\n")
 
             else:
                 raise CodeGenError(f"Unsupported pattern in union switch: {type(pattern).__name__}")
@@ -531,13 +540,16 @@ class MatchGenerator:
         inner = INDENT * (self.ctx.indent_level + 1)
         inner2 = INDENT * (self.ctx.indent_level + 2)
         is_ptr_var = self.ctx.is_ptr_variant_union(subject_type)
-        # Recursive union wrapper: access .data for variant operations
-        data_sfx = ".value" if self.ctx.is_recursive_union(subject_type) else ""
+        # Variant indices come from the wrapper struct's std::variant ordering;
+        # for narrowed recursive unions this is wider than subject_type.members.
+        is_recursive, full_members_opt = self.ctx.recursive_union_info(subject_type)
+        data_sfx = ".value" if is_recursive else ""
+        full_members = full_members_opt or subject_type.members
 
         # Collect arms per variant type index.
         # Each entry: (case, pattern_for_this_type, as_name, as_raw_name)
         type_arms: dict[int, list[tuple[TpyMatchCase, TpyPattern, str | None, str | None]]] = {
-            i: [] for i in range(len(subject_type.members))
+            i: [] for i in range(len(full_members))
         }
 
         for case in stmt.cases:
@@ -603,7 +615,7 @@ class MatchGenerator:
 
         out.write(f"{indent}switch (__match_subject{data_sfx}.index()) {{\n")
 
-        for idx in range(len(subject_type.members)):
+        for idx in range(len(full_members)):
             if idx in default_indices:
                 continue
             arms = type_arms[idx]
@@ -1748,8 +1760,17 @@ class MatchGenerator:
         return False
 
     def _variant_index(self, union_type: UnionType, member_type: TpyType) -> int:
-        """Find the index of a member type in a union's canonical member ordering."""
-        for i, m in enumerate(union_type.members):
+        """Find the index of a member type in a union's canonical member ordering.
+
+        For recursive unions (including narrowed-by-None subsets), indices are
+        resolved against the alias's full member tuple so they match the
+        wrapper struct's variant ordering.
+        """
+        members = (
+            self.ctx.recursive_union_full_members(union_type)
+            or union_type.members
+        )
+        for i, m in enumerate(members):
             if m == member_type:
                 return i
         raise CodeGenError(f"type '{member_type}' not found in union '{union_type}'")

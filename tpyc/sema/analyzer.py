@@ -1363,41 +1363,53 @@ class SemanticAnalyzer:
         """Fix annotations where a recursive union alias + None was flattened.
 
         The parser eagerly expands same-module aliases, so `Expr | None`
-        (where Expr = Lit | BinOp) becomes UnionType(NoneType, BinOp, Lit)
-        -- a 3-member pointer-variant. This method converts those back to
-        OptionalType(NominalType("Expr")) by matching the non-None members
-        against the recursive union alias definitions.
+        (where `Expr = Lit | BinOp`) becomes UnionType(NoneType, Lit, BinOp).
+        This pass converts that back to OptionalType(NominalType("Expr")) by
+        matching the non-None members against the alias definitions.
 
-        Note: only covers module-level declarations (function signatures,
-        record fields, top-level vars). Local variable annotations inside
-        function bodies are resolved later during body analysis.
+        When the alias's own definition already includes None (e.g.
+        `JsonValue = None | bool | ... | list[JsonValue]`), a bare reference
+        expands the same way -- but the input is the alias itself, not
+        `Alias | None`. The type stays as the full UnionType so downstream
+        passes (is-None narrowing, match dispatch with `case None:`) keep
+        the NoneType member visible.
+
+        Only covers module-level declarations (function signatures, record
+        fields, top-level vars); local annotations are resolved during body
+        analysis.
         """
-        # Build reverse map: frozenset(alias members) -> alias name
-        alias_by_members: dict[frozenset, str] = {}
+        # Build reverse map: frozenset(alias non-None members) -> (alias name, alias_has_none)
+        alias_by_members: dict[frozenset, tuple[str, bool]] = {}
         for name in module.recursive_union_names:
             entry = module.type_aliases.get(name)
             if entry is not None:
                 typ = entry[0]
                 if isinstance(typ, UnionType):
+                    alias_has_none = any(
+                        is_void_like_type(m) for m in typ.members
+                    )
                     non_none = frozenset(
                         m for m in typ.members
                         if not is_void_like_type(m)
                     )
-                    alias_by_members[non_none] = name
+                    alias_by_members[non_none] = (name, alias_has_none)
 
         if not alias_by_members:
             return
 
         def _fix(typ: TpyType) -> TpyType:
-            if isinstance(typ, UnionType):
-                non_none = [m for m in typ.members
-                            if not is_void_like_type(m)]
-                if len(non_none) < len(typ.members):
-                    key = frozenset(non_none)
-                    alias_name = alias_by_members.get(key)
-                    if alias_name is not None:
-                        return OptionalType(NominalType(alias_name))
-            return typ.map_inner_types(lambda t: _fix(t))
+            if not isinstance(typ, UnionType):
+                return typ.map_inner_types(lambda t: _fix(t))
+            non_none = [m for m in typ.members if not is_void_like_type(m)]
+            if len(non_none) == len(typ.members):
+                return typ.map_inner_types(lambda t: _fix(t))
+            entry = alias_by_members.get(frozenset(non_none))
+            if entry is None:
+                return typ.map_inner_types(lambda t: _fix(t))
+            alias_name, alias_has_none = entry
+            if alias_has_none:
+                return typ
+            return OptionalType(NominalType(alias_name))
 
         def _fix_func(func: TpyFunction) -> None:
             for i, (pname, typ) in enumerate(func.params):

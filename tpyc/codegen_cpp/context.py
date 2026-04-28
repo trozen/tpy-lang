@@ -613,25 +613,43 @@ class CodeGenContext:
 
     # --- Recursive union metadata (populated from module.recursive_union_names) ---
     recursive_union_names: set[str] = field(default_factory=set)
-    # Reverse map: frozenset(union members) -> alias name, for recursive aliases only
+    # frozenset(members) -> alias name. Indexes both the alias's full member
+    # set and (when the alias has None as a direct member) the narrowed-by-None
+    # subset, so types narrowed via `is None` stay identifiable as the alias.
+    # The sema-side registry (tpyc/sema/context.py) only indexes full member
+    # sets -- it doesn't compute variant indices, so the narrowed-subset
+    # indexing isn't needed there.
     _recursive_union_members: dict[frozenset, str] = field(default_factory=dict)
+    # alias name -> canonical member tuple. Variant indices are resolved
+    # against this tuple so they match the wrapper struct's std::variant
+    # ordering regardless of narrowing.
+    _recursive_union_full_members: dict[str, tuple['TpyType', ...]] = field(default_factory=dict)
 
     def init_recursive_unions(self, names: set[str],
                               type_aliases: 'dict[str, tuple[TpyType, object]]') -> None:
         """Build codegen metadata for recursive union aliases."""
-        from ..typesys import UnionType
+        from ..typesys import UnionType, is_void_like_type
         self.recursive_union_names = names
         self._recursive_union_members = {}
+        self._recursive_union_full_members = {}
         for name in names:
             entry = type_aliases.get(name)
             if entry is None:
                 continue
             typ = entry[0]
             if isinstance(typ, UnionType):
-                self._recursive_union_members[frozenset(typ.members)] = name
+                full_members = frozenset(typ.members)
+                self._recursive_union_members[full_members] = name
+                self._recursive_union_full_members[name] = typ.members
+                non_none = frozenset(m for m in typ.members
+                                     if not is_void_like_type(m))
+                if len(non_none) < len(full_members):
+                    self._recursive_union_members[non_none] = name
 
     def is_recursive_union(self, typ: 'TpyType') -> bool:
         """Check if a type is a recursive union (needs wrapper struct in C++)."""
+        if not self._recursive_union_members:
+            return False
         from ..typesys import UnionType
         if not isinstance(typ, UnionType):
             return False
@@ -639,10 +657,36 @@ class CodeGenContext:
 
     def recursive_union_name(self, typ: 'TpyType') -> str | None:
         """Get the wrapper struct name for a recursive union, or None."""
+        if not self._recursive_union_members:
+            return None
         from ..typesys import UnionType
         if not isinstance(typ, UnionType):
             return None
         return self._recursive_union_members.get(frozenset(typ.members))
+
+    def recursive_union_full_members(self, typ: 'TpyType') -> 'tuple[TpyType, ...] | None':
+        """Return the alias's full member tuple if typ is a recursive union
+        (exact or narrowed-by-None), or None."""
+        name = self.recursive_union_name(typ)
+        if name is None:
+            return None
+        return self._recursive_union_full_members.get(name)
+
+    def recursive_union_info(self, typ: 'TpyType') -> 'tuple[bool, tuple[TpyType, ...] | None]':
+        """Combined lookup: (is_recursive, full_members_or_None) in one probe.
+
+        Equivalent to (is_recursive_union(typ), recursive_union_full_members(typ))
+        but allocates only one frozenset and does one dict lookup.
+        """
+        if not self._recursive_union_members:
+            return (False, None)
+        from ..typesys import UnionType
+        if not isinstance(typ, UnionType):
+            return (False, None)
+        name = self._recursive_union_members.get(frozenset(typ.members))
+        if name is None:
+            return (False, None)
+        return (True, self._recursive_union_full_members.get(name))
 
     def variant_data_expr(self, var_expr: str, typ: 'TpyType | None') -> str:
         """Add .value suffix for recursive union wrapper structs.

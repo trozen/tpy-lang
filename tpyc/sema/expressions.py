@@ -776,11 +776,11 @@ class ExpressionAnalyzer:
 
         # Identity operators (is / is not) -- only valid with None or enums
         if expr.op in ("is", "is not"):
-            # Unwrap ReadonlyType and OwnType for nullable checks.
-            left_check = unwrap_readonly(left_type)
+            # Unwrap RefType, ReadonlyType, and OwnType for nullable checks.
+            left_check = unwrap_ref_type(unwrap_readonly(left_type))
             if isinstance(left_check, OwnType):
                 left_check = left_check.wrapped
-            right_check = unwrap_readonly(right_type)
+            right_check = unwrap_ref_type(unwrap_readonly(right_type))
             if isinstance(right_check, OwnType):
                 right_check = right_check.wrapped
             # Enum identity: lower to ==/!=

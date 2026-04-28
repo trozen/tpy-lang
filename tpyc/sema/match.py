@@ -311,11 +311,10 @@ class MatchAnalyzer:
     ) -> list[str]:
         """Return human-readable names of uncovered cases for finite-valued types."""
         if isinstance(subject_type, UnionType):
-            # Skip NoneType -- no class-pattern syntax to match it in unions
             return [
-                str(m) for m in subject_type.members
-                if not isinstance(m, NoneType)
-                and str(m) not in seen_types
+                "None" if isinstance(m, NoneType) else str(m)
+                for m in subject_type.members
+                if str(m) not in seen_types
             ]
 
         if is_enum_type(subject_type):
@@ -364,6 +363,13 @@ class MatchAnalyzer:
             bindings[pattern.name] = subject_type
 
         elif isinstance(pattern, TpyAsPattern):
+            # `case None as x:` has no value to bind (NoneType is monostate);
+            # reject rather than silently dropping the binding.
+            if (isinstance(pattern.pattern, TpyLiteralPattern)
+                    and pattern.pattern.value is None):
+                raise self.ctx.error(
+                    "'as' binding not allowed on 'case None:'", pattern,
+                )
             self._analyze_pattern(pattern.pattern, subject_type, seen_types, bindings, stmt)
             # Bind as-variable to narrowed type when inner pattern is a class
             if isinstance(pattern.pattern, TpyClassPattern) and pattern.pattern.resolved_type is not None:
@@ -376,6 +382,20 @@ class MatchAnalyzer:
 
         elif isinstance(pattern, TpyOrPattern):
             self._analyze_or_pattern(pattern, subject_type, seen_types, bindings, stmt, kind=OrPatternKind.UNION)
+
+        elif isinstance(pattern, TpyLiteralPattern) and pattern.value is None:
+            if not subject_type.has_none_member():
+                raise self.ctx.error(
+                    f"'case None:' requires None to be a member of the "
+                    f"union subject; got '{subject_type}'", pattern,
+                )
+            none_key = str(NoneType())
+            if none_key in seen_types:
+                raise self.ctx.error(
+                    "duplicate 'case None:' arm", pattern,
+                )
+            seen_types.add(none_key)
+            pattern.resolved_type = NoneType()
 
         else:
             raise self.ctx.error(

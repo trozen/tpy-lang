@@ -1,0 +1,1 @@
+main.py:9: error: 'as' binding not allowed on 'case None:'
