@@ -1,0 +1,3 @@
+core:strict
+release
+ci:nightly

@@ -1,0 +1,1 @@
+main.py:24: error: argparse: type=<custom> with default= requires a string literal (got list)

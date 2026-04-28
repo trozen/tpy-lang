@@ -724,6 +724,58 @@ class BuilderContext:
             return None if default is _UNSET else default
         return ma
 
+    # -- Type introspection --
+
+    def get_static_method_return_type(
+        self, type_info: TypeInfo, name: str,
+    ) -> "TypeInfo | None":
+        """Return type of a ``@staticmethod`` named ``name`` on ``type_info``,
+        or ``None`` when the method is absent or non-static.
+
+        One call answers "is this type usable as a structurally-typed
+        factory" -- macros use it to detect protocol-like hooks (e.g.
+        argparse's ``ArgType`` ``from_arg`` factory) without needing
+        the type to inherit from a formal Protocol.
+
+        Looked up by name -- builder-trace passes user-defined types
+        with ``_tpy_type=None`` (full type-name resolution in builder
+        contexts is still pending), so ``type_info.name`` is the only
+        reliable handle.
+        """
+        record_info = self._ctx.registry.get_record(type_info.name)
+        if record_info is None:
+            return None
+        overloads = self._ctx.registry.get_method_overloads_with_parents(
+            record_info, name)
+        if not overloads or not overloads[0].is_staticmethod:
+            return None
+        return TypeInfo.from_tpy_type(overloads[0].return_type)
+
+    def resolve_type_info(self, type_info: TypeInfo) -> TypeInfo:
+        """Materialize a builder-trace user-type placeholder into a
+        qname-bearing ``TypeInfo``, or return the input unchanged.
+
+        Builder-trace receives user-defined ``type=`` references with
+        ``_tpy_type=None`` (full type-name resolution at the builder
+        layer is still pending). Macros that emit field types or
+        record fields backed by such a placeholder need the resolved,
+        qname-bearing ``NominalType`` so identity matches between the
+        emitted-record's field and sema-resolved references in the
+        synthesized function body. Built-in types that already carry a
+        ``_tpy_type`` are returned unchanged.
+        """
+        if type_info._tpy_type is not None:
+            return type_info
+        record_info = self._ctx.registry.get_record(type_info.name)
+        if record_info is None:
+            return type_info
+        qname = record_info.qualified_name()
+        if not qname:
+            return type_info
+        return TypeInfo.from_tpy_type(
+            NominalType(type_info.name, _module_qname=qname)
+        )
+
     # -- Code emission --
 
     def fresh_module_name(self, hint: str) -> str:

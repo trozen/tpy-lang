@@ -44,7 +44,7 @@ class _ArgSpec:
     """
     __slots__ = (
         "is_flag", "flag_names", "name", "dest",
-        "type_info", "action", "default", "has_default",
+        "type_info", "is_arg_type", "action", "default", "has_default",
         "const", "has_const",
         "choices", "required",
         "nargs",
@@ -54,7 +54,8 @@ class _ArgSpec:
 
     def __init__(
         self, *, is_flag: bool, flag_names: list[str], name: str,
-        dest: str, type_info: TypeInfo, action: str, default, has_default: bool,
+        dest: str, type_info: TypeInfo, is_arg_type: bool,
+        action: str, default, has_default: bool,
         const=None, has_const: bool = False,
         choices: list | None = None, required: bool = False,
         nargs=None, help_text: str | None = None,
@@ -65,6 +66,7 @@ class _ArgSpec:
         self.name = name
         self.dest = dest
         self.type_info = type_info  # resolved ``type=`` (defaults to str)
+        self.is_arg_type = is_arg_type  # True iff type uses from_arg factory
         self.action = action
         self.default = default
         self.has_default = has_default
@@ -184,6 +186,19 @@ def _is_allowed_arg_type(ti: TypeInfo) -> bool:
     return ti.is_str or ti.is_bigint or ti.is_int or ti.is_float
 
 
+def _is_arg_type(ctx: BuilderContext, ti: TypeInfo) -> bool:
+    """Whether ``ti`` is a user type with a ``@staticmethod from_arg(s: str) -> Self``.
+
+    This is the duck-typed escape hatch that lets users plug in custom
+    types (Path, datetime, domain records) without a built-in
+    enumeration: any record exposing such a factory is accepted, and
+    the synthesized parse fn calls ``T.from_arg(token)`` for it.
+    Sema checks the param/return-type details when the synthesized
+    call is analyzed -- the macro just gates on existence + staticness.
+    """
+    return ctx.get_static_method_return_type(ti, "from_arg") is not None
+
+
 def _arg_type_name(ti: TypeInfo) -> str:
     """User-facing / source-text name for an arg type.
 
@@ -229,18 +244,35 @@ def _python_value_type_info(value) -> TypeInfo:
     )
 
 
-def _resolve_type_info(ctx: BuilderContext, args: MacroArgs) -> TypeInfo:
-    """Read ``type=`` and return its TypeInfo. Defaults to ``str``."""
+def _resolve_type_info(
+    ctx: BuilderContext, args: MacroArgs,
+) -> tuple[TypeInfo, bool]:
+    """Read ``type=`` and return ``(TypeInfo, is_arg_type)``.
+
+    Defaults to ``(str, False)``. The second tuple element is True when
+    the type is a user record providing the ``ArgType`` factory hook
+    (see ``_is_arg_type``); callers consult it to decide between
+    ``T(arg)`` and ``T.from_arg(arg)`` at synthesis time.
+    """
     ti = ctx.kwarg_type(args, "type")
     if ti is None:
-        return _STR_TYPE_INFO
-    if not _is_allowed_arg_type(ti):
-        ctx.error(
-            f"argparse: unsupported type={ti.name!r}; "
-            f"supported: int, float, str, "
-            f"Int8/16/32/64, UInt8/16/32/64, Float32"
-        )
-    return ti
+        return _STR_TYPE_INFO, False
+    if _is_allowed_arg_type(ti):
+        return ti, False
+    if _is_arg_type(ctx, ti):
+        # Builder-trace passes user-defined types as placeholders with
+        # ``_tpy_type=None``; resolve_type_info rebuilds them on the
+        # registered record's qname-bearing NominalType so downstream
+        # field types and codegen identity-match sema-resolved
+        # references in the synthesized parse function body.
+        return ctx.resolve_type_info(ti), True
+    ctx.error(
+        f"argparse: unsupported type={ti.name!r}; "
+        f"supported: int, float, str, "
+        f"Int8/16/32/64, UInt8/16/32/64, Float32, "
+        f"or any record with @staticmethod from_arg(s: str) -> Self"
+    )
+    return ti, False
 
 
 def _dest_for_flags(flag_names: list[str], explicit_dest: str | None) -> str:
@@ -385,9 +417,20 @@ class ArgumentParser:
             ctx.error(
                 f"argparse: type= cannot be combined with action={action!r}"
             )
-        type_info = _resolve_type_info(ctx, args)
+        type_info, is_arg_type = _resolve_type_info(ctx, args)
 
         nargs = _resolve_nargs_kwarg(ctx, args)
+        # Custom ``type=<MyType>`` (ArgType) v1: ``store`` /
+        # ``append`` / ``extend`` plus all four nargs shapes are
+        # supported via the same synthesis as the built-in types
+        # (``T.from_arg`` is just a different value-coercion than the
+        # builtin constructor). ``choices=`` stays out of v1 because
+        # comparing the unparsed token against a literal set would
+        # diverge from CPython's "compare parsed values" semantics.
+        if is_arg_type and choices is not None:
+            ctx.error(
+                "argparse: type=<custom> does not support choices= in v1"
+            )
         if nargs is not None and action in _VALUE_FREE_ACTIONS and action != "store_const":
             ctx.error(
                 f"argparse: nargs= cannot be combined with action={action!r}"
@@ -437,6 +480,19 @@ class ArgumentParser:
         if default_arg is not None:
             default = ctx.eval_literal_or_final(default_arg.expr)
             has_default = True
+            if is_arg_type and not isinstance(default, str):
+                # Mirrors CPython's "string defaults run through type="
+                # rule: a single string literal is routed through
+                # ``T.from_arg`` at parse-fn entry. List defaults
+                # diverge from CPython (CPython keeps the elements as
+                # strings while TPy needs them typed as T to fit a
+                # ``list[T]`` field), so they're rejected; users can
+                # omit ``default=`` to get ``Optional[list[T]]`` or an
+                # empty ``list[T]``.
+                ctx.error(
+                    f"argparse: type=<custom> with default= requires "
+                    f"a string literal (got {type(default).__name__})"
+                )
             if isinstance(default, list):
                 list_action_ok = (
                     action in _LIST_ACTIONS
@@ -479,7 +535,7 @@ class ArgumentParser:
             dest = explicit_dest if explicit_dest is not None else name
             spec = _ArgSpec(
                 is_flag=False, flag_names=[], name=name, dest=dest,
-                type_info=type_info, action=action,
+                type_info=type_info, is_arg_type=is_arg_type, action=action,
                 default=default, has_default=has_default,
                 choices=choices, required=True,
                 nargs=nargs, help_text=help_text,
@@ -504,7 +560,7 @@ class ArgumentParser:
                         )
             spec = _ArgSpec(
                 is_flag=True, flag_names=list(flags), name=name, dest=dest,
-                type_info=type_info, action=action,
+                type_info=type_info, is_arg_type=is_arg_type, action=action,
                 default=default, has_default=has_default,
                 const=const, has_const=has_const,
                 choices=choices, required=required_kw,
@@ -755,6 +811,18 @@ def _build_parse_body(
             src_lines.append(f"if {_seen_local(s)}:")
             src_lines.append(f"    {s.dest} = tpy.copy({_acc_local(s)})")
 
+    # --- 4c. ArgType accumulator unwrap ---
+    # The missing-required checks above already exited via sys.exit(2)
+    # when the accumulator stayed None, so the assert is for sema's
+    # flow-narrowing benefit (Optional[T] -> T) rather than runtime
+    # safety. ``tpy.copy`` makes the implicit copy explicit so the
+    # record-constructor call (which moves into owned storage) doesn't
+    # warn -- mirrors the Optional[list[T]] reconciliation step above.
+    for s in specs:
+        if _needs_arg_type_accumulator(s):
+            src_lines.append(f"assert {_acc_local(s)} is not None")
+            src_lines.append(f"{s.dest} = tpy.copy({_acc_local(s)})")
+
     # --- 5. Construct & return ---
     ctor_args = ", ".join(s.dest for s in specs)
     src_lines.append(f"return {record_name}({ctor_args})")
@@ -806,16 +874,24 @@ def _spec_init_stmts(spec: _ArgSpec) -> list:
         return [ast.var_decl(
             spec.dest, types.optional(scalar), ast.none_lit()
         )]
+    if _needs_arg_type_accumulator(spec):
+        # No zero-arg sentinel for the user type. Init only the
+        # ``Optional[T]`` accumulator; ``spec.dest`` is rebound to the
+        # unwrapped ``T`` after the post-loop missing-required check.
+        scalar = spec.type_info.raw_type
+        return [ast.var_decl(
+            _acc_local(spec), types.optional(scalar), ast.none_lit()
+        )]
     return ast.quote(f"{spec.dest} = {_default_expr_src(spec)}")
 
 
 def _render_default_elem(value, ti: TypeInfo):
     """AST expression for one element of a list-typed default.
 
-    Mirrors ``_default_expr_src``'s fixed-width wrapping at the AST
-    level: ``Int32(1)`` / ``Float32(0.5)`` rather than a bare literal,
-    so the typed list annotation stays consistent regardless of
-    options.json defaults and Float32 elements don't widen to Float64.
+    Mirrors ``_default_expr_src``'s wrapping at the AST level:
+    ``Int32(1)`` / ``Float32(0.5)`` for fixed-width primitives so the
+    typed list annotation stays consistent regardless of options.json
+    defaults and Float32 elements don't widen to Float64.
     """
     if ti.is_str:
         return ast.str_lit(str(value))
@@ -844,6 +920,36 @@ def _list_target(spec: _ArgSpec) -> str:
     directly otherwise.
     """
     return _acc_local(spec) if spec.is_optional_list_field else spec.dest
+
+
+def _needs_arg_type_accumulator(spec: _ArgSpec) -> bool:
+    """True for ArgType specs whose record field is non-Optional T but
+    whose parse local has to start as ``Optional[T]`` (no zero-arg
+    sentinel for the user type). Covers required positional + required
+    flag without a string default. Optional flags without default
+    already get an Optional[T] field via ``is_optional_field``, so
+    they don't need the accumulator+narrow dance. List-typed fields
+    (``nargs=*/+/<int>`` or append/extend) own a ``list[T]`` directly
+    and never reach the scalar-unwrap path either.
+    """
+    if not spec.is_arg_type:
+        return False
+    if spec.has_default:
+        return False
+    if spec.is_optional_field:
+        return False
+    if spec.is_list_field:
+        return False
+    return True
+
+
+def _store_target(spec: _ArgSpec) -> str:
+    """Local the ``store`` handler writes into. For ArgType specs that
+    need the accumulator-then-narrow pattern, that's ``_acc_<dest>``
+    (Optional[T]); a post-missing-check rebind to ``<dest>`` (T) lands
+    the unwrapped value in the name the record constructor consumes.
+    """
+    return _acc_local(spec) if _needs_arg_type_accumulator(spec) else spec.dest
 
 
 def _flag_handler_lines(
@@ -892,12 +998,12 @@ def _flag_handler_lines(
             ):
                 L.append(line)
             if a == "store":
-                L.append(f"{indent}{spec.dest} = {tmp}")
+                L.append(f"{indent}{_store_target(spec)} = {tmp}")
             else:
                 L.append(f"{indent}{target}.append({tmp})")
         else:
             if a == "store":
-                L.append(f"{indent}{spec.dest} = {value_expr}")
+                L.append(f"{indent}{_store_target(spec)} = {value_expr}")
             else:
                 L.append(f"{indent}{target}.append({value_expr})")
         L.append(f"{indent}__tpy_argparse_i = __tpy_argparse_i + 2")
@@ -996,9 +1102,9 @@ def _positional_handler_lines(
                 spec, tmp, indent=indent, error_prefix=error_prefix,
             ):
                 L.append(line)
-            L.append(f"{indent}{spec.dest} = {tmp}")
+            L.append(f"{indent}{_store_target(spec)} = {tmp}")
         else:
-            L.append(f"{indent}{spec.dest} = {value_expr}")
+            L.append(f"{indent}{_store_target(spec)} = {value_expr}")
         L.append(f"{indent}__tpy_argparse_pi = __tpy_argparse_pi + 1")
         L.append(f"{indent}__tpy_argparse_i = __tpy_argparse_i + 1")
         return L
@@ -1084,6 +1190,12 @@ def _default_expr_src(spec: _ArgSpec) -> str:
     ti = spec.type_info
     if spec.has_default:
         rendered = _literal_repr(spec.default)
+        if spec.is_arg_type:
+            # Default is a string literal (validated at add_argument);
+            # route through ``T.from_arg`` so the field carries T at
+            # parse-fn entry. Mirrors CPython's "string defaults run
+            # through type=" behaviour.
+            return f"{ti.name}.from_arg({rendered})"
         if ti.is_int or ti.is_float32:
             return f"{_arg_type_name(ti)}({rendered})"
         return rendered
@@ -1128,9 +1240,12 @@ def _value_expr_src(spec: _ArgSpec, source_expr: str) -> str:
     Fixed-width int / BigInt / float constructors all accept a string
     at runtime and parse it (panicking on overflow / invalid). The
     ``str`` case skips wrapping since argv tokens are already strings.
+    Custom ``ArgType`` types route through ``T.from_arg(token)``.
     """
     if spec.type_info.is_str:
         return source_expr
+    if spec.is_arg_type:
+        return f"{spec.type_info.name}.from_arg({source_expr})"
     return f"{_arg_type_name(spec.type_info)}({source_expr})"
 
 

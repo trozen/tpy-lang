@@ -1,0 +1,1 @@
+main.py:22: error: argparse: type=<custom> does not support choices= in v1
