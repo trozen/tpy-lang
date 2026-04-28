@@ -2266,6 +2266,19 @@ class ExpressionGenerator:
             return f"{type_cpp}({args})"
         # Check for user-defined record constructor (e.g., Point(1, 2))
         if record_info := self.ctx.analyzer.registry.get_record(expr.func_name):
+            # Bare-name primitive constructors (`Float32(s)`, `Int32(s)`,
+            # ...) reach here when sema resolved the matching @cpp_template
+            # / @native(function=True) __init__ overload but the parser
+            # didn't set call_type (only subscript-form calls like
+            # `Stack[Int32]()` set it). Honor the resolved overload --
+            # falling through to the @native record-name path below would
+            # emit `float(arg)` / `int32_t(arg)`, a functional cast that
+            # doesn't compile against a std::string arg.
+            ctor_fi = expr.resolved_function_info
+            if ctor_fi and (ctor_fi.cpp_template or ctor_fi.native_function):
+                gen_args = [self.gen_call_arg(a, ptype, inline_template=True)
+                            for a, (_, ptype) in zip(expr.args, ctor_fi.params)]
+                return self.builtins.gen_call_from_fi(ctor_fi, None, gen_args)
             init_info = record_info.get_method("__init__")
             init_params = init_info.params if init_info else []
             # TypedDict/native records without __init__: use init_params for type hints

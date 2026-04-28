@@ -176,13 +176,10 @@ _STR_TYPE_INFO: TypeInfo = TypeInfo.from_tpy_type(types.str)
 def _is_allowed_arg_type(ti: TypeInfo) -> bool:
     """Whether ``type=<ti>`` is supported as a value-taking arg type.
 
-    Keyed on TypeInfo's category helpers rather than name lookup so
-    new acceptable types (e.g. ``Float32`` once its codegen lowering
-    exists) get picked up via the type system, not a string table.
-    Float32 is excluded for now -- ``Float32(runtime_str)`` doesn't
-    lower to ``float32_from_str`` the way ``Int32(runtime_str)`` lowers
-    to ``from_str_check<int32_t>``, so the synthesized parse fn would
-    emit an invalid C++ cast.
+    Keyed on TypeInfo's category helpers rather than name lookup so new
+    acceptable types get picked up via the type system, not a string
+    table. ``is_float`` covers both ``float`` (Float64) and ``Float32``
+    -- both lower to a constructor that accepts ``str`` at runtime.
     """
     return ti.is_str or ti.is_bigint or ti.is_int or ti.is_float
 
@@ -191,9 +188,11 @@ def _arg_type_name(ti: TypeInfo) -> str:
     """User-facing / source-text name for an arg type.
 
     Doubles as the constructor expression for value coercion: ``int(s)``
-    for BigInt, ``Int32(s)`` for fixed-width, ``float(s)`` for Float64.
-    The ``str`` case is handled by callers that skip wrapping (no
-    constructor needed when the field stays a plain string).
+    for BigInt, ``Int32(s)`` for fixed-width, ``float(s)`` for Float64,
+    ``Float32(s)`` for Float32. The ``str`` case is handled by callers
+    that skip wrapping (no constructor needed when the field stays a
+    plain string). ``is_float32`` is checked before ``is_float`` because
+    ``is_float`` is true for both Float64 and Float32.
     """
     if ti.is_str:
         return "str"
@@ -201,10 +200,10 @@ def _arg_type_name(ti: TypeInfo) -> str:
         return "int"
     if ti.is_int:
         return ti.int_type_name
-    if ti.is_float:
-        return "float"
     if ti.is_float32:
         return "Float32"
+    if ti.is_float:
+        return "float"
     # Should not occur once _is_allowed_arg_type gates entries; the
     # raw_type's own repr is the safest fallback for diagnostics.
     return str(ti.raw_type)
@@ -239,7 +238,7 @@ def _resolve_type_info(ctx: BuilderContext, args: MacroArgs) -> TypeInfo:
         ctx.error(
             f"argparse: unsupported type={ti.name!r}; "
             f"supported: int, float, str, "
-            f"Int8/16/32/64, UInt8/16/32/64"
+            f"Int8/16/32/64, UInt8/16/32/64, Float32"
         )
     return ti
 
@@ -298,7 +297,7 @@ def _check_default_elem(ctx: BuilderContext, value, ti: TypeInfo) -> None:
         ok = isinstance(value, str)
     elif ti.is_bigint or ti.is_int:
         ok = isinstance(value, int)
-    elif ti.is_float or ti.is_float32:
+    elif ti.is_float:
         ok = isinstance(value, (int, float))
     else:
         ok = True  # _is_allowed_arg_type already gated unsupported types
@@ -813,15 +812,18 @@ def _spec_init_stmts(spec: _ArgSpec) -> list:
 def _render_default_elem(value, ti: TypeInfo):
     """AST expression for one element of a list-typed default.
 
-    Mirrors ``_default_expr_src``'s fixed-width-int wrapping at the
-    AST level: ``Int32(1)`` rather than a bare ``1`` so the typed list
-    annotation stays consistent regardless of options.json defaults.
+    Mirrors ``_default_expr_src``'s fixed-width wrapping at the AST
+    level: ``Int32(1)`` / ``Float32(0.5)`` rather than a bare literal,
+    so the typed list annotation stays consistent regardless of
+    options.json defaults and Float32 elements don't widen to Float64.
     """
     if ti.is_str:
         return ast.str_lit(str(value))
     if ti.is_bigint:
         return ast.int_lit(int(value))
-    if ti.is_float or ti.is_float32:
+    if ti.is_float32:
+        return ast.call("Float32", [ast.float_lit(float(value))])
+    if ti.is_float:
         return ast.float_lit(float(value))
     # Fixed-width int: wrap with the constructor so the literal type
     # matches the field type regardless of options.json's default_int.
@@ -1082,7 +1084,7 @@ def _default_expr_src(spec: _ArgSpec) -> str:
     ti = spec.type_info
     if spec.has_default:
         rendered = _literal_repr(spec.default)
-        if ti.is_int:
+        if ti.is_int or ti.is_float32:
             return f"{_arg_type_name(ti)}({rendered})"
         return rendered
     if spec.action in ("store_true", "store_false"):
@@ -1091,12 +1093,13 @@ def _default_expr_src(spec: _ArgSpec) -> str:
         return "0"
     if ti.is_bigint:
         return "0"
-    if ti.is_float or ti.is_float32:
-        return "0.0"
-    if ti.is_int:
-        # Use the constructor form so the literal type matches the
-        # field type regardless of options.json's default_int.
+    if ti.is_int or ti.is_float32:
+        # Constructor form so the literal type matches the field type
+        # (regardless of options.json's default_int, and so Float32
+        # fields don't get a Float64 init that widens the inferred type).
         return f"{_arg_type_name(ti)}(0)"
+    if ti.is_float:
+        return "0.0"
     return '""'
 
 

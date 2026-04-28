@@ -1,8 +1,7 @@
 # Fixed-width int / uint in type= (T1.B). The synthesized parse
 # function calls the corresponding constructor (Int32(...), etc.)
 # on argv tokens, so the resulting record fields carry the matching
-# primitive type. Float32 isn't supported yet -- see the comment on
-# _ALLOWED_TYPES in lib/tpy/argparse.py.
+# primitive type. Float32 is covered by float32_type/.
 from tpy import Int32, Int64, UInt16
 from argparse import ArgumentParser
 
