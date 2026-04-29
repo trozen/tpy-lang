@@ -1498,6 +1498,19 @@ class StatementGenerator:
                     value = self.expressions._maybe_move(stmt.value, value)
                 return f"{indent}{target} = {value};\n"
 
+        # Class-constant write: emit any receiver-side effects as a leading
+        # statement so the qualified `<owner>::<member>` appears as a real
+        # lvalue. Going through `gen_expr` would wrap it in a GCC statement
+        # expression (an rvalue), which fails to compile on the LHS of `=`.
+        if (isinstance(stmt.target, TpyFieldAccess)
+                and stmt.target.class_constant_owner is not None):
+            receiver_stmt, lvalue = self.expressions.gen_class_constant_lvalue(stmt.target)
+            target_type = self.ctx.get_expr_type(stmt.target)
+            value = self.expressions.gen_expr_deref(stmt.value, target_type)
+            value = self.expressions._maybe_move(stmt.value, value)
+            prefix = f"{indent}{receiver_stmt};\n" if receiver_stmt else ""
+            return f"{prefix}{indent}{lvalue} = {value};\n"
+
         # Default: simple assignment (includes field assignments like self.x = val)
         target = self.expressions.gen_expr(stmt.target)
         target_type = self.ctx.get_expr_type(stmt.target)
@@ -1588,7 +1601,17 @@ class StatementGenerator:
             result = self.builtins.gen_call_from_fi(inplace.method, target, [value])
             return f"{indent}{result};\n"
 
-        target = self.expressions.gen_expr(stmt.target)
+        # Class-constant aug-assign: split receiver eval off so the qualified
+        # name is a real lvalue and is emitted at most once. Going through
+        # `gen_expr` for the target would wrap it in a GCC statement expression
+        # (rvalue), and substituting that into `target = bin_op(target, v)`
+        # would also evaluate the receiver twice.
+        receiver_stmt = ""
+        if (isinstance(stmt.target, TpyFieldAccess)
+                and stmt.target.class_constant_owner is not None):
+            receiver_stmt, target = self.expressions.gen_class_constant_lvalue(stmt.target)
+        else:
+            target = self.expressions.gen_expr(stmt.target)
         target_type = self.ctx.get_expr_type(stmt.target)
         value = self.expressions.gen_expr(stmt.value, target_type)
         value_type = self.types.get_resolved_type(stmt.value, target_type)
@@ -1602,18 +1625,19 @@ class StatementGenerator:
             value = f"({value}).to_fixed_check<{target_type.to_cpp()}>()"
             value_type = target_type
 
+        prefix = f"{indent}{receiver_stmt};\n" if receiver_stmt else ""
         # Use resolved binop from sema for augmented assignment (a += b is a = a + b)
         if binop_result := stmt.resolved_binop:
             # String += optimization: in-place append instead of allocating a new string
             if (is_str_type(target_type) or is_string_type(target_type)
                     or isinstance(target_type, PendingStrType)) and stmt.op == "+":
-                return f"{indent}{target} += {value};\n"
+                return f"{prefix}{indent}{target} += {value};\n"
             result = self.expressions._gen_binop_from_result(binop_result, target, value)
-            return f"{indent}{target} = {result};\n"
+            return f"{prefix}{indent}{target} = {result};\n"
         else:
             # Fallback for operators not in module system
             cpp_op = "/" if stmt.op == "//" else stmt.op
-            return f"{indent}{target} {cpp_op}= {value};\n"
+            return f"{prefix}{indent}{target} {cpp_op}= {value};\n"
 
     def _gen_aug_assign_subscript_code(self, stmt: TpyAugAssign, indent: str) -> str:
         """Generate code for augmented assignment to subscript targets.

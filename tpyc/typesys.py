@@ -1573,6 +1573,23 @@ def unwrap_final(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
+def try_unwrap_class_constant(typ: 'TpyType') -> 'tuple[TpyType, bool] | None':
+    """Recognize class-body Final/ClassVar annotations and return (inner, is_final).
+
+    Returns None when `typ` is neither a class-constant annotation. PEP 591
+    treats `Final[T] = value` in a class body as implicit-ClassVar, and
+    `ClassVar[Final[T]] = value` is the explicit alias.
+    """
+    if isinstance(typ, FinalType):
+        return typ.wrapped, True
+    if isinstance(typ, ClassVarType):
+        wrapped = typ.wrapped
+        if isinstance(wrapped, FinalType):
+            return wrapped.wrapped, True
+        return wrapped, False
+    return None
+
+
 @dataclass(frozen=True)
 class ClassVarType(_TypeModifierWrapper):
     """ClassVar[T] (PEP 526) -- class-scoped storage, not an instance field.
@@ -1705,9 +1722,33 @@ def is_final_allowed_inner(typ: 'TpyType') -> bool:
             or is_str_view_type(typ) or isinstance(typ, TupleType))
 
 
+def is_classvar_allowed_inner(typ: 'TpyType') -> bool:
+    """Inner-type allow-list for mutable `ClassVar[T] = value`.
+
+    Tighter than `is_final_allowed_inner` because mutation is permitted:
+    StrView is excluded (a write `C.X = make_string()` would store a view
+    into a temporary's storage and dangle). Tuples are admitted only when
+    every element is itself ClassVar-allowed -- so `tuple[Int32, StrView]`
+    is rejected.
+    """
+    from .type_def_registry import is_char_type
+    if is_numeric_type(typ) or is_char_type(typ):
+        return True
+    if isinstance(typ, TupleType):
+        return all(is_classvar_allowed_inner(e) for e in typ.element_types)
+    return False
+
+
 FINAL_INNER_TYPE_ERROR = (
     "only primitive types (int, float, bool, str, StrView, Char, IntN) "
     "and tuple are allowed"
+)
+
+
+CLASSVAR_INNER_TYPE_ERROR = (
+    "only primitive types (int, float, bool, Char, IntN) and tuple are "
+    "allowed; StrView is rejected because mutation can store a view into "
+    "a temporary -- use `Final[StrView]` for read-only string constants"
 )
 
 
@@ -2991,6 +3032,7 @@ class RecordInfo:
     methods: dict[str, list['FunctionInfo']] = field(default_factory=dict)  # method_name -> list of overloads
     properties: dict[str, 'PropertyInfo'] = field(default_factory=dict)  # property_name -> PropertyInfo
     class_constants: dict[str, FieldInfo] = field(default_factory=dict)  # class-scoped Final/ClassVar storage; partitioned out of `fields` during sema registration
+    class_constants_finality: dict[str, bool] = field(default_factory=dict)  # per-entry: True for Final (read-only, static constexpr), False for mutable ClassVar (static inline)
     type_params: list[str] = field(default_factory=list)  # ["T", "U"] for class Stack[T, U]
     type_param_kinds: list[TypeParamKind] = field(default_factory=list)  # [TYPE, INT] for class Matrix[T, N: int]
     type_param_bounds: dict[str, 'NominalType'] = field(default_factory=dict)  # {"T": Comparable} (must be protocols)

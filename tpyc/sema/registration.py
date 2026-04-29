@@ -11,8 +11,9 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type,
-    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, ClassVarType, make_span,
-    is_final_allowed_inner, FINAL_INNER_TYPE_ERROR,
+    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, make_span,
+    is_final_allowed_inner, FINAL_INNER_TYPE_ERROR, try_unwrap_class_constant,
+    is_classvar_allowed_inner, CLASSVAR_INNER_TYPE_ERROR,
     STRVIEW, INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64, BIGINT, BOOL, TupleType, final_type_str_to_strview,
     register_return_exception, is_return_exception,
     attach_type_param_bounds,
@@ -310,8 +311,14 @@ class TypeRegistrar:
             collisions = cc_keys & parent.class_constants.keys()
             if collisions:
                 cc_name = next(iter(collisions))
+                # Phase 7 still rejects all overrides. Phase 8 will relax the
+                # non-final case to shadow semantics, so the wording adapts to
+                # the parent's finality so the error stays accurate as the
+                # rule narrows.
+                parent_final = parent.class_constants_finality.get(cc_name, True)
+                kind = "Final class constant" if parent_final else "class constant"
                 raise SemanticError(
-                    f"cannot override Final class constant '{cc_name}' "
+                    f"cannot override {kind} '{cc_name}' "
                     f"from base '{parent.name}'",
                     loc=class_constants[cc_name].loc,
                 )
@@ -351,33 +358,36 @@ class TypeRegistrar:
         fld.default_expr = None
         fld.default_value = None
 
-    def _partition_class_constants(self, record: TpyRecord) -> dict[str, FieldInfo]:
+    def _partition_class_constants(
+        self, record: TpyRecord,
+    ) -> tuple[dict[str, FieldInfo], dict[str, bool]]:
         """Split class-body Final/ClassVar annotations off `record.fields` into
         a class_constants dict (PEP 591 implicit-`ClassVar` rule for
-        `Final[T] = value`; mutable `ClassVar` lands in Phase 7).
+        `Final[T] = value`; PEP 526 `ClassVar[T] = value` for mutable
+        class-scoped storage).
 
         Mutates `record.fields` in place to drop routed entries so the rest of
         register_record (and downstream sema/codegen) only sees instance fields.
-        Returns the dict to attach to RecordInfo.class_constants.
+        Returns (class_constants, finality) -- the second dict maps each entry's
+        name to True (Final, read-only, `static constexpr`) or False (mutable
+        ClassVar, `static inline`).
         """
         is_native = record.linkage != RecordLinkage.DEFAULT
         is_native_c = record.linkage == RecordLinkage.NATIVE_C
         is_generic = bool(record.type_params)
 
         class_constants: dict[str, FieldInfo] = {}
+        finality: dict[str, bool] = {}
         remaining: list[FieldInfo] = []
         partitioned_any = False
         for fld in record.fields:
-            if isinstance(fld.type, ClassVarType):
-                raise SemanticError(
-                    "ClassVar at class level is not yet supported; "
-                    "use `Final[T] = value` for class constants",
-                    loc=fld.loc,
-                )
-            if not isinstance(fld.type, FinalType):
+            unwrapped = try_unwrap_class_constant(fld.type)
+            if unwrapped is None:
                 remaining.append(fld)
                 continue
+            inner_wrap, is_final = unwrapped
             partitioned_any = True
+
             if is_generic:
                 raise SemanticError(
                     "class constants on generic classes are not yet supported",
@@ -393,29 +403,58 @@ class TypeRegistrar:
             # constants -- treat as an extern binding (no TPy-side initializer)
             # with a per-symbol rename. Mirrors the instance-field native_field
             # handling at the top of register_record, but partitioning runs first
-            # so we extract here for class constants.
-            if (isinstance(fld.default_expr, TpyCall)
+            # so we extract here for class constants. ClassVar on @native is
+            # rejected below before this matters.
+            if (is_final
+                    and isinstance(fld.default_expr, TpyCall)
                     and fld.default_expr.resolved_import == ("tpy.extern", "native_field")):
                 self._extract_native_field_rename(fld, is_native)
-            if is_native and fld.default_expr is not None:
-                raise SemanticError(
-                    "Final initializer conflicts with C++-owned storage; "
-                    "use `Final[T]` without value to bind to an extern static, "
-                    "or remove `@native` if you want TPy to own the constant",
-                    loc=fld.loc,
-                )
-            if not is_native and fld.default_expr is None:
-                raise SemanticError(
-                    "Final[T] without an initializer in a class body is not yet supported; "
-                    "use `Final[T] = value` for a class constant",
-                    loc=fld.loc,
-                )
-            inner = final_type_str_to_strview(fld.type.wrapped)
-            if not is_final_allowed_inner(inner):
-                raise SemanticError(
-                    f"Final[{inner}] is not supported; {FINAL_INNER_TYPE_ERROR}",
-                    loc=fld.loc,
-                )
+            if is_native:
+                if not is_final:
+                    raise SemanticError(
+                        "ClassVar on @native classes is not supported; "
+                        "TPy-owned mutable storage conflicts with C++-owned extern binding. "
+                        "Use module-level `native_global` for a mutable extern static",
+                        loc=fld.loc,
+                    )
+                if fld.default_expr is not None:
+                    raise SemanticError(
+                        "Final initializer conflicts with C++-owned storage; "
+                        "use `Final[T]` without value to bind to an extern static, "
+                        "or remove `@native` if you want TPy to own the constant",
+                        loc=fld.loc,
+                    )
+            else:
+                if fld.default_expr is None:
+                    if is_final:
+                        raise SemanticError(
+                            "Final[T] without an initializer in a class body is not yet supported; "
+                            "use `Final[T] = value` for a class constant",
+                            loc=fld.loc,
+                        )
+                    raise SemanticError(
+                        "ClassVar without an initializer is not supported; "
+                        "use `ClassVar[T] = value`",
+                        loc=fld.loc,
+                    )
+            # Final[str] -> StrView (string literals have static lifetime, so
+            # constexpr storage is sound). For mutable ClassVar, mutation can
+            # store a view into a temporary, so str/StrView are rejected --
+            # don't rewrite either.
+            if is_final:
+                inner = final_type_str_to_strview(inner_wrap)
+                if not is_final_allowed_inner(inner):
+                    raise SemanticError(
+                        f"Final[{inner}] is not supported; {FINAL_INNER_TYPE_ERROR}",
+                        loc=fld.loc,
+                    )
+            else:
+                inner = inner_wrap
+                if not is_classvar_allowed_inner(inner):
+                    raise SemanticError(
+                        f"ClassVar[{inner}] is not supported; {CLASSVAR_INNER_TYPE_ERROR}",
+                        loc=fld.loc,
+                    )
             if fld.name in class_constants:
                 raise SemanticError(
                     f"Duplicate class constant '{fld.name}' in '{record.name}'",
@@ -430,9 +469,10 @@ class TypeRegistrar:
                 loc=fld.loc,
                 native_name=fld.native_name,
             )
+            finality[fld.name] = is_final
         if partitioned_any:
             record.fields[:] = remaining
-        return class_constants
+        return class_constants, finality
 
     def register_record(self, record: TpyRecord) -> None:
         """Register a record type."""
@@ -472,9 +512,10 @@ class TypeRegistrar:
             )
 
         # Partition class-body Final/ClassVar annotations into class_constants
-        # (PEP 591 implicit-ClassVar rule for `Final[T] = value`). The remainder
-        # of register_record only sees instance fields.
-        class_constants = self._partition_class_constants(record)
+        # (PEP 591 implicit-ClassVar rule for `Final[T] = value`; PEP 526
+        # `ClassVar[T] = value` for mutable storage). The remainder of
+        # register_record only sees instance fields.
+        class_constants, class_constants_finality = self._partition_class_constants(record)
         self._check_class_constant_conflicts(record, class_constants)
 
         # Validate field types
@@ -998,6 +1039,7 @@ class TypeRegistrar:
             methods=methods,
             properties=properties,
             class_constants=class_constants,
+            class_constants_finality=class_constants_finality,
             type_params=record.type_params,
             type_param_kinds=record.type_param_kinds,
             type_param_bounds=record.type_param_bounds,

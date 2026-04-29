@@ -19,7 +19,7 @@ against the same surface and are sketched in
 | 4 | Tests + validation polish for v1 (see [Test Plan](#test-plan)) | Done (v1) |
 | 5 | `obj.X` instance-side reads: fallthrough in `_try_find_field` to `class_constants` (walks MRO via the same path as Phase 6) | Done |
 | 6 | MRO walk: `Child.X` resolves through `mro_ancestors` to the declaring ancestor; emit `<owner_qname>::<member>` | Done |
-| 7 | Mutable `ClassVar[T] = value`: recognize `ClassVarType` in `register_record`, allow mutation, codegen `static inline T X = value` | Planned |
+| 7 | Mutable `ClassVar[T] = value`: recognize `ClassVarType` in `register_record`, allow mutation, codegen `static inline T X = value` | Done |
 | 8 | Subclass override semantics: `Final` blocks override; non-final `ClassVar` shadows with type compatibility check | Planned |
 | 9 | Generic classes with class constants: `Final[T_independent] = value` -- emit on the class template, validate initializer doesn't reference type params | Planned |
 | 10 | `native_field("rename")` on class constants -- per-symbol rename | Done |
@@ -236,9 +236,13 @@ Mutation paths: extend the existing assignment statement handler to allow
 class constant. The existing `Cannot reassign Final variable` guard
 already discriminates by finality; the same predicate gates the new path.
 
-Initializer allow-list: same as module-level `Final` (numeric / `Char` /
-`StrView` / `bool` / tuple). Lift later if real code needs richer
-initializers.
+Initializer allow-list: tighter than `Final`. Mutable `ClassVar` accepts
+numeric / `Char` / `bool` / tuple-of-allowed; `StrView` is rejected
+because a write through a temporary (`C.X = make_string()`) would store
+a view into freed storage. `Final[StrView]` remains the right form for
+read-only string constants because constexpr forbids the dangerous
+mutation. Lift later if/when TPy gains an owned-string `static inline`
+storage shape that survives mutation.
 
 ### Phase 8: Subclass Override
 

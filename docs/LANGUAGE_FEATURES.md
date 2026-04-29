@@ -4976,20 +4976,25 @@ VERSION: Final[tuple[Int32, Int32, Int32]] = (1, 2, 3)
 - Supported types: primitives (int, float, bool, str, StrView, Char, IntN) and tuple (no `Final[list[T]]`, `Final[SomeRecord]`)
 - Must use explicit type: `Final[T]` (bare `Final` not yet supported)
 
-### Class-Level Final Constants (Working)
+### Class-Level Final and ClassVar (Working)
 
 `Final[T] = value` in a class body declares a class-scoped immutable
-constant (PEP 591's implicit-`ClassVar` rule). Reads through the class,
+constant (PEP 591's implicit-`ClassVar` rule). `ClassVar[T] = value`
+declares a mutable class-scoped slot (PEP 526). Reads through the class,
 through an instance, or through a child class all resolve to the
 *declaring* class.
 
 ```python
-from typing import Final
+from typing import ClassVar, Final
 from tpy import Int32
 
 class HttpClient:
     TIMEOUT: Final[Int32] = 30
     DEFAULT_HEADERS: Final[str] = "User-Agent: tpy"
+    instances: ClassVar[Int32] = 0          # mutable class-scoped slot
+
+    def __init__(self) -> None:
+        HttpClient.instances += 1
 
     def fetch(self) -> None:
         timeout = HttpClient.TIMEOUT   # Class-name access
@@ -5001,6 +5006,7 @@ class AuthClient(HttpClient):
 # Inherited reads: Child.X resolves through the MRO to Parent.
 print(AuthClient.TIMEOUT)              # emits HttpClient::TIMEOUT
 print(AuthClient().TIMEOUT)            # emits HttpClient::TIMEOUT
+HttpClient.instances = 0               # mutation OK on ClassVar (rejected on Final)
 
 # `@native` extern binding -- Final[T] without an initializer binds to a
 # C++ static member declared in the user's header.
@@ -5015,10 +5021,19 @@ class BuildOpts:
 
 **Semantics:**
 - Reads through `Class.X`, `obj.X`, `self.X`, and `Child.X` (MRO walk) all
-  resolve to the same constant; codegen emits `<DeclaringClass>::X`
-- Mutation rejected through both `Class.X = ...` and `obj.X = ...`
-- `obj.X = ...` on a Final class constant rejected with the same message
-  as module-level Final reassignment
+  resolve to the same slot; codegen emits `<DeclaringClass>::X`
+- `Final[T] = value` rejects all mutation (`Class.X = ...`, `obj.X = ...`,
+  `Class.X += ...`) with the same message as module-level Final
+  reassignment
+- `ClassVar[T] = value` allows mutation through `Class.X = ...`, `obj.X =
+  ...`, and aug-assign; writes route to the same class-scoped storage
+  regardless of access path. `obj.X = ...` writes through to the class
+  storage, intentionally diverging from CPython (which would create an
+  instance attribute) -- TPy's flat instance layout has no other sensible
+  target. The compiler **warns** on instance-side writes (matching mypy /
+  pyright), pointing the user at the portable `Class.X = ...` form
+- `ClassVar[Final[T]] = value` is the explicit form of `Final[T] = value`
+  in a class body (PEP 591)
 - When `obj` has side effects (e.g. `f().LIMIT`, `lst[i].LIMIT`), the
   receiver is still evaluated -- codegen wraps the access in a GCC
   statement expression so the constant is the yielded value
@@ -5029,29 +5044,39 @@ class BuildOpts:
   the same constant rejects unqualified `C.X` with the same "ambiguous"
   error as instance-field ambiguity; user must disambiguate via `A.X` /
   `B.X`
-- Subclass redeclaration of a parent's `Final` class constant rejected
+- Subclass redeclaration of a parent's class constant (Final or
+  ClassVar) rejected; non-final shadow semantics land in a later phase
 - Cross-module access works including the inherited case: `from mod import
   Child` where `LIMIT` is on `Parent` emits the parent's fully-qualified
   namespace even though `Parent` was never imported
 
 **C++ mapping (regular classes):**
-- `static constexpr T NAME = VALUE;` for constexpr-eligible types (numeric,
-  Char, StrView, bool, literal-tuple)
+- `Final[T] = value` -> `static constexpr T NAME = VALUE;` (constexpr-eligible
+  types: numeric, Char, StrView, bool, literal-tuple)
+- `ClassVar[T] = value` -> `static inline T NAME = VALUE;` (mutable, with
+  C++17+ well-defined cross-TU semantics)
 - `@native` classes don't emit class-body declarations; the user's header
-  owns the storage
+  owns the storage. `ClassVar` is rejected on `@native` (mutable extern
+  statics belong on module-level `native_global` instead)
 - `Final[T] = native_field("cpp_name")` on a `@native` class binds the
   Python identifier to the renamed C++ static (`<qname>::cpp_name`),
   matching the per-symbol rename semantics of instance-field
   `native_field`
 
 **Restrictions:**
-- Inner type allow-list: numeric / `Char` / `StrView` / `bool` / tuple
-  (same as module-level Final)
+- `Final[T]` allow-list: numeric / `Char` / `StrView` / `bool` / tuple
+  (same as module-level Final). `Final[str]` rewrites to `StrView` since
+  string literals have static lifetime.
+- `ClassVar[T]` allow-list: numeric / `Char` / `bool` / tuple-of-allowed
+  (tighter than Final). `StrView` and `str` are rejected -- a write
+  `C.X = make_string()` would store a view into a temporary's storage and
+  dangle. Use `Final[StrView]` for read-only string constants.
 - `Final[T]` without an initializer is currently only supported on
   `@native` classes (PEP 591 instance-final on regular classes lands as a
   separate feature)
-- `ClassVar[...]` in a class body rejected -- mutable class storage and
-  generic class constants ship in later phases
+- `ClassVar[T]` without an initializer rejected (no useful semantics)
+- Class constants on generic classes (`class C[T]: X: Final[Int32] = ...`)
+  rejected; lands with Phase 9
 
 See `docs/CLASSVAR_DESIGN.md` for the full 10-phase plan and edge-case
 table.

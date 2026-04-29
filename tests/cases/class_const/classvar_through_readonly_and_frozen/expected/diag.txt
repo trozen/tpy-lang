@@ -1,0 +1,2 @@
+main.py:23: warning: Assigning to ClassVar 'Counter.instances' via instance writes to class storage in TPy (CPython creates an instance attribute); use 'Counter.instances = ...' for portability
+main.py:35: warning: Assigning to ClassVar 'FrozenCounter.instances' via instance writes to class storage in TPy (CPython creates an instance attribute); use 'FrozenCounter.instances = ...' for portability

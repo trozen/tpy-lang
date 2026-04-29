@@ -1,0 +1,4 @@
+TPy intentionally diverges from CPython for `obj.X = ...` on a ClassVar:
+TPy writes through to the class-scoped storage, while CPython creates an
+instance attribute. This divergence is forced by TPy's flat instance layout
+(no per-instance dict). Tested here as documented Phase 7 behavior.

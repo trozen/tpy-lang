@@ -2981,6 +2981,63 @@ class ExpressionGenerator:
             return self._is_static_type_chain(node.obj)
         return False
 
+    def _class_constant_access_parts(self, expr: TpyFieldAccess) -> tuple[str | None, str]:
+        """Return (receiver_eval, qualified) for a class-constant access.
+
+        `receiver_eval` is the code that must run for `expr.obj`'s side effects
+        and runtime null/optional checks before yielding the constant; `None`
+        when the receiver has no observable cost (a bare `Class.X`, `obj.X`
+        on a name, or a static-type chain like `pkg.Mod.X`). `qualified` is
+        the fully-qualified C++ name `<owner>::<member>`. Read-side codegen
+        folds the two into a GCC statement expression; write-side codegen
+        emits the receiver eval as a separate statement so the qualified
+        name appears as a real lvalue.
+        """
+        owner = expr.class_constant_owner
+        assert owner is not None
+        if owner.is_native and owner.native_name:
+            cpp_qname = owner.native_name
+        else:
+            qual = self.ctx.analyzer.registry.record_qualification(
+                owner, self.ctx.analyzer.ctx.module_name)
+            if qual:
+                cpp_qname = qualified_cpp_name(*qual)
+            else:
+                # Same-module path: nested records carry dotted Python names
+                # (e.g. "Outer.Inner"), so split on `.` and join with `::`
+                # -- matches qualified_cpp_name's segment handling.
+                cpp_qname = "::".join(escape_cpp_name(part) for part in owner.name.split("."))
+        # Phase 10: `Final[T] = native_field("rename")` overrides the
+        # member name on @native class constants.
+        cc_field = owner.class_constants.get(expr.field)
+        cpp_member = cc_field.native_name if cc_field and cc_field.native_name else escape_cpp_name(expr.field)
+        qualified = f"{cpp_qname}::{cpp_member}"
+        receiver_eval: str | None = None
+        if expr.needs_optional_runtime_check:
+            obj_cpp = self.gen_expr(expr.obj)
+            if isinstance(expr.obj, TpyFieldAccess):
+                receiver_eval = f"::tpy::deref_optional_check({obj_cpp})"
+            else:
+                ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj_cpp)
+                receiver_eval = f"::tpy::deref_check({ptr_expr})"
+        elif not isinstance(expr.obj, TpyName) and not self._is_static_type_chain(expr.obj):
+            obj_cpp = self.gen_expr(expr.obj)
+            receiver_eval = f"static_cast<void>({obj_cpp})"
+        return receiver_eval, qualified
+
+    def gen_class_constant_lvalue(self, expr: TpyFieldAccess) -> tuple[str, str]:
+        """Lvalue form of a class-constant write target.
+
+        Returns (receiver_stmt, lvalue) -- the first is a leading C++
+        statement (without trailing semicolon or newline) that evaluates the
+        receiver exactly once for its side effects and runtime checks; empty
+        when no eval is needed. `lvalue` is the bare `<owner>::<member>` name
+        suitable for both LHS and RHS of an assignment / aug-assign without
+        re-evaluating the receiver.
+        """
+        receiver_eval, qualified = self._class_constant_access_parts(expr)
+        return (receiver_eval or ""), qualified
+
     def _gen_field_access(self, expr: TpyFieldAccess) -> str:
         """Generate field access code."""
         cpp_field = escape_cpp_name(expr.field)
@@ -2991,44 +3048,9 @@ class ExpressionGenerator:
         # may not appear in the current module's short-name registry, so we
         # qualify directly from the RecordInfo).
         if expr.class_constant_owner is not None:
-            owner = expr.class_constant_owner
-            if owner.is_native and owner.native_name:
-                cpp_qname = owner.native_name
-            else:
-                qual = self.ctx.analyzer.registry.record_qualification(
-                    owner, self.ctx.analyzer.ctx.module_name)
-                if qual:
-                    cpp_qname = qualified_cpp_name(*qual)
-                else:
-                    # Same-module path: nested records carry dotted Python names
-                    # (e.g. "Outer.Inner"), so split on `.` and join with `::`
-                    # -- matches qualified_cpp_name's segment handling.
-                    cpp_qname = "::".join(escape_cpp_name(part) for part in owner.name.split("."))
-            # Phase 10: `Final[T] = native_field("rename")` overrides the
-            # member name on @native class constants. Set on the FieldInfo
-            # stored in `class_constants` by `_partition_class_constants`.
-            cc_field = owner.class_constants.get(expr.field)
-            cpp_member = cc_field.native_name if cc_field and cc_field.native_name else cpp_field
-            qualified = f"{cpp_qname}::{cpp_member}"
-            # The constant doesn't depend on `obj`, but evaluating `obj` may
-            # still be required for two reasons: (a) Python-style AttributeError
-            # parity -- `c.X` where `c` is `None` must panic, matching CPython
-            # rather than silently succeeding; (b) the receiver may have side
-            # effects (`f().X`, `lst[i].X`). Both fold into a GCC statement
-            # expression that yields the constant.
-            check: str | None = None
-            if expr.needs_optional_runtime_check:
-                obj_cpp = self.gen_expr(expr.obj)
-                if isinstance(expr.obj, TpyFieldAccess):
-                    check = f"::tpy::deref_optional_check({obj_cpp})"
-                else:
-                    ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj_cpp)
-                    check = f"::tpy::deref_check({ptr_expr})"
-            elif not isinstance(expr.obj, TpyName) and not self._is_static_type_chain(expr.obj):
-                obj_cpp = self.gen_expr(expr.obj)
-                check = f"static_cast<void>({obj_cpp})"
-            if check is not None:
-                return f"({{ {check}; {qualified}; }})"
+            receiver_eval, qualified = self._class_constant_access_parts(expr)
+            if receiver_eval is not None:
+                return f"({{ {receiver_eval}; {qualified}; }})"
             return qualified
 
         # Property getter: delegate to normal method call codegen

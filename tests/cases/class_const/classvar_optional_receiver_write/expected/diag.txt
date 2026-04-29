@@ -1,0 +1,2 @@
+main.py:16: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:16: warning: Assigning to ClassVar 'Counter.n' via instance writes to class storage in TPy (CPython creates an instance attribute); use 'Counter.n = ...' for portability

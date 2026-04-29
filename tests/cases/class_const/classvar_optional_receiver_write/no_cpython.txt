@@ -1,0 +1,3 @@
+CPython would create an instance attribute on the receiver rather than
+writing through to class storage. TPy's flat instance layout has no other
+sensible target.

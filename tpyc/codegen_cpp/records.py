@@ -199,7 +199,6 @@ class RecordGenerator:
                 default = f" = {factory_default_to_cpp(fld.type)}"
             out.write(f"{INDENT}{cpp_type} {escape_cpp_name(fld.name)}{default};\n")
 
-        # Class constants (Final[T] = value): emit as static constexpr members.
         # @native records skip emission -- the user's header owns the storage.
         # Use the expression generator so tuples / type-coerced literals emit
         # the same way module-level Final constants do.
@@ -212,7 +211,9 @@ class RecordGenerator:
                     init = self.expressions.gen_expr(cc_fld.default_expr, cc_fld.type)
                 else:
                     init = cc_fld.default_value if cc_fld.default_value is not None else "{}"
-                out.write(f"{INDENT}static constexpr {cpp_type} {escape_cpp_name(cc_name)} = {init};\n")
+                is_final = record_info.class_constants_finality.get(cc_name, True)
+                storage = "static constexpr" if is_final else "static inline"
+                out.write(f"{INDENT}{storage} {cpp_type} {escape_cpp_name(cc_name)} = {init};\n")
 
         # Drop flag for classes with __del__ -- prevents double-drop after move.
         # Only emit on the root class; children inherit the parent's flag so that

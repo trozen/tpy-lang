@@ -1,0 +1,5 @@
+CPython would create instance attributes for `c.instances += 1` and
+`f.instances = 5`, so the class-level reads at the end would still see
+the original value. TPy intentionally routes writes to the class-scoped
+storage (no per-instance dict), so `readonly`/`frozen` on the receiver
+doesn't gate the write -- the instance isn't being mutated.

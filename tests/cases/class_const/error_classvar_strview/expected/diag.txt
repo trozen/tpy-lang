@@ -1,0 +1,1 @@
+main.py:8: error: ClassVar[StrView] is not supported; only primitive types (int, float, bool, Char, IntN) and tuple are allowed; StrView is rejected because mutation can store a view into a temporary -- use `Final[StrView]` for read-only string constants

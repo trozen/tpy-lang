@@ -1,0 +1,3 @@
+CPython's typing.ClassVar refuses Final[T] as its argument at runtime
+("typing.Final[...] is not valid as type argument") even though PEP 591
+permits the form at type-checker level. Skipped here.

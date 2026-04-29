@@ -553,8 +553,66 @@ class StatementAnalyzer:
                 self.ctx.func.current_scope.define(name, target)
             self._sync_ns_var_type(name, target)
 
+    def _is_class_name_receiver(self, expr: TpyExpr) -> bool:
+        """True when `expr` is a class-name reference (e.g. `MyClass`), not
+        an instance reference (`self`, `obj`, `f()`, ...). Mirrors the
+        binding-kind discrimination in `_try_class_constant_access`.
+        """
+        if not isinstance(expr, TpyName):
+            return False
+        ns = self.ctx.func.current_ns
+        if ns is None:
+            return False
+        binding = ns.lookup(expr.name)
+        if binding is None:
+            return False
+        if binding.kind == BindingKind.RECORD:
+            return True
+        if binding.kind == BindingKind.IMPORTED_NAME:
+            import_info = self.ctx.imported_names.get(expr.name)
+            if import_info is None:
+                return False
+            src_mod, src_name = import_info
+            return bool(
+                self.ctx.registry.get_builtin_record(f"{src_mod}.{src_name}")
+                or self.ctx.registry.find_module_record(src_mod, src_name)
+            )
+        return False
+
+    def _check_class_constant_write(self, target: TpyExpr, stmt: TpyStmt) -> None:
+        """Reject `=` / `+=` on Final class constants; warn on instance-side
+        writes to mutable ClassVar (CPython would create an instance attribute
+        instead of writing through to class storage -- mypy/pyright already
+        flag this; matching them keeps the tooling story consistent).
+        """
+        if not isinstance(target, TpyFieldAccess):
+            return
+        owner = target.class_constant_owner
+        if owner is None:
+            return
+        if owner.class_constants_finality.get(target.field, True):
+            raise self.ctx.error(
+                f"Cannot reassign Final class constant "
+                f"'{owner.name}.{target.field}'",
+                stmt,
+            )
+        if not self._is_class_name_receiver(target.obj):
+            self.ctx.warning(
+                f"Assigning to ClassVar '{owner.name}.{target.field}' via "
+                f"instance writes to class storage in TPy (CPython creates "
+                f"an instance attribute); use "
+                f"'{owner.name}.{target.field} = ...' for portability",
+                stmt,
+            )
+
     def _enforce_readonly_assignment_target(self, target: TpyExpr) -> None:
         """Reject assignments through readonly references, frozen fields, and readonly field declarations."""
+        # ClassVar writes always go to class-scoped `static inline` storage,
+        # never to instance fields, so receiver const-ness/freezing is
+        # irrelevant -- the write doesn't touch the instance.
+        if (isinstance(target, TpyFieldAccess)
+                and target.class_constant_owner is not None):
+            return
         # BaseN.field = v goes through `this`, but the syntactic receiver
         # (BaseN) has no value type, so the obj_type branch below can't
         # catch it -- gate on the current method's @readonly flag directly.
@@ -3077,15 +3135,7 @@ class StatementAnalyzer:
             self._analyze_slice_assign(stmt)
             return
         target_type = self.expr.analyze_expr(stmt.target)
-        # Class constants are Final in v1: reject reassignment via `MyClass.X = ...`.
-        # Mutable ClassVar with assignable storage lands in Phase 7.
-        if (isinstance(stmt.target, TpyFieldAccess)
-                and stmt.target.class_constant_owner is not None):
-            raise self.ctx.error(
-                f"Cannot reassign Final class constant "
-                f"'{stmt.target.class_constant_owner.name}.{stmt.target.field}'",
-                stmt,
-            )
+        self._check_class_constant_write(stmt.target, stmt)
         value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
         # Property setter: validate and tag for codegen
         if isinstance(stmt.target, TpyFieldAccess) and stmt.target.is_property_access:
@@ -3573,6 +3623,7 @@ class StatementAnalyzer:
                 f"Augmented assignment on property '{stmt.target.field}' is not yet supported",
                 stmt,
             )
+        self._check_class_constant_write(stmt.target, stmt)
         # Aug-assign replaces the target's value with a freshly computed one
         # (owned str/bytes concat, reallocated list, etc.), so any prior
         # param-derived / safe-to-return provenance is now stale and must be

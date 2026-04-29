@@ -1,0 +1,1 @@
+main.py:8: error: ClassVar without an initializer is not supported; use `ClassVar[T] = value`

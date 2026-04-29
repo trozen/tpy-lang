@@ -1,0 +1,1 @@
+main.py:10: error: ClassVar on @native classes is not supported; TPy-owned mutable storage conflicts with C++-owned extern binding. Use module-level `native_global` for a mutable extern static

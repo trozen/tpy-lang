@@ -1,0 +1,4 @@
+CPython would create a per-child class attribute on `ChildA.counter = 7`,
+shadowing Parent. TPy resolves the write to the declaring ancestor's
+class-scoped storage, matching the read-side MRO walk -- so writes from
+one child are visible through Parent and through any sibling.
