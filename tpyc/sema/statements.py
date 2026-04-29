@@ -19,7 +19,7 @@ from ..typesys import (
     INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, is_protocol_type, is_protocol_union, final_type_str_to_strview,
     is_final_allowed_inner, FINAL_INNER_TYPE_ERROR,
     qualify_exception_name, is_return_exception, is_exception_type,
-    FunctionInfo, ParamInfo,
+    FunctionInfo, ParamInfo, RecordInfo,
     make_ref, unwrap_ref_type, RefType,
     is_integer_type, is_any_int_type, is_numeric_type, is_readonly_span,
     is_float_type, is_any_float_type)
@@ -1570,24 +1570,26 @@ class StatementAnalyzer:
         bindings_before = dict(self.ctx.func.current_scope.bindings)
         ns_types_before = self._save_ns_var_types()
 
-        # Validate all handlers and save bare names for binding
-        handler_bare_names: list[str | None] = []
+        # Validate all handlers and save resolved records for binding.
+        # Qualify before lookup so dotted forms (`re.error`) bypass any local
+        # class with the same bare name.
+        handler_records: list[RecordInfo | None] = []
         for h in stmt.handlers:
             if h.exception_type is not None:
-                record = self.ctx.registry.find_record(h.exception_type)
+                qualified = qualify_exception_name(
+                    h.exception_type, self.ctx.registry)
+                record = self.ctx.registry.find_record_by_qname(qualified)
                 if not record:
                     raise self.ctx.error(
                         f"Unknown exception type '{h.exception_type}'", stmt)
-                if not is_exception_type(h.exception_type, self.ctx.registry):
+                if not is_exception_type(qualified, self.ctx.registry):
                     raise self.ctx.error(
                         f"'{h.exception_type}' is not an exception type; "
                         f"it must inherit from Exception", stmt)
-                handler_bare_names.append(h.exception_type)
-                # Qualify the name for codegen
-                h.exception_type = qualify_exception_name(
-                    h.exception_type, self.ctx.registry)
+                handler_records.append(record)
+                h.exception_type = qualified
             else:
-                handler_bare_names.append(None)
+                handler_records.append(None)
 
         # Analyze try body
         for s in stmt.try_body:
@@ -1611,9 +1613,9 @@ class StatementAnalyzer:
             self.init.restore(before)
             self.ctx.func.current_consumed_own_params = consumed_before.copy()
 
-            bare_name = handler_bare_names[i]
-            if h.binding and bare_name:
-                exc_type = NominalType(bare_name)
+            record = handler_records[i]
+            if h.binding and record is not None:
+                exc_type = NominalType(record.name, _module_qname=record.qualified_name())
                 self.ctx.func.current_scope.bindings[h.binding] = exc_type
                 self.init.mark_assigned(h.binding)
 

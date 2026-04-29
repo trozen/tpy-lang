@@ -1,0 +1,4 @@
+re.error caught
+bound
+MyError caught
+builtins.ValueError caught

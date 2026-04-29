@@ -152,9 +152,17 @@ def is_return_exception(name: str) -> bool:
 
 
 def is_exception_type(name: str, registry: 'TypeRegistry') -> bool:
-    """Check if a record type inherits from Exception or BaseException."""
+    """Check if a record type inherits from Exception or BaseException.
+
+    Accepts both bare ('ValueError') and module-qualified ('re.error') names.
+    Dotted names route through find_record_by_qname so a same-bare-named local
+    class doesn't shadow the qualified target.
+    """
     from tpyc import qnames
-    child = registry.find_record(name)
+    if "." in name:
+        child = registry.find_record_by_qname(name)
+    else:
+        child = registry.find_record(name)
     if child is None:
         return False
     for qname in (qnames.EXCEPTION, qnames.BASE_EXCEPTION):

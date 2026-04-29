@@ -176,6 +176,27 @@ def _extract_subscript_slices(node: ast.Subscript) -> list[ast.expr]:
     return [node.slice]
 
 
+def _attr_chain_to_dotted(node: ast.expr) -> str | None:
+    """Flatten ast.Name / ast.Attribute chains into a dotted string.
+
+    Returns None for any other expression shape (call result, subscript, etc.).
+    """
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        parts: list[str] = []
+        cur: ast.expr = node
+        while isinstance(cur, ast.Attribute):
+            parts.append(cur.attr)
+            cur = cur.value
+        if not isinstance(cur, ast.Name):
+            return None
+        parts.append(cur.id)
+        parts.reverse()
+        return ".".join(parts)
+    return None
+
+
 # Requires whitespace after `tpy:` to avoid matching C++ namespace comments (# tpy::Foo)
 _DIRECTIVE_LINE_RE = re.compile(r'^#\s*tpy:\s+(\w.+)$')
 
@@ -2907,15 +2928,16 @@ class Parser:
             h_loc = self._loc(h) if hasattr(h, 'lineno') else loc
             if h.type is None:
                 # Bare except: -- must be last handler (Python enforces this)
-                handlers.append(TpyExceptHandler(
-                    exception_type=None, binding=h.name,
-                    body=self._parse_body(h.body), loc=h_loc))
-            elif isinstance(h.type, ast.Name):
-                handlers.append(TpyExceptHandler(
-                    exception_type=h.type.id, binding=h.name,
-                    body=self._parse_body(h.body), loc=h_loc))
+                exception_type = None
             else:
-                raise ParseError("'except' requires a simple name (e.g. 'except MyError')", node)
+                exception_type = _attr_chain_to_dotted(h.type)
+                if exception_type is None:
+                    raise ParseError(
+                        "'except' requires a simple or dotted name "
+                        "(e.g. 'except MyError' or 'except pkg.MyError')", h)
+            handlers.append(TpyExceptHandler(
+                exception_type=exception_type, binding=h.name,
+                body=self._parse_body(h.body), loc=h_loc))
         try_body = self._parse_body(node.body)
         else_body = self._parse_body(node.orelse)
         finally_body = self._parse_body(node.finalbody)

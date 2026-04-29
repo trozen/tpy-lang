@@ -1,0 +1,1 @@
+main.py:10: error: 'except' requires a simple or dotted name (e.g. 'except MyError' or 'except pkg.MyError')

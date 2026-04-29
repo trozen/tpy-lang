@@ -5118,6 +5118,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - Multiple `except` handlers with type matching (first match wins)
   - Bare `except:` catches any exception (maps to `catch(...)`)
   - `except E as e` binds the caught exception for field access
+  - `except mod.E` / `except pkg.sub.E`: module-qualified exception class names (after `import mod` / `import pkg.sub`); a local non-exception class with the same bare name does not shadow the qualified target
   - `finally` block via catch-all + explicit execution (runs on all exit paths)
   - `raise` inside `finally` (replaces pending exception, Python semantics)
   - `return`/`break`/`continue` inside try-with-finally (goto transformation)
