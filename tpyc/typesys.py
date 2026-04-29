@@ -90,15 +90,17 @@ _protocol_modules: dict[str, str] = {}  # protocol_name -> module_name
 
 
 def ensure_qualified(name: str) -> str:
-    """Ensure a namespaced C++ name is fully qualified (prefixed with ::).
+    """Ensure a global C++ name is fully qualified (prefixed with ::).
 
-    Names without :: (e.g. "abs") are returned as-is.
     Names already starting with :: are returned as-is.
-    Other namespaced names get :: prepended (e.g. "tpy::Foo" -> "::tpy::Foo").
+    Single-name and namespaced names both get :: prepended (e.g.
+    "BuildOpts" -> "::BuildOpts", "tpy::Foo" -> "::tpy::Foo"). Forcing the
+    leading :: avoids ambiguity when generated code is emitted inside
+    `namespace tpyapp::<module>` and a same-named symbol could exist there.
     """
-    if "::" in name and not name.startswith("::"):
-        return f"::{name}"
-    return name
+    if name.startswith("::"):
+        return name
+    return f"::{name}"
 
 
 def register_native_cpp_name(py_name: str, cpp_name: str) -> None:

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // v = Vec2(Int32(3), Int32(4))
-    Vec2 v = Vec2(3, 4);
+    ::Vec2 v = ::Vec2(3, 4);
     // print(v.x)
     std::cout << v.m_x << "\n";
     // print(v.y)

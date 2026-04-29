@@ -11,7 +11,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t use_rect(SDL_Rect* r);
+int32_t use_rect(::SDL_Rect* r);
 void main();
 
 void __tpy_init();

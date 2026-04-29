@@ -16,7 +16,7 @@ void main() {
     // print(v.sum())
     std::cout << v.sum() << "\n";
     // r = MyRect(Int32(0), Int32(0), Int32(40), Int32(30))
-    Rect r = Rect{0, 0, 40, 30};
+    ::Rect r = ::Rect{0, 0, 40, 30};
     // print(r.w)
     std::cout << r.w << "\n";
     // print(rect_area(take_ptr(r)))

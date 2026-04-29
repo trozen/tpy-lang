@@ -2079,6 +2079,24 @@ class SemanticAnalyzer:
         # Fallback: tpy type aliases (e.g. Int32, Float64)
         self._register_tpy_type_alias(original_name, local_name)
 
+    def _register_nested_with_alias(self, items, register_fn,
+                                    original_name: str, local_name: str) -> None:
+        """Register nested children of `original_name` from `items` (a name -> info
+        dict) under both the canonical key (`Outer.Inner`) and -- when the import
+        is aliased -- the alias-prefixed key (`L.Inner`). Mirrors the pre-register
+        pattern used for the flat record above.
+        """
+        if not items:
+            return
+        prefix = original_name + "."
+        aliased = local_name != original_name
+        for canonical, info in items.items():
+            if not canonical.startswith(prefix):
+                continue
+            register_fn(info, canonical)
+            if aliased:
+                register_fn(info, local_name + canonical[len(original_name):])
+
     def _register_user_module_import(self, module_name: str, original_name: str, local_name: str,
                                      from_star_import: bool = False) -> bool:
         """Register an imported item from a user module.
@@ -2130,15 +2148,13 @@ class SemanticAnalyzer:
             self.ctx.registry.register_record(record_info, local_name)
             if local_name != original_name:
                 self.ctx.registry.register_record(record_info, original_name)
-            # Also register nested types so Outer.Inner resolves in the importing module
-            prefix = original_name + "."
-            for nested_name, nested_info in module_info.records.items():
-                if nested_name.startswith(prefix):
-                    self.ctx.registry.register_record(nested_info, nested_name)
-            if module_info.enums:
-                for nested_name, nested_enum in module_info.enums.items():
-                    if nested_name.startswith(prefix):
-                        self.ctx.registry.register_enum(nested_enum, nested_name)
+            # Also register nested types so Outer.Inner resolves in the importing module.
+            self._register_nested_with_alias(
+                module_info.records, self.ctx.registry.register_record,
+                original_name, local_name)
+            self._register_nested_with_alias(
+                module_info.enums, self.ctx.registry.register_enum,
+                original_name, local_name)
             return True
 
         # Check for protocol

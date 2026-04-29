@@ -4959,7 +4959,8 @@ print(AuthClient().TIMEOUT)            # emits HttpClient::TIMEOUT
 # tpy: include("<x/build_opts.hpp>")
 @native
 class BuildOpts:
-    FLAG: Final[bool]    # binds to ::x::core::BuildOpts::FLAG
+    FLAG: Final[bool]                              # binds to ::x::core::BuildOpts::FLAG
+    KMAX: Final[Int32] = native_field("kMax")      # rename: emits ::x::core::BuildOpts::kMax
 ```
 
 **Semantics:**
@@ -4988,16 +4989,19 @@ class BuildOpts:
   Char, StrView, bool, literal-tuple)
 - `@native` classes don't emit class-body declarations; the user's header
   owns the storage
+- `Final[T] = native_field("cpp_name")` on a `@native` class binds the
+  Python identifier to the renamed C++ static (`<qname>::cpp_name`),
+  matching the per-symbol rename semantics of instance-field
+  `native_field`
 
-**Restrictions (v1, Phases 1-6):**
+**Restrictions:**
 - Inner type allow-list: numeric / `Char` / `StrView` / `bool` / tuple
   (same as module-level Final)
 - `Final[T]` without an initializer is currently only supported on
   `@native` classes (PEP 591 instance-final on regular classes lands as a
   separate feature)
-- `ClassVar[...]` in a class body rejected -- mutable class storage,
-  generic class constants, and `native_field("rename")` on class constants
-  ship in later phases
+- `ClassVar[...]` in a class body rejected -- mutable class storage and
+  generic class constants ship in later phases
 
 See `docs/CLASSVAR_DESIGN.md` for the full 10-phase plan and edge-case
 table.

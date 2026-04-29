@@ -9,7 +9,7 @@ namespace tpyapp::lib {
 
 inline constexpr std::string_view __name__ = "lib";
 
-extern "C" int32_t rect_area(Rect* r);
+extern "C" int32_t rect_area(::Rect* r);
 
 void __tpy_init();
 } // namespace tpyapp::lib

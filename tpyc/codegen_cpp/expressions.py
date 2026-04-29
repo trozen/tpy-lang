@@ -2310,9 +2310,11 @@ class ExpressionGenerator:
                 else:
                     gen_args.append(self.gen_call_arg(a, ptype))
             args = ", ".join(gen_args)
-            # Native records: use native C++ name
+            # Native records: use native C++ name (always set on is_native
+            # records by registration, defaulting to ::<class_name> when no
+            # explicit @native("rename") was given).
             if record_info.is_native:
-                cpp_name = record_info.native_name or expr.func_name
+                cpp_name = record_info.native_name
                 # @native_c: aggregate init (POD struct)
                 if record_info.is_native_c:
                     return f"{cpp_name}{{{args}}}"
@@ -2626,10 +2628,12 @@ class ExpressionGenerator:
             if fi and fi.cpp_template:
                 gen_args = [self.gen_expr(arg) for arg in expr.args]
                 return self.builtins.gen_call_from_fi(fi, None, gen_args)
-            # For native records, use the C++ class and method names
+            # For native records, use the C++ class and method names. The
+            # class qname is always set on is_native records (see registration);
+            # method names only have a `native_name` when explicitly renamed.
             record_info = self.ctx.analyzer.registry.get_record(expr.obj.name)
             if record_info and record_info.is_native:
-                cpp_class = record_info.native_name or expr.obj.name
+                cpp_class = record_info.native_name
                 cpp_method = fi.native_name if fi and fi.native_name else expr.method
                 return f"{cpp_class}::{cpp_method}({args})"
             class_name = expr.obj.name
@@ -2893,6 +2897,35 @@ class ExpressionGenerator:
                 return fld.native_name
         return None
 
+    def _is_static_type_chain(self, node: TpyExpr) -> bool:
+        """True if `node` is a chain of name/field-access nodes that all refer
+        to type names (records or enums, including nested ones, and including
+        cross-module via `from mod import Foo`). Such a chain names a static
+        C++ type and has no runtime side effects, so the class-constant
+        wrapper doesn't need a `static_cast<void>(...)` of it -- and indeed
+        couldn't, since the resulting C++ would be a type-id where an
+        expression is required.
+        """
+        if isinstance(node, TpyName):
+            if not self.ctx.current_ns:
+                return False
+            binding = self.ctx.current_ns.lookup(node.name)
+            if binding is None:
+                return False
+            if binding.kind in (BindingKind.RECORD, BindingKind.ENUM):
+                return True
+            if binding.kind == BindingKind.IMPORTED_NAME and binding.import_source:
+                src_mod, src_name = binding.import_source
+                registry = self.ctx.analyzer.registry
+                dotted = f"{src_mod}.{src_name}"
+                return (registry.find_module_record(src_mod, src_name) is not None
+                        or registry.get_builtin_record(dotted) is not None
+                        or registry.get_enum(dotted) is not None)
+            return False
+        if isinstance(node, TpyFieldAccess):
+            return self._is_static_type_chain(node.obj)
+        return False
+
     def _gen_field_access(self, expr: TpyFieldAccess) -> str:
         """Generate field access code."""
         cpp_field = escape_cpp_name(expr.field)
@@ -2909,8 +2942,19 @@ class ExpressionGenerator:
             else:
                 qual = self.ctx.analyzer.registry.record_qualification(
                     owner, self.ctx.analyzer.ctx.module_name)
-                cpp_qname = qualified_cpp_name(*qual) if qual else escape_cpp_name(owner.name)
-            qualified = f"{cpp_qname}::{cpp_field}"
+                if qual:
+                    cpp_qname = qualified_cpp_name(*qual)
+                else:
+                    # Same-module path: nested records carry dotted Python names
+                    # (e.g. "Outer.Inner"), so split on `.` and join with `::`
+                    # -- matches qualified_cpp_name's segment handling.
+                    cpp_qname = "::".join(escape_cpp_name(part) for part in owner.name.split("."))
+            # Phase 10: `Final[T] = native_field("rename")` overrides the
+            # member name on @native class constants. Set on the FieldInfo
+            # stored in `class_constants` by `_partition_class_constants`.
+            cc_field = owner.class_constants.get(expr.field)
+            cpp_member = cc_field.native_name if cc_field and cc_field.native_name else cpp_field
+            qualified = f"{cpp_qname}::{cpp_member}"
             # The constant doesn't depend on `obj`, but evaluating `obj` may
             # still be required for two reasons: (a) Python-style AttributeError
             # parity -- `c.X` where `c` is `None` must panic, matching CPython
@@ -2925,7 +2969,7 @@ class ExpressionGenerator:
                 else:
                     ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj_cpp)
                     check = f"::tpy::deref_check({ptr_expr})"
-            elif not isinstance(expr.obj, TpyName):
+            elif not isinstance(expr.obj, TpyName) and not self._is_static_type_chain(expr.obj):
                 obj_cpp = self.gen_expr(expr.obj)
                 check = f"static_cast<void>({obj_cpp})"
             if check is not None:

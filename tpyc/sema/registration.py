@@ -317,6 +317,38 @@ class TypeRegistrar:
                 if isinstance(grandparent, NominalType):
                     queue.append(grandparent)
 
+    def _extract_native_field_rename(self, fld: 'FieldInfo', is_native: bool) -> None:
+        """Strip a `native_field("name")` call from `fld.default_expr` and
+        record the rename on `fld.native_name`. Caller has already verified
+        `fld.default_expr` is a TpyCall to `tpy.extern.native_field`.
+
+        Validates that the surrounding class is `@native` and that the call's
+        single positional argument is a string literal. Clears `default_expr`
+        and `default_value` so downstream validation doesn't treat the call as
+        a real initializer.
+        """
+        call = fld.default_expr
+        assert isinstance(call, TpyCall)
+        if not is_native:
+            raise SemanticError(
+                "native_field() is only allowed on @native classes",
+                fld.loc,
+            )
+        if len(call.args) != 1 or call.kwargs:
+            raise SemanticError(
+                "native_field() takes exactly 1 positional string argument",
+                fld.loc,
+            )
+        arg = call.args[0]
+        if not isinstance(arg, TpyStrLiteral):
+            raise SemanticError(
+                "native_field() argument must be a string literal",
+                fld.loc,
+            )
+        fld.native_name = arg.value
+        fld.default_expr = None
+        fld.default_value = None
+
     def _partition_class_constants(self, record: TpyRecord) -> dict[str, FieldInfo]:
         """Split class-body Final/ClassVar annotations off `record.fields` into
         a class_constants dict (PEP 591 implicit-`ClassVar` rule for
@@ -355,6 +387,14 @@ class TypeRegistrar:
                     "declare a free `native_global` instead",
                     loc=fld.loc,
                 )
+            # Phase 10: `Final[T] = native_field("rename")` on @native class
+            # constants -- treat as an extern binding (no TPy-side initializer)
+            # with a per-symbol rename. Mirrors the instance-field native_field
+            # handling at the top of register_record, but partitioning runs first
+            # so we extract here for class constants.
+            if (isinstance(fld.default_expr, TpyCall)
+                    and fld.default_expr.resolved_import == ("tpy.extern", "native_field")):
+                self._extract_native_field_rename(fld, is_native)
             if is_native and fld.default_expr is not None:
                 raise SemanticError(
                     "Final initializer conflicts with C++-owned storage; "
@@ -527,33 +567,14 @@ class TypeRegistrar:
 
         # Extract native_field() renames on @native classes. The call is not a
         # real default -- it's stripped here so the const validation below
-        # doesn't see it. A bogus default_value ("native_field(\"...\")") is
-        # also set by the parser's generic call handler; clear that too.
+        # doesn't see it. Class-constant fields are handled separately in
+        # `_partition_class_constants` (which runs earlier, before macros).
         for fld in record.fields:
             if not isinstance(fld.default_expr, TpyCall):
                 continue
             if fld.default_expr.resolved_import != ("tpy.extern", "native_field"):
                 continue
-            call = fld.default_expr
-            if not is_native:
-                raise SemanticError(
-                    "native_field() is only allowed on @native classes",
-                    fld.loc,
-                )
-            if len(call.args) != 1 or call.kwargs:
-                raise SemanticError(
-                    "native_field() takes exactly 1 positional string argument",
-                    fld.loc,
-                )
-            arg = call.args[0]
-            if not isinstance(arg, TpyStrLiteral):
-                raise SemanticError(
-                    "native_field() argument must be a string literal",
-                    fld.loc,
-                )
-            fld.native_name = arg.value
-            fld.default_expr = None
-            fld.default_value = None
+            self._extract_native_field_rename(fld, is_native)
 
         # Validate field defaults are const (after macros have transformed them)
         for fld in record.fields:
@@ -980,7 +1001,19 @@ class TypeRegistrar:
             type_param_bounds=record.type_param_bounds,
             parents=[provisional_parent] if provisional_parent is not None else [],
             implemented_protocols=[],
-            native_name=ensure_qualified(record.native_name) if record.native_name else None,
+            # @native records always carry a C++ name (defaulting to the
+            # class's Python name when the user didn't provide a rename via
+            # `@native("Foo")`). Forcing the leading `::` via ensure_qualified
+            # keeps every reference unambiguously global, even when generated
+            # code lives inside `namespace tpyapp::<module>`. Nested @native
+            # records (parser-allowed but unused in the corpus) keep
+            # native_name=None and fall through to the dotted-name registration
+            # path in codegen_cpp/generator.py.
+            native_name=(
+                ensure_qualified(record.native_name) if record.native_name
+                else (ensure_qualified(record.name)
+                      if is_native and "." not in record.name else None)
+            ),
             is_native=is_native,
             is_native_c=is_native_c,
             is_nocopy=record.is_nocopy,

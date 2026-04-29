@@ -21,8 +21,8 @@ against the same surface and are sketched in
 | 6 | MRO walk: `Child.X` resolves through `mro_ancestors` to the declaring ancestor; emit `<owner_qname>::<member>` | Done |
 | 7 | Mutable `ClassVar[T] = value`: recognize `ClassVarType` in `register_record`, allow mutation, codegen `static inline T X = value` | Planned |
 | 8 | Subclass override semantics: `Final` blocks override; non-final `ClassVar` shadows with type compatibility check | Planned |
-| 9 | Generic classes with class constants: T-independent first (9a), T-dependent per-monomorphization (9b) | Planned |
-| 10 | `native_field("rename")` on class constants -- per-symbol rename | Planned (followup) |
+| 9 | Generic classes with class constants: `Final[T_independent] = value` -- emit on the class template, validate initializer doesn't reference type params | Planned |
+| 10 | `native_field("rename")` on class constants -- per-symbol rename | Done |
 
 ### Out of Scope
 
@@ -260,26 +260,17 @@ Codegen change is small: each declaring class emits its own static; use
 sites emit the owner's qname (which falls out of the Phase 6 MRO walk
 naturally -- the walk stops at the first declaring class).
 
-### Phase 9: Generic Classes
+### Phase 9: Generic Classes (T-Independent)
 
-Two sub-phases:
+`class C[T]: MAX: Final[Int32] = 10`. The initializer doesn't reference
+any type parameter. Emit on the class template; access via `C<T>::MAX`.
+Same allow-list as the non-generic case. The new validation: confirm the
+initializer's free names don't include any of the class's type parameters
+(cheap walk over the initializer's `TpyName` references).
 
-- **9a (T-independent)**: `class C[T]: MAX: Final[Int32] = 10`. The
-  initializer doesn't reference any type parameter. Emit on the class
-  template; access via `C<T>::MAX`. Same allow-list as the non-generic
-  case. The new validation: confirm the initializer's free names don't
-  include any of the class's type parameters (cheap walk over the
-  initializer's `TpyName` references).
-
-- **9b (T-dependent)**: `class C[T]: ZERO: Final[T] = T()`. Per-monomorphization;
-  the initializer is evaluated for each instantiation. Restrictions:
-  - Initializer must be valid for every concrete `T` used in the program.
-    Practically `T()` (default-construct) requires every monomorphization
-    to have a constexpr default constructor.
-  - For non-constexpr-default-constructible monomorphizations, fall back
-    to `static inline const T X{};` rather than `static constexpr`.
-  - 9b is not strictly necessary if 9a covers real use cases; revisit
-    when we hit a concrete need.
+T-dependent class constants (`class C[T]: ZERO: Final[T] = T()`,
+per-monomorphization initializers) are deferred to a future extension --
+see [Future Extensions](#future-extensions).
 
 ### Phase 10: `native_field("rename")` on Class Constants
 
@@ -289,10 +280,10 @@ verbatim for the member. Change: when the class constant's
 `FieldInfo.native_name` is set, emit `<cpp_qname>::<native_name>` instead
 of `<cpp_qname>::<member>`.
 
-Followup priority. Whole-class `@native("Ns::C")` rename covers the common
-case (per-member Python and C++ identifiers usually match). Per-member
-rename is needed when the C++ side chose a different identifier (e.g.
-`g_flag` for a leading-`g_` global convention).
+Whole-class `@native("Ns::C")` rename covers most cases (per-member Python
+and C++ identifiers usually match). Per-member rename is needed when the
+C++ side chose a different identifier (e.g. `g_flag` for a leading-`g_`
+global convention).
 
 ---
 
@@ -393,11 +384,11 @@ struct Counter {
 | Mutation `obj.X = ...` on non-final `ClassVar` | works -- routes to the same class-scoped storage as `MyClass.X = ...` | 5 + 7 |
 | `Final[T] = value` where `value` is not a compile-time constant | error -- reuses existing module-level `Final` constant initializer check | v1 |
 | `Final[T] = value` where `value` references another class's `Final` (cross-module) | error today, mirrors module-level "cross-module Final references not yet supported" (`statements.py:2462-2463`) | v1 |
-| Generic class `class C[T]: X: Final[T_independent] = ...` | error in v1; supported in Phase 9a | v1 -> 9 |
-| Generic class `class C[T]: X: Final[T] = ...` (T-dependent) | error in v1 and 9a; supported in Phase 9b | v1 -> 9 |
+| Generic class `class C[T]: X: Final[T_independent] = ...` | error in v1; supported in Phase 9 | v1 -> 9 |
+| Generic class `class C[T]: X: Final[T] = ...` (T-dependent) | error in v1 and Phase 9; deferred to a future extension | v1 -> future |
 | Forward reference between class constants in same body (`A: Final[int] = 1; B: Final[int] = A + 1`) | works in C++ (later `static constexpr` sees earlier ones in class scope); requires a test | v1 |
 | `@dataclass` class with class constants alongside instance fields | works -- `@dataclass` iterates `record.fields`, class constants live in `record.class_constants` | v1 |
-| `native_field("rename")` on class constant | error in v1; supported in Phase 10 | v1 -> 10 |
+| `native_field("rename")` on class constant | works on @native classes -- emits `<cpp_qname>::<native_name>` instead of `<cpp_qname>::<member>`; rejected on regular classes | 10 |
 
 ---
 
@@ -437,9 +428,8 @@ V1 native cases under `tests/cases/native/`:
 
 - **Phase 7**: `classvar_mutable/` -- `ClassVar[T] = value`, read and mutate via `ClassName.X`. `classvar_final_explicit/` -- `ClassVar[Final[T]] = value` aliases `Final[T] = value`. `error_classvar_no_value/` -- `ClassVar[T]` without initializer rejected. `error_classvar_native/` -- `ClassVar` on `@native` class rejected.
 - **Phase 8**: `subclass_shadow_classvar/` -- child redeclares non-final `ClassVar`, both storages observable. `error_subclass_shadow_type_mismatch/` -- shadow with incompatible type rejected.
-- **Phase 9a**: `generic_class_const_t_independent/` -- `class C[T]: MAX: Final[Int32] = 10` with multiple instantiations.
-- **Phase 9b**: `generic_class_const_t_dependent/` -- `class C[T]: ZERO: Final[T] = T()` with constexpr-default-constructible `T`s.
-- **Phase 10**: `native_class_final_renamed/` -- `@native class X: FLAG: Final[bool] = native_field("g_flag")` emits `X::g_flag`.
+- **Phase 9**: `generic_class_const_t_independent/` -- `class C[T]: MAX: Final[Int32] = 10` with multiple instantiations.
+- **Phase 10**: `native_class_final_renamed/` -- `@native class X: FLAG: Final[bool] = native_field("g_flag")` emits `X::g_flag`. `error_native_field_class_const_on_regular_class/` -- `native_field()` on a non-`@native` class constant rejected via `_partition_class_constants` (distinct from the instance-field path).
 
 ---
 
@@ -449,6 +439,7 @@ Items past Phase 10. Phases 5-10 themselves are covered in [Later Phases](#later
 
 | Feature | Notes |
 |---------|-------|
+| T-dependent class constants on generic classes (`class C[T]: ZERO: Final[T] = T()`) | Per-monomorphization initializer evaluation. Restrictions: initializer must be valid for every concrete `T` used in the program (e.g. `T()` requires every monomorphization to have a constexpr default constructor). For non-constexpr-default-constructible monomorphizations, fall back to `static inline const T X{};` rather than `static constexpr`. Deferred -- Phase 9's T-independent form covers known use cases; revisit when a concrete need surfaces |
 | Instance-final (`Final[T]` no value, regular class) | PEP 591 form; needs init-time set-once tracking. Separate feature, not a class-constant extension |
 | Record-typed `Final[T] = T(...)` | Today the inner-type allow-list (`is_final_allowed_inner`, shared with module-level Final) accepts only numeric/Char/StrView/bool/tuple. Lifting it to user-defined records is feasible in three tiers: (a) **constexpr-eligible records** -- all-primitive fields, no `__del__`, default args themselves constexpr; emit `static constexpr T X = T{...};` and mark the record's `__init__` `constexpr`. Cleanest tier. (b) **Non-constexpr value-type records** (fields needing dynamic alloc like `String` / `list[T]`); emit `static inline const T X = T{...};` -- C++17 inline makes cross-TU well-defined, runs at static-init. (c) **Reference-type records / records with `__del__`**; harder -- needs ownership/destructor story (does the static destruct at exit, interact with `tpy_terminate_handler`?). Implementation: new predicate `is_constexpr_constructible(record_info)` (recursive over fields), extend `is_final_allowed_inner`, extend `__init__` codegen to emit `constexpr` when eligible, codegen picks constexpr vs inline-const per-record. Module-level Final gets the same lift for free. M effort. |
 | Bare `X` in a method body resolving to class scope | Python's resolution: bare `X` in a method body looks at locals then globals, never class scope. We match Python -- explicit `self.X` or `ClassName.X` is always required. Listed only to record the choice |

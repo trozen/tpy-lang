@@ -92,7 +92,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D21 | TypedDict | M | Done | [VII](#typeddict) |
 | D22 | Multiple inheritance (mixins) | L | Done | [VII](#multiple-inheritance) |
 | D23 | Nested classes | M | Done | [VII](#nested-classes) |
-| D24 | Class-level constants (`Final` + `ClassVar`, `@native` extern, MRO, generics) | L | Phase 1-6 done | [VII](#class-level-constants) |
+| D24 | Class-level constants (`Final` + `ClassVar`, `@native` extern, MRO, generics) | L | Phases 1-6, 10 done | [VII](#class-level-constants) |
 
 ### Phase E: Advanced Safety
 
@@ -2371,19 +2371,20 @@ the gap is general -- idiomatic Python class constants (`MyClass.TIMEOUT`,
 lookup tables on a type) hit the same wall today, with the misleading error
 `'ClassName' is not a variable` at every use site.
 
-**Current state**: Phases 1-6 done. Design in `docs/CLASSVAR_DESIGN.md`
+**Current state**: Phases 1-6 and 10 done. Design in `docs/CLASSVAR_DESIGN.md`
 covers all 10 phases. Working surface: `Final[T] = value` (class constant),
 `@native` extern `Final[T]` no-value binding, forward refs within a class
 body, instance-side `obj.X` reads, MRO walk for `Child.X` -> `Parent::X`
 (emits the declaring class's qname including for cross-module ancestors
 the accessing module never imported), GCC-stmt-expr wrapping when the
-receiver has side effects (`f().X`, `lst[i].X`), full validation gates
+receiver has side effects (`f().X`, `lst[i].X`), `native_field("rename")`
+per-symbol rename on `@native` class constants, full validation gates
 (name conflicts, subclass override of `Final`, multi-base ambiguity
 rejected with the same shape as instance-field ambiguity, generic-class
 rejection, reassignment to Final rejected through both `Class.X = ...`
 and `obj.X = ...`). Remaining phases land additively against the same
 plumbing (Phase 7 mutable `ClassVar`, Phase 8 subclass override, Phase 9
-generics, Phase 10 `native_field` rename).
+generics).
 
 **Dependencies**: None. Reuses module-level `Final` allow-list, `RecordInfo`
 plumbing (`native_name`, `module`), and `_get_qualified_cpp_name`.

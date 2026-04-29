@@ -9,7 +9,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // p = Point(Int32(10), Int32(20))
-    Point p = Point{10, 20};
+    ::Point p = ::Point{10, 20};
     // print(p.x)
     std::cout << p.x << "\n";
     // print(p.y)
@@ -19,7 +19,7 @@ void main() {
     // print(p.manhattan())
     std::cout << p.manhattan() << "\n";
     // r = MyRect(Int32(0), Int32(0), Int32(800), Int32(600))
-    Rect r = Rect{0, 0, 800, 600};
+    ::Rect r = ::Rect{0, 0, 800, 600};
     // print(r.w)
     std::cout << r.w << "\n";
     // print(rect_area(take_ptr(r)))

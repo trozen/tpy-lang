@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // print(BuildOpts.FLAG)
-    std::cout << ::tpy::print_bool(BuildOpts::FLAG) << "\n";
+    std::cout << ::tpy::print_bool(::BuildOpts::FLAG) << "\n";
     // print(BuildOpts.MAX_RETRIES)
-    std::cout << BuildOpts::MAX_RETRIES << "\n";
+    std::cout << ::BuildOpts::MAX_RETRIES << "\n";
     // print(BuildOpts.RELEASE_TAG)
-    std::cout << BuildOpts::RELEASE_TAG << "\n";
+    std::cout << ::BuildOpts::RELEASE_TAG << "\n";
 }
 
 void __tpy_init() {

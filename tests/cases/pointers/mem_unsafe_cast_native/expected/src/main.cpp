@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def get_thing(sec: Ptr[SectorT]) -> Ptr[ThingT]:
-thing_t* get_thing(sector_t* sec) {
+::thing_t* get_thing(::sector_t* sec) {
     // return unsafe_cast[ThingT](sec.thinglist)
-    return reinterpret_cast<thing_t*>(::tpy::deref_check(sec).thinglist);
+    return reinterpret_cast<::thing_t*>(::tpy::deref_check(sec).thinglist);
 }
 
 // def main() -> None:
 void main() {
     // thing = ThingT(Int32(42))
-    thing_t thing = thing_t{42};
+    ::thing_t thing = ::thing_t{42};
     // sec = SectorT(Int32(100), unsafe_cast[None](take_ptr(thing)))
-    sector_t sec = sector_t{100, reinterpret_cast<void*>(&thing)};
+    ::sector_t sec = ::sector_t{100, reinterpret_cast<void*>(&thing)};
     // p: Ptr[ThingT] = get_thing(take_ptr(sec))
-    thing_t* p = get_thing(&sec);
+    ::thing_t* p = get_thing(&sec);
     // print(p.id)
     std::cout << ::tpy::deref_check(p).id << "\n";
 }

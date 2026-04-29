@@ -9,7 +9,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // v = Vec2(Int32(3), Int32(4))
-    Vec2 v = Vec2(3, 4);
+    ::Vec2 v = ::Vec2(3, 4);
     // print(v.x)
     std::cout << v.x << "\n";
     // print(v.y)
@@ -19,9 +19,9 @@ void main() {
     // print(v.sum())
     std::cout << v.sum() << "\n";
     // print(v.dot(Vec2(Int32(1), Int32(2))))
-    std::cout << v.dot(Vec2(1, 2)) << "\n";
+    std::cout << v.dot(::Vec2(1, 2)) << "\n";
     // z = Vec2.zero()
-    Vec2 z = Vec2::zero();
+    ::Vec2 z = ::Vec2::zero();
     // print(z.x)
     std::cout << z.x << "\n";
     // print(z.y)
