@@ -339,6 +339,30 @@ class TempState:
         """Register a named pre-declaration (for walrus operator variables)."""
         self._pending_named.append((name, cpp_type, init, brace_init))
 
+    def checkpoint(self) -> tuple[int, int]:
+        """Snapshot the current pending-temp queue lengths.
+
+        Pair with `rollback_to` to discard temps registered between the two
+        calls -- needed when emitting into a context that has no place to
+        flush declarations (e.g. a C++ member-initializer-list expression).
+        """
+        return (len(self._pending), len(self._pending_named))
+
+    def rollback_to(self, checkpoint: tuple[int, int]) -> bool:
+        """Discard temps registered after `checkpoint`. Returns True if any were dropped.
+
+        `_counter` is intentionally not rolled back: the caller may emit the same
+        expression again later (in a different context that can flush temps), and
+        reusing counter values would produce duplicate `__tmp_N` names. Skipping a
+        number is harmless -- temp names only need to be unique within a pass.
+        """
+        pending, pending_named = checkpoint
+        if len(self._pending) == pending and len(self._pending_named) == pending_named:
+            return False
+        del self._pending[pending:]
+        del self._pending_named[pending_named:]
+        return True
+
     def flush(self, out: TextIO, indent: str) -> None:
         """Emit any pending temp variable declarations."""
         for name, cpp_type, init_val, brace_init in self._pending_named:

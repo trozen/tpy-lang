@@ -235,10 +235,10 @@ class RecordGenerator:
                 pname: ptype for pname, ptype in record.init_method.params}
             self.ctx.in_method = True
             base_inits = self._extract_base_inits(record.init_method, record)
-            inits = self._extract_field_inits(record.init_method, record)
+            inits, hoisted_ids = self._extract_field_inits(record.init_method, record)
             self.ctx.current_func_params = saved_func_params
             self.ctx.in_method = saved_in_method
-            non_init_stmts = self._get_non_init_stmts(record.init_method, record)
+            non_init_stmts = self._get_non_init_stmts(record.init_method, record, hoisted_ids)
 
             self.ctx.emit_preceding_comments(out, record.init_method.loc, indent=INDENT)
             self.ctx.emit_source_comment(out, record.init_method.loc, indent=INDENT)
@@ -841,11 +841,18 @@ class RecordGenerator:
         entries.sort(key=lambda e: e[0])
         return [code for _, code in entries]
 
-    def _extract_field_inits(self, init_method: TpyFunction, record: TpyRecord) -> list[tuple[str, str]]:
+    def _extract_field_inits(
+        self, init_method: TpyFunction, record: TpyRecord
+    ) -> tuple[list[tuple[str, str]], set[int]]:
         """Extract field initializations from __init__ body.
 
         Only extracts initializations for fields that belong to this class directly,
         not inherited fields. Inherited field assignments must go in the constructor body.
+
+        Returns ``(inits, hoisted_ids)`` -- ``inits`` is the (field, value) pairs to
+        emit in the member init list; ``hoisted_ids`` is the set of ``id(stmt)`` for
+        TpyAssign statements that were hoisted, used by ``_get_non_init_stmts`` to
+        avoid emitting the same assignment again in the constructor body.
         """
         # Build field name -> type map for target type passing
         field_types = {fld.name: fld.type for fld in record.fields}
@@ -873,6 +880,7 @@ class RecordGenerator:
         local_names = collect_top_level_local_names(init_method.body)
         try:
             inits = []
+            hoisted_ids: set[int] = set()
             for stmt in init_method.body:
                 if isinstance(stmt, TpyAssign):
                     if isinstance(stmt.target, TpyFieldAccess):
@@ -927,7 +935,32 @@ class RecordGenerator:
                                 fld_type = field_types[field_name]
                                 # Unwrap copy() in member init -- init list copies implicitly
                                 source = self.ctx.unwrap_copy(stmt.value)
+                                # A member-initializer-list expression has no place
+                                # to declare temps; if `gen_expr` registers any,
+                                # demote the assignment to the body where the next
+                                # `temps.flush` can emit them.
+                                checkpoint = self.ctx.temps.checkpoint()
                                 value = self.expressions.gen_expr(source, fld_type)
+                                if self.ctx.temps.rollback_to(checkpoint):
+                                    # @nocopy + __del__ fields have no default ctor,
+                                    # so body-assignment would default-init the field
+                                    # in the MIL to an uncompilable state. Reject
+                                    # cleanly here -- mirrors the bare-name guard above.
+                                    fld_rec = self.ctx.analyzer.registry.get_record_for_type(fld_type)
+                                    if fld_rec is not None and fld_rec.is_nocopy and fld_rec.has_del:
+                                        raise CodeGenError(
+                                            f"field '{field_name}' of @nocopy + __del__ type "
+                                            f"'{fld_rec.name}' has no default constructor and "
+                                            f"its initializer expression requires a codegen "
+                                            f"temporary that cannot be declared in the member "
+                                            f"initializer list. Refactor the RHS so it does not "
+                                            f"need an intermediate (e.g. avoid varargs calls), "
+                                            f"or move the construction into a @staticmethod "
+                                            f"factory returning Own[Self]: "
+                                            f"`self.{field_name} = {fld_rec.name}.factory(...)`",
+                                            stmt.loc
+                                        )
+                                    continue
                                 # bytes param (span<const uint8_t>) -> field (vector<uint8_t>):
                                 # construct from iterators since vector has no span constructor.
                                 if (is_bytes_type(fld_type)
@@ -971,7 +1004,8 @@ class RecordGenerator:
                                     val_cpp = self.types.type_to_cpp(fld_type)
                                     value = f"::tpy::to_value_variant<{val_cpp}>({value})"
                                 inits.append((field_name, value))
-            return inits
+                                hoisted_ids.add(id(stmt))
+            return inits, hoisted_ids
         finally:
             self.ctx.movable_locals = saved_movable
 
@@ -1053,47 +1087,24 @@ class RecordGenerator:
                 return False
         return all(self._fld_type_cpp_default_constructible(f.type) for f in record_info.fields)
 
-    def _get_non_init_stmts(self, init_method: TpyFunction, record: TpyRecord) -> list[TpyStmt]:
-        """Get statements from __init__ that aren't simple field assignments.
+    def _get_non_init_stmts(
+        self, init_method: TpyFunction, record: TpyRecord, hoisted_ids: set[int]
+    ) -> list[TpyStmt]:
+        """Get statements from __init__ that aren't hoisted into the member init list.
 
-        These need to go in the constructor body, not the initializer list.
-        Includes assignments to inherited fields (they can't be in the member init list).
-        Skips super().__init__() calls (handled separately in base initializer).
+        These need to go in the constructor body. ``hoisted_ids`` is produced by
+        ``_extract_field_inits`` and contains ``id(stmt)`` for every TpyAssign that
+        was successfully placed in the MIL -- the single source of truth so the
+        two functions can never disagree on which assignments belong where.
+        Skips ``super().__init__()`` calls (handled separately as base initializer).
         """
-        # Get the set of this record's own field names
-        own_field_names = {fld.name for fld in record.fields}
-        param_names = {p[0] for p in init_method.params}
-        # Nested def names -- field assignments referencing these go in the body
-        nested_def_names = {
-            s.func.name for s in init_method.body if isinstance(s, TpyNestedDef)
-        }
-        # Body-local variable names (see `_extract_field_inits` for rationale).
-        local_names = collect_top_level_local_names(init_method.body)
-
         non_init = []
         for stmt in init_method.body:
-            # Skip super().__init__() calls - handled as base initializer
             if is_base_init_call(stmt):
                 continue
-            is_own_field_init = False
-            if isinstance(stmt, TpyAssign):
-                if isinstance(stmt.target, TpyFieldAccess):
-                    if isinstance(stmt.target.obj, TpyName) and stmt.target.obj.name == "self":
-                        field_name = stmt.target.field
-                        # Only skip if it's this class's own field, not a nested
-                        # def ref, and not a body-local variable ref (must mirror
-                        # _extract_field_inits guards exactly).
-                        if field_name in own_field_names:
-                            source_expr = stmt.value
-                            while isinstance(source_expr, TpyCoerce):
-                                source_expr = source_expr.expr
-                            is_nested = isinstance(source_expr, TpyName) and source_expr.name in nested_def_names
-                            is_body_local = isinstance(source_expr, TpyName) and source_expr.name not in param_names
-                            has_local_ref = bool(collect_name_refs(stmt.value) & local_names)
-                            if not is_nested and not is_body_local and not has_local_ref:
-                                is_own_field_init = True
-            if not is_own_field_init:
-                non_init.append(stmt)
+            if id(stmt) in hoisted_ids:
+                continue
+            non_init.append(stmt)
         return non_init
 
     def _gen_subscript_operators(self, out: TextIO, record: TpyRecord) -> None:
