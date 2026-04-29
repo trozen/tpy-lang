@@ -225,6 +225,7 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 - **Working**: `float` (Python's float -> `double`, 64-bit IEEE 754)
 - **Working**: `Float32` (32-bit single precision -> `float`), `Float64` (alias for `float`)
 - **Working**: `Int8`, `Int16`, `Int32`, `Int64`, `UInt8`, `UInt16`, `UInt32`, `UInt64`, `bool`, `Char`
+- **Working**: `%` on floats follows Python floor semantics (sign-of-divisor) -- `-1.5 % 2.5 == 1.0`, `7.0 % -3.0 == -2.0`, `-0.0 % 3.0 == 0.0`. Distinct from `math.fmod`, which keeps C truncation semantics (sign-of-dividend) for compatibility with CPython's `math.fmod`.
 
 #### Default Integer Type for Unannotated Literals (Working)
 

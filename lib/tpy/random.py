@@ -74,16 +74,6 @@
 # Pending simplifications (fold back in when the referenced language bug
 # lands; keeping these documented so we don't forget the code is awkward
 # on purpose):
-#   - `vonmisesvariate` uses inline `x - floor(x/TWOPI) * TWOPI` instead of
-#     Python's `%`, because TPy's `%` on floats is C's fmod (truncation)
-#     semantics while CPython uses floor (BUGS.md "`tpy::fmod` /
-#     `tpy::fmod_f32` use C's `std::fmod`"). When that's fixed, revert to
-#     the straightforward `% _TWOPI` form.
-#   - `Random.__init__(seed_value: UInt32 = UInt32(5489))` inlines the
-#     literal default because named-const defaults (`_DEFAULT_SEED`) are
-#     rejected by sema (BUGS.md "Final[X] = SOME_NAMED_CONST rejected as
-#     default-parameter value"). When that's fixed, switch to
-#     `seed_value: UInt32 = _DEFAULT_SEED` for readability.
 #   - MT tempering uses `UInt32.mul_wrap(y, 1 << n)` instead of the direct
 #     `y << n` because TPy's `<<` on UInt32 is overflow-checked. A
 #     `UInt32.shl_wrap(y, n)` static method paralleling `add_wrap` /
@@ -134,7 +124,7 @@
 #     decision, affects all code).
 # tpy: cpp_namespace("tpystd::random")
 from tpy import Int32, UInt8, UInt32, Array
-from typing import overload
+from typing import Final, overload
 import math
 
 _N: Int32 = 624
@@ -145,7 +135,7 @@ _LOWER_MASK: UInt32 = UInt32(0x7fffffff)
 
 # Historical default MT seed. Used only before the user calls seed();
 # a real auto-seed-from-entropy comes with the OS-entropy binding.
-_DEFAULT_SEED: UInt32 = UInt32(5489)
+_DEFAULT_SEED: Final[UInt32] = UInt32(5489)
 
 # Constants for distributions, mirroring CPython's Lib/random.py.
 _TWOPI: float = 2.0 * math.pi
@@ -165,7 +155,7 @@ class Random:
     _gauss_next: float
     _has_gauss_next: bool
 
-    def __init__(self, seed_value: UInt32 = UInt32(5489)) -> None:
+    def __init__(self, seed_value: UInt32 = _DEFAULT_SEED) -> None:
         # std::array<uint32_t, 624>{} zero-inits every slot.
         self._state = Array[UInt32, 624]()
         self._index = _N
@@ -490,15 +480,13 @@ class Random:
         q: float = 1.0 / r
         f: float = (q + z) / (1.0 + q * z)
         u3: float = self.random()
-        # CPython uses Python's floor-semantics `%`; TPy's `%` on floats is
-        # truncation. Inline floor-mod to match CPython output.
-        mu_mod: float = mu - math.floor(mu / _TWOPI) * _TWOPI
+        mu_mod: float = mu % _TWOPI
         theta: float = 0.0
         if u3 > 0.5:
             theta = mu_mod + math.acos(f)
         else:
             theta = mu_mod - math.acos(f)
-        return theta - math.floor(theta / _TWOPI) * _TWOPI
+        return theta % _TWOPI
 
 
 _inst: Random = Random(_DEFAULT_SEED)

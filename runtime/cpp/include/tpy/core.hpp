@@ -249,15 +249,27 @@ inline constexpr double floordiv(double a, double b) {
 
 inline constexpr double fmod(double a, double b) {
     if (b == 0.0) tpy_panic("Division by zero");
+    // Python's `%` uses floor semantics (sign-of-divisor) where C's std::fmod
+    // uses truncation (sign-of-dividend). Compute the truncated remainder,
+    // shift toward the divisor when the signs disagree, and on zero results
+    // adopt the divisor's sign (matches CPython's float_rem in floatobject.c).
 #if TPY_CMATH_CONSTEXPR
-    return std::fmod(a, b);
+    double m = std::fmod(a, b);
 #else
+    double m;
     if consteval {
         long long i = static_cast<long long>(a / b);
-        return a - static_cast<double>(i) * b;
+        m = a - static_cast<double>(i) * b;
+    } else {
+        m = std::fmod(a, b);
     }
-    return std::fmod(a, b);
 #endif
+    if (m != 0.0) {
+        if ((m < 0.0) != (b < 0.0)) m += b;
+    } else {
+        m = (b < 0.0) ? -0.0 : 0.0;
+    }
+    return m;
 }
 
 // Float32 arithmetic helpers
@@ -283,15 +295,24 @@ inline constexpr float floordiv_f32(float a, float b) {
 
 inline constexpr float fmod_f32(float a, float b) {
     if (b == 0.0f) tpy_panic("Division by zero");
+    // Python's `%` uses floor semantics (sign-of-divisor); see fmod above.
 #if TPY_CMATH_CONSTEXPR
-    return std::fmod(a, b);
+    float m = std::fmod(a, b);
 #else
+    float m;
     if consteval {
         long long i = static_cast<long long>(a / b);
-        return a - static_cast<float>(i) * b;
+        m = a - static_cast<float>(i) * b;
+    } else {
+        m = std::fmod(a, b);
     }
-    return std::fmod(a, b);
 #endif
+    if (m != 0.0f) {
+        if ((m < 0.0f) != (b < 0.0f)) m += b;
+    } else {
+        m = (b < 0.0f) ? -0.0f : 0.0f;
+    }
+    return m;
 }
 
 } // namespace tpy
