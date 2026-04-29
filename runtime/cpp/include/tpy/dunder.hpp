@@ -361,12 +361,17 @@ inline std::string_view __repr__(std::nullptr_t) {
     return "None";
 }
 
-// Strings: Python repr wraps in single quotes
+// Strings: Python repr quotes and escapes control chars / quote / backslash.
+// The const char* overload steals string-literal calls before the templated
+// formattable fallback (which would otherwise emit raw bytes via std::format).
 inline std::string __repr__(const std::string& x) {
-    return "'" + x + "'";
+    return repr_quote_string(x);
 }
 inline std::string __repr__(std::string_view x) {
-    return "'" + std::string(x) + "'";
+    return repr_quote_string(x);
+}
+inline std::string __repr__(const char* x) {
+    return repr_quote_string(std::string_view(x));
 }
 
 // Optional: None or repr(value)
@@ -376,9 +381,9 @@ inline std::string __repr__(std::string_view x) {
 template<typename T>
 std::string __repr__(const std::optional<T>& x) {
     if (!x.has_value()) return "None";
-    // For strings, use proper repr (quoted)
+    // For strings, use proper repr (quoted + escaped).
     if constexpr (std::same_as<T, std::string> || std::same_as<T, std::string_view>) {
-        return "'" + std::string(*x) + "'";
+        return repr_quote_string(*x);
     } else if constexpr (std::same_as<T, bool>) {
         return *x ? "True" : "False";
     } else if constexpr (std::floating_point<T>) {

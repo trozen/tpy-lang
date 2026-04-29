@@ -1,0 +1,14 @@
+'a\nb'
+'tab\there'
+'cr\rfoo'
+'back\\slash'
+'plain'
+"can't"
+'dq"x'
+'\'and"'
+['a\nb', 'c', "can't"]
+{'key': 'v\tab'}
+{'only-one\n'}
+'a\nb'
+None
+''

@@ -79,11 +79,11 @@ inline void print_element(std::ostream& os, double elem) {
 }
 
 inline void print_element(std::ostream& os, const std::string& elem) {
-    os << '\'' << elem << '\'';
+    os << repr_quote_string(elem);
 }
 
 inline void print_element(std::ostream& os, std::string_view elem) {
-    os << '\'' << elem << '\'';
+    os << repr_quote_string(elem);
 }
 
 inline void print_element(std::ostream& os, const BigInt& elem) {

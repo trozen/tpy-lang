@@ -106,6 +106,49 @@ inline std::ostream& operator<<(std::ostream& os, const print_float& pf) {
 }
 
 /**
+ * repr_quote_string - Python-style repr of a string.
+ *
+ * Produces the Python repr form: outer quotes plus C-style escapes for
+ * `\\`, `\n`, `\r`, `\t`, the active quote character, and other ASCII
+ * control bytes (`\xNN`). Bytes >= 0x80 are passed through as-is so a
+ * UTF-8-encoded string round-trips visually.
+ *
+ * Quote selection follows CPython: prefer `'`, switch to `"` only when
+ * the string contains `'` and no `"`.
+ */
+inline std::string repr_quote_string(std::string_view s) {
+    bool has_single = s.find('\'') != std::string_view::npos;
+    bool has_double = s.find('"') != std::string_view::npos;
+    char quote = (has_single && !has_double) ? '"' : '\'';
+    std::string out;
+    out.reserve(s.size() + 2);
+    out.push_back(quote);
+    for (unsigned char c : s) {
+        switch (c) {
+            case '\\': out.append("\\\\"); break;
+            case '\n': out.append("\\n"); break;
+            case '\r': out.append("\\r"); break;
+            case '\t': out.append("\\t"); break;
+            default:
+                if (static_cast<char>(c) == quote) {
+                    out.push_back('\\');
+                    out.push_back(static_cast<char>(c));
+                } else if (c < 0x20 || c == 0x7f) {
+                    static const char kHex[] = "0123456789abcdef";
+                    out.append("\\x");
+                    out.push_back(kHex[c >> 4]);
+                    out.push_back(kHex[c & 0xf]);
+                } else {
+                    out.push_back(static_cast<char>(c));
+                }
+                break;
+        }
+    }
+    out.push_back(quote);
+    return out;
+}
+
+/**
  * char_to_str - Convert a char to a string_view.
  *
  * Returns a string_view pointing to a static single-character string.
