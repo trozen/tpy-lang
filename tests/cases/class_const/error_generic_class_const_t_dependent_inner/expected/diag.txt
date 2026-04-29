@@ -1,0 +1,1 @@
+main.py:8: error: class constant 'DEFAULT' on generic class 'Box' references type parameter 'T' in its declared type; only T-independent class constants are supported

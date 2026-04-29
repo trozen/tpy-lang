@@ -21,7 +21,7 @@ against the same surface and are sketched in
 | 6 | MRO walk: `Child.X` resolves through `mro_ancestors` to the declaring ancestor; emit `<owner_qname>::<member>` | Done |
 | 7 | Mutable `ClassVar[T] = value`: recognize `ClassVarType` in `register_record`, allow mutation, codegen `static inline T X = value` | Done |
 | 8 | Subclass override semantics: `Final` blocks override; non-final `ClassVar` shadows with type compatibility check | Done |
-| 9 | Generic classes with class constants: `Final[T_independent] = value` -- emit on the class template, validate initializer doesn't reference type params | Planned |
+| 9 | Generic classes with class constants: `Final[T_independent] = value` -- emit on the class template, validate initializer doesn't reference type params | Done |
 | 10 | `native_field("rename")` on class constants -- per-symbol rename | Done |
 
 ### Out of Scope
@@ -113,7 +113,7 @@ Validation gates:
 
 - Name conflicts: a class constant cannot share its name with an instance field, method, property, or nested type on the same class.
 - Subclass override: child class declaring a class constant with the same name as a parent's class constant -> error.
-- Generic class with class constant -> error ("class constants on generic classes land in Phase 9").
+- Generic class with class constant: validate T-independence -- the inner type and initializer must not reference any of the class's type parameters (Phase 9). T-dependent forms remain deferred.
 - For pure-TPy class constants, run the same compile-time-constant initializer check that module-level `Final` uses (`statements.py:2453-2476`).
 
 **Member access.** `_analyze_field_access` (`expressions.py:1536`) gets a new branch, ordered after the nested-type / unbound-self checks and before the fall-through `analyze_expr(expr.obj)` that produces today's "is not a variable" error:
@@ -275,11 +275,25 @@ qname via Phase 6's MRO walk (which stops at the first declaring class).
 
 ### Phase 9: Generic Classes (T-Independent)
 
-`class C[T]: MAX: Final[Int32] = 10`. The initializer doesn't reference
-any type parameter. Emit on the class template; access via `C<T>::MAX`.
-Same allow-list as the non-generic case. The new validation: confirm the
-initializer's free names don't include any of the class's type parameters
-(cheap walk over the initializer's `TpyName` references).
+`class C[T]: MAX: Final[Int32] = 10`. The inner type and initializer must
+not reference any of the class's type parameters. The static is emitted
+on the class template; instance-side access (`obj.X` where
+`obj: C[Int32]` or `self.X` inside a method of `C[T]`) renders the
+qname via the receiver's parameterized type so codegen lands on
+`C<int32_t>::X` or `C<T>::X` respectively. Same allow-list as the
+non-generic case (numeric / Char / bool / tuple-of-allowed for ClassVar;
++ StrView for Final).
+
+Two access patterns are deferred:
+
+- **Bare class-name access** (`C.X` for generic C): no type-args at the
+  access site, can't render `C::X` (template name without args is
+  invalid C++). Rejected with a hint pointing at instance access.
+- **Inheritance with fixed type-args** (`class Child(C[Int32]): pass;
+  obj: Child; obj.X`): the receiver-record `Child` doesn't carry the
+  parent's concrete type-args, and the codegen would need to walk the
+  inheritance chain to recover them. Rejected for now; pairs with the
+  multi-base/MRO follow-ups.
 
 T-dependent class constants (`class C[T]: ZERO: Final[T] = T()`,
 per-monomorphization initializers) are deferred to a future extension --
@@ -418,7 +432,7 @@ struct Counter {
 - `error_classvar_at_class_level/` -- `ClassVar[...]` rejected with "lands in Phase 7" hint.
 - `error_name_conflict_field/` -- class constant and instance field share a name.
 - `error_subclass_override_final/` -- child re-declares parent's Final.
-- `error_generic_class_const/` -- generic class with `Final[T] = ...` rejected (relaxed in Phase 9).
+- (No `error_generic_class_const/` in v1 -- the rejection moved to Phase 9 where T-dependent forms are still rejected; see Phase 9 test list below.)
 
 V1 native cases under `tests/cases/native/`:
 
@@ -441,7 +455,7 @@ V1 native cases under `tests/cases/native/`:
 
 - **Phase 7**: `classvar_mutable/` -- `ClassVar[T] = value`, read and mutate via `ClassName.X`. `classvar_final_explicit/` -- `ClassVar[Final[T]] = value` aliases `Final[T] = value`. `error_classvar_no_value/` -- `ClassVar[T]` without initializer rejected. `error_classvar_native/` -- `ClassVar` on `@native` class rejected.
 - **Phase 8**: `subclass_shadow_classvar/` -- child redeclares non-final `ClassVar`, both storages observable. `subclass_shadow_three_level/` -- Grandparent -> Parent -> Child chain, each with its own slot. `error_subclass_shadow_type_mismatch/` -- shadow with incompatible type rejected. `error_subclass_classvar_to_final/` -- cross-finality redeclaration rejected. `multi_base_classvar_compatible/` -- `class C(A, B)` where A and B both declare the same `ClassVar` with matching type and finality. `error_multi_base_classvar_type_mismatch/` -- multi-base where one parent's type differs from the other's. `error_multi_base_final_blocks_classvar_shadow/` -- multi-base where one parent has `Final`; the Final blocks the shadow regardless of BFS order.
-- **Phase 9**: `generic_class_const_t_independent/` -- `class C[T]: MAX: Final[Int32] = 10` with multiple instantiations.
+- **Phase 9**: `generic_class_const_t_independent/` -- `class C[T]: MAX: Final[Int32] = 10` accessed through multiple instantiations. `generic_class_const_via_self/` -- `self.X` inside a method of a generic class. `generic_classvar_t_independent/` -- mutable `ClassVar` on a generic class. `generic_classvar_aug_assign/` -- aug-assign on a generic `ClassVar` (parameterized lvalue + RHS, single receiver eval). `cross_module_generic_class_const/` -- generic class with class constant defined in another module, accessed across modules with full namespace + type-args qualification. `error_generic_class_const_t_dependent_inner/` -- `Final[T]` rejected. `error_generic_class_const_t_dependent_init/` -- initializer references T. `error_generic_class_const_typeparam_shadows_global/` -- type-param name colliding with a module-level Final still rejected (C++ template parameter shadows the surrounding namespace inside the template body). `error_generic_class_const_via_class_name/` -- bare-class access on generic rejected. `error_generic_class_const_via_subclass/` -- non-generic subclass of a generic ancestor rejected (deferred).
 - **Phase 10**: `native_class_final_renamed/` -- `@native class X: FLAG: Final[bool] = native_field("g_flag")` emits `X::g_flag`. `error_native_field_class_const_on_regular_class/` -- `native_field()` on a non-`@native` class constant rejected via `_partition_class_constants` (distinct from the instance-field path).
 
 ---

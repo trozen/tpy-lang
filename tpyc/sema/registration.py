@@ -27,7 +27,7 @@ from ..module_names import public_module_name
 from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
     TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn, TpyMethodCall, TpyCall, TpyExprStmt,
-    TpyNoneLiteral, TpyStrLiteral,
+    TpyNoneLiteral, TpyStrLiteral, collect_name_refs,
 )
 from ..namespace import NameBinding, BindingKind
 from ..type_def_registry import (
@@ -396,6 +396,35 @@ class TypeRegistrar:
         fld.default_expr = None
         fld.default_value = None
 
+    def _first_type_param_in_type(
+        self, typ: TpyType, type_params: list[str],
+    ) -> str | None:
+        """Walk `typ`'s structure and return the first nested `TypeParamRef`
+        whose name is in `type_params`, or None. Used by Phase 9 to verify
+        that a generic class's class-constant declared type doesn't reference
+        any of the class's type parameters.
+        """
+        if isinstance(typ, TypeParamRef) and typ.name in type_params:
+            return typ.name
+        for inner in typ.inner_types():
+            found = self._first_type_param_in_type(inner, type_params)
+            if found is not None:
+                return found
+        return None
+
+    def _first_type_param_in_expr(
+        self, expr: TpyExpr, type_params: list[str],
+    ) -> str | None:
+        """Return the first `type_params` entry (in declaration order) that
+        appears as a `TpyName` anywhere in `expr`, or None. Used by Phase 9
+        to verify that the initializer of a class constant on a generic
+        class doesn't reference any of the class's type parameters
+        (e.g. `Final[Int32] = T()`). Iterating `type_params` rather than the
+        set intersection keeps the error message deterministic across runs.
+        """
+        names = collect_name_refs(expr)
+        return next((p for p in type_params if p in names), None)
+
     def _partition_class_constants(
         self, record: TpyRecord,
     ) -> tuple[dict[str, FieldInfo], dict[str, bool]]:
@@ -427,10 +456,38 @@ class TypeRegistrar:
             partitioned_any = True
 
             if is_generic:
-                raise SemanticError(
-                    "class constants on generic classes are not yet supported",
-                    loc=fld.loc,
-                )
+                # Phase 9: T-independent class constants on generic classes
+                # are supported -- the inner type and initializer must not
+                # reference any of the class's type parameters. T-dependent
+                # forms (`Final[T]`, `Final[Int32] = T()`) are deferred to
+                # a future extension because they need per-monomorphization
+                # codegen. The initializer check is name-based (collides
+                # with type-param-shadowed globals): in C++ the template
+                # parameter shadows the surrounding namespace inside the
+                # template body, so a generic class's constant initializer
+                # that *names* a type-param would emit invalid C++ even if
+                # TPy's sema would resolve it to a module global.
+                bad_param = self._first_type_param_in_type(inner_wrap, record.type_params)
+                if bad_param is not None:
+                    raise SemanticError(
+                        f"class constant '{fld.name}' on generic class "
+                        f"'{record.name}' references type parameter "
+                        f"'{bad_param}' in its declared type; only "
+                        f"T-independent class constants are supported",
+                        loc=fld.loc,
+                    )
+                if fld.default_expr is not None:
+                    bad_name = self._first_type_param_in_expr(fld.default_expr, record.type_params)
+                    if bad_name is not None:
+                        raise SemanticError(
+                            f"class constant '{fld.name}' on generic class "
+                            f"'{record.name}' references type parameter "
+                            f"'{bad_name}' in its initializer; only "
+                            f"T-independent class constants are supported "
+                            f"(C++ template parameter shadows the same name "
+                            f"in the surrounding namespace)",
+                            loc=fld.loc,
+                        )
             if is_native_c:
                 raise SemanticError(
                     "`@native_c` classes have no static members; "

@@ -1,1 +1,0 @@
-main.py:7: error: class constants on generic classes are not yet supported

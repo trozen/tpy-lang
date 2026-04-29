@@ -14,7 +14,7 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, LiteralType, LiteralValue,
     NominalType, PtrType, OwnType, OptionalType, NoneType, AnyType, make_array,
     PendingListType, ListRepeatType,
-    TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
+    TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_qualifiers, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     TupleType, CallableType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
@@ -3012,6 +3012,21 @@ class ExpressionGenerator:
         assert owner is not None
         if owner.is_native and owner.native_name:
             cpp_qname = owner.native_name
+        elif owner.type_params:
+            # Phase 9: the C++ static is per-template-instantiation
+            # (`C<int32_t>::X`), so the qname is rendered from the
+            # receiver's parameterized type. Sema's rejections (bare class
+            # name and subclass-of-generic in `_lookup_class_constant_owner`)
+            # guarantee a typed receiver carrying the type-args by the time
+            # we reach codegen.
+            obj_type = self.ctx.get_expr_type(expr.obj)
+            assert obj_type is not None, (
+                f"generic class-constant access lost its receiver type: {expr.field}"
+            )
+            unwrapped = unwrap_qualifiers(obj_type)
+            if isinstance(unwrapped, OptionalType):
+                unwrapped = unwrapped.inner
+            cpp_qname = self.types.type_to_cpp(unwrapped)
         else:
             qual = self.ctx.analyzer.registry.record_qualification(
                 owner, self.ctx.analyzer.ctx.module_name)

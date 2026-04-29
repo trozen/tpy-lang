@@ -1,0 +1,5 @@
+CPython would create an instance attribute on `a` for the aug-assign
+(creating it the first time, then incrementing in place), so the read
+at the end matches TPy's value here. Marked no_cpython for consistency
+with other class-storage-redirected ClassVar tests, since the underlying
+storage model differs.

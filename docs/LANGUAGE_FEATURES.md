@@ -5096,8 +5096,22 @@ class BuildOpts:
   `@native` classes (PEP 591 instance-final on regular classes lands as a
   separate feature)
 - `ClassVar[T]` without an initializer rejected (no useful semantics)
-- Class constants on generic classes (`class C[T]: X: Final[Int32] = ...`)
-  rejected; lands with Phase 9
+- Class constants on generic classes are supported when the inner type
+  and initializer are *T-independent* (don't reference any of the
+  class's type parameters). Each template instantiation gets its own
+  `static constexpr` / `static inline` slot; instance-side access
+  renders `C<int32_t>::X` from the receiver's type. For mutable
+  `ClassVar` on a generic class, this means `C<int32_t>::counter` and
+  `C<float>::counter` are independent slots in TPy -- writes through
+  one don't affect the other. CPython has only one class object per
+  generic class regardless of type-args, so cross-instantiation
+  mutations are visible there; running the same code under CPython and
+  TPy can diverge. T-dependent forms (`Final[T]`, initializers like
+  `T()`) are deferred. Bare class-name access (`C.X`) and access
+  through a non-generic subclass of a generic ancestor
+  (`class Child(C[Int32]): pass; obj: Child; obj.X`) are rejected --
+  access via an instance of the parameterized class
+  (`obj: C[Int32]; obj.X`) or inside a method (`self.X`) instead
 
 See `docs/CLASSVAR_DESIGN.md` for the full 10-phase plan and edge-case
 table.

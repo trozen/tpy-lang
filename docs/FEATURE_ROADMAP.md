@@ -92,7 +92,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D21 | TypedDict | M | Done | [VII](#typeddict) |
 | D22 | Multiple inheritance (mixins) | L | Done | [VII](#multiple-inheritance) |
 | D23 | Nested classes | M | Done | [VII](#nested-classes) |
-| D24 | Class-level constants (`Final` + `ClassVar`, `@native` extern, MRO, generics) | L | Phases 1-8, 10 done | [VII](#class-level-constants) |
+| D24 | Class-level constants (`Final` + `ClassVar`, `@native` extern, MRO, generics) | L | Done | [VII](#class-level-constants) |
 
 ### Phase E: Advanced Safety
 
@@ -2393,23 +2393,32 @@ the gap is general -- idiomatic Python class constants (`MyClass.TIMEOUT`,
 lookup tables on a type) hit the same wall today, with the misleading error
 `'ClassName' is not a variable` at every use site.
 
-**Current state**: Phases 1-8 and 10 done. Design in `docs/CLASSVAR_DESIGN.md`
-covers all 10 phases. Working surface: `Final[T] = value` (read-only class
-constant, `static constexpr`), `ClassVar[T] = value` (mutable class slot,
-`static inline`, with allow-list narrower than Final to avoid dangling-view
-hazards), `ClassVar[Final[T]] = value` (explicit alias for `Final[T] = value`),
-`@native` extern `Final[T]` no-value binding, forward refs within a class
-body, instance-side `obj.X` reads and writes, aug-assign on both forms,
-MRO walk for `Child.X` -> `Parent::X` (emits the declaring class's qname
-including for cross-module ancestors the accessing module never imported),
-side-effecting and optional receivers handled cleanly on both read and write
-sides, `native_field("rename")` per-symbol rename on `@native` class
-constants, subclass shadow of non-final `ClassVar` with same-type/finality
-(multi-base validates against every declaring ancestor), and full
-validation gates (name conflicts, Final-override blocking, cross-finality
-rejection, multi-base ambiguity, generic-class rejection, Final-mutation
-rejection, instance-write CPython-divergence warning matching mypy/pyright).
-Remaining: Phase 9 (generic classes with class constants).
+**Current state**: Done (all 10 phases). Design in `docs/CLASSVAR_DESIGN.md`.
+Working surface: `Final[T] = value` (read-only class constant,
+`static constexpr`), `ClassVar[T] = value` (mutable class slot,
+`static inline`, with allow-list narrower than Final to avoid
+dangling-view hazards), `ClassVar[Final[T]] = value` (explicit alias for
+`Final[T] = value`), `@native` extern `Final[T]` no-value binding,
+forward refs within a class body, instance-side `obj.X` reads and
+writes, aug-assign on both forms, MRO walk for `Child.X` -> `Parent::X`
+(emits the declaring class's qname including for cross-module ancestors
+the accessing module never imported), side-effecting and optional
+receivers handled cleanly on both read and write sides,
+`native_field("rename")` per-symbol rename on `@native` class
+constants, subclass shadow of non-final `ClassVar` with
+same-type/finality (multi-base validates against every declaring
+ancestor), T-independent class constants on generic classes
+(`class C[T]: MAX: Final[Int32] = 10`, accessed via instance or self
+through the parameterized qname `C<int32_t>::MAX`), and full validation
+gates (name conflicts, Final-override blocking, cross-finality
+rejection, multi-base ambiguity, T-dependent rejection on generics,
+bare-class access on generic rejection, subclass-of-generic rejection,
+Final-mutation rejection, instance-write CPython-divergence warning
+matching mypy/pyright). Deferred items live in `docs/CLASSVAR_DESIGN.md`
+"Future Extensions": T-dependent class constants on generics
+(per-monomorphization initializers), bare-class access on parameterized
+generics (`C[Int32].X` syntax), inheritance through fixed-type-arg
+parents (`class Child(C[Int32])`).
 
 **Dependencies**: None. Reuses module-level `Final` allow-list, `RecordInfo`
 plumbing (`native_name`, `module`), and `_get_qualified_cpp_name`.

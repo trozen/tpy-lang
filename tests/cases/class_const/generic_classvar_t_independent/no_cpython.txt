@@ -1,0 +1,5 @@
+Two divergences: (1) the Phase-7 instance-write redirection writes
+through to class storage rather than creating instance attributes;
+(2) each template instantiation has its own `static inline` slot in
+TPy, while CPython has no per-T-arg class object. The "TPy" reads at
+the end are independent slots per instantiation.

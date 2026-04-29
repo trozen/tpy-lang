@@ -1,0 +1,1 @@
+main.py:9: error: class constant 'DEFAULT' on generic class 'Box' references type parameter 'T' in its initializer; only T-independent class constants are supported (C++ template parameter shadows the same name in the surrounding namespace)

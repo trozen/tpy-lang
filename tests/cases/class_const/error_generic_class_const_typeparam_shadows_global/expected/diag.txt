@@ -1,0 +1,1 @@
+main.py:14: error: class constant 'THRESHOLD' on generic class 'Container' references type parameter 'BASE' in its initializer; only T-independent class constants are supported (C++ template parameter shadows the same name in the surrounding namespace)

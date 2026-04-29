@@ -1500,6 +1500,21 @@ class ExpressionAnalyzer:
                     f"or '{second}.{expr.field}'",
                     expr,
                 )
+        # Phase 9: a class constant on a generic class is per-instantiation
+        # in C++ (`C<T>::X`), so codegen needs the concrete (or template-scope)
+        # type args at the access site. We get them from the receiver's type
+        # only when the receiver is a direct instance of the generic owner.
+        # Inheritance with fixed type-args (`class Child(C[Int32]): pass;
+        # obj: Child; obj.X`) loses the args at the receiver-record level
+        # and is deferred -- reject for now with a clear hint.
+        if owner.type_params and owner is not record:
+            raise self.ctx.error(
+                f"class constant '{expr.field}' on generic class "
+                f"'{owner.name}' cannot be accessed through subclass "
+                f"'{record.name}'; access through an instance of "
+                f"'{owner.name}[...]' instead",
+                expr,
+            )
         expr.class_constant_owner = owner
         return owner.class_constants[expr.field].type
 
@@ -1521,6 +1536,19 @@ class ExpressionAnalyzer:
                                or self.ctx.registry.find_module_record(src_mod, src_name))
         if record_info is None:
             return None
+        # Phase 9: bare-class access on a generic class can't render the
+        # parameterized qname (no type args at the access site), so reject
+        # and point the user at instance access. `Class[Int32].X` syntax
+        # for class-level access on a parameterized generic is not yet
+        # supported either.
+        if record_info.type_params and expr.field in record_info.class_constants:
+            raise self.ctx.error(
+                f"cannot access class constant '{expr.field}' on generic "
+                f"class '{record_info.name}' through the bare class name; "
+                f"access through an instance instead "
+                f"(e.g. `{record_info.name}[T_args]().{expr.field}`)",
+                expr,
+            )
         return self._lookup_class_constant_owner(record_info, expr)
 
     def _try_unbound_self_field_access(
