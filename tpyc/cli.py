@@ -587,7 +587,7 @@ def _run_cli(is_runner: bool) -> int:
                 t_pch_start = time.monotonic()
                 pch_path = get_or_build_pch(
                     cpp_config, runtime_dir / "cpp" / "include", opt_flags,
-                    pch_dir=layout.root_dir / "pch",
+                    pch_dir=layout.build_dir / "pch",
                 )
                 t_pch = time.monotonic() - t_pch_start
                 if pch_path:
