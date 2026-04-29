@@ -590,7 +590,7 @@ class StatementAnalyzer:
         owner = target.class_constant_owner
         if owner is None:
             return
-        if owner.class_constants_finality.get(target.field, True):
+        if owner.is_final_class_constant(target.field):
             raise self.ctx.error(
                 f"Cannot reassign Final class constant "
                 f"'{owner.name}.{target.field}'",

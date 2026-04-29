@@ -92,7 +92,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D21 | TypedDict | M | Done | [VII](#typeddict) |
 | D22 | Multiple inheritance (mixins) | L | Done | [VII](#multiple-inheritance) |
 | D23 | Nested classes | M | Done | [VII](#nested-classes) |
-| D24 | Class-level constants (`Final` + `ClassVar`, `@native` extern, MRO, generics) | L | Phases 1-6, 10 done | [VII](#class-level-constants) |
+| D24 | Class-level constants (`Final` + `ClassVar`, `@native` extern, MRO, generics) | L | Phases 1-8, 10 done | [VII](#class-level-constants) |
 
 ### Phase E: Advanced Safety
 
@@ -2381,9 +2381,10 @@ class BuildOpts:
 an initializer binds to a C++ `static` member declared in the user's header.
 Use site emits `<declaring_qname>::<member>` -- including instance-side
 reads (`obj.X`) and inherited reads (`Child.X` -> `Parent::X` via MRO).
-Mutable `ClassVar[T] = value`, subclass override, generic classes with
-class constants, and `native_field("rename")` ship in later phases of the
-same design (10 phases total).
+Mutable `ClassVar[T] = value` (PEP 526) is a `static inline` slot with
+well-defined cross-TU semantics; subclasses may *shadow* a non-final
+`ClassVar` by redeclaring it with matching finality and type. Generic
+classes with class constants ship in a later phase.
 
 **Why it matters**: TPy currently has only instance fields and module-level
 globals -- no class-scoped storage. The `@native` case is the loudest symptom
@@ -2392,20 +2393,23 @@ the gap is general -- idiomatic Python class constants (`MyClass.TIMEOUT`,
 lookup tables on a type) hit the same wall today, with the misleading error
 `'ClassName' is not a variable` at every use site.
 
-**Current state**: Phases 1-6 and 10 done. Design in `docs/CLASSVAR_DESIGN.md`
-covers all 10 phases. Working surface: `Final[T] = value` (class constant),
+**Current state**: Phases 1-8 and 10 done. Design in `docs/CLASSVAR_DESIGN.md`
+covers all 10 phases. Working surface: `Final[T] = value` (read-only class
+constant, `static constexpr`), `ClassVar[T] = value` (mutable class slot,
+`static inline`, with allow-list narrower than Final to avoid dangling-view
+hazards), `ClassVar[Final[T]] = value` (explicit alias for `Final[T] = value`),
 `@native` extern `Final[T]` no-value binding, forward refs within a class
-body, instance-side `obj.X` reads, MRO walk for `Child.X` -> `Parent::X`
-(emits the declaring class's qname including for cross-module ancestors
-the accessing module never imported), GCC-stmt-expr wrapping when the
-receiver has side effects (`f().X`, `lst[i].X`), `native_field("rename")`
-per-symbol rename on `@native` class constants, full validation gates
-(name conflicts, subclass override of `Final`, multi-base ambiguity
-rejected with the same shape as instance-field ambiguity, generic-class
-rejection, reassignment to Final rejected through both `Class.X = ...`
-and `obj.X = ...`). Remaining phases land additively against the same
-plumbing (Phase 7 mutable `ClassVar`, Phase 8 subclass override, Phase 9
-generics).
+body, instance-side `obj.X` reads and writes, aug-assign on both forms,
+MRO walk for `Child.X` -> `Parent::X` (emits the declaring class's qname
+including for cross-module ancestors the accessing module never imported),
+side-effecting and optional receivers handled cleanly on both read and write
+sides, `native_field("rename")` per-symbol rename on `@native` class
+constants, subclass shadow of non-final `ClassVar` with same-type/finality
+(multi-base validates against every declaring ancestor), and full
+validation gates (name conflicts, Final-override blocking, cross-finality
+rejection, multi-base ambiguity, generic-class rejection, Final-mutation
+rejection, instance-write CPython-divergence warning matching mypy/pyright).
+Remaining: Phase 9 (generic classes with class constants).
 
 **Dependencies**: None. Reuses module-level `Final` allow-list, `RecordInfo`
 plumbing (`native_name`, `module`), and `_get_qualified_cpp_name`.

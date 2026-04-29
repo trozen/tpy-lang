@@ -1,0 +1,1 @@
+main.py:17: error: cannot override Final class constant 'X' from base 'A'

@@ -20,7 +20,7 @@ against the same surface and are sketched in
 | 5 | `obj.X` instance-side reads: fallthrough in `_try_find_field` to `class_constants` (walks MRO via the same path as Phase 6) | Done |
 | 6 | MRO walk: `Child.X` resolves through `mro_ancestors` to the declaring ancestor; emit `<owner_qname>::<member>` | Done |
 | 7 | Mutable `ClassVar[T] = value`: recognize `ClassVarType` in `register_record`, allow mutation, codegen `static inline T X = value` | Done |
-| 8 | Subclass override semantics: `Final` blocks override; non-final `ClassVar` shadows with type compatibility check | Planned |
+| 8 | Subclass override semantics: `Final` blocks override; non-final `ClassVar` shadows with type compatibility check | Done |
 | 9 | Generic classes with class constants: `Final[T_independent] = value` -- emit on the class template, validate initializer doesn't reference type params | Planned |
 | 10 | `native_field("rename")` on class constants -- per-symbol rename | Done |
 
@@ -253,16 +253,25 @@ unconditionally. Phase 8 relaxes the non-final case:
   its own `static inline T X = value;`. `Child.X` resolves to child's
   storage, `Parent.X` resolves to parent's. Matches Python semantics
   (child's `__dict__` overrides parent's lookup).
-- Type compatibility on shadow: child's declared type must be the same as
-  the parent's, or a subtype. Unrelated types -> error.
+- Type compatibility on shadow: child's declared type must equal the
+  parent's. The Phase 7 allow-list (numeric / Char / bool / tuple-of-allowed)
+  has no useful subtyping relations, so exact equality is the right check.
 - Child redeclares parent's `Final` -> error (unchanged from v1).
-- Warning on shadow: emit a hint making the override intent explicit
-  (decide phrasing during implementation; possibly require an explicit
-  `@override`-style marker if shadowing causes confusion in practice).
+- Cross-finality redeclaration (parent `ClassVar` + child `Final`) -> error.
+  Mixing finalities across a single name in the inheritance chain breaks
+  the user's mental model of the storage.
+- Multi-base inheritance: the validation walks every ancestor that
+  declares the same name (no nearest-only short-circuit). `class C(A, B)`
+  with `A.X: Final` and `B.X: ClassVar` rejects C's shadow against A's
+  Final regardless of which base is matched first by BFS.
+- No `@override`-style warning. The Phase 7 `obj.X = ...` instance-write
+  warning already covers the most error-prone form; explicit-shadow
+  warnings would add noise without catching anything that mypy / pyright
+  miss.
 
-Codegen change is small: each declaring class emits its own static; use
-sites emit the owner's qname (which falls out of the Phase 6 MRO walk
-naturally -- the walk stops at the first declaring class).
+Codegen change is none: each declaring class emits its own static via the
+existing per-record emission loop, and use sites already emit the owner's
+qname via Phase 6's MRO walk (which stops at the first declaring class).
 
 ### Phase 9: Generic Classes (T-Independent)
 
@@ -431,7 +440,7 @@ V1 native cases under `tests/cases/native/`:
 ### Later-phase cases (added when the phase ships):
 
 - **Phase 7**: `classvar_mutable/` -- `ClassVar[T] = value`, read and mutate via `ClassName.X`. `classvar_final_explicit/` -- `ClassVar[Final[T]] = value` aliases `Final[T] = value`. `error_classvar_no_value/` -- `ClassVar[T]` without initializer rejected. `error_classvar_native/` -- `ClassVar` on `@native` class rejected.
-- **Phase 8**: `subclass_shadow_classvar/` -- child redeclares non-final `ClassVar`, both storages observable. `error_subclass_shadow_type_mismatch/` -- shadow with incompatible type rejected.
+- **Phase 8**: `subclass_shadow_classvar/` -- child redeclares non-final `ClassVar`, both storages observable. `subclass_shadow_three_level/` -- Grandparent -> Parent -> Child chain, each with its own slot. `error_subclass_shadow_type_mismatch/` -- shadow with incompatible type rejected. `error_subclass_classvar_to_final/` -- cross-finality redeclaration rejected. `multi_base_classvar_compatible/` -- `class C(A, B)` where A and B both declare the same `ClassVar` with matching type and finality. `error_multi_base_classvar_type_mismatch/` -- multi-base where one parent's type differs from the other's. `error_multi_base_final_blocks_classvar_shadow/` -- multi-base where one parent has `Final`; the Final blocks the shadow regardless of BFS order.
 - **Phase 9**: `generic_class_const_t_independent/` -- `class C[T]: MAX: Final[Int32] = 10` with multiple instantiations.
 - **Phase 10**: `native_class_final_renamed/` -- `@native class X: FLAG: Final[bool] = native_field("g_flag")` emits `X::g_flag`. `error_native_field_class_const_on_regular_class/` -- `native_field()` on a non-`@native` class constant rejected via `_partition_class_constants` (distinct from the instance-field path).
 

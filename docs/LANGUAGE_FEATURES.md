@@ -5044,8 +5044,20 @@ class BuildOpts:
   the same constant rejects unqualified `C.X` with the same "ambiguous"
   error as instance-field ambiguity; user must disambiguate via `A.X` /
   `B.X`
-- Subclass redeclaration of a parent's class constant (Final or
-  ClassVar) rejected; non-final shadow semantics land in a later phase
+- Subclass redeclaration of a parent's `Final` class constant rejected;
+  non-final `ClassVar` may be *shadowed* by a same-finality, same-type
+  redeclaration (each declaring class gets its own `static inline` slot,
+  matching Python's per-`__dict__` shadowing). Cross-finality
+  redeclaration (parent `ClassVar` + child `Final`) and incompatible
+  shadow types are rejected. Multi-base inheritance validates the shadow
+  against *every* declaring ancestor, not just the first
+- Instance-side reads of a shadowed `ClassVar` resolve via the receiver's
+  *declared* type, not the runtime type. `def f(p: Parent): print(p.X)`
+  emits `Parent::X` even when `p` is actually a `Child` with `X` shadowed
+  -- TPy's static-typing model has no dynamic dispatch on attribute
+  lookup. CPython does dynamic lookup and would print Child's value.
+  Use class-qualified access (`Parent.X` / `Child.X`) for portable
+  behavior when the static and runtime types may differ
 - Cross-module access works including the inherited case: `from mod import
   Child` where `LIMIT` is on `Parent` emits the parent's fully-qualified
   namespace even though `Parent` was never imported

@@ -1,0 +1,1 @@
+main.py:13: error: cannot redeclare ClassVar 'counter' from base 'Parent' as Final; the child's read-only declaration would conflict with the parent's mutable storage

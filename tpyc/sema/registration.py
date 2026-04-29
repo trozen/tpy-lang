@@ -268,9 +268,14 @@ class TypeRegistrar:
 
     def _check_class_constant_conflicts(
         self, record: TpyRecord, class_constants: dict[str, FieldInfo],
+        finality: dict[str, bool],
     ) -> None:
         """Reject class-constant names that collide with instance fields,
-        methods, nested types, or class constants on any ancestor.
+        methods, nested types on the same class, or with Final class
+        constants on any ancestor. Non-final ClassVar redeclarations are
+        permitted as Phase 8 shadows when the child's finality and type
+        match the parent's (each declaring class gets its own
+        `static inline` slot).
 
         Runs after `_partition_class_constants` so `record.fields` only holds
         instance fields. The ancestor walk is BFS over `record.bases` using
@@ -297,6 +302,12 @@ class TypeRegistrar:
                 )
         if not class_constants:
             return
+        # Validate against every ancestor that declares the same name --
+        # not just the nearest. Multi-base inheritance can have multiple
+        # depth-1 parents declaring `X` (e.g. C(A, B) where A and B both
+        # declare X independently); the shadow must satisfy *each* parent's
+        # finality and type, otherwise C could silently override A's Final
+        # by matching B first or skip B's type check entirely.
         cc_keys = class_constants.keys()
         seen_bases: set[str] = set()
         queue: list[NominalType] = [b for b in record.bases if isinstance(b, NominalType)]
@@ -308,23 +319,50 @@ class TypeRegistrar:
             parent = self.ctx.registry.get_record(base.name)
             if parent is None:
                 continue
-            collisions = cc_keys & parent.class_constants.keys()
-            if collisions:
-                cc_name = next(iter(collisions))
-                # Phase 7 still rejects all overrides. Phase 8 will relax the
-                # non-final case to shadow semantics, so the wording adapts to
-                # the parent's finality so the error stays accurate as the
-                # rule narrows.
-                parent_final = parent.class_constants_finality.get(cc_name, True)
-                kind = "Final class constant" if parent_final else "class constant"
-                raise SemanticError(
-                    f"cannot override {kind} '{cc_name}' "
-                    f"from base '{parent.name}'",
-                    loc=class_constants[cc_name].loc,
+            for cc_name in cc_keys & parent.class_constants.keys():
+                self._check_class_constant_shadow(
+                    record, parent, cc_name, class_constants, finality,
                 )
             for grandparent in parent.parents:
                 if isinstance(grandparent, NominalType):
                     queue.append(grandparent)
+
+    def _check_class_constant_shadow(
+        self, record: TpyRecord, parent: RecordInfo, cc_name: str,
+        class_constants: dict[str, FieldInfo], finality: dict[str, bool],
+    ) -> None:
+        """Validate that `record`'s declaration of `cc_name` is a permitted
+        Phase 8 shadow of `parent`'s declaration. Final blocks override
+        entirely; non-final ClassVar permits same-finality, same-type
+        shadow (each class gets its own `static inline` slot, matching
+        Python's per-`__dict__` shadowing semantics).
+        """
+        parent_final = parent.is_final_class_constant(cc_name)
+        child_final = finality.get(cc_name, True)
+        cc_fld = class_constants[cc_name]
+        if parent_final:
+            raise SemanticError(
+                f"cannot override Final class constant '{cc_name}' "
+                f"from base '{parent.name}'",
+                loc=cc_fld.loc,
+            )
+        if child_final:
+            raise SemanticError(
+                f"cannot redeclare ClassVar '{cc_name}' from base "
+                f"'{parent.name}' as Final; the child's read-only "
+                f"declaration would conflict with the parent's mutable "
+                f"storage",
+                loc=cc_fld.loc,
+            )
+        parent_type = parent.class_constants[cc_name].type
+        child_type = cc_fld.type
+        if child_type != parent_type:
+            raise SemanticError(
+                f"ClassVar '{cc_name}' on '{record.name}' shadows base "
+                f"'{parent.name}.{cc_name}' with incompatible type "
+                f"'{child_type}' (expected '{parent_type}')",
+                loc=cc_fld.loc,
+            )
 
     def _extract_native_field_rename(self, fld: 'FieldInfo', is_native: bool) -> None:
         """Strip a `native_field("name")` call from `fld.default_expr` and
@@ -516,7 +554,7 @@ class TypeRegistrar:
         # `ClassVar[T] = value` for mutable storage). The remainder of
         # register_record only sees instance fields.
         class_constants, class_constants_finality = self._partition_class_constants(record)
-        self._check_class_constant_conflicts(record, class_constants)
+        self._check_class_constant_conflicts(record, class_constants, class_constants_finality)
 
         # Validate field types
         for fld in record.fields:

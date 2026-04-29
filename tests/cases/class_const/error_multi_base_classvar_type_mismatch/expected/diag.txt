@@ -1,0 +1,1 @@
+main.py:17: error: ClassVar 'X' on 'C' shadows base 'B.X' with incompatible type 'Int32' (expected 'Int64')

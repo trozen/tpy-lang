@@ -211,7 +211,7 @@ class RecordGenerator:
                     init = self.expressions.gen_expr(cc_fld.default_expr, cc_fld.type)
                 else:
                     init = cc_fld.default_value if cc_fld.default_value is not None else "{}"
-                is_final = record_info.class_constants_finality.get(cc_name, True)
+                is_final = record_info.is_final_class_constant(cc_name)
                 storage = "static constexpr" if is_final else "static inline"
                 out.write(f"{INDENT}{storage} {cpp_type} {escape_cpp_name(cc_name)} = {init};\n")
 

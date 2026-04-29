@@ -3067,6 +3067,16 @@ class RecordInfo:
         """
         return self.builtin_type_key is not None and not self.methods and not self.fields
 
+    def is_final_class_constant(self, name: str) -> bool:
+        """True if `name` is declared on this record as a Final class
+        constant (read-only `static constexpr`); False for mutable
+        ClassVar (`static inline`). Defaults to True for missing keys --
+        treating absent metadata as the safer read-only interpretation
+        prevents accidental mutation if the finality dict drifts from
+        `class_constants`.
+        """
+        return self.class_constants_finality.get(name, True)
+
     def get_method(self, name: str) -> Optional['FunctionInfo']:
         """Get first overload of a method (for single-overload cases)."""
         overloads = self.methods.get(name)
