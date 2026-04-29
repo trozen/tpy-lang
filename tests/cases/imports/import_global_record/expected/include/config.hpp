@@ -24,10 +24,7 @@ struct Settings {
     explicit Settings(int32_t width, int32_t height) : width(width), height(height) {}
 
     // def area(self) -> Int32:
-    int32_t area() const {
-        // return self.width * self.height
-        return (::tpy::mul_check<int32_t>(this->width, this->height));
-    }
+    int32_t area() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Settings& obj) {
@@ -35,5 +32,11 @@ inline std::ostream& operator<<(std::ostream& os, const Settings& obj) {
     return os;
 }
 
+
+// def area(self) -> Int32:
+inline int32_t Settings::area() const {
+    // return self.width * self.height
+    return (::tpy::mul_check<int32_t>(this->width, this->height));
+}
 void __tpy_init();
 } // namespace tpyapp::config

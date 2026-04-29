@@ -23,10 +23,7 @@ struct GA {
 
 
     // def tag(self) -> str:
-    std::string tag() const {
-        // return "GA.tag"
-        return "GA.tag";
-    }
+    std::string tag() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const GA& obj) {
@@ -59,10 +56,7 @@ struct C : A, B {
 
 
     // def tag(self) -> str:
-    std::string tag() const {
-        // return super().tag() + " + child"
-        return (::tpy::str_concat(this->GA::tag(), " + child"));
-    }
+    std::string tag() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
@@ -70,5 +64,17 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
     return os;
 }
 
+
+// def tag(self) -> str:
+inline std::string GA::tag() const {
+    // return "GA.tag"
+    return "GA.tag";
+}
+
+// def tag(self) -> str:
+inline std::string C::tag() const {
+    // return super().tag() + " + child"
+    return (::tpy::str_concat(this->GA::tag(), " + child"));
+}
 void __tpy_init();
 } // namespace tpyapp::main

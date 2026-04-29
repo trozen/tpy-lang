@@ -27,25 +27,10 @@ struct Counter {
     explicit Counter(int32_t n) : i(0), n(n) {}
 
     // def __next__(self) -> Int32:
-    std::expected<int32_t, ::tpy::StopIteration> __next__() {
-        // if self.i >= self.n:
-        if ((this->i >= this->n)) {
-            // raise StopIteration
-            return ::tpy::make_unexpected(::tpy::StopIteration{});
-        }
-        // val = self.i
-        int32_t val = this->i;
-        // self.i += 1
-        this->i = ::tpy::add_check<int32_t>(this->i, 1);
-        // return val
-        return val;
-    }
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
 
     // def __iter__(self) -> Counter:
-    Counter& __iter__() {
-        // return self
-        return (*this);
-    }
+    Counter& __iter__();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -53,6 +38,27 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __next__(self) -> Int32:
+inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {
+    // if self.i >= self.n:
+    if ((this->i >= this->n)) {
+        // raise StopIteration
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    // val = self.i
+    int32_t val = this->i;
+    // self.i += 1
+    this->i = ::tpy::add_check<int32_t>(this->i, 1);
+    // return val
+    return val;
+}
+
+// def __iter__(self) -> Counter:
+inline Counter& Counter::__iter__() {
+    // return self
+    return (*this);
+}
 // def sum_iterable(items: Iterable[Int32]) -> Int32:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 int32_t sum_iterable(T_items& items) {

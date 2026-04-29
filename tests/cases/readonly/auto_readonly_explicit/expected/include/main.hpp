@@ -24,17 +24,11 @@ struct Buffer {
 
     // @auto_readonly
     // def as_span(self) -> Span[auto_readonly[Int32]]:
-    std::span<int32_t> as_span() {
-        // return self._data
-        return ::tpy::as_mut_span(this->_data);
-    }
+    std::span<int32_t> as_span();
 
     // @auto_readonly
     // def as_span(self) -> Span[auto_readonly[Int32]]:
-    std::span<const int32_t> as_span() const {
-        // return self._data
-        return ::tpy::as_span(this->_data);
-    }
+    std::span<const int32_t> as_span() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
@@ -42,5 +36,19 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
     return os;
 }
 
+
+// @auto_readonly
+// def as_span(self) -> Span[auto_readonly[Int32]]:
+inline std::span<int32_t> Buffer::as_span() {
+    // return self._data
+    return ::tpy::as_mut_span(this->_data);
+}
+
+// @auto_readonly
+// def as_span(self) -> Span[auto_readonly[Int32]]:
+inline std::span<const int32_t> Buffer::as_span() const {
+    // return self._data
+    return ::tpy::as_span(this->_data);
+}
 void __tpy_init();
 } // namespace tpyapp::main

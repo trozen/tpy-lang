@@ -62,10 +62,7 @@ struct Leaf : Middle, Other {
     }
 
     // def as_pair(self) -> str:
-    std::string as_pair() const {
-        // return Other.token + "/" + str(Middle.token)
-        return (::tpy::str_concat((::tpy::str_concat(this->Other::token, "/")), ::tpy::fixed_to_str<int32_t>(this->Middle::token)));
-    }
+    std::string as_pair() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
@@ -73,5 +70,11 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
     return os;
 }
 
+
+// def as_pair(self) -> str:
+inline std::string Leaf::as_pair() const {
+    // return Other.token + "/" + str(Middle.token)
+    return (::tpy::str_concat((::tpy::str_concat(this->Other::token, "/")), ::tpy::fixed_to_str<int32_t>(this->Middle::token)));
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -62,11 +62,7 @@ struct Counter {
     explicit Counter(int32_t val) : val(val) {}
 
     // def add(self, a: Int32) -> Int32:
-    int32_t add(int32_t a) const {
-        // # 'a' param shadows global 'a' above - should NOT deref
-        // return self.val + a
-        return (::tpy::add_check<int32_t>(this->val, a));
-    }
+    int32_t add(int32_t a) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -74,5 +70,12 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def add(self, a: Int32) -> Int32:
+inline int32_t Counter::add(int32_t a) const {
+    // # 'a' param shadows global 'a' above - should NOT deref
+    // return self.val + a
+    return (::tpy::add_check<int32_t>(this->val, a));
+}
 void __tpy_init();
 } // namespace tpyapp::main

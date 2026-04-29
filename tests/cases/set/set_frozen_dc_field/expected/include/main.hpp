@@ -26,19 +26,11 @@ struct Tag {
     Tag() = default;
     explicit Tag(std::string_view name, int32_t value) : name(name), value(value) {}
 
-    bool __eq__(const Tag& other) const {
-        return ((this->name == other.name) && (this->value == other.value));
-    }
+    bool __eq__(const Tag& other) const;
 
-    std::string __repr__() const {
-        return std::format("Tag(name={}, value={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->value));
-    }
+    std::string __repr__() const;
 
-    uint64_t __hash__() const {
-        uint64_t h = ::tpy::__hash__(this->name);
-        h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->value)));
-        return h;
-    }
+    uint64_t __hash__() const;
 
     friend bool operator==(const Tag& lhs, const Tag& other) {
         return lhs.__eq__(other);
@@ -71,13 +63,9 @@ struct SetItem {
     SetItem() = default;
     explicit SetItem(std::string_view name, ::tpy::ordered_set<Tag>&& tags) : name(name), tags(std::move(tags)) {}
 
-    bool __eq__(const SetItem& other) const {
-        return ((this->name == other.name) && (this->tags == other.tags));
-    }
+    bool __eq__(const SetItem& other) const;
 
-    std::string __repr__() const {
-        return std::format("SetItem(name={}, tags={})", ::tpy::__repr__(this->name), ::tpy::set_to_str(this->tags));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const SetItem& lhs, const SetItem& other) {
         return lhs.__eq__(other);
@@ -98,13 +86,9 @@ struct DictItem {
     DictItem() = default;
     explicit DictItem(::tpy::ordered_map<Tag, std::string>&& lookup) : lookup(std::move(lookup)) {}
 
-    bool __eq__(const DictItem& other) const {
-        return (this->lookup == other.lookup);
-    }
+    bool __eq__(const DictItem& other) const;
 
-    std::string __repr__() const {
-        return std::format("DictItem(lookup={})", ::tpy::dict_to_str(this->lookup));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const DictItem& lhs, const DictItem& other) {
         return lhs.__eq__(other);
@@ -116,5 +100,35 @@ inline std::ostream& operator<<(std::ostream& os, const DictItem& obj) {
     return os;
 }
 
+
+inline bool Tag::__eq__(const Tag& other) const {
+    return ((this->name == other.name) && (this->value == other.value));
+}
+
+inline std::string Tag::__repr__() const {
+    return std::format("Tag(name={}, value={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->value));
+}
+
+inline uint64_t Tag::__hash__() const {
+    uint64_t h = ::tpy::__hash__(this->name);
+    h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->value)));
+    return h;
+}
+
+inline bool SetItem::__eq__(const SetItem& other) const {
+    return ((this->name == other.name) && (this->tags == other.tags));
+}
+
+inline std::string SetItem::__repr__() const {
+    return std::format("SetItem(name={}, tags={})", ::tpy::__repr__(this->name), ::tpy::set_to_str(this->tags));
+}
+
+inline bool DictItem::__eq__(const DictItem& other) const {
+    return (this->lookup == other.lookup);
+}
+
+inline std::string DictItem::__repr__() const {
+    return std::format("DictItem(lookup={})", ::tpy::dict_to_str(this->lookup));
+}
 void __tpy_init();
 } // namespace tpyapp::main

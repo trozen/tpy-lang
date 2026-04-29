@@ -45,6 +45,234 @@ void main() {
     std::cout << e2.item_id << " " << e2.label << "\n";
 }
 
+
+std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
+    {
+        auto __try_tmp_29 = __reader.read_object_start();
+        if (!__try_tmp_29.has_value()) return ::tpy::make_unexpected(__try_tmp_29.error());
+    }
+    std::string first_name = "";
+    std::string last_name = "";
+    int32_t age = 0;
+    while (__reader.has_next()) {
+        std::string_view __key;
+        {
+            auto __try_tmp_30 = __reader.read_key_raw();
+            if (!__try_tmp_30.has_value()) return ::tpy::make_unexpected(__try_tmp_30.error());
+            __key = ::tpy::unwrap_ref(*__try_tmp_30);
+        }
+        auto& __match_subject = __key;
+        if (__match_subject == "firstName") {
+            std::string __first_name_1;
+            {
+                auto __try_tmp_31 = __reader.read_str();
+                if (!__try_tmp_31.has_value()) return ::tpy::make_unexpected(__try_tmp_31.error());
+                __first_name_1 = ::tpy::unwrap_ref(*__try_tmp_31);
+            }
+            first_name = __first_name_1;
+        } else if (__match_subject == "lastName") {
+            std::string __last_name_2;
+            {
+                auto __try_tmp_32 = __reader.read_str();
+                if (!__try_tmp_32.has_value()) return ::tpy::make_unexpected(__try_tmp_32.error());
+                __last_name_2 = ::tpy::unwrap_ref(*__try_tmp_32);
+            }
+            last_name = __last_name_2;
+        } else if (__match_subject == "age") {
+            int64_t __raw_4;
+            {
+                auto __try_tmp_33 = __reader.read_int();
+                if (!__try_tmp_33.has_value()) return ::tpy::make_unexpected(__try_tmp_33.error());
+                __raw_4 = ::tpy::unwrap_ref(*__try_tmp_33);
+            }
+            int32_t __age_3 = ::tpy::int_cast_check<int32_t>(__raw_4);
+            age = __age_3;
+        } else {
+            {
+                auto __try_tmp_34 = __reader.skip_value();
+                if (!__try_tmp_34.has_value()) return ::tpy::make_unexpected(__try_tmp_34.error());
+            }
+        }
+    }
+    {
+        auto __try_tmp_35 = __reader.read_object_end();
+        if (!__try_tmp_35.has_value()) return ::tpy::make_unexpected(__try_tmp_35.error());
+    }
+    return User(first_name, last_name, age);
+}
+
+void User::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
+    __writer.object_start();
+    __writer.key("firstName");
+    __writer.write_str(this->first_name);
+    __writer.key("lastName");
+    __writer.write_str(this->last_name);
+    __writer.key("age");
+    __writer.write_int32(this->age);
+    __writer.object_end();
+}
+
+std::expected<WithDefault, ::tpystd::tplib::json::parser::JsonError> WithDefault::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
+    {
+        auto __try_tmp_36 = __reader.read_object_start();
+        if (!__try_tmp_36.has_value()) return ::tpy::make_unexpected(__try_tmp_36.error());
+    }
+    std::string label = "none";
+    std::optional<std::string> note = std::nullopt;
+    int32_t score = 0;
+    while (__reader.has_next()) {
+        std::string_view __key;
+        {
+            auto __try_tmp_37 = __reader.read_key_raw();
+            if (!__try_tmp_37.has_value()) return ::tpy::make_unexpected(__try_tmp_37.error());
+            __key = ::tpy::unwrap_ref(*__try_tmp_37);
+        }
+        auto& __match_subject = __key;
+        if (__match_subject == "lbl") {
+            std::string __label_1;
+            {
+                auto __try_tmp_38 = __reader.read_str();
+                if (!__try_tmp_38.has_value()) return ::tpy::make_unexpected(__try_tmp_38.error());
+                __label_1 = ::tpy::unwrap_ref(*__try_tmp_38);
+            }
+            label = __label_1;
+        } else if (__match_subject == "note") {
+            if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
+                {
+                    auto __try_tmp_39 = __reader.read_null();
+                    if (!__try_tmp_39.has_value()) return ::tpy::make_unexpected(__try_tmp_39.error());
+                }
+            } else {
+                std::string __note_2;
+                {
+                    auto __try_tmp_40 = __reader.read_str();
+                    if (!__try_tmp_40.has_value()) return ::tpy::make_unexpected(__try_tmp_40.error());
+                    __note_2 = ::tpy::unwrap_ref(*__try_tmp_40);
+                }
+                note = __note_2;
+            }
+        } else if (__match_subject == "score") {
+            int64_t __raw_4;
+            {
+                auto __try_tmp_41 = __reader.read_int();
+                if (!__try_tmp_41.has_value()) return ::tpy::make_unexpected(__try_tmp_41.error());
+                __raw_4 = ::tpy::unwrap_ref(*__try_tmp_41);
+            }
+            int32_t __score_3 = ::tpy::int_cast_check<int32_t>(__raw_4);
+            score = __score_3;
+        } else {
+            {
+                auto __try_tmp_42 = __reader.skip_value();
+                if (!__try_tmp_42.has_value()) return ::tpy::make_unexpected(__try_tmp_42.error());
+            }
+        }
+    }
+    {
+        auto __try_tmp_43 = __reader.read_object_end();
+        if (!__try_tmp_43.has_value()) return ::tpy::make_unexpected(__try_tmp_43.error());
+    }
+    return WithDefault(label, note, score);
+}
+
+void WithDefault::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
+    __writer.object_start();
+    __writer.key("lbl");
+    __writer.write_str(this->label);
+    __writer.key("note");
+    std::optional<std::string> __opt_note = this->note;
+    if ((__opt_note.has_value())) {
+        std::string __val_note = (*__opt_note);
+        __writer.write_str(__val_note);
+    } else {
+        __writer.write_null();
+    }
+    __writer.key("score");
+    __writer.write_int32(this->score);
+    __writer.object_end();
+}
+
+std::expected<Base, ::tpystd::tplib::json::parser::JsonError> Base::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
+    {
+        auto __try_tmp_44 = __reader.read_object_start();
+        if (!__try_tmp_44.has_value()) return ::tpy::make_unexpected(__try_tmp_44.error());
+    }
+    int32_t item_id = 0;
+    while (__reader.has_next()) {
+        std::string_view __key;
+        {
+            auto __try_tmp_45 = __reader.read_key_raw();
+            if (!__try_tmp_45.has_value()) return ::tpy::make_unexpected(__try_tmp_45.error());
+            __key = ::tpy::unwrap_ref(*__try_tmp_45);
+        }
+        auto& __match_subject = __key;
+        if (__match_subject == "id") {
+            int64_t __raw_2;
+            {
+                auto __try_tmp_46 = __reader.read_int();
+                if (!__try_tmp_46.has_value()) return ::tpy::make_unexpected(__try_tmp_46.error());
+                __raw_2 = ::tpy::unwrap_ref(*__try_tmp_46);
+            }
+            int32_t __item_id_1 = ::tpy::int_cast_check<int32_t>(__raw_2);
+            item_id = __item_id_1;
+        } else {
+            {
+                auto __try_tmp_47 = __reader.skip_value();
+                if (!__try_tmp_47.has_value()) return ::tpy::make_unexpected(__try_tmp_47.error());
+            }
+        }
+    }
+    {
+        auto __try_tmp_48 = __reader.read_object_end();
+        if (!__try_tmp_48.has_value()) return ::tpy::make_unexpected(__try_tmp_48.error());
+    }
+    return Base(item_id);
+}
+
+std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> Extended::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
+    {
+        auto __try_tmp_49 = __reader.read_object_start();
+        if (!__try_tmp_49.has_value()) return ::tpy::make_unexpected(__try_tmp_49.error());
+    }
+    int32_t item_id = 0;
+    std::string label = "";
+    while (__reader.has_next()) {
+        std::string_view __key;
+        {
+            auto __try_tmp_50 = __reader.read_key_raw();
+            if (!__try_tmp_50.has_value()) return ::tpy::make_unexpected(__try_tmp_50.error());
+            __key = ::tpy::unwrap_ref(*__try_tmp_50);
+        }
+        auto& __match_subject = __key;
+        if (__match_subject == "id") {
+            int64_t __raw_2;
+            {
+                auto __try_tmp_51 = __reader.read_int();
+                if (!__try_tmp_51.has_value()) return ::tpy::make_unexpected(__try_tmp_51.error());
+                __raw_2 = ::tpy::unwrap_ref(*__try_tmp_51);
+            }
+            int32_t __item_id_1 = ::tpy::int_cast_check<int32_t>(__raw_2);
+            item_id = __item_id_1;
+        } else if (__match_subject == "label") {
+            std::string __label_3;
+            {
+                auto __try_tmp_52 = __reader.read_str();
+                if (!__try_tmp_52.has_value()) return ::tpy::make_unexpected(__try_tmp_52.error());
+                __label_3 = ::tpy::unwrap_ref(*__try_tmp_52);
+            }
+            label = __label_3;
+        } else {
+            {
+                auto __try_tmp_53 = __reader.skip_value();
+                if (!__try_tmp_53.has_value()) return ::tpy::make_unexpected(__try_tmp_53.error());
+            }
+        }
+    }
+    {
+        auto __try_tmp_54 = __reader.read_object_end();
+        if (!__try_tmp_54.has_value()) return ::tpy::make_unexpected(__try_tmp_54.error());
+    }
+    return Extended(item_id, label);
+}
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

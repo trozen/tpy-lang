@@ -33,16 +33,10 @@ struct Key {
     Key& operator=(Key&&) = default;
 
     // def __hash__(self) -> UInt64:
-    uint64_t __hash__() const {
-        // return UInt64(self.val)
-        return ::tpy::int_cast_check<uint64_t>(this->val);
-    }
+    uint64_t __hash__() const;
 
     // def __eq__(self, other: Key) -> bool:
-    bool __eq__(const Key& other) const {
-        // return self.val == other.val
-        return (this->val == other.val);
-    }
+    bool __eq__(const Key& other) const;
 
     friend bool operator==(const Key& lhs, const Key& other) {
         return lhs.__eq__(other);
@@ -76,16 +70,10 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     // def __hash__(self) -> UInt64:
-    uint64_t __hash__() const {
-        // return hash((self.x, self.y))
-        return ::tpy::__hash__(std::tuple<int32_t, int32_t>{this->x, this->y});
-    }
+    uint64_t __hash__() const;
 
     // def __eq__(self, other: Point) -> bool:
-    bool __eq__(const Point& other) const {
-        // return self.x == other.x and self.y == other.y
-        return ((this->x == other.x) && (this->y == other.y));
-    }
+    bool __eq__(const Point& other) const;
 
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
@@ -125,16 +113,10 @@ struct Edge {
     Edge& operator=(Edge&&) = default;
 
     // def __hash__(self) -> UInt64:
-    uint64_t __hash__() const {
-        // return hash((self.a, self.b))
-        return ::tpy::__hash__(std::tuple<const Key&, const Key&>{this->a, this->b});
-    }
+    uint64_t __hash__() const;
 
     // def __eq__(self, other: Edge) -> bool:
-    bool __eq__(const Edge& other) const {
-        // return (self.a, self.b) == (other.a, other.b)
-        return (std::tuple<const Key&, const Key&>{this->a, this->b} == std::tuple<const Key&, const Key&>{other.a, other.b});
-    }
+    bool __eq__(const Edge& other) const;
 
     friend bool operator==(const Edge& lhs, const Edge& other) {
         return lhs.__eq__(other);
@@ -156,5 +138,41 @@ template<> struct std::hash<tpyapp::main::Edge> {
 namespace tpyapp::main {
 
 
+
+// def __hash__(self) -> UInt64:
+inline uint64_t Key::__hash__() const {
+    // return UInt64(self.val)
+    return ::tpy::int_cast_check<uint64_t>(this->val);
+}
+
+// def __eq__(self, other: Key) -> bool:
+inline bool Key::__eq__(const Key& other) const {
+    // return self.val == other.val
+    return (this->val == other.val);
+}
+
+// def __hash__(self) -> UInt64:
+inline uint64_t Point::__hash__() const {
+    // return hash((self.x, self.y))
+    return ::tpy::__hash__(std::tuple<int32_t, int32_t>{this->x, this->y});
+}
+
+// def __eq__(self, other: Point) -> bool:
+inline bool Point::__eq__(const Point& other) const {
+    // return self.x == other.x and self.y == other.y
+    return ((this->x == other.x) && (this->y == other.y));
+}
+
+// def __hash__(self) -> UInt64:
+inline uint64_t Edge::__hash__() const {
+    // return hash((self.a, self.b))
+    return ::tpy::__hash__(std::tuple<const Key&, const Key&>{this->a, this->b});
+}
+
+// def __eq__(self, other: Edge) -> bool:
+inline bool Edge::__eq__(const Edge& other) const {
+    // return (self.a, self.b) == (other.a, other.b)
+    return (std::tuple<const Key&, const Key&>{this->a, this->b} == std::tuple<const Key&, const Key&>{other.a, other.b});
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -28,13 +28,9 @@ struct Point {
     Point() = default;
     explicit Point(double x, double y, double z) : x(x), y(y), z(z) {}
 
-    bool __eq__(const Point& other) const {
-        return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
-    }
+    bool __eq__(const Point& other) const;
 
-    std::string __repr__() const {
-        return std::format("Point(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
@@ -55,13 +51,9 @@ struct Label {
     Label() = default;
     explicit Label(std::string_view text) : text(text) {}
 
-    bool __eq__(const Label& other) const {
-        return (this->text == other.text);
-    }
+    bool __eq__(const Label& other) const;
 
-    std::string __repr__() const {
-        return std::format("Label(text={})", ::tpy::__repr__(this->text));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Label& lhs, const Label& other) {
         return lhs.__eq__(other);
@@ -73,5 +65,21 @@ inline std::ostream& operator<<(std::ostream& os, const Label& obj) {
     return os;
 }
 
+
+inline bool Point::__eq__(const Point& other) const {
+    return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
+}
+
+inline std::string Point::__repr__() const {
+    return std::format("Point(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
+}
+
+inline bool Label::__eq__(const Label& other) const {
+    return (this->text == other.text);
+}
+
+inline std::string Label::__repr__() const {
+    return std::format("Label(text={})", ::tpy::__repr__(this->text));
+}
 void __tpy_init();
 } // namespace tpyapp::main

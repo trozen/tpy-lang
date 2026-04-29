@@ -57,10 +57,7 @@ struct Counter {
     explicit Counter(int32_t v) : val(v) {}
 
     // def increment(self) -> None:
-    void increment() {
-        // self.val = self.val + 1
-        this->val = (::tpy::add_check<int32_t>(this->val, 1));
-    }
+    void increment();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -68,5 +65,11 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def increment(self) -> None:
+inline void Counter::increment() {
+    // self.val = self.val + 1
+    this->val = (::tpy::add_check<int32_t>(this->val, 1));
+}
 void __tpy_init();
 } // namespace tpyapp::main

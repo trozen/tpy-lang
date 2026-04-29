@@ -22,21 +22,11 @@ struct InfiniteCounter {
     InfiniteCounter() : current(0) {}
 
     // def __iter__(self) -> InfiniteCounter:
-    InfiniteCounter& __iter__() {
-        // return self
-        return (*this);
-    }
+    InfiniteCounter& __iter__();
 
     // # tpyc: warning(/no 'raise StopIteration'/)
     // def __next__(self) -> Int32:
-    std::expected<int32_t, ::tpy::StopIteration> __next__() {
-        // val = self.current
-        int32_t val = this->current;
-        // self.current += 1
-        this->current = ::tpy::add_check<int32_t>(this->current, 1);
-        // return val
-        return val;
-    }
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const InfiniteCounter& obj) {
@@ -44,5 +34,22 @@ inline std::ostream& operator<<(std::ostream& os, const InfiniteCounter& obj) {
     return os;
 }
 
+
+// def __iter__(self) -> InfiniteCounter:
+inline InfiniteCounter& InfiniteCounter::__iter__() {
+    // return self
+    return (*this);
+}
+
+// # tpyc: warning(/no 'raise StopIteration'/)
+// def __next__(self) -> Int32:
+inline std::expected<int32_t, ::tpy::StopIteration> InfiniteCounter::__next__() {
+    // val = self.current
+    int32_t val = this->current;
+    // self.current += 1
+    this->current = ::tpy::add_check<int32_t>(this->current, 1);
+    // return val
+    return val;
+}
 void __tpy_init();
 } // namespace tpyapp::main

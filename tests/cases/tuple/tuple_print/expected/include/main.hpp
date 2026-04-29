@@ -23,10 +23,7 @@ struct Pair {
     explicit Pair(int32_t a, std::string_view b) : data(std::tuple<int32_t, std::string>{a, b}) {}
 
     // def __str__(self) -> str:
-    std::string __str__() const {
-        // return "Pair((" + str(self.data[0]) + ", '" + self.data[1] + "'))"
-        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Pair((", ::tpy::fixed_to_str<int32_t>(std::get<0>(this->data)))), ", '")), std::get<1>(this->data))), "'))"));
-    }
+    std::string __str__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
@@ -34,5 +31,11 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
     return os;
 }
 
+
+// def __str__(self) -> str:
+inline std::string Pair::__str__() const {
+    // return "Pair((" + str(self.data[0]) + ", '" + self.data[1] + "'))"
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Pair((", ::tpy::fixed_to_str<int32_t>(std::get<0>(this->data)))), ", '")), std::get<1>(this->data))), "'))"));
+}
 void __tpy_init();
 } // namespace tpyapp::main

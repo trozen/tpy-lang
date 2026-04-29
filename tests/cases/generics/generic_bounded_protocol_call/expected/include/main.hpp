@@ -86,16 +86,10 @@ struct MyValue {
     explicit MyValue(int32_t v) : val(v) {}
 
     // def to_str(self) -> str:
-    std::string to_str() const {
-        // return "value"
-        return "value";
-    }
+    std::string to_str() const;
 
     // def __len__(self) -> Int32:
-    int32_t __len__() const {
-        // return self.val
-        return this->val;
-    }
+    int32_t __len__() const;
 
     size_t size() const {
         auto len = __len__();
@@ -122,10 +116,7 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     // def to_str(self) -> str:
-    std::string to_str() const {
-        // return "Point"
-        return "Point";
-    }
+    std::string to_str() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -146,16 +137,10 @@ struct Widget {
     explicit Widget(std::string_view name, int32_t val) : name(name), val(val) {}
 
     // def get_name(self) -> str:
-    std::string get_name() const {
-        // return self.name
-        return this->name;
-    }
+    std::string get_name() const;
 
     // def get_value(self) -> Int32:
-    int32_t get_value() const {
-        // return self.val
-        return this->val;
-    }
+    int32_t get_value() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
@@ -174,10 +159,7 @@ struct Box {
     explicit Box(int32_t v) : value(v) {}
 
     // def clone(self) -> Own[Box]:
-    Box clone() const {
-        // return Box(self.value)
-        return Box(this->value);
-    }
+    Box clone() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
@@ -185,6 +167,42 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def to_str(self) -> str:
+inline std::string MyValue::to_str() const {
+    // return "value"
+    return "value";
+}
+
+// def __len__(self) -> Int32:
+inline int32_t MyValue::__len__() const {
+    // return self.val
+    return this->val;
+}
+
+// def to_str(self) -> str:
+inline std::string Point::to_str() const {
+    // return "Point"
+    return "Point";
+}
+
+// def get_name(self) -> str:
+inline std::string Widget::get_name() const {
+    // return self.name
+    return this->name;
+}
+
+// def get_value(self) -> Int32:
+inline int32_t Widget::get_value() const {
+    // return self.val
+    return this->val;
+}
+
+// def clone(self) -> Own[Box]:
+inline Box Box::clone() const {
+    // return Box(self.value)
+    return Box(this->value);
+}
 // # Test 1: Builtin protocol (Sized) method call inside generic function
 // def get_length[T: Sized](item: T) -> Int32:
 template<::tpystd::typing::Sized T>

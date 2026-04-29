@@ -51,10 +51,7 @@ struct Parrot {
 
 
     // def make_noise(self) -> str:
-    std::string make_noise() const {
-        // return "Squawk"
-        return "Squawk";
-    }
+    std::string make_noise() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Parrot& obj) {
@@ -62,5 +59,11 @@ inline std::ostream& operator<<(std::ostream& os, const Parrot& obj) {
     return os;
 }
 
+
+// def make_noise(self) -> str:
+inline std::string Parrot::make_noise() const {
+    // return "Squawk"
+    return "Squawk";
+}
 void __tpy_init();
 } // namespace tpyapp::main

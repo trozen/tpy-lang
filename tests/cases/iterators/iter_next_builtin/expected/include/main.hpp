@@ -27,26 +27,11 @@ struct Counter {
     explicit Counter(int32_t limit) : value(0), limit(limit) {}
 
     // def __iter__(self) -> Counter:
-    Counter& __iter__() {
-        // return self
-        return (*this);
-    }
+    Counter& __iter__();
 
     // @error_return(StopIteration)
     // def __next__(self) -> Int32:
-    std::expected<int32_t, ::tpy::StopIteration> __next__() {
-        // if self.value >= self.limit:
-        if ((this->value >= this->limit)) {
-            // raise StopIteration
-            return ::tpy::make_unexpected(::tpy::StopIteration{});
-        }
-        // v = self.value
-        int32_t v = this->value;
-        // self.value += 1
-        this->value = ::tpy::add_check<int32_t>(this->value, 1);
-        // return v
-        return v;
-    }
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -54,6 +39,28 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __iter__(self) -> Counter:
+inline Counter& Counter::__iter__() {
+    // return self
+    return (*this);
+}
+
+// @error_return(StopIteration)
+// def __next__(self) -> Int32:
+inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {
+    // if self.value >= self.limit:
+    if ((this->value >= this->limit)) {
+        // raise StopIteration
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    // v = self.value
+    int32_t v = this->value;
+    // self.value += 1
+    this->value = ::tpy::add_check<int32_t>(this->value, 1);
+    // return v
+    return v;
+}
 // def consume_two(it: Iterator[Int32]) -> None:
 template<::tpystd::typing::Iterator<int32_t> T_it>
 void consume_two(T_it& it) {

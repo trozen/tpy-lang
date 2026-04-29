@@ -35,17 +35,7 @@ struct Container {
 
 
     // def take(self, p: Own[Point] | None) -> None:
-    void take(std::optional<Point> p) {
-        // if p is not None:
-        if ((p.has_value())) {
-            // self.val = Int32(1)
-            this->val = 1;
-        // else:
-        } else {
-            // self.val = Int32(0)
-            this->val = 0;
-        }
-    }
+    void take(std::optional<Point> p);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -53,5 +43,18 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+
+// def take(self, p: Own[Point] | None) -> None:
+inline void Container::take(std::optional<Point> p) {
+    // if p is not None:
+    if ((p.has_value())) {
+        // self.val = Int32(1)
+        this->val = 1;
+    // else:
+    } else {
+        // self.val = Int32(0)
+        this->val = 0;
+    }
+}
 void __tpy_init();
 } // namespace tpyapp::main

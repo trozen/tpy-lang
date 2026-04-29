@@ -35,17 +35,11 @@ struct Person {
     explicit Person(std::string_view name, int32_t age) : name(name), age(age) {}
 
     // def rename(self, new_name: str) -> None:
-    void rename(std::string_view new_name) {
-        // self.name = new_name
-        this->name = new_name;
-    }
+    void rename(std::string_view new_name);
 
     // @readonly
     // def greeting(self) -> str:
-    std::string greeting() const {
-        // return "Hi, " + self.name
-        return (::tpy::str_concat("Hi, ", this->name));
-    }
+    std::string greeting() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
@@ -53,5 +47,18 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
     return os;
 }
 
+
+// def rename(self, new_name: str) -> None:
+inline void Person::rename(std::string_view new_name) {
+    // self.name = new_name
+    this->name = new_name;
+}
+
+// @readonly
+// def greeting(self) -> str:
+inline std::string Person::greeting() const {
+    // return "Hi, " + self.name
+    return (::tpy::str_concat("Hi, ", this->name));
+}
 void __tpy_init();
 } // namespace tpyapp::main

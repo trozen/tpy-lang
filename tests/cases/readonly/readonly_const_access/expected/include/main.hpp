@@ -24,17 +24,11 @@ struct Container {
 
     // @readonly
     // def items(self) -> list[Int32]:
-    const std::vector<int32_t>& items() const {
-        // return self._items
-        return this->_items;
-    }
+    const std::vector<int32_t>& items() const;
 
     // @readonly
     // def count(self) -> Int32:
-    int32_t count() const {
-        // return Int32(len(self._items))
-        return ::tpy::__len__(this->_items);
-    }
+    int32_t count() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -42,5 +36,19 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+
+// @readonly
+// def items(self) -> list[Int32]:
+inline const std::vector<int32_t>& Container::items() const {
+    // return self._items
+    return this->_items;
+}
+
+// @readonly
+// def count(self) -> Int32:
+inline int32_t Container::count() const {
+    // return Int32(len(self._items))
+    return ::tpy::__len__(this->_items);
+}
 void __tpy_init();
 } // namespace tpyapp::main

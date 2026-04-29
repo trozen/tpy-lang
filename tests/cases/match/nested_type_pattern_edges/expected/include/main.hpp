@@ -36,13 +36,9 @@ struct Cat {
     Cat() = default;
     explicit Cat(std::string_view name) : name(name) {}
 
-    bool __eq__(const Cat& other) const {
-        return (this->name == other.name);
-    }
+    bool __eq__(const Cat& other) const;
 
-    std::string __repr__() const {
-        return std::format("Cat(name={})", ::tpy::__repr__(this->name));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Cat& lhs, const Cat& other) {
         return lhs.__eq__(other);
@@ -63,13 +59,9 @@ struct Dog {
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
 
-    bool __eq__(const Dog& other) const {
-        return (this->name == other.name);
-    }
+    bool __eq__(const Dog& other) const;
 
-    std::string __repr__() const {
-        return std::format("Dog(name={})", ::tpy::__repr__(this->name));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Dog& lhs, const Dog& other) {
         return lhs.__eq__(other);
@@ -157,5 +149,21 @@ inline std::ostream& operator<<(std::ostream& os, const BoolHolder& obj) {
     return os;
 }
 
+
+inline bool Cat::__eq__(const Cat& other) const {
+    return (this->name == other.name);
+}
+
+inline std::string Cat::__repr__() const {
+    return std::format("Cat(name={})", ::tpy::__repr__(this->name));
+}
+
+inline bool Dog::__eq__(const Dog& other) const {
+    return (this->name == other.name);
+}
+
+inline std::string Dog::__repr__() const {
+    return std::format("Dog(name={})", ::tpy::__repr__(this->name));
+}
 void __tpy_init();
 } // namespace tpyapp::main

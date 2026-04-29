@@ -29,19 +29,7 @@ struct RangeIter {
     auto& __iter__() { return *this; }
 
     // def __next__(self) -> Int32:
-    std::expected<int32_t, ::tpy::StopIteration> __next__() {
-        // if self.current < self.limit:
-        if ((this->current < this->limit)) {
-            // result = self.current
-            int32_t result = this->current;
-            // self.current += 1
-            this->current = ::tpy::add_check<int32_t>(this->current, 1);
-            // return result
-            return result;
-        }
-        // raise StopIteration
-        return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const RangeIter& obj) {
@@ -61,10 +49,7 @@ struct MyRange {
     explicit MyRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
     // def __iter__(self) -> Own[RangeIter]:
-    RangeIter __iter__() const {
-        // return RangeIter(self.start, self.limit)
-        return RangeIter(this->start, this->limit);
-    }
+    RangeIter __iter__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyRange& obj) {
@@ -107,5 +92,26 @@ inline std::ostream& operator<<(std::ostream& os, const Summer<T>& obj) {
     return os;
 }
 
+
+// def __next__(self) -> Int32:
+inline std::expected<int32_t, ::tpy::StopIteration> RangeIter::__next__() {
+    // if self.current < self.limit:
+    if ((this->current < this->limit)) {
+        // result = self.current
+        int32_t result = this->current;
+        // self.current += 1
+        this->current = ::tpy::add_check<int32_t>(this->current, 1);
+        // return result
+        return result;
+    }
+    // raise StopIteration
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// def __iter__(self) -> Own[RangeIter]:
+inline RangeIter MyRange::__iter__() const {
+    // return RangeIter(self.start, self.limit)
+    return RangeIter(this->start, this->limit);
+}
 void __tpy_init();
 } // namespace tpyapp::main

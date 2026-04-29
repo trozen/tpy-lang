@@ -24,29 +24,11 @@ struct Buffer {
 
     // # Per-param: only self is auto_readonly; dest stays mutable in both overloads.
     // def copy_into(self: auto_readonly[Self], dest: list[Int32]) -> Span[auto_readonly[Int32]]:
-    std::span<int32_t> copy_into(std::vector<int32_t>& dest) {
-        // for i in range(len(self._data)):
-        int32_t __stop_0 = ::tpy::__len__(this->_data);
-        for (int32_t i = 0; i < __stop_0; ++i) {
-            // dest.append(self._data[i])
-            dest.push_back(::tpy::__getitem__(this->_data, i));
-        }
-        // return self._data
-        return ::tpy::as_mut_span(this->_data);
-    }
+    std::span<int32_t> copy_into(std::vector<int32_t>& dest);
 
     // # Per-param: only self is auto_readonly; dest stays mutable in both overloads.
     // def copy_into(self: auto_readonly[Self], dest: list[Int32]) -> Span[auto_readonly[Int32]]:
-    std::span<const int32_t> copy_into(std::vector<int32_t>& dest) const {
-        // for i in range(len(self._data)):
-        int32_t __stop_0 = ::tpy::__len__(this->_data);
-        for (int32_t i = 0; i < __stop_0; ++i) {
-            // dest.append(self._data[i])
-            dest.push_back(::tpy::__getitem__(this->_data, i));
-        }
-        // return self._data
-        return ::tpy::as_span(this->_data);
-    }
+    std::span<const int32_t> copy_into(std::vector<int32_t>& dest) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
@@ -54,5 +36,31 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
     return os;
 }
 
+
+// # Per-param: only self is auto_readonly; dest stays mutable in both overloads.
+// def copy_into(self: auto_readonly[Self], dest: list[Int32]) -> Span[auto_readonly[Int32]]:
+inline std::span<int32_t> Buffer::copy_into(std::vector<int32_t>& dest) {
+    // for i in range(len(self._data)):
+    int32_t __stop_0 = ::tpy::__len__(this->_data);
+    for (int32_t i = 0; i < __stop_0; ++i) {
+        // dest.append(self._data[i])
+        dest.push_back(::tpy::__getitem__(this->_data, i));
+    }
+    // return self._data
+    return ::tpy::as_mut_span(this->_data);
+}
+
+// # Per-param: only self is auto_readonly; dest stays mutable in both overloads.
+// def copy_into(self: auto_readonly[Self], dest: list[Int32]) -> Span[auto_readonly[Int32]]:
+inline std::span<const int32_t> Buffer::copy_into(std::vector<int32_t>& dest) const {
+    // for i in range(len(self._data)):
+    int32_t __stop_0 = ::tpy::__len__(this->_data);
+    for (int32_t i = 0; i < __stop_0; ++i) {
+        // dest.append(self._data[i])
+        dest.push_back(::tpy::__getitem__(this->_data, i));
+    }
+    // return self._data
+    return ::tpy::as_span(this->_data);
+}
 void __tpy_init();
 } // namespace tpyapp::main

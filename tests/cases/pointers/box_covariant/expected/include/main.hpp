@@ -59,10 +59,7 @@ struct Circle : Shape {
     explicit Circle(double r) : _r(r) {}
 
     // def area(self) -> float:
-    double area() override {
-        // return 3.14 * self._r * self._r
-        return ((((3.14) * (this->_r))) * (this->_r));
-    }
+    double area() override;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
@@ -80,10 +77,7 @@ struct Square : Shape {
     explicit Square(double s) : _s(s) {}
 
     // def area(self) -> float:
-    double area() override {
-        // return self._s * self._s
-        return ((this->_s) * (this->_s));
-    }
+    double area() override;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
@@ -91,5 +85,17 @@ inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
     return os;
 }
 
+
+// def area(self) -> float:
+inline double Circle::area() {
+    // return 3.14 * self._r * self._r
+    return ((((3.14) * (this->_r))) * (this->_r));
+}
+
+// def area(self) -> float:
+inline double Square::area() {
+    // return self._s * self._s
+    return ((this->_s) * (this->_s));
+}
 void __tpy_init();
 } // namespace tpyapp::main

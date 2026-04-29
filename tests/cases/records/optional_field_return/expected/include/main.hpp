@@ -40,16 +40,10 @@ struct Box {
     Box() : item(std::nullopt) {}
 
     // def get_item(self) -> Point | None:
-    Point* get_item() {
-        // return self.item
-        return ::tpy::optional_to_ptr(this->item);
-    }
+    Point* get_item();
 
     // def has_item(self) -> bool:
-    bool has_item() const {
-        // return self.item is not None
-        return (this->item.has_value());
-    }
+    bool has_item() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
@@ -57,5 +51,17 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def get_item(self) -> Point | None:
+inline Point* Box::get_item() {
+    // return self.item
+    return ::tpy::optional_to_ptr(this->item);
+}
+
+// def has_item(self) -> bool:
+inline bool Box::has_item() const {
+    // return self.item is not None
+    return (this->item.has_value());
+}
 void __tpy_init();
 } // namespace tpyapp::main

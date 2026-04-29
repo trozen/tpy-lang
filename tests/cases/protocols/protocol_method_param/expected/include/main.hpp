@@ -32,10 +32,7 @@ struct Words {
 
     // @readonly
     // def length(self) -> int:
-    ::tpy::BigInt length() const {
-        // return len(self.items)
-        return ::tpy::BigInt(::tpy::__len__(this->items));
-    }
+    ::tpy::BigInt length() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Words& obj) {
@@ -54,10 +51,7 @@ struct Numbers {
 
     // @readonly
     // def length(self) -> int:
-    ::tpy::BigInt length() const {
-        // return len(self.items)
-        return ::tpy::BigInt(::tpy::__len__(this->items));
-    }
+    ::tpy::BigInt length() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Numbers& obj) {
@@ -96,5 +90,19 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+
+// @readonly
+// def length(self) -> int:
+inline ::tpy::BigInt Words::length() const {
+    // return len(self.items)
+    return ::tpy::BigInt(::tpy::__len__(this->items));
+}
+
+// @readonly
+// def length(self) -> int:
+inline ::tpy::BigInt Numbers::length() const {
+    // return len(self.items)
+    return ::tpy::BigInt(::tpy::__len__(this->items));
+}
 void __tpy_init();
 } // namespace tpyapp::main

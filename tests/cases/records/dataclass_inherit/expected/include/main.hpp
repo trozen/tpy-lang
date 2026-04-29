@@ -25,13 +25,9 @@ struct Base {
     Base() = default;
     explicit Base(int32_t x, int32_t y) : x(x), y(y) {}
 
-    bool __eq__(const Base& other) const {
-        return ((this->x == other.x) && (this->y == other.y));
-    }
+    bool __eq__(const Base& other) const;
 
-    std::string __repr__() const {
-        return std::format("Base(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Base& lhs, const Base& other) {
         return lhs.__eq__(other);
@@ -52,13 +48,9 @@ struct Child : Base {
     Child() = default;
     explicit Child(int32_t x, int32_t y, int32_t z) : Base(x, y), z(z) {}
 
-    bool __eq__(const Child& other) const {
-        return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
-    }
+    bool __eq__(const Child& other) const;
 
-    std::string __repr__() const {
-        return std::format("Child(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Child& lhs, const Child& other) {
         return lhs.__eq__(other);
@@ -70,5 +62,21 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+inline bool Base::__eq__(const Base& other) const {
+    return ((this->x == other.x) && (this->y == other.y));
+}
+
+inline std::string Base::__repr__() const {
+    return std::format("Base(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+}
+
+inline bool Child::__eq__(const Child& other) const {
+    return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
+}
+
+inline std::string Child::__repr__() const {
+    return std::format("Child(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
+}
 void __tpy_init();
 } // namespace tpyapp::main

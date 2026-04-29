@@ -41,20 +41,10 @@ struct Rect {
 
 
     // def set_corner(self, p: Point) -> None:
-    void set_corner(const Point& p) {
-        // self.corner = p           # tpyc: warning(/copies Point into field/)
-        this->corner = p;
-        // self.corner = copy(p)     # tpyc: ok
-        this->corner = Point(p);
-        // self.corner = Point()     # tpyc: ok
-        this->corner = Point();
-    }
+    void set_corner(const Point& p);
 
     // def set_width(self, w: Int32) -> None:
-    void set_width(int32_t w) {
-        // self.width = w            # tpyc: ok
-        this->width = w;
-    }
+    void set_width(int32_t w);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
@@ -69,14 +59,7 @@ struct Container {
 
 
     // def set_items(self, data: list[Int32]) -> None:
-    void set_items(const std::vector<int32_t>& data) {
-        // self.items = data         # tpyc: warning(/copies list\[Int32\] into field/)
-        this->items = data;
-        // self.items = copy(data)   # tpyc: ok
-        this->items = std::vector<int32_t>(data);
-        // self.items = [1, 2, 3]    # tpyc: ok
-        this->items = {1, 2, 3};
-    }
+    void set_items(const std::vector<int32_t>& data);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -115,12 +98,7 @@ struct OptHolder {
     OptHolder() : value(std::nullopt) {}
 
     // def set_value(self, p: Point | None) -> None:
-    void set_value(Point* p) {
-        // self.value = p            # tpyc: warning(/copies Point | None into field/)
-        this->value = ::tpy::ptr_to_optional(p);
-        // self.value = copy(p)      # tpyc: ok
-        this->value = ::tpy::ptr_to_optional(p);
-    }
+    void set_value(Point* p);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OptHolder& obj) {
@@ -128,5 +106,39 @@ inline std::ostream& operator<<(std::ostream& os, const OptHolder& obj) {
     return os;
 }
 
+
+// def set_corner(self, p: Point) -> None:
+inline void Rect::set_corner(const Point& p) {
+    // self.corner = p           # tpyc: warning(/copies Point into field/)
+    this->corner = p;
+    // self.corner = copy(p)     # tpyc: ok
+    this->corner = Point(p);
+    // self.corner = Point()     # tpyc: ok
+    this->corner = Point();
+}
+
+// def set_width(self, w: Int32) -> None:
+inline void Rect::set_width(int32_t w) {
+    // self.width = w            # tpyc: ok
+    this->width = w;
+}
+
+// def set_items(self, data: list[Int32]) -> None:
+inline void Container::set_items(const std::vector<int32_t>& data) {
+    // self.items = data         # tpyc: warning(/copies list\[Int32\] into field/)
+    this->items = data;
+    // self.items = copy(data)   # tpyc: ok
+    this->items = std::vector<int32_t>(data);
+    // self.items = [1, 2, 3]    # tpyc: ok
+    this->items = {1, 2, 3};
+}
+
+// def set_value(self, p: Point | None) -> None:
+inline void OptHolder::set_value(Point* p) {
+    // self.value = p            # tpyc: warning(/copies Point | None into field/)
+    this->value = ::tpy::ptr_to_optional(p);
+    // self.value = copy(p)      # tpyc: ok
+    this->value = ::tpy::ptr_to_optional(p);
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -61,10 +61,7 @@ struct Ruler {
 
 
     // def measure(self) -> int:
-    ::tpy::BigInt measure() const {
-        // return 5
-        return ::tpy::BigInt(5);
-    }
+    ::tpy::BigInt measure() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ruler& obj) {
@@ -77,10 +74,7 @@ struct Walker {
 
 
     // def walk(self) -> int:
-    ::tpy::BigInt walk() const {
-        // return 99
-        return ::tpy::BigInt(99);
-    }
+    ::tpy::BigInt walk() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Walker& obj) {
@@ -88,5 +82,17 @@ inline std::ostream& operator<<(std::ostream& os, const Walker& obj) {
     return os;
 }
 
+
+// def measure(self) -> int:
+inline ::tpy::BigInt Ruler::measure() const {
+    // return 5
+    return ::tpy::BigInt(5);
+}
+
+// def walk(self) -> int:
+inline ::tpy::BigInt Walker::walk() const {
+    // return 99
+    return ::tpy::BigInt(99);
+}
 void __tpy_init();
 } // namespace tpyapp::main

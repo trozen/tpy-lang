@@ -28,31 +28,19 @@ struct Item {
 
     // # Warning: -> str copies the field
     // def get_name(self) -> str:
-    std::string get_name() const {
-        // return self.name  # tpyc: warning(/returns a copy of str field/)
-        return this->name;
-    }
+    std::string get_name() const;
 
     // # No warning: -> StrView is zero-copy
     // def get_desc(self) -> StrView:
-    std::string_view get_desc() const {
-        // return self.desc
-        return this->desc;
-    }
+    std::string_view get_desc() const;
 
     // # No warning: -> String is explicit owned
     // def get_label(self) -> String:
-    std::string get_label() const {
-        // return self.label
-        return this->label;
-    }
+    std::string get_label() const;
 
     // # No warning: dunder method
     // def __str__(self) -> str:
-    std::string __str__() const {
-        // return self.name
-        return this->name;
-    }
+    std::string __str__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
@@ -60,5 +48,33 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
     return os;
 }
 
+
+// # Warning: -> str copies the field
+// def get_name(self) -> str:
+inline std::string Item::get_name() const {
+    // return self.name  # tpyc: warning(/returns a copy of str field/)
+    return this->name;
+}
+
+// # No warning: -> StrView is zero-copy
+// def get_desc(self) -> StrView:
+inline std::string_view Item::get_desc() const {
+    // return self.desc
+    return this->desc;
+}
+
+// # No warning: -> String is explicit owned
+// def get_label(self) -> String:
+inline std::string Item::get_label() const {
+    // return self.label
+    return this->label;
+}
+
+// # No warning: dunder method
+// def __str__(self) -> str:
+inline std::string Item::__str__() const {
+    // return self.name
+    return this->name;
+}
 void __tpy_init();
 } // namespace tpyapp::main

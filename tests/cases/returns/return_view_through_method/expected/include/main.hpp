@@ -24,10 +24,7 @@ struct Wrapper {
     explicit Wrapper(std::string_view s) : s(s) {}
 
     // def get_view(self) -> StrView:
-    std::string_view get_view() const {
-        // return self.s
-        return this->s;
-    }
+    std::string_view get_view() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
@@ -35,5 +32,11 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+// def get_view(self) -> StrView:
+inline std::string_view Wrapper::get_view() const {
+    // return self.s
+    return this->s;
+}
 void __tpy_init();
 } // namespace tpyapp::main

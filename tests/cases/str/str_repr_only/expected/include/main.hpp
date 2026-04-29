@@ -24,10 +24,7 @@ struct Tag {
     explicit Tag(std::string_view label) : label(label) {}
 
     // def __repr__(self) -> str:
-    std::string __repr__() const {
-        // return "Tag(" + self.label + ")"
-        return (::tpy::str_concat((::tpy::str_concat("Tag(", this->label)), ")"));
-    }
+    std::string __repr__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
@@ -35,5 +32,11 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
     return os;
 }
 
+
+// def __repr__(self) -> str:
+inline std::string Tag::__repr__() const {
+    // return "Tag(" + self.label + ")"
+    return (::tpy::str_concat((::tpy::str_concat("Tag(", this->label)), ")"));
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -37,13 +37,9 @@ struct Point {
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    bool __eq__(const Point& other) const {
-        return ((this->x == other.x) && (this->y == other.y));
-    }
+    bool __eq__(const Point& other) const;
 
-    std::string __repr__() const {
-        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
@@ -67,13 +63,9 @@ struct Person {
     Person() = default;
     explicit Person(std::string_view name, int32_t age) : name(name), age(age) {}
 
-    bool __eq__(const Person& other) const {
-        return ((this->name == other.name) && (this->age == other.age));
-    }
+    bool __eq__(const Person& other) const;
 
-    std::string __repr__() const {
-        return std::format("Person(name={}, age={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Person& lhs, const Person& other) {
         return lhs.__eq__(other);
@@ -97,13 +89,9 @@ struct Line {
     Line() = default;
     explicit Line(Point&& start, Point&& end) : start(std::move(start)), end(std::move(end)) {}
 
-    bool __eq__(const Line& other) const {
-        return ((this->start == other.start) && (this->end == other.end));
-    }
+    bool __eq__(const Line& other) const;
 
-    std::string __repr__() const {
-        return std::format("Line(start={}, end={})", ::tpy::__repr__(this->start), ::tpy::__repr__(this->end));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Line& lhs, const Line& other) {
         return lhs.__eq__(other);
@@ -127,13 +115,9 @@ struct NamedPoint {
     NamedPoint() = default;
     explicit NamedPoint(std::string_view name, Point&& pos) : name(name), pos(std::move(pos)) {}
 
-    bool __eq__(const NamedPoint& other) const {
-        return ((this->name == other.name) && (this->pos == other.pos));
-    }
+    bool __eq__(const NamedPoint& other) const;
 
-    std::string __repr__() const {
-        return std::format("NamedPoint(name={}, pos={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->pos));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const NamedPoint& lhs, const NamedPoint& other) {
         return lhs.__eq__(other);
@@ -155,13 +139,9 @@ struct Polygon {
     Polygon() = default;
     explicit Polygon(std::vector<Point>&& vertices) : vertices(std::move(vertices)) {}
 
-    bool __eq__(const Polygon& other) const {
-        return (this->vertices == other.vertices);
-    }
+    bool __eq__(const Polygon& other) const;
 
-    std::string __repr__() const {
-        return std::format("Polygon(vertices={})", ::tpy::list_to_str(this->vertices));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Polygon& lhs, const Polygon& other) {
         return lhs.__eq__(other);
@@ -185,13 +165,9 @@ struct Drawing {
     Drawing() = default;
     explicit Drawing(std::string_view title, std::vector<Point>&& shapes) : title(title), shapes(std::move(shapes)) {}
 
-    bool __eq__(const Drawing& other) const {
-        return ((this->title == other.title) && (this->shapes == other.shapes));
-    }
+    bool __eq__(const Drawing& other) const;
 
-    std::string __repr__() const {
-        return std::format("Drawing(title={}, shapes={})", ::tpy::__repr__(this->title), ::tpy::list_to_str(this->shapes));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Drawing& lhs, const Drawing& other) {
         return lhs.__eq__(other);
@@ -213,13 +189,9 @@ struct Wrapper {
     Wrapper() = default;
     explicit Wrapper(NamedPoint&& inner) : inner(std::move(inner)) {}
 
-    bool __eq__(const Wrapper& other) const {
-        return (this->inner == other.inner);
-    }
+    bool __eq__(const Wrapper& other) const;
 
-    std::string __repr__() const {
-        return std::format("Wrapper(inner={})", ::tpy::__repr__(this->inner));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Wrapper& lhs, const Wrapper& other) {
         return lhs.__eq__(other);
@@ -243,13 +215,9 @@ struct MaybeNamed {
     MaybeNamed() = default;
     explicit MaybeNamed(std::string_view name, int32_t value = 0) : name(name), value(value) {}
 
-    bool __eq__(const MaybeNamed& other) const {
-        return ((this->name == other.name) && (this->value == other.value));
-    }
+    bool __eq__(const MaybeNamed& other) const;
 
-    std::string __repr__() const {
-        return std::format("MaybeNamed(name={}, value={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->value));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const MaybeNamed& lhs, const MaybeNamed& other) {
         return lhs.__eq__(other);
@@ -271,13 +239,9 @@ struct Container {
     Container() = default;
     explicit Container(std::vector<Point>&& items) : items(std::move(items)) {}
 
-    bool __eq__(const Container& other) const {
-        return (this->items == other.items);
-    }
+    bool __eq__(const Container& other) const;
 
-    std::string __repr__() const {
-        return std::format("Container(items={})", ::tpy::list_to_str(this->items));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Container& lhs, const Container& other) {
         return lhs.__eq__(other);
@@ -301,13 +265,9 @@ struct MultiList {
     MultiList() = default;
     explicit MultiList(std::vector<Point>&& points, std::vector<std::string>&& labels) : points(std::move(points)), labels(std::move(labels)) {}
 
-    bool __eq__(const MultiList& other) const {
-        return ((this->points == other.points) && (this->labels == other.labels));
-    }
+    bool __eq__(const MultiList& other) const;
 
-    std::string __repr__() const {
-        return std::format("MultiList(points={}, labels={})", ::tpy::list_to_str(this->points), ::tpy::list_to_str(this->labels));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const MultiList& lhs, const MultiList& other) {
         return lhs.__eq__(other);
@@ -329,13 +289,9 @@ struct DictOfDC {
     DictOfDC() = default;
     explicit DictOfDC(::tpy::ordered_map<std::string, Point>&& items) : items(std::move(items)) {}
 
-    bool __eq__(const DictOfDC& other) const {
-        return (this->items == other.items);
-    }
+    bool __eq__(const DictOfDC& other) const;
 
-    std::string __repr__() const {
-        return std::format("DictOfDC(items={})", ::tpy::dict_to_str(this->items));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const DictOfDC& lhs, const DictOfDC& other) {
         return lhs.__eq__(other);
@@ -357,13 +313,9 @@ struct TupleMixed {
     TupleMixed() = default;
     explicit TupleMixed(const std::tuple<const Point&, int32_t>& pair) : pair(pair) {}
 
-    bool __eq__(const TupleMixed& other) const {
-        return (this->pair == other.pair);
-    }
+    bool __eq__(const TupleMixed& other) const;
 
-    std::string __repr__() const {
-        return std::format("TupleMixed(pair={})", ::tpy::tuple_to_str(this->pair));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const TupleMixed& lhs, const TupleMixed& other) {
         return lhs.__eq__(other);
@@ -385,13 +337,9 @@ struct TupleAllDC {
     TupleAllDC() = default;
     explicit TupleAllDC(const std::tuple<const Point&, const Point&>& pair) : pair(pair) {}
 
-    bool __eq__(const TupleAllDC& other) const {
-        return (this->pair == other.pair);
-    }
+    bool __eq__(const TupleAllDC& other) const;
 
-    std::string __repr__() const {
-        return std::format("TupleAllDC(pair={})", ::tpy::tuple_to_str(this->pair));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const TupleAllDC& lhs, const TupleAllDC& other) {
         return lhs.__eq__(other);
@@ -403,5 +351,109 @@ inline std::ostream& operator<<(std::ostream& os, const TupleAllDC& obj) {
     return os;
 }
 
+
+inline bool Point::__eq__(const Point& other) const {
+    return ((this->x == other.x) && (this->y == other.y));
+}
+
+inline std::string Point::__repr__() const {
+    return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+}
+
+inline bool Person::__eq__(const Person& other) const {
+    return ((this->name == other.name) && (this->age == other.age));
+}
+
+inline std::string Person::__repr__() const {
+    return std::format("Person(name={}, age={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age));
+}
+
+inline bool Line::__eq__(const Line& other) const {
+    return ((this->start == other.start) && (this->end == other.end));
+}
+
+inline std::string Line::__repr__() const {
+    return std::format("Line(start={}, end={})", ::tpy::__repr__(this->start), ::tpy::__repr__(this->end));
+}
+
+inline bool NamedPoint::__eq__(const NamedPoint& other) const {
+    return ((this->name == other.name) && (this->pos == other.pos));
+}
+
+inline std::string NamedPoint::__repr__() const {
+    return std::format("NamedPoint(name={}, pos={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->pos));
+}
+
+inline bool Polygon::__eq__(const Polygon& other) const {
+    return (this->vertices == other.vertices);
+}
+
+inline std::string Polygon::__repr__() const {
+    return std::format("Polygon(vertices={})", ::tpy::list_to_str(this->vertices));
+}
+
+inline bool Drawing::__eq__(const Drawing& other) const {
+    return ((this->title == other.title) && (this->shapes == other.shapes));
+}
+
+inline std::string Drawing::__repr__() const {
+    return std::format("Drawing(title={}, shapes={})", ::tpy::__repr__(this->title), ::tpy::list_to_str(this->shapes));
+}
+
+inline bool Wrapper::__eq__(const Wrapper& other) const {
+    return (this->inner == other.inner);
+}
+
+inline std::string Wrapper::__repr__() const {
+    return std::format("Wrapper(inner={})", ::tpy::__repr__(this->inner));
+}
+
+inline bool MaybeNamed::__eq__(const MaybeNamed& other) const {
+    return ((this->name == other.name) && (this->value == other.value));
+}
+
+inline std::string MaybeNamed::__repr__() const {
+    return std::format("MaybeNamed(name={}, value={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->value));
+}
+
+inline bool Container::__eq__(const Container& other) const {
+    return (this->items == other.items);
+}
+
+inline std::string Container::__repr__() const {
+    return std::format("Container(items={})", ::tpy::list_to_str(this->items));
+}
+
+inline bool MultiList::__eq__(const MultiList& other) const {
+    return ((this->points == other.points) && (this->labels == other.labels));
+}
+
+inline std::string MultiList::__repr__() const {
+    return std::format("MultiList(points={}, labels={})", ::tpy::list_to_str(this->points), ::tpy::list_to_str(this->labels));
+}
+
+inline bool DictOfDC::__eq__(const DictOfDC& other) const {
+    return (this->items == other.items);
+}
+
+inline std::string DictOfDC::__repr__() const {
+    return std::format("DictOfDC(items={})", ::tpy::dict_to_str(this->items));
+}
+
+inline bool TupleMixed::__eq__(const TupleMixed& other) const {
+    return (this->pair == other.pair);
+}
+
+inline std::string TupleMixed::__repr__() const {
+    return std::format("TupleMixed(pair={})", ::tpy::tuple_to_str(this->pair));
+}
+
+inline bool TupleAllDC::__eq__(const TupleAllDC& other) const {
+    return (this->pair == other.pair);
+}
+
+inline std::string TupleAllDC::__repr__() const {
+    return std::format("TupleAllDC(pair={})", ::tpy::tuple_to_str(this->pair));
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -23,25 +23,10 @@ struct Counter {
     explicit Counter(int32_t limit) : current(0), limit(limit) {}
 
     // def __iter__(self) -> Counter:
-    Counter& __iter__() {
-        // return self
-        return (*this);
-    }
+    Counter& __iter__();
 
     // def __next__(self) -> Int32:
-    std::expected<int32_t, ::tpy::StopIteration> __next__() {
-        // if self.current < self.limit:
-        if ((this->current < this->limit)) {
-            // result = self.current
-            int32_t result = this->current;
-            // self.current += 1
-            this->current = ::tpy::add_check<int32_t>(this->current, 1);
-            // return result
-            return result;
-        }
-        // raise StopIteration
-        return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -49,5 +34,26 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __iter__(self) -> Counter:
+inline Counter& Counter::__iter__() {
+    // return self
+    return (*this);
+}
+
+// def __next__(self) -> Int32:
+inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {
+    // if self.current < self.limit:
+    if ((this->current < this->limit)) {
+        // result = self.current
+        int32_t result = this->current;
+        // self.current += 1
+        this->current = ::tpy::add_check<int32_t>(this->current, 1);
+        // return result
+        return result;
+    }
+    // raise StopIteration
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
 void __tpy_init();
 } // namespace tpyapp::main

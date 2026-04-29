@@ -25,10 +25,7 @@ struct Pt {
     explicit Pt(int32_t x, int32_t y) : x(x), y(y) {}
 
     // def __repr__(self) -> str:
-    std::string __repr__() const {
-        // return "Pt(" + str(self.x) + ", " + str(self.y) + ")"
-        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Pt(", ::tpy::fixed_to_str<int32_t>(this->x))), ", ")), ::tpy::fixed_to_str<int32_t>(this->y))), ")"));
-    }
+    std::string __repr__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pt& obj) {
@@ -36,5 +33,11 @@ inline std::ostream& operator<<(std::ostream& os, const Pt& obj) {
     return os;
 }
 
+
+// def __repr__(self) -> str:
+inline std::string Pt::__repr__() const {
+    // return "Pt(" + str(self.x) + ", " + str(self.y) + ")"
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Pt(", ::tpy::fixed_to_str<int32_t>(this->x))), ", ")), ::tpy::fixed_to_str<int32_t>(this->y))), ")"));
+}
 void __tpy_init();
 } // namespace tpyapp::main

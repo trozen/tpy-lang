@@ -24,9 +24,7 @@ struct __tpy_builder_counter_1 {
     __tpy_builder_counter_1() = default;
     explicit __tpy_builder_counter_1(int32_t v0, int32_t v1, int32_t v2) : v0(v0), v1(v1), v2(v2) {}
 
-    int32_t total() const {
-        return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->v0, this->v1)), this->v2));
-    }
+    int32_t total() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_counter_1& obj) {
@@ -34,5 +32,9 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_counter_1&
     return os;
 }
 
+
+inline int32_t __tpy_builder_counter_1::total() const {
+    return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->v0, this->v1)), this->v2));
+}
 void __tpy_init();
 } // namespace tpyapp::main

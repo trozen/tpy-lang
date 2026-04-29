@@ -29,13 +29,9 @@ struct Heavy {
     Heavy(Heavy&&) = default;
     Heavy& operator=(Heavy&&) = default;
 
-    bool __eq__(const Heavy& other) const {
-        return (this->value == other.value);
-    }
+    bool __eq__(const Heavy& other) const;
 
-    std::string __repr__() const {
-        return std::format("Heavy(value={})", ::tpy::__repr__(this->value));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Heavy& lhs, const Heavy& other) {
         return lhs.__eq__(other);
@@ -56,13 +52,9 @@ struct Light {
     Light() = default;
     explicit Light(int32_t value) : value(value) {}
 
-    bool __eq__(const Light& other) const {
-        return (this->value == other.value);
-    }
+    bool __eq__(const Light& other) const;
 
-    std::string __repr__() const {
-        return std::format("Light(value={})", ::tpy::__repr__(this->value));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Light& lhs, const Light& other) {
         return lhs.__eq__(other);
@@ -74,6 +66,22 @@ inline std::ostream& operator<<(std::ostream& os, const Light& obj) {
     return os;
 }
 
+
+inline bool Heavy::__eq__(const Heavy& other) const {
+    return (this->value == other.value);
+}
+
+inline std::string Heavy::__repr__() const {
+    return std::format("Heavy(value={})", ::tpy::__repr__(this->value));
+}
+
+inline bool Light::__eq__(const Light& other) const {
+    return (this->value == other.value);
+}
+
+inline std::string Light::__repr__() const {
+    return std::format("Light(value={})", ::tpy::__repr__(this->value));
+}
 using Item = std::variant<Heavy, Light>;
 
 void __tpy_init();

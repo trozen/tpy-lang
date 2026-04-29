@@ -24,28 +24,11 @@ struct Clamped {
 
     // @property
     // def value(self) -> Int32:
-    int32_t value() const {
-        // return self._value
-        return this->_value;
-    }
+    int32_t value() const;
 
     // @value.setter
     // def value(self, v: Int32) -> None:
-    void set_value(int32_t v) {
-        // if v < 0:
-        if ((v < 0)) {
-            // self._value = 0
-            this->_value = 0;
-        // elif v > 100:
-        } else if ((v > 100)) {
-            // self._value = 100
-            this->_value = 100;
-        // else:
-        } else {
-            // self._value = v
-            this->_value = v;
-        }
-    }
+    void set_value(int32_t v);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Clamped& obj) {
@@ -53,5 +36,30 @@ inline std::ostream& operator<<(std::ostream& os, const Clamped& obj) {
     return os;
 }
 
+
+// @property
+// def value(self) -> Int32:
+inline int32_t Clamped::value() const {
+    // return self._value
+    return this->_value;
+}
+
+// @value.setter
+// def value(self, v: Int32) -> None:
+inline void Clamped::set_value(int32_t v) {
+    // if v < 0:
+    if ((v < 0)) {
+        // self._value = 0
+        this->_value = 0;
+    // elif v > 100:
+    } else if ((v > 100)) {
+        // self._value = 100
+        this->_value = 100;
+    // else:
+    } else {
+        // self._value = v
+        this->_value = v;
+    }
+}
 void __tpy_init();
 } // namespace tpyapp::main

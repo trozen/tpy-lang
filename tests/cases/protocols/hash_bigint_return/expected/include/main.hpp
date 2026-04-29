@@ -23,16 +23,10 @@ struct Key {
     explicit Key(const ::tpy::BigInt& v) : val(v) {}
 
     // def __hash__(self) -> int:
-    ::tpy::BigInt __hash__() const {
-        // return self.val
-        return this->val;
-    }
+    ::tpy::BigInt __hash__() const;
 
     // def __eq__(self, other: Key) -> bool:
-    bool __eq__(const Key& other) const {
-        // return self.val == other.val
-        return (this->val == other.val);
-    }
+    bool __eq__(const Key& other) const;
 
     friend bool operator==(const Key& lhs, const Key& other) {
         return lhs.__eq__(other);
@@ -54,5 +48,17 @@ template<> struct std::hash<tpyapp::main::Key> {
 namespace tpyapp::main {
 
 
+
+// def __hash__(self) -> int:
+inline ::tpy::BigInt Key::__hash__() const {
+    // return self.val
+    return this->val;
+}
+
+// def __eq__(self, other: Key) -> bool:
+inline bool Key::__eq__(const Key& other) const {
+    // return self.val == other.val
+    return (this->val == other.val);
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -24,13 +24,9 @@ struct A {
     A() = default;
     explicit A(int32_t x) : x(x) {}
 
-    bool __eq__(const A& other) const {
-        return (this->x == other.x);
-    }
+    bool __eq__(const A& other) const;
 
-    std::string __repr__() const {
-        return std::format("A(x={})", ::tpy::__repr__(this->x));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const A& lhs, const A& other) {
         return lhs.__eq__(other);
@@ -51,13 +47,9 @@ struct B : A {
     B() = default;
     explicit B(int32_t x, int32_t y) : A(x), y(y) {}
 
-    bool __eq__(const B& other) const {
-        return ((this->x == other.x) && (this->y == other.y));
-    }
+    bool __eq__(const B& other) const;
 
-    std::string __repr__() const {
-        return std::format("B(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const B& lhs, const B& other) {
         return lhs.__eq__(other);
@@ -78,13 +70,9 @@ struct C : B {
     C() = default;
     explicit C(int32_t x, int32_t y, int32_t z) : B(x, y), z(z) {}
 
-    bool __eq__(const C& other) const {
-        return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
-    }
+    bool __eq__(const C& other) const;
 
-    std::string __repr__() const {
-        return std::format("C(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const C& lhs, const C& other) {
         return lhs.__eq__(other);
@@ -96,5 +84,29 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
     return os;
 }
 
+
+inline bool A::__eq__(const A& other) const {
+    return (this->x == other.x);
+}
+
+inline std::string A::__repr__() const {
+    return std::format("A(x={})", ::tpy::__repr__(this->x));
+}
+
+inline bool B::__eq__(const B& other) const {
+    return ((this->x == other.x) && (this->y == other.y));
+}
+
+inline std::string B::__repr__() const {
+    return std::format("B(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+}
+
+inline bool C::__eq__(const C& other) const {
+    return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
+}
+
+inline std::string C::__repr__() const {
+    return std::format("C(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
+}
 void __tpy_init();
 } // namespace tpyapp::main

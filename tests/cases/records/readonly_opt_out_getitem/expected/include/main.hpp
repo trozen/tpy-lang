@@ -26,18 +26,10 @@ struct CachingContainer {
 
     // @readonly(False)
     // def __getitem__(self, index: Int32) -> Int32:
-    int32_t __getitem__(int32_t index) {
-        // self.last_access = index
-        this->last_access = index;
-        // return self.data
-        return this->data;
-    }
+    int32_t __getitem__(int32_t index);
 
     // def __len__(self) -> Int32:
-    int32_t __len__() const {
-        // return 1
-        return 1;
-    }
+    int32_t __len__() const;
 
     int32_t operator[](int32_t index) {
         return __getitem__(index);
@@ -55,5 +47,20 @@ inline std::ostream& operator<<(std::ostream& os, const CachingContainer& obj) {
     return os;
 }
 
+
+// @readonly(False)
+// def __getitem__(self, index: Int32) -> Int32:
+inline int32_t CachingContainer::__getitem__(int32_t index) {
+    // self.last_access = index
+    this->last_access = index;
+    // return self.data
+    return this->data;
+}
+
+// def __len__(self) -> Int32:
+inline int32_t CachingContainer::__len__() const {
+    // return 1
+    return 1;
+}
 void __tpy_init();
 } // namespace tpyapp::main

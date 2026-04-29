@@ -39,195 +39,25 @@ struct User {
     User() = default;
     explicit User(std::string_view name, int32_t age, bool active, std::optional<std::string_view> email = std::nullopt) : name(name), age(age), active(active), email(email ? std::make_optional(std::string(*email)) : std::nullopt) {}
 
-    bool __eq__(const User& other) const {
-        return ((((this->name == other.name) && (this->age == other.age)) && (this->active == other.active)) && (this->email == other.email));
-    }
+    bool __eq__(const User& other) const;
 
-    std::string __repr__() const {
-        return std::format("User(name={}, age={}, active={}, email={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age), ::tpy::__repr__(this->active), ::tpy::__repr__(this->email));
-    }
+    std::string __repr__() const;
 
-    static std::expected<User, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
-        {
-            auto __try_tmp_1 = __reader.read_object_start();
-            if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
-        }
-        std::string name = "";
-        int32_t age = 0;
-        bool active = false;
-        std::optional<std::string> email = std::nullopt;
-        while (__reader.has_next()) {
-            std::string_view __key;
-            {
-                auto __try_tmp_2 = __reader.read_key_raw();
-                if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
-                __key = ::tpy::unwrap_ref(*__try_tmp_2);
-            }
-            auto& __match_subject = __key;
-            if (__match_subject == "name") {
-                std::string __name_1;
-                {
-                    auto __try_tmp_3 = __reader.read_str();
-                    if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
-                    __name_1 = ::tpy::unwrap_ref(*__try_tmp_3);
-                }
-                name = __name_1;
-            } else if (__match_subject == "age") {
-                int64_t __raw_3;
-                {
-                    auto __try_tmp_4 = __reader.read_int();
-                    if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
-                    __raw_3 = ::tpy::unwrap_ref(*__try_tmp_4);
-                }
-                int32_t __age_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
-                age = __age_2;
-            } else if (__match_subject == "active") {
-                bool __active_4;
-                {
-                    auto __try_tmp_5 = __reader.read_bool();
-                    if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
-                    __active_4 = ::tpy::unwrap_ref(*__try_tmp_5);
-                }
-                active = __active_4;
-            } else if (__match_subject == "email") {
-                if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
-                    {
-                        auto __try_tmp_6 = __reader.read_null();
-                        if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
-                    }
-                } else {
-                    std::string __email_5;
-                    {
-                        auto __try_tmp_7 = __reader.read_str();
-                        if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(__try_tmp_7.error());
-                        __email_5 = ::tpy::unwrap_ref(*__try_tmp_7);
-                    }
-                    email = __email_5;
-                }
-            } else {
-                {
-                    auto __try_tmp_8 = __reader.skip_value();
-                    if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(__try_tmp_8.error());
-                }
-            }
-        }
-        {
-            auto __try_tmp_9 = __reader.read_object_end();
-            if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
-        }
-        return User(name, age, active, email);
-    }
+    static std::expected<User, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader);
 
-    static User from_json(std::string_view __s) {
-        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-        std::optional<User> __result = std::nullopt;
-        {
-            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_10;
-            {
-                auto __try_tmp_11 = User::__json_decode__(__reader);
-                if (!__try_tmp_11.has_value()) { __err_opt_10 = std::move(__try_tmp_11.error()); goto __except_10; }
-                __result = ::tpy::unwrap_ref(*__try_tmp_11);
-            }
-            goto __after_try_10;
-            // except tplib.json.parser.JsonError:
-            __except_10:;
-            {
-                auto& __e = *__err_opt_10;
-                ::tpy::tpy_panic(__e.message);
-            }
-            __after_try_10:;
-        }
-        if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
-        return (*__result);
-    }
+    static User from_json(std::string_view __s);
 
-    static std::expected<User, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s) {
-        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-        return User::__json_decode__(__reader);
-    }
+    static std::expected<User, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s);
 
-    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
-        __writer.object_start();
-        __writer.key("name");
-        __writer.write_str(this->name);
-        __writer.key("age");
-        __writer.write_int32(this->age);
-        __writer.key("active");
-        __writer.write_bool(this->active);
-        __writer.key("email");
-        std::optional<std::string> __opt_email = this->email;
-        if ((__opt_email.has_value())) {
-            std::string __val_email = (*__opt_email);
-            __writer.write_str(__val_email);
-        } else {
-            __writer.write_null();
-        }
-        __writer.object_end();
-    }
+    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const;
 
-    std::string to_json(int32_t indent = 0) const {
-        ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
-        this->__json_encode__(__writer);
-        return __writer.finish();
-    }
+    std::string to_json(int32_t indent = 0) const;
 
-    void save_json(std::string_view __path, int32_t indent = 0) const {
-        // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
-        auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
-        auto& __f = __ctx_1.__enter__();
-        try {
-            // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
-            // from tpy import Int32
-            __f.write(this->to_json(indent));
-        } catch (...) {
-            __ctx_1.__exit__();
-            throw;
-        }
-        __finally_12:;
-        __ctx_1.__exit__();
-    }
+    void save_json(std::string_view __path, int32_t indent = 0) const;
 
-    static User load_json(std::string_view __path) {
-        // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
-        std::string __data;
-        auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
-        auto& __f = __ctx_2.__enter__();
-        std::optional<User> __retval_14;
-        try {
-            // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
-            // from tpy import Int32
-            __data = __f.read();
-        } catch (...) {
-            __ctx_2.__exit__();
-            throw;
-        }
-        __finally_13:;
-        __ctx_2.__exit__();
-        if (__retval_14) return (*__retval_14);
-        // from tplib.json.model import model
-        return User::from_json(__data);
-    }
+    static User load_json(std::string_view __path);
 
-    static std::expected<User, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
-        // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
-        std::string __data;
-        auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
-        auto& __f = __ctx_3.__enter__();
-        std::optional<std::expected<User, ::tpystd::tplib::json::parser::JsonError>> __retval_16;
-        try {
-            // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
-            // from tpy import Int32
-            __data = __f.read();
-        } catch (...) {
-            __ctx_3.__exit__();
-            throw;
-        }
-        __finally_15:;
-        __ctx_3.__exit__();
-        if (__retval_16) return (*__retval_16);
-        // from tplib.json.model import model
-        return User::try_from_json(__data);
-    }
+    static std::expected<User, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path);
 
     friend bool operator==(const User& lhs, const User& other) {
         return lhs.__eq__(other);
@@ -239,5 +69,105 @@ inline std::ostream& operator<<(std::ostream& os, const User& obj) {
     return os;
 }
 
+
+inline bool User::__eq__(const User& other) const {
+    return ((((this->name == other.name) && (this->age == other.age)) && (this->active == other.active)) && (this->email == other.email));
+}
+
+inline std::string User::__repr__() const {
+    return std::format("User(name={}, age={}, active={}, email={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age), ::tpy::__repr__(this->active), ::tpy::__repr__(this->email));
+}
+
+inline User User::from_json(std::string_view __s) {
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
+    std::optional<User> __result = std::nullopt;
+    {
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_1;
+        {
+            auto __try_tmp_2 = User::__json_decode__(__reader);
+            if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_2);
+        }
+        goto __after_try_1;
+        // except tplib.json.parser.JsonError:
+        __except_1:;
+        {
+            auto& __e = *__err_opt_1;
+            ::tpy::tpy_panic(__e.message);
+        }
+        __after_try_1:;
+    }
+    if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
+    return (*__result);
+}
+
+inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_from_json(std::string_view __s) {
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
+    return User::__json_decode__(__reader);
+}
+
+inline std::string User::to_json(int32_t indent) const {
+    ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
+    this->__json_encode__(__writer);
+    return __writer.finish();
+}
+
+inline void User::save_json(std::string_view __path, int32_t indent) const {
+    // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
+    auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
+    auto& __f = __ctx_1.__enter__();
+    try {
+        // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
+        // from tpy import Int32
+        __f.write(this->to_json(indent));
+    } catch (...) {
+        __ctx_1.__exit__();
+        throw;
+    }
+    __finally_3:;
+    __ctx_1.__exit__();
+}
+
+inline User User::load_json(std::string_view __path) {
+    // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
+    std::string __data;
+    auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
+    auto& __f = __ctx_2.__enter__();
+    std::optional<User> __retval_5;
+    try {
+        // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
+        // from tpy import Int32
+        __data = __f.read();
+    } catch (...) {
+        __ctx_2.__exit__();
+        throw;
+    }
+    __finally_4:;
+    __ctx_2.__exit__();
+    if (__retval_5) return (*__retval_5);
+    // from tplib.json.model import model
+    return User::from_json(__data);
+}
+
+inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_load_json(std::string_view __path) {
+    // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
+    std::string __data;
+    auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
+    auto& __f = __ctx_3.__enter__();
+    std::optional<std::expected<User, ::tpystd::tplib::json::parser::JsonError>> __retval_7;
+    try {
+        // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
+        // from tpy import Int32
+        __data = __f.read();
+    } catch (...) {
+        __ctx_3.__exit__();
+        throw;
+    }
+    __finally_6:;
+    __ctx_3.__exit__();
+    if (__retval_7) return (*__retval_7);
+    // from tplib.json.model import model
+    return User::try_from_json(__data);
+}
 void __tpy_init();
 } // namespace tpyapp::main

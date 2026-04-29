@@ -51,22 +51,13 @@ struct Service : RateLimiter, CacheStats {
     }
 
     // def tick_request(self) -> None:
-    void tick_request() {
-        // RateLimiter._count += 1  # aug-assign through the unbound-self form
-        this->RateLimiter::_count = ::tpy::add_check<int32_t>(this->RateLimiter::_count, 1);
-    }
+    void tick_request();
 
     // def tick_cache(self) -> None:
-    void tick_cache() {
-        // CacheStats._count = CacheStats._count + 1
-        this->CacheStats::_count = (::tpy::add_check<int32_t>(this->CacheStats::_count, 1));
-    }
+    void tick_cache();
 
     // def report(self) -> str:
-    std::string report() const {
-        // return "req=" + str(RateLimiter._count) + " cache=" + str(CacheStats._count)
-        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("req=", ::tpy::fixed_to_str<int32_t>(this->RateLimiter::_count))), " cache=")), ::tpy::fixed_to_str<int32_t>(this->CacheStats::_count)));
-    }
+    std::string report() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Service& obj) {
@@ -74,5 +65,23 @@ inline std::ostream& operator<<(std::ostream& os, const Service& obj) {
     return os;
 }
 
+
+// def tick_request(self) -> None:
+inline void Service::tick_request() {
+    // RateLimiter._count += 1  # aug-assign through the unbound-self form
+    this->RateLimiter::_count = ::tpy::add_check<int32_t>(this->RateLimiter::_count, 1);
+}
+
+// def tick_cache(self) -> None:
+inline void Service::tick_cache() {
+    // CacheStats._count = CacheStats._count + 1
+    this->CacheStats::_count = (::tpy::add_check<int32_t>(this->CacheStats::_count, 1));
+}
+
+// def report(self) -> str:
+inline std::string Service::report() const {
+    // return "req=" + str(RateLimiter._count) + " cache=" + str(CacheStats._count)
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("req=", ::tpy::fixed_to_str<int32_t>(this->RateLimiter::_count))), " cache=")), ::tpy::fixed_to_str<int32_t>(this->CacheStats::_count)));
+}
 void __tpy_init();
 } // namespace tpyapp::main

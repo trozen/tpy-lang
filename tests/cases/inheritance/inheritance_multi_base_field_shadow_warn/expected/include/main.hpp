@@ -39,10 +39,7 @@ struct Child : Parent {
     }
 
     // def as_pair(self) -> str:
-    std::string as_pair() const {
-        // return str(self.token) + "/" + str(Parent.token)
-        return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(this->token), "/")), ::tpy::fixed_to_str<int32_t>(this->Parent::token)));
-    }
+    std::string as_pair() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
@@ -50,5 +47,11 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+// def as_pair(self) -> str:
+inline std::string Child::as_pair() const {
+    // return str(self.token) + "/" + str(Parent.token)
+    return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(this->token), "/")), ::tpy::fixed_to_str<int32_t>(this->Parent::token)));
+}
 void __tpy_init();
 } // namespace tpyapp::main

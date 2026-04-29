@@ -45,10 +45,7 @@ struct DefaultFactory {
 
 
     // def create_point(self, x: Int32, y: Int32) -> Own[Point]:
-    Point create_point(int32_t x, int32_t y) const {
-        // return Point(x, y)
-        return Point(x, y);
-    }
+    Point create_point(int32_t x, int32_t y) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {
@@ -56,6 +53,12 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {
     return os;
 }
 
+
+// def create_point(self, x: Int32, y: Int32) -> Own[Point]:
+inline Point DefaultFactory::create_point(int32_t x, int32_t y) const {
+    // return Point(x, y)
+    return Point(x, y);
+}
 // def make_point[T: PointFactory](factory: T, x: Int32, y: Int32) -> Own[Point]:
 template<PointFactory T>
 Point make_point(::tpy::param_val_or_ref_t<T> factory, int32_t x, int32_t y) {

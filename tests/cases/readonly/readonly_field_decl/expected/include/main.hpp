@@ -24,10 +24,7 @@ struct Config {
     explicit Config(std::string_view name, const ::tpy::BigInt& value) : name(name), value(value) {}
 
     // def inc(self) -> None:
-    void inc() {
-        // self.value += 1
-        this->value = (this->value) + (::tpy::BigInt(1));
-    }
+    void inc();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
@@ -35,5 +32,11 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     return os;
 }
 
+
+// def inc(self) -> None:
+inline void Config::inc() {
+    // self.value += 1
+    this->value = (this->value) + (::tpy::BigInt(1));
+}
 void __tpy_init();
 } // namespace tpyapp::main

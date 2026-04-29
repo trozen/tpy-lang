@@ -23,10 +23,7 @@ struct Counter {
     explicit Counter(int32_t value) : value(value) {}
 
     // def get_value(self) -> Int32:
-    int32_t get_value() const {
-        // return self.value
-        return this->value;
-    }
+    int32_t get_value() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -34,5 +31,11 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def get_value(self) -> Int32:
+inline int32_t Counter::get_value() const {
+    // return self.value
+    return this->value;
+}
 void __tpy_init();
 } // namespace tpyapp::main

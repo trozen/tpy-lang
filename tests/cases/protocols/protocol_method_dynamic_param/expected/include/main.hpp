@@ -57,10 +57,7 @@ struct Dog : Speaker {
     explicit Dog(std::string_view name) : name(name) {}
 
     // def speak(self) -> str:
-    std::string speak() override {
-        // return "Woof from " + self.name
-        return (::tpy::str_concat("Woof from ", this->name));
-    }
+    std::string speak() override;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
@@ -78,10 +75,7 @@ struct Cat : Speaker {
     explicit Cat(std::string_view name) : name(name) {}
 
     // def speak(self) -> str:
-    std::string speak() override {
-        // return "Meow from " + self.name
-        return (::tpy::str_concat("Meow from ", this->name));
-    }
+    std::string speak() override;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
@@ -114,10 +108,7 @@ struct Announcer {
     explicit Announcer(std::string_view prefix) : prefix(prefix) {}
 
     // def announce(self, s: Speaker) -> None:
-    void announce(Speaker& s) const {
-        // print(self.prefix + s.speak())
-        std::cout << (::tpy::str_concat(this->prefix, s.speak())) << "\n";
-    }
+    void announce(Speaker& s) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Announcer& obj) {
@@ -125,5 +116,23 @@ inline std::ostream& operator<<(std::ostream& os, const Announcer& obj) {
     return os;
 }
 
+
+// def speak(self) -> str:
+inline std::string Dog::speak() {
+    // return "Woof from " + self.name
+    return (::tpy::str_concat("Woof from ", this->name));
+}
+
+// def speak(self) -> str:
+inline std::string Cat::speak() {
+    // return "Meow from " + self.name
+    return (::tpy::str_concat("Meow from ", this->name));
+}
+
+// def announce(self, s: Speaker) -> None:
+inline void Announcer::announce(Speaker& s) const {
+    // print(self.prefix + s.speak())
+    std::cout << (::tpy::str_concat(this->prefix, s.speak())) << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

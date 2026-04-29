@@ -23,16 +23,10 @@ struct Animal {
     explicit Animal(std::string_view name) : name(name) {}
 
     // def speak(self) -> str:
-    std::string speak() const {
-        // return "Animal says: ..."
-        return "Animal says: ...";
-    }
+    std::string speak() const;
 
     // def describe(self) -> str:
-    std::string describe() const {
-        // return self.name
-        return this->name;
-    }
+    std::string describe() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
@@ -50,19 +44,10 @@ struct Dog : Animal {
     explicit Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
 
     // def speak(self) -> str:
-    std::string speak() const {
-        // return "Woof!"
-        return "Woof!";
-    }
+    std::string speak() const;
 
     // def full_speak(self) -> str:
-    std::string full_speak() const {
-        // # Call overridden parent method via super()
-        // parent_speak = super().speak()
-        std::string parent_speak = this->Animal::speak();
-        // return parent_speak
-        return parent_speak;
-    }
+    std::string full_speak() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
@@ -70,5 +55,32 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
+
+// def speak(self) -> str:
+inline std::string Animal::speak() const {
+    // return "Animal says: ..."
+    return "Animal says: ...";
+}
+
+// def describe(self) -> str:
+inline std::string Animal::describe() const {
+    // return self.name
+    return this->name;
+}
+
+// def speak(self) -> str:
+inline std::string Dog::speak() const {
+    // return "Woof!"
+    return "Woof!";
+}
+
+// def full_speak(self) -> str:
+inline std::string Dog::full_speak() const {
+    // # Call overridden parent method via super()
+    // parent_speak = super().speak()
+    std::string parent_speak = this->Animal::speak();
+    // return parent_speak
+    return parent_speak;
+}
 void __tpy_init();
 } // namespace tpyapp::main

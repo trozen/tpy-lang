@@ -25,41 +25,17 @@ struct Base {
     Base() = default;
     explicit Base(int32_t x, int32_t y) : x(x), y(y) {}
 
-    bool __eq__(const Base& other) const {
-        return ((this->x == other.x) && (this->y == other.y));
-    }
+    bool __eq__(const Base& other) const;
 
-    std::string __repr__() const {
-        return std::format("Base(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
-    }
+    std::string __repr__() const;
 
-    bool __lt__(const Base& other) const {
-        if ((this->x != other.x)) {
-            return (this->x < other.x);
-        }
-        return (this->y < other.y);
-    }
+    bool __lt__(const Base& other) const;
 
-    bool __le__(const Base& other) const {
-        if ((this->x != other.x)) {
-            return (this->x <= other.x);
-        }
-        return (this->y <= other.y);
-    }
+    bool __le__(const Base& other) const;
 
-    bool __gt__(const Base& other) const {
-        if ((this->x != other.x)) {
-            return (this->x > other.x);
-        }
-        return (this->y > other.y);
-    }
+    bool __gt__(const Base& other) const;
 
-    bool __ge__(const Base& other) const {
-        if ((this->x != other.x)) {
-            return (this->x >= other.x);
-        }
-        return (this->y >= other.y);
-    }
+    bool __ge__(const Base& other) const;
 
     friend bool operator==(const Base& lhs, const Base& other) {
         return lhs.__eq__(other);
@@ -96,53 +72,17 @@ struct Child : Base {
     Child() = default;
     explicit Child(int32_t x, int32_t y, int32_t z) : Base(x, y), z(z) {}
 
-    bool __eq__(const Child& other) const {
-        return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
-    }
+    bool __eq__(const Child& other) const;
 
-    std::string __repr__() const {
-        return std::format("Child(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
-    }
+    std::string __repr__() const;
 
-    bool __lt__(const Child& other) const {
-        if ((this->x != other.x)) {
-            return (this->x < other.x);
-        }
-        if ((this->y != other.y)) {
-            return (this->y < other.y);
-        }
-        return (this->z < other.z);
-    }
+    bool __lt__(const Child& other) const;
 
-    bool __le__(const Child& other) const {
-        if ((this->x != other.x)) {
-            return (this->x <= other.x);
-        }
-        if ((this->y != other.y)) {
-            return (this->y <= other.y);
-        }
-        return (this->z <= other.z);
-    }
+    bool __le__(const Child& other) const;
 
-    bool __gt__(const Child& other) const {
-        if ((this->x != other.x)) {
-            return (this->x > other.x);
-        }
-        if ((this->y != other.y)) {
-            return (this->y > other.y);
-        }
-        return (this->z > other.z);
-    }
+    bool __gt__(const Child& other) const;
 
-    bool __ge__(const Child& other) const {
-        if ((this->x != other.x)) {
-            return (this->x >= other.x);
-        }
-        if ((this->y != other.y)) {
-            return (this->y >= other.y);
-        }
-        return (this->z >= other.z);
-    }
+    bool __ge__(const Child& other) const;
 
     friend bool operator==(const Child& lhs, const Child& other) {
         return lhs.__eq__(other);
@@ -170,5 +110,89 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+inline bool Base::__eq__(const Base& other) const {
+    return ((this->x == other.x) && (this->y == other.y));
+}
+
+inline std::string Base::__repr__() const {
+    return std::format("Base(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+}
+
+inline bool Base::__lt__(const Base& other) const {
+    if ((this->x != other.x)) {
+        return (this->x < other.x);
+    }
+    return (this->y < other.y);
+}
+
+inline bool Base::__le__(const Base& other) const {
+    if ((this->x != other.x)) {
+        return (this->x <= other.x);
+    }
+    return (this->y <= other.y);
+}
+
+inline bool Base::__gt__(const Base& other) const {
+    if ((this->x != other.x)) {
+        return (this->x > other.x);
+    }
+    return (this->y > other.y);
+}
+
+inline bool Base::__ge__(const Base& other) const {
+    if ((this->x != other.x)) {
+        return (this->x >= other.x);
+    }
+    return (this->y >= other.y);
+}
+
+inline bool Child::__eq__(const Child& other) const {
+    return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
+}
+
+inline std::string Child::__repr__() const {
+    return std::format("Child(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
+}
+
+inline bool Child::__lt__(const Child& other) const {
+    if ((this->x != other.x)) {
+        return (this->x < other.x);
+    }
+    if ((this->y != other.y)) {
+        return (this->y < other.y);
+    }
+    return (this->z < other.z);
+}
+
+inline bool Child::__le__(const Child& other) const {
+    if ((this->x != other.x)) {
+        return (this->x <= other.x);
+    }
+    if ((this->y != other.y)) {
+        return (this->y <= other.y);
+    }
+    return (this->z <= other.z);
+}
+
+inline bool Child::__gt__(const Child& other) const {
+    if ((this->x != other.x)) {
+        return (this->x > other.x);
+    }
+    if ((this->y != other.y)) {
+        return (this->y > other.y);
+    }
+    return (this->z > other.z);
+}
+
+inline bool Child::__ge__(const Child& other) const {
+    if ((this->x != other.x)) {
+        return (this->x >= other.x);
+    }
+    if ((this->y != other.y)) {
+        return (this->y >= other.y);
+    }
+    return (this->z >= other.z);
+}
 void __tpy_init();
 } // namespace tpyapp::main

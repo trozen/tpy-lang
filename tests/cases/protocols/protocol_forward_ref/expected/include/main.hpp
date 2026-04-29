@@ -40,16 +40,10 @@ struct Person {
     explicit Person(std::string_view name, int32_t age) : name(name), age(age) {}
 
     // def __str__(self) -> str:
-    std::string __str__() const {
-        // return self.name
-        return this->name;
-    }
+    std::string __str__() const;
 
     // def describe(self) -> str:
-    std::string describe() const {
-        // return "A person"
-        return "A person";
-    }
+    std::string describe() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
@@ -57,5 +51,17 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
     return os;
 }
 
+
+// def __str__(self) -> str:
+inline std::string Person::__str__() const {
+    // return self.name
+    return this->name;
+}
+
+// def describe(self) -> str:
+inline std::string Person::describe() const {
+    // return "A person"
+    return "A person";
+}
 void __tpy_init();
 } // namespace tpyapp::main

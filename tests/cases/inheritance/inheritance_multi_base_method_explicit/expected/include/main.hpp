@@ -24,10 +24,7 @@ struct Left {
 
 
     // def describe(self) -> str:
-    std::string describe() const {
-        // return "left"
-        return "left";
-    }
+    std::string describe() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Left& obj) {
@@ -40,10 +37,7 @@ struct Right {
 
 
     // def describe(self) -> str:
-    std::string describe() const {
-        // return "right"
-        return "right";
-    }
+    std::string describe() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Right& obj) {
@@ -56,16 +50,7 @@ struct Both : Left, Right {
 
 
     // def describe(self) -> str:
-    std::string describe() const {
-        // # Override required by the cross-base conflict check; delegate to
-        // # each base explicitly via the unbound-self form.
-        // left = Left.describe(self)
-        std::string left = this->Left::describe();
-        // right = Right.describe(self)
-        std::string right = this->Right::describe();
-        // return left + "+" + right
-        return (::tpy::str_concat((::tpy::str_concat(left, "+")), right));
-    }
+    std::string describe() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Both& obj) {
@@ -73,5 +58,29 @@ inline std::ostream& operator<<(std::ostream& os, const Both& obj) {
     return os;
 }
 
+
+// def describe(self) -> str:
+inline std::string Left::describe() const {
+    // return "left"
+    return "left";
+}
+
+// def describe(self) -> str:
+inline std::string Right::describe() const {
+    // return "right"
+    return "right";
+}
+
+// def describe(self) -> str:
+inline std::string Both::describe() const {
+    // # Override required by the cross-base conflict check; delegate to
+    // # each base explicitly via the unbound-self form.
+    // left = Left.describe(self)
+    std::string left = this->Left::describe();
+    // right = Right.describe(self)
+    std::string right = this->Right::describe();
+    // return left + "+" + right
+    return (::tpy::str_concat((::tpy::str_concat(left, "+")), right));
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -30,10 +30,7 @@ struct IntListHolder {
     explicit IntListHolder(const std::vector<int32_t>& data) : data(data) {}
 
     // def items(self) -> list[Int32]:
-    std::vector<int32_t>& items() {
-        // return self.data
-        return this->data;
-    }
+    std::vector<int32_t>& items();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntListHolder& obj) {
@@ -65,5 +62,11 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<V>& obj) {
     return os;
 }
 
+
+// def items(self) -> list[Int32]:
+inline std::vector<int32_t>& IntListHolder::items() {
+    // return self.data
+    return this->data;
+}
 void __tpy_init();
 } // namespace tpyapp::main

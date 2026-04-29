@@ -21,10 +21,7 @@ struct A {
 
 
     // def foo(self) -> str:
-    std::string foo() const {
-        // return "A.foo"
-        return "A.foo";
-    }
+    std::string foo() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
@@ -37,10 +34,7 @@ struct C {
 
 
     // def bar(self) -> str:
-    std::string bar() const {
-        // return "C.bar"
-        return "C.bar";
-    }
+    std::string bar() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
@@ -63,10 +57,7 @@ struct D : B, C {
 
 
     // def describe(self) -> str:
-    std::string describe() const {
-        // return super().foo() + " + " + super().bar()
-        return (::tpy::str_concat((::tpy::str_concat(this->A::foo(), " + ")), this->C::bar()));
-    }
+    std::string describe() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const D& obj) {
@@ -74,5 +65,23 @@ inline std::ostream& operator<<(std::ostream& os, const D& obj) {
     return os;
 }
 
+
+// def foo(self) -> str:
+inline std::string A::foo() const {
+    // return "A.foo"
+    return "A.foo";
+}
+
+// def bar(self) -> str:
+inline std::string C::bar() const {
+    // return "C.bar"
+    return "C.bar";
+}
+
+// def describe(self) -> str:
+inline std::string D::describe() const {
+    // return super().foo() + " + " + super().bar()
+    return (::tpy::str_concat((::tpy::str_concat(this->A::foo(), " + ")), this->C::bar()));
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -18,10 +18,7 @@ struct Base {
 
     // @readonly
     // def value(self) -> Int32:
-    int32_t value() const {
-        // return 7
-        return 7;
-    }
+    int32_t value() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -35,10 +32,7 @@ struct Child : Base {
 
     // @readonly
     // def value_plus_one(self) -> Int32:
-    int32_t value_plus_one() const {
-        // return super().value() + 1  # tpyc: ok
-        return (::tpy::add_check<int32_t>(this->Base::value(), 1));
-    }
+    int32_t value_plus_one() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
@@ -46,5 +40,19 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+// @readonly
+// def value(self) -> Int32:
+inline int32_t Base::value() const {
+    // return 7
+    return 7;
+}
+
+// @readonly
+// def value_plus_one(self) -> Int32:
+inline int32_t Child::value_plus_one() const {
+    // return super().value() + 1  # tpyc: ok
+    return (::tpy::add_check<int32_t>(this->Base::value(), 1));
+}
 void __tpy_init();
 } // namespace tpyapp::main

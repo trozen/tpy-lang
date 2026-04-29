@@ -54,168 +54,25 @@ struct Address {
     Address() = default;
     explicit Address(std::string_view street, std::string_view city) : street(street), city(city) {}
 
-    bool __eq__(const Address& other) const {
-        return ((this->street == other.street) && (this->city == other.city));
-    }
+    bool __eq__(const Address& other) const;
 
-    std::string __repr__() const {
-        return std::format("Address(street={}, city={})", ::tpy::__repr__(this->street), ::tpy::__repr__(this->city));
-    }
+    std::string __repr__() const;
 
-    static std::expected<Address, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
-        {
-            auto __try_tmp_1 = __reader.read_object_start();
-            if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
-        }
-        std::string street = "";
-        std::string city = "";
-        while (__reader.has_next()) {
-            std::string_view __key;
-            {
-                auto __try_tmp_2 = __reader.read_key_raw();
-                if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
-                __key = ::tpy::unwrap_ref(*__try_tmp_2);
-            }
-            auto& __match_subject = __key;
-            if (__match_subject == "street") {
-                std::string __street_1;
-                {
-                    auto __try_tmp_3 = __reader.read_str();
-                    if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
-                    __street_1 = ::tpy::unwrap_ref(*__try_tmp_3);
-                }
-                street = __street_1;
-            } else if (__match_subject == "city") {
-                std::string __city_2;
-                {
-                    auto __try_tmp_4 = __reader.read_str();
-                    if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
-                    __city_2 = ::tpy::unwrap_ref(*__try_tmp_4);
-                }
-                city = __city_2;
-            } else {
-                {
-                    auto __try_tmp_5 = __reader.skip_value();
-                    if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
-                }
-            }
-        }
-        {
-            auto __try_tmp_6 = __reader.read_object_end();
-            if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
-        }
-        return Address(street, city);
-    }
+    static std::expected<Address, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader);
 
-    static Address from_json(std::string_view __s) {
-        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-        std::optional<Address> __result = std::nullopt;
-        {
-            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_7;
-            {
-                auto __try_tmp_8 = Address::__json_decode__(__reader);
-                if (!__try_tmp_8.has_value()) { __err_opt_7 = std::move(__try_tmp_8.error()); goto __except_7; }
-                __result = ::tpy::unwrap_ref(*__try_tmp_8);
-            }
-            goto __after_try_7;
-            // except tplib.json.parser.JsonError:
-            __except_7:;
-            {
-                auto& __e = *__err_opt_7;
-                ::tpy::tpy_panic(__e.message);
-            }
-            __after_try_7:;
-        }
-        if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
-        return (*__result);
-    }
+    static Address from_json(std::string_view __s);
 
-    static std::expected<Address, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s) {
-        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-        return Address::__json_decode__(__reader);
-    }
+    static std::expected<Address, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s);
 
-    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
-        __writer.object_start();
-        __writer.key("street");
-        __writer.write_str(this->street);
-        __writer.key("city");
-        __writer.write_str(this->city);
-        __writer.object_end();
-    }
+    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const;
 
-    std::string to_json(int32_t indent = 0) const {
-        ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
-        this->__json_encode__(__writer);
-        return __writer.finish();
-    }
+    std::string to_json(int32_t indent = 0) const;
 
-    void save_json(std::string_view __path, int32_t indent = 0) const {
-        // # Test @model macro: all type combos, nesting, and round-trip.
-        auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
-        auto& __f = __ctx_1.__enter__();
-        try {
-            // # Test @model macro: all type combos, nesting, and round-trip.
-            // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
-            __f.write(this->to_json(indent));
-        } catch (...) {
-            __ctx_1.__exit__();
-            throw;
-        }
-        __finally_9:;
-        __ctx_1.__exit__();
-        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
-        // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
-        // # dict[str, list[T]].
-    }
+    void save_json(std::string_view __path, int32_t indent = 0) const;
 
-    static Address load_json(std::string_view __path) {
-        // # Test @model macro: all type combos, nesting, and round-trip.
-        std::string __data;
-        auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
-        auto& __f = __ctx_2.__enter__();
-        std::optional<Address> __retval_11;
-        try {
-            // # Test @model macro: all type combos, nesting, and round-trip.
-            // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
-            __data = __f.read();
-        } catch (...) {
-            __ctx_2.__exit__();
-            throw;
-        }
-        __finally_10:;
-        __ctx_2.__exit__();
-        if (__retval_11) return (*__retval_11);
-        // # Test @model macro: all type combos, nesting, and round-trip.
-        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
-        // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
-        return Address::from_json(__data);
-        // # dict[str, list[T]].
-    }
+    static Address load_json(std::string_view __path);
 
-    static std::expected<Address, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
-        // # Test @model macro: all type combos, nesting, and round-trip.
-        std::string __data;
-        auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
-        auto& __f = __ctx_3.__enter__();
-        std::optional<std::expected<Address, ::tpystd::tplib::json::parser::JsonError>> __retval_13;
-        try {
-            // # Test @model macro: all type combos, nesting, and round-trip.
-            // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
-            __data = __f.read();
-        } catch (...) {
-            __ctx_3.__exit__();
-            throw;
-        }
-        __finally_12:;
-        __ctx_3.__exit__();
-        if (__retval_13) return (*__retval_13);
-        // # Test @model macro: all type combos, nesting, and round-trip.
-        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
-        // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
-        return Address::try_from_json(__data);
-        // # dict[str, list[T]].
-    }
+    static std::expected<Address, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path);
 
     friend bool operator==(const Address& lhs, const Address& other) {
         return lhs.__eq__(other);
@@ -270,663 +127,25 @@ struct Profile {
     Profile() = default;
     explicit Profile(std::string_view name, int32_t age, double score, float precision, bool active, const ::tpy::BigInt& big_id, Role role, Address&& address, std::vector<std::string>&& tags, std::vector<int32_t>&& scores, std::vector<Address>&& friends, std::vector<Role>&& roles, ::tpy::ordered_map<std::string, int32_t>&& metadata, ::tpy::ordered_map<std::string, std::vector<int32_t>>&& nested_map, const std::tuple<int32_t, int32_t, std::string>& coord, std::optional<Role> backup_role = std::nullopt, std::optional<Address>&& alt_address = std::nullopt, std::optional<std::string_view> email = std::nullopt) : name(name), age(age), score(score), precision(precision), active(active), big_id(big_id), role(role), address(std::move(address)), tags(std::move(tags)), scores(std::move(scores)), friends(std::move(friends)), roles(std::move(roles)), metadata(std::move(metadata)), nested_map(std::move(nested_map)), coord(coord), backup_role(backup_role), alt_address(std::move(alt_address)), email(email ? std::make_optional(std::string(*email)) : std::nullopt) {}
 
-    bool __eq__(const Profile& other) const {
-        return ((((((((((((((((((this->name == other.name) && (this->age == other.age)) && (this->score == other.score)) && (this->precision == other.precision)) && (this->active == other.active)) && (this->big_id == other.big_id)) && (this->role == other.role)) && (this->address == other.address)) && (this->tags == other.tags)) && (this->scores == other.scores)) && (this->friends == other.friends)) && (this->roles == other.roles)) && (this->metadata == other.metadata)) && (this->nested_map == other.nested_map)) && (this->coord == other.coord)) && (this->backup_role == other.backup_role)) && (this->alt_address == other.alt_address)) && (this->email == other.email));
-    }
+    bool __eq__(const Profile& other) const;
 
-    std::string __repr__() const {
-        return std::format("Profile(name={}, age={}, score={}, precision={}, active={}, big_id={}, role={}, address={}, tags={}, scores={}, friends={}, roles={}, metadata={}, nested_map={}, coord={}, backup_role={}, alt_address={}, email={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age), ::tpy::__repr__(this->score), ::tpy::__repr__(this->precision), ::tpy::__repr__(this->active), ::tpy::__repr__(this->big_id), ::tpy::__repr__(this->role), ::tpy::__repr__(this->address), ::tpy::list_to_str(this->tags), ::tpy::list_to_str(this->scores), ::tpy::list_to_str(this->friends), ::tpy::list_to_str(this->roles), ::tpy::dict_to_str(this->metadata), ::tpy::dict_to_str(this->nested_map), ::tpy::tuple_to_str(this->coord), ::tpy::__repr__(this->backup_role), ::tpy::__repr__(this->alt_address), ::tpy::__repr__(this->email));
-    }
+    std::string __repr__() const;
 
-    static std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
-        {
-            auto __try_tmp_14 = __reader.read_object_start();
-            if (!__try_tmp_14.has_value()) return ::tpy::make_unexpected(__try_tmp_14.error());
-        }
-        std::string name = "";
-        int32_t age = 0;
-        double score = 0.0;
-        float precision = 0.0f;
-        bool active = false;
-        ::tpy::BigInt big_id = ::tpy::BigInt(0);
-        std::optional<Role> role = std::nullopt;
-        std::optional<Address> address = std::nullopt;
-        std::vector<std::string> tags = std::vector<std::string>{};
-        std::vector<int32_t> scores = std::vector<int32_t>{};
-        std::vector<Address> friends = std::vector<Address>{};
-        std::vector<Role> roles = std::vector<Role>{};
-        ::tpy::ordered_map<std::string, int32_t> metadata = ::tpy::ordered_map<std::string, int32_t>();
-        ::tpy::ordered_map<std::string, std::vector<int32_t>> nested_map = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
-        std::optional<std::tuple<int32_t, int32_t, std::string>> coord = std::nullopt;
-        std::optional<Role> backup_role = std::nullopt;
-        std::optional<Address> alt_address = std::nullopt;
-        std::optional<std::string> email = std::nullopt;
-        while (__reader.has_next()) {
-            std::string_view __key;
-            {
-                auto __try_tmp_15 = __reader.read_key_raw();
-                if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(__try_tmp_15.error());
-                __key = ::tpy::unwrap_ref(*__try_tmp_15);
-            }
-            auto& __match_subject = __key;
-            if (__match_subject.size() >= 2) {
-                switch (static_cast<unsigned char>(__match_subject[1])) {
-                case 'a': {
-                    if (__match_subject == "name") {
-                        std::string __name_1;
-                        {
-                            auto __try_tmp_16 = __reader.read_str();
-                            if (!__try_tmp_16.has_value()) return ::tpy::make_unexpected(__try_tmp_16.error());
-                            __name_1 = ::tpy::unwrap_ref(*__try_tmp_16);
-                        }
-                        name = __name_1;
-                        goto __match_end_1;
-                    }
-                    if (__match_subject == "tags") {
-                        {
-                            auto __try_tmp_17 = __reader.read_array_start();
-                            if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
-                        }
-                        while (__reader.has_next()) {
-                            std::string __elem_13;
-                            {
-                                auto __try_tmp_18 = __reader.read_str();
-                                if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
-                                __elem_13 = ::tpy::unwrap_ref(*__try_tmp_18);
-                            }
-                            std::string __tmp_1{__elem_13};
-                            tags.push_back(std::move(__tmp_1));
-                        }
-                        {
-                            auto __try_tmp_19 = __reader.read_array_end();
-                            if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
-                        }
-                        goto __match_end_1;
-                    }
-                    if (__match_subject == "backup_role") {
-                        if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
-                            {
-                                auto __try_tmp_20 = __reader.read_null();
-                                if (!__try_tmp_20.has_value()) return ::tpy::make_unexpected(__try_tmp_20.error());
-                            }
-                        } else {
-                            std::string_view __estr_34;
-                            {
-                                auto __try_tmp_21 = __reader.read_str_raw();
-                                if (!__try_tmp_21.has_value()) return ::tpy::make_unexpected(__try_tmp_21.error());
-                                __estr_34 = ::tpy::unwrap_ref(*__try_tmp_21);
-                            }
-                            std::optional<Role> __parsed_35 = ::tpy::EnumUtil<Role>::try_parse(__estr_34);
-                            if ((!__parsed_35.has_value())) {
-                                return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("invalid enum value for 'Role'"));
-                            }
-                            Role __backup_role_33 = (*__parsed_35);
-                            backup_role = __backup_role_33;
-                        }
-                        goto __match_end_1;
-                    }
-                    break;
-                }
-                case 'c': {
-                    if (__match_subject == "score") {
-                        double __score_4;
-                        {
-                            auto __try_tmp_22 = __reader.read_float();
-                            if (!__try_tmp_22.has_value()) return ::tpy::make_unexpected(__try_tmp_22.error());
-                            __score_4 = ::tpy::unwrap_ref(*__try_tmp_22);
-                        }
-                        score = __score_4;
-                        goto __match_end_1;
-                    }
-                    if (__match_subject == "active") {
-                        bool __active_7;
-                        {
-                            auto __try_tmp_23 = __reader.read_bool();
-                            if (!__try_tmp_23.has_value()) return ::tpy::make_unexpected(__try_tmp_23.error());
-                            __active_7 = ::tpy::unwrap_ref(*__try_tmp_23);
-                        }
-                        active = __active_7;
-                        goto __match_end_1;
-                    }
-                    if (__match_subject == "scores") {
-                        {
-                            auto __try_tmp_24 = __reader.read_array_start();
-                            if (!__try_tmp_24.has_value()) return ::tpy::make_unexpected(__try_tmp_24.error());
-                        }
-                        while (__reader.has_next()) {
-                            int64_t __raw_15;
-                            {
-                                auto __try_tmp_25 = __reader.read_int();
-                                if (!__try_tmp_25.has_value()) return ::tpy::make_unexpected(__try_tmp_25.error());
-                                __raw_15 = ::tpy::unwrap_ref(*__try_tmp_25);
-                            }
-                            int32_t __elem_14 = ::tpy::int_cast_check<int32_t>(__raw_15);
-                            scores.push_back(__elem_14);
-                        }
-                        {
-                            auto __try_tmp_26 = __reader.read_array_end();
-                            if (!__try_tmp_26.has_value()) return ::tpy::make_unexpected(__try_tmp_26.error());
-                        }
-                        goto __match_end_1;
-                    }
-                    break;
-                }
-                case 'd': {
-                    if (__match_subject == "address") {
-                        {
-                            auto __try_tmp_27 = Address::__json_decode__(__reader);
-                            if (!__try_tmp_27.has_value()) return ::tpy::make_unexpected(__try_tmp_27.error());
-                            address = ::tpy::unwrap_ref(*__try_tmp_27);
-                        }
-                        goto __match_end_1;
-                    }
-                    break;
-                }
-                case 'e': {
-                    if (__match_subject == "metadata") {
-                        {
-                            auto __try_tmp_28 = __reader.read_object_start();
-                            if (!__try_tmp_28.has_value()) return ::tpy::make_unexpected(__try_tmp_28.error());
-                        }
-                        while (__reader.has_next()) {
-                            std::string __dk_20;
-                            {
-                                auto __try_tmp_29 = __reader.read_key();
-                                if (!__try_tmp_29.has_value()) return ::tpy::make_unexpected(__try_tmp_29.error());
-                                __dk_20 = ::tpy::unwrap_ref(*__try_tmp_29);
-                            }
-                            int64_t __raw_22;
-                            {
-                                auto __try_tmp_30 = __reader.read_int();
-                                if (!__try_tmp_30.has_value()) return ::tpy::make_unexpected(__try_tmp_30.error());
-                                __raw_22 = ::tpy::unwrap_ref(*__try_tmp_30);
-                            }
-                            int32_t __dv_21 = ::tpy::int_cast_check<int32_t>(__raw_22);
-                            ::tpy::__setitem__(metadata, __dk_20, __dv_21);
-                        }
-                        {
-                            auto __try_tmp_31 = __reader.read_object_end();
-                            if (!__try_tmp_31.has_value()) return ::tpy::make_unexpected(__try_tmp_31.error());
-                        }
-                        goto __match_end_1;
-                    }
-                    if (__match_subject == "nested_map") {
-                        {
-                            auto __try_tmp_32 = __reader.read_object_start();
-                            if (!__try_tmp_32.has_value()) return ::tpy::make_unexpected(__try_tmp_32.error());
-                        }
-                        while (__reader.has_next()) {
-                            std::string __dk_23;
-                            {
-                                auto __try_tmp_33 = __reader.read_key();
-                                if (!__try_tmp_33.has_value()) return ::tpy::make_unexpected(__try_tmp_33.error());
-                                __dk_23 = ::tpy::unwrap_ref(*__try_tmp_33);
-                            }
-                            std::vector<int32_t> __dv_25 = std::vector<int32_t>{};
-                            {
-                                auto __try_tmp_34 = __reader.read_array_start();
-                                if (!__try_tmp_34.has_value()) return ::tpy::make_unexpected(__try_tmp_34.error());
-                            }
-                            while (__reader.has_next()) {
-                                int64_t __raw_27;
-                                {
-                                    auto __try_tmp_35 = __reader.read_int();
-                                    if (!__try_tmp_35.has_value()) return ::tpy::make_unexpected(__try_tmp_35.error());
-                                    __raw_27 = ::tpy::unwrap_ref(*__try_tmp_35);
-                                }
-                                int32_t __elem_26 = ::tpy::int_cast_check<int32_t>(__raw_27);
-                                __dv_25.push_back(__elem_26);
-                            }
-                            {
-                                auto __try_tmp_36 = __reader.read_array_end();
-                                if (!__try_tmp_36.has_value()) return ::tpy::make_unexpected(__try_tmp_36.error());
-                            }
-                            ::tpy::__setitem__(nested_map, __dk_23, std::move(__dv_25));
-                        }
-                        {
-                            auto __try_tmp_37 = __reader.read_object_end();
-                            if (!__try_tmp_37.has_value()) return ::tpy::make_unexpected(__try_tmp_37.error());
-                        }
-                        goto __match_end_1;
-                    }
-                    break;
-                }
-                case 'g': {
-                    if (__match_subject == "age") {
-                        int64_t __raw_3;
-                        {
-                            auto __try_tmp_38 = __reader.read_int();
-                            if (!__try_tmp_38.has_value()) return ::tpy::make_unexpected(__try_tmp_38.error());
-                            __raw_3 = ::tpy::unwrap_ref(*__try_tmp_38);
-                        }
-                        int32_t __age_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
-                        age = __age_2;
-                        goto __match_end_1;
-                    }
-                    break;
-                }
-                case 'i': {
-                    if (__match_subject == "big_id") {
-                        std::string __raw_9;
-                        {
-                            auto __try_tmp_39 = __reader.read_str();
-                            if (!__try_tmp_39.has_value()) return ::tpy::make_unexpected(__try_tmp_39.error());
-                            __raw_9 = ::tpy::unwrap_ref(*__try_tmp_39);
-                        }
-                        ::tpy::BigInt __big_id_8 = ::tpy::BigInt::from_str(__raw_9);
-                        big_id = __big_id_8;
-                        goto __match_end_1;
-                    }
-                    break;
-                }
-                case 'l': {
-                    if (__match_subject == "alt_address") {
-                        if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
-                            {
-                                auto __try_tmp_40 = __reader.read_null();
-                                if (!__try_tmp_40.has_value()) return ::tpy::make_unexpected(__try_tmp_40.error());
-                            }
-                        } else {
-                            {
-                                auto __try_tmp_41 = Address::__json_decode__(__reader);
-                                if (!__try_tmp_41.has_value()) return ::tpy::make_unexpected(__try_tmp_41.error());
-                                alt_address = ::tpy::unwrap_ref(*__try_tmp_41);
-                            }
-                        }
-                        goto __match_end_1;
-                    }
-                    break;
-                }
-                case 'm': {
-                    if (__match_subject == "email") {
-                        if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
-                            {
-                                auto __try_tmp_42 = __reader.read_null();
-                                if (!__try_tmp_42.has_value()) return ::tpy::make_unexpected(__try_tmp_42.error());
-                            }
-                        } else {
-                            std::string __email_36;
-                            {
-                                auto __try_tmp_43 = __reader.read_str();
-                                if (!__try_tmp_43.has_value()) return ::tpy::make_unexpected(__try_tmp_43.error());
-                                __email_36 = ::tpy::unwrap_ref(*__try_tmp_43);
-                            }
-                            email = __email_36;
-                        }
-                        goto __match_end_1;
-                    }
-                    break;
-                }
-                case 'o': {
-                    if (__match_subject == "role") {
-                        std::string_view __estr_11;
-                        {
-                            auto __try_tmp_44 = __reader.read_str_raw();
-                            if (!__try_tmp_44.has_value()) return ::tpy::make_unexpected(__try_tmp_44.error());
-                            __estr_11 = ::tpy::unwrap_ref(*__try_tmp_44);
-                        }
-                        std::optional<Role> __parsed_12 = ::tpy::EnumUtil<Role>::try_parse(__estr_11);
-                        if ((!__parsed_12.has_value())) {
-                            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("invalid enum value for 'Role'"));
-                        }
-                        Role __role_10 = (*__parsed_12);
-                        role = __role_10;
-                        goto __match_end_1;
-                    }
-                    if (__match_subject == "roles") {
-                        {
-                            auto __try_tmp_45 = __reader.read_array_start();
-                            if (!__try_tmp_45.has_value()) return ::tpy::make_unexpected(__try_tmp_45.error());
-                        }
-                        while (__reader.has_next()) {
-                            std::string_view __estr_18;
-                            {
-                                auto __try_tmp_46 = __reader.read_str_raw();
-                                if (!__try_tmp_46.has_value()) return ::tpy::make_unexpected(__try_tmp_46.error());
-                                __estr_18 = ::tpy::unwrap_ref(*__try_tmp_46);
-                            }
-                            std::optional<Role> __parsed_19 = ::tpy::EnumUtil<Role>::try_parse(__estr_18);
-                            if ((!__parsed_19.has_value())) {
-                                return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("invalid enum value for 'Role'"));
-                            }
-                            Role __elem_17 = (*__parsed_19);
-                            roles.push_back(__elem_17);
-                        }
-                        {
-                            auto __try_tmp_47 = __reader.read_array_end();
-                            if (!__try_tmp_47.has_value()) return ::tpy::make_unexpected(__try_tmp_47.error());
-                        }
-                        goto __match_end_1;
-                    }
-                    if (__match_subject == "coord") {
-                        {
-                            auto __try_tmp_48 = __reader.read_array_start();
-                            if (!__try_tmp_48.has_value()) return ::tpy::make_unexpected(__try_tmp_48.error());
-                        }
-                        int64_t __raw_29;
-                        {
-                            auto __try_tmp_49 = __reader.read_int();
-                            if (!__try_tmp_49.has_value()) return ::tpy::make_unexpected(__try_tmp_49.error());
-                            __raw_29 = ::tpy::unwrap_ref(*__try_tmp_49);
-                        }
-                        int32_t __t0_28 = ::tpy::int_cast_check<int32_t>(__raw_29);
-                        if ((__reader.has_next() == false)) {
-                            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("tuple: not enough elements"));
-                        }
-                        int64_t __raw_31;
-                        {
-                            auto __try_tmp_50 = __reader.read_int();
-                            if (!__try_tmp_50.has_value()) return ::tpy::make_unexpected(__try_tmp_50.error());
-                            __raw_31 = ::tpy::unwrap_ref(*__try_tmp_50);
-                        }
-                        int32_t __t1_30 = ::tpy::int_cast_check<int32_t>(__raw_31);
-                        if ((__reader.has_next() == false)) {
-                            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("tuple: not enough elements"));
-                        }
-                        std::string __t2_32;
-                        {
-                            auto __try_tmp_51 = __reader.read_str();
-                            if (!__try_tmp_51.has_value()) return ::tpy::make_unexpected(__try_tmp_51.error());
-                            __t2_32 = ::tpy::unwrap_ref(*__try_tmp_51);
-                        }
-                        {
-                            auto __try_tmp_52 = __reader.read_array_end();
-                            if (!__try_tmp_52.has_value()) return ::tpy::make_unexpected(__try_tmp_52.error());
-                        }
-                        coord = std::tuple<int32_t, int32_t, std::string>{__t0_28, __t1_30, __t2_32};
-                        goto __match_end_1;
-                    }
-                    break;
-                }
-                case 'r': {
-                    if (__match_subject == "precision") {
-                        double __raw_6;
-                        {
-                            auto __try_tmp_53 = __reader.read_float();
-                            if (!__try_tmp_53.has_value()) return ::tpy::make_unexpected(__try_tmp_53.error());
-                            __raw_6 = ::tpy::unwrap_ref(*__try_tmp_53);
-                        }
-                        float __precision_5 = static_cast<float>(__raw_6);
-                        precision = __precision_5;
-                        goto __match_end_1;
-                    }
-                    if (__match_subject == "friends") {
-                        {
-                            auto __try_tmp_54 = __reader.read_array_start();
-                            if (!__try_tmp_54.has_value()) return ::tpy::make_unexpected(__try_tmp_54.error());
-                        }
-                        while (__reader.has_next()) {
-                            Address __elem_16;
-                            {
-                                auto __try_tmp_55 = Address::__json_decode__(__reader);
-                                if (!__try_tmp_55.has_value()) return ::tpy::make_unexpected(__try_tmp_55.error());
-                                __elem_16 = ::tpy::unwrap_ref(*__try_tmp_55);
-                            }
-                            friends.push_back(__elem_16);
-                        }
-                        {
-                            auto __try_tmp_56 = __reader.read_array_end();
-                            if (!__try_tmp_56.has_value()) return ::tpy::make_unexpected(__try_tmp_56.error());
-                        }
-                        goto __match_end_1;
-                    }
-                    break;
-                }
-                }
-            }
-            {
-                {
-                    auto __try_tmp_57 = __reader.skip_value();
-                    if (!__try_tmp_57.has_value()) return ::tpy::make_unexpected(__try_tmp_57.error());
-                }
-            }
-            __match_end_1:;
-        }
-        {
-            auto __try_tmp_58 = __reader.read_object_end();
-            if (!__try_tmp_58.has_value()) return ::tpy::make_unexpected(__try_tmp_58.error());
-        }
-        if ((!role.has_value())) {
-            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'role'"));
-        }
-        if ((!address.has_value())) {
-            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'address'"));
-        }
-        if ((!coord.has_value())) {
-            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'coord'"));
-        }
-        auto __tmp_2 = (*address);
-        auto __tmp_3 = alt_address;
-        return Profile(name, age, score, precision, active, big_id, (*role), std::move(__tmp_2), std::move(tags), std::move(scores), std::move(friends), std::move(roles), std::move(metadata), std::move(nested_map), (*coord), backup_role, std::move(__tmp_3), email);
-    }
+    static std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader);
 
-    static Profile from_json(std::string_view __s) {
-        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-        std::optional<Profile> __result = std::nullopt;
-        {
-            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_59;
-            {
-                auto __try_tmp_60 = Profile::__json_decode__(__reader);
-                if (!__try_tmp_60.has_value()) { __err_opt_59 = std::move(__try_tmp_60.error()); goto __except_59; }
-                __result = ::tpy::unwrap_ref(*__try_tmp_60);
-            }
-            goto __after_try_59;
-            // except tplib.json.parser.JsonError:
-            __except_59:;
-            {
-                auto& __e = *__err_opt_59;
-                ::tpy::tpy_panic(__e.message);
-            }
-            __after_try_59:;
-        }
-        if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
-        return (*__result);
-    }
+    static Profile from_json(std::string_view __s);
 
-    static std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s) {
-        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-        return Profile::__json_decode__(__reader);
-    }
+    static std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s);
 
-    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
-        __writer.object_start();
-        __writer.key("name");
-        __writer.write_str(this->name);
-        __writer.key("age");
-        __writer.write_int32(this->age);
-        __writer.key("score");
-        __writer.write_float(this->score);
-        __writer.key("precision");
-        __writer.write_float32(this->precision);
-        __writer.key("active");
-        __writer.write_bool(this->active);
-        __writer.key("big_id");
-        __writer.write_str((this->big_id).to_string());
-        __writer.key("role");
-        __writer.write_str(::tpy::EnumUtil<Role>::name(this->role));
-        __writer.key("address");
-        this->address.__json_encode__(__writer);
-        __writer.key("tags");
-        __writer.array_start();
-        auto& __obj_0 = this->tags;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            std::string_view __item = *__beg_0;
-            __writer.write_str(__item);
-        }
-        __writer.array_end();
-        __writer.key("scores");
-        __writer.array_start();
-        auto& __obj_1 = this->scores;
-        auto __beg_1 = __obj_1.begin();
-        auto __end_1 = __obj_1.end();
-        for (; __beg_1 != __end_1; ++__beg_1) {
-            int32_t __item = *__beg_1;
-            __writer.write_int32(__item);
-        }
-        __writer.array_end();
-        __writer.key("friends");
-        __writer.array_start();
-        auto& __obj_2 = this->friends;
-        auto __beg_2 = __obj_2.begin();
-        auto __end_2 = __obj_2.end();
-        for (; __beg_2 != __end_2; ++__beg_2) {
-            auto&& __item = *__beg_2;
-            __item.__json_encode__(__writer);
-        }
-        __writer.array_end();
-        __writer.key("roles");
-        __writer.array_start();
-        auto& __obj_3 = this->roles;
-        auto __beg_3 = __obj_3.begin();
-        auto __end_3 = __obj_3.end();
-        for (; __beg_3 != __end_3; ++__beg_3) {
-            Role __item = *__beg_3;
-            __writer.write_str(::tpy::EnumUtil<Role>::name(__item));
-        }
-        __writer.array_end();
-        __writer.key("metadata");
-        __writer.object_start();
-        auto __obj_4 = ::tpy::dict_items(this->metadata);
-        auto __beg_4 = __obj_4.begin();
-        auto __end_4 = __obj_4.end();
-        for (; __beg_4 != __end_4; ++__beg_4) {
-            const auto& __kv_37 = *__beg_4;
-            const auto& __tup_1 = __kv_37;
-            std::string_view __dk = std::get<0>(__tup_1);
-            int32_t __dv = std::get<1>(__tup_1);
-            __writer.key(__dk);
-            __writer.write_int32(__dv);
-        }
-        __writer.object_end();
-        __writer.key("nested_map");
-        __writer.object_start();
-        auto __obj_5 = ::tpy::dict_items(this->nested_map);
-        auto __beg_5 = __obj_5.begin();
-        auto __end_5 = __obj_5.end();
-        for (; __beg_5 != __end_5; ++__beg_5) {
-            auto&& __kv_38 = *__beg_5;
-            auto& __tup_2 = __kv_38;
-            std::string_view __dk = std::get<0>(__tup_2);
-            std::vector<int32_t>* __dv = &::tpy::unwrap_ref(std::get<1>(__tup_2));
-            __writer.key(__dk);
-            __writer.array_start();
-            auto& __obj_6 = (*__dv);
-            auto __beg_6 = __obj_6.begin();
-            auto __end_6 = __obj_6.end();
-            for (; __beg_6 != __end_6; ++__beg_6) {
-                int32_t __item = *__beg_6;
-                __writer.write_int32(__item);
-            }
-            __writer.array_end();
-        }
-        __writer.object_end();
-        __writer.key("coord");
-        __writer.array_start();
-        __writer.write_int32(std::get<0>(this->coord));
-        __writer.write_int32(std::get<1>(this->coord));
-        __writer.write_str(std::get<2>(this->coord));
-        __writer.array_end();
-        __writer.key("backup_role");
-        std::optional<Role> __opt_backup_role = this->backup_role;
-        if ((__opt_backup_role.has_value())) {
-            Role __val_backup_role = (*__opt_backup_role);
-            __writer.write_str(::tpy::EnumUtil<Role>::name(__val_backup_role));
-        } else {
-            __writer.write_null();
-        }
-        __writer.key("alt_address");
-        const Address* __opt_alt_address = ::tpy::optional_to_ptr(this->alt_address);
-        if ((__opt_alt_address != nullptr)) {
-            const Address& __val_alt_address = (*__opt_alt_address);
-            __val_alt_address.__json_encode__(__writer);
-        } else {
-            __writer.write_null();
-        }
-        __writer.key("email");
-        std::optional<std::string> __opt_email = this->email;
-        if ((__opt_email.has_value())) {
-            std::string __val_email = (*__opt_email);
-            __writer.write_str(__val_email);
-        } else {
-            __writer.write_null();
-        }
-        __writer.object_end();
-    }
+    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const;
 
-    std::string to_json(int32_t indent = 0) const {
-        ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
-        this->__json_encode__(__writer);
-        return __writer.finish();
-    }
+    std::string to_json(int32_t indent = 0) const;
 
-    void save_json(std::string_view __path, int32_t indent = 0) const {
-        // # Test @model macro: all type combos, nesting, and round-trip.
-        auto __ctx_4 = ::tpy::builtin_open_mode(__path, "w");
-        auto& __f = __ctx_4.__enter__();
-        try {
-            // # Test @model macro: all type combos, nesting, and round-trip.
-            // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
-            __f.write(this->to_json(indent));
-        } catch (...) {
-            __ctx_4.__exit__();
-            throw;
-        }
-        __finally_61:;
-        __ctx_4.__exit__();
-        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
-        // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
-        // # dict[str, list[T]].
-    }
+    void save_json(std::string_view __path, int32_t indent = 0) const;
 
-    static Profile load_json(std::string_view __path) {
-        // # Test @model macro: all type combos, nesting, and round-trip.
-        std::string __data;
-        auto __ctx_5 = ::tpy::builtin_open_mode(__path, "r");
-        auto& __f = __ctx_5.__enter__();
-        std::optional<Profile> __retval_63;
-        try {
-            // # Test @model macro: all type combos, nesting, and round-trip.
-            // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
-            __data = __f.read();
-        } catch (...) {
-            __ctx_5.__exit__();
-            throw;
-        }
-        __finally_62:;
-        __ctx_5.__exit__();
-        if (__retval_63) return (*__retval_63);
-        // # Test @model macro: all type combos, nesting, and round-trip.
-        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
-        // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
-        return Profile::from_json(__data);
-        // # dict[str, list[T]].
-    }
+    static Profile load_json(std::string_view __path);
 
-    static std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
-        // # Test @model macro: all type combos, nesting, and round-trip.
-        std::string __data;
-        auto __ctx_6 = ::tpy::builtin_open_mode(__path, "r");
-        auto& __f = __ctx_6.__enter__();
-        std::optional<std::expected<Profile, ::tpystd::tplib::json::parser::JsonError>> __retval_65;
-        try {
-            // # Test @model macro: all type combos, nesting, and round-trip.
-            // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
-            __data = __f.read();
-        } catch (...) {
-            __ctx_6.__exit__();
-            throw;
-        }
-        __finally_64:;
-        __ctx_6.__exit__();
-        if (__retval_65) return (*__retval_65);
-        // # Test @model macro: all type combos, nesting, and round-trip.
-        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
-        // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
-        return Profile::try_from_json(__data);
-        // # dict[str, list[T]].
-    }
+    static std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path);
 
     friend bool operator==(const Profile& lhs, const Profile& other) {
         return lhs.__eq__(other);
@@ -938,5 +157,232 @@ inline std::ostream& operator<<(std::ostream& os, const Profile& obj) {
     return os;
 }
 
+
+inline bool Address::__eq__(const Address& other) const {
+    return ((this->street == other.street) && (this->city == other.city));
+}
+
+inline std::string Address::__repr__() const {
+    return std::format("Address(street={}, city={})", ::tpy::__repr__(this->street), ::tpy::__repr__(this->city));
+}
+
+inline Address Address::from_json(std::string_view __s) {
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
+    std::optional<Address> __result = std::nullopt;
+    {
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_1;
+        {
+            auto __try_tmp_2 = Address::__json_decode__(__reader);
+            if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_2);
+        }
+        goto __after_try_1;
+        // except tplib.json.parser.JsonError:
+        __except_1:;
+        {
+            auto& __e = *__err_opt_1;
+            ::tpy::tpy_panic(__e.message);
+        }
+        __after_try_1:;
+    }
+    if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
+    return (*__result);
+}
+
+inline std::expected<Address, ::tpystd::tplib::json::parser::JsonError> Address::try_from_json(std::string_view __s) {
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
+    return Address::__json_decode__(__reader);
+}
+
+inline void Address::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
+    __writer.object_start();
+    __writer.key("street");
+    __writer.write_str(this->street);
+    __writer.key("city");
+    __writer.write_str(this->city);
+    __writer.object_end();
+}
+
+inline std::string Address::to_json(int32_t indent) const {
+    ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
+    this->__json_encode__(__writer);
+    return __writer.finish();
+}
+
+inline void Address::save_json(std::string_view __path, int32_t indent) const {
+    // # Test @model macro: all type combos, nesting, and round-trip.
+    auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
+    auto& __f = __ctx_1.__enter__();
+    try {
+        // # Test @model macro: all type combos, nesting, and round-trip.
+        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+        __f.write(this->to_json(indent));
+    } catch (...) {
+        __ctx_1.__exit__();
+        throw;
+    }
+    __finally_3:;
+    __ctx_1.__exit__();
+    // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+    // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
+    // # dict[str, list[T]].
+}
+
+inline Address Address::load_json(std::string_view __path) {
+    // # Test @model macro: all type combos, nesting, and round-trip.
+    std::string __data;
+    auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
+    auto& __f = __ctx_2.__enter__();
+    std::optional<Address> __retval_5;
+    try {
+        // # Test @model macro: all type combos, nesting, and round-trip.
+        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+        __data = __f.read();
+    } catch (...) {
+        __ctx_2.__exit__();
+        throw;
+    }
+    __finally_4:;
+    __ctx_2.__exit__();
+    if (__retval_5) return (*__retval_5);
+    // # Test @model macro: all type combos, nesting, and round-trip.
+    // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+    // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
+    return Address::from_json(__data);
+    // # dict[str, list[T]].
+}
+
+inline std::expected<Address, ::tpystd::tplib::json::parser::JsonError> Address::try_load_json(std::string_view __path) {
+    // # Test @model macro: all type combos, nesting, and round-trip.
+    std::string __data;
+    auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
+    auto& __f = __ctx_3.__enter__();
+    std::optional<std::expected<Address, ::tpystd::tplib::json::parser::JsonError>> __retval_7;
+    try {
+        // # Test @model macro: all type combos, nesting, and round-trip.
+        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+        __data = __f.read();
+    } catch (...) {
+        __ctx_3.__exit__();
+        throw;
+    }
+    __finally_6:;
+    __ctx_3.__exit__();
+    if (__retval_7) return (*__retval_7);
+    // # Test @model macro: all type combos, nesting, and round-trip.
+    // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+    // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
+    return Address::try_from_json(__data);
+    // # dict[str, list[T]].
+}
+
+inline bool Profile::__eq__(const Profile& other) const {
+    return ((((((((((((((((((this->name == other.name) && (this->age == other.age)) && (this->score == other.score)) && (this->precision == other.precision)) && (this->active == other.active)) && (this->big_id == other.big_id)) && (this->role == other.role)) && (this->address == other.address)) && (this->tags == other.tags)) && (this->scores == other.scores)) && (this->friends == other.friends)) && (this->roles == other.roles)) && (this->metadata == other.metadata)) && (this->nested_map == other.nested_map)) && (this->coord == other.coord)) && (this->backup_role == other.backup_role)) && (this->alt_address == other.alt_address)) && (this->email == other.email));
+}
+
+inline std::string Profile::__repr__() const {
+    return std::format("Profile(name={}, age={}, score={}, precision={}, active={}, big_id={}, role={}, address={}, tags={}, scores={}, friends={}, roles={}, metadata={}, nested_map={}, coord={}, backup_role={}, alt_address={}, email={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age), ::tpy::__repr__(this->score), ::tpy::__repr__(this->precision), ::tpy::__repr__(this->active), ::tpy::__repr__(this->big_id), ::tpy::__repr__(this->role), ::tpy::__repr__(this->address), ::tpy::list_to_str(this->tags), ::tpy::list_to_str(this->scores), ::tpy::list_to_str(this->friends), ::tpy::list_to_str(this->roles), ::tpy::dict_to_str(this->metadata), ::tpy::dict_to_str(this->nested_map), ::tpy::tuple_to_str(this->coord), ::tpy::__repr__(this->backup_role), ::tpy::__repr__(this->alt_address), ::tpy::__repr__(this->email));
+}
+
+inline Profile Profile::from_json(std::string_view __s) {
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
+    std::optional<Profile> __result = std::nullopt;
+    {
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_8;
+        {
+            auto __try_tmp_9 = Profile::__json_decode__(__reader);
+            if (!__try_tmp_9.has_value()) { __err_opt_8 = std::move(__try_tmp_9.error()); goto __except_8; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_9);
+        }
+        goto __after_try_8;
+        // except tplib.json.parser.JsonError:
+        __except_8:;
+        {
+            auto& __e = *__err_opt_8;
+            ::tpy::tpy_panic(__e.message);
+        }
+        __after_try_8:;
+    }
+    if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
+    return (*__result);
+}
+
+inline std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::try_from_json(std::string_view __s) {
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
+    return Profile::__json_decode__(__reader);
+}
+
+inline std::string Profile::to_json(int32_t indent) const {
+    ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
+    this->__json_encode__(__writer);
+    return __writer.finish();
+}
+
+inline void Profile::save_json(std::string_view __path, int32_t indent) const {
+    // # Test @model macro: all type combos, nesting, and round-trip.
+    auto __ctx_4 = ::tpy::builtin_open_mode(__path, "w");
+    auto& __f = __ctx_4.__enter__();
+    try {
+        // # Test @model macro: all type combos, nesting, and round-trip.
+        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+        __f.write(this->to_json(indent));
+    } catch (...) {
+        __ctx_4.__exit__();
+        throw;
+    }
+    __finally_10:;
+    __ctx_4.__exit__();
+    // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+    // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
+    // # dict[str, list[T]].
+}
+
+inline Profile Profile::load_json(std::string_view __path) {
+    // # Test @model macro: all type combos, nesting, and round-trip.
+    std::string __data;
+    auto __ctx_5 = ::tpy::builtin_open_mode(__path, "r");
+    auto& __f = __ctx_5.__enter__();
+    std::optional<Profile> __retval_12;
+    try {
+        // # Test @model macro: all type combos, nesting, and round-trip.
+        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+        __data = __f.read();
+    } catch (...) {
+        __ctx_5.__exit__();
+        throw;
+    }
+    __finally_11:;
+    __ctx_5.__exit__();
+    if (__retval_12) return (*__retval_12);
+    // # Test @model macro: all type combos, nesting, and round-trip.
+    // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+    // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
+    return Profile::from_json(__data);
+    // # dict[str, list[T]].
+}
+
+inline std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::try_load_json(std::string_view __path) {
+    // # Test @model macro: all type combos, nesting, and round-trip.
+    std::string __data;
+    auto __ctx_6 = ::tpy::builtin_open_mode(__path, "r");
+    auto& __f = __ctx_6.__enter__();
+    std::optional<std::expected<Profile, ::tpystd::tplib::json::parser::JsonError>> __retval_14;
+    try {
+        // # Test @model macro: all type combos, nesting, and round-trip.
+        // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+        __data = __f.read();
+    } catch (...) {
+        __ctx_6.__exit__();
+        throw;
+    }
+    __finally_13:;
+    __ctx_6.__exit__();
+    if (__retval_14) return (*__retval_14);
+    // # Test @model macro: all type combos, nesting, and round-trip.
+    // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+    // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
+    return Profile::try_from_json(__data);
+    // # dict[str, list[T]].
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -26,16 +26,10 @@ struct Shape {
     explicit Shape(std::string_view name) : name(name) {}
 
     // def area(self) -> Int32:
-    int32_t area() const {
-        // return 0
-        return 0;
-    }
+    int32_t area() const;
 
     // def describe(self) -> str:
-    std::string describe() const {
-        // return self.name
-        return this->name;
-    }
+    std::string describe() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shape& obj) {
@@ -56,10 +50,7 @@ struct Square : Shape {
     }
 
     // def area(self) -> Int32:
-    int32_t area() const {
-        // return self.side * self.side
-        return (::tpy::mul_check<int32_t>(this->side, this->side));
-    }
+    int32_t area() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
@@ -82,10 +73,7 @@ struct Rectangle : Shape {
     }
 
     // def area(self) -> Int32:
-    int32_t area() const {
-        // return self.width * self.height
-        return (::tpy::mul_check<int32_t>(this->width, this->height));
-    }
+    int32_t area() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rectangle& obj) {
@@ -93,5 +81,29 @@ inline std::ostream& operator<<(std::ostream& os, const Rectangle& obj) {
     return os;
 }
 
+
+// def area(self) -> Int32:
+inline int32_t Shape::area() const {
+    // return 0
+    return 0;
+}
+
+// def describe(self) -> str:
+inline std::string Shape::describe() const {
+    // return self.name
+    return this->name;
+}
+
+// def area(self) -> Int32:
+inline int32_t Square::area() const {
+    // return self.side * self.side
+    return (::tpy::mul_check<int32_t>(this->side, this->side));
+}
+
+// def area(self) -> Int32:
+inline int32_t Rectangle::area() const {
+    // return self.width * self.height
+    return (::tpy::mul_check<int32_t>(this->width, this->height));
+}
 void __tpy_init();
 } // namespace tpyapp::main

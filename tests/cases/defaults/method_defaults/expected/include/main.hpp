@@ -22,16 +22,10 @@ struct Counter {
     explicit Counter(int32_t start = 0) : count(start) {}
 
     // def increment(self, amount: Int32 = Int32(1)) -> None:
-    void increment(int32_t amount = 1) {
-        // self.count = self.count + amount
-        this->count = (::tpy::add_check<int32_t>(this->count, amount));
-    }
+    void increment(int32_t amount = 1);
 
     // def display(self, prefix: str = "count") -> None:
-    void display(std::string_view prefix = "count") const {
-        // print(f"{prefix}: {self.count}")
-        std::cout << std::format("{}: {}", prefix, this->count) << "\n";
-    }
+    void display(std::string_view prefix = "count") const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -39,5 +33,17 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def increment(self, amount: Int32 = Int32(1)) -> None:
+inline void Counter::increment(int32_t amount) {
+    // self.count = self.count + amount
+    this->count = (::tpy::add_check<int32_t>(this->count, amount));
+}
+
+// def display(self, prefix: str = "count") -> None:
+inline void Counter::display(std::string_view prefix) const {
+    // print(f"{prefix}: {self.count}")
+    std::cout << std::format("{}: {}", prefix, this->count) << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

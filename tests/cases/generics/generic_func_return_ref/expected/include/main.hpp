@@ -33,10 +33,7 @@ struct Point {
     explicit Point(const ::tpy::BigInt& x) : x(x) {}
 
     // def mutate(self) -> None:
-    void mutate() {
-        // self.x += 10
-        this->x = (this->x) + (::tpy::BigInt(10));
-    }
+    void mutate();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -44,6 +41,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def mutate(self) -> None:
+inline void Point::mutate() {
+    // self.x += 10
+    this->x = (this->x) + (::tpy::BigInt(10));
+}
 // def first[T](items: list[T]) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> first(std::vector<T>& items) {

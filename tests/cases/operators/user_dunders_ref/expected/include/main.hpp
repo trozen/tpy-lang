@@ -35,44 +35,22 @@ struct Vec {
     explicit Vec(double x, double y) : x(x), y(y) {}
 
     // def __add__(self, other: Vec) -> Own[Vec]:
-    Vec __add__(const Vec& other) const {
-        // return Vec(self.x + other.x, self.y + other.y)
-        return Vec(((this->x) + (other.x)), ((this->y) + (other.y)));
-    }
+    Vec __add__(const Vec& other) const;
 
     // def __sub__(self, other: Vec) -> Own[Vec]:
-    Vec __sub__(const Vec& other) const {
-        // return Vec(self.x - other.x, self.y - other.y)
-        return Vec(((this->x) - (other.x)), ((this->y) - (other.y)));
-    }
+    Vec __sub__(const Vec& other) const;
 
     // def __mul__(self, s: float) -> Own[Vec]:
-    Vec __mul__(double s) const {
-        // return Vec(self.x * s, self.y * s)
-        return Vec(((this->x) * (s)), ((this->y) * (s)));
-    }
+    Vec __mul__(double s) const;
 
     // def __neg__(self) -> Own[Vec]:
-    Vec __neg__() const {
-        // return Vec(-self.x, -self.y)
-        return Vec(-(this->x), -(this->y));
-    }
+    Vec __neg__() const;
 
     // def __eq__(self, other: Vec) -> bool:
-    bool __eq__(const Vec& other) const {
-        // return self.x == other.x and self.y == other.y
-        return ((this->x == other.x) && (this->y == other.y));
-    }
+    bool __eq__(const Vec& other) const;
 
     // def __iadd__(self, other: Vec) -> Vec:
-    Vec& __iadd__(const Vec& other) {
-        // self.x += other.x
-        this->x = (this->x) + (other.x);
-        // self.y += other.y
-        this->y = (this->y) + (other.y);
-        // return self
-        return (*this);
-    }
+    Vec& __iadd__(const Vec& other);
 
     friend Vec operator+(const Vec& lhs, const Vec& other) {
         return lhs.__add__(other);
@@ -112,18 +90,10 @@ struct Segment {
     explicit Segment(const Vec& start, const Vec& end) : start(start), end(end) {}
 
     // def diff(self) -> Own[Vec]:
-    Vec diff() const {
-        // # Ref[Vec] - Ref[Vec] via field access
-        // return self.end - self.start
-        return ((this->end) - (this->start));
-    }
+    Vec diff() const;
 
     // def midpoint(self) -> Own[Vec]:
-    Vec midpoint() const {
-        // # (Ref[Vec] + Ref[Vec]) * float
-        // return (self.start + self.end) * 0.5
-        return ((((this->start) + (this->end))) * (0.5));
-    }
+    Vec midpoint() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Segment& obj) {
@@ -131,5 +101,59 @@ inline std::ostream& operator<<(std::ostream& os, const Segment& obj) {
     return os;
 }
 
+
+// def __add__(self, other: Vec) -> Own[Vec]:
+inline Vec Vec::__add__(const Vec& other) const {
+    // return Vec(self.x + other.x, self.y + other.y)
+    return Vec(((this->x) + (other.x)), ((this->y) + (other.y)));
+}
+
+// def __sub__(self, other: Vec) -> Own[Vec]:
+inline Vec Vec::__sub__(const Vec& other) const {
+    // return Vec(self.x - other.x, self.y - other.y)
+    return Vec(((this->x) - (other.x)), ((this->y) - (other.y)));
+}
+
+// def __mul__(self, s: float) -> Own[Vec]:
+inline Vec Vec::__mul__(double s) const {
+    // return Vec(self.x * s, self.y * s)
+    return Vec(((this->x) * (s)), ((this->y) * (s)));
+}
+
+// def __neg__(self) -> Own[Vec]:
+inline Vec Vec::__neg__() const {
+    // return Vec(-self.x, -self.y)
+    return Vec(-(this->x), -(this->y));
+}
+
+// def __eq__(self, other: Vec) -> bool:
+inline bool Vec::__eq__(const Vec& other) const {
+    // return self.x == other.x and self.y == other.y
+    return ((this->x == other.x) && (this->y == other.y));
+}
+
+// def __iadd__(self, other: Vec) -> Vec:
+inline Vec& Vec::__iadd__(const Vec& other) {
+    // self.x += other.x
+    this->x = (this->x) + (other.x);
+    // self.y += other.y
+    this->y = (this->y) + (other.y);
+    // return self
+    return (*this);
+}
+
+// def diff(self) -> Own[Vec]:
+inline Vec Segment::diff() const {
+    // # Ref[Vec] - Ref[Vec] via field access
+    // return self.end - self.start
+    return ((this->end) - (this->start));
+}
+
+// def midpoint(self) -> Own[Vec]:
+inline Vec Segment::midpoint() const {
+    // # (Ref[Vec] + Ref[Vec]) * float
+    // return (self.start + self.end) * 0.5
+    return ((((this->start) + (this->end))) * (0.5));
+}
 void __tpy_init();
 } // namespace tpyapp::main

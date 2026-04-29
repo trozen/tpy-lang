@@ -45,59 +45,19 @@ struct Container {
     Container() : items({Point(1, 2), Point(3, 4)}) {}
 
     // def iter_then_mutate(self) -> None:
-    void iter_then_mutate() {
-        // for p in self.items:
-        auto& __obj_0 = this->items;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& p = *__beg_0;
-            // self.items.append(Point(p.x, p.y))  # tpyc: warning(/while iterating/)
-            this->items.push_back(Point(p.x, p.y));
-            // break
-            break;
-        }
-    }
+    void iter_then_mutate();
 
     // def ptr_then_mutate(self) -> None:
-    void ptr_then_mutate() {
-        // ptr = take_ptr(self.items[0])
-        Point* ptr = &::tpy::__getitem__(this->items, 0);
-        // self.items.append(Point(5, 6))  # tpyc: warning(/'append'.*invalidate/)
-        this->items.push_back(Point(5, 6));
-        // print(len(self.items))
-        std::cout << ::tpy::__len__(this->items) << "\n";
-    }
+    void ptr_then_mutate();
 
     // def safe_subscript_assign(self) -> None:
-    void safe_subscript_assign() {
-        // ptr = take_ptr(self.items[0])
-        Point* ptr = &::tpy::__getitem__(this->items, 0);
-        // self.items[0] = Point(9, 9)  # tpyc: ok
-        ::tpy::__setitem__(this->items, 0, Point(9, 9));
-        // print(len(self.items))
-        std::cout << ::tpy::__len__(this->items) << "\n";
-    }
+    void safe_subscript_assign();
 
     // def aug_assign_field_container(self) -> None:
-    void aug_assign_field_container() {
-        // ptr = take_ptr(self.items[0])
-        Point* ptr = &::tpy::__getitem__(this->items, 0);
-        // self.items += [Point(5, 6)]  # tpyc: warning(/while borrowed/)
-        ::tpy::list_extend(this->items, std::vector<Point>{Point(5, 6)});
-        // print(len(self.items))
-        std::cout << ::tpy::__len__(this->items) << "\n";
-    }
+    void aug_assign_field_container();
 
     // def field_reassign_while_borrowed(self) -> None:
-    void field_reassign_while_borrowed() {
-        // ptr = take_ptr(self.items[0])
-        Point* ptr = &::tpy::__getitem__(this->items, 0);
-        // self.items = [Point(9, 9)]  # tpyc: warning(/while borrowed/)
-        this->items = {Point(9, 9)};
-        // print(len(self.items))
-        std::cout << ::tpy::__len__(this->items) << "\n";
-    }
+    void field_reassign_while_borrowed();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -120,5 +80,60 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def iter_then_mutate(self) -> None:
+inline void Container::iter_then_mutate() {
+    // for p in self.items:
+    auto& __obj_0 = this->items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& p = *__beg_0;
+        // self.items.append(Point(p.x, p.y))  # tpyc: warning(/while iterating/)
+        this->items.push_back(Point(p.x, p.y));
+        // break
+        break;
+    }
+}
+
+// def ptr_then_mutate(self) -> None:
+inline void Container::ptr_then_mutate() {
+    // ptr = take_ptr(self.items[0])
+    Point* ptr = &::tpy::__getitem__(this->items, 0);
+    // self.items.append(Point(5, 6))  # tpyc: warning(/'append'.*invalidate/)
+    this->items.push_back(Point(5, 6));
+    // print(len(self.items))
+    std::cout << ::tpy::__len__(this->items) << "\n";
+}
+
+// def safe_subscript_assign(self) -> None:
+inline void Container::safe_subscript_assign() {
+    // ptr = take_ptr(self.items[0])
+    Point* ptr = &::tpy::__getitem__(this->items, 0);
+    // self.items[0] = Point(9, 9)  # tpyc: ok
+    ::tpy::__setitem__(this->items, 0, Point(9, 9));
+    // print(len(self.items))
+    std::cout << ::tpy::__len__(this->items) << "\n";
+}
+
+// def aug_assign_field_container(self) -> None:
+inline void Container::aug_assign_field_container() {
+    // ptr = take_ptr(self.items[0])
+    Point* ptr = &::tpy::__getitem__(this->items, 0);
+    // self.items += [Point(5, 6)]  # tpyc: warning(/while borrowed/)
+    ::tpy::list_extend(this->items, std::vector<Point>{Point(5, 6)});
+    // print(len(self.items))
+    std::cout << ::tpy::__len__(this->items) << "\n";
+}
+
+// def field_reassign_while_borrowed(self) -> None:
+inline void Container::field_reassign_while_borrowed() {
+    // ptr = take_ptr(self.items[0])
+    Point* ptr = &::tpy::__getitem__(this->items, 0);
+    // self.items = [Point(9, 9)]  # tpyc: warning(/while borrowed/)
+    this->items = {Point(9, 9)};
+    // print(len(self.items))
+    std::cout << ::tpy::__len__(this->items) << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

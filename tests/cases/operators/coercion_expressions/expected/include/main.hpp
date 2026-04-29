@@ -33,16 +33,10 @@ struct Counter {
     explicit Counter(const ::tpy::BigInt& v) : value(v) {}
 
     // def get(self) -> int:
-    ::tpy::BigInt get() const {
-        // return self.value
-        return this->value;
-    }
+    ::tpy::BigInt get() const;
 
     // def add(self, x: int) -> int:
-    ::tpy::BigInt add(const ::tpy::BigInt& x) const {
-        // return self.value + x
-        return ((this->value) + (x));
-    }
+    ::tpy::BigInt add(const ::tpy::BigInt& x) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -97,5 +91,17 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
     return os;
 }
 
+
+// def get(self) -> int:
+inline ::tpy::BigInt Counter::get() const {
+    // return self.value
+    return this->value;
+}
+
+// def add(self, x: int) -> int:
+inline ::tpy::BigInt Counter::add(const ::tpy::BigInt& x) const {
+    // return self.value + x
+    return ((this->value) + (x));
+}
 void __tpy_init();
 } // namespace tpyapp::main

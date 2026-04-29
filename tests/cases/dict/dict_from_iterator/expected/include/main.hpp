@@ -25,27 +25,10 @@ struct PairIter {
     explicit PairIter(int32_t limit) : current(0), limit(limit) {}
 
     // def __iter__(self) -> PairIter:
-    PairIter& __iter__() {
-        // return self
-        return (*this);
-    }
+    PairIter& __iter__();
 
     // def __next__(self) -> tuple[str, Int32]:
-    std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> __next__() {
-        // if self.current < self.limit:
-        if ((this->current < this->limit)) {
-            // key = str(self.current)
-            std::string key = ::tpy::fixed_to_str<int32_t>(this->current);
-            // val = self.current * 10
-            int32_t val = (::tpy::mul_check<int32_t>(this->current, 10));
-            // self.current += 1
-            this->current = ::tpy::add_check<int32_t>(this->current, 1);
-            // return (key, val)
-            return std::tuple<std::string, int32_t>{key, val};
-        }
-        // raise StopIteration
-        return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
+    std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> __next__();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PairIter& obj) {
@@ -53,5 +36,28 @@ inline std::ostream& operator<<(std::ostream& os, const PairIter& obj) {
     return os;
 }
 
+
+// def __iter__(self) -> PairIter:
+inline PairIter& PairIter::__iter__() {
+    // return self
+    return (*this);
+}
+
+// def __next__(self) -> tuple[str, Int32]:
+inline std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> PairIter::__next__() {
+    // if self.current < self.limit:
+    if ((this->current < this->limit)) {
+        // key = str(self.current)
+        std::string key = ::tpy::fixed_to_str<int32_t>(this->current);
+        // val = self.current * 10
+        int32_t val = (::tpy::mul_check<int32_t>(this->current, 10));
+        // self.current += 1
+        this->current = ::tpy::add_check<int32_t>(this->current, 1);
+        // return (key, val)
+        return std::tuple<std::string, int32_t>{key, val};
+    }
+    // raise StopIteration
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
 void __tpy_init();
 } // namespace tpyapp::main

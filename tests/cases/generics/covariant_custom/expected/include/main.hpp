@@ -58,10 +58,7 @@ struct Dog : Animal {
     explicit Dog(std::string_view n) : _name(n) {}
 
     // def name(self) -> str:
-    std::string name() override {
-        // return self._name
-        return this->_name;
-    }
+    std::string name() override;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
@@ -79,10 +76,7 @@ struct Cat : Animal {
     explicit Cat(std::string_view n) : _name(n) {}
 
     // def name(self) -> str:
-    std::string name() override {
-        // return self._name
-        return this->_name;
-    }
+    std::string name() override;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
@@ -160,5 +154,17 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged<T, N>& obj) {
     return os;
 }
 
+
+// def name(self) -> str:
+inline std::string Dog::name() {
+    // return self._name
+    return this->_name;
+}
+
+// def name(self) -> str:
+inline std::string Cat::name() {
+    // return self._name
+    return this->_name;
+}
 void __tpy_init();
 } // namespace tpyapp::main

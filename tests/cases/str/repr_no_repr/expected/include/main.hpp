@@ -40,10 +40,7 @@ struct Bar {
     explicit Bar(const ::tpy::BigInt& x) : x(x) {}
 
     // def __repr__(self) -> str:
-    std::string __repr__() const {
-        // return f"Bar({self.x})"
-        return std::format("Bar({})", (this->x).to_string());
-    }
+    std::string __repr__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bar& obj) {
@@ -51,5 +48,11 @@ inline std::ostream& operator<<(std::ostream& os, const Bar& obj) {
     return os;
 }
 
+
+// def __repr__(self) -> str:
+inline std::string Bar::__repr__() const {
+    // return f"Bar({self.x})"
+    return std::format("Bar({})", (this->x).to_string());
+}
 void __tpy_init();
 } // namespace tpyapp::main

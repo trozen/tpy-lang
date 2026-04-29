@@ -27,10 +27,7 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y), z(this->magnitude()) {}
 
     // def magnitude(self) -> Int32:
-    int32_t magnitude() const {
-        // return self.x  # simplified
-        return this->x;
-    }
+    int32_t magnitude() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -38,5 +35,11 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def magnitude(self) -> Int32:
+inline int32_t Point::magnitude() const {
+    // return self.x  # simplified
+    return this->x;
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -25,10 +25,7 @@ struct Point {
     explicit Point(int32_t x) : x(x) {}
 
     // def mag(self) -> Int32:
-    int32_t mag() const {
-        // return self.x
-        return this->x;
-    }
+    int32_t mag() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -36,5 +33,11 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def mag(self) -> Int32:
+inline int32_t Point::mag() const {
+    // return self.x
+    return this->x;
+}
 void __tpy_init();
 } // namespace tpyapp::main

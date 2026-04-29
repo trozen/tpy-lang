@@ -25,10 +25,7 @@ struct Named {
     explicit Named(std::string_view name) : name(name) {}
 
     // def describe(self) -> str:
-    std::string describe() const {
-        // return self.name
-        return this->name;
-    }
+    std::string describe() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
@@ -46,10 +43,7 @@ struct Counted {
     explicit Counted(int32_t count) : count(count) {}
 
     // def inc(self) -> None:
-    void inc() {
-        // self.count = self.count + 1
-        this->count = (::tpy::add_check<int32_t>(this->count, 1));
-    }
+    void inc();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counted& obj) {
@@ -72,5 +66,17 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
     return os;
 }
 
+
+// def describe(self) -> str:
+inline std::string Named::describe() const {
+    // return self.name
+    return this->name;
+}
+
+// def inc(self) -> None:
+inline void Counted::inc() {
+    // self.count = self.count + 1
+    this->count = (::tpy::add_check<int32_t>(this->count, 1));
+}
 void __tpy_init();
 } // namespace tpyapp::main

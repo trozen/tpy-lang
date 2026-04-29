@@ -44,16 +44,10 @@ struct Container {
     Container() : _items(std::vector<Point>{}) {}
 
     // def add(self, p: Point) -> None:
-    void add(const Point& p) {
-        // self._items.append(p)
-        this->_items.push_back(p);
-    }
+    void add(const Point& p);
 
     // def first(self) -> Point:
-    Point& first() {
-        // return self._items[0]  # tpyc: ok (borrows from self)
-        return ::tpy::__getitem__(this->_items, 0);
-    }
+    Point& first();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -61,5 +55,17 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+
+// def add(self, p: Point) -> None:
+inline void Container::add(const Point& p) {
+    // self._items.append(p)
+    this->_items.push_back(p);
+}
+
+// def first(self) -> Point:
+inline Point& Container::first() {
+    // return self._items[0]  # tpyc: ok (borrows from self)
+    return ::tpy::__getitem__(this->_items, 0);
+}
 void __tpy_init();
 } // namespace tpyapp::main

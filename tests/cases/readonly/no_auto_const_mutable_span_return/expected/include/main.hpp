@@ -22,10 +22,7 @@ struct Buffer {
     Buffer() : _items({1, 2, 3}) {}
 
     // def items(self) -> Span[Int32]:
-    std::span<int32_t> items() {
-        // return self._items
-        return ::tpy::as_mut_span(this->_items);
-    }
+    std::span<int32_t> items();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
@@ -33,5 +30,11 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
     return os;
 }
 
+
+// def items(self) -> Span[Int32]:
+inline std::span<int32_t> Buffer::items() {
+    // return self._items
+    return ::tpy::as_mut_span(this->_items);
+}
 void __tpy_init();
 } // namespace tpyapp::main

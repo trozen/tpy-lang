@@ -43,10 +43,7 @@ struct Message {
     explicit Message(std::string_view text) : text(text) {}
 
     // def to_result(self) -> Own[Result]:
-    Result to_result() const {
-        // return Result(Int32(42))
-        return Result(42);
-    }
+    Result to_result() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
@@ -100,10 +97,7 @@ struct DefaultWrapperMaker {
 
 
     // def make(self, text: str) -> Own[Wrapper[Message]]:
-    Wrapper<Message> make(std::string_view text) const {
-        // return Wrapper(Message(text))
-        return Wrapper<Message>(Message(text));
-    }
+    Wrapper<Message> make(std::string_view text) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DefaultWrapperMaker& obj) {
@@ -135,5 +129,17 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     return os;
 }
 
+
+// def to_result(self) -> Own[Result]:
+inline Result Message::to_result() const {
+    // return Result(Int32(42))
+    return Result(42);
+}
+
+// def make(self, text: str) -> Own[Wrapper[Message]]:
+inline Wrapper<Message> DefaultWrapperMaker::make(std::string_view text) const {
+    // return Wrapper(Message(text))
+    return Wrapper<Message>(Message(text));
+}
 void __tpy_init();
 } // namespace tpyapp::main

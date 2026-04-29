@@ -23,23 +23,14 @@ struct Counter {
 
     // @staticmethod
     // def zero() -> Int32:
-    static int32_t zero() {
-        // return 0
-        return 0;
-    }
+    static int32_t zero();
 
     // @staticmethod
     // def add(a: Int32, b: Int32) -> Int32:
-    static int32_t add(int32_t a, int32_t b) {
-        // return a + b
-        return (::tpy::add_check<int32_t>(a, b));
-    }
+    static int32_t add(int32_t a, int32_t b);
 
     // def get(self) -> Int32:
-    int32_t get() const {
-        // return self.value
-        return this->value;
-    }
+    int32_t get() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -47,5 +38,25 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// @staticmethod
+// def zero() -> Int32:
+inline int32_t Counter::zero() {
+    // return 0
+    return 0;
+}
+
+// @staticmethod
+// def add(a: Int32, b: Int32) -> Int32:
+inline int32_t Counter::add(int32_t a, int32_t b) {
+    // return a + b
+    return (::tpy::add_check<int32_t>(a, b));
+}
+
+// def get(self) -> Int32:
+inline int32_t Counter::get() const {
+    // return self.value
+    return this->value;
+}
 void __tpy_init();
 } // namespace tpyapp::main

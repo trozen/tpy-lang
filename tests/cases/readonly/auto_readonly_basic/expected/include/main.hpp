@@ -24,24 +24,15 @@ struct Buffer {
 
     // @auto_readonly
     // def as_span(self) -> Span[auto_readonly[Int32]]:
-    std::span<int32_t> as_span() {
-        // return self._data
-        return ::tpy::as_mut_span(this->_data);
-    }
+    std::span<int32_t> as_span();
 
     // @auto_readonly
     // def as_span(self) -> Span[auto_readonly[Int32]]:
-    std::span<const int32_t> as_span() const {
-        // return self._data
-        return ::tpy::as_span(this->_data);
-    }
+    std::span<const int32_t> as_span() const;
 
     // # __getitem__ is implicitly readonly; returns Int32 (value type), no dual overload needed
     // def __getitem__(self, index: Int32) -> Int32:
-    int32_t __getitem__(int32_t index) const {
-        // return self._data[index]
-        return ::tpy::__getitem__(this->_data, index);
-    }
+    int32_t __getitem__(int32_t index) const;
 
     int32_t operator[](int32_t index) const {
         return __getitem__(index);
@@ -53,5 +44,26 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
     return os;
 }
 
+
+// @auto_readonly
+// def as_span(self) -> Span[auto_readonly[Int32]]:
+inline std::span<int32_t> Buffer::as_span() {
+    // return self._data
+    return ::tpy::as_mut_span(this->_data);
+}
+
+// @auto_readonly
+// def as_span(self) -> Span[auto_readonly[Int32]]:
+inline std::span<const int32_t> Buffer::as_span() const {
+    // return self._data
+    return ::tpy::as_span(this->_data);
+}
+
+// # __getitem__ is implicitly readonly; returns Int32 (value type), no dual overload needed
+// def __getitem__(self, index: Int32) -> Int32:
+inline int32_t Buffer::__getitem__(int32_t index) const {
+    // return self._data[index]
+    return ::tpy::__getitem__(this->_data, index);
+}
 void __tpy_init();
 } // namespace tpyapp::main

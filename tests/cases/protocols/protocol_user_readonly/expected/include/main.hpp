@@ -32,10 +32,7 @@ struct GoodReader {
 
     // @readonly
     // def read(self) -> Int32:
-    int32_t read() const {
-        // return self.value
-        return this->value;
-    }
+    int32_t read() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const GoodReader& obj) {
@@ -43,6 +40,13 @@ inline std::ostream& operator<<(std::ostream& os, const GoodReader& obj) {
     return os;
 }
 
+
+// @readonly
+// def read(self) -> Int32:
+inline int32_t GoodReader::read() const {
+    // return self.value
+    return this->value;
+}
 // def use_readable(r: Readable) -> Int32:
 template<Readable T_r>
 int32_t use_readable(const T_r& r) {

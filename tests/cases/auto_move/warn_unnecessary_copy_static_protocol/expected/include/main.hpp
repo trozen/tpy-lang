@@ -43,10 +43,7 @@ struct MyHolder {
 
 
     // def store(self, p: Own[Point]) -> None:
-    void store(Point&& p) const {
-        // print(p.x)
-        std::cout << p.x << "\n";
-    }
+    void store(Point&& p) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyHolder& obj) {
@@ -60,10 +57,7 @@ struct Factory {
 
     // @staticmethod
     // def consume(p: Own[Point]) -> Int32:
-    static int32_t consume(Point&& p) {
-        // return p.x
-        return p.x;
-    }
+    static int32_t consume(Point&& p);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
@@ -71,5 +65,18 @@ inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
     return os;
 }
 
+
+// def store(self, p: Own[Point]) -> None:
+inline void MyHolder::store(Point&& p) const {
+    // print(p.x)
+    std::cout << p.x << "\n";
+}
+
+// @staticmethod
+// def consume(p: Own[Point]) -> Int32:
+inline int32_t Factory::consume(Point&& p) {
+    // return p.x
+    return p.x;
+}
 void __tpy_init();
 } // namespace tpyapp::main

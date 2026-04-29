@@ -23,13 +23,9 @@ struct Inner {
     Inner() = default;
     explicit Inner(int32_t x) : x(x) {}
 
-    bool __eq__(const Inner& other) const {
-        return (this->x == other.x);
-    }
+    bool __eq__(const Inner& other) const;
 
-    std::string __repr__() const {
-        return std::format("Inner(x={})", ::tpy::__repr__(this->x));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Inner& lhs, const Inner& other) {
         return lhs.__eq__(other);
@@ -52,13 +48,9 @@ struct Outer {
     Outer() = default;
     explicit Outer(std::string_view name, std::optional<Inner>&& inner = std::nullopt) : name(name), inner(std::move(inner)) {}
 
-    bool __eq__(const Outer& other) const {
-        return ((this->name == other.name) && (this->inner == other.inner));
-    }
+    bool __eq__(const Outer& other) const;
 
-    std::string __repr__() const {
-        return std::format("Outer(name={}, inner={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->inner));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Outer& lhs, const Outer& other) {
         return lhs.__eq__(other);
@@ -70,5 +62,21 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
     return os;
 }
 
+
+inline bool Inner::__eq__(const Inner& other) const {
+    return (this->x == other.x);
+}
+
+inline std::string Inner::__repr__() const {
+    return std::format("Inner(x={})", ::tpy::__repr__(this->x));
+}
+
+inline bool Outer::__eq__(const Outer& other) const {
+    return ((this->name == other.name) && (this->inner == other.inner));
+}
+
+inline std::string Outer::__repr__() const {
+    return std::format("Outer(name={}, inner={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->inner));
+}
 void __tpy_init();
 } // namespace tpyapp::main

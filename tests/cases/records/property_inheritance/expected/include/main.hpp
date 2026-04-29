@@ -25,10 +25,7 @@ struct Base {
 
     // @property
     // def x(self) -> Int32:
-    int32_t x() const {
-        // return self._x
-        return this->_x;
-    }
+    int32_t x() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -47,16 +44,10 @@ struct Child : Base {
 
     // @property
     // def y(self) -> Int32:
-    int32_t y() const {
-        // return self._y
-        return this->_y;
-    }
+    int32_t y() const;
 
     // def sum(self) -> Int32:
-    int32_t sum() const {
-        // return self.x + self.y
-        return (::tpy::add_check<int32_t>(this->x(), this->y()));
-    }
+    int32_t sum() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
@@ -64,5 +55,25 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+// @property
+// def x(self) -> Int32:
+inline int32_t Base::x() const {
+    // return self._x
+    return this->_x;
+}
+
+// @property
+// def y(self) -> Int32:
+inline int32_t Child::y() const {
+    // return self._y
+    return this->_y;
+}
+
+// def sum(self) -> Int32:
+inline int32_t Child::sum() const {
+    // return self.x + self.y
+    return (::tpy::add_check<int32_t>(this->x(), this->y()));
+}
 void __tpy_init();
 } // namespace tpyapp::main

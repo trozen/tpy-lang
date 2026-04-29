@@ -24,13 +24,9 @@ struct TaggedItem {
     TaggedItem() = default;
     explicit TaggedItem(std::string_view name, ::tpy::ordered_set<std::string>&& tags) : name(name), tags(std::move(tags)) {}
 
-    bool __eq__(const TaggedItem& other) const {
-        return ((this->name == other.name) && (this->tags == other.tags));
-    }
+    bool __eq__(const TaggedItem& other) const;
 
-    std::string __repr__() const {
-        return std::format("TaggedItem(name={}, tags={})", ::tpy::__repr__(this->name), ::tpy::set_to_str(this->tags));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const TaggedItem& lhs, const TaggedItem& other) {
         return lhs.__eq__(other);
@@ -42,5 +38,13 @@ inline std::ostream& operator<<(std::ostream& os, const TaggedItem& obj) {
     return os;
 }
 
+
+inline bool TaggedItem::__eq__(const TaggedItem& other) const {
+    return ((this->name == other.name) && (this->tags == other.tags));
+}
+
+inline std::string TaggedItem::__repr__() const {
+    return std::format("TaggedItem(name={}, tags={})", ::tpy::__repr__(this->name), ::tpy::set_to_str(this->tags));
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -28,10 +28,7 @@ struct Range {
     explicit Range(int32_t start, int32_t stop) : start(start), stop(stop) {}
 
     // def total(self) -> Int32:
-    int32_t total() const {
-        // return self.stop - self.start
-        return (::tpy::sub_check<int32_t>(this->stop, this->start));
-    }
+    int32_t total() const;
 
     __gen_Range___iter__ __iter__() const;
 
@@ -85,5 +82,11 @@ inline __gen_Range_pairs Range::pairs() const {
     return __gen_Range_pairs(*this);
 }
 
+
+// def total(self) -> Int32:
+inline int32_t Range::total() const {
+    // return self.stop - self.start
+    return (::tpy::sub_check<int32_t>(this->stop, this->start));
+}
 void __tpy_init();
 } // namespace tpyapp::main

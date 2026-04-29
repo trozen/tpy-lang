@@ -29,21 +29,11 @@ struct Point {
 
     // @pure
     // def magnitude_sq(self) -> Int32:
-    int32_t magnitude_sq() const {
-        // return self.x * self.x + self.y * self.y
-        return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(this->x, this->x)), (::tpy::mul_check<int32_t>(this->y, this->y))));
-    }
+    int32_t magnitude_sq() const;
 
     // @pure
     // def distance_sq(self, other: Point) -> Int32:
-    int32_t distance_sq(const Point& other) const {
-        // dx: Int32 = self.x - other.x
-        int32_t dx = (::tpy::sub_check<int32_t>(this->x, other.x));
-        // dy: Int32 = self.y - other.y
-        int32_t dy = (::tpy::sub_check<int32_t>(this->y, other.y));
-        // return dx * dx + dy * dy
-        return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(dx, dx)), (::tpy::mul_check<int32_t>(dy, dy))));
-    }
+    int32_t distance_sq(const Point& other) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -51,5 +41,23 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// @pure
+// def magnitude_sq(self) -> Int32:
+inline int32_t Point::magnitude_sq() const {
+    // return self.x * self.x + self.y * self.y
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(this->x, this->x)), (::tpy::mul_check<int32_t>(this->y, this->y))));
+}
+
+// @pure
+// def distance_sq(self, other: Point) -> Int32:
+inline int32_t Point::distance_sq(const Point& other) const {
+    // dx: Int32 = self.x - other.x
+    int32_t dx = (::tpy::sub_check<int32_t>(this->x, other.x));
+    // dy: Int32 = self.y - other.y
+    int32_t dy = (::tpy::sub_check<int32_t>(this->y, other.y));
+    // return dx * dx + dy * dy
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(dx, dx)), (::tpy::mul_check<int32_t>(dy, dy))));
+}
 void __tpy_init();
 } // namespace tpyapp::main

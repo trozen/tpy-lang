@@ -27,21 +27,10 @@ struct Counter {
     explicit Counter(int32_t v) : value(v) {}
 
     // def do_nothing(self) -> None:
-    void do_nothing() const {
-        // pass
-    }
+    void do_nothing() const;
 
     // def maybe_increment(self, flag: Int32) -> None:
-    void maybe_increment(int32_t flag) {
-        // if flag > 0:
-        if ((flag > 0)) {
-            // self.value += 1
-            this->value = ::tpy::add_check<int32_t>(this->value, 1);
-        // else:
-        } else {
-            // pass
-        }
-    }
+    void maybe_increment(int32_t flag);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -49,5 +38,22 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def do_nothing(self) -> None:
+inline void Counter::do_nothing() const {
+    // pass
+}
+
+// def maybe_increment(self, flag: Int32) -> None:
+inline void Counter::maybe_increment(int32_t flag) {
+    // if flag > 0:
+    if ((flag > 0)) {
+        // self.value += 1
+        this->value = ::tpy::add_check<int32_t>(this->value, 1);
+    // else:
+    } else {
+        // pass
+    }
+}
 void __tpy_init();
 } // namespace tpyapp::main

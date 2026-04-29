@@ -32,16 +32,10 @@ struct SimpleCalc {
     explicit SimpleCalc(int32_t b) : base(b) {}
 
     // def add(self, x: Int32) -> Int32:
-    int32_t add(int32_t x) const {
-        // return self.base + x
-        return (::tpy::add_check<int32_t>(this->base, x));
-    }
+    int32_t add(int32_t x) const;
 
     // def multiply(self, x: Int32, y: Int32) -> Int32:
-    int32_t multiply(int32_t x, int32_t y) const {
-        // return x * y
-        return (::tpy::mul_check<int32_t>(x, y));
-    }
+    int32_t multiply(int32_t x, int32_t y) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SimpleCalc& obj) {
@@ -49,6 +43,18 @@ inline std::ostream& operator<<(std::ostream& os, const SimpleCalc& obj) {
     return os;
 }
 
+
+// def add(self, x: Int32) -> Int32:
+inline int32_t SimpleCalc::add(int32_t x) const {
+    // return self.base + x
+    return (::tpy::add_check<int32_t>(this->base, x));
+}
+
+// def multiply(self, x: Int32, y: Int32) -> Int32:
+inline int32_t SimpleCalc::multiply(int32_t x, int32_t y) const {
+    // return x * y
+    return (::tpy::mul_check<int32_t>(x, y));
+}
 // def use_calc(c: Calculator) -> None:
 template<Calculator T_c>
 void use_calc(T_c& c) {

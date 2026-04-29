@@ -62,24 +62,11 @@ struct Clamped {
 
     // @property
     // def val(self) -> int:
-    ::tpy::BigInt val() const {
-        // return self._val
-        return this->_val;
-    }
+    ::tpy::BigInt val() const;
 
     // @val.setter
     // def val(self, v: int) -> None:
-    void set_val(const ::tpy::BigInt& v) {
-        // if v > 100:
-        if ((v > 100)) {
-            // self._val = 100
-            this->_val = ::tpy::BigInt(100);
-        // else:
-        } else {
-            // self._val = v
-            this->_val = v;
-        }
-    }
+    void set_val(const ::tpy::BigInt& v);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Clamped& obj) {
@@ -87,5 +74,26 @@ inline std::ostream& operator<<(std::ostream& os, const Clamped& obj) {
     return os;
 }
 
+
+// @property
+// def val(self) -> int:
+inline ::tpy::BigInt Clamped::val() const {
+    // return self._val
+    return this->_val;
+}
+
+// @val.setter
+// def val(self, v: int) -> None:
+inline void Clamped::set_val(const ::tpy::BigInt& v) {
+    // if v > 100:
+    if ((v > 100)) {
+        // self._val = 100
+        this->_val = ::tpy::BigInt(100);
+    // else:
+    } else {
+        // self._val = v
+        this->_val = v;
+    }
+}
 void __tpy_init();
 } // namespace tpyapp::main

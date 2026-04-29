@@ -20,10 +20,7 @@ struct A {
 
 
     // def foo(self) -> str:
-    std::string foo() const {
-        // return "A.foo"
-        return "A.foo";
-    }
+    std::string foo() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
@@ -36,10 +33,7 @@ struct B {
 
 
     // def bar(self) -> str:
-    std::string bar() const {
-        // return "B.bar"
-        return "B.bar";
-    }
+    std::string bar() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
@@ -53,17 +47,11 @@ struct Both : A, B {
 
     // @override
     // def foo(self) -> str:  # tpyc: warning(/non-polymorphic/)
-    std::string foo() const {
-        // return "Both.foo"
-        return "Both.foo";
-    }
+    std::string foo() const;
 
     // @override
     // def bar(self) -> str:  # tpyc: warning(/non-polymorphic/)
-    std::string bar() const {
-        // return "Both.bar"
-        return "Both.bar";
-    }
+    std::string bar() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Both& obj) {
@@ -71,5 +59,31 @@ inline std::ostream& operator<<(std::ostream& os, const Both& obj) {
     return os;
 }
 
+
+// def foo(self) -> str:
+inline std::string A::foo() const {
+    // return "A.foo"
+    return "A.foo";
+}
+
+// def bar(self) -> str:
+inline std::string B::bar() const {
+    // return "B.bar"
+    return "B.bar";
+}
+
+// @override
+// def foo(self) -> str:  # tpyc: warning(/non-polymorphic/)
+inline std::string Both::foo() const {
+    // return "Both.foo"
+    return "Both.foo";
+}
+
+// @override
+// def bar(self) -> str:  # tpyc: warning(/non-polymorphic/)
+inline std::string Both::bar() const {
+    // return "Both.bar"
+    return "Both.bar";
+}
 void __tpy_init();
 } // namespace tpyapp::main

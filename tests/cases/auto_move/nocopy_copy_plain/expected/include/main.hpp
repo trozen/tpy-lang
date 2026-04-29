@@ -31,10 +31,7 @@ struct Counter {
     Counter& operator=(Counter&&) = default;
 
     // def __copy__(self) -> Own[Counter]:
-    Counter __copy__() const {
-        // return Counter(self.count * 2)
-        return Counter((::tpy::mul_check<int32_t>(this->count, 2)));
-    }
+    Counter __copy__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -42,5 +39,11 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __copy__(self) -> Own[Counter]:
+inline Counter Counter::__copy__() const {
+    // return Counter(self.count * 2)
+    return Counter((::tpy::mul_check<int32_t>(this->count, 2)));
+}
 void __tpy_init();
 } // namespace tpyapp::main

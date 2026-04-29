@@ -42,17 +42,11 @@ struct Ref {
 
     // @auto_readonly
     // def __deref__(self) -> Point:
-    Point& __deref__() {
-        // return self._target
-        return this->_target;
-    }
+    Point& __deref__();
 
     // @auto_readonly
     // def __deref__(self) -> Point:
-    const Point& __deref__() const {
-        // return self._target
-        return this->_target;
-    }
+    const Point& __deref__() const;
 
     auto operator*() -> decltype(__deref__()) {
         return __deref__();
@@ -64,5 +58,19 @@ inline std::ostream& operator<<(std::ostream& os, const Ref& obj) {
     return os;
 }
 
+
+// @auto_readonly
+// def __deref__(self) -> Point:
+inline Point& Ref::__deref__() {
+    // return self._target
+    return this->_target;
+}
+
+// @auto_readonly
+// def __deref__(self) -> Point:
+inline const Point& Ref::__deref__() const {
+    // return self._target
+    return this->_target;
+}
 void __tpy_init();
 } // namespace tpyapp::main

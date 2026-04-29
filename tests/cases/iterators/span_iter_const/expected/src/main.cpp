@@ -33,6 +33,35 @@ void main() {
     std::cout << s.sum() << "\n";
 }
 
+
+// def __repr__(self) -> str:
+std::string Stack::__repr__() const {
+    // s = "Stack("
+    std::string s = "Stack(";
+    // first = True
+    bool first = true;
+    // for x in self:
+    auto& __src_0 = (*this);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t x = ::tpy::unwrap_ref(*__r_1);
+        // if not first:
+        if ((!(first))) {
+            // s += ", "
+            s += ", ";
+        }
+        // first = False
+        first = false;
+        // s += str(x)
+        s += ::tpy::fixed_to_str<int32_t>(x);
+    }
+    // s += ")"
+    s += ")";
+    // return s
+    return s;
+}
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

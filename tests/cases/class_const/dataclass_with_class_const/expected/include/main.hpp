@@ -26,13 +26,9 @@ struct Counter {
     Counter() = default;
     explicit Counter(int32_t count, std::string_view label) : count(count), label(label) {}
 
-    bool __eq__(const Counter& other) const {
-        return ((this->count == other.count) && (this->label == other.label));
-    }
+    bool __eq__(const Counter& other) const;
 
-    std::string __repr__() const {
-        return std::format("Counter(count={}, label={})", ::tpy::__repr__(this->count), ::tpy::__repr__(this->label));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Counter& lhs, const Counter& other) {
         return lhs.__eq__(other);
@@ -44,5 +40,13 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+inline bool Counter::__eq__(const Counter& other) const {
+    return ((this->count == other.count) && (this->label == other.label));
+}
+
+inline std::string Counter::__repr__() const {
+    return std::format("Counter(count={}, label={})", ::tpy::__repr__(this->count), ::tpy::__repr__(this->label));
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -42,18 +42,11 @@ struct FrozenCounter {
     FrozenCounter() = default;
     explicit FrozenCounter(std::string_view name) : name(name) {}
 
-    bool __eq__(const FrozenCounter& other) const {
-        return (this->name == other.name);
-    }
+    bool __eq__(const FrozenCounter& other) const;
 
-    std::string __repr__() const {
-        return std::format("FrozenCounter(name={})", ::tpy::__repr__(this->name));
-    }
+    std::string __repr__() const;
 
-    uint64_t __hash__() const {
-        uint64_t h = ::tpy::__hash__(this->name);
-        return h;
-    }
+    uint64_t __hash__() const;
 
     friend bool operator==(const FrozenCounter& lhs, const FrozenCounter& other) {
         return lhs.__eq__(other);
@@ -75,5 +68,18 @@ template<> struct std::hash<tpyapp::main::FrozenCounter> {
 namespace tpyapp::main {
 
 
+
+inline bool FrozenCounter::__eq__(const FrozenCounter& other) const {
+    return (this->name == other.name);
+}
+
+inline std::string FrozenCounter::__repr__() const {
+    return std::format("FrozenCounter(name={})", ::tpy::__repr__(this->name));
+}
+
+inline uint64_t FrozenCounter::__hash__() const {
+    uint64_t h = ::tpy::__hash__(this->name);
+    return h;
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -22,10 +22,7 @@ struct Sink {
 
 
     // def put(self, p: Ptr[None]) -> Int32:
-    int32_t put(void* p) const {
-        // return Int32(20)
-        return 20;
-    }
+    int32_t put(void* p) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
@@ -33,5 +30,11 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
     return os;
 }
 
+
+// def put(self, p: Ptr[None]) -> Int32:
+inline int32_t Sink::put(void* p) const {
+    // return Int32(20)
+    return 20;
+}
 void __tpy_init();
 } // namespace tpyapp::main

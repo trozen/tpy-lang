@@ -23,10 +23,7 @@ struct Wrapper {
     explicit Wrapper(const ::tpy::BigInt& value) : _value(value) {}
 
     // def take(self: Own[Self]) -> int:
-    ::tpy::BigInt take() && {
-        // return self._value
-        return std::move(this->_value);
-    }
+    ::tpy::BigInt take() &&;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
@@ -34,5 +31,11 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+// def take(self: Own[Self]) -> int:
+inline ::tpy::BigInt Wrapper::take() && {
+    // return self._value
+    return std::move(this->_value);
+}
 void __tpy_init();
 } // namespace tpyapp::main

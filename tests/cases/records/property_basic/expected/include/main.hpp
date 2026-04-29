@@ -24,17 +24,11 @@ struct Circle {
 
     // @property
     // def radius(self) -> Int32:
-    int32_t radius() const {
-        // return self._radius
-        return this->_radius;
-    }
+    int32_t radius() const;
 
     // @property
     // def diameter(self) -> Int32:
-    int32_t diameter() const {
-        // return self._radius * 2
-        return (::tpy::mul_check<int32_t>(this->_radius, 2));
-    }
+    int32_t diameter() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
@@ -42,5 +36,19 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
     return os;
 }
 
+
+// @property
+// def radius(self) -> Int32:
+inline int32_t Circle::radius() const {
+    // return self._radius
+    return this->_radius;
+}
+
+// @property
+// def diameter(self) -> Int32:
+inline int32_t Circle::diameter() const {
+    // return self._radius * 2
+    return (::tpy::mul_check<int32_t>(this->_radius, 2));
+}
 void __tpy_init();
 } // namespace tpyapp::main

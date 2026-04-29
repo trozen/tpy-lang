@@ -28,10 +28,7 @@ struct Module {
 
     // # Auto-discover via _logger field
     // def log_auto(self, tag: str, n: Int32) -> None:
-    void log_auto(std::string_view tag, int32_t n) {
-        // log(f"tag={tag} n={n}")
-        ::mylog::log_dispatch(this->_logger, "tag={} n={}", std::tuple<::mylog::DeferredStr, int32_t>{::mylog::defer_str(tag), n});
-    }
+    void log_auto(std::string_view tag, int32_t n);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Module& obj) {
@@ -50,17 +47,11 @@ struct Service {
     explicit Service(std::string_view name) : _handle(::mylog::LogHandle(name)) {}
 
     // def get_logger(self) -> LogHandle:
-    ::mylog::LogHandle& get_logger() {
-        // return self._handle
-        return this->_handle;
-    }
+    ::mylog::LogHandle& get_logger();
 
     // # Auto-discover via get_logger() method
     // def log_auto(self, msg: str) -> None:
-    void log_auto(std::string_view msg) {
-        // log(f"svc={msg}")
-        ::mylog::log_dispatch(this->get_logger(), "svc={}", std::tuple<::mylog::DeferredStr>(::mylog::defer_str(msg)));
-    }
+    void log_auto(std::string_view msg);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Service& obj) {
@@ -68,5 +59,25 @@ inline std::ostream& operator<<(std::ostream& os, const Service& obj) {
     return os;
 }
 
+
+// # Auto-discover via _logger field
+// def log_auto(self, tag: str, n: Int32) -> None:
+inline void Module::log_auto(std::string_view tag, int32_t n) {
+    // log(f"tag={tag} n={n}")
+    ::mylog::log_dispatch(this->_logger, "tag={} n={}", std::tuple<::mylog::DeferredStr, int32_t>{::mylog::defer_str(tag), n});
+}
+
+// def get_logger(self) -> LogHandle:
+inline ::mylog::LogHandle& Service::get_logger() {
+    // return self._handle
+    return this->_handle;
+}
+
+// # Auto-discover via get_logger() method
+// def log_auto(self, msg: str) -> None:
+inline void Service::log_auto(std::string_view msg) {
+    // log(f"svc={msg}")
+    ::mylog::log_dispatch(this->get_logger(), "svc={}", std::tuple<::mylog::DeferredStr>(::mylog::defer_str(msg)));
+}
 void __tpy_init();
 } // namespace tpyapp::main

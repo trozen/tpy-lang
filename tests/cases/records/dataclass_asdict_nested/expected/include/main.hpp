@@ -25,13 +25,9 @@ struct Point {
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    bool __eq__(const Point& other) const {
-        return ((this->x == other.x) && (this->y == other.y));
-    }
+    bool __eq__(const Point& other) const;
 
-    std::string __repr__() const {
-        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
@@ -54,13 +50,9 @@ struct Line {
     Line() = default;
     explicit Line(Point&& start, Point&& end) : start(std::move(start)), end(std::move(end)) {}
 
-    bool __eq__(const Line& other) const {
-        return ((this->start == other.start) && (this->end == other.end));
-    }
+    bool __eq__(const Line& other) const;
 
-    std::string __repr__() const {
-        return std::format("Line(start={}, end={})", ::tpy::__repr__(this->start), ::tpy::__repr__(this->end));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Line& lhs, const Line& other) {
         return lhs.__eq__(other);
@@ -72,5 +64,21 @@ inline std::ostream& operator<<(std::ostream& os, const Line& obj) {
     return os;
 }
 
+
+inline bool Point::__eq__(const Point& other) const {
+    return ((this->x == other.x) && (this->y == other.y));
+}
+
+inline std::string Point::__repr__() const {
+    return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+}
+
+inline bool Line::__eq__(const Line& other) const {
+    return ((this->start == other.start) && (this->end == other.end));
+}
+
+inline std::string Line::__repr__() const {
+    return std::format("Line(start={}, end={})", ::tpy::__repr__(this->start), ::tpy::__repr__(this->end));
+}
 void __tpy_init();
 } // namespace tpyapp::main

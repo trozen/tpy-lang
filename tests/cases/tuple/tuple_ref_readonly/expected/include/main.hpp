@@ -24,10 +24,7 @@ struct Container {
     explicit Container(int32_t value) : value(value) {}
 
     // def __repr__(self) -> str:
-    std::string __repr__() const {
-        // return "Container(value=" + str(self.value) + ")"
-        return (::tpy::str_concat((::tpy::str_concat("Container(value=", ::tpy::fixed_to_str<int32_t>(this->value))), ")"));
-    }
+    std::string __repr__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -46,10 +43,7 @@ struct Wrapper {
 
     // @readonly
     // def get_pair(self) -> tuple[Container, Int32]:
-    std::tuple<const Container&, int32_t> get_pair() const {
-        // return (self.inner, self.inner.value)
-        return std::tuple<const Container&, int32_t>{this->inner, this->inner.value};
-    }
+    std::tuple<const Container&, int32_t> get_pair() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
@@ -57,5 +51,18 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+// def __repr__(self) -> str:
+inline std::string Container::__repr__() const {
+    // return "Container(value=" + str(self.value) + ")"
+    return (::tpy::str_concat((::tpy::str_concat("Container(value=", ::tpy::fixed_to_str<int32_t>(this->value))), ")"));
+}
+
+// @readonly
+// def get_pair(self) -> tuple[Container, Int32]:
+inline std::tuple<const Container&, int32_t> Wrapper::get_pair() const {
+    // return (self.inner, self.inner.value)
+    return std::tuple<const Container&, int32_t>{this->inner, this->inner.value};
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -42,10 +42,7 @@ struct Holder {
     explicit Holder(const Point& p, int32_t n) : data(std::tuple<Point, int32_t>{Point(p), n}) {}
 
     // def __repr__(self) -> str:
-    std::string __repr__() const {
-        // return "Holder"
-        return "Holder";
-    }
+    std::string __repr__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
@@ -53,5 +50,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __repr__(self) -> str:
+inline std::string Holder::__repr__() const {
+    // return "Holder"
+    return "Holder";
+}
 void __tpy_init();
 } // namespace tpyapp::main

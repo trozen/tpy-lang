@@ -40,17 +40,11 @@ struct NodeHolder {
 
     // @auto_readonly
     // def get_node(self) -> Ptr[auto_readonly[Node]]:
-    Node* get_node() {
-        // return self._node
-        return this->_node;
-    }
+    Node* get_node();
 
     // @auto_readonly
     // def get_node(self) -> Ptr[auto_readonly[Node]]:
-    const Node* get_node() const {
-        // return self._node
-        return this->_node;
-    }
+    const Node* get_node() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NodeHolder& obj) {
@@ -58,5 +52,19 @@ inline std::ostream& operator<<(std::ostream& os, const NodeHolder& obj) {
     return os;
 }
 
+
+// @auto_readonly
+// def get_node(self) -> Ptr[auto_readonly[Node]]:
+inline Node* NodeHolder::get_node() {
+    // return self._node
+    return this->_node;
+}
+
+// @auto_readonly
+// def get_node(self) -> Ptr[auto_readonly[Node]]:
+inline const Node* NodeHolder::get_node() const {
+    // return self._node
+    return this->_node;
+}
 void __tpy_init();
 } // namespace tpyapp::main

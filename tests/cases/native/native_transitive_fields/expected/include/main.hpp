@@ -24,16 +24,10 @@ struct M {
     explicit M(::mylib::S* s) : s(s) {}
 
     // def read(self) -> bool:
-    bool read() const {
-        // return self.s.a.q.flag       # tpyc: ok
-        return ::tpy::deref_check(this->s).a.q.flag;
-    }
+    bool read() const;
 
     // def write(self) -> None:
-    void write() {
-        // self.s.a.q.flag = True       # tpyc: ok
-        ::tpy::deref_check(this->s).a.q.flag = true;
-    }
+    void write();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const M& obj) {
@@ -41,5 +35,17 @@ inline std::ostream& operator<<(std::ostream& os, const M& obj) {
     return os;
 }
 
+
+// def read(self) -> bool:
+inline bool M::read() const {
+    // return self.s.a.q.flag       # tpyc: ok
+    return ::tpy::deref_check(this->s).a.q.flag;
+}
+
+// def write(self) -> None:
+inline void M::write() {
+    // self.s.a.q.flag = True       # tpyc: ok
+    ::tpy::deref_check(this->s).a.q.flag = true;
+}
 void __tpy_init();
 } // namespace tpyapp::main

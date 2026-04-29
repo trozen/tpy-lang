@@ -50,10 +50,7 @@ struct Resource {
     }
 
     // def __copy__(self) -> Own[Resource]:
-    Resource __copy__() const {
-        // return Resource(self.id + 100)
-        return Resource((::tpy::add_check<int32_t>(this->id, 100)));
-    }
+    Resource __copy__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
@@ -61,5 +58,11 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
     return os;
 }
 
+
+// def __copy__(self) -> Own[Resource]:
+inline Resource Resource::__copy__() const {
+    // return Resource(self.id + 100)
+    return Resource((::tpy::add_check<int32_t>(this->id, 100)));
+}
 void __tpy_init();
 } // namespace tpyapp::main

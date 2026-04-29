@@ -22,10 +22,7 @@ struct Speaker {
 
 
     // def greet(self) -> str:
-    std::string greet() const {
-        // return "Speaker.greet"
-        return "Speaker.greet";
-    }
+    std::string greet() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Speaker& obj) {
@@ -38,10 +35,7 @@ struct Greeter {
 
 
     // def greet(self) -> str:
-    std::string greet() const {
-        // return "Greeter.greet"
-        return "Greeter.greet";
-    }
+    std::string greet() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Greeter& obj) {
@@ -54,10 +48,7 @@ struct Child : Speaker, Greeter {
 
 
     // def greet(self) -> str:
-    std::string greet() const {
-        // return super().greet() + " / child"
-        return (::tpy::str_concat(this->Speaker::greet(), " / child"));
-    }
+    std::string greet() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
@@ -65,5 +56,23 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+// def greet(self) -> str:
+inline std::string Speaker::greet() const {
+    // return "Speaker.greet"
+    return "Speaker.greet";
+}
+
+// def greet(self) -> str:
+inline std::string Greeter::greet() const {
+    // return "Greeter.greet"
+    return "Greeter.greet";
+}
+
+// def greet(self) -> str:
+inline std::string Child::greet() const {
+    // return super().greet() + " / child"
+    return (::tpy::str_concat(this->Speaker::greet(), " / child"));
+}
 void __tpy_init();
 } // namespace tpyapp::main

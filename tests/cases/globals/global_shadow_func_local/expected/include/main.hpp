@@ -43,21 +43,7 @@ struct Picker {
     explicit Picker(int32_t val) : val(val) {}
 
     // def pick(self, cond: bool) -> None:
-    void pick(bool cond) const {
-        // if cond:
-        std::optional<Point> __slot_1;
-        Point* p;
-        if (cond) {
-            // p = Point(self.val, self.val)
-            p = &*(__slot_1 = Point(this->val, this->val));
-        // else:
-        } else {
-            // p = Point(0, 0)
-            p = &*(__slot_1 = Point(0, 0));
-        }
-        // print(p.x, p.y)
-        std::cout << p->x << " " << p->y << "\n";
-    }
+    void pick(bool cond) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Picker& obj) {
@@ -65,5 +51,22 @@ inline std::ostream& operator<<(std::ostream& os, const Picker& obj) {
     return os;
 }
 
+
+// def pick(self, cond: bool) -> None:
+inline void Picker::pick(bool cond) const {
+    // if cond:
+    std::optional<Point> __slot_1;
+    Point* p;
+    if (cond) {
+        // p = Point(self.val, self.val)
+        p = &*(__slot_1 = Point(this->val, this->val));
+    // else:
+    } else {
+        // p = Point(0, 0)
+        p = &*(__slot_1 = Point(0, 0));
+    }
+    // print(p.x, p.y)
+    std::cout << p->x << " " << p->y << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

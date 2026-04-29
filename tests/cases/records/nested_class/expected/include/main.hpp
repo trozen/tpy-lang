@@ -25,10 +25,7 @@ struct Outer {
         explicit Inner(int32_t y) : y(y) {}
 
         // def doubled(self) -> Int32:
-        int32_t doubled() const {
-            // return self.y * 2
-            return (::tpy::mul_check<int32_t>(this->y, 2));
-        }
+        int32_t doubled() const;
     };
 
     // x: Int32
@@ -49,5 +46,11 @@ inline std::ostream& operator<<(std::ostream& os, const Outer::Inner& obj) {
     return os;
 }
 
+
+// def doubled(self) -> Int32:
+inline int32_t Outer::Inner::doubled() const {
+    // return self.y * 2
+    return (::tpy::mul_check<int32_t>(this->y, 2));
+}
 void __tpy_init();
 } // namespace tpyapp::main

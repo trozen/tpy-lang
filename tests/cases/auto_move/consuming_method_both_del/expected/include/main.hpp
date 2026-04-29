@@ -90,17 +90,7 @@ struct Child : Base {
     }
 
     // def take(self: Own[Self]) -> Int32:
-    int32_t take() && {
-        this->__tpy_owned_ = false;
-        // print("take")
-        std::cout << "take" << "\n";
-        // val: Int32 = unsafe_move_out(self._ptr)
-        int32_t val = std::move(*this->_ptr);
-        // unsafe_free(self._ptr)
-        ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
-        // return val
-        return val;
-    }
+    int32_t take() &&;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
@@ -108,5 +98,18 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+// def take(self: Own[Self]) -> Int32:
+inline int32_t Child::take() && {
+    this->__tpy_owned_ = false;
+    // print("take")
+    std::cout << "take" << "\n";
+    // val: Int32 = unsafe_move_out(self._ptr)
+    int32_t val = std::move(*this->_ptr);
+    // unsafe_free(self._ptr)
+    ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
+    // return val
+    return val;
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -51,166 +51,25 @@ struct Msg {
 
     explicit Msg(std::string_view color = "", int32_t value = 0) : color(color), value(value) {}
 
-    bool __eq__(const Msg& other) const {
-        return ((this->color == other.color) && (this->value == other.value));
-    }
+    bool __eq__(const Msg& other) const;
 
-    std::string __repr__() const {
-        return std::format("Msg(color={}, value={})", ::tpy::__repr__(this->color), ::tpy::__repr__(this->value));
-    }
+    std::string __repr__() const;
 
-    static std::expected<Msg, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
-        {
-            auto __try_tmp_1 = __reader.read_object_start();
-            if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
-        }
-        std::string color = "";
-        int32_t value = 0;
-        while (__reader.has_next()) {
-            std::string_view __key;
-            {
-                auto __try_tmp_2 = __reader.read_key_raw();
-                if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
-                __key = ::tpy::unwrap_ref(*__try_tmp_2);
-            }
-            auto& __match_subject = __key;
-            if (__match_subject == "color") {
-                std::string __color_1;
-                {
-                    auto __try_tmp_3 = __reader.read_str();
-                    if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
-                    __color_1 = ::tpy::unwrap_ref(*__try_tmp_3);
-                }
-                color = __color_1;
-            } else if (__match_subject == "value") {
-                int64_t __raw_3;
-                {
-                    auto __try_tmp_4 = __reader.read_int();
-                    if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
-                    __raw_3 = ::tpy::unwrap_ref(*__try_tmp_4);
-                }
-                int32_t __value_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
-                value = __value_2;
-            } else {
-                {
-                    auto __try_tmp_5 = __reader.skip_value();
-                    if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
-                }
-            }
-        }
-        {
-            auto __try_tmp_6 = __reader.read_object_end();
-            if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
-        }
-        return Msg(color, value);
-    }
+    static std::expected<Msg, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader);
 
-    static Msg from_json(std::string_view __s) {
-        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-        std::optional<Msg> __result = std::nullopt;
-        {
-            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_7;
-            {
-                auto __try_tmp_8 = Msg::__json_decode__(__reader);
-                if (!__try_tmp_8.has_value()) { __err_opt_7 = std::move(__try_tmp_8.error()); goto __except_7; }
-                __result = ::tpy::unwrap_ref(*__try_tmp_8);
-            }
-            goto __after_try_7;
-            // except tplib.json.parser.JsonError:
-            __except_7:;
-            {
-                auto& __e = *__err_opt_7;
-                ::tpy::tpy_panic(__e.message);
-            }
-            __after_try_7:;
-        }
-        if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
-        return (*__result);
-    }
+    static Msg from_json(std::string_view __s);
 
-    static std::expected<Msg, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s) {
-        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-        return Msg::__json_decode__(__reader);
-    }
+    static std::expected<Msg, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s);
 
-    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
-        __writer.object_start();
-        __writer.key("color");
-        __writer.write_str(this->color);
-        __writer.key("value");
-        __writer.write_int32(this->value);
-        __writer.object_end();
-    }
+    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const;
 
-    std::string to_json(int32_t indent = 0) const {
-        ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
-        this->__json_encode__(__writer);
-        return __writer.finish();
-    }
+    std::string to_json(int32_t indent = 0) const;
 
-    void save_json(std::string_view __path, int32_t indent = 0) const {
-        // # Regression: @model field names must not leak into other methods' scopes.
-        auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
-        auto& __f = __ctx_1.__enter__();
-        try {
-            // # Regression: @model field names must not leak into other methods' scopes.
-            // # A @model with field `color: str` must not shadow a `color: Color` parameter
-            __f.write(this->to_json(indent));
-        } catch (...) {
-            __ctx_1.__exit__();
-            throw;
-        }
-        __finally_9:;
-        __ctx_1.__exit__();
-        // # A @model with field `color: str` must not shadow a `color: Color` parameter
-        // # in an unrelated method after an if-statement triggers _sync_promoted_var_types.
-    }
+    void save_json(std::string_view __path, int32_t indent = 0) const;
 
-    static Msg load_json(std::string_view __path) {
-        // # Regression: @model field names must not leak into other methods' scopes.
-        std::string __data;
-        auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
-        auto& __f = __ctx_2.__enter__();
-        std::optional<Msg> __retval_11;
-        try {
-            // # Regression: @model field names must not leak into other methods' scopes.
-            // # A @model with field `color: str` must not shadow a `color: Color` parameter
-            __data = __f.read();
-        } catch (...) {
-            __ctx_2.__exit__();
-            throw;
-        }
-        __finally_10:;
-        __ctx_2.__exit__();
-        if (__retval_11) return (*__retval_11);
-        // # Regression: @model field names must not leak into other methods' scopes.
-        // # A @model with field `color: str` must not shadow a `color: Color` parameter
-        // # in an unrelated method after an if-statement triggers _sync_promoted_var_types.
-        return Msg::from_json(__data);
-    }
+    static Msg load_json(std::string_view __path);
 
-    static std::expected<Msg, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
-        // # Regression: @model field names must not leak into other methods' scopes.
-        std::string __data;
-        auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
-        auto& __f = __ctx_3.__enter__();
-        std::optional<std::expected<Msg, ::tpystd::tplib::json::parser::JsonError>> __retval_13;
-        try {
-            // # Regression: @model field names must not leak into other methods' scopes.
-            // # A @model with field `color: str` must not shadow a `color: Color` parameter
-            __data = __f.read();
-        } catch (...) {
-            __ctx_3.__exit__();
-            throw;
-        }
-        __finally_12:;
-        __ctx_3.__exit__();
-        if (__retval_13) return (*__retval_13);
-        // # Regression: @model field names must not leak into other methods' scopes.
-        // # A @model with field `color: str` must not shadow a `color: Color` parameter
-        // # in an unrelated method after an if-statement triggers _sync_promoted_var_types.
-        return Msg::try_from_json(__data);
-    }
+    static std::expected<Msg, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path);
 
     friend bool operator==(const Msg& lhs, const Msg& other) {
         return lhs.__eq__(other);
@@ -231,13 +90,9 @@ struct Item {
     Item() = default;
     explicit Item(Color color) : color(color) {}
 
-    bool __eq__(const Item& other) const {
-        return (this->color == other.color);
-    }
+    bool __eq__(const Item& other) const;
 
-    std::string __repr__() const {
-        return std::format("Item(color={})", ::tpy::__repr__(this->color));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Item& lhs, const Item& other) {
         return lhs.__eq__(other);
@@ -258,17 +113,7 @@ struct Registry {
     Registry() : items(::tpy::ordered_map<int32_t, Item>()) {}
 
     // def update(self, key: Int32, color: Color) -> None:
-    void update(int32_t key, Color color) {
-        // if key in self.items:
-        if ((this->items.contains(key))) {
-            // del self.items[key]
-            ::tpy::__delitem__(this->items, key);
-        }
-        // item = Item(color)
-        Item item = Item(color);
-        // self.items[key] = copy(item)
-        ::tpy::__setitem__(this->items, key, Item(item));
-    }
+    void update(int32_t key, Color color);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Registry& obj) {
@@ -276,5 +121,141 @@ inline std::ostream& operator<<(std::ostream& os, const Registry& obj) {
     return os;
 }
 
+
+inline bool Msg::__eq__(const Msg& other) const {
+    return ((this->color == other.color) && (this->value == other.value));
+}
+
+inline std::string Msg::__repr__() const {
+    return std::format("Msg(color={}, value={})", ::tpy::__repr__(this->color), ::tpy::__repr__(this->value));
+}
+
+inline Msg Msg::from_json(std::string_view __s) {
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
+    std::optional<Msg> __result = std::nullopt;
+    {
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_1;
+        {
+            auto __try_tmp_2 = Msg::__json_decode__(__reader);
+            if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_2);
+        }
+        goto __after_try_1;
+        // except tplib.json.parser.JsonError:
+        __except_1:;
+        {
+            auto& __e = *__err_opt_1;
+            ::tpy::tpy_panic(__e.message);
+        }
+        __after_try_1:;
+    }
+    if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
+    return (*__result);
+}
+
+inline std::expected<Msg, ::tpystd::tplib::json::parser::JsonError> Msg::try_from_json(std::string_view __s) {
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
+    return Msg::__json_decode__(__reader);
+}
+
+inline void Msg::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
+    __writer.object_start();
+    __writer.key("color");
+    __writer.write_str(this->color);
+    __writer.key("value");
+    __writer.write_int32(this->value);
+    __writer.object_end();
+}
+
+inline std::string Msg::to_json(int32_t indent) const {
+    ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
+    this->__json_encode__(__writer);
+    return __writer.finish();
+}
+
+inline void Msg::save_json(std::string_view __path, int32_t indent) const {
+    // # Regression: @model field names must not leak into other methods' scopes.
+    auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
+    auto& __f = __ctx_1.__enter__();
+    try {
+        // # Regression: @model field names must not leak into other methods' scopes.
+        // # A @model with field `color: str` must not shadow a `color: Color` parameter
+        __f.write(this->to_json(indent));
+    } catch (...) {
+        __ctx_1.__exit__();
+        throw;
+    }
+    __finally_3:;
+    __ctx_1.__exit__();
+    // # A @model with field `color: str` must not shadow a `color: Color` parameter
+    // # in an unrelated method after an if-statement triggers _sync_promoted_var_types.
+}
+
+inline Msg Msg::load_json(std::string_view __path) {
+    // # Regression: @model field names must not leak into other methods' scopes.
+    std::string __data;
+    auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
+    auto& __f = __ctx_2.__enter__();
+    std::optional<Msg> __retval_5;
+    try {
+        // # Regression: @model field names must not leak into other methods' scopes.
+        // # A @model with field `color: str` must not shadow a `color: Color` parameter
+        __data = __f.read();
+    } catch (...) {
+        __ctx_2.__exit__();
+        throw;
+    }
+    __finally_4:;
+    __ctx_2.__exit__();
+    if (__retval_5) return (*__retval_5);
+    // # Regression: @model field names must not leak into other methods' scopes.
+    // # A @model with field `color: str` must not shadow a `color: Color` parameter
+    // # in an unrelated method after an if-statement triggers _sync_promoted_var_types.
+    return Msg::from_json(__data);
+}
+
+inline std::expected<Msg, ::tpystd::tplib::json::parser::JsonError> Msg::try_load_json(std::string_view __path) {
+    // # Regression: @model field names must not leak into other methods' scopes.
+    std::string __data;
+    auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
+    auto& __f = __ctx_3.__enter__();
+    std::optional<std::expected<Msg, ::tpystd::tplib::json::parser::JsonError>> __retval_7;
+    try {
+        // # Regression: @model field names must not leak into other methods' scopes.
+        // # A @model with field `color: str` must not shadow a `color: Color` parameter
+        __data = __f.read();
+    } catch (...) {
+        __ctx_3.__exit__();
+        throw;
+    }
+    __finally_6:;
+    __ctx_3.__exit__();
+    if (__retval_7) return (*__retval_7);
+    // # Regression: @model field names must not leak into other methods' scopes.
+    // # A @model with field `color: str` must not shadow a `color: Color` parameter
+    // # in an unrelated method after an if-statement triggers _sync_promoted_var_types.
+    return Msg::try_from_json(__data);
+}
+
+inline bool Item::__eq__(const Item& other) const {
+    return (this->color == other.color);
+}
+
+inline std::string Item::__repr__() const {
+    return std::format("Item(color={})", ::tpy::__repr__(this->color));
+}
+
+// def update(self, key: Int32, color: Color) -> None:
+inline void Registry::update(int32_t key, Color color) {
+    // if key in self.items:
+    if ((this->items.contains(key))) {
+        // del self.items[key]
+        ::tpy::__delitem__(this->items, key);
+    }
+    // item = Item(color)
+    Item item = Item(color);
+    // self.items[key] = copy(item)
+    ::tpy::__setitem__(this->items, key, Item(item));
+}
 void __tpy_init();
 } // namespace tpyapp::main

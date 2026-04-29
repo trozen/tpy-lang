@@ -23,13 +23,9 @@ struct Foo {
 
     explicit Foo(std::vector<int32_t>&& items = {}, int32_t x = 42) : items(std::move(items)), x(x) {}
 
-    bool __eq__(const Foo& other) const {
-        return ((this->items == other.items) && (this->x == other.x));
-    }
+    bool __eq__(const Foo& other) const;
 
-    std::string __repr__() const {
-        return std::format("Foo(items={}, x={})", ::tpy::list_to_str(this->items), ::tpy::__repr__(this->x));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Foo& lhs, const Foo& other) {
         return lhs.__eq__(other);
@@ -41,5 +37,13 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
     return os;
 }
 
+
+inline bool Foo::__eq__(const Foo& other) const {
+    return ((this->items == other.items) && (this->x == other.x));
+}
+
+inline std::string Foo::__repr__() const {
+    return std::format("Foo(items={}, x={})", ::tpy::list_to_str(this->items), ::tpy::__repr__(this->x));
+}
 void __tpy_init();
 } // namespace tpyapp::main

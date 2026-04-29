@@ -24,13 +24,9 @@ struct Circle {
     Circle() = default;
     explicit Circle(double radius) : radius(radius) {}
 
-    bool __eq__(const Circle& other) const {
-        return (this->radius == other.radius);
-    }
+    bool __eq__(const Circle& other) const;
 
-    std::string __repr__() const {
-        return std::format("Circle(radius={})", ::tpy::__repr__(this->radius));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Circle& lhs, const Circle& other) {
         return lhs.__eq__(other);
@@ -53,13 +49,9 @@ struct Rect {
     Rect() = default;
     explicit Rect(double width, double height) : width(width), height(height) {}
 
-    bool __eq__(const Rect& other) const {
-        return ((this->width == other.width) && (this->height == other.height));
-    }
+    bool __eq__(const Rect& other) const;
 
-    std::string __repr__() const {
-        return std::format("Rect(width={}, height={})", ::tpy::__repr__(this->width), ::tpy::__repr__(this->height));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Rect& lhs, const Rect& other) {
         return lhs.__eq__(other);
@@ -71,5 +63,21 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
     return os;
 }
 
+
+inline bool Circle::__eq__(const Circle& other) const {
+    return (this->radius == other.radius);
+}
+
+inline std::string Circle::__repr__() const {
+    return std::format("Circle(radius={})", ::tpy::__repr__(this->radius));
+}
+
+inline bool Rect::__eq__(const Rect& other) const {
+    return ((this->width == other.width) && (this->height == other.height));
+}
+
+inline std::string Rect::__repr__() const {
+    return std::format("Rect(width={}, height={})", ::tpy::__repr__(this->width), ::tpy::__repr__(this->height));
+}
 void __tpy_init();
 } // namespace tpyapp::main

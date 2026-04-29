@@ -42,10 +42,7 @@ struct Mut {
 
     // # Same escape through a non-__init__ method.
     // def set_a(self, a: A) -> None:
-    void set_a(A& a) {
-        // self._a = a
-        this->_a = &a;
-    }
+    void set_a(A& a);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mut& obj) {
@@ -69,5 +66,12 @@ inline std::ostream& operator<<(std::ostream& os, const Const& obj) {
     return os;
 }
 
+
+// # Same escape through a non-__init__ method.
+// def set_a(self, a: A) -> None:
+inline void Mut::set_a(A& a) {
+    // self._a = a
+    this->_a = &a;
+}
 void __tpy_init();
 } // namespace tpyapp::main

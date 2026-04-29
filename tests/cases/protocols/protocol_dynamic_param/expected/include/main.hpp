@@ -51,10 +51,7 @@ struct Dog : Pet {
 
 
     // def make_noise(self) -> str:
-    std::string make_noise() override {
-        // return "Woof"
-        return "Woof";
-    }
+    std::string make_noise() override;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
@@ -67,10 +64,7 @@ struct Cat : Pet {
 
 
     // def make_noise(self) -> str:
-    std::string make_noise() override {
-        // return "Meow"
-        return "Meow";
-    }
+    std::string make_noise() override;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
@@ -78,5 +72,17 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
+
+// def make_noise(self) -> str:
+inline std::string Dog::make_noise() {
+    // return "Woof"
+    return "Woof";
+}
+
+// def make_noise(self) -> str:
+inline std::string Cat::make_noise() {
+    // return "Meow"
+    return "Meow";
+}
 void __tpy_init();
 } // namespace tpyapp::main

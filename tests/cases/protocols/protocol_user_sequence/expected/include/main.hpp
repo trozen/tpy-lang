@@ -27,16 +27,10 @@ struct IntWrapper {
     explicit IntWrapper(const std::vector<int32_t>& items) : data(items) {}
 
     // def __len__(self) -> Int32:
-    int32_t __len__() const {
-        // return len(self.data)
-        return ::tpy::__len__(this->data);
-    }
+    int32_t __len__() const;
 
     // def __getitem__(self, index: Int32) -> Int32:
-    int32_t __getitem__(int32_t index) const {
-        // return self.data[index]
-        return ::tpy::__getitem__(this->data, index);
-    }
+    int32_t __getitem__(int32_t index) const;
 
     int32_t operator[](int32_t index) const {
         return __getitem__(index);
@@ -54,6 +48,18 @@ inline std::ostream& operator<<(std::ostream& os, const IntWrapper& obj) {
     return os;
 }
 
+
+// def __len__(self) -> Int32:
+inline int32_t IntWrapper::__len__() const {
+    // return len(self.data)
+    return ::tpy::__len__(this->data);
+}
+
+// def __getitem__(self, index: Int32) -> Int32:
+inline int32_t IntWrapper::__getitem__(int32_t index) const {
+    // return self.data[index]
+    return ::tpy::__getitem__(this->data, index);
+}
 // def sum_seq(s: Sequence[Int32]) -> Int32:
 template<::tpystd::typing::Sequence<int32_t> T_s>
 int32_t sum_seq(const T_s& s) {

@@ -32,17 +32,11 @@ struct Buffer {
 
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[Int32]]:
-    std::span<int32_t> __span__() {
-        // return self._data
-        return ::tpy::as_mut_span(this->_data);
-    }
+    std::span<int32_t> __span__();
 
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[Int32]]:
-    std::span<const int32_t> __span__() const {
-        // return self._data
-        return ::tpy::as_span(this->_data);
-    }
+    std::span<const int32_t> __span__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
@@ -50,6 +44,20 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
     return os;
 }
 
+
+// @auto_readonly
+// def __span__(self) -> Span[auto_readonly[Int32]]:
+inline std::span<int32_t> Buffer::__span__() {
+    // return self._data
+    return ::tpy::as_mut_span(this->_data);
+}
+
+// @auto_readonly
+// def __span__(self) -> Span[auto_readonly[Int32]]:
+inline std::span<const int32_t> Buffer::__span__() const {
+    // return self._data
+    return ::tpy::as_span(this->_data);
+}
 // def span_len(x: Spannable[Int32]) -> Int32:
 template<::tpystd::tpy::Spannable<int32_t> T_x>
 int32_t span_len(const T_x& x) {

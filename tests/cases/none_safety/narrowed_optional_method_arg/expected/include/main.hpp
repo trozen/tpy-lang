@@ -24,25 +24,13 @@ struct Printer {
 
 
     // def show(self, s: str) -> None:
-    void show(std::string_view s) const {
-        // print(s)
-        std::cout << s << "\n";
-    }
+    void show(std::string_view s) const;
 
     // def show_int(self, n: int) -> None:
-    void show_int(const ::tpy::BigInt& n) const {
-        // print(n)
-        std::cout << n << "\n";
-    }
+    void show_int(const ::tpy::BigInt& n) const;
 
     // def process(self, x: str | None) -> None:
-    void process(std::optional<std::string_view> x) const {
-        // if x is not None:
-        if ((x.has_value())) {
-            // self.show(x)
-            this->show((*x));
-        }
-    }
+    void process(std::optional<std::string_view> x) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Printer& obj) {
@@ -64,5 +52,26 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     return os;
 }
 
+
+// def show(self, s: str) -> None:
+inline void Printer::show(std::string_view s) const {
+    // print(s)
+    std::cout << s << "\n";
+}
+
+// def show_int(self, n: int) -> None:
+inline void Printer::show_int(const ::tpy::BigInt& n) const {
+    // print(n)
+    std::cout << n << "\n";
+}
+
+// def process(self, x: str | None) -> None:
+inline void Printer::process(std::optional<std::string_view> x) const {
+    // if x is not None:
+    if ((x.has_value())) {
+        // self.show(x)
+        this->show((*x));
+    }
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -43,10 +43,7 @@ struct Point {
 
     // @readonly
     // def value(self) -> Int32:
-    int32_t value() const {
-        // return self.x + self.y
-        return (::tpy::add_check<int32_t>(this->x, this->y));
-    }
+    int32_t value() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -68,5 +65,12 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+
+// @readonly
+// def value(self) -> Int32:
+inline int32_t Point::value() const {
+    // return self.x + self.y
+    return (::tpy::add_check<int32_t>(this->x, this->y));
+}
 void __tpy_init();
 } // namespace tpyapp::main

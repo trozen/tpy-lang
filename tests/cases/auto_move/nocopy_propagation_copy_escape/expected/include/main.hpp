@@ -54,10 +54,7 @@ struct Container {
     Container& operator=(Container&&) = default;
 
     // def __copy__(self) -> Own[Container]:
-    Container __copy__() const {
-        // return Container(Handle(self.handle.fd))
-        return Container(Handle(this->handle.fd));
-    }
+    Container __copy__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -65,5 +62,11 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+
+// def __copy__(self) -> Own[Container]:
+inline Container Container::__copy__() const {
+    // return Container(Handle(self.handle.fd))
+    return Container(Handle(this->handle.fd));
+}
 void __tpy_init();
 } // namespace tpyapp::main

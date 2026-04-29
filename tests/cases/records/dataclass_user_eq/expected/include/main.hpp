@@ -25,14 +25,9 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     // def __eq__(self, other: Self) -> bool:  # tpyc: warning(/will not generate __eq__/)
-    bool __eq__(const Point& other) const {
-        // return self.x == other.x
-        return (this->x == other.x);
-    }
+    bool __eq__(const Point& other) const;
 
-    std::string __repr__() const {
-        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
@@ -44,5 +39,15 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def __eq__(self, other: Self) -> bool:  # tpyc: warning(/will not generate __eq__/)
+inline bool Point::__eq__(const Point& other) const {
+    // return self.x == other.x
+    return (this->x == other.x);
+}
+
+inline std::string Point::__repr__() const {
+    return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+}
 void __tpy_init();
 } // namespace tpyapp::main

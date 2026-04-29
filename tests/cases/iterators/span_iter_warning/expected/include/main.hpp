@@ -26,19 +26,7 @@ struct MyIter {
     auto& __iter__() { return *this; }
 
     // def __next__(self) -> Int32:
-    std::expected<int32_t, ::tpy::StopIteration> __next__() {
-        // if self._val > 0:
-        if ((this->_val > 0)) {
-            // result = self._val
-            int32_t result = this->_val;
-            // self._val -= 1
-            this->_val = ::tpy::sub_check<int32_t>(this->_val, 1);
-            // return result
-            return result;
-        }
-        // raise StopIteration
-        return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyIter& obj) {
@@ -56,23 +44,14 @@ struct Dual {
 
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[Int32]]:
-    std::span<int32_t> __span__() {
-        // return self._data
-        return ::tpy::as_mut_span(this->_data);
-    }
+    std::span<int32_t> __span__();
 
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[Int32]]:
-    std::span<const int32_t> __span__() const {
-        // return self._data
-        return ::tpy::as_span(this->_data);
-    }
+    std::span<const int32_t> __span__() const;
 
     // def __iter__(self) -> Own[MyIter]:
-    MyIter __iter__() const {
-        // return MyIter(Int32(3))
-        return MyIter(3);
-    }
+    MyIter __iter__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dual& obj) {
@@ -80,5 +59,40 @@ inline std::ostream& operator<<(std::ostream& os, const Dual& obj) {
     return os;
 }
 
+
+// def __next__(self) -> Int32:
+inline std::expected<int32_t, ::tpy::StopIteration> MyIter::__next__() {
+    // if self._val > 0:
+    if ((this->_val > 0)) {
+        // result = self._val
+        int32_t result = this->_val;
+        // self._val -= 1
+        this->_val = ::tpy::sub_check<int32_t>(this->_val, 1);
+        // return result
+        return result;
+    }
+    // raise StopIteration
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// @auto_readonly
+// def __span__(self) -> Span[auto_readonly[Int32]]:
+inline std::span<int32_t> Dual::__span__() {
+    // return self._data
+    return ::tpy::as_mut_span(this->_data);
+}
+
+// @auto_readonly
+// def __span__(self) -> Span[auto_readonly[Int32]]:
+inline std::span<const int32_t> Dual::__span__() const {
+    // return self._data
+    return ::tpy::as_span(this->_data);
+}
+
+// def __iter__(self) -> Own[MyIter]:
+inline MyIter Dual::__iter__() const {
+    // return MyIter(Int32(3))
+    return MyIter(3);
+}
 void __tpy_init();
 } // namespace tpyapp::main

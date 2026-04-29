@@ -32,10 +32,7 @@ struct Person {
     explicit Person(std::string_view n) : name(n) {}
 
     // def greet(self) -> str:
-    std::string greet() const {
-        // return self.name
-        return this->name;
-    }
+    std::string greet() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
@@ -43,6 +40,12 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
     return os;
 }
 
+
+// def greet(self) -> str:
+inline std::string Person::greet() const {
+    // return self.name
+    return this->name;
+}
 // def hello(g: Greetable) -> None:
 template<Greetable T_g>
 void hello(T_g& g) {

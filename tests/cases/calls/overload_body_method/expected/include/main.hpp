@@ -24,17 +24,11 @@ struct Animal {
 
     // @overload
     // def greet(self, x: int) -> str:  # tpyc: ok
-    std::string greet(const ::tpy::BigInt& x) {
-        // return self.name + " got " + str(x) + " treats"
-        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(this->name, " got ")), (x).to_string())), " treats"));
-    }
+    std::string greet(const ::tpy::BigInt& x);
 
     // @overload
     // def greet(self, x: str) -> str:  # tpyc: ok
-    std::string greet(std::string_view x) {
-        // return self.name + " heard '" + x + "'"
-        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(this->name, " heard '")), x)), "'"));
-    }
+    std::string greet(std::string_view x);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
@@ -42,5 +36,19 @@ inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
     return os;
 }
 
+
+// @overload
+// def greet(self, x: int) -> str:  # tpyc: ok
+inline std::string Animal::greet(const ::tpy::BigInt& x) {
+    // return self.name + " got " + str(x) + " treats"
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(this->name, " got ")), (x).to_string())), " treats"));
+}
+
+// @overload
+// def greet(self, x: str) -> str:  # tpyc: ok
+inline std::string Animal::greet(std::string_view x) {
+    // return self.name + " heard '" + x + "'"
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(this->name, " heard '")), x)), "'"));
+}
 void __tpy_init();
 } // namespace tpyapp::main

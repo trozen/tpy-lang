@@ -24,10 +24,7 @@ struct Score {
     explicit Score(int32_t val) : val(val) {}
 
     // def __lt__(self, other: Score) -> bool:
-    bool __lt__(const Score& other) const {
-        // return self.val < other.val
-        return (this->val < other.val);
-    }
+    bool __lt__(const Score& other) const;
 
     friend bool operator<(const Score& lhs, const Score& other) {
         return lhs.__lt__(other);
@@ -56,5 +53,11 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
     return os;
 }
 
+
+// def __lt__(self, other: Score) -> bool:
+inline bool Score::__lt__(const Score& other) const {
+    // return self.val < other.val
+    return (this->val < other.val);
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -41,10 +41,7 @@ struct Holder {
     Holder() : inner(Point(::tpy::BigInt(5))) {}
 
     // def get(self) -> Point:
-    Point& get() {
-        // return self.inner
-        return this->inner;
-    }
+    Point& get();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
@@ -52,5 +49,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def get(self) -> Point:
+inline Point& Holder::get() {
+    // return self.inner
+    return this->inner;
+}
 void __tpy_init();
 } // namespace tpyapp::main

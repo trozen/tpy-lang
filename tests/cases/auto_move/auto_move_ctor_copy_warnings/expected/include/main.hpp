@@ -45,10 +45,7 @@ struct Holder {
     explicit Holder(Inner&& inner) : inner(std::move(inner)) {}
 
     // def set_inner(self, inner: Own[Inner]) -> None:
-    void set_inner(Inner&& inner) {
-        // self.inner = inner  # tpyc: ok (field assign, last use -- auto-moved)
-        this->inner = std::move(inner);
-    }
+    void set_inner(Inner&& inner);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
@@ -124,18 +121,10 @@ struct OptHolder {
 
 
     // def set(self, inner: Own[Inner]) -> None:
-    void set(Inner&& inner) {
-        // self.inner = inner  # tpyc: ok (optional field assign, last use -- auto-moved)
-        this->inner = std::move(inner);
-    }
+    void set(Inner&& inner);
 
     // def set_not_last(self, inner: Own[Inner]) -> None:
-    void set_not_last(Inner&& inner) {
-        // self.inner = inner  # tpyc: warning(/copies.*field/)
-        this->inner = inner;
-        // print(inner.value)
-        std::cout << inner.value << "\n";
-    }
+    void set_not_last(Inner&& inner);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OptHolder& obj) {
@@ -155,5 +144,25 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
     return os;
 }
 
+
+// def set_inner(self, inner: Own[Inner]) -> None:
+inline void Holder::set_inner(Inner&& inner) {
+    // self.inner = inner  # tpyc: ok (field assign, last use -- auto-moved)
+    this->inner = std::move(inner);
+}
+
+// def set(self, inner: Own[Inner]) -> None:
+inline void OptHolder::set(Inner&& inner) {
+    // self.inner = inner  # tpyc: ok (optional field assign, last use -- auto-moved)
+    this->inner = std::move(inner);
+}
+
+// def set_not_last(self, inner: Own[Inner]) -> None:
+inline void OptHolder::set_not_last(Inner&& inner) {
+    // self.inner = inner  # tpyc: warning(/copies.*field/)
+    this->inner = inner;
+    // print(inner.value)
+    std::cout << inner.value << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

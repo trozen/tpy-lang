@@ -26,24 +26,15 @@ struct Container {
 
     // @property
     // def items(self) -> list[Int32]:
-    std::vector<int32_t>& items() {
-        // return self._items
-        return this->_items;
-    }
+    std::vector<int32_t>& items();
 
     // @property
     // def items(self) -> list[Int32]:
-    const std::vector<int32_t>& items() const {
-        // return self._items
-        return this->_items;
-    }
+    const std::vector<int32_t>& items() const;
 
     // @items.setter
     // def items(self, v: list[Int32]) -> None:
-    void set_items(std::vector<int32_t>&& v) {
-        // self._items = v
-        this->_items = std::move(v);
-    }
+    void set_items(std::vector<int32_t>&& v);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -51,5 +42,26 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+
+// @property
+// def items(self) -> list[Int32]:
+inline std::vector<int32_t>& Container::items() {
+    // return self._items
+    return this->_items;
+}
+
+// @property
+// def items(self) -> list[Int32]:
+inline const std::vector<int32_t>& Container::items() const {
+    // return self._items
+    return this->_items;
+}
+
+// @items.setter
+// def items(self, v: list[Int32]) -> None:
+inline void Container::set_items(std::vector<int32_t>&& v) {
+    // self._items = v
+    this->_items = std::move(v);
+}
 void __tpy_init();
 } // namespace tpyapp::main

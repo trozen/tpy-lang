@@ -31,31 +31,15 @@ struct Seconds {
     explicit Seconds(int32_t value) : _value(value) {}
 
     // def __eq__(self, other: Seconds) -> bool:
-    bool __eq__(const Seconds& other) const {
-        // return self._value == other._value
-        return (this->_value == other._value);
-    }
+    bool __eq__(const Seconds& other) const;
 
     // def __json_encode__(self, writer: JsonWriter) -> None:
-    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& writer) const {
-        // writer.write_int32(self._value)
-        writer.write_int32(this->_value);
-    }
+    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& writer) const;
 
     // @staticmethod
     // @error_return(JsonError)
     // def __json_decode__(reader: JsonReader) -> Own[Seconds]:
-    static std::expected<Seconds, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& reader) {
-        // raw = reader.read_int()
-        int64_t raw;
-        {
-            auto __try_tmp_1 = reader.read_int();
-            if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
-            raw = ::tpy::unwrap_ref(*__try_tmp_1);
-        }
-        // return Seconds(Int32(raw))
-        return Seconds(::tpy::int_cast_check<int32_t>(raw));
-    }
+    static std::expected<Seconds, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& reader);
 
     friend bool operator==(const Seconds& lhs, const Seconds& other) {
         return lhs.__eq__(other);
@@ -78,161 +62,25 @@ struct Event {
     Event() = default;
     explicit Event(std::string_view name, Seconds&& when) : name(name), when(std::move(when)) {}
 
-    bool __eq__(const Event& other) const {
-        return ((this->name == other.name) && (this->when == other.when));
-    }
+    bool __eq__(const Event& other) const;
 
-    std::string __repr__() const {
-        return std::format("Event(name={}, when={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->when));
-    }
+    std::string __repr__() const;
 
-    static std::expected<Event, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
-        {
-            auto __try_tmp_2 = __reader.read_object_start();
-            if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
-        }
-        std::string name = "";
-        std::optional<Seconds> when = std::nullopt;
-        while (__reader.has_next()) {
-            std::string_view __key;
-            {
-                auto __try_tmp_3 = __reader.read_key_raw();
-                if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
-                __key = ::tpy::unwrap_ref(*__try_tmp_3);
-            }
-            auto& __match_subject = __key;
-            if (__match_subject == "name") {
-                std::string __name_1;
-                {
-                    auto __try_tmp_4 = __reader.read_str();
-                    if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
-                    __name_1 = ::tpy::unwrap_ref(*__try_tmp_4);
-                }
-                name = __name_1;
-            } else if (__match_subject == "when") {
-                {
-                    auto __try_tmp_5 = Seconds::__json_decode__(__reader);
-                    if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
-                    when = ::tpy::unwrap_ref(*__try_tmp_5);
-                }
-            } else {
-                {
-                    auto __try_tmp_6 = __reader.skip_value();
-                    if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
-                }
-            }
-        }
-        {
-            auto __try_tmp_7 = __reader.read_object_end();
-            if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(__try_tmp_7.error());
-        }
-        if ((!when.has_value())) {
-            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'when'"));
-        }
-        auto __tmp_1 = (*when);
-        return Event(name, std::move(__tmp_1));
-    }
+    static std::expected<Event, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader);
 
-    static Event from_json(std::string_view __s) {
-        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-        std::optional<Event> __result = std::nullopt;
-        {
-            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_8;
-            {
-                auto __try_tmp_9 = Event::__json_decode__(__reader);
-                if (!__try_tmp_9.has_value()) { __err_opt_8 = std::move(__try_tmp_9.error()); goto __except_8; }
-                __result = ::tpy::unwrap_ref(*__try_tmp_9);
-            }
-            goto __after_try_8;
-            // except tplib.json.parser.JsonError:
-            __except_8:;
-            {
-                auto& __e = *__err_opt_8;
-                ::tpy::tpy_panic(__e.message);
-            }
-            __after_try_8:;
-        }
-        if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
-        return (*__result);
-    }
+    static Event from_json(std::string_view __s);
 
-    static std::expected<Event, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s) {
-        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-        return Event::__json_decode__(__reader);
-    }
+    static std::expected<Event, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s);
 
-    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
-        __writer.object_start();
-        __writer.key("name");
-        __writer.write_str(this->name);
-        __writer.key("when");
-        this->when.__json_encode__(__writer);
-        __writer.object_end();
-    }
+    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const;
 
-    std::string to_json(int32_t indent = 0) const {
-        ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
-        this->__json_encode__(__writer);
-        return __writer.finish();
-    }
+    std::string to_json(int32_t indent = 0) const;
 
-    void save_json(std::string_view __path, int32_t indent = 0) const {
-        // # User-defined types as @model fields via __json_encode__/__json_decode__.
-        auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
-        auto& __f = __ctx_1.__enter__();
-        try {
-            // # User-defined types as @model fields via __json_encode__/__json_decode__.
-            // from __future__ import annotations
-            __f.write(this->to_json(indent));
-        } catch (...) {
-            __ctx_1.__exit__();
-            throw;
-        }
-        __finally_10:;
-        __ctx_1.__exit__();
-    }
+    void save_json(std::string_view __path, int32_t indent = 0) const;
 
-    static Event load_json(std::string_view __path) {
-        // # User-defined types as @model fields via __json_encode__/__json_decode__.
-        std::string __data;
-        auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
-        auto& __f = __ctx_2.__enter__();
-        std::optional<Event> __retval_12;
-        try {
-            // # User-defined types as @model fields via __json_encode__/__json_decode__.
-            // from __future__ import annotations
-            __data = __f.read();
-        } catch (...) {
-            __ctx_2.__exit__();
-            throw;
-        }
-        __finally_11:;
-        __ctx_2.__exit__();
-        if (__retval_12) return (*__retval_12);
-        // from typing import Optional
-        return Event::from_json(__data);
-    }
+    static Event load_json(std::string_view __path);
 
-    static std::expected<Event, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
-        // # User-defined types as @model fields via __json_encode__/__json_decode__.
-        std::string __data;
-        auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
-        auto& __f = __ctx_3.__enter__();
-        std::optional<std::expected<Event, ::tpystd::tplib::json::parser::JsonError>> __retval_14;
-        try {
-            // # User-defined types as @model fields via __json_encode__/__json_decode__.
-            // from __future__ import annotations
-            __data = __f.read();
-        } catch (...) {
-            __ctx_3.__exit__();
-            throw;
-        }
-        __finally_13:;
-        __ctx_3.__exit__();
-        if (__retval_14) return (*__retval_14);
-        // from typing import Optional
-        return Event::try_from_json(__data);
-    }
+    static std::expected<Event, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path);
 
     friend bool operator==(const Event& lhs, const Event& other) {
         return lhs.__eq__(other);
@@ -257,202 +105,25 @@ struct Schedule {
     Schedule() = default;
     explicit Schedule(std::vector<Event>&& events, Seconds&& default_duration, std::optional<Seconds>&& deadline = std::nullopt) : events(std::move(events)), default_duration(std::move(default_duration)), deadline(std::move(deadline)) {}
 
-    bool __eq__(const Schedule& other) const {
-        return (((this->events == other.events) && (this->default_duration == other.default_duration)) && (this->deadline == other.deadline));
-    }
+    bool __eq__(const Schedule& other) const;
 
-    std::string __repr__() const {
-        return std::format("Schedule(events={}, default_duration={}, deadline={})", ::tpy::list_to_str(this->events), ::tpy::__repr__(this->default_duration), ::tpy::__repr__(this->deadline));
-    }
+    std::string __repr__() const;
 
-    static std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
-        {
-            auto __try_tmp_15 = __reader.read_object_start();
-            if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(__try_tmp_15.error());
-        }
-        std::vector<Event> events = std::vector<Event>{};
-        std::optional<Seconds> default_duration = std::nullopt;
-        std::optional<Seconds> deadline = std::nullopt;
-        while (__reader.has_next()) {
-            std::string_view __key;
-            {
-                auto __try_tmp_16 = __reader.read_key_raw();
-                if (!__try_tmp_16.has_value()) return ::tpy::make_unexpected(__try_tmp_16.error());
-                __key = ::tpy::unwrap_ref(*__try_tmp_16);
-            }
-            auto& __match_subject = __key;
-            if (__match_subject == "events") {
-                {
-                    auto __try_tmp_17 = __reader.read_array_start();
-                    if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
-                }
-                while (__reader.has_next()) {
-                    Event __elem_1;
-                    {
-                        auto __try_tmp_18 = Event::__json_decode__(__reader);
-                        if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
-                        __elem_1 = ::tpy::unwrap_ref(*__try_tmp_18);
-                    }
-                    events.push_back(__elem_1);
-                }
-                {
-                    auto __try_tmp_19 = __reader.read_array_end();
-                    if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
-                }
-            } else if (__match_subject == "default_duration") {
-                {
-                    auto __try_tmp_20 = Seconds::__json_decode__(__reader);
-                    if (!__try_tmp_20.has_value()) return ::tpy::make_unexpected(__try_tmp_20.error());
-                    default_duration = ::tpy::unwrap_ref(*__try_tmp_20);
-                }
-            } else if (__match_subject == "deadline") {
-                if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
-                    {
-                        auto __try_tmp_21 = __reader.read_null();
-                        if (!__try_tmp_21.has_value()) return ::tpy::make_unexpected(__try_tmp_21.error());
-                    }
-                } else {
-                    {
-                        auto __try_tmp_22 = Seconds::__json_decode__(__reader);
-                        if (!__try_tmp_22.has_value()) return ::tpy::make_unexpected(__try_tmp_22.error());
-                        deadline = ::tpy::unwrap_ref(*__try_tmp_22);
-                    }
-                }
-            } else {
-                {
-                    auto __try_tmp_23 = __reader.skip_value();
-                    if (!__try_tmp_23.has_value()) return ::tpy::make_unexpected(__try_tmp_23.error());
-                }
-            }
-        }
-        {
-            auto __try_tmp_24 = __reader.read_object_end();
-            if (!__try_tmp_24.has_value()) return ::tpy::make_unexpected(__try_tmp_24.error());
-        }
-        if ((!default_duration.has_value())) {
-            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'default_duration'"));
-        }
-        auto __tmp_2 = (*default_duration);
-        auto __tmp_3 = deadline;
-        return Schedule(std::move(events), std::move(__tmp_2), std::move(__tmp_3));
-    }
+    static std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader);
 
-    static Schedule from_json(std::string_view __s) {
-        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-        std::optional<Schedule> __result = std::nullopt;
-        {
-            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_25;
-            {
-                auto __try_tmp_26 = Schedule::__json_decode__(__reader);
-                if (!__try_tmp_26.has_value()) { __err_opt_25 = std::move(__try_tmp_26.error()); goto __except_25; }
-                __result = ::tpy::unwrap_ref(*__try_tmp_26);
-            }
-            goto __after_try_25;
-            // except tplib.json.parser.JsonError:
-            __except_25:;
-            {
-                auto& __e = *__err_opt_25;
-                ::tpy::tpy_panic(__e.message);
-            }
-            __after_try_25:;
-        }
-        if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
-        return (*__result);
-    }
+    static Schedule from_json(std::string_view __s);
 
-    static std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s) {
-        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-        return Schedule::__json_decode__(__reader);
-    }
+    static std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s);
 
-    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
-        __writer.object_start();
-        __writer.key("events");
-        __writer.array_start();
-        auto& __obj_0 = this->events;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& __item = *__beg_0;
-            __item.__json_encode__(__writer);
-        }
-        __writer.array_end();
-        __writer.key("default_duration");
-        this->default_duration.__json_encode__(__writer);
-        __writer.key("deadline");
-        const Seconds* __opt_deadline = ::tpy::optional_to_ptr(this->deadline);
-        if ((__opt_deadline != nullptr)) {
-            const Seconds& __val_deadline = (*__opt_deadline);
-            __val_deadline.__json_encode__(__writer);
-        } else {
-            __writer.write_null();
-        }
-        __writer.object_end();
-    }
+    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const;
 
-    std::string to_json(int32_t indent = 0) const {
-        ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
-        this->__json_encode__(__writer);
-        return __writer.finish();
-    }
+    std::string to_json(int32_t indent = 0) const;
 
-    void save_json(std::string_view __path, int32_t indent = 0) const {
-        // # User-defined types as @model fields via __json_encode__/__json_decode__.
-        auto __ctx_4 = ::tpy::builtin_open_mode(__path, "w");
-        auto& __f = __ctx_4.__enter__();
-        try {
-            // # User-defined types as @model fields via __json_encode__/__json_decode__.
-            // from __future__ import annotations
-            __f.write(this->to_json(indent));
-        } catch (...) {
-            __ctx_4.__exit__();
-            throw;
-        }
-        __finally_27:;
-        __ctx_4.__exit__();
-    }
+    void save_json(std::string_view __path, int32_t indent = 0) const;
 
-    static Schedule load_json(std::string_view __path) {
-        // # User-defined types as @model fields via __json_encode__/__json_decode__.
-        std::string __data;
-        auto __ctx_5 = ::tpy::builtin_open_mode(__path, "r");
-        auto& __f = __ctx_5.__enter__();
-        std::optional<Schedule> __retval_29;
-        try {
-            // # User-defined types as @model fields via __json_encode__/__json_decode__.
-            // from __future__ import annotations
-            __data = __f.read();
-        } catch (...) {
-            __ctx_5.__exit__();
-            throw;
-        }
-        __finally_28:;
-        __ctx_5.__exit__();
-        if (__retval_29) return (*__retval_29);
-        // from typing import Optional
-        return Schedule::from_json(__data);
-    }
+    static Schedule load_json(std::string_view __path);
 
-    static std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
-        // # User-defined types as @model fields via __json_encode__/__json_decode__.
-        std::string __data;
-        auto __ctx_6 = ::tpy::builtin_open_mode(__path, "r");
-        auto& __f = __ctx_6.__enter__();
-        std::optional<std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError>> __retval_31;
-        try {
-            // # User-defined types as @model fields via __json_encode__/__json_decode__.
-            // from __future__ import annotations
-            __data = __f.read();
-        } catch (...) {
-            __ctx_6.__exit__();
-            throw;
-        }
-        __finally_30:;
-        __ctx_6.__exit__();
-        if (__retval_31) return (*__retval_31);
-        // from typing import Optional
-        return Schedule::try_from_json(__data);
-    }
+    static std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path);
 
     friend bool operator==(const Schedule& lhs, const Schedule& other) {
         return lhs.__eq__(other);
@@ -464,5 +135,241 @@ inline std::ostream& operator<<(std::ostream& os, const Schedule& obj) {
     return os;
 }
 
+
+// def __eq__(self, other: Seconds) -> bool:
+inline bool Seconds::__eq__(const Seconds& other) const {
+    // return self._value == other._value
+    return (this->_value == other._value);
+}
+
+// def __json_encode__(self, writer: JsonWriter) -> None:
+inline void Seconds::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& writer) const {
+    // writer.write_int32(self._value)
+    writer.write_int32(this->_value);
+}
+
+// @staticmethod
+// @error_return(JsonError)
+// def __json_decode__(reader: JsonReader) -> Own[Seconds]:
+inline std::expected<Seconds, ::tpystd::tplib::json::parser::JsonError> Seconds::__json_decode__(::tpystd::tplib::json::parser::JsonReader& reader) {
+    // raw = reader.read_int()
+    int64_t raw;
+    {
+        auto __try_tmp_1 = reader.read_int();
+        if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
+        raw = ::tpy::unwrap_ref(*__try_tmp_1);
+    }
+    // return Seconds(Int32(raw))
+    return Seconds(::tpy::int_cast_check<int32_t>(raw));
+}
+
+inline bool Event::__eq__(const Event& other) const {
+    return ((this->name == other.name) && (this->when == other.when));
+}
+
+inline std::string Event::__repr__() const {
+    return std::format("Event(name={}, when={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->when));
+}
+
+inline Event Event::from_json(std::string_view __s) {
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
+    std::optional<Event> __result = std::nullopt;
+    {
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_2;
+        {
+            auto __try_tmp_3 = Event::__json_decode__(__reader);
+            if (!__try_tmp_3.has_value()) { __err_opt_2 = std::move(__try_tmp_3.error()); goto __except_2; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_3);
+        }
+        goto __after_try_2;
+        // except tplib.json.parser.JsonError:
+        __except_2:;
+        {
+            auto& __e = *__err_opt_2;
+            ::tpy::tpy_panic(__e.message);
+        }
+        __after_try_2:;
+    }
+    if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
+    return (*__result);
+}
+
+inline std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::try_from_json(std::string_view __s) {
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
+    return Event::__json_decode__(__reader);
+}
+
+inline void Event::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
+    __writer.object_start();
+    __writer.key("name");
+    __writer.write_str(this->name);
+    __writer.key("when");
+    this->when.__json_encode__(__writer);
+    __writer.object_end();
+}
+
+inline std::string Event::to_json(int32_t indent) const {
+    ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
+    this->__json_encode__(__writer);
+    return __writer.finish();
+}
+
+inline void Event::save_json(std::string_view __path, int32_t indent) const {
+    // # User-defined types as @model fields via __json_encode__/__json_decode__.
+    auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
+    auto& __f = __ctx_1.__enter__();
+    try {
+        // # User-defined types as @model fields via __json_encode__/__json_decode__.
+        // from __future__ import annotations
+        __f.write(this->to_json(indent));
+    } catch (...) {
+        __ctx_1.__exit__();
+        throw;
+    }
+    __finally_4:;
+    __ctx_1.__exit__();
+}
+
+inline Event Event::load_json(std::string_view __path) {
+    // # User-defined types as @model fields via __json_encode__/__json_decode__.
+    std::string __data;
+    auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
+    auto& __f = __ctx_2.__enter__();
+    std::optional<Event> __retval_6;
+    try {
+        // # User-defined types as @model fields via __json_encode__/__json_decode__.
+        // from __future__ import annotations
+        __data = __f.read();
+    } catch (...) {
+        __ctx_2.__exit__();
+        throw;
+    }
+    __finally_5:;
+    __ctx_2.__exit__();
+    if (__retval_6) return (*__retval_6);
+    // from typing import Optional
+    return Event::from_json(__data);
+}
+
+inline std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::try_load_json(std::string_view __path) {
+    // # User-defined types as @model fields via __json_encode__/__json_decode__.
+    std::string __data;
+    auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
+    auto& __f = __ctx_3.__enter__();
+    std::optional<std::expected<Event, ::tpystd::tplib::json::parser::JsonError>> __retval_8;
+    try {
+        // # User-defined types as @model fields via __json_encode__/__json_decode__.
+        // from __future__ import annotations
+        __data = __f.read();
+    } catch (...) {
+        __ctx_3.__exit__();
+        throw;
+    }
+    __finally_7:;
+    __ctx_3.__exit__();
+    if (__retval_8) return (*__retval_8);
+    // from typing import Optional
+    return Event::try_from_json(__data);
+}
+
+inline bool Schedule::__eq__(const Schedule& other) const {
+    return (((this->events == other.events) && (this->default_duration == other.default_duration)) && (this->deadline == other.deadline));
+}
+
+inline std::string Schedule::__repr__() const {
+    return std::format("Schedule(events={}, default_duration={}, deadline={})", ::tpy::list_to_str(this->events), ::tpy::__repr__(this->default_duration), ::tpy::__repr__(this->deadline));
+}
+
+inline Schedule Schedule::from_json(std::string_view __s) {
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
+    std::optional<Schedule> __result = std::nullopt;
+    {
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_9;
+        {
+            auto __try_tmp_10 = Schedule::__json_decode__(__reader);
+            if (!__try_tmp_10.has_value()) { __err_opt_9 = std::move(__try_tmp_10.error()); goto __except_9; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_10);
+        }
+        goto __after_try_9;
+        // except tplib.json.parser.JsonError:
+        __except_9:;
+        {
+            auto& __e = *__err_opt_9;
+            ::tpy::tpy_panic(__e.message);
+        }
+        __after_try_9:;
+    }
+    if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
+    return (*__result);
+}
+
+inline std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::try_from_json(std::string_view __s) {
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
+    return Schedule::__json_decode__(__reader);
+}
+
+inline std::string Schedule::to_json(int32_t indent) const {
+    ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
+    this->__json_encode__(__writer);
+    return __writer.finish();
+}
+
+inline void Schedule::save_json(std::string_view __path, int32_t indent) const {
+    // # User-defined types as @model fields via __json_encode__/__json_decode__.
+    auto __ctx_4 = ::tpy::builtin_open_mode(__path, "w");
+    auto& __f = __ctx_4.__enter__();
+    try {
+        // # User-defined types as @model fields via __json_encode__/__json_decode__.
+        // from __future__ import annotations
+        __f.write(this->to_json(indent));
+    } catch (...) {
+        __ctx_4.__exit__();
+        throw;
+    }
+    __finally_11:;
+    __ctx_4.__exit__();
+}
+
+inline Schedule Schedule::load_json(std::string_view __path) {
+    // # User-defined types as @model fields via __json_encode__/__json_decode__.
+    std::string __data;
+    auto __ctx_5 = ::tpy::builtin_open_mode(__path, "r");
+    auto& __f = __ctx_5.__enter__();
+    std::optional<Schedule> __retval_13;
+    try {
+        // # User-defined types as @model fields via __json_encode__/__json_decode__.
+        // from __future__ import annotations
+        __data = __f.read();
+    } catch (...) {
+        __ctx_5.__exit__();
+        throw;
+    }
+    __finally_12:;
+    __ctx_5.__exit__();
+    if (__retval_13) return (*__retval_13);
+    // from typing import Optional
+    return Schedule::from_json(__data);
+}
+
+inline std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::try_load_json(std::string_view __path) {
+    // # User-defined types as @model fields via __json_encode__/__json_decode__.
+    std::string __data;
+    auto __ctx_6 = ::tpy::builtin_open_mode(__path, "r");
+    auto& __f = __ctx_6.__enter__();
+    std::optional<std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError>> __retval_15;
+    try {
+        // # User-defined types as @model fields via __json_encode__/__json_decode__.
+        // from __future__ import annotations
+        __data = __f.read();
+    } catch (...) {
+        __ctx_6.__exit__();
+        throw;
+    }
+    __finally_14:;
+    __ctx_6.__exit__();
+    if (__retval_15) return (*__retval_15);
+    // from typing import Optional
+    return Schedule::try_from_json(__data);
+}
 void __tpy_init();
 } // namespace tpyapp::main

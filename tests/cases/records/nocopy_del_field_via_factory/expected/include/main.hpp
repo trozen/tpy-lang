@@ -47,12 +47,7 @@ struct Resource {
 
     // @staticmethod
     // def make(seed: Int32) -> Own[Resource]:
-    static Resource make(int32_t seed) {
-        // base = seed + Int32(100)
-        int32_t base = (::tpy::add_check<int32_t>(seed, 100));
-        // return Resource(base)
-        return Resource(base);
-    }
+    static Resource make(int32_t seed);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
@@ -81,5 +76,14 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// @staticmethod
+// def make(seed: Int32) -> Own[Resource]:
+inline Resource Resource::make(int32_t seed) {
+    // base = seed + Int32(100)
+    int32_t base = (::tpy::add_check<int32_t>(seed, 100));
+    // return Resource(base)
+    return Resource(base);
+}
 void __tpy_init();
 } // namespace tpyapp::main

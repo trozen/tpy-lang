@@ -25,16 +25,10 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     // def sum(self) -> Int32:
-    int32_t sum() const {
-        // return self.x + self.y
-        return (::tpy::add_check<int32_t>(this->x, this->y));
-    }
+    int32_t sum() const;
 
     // def describe(self) -> str:
-    std::string describe() const {
-        // return "Point"
-        return "Point";
-    }
+    std::string describe() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -42,5 +36,17 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def sum(self) -> Int32:
+inline int32_t Point::sum() const {
+    // return self.x + self.y
+    return (::tpy::add_check<int32_t>(this->x, this->y));
+}
+
+// def describe(self) -> str:
+inline std::string Point::describe() const {
+    // return "Point"
+    return "Point";
+}
 void __tpy_init();
 } // namespace tpyapp::main

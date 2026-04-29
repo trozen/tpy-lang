@@ -47,10 +47,7 @@ struct Storage {
     }
 
     // def get(self) -> Int32:
-    int32_t get() const {
-        // return self.buf.load0()
-        return this->buf.load0();
-    }
+    int32_t get() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Storage& obj) {
@@ -58,5 +55,11 @@ inline std::ostream& operator<<(std::ostream& os, const Storage& obj) {
     return os;
 }
 
+
+// def get(self) -> Int32:
+inline int32_t Storage::get() const {
+    // return self.buf.load0()
+    return this->buf.load0();
+}
 void __tpy_init();
 } // namespace tpyapp::main

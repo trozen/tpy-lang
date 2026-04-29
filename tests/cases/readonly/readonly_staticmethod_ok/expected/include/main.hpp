@@ -18,10 +18,7 @@ struct Ops {
     // @staticmethod
     // @readonly
     // def plus_one(x: Int32) -> Int32:
-    static int32_t plus_one(int32_t x) {
-        // return x + 1
-        return (::tpy::add_check<int32_t>(x, 1));
-    }
+    static int32_t plus_one(int32_t x);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ops& obj) {
@@ -29,5 +26,13 @@ inline std::ostream& operator<<(std::ostream& os, const Ops& obj) {
     return os;
 }
 
+
+// @staticmethod
+// @readonly
+// def plus_one(x: Int32) -> Int32:
+inline int32_t Ops::plus_one(int32_t x) {
+    // return x + 1
+    return (::tpy::add_check<int32_t>(x, 1));
+}
 void __tpy_init();
 } // namespace tpyapp::main

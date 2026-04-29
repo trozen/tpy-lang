@@ -22,25 +22,13 @@ struct Emitter {
     Emitter() : on_event(std::nullopt) {}
 
     // def set_handler(self, cb: Callable[[str], None]) -> None:
-    void set_handler(const std::function<void(std::string_view)>& cb) {
-        // self.on_event = cb
-        this->on_event = cb;
-    }
+    void set_handler(const std::function<void(std::string_view)>& cb);
 
     // def emit(self, msg: str) -> None:
-    void emit(std::string_view msg) const {
-        // if self.on_event is not None:
-        if ((this->on_event.has_value())) {
-            // self.on_event(msg)
-            (*this).on_event.value()(msg);
-        }
-    }
+    void emit(std::string_view msg) const;
 
     // def __str__(self) -> str:
-    std::string __str__() const {
-        // return "Emitter(...)"
-        return "Emitter(...)";
-    }
+    std::string __str__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Emitter& obj) {
@@ -48,5 +36,26 @@ inline std::ostream& operator<<(std::ostream& os, const Emitter& obj) {
     return os;
 }
 
+
+// def set_handler(self, cb: Callable[[str], None]) -> None:
+inline void Emitter::set_handler(const std::function<void(std::string_view)>& cb) {
+    // self.on_event = cb
+    this->on_event = cb;
+}
+
+// def emit(self, msg: str) -> None:
+inline void Emitter::emit(std::string_view msg) const {
+    // if self.on_event is not None:
+    if ((this->on_event.has_value())) {
+        // self.on_event(msg)
+        (*this).on_event.value()(msg);
+    }
+}
+
+// def __str__(self) -> str:
+inline std::string Emitter::__str__() const {
+    // return "Emitter(...)"
+    return "Emitter(...)";
+}
 void __tpy_init();
 } // namespace tpyapp::main

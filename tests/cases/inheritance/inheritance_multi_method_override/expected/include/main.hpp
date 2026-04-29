@@ -20,10 +20,7 @@ struct Speaker {
 
 
     // def greet(self) -> str:
-    std::string greet() const {
-        // return "hello"
-        return "hello";
-    }
+    std::string greet() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Speaker& obj) {
@@ -36,10 +33,7 @@ struct Greeter {
 
 
     // def greet(self) -> str:
-    std::string greet() const {
-        // return "hi"
-        return "hi";
-    }
+    std::string greet() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Greeter& obj) {
@@ -52,10 +46,7 @@ struct Both : Speaker, Greeter {
 
 
     // def greet(self) -> str:
-    std::string greet() const {
-        // return "greetings"
-        return "greetings";
-    }
+    std::string greet() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Both& obj) {
@@ -63,5 +54,23 @@ inline std::ostream& operator<<(std::ostream& os, const Both& obj) {
     return os;
 }
 
+
+// def greet(self) -> str:
+inline std::string Speaker::greet() const {
+    // return "hello"
+    return "hello";
+}
+
+// def greet(self) -> str:
+inline std::string Greeter::greet() const {
+    // return "hi"
+    return "hi";
+}
+
+// def greet(self) -> str:
+inline std::string Both::greet() const {
+    // return "greetings"
+    return "greetings";
+}
 void __tpy_init();
 } // namespace tpyapp::main

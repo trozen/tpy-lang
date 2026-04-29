@@ -57,10 +57,7 @@ struct Pen {
     explicit Pen(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)) {}
 
     // def set_pet(self, pet: Dog | Cat) -> None:
-    void set_pet(const std::variant<Cat*, Dog*> pet) {
-        // self.pet = pet  # tpyc: warning(/copies/)
-        this->pet = ::tpy::to_value_variant<std::variant<Cat, Dog>>(pet);
-    }
+    void set_pet(const std::variant<Cat*, Dog*> pet);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pen& obj) {
@@ -68,5 +65,11 @@ inline std::ostream& operator<<(std::ostream& os, const Pen& obj) {
     return os;
 }
 
+
+// def set_pet(self, pet: Dog | Cat) -> None:
+inline void Pen::set_pet(const std::variant<Cat*, Dog*> pet) {
+    // self.pet = pet  # tpyc: warning(/copies/)
+    this->pet = ::tpy::to_value_variant<std::variant<Cat, Dog>>(pet);
+}
 void __tpy_init();
 } // namespace tpyapp::main

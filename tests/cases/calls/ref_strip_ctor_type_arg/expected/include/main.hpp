@@ -27,10 +27,7 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     // def __str__(self) -> str:
-    std::string __str__() const {
-        // return f"({self.x}, {self.y})"
-        return std::format("({}, {})", this->x, this->y);
-    }
+    std::string __str__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -38,5 +35,11 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def __str__(self) -> str:
+inline std::string Point::__str__() const {
+    // return f"({self.x}, {self.y})"
+    return std::format("({}, {})", this->x, this->y);
+}
 void __tpy_init();
 } // namespace tpyapp::main

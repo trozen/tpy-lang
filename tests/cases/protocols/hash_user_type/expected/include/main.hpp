@@ -27,10 +27,7 @@ struct Point {
     explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
     // def __hash__(self) -> UInt64:
-    uint64_t __hash__() const {
-        // return hash(self.x) ^ hash(self.y)
-        return (static_cast<uint64_t>(::tpy::__hash__(this->x) ^ ::tpy::__hash__(this->y)));
-    }
+    uint64_t __hash__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -48,6 +45,12 @@ template<> struct std::hash<tpyapp::main::Point> {
 namespace tpyapp::main {
 
 
+
+// def __hash__(self) -> UInt64:
+inline uint64_t Point::__hash__() const {
+    // return hash(self.x) ^ hash(self.y)
+    return (static_cast<uint64_t>(::tpy::__hash__(this->x) ^ ::tpy::__hash__(this->y)));
+}
 // def get_hash(x: Hashable) -> UInt64:
 template<::tpystd::tpy::Hashable T_x>
 uint64_t get_hash(const T_x& x) {

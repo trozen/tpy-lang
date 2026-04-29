@@ -38,10 +38,7 @@ struct DefaultFooMaker {
 
 
     // def make(self) -> Own[Foo]:
-    Foo make() const {
-        // return Foo(Int32(42))
-        return Foo(42);
-    }
+    Foo make() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DefaultFooMaker& obj) {
@@ -87,5 +84,11 @@ inline std::ostream& operator<<(std::ostream& os, const Bar<T>& obj) {
     return os;
 }
 
+
+// def make(self) -> Own[Foo]:
+inline Foo DefaultFooMaker::make() const {
+    // return Foo(Int32(42))
+    return Foo(42);
+}
 void __tpy_init();
 } // namespace tpyapp::main

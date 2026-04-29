@@ -28,10 +28,7 @@ struct Animal {
     explicit Animal(std::string_view name) : name(name) {}
 
     // def speak(self) -> str:
-    std::string speak() const {
-        // return "..."
-        return "...";
-    }
+    std::string speak() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
@@ -49,10 +46,7 @@ struct Dog : Animal {
     explicit Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
 
     // def speak(self) -> str:
-    std::string speak() const {
-        // return "Woof!"
-        return "Woof!";
-    }
+    std::string speak() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
@@ -60,5 +54,17 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
+
+// def speak(self) -> str:
+inline std::string Animal::speak() const {
+    // return "..."
+    return "...";
+}
+
+// def speak(self) -> str:
+inline std::string Dog::speak() const {
+    // return "Woof!"
+    return "Woof!";
+}
 void __tpy_init();
 } // namespace tpyapp::main

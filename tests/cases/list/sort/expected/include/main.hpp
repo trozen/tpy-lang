@@ -31,16 +31,10 @@ struct Pair {
     explicit Pair(int32_t key, int32_t tag) : key(key), tag(tag) {}
 
     // def __lt__(self, other: Pair) -> bool:
-    bool __lt__(const Pair& other) const {
-        // return self.key < other.key
-        return (this->key < other.key);
-    }
+    bool __lt__(const Pair& other) const;
 
     // def __repr__(self) -> str:
-    std::string __repr__() const {
-        // return str(self.key) + ":" + str(self.tag)
-        return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(this->key), ":")), ::tpy::fixed_to_str<int32_t>(this->tag)));
-    }
+    std::string __repr__() const;
 
     friend bool operator<(const Pair& lhs, const Pair& other) {
         return lhs.__lt__(other);
@@ -52,5 +46,17 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
     return os;
 }
 
+
+// def __lt__(self, other: Pair) -> bool:
+inline bool Pair::__lt__(const Pair& other) const {
+    // return self.key < other.key
+    return (this->key < other.key);
+}
+
+// def __repr__(self) -> str:
+inline std::string Pair::__repr__() const {
+    // return str(self.key) + ":" + str(self.tag)
+    return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(this->key), ":")), ::tpy::fixed_to_str<int32_t>(this->tag)));
+}
 void __tpy_init();
 } // namespace tpyapp::main

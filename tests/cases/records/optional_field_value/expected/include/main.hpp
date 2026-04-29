@@ -26,10 +26,7 @@ struct Config {
     explicit Config(std::string_view name) : name(name), max_retries(std::nullopt) {}
 
     // def get_retries(self) -> Int32 | None:
-    std::optional<int32_t> get_retries() const {
-        // return self.max_retries
-        return this->max_retries;
-    }
+    std::optional<int32_t> get_retries() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
@@ -37,5 +34,11 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     return os;
 }
 
+
+// def get_retries(self) -> Int32 | None:
+inline std::optional<int32_t> Config::get_retries() const {
+    // return self.max_retries
+    return this->max_retries;
+}
 void __tpy_init();
 } // namespace tpyapp::main

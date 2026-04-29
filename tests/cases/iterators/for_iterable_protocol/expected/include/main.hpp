@@ -30,19 +30,7 @@ struct CounterIter {
     auto& __iter__() { return *this; }
 
     // def __next__(self) -> Int32:
-    std::expected<int32_t, ::tpy::StopIteration> __next__() {
-        // if self.current < self.limit:
-        if ((this->current < this->limit)) {
-            // result = self.current
-            int32_t result = this->current;
-            // self.current += 1
-            this->current = ::tpy::add_check<int32_t>(this->current, 1);
-            // return result
-            return result;
-        }
-        // raise StopIteration
-        return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CounterIter& obj) {
@@ -62,10 +50,7 @@ struct Counter {
     explicit Counter(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
     // def __iter__(self) -> Own[CounterIter]:
-    CounterIter __iter__() const {
-        // return CounterIter(self.start, self.limit)
-        return CounterIter(this->start, this->limit);
-    }
+    CounterIter __iter__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -73,6 +58,27 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __next__(self) -> Int32:
+inline std::expected<int32_t, ::tpy::StopIteration> CounterIter::__next__() {
+    // if self.current < self.limit:
+    if ((this->current < this->limit)) {
+        // result = self.current
+        int32_t result = this->current;
+        // self.current += 1
+        this->current = ::tpy::add_check<int32_t>(this->current, 1);
+        // return result
+        return result;
+    }
+    // raise StopIteration
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// def __iter__(self) -> Own[CounterIter]:
+inline CounterIter Counter::__iter__() const {
+    // return CounterIter(self.start, self.limit)
+    return CounterIter(this->start, this->limit);
+}
 // def sum_items(items: Iterable[Int32]) -> Int32:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 int32_t sum_items(T_items& items) {

@@ -24,17 +24,11 @@ struct Foo {
 
     // @property
     // def items(self) -> list[Int32]:
-    std::vector<int32_t>& items() {
-        // return self._items
-        return this->_items;
-    }
+    std::vector<int32_t>& items();
 
     // @property
     // def items(self) -> list[Int32]:
-    const std::vector<int32_t>& items() const {
-        // return self._items
-        return this->_items;
-    }
+    const std::vector<int32_t>& items() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
@@ -42,5 +36,19 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
     return os;
 }
 
+
+// @property
+// def items(self) -> list[Int32]:
+inline std::vector<int32_t>& Foo::items() {
+    // return self._items
+    return this->_items;
+}
+
+// @property
+// def items(self) -> list[Int32]:
+inline const std::vector<int32_t>& Foo::items() const {
+    // return self._items
+    return this->_items;
+}
 void __tpy_init();
 } // namespace tpyapp::main

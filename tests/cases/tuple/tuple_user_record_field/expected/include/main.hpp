@@ -25,13 +25,9 @@ struct Point {
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    bool __eq__(const Point& other) const {
-        return ((this->x == other.x) && (this->y == other.y));
-    }
+    bool __eq__(const Point& other) const;
 
-    std::string __repr__() const {
-        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
@@ -52,13 +48,9 @@ struct PairHolder {
     PairHolder() = default;
     explicit PairHolder(const std::tuple<const Point&, const Point&>& pair) : pair(pair) {}
 
-    bool __eq__(const PairHolder& other) const {
-        return (this->pair == other.pair);
-    }
+    bool __eq__(const PairHolder& other) const;
 
-    std::string __repr__() const {
-        return std::format("PairHolder(pair={})", ::tpy::tuple_to_str(this->pair));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const PairHolder& lhs, const PairHolder& other) {
         return lhs.__eq__(other);
@@ -70,5 +62,21 @@ inline std::ostream& operator<<(std::ostream& os, const PairHolder& obj) {
     return os;
 }
 
+
+inline bool Point::__eq__(const Point& other) const {
+    return ((this->x == other.x) && (this->y == other.y));
+}
+
+inline std::string Point::__repr__() const {
+    return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+}
+
+inline bool PairHolder::__eq__(const PairHolder& other) const {
+    return (this->pair == other.pair);
+}
+
+inline std::string PairHolder::__repr__() const {
+    return std::format("PairHolder(pair={})", ::tpy::tuple_to_str(this->pair));
+}
 void __tpy_init();
 } // namespace tpyapp::main

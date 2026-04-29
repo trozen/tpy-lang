@@ -24,17 +24,11 @@ struct Box {
 
     // @overload
     // def apply(self, x: Int32, *, tag: str = "") -> str:
-    std::string apply(int32_t x, std::string_view tag = "") {
-        // return tag + ":" + str(self.base + x)
-        return (::tpy::str_concat((::tpy::str_concat(tag, ":")), ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(this->base, x)))));
-    }
+    std::string apply(int32_t x, std::string_view tag = "");
 
     // @overload
     // def apply(self, x: Int32, *, tag: Int32 = 0) -> Int32:
-    int32_t apply(int32_t x, int32_t tag = 0) {
-        // return self.base + x + tag
-        return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->base, x)), tag));
-    }
+    int32_t apply(int32_t x, int32_t tag = 0);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
@@ -42,5 +36,19 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// @overload
+// def apply(self, x: Int32, *, tag: str = "") -> str:
+inline std::string Box::apply(int32_t x, std::string_view tag) {
+    // return tag + ":" + str(self.base + x)
+    return (::tpy::str_concat((::tpy::str_concat(tag, ":")), ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(this->base, x)))));
+}
+
+// @overload
+// def apply(self, x: Int32, *, tag: Int32 = 0) -> Int32:
+inline int32_t Box::apply(int32_t x, int32_t tag) {
+    // return self.base + x + tag
+    return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->base, x)), tag));
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -37,10 +37,7 @@ struct Logger {
 
 
     // def log(self, msg: str) -> None:
-    void log(std::string_view msg) const {
-        // print("[log] " + msg)
-        std::cout << (::tpy::str_concat("[log] ", msg)) << "\n";
-    }
+    void log(std::string_view msg) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Logger& obj) {
@@ -61,5 +58,11 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
     return os;
 }
 
+
+// def log(self, msg: str) -> None:
+inline void Logger::log(std::string_view msg) const {
+    // print("[log] " + msg)
+    std::cout << (::tpy::str_concat("[log] ", msg)) << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

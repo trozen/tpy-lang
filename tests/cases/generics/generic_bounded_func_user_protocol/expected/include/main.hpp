@@ -33,10 +33,7 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     // def to_string(self) -> str:
-    std::string to_string() const {
-        // return "Point"
-        return "Point";
-    }
+    std::string to_string() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -44,6 +41,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def to_string(self) -> str:
+inline std::string Point::to_string() const {
+    // return "Point"
+    return "Point";
+}
 // def print_item[T: Printable](item: T) -> None:
 template<Printable T>
 void print_item(::tpy::param_val_or_ref_t<T> item) {

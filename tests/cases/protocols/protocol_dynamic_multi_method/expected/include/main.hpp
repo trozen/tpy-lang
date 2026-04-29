@@ -62,22 +62,13 @@ struct Circle : Shape {
     explicit Circle(double radius) : radius(radius) {}
 
     // def area(self) -> float:
-    double area() override {
-        // return 3.14159 * self.radius * self.radius
-        return ((((3.14159) * (this->radius))) * (this->radius));
-    }
+    double area() override;
 
     // def name(self) -> str:
-    std::string name() override {
-        // return "Circle"
-        return "Circle";
-    }
+    std::string name() override;
 
     // def scale(self, factor: float) -> None:
-    void scale(double factor) override {
-        // self.radius = self.radius * factor
-        this->radius = ((this->radius) * (factor));
-    }
+    void scale(double factor) override;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
@@ -85,5 +76,23 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
     return os;
 }
 
+
+// def area(self) -> float:
+inline double Circle::area() {
+    // return 3.14159 * self.radius * self.radius
+    return ((((3.14159) * (this->radius))) * (this->radius));
+}
+
+// def name(self) -> str:
+inline std::string Circle::name() {
+    // return "Circle"
+    return "Circle";
+}
+
+// def scale(self, factor: float) -> None:
+inline void Circle::scale(double factor) {
+    // self.radius = self.radius * factor
+    this->radius = ((this->radius) * (factor));
+}
 void __tpy_init();
 } // namespace tpyapp::main

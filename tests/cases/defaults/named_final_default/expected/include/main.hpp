@@ -21,10 +21,7 @@ struct Engine {
 
 
     // def run(self, flags: UInt32 = NOFLAG, limit: Int32 = DEFAULT_LIMIT) -> Int32:
-    int32_t run(uint32_t flags = NOFLAG, int32_t limit = DEFAULT_LIMIT) const {
-        // return limit + Int32(flags)
-        return (::tpy::add_check<int32_t>(limit, ::tpy::int_cast_check<int32_t>(flags)));
-    }
+    int32_t run(uint32_t flags = NOFLAG, int32_t limit = DEFAULT_LIMIT) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Engine& obj) {
@@ -32,5 +29,11 @@ inline std::ostream& operator<<(std::ostream& os, const Engine& obj) {
     return os;
 }
 
+
+// def run(self, flags: UInt32 = NOFLAG, limit: Int32 = DEFAULT_LIMIT) -> Int32:
+inline int32_t Engine::run(uint32_t flags, int32_t limit) const {
+    // return limit + Int32(flags)
+    return (::tpy::add_check<int32_t>(limit, ::tpy::int_cast_check<int32_t>(flags)));
+}
 void __tpy_init();
 } // namespace tpyapp::main

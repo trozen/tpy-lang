@@ -23,21 +23,7 @@ struct Numbers {
     explicit Numbers(const std::vector<int32_t>& items) : data(items) {}
 
     // def sum(self) -> Int32:
-    int32_t sum() const {
-        // total: Int32 = 0
-        int32_t total = 0;
-        // i: Int32 = 0
-        int32_t i = 0;
-        // while i < len(self.data):
-        while ((i < ::tpy::__len__(this->data))) {
-            // total += self.data[i]
-            total = ::tpy::add_check<int32_t>(total, ::tpy::__getitem__(this->data, i));
-            // i += 1
-            i = ::tpy::add_check<int32_t>(i, 1);
-        }
-        // return total
-        return total;
-    }
+    int32_t sum() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Numbers& obj) {
@@ -45,5 +31,22 @@ inline std::ostream& operator<<(std::ostream& os, const Numbers& obj) {
     return os;
 }
 
+
+// def sum(self) -> Int32:
+inline int32_t Numbers::sum() const {
+    // total: Int32 = 0
+    int32_t total = 0;
+    // i: Int32 = 0
+    int32_t i = 0;
+    // while i < len(self.data):
+    while ((i < ::tpy::__len__(this->data))) {
+        // total += self.data[i]
+        total = ::tpy::add_check<int32_t>(total, ::tpy::__getitem__(this->data, i));
+        // i += 1
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+    // return total
+    return total;
+}
 void __tpy_init();
 } // namespace tpyapp::main

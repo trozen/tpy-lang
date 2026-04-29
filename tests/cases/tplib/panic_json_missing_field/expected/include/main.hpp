@@ -49,167 +49,25 @@ struct Item {
     Item() = default;
     explicit Item(std::string_view name, Color color) : name(name), color(color) {}
 
-    bool __eq__(const Item& other) const {
-        return ((this->name == other.name) && (this->color == other.color));
-    }
+    bool __eq__(const Item& other) const;
 
-    std::string __repr__() const {
-        return std::format("Item(name={}, color={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->color));
-    }
+    std::string __repr__() const;
 
-    static std::expected<Item, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
-        {
-            auto __try_tmp_1 = __reader.read_object_start();
-            if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
-        }
-        std::string name = "";
-        std::optional<Color> color = std::nullopt;
-        while (__reader.has_next()) {
-            std::string_view __key;
-            {
-                auto __try_tmp_2 = __reader.read_key_raw();
-                if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
-                __key = ::tpy::unwrap_ref(*__try_tmp_2);
-            }
-            auto& __match_subject = __key;
-            if (__match_subject == "name") {
-                std::string __name_1;
-                {
-                    auto __try_tmp_3 = __reader.read_str();
-                    if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
-                    __name_1 = ::tpy::unwrap_ref(*__try_tmp_3);
-                }
-                name = __name_1;
-            } else if (__match_subject == "color") {
-                std::string_view __estr_3;
-                {
-                    auto __try_tmp_4 = __reader.read_str_raw();
-                    if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
-                    __estr_3 = ::tpy::unwrap_ref(*__try_tmp_4);
-                }
-                std::optional<Color> __parsed_4 = ::tpy::EnumUtil<Color>::try_parse(__estr_3);
-                if ((!__parsed_4.has_value())) {
-                    return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("invalid enum value for 'Color'"));
-                }
-                Color __color_2 = (*__parsed_4);
-                color = __color_2;
-            } else {
-                {
-                    auto __try_tmp_5 = __reader.skip_value();
-                    if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
-                }
-            }
-        }
-        {
-            auto __try_tmp_6 = __reader.read_object_end();
-            if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
-        }
-        if ((!color.has_value())) {
-            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'color'"));
-        }
-        return Item(name, (*color));
-    }
+    static std::expected<Item, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader);
 
-    static Item from_json(std::string_view __s) {
-        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-        std::optional<Item> __result = std::nullopt;
-        {
-            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_7;
-            {
-                auto __try_tmp_8 = Item::__json_decode__(__reader);
-                if (!__try_tmp_8.has_value()) { __err_opt_7 = std::move(__try_tmp_8.error()); goto __except_7; }
-                __result = ::tpy::unwrap_ref(*__try_tmp_8);
-            }
-            goto __after_try_7;
-            // except tplib.json.parser.JsonError:
-            __except_7:;
-            {
-                auto& __e = *__err_opt_7;
-                ::tpy::tpy_panic(__e.message);
-            }
-            __after_try_7:;
-        }
-        if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
-        return (*__result);
-    }
+    static Item from_json(std::string_view __s);
 
-    static std::expected<Item, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s) {
-        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-        return Item::__json_decode__(__reader);
-    }
+    static std::expected<Item, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s);
 
-    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
-        __writer.object_start();
-        __writer.key("name");
-        __writer.write_str(this->name);
-        __writer.key("color");
-        __writer.write_str(::tpy::EnumUtil<Color>::name(this->color));
-        __writer.object_end();
-    }
+    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const;
 
-    std::string to_json(int32_t indent = 0) const {
-        ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
-        this->__json_encode__(__writer);
-        return __writer.finish();
-    }
+    std::string to_json(int32_t indent = 0) const;
 
-    void save_json(std::string_view __path, int32_t indent = 0) const {
-        // # Test panic on missing required field in @model deserialization.
-        auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
-        auto& __f = __ctx_1.__enter__();
-        try {
-            // # Test panic on missing required field in @model deserialization.
-            // from tpy import Int32, try_parse
-            __f.write(this->to_json(indent));
-        } catch (...) {
-            __ctx_1.__exit__();
-            throw;
-        }
-        __finally_9:;
-        __ctx_1.__exit__();
-    }
+    void save_json(std::string_view __path, int32_t indent = 0) const;
 
-    static Item load_json(std::string_view __path) {
-        // # Test panic on missing required field in @model deserialization.
-        std::string __data;
-        auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
-        auto& __f = __ctx_2.__enter__();
-        std::optional<Item> __retval_11;
-        try {
-            // # Test panic on missing required field in @model deserialization.
-            // from tpy import Int32, try_parse
-            __data = __f.read();
-        } catch (...) {
-            __ctx_2.__exit__();
-            throw;
-        }
-        __finally_10:;
-        __ctx_2.__exit__();
-        if (__retval_11) return (*__retval_11);
-        // from enum import Enum
-        return Item::from_json(__data);
-    }
+    static Item load_json(std::string_view __path);
 
-    static std::expected<Item, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
-        // # Test panic on missing required field in @model deserialization.
-        std::string __data;
-        auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
-        auto& __f = __ctx_3.__enter__();
-        std::optional<std::expected<Item, ::tpystd::tplib::json::parser::JsonError>> __retval_13;
-        try {
-            // # Test panic on missing required field in @model deserialization.
-            // from tpy import Int32, try_parse
-            __data = __f.read();
-        } catch (...) {
-            __ctx_3.__exit__();
-            throw;
-        }
-        __finally_12:;
-        __ctx_3.__exit__();
-        if (__retval_13) return (*__retval_13);
-        // from enum import Enum
-        return Item::try_from_json(__data);
-    }
+    static std::expected<Item, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path);
 
     friend bool operator==(const Item& lhs, const Item& other) {
         return lhs.__eq__(other);
@@ -221,5 +79,114 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
     return os;
 }
 
+
+inline bool Item::__eq__(const Item& other) const {
+    return ((this->name == other.name) && (this->color == other.color));
+}
+
+inline std::string Item::__repr__() const {
+    return std::format("Item(name={}, color={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->color));
+}
+
+inline Item Item::from_json(std::string_view __s) {
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
+    std::optional<Item> __result = std::nullopt;
+    {
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_1;
+        {
+            auto __try_tmp_2 = Item::__json_decode__(__reader);
+            if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_2);
+        }
+        goto __after_try_1;
+        // except tplib.json.parser.JsonError:
+        __except_1:;
+        {
+            auto& __e = *__err_opt_1;
+            ::tpy::tpy_panic(__e.message);
+        }
+        __after_try_1:;
+    }
+    if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
+    return (*__result);
+}
+
+inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_from_json(std::string_view __s) {
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
+    return Item::__json_decode__(__reader);
+}
+
+inline void Item::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
+    __writer.object_start();
+    __writer.key("name");
+    __writer.write_str(this->name);
+    __writer.key("color");
+    __writer.write_str(::tpy::EnumUtil<Color>::name(this->color));
+    __writer.object_end();
+}
+
+inline std::string Item::to_json(int32_t indent) const {
+    ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
+    this->__json_encode__(__writer);
+    return __writer.finish();
+}
+
+inline void Item::save_json(std::string_view __path, int32_t indent) const {
+    // # Test panic on missing required field in @model deserialization.
+    auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
+    auto& __f = __ctx_1.__enter__();
+    try {
+        // # Test panic on missing required field in @model deserialization.
+        // from tpy import Int32, try_parse
+        __f.write(this->to_json(indent));
+    } catch (...) {
+        __ctx_1.__exit__();
+        throw;
+    }
+    __finally_3:;
+    __ctx_1.__exit__();
+}
+
+inline Item Item::load_json(std::string_view __path) {
+    // # Test panic on missing required field in @model deserialization.
+    std::string __data;
+    auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
+    auto& __f = __ctx_2.__enter__();
+    std::optional<Item> __retval_5;
+    try {
+        // # Test panic on missing required field in @model deserialization.
+        // from tpy import Int32, try_parse
+        __data = __f.read();
+    } catch (...) {
+        __ctx_2.__exit__();
+        throw;
+    }
+    __finally_4:;
+    __ctx_2.__exit__();
+    if (__retval_5) return (*__retval_5);
+    // from enum import Enum
+    return Item::from_json(__data);
+}
+
+inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_load_json(std::string_view __path) {
+    // # Test panic on missing required field in @model deserialization.
+    std::string __data;
+    auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
+    auto& __f = __ctx_3.__enter__();
+    std::optional<std::expected<Item, ::tpystd::tplib::json::parser::JsonError>> __retval_7;
+    try {
+        // # Test panic on missing required field in @model deserialization.
+        // from tpy import Int32, try_parse
+        __data = __f.read();
+    } catch (...) {
+        __ctx_3.__exit__();
+        throw;
+    }
+    __finally_6:;
+    __ctx_3.__exit__();
+    if (__retval_7) return (*__retval_7);
+    // from enum import Enum
+    return Item::try_from_json(__data);
+}
 void __tpy_init();
 } // namespace tpyapp::main

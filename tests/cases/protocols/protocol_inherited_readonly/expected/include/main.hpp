@@ -41,16 +41,10 @@ struct Impl {
 
     // @readonly
     // def read(self) -> Int32:
-    int32_t read() const {
-        // return self.value
-        return this->value;
-    }
+    int32_t read() const;
 
     // def write(self, v: Int32) -> None:
-    void write(int32_t v) {
-        // self.value = v
-        this->value = v;
-    }
+    void write(int32_t v);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
@@ -58,6 +52,19 @@ inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
     return os;
 }
 
+
+// @readonly
+// def read(self) -> Int32:
+inline int32_t Impl::read() const {
+    // return self.value
+    return this->value;
+}
+
+// def write(self, v: Int32) -> None:
+inline void Impl::write(int32_t v) {
+    // self.value = v
+    this->value = v;
+}
 // @readonly
 // def read_via_child(x: Child) -> Int32:
 template<Child T_x>

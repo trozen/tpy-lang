@@ -42,10 +42,7 @@ struct Container {
     explicit Container(const Point& p, int32_t n) : data(std::tuple<Point, int32_t>{p, n}) {}
 
     // def __repr__(self) -> str:
-    std::string __repr__() const {
-        // return "Container"
-        return "Container";
-    }
+    std::string __repr__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -63,10 +60,7 @@ struct ContainerOk {
     explicit ContainerOk(const Point& p, int32_t n) : data(std::tuple<Point, int32_t>{Point(p), n}) {}
 
     // def __repr__(self) -> str:
-    std::string __repr__() const {
-        // return "ContainerOk"
-        return "ContainerOk";
-    }
+    std::string __repr__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ContainerOk& obj) {
@@ -74,5 +68,17 @@ inline std::ostream& operator<<(std::ostream& os, const ContainerOk& obj) {
     return os;
 }
 
+
+// def __repr__(self) -> str:
+inline std::string Container::__repr__() const {
+    // return "Container"
+    return "Container";
+}
+
+// def __repr__(self) -> str:
+inline std::string ContainerOk::__repr__() const {
+    // return "ContainerOk"
+    return "ContainerOk";
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -24,6 +24,52 @@ void main() {
     std::cout << ::tpy::__getitem__(c2.items, 0).name << "\n";
 }
 
+
+std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
+    {
+        auto __try_tmp_8 = __reader.read_object_start();
+        if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(__try_tmp_8.error());
+    }
+    std::string name = "";
+    int32_t value = 0;
+    while (__reader.has_next()) {
+        std::string_view __key;
+        {
+            auto __try_tmp_9 = __reader.read_key_raw();
+            if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
+            __key = ::tpy::unwrap_ref(*__try_tmp_9);
+        }
+        auto& __match_subject = __key;
+        if (__match_subject == "name") {
+            std::string __name_1;
+            {
+                auto __try_tmp_10 = __reader.read_str();
+                if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
+                __name_1 = ::tpy::unwrap_ref(*__try_tmp_10);
+            }
+            name = __name_1;
+        } else if (__match_subject == "value") {
+            int64_t __raw_3;
+            {
+                auto __try_tmp_11 = __reader.read_int();
+                if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
+                __raw_3 = ::tpy::unwrap_ref(*__try_tmp_11);
+            }
+            int32_t __value_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
+            value = __value_2;
+        } else {
+            {
+                auto __try_tmp_12 = __reader.skip_value();
+                if (!__try_tmp_12.has_value()) return ::tpy::make_unexpected(__try_tmp_12.error());
+            }
+        }
+    }
+    {
+        auto __try_tmp_13 = __reader.read_object_end();
+        if (!__try_tmp_13.has_value()) return ::tpy::make_unexpected(__try_tmp_13.error());
+    }
+    return Item(name, value);
+}
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

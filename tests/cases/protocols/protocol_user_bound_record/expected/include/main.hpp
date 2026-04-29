@@ -25,10 +25,7 @@ struct Message {
     explicit Message(std::string_view text) : text(text) {}
 
     // def to_str(self) -> str:
-    std::string to_str() const {
-        // return self.text
-        return this->text;
-    }
+    std::string to_str() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
@@ -83,10 +80,7 @@ struct DefaultFactory {
 
 
     // def make(self, text: str) -> Own[Container[Message]]:
-    Container<Message> make(std::string_view text) const {
-        // return Container(Message(text))
-        return Container<Message>(Message(text));
-    }
+    Container<Message> make(std::string_view text) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {
@@ -94,6 +88,18 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {
     return os;
 }
 
+
+// def to_str(self) -> str:
+inline std::string Message::to_str() const {
+    // return self.text
+    return this->text;
+}
+
+// def make(self, text: str) -> Own[Container[Message]]:
+inline Container<Message> DefaultFactory::make(std::string_view text) const {
+    // return Container(Message(text))
+    return Container<Message>(Message(text));
+}
 // # Generic function using the factory protocol
 // def create_container[F: ContainerFactory](factory: F, text: str) -> Own[Container[Message]]:
 template<ContainerFactory F>

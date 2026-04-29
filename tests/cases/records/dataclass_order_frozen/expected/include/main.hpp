@@ -26,60 +26,19 @@ struct Version {
     Version() = default;
     explicit Version(int32_t major, int32_t minor, int32_t patch) : major(major), minor(minor), patch(patch) {}
 
-    bool __eq__(const Version& other) const {
-        return (((this->major == other.major) && (this->minor == other.minor)) && (this->patch == other.patch));
-    }
+    bool __eq__(const Version& other) const;
 
-    std::string __repr__() const {
-        return std::format("Version(major={}, minor={}, patch={})", ::tpy::__repr__(this->major), ::tpy::__repr__(this->minor), ::tpy::__repr__(this->patch));
-    }
+    std::string __repr__() const;
 
-    uint64_t __hash__() const {
-        uint64_t h = ::tpy::__hash__(this->major);
-        h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->minor)));
-        h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->patch)));
-        return h;
-    }
+    uint64_t __hash__() const;
 
-    bool __lt__(const Version& other) const {
-        if ((this->major != other.major)) {
-            return (this->major < other.major);
-        }
-        if ((this->minor != other.minor)) {
-            return (this->minor < other.minor);
-        }
-        return (this->patch < other.patch);
-    }
+    bool __lt__(const Version& other) const;
 
-    bool __le__(const Version& other) const {
-        if ((this->major != other.major)) {
-            return (this->major <= other.major);
-        }
-        if ((this->minor != other.minor)) {
-            return (this->minor <= other.minor);
-        }
-        return (this->patch <= other.patch);
-    }
+    bool __le__(const Version& other) const;
 
-    bool __gt__(const Version& other) const {
-        if ((this->major != other.major)) {
-            return (this->major > other.major);
-        }
-        if ((this->minor != other.minor)) {
-            return (this->minor > other.minor);
-        }
-        return (this->patch > other.patch);
-    }
+    bool __gt__(const Version& other) const;
 
-    bool __ge__(const Version& other) const {
-        if ((this->major != other.major)) {
-            return (this->major >= other.major);
-        }
-        if ((this->minor != other.minor)) {
-            return (this->minor >= other.minor);
-        }
-        return (this->patch >= other.patch);
-    }
+    bool __ge__(const Version& other) const;
 
     friend bool operator==(const Version& lhs, const Version& other) {
         return lhs.__eq__(other);
@@ -117,5 +76,60 @@ template<> struct std::hash<tpyapp::main::Version> {
 namespace tpyapp::main {
 
 
+
+inline bool Version::__eq__(const Version& other) const {
+    return (((this->major == other.major) && (this->minor == other.minor)) && (this->patch == other.patch));
+}
+
+inline std::string Version::__repr__() const {
+    return std::format("Version(major={}, minor={}, patch={})", ::tpy::__repr__(this->major), ::tpy::__repr__(this->minor), ::tpy::__repr__(this->patch));
+}
+
+inline uint64_t Version::__hash__() const {
+    uint64_t h = ::tpy::__hash__(this->major);
+    h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->minor)));
+    h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->patch)));
+    return h;
+}
+
+inline bool Version::__lt__(const Version& other) const {
+    if ((this->major != other.major)) {
+        return (this->major < other.major);
+    }
+    if ((this->minor != other.minor)) {
+        return (this->minor < other.minor);
+    }
+    return (this->patch < other.patch);
+}
+
+inline bool Version::__le__(const Version& other) const {
+    if ((this->major != other.major)) {
+        return (this->major <= other.major);
+    }
+    if ((this->minor != other.minor)) {
+        return (this->minor <= other.minor);
+    }
+    return (this->patch <= other.patch);
+}
+
+inline bool Version::__gt__(const Version& other) const {
+    if ((this->major != other.major)) {
+        return (this->major > other.major);
+    }
+    if ((this->minor != other.minor)) {
+        return (this->minor > other.minor);
+    }
+    return (this->patch > other.patch);
+}
+
+inline bool Version::__ge__(const Version& other) const {
+    if ((this->major != other.major)) {
+        return (this->major >= other.major);
+    }
+    if ((this->minor != other.minor)) {
+        return (this->minor >= other.minor);
+    }
+    return (this->patch >= other.patch);
+}
 void __tpy_init();
 } // namespace tpyapp::main

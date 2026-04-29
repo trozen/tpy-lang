@@ -40,21 +40,10 @@ struct Tag {
 
     // @staticmethod
     // def from_arg(s: str) -> Own[Tag]:
-    static Tag from_arg(std::string_view s) {
-        // return Tag(s)
-        return Tag(s);
-    }
+    static Tag from_arg(std::string_view s);
 
     // def __str__(self) -> str:
-    std::string __str__() const {
-        // if self.namespace == "":
-        if ((this->namespace_ == "")) {
-            // return self.name
-            return this->name;
-        }
-        // return self.namespace + ":" + self.name
-        return (::tpy::str_concat((::tpy::str_concat(this->namespace_, ":")), this->name));
-    }
+    std::string __str__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
@@ -78,5 +67,23 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
     return os;
 }
 
+
+// @staticmethod
+// def from_arg(s: str) -> Own[Tag]:
+inline Tag Tag::from_arg(std::string_view s) {
+    // return Tag(s)
+    return Tag(s);
+}
+
+// def __str__(self) -> str:
+inline std::string Tag::__str__() const {
+    // if self.namespace == "":
+    if ((this->namespace_ == "")) {
+        // return self.name
+        return this->name;
+    }
+    // return self.namespace + ":" + self.name
+    return (::tpy::str_concat((::tpy::str_concat(this->namespace_, ":")), this->name));
+}
 void __tpy_init();
 } // namespace tpyapp::main

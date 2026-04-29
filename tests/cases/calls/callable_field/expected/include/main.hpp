@@ -22,16 +22,10 @@ struct Handler {
     explicit Handler(std::function<void(int32_t)> cb) : on_event(cb) {}
 
     // def trigger(self, value: Int32) -> None:
-    void trigger(int32_t value) const {
-        // self.on_event(value)
-        (*this).on_event(value);
-    }
+    void trigger(int32_t value) const;
 
     // def __str__(self) -> str:
-    std::string __str__() const {
-        // return "Handler(...)"
-        return "Handler(...)";
-    }
+    std::string __str__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
@@ -39,5 +33,17 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
     return os;
 }
 
+
+// def trigger(self, value: Int32) -> None:
+inline void Handler::trigger(int32_t value) const {
+    // self.on_event(value)
+    (*this).on_event(value);
+}
+
+// def __str__(self) -> str:
+inline std::string Handler::__str__() const {
+    // return "Handler(...)"
+    return "Handler(...)";
+}
 void __tpy_init();
 } // namespace tpyapp::main

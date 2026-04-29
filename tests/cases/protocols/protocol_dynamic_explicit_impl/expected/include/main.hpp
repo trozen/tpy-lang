@@ -60,16 +60,10 @@ struct Item : Describable {
     explicit Item(std::string_view name, int32_t id) : _name(name), _id(id) {}
 
     // def describe(self) -> str:
-    std::string describe() override {
-        // return self._name
-        return this->_name;
-    }
+    std::string describe() override;
 
     // def id(self) -> Int32:
-    int32_t id() override {
-        // return self._id
-        return this->_id;
-    }
+    int32_t id() override;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
@@ -77,5 +71,17 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
     return os;
 }
 
+
+// def describe(self) -> str:
+inline std::string Item::describe() {
+    // return self._name
+    return this->_name;
+}
+
+// def id(self) -> Int32:
+inline int32_t Item::id() {
+    // return self._id
+    return this->_id;
+}
 void __tpy_init();
 } // namespace tpyapp::main

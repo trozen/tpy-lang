@@ -20,10 +20,7 @@ struct Negate {
 
     // @readonly
     // def __call__(self, x: Int32) -> Int32:
-    int32_t __call__(int32_t x) const {
-        // return -x
-        return ::tpy::neg_check<int32_t>(x);
-    }
+    int32_t __call__(int32_t x) const;
 
     int32_t operator()(int32_t x) const {
         return __call__(x);
@@ -46,10 +43,7 @@ struct ScaleBy {
 
     // @readonly
     // def __call__(self, x: Int32) -> Int32:
-    int32_t __call__(int32_t x) const {
-        // return x * self.factor
-        return (::tpy::mul_check<int32_t>(x, this->factor));
-    }
+    int32_t __call__(int32_t x) const;
 
     int32_t operator()(int32_t x) const {
         return __call__(x);
@@ -61,5 +55,19 @@ inline std::ostream& operator<<(std::ostream& os, const ScaleBy& obj) {
     return os;
 }
 
+
+// @readonly
+// def __call__(self, x: Int32) -> Int32:
+inline int32_t Negate::__call__(int32_t x) const {
+    // return -x
+    return ::tpy::neg_check<int32_t>(x);
+}
+
+// @readonly
+// def __call__(self, x: Int32) -> Int32:
+inline int32_t ScaleBy::__call__(int32_t x) const {
+    // return x * self.factor
+    return (::tpy::mul_check<int32_t>(x, this->factor));
+}
 void __tpy_init();
 } // namespace tpyapp::main

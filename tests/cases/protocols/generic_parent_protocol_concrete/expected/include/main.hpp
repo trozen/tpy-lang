@@ -39,19 +39,7 @@ struct IntListIter {
     auto& __iter__() { return *this; }
 
     // def __next__(self) -> Int32:
-    std::expected<int32_t, ::tpy::StopIteration> __next__() {
-        // if self.pos >= Int32(len(self.items)):
-        if ((this->pos >= ::tpy::__len__(this->items))) {
-            // raise StopIteration
-            return ::tpy::make_unexpected(::tpy::StopIteration{});
-        }
-        // v = self.items[self.pos]
-        int32_t v = ::tpy::__getitem__(this->items, this->pos);
-        // self.pos += 1
-        this->pos = ::tpy::add_check<int32_t>(this->pos, 1);
-        // return v
-        return v;
-    }
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntListIter& obj) {
@@ -68,22 +56,13 @@ struct IntList {
     IntList() : items(std::vector<int32_t>{}) {}
 
     // def add(self, x: Int32) -> None:
-    void add(int32_t x) {
-        // self.items.append(x)
-        this->items.push_back(x);
-    }
+    void add(int32_t x);
 
     // def length(self) -> Int32:
-    int32_t length() const {
-        // return Int32(len(self.items))
-        return ::tpy::__len__(this->items);
-    }
+    int32_t length() const;
 
     // def __iter__(self) -> Own[IntListIter]:
-    IntListIter __iter__() const {
-        // return IntListIter(self.items)
-        return IntListIter(this->items);
-    }
+    IntListIter __iter__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntList& obj) {
@@ -91,6 +70,39 @@ inline std::ostream& operator<<(std::ostream& os, const IntList& obj) {
     return os;
 }
 
+
+// def __next__(self) -> Int32:
+inline std::expected<int32_t, ::tpy::StopIteration> IntListIter::__next__() {
+    // if self.pos >= Int32(len(self.items)):
+    if ((this->pos >= ::tpy::__len__(this->items))) {
+        // raise StopIteration
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    // v = self.items[self.pos]
+    int32_t v = ::tpy::__getitem__(this->items, this->pos);
+    // self.pos += 1
+    this->pos = ::tpy::add_check<int32_t>(this->pos, 1);
+    // return v
+    return v;
+}
+
+// def add(self, x: Int32) -> None:
+inline void IntList::add(int32_t x) {
+    // self.items.append(x)
+    this->items.push_back(x);
+}
+
+// def length(self) -> Int32:
+inline int32_t IntList::length() const {
+    // return Int32(len(self.items))
+    return ::tpy::__len__(this->items);
+}
+
+// def __iter__(self) -> Own[IntListIter]:
+inline IntListIter IntList::__iter__() const {
+    // return IntListIter(self.items)
+    return IntListIter(this->items);
+}
 // def length_of(c: IntCounted) -> Int32:
 template<IntCounted T_c>
 int32_t length_of(T_c& c) {

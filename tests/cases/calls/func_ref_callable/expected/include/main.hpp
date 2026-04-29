@@ -26,16 +26,10 @@ struct Handler {
     explicit Handler(std::function<void(int32_t)> cb) : callback(cb) {}
 
     // def run(self, x: Int32) -> None:
-    void run(int32_t x) const {
-        // self.callback(x)
-        (*this).callback(x);
-    }
+    void run(int32_t x) const;
 
     // def __str__(self) -> str:
-    std::string __str__() const {
-        // return "Handler(...)"
-        return "Handler(...)";
-    }
+    std::string __str__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
@@ -43,5 +37,17 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
     return os;
 }
 
+
+// def run(self, x: Int32) -> None:
+inline void Handler::run(int32_t x) const {
+    // self.callback(x)
+    (*this).callback(x);
+}
+
+// def __str__(self) -> str:
+inline std::string Handler::__str__() const {
+    // return "Handler(...)"
+    return "Handler(...)";
+}
 void __tpy_init();
 } // namespace tpyapp::main

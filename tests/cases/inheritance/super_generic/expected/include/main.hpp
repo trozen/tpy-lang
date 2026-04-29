@@ -46,10 +46,7 @@ struct LabeledContainer : Container<int32_t> {
     explicit LabeledContainer(std::string_view label, int32_t value) : Container<int32_t>(value), label(label) {}
 
     // def describe(self) -> str:
-    std::string describe() const {
-        // return self.label
-        return this->label;
-    }
+    std::string describe() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const LabeledContainer& obj) {
@@ -57,5 +54,11 @@ inline std::ostream& operator<<(std::ostream& os, const LabeledContainer& obj) {
     return os;
 }
 
+
+// def describe(self) -> str:
+inline std::string LabeledContainer::describe() const {
+    // return self.label
+    return this->label;
+}
 void __tpy_init();
 } // namespace tpyapp::main

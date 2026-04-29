@@ -30,10 +30,7 @@ struct Box {
 
     // @override
     // def measure(self) -> Int32:  # tpyc: ok
-    int32_t measure() const {
-        // return self.volume
-        return this->volume;
-    }
+    int32_t measure() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
@@ -41,5 +38,12 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// @override
+// def measure(self) -> Int32:  # tpyc: ok
+inline int32_t Box::measure() const {
+    // return self.volume
+    return this->volume;
+}
 void __tpy_init();
 } // namespace tpyapp::main

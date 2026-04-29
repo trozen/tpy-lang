@@ -30,13 +30,9 @@ struct Point {
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    bool __eq__(const Point& other) const {
-        return ((this->x == other.x) && (this->y == other.y));
-    }
+    bool __eq__(const Point& other) const;
 
-    std::string __repr__() const {
-        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
@@ -60,13 +56,9 @@ struct MaybePoint {
     MaybePoint() = default;
     explicit MaybePoint(std::string_view label, std::optional<Point>&& pos) : label(label), pos(std::move(pos)) {}
 
-    bool __eq__(const MaybePoint& other) const {
-        return ((this->label == other.label) && (this->pos == other.pos));
-    }
+    bool __eq__(const MaybePoint& other) const;
 
-    std::string __repr__() const {
-        return std::format("MaybePoint(label={}, pos={})", ::tpy::__repr__(this->label), ::tpy::__repr__(this->pos));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const MaybePoint& lhs, const MaybePoint& other) {
         return lhs.__eq__(other);
@@ -88,13 +80,9 @@ struct PointList {
     PointList() = default;
     explicit PointList(std::vector<std::optional<Point>>&& items) : items(std::move(items)) {}
 
-    bool __eq__(const PointList& other) const {
-        return (this->items == other.items);
-    }
+    bool __eq__(const PointList& other) const;
 
-    std::string __repr__() const {
-        return std::format("PointList(items={})", ::tpy::list_to_str(this->items));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const PointList& lhs, const PointList& other) {
         return lhs.__eq__(other);
@@ -118,13 +106,9 @@ struct Line {
     Line() = default;
     explicit Line(Point&& start, Point&& end) : start(std::move(start)), end(std::move(end)) {}
 
-    bool __eq__(const Line& other) const {
-        return ((this->start == other.start) && (this->end == other.end));
-    }
+    bool __eq__(const Line& other) const;
 
-    std::string __repr__() const {
-        return std::format("Line(start={}, end={})", ::tpy::__repr__(this->start), ::tpy::__repr__(this->end));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Line& lhs, const Line& other) {
         return lhs.__eq__(other);
@@ -145,13 +129,9 @@ struct MaybeLine {
     MaybeLine() = default;
     explicit MaybeLine(std::optional<Line>&& line) : line(std::move(line)) {}
 
-    bool __eq__(const MaybeLine& other) const {
-        return (this->line == other.line);
-    }
+    bool __eq__(const MaybeLine& other) const;
 
-    std::string __repr__() const {
-        return std::format("MaybeLine(line={})", ::tpy::__repr__(this->line));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const MaybeLine& lhs, const MaybeLine& other) {
         return lhs.__eq__(other);
@@ -177,13 +157,9 @@ struct Mixed {
     Mixed() = default;
     explicit Mixed(std::string_view name, Point&& required, std::optional<Point>&& optional) : name(name), required(std::move(required)), optional(std::move(optional)) {}
 
-    bool __eq__(const Mixed& other) const {
-        return (((this->name == other.name) && (this->required == other.required)) && (this->optional == other.optional));
-    }
+    bool __eq__(const Mixed& other) const;
 
-    std::string __repr__() const {
-        return std::format("Mixed(name={}, required={}, optional={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->required), ::tpy::__repr__(this->optional));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Mixed& lhs, const Mixed& other) {
         return lhs.__eq__(other);
@@ -205,13 +181,9 @@ struct LabeledPoints {
     LabeledPoints() = default;
     explicit LabeledPoints(::tpy::ordered_map<std::string, std::optional<Point>>&& items) : items(std::move(items)) {}
 
-    bool __eq__(const LabeledPoints& other) const {
-        return (this->items == other.items);
-    }
+    bool __eq__(const LabeledPoints& other) const;
 
-    std::string __repr__() const {
-        return std::format("LabeledPoints(items={})", ::tpy::dict_to_str(this->items));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const LabeledPoints& lhs, const LabeledPoints& other) {
         return lhs.__eq__(other);
@@ -223,5 +195,61 @@ inline std::ostream& operator<<(std::ostream& os, const LabeledPoints& obj) {
     return os;
 }
 
+
+inline bool Point::__eq__(const Point& other) const {
+    return ((this->x == other.x) && (this->y == other.y));
+}
+
+inline std::string Point::__repr__() const {
+    return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+}
+
+inline bool MaybePoint::__eq__(const MaybePoint& other) const {
+    return ((this->label == other.label) && (this->pos == other.pos));
+}
+
+inline std::string MaybePoint::__repr__() const {
+    return std::format("MaybePoint(label={}, pos={})", ::tpy::__repr__(this->label), ::tpy::__repr__(this->pos));
+}
+
+inline bool PointList::__eq__(const PointList& other) const {
+    return (this->items == other.items);
+}
+
+inline std::string PointList::__repr__() const {
+    return std::format("PointList(items={})", ::tpy::list_to_str(this->items));
+}
+
+inline bool Line::__eq__(const Line& other) const {
+    return ((this->start == other.start) && (this->end == other.end));
+}
+
+inline std::string Line::__repr__() const {
+    return std::format("Line(start={}, end={})", ::tpy::__repr__(this->start), ::tpy::__repr__(this->end));
+}
+
+inline bool MaybeLine::__eq__(const MaybeLine& other) const {
+    return (this->line == other.line);
+}
+
+inline std::string MaybeLine::__repr__() const {
+    return std::format("MaybeLine(line={})", ::tpy::__repr__(this->line));
+}
+
+inline bool Mixed::__eq__(const Mixed& other) const {
+    return (((this->name == other.name) && (this->required == other.required)) && (this->optional == other.optional));
+}
+
+inline std::string Mixed::__repr__() const {
+    return std::format("Mixed(name={}, required={}, optional={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->required), ::tpy::__repr__(this->optional));
+}
+
+inline bool LabeledPoints::__eq__(const LabeledPoints& other) const {
+    return (this->items == other.items);
+}
+
+inline std::string LabeledPoints::__repr__() const {
+    return std::format("LabeledPoints(items={})", ::tpy::dict_to_str(this->items));
+}
 void __tpy_init();
 } // namespace tpyapp::main

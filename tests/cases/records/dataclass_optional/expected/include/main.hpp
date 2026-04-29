@@ -24,13 +24,9 @@ struct Node {
     Node() = default;
     explicit Node(int32_t value, std::optional<std::string_view> label = std::nullopt) : value(value), label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
 
-    bool __eq__(const Node& other) const {
-        return ((this->value == other.value) && (this->label == other.label));
-    }
+    bool __eq__(const Node& other) const;
 
-    std::string __repr__() const {
-        return std::format("Node(value={}, label={})", ::tpy::__repr__(this->value), ::tpy::__repr__(this->label));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Node& lhs, const Node& other) {
         return lhs.__eq__(other);
@@ -42,5 +38,13 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     return os;
 }
 
+
+inline bool Node::__eq__(const Node& other) const {
+    return ((this->value == other.value) && (this->label == other.label));
+}
+
+inline std::string Node::__repr__() const {
+    return std::format("Node(value={}, label={})", ::tpy::__repr__(this->value), ::tpy::__repr__(this->label));
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -53,13 +53,9 @@ struct Wrapper {
     Wrapper() = default;
     explicit Wrapper(std::string_view name, Pair<int32_t>&& pair = Pair<int32_t>()) : name(name), pair(std::move(pair)) {}
 
-    bool __eq__(const Wrapper& other) const {
-        return ((this->name == other.name) && (this->pair == other.pair));
-    }
+    bool __eq__(const Wrapper& other) const;
 
-    std::string __repr__() const {
-        return std::format("Wrapper(name={}, pair={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->pair));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Wrapper& lhs, const Wrapper& other) {
         return lhs.__eq__(other);
@@ -71,5 +67,13 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+inline bool Wrapper::__eq__(const Wrapper& other) const {
+    return ((this->name == other.name) && (this->pair == other.pair));
+}
+
+inline std::string Wrapper::__repr__() const {
+    return std::format("Wrapper(name={}, pair={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->pair));
+}
 void __tpy_init();
 } // namespace tpyapp::main

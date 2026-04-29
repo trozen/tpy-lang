@@ -26,43 +26,25 @@ struct Rect {
 
     // @property
     // def width(self) -> Int32:
-    int32_t width() const {
-        // return self._w
-        return this->_w;
-    }
+    int32_t width() const;
 
     // @width.setter
     // def width(self, v: Int32) -> None:
-    void set_width(int32_t v) {
-        // self._w = v
-        this->_w = v;
-    }
+    void set_width(int32_t v);
 
     // @property
     // def height(self) -> Int32:
-    int32_t height() const {
-        // return self._h
-        return this->_h;
-    }
+    int32_t height() const;
 
     // @property
     // def area(self) -> Int32:
-    int32_t area() const {
-        // return self.width * self.height
-        return (::tpy::mul_check<int32_t>(this->width(), this->height()));
-    }
+    int32_t area() const;
 
     // def describe(self) -> str:
-    std::string describe() const {
-        // return f"{self.width}x{self.height}={self.area}"
-        return std::format("{}x{}={}", this->width(), this->height(), this->area());
-    }
+    std::string describe() const;
 
     // def scale(self, factor: Int32) -> None:
-    void scale(int32_t factor) {
-        // self.width = self._w * factor
-        this->set_width((::tpy::mul_check<int32_t>(this->_w, factor)));
-    }
+    void scale(int32_t factor);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
@@ -70,5 +52,45 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
     return os;
 }
 
+
+// @property
+// def width(self) -> Int32:
+inline int32_t Rect::width() const {
+    // return self._w
+    return this->_w;
+}
+
+// @width.setter
+// def width(self, v: Int32) -> None:
+inline void Rect::set_width(int32_t v) {
+    // self._w = v
+    this->_w = v;
+}
+
+// @property
+// def height(self) -> Int32:
+inline int32_t Rect::height() const {
+    // return self._h
+    return this->_h;
+}
+
+// @property
+// def area(self) -> Int32:
+inline int32_t Rect::area() const {
+    // return self.width * self.height
+    return (::tpy::mul_check<int32_t>(this->width(), this->height()));
+}
+
+// def describe(self) -> str:
+inline std::string Rect::describe() const {
+    // return f"{self.width}x{self.height}={self.area}"
+    return std::format("{}x{}={}", this->width(), this->height(), this->area());
+}
+
+// def scale(self, factor: Int32) -> None:
+inline void Rect::scale(int32_t factor) {
+    // self.width = self._w * factor
+    this->set_width((::tpy::mul_check<int32_t>(this->_w, factor)));
+}
 void __tpy_init();
 } // namespace tpyapp::main

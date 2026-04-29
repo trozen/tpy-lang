@@ -27,10 +27,7 @@ struct Node {
     explicit Node(int32_t v) : val(v) {}
 
     // def doubled(self) -> Int32:
-    int32_t doubled() const {
-        // return self.val * 2
-        return (::tpy::mul_check<int32_t>(this->val, 2));
-    }
+    int32_t doubled() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
@@ -52,5 +49,11 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+// def doubled(self) -> Int32:
+inline int32_t Node::doubled() const {
+    // return self.val * 2
+    return (::tpy::mul_check<int32_t>(this->val, 2));
+}
 void __tpy_init();
 } // namespace tpyapp::main

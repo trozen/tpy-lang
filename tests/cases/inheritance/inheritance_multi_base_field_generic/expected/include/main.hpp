@@ -54,18 +54,10 @@ struct Combined : Box<int32_t>, Label {
     }
 
     // def n_plus(self, delta: Int32) -> Int32:
-    int32_t n_plus(int32_t delta) const {
-        // v = Box.value  # tpyc: type(Int32)
-        int32_t v = this->Box<int32_t>::value;
-        // return v + delta
-        return (::tpy::add_check<int32_t>(v, delta));
-    }
+    int32_t n_plus(int32_t delta) const;
 
     // def combined(self) -> str:
-    std::string combined() const {
-        // return Label.value + "=" + str(Box.value)
-        return (::tpy::str_concat((::tpy::str_concat(this->Label::value, "=")), ::tpy::fixed_to_str<int32_t>(this->Box<int32_t>::value)));
-    }
+    std::string combined() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
@@ -73,5 +65,19 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
     return os;
 }
 
+
+// def n_plus(self, delta: Int32) -> Int32:
+inline int32_t Combined::n_plus(int32_t delta) const {
+    // v = Box.value  # tpyc: type(Int32)
+    int32_t v = this->Box<int32_t>::value;
+    // return v + delta
+    return (::tpy::add_check<int32_t>(v, delta));
+}
+
+// def combined(self) -> str:
+inline std::string Combined::combined() const {
+    // return Label.value + "=" + str(Box.value)
+    return (::tpy::str_concat((::tpy::str_concat(this->Label::value, "=")), ::tpy::fixed_to_str<int32_t>(this->Box<int32_t>::value)));
+}
 void __tpy_init();
 } // namespace tpyapp::main

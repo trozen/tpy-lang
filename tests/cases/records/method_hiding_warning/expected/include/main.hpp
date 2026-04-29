@@ -18,16 +18,10 @@ struct Animal {
 
 
     // def speak(self) -> None:
-    void speak() const {
-        // print("...")
-        std::cout << "..." << "\n";
-    }
+    void speak() const;
 
     // def make_noise(self) -> None:
-    void make_noise() const {
-        // self.speak()
-        this->speak();
-    }
+    void make_noise() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
@@ -40,10 +34,7 @@ struct Dog : Animal {
 
 
     // def speak(self) -> None:
-    void speak() const {
-        // print("Woof!")
-        std::cout << "Woof!" << "\n";
-    }
+    void speak() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
@@ -51,5 +42,23 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
+
+// def speak(self) -> None:
+inline void Animal::speak() const {
+    // print("...")
+    std::cout << "..." << "\n";
+}
+
+// def make_noise(self) -> None:
+inline void Animal::make_noise() const {
+    // self.speak()
+    this->speak();
+}
+
+// def speak(self) -> None:
+inline void Dog::speak() const {
+    // print("Woof!")
+    std::cout << "Woof!" << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

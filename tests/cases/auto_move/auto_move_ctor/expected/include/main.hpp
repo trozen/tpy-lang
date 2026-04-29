@@ -36,10 +36,7 @@ struct Outer {
     explicit Outer(Inner&& inner) : inner(std::move(inner)) {}
 
     // def get_value(self) -> Int32:
-    int32_t get_value() const {
-        // return self.inner.value
-        return this->inner.value;
-    }
+    int32_t get_value() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
@@ -47,5 +44,11 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
     return os;
 }
 
+
+// def get_value(self) -> Int32:
+inline int32_t Outer::get_value() const {
+    // return self.inner.value
+    return this->inner.value;
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -27,13 +27,9 @@ struct Point {
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    bool __eq__(const Point& other) const {
-        return ((this->x == other.x) && (this->y == other.y));
-    }
+    bool __eq__(const Point& other) const;
 
-    std::string __repr__() const {
-        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
@@ -56,13 +52,9 @@ struct Person {
     Person() = default;
     explicit Person(std::string_view name, int32_t age) : name(name), age(age) {}
 
-    bool __eq__(const Person& other) const {
-        return ((this->name == other.name) && (this->age == other.age));
-    }
+    bool __eq__(const Person& other) const;
 
-    std::string __repr__() const {
-        return std::format("Person(name={}, age={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Person& lhs, const Person& other) {
         return lhs.__eq__(other);
@@ -85,13 +77,9 @@ struct NamedPoint {
     NamedPoint() = default;
     explicit NamedPoint(std::string_view name, Point&& pos) : name(name), pos(std::move(pos)) {}
 
-    bool __eq__(const NamedPoint& other) const {
-        return ((this->name == other.name) && (this->pos == other.pos));
-    }
+    bool __eq__(const NamedPoint& other) const;
 
-    std::string __repr__() const {
-        return std::format("NamedPoint(name={}, pos={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->pos));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const NamedPoint& lhs, const NamedPoint& other) {
         return lhs.__eq__(other);
@@ -114,13 +102,9 @@ struct Group {
     Group() = default;
     explicit Group(std::string_view label, std::vector<Point>&& members) : label(label), members(std::move(members)) {}
 
-    bool __eq__(const Group& other) const {
-        return ((this->label == other.label) && (this->members == other.members));
-    }
+    bool __eq__(const Group& other) const;
 
-    std::string __repr__() const {
-        return std::format("Group(label={}, members={})", ::tpy::__repr__(this->label), ::tpy::list_to_str(this->members));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Group& lhs, const Group& other) {
         return lhs.__eq__(other);
@@ -132,5 +116,37 @@ inline std::ostream& operator<<(std::ostream& os, const Group& obj) {
     return os;
 }
 
+
+inline bool Point::__eq__(const Point& other) const {
+    return ((this->x == other.x) && (this->y == other.y));
+}
+
+inline std::string Point::__repr__() const {
+    return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+}
+
+inline bool Person::__eq__(const Person& other) const {
+    return ((this->name == other.name) && (this->age == other.age));
+}
+
+inline std::string Person::__repr__() const {
+    return std::format("Person(name={}, age={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age));
+}
+
+inline bool NamedPoint::__eq__(const NamedPoint& other) const {
+    return ((this->name == other.name) && (this->pos == other.pos));
+}
+
+inline std::string NamedPoint::__repr__() const {
+    return std::format("NamedPoint(name={}, pos={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->pos));
+}
+
+inline bool Group::__eq__(const Group& other) const {
+    return ((this->label == other.label) && (this->members == other.members));
+}
+
+inline std::string Group::__repr__() const {
+    return std::format("Group(label={}, members={})", ::tpy::__repr__(this->label), ::tpy::list_to_str(this->members));
+}
 void __tpy_init();
 } // namespace tpyapp::main

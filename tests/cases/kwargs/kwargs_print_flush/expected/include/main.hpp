@@ -24,19 +24,10 @@ struct CountingSink {
     CountingSink() : parts(std::vector<std::string>{}), flushes(0) {}
 
     // def write(self, text: str) -> Int32:
-    int32_t write(std::string_view text) {
-        // self.parts.append(text)
-        std::string __tmp_1{text};
-        this->parts.push_back(std::move(__tmp_1));
-        // return Int32(len(text))
-        return ::tpy::__len__(text);
-    }
+    int32_t write(std::string_view text);
 
     // def flush(self) -> None:
-    void flush() {
-        // self.flushes += Int32(1)
-        this->flushes = ::tpy::add_check<int32_t>(this->flushes, 1);
-    }
+    void flush();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CountingSink& obj) {
@@ -44,5 +35,20 @@ inline std::ostream& operator<<(std::ostream& os, const CountingSink& obj) {
     return os;
 }
 
+
+// def write(self, text: str) -> Int32:
+inline int32_t CountingSink::write(std::string_view text) {
+    // self.parts.append(text)
+    std::string __tmp_1{text};
+    this->parts.push_back(std::move(__tmp_1));
+    // return Int32(len(text))
+    return ::tpy::__len__(text);
+}
+
+// def flush(self) -> None:
+inline void CountingSink::flush() {
+    // self.flushes += Int32(1)
+    this->flushes = ::tpy::add_check<int32_t>(this->flushes, 1);
+}
 void __tpy_init();
 } // namespace tpyapp::main

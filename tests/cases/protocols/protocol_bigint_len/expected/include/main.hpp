@@ -25,10 +25,7 @@ struct MyCollection {
     explicit MyCollection(const ::tpy::BigInt& n) : size(n) {}
 
     // def __len__(self) -> int:
-    ::tpy::BigInt __len__() const {
-        // return self.size
-        return this->size;
-    }
+    ::tpy::BigInt __len__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyCollection& obj) {
@@ -36,6 +33,12 @@ inline std::ostream& operator<<(std::ostream& os, const MyCollection& obj) {
     return os;
 }
 
+
+// def __len__(self) -> int:
+inline ::tpy::BigInt MyCollection::__len__() const {
+    // return self.size
+    return this->size;
+}
 // def count(items: Sized) -> int:
 template<::tpystd::typing::Sized T_items>
 ::tpy::BigInt count(const T_items& items) {

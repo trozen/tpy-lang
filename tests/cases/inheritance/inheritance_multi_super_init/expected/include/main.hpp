@@ -25,10 +25,7 @@ struct Named {
     explicit Named(std::string_view name) : name(name) {}
 
     // def describe(self) -> str:
-    std::string describe() const {
-        // return self.name
-        return this->name;
-    }
+    std::string describe() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
@@ -64,5 +61,11 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
     return os;
 }
 
+
+// def describe(self) -> str:
+inline std::string Named::describe() const {
+    // return self.name
+    return this->name;
+}
 void __tpy_init();
 } // namespace tpyapp::main

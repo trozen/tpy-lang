@@ -79,16 +79,10 @@ struct Dog : Describable, Noise {
 
 
     // def describe(self) -> str:
-    std::string describe() override {
-        // return "a dog"
-        return "a dog";
-    }
+    std::string describe() override;
 
     // def make_noise(self) -> str:
-    std::string make_noise() override {
-        // return "Woof"
-        return "Woof";
-    }
+    std::string make_noise() override;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
@@ -101,16 +95,10 @@ struct Cat : Describable, Noise {
 
 
     // def describe(self) -> str:
-    std::string describe() override {
-        // return "a cat"
-        return "a cat";
-    }
+    std::string describe() override;
 
     // def make_noise(self) -> str:
-    std::string make_noise() override {
-        // return "Meow"
-        return "Meow";
-    }
+    std::string make_noise() override;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
@@ -118,5 +106,29 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
+
+// def describe(self) -> str:
+inline std::string Dog::describe() {
+    // return "a dog"
+    return "a dog";
+}
+
+// def make_noise(self) -> str:
+inline std::string Dog::make_noise() {
+    // return "Woof"
+    return "Woof";
+}
+
+// def describe(self) -> str:
+inline std::string Cat::describe() {
+    // return "a cat"
+    return "a cat";
+}
+
+// def make_noise(self) -> str:
+inline std::string Cat::make_noise() {
+    // return "Meow"
+    return "Meow";
+}
 void __tpy_init();
 } // namespace tpyapp::main

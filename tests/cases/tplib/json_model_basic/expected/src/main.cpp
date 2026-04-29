@@ -82,6 +82,96 @@ void test_pretty() {
     std::cout << user.to_json(2) << "\n";
 }
 
+
+std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
+    {
+        auto __try_tmp_8 = __reader.read_object_start();
+        if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(__try_tmp_8.error());
+    }
+    std::string name = "";
+    int32_t age = 0;
+    bool active = false;
+    std::optional<std::string> email = std::nullopt;
+    while (__reader.has_next()) {
+        std::string_view __key;
+        {
+            auto __try_tmp_9 = __reader.read_key_raw();
+            if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
+            __key = ::tpy::unwrap_ref(*__try_tmp_9);
+        }
+        auto& __match_subject = __key;
+        if (__match_subject == "name") {
+            std::string __name_1;
+            {
+                auto __try_tmp_10 = __reader.read_str();
+                if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
+                __name_1 = ::tpy::unwrap_ref(*__try_tmp_10);
+            }
+            name = __name_1;
+        } else if (__match_subject == "age") {
+            int64_t __raw_3;
+            {
+                auto __try_tmp_11 = __reader.read_int();
+                if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
+                __raw_3 = ::tpy::unwrap_ref(*__try_tmp_11);
+            }
+            int32_t __age_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
+            age = __age_2;
+        } else if (__match_subject == "active") {
+            bool __active_4;
+            {
+                auto __try_tmp_12 = __reader.read_bool();
+                if (!__try_tmp_12.has_value()) return ::tpy::make_unexpected(__try_tmp_12.error());
+                __active_4 = ::tpy::unwrap_ref(*__try_tmp_12);
+            }
+            active = __active_4;
+        } else if (__match_subject == "email") {
+            if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
+                {
+                    auto __try_tmp_13 = __reader.read_null();
+                    if (!__try_tmp_13.has_value()) return ::tpy::make_unexpected(__try_tmp_13.error());
+                }
+            } else {
+                std::string __email_5;
+                {
+                    auto __try_tmp_14 = __reader.read_str();
+                    if (!__try_tmp_14.has_value()) return ::tpy::make_unexpected(__try_tmp_14.error());
+                    __email_5 = ::tpy::unwrap_ref(*__try_tmp_14);
+                }
+                email = __email_5;
+            }
+        } else {
+            {
+                auto __try_tmp_15 = __reader.skip_value();
+                if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(__try_tmp_15.error());
+            }
+        }
+    }
+    {
+        auto __try_tmp_16 = __reader.read_object_end();
+        if (!__try_tmp_16.has_value()) return ::tpy::make_unexpected(__try_tmp_16.error());
+    }
+    return User(name, age, active, email);
+}
+
+void User::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
+    __writer.object_start();
+    __writer.key("name");
+    __writer.write_str(this->name);
+    __writer.key("age");
+    __writer.write_int32(this->age);
+    __writer.key("active");
+    __writer.write_bool(this->active);
+    __writer.key("email");
+    std::optional<std::string> __opt_email = this->email;
+    if ((__opt_email.has_value())) {
+        std::string __val_email = (*__opt_email);
+        __writer.write_str(__val_email);
+    } else {
+        __writer.write_null();
+    }
+    __writer.object_end();
+}
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

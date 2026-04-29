@@ -30,10 +30,7 @@ struct MyNumber {
     explicit MyNumber(int32_t v) : value(v) {}
 
     // def add(self, x: Int32) -> Int32:
-    int32_t add(int32_t x) const {
-        // return self.value + x
-        return (::tpy::add_check<int32_t>(this->value, x));
-    }
+    int32_t add(int32_t x) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyNumber& obj) {
@@ -64,5 +61,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
     return os;
 }
 
+
+// def add(self, x: Int32) -> Int32:
+inline int32_t MyNumber::add(int32_t x) const {
+    // return self.value + x
+    return (::tpy::add_check<int32_t>(this->value, x));
+}
 void __tpy_init();
 } // namespace tpyapp::main

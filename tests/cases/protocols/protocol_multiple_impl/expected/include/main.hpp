@@ -44,22 +44,13 @@ struct Box {
     explicit Box(int32_t width, int32_t height) : width(width), height(height) {}
 
     // def __str__(self) -> str:
-    std::string __str__() const {
-        // return "Box"
-        return "Box";
-    }
+    std::string __str__() const;
 
     // def describe(self) -> str:
-    std::string describe() const {
-        // return "A rectangular box"
-        return "A rectangular box";
-    }
+    std::string describe() const;
 
     // def size(self) -> Int32:
-    int32_t size() const {
-        // return self.width * self.height
-        return (::tpy::mul_check<int32_t>(this->width, this->height));
-    }
+    int32_t size() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
@@ -67,5 +58,23 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __str__(self) -> str:
+inline std::string Box::__str__() const {
+    // return "Box"
+    return "Box";
+}
+
+// def describe(self) -> str:
+inline std::string Box::describe() const {
+    // return "A rectangular box"
+    return "A rectangular box";
+}
+
+// def size(self) -> Int32:
+inline int32_t Box::size() const {
+    // return self.width * self.height
+    return (::tpy::mul_check<int32_t>(this->width, this->height));
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -39,16 +39,10 @@ struct Impl {
     explicit Impl(int32_t value) : value(value) {}
 
     // def call(self, extra: Int32 = Int32(0)) -> Int32:
-    int32_t call(int32_t extra = 0) const {
-        // return self.value + extra
-        return (::tpy::add_check<int32_t>(this->value, extra));
-    }
+    int32_t call(int32_t extra = 0) const;
 
     // def process(self, x: Int32, scale: Int32 = Int32(1)) -> Int32:
-    int32_t process(int32_t x, int32_t scale = 1) const {
-        // return x * scale + self.value
-        return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(x, scale)), this->value));
-    }
+    int32_t process(int32_t x, int32_t scale = 1) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
@@ -56,6 +50,18 @@ inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
     return os;
 }
 
+
+// def call(self, extra: Int32 = Int32(0)) -> Int32:
+inline int32_t Impl::call(int32_t extra) const {
+    // return self.value + extra
+    return (::tpy::add_check<int32_t>(this->value, extra));
+}
+
+// def process(self, x: Int32, scale: Int32 = Int32(1)) -> Int32:
+inline int32_t Impl::process(int32_t x, int32_t scale) const {
+    // return x * scale + self.value
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(x, scale)), this->value));
+}
 // def use_callable(c: Callable) -> None:
 template<Callable T_c>
 void use_callable(T_c& c) {

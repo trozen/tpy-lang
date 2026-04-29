@@ -27,10 +27,7 @@ struct Point {
     explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
     // def sum(self) -> int:
-    ::tpy::BigInt sum() const {
-        // return self.x + self.y
-        return ((this->x) + (this->y));
-    }
+    ::tpy::BigInt sum() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -68,5 +65,11 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     return os;
 }
 
+
+// def sum(self) -> int:
+inline ::tpy::BigInt Point::sum() const {
+    // return self.x + self.y
+    return ((this->x) + (this->y));
+}
 void __tpy_init();
 } // namespace tpyapp::main

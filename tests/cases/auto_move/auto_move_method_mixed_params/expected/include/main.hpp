@@ -35,12 +35,7 @@ struct Holder {
 
 
     // def set_with_tag(self, inner: Own[Inner], tag: Int32) -> None:
-    void set_with_tag(Inner&& inner, int32_t tag) {
-        // self.inner = inner
-        this->inner = std::move(inner);
-        // self.inner.value = self.inner.value + tag
-        this->inner.value = (::tpy::add_check<int32_t>(this->inner.value, tag));
-    }
+    void set_with_tag(Inner&& inner, int32_t tag);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
@@ -90,5 +85,13 @@ inline std::ostream& operator<<(std::ostream& os, const GenericBox<T>& obj) {
     return os;
 }
 
+
+// def set_with_tag(self, inner: Own[Inner], tag: Int32) -> None:
+inline void Holder::set_with_tag(Inner&& inner, int32_t tag) {
+    // self.inner = inner
+    this->inner = std::move(inner);
+    // self.inner.value = self.inner.value + tag
+    this->inner.value = (::tpy::add_check<int32_t>(this->inner.value, tag));
+}
 void __tpy_init();
 } // namespace tpyapp::main

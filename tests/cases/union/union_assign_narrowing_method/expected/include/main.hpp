@@ -25,10 +25,7 @@ struct Circle {
     explicit Circle(double radius) : radius(radius) {}
 
     // def area(self) -> float:
-    double area() const {
-        // return 3.14 * self.radius * self.radius
-        return ((((3.14) * (this->radius))) * (this->radius));
-    }
+    double area() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
@@ -48,10 +45,7 @@ struct Rect {
     explicit Rect(double width, double height) : width(width), height(height) {}
 
     // def area(self) -> float:
-    double area() const {
-        // return self.width * self.height
-        return ((this->width) * (this->height));
-    }
+    double area() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
@@ -59,5 +53,17 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
     return os;
 }
 
+
+// def area(self) -> float:
+inline double Circle::area() const {
+    // return 3.14 * self.radius * self.radius
+    return ((((3.14) * (this->radius))) * (this->radius));
+}
+
+// def area(self) -> float:
+inline double Rect::area() const {
+    // return self.width * self.height
+    return ((this->width) * (this->height));
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -25,10 +25,7 @@ struct Animal {
     explicit Animal(std::string_view name) : name(name) {}
 
     // def describe(self) -> str:
-    std::string describe() const {
-        // return self.name
-        return this->name;
-    }
+    std::string describe() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
@@ -47,10 +44,7 @@ struct Dog : Animal {
     explicit Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
 
     // def bark(self) -> str:  # new method, not an override
-    std::string bark() const {
-        // return "Woof!"
-        return "Woof!";
-    }
+    std::string bark() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
@@ -58,5 +52,17 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
+
+// def describe(self) -> str:
+inline std::string Animal::describe() const {
+    // return self.name
+    return this->name;
+}
+
+// def bark(self) -> str:  # new method, not an override
+inline std::string Dog::bark() const {
+    // return "Woof!"
+    return "Woof!";
+}
 void __tpy_init();
 } // namespace tpyapp::main

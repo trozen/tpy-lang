@@ -60,16 +60,10 @@ struct MyCounter : Counter {
     MyCounter() : count(0) {}
 
     // def increment(self) -> None:
-    void increment() override {
-        // self.count = self.count + Int32(1)
-        this->count = (::tpy::add_check<int32_t>(this->count, 1));
-    }
+    void increment() override;
 
     // def value(self) -> Int32:
-    int32_t value() override {
-        // return self.count
-        return this->count;
-    }
+    int32_t value() override;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyCounter& obj) {
@@ -87,16 +81,10 @@ struct Tally {
     Tally() : count(0) {}
 
     // def increment(self) -> None:
-    void increment() {
-        // self.count = self.count + Int32(1)
-        this->count = (::tpy::add_check<int32_t>(this->count, 1));
-    }
+    void increment();
 
     // def value(self) -> Int32:
-    int32_t value() const {
-        // return self.count
-        return this->count;
-    }
+    int32_t value() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
@@ -104,5 +92,29 @@ inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
     return os;
 }
 
+
+// def increment(self) -> None:
+inline void MyCounter::increment() {
+    // self.count = self.count + Int32(1)
+    this->count = (::tpy::add_check<int32_t>(this->count, 1));
+}
+
+// def value(self) -> Int32:
+inline int32_t MyCounter::value() {
+    // return self.count
+    return this->count;
+}
+
+// def increment(self) -> None:
+inline void Tally::increment() {
+    // self.count = self.count + Int32(1)
+    this->count = (::tpy::add_check<int32_t>(this->count, 1));
+}
+
+// def value(self) -> Int32:
+inline int32_t Tally::value() const {
+    // return self.count
+    return this->count;
+}
 void __tpy_init();
 } // namespace tpyapp::main

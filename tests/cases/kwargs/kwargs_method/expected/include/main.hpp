@@ -23,12 +23,7 @@ struct Formatter {
     Formatter() : prefix(">") {}
 
     // def format(self, text: str, width: int = 0, fill: str = " ") -> str:
-    std::string format(std::string_view text, const ::tpy::BigInt& width = 0, std::string_view fill = " ") const {
-        // result = self.prefix + text
-        std::string result = (::tpy::str_concat(this->prefix, text));
-        // return result
-        return result;
-    }
+    std::string format(std::string_view text, const ::tpy::BigInt& width = 0, std::string_view fill = " ") const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Formatter& obj) {
@@ -36,5 +31,13 @@ inline std::ostream& operator<<(std::ostream& os, const Formatter& obj) {
     return os;
 }
 
+
+// def format(self, text: str, width: int = 0, fill: str = " ") -> str:
+inline std::string Formatter::format(std::string_view text, const ::tpy::BigInt& width, std::string_view fill) const {
+    // result = self.prefix + text
+    std::string result = (::tpy::str_concat(this->prefix, text));
+    // return result
+    return result;
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -24,10 +24,7 @@ struct Root {
 
 
     // def identify(self) -> str:
-    std::string identify() const {
-        // return "root"
-        return "root";
-    }
+    std::string identify() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Root& obj) {
@@ -50,12 +47,7 @@ struct Leaf : Middle {
 
 
     // def delegate(self) -> str:
-    std::string delegate() const {
-        // # Middle does not literally define 'identify'; resolution walks
-        // # Middle's MRO up to Root.
-        // return Middle.identify(self)
-        return this->Middle::identify();
-    }
+    std::string delegate() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
@@ -63,5 +55,19 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
     return os;
 }
 
+
+// def identify(self) -> str:
+inline std::string Root::identify() const {
+    // return "root"
+    return "root";
+}
+
+// def delegate(self) -> str:
+inline std::string Leaf::delegate() const {
+    // # Middle does not literally define 'identify'; resolution walks
+    // # Middle's MRO up to Root.
+    // return Middle.identify(self)
+    return this->Middle::identify();
+}
 void __tpy_init();
 } // namespace tpyapp::main

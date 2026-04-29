@@ -25,26 +25,14 @@ struct Rect {
     explicit Rect(int32_t width, int32_t height) : width(width), height(height) {}
 
     // def area(self) -> Int32:
-    int32_t area() const {
-        // return self.width * self.height
-        return (::tpy::mul_check<int32_t>(this->width, this->height));
-    }
+    int32_t area() const;
 
     // def scale(self, factor: Int32) -> None:
-    void scale(int32_t factor) {
-        // self.width = self.width * factor
-        this->width = (::tpy::mul_check<int32_t>(this->width, factor));
-        // self.height = self.height * factor
-        this->height = (::tpy::mul_check<int32_t>(this->height, factor));
-    }
+    void scale(int32_t factor);
 
-    bool __eq__(const Rect& other) const {
-        return ((this->width == other.width) && (this->height == other.height));
-    }
+    bool __eq__(const Rect& other) const;
 
-    std::string __repr__() const {
-        return std::format("Rect(width={}, height={})", ::tpy::__repr__(this->width), ::tpy::__repr__(this->height));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Rect& lhs, const Rect& other) {
         return lhs.__eq__(other);
@@ -56,5 +44,27 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
     return os;
 }
 
+
+// def area(self) -> Int32:
+inline int32_t Rect::area() const {
+    // return self.width * self.height
+    return (::tpy::mul_check<int32_t>(this->width, this->height));
+}
+
+// def scale(self, factor: Int32) -> None:
+inline void Rect::scale(int32_t factor) {
+    // self.width = self.width * factor
+    this->width = (::tpy::mul_check<int32_t>(this->width, factor));
+    // self.height = self.height * factor
+    this->height = (::tpy::mul_check<int32_t>(this->height, factor));
+}
+
+inline bool Rect::__eq__(const Rect& other) const {
+    return ((this->width == other.width) && (this->height == other.height));
+}
+
+inline std::string Rect::__repr__() const {
+    return std::format("Rect(width={}, height={})", ::tpy::__repr__(this->width), ::tpy::__repr__(this->height));
+}
 void __tpy_init();
 } // namespace tpyapp::main

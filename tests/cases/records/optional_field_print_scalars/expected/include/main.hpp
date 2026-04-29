@@ -27,13 +27,9 @@ struct Settings {
 
     explicit Settings(std::optional<int32_t> count = std::nullopt, std::optional<bool> flag = std::nullopt, std::optional<double> ratio = std::nullopt, std::optional<std::string_view> label = std::nullopt) : count(count), flag(flag), ratio(ratio), label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
 
-    bool __eq__(const Settings& other) const {
-        return ((((this->count == other.count) && (this->flag == other.flag)) && (this->ratio == other.ratio)) && (this->label == other.label));
-    }
+    bool __eq__(const Settings& other) const;
 
-    std::string __repr__() const {
-        return std::format("Settings(count={}, flag={}, ratio={}, label={})", ::tpy::__repr__(this->count), ::tpy::__repr__(this->flag), ::tpy::__repr__(this->ratio), ::tpy::__repr__(this->label));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Settings& lhs, const Settings& other) {
         return lhs.__eq__(other);
@@ -45,5 +41,13 @@ inline std::ostream& operator<<(std::ostream& os, const Settings& obj) {
     return os;
 }
 
+
+inline bool Settings::__eq__(const Settings& other) const {
+    return ((((this->count == other.count) && (this->flag == other.flag)) && (this->ratio == other.ratio)) && (this->label == other.label));
+}
+
+inline std::string Settings::__repr__() const {
+    return std::format("Settings(count={}, flag={}, ratio={}, label={})", ::tpy::__repr__(this->count), ::tpy::__repr__(this->flag), ::tpy::__repr__(this->ratio), ::tpy::__repr__(this->label));
+}
 void __tpy_init();
 } // namespace tpyapp::main

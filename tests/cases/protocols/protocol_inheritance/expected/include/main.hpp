@@ -37,16 +37,10 @@ struct Message {
     explicit Message(std::string_view text) : text(text) {}
 
     // def to_str(self) -> str:
-    std::string to_str() const {
-        // return self.text
-        return this->text;
-    }
+    std::string to_str() const;
 
     // def __len__(self) -> Int32:
-    int32_t __len__() const {
-        // return Int32(5)
-        return 5;
-    }
+    int32_t __len__() const;
 
     size_t size() const {
         auto len = __len__();
@@ -85,5 +79,17 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     return os;
 }
 
+
+// def to_str(self) -> str:
+inline std::string Message::to_str() const {
+    // return self.text
+    return this->text;
+}
+
+// def __len__(self) -> Int32:
+inline int32_t Message::__len__() const {
+    // return Int32(5)
+    return 5;
+}
 void __tpy_init();
 } // namespace tpyapp::main

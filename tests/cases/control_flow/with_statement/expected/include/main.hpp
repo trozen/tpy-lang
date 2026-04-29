@@ -38,24 +38,13 @@ struct Logger {
     explicit Logger(std::string_view name) : name(name) {}
 
     // def __enter__(self) -> Self:
-    Logger& __enter__() {
-        // print(f"enter {self.name}")
-        std::cout << std::format("enter {}", this->name) << "\n";
-        // return self
-        return (*this);
-    }
+    Logger& __enter__();
 
     // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-    void __exit__() const {
-        // print(f"exit {self.name}")
-        std::cout << std::format("exit {}", this->name) << "\n";
-    }
+    void __exit__() const;
 
     // def log(self, msg: str) -> None:
-    void log(std::string_view msg) const {
-        // print(f"[{self.name}] {msg}")
-        std::cout << std::format("[{}] {}", this->name, msg) << "\n";
-    }
+    void log(std::string_view msg) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Logger& obj) {
@@ -72,20 +61,10 @@ struct Connection {
     Connection() : active(true) {}
 
     // def __enter__(self) -> str:
-    std::string __enter__() const {
-        // print("connecting")
-        std::cout << "connecting" << "\n";
-        // return "session-42"
-        return "session-42";
-    }
+    std::string __enter__() const;
 
     // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-    void __exit__() {
-        // self.active = False
-        this->active = false;
-        // print("disconnected")
-        std::cout << "disconnected" << "\n";
-    }
+    void __exit__();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Connection& obj) {
@@ -93,5 +72,41 @@ inline std::ostream& operator<<(std::ostream& os, const Connection& obj) {
     return os;
 }
 
+
+// def __enter__(self) -> Self:
+inline Logger& Logger::__enter__() {
+    // print(f"enter {self.name}")
+    std::cout << std::format("enter {}", this->name) << "\n";
+    // return self
+    return (*this);
+}
+
+// def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+inline void Logger::__exit__() const {
+    // print(f"exit {self.name}")
+    std::cout << std::format("exit {}", this->name) << "\n";
+}
+
+// def log(self, msg: str) -> None:
+inline void Logger::log(std::string_view msg) const {
+    // print(f"[{self.name}] {msg}")
+    std::cout << std::format("[{}] {}", this->name, msg) << "\n";
+}
+
+// def __enter__(self) -> str:
+inline std::string Connection::__enter__() const {
+    // print("connecting")
+    std::cout << "connecting" << "\n";
+    // return "session-42"
+    return "session-42";
+}
+
+// def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+inline void Connection::__exit__() {
+    // self.active = False
+    this->active = false;
+    // print("disconnected")
+    std::cout << "disconnected" << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

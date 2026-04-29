@@ -27,50 +27,21 @@ struct Builder {
     explicit Builder(std::string_view name, int32_t value) : name(name), value(value) {}
 
     // def set_name(self, name: str) -> Self:
-    Builder& set_name(std::string_view name) {
-        // self.name = name
-        this->name = name;
-        // return self
-        return (*this);
-    }
+    Builder& set_name(std::string_view name);
 
     // def set_value(self, value: Int32) -> Self:
-    Builder& set_value(int32_t value) {
-        // self.value = value
-        this->value = value;
-        // return self
-        return (*this);
-    }
+    Builder& set_value(int32_t value);
 
     // def with_offset(self, other: Self) -> Int32:
-    int32_t with_offset(const Builder& other) const {
-        // return self.value + other.value
-        return (::tpy::add_check<int32_t>(this->value, other.value));
-    }
+    int32_t with_offset(const Builder& other) const;
 
     // @auto_readonly
     // def find_match(self, target: Int32) -> Optional[Self]:
-    Builder* find_match(int32_t target) {
-        // if self.value == target:
-        if ((this->value == target)) {
-            // return self
-            return this;
-        }
-        // return None
-        return nullptr;
-    }
+    Builder* find_match(int32_t target);
 
     // @auto_readonly
     // def find_match(self, target: Int32) -> Optional[Self]:
-    const Builder* find_match(int32_t target) const {
-        // if self.value == target:
-        if ((this->value == target)) {
-            // return self
-            return this;
-        }
-        // return None
-        return nullptr;
-    }
+    const Builder* find_match(int32_t target) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Builder& obj) {
@@ -112,5 +83,51 @@ inline std::ostream& operator<<(std::ostream& os, const Stack<T>& obj) {
     return os;
 }
 
+
+// def set_name(self, name: str) -> Self:
+inline Builder& Builder::set_name(std::string_view name) {
+    // self.name = name
+    this->name = name;
+    // return self
+    return (*this);
+}
+
+// def set_value(self, value: Int32) -> Self:
+inline Builder& Builder::set_value(int32_t value) {
+    // self.value = value
+    this->value = value;
+    // return self
+    return (*this);
+}
+
+// def with_offset(self, other: Self) -> Int32:
+inline int32_t Builder::with_offset(const Builder& other) const {
+    // return self.value + other.value
+    return (::tpy::add_check<int32_t>(this->value, other.value));
+}
+
+// @auto_readonly
+// def find_match(self, target: Int32) -> Optional[Self]:
+inline Builder* Builder::find_match(int32_t target) {
+    // if self.value == target:
+    if ((this->value == target)) {
+        // return self
+        return this;
+    }
+    // return None
+    return nullptr;
+}
+
+// @auto_readonly
+// def find_match(self, target: Int32) -> Optional[Self]:
+inline const Builder* Builder::find_match(int32_t target) const {
+    // if self.value == target:
+    if ((this->value == target)) {
+        // return self
+        return this;
+    }
+    // return None
+    return nullptr;
+}
 void __tpy_init();
 } // namespace tpyapp::main

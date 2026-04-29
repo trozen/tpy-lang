@@ -24,10 +24,7 @@ struct Foo {
 
     // @readonly()
     // def get_x(self) -> Int32:
-    int32_t get_x() const {
-        // return self.x
-        return this->x;
-    }
+    int32_t get_x() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
@@ -35,5 +32,12 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
     return os;
 }
 
+
+// @readonly()
+// def get_x(self) -> Int32:
+inline int32_t Foo::get_x() const {
+    // return self.x
+    return this->x;
+}
 void __tpy_init();
 } // namespace tpyapp::main

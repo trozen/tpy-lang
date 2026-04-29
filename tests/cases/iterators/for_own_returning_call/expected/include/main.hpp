@@ -21,18 +21,7 @@ struct Maker {
 
 
     // def make(self, n: Int32) -> Own[list[Int32]]:
-    std::vector<int32_t> make(int32_t n) const {
-        // out: list[Int32] = []
-        std::vector<int32_t> out = std::vector<int32_t>{};
-        // for i in range(n):
-        int32_t __stop_0 = n;
-        for (int32_t i = 0; i < __stop_0; ++i) {
-            // out.append(i)
-            out.push_back(i);
-        }
-        // return out
-        return out;
-    }
+    std::vector<int32_t> make(int32_t n) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Maker& obj) {
@@ -40,5 +29,19 @@ inline std::ostream& operator<<(std::ostream& os, const Maker& obj) {
     return os;
 }
 
+
+// def make(self, n: Int32) -> Own[list[Int32]]:
+inline std::vector<int32_t> Maker::make(int32_t n) const {
+    // out: list[Int32] = []
+    std::vector<int32_t> out = std::vector<int32_t>{};
+    // for i in range(n):
+    int32_t __stop_0 = n;
+    for (int32_t i = 0; i < __stop_0; ++i) {
+        // out.append(i)
+        out.push_back(i);
+    }
+    // return out
+    return out;
+}
 void __tpy_init();
 } // namespace tpyapp::main

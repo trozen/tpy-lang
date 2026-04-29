@@ -28,16 +28,10 @@ struct Node {
     explicit Node(int32_t val) : val(val) {}
 
     // def __hash__(self) -> Int32:
-    int32_t __hash__() const {
-        // return self.val
-        return this->val;
-    }
+    int32_t __hash__() const;
 
     // def __eq__(self, other: Node) -> bool:
-    bool __eq__(const Node& other) const {
-        // return self.val == other.val
-        return (this->val == other.val);
-    }
+    bool __eq__(const Node& other) const;
 
     friend bool operator==(const Node& lhs, const Node& other) {
         return lhs.__eq__(other);
@@ -59,5 +53,17 @@ template<> struct std::hash<tpyapp::main::Node> {
 namespace tpyapp::main {
 
 
+
+// def __hash__(self) -> Int32:
+inline int32_t Node::__hash__() const {
+    // return self.val
+    return this->val;
+}
+
+// def __eq__(self, other: Node) -> bool:
+inline bool Node::__eq__(const Node& other) const {
+    // return self.val == other.val
+    return (this->val == other.val);
+}
 void __tpy_init();
 } // namespace tpyapp::main

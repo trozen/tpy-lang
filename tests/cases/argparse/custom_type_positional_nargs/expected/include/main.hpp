@@ -28,16 +28,10 @@ struct Tag {
 
     // @staticmethod
     // def from_arg(s: str) -> Own[Tag]:
-    static Tag from_arg(std::string_view s) {
-        // return Tag(s)
-        return Tag(s);
-    }
+    static Tag from_arg(std::string_view s);
 
     // def __repr__(self) -> str:
-    std::string __repr__() const {
-        // return f"Tag({self.raw})"
-        return std::format("Tag({})", this->raw);
-    }
+    std::string __repr__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
@@ -59,5 +53,18 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
     return os;
 }
 
+
+// @staticmethod
+// def from_arg(s: str) -> Own[Tag]:
+inline Tag Tag::from_arg(std::string_view s) {
+    // return Tag(s)
+    return Tag(s);
+}
+
+// def __repr__(self) -> str:
+inline std::string Tag::__repr__() const {
+    // return f"Tag({self.raw})"
+    return std::format("Tag({})", this->raw);
+}
 void __tpy_init();
 } // namespace tpyapp::main

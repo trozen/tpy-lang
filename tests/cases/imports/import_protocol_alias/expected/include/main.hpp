@@ -26,10 +26,7 @@ struct Message {
     explicit Message(std::string_view text) : text(text) {}
 
     // def to_string(self) -> str:
-    std::string to_string() const {
-        // return self.text
-        return this->text;
-    }
+    std::string to_string() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
@@ -37,6 +34,12 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
     return os;
 }
 
+
+// def to_string(self) -> str:
+inline std::string Message::to_string() const {
+    // return self.text
+    return this->text;
+}
 // def show(p: P) -> None:
 template<::tpyapp::traits::Printable T_p>
 void show(T_p& p) {

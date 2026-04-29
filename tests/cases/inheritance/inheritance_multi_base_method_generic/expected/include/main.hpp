@@ -45,12 +45,7 @@ struct IntBox : Box<int32_t> {
     explicit IntBox(int32_t value) : Box<int32_t>(value) {}
 
     // def fetch(self) -> Int32:
-    int32_t fetch() {
-        // # Resolved: Box[Int32].get(self) -> Int32. The substitution T -> Int32
-        // # comes from IntBox's parents entry Box[Int32].
-        // return Box.get(self)
-        return this->Box<int32_t>::get();
-    }
+    int32_t fetch();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
@@ -58,5 +53,13 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
     return os;
 }
 
+
+// def fetch(self) -> Int32:
+inline int32_t IntBox::fetch() {
+    // # Resolved: Box[Int32].get(self) -> Int32. The substitution T -> Int32
+    // # comes from IntBox's parents entry Box[Int32].
+    // return Box.get(self)
+    return this->Box<int32_t>::get();
+}
 void __tpy_init();
 } // namespace tpyapp::main

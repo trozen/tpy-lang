@@ -31,13 +31,9 @@ struct Leaf {
     Leaf() = default;
     explicit Leaf(int32_t value) : value(value) {}
 
-    bool __eq__(const Leaf& other) const {
-        return (this->value == other.value);
-    }
+    bool __eq__(const Leaf& other) const;
 
-    std::string __repr__() const {
-        return std::format("Leaf(value={})", ::tpy::__repr__(this->value));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Leaf& lhs, const Leaf& other) {
         return lhs.__eq__(other);
@@ -49,6 +45,14 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
     return os;
 }
 
+
+inline bool Leaf::__eq__(const Leaf& other) const {
+    return (this->value == other.value);
+}
+
+inline std::string Leaf::__repr__() const {
+    return std::format("Leaf(value={})", ::tpy::__repr__(this->value));
+}
 struct IntTree {
     using variant_type = std::variant<::tpy::BigInt, std::vector<IntTree>>;
     variant_type value;

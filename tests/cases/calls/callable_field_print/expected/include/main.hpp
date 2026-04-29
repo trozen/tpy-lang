@@ -22,10 +22,7 @@ struct Handler {
     Handler() : action([]() { std::cout << 0 << "\n"; }) {}
 
     // def __repr__(self) -> str:
-    std::string __repr__() const {
-        // return "Handler(action=<function>)"
-        return "Handler(action=<function>)";
-    }
+    std::string __repr__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
@@ -33,5 +30,11 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
     return os;
 }
 
+
+// def __repr__(self) -> str:
+inline std::string Handler::__repr__() const {
+    // return "Handler(action=<function>)"
+    return "Handler(action=<function>)";
+}
 void __tpy_init();
 } // namespace tpyapp::main

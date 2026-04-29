@@ -21,10 +21,7 @@ struct Widget {
     explicit Widget(int32_t v) : value(v) {}
 
     // def get(self) -> Int32:
-    int32_t get() const {
-        // return self.value
-        return this->value;
-    }
+    int32_t get() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
@@ -32,5 +29,11 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
     return os;
 }
 
+
+// def get(self) -> Int32:
+inline int32_t Widget::get() const {
+    // return self.value
+    return this->value;
+}
 void __tpy_init();
 } // namespace tpyapp::widgets

@@ -39,22 +39,7 @@ struct Finder {
     Finder() : result(Point(0, 0)) {}
 
     // def find_last(self, n: Int32) -> None:
-    void find_last(int32_t n) {
-        std::optional<Point> __slot_2;
-        // saved: Point = Point(0, 0)
-        Point __slot_1 = Point(0, 0);
-        Point* saved = &__slot_1;
-        // for i in range(n):
-        int32_t __stop_0 = n;
-        for (int32_t i = 0; i < __stop_0; ++i) {
-            // p: Point = Point(i, i * 2)
-            Point* p = &*(__slot_2 = Point(i, (::tpy::mul_check<int32_t>(i, 2))));
-            // saved = p  # tpyc: warning(/hoisted to function scope/)
-            saved = p;
-        }
-        // self.result = saved  # tpyc: warning(/copies Point into field/)
-        this->result = (*saved);
-    }
+    void find_last(int32_t n);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Finder& obj) {
@@ -62,5 +47,23 @@ inline std::ostream& operator<<(std::ostream& os, const Finder& obj) {
     return os;
 }
 
+
+// def find_last(self, n: Int32) -> None:
+inline void Finder::find_last(int32_t n) {
+    std::optional<Point> __slot_2;
+    // saved: Point = Point(0, 0)
+    Point __slot_1 = Point(0, 0);
+    Point* saved = &__slot_1;
+    // for i in range(n):
+    int32_t __stop_0 = n;
+    for (int32_t i = 0; i < __stop_0; ++i) {
+        // p: Point = Point(i, i * 2)
+        Point* p = &*(__slot_2 = Point(i, (::tpy::mul_check<int32_t>(i, 2))));
+        // saved = p  # tpyc: warning(/hoisted to function scope/)
+        saved = p;
+    }
+    // self.result = saved  # tpyc: warning(/copies Point into field/)
+    this->result = (*saved);
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -47,52 +47,31 @@ struct Container {
 
     // @property
     // def name(self) -> str:
-    std::string name() const {
-        // return self._name
-        return this->_name;
-    }
+    std::string name() const;
 
     // @name.setter
     // def name(self, v: str) -> None:
-    void set_name(std::string_view v) {
-        // self._name = v
-        this->_name = v;
-    }
+    void set_name(std::string_view v);
 
     // @property
     // def items(self) -> list[Int32]:
-    std::vector<int32_t>& items() {
-        // return self._items
-        return this->_items;
-    }
+    std::vector<int32_t>& items();
 
     // @property
     // def items(self) -> list[Int32]:
-    const std::vector<int32_t>& items() const {
-        // return self._items
-        return this->_items;
-    }
+    const std::vector<int32_t>& items() const;
 
     // @property
     // def pt(self) -> Point:
-    Point& pt() {
-        // return self._pt
-        return this->_pt;
-    }
+    Point& pt();
 
     // @property
     // def pt(self) -> Point:
-    const Point& pt() const {
-        // return self._pt
-        return this->_pt;
-    }
+    const Point& pt() const;
 
     // @property
     // def big(self) -> int:
-    ::tpy::BigInt big() const {
-        // return self._big
-        return this->_big;
-    }
+    ::tpy::BigInt big() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -100,5 +79,54 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+
+// @property
+// def name(self) -> str:
+inline std::string Container::name() const {
+    // return self._name
+    return this->_name;
+}
+
+// @name.setter
+// def name(self, v: str) -> None:
+inline void Container::set_name(std::string_view v) {
+    // self._name = v
+    this->_name = v;
+}
+
+// @property
+// def items(self) -> list[Int32]:
+inline std::vector<int32_t>& Container::items() {
+    // return self._items
+    return this->_items;
+}
+
+// @property
+// def items(self) -> list[Int32]:
+inline const std::vector<int32_t>& Container::items() const {
+    // return self._items
+    return this->_items;
+}
+
+// @property
+// def pt(self) -> Point:
+inline Point& Container::pt() {
+    // return self._pt
+    return this->_pt;
+}
+
+// @property
+// def pt(self) -> Point:
+inline const Point& Container::pt() const {
+    // return self._pt
+    return this->_pt;
+}
+
+// @property
+// def big(self) -> int:
+inline ::tpy::BigInt Container::big() const {
+    // return self._big
+    return this->_big;
+}
 void __tpy_init();
 } // namespace tpyapp::main

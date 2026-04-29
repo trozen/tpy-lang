@@ -24,28 +24,16 @@ struct Counter {
     explicit Counter(int32_t start) : value(start) {}
 
     // def increment(self) -> None:
-    void increment() {
-        // self.value = self.value + 1
-        this->value = (::tpy::add_check<int32_t>(this->value, 1));
-    }
+    void increment();
 
     // def add(self, n: Int32) -> None:
-    void add(int32_t n) {
-        // self.value = self.value + n
-        this->value = (::tpy::add_check<int32_t>(this->value, n));
-    }
+    void add(int32_t n);
 
     // def get(self) -> Int32:
-    int32_t get() const {
-        // return self.value
-        return this->value;
-    }
+    int32_t get() const;
 
     // def reset(self) -> None:
-    void reset() {
-        // self.value = 0
-        this->value = 0;
-    }
+    void reset();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -53,5 +41,29 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def increment(self) -> None:
+inline void Counter::increment() {
+    // self.value = self.value + 1
+    this->value = (::tpy::add_check<int32_t>(this->value, 1));
+}
+
+// def add(self, n: Int32) -> None:
+inline void Counter::add(int32_t n) {
+    // self.value = self.value + n
+    this->value = (::tpy::add_check<int32_t>(this->value, n));
+}
+
+// def get(self) -> Int32:
+inline int32_t Counter::get() const {
+    // return self.value
+    return this->value;
+}
+
+// def reset(self) -> None:
+inline void Counter::reset() {
+    // self.value = 0
+    this->value = 0;
+}
 void __tpy_init();
 } // namespace tpyapp::main

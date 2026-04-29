@@ -70,30 +70,16 @@ struct Counter {
     Counter() : count(0) {}
 
     // def increment(self) -> None:        # mutates self -- must NOT be const
-    void increment() {
-        // self.count += 1
-        this->count = ::tpy::add_check<int32_t>(this->count, 1);
-    }
+    void increment();
 
     // def increment_twice(self) -> None:  # delegates to self.increment() -- must NOT be const
-    void increment_twice() {
-        // self.increment()
-        this->increment();
-        // self.increment()
-        this->increment();
-    }
+    void increment_twice();
 
     // def get(self) -> Int32:             # only reads -- inferred const
-    int32_t get() const {
-        // return self.count
-        return this->count;
-    }
+    int32_t get() const;
 
     // def is_zero(self) -> bool:          # only reads -- inferred const
-    bool is_zero() const {
-        // return self.count == 0
-        return (this->count == 0);
-    }
+    bool is_zero() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -110,22 +96,13 @@ struct Box {
     Box() : items(std::vector<int32_t>{}) {}
 
     // def push(self, x: Int32) -> None:  # mutates self -- must NOT be const
-    void push(int32_t x) {
-        // self.items.append(x)
-        this->items.push_back(x);
-    }
+    void push(int32_t x);
 
     // def push_default(self) -> None:    # calls self.push() -- must NOT be const
-    void push_default() {
-        // self.push(0)
-        this->push(0);
-    }
+    void push_default();
 
     // def size(self) -> Int32:           # only reads -- inferred const
-    int32_t size() const {
-        // return len(self.items)
-        return ::tpy::__len__(this->items);
-    }
+    int32_t size() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
@@ -145,24 +122,13 @@ struct SortableBox {
     SortableBox() : items(std::vector<int32_t>{}) {}
 
     // def fill(self, a: Int32, b: Int32) -> None:   # mutates self.items -- must NOT be const
-    void fill(int32_t a, int32_t b) {
-        // self.items.append(a)
-        this->items.push_back(a);
-        // self.items.append(b)
-        this->items.push_back(b);
-    }
+    void fill(int32_t a, int32_t b);
 
     // def sort_items(self) -> None:                  # self.field.method() -- must NOT be const
-    void sort_items() {
-        // self.items.sort()
-        std::stable_sort(this->items.begin(), this->items.end());
-    }
+    void sort_items();
 
     // def get_first(self) -> Int32:                  # only reads -- inferred const
-    int32_t get_first() const {
-        // return self.items[0]
-        return ::tpy::__getitem__(this->items, 0);
-    }
+    int32_t get_first() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SortableBox& obj) {
@@ -183,10 +149,7 @@ struct Inner {
     explicit Inner(int32_t v) : value(v) {}
 
     // def get(self) -> Int32:
-    int32_t get() const {
-        // return self.value
-        return this->value;
-    }
+    int32_t get() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
@@ -205,33 +168,13 @@ struct Outer {
     Outer() : items({Inner(1), Inner(2)}), extra(Inner(3)) {}
 
     // def sum_items(self) -> Int32:                  # for-each + readonly method -- inferred const
-    int32_t sum_items() const {
-        // total = 0
-        int32_t total = 0;
-        // for item in self.items:
-        auto& __obj_0 = this->items;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& item = *__beg_0;
-            // total += item.get()
-            total = ::tpy::add_check<int32_t>(total, item.get());
-        }
-        // return total
-        return total;
-    }
+    int32_t sum_items() const;
 
     // def get_extra(self) -> Int32:                  # field.method() readonly -- inferred const
-    int32_t get_extra() const {
-        // return self.extra.get()
-        return this->extra.get();
-    }
+    int32_t get_extra() const;
 
     // def mutate_extra(self) -> None:                # field.method() mutating -- must NOT be const
-    void mutate_extra() {
-        // self.items.append(Inner(4))
-        this->items.push_back(Inner(4));
-    }
+    void mutate_extra();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
@@ -250,17 +193,7 @@ struct WithOpt {
     WithOpt() : child(Inner(5)) {}
 
     // def get_child_value(self) -> Int32:            # Optional field + readonly -- inferred const
-    int32_t get_child_value() const {
-        // c = self.child
-        const Inner* c = ::tpy::optional_to_ptr(this->child);
-        // if c is not None:
-        if ((c != nullptr)) {
-            // return c.get()
-            return c->get();
-        }
-        // return 0
-        return 0;
-    }
+    int32_t get_child_value() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WithOpt& obj) {
@@ -278,10 +211,7 @@ struct Valued : DynValued {
     explicit Valued(int32_t n) : _n(n) {}
 
     // def value(self) -> Int32:           # must NOT be const (pure virtual override)
-    int32_t value() override {
-        // return self._n
-        return this->_n;
-    }
+    int32_t value() override;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Valued& obj) {
@@ -289,5 +219,123 @@ inline std::ostream& operator<<(std::ostream& os, const Valued& obj) {
     return os;
 }
 
+
+// def increment(self) -> None:        # mutates self -- must NOT be const
+inline void Counter::increment() {
+    // self.count += 1
+    this->count = ::tpy::add_check<int32_t>(this->count, 1);
+}
+
+// def increment_twice(self) -> None:  # delegates to self.increment() -- must NOT be const
+inline void Counter::increment_twice() {
+    // self.increment()
+    this->increment();
+    // self.increment()
+    this->increment();
+}
+
+// def get(self) -> Int32:             # only reads -- inferred const
+inline int32_t Counter::get() const {
+    // return self.count
+    return this->count;
+}
+
+// def is_zero(self) -> bool:          # only reads -- inferred const
+inline bool Counter::is_zero() const {
+    // return self.count == 0
+    return (this->count == 0);
+}
+
+// def push(self, x: Int32) -> None:  # mutates self -- must NOT be const
+inline void Box::push(int32_t x) {
+    // self.items.append(x)
+    this->items.push_back(x);
+}
+
+// def push_default(self) -> None:    # calls self.push() -- must NOT be const
+inline void Box::push_default() {
+    // self.push(0)
+    this->push(0);
+}
+
+// def size(self) -> Int32:           # only reads -- inferred const
+inline int32_t Box::size() const {
+    // return len(self.items)
+    return ::tpy::__len__(this->items);
+}
+
+// def fill(self, a: Int32, b: Int32) -> None:   # mutates self.items -- must NOT be const
+inline void SortableBox::fill(int32_t a, int32_t b) {
+    // self.items.append(a)
+    this->items.push_back(a);
+    // self.items.append(b)
+    this->items.push_back(b);
+}
+
+// def sort_items(self) -> None:                  # self.field.method() -- must NOT be const
+inline void SortableBox::sort_items() {
+    // self.items.sort()
+    std::stable_sort(this->items.begin(), this->items.end());
+}
+
+// def get_first(self) -> Int32:                  # only reads -- inferred const
+inline int32_t SortableBox::get_first() const {
+    // return self.items[0]
+    return ::tpy::__getitem__(this->items, 0);
+}
+
+// def get(self) -> Int32:
+inline int32_t Inner::get() const {
+    // return self.value
+    return this->value;
+}
+
+// def sum_items(self) -> Int32:                  # for-each + readonly method -- inferred const
+inline int32_t Outer::sum_items() const {
+    // total = 0
+    int32_t total = 0;
+    // for item in self.items:
+    auto& __obj_0 = this->items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& item = *__beg_0;
+        // total += item.get()
+        total = ::tpy::add_check<int32_t>(total, item.get());
+    }
+    // return total
+    return total;
+}
+
+// def get_extra(self) -> Int32:                  # field.method() readonly -- inferred const
+inline int32_t Outer::get_extra() const {
+    // return self.extra.get()
+    return this->extra.get();
+}
+
+// def mutate_extra(self) -> None:                # field.method() mutating -- must NOT be const
+inline void Outer::mutate_extra() {
+    // self.items.append(Inner(4))
+    this->items.push_back(Inner(4));
+}
+
+// def get_child_value(self) -> Int32:            # Optional field + readonly -- inferred const
+inline int32_t WithOpt::get_child_value() const {
+    // c = self.child
+    const Inner* c = ::tpy::optional_to_ptr(this->child);
+    // if c is not None:
+    if ((c != nullptr)) {
+        // return c.get()
+        return c->get();
+    }
+    // return 0
+    return 0;
+}
+
+// def value(self) -> Int32:           # must NOT be const (pure virtual override)
+inline int32_t Valued::value() {
+    // return self._n
+    return this->_n;
+}
 void __tpy_init();
 } // namespace tpyapp::main

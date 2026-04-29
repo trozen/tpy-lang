@@ -24,19 +24,11 @@ struct Point {
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    bool __eq__(const Point& other) const {
-        return ((this->x == other.x) && (this->y == other.y));
-    }
+    bool __eq__(const Point& other) const;
 
-    std::string __repr__() const {
-        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
-    }
+    std::string __repr__() const;
 
-    uint64_t __hash__() const {
-        uint64_t h = ::tpy::__hash__(this->x);
-        h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->y)));
-        return h;
-    }
+    uint64_t __hash__() const;
 
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
@@ -58,5 +50,19 @@ template<> struct std::hash<tpyapp::main::Point> {
 namespace tpyapp::main {
 
 
+
+inline bool Point::__eq__(const Point& other) const {
+    return ((this->x == other.x) && (this->y == other.y));
+}
+
+inline std::string Point::__repr__() const {
+    return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+}
+
+inline uint64_t Point::__hash__() const {
+    uint64_t h = ::tpy::__hash__(this->x);
+    h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->y)));
+    return h;
+}
 void __tpy_init();
 } // namespace tpyapp::main

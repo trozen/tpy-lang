@@ -25,13 +25,9 @@ struct Point {
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    bool __eq__(const Point& other) const {
-        return ((this->x == other.x) && (this->y == other.y));
-    }
+    bool __eq__(const Point& other) const;
 
-    std::string __repr__() const {
-        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
@@ -52,13 +48,9 @@ struct Point3D : Point {
     Point3D() = default;
     explicit Point3D(int32_t x, int32_t y, int32_t z = 0) : Point(x, y), z(z) {}
 
-    bool __eq__(const Point3D& other) const {
-        return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
-    }
+    bool __eq__(const Point3D& other) const;
 
-    std::string __repr__() const {
-        return std::format("Point3D(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Point3D& lhs, const Point3D& other) {
         return lhs.__eq__(other);
@@ -70,5 +62,21 @@ inline std::ostream& operator<<(std::ostream& os, const Point3D& obj) {
     return os;
 }
 
+
+inline bool Point::__eq__(const Point& other) const {
+    return ((this->x == other.x) && (this->y == other.y));
+}
+
+inline std::string Point::__repr__() const {
+    return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+}
+
+inline bool Point3D::__eq__(const Point3D& other) const {
+    return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
+}
+
+inline std::string Point3D::__repr__() const {
+    return std::format("Point3D(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
+}
 void __tpy_init();
 } // namespace tpyapp::main

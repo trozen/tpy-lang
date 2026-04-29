@@ -47,10 +47,7 @@ struct Holder {
     Holder& operator=(Holder&&) = default;
 
     // def take(self, h: Own[Handle]) -> None:
-    void take(Handle&& h) {
-        // self.h = h
-        this->h = std::move(h);
-    }
+    void take(Handle&& h);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
@@ -81,5 +78,11 @@ inline std::ostream& operator<<(std::ostream& os, const GenericHolder<T>& obj) {
     return os;
 }
 
+
+// def take(self, h: Own[Handle]) -> None:
+inline void Holder::take(Handle&& h) {
+    // self.h = h
+    this->h = std::move(h);
+}
 void __tpy_init();
 } // namespace tpyapp::main

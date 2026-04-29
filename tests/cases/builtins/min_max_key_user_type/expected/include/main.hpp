@@ -24,10 +24,7 @@ struct Priority {
     explicit Priority(int32_t level) : level(level) {}
 
     // def __lt__(self, other: Priority) -> bool:
-    bool __lt__(const Priority& other) const {
-        // return self.level < other.level
-        return (this->level < other.level);
-    }
+    bool __lt__(const Priority& other) const;
 
     friend bool operator<(const Priority& lhs, const Priority& other) {
         return lhs.__lt__(other);
@@ -56,5 +53,11 @@ inline std::ostream& operator<<(std::ostream& os, const Task& obj) {
     return os;
 }
 
+
+// def __lt__(self, other: Priority) -> bool:
+inline bool Priority::__lt__(const Priority& other) const {
+    // return self.level < other.level
+    return (this->level < other.level);
+}
 void __tpy_init();
 } // namespace tpyapp::main

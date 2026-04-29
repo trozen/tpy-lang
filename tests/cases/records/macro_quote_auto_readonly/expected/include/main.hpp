@@ -26,17 +26,11 @@ struct Holder {
 
     // # Regression: macro-emitted @auto_readonly methods flow through sema expansion.
     // from tpy import Int32, readonly
-    int32_t first() {
-        // from ro_getter import ro_getter
-        return this->value;
-    }
+    int32_t first();
 
     // # Regression: macro-emitted @auto_readonly methods flow through sema expansion.
     // from tpy import Int32, readonly
-    int32_t first() const {
-        // from ro_getter import ro_getter
-        return this->value;
-    }
+    int32_t first() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
@@ -44,5 +38,19 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// # Regression: macro-emitted @auto_readonly methods flow through sema expansion.
+// from tpy import Int32, readonly
+inline int32_t Holder::first() {
+    // from ro_getter import ro_getter
+    return this->value;
+}
+
+// # Regression: macro-emitted @auto_readonly methods flow through sema expansion.
+// from tpy import Int32, readonly
+inline int32_t Holder::first() const {
+    // from ro_getter import ro_getter
+    return this->value;
+}
 void __tpy_init();
 } // namespace tpyapp::main

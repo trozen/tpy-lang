@@ -52,14 +52,7 @@ struct Combined : Counter, Tag {
     }
 
     // def summary(self) -> str:
-    std::string summary() const {
-        // n = Counter.value
-        int32_t n = this->Counter::value;
-        // label = Tag.value
-        std::string_view label = this->Tag::value;
-        // return label + "=" + str(n)
-        return (::tpy::str_concat((::tpy::str_concat(label, "=")), ::tpy::fixed_to_str<int32_t>(n)));
-    }
+    std::string summary() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
@@ -67,5 +60,15 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
     return os;
 }
 
+
+// def summary(self) -> str:
+inline std::string Combined::summary() const {
+    // n = Counter.value
+    int32_t n = this->Counter::value;
+    // label = Tag.value
+    std::string_view label = this->Tag::value;
+    // return label + "=" + str(n)
+    return (::tpy::str_concat((::tpy::str_concat(label, "=")), ::tpy::fixed_to_str<int32_t>(n)));
+}
 void __tpy_init();
 } // namespace tpyapp::main

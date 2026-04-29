@@ -29,10 +29,7 @@ struct Doubler {
 
 
     // def __call__(self, x: Int32) -> Int32:
-    int32_t __call__(int32_t x) const {
-        // return x * 2
-        return (::tpy::mul_check<int32_t>(x, 2));
-    }
+    int32_t __call__(int32_t x) const;
 
     int32_t operator()(int32_t x) const {
         return __call__(x);
@@ -54,10 +51,7 @@ struct Adder {
     explicit Adder(int32_t offset) : offset(offset) {}
 
     // def __call__(self, x: Int32) -> Int32:
-    int32_t __call__(int32_t x) const {
-        // return x + self.offset
-        return (::tpy::add_check<int32_t>(x, this->offset));
-    }
+    int32_t __call__(int32_t x) const;
 
     int32_t operator()(int32_t x) const {
         return __call__(x);
@@ -69,6 +63,18 @@ inline std::ostream& operator<<(std::ostream& os, const Adder& obj) {
     return os;
 }
 
+
+// def __call__(self, x: Int32) -> Int32:
+inline int32_t Doubler::__call__(int32_t x) const {
+    // return x * 2
+    return (::tpy::mul_check<int32_t>(x, 2));
+}
+
+// def __call__(self, x: Int32) -> Int32:
+inline int32_t Adder::__call__(int32_t x) const {
+    // return x + self.offset
+    return (::tpy::add_check<int32_t>(x, this->offset));
+}
 // def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {

@@ -33,10 +33,7 @@ struct Dog {
     explicit Dog(std::string_view n) : _name(n) {}
 
     // def name(self) -> str:
-    std::string name() const {
-        // return self._name
-        return this->_name;
-    }
+    std::string name() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
@@ -54,10 +51,7 @@ struct Cat {
     explicit Cat(std::string_view n) : _name(n) {}
 
     // def name(self) -> StrView:
-    std::string_view name() const {
-        // return self._name
-        return this->_name;
-    }
+    std::string_view name() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
@@ -75,10 +69,7 @@ struct Bird {
     explicit Bird(std::string_view n) : _name(n) {}
 
     // def name(self) -> String:
-    std::string name() const {
-        // return self._name
-        return this->_name;
-    }
+    std::string name() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bird& obj) {
@@ -86,6 +77,24 @@ inline std::ostream& operator<<(std::ostream& os, const Bird& obj) {
     return os;
 }
 
+
+// def name(self) -> str:
+inline std::string Dog::name() const {
+    // return self._name
+    return this->_name;
+}
+
+// def name(self) -> StrView:
+inline std::string_view Cat::name() const {
+    // return self._name
+    return this->_name;
+}
+
+// def name(self) -> String:
+inline std::string Bird::name() const {
+    // return self._name
+    return this->_name;
+}
 // def greet(x: Named) -> None:
 template<Named T_x>
 void greet(T_x& x) {

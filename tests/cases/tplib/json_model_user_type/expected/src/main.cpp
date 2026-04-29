@@ -69,6 +69,150 @@ void test_optional() {
     std::cout << ::tpy::print_bool((!sc4.deadline.has_value())) << "\n";
 }
 
+
+std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
+    {
+        auto __try_tmp_16 = __reader.read_object_start();
+        if (!__try_tmp_16.has_value()) return ::tpy::make_unexpected(__try_tmp_16.error());
+    }
+    std::string name = "";
+    std::optional<Seconds> when = std::nullopt;
+    while (__reader.has_next()) {
+        std::string_view __key;
+        {
+            auto __try_tmp_17 = __reader.read_key_raw();
+            if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
+            __key = ::tpy::unwrap_ref(*__try_tmp_17);
+        }
+        auto& __match_subject = __key;
+        if (__match_subject == "name") {
+            std::string __name_1;
+            {
+                auto __try_tmp_18 = __reader.read_str();
+                if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
+                __name_1 = ::tpy::unwrap_ref(*__try_tmp_18);
+            }
+            name = __name_1;
+        } else if (__match_subject == "when") {
+            {
+                auto __try_tmp_19 = Seconds::__json_decode__(__reader);
+                if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
+                when = ::tpy::unwrap_ref(*__try_tmp_19);
+            }
+        } else {
+            {
+                auto __try_tmp_20 = __reader.skip_value();
+                if (!__try_tmp_20.has_value()) return ::tpy::make_unexpected(__try_tmp_20.error());
+            }
+        }
+    }
+    {
+        auto __try_tmp_21 = __reader.read_object_end();
+        if (!__try_tmp_21.has_value()) return ::tpy::make_unexpected(__try_tmp_21.error());
+    }
+    if ((!when.has_value())) {
+        return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'when'"));
+    }
+    auto __tmp_1 = (*when);
+    return Event(name, std::move(__tmp_1));
+}
+
+std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
+    {
+        auto __try_tmp_22 = __reader.read_object_start();
+        if (!__try_tmp_22.has_value()) return ::tpy::make_unexpected(__try_tmp_22.error());
+    }
+    std::vector<Event> events = std::vector<Event>{};
+    std::optional<Seconds> default_duration = std::nullopt;
+    std::optional<Seconds> deadline = std::nullopt;
+    while (__reader.has_next()) {
+        std::string_view __key;
+        {
+            auto __try_tmp_23 = __reader.read_key_raw();
+            if (!__try_tmp_23.has_value()) return ::tpy::make_unexpected(__try_tmp_23.error());
+            __key = ::tpy::unwrap_ref(*__try_tmp_23);
+        }
+        auto& __match_subject = __key;
+        if (__match_subject == "events") {
+            {
+                auto __try_tmp_24 = __reader.read_array_start();
+                if (!__try_tmp_24.has_value()) return ::tpy::make_unexpected(__try_tmp_24.error());
+            }
+            while (__reader.has_next()) {
+                Event __elem_1;
+                {
+                    auto __try_tmp_25 = Event::__json_decode__(__reader);
+                    if (!__try_tmp_25.has_value()) return ::tpy::make_unexpected(__try_tmp_25.error());
+                    __elem_1 = ::tpy::unwrap_ref(*__try_tmp_25);
+                }
+                events.push_back(__elem_1);
+            }
+            {
+                auto __try_tmp_26 = __reader.read_array_end();
+                if (!__try_tmp_26.has_value()) return ::tpy::make_unexpected(__try_tmp_26.error());
+            }
+        } else if (__match_subject == "default_duration") {
+            {
+                auto __try_tmp_27 = Seconds::__json_decode__(__reader);
+                if (!__try_tmp_27.has_value()) return ::tpy::make_unexpected(__try_tmp_27.error());
+                default_duration = ::tpy::unwrap_ref(*__try_tmp_27);
+            }
+        } else if (__match_subject == "deadline") {
+            if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
+                {
+                    auto __try_tmp_28 = __reader.read_null();
+                    if (!__try_tmp_28.has_value()) return ::tpy::make_unexpected(__try_tmp_28.error());
+                }
+            } else {
+                {
+                    auto __try_tmp_29 = Seconds::__json_decode__(__reader);
+                    if (!__try_tmp_29.has_value()) return ::tpy::make_unexpected(__try_tmp_29.error());
+                    deadline = ::tpy::unwrap_ref(*__try_tmp_29);
+                }
+            }
+        } else {
+            {
+                auto __try_tmp_30 = __reader.skip_value();
+                if (!__try_tmp_30.has_value()) return ::tpy::make_unexpected(__try_tmp_30.error());
+            }
+        }
+    }
+    {
+        auto __try_tmp_31 = __reader.read_object_end();
+        if (!__try_tmp_31.has_value()) return ::tpy::make_unexpected(__try_tmp_31.error());
+    }
+    if ((!default_duration.has_value())) {
+        return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'default_duration'"));
+    }
+    auto __tmp_2 = (*default_duration);
+    auto __tmp_3 = deadline;
+    return Schedule(std::move(events), std::move(__tmp_2), std::move(__tmp_3));
+}
+
+void Schedule::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
+    __writer.object_start();
+    __writer.key("events");
+    __writer.array_start();
+    auto& __obj_0 = this->events;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& __item = *__beg_0;
+        __item.__json_encode__(__writer);
+    }
+    __writer.array_end();
+    __writer.key("default_duration");
+    this->default_duration.__json_encode__(__writer);
+    __writer.key("deadline");
+    const Seconds* __opt_deadline = ::tpy::optional_to_ptr(this->deadline);
+    if ((__opt_deadline != nullptr)) {
+        const Seconds& __val_deadline = (*__opt_deadline);
+        __val_deadline.__json_encode__(__writer);
+    } else {
+        __writer.write_null();
+    }
+    __writer.object_end();
+}
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

@@ -31,10 +31,7 @@ struct Dog {
     }
 
     // def name(self) -> str:
-    std::string name() const {
-        // return "Rex"
-        return "Rex";
-    }
+    std::string name() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
@@ -42,6 +39,12 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
+
+// def name(self) -> str:
+inline std::string Dog::name() const {
+    // return "Rex"
+    return "Rex";
+}
 // @overload
 // def describe(x: Animal) -> str:  # tpyc: ok
 template<Animal T_x>

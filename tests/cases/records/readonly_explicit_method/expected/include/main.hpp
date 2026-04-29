@@ -24,17 +24,11 @@ struct Counter {
 
     // @readonly
     // def get_value(self) -> Int32:
-    int32_t get_value() const {
-        // return self.value
-        return this->value;
-    }
+    int32_t get_value() const;
 
     // @readonly
     // def doubled(self) -> Int32:
-    int32_t doubled() const {
-        // return self.value + self.value
-        return (::tpy::add_check<int32_t>(this->value, this->value));
-    }
+    int32_t doubled() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -42,5 +36,19 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// @readonly
+// def get_value(self) -> Int32:
+inline int32_t Counter::get_value() const {
+    // return self.value
+    return this->value;
+}
+
+// @readonly
+// def doubled(self) -> Int32:
+inline int32_t Counter::doubled() const {
+    // return self.value + self.value
+    return (::tpy::add_check<int32_t>(this->value, this->value));
+}
 void __tpy_init();
 } // namespace tpyapp::main

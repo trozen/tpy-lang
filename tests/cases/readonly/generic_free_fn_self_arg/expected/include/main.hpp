@@ -30,16 +30,10 @@ struct Counter {
     Counter() : n(0) {}
 
     // def bump(self) -> None:
-    void bump() {
-        // self.n = self.n + 1
-        this->n = (::tpy::add_check<int32_t>(this->n, 1));
-    }
+    void bump();
 
     // def step(self) -> None:
-    void step() {
-        // trigger(self)
-        trigger<Counter>((*this));
-    }
+    void step();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -47,6 +41,18 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def bump(self) -> None:
+inline void Counter::bump() {
+    // self.n = self.n + 1
+    this->n = (::tpy::add_check<int32_t>(this->n, 1));
+}
+
+// def step(self) -> None:
+inline void Counter::step() {
+    // trigger(self)
+    trigger<Counter>((*this));
+}
 // def trigger[T: Bumpable](x: T) -> None:
 template<Bumpable T>
 void trigger(::tpy::param_val_or_ref_t<T> x) {

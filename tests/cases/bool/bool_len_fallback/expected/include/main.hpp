@@ -23,10 +23,7 @@ struct Stack {
     explicit Stack(int32_t size) : size(size) {}
 
     // def __len__(self) -> Int32:
-    int32_t __len__() const {
-        // return self.size
-        return this->size;
-    }
+    int32_t __len__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
@@ -34,5 +31,11 @@ inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
     return os;
 }
 
+
+// def __len__(self) -> Int32:
+inline int32_t Stack::__len__() const {
+    // return self.size
+    return this->size;
+}
 void __tpy_init();
 } // namespace tpyapp::main

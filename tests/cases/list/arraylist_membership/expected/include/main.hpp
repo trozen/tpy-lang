@@ -32,31 +32,19 @@ struct SimpleBuffer {
 
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[Int32]]:
-    std::span<int32_t> __span__() {
-        // return self._data
-        return ::tpy::as_mut_span(this->_data);
-    }
+    std::span<int32_t> __span__();
 
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[Int32]]:
-    std::span<const int32_t> __span__() const {
-        // return self._data
-        return ::tpy::as_span(this->_data);
-    }
+    std::span<const int32_t> __span__() const;
 
     // @auto_readonly
     // def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
-    ::tpy::SpanIter<int32_t> __iter__() {
-        // return SpanIter(self.__span__())
-        return ::tpy::SpanIter<int32_t>(this->__span__());
-    }
+    ::tpy::SpanIter<int32_t> __iter__();
 
     // @auto_readonly
     // def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
-    ::tpy::SpanIter<const int32_t> __iter__() const {
-        // return SpanIter(self.__span__())
-        return ::tpy::SpanIter<const int32_t>(this->__span__());
-    }
+    ::tpy::SpanIter<const int32_t> __iter__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SimpleBuffer& obj) {
@@ -64,5 +52,33 @@ inline std::ostream& operator<<(std::ostream& os, const SimpleBuffer& obj) {
     return os;
 }
 
+
+// @auto_readonly
+// def __span__(self) -> Span[auto_readonly[Int32]]:
+inline std::span<int32_t> SimpleBuffer::__span__() {
+    // return self._data
+    return ::tpy::as_mut_span(this->_data);
+}
+
+// @auto_readonly
+// def __span__(self) -> Span[auto_readonly[Int32]]:
+inline std::span<const int32_t> SimpleBuffer::__span__() const {
+    // return self._data
+    return ::tpy::as_span(this->_data);
+}
+
+// @auto_readonly
+// def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
+inline ::tpy::SpanIter<int32_t> SimpleBuffer::__iter__() {
+    // return SpanIter(self.__span__())
+    return ::tpy::SpanIter<int32_t>(this->__span__());
+}
+
+// @auto_readonly
+// def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
+inline ::tpy::SpanIter<const int32_t> SimpleBuffer::__iter__() const {
+    // return SpanIter(self.__span__())
+    return ::tpy::SpanIter<const int32_t>(this->__span__());
+}
 void __tpy_init();
 } // namespace tpyapp::main

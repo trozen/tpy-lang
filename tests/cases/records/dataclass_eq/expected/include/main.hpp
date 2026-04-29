@@ -24,13 +24,9 @@ struct Id {
     Id() = default;
     explicit Id(int32_t value) : value(value) {}
 
-    bool __eq__(const Id& other) const {
-        return (this->value == other.value);
-    }
+    bool __eq__(const Id& other) const;
 
-    std::string __repr__() const {
-        return std::format("Id(value={})", ::tpy::__repr__(this->value));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Id& lhs, const Id& other) {
         return lhs.__eq__(other);
@@ -53,13 +49,9 @@ struct Point {
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    bool __eq__(const Point& other) const {
-        return ((this->x == other.x) && (this->y == other.y));
-    }
+    bool __eq__(const Point& other) const;
 
-    std::string __repr__() const {
-        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
@@ -84,13 +76,9 @@ struct Config {
     Config() = default;
     explicit Config(std::string_view name, int32_t value, std::optional<std::string_view> label = std::nullopt) : name(name), value(value), label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
 
-    bool __eq__(const Config& other) const {
-        return (((this->name == other.name) && (this->value == other.value)) && (this->label == other.label));
-    }
+    bool __eq__(const Config& other) const;
 
-    std::string __repr__() const {
-        return std::format("Config(name={}, value={}, label={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->value), ::tpy::__repr__(this->label));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Config& lhs, const Config& other) {
         return lhs.__eq__(other);
@@ -102,5 +90,29 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     return os;
 }
 
+
+inline bool Id::__eq__(const Id& other) const {
+    return (this->value == other.value);
+}
+
+inline std::string Id::__repr__() const {
+    return std::format("Id(value={})", ::tpy::__repr__(this->value));
+}
+
+inline bool Point::__eq__(const Point& other) const {
+    return ((this->x == other.x) && (this->y == other.y));
+}
+
+inline std::string Point::__repr__() const {
+    return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+}
+
+inline bool Config::__eq__(const Config& other) const {
+    return (((this->name == other.name) && (this->value == other.value)) && (this->label == other.label));
+}
+
+inline std::string Config::__repr__() const {
+    return std::format("Config(name={}, value={}, label={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->value), ::tpy::__repr__(this->label));
+}
 void __tpy_init();
 } // namespace tpyapp::main

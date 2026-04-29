@@ -29,48 +29,30 @@ struct Module {
     explicit Module(std::string_view name) : _name(name), _items(std::vector<int32_t>{}) {}
 
     // def log(self, s: str):
-    void log(std::string_view s) const {
-        // print(self._name + ": " + s)
-        std::cout << (::tpy::str_concat((::tpy::str_concat(this->_name, ": ")), s)) << "\n";
-    }
+    void log(std::string_view s) const;
 
     // # Passes self to mutating free function -- must NOT be const
     // def init(self):
-    void init() {
-        // on_init(self)
-        on_init((*this));
-    }
+    void init();
 
     // # Passes self to readonly free function -- SHOULD be const
     // def describe(self) -> str:
-    std::string describe() const {
-        // return get_description(self)
-        return get_description((*this));
-    }
+    std::string describe() const;
 
     // # Passes self.field to a free function -- should stay const
     // # (field access, not self mutation)
     // def name_upper(self) -> str:
-    std::string name_upper() const {
-        // return to_upper(self._name)
-        return to_upper(this->_name);
-    }
+    std::string name_upper() const;
 
     // # Calls a method that itself passes self to a mutating free function
     // # -- transitively not const
     // def reinit(self):
-    void reinit() {
-        // self.init()
-        this->init();
-    }
+    void reinit();
 
     // # Passes self to a free function that structurally mutates a field
     // # -- must NOT be const
     // def add_item(self, val: Int32):
-    void add_item(int32_t val) {
-        // append_item(self, val)
-        append_item((*this), val);
-    }
+    void add_item(int32_t val);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Module& obj) {
@@ -78,5 +60,49 @@ inline std::ostream& operator<<(std::ostream& os, const Module& obj) {
     return os;
 }
 
+
+// def log(self, s: str):
+inline void Module::log(std::string_view s) const {
+    // print(self._name + ": " + s)
+    std::cout << (::tpy::str_concat((::tpy::str_concat(this->_name, ": ")), s)) << "\n";
+}
+
+// # Passes self to mutating free function -- must NOT be const
+// def init(self):
+inline void Module::init() {
+    // on_init(self)
+    on_init((*this));
+}
+
+// # Passes self to readonly free function -- SHOULD be const
+// def describe(self) -> str:
+inline std::string Module::describe() const {
+    // return get_description(self)
+    return get_description((*this));
+}
+
+// # Passes self.field to a free function -- should stay const
+// # (field access, not self mutation)
+// def name_upper(self) -> str:
+inline std::string Module::name_upper() const {
+    // return to_upper(self._name)
+    return to_upper(this->_name);
+}
+
+// # Calls a method that itself passes self to a mutating free function
+// # -- transitively not const
+// def reinit(self):
+inline void Module::reinit() {
+    // self.init()
+    this->init();
+}
+
+// # Passes self to a free function that structurally mutates a field
+// # -- must NOT be const
+// def add_item(self, val: Int32):
+inline void Module::add_item(int32_t val) {
+    // append_item(self, val)
+    append_item((*this), val);
+}
 void __tpy_init();
 } // namespace tpyapp::main

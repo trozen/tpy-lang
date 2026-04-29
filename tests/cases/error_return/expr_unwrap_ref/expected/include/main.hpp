@@ -38,14 +38,7 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     // def updated(self) -> Self:
-    Point& updated() {
-        // self.x += 1
-        this->x = ::tpy::add_check<int32_t>(this->x, 1);
-        // self.y += 1
-        this->y = ::tpy::add_check<int32_t>(this->y, 1);
-        // return self
-        return (*this);
-    }
+    Point& updated();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -53,5 +46,15 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def updated(self) -> Self:
+inline Point& Point::updated() {
+    // self.x += 1
+    this->x = ::tpy::add_check<int32_t>(this->x, 1);
+    // self.y += 1
+    this->y = ::tpy::add_check<int32_t>(this->y, 1);
+    // return self
+    return (*this);
+}
 void __tpy_init();
 } // namespace tpyapp::main

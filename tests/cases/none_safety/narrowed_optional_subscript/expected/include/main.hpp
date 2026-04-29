@@ -26,13 +26,7 @@ struct Wrapper {
     explicit Wrapper(std::optional<std::string_view> text) : text(text ? std::make_optional(std::string(*text)) : std::nullopt) {}
 
     // def first_char(self) -> None:
-    void first_char() const {
-        // if self.text is not None:
-        if ((this->text.has_value())) {
-            // print(self.text[0])
-            std::cout << ::tpy::__getitem__((*this->text), 0) << "\n";
-        }
-    }
+    void first_char() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
@@ -40,5 +34,14 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+// def first_char(self) -> None:
+inline void Wrapper::first_char() const {
+    // if self.text is not None:
+    if ((this->text.has_value())) {
+        // print(self.text[0])
+        std::cout << ::tpy::__getitem__((*this->text), 0) << "\n";
+    }
+}
 void __tpy_init();
 } // namespace tpyapp::main

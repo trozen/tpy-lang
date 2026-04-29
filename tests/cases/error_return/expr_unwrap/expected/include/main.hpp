@@ -63,22 +63,11 @@ struct Point {
     explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
     // def updated(self) -> Self:
-    Point& updated() {
-        // self.x += 1
-        this->x = (this->x) + (::tpy::BigInt(1));
-        // self.y += 1
-        this->y = (this->y) + (::tpy::BigInt(1));
-        // return self
-        return (*this);
-    }
+    Point& updated();
 
-    bool __eq__(const Point& other) const {
-        return ((this->x == other.x) && (this->y == other.y));
-    }
+    bool __eq__(const Point& other) const;
 
-    std::string __repr__() const {
-        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
@@ -90,5 +79,23 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def updated(self) -> Self:
+inline Point& Point::updated() {
+    // self.x += 1
+    this->x = (this->x) + (::tpy::BigInt(1));
+    // self.y += 1
+    this->y = (this->y) + (::tpy::BigInt(1));
+    // return self
+    return (*this);
+}
+
+inline bool Point::__eq__(const Point& other) const {
+    return ((this->x == other.x) && (this->y == other.y));
+}
+
+inline std::string Point::__repr__() const {
+    return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+}
 void __tpy_init();
 } // namespace tpyapp::main

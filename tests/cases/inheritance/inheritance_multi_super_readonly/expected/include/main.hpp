@@ -25,10 +25,7 @@ struct Counter {
 
     // @readonly
     // def get_n(self) -> Int32:
-    int32_t get_n() const {
-        // return self.n
-        return this->n;
-    }
+    int32_t get_n() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -42,10 +39,7 @@ struct Greeter {
 
     // @readonly
     // def greet(self) -> str:
-    std::string greet() const {
-        // return "hi"
-        return "hi";
-    }
+    std::string greet() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Greeter& obj) {
@@ -61,10 +55,7 @@ struct Both : Counter, Greeter {
 
     // @readonly
     // def describe(self) -> str:
-    std::string describe() const {
-        // return super().greet() + ":" + str(super().get_n())
-        return (::tpy::str_concat((::tpy::str_concat(this->Greeter::greet(), ":")), ::tpy::fixed_to_str<int32_t>(this->Counter::get_n())));
-    }
+    std::string describe() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Both& obj) {
@@ -72,5 +63,26 @@ inline std::ostream& operator<<(std::ostream& os, const Both& obj) {
     return os;
 }
 
+
+// @readonly
+// def get_n(self) -> Int32:
+inline int32_t Counter::get_n() const {
+    // return self.n
+    return this->n;
+}
+
+// @readonly
+// def greet(self) -> str:
+inline std::string Greeter::greet() const {
+    // return "hi"
+    return "hi";
+}
+
+// @readonly
+// def describe(self) -> str:
+inline std::string Both::describe() const {
+    // return super().greet() + ":" + str(super().get_n())
+    return (::tpy::str_concat((::tpy::str_concat(this->Greeter::greet(), ":")), ::tpy::fixed_to_str<int32_t>(this->Counter::get_n())));
+}
 void __tpy_init();
 } // namespace tpyapp::main

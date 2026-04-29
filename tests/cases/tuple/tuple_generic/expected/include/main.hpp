@@ -29,10 +29,7 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     // def __repr__(self) -> str:
-    std::string __repr__() const {
-        // return "Point(" + str(self.x) + ", " + str(self.y) + ")"
-        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Point(", ::tpy::fixed_to_str<int32_t>(this->x))), ", ")), ::tpy::fixed_to_str<int32_t>(this->y))), ")"));
-    }
+    std::string __repr__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -40,6 +37,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def __repr__(self) -> str:
+inline std::string Point::__repr__() const {
+    // return "Point(" + str(self.x) + ", " + str(self.y) + ")"
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Point(", ::tpy::fixed_to_str<int32_t>(this->x))), ", ")), ::tpy::fixed_to_str<int32_t>(this->y))), ")"));
+}
 // def first_of_pair[T](p: tuple[T, T]) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> first_of_pair(const std::tuple<::tpy::val_or_ref_t<T>, ::tpy::val_or_ref_t<T>>& p) {

@@ -56,17 +56,11 @@ struct Canvas {
 
     // @property
     // def shape(self) -> Circle | Square:
-    std::variant<Circle, Square>& shape() {
-        // return self._shape
-        return this->_shape;
-    }
+    std::variant<Circle, Square>& shape();
 
     // @property
     // def shape(self) -> Circle | Square:
-    const std::variant<Circle, Square>& shape() const {
-        // return self._shape
-        return this->_shape;
-    }
+    const std::variant<Circle, Square>& shape() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Canvas& obj) {
@@ -74,5 +68,19 @@ inline std::ostream& operator<<(std::ostream& os, const Canvas& obj) {
     return os;
 }
 
+
+// @property
+// def shape(self) -> Circle | Square:
+inline std::variant<Circle, Square>& Canvas::shape() {
+    // return self._shape
+    return this->_shape;
+}
+
+// @property
+// def shape(self) -> Circle | Square:
+inline const std::variant<Circle, Square>& Canvas::shape() const {
+    // return self._shape
+    return this->_shape;
+}
 void __tpy_init();
 } // namespace tpyapp::main

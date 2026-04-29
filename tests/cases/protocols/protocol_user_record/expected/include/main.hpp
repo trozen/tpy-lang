@@ -25,10 +25,7 @@ struct MyContainer {
     explicit MyContainer(int32_t size) : size(size) {}
 
     // def __len__(self) -> Int32:
-    int32_t __len__() const {
-        // return self.size
-        return this->size;
-    }
+    int32_t __len__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyContainer& obj) {
@@ -36,6 +33,12 @@ inline std::ostream& operator<<(std::ostream& os, const MyContainer& obj) {
     return os;
 }
 
+
+// def __len__(self) -> Int32:
+inline int32_t MyContainer::__len__() const {
+    // return self.size
+    return this->size;
+}
 // def count(items: Sized) -> Int32:
 template<::tpystd::typing::Sized T_items>
 int32_t count(const T_items& items) {

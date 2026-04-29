@@ -22,10 +22,7 @@ struct Named {
 
 
     // def describe(self) -> str:
-    std::string describe() const {
-        // return self.name
-        return this->name;
-    }
+    std::string describe() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
@@ -40,16 +37,10 @@ struct Counted {
 
 
     // def inc(self) -> None:
-    void inc() {
-        // self.count = self.count + 1
-        this->count = (::tpy::add_check<int32_t>(this->count, 1));
-    }
+    void inc();
 
     // def value(self) -> Int32:
-    int32_t value() const {
-        // return self.count
-        return this->count;
-    }
+    int32_t value() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counted& obj) {
@@ -75,5 +66,23 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
     return os;
 }
 
+
+// def describe(self) -> str:
+inline std::string Named::describe() const {
+    // return self.name
+    return this->name;
+}
+
+// def inc(self) -> None:
+inline void Counted::inc() {
+    // self.count = self.count + 1
+    this->count = (::tpy::add_check<int32_t>(this->count, 1));
+}
+
+// def value(self) -> Int32:
+inline int32_t Counted::value() const {
+    // return self.count
+    return this->count;
+}
 void __tpy_init();
 } // namespace tpyapp::main

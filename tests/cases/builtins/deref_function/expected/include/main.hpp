@@ -25,10 +25,7 @@ struct Box {
     explicit Box(int32_t v) : _val(v) {}
 
     // def __deref__(self) -> Int32:
-    int32_t __deref__() const {
-        // return self._val
-        return this->_val;
-    }
+    int32_t __deref__() const;
 
     auto operator*() -> decltype(__deref__()) {
         return __deref__();
@@ -40,6 +37,12 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __deref__(self) -> Int32:
+inline int32_t Box::__deref__() const {
+    // return self._val
+    return this->_val;
+}
 // def deref_protocol(p: Deref[Int32]) -> Int32:
 template<::tpystd::tpy::Deref<int32_t> T_p>
 int32_t deref_protocol(const T_p& p) {

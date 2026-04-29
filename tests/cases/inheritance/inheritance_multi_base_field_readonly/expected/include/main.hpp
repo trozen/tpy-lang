@@ -52,21 +52,11 @@ struct Combined : A, B {
 
     // @readonly
     // def total_int_len(self) -> Int32:
-    int32_t total_int_len() const {
-        // nums = A.buf  # tpyc: type(/readonly\[list\[Int32\]\]/)
-        const std::vector<int32_t>& nums = this->A::buf;
-        // return Int32(len(nums))
-        return ::tpy::__len__(nums);
-    }
+    int32_t total_int_len() const;
 
     // @readonly
     // def first_str(self) -> str:
-    std::string first_str() const {
-        // labels = B.buf  # tpyc: type(/readonly\[list\[str\]\]/)
-        const std::vector<std::string>& labels = this->B::buf;
-        // return labels[0]
-        return ::tpy::__getitem__(labels, 0);
-    }
+    std::string first_str() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
@@ -74,5 +64,23 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
     return os;
 }
 
+
+// @readonly
+// def total_int_len(self) -> Int32:
+inline int32_t Combined::total_int_len() const {
+    // nums = A.buf  # tpyc: type(/readonly\[list\[Int32\]\]/)
+    const std::vector<int32_t>& nums = this->A::buf;
+    // return Int32(len(nums))
+    return ::tpy::__len__(nums);
+}
+
+// @readonly
+// def first_str(self) -> str:
+inline std::string Combined::first_str() const {
+    // labels = B.buf  # tpyc: type(/readonly\[list\[str\]\]/)
+    const std::vector<std::string>& labels = this->B::buf;
+    // return labels[0]
+    return ::tpy::__getitem__(labels, 0);
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -22,18 +22,10 @@ struct Sink {
     Sink() : parts(std::vector<std::string>{}) {}
 
     // def write(self, text: str) -> Int32:
-    int32_t write(std::string_view text) {
-        // self.parts.append(text)
-        std::string __tmp_1{text};
-        this->parts.push_back(std::move(__tmp_1));
-        // return Int32(len(text))
-        return ::tpy::__len__(text);
-    }
+    int32_t write(std::string_view text);
 
     // def flush(self) -> None:
-    void flush() const {
-        // pass
-    }
+    void flush() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
@@ -41,5 +33,19 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
     return os;
 }
 
+
+// def write(self, text: str) -> Int32:
+inline int32_t Sink::write(std::string_view text) {
+    // self.parts.append(text)
+    std::string __tmp_1{text};
+    this->parts.push_back(std::move(__tmp_1));
+    // return Int32(len(text))
+    return ::tpy::__len__(text);
+}
+
+// def flush(self) -> None:
+inline void Sink::flush() const {
+    // pass
+}
 void __tpy_init();
 } // namespace tpyapp::main

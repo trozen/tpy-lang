@@ -45,10 +45,7 @@ struct Vehicle {
     explicit Vehicle(std::string_view brand, int32_t year) : brand(brand), year(year) {}
 
     // def get_brand(self) -> str:
-    std::string get_brand() const {
-        // return self.brand
-        return this->brand;
-    }
+    std::string get_brand() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vehicle& obj) {
@@ -74,22 +71,13 @@ struct Car : Vehicle {
     }
 
     // def __str__(self) -> str:
-    std::string __str__() const {
-        // return self.model
-        return this->model;
-    }
+    std::string __str__() const;
 
     // def weight(self) -> Int32:
-    int32_t weight() const {
-        // return self.car_weight
-        return this->car_weight;
-    }
+    int32_t weight() const;
 
     // def describe(self) -> str:
-    std::string describe() const {
-        // return "A car"
-        return "A car";
-    }
+    std::string describe() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Car& obj) {
@@ -97,5 +85,29 @@ inline std::ostream& operator<<(std::ostream& os, const Car& obj) {
     return os;
 }
 
+
+// def get_brand(self) -> str:
+inline std::string Vehicle::get_brand() const {
+    // return self.brand
+    return this->brand;
+}
+
+// def __str__(self) -> str:
+inline std::string Car::__str__() const {
+    // return self.model
+    return this->model;
+}
+
+// def weight(self) -> Int32:
+inline int32_t Car::weight() const {
+    // return self.car_weight
+    return this->car_weight;
+}
+
+// def describe(self) -> str:
+inline std::string Car::describe() const {
+    // return "A car"
+    return "A car";
+}
 void __tpy_init();
 } // namespace tpyapp::main

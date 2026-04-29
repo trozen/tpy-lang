@@ -23,10 +23,7 @@ struct Doubler {
 
 
     // def __call__(self, x: Int32) -> Int32:
-    int32_t __call__(int32_t x) const {
-        // return x * 2
-        return (::tpy::mul_check<int32_t>(x, 2));
-    }
+    int32_t __call__(int32_t x) const;
 
     int32_t operator()(int32_t x) const {
         return __call__(x);
@@ -38,6 +35,12 @@ inline std::ostream& operator<<(std::ostream& os, const Doubler& obj) {
     return os;
 }
 
+
+// def __call__(self, x: Int32) -> Int32:
+inline int32_t Doubler::__call__(int32_t x) const {
+    // return x * 2
+    return (::tpy::mul_check<int32_t>(x, 2));
+}
 // def apply_and_discard(f: Fn[[Int32], None], x: Int32) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {

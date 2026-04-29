@@ -12,7 +12,6 @@ struct __tpy_builder_counter_1;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t compute();
 int32_t main();
 __tpy_builder_counter_1 __tpy_builder_build_counter_1();
 
@@ -21,10 +20,7 @@ struct Holder {
 
 
     // def make(self) -> Int32:
-    int32_t make() const {
-        // return compute()
-        return compute();
-    }
+    int32_t make() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
@@ -41,9 +37,7 @@ struct __tpy_builder_counter_1 {
     __tpy_builder_counter_1() = default;
     explicit __tpy_builder_counter_1(int32_t v0, int32_t v1) : v0(v0), v1(v1) {}
 
-    int32_t total() const {
-        return (::tpy::add_check<int32_t>(this->v0, this->v1));
-    }
+    int32_t total() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_counter_1& obj) {
@@ -51,5 +45,17 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_counter_1&
     return os;
 }
 
+
+// def make(self) -> Int32:
+inline int32_t Holder::make() const {
+    // res = c.build()
+    __tpy_builder_counter_1 res = __tpy_builder_build_counter_1();
+    // return res.total()
+    return res.total();
+}
+
+inline int32_t __tpy_builder_counter_1::total() const {
+    return (::tpy::add_check<int32_t>(this->v0, this->v1));
+}
 void __tpy_init();
 } // namespace tpyapp::main

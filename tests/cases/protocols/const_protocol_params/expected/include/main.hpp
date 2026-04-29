@@ -78,10 +78,7 @@ struct Rect {
 
     // @readonly
     // def area(self) -> Int32:
-    int32_t area() const {
-        // return self._w * self._h
-        return (::tpy::mul_check<int32_t>(this->_w, this->_h));
-    }
+    int32_t area() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
@@ -100,16 +97,10 @@ struct Box {
 
     // @readonly
     // def measure(self) -> Int32:
-    int32_t measure() const {
-        // return self._side
-        return this->_side;
-    }
+    int32_t measure() const;
 
     // def resize(self, v: Int32) -> None:
-    void resize(int32_t v) {
-        // self._side = v
-        this->_side = v;
-    }
+    void resize(int32_t v);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
@@ -117,6 +108,26 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// @readonly
+// def area(self) -> Int32:
+inline int32_t Rect::area() const {
+    // return self._w * self._h
+    return (::tpy::mul_check<int32_t>(this->_w, this->_h));
+}
+
+// @readonly
+// def measure(self) -> Int32:
+inline int32_t Box::measure() const {
+    // return self._side
+    return this->_side;
+}
+
+// def resize(self, v: Int32) -> None:
+inline void Box::resize(int32_t v) {
+    // self._side = v
+    this->_side = v;
+}
 // # Non-mutated static protocol param -> const T_p&
 // def get_measure(p: Measurable) -> Int32:
 template<Measurable T_p>

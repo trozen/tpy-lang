@@ -24,10 +24,7 @@ struct Container {
     explicit Container(const ::tpy::BigInt& count) : count(count) {}
 
     // def __bool__(self) -> bool:
-    bool __bool__() const {
-        // return self.count != 0
-        return (this->count != 0);
-    }
+    bool __bool__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -35,5 +32,11 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+
+// def __bool__(self) -> bool:
+inline bool Container::__bool__() const {
+    // return self.count != 0
+    return (this->count != 0);
+}
 void __tpy_init();
 } // namespace tpyapp::main

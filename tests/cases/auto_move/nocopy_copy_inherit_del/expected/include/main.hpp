@@ -68,10 +68,7 @@ struct CopyableResource : Resource {
     CopyableResource& operator=(CopyableResource&&) = default;
 
     // def __copy__(self) -> Own[CopyableResource]:
-    CopyableResource __copy__() const {
-        // return CopyableResource(self.id + 100)
-        return CopyableResource((::tpy::add_check<int32_t>(this->id, 100)));
-    }
+    CopyableResource __copy__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CopyableResource& obj) {
@@ -79,5 +76,11 @@ inline std::ostream& operator<<(std::ostream& os, const CopyableResource& obj) {
     return os;
 }
 
+
+// def __copy__(self) -> Own[CopyableResource]:
+inline CopyableResource CopyableResource::__copy__() const {
+    // return CopyableResource(self.id + 100)
+    return CopyableResource((::tpy::add_check<int32_t>(this->id, 100)));
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -25,10 +25,7 @@ struct Box {
 
     // @readonly
     // def get_v(self) -> Int32:
-    int32_t get_v() const {
-        // return self.v
-        return this->v;
-    }
+    int32_t get_v() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
@@ -36,5 +33,12 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// @readonly
+// def get_v(self) -> Int32:
+inline int32_t Box::get_v() const {
+    // return self.v
+    return this->v;
+}
 void __tpy_init();
 } // namespace tpyapp::main

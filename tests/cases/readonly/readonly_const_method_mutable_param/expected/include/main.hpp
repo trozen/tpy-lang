@@ -23,17 +23,10 @@ struct Writer {
     Writer() : _parts(std::vector<std::string>{}) {}
 
     // def write(self, s: str) -> None:
-    void write(std::string_view s) {
-        // self._parts.append(s)
-        std::string __tmp_1{s};
-        this->_parts.push_back(std::move(__tmp_1));
-    }
+    void write(std::string_view s);
 
     // def result(self) -> str:
-    std::string result() const {
-        // return ",".join(self._parts)
-        return ::tpy::str_join(",", this->_parts);
-    }
+    std::string result() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Writer& obj) {
@@ -53,12 +46,7 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     // def encode(self, writer: Writer) -> None:
-    void encode(Writer& writer) const {
-        // writer.write(str(self.x))
-        writer.write(::tpy::fixed_to_str<int32_t>(this->x));
-        // writer.write(str(self.y))
-        writer.write(::tpy::fixed_to_str<int32_t>(this->y));
-    }
+    void encode(Writer& writer) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -66,5 +54,26 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def write(self, s: str) -> None:
+inline void Writer::write(std::string_view s) {
+    // self._parts.append(s)
+    std::string __tmp_1{s};
+    this->_parts.push_back(std::move(__tmp_1));
+}
+
+// def result(self) -> str:
+inline std::string Writer::result() const {
+    // return ",".join(self._parts)
+    return ::tpy::str_join(",", this->_parts);
+}
+
+// def encode(self, writer: Writer) -> None:
+inline void Point::encode(Writer& writer) const {
+    // writer.write(str(self.x))
+    writer.write(::tpy::fixed_to_str<int32_t>(this->x));
+    // writer.write(str(self.y))
+    writer.write(::tpy::fixed_to_str<int32_t>(this->y));
+}
 void __tpy_init();
 } // namespace tpyapp::main

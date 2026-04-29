@@ -28,13 +28,9 @@ struct Color {
     Color() = default;
     explicit Color(int32_t r, int32_t g, int32_t b, int32_t a = 255) : r(r), g(g), b(b), a(a) {}
 
-    bool __eq__(const Color& other) const {
-        return ((((this->r == other.r) && (this->g == other.g)) && (this->b == other.b)) && (this->a == other.a));
-    }
+    bool __eq__(const Color& other) const;
 
-    std::string __repr__() const {
-        return std::format("Color(r={}, g={}, b={}, a={})", ::tpy::__repr__(this->r), ::tpy::__repr__(this->g), ::tpy::__repr__(this->b), ::tpy::__repr__(this->a));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Color& lhs, const Color& other) {
         return lhs.__eq__(other);
@@ -46,5 +42,13 @@ inline std::ostream& operator<<(std::ostream& os, const Color& obj) {
     return os;
 }
 
+
+inline bool Color::__eq__(const Color& other) const {
+    return ((((this->r == other.r) && (this->g == other.g)) && (this->b == other.b)) && (this->a == other.a));
+}
+
+inline std::string Color::__repr__() const {
+    return std::format("Color(r={}, g={}, b={}, a={})", ::tpy::__repr__(this->r), ::tpy::__repr__(this->g), ::tpy::__repr__(this->b), ::tpy::__repr__(this->a));
+}
 void __tpy_init();
 } // namespace tpyapp::main

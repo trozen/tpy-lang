@@ -32,10 +32,7 @@ struct Wrapper {
     explicit Wrapper(int32_t v) : val(v) {}
 
     // def get_val(self) -> Int32:
-    int32_t get_val() const {
-        // return self.val
-        return this->val;
-    }
+    int32_t get_val() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
@@ -43,6 +40,12 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+// def get_val(self) -> Int32:
+inline int32_t Wrapper::get_val() const {
+    // return self.val
+    return this->val;
+}
 // def show(item: Printable) -> None:
 template<Printable T_item>
 void show(T_item& item) {

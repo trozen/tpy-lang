@@ -24,41 +24,17 @@ struct Point {
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    bool __eq__(const Point& other) const {
-        return ((this->x == other.x) && (this->y == other.y));
-    }
+    bool __eq__(const Point& other) const;
 
-    std::string __repr__() const {
-        return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
-    }
+    std::string __repr__() const;
 
-    bool __lt__(const Point& other) const {
-        if ((this->x != other.x)) {
-            return (this->x < other.x);
-        }
-        return (this->y < other.y);
-    }
+    bool __lt__(const Point& other) const;
 
-    bool __le__(const Point& other) const {
-        if ((this->x != other.x)) {
-            return (this->x <= other.x);
-        }
-        return (this->y <= other.y);
-    }
+    bool __le__(const Point& other) const;
 
-    bool __gt__(const Point& other) const {
-        if ((this->x != other.x)) {
-            return (this->x > other.x);
-        }
-        return (this->y > other.y);
-    }
+    bool __gt__(const Point& other) const;
 
-    bool __ge__(const Point& other) const {
-        if ((this->x != other.x)) {
-            return (this->x >= other.x);
-        }
-        return (this->y >= other.y);
-    }
+    bool __ge__(const Point& other) const;
 
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
@@ -86,5 +62,41 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+inline bool Point::__eq__(const Point& other) const {
+    return ((this->x == other.x) && (this->y == other.y));
+}
+
+inline std::string Point::__repr__() const {
+    return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+}
+
+inline bool Point::__lt__(const Point& other) const {
+    if ((this->x != other.x)) {
+        return (this->x < other.x);
+    }
+    return (this->y < other.y);
+}
+
+inline bool Point::__le__(const Point& other) const {
+    if ((this->x != other.x)) {
+        return (this->x <= other.x);
+    }
+    return (this->y <= other.y);
+}
+
+inline bool Point::__gt__(const Point& other) const {
+    if ((this->x != other.x)) {
+        return (this->x > other.x);
+    }
+    return (this->y > other.y);
+}
+
+inline bool Point::__ge__(const Point& other) const {
+    if ((this->x != other.x)) {
+        return (this->x >= other.x);
+    }
+    return (this->y >= other.y);
+}
 void __tpy_init();
 } // namespace tpyapp::main

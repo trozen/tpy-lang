@@ -26,13 +26,7 @@ struct C {
     }
 
     // def show(self) -> None:
-    void show() const {
-        // # Read class constants through `self`.
-        // print(self.LIMIT)
-        std::cout << C::LIMIT << "\n";
-        // print(self.NAME)
-        std::cout << C::NAME << "\n";
-    }
+    void show() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
@@ -40,5 +34,14 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
     return os;
 }
 
+
+// def show(self) -> None:
+inline void C::show() const {
+    // # Read class constants through `self`.
+    // print(self.LIMIT)
+    std::cout << C::LIMIT << "\n";
+    // print(self.NAME)
+    std::cout << C::NAME << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

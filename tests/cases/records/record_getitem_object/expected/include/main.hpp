@@ -41,24 +41,15 @@ struct PointList {
     explicit PointList(const std::vector<Point>& pts) : data(pts) {}
 
     // def __len__(self) -> Int32:
-    int32_t __len__() const {
-        // return len(self.data)
-        return ::tpy::__len__(this->data);
-    }
+    int32_t __len__() const;
 
     // @auto_readonly
     // def __getitem__(self, index: Int32) -> Point:
-    Point& __getitem__(int32_t index) {
-        // return self.data[index]
-        return ::tpy::__getitem__(this->data, index);
-    }
+    Point& __getitem__(int32_t index);
 
     // @auto_readonly
     // def __getitem__(self, index: Int32) -> Point:
-    const Point& __getitem__(int32_t index) const {
-        // return self.data[index]
-        return ::tpy::__getitem__(this->data, index);
-    }
+    const Point& __getitem__(int32_t index) const;
 
     const Point& operator[](int32_t index) const {
         return __getitem__(index);
@@ -80,5 +71,25 @@ inline std::ostream& operator<<(std::ostream& os, const PointList& obj) {
     return os;
 }
 
+
+// def __len__(self) -> Int32:
+inline int32_t PointList::__len__() const {
+    // return len(self.data)
+    return ::tpy::__len__(this->data);
+}
+
+// @auto_readonly
+// def __getitem__(self, index: Int32) -> Point:
+inline Point& PointList::__getitem__(int32_t index) {
+    // return self.data[index]
+    return ::tpy::__getitem__(this->data, index);
+}
+
+// @auto_readonly
+// def __getitem__(self, index: Int32) -> Point:
+inline const Point& PointList::__getitem__(int32_t index) const {
+    // return self.data[index]
+    return ::tpy::__getitem__(this->data, index);
+}
 void __tpy_init();
 } // namespace tpyapp::main

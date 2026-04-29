@@ -4,14 +4,6 @@
 namespace tpyapp::main {
 
 
-// def compute() -> Int32:
-int32_t compute() {
-    // res = c.build()
-    __tpy_builder_counter_1 res = __tpy_builder_build_counter_1();
-    // return res.total()
-    return res.total();
-}
-
 // def main() -> Int32:
 int32_t main() {
     // h = Holder()

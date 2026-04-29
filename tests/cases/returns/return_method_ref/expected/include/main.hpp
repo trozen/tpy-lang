@@ -24,10 +24,7 @@ struct Inner {
     explicit Inner(const ::tpy::BigInt& val) : val(val) {}
 
     // def mutate(self) -> None:
-    void mutate() {
-        // self.val += 10
-        this->val = (this->val) + (::tpy::BigInt(10));
-    }
+    void mutate();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
@@ -44,16 +41,10 @@ struct Holder {
     Holder() : inner(Inner(::tpy::BigInt(1))) {}
 
     // def get(self) -> Inner:
-    Inner& get() {
-        // return self.inner
-        return this->inner;
-    }
+    Inner& get();
 
     // def get_ro(self) -> readonly[Inner]:
-    const Inner& get_ro() {
-        // return self.inner
-        return this->inner;
-    }
+    const Inner& get_ro();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
@@ -61,5 +52,23 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def mutate(self) -> None:
+inline void Inner::mutate() {
+    // self.val += 10
+    this->val = (this->val) + (::tpy::BigInt(10));
+}
+
+// def get(self) -> Inner:
+inline Inner& Holder::get() {
+    // return self.inner
+    return this->inner;
+}
+
+// def get_ro(self) -> readonly[Inner]:
+inline const Inner& Holder::get_ro() {
+    // return self.inner
+    return this->inner;
+}
 void __tpy_init();
 } // namespace tpyapp::main

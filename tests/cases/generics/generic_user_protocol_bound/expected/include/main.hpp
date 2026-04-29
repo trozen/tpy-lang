@@ -37,16 +37,10 @@ struct IntBox {
     explicit IntBox(int32_t v) : value(v) {}
 
     // def get(self) -> Int32:
-    int32_t get() const {
-        // return self.value
-        return this->value;
-    }
+    int32_t get() const;
 
     // def set(self, value: Int32) -> None:
-    void set(int32_t value) {
-        // self.value = value
-        this->value = value;
-    }
+    void set(int32_t value);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
@@ -64,16 +58,10 @@ struct StrBox {
     explicit StrBox(std::string_view v) : value(v) {}
 
     // def get(self) -> str:
-    std::string get() const {
-        // return self.value
-        return this->value;
-    }
+    std::string get() const;
 
     // def set(self, value: str) -> None:
-    void set(std::string_view value) {
-        // self.value = value
-        this->value = value;
-    }
+    void set(std::string_view value);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const StrBox& obj) {
@@ -81,6 +69,30 @@ inline std::ostream& operator<<(std::ostream& os, const StrBox& obj) {
     return os;
 }
 
+
+// def get(self) -> Int32:
+inline int32_t IntBox::get() const {
+    // return self.value
+    return this->value;
+}
+
+// def set(self, value: Int32) -> None:
+inline void IntBox::set(int32_t value) {
+    // self.value = value
+    this->value = value;
+}
+
+// def get(self) -> str:
+inline std::string StrBox::get() const {
+    // return self.value
+    return this->value;
+}
+
+// def set(self, value: str) -> None:
+inline void StrBox::set(std::string_view value) {
+    // self.value = value
+    this->value = value;
+}
 // def extract[C: Container[Int32]](c: C) -> Int32:
 template<Container<int32_t> C>
 int32_t extract(::tpy::param_val_or_ref_t<C> c) {

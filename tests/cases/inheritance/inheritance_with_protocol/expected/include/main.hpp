@@ -33,10 +33,7 @@ struct Entity {
     explicit Entity(std::string_view name, int32_t id) : name(name), id(id) {}
 
     // def get_name(self) -> str:
-    std::string get_name() const {
-        // return self.name
-        return this->name;
-    }
+    std::string get_name() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Entity& obj) {
@@ -60,10 +57,7 @@ struct Person : Entity {
     }
 
     // def __str__(self) -> str:
-    std::string __str__() const {
-        // return self.name
-        return this->name;
-    }
+    std::string __str__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
@@ -71,5 +65,17 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
     return os;
 }
 
+
+// def get_name(self) -> str:
+inline std::string Entity::get_name() const {
+    // return self.name
+    return this->name;
+}
+
+// def __str__(self) -> str:
+inline std::string Person::__str__() const {
+    // return self.name
+    return this->name;
+}
 void __tpy_init();
 } // namespace tpyapp::main

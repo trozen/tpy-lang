@@ -27,16 +27,10 @@ struct MyInt {
     explicit MyInt(int32_t v) : value(v) {}
 
     // def __lt__(self, other: MyInt) -> bool:
-    bool __lt__(const MyInt& other) const {
-        // return self.value < other.value
-        return (this->value < other.value);
-    }
+    bool __lt__(const MyInt& other) const;
 
     // def __eq__(self, other: MyInt) -> bool:
-    bool __eq__(const MyInt& other) const {
-        // return self.value == other.value
-        return (this->value == other.value);
-    }
+    bool __eq__(const MyInt& other) const;
 
     friend bool operator<(const MyInt& lhs, const MyInt& other) {
         return lhs.__lt__(other);
@@ -52,6 +46,18 @@ inline std::ostream& operator<<(std::ostream& os, const MyInt& obj) {
     return os;
 }
 
+
+// def __lt__(self, other: MyInt) -> bool:
+inline bool MyInt::__lt__(const MyInt& other) const {
+    // return self.value < other.value
+    return (this->value < other.value);
+}
+
+// def __eq__(self, other: MyInt) -> bool:
+inline bool MyInt::__eq__(const MyInt& other) const {
+    // return self.value == other.value
+    return (this->value == other.value);
+}
 // def is_less[T: Comparable](a: T, b: T) -> bool:
 template<::tpystd::tpy::Comparable T>
 bool is_less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {

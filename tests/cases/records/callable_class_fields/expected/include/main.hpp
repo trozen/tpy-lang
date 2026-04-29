@@ -23,12 +23,7 @@ struct Counter {
     Counter() : count(0) {}
 
     // def __call__(self, inc: Int32) -> Int32:
-    int32_t __call__(int32_t inc) {
-        // self.count += inc
-        this->count = ::tpy::add_check<int32_t>(this->count, inc);
-        // return self.count
-        return this->count;
-    }
+    int32_t __call__(int32_t inc);
 
     int32_t operator()(int32_t inc) {
         return __call__(inc);
@@ -50,12 +45,7 @@ struct Accumulator {
     explicit Accumulator(double initial) : total(initial) {}
 
     // def __call__(self, value: float) -> float:
-    double __call__(double value) {
-        // self.total += value
-        this->total = (this->total) + (value);
-        // return self.total
-        return this->total;
-    }
+    double __call__(double value);
 
     double operator()(double value) {
         return __call__(value);
@@ -67,5 +57,21 @@ inline std::ostream& operator<<(std::ostream& os, const Accumulator& obj) {
     return os;
 }
 
+
+// def __call__(self, inc: Int32) -> Int32:
+inline int32_t Counter::__call__(int32_t inc) {
+    // self.count += inc
+    this->count = ::tpy::add_check<int32_t>(this->count, inc);
+    // return self.count
+    return this->count;
+}
+
+// def __call__(self, value: float) -> float:
+inline double Accumulator::__call__(double value) {
+    // self.total += value
+    this->total = (this->total) + (value);
+    // return self.total
+    return this->total;
+}
 void __tpy_init();
 } // namespace tpyapp::main

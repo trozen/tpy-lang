@@ -54,10 +54,7 @@ struct Widget {
     explicit Widget(int32_t val) : val(val) {}
 
     // def compare_to(self) -> Int32:
-    int32_t compare_to() const {
-        // return self.val
-        return this->val;
-    }
+    int32_t compare_to() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
@@ -65,6 +62,12 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
     return os;
 }
 
+
+// def compare_to(self) -> Int32:
+inline int32_t Widget::compare_to() const {
+    // return self.val
+    return this->val;
+}
 // def use_user_comparable(x: Comparable) -> Int32:
 template<Comparable T_x>
 int32_t use_user_comparable(T_x& x) {

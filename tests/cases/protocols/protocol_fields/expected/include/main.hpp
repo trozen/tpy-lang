@@ -100,10 +100,7 @@ struct Box {
     explicit Box(int32_t c) : count(c) {}
 
     // def is_empty(self) -> bool:
-    bool is_empty() const {
-        // return self.count == 0
-        return (this->count == 0);
-    }
+    bool is_empty() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
@@ -151,6 +148,12 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
     return os;
 }
 
+
+// def is_empty(self) -> bool:
+inline bool Box::is_empty() const {
+    // return self.count == 0
+    return (this->count == 0);
+}
 // # Function using protocol field
 // def get_value[T: HasValue](item: T) -> Int32:
 template<HasValue T>

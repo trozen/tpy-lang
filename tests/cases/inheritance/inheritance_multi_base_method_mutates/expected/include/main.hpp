@@ -23,10 +23,7 @@ struct Counter {
     Counter() : n(0) {}
 
     // def bump(self) -> None:
-    void bump() {
-        // self.n = self.n + 1
-        this->n = (::tpy::add_check<int32_t>(this->n, 1));
-    }
+    void bump();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -39,12 +36,7 @@ struct Wrapper : Counter {
 
 
     // def bump_twice(self) -> None:
-    void bump_twice() {
-        // Counter.bump(self)
-        this->Counter::bump();
-        // Counter.bump(self)
-        this->Counter::bump();
-    }
+    void bump_twice();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
@@ -52,5 +44,19 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+// def bump(self) -> None:
+inline void Counter::bump() {
+    // self.n = self.n + 1
+    this->n = (::tpy::add_check<int32_t>(this->n, 1));
+}
+
+// def bump_twice(self) -> None:
+inline void Wrapper::bump_twice() {
+    // Counter.bump(self)
+    this->Counter::bump();
+    // Counter.bump(self)
+    this->Counter::bump();
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -31,10 +31,7 @@ struct Value {
     explicit Value(int32_t x) : x(x) {}
 
     // def duplicate(self) -> Own[Value]:
-    Value duplicate() const {
-        // return Value(self.x * 2)
-        return Value((::tpy::mul_check<int32_t>(this->x, 2)));
-    }
+    Value duplicate() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Value& obj) {
@@ -42,6 +39,12 @@ inline std::ostream& operator<<(std::ostream& os, const Value& obj) {
     return os;
 }
 
+
+// def duplicate(self) -> Own[Value]:
+inline Value Value::duplicate() const {
+    // return Value(self.x * 2)
+    return Value((::tpy::mul_check<int32_t>(this->x, 2)));
+}
 // def double_it(d: Duplicable) -> None:
 template<Duplicable T_d>
 void double_it(T_d& d) {

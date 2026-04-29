@@ -25,19 +25,11 @@ struct Vec2 {
     Vec2() = default;
     explicit Vec2(int32_t x, int32_t y) : x(x), y(y) {}
 
-    bool __eq__(const Vec2& other) const {
-        return ((this->x == other.x) && (this->y == other.y));
-    }
+    bool __eq__(const Vec2& other) const;
 
-    std::string __repr__() const {
-        return std::format("Vec2(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
-    }
+    std::string __repr__() const;
 
-    uint64_t __hash__() const {
-        uint64_t h = ::tpy::__hash__(this->x);
-        h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->y)));
-        return h;
-    }
+    uint64_t __hash__() const;
 
     friend bool operator==(const Vec2& lhs, const Vec2& other) {
         return lhs.__eq__(other);
@@ -68,20 +60,11 @@ struct Vec3 : Vec2 {
     Vec3() = default;
     explicit Vec3(int32_t x, int32_t y, int32_t z) : Vec2(x, y), z(z) {}
 
-    bool __eq__(const Vec3& other) const {
-        return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
-    }
+    bool __eq__(const Vec3& other) const;
 
-    std::string __repr__() const {
-        return std::format("Vec3(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
-    }
+    std::string __repr__() const;
 
-    uint64_t __hash__() const {
-        uint64_t h = ::tpy::__hash__(this->x);
-        h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->y)));
-        h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->z)));
-        return h;
-    }
+    uint64_t __hash__() const;
 
     friend bool operator==(const Vec3& lhs, const Vec3& other) {
         return lhs.__eq__(other);
@@ -103,5 +86,34 @@ template<> struct std::hash<tpyapp::main::Vec3> {
 namespace tpyapp::main {
 
 
+
+inline bool Vec2::__eq__(const Vec2& other) const {
+    return ((this->x == other.x) && (this->y == other.y));
+}
+
+inline std::string Vec2::__repr__() const {
+    return std::format("Vec2(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+}
+
+inline uint64_t Vec2::__hash__() const {
+    uint64_t h = ::tpy::__hash__(this->x);
+    h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->y)));
+    return h;
+}
+
+inline bool Vec3::__eq__(const Vec3& other) const {
+    return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
+}
+
+inline std::string Vec3::__repr__() const {
+    return std::format("Vec3(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
+}
+
+inline uint64_t Vec3::__hash__() const {
+    uint64_t h = ::tpy::__hash__(this->x);
+    h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->y)));
+    h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->z)));
+    return h;
+}
 void __tpy_init();
 } // namespace tpyapp::main

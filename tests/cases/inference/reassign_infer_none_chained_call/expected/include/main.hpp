@@ -35,10 +35,7 @@ struct Factory {
 
 
     // def create(self) -> Own[Product]:
-    Product create() const {
-        // return Product(Int32(9))
-        return Product(9);
-    }
+    Product create() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
@@ -46,5 +43,11 @@ inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
     return os;
 }
 
+
+// def create(self) -> Own[Product]:
+inline Product Factory::create() const {
+    // return Product(Int32(9))
+    return Product(9);
+}
 void __tpy_init();
 } // namespace tpyapp::main

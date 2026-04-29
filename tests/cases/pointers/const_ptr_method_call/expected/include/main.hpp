@@ -23,10 +23,7 @@ struct Counter {
     explicit Counter(int32_t x) : x(x) {}
 
     // def __len__(self) -> Int32:
-    int32_t __len__() const {
-        // return self.x
-        return this->x;
-    }
+    int32_t __len__() const;
 
     size_t size() const {
         auto len = __len__();
@@ -40,5 +37,11 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __len__(self) -> Int32:
+inline int32_t Counter::__len__() const {
+    // return self.x
+    return this->x;
+}
 void __tpy_init();
 } // namespace tpyapp::main

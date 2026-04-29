@@ -49,22 +49,13 @@ struct Line {
     explicit Line(const Point& s) : start(s), end(std::nullopt) {}
 
     // def set_end(self, e: Point) -> None:
-    void set_end(const Point& e) {
-        // self.end = copy(e)
-        this->end = Point(e);
-    }
+    void set_end(const Point& e);
 
     // def has_end(self) -> bool:
-    bool has_end() const {
-        // return self.end is not None
-        return (this->end.has_value());
-    }
+    bool has_end() const;
 
     // def get_end(self) -> Point | None:
-    Point* get_end() {
-        // return self.end
-        return ::tpy::optional_to_ptr(this->end);
-    }
+    Point* get_end();
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Line& obj) {
@@ -72,5 +63,23 @@ inline std::ostream& operator<<(std::ostream& os, const Line& obj) {
     return os;
 }
 
+
+// def set_end(self, e: Point) -> None:
+inline void Line::set_end(const Point& e) {
+    // self.end = copy(e)
+    this->end = Point(e);
+}
+
+// def has_end(self) -> bool:
+inline bool Line::has_end() const {
+    // return self.end is not None
+    return (this->end.has_value());
+}
+
+// def get_end(self) -> Point | None:
+inline Point* Line::get_end() {
+    // return self.end
+    return ::tpy::optional_to_ptr(this->end);
+}
 void __tpy_init();
 } // namespace tpyapp::main

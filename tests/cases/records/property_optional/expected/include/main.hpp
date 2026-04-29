@@ -39,24 +39,15 @@ struct Wrapper {
 
     // @property
     // def node(self) -> Optional[Node]:
-    std::optional<Node>& node() {
-        // return self._node
-        return this->_node;
-    }
+    std::optional<Node>& node();
 
     // @property
     // def node(self) -> Optional[Node]:
-    const std::optional<Node>& node() const {
-        // return self._node
-        return this->_node;
-    }
+    const std::optional<Node>& node() const;
 
     // @node.setter
     // def node(self, n: Optional[Node]) -> None:
-    void set_node(std::optional<Node>&& n) {
-        // self._node = n
-        this->_node = std::move(n);
-    }
+    void set_node(std::optional<Node>&& n);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
@@ -64,5 +55,26 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+// @property
+// def node(self) -> Optional[Node]:
+inline std::optional<Node>& Wrapper::node() {
+    // return self._node
+    return this->_node;
+}
+
+// @property
+// def node(self) -> Optional[Node]:
+inline const std::optional<Node>& Wrapper::node() const {
+    // return self._node
+    return this->_node;
+}
+
+// @node.setter
+// def node(self, n: Optional[Node]) -> None:
+inline void Wrapper::set_node(std::optional<Node>&& n) {
+    // self._node = n
+    this->_node = std::move(n);
+}
 void __tpy_init();
 } // namespace tpyapp::main

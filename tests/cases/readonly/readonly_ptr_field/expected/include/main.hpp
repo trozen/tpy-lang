@@ -40,10 +40,7 @@ struct Container {
 
     // @readonly
     // def read_value(self) -> Int32:
-    int32_t read_value() const {
-        // return self.ptr.__deref__().value
-        return ::tpy::deref_check(this->ptr).value;
-    }
+    int32_t read_value() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -51,5 +48,12 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+
+// @readonly
+// def read_value(self) -> Int32:
+inline int32_t Container::read_value() const {
+    // return self.ptr.__deref__().value
+    return ::tpy::deref_check(this->ptr).value;
+}
 void __tpy_init();
 } // namespace tpyapp::main

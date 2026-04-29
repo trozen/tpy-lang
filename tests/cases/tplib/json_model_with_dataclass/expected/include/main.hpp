@@ -29,166 +29,25 @@ struct Item {
     Item() = default;
     explicit Item(std::string_view name, int32_t value) : name(name), value(value) {}
 
-    bool __eq__(const Item& other) const {
-        return ((this->name == other.name) && (this->value == other.value));
-    }
+    bool __eq__(const Item& other) const;
 
-    std::string __repr__() const {
-        return std::format("Item(name={}, value={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->value));
-    }
+    std::string __repr__() const;
 
-    static std::expected<Item, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
-        {
-            auto __try_tmp_1 = __reader.read_object_start();
-            if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
-        }
-        std::string name = "";
-        int32_t value = 0;
-        while (__reader.has_next()) {
-            std::string_view __key;
-            {
-                auto __try_tmp_2 = __reader.read_key_raw();
-                if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
-                __key = ::tpy::unwrap_ref(*__try_tmp_2);
-            }
-            auto& __match_subject = __key;
-            if (__match_subject == "name") {
-                std::string __name_1;
-                {
-                    auto __try_tmp_3 = __reader.read_str();
-                    if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
-                    __name_1 = ::tpy::unwrap_ref(*__try_tmp_3);
-                }
-                name = __name_1;
-            } else if (__match_subject == "value") {
-                int64_t __raw_3;
-                {
-                    auto __try_tmp_4 = __reader.read_int();
-                    if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
-                    __raw_3 = ::tpy::unwrap_ref(*__try_tmp_4);
-                }
-                int32_t __value_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
-                value = __value_2;
-            } else {
-                {
-                    auto __try_tmp_5 = __reader.skip_value();
-                    if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
-                }
-            }
-        }
-        {
-            auto __try_tmp_6 = __reader.read_object_end();
-            if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
-        }
-        return Item(name, value);
-    }
+    static std::expected<Item, ::tpystd::tplib::json::parser::JsonError> __json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader);
 
-    static Item from_json(std::string_view __s) {
-        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-        std::optional<Item> __result = std::nullopt;
-        {
-            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_7;
-            {
-                auto __try_tmp_8 = Item::__json_decode__(__reader);
-                if (!__try_tmp_8.has_value()) { __err_opt_7 = std::move(__try_tmp_8.error()); goto __except_7; }
-                __result = ::tpy::unwrap_ref(*__try_tmp_8);
-            }
-            goto __after_try_7;
-            // except tplib.json.parser.JsonError:
-            __except_7:;
-            {
-                auto& __e = *__err_opt_7;
-                ::tpy::tpy_panic(__e.message);
-            }
-            __after_try_7:;
-        }
-        if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
-        return (*__result);
-    }
+    static Item from_json(std::string_view __s);
 
-    static std::expected<Item, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s) {
-        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-        return Item::__json_decode__(__reader);
-    }
+    static std::expected<Item, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s);
 
-    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
-        __writer.object_start();
-        __writer.key("name");
-        __writer.write_str(this->name);
-        __writer.key("value");
-        __writer.write_int32(this->value);
-        __writer.object_end();
-    }
+    void __json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const;
 
-    std::string to_json(int32_t indent = 0) const {
-        ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
-        this->__json_encode__(__writer);
-        return __writer.finish();
-    }
+    std::string to_json(int32_t indent = 0) const;
 
-    void save_json(std::string_view __path, int32_t indent = 0) const {
-        // # Test @model and @dataclass with field(default_factory=list) in the same module.
-        auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
-        auto& __f = __ctx_1.__enter__();
-        try {
-            // # Test @model and @dataclass with field(default_factory=list) in the same module.
-            // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
-            __f.write(this->to_json(indent));
-        } catch (...) {
-            __ctx_1.__exit__();
-            throw;
-        }
-        __finally_9:;
-        __ctx_1.__exit__();
-        // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
-        // # registration (Default), which broke default_factory validation.
-    }
+    void save_json(std::string_view __path, int32_t indent = 0) const;
 
-    static Item load_json(std::string_view __path) {
-        // # Test @model and @dataclass with field(default_factory=list) in the same module.
-        std::string __data;
-        auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
-        auto& __f = __ctx_2.__enter__();
-        std::optional<Item> __retval_11;
-        try {
-            // # Test @model and @dataclass with field(default_factory=list) in the same module.
-            // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
-            __data = __f.read();
-        } catch (...) {
-            __ctx_2.__exit__();
-            throw;
-        }
-        __finally_10:;
-        __ctx_2.__exit__();
-        if (__retval_11) return (*__retval_11);
-        // # Test @model and @dataclass with field(default_factory=list) in the same module.
-        // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
-        // # registration (Default), which broke default_factory validation.
-        return Item::from_json(__data);
-    }
+    static Item load_json(std::string_view __path);
 
-    static std::expected<Item, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path) {
-        // # Test @model and @dataclass with field(default_factory=list) in the same module.
-        std::string __data;
-        auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
-        auto& __f = __ctx_3.__enter__();
-        std::optional<std::expected<Item, ::tpystd::tplib::json::parser::JsonError>> __retval_13;
-        try {
-            // # Test @model and @dataclass with field(default_factory=list) in the same module.
-            // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
-            __data = __f.read();
-        } catch (...) {
-            __ctx_3.__exit__();
-            throw;
-        }
-        __finally_12:;
-        __ctx_3.__exit__();
-        if (__retval_13) return (*__retval_13);
-        // # Test @model and @dataclass with field(default_factory=list) in the same module.
-        // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
-        // # registration (Default), which broke default_factory validation.
-        return Item::try_from_json(__data);
-    }
+    static std::expected<Item, ::tpystd::tplib::json::parser::JsonError> try_load_json(std::string_view __path);
 
     friend bool operator==(const Item& lhs, const Item& other) {
         return lhs.__eq__(other);
@@ -211,13 +70,9 @@ struct Container {
     Container() = default;
     explicit Container(std::string_view label, std::vector<Item>&& items = {}) : label(label), items(std::move(items)) {}
 
-    bool __eq__(const Container& other) const {
-        return ((this->label == other.label) && (this->items == other.items));
-    }
+    bool __eq__(const Container& other) const;
 
-    std::string __repr__() const {
-        return std::format("Container(label={}, items={})", ::tpy::__repr__(this->label), ::tpy::list_to_str(this->items));
-    }
+    std::string __repr__() const;
 
     friend bool operator==(const Container& lhs, const Container& other) {
         return lhs.__eq__(other);
@@ -229,5 +84,128 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+
+inline bool Item::__eq__(const Item& other) const {
+    return ((this->name == other.name) && (this->value == other.value));
+}
+
+inline std::string Item::__repr__() const {
+    return std::format("Item(name={}, value={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->value));
+}
+
+inline Item Item::from_json(std::string_view __s) {
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
+    std::optional<Item> __result = std::nullopt;
+    {
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_1;
+        {
+            auto __try_tmp_2 = Item::__json_decode__(__reader);
+            if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_2);
+        }
+        goto __after_try_1;
+        // except tplib.json.parser.JsonError:
+        __except_1:;
+        {
+            auto& __e = *__err_opt_1;
+            ::tpy::tpy_panic(__e.message);
+        }
+        __after_try_1:;
+    }
+    if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
+    return (*__result);
+}
+
+inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_from_json(std::string_view __s) {
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
+    return Item::__json_decode__(__reader);
+}
+
+inline void Item::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
+    __writer.object_start();
+    __writer.key("name");
+    __writer.write_str(this->name);
+    __writer.key("value");
+    __writer.write_int32(this->value);
+    __writer.object_end();
+}
+
+inline std::string Item::to_json(int32_t indent) const {
+    ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter(indent);
+    this->__json_encode__(__writer);
+    return __writer.finish();
+}
+
+inline void Item::save_json(std::string_view __path, int32_t indent) const {
+    // # Test @model and @dataclass with field(default_factory=list) in the same module.
+    auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
+    auto& __f = __ctx_1.__enter__();
+    try {
+        // # Test @model and @dataclass with field(default_factory=list) in the same module.
+        // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
+        __f.write(this->to_json(indent));
+    } catch (...) {
+        __ctx_1.__exit__();
+        throw;
+    }
+    __finally_3:;
+    __ctx_1.__exit__();
+    // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
+    // # registration (Default), which broke default_factory validation.
+}
+
+inline Item Item::load_json(std::string_view __path) {
+    // # Test @model and @dataclass with field(default_factory=list) in the same module.
+    std::string __data;
+    auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
+    auto& __f = __ctx_2.__enter__();
+    std::optional<Item> __retval_5;
+    try {
+        // # Test @model and @dataclass with field(default_factory=list) in the same module.
+        // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
+        __data = __f.read();
+    } catch (...) {
+        __ctx_2.__exit__();
+        throw;
+    }
+    __finally_4:;
+    __ctx_2.__exit__();
+    if (__retval_5) return (*__retval_5);
+    // # Test @model and @dataclass with field(default_factory=list) in the same module.
+    // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
+    // # registration (Default), which broke default_factory validation.
+    return Item::from_json(__data);
+}
+
+inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_load_json(std::string_view __path) {
+    // # Test @model and @dataclass with field(default_factory=list) in the same module.
+    std::string __data;
+    auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
+    auto& __f = __ctx_3.__enter__();
+    std::optional<std::expected<Item, ::tpystd::tplib::json::parser::JsonError>> __retval_7;
+    try {
+        // # Test @model and @dataclass with field(default_factory=list) in the same module.
+        // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
+        __data = __f.read();
+    } catch (...) {
+        __ctx_3.__exit__();
+        throw;
+    }
+    __finally_6:;
+    __ctx_3.__exit__();
+    if (__retval_7) return (*__retval_7);
+    // # Test @model and @dataclass with field(default_factory=list) in the same module.
+    // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
+    // # registration (Default), which broke default_factory validation.
+    return Item::try_from_json(__data);
+}
+
+inline bool Container::__eq__(const Container& other) const {
+    return ((this->label == other.label) && (this->items == other.items));
+}
+
+inline std::string Container::__repr__() const {
+    return std::format("Container(label={}, items={})", ::tpy::__repr__(this->label), ::tpy::list_to_str(this->items));
+}
 void __tpy_init();
 } // namespace tpyapp::main

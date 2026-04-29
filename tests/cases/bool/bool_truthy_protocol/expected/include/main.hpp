@@ -25,10 +25,7 @@ struct Box {
     explicit Box(const ::tpy::BigInt& value) : value(value) {}
 
     // def __bool__(self) -> bool:
-    bool __bool__() const {
-        // return self.value != 0
-        return (this->value != 0);
-    }
+    bool __bool__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
@@ -36,6 +33,12 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __bool__(self) -> bool:
+inline bool Box::__bool__() const {
+    // return self.value != 0
+    return (this->value != 0);
+}
 // def check[T: Truthy](x: T) -> bool:
 template<::tpystd::tpy::Truthy T>
 bool check(::tpy::param_val_or_ref_t<T> x) {

@@ -26,10 +26,7 @@ struct Point {
     explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
     // def __repr__(self) -> str:
-    std::string __repr__() const {
-        // return f"Point(x={self.x}, y={self.y})"
-        return std::format("Point(x={}, y={})", (this->x).to_string(), (this->y).to_string());
-    }
+    std::string __repr__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -37,5 +34,11 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def __repr__(self) -> str:
+inline std::string Point::__repr__() const {
+    // return f"Point(x={self.x}, y={self.y})"
+    return std::format("Point(x={}, y={})", (this->x).to_string(), (this->y).to_string());
+}
 void __tpy_init();
 } // namespace tpyapp::main

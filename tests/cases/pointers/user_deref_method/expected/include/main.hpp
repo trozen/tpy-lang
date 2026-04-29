@@ -26,10 +26,7 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     // def sum(self) -> Int32:
-    int32_t sum() const {
-        // return self.x + self.y
-        return (::tpy::add_check<int32_t>(this->x, this->y));
-    }
+    int32_t sum() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -48,17 +45,11 @@ struct Ref {
 
     // @auto_readonly
     // def __deref__(self) -> Point:
-    Point& __deref__() {
-        // return self._target
-        return this->_target;
-    }
+    Point& __deref__();
 
     // @auto_readonly
     // def __deref__(self) -> Point:
-    const Point& __deref__() const {
-        // return self._target
-        return this->_target;
-    }
+    const Point& __deref__() const;
 
     auto operator*() -> decltype(__deref__()) {
         return __deref__();
@@ -70,5 +61,25 @@ inline std::ostream& operator<<(std::ostream& os, const Ref& obj) {
     return os;
 }
 
+
+// def sum(self) -> Int32:
+inline int32_t Point::sum() const {
+    // return self.x + self.y
+    return (::tpy::add_check<int32_t>(this->x, this->y));
+}
+
+// @auto_readonly
+// def __deref__(self) -> Point:
+inline Point& Ref::__deref__() {
+    // return self._target
+    return this->_target;
+}
+
+// @auto_readonly
+// def __deref__(self) -> Point:
+inline const Point& Ref::__deref__() const {
+    // return self._target
+    return this->_target;
+}
 void __tpy_init();
 } // namespace tpyapp::main

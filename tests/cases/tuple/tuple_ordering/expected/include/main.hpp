@@ -30,34 +30,19 @@ struct Rank {
     Rank& operator=(Rank&&) = default;
 
     // def __eq__(self, other: Rank) -> bool:
-    bool __eq__(const Rank& other) const {
-        // return self.val == other.val
-        return (this->val == other.val);
-    }
+    bool __eq__(const Rank& other) const;
 
     // def __lt__(self, other: Rank) -> bool:
-    bool __lt__(const Rank& other) const {
-        // return self.val < other.val
-        return (this->val < other.val);
-    }
+    bool __lt__(const Rank& other) const;
 
     // def __le__(self, other: Rank) -> bool:
-    bool __le__(const Rank& other) const {
-        // return self.val <= other.val
-        return (this->val <= other.val);
-    }
+    bool __le__(const Rank& other) const;
 
     // def __gt__(self, other: Rank) -> bool:
-    bool __gt__(const Rank& other) const {
-        // return self.val > other.val
-        return (this->val > other.val);
-    }
+    bool __gt__(const Rank& other) const;
 
     // def __ge__(self, other: Rank) -> bool:
-    bool __ge__(const Rank& other) const {
-        // return self.val >= other.val
-        return (this->val >= other.val);
-    }
+    bool __ge__(const Rank& other) const;
 
     friend bool operator==(const Rank& lhs, const Rank& other) {
         return lhs.__eq__(other);
@@ -85,5 +70,35 @@ inline std::ostream& operator<<(std::ostream& os, const Rank& obj) {
     return os;
 }
 
+
+// def __eq__(self, other: Rank) -> bool:
+inline bool Rank::__eq__(const Rank& other) const {
+    // return self.val == other.val
+    return (this->val == other.val);
+}
+
+// def __lt__(self, other: Rank) -> bool:
+inline bool Rank::__lt__(const Rank& other) const {
+    // return self.val < other.val
+    return (this->val < other.val);
+}
+
+// def __le__(self, other: Rank) -> bool:
+inline bool Rank::__le__(const Rank& other) const {
+    // return self.val <= other.val
+    return (this->val <= other.val);
+}
+
+// def __gt__(self, other: Rank) -> bool:
+inline bool Rank::__gt__(const Rank& other) const {
+    // return self.val > other.val
+    return (this->val > other.val);
+}
+
+// def __ge__(self, other: Rank) -> bool:
+inline bool Rank::__ge__(const Rank& other) const {
+    // return self.val >= other.val
+    return (this->val >= other.val);
+}
 void __tpy_init();
 } // namespace tpyapp::main

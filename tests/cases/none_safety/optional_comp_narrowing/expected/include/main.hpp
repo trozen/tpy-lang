@@ -23,10 +23,7 @@ struct Foo {
     explicit Foo(int32_t x) : x(x) {}
 
     // def __repr__(self) -> str:
-    std::string __repr__() const {
-        // return f"Foo({self.x})"
-        return std::format("Foo({})", this->x);
-    }
+    std::string __repr__() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
@@ -34,5 +31,11 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
     return os;
 }
 
+
+// def __repr__(self) -> str:
+inline std::string Foo::__repr__() const {
+    // return f"Foo({self.x})"
+    return std::format("Foo({})", this->x);
+}
 void __tpy_init();
 } // namespace tpyapp::main

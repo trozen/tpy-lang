@@ -25,16 +25,10 @@ struct Helper {
 
     // @staticmethod
     // def add(a: Int32, b: Int32) -> Int32:
-    static int32_t add(int32_t a, int32_t b) {
-        // return a + b
-        return (::tpy::add_check<int32_t>(a, b));
-    }
+    static int32_t add(int32_t a, int32_t b);
 
     // def get(self) -> Int32:
-    int32_t get() const {
-        // return self.value
-        return this->value;
-    }
+    int32_t get() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Helper& obj) {
@@ -42,5 +36,18 @@ inline std::ostream& operator<<(std::ostream& os, const Helper& obj) {
     return os;
 }
 
+
+// @staticmethod
+// def add(a: Int32, b: Int32) -> Int32:
+inline int32_t Helper::add(int32_t a, int32_t b) {
+    // return a + b
+    return (::tpy::add_check<int32_t>(a, b));
+}
+
+// def get(self) -> Int32:
+inline int32_t Helper::get() const {
+    // return self.value
+    return this->value;
+}
 void __tpy_init();
 } // namespace tpyapp::main

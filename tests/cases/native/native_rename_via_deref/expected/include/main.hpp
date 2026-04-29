@@ -26,17 +26,11 @@ struct WRef {
 
     // @auto_readonly
     // def __deref__(self) -> Widget:
-    ::x::Widget& __deref__() {
-        // return self._target
-        return this->_target;
-    }
+    ::x::Widget& __deref__();
 
     // @auto_readonly
     // def __deref__(self) -> Widget:
-    const ::x::Widget& __deref__() const {
-        // return self._target
-        return this->_target;
-    }
+    const ::x::Widget& __deref__() const;
 
     auto operator*() -> decltype(__deref__()) {
         return __deref__();
@@ -48,5 +42,19 @@ inline std::ostream& operator<<(std::ostream& os, const WRef& obj) {
     return os;
 }
 
+
+// @auto_readonly
+// def __deref__(self) -> Widget:
+inline ::x::Widget& WRef::__deref__() {
+    // return self._target
+    return this->_target;
+}
+
+// @auto_readonly
+// def __deref__(self) -> Widget:
+inline const ::x::Widget& WRef::__deref__() const {
+    // return self._target
+    return this->_target;
+}
 void __tpy_init();
 } // namespace tpyapp::main

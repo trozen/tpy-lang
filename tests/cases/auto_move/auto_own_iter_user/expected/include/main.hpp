@@ -23,16 +23,10 @@ struct IntList {
     explicit IntList(const std::vector<int32_t>& vals) : items(vals) {}
 
     // def __iter__(self: auto_own[Self]) -> auto_own[Iterator[Int32]]:
-    auto __iter__() const & {
-        // return iter(self.items)
-        return ::tpy::__iter__(this->items);
-    }
+    auto __iter__() const &;
 
     // def __iter__(self: auto_own[Self]) -> auto_own[Iterator[Int32]]:
-    auto __iter__() const && {
-        // return iter(self.items)
-        return ::tpy::__iter__(this->items);
-    }
+    auto __iter__() const &&;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntList& obj) {
@@ -40,5 +34,17 @@ inline std::ostream& operator<<(std::ostream& os, const IntList& obj) {
     return os;
 }
 
+
+// def __iter__(self: auto_own[Self]) -> auto_own[Iterator[Int32]]:
+inline auto IntList::__iter__() const & {
+    // return iter(self.items)
+    return ::tpy::__iter__(this->items);
+}
+
+// def __iter__(self: auto_own[Self]) -> auto_own[Iterator[Int32]]:
+inline auto IntList::__iter__() const && {
+    // return iter(self.items)
+    return ::tpy::__iter__(this->items);
+}
 void __tpy_init();
 } // namespace tpyapp::main

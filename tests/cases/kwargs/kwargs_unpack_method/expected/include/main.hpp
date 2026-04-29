@@ -38,14 +38,7 @@ struct Client {
     explicit Client(std::string_view name) : name(name) {}
 
     // def connect(self, **kwargs: Unpack[Options]) -> None:
-    void connect(const Options& kwargs) const {
-        // print(self.name)
-        std::cout << this->name << "\n";
-        // print(kwargs["host"])
-        std::cout << kwargs.host << "\n";
-        // print(kwargs["port"])
-        std::cout << kwargs.port << "\n";
-    }
+    void connect(const Options& kwargs) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Client& obj) {
@@ -53,5 +46,15 @@ inline std::ostream& operator<<(std::ostream& os, const Client& obj) {
     return os;
 }
 
+
+// def connect(self, **kwargs: Unpack[Options]) -> None:
+inline void Client::connect(const Options& kwargs) const {
+    // print(self.name)
+    std::cout << this->name << "\n";
+    // print(kwargs["host"])
+    std::cout << kwargs.host << "\n";
+    // print(kwargs["port"])
+    std::cout << kwargs.port << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main
