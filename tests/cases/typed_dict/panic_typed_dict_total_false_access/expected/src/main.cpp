@@ -9,7 +9,7 @@ void main() {
     // partial = Info(name="Alice")
     Info partial = Info("Alice");
     // print(partial["age"])  # panics -- age is None
-    std::cout << partial.age.value() << "\n";
+    std::cout << ::tpy::typed_dict_field_check(partial.age) << "\n";
 }
 
 void __tpy_init() {

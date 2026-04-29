@@ -4221,8 +4221,11 @@ class ExpressionGenerator:
             subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
             cpp_field = escape_cpp_name(expr.typed_dict_field)
             if expr.typed_dict_optional:
-                # total=False field: unwrap std::optional with runtime check
-                return f"{subscript_obj}.{cpp_field}.value()"
+                # total=False field: unwrap with a runtime check that panics
+                # KeyError. Avoid raw std::optional::value() because its
+                # bad_optional_access::what() text differs across
+                # libstdc++/libc++.
+                return f"::tpy::typed_dict_field_check({subscript_obj}.{cpp_field})"
             return f"{subscript_obj}.{cpp_field}"
 
         obj = self.gen_expr(expr.obj)

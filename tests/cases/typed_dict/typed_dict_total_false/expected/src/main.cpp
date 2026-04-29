@@ -10,14 +10,14 @@ void main() {
     // full = Info(name="Alice", age=Int32(30))
     Info full = Info("Alice", 30);
     // print(full["name"])
-    std::cout << full.name.value() << "\n";
+    std::cout << ::tpy::typed_dict_field_check(full.name) << "\n";
     // print(full["age"])
-    std::cout << full.age.value() << "\n";
+    std::cout << ::tpy::typed_dict_field_check(full.age) << "\n";
     // # Partial construction -- omitted field is None
     // partial = Info(name="Bob")
     Info partial = Info("Bob");
     // print(partial["name"])
-    std::cout << partial.name.value() << "\n";
+    std::cout << ::tpy::typed_dict_field_check(partial.name) << "\n";
     // # Zero-arg construction
     // empty = Info()
     Info empty = Info();

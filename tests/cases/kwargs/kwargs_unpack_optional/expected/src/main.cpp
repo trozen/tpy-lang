@@ -7,9 +7,9 @@ namespace tpyapp::main {
 // def start(**kwargs: Unpack[Config]) -> None:
 void start(const Config& kwargs) {
     // print(kwargs["host"])
-    std::cout << kwargs.host.value() << "\n";
+    std::cout << ::tpy::typed_dict_field_check(kwargs.host) << "\n";
     // print(kwargs["port"])
-    std::cout << kwargs.port.value() << "\n";
+    std::cout << ::tpy::typed_dict_field_check(kwargs.port) << "\n";
 }
 
 // def start_safe(**kwargs: Unpack[Config]) -> None:

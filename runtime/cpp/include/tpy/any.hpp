@@ -254,9 +254,7 @@ T any_cast_or_panic(const Any& a) {
         ::tpy::tpy_panic("use of empty/moved-from Any");
     }
     if (a.value.type() != typeid(T)) {
-        ::tpy::tpy_panic(std::format(
-            "Any: expected {}, got {}",
-            typeid(T).name(), a.value.type().name()));
+        ::tpy::tpy_panic("Any: type mismatch");
     }
     return std::any_cast<T>(a.value);
 }
@@ -267,9 +265,7 @@ T any_cast_or_panic(Any&& a) {
         ::tpy::tpy_panic("use of empty/moved-from Any");
     }
     if (a.value.type() != typeid(T)) {
-        ::tpy::tpy_panic(std::format(
-            "Any: expected {}, got {}",
-            typeid(T).name(), a.value.type().name()));
+        ::tpy::tpy_panic("Any: type mismatch");
     }
     T moved = std::any_cast<T>(std::move(a.value));
     // Clear the source so the documented "use of empty/moved-from Any"

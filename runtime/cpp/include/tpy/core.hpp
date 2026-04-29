@@ -157,6 +157,30 @@ const T& deref_optional_check(const std::optional<T>& opt) {
 }
 
 /**
+ * Checked TypedDict optional-field access -- panics with KeyError if the
+ * field is absent. Used by codegen for `td["key"]` on a `total=False`
+ * TypedDict. Distinct from deref_optional_check (which says "null optional
+ * dereference") so the panic matches the existing TPy KeyError convention
+ * for dict[k] misses, and from raw std::optional::value() whose
+ * bad_optional_access::what() text diverges between libstdc++ and libc++.
+ */
+template <typename T>
+T& typed_dict_field_check(std::optional<T>& opt) {
+    if (!opt.has_value()) {
+        tpy_panic("KeyError");
+    }
+    return *opt;
+}
+
+template <typename T>
+const T& typed_dict_field_check(const std::optional<T>& opt) {
+    if (!opt.has_value()) {
+        tpy_panic("KeyError");
+    }
+    return *opt;
+}
+
+/**
  * Optional truthiness helper - matches Python semantics for Optional[value]:
  * value is truthy only when engaged and contained value is truthy.
  */

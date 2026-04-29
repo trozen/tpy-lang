@@ -26,6 +26,19 @@
 #include <cstddef>
 #include <cstdint>
 
+// On macOS, libc's `<sys/_endian.h>` is pulled in transitively by libc++'s
+// base headers (`<cstdint>`, `<string>`, ...) and `#define`s the byte-order
+// helpers as preprocessor macros expanding to inline asm. The macros then
+// fire inside our `extern "C"` decls below and inside any generated code
+// that names them (`::htons(x)` becomes `::((uint16_t)(...))`, a syntax
+// error). Real linker symbols for these helpers exist on every supported
+// platform (Linux glibc/musl, macOS libSystem), so undef'ing the macros
+// here lets us keep the upstream names end-to-end and bind directly.
+#undef htons
+#undef ntohs
+#undef htonl
+#undef ntohl
+
 extern "C" {
 
 // ---- sockaddr_in (POSIX-stable 16-byte layout) ----

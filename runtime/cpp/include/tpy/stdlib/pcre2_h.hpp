@@ -26,7 +26,15 @@
 #include <cstdint>
 
 // ---- Type aliases (8-bit code unit) ----
-using PCRE2_SIZE   = std::size_t;
+// Upstream pcre2.h has `typedef size_t PCRE2_SIZE`. We use `std::uint64_t`
+// instead because the TPy bindings (lib/tpy/_bindings/pcre2.py) type the
+// matching pointer params as `Ptr[UInt64]` -- on Linux x86_64 `size_t` and
+// `uint64_t` are both `unsigned long`, but on macOS `size_t` is
+// `unsigned long` while `uint64_t` is `unsigned long long`, so the pointer
+// types don't implicitly convert. Both are 8-byte unsigned on every 64-bit
+// Unix target we support, so this matches PCRE2's actual ABI byte-for-byte;
+// the linker only resolves the `extern "C"` symbol name, not param types.
+using PCRE2_SIZE   = std::uint64_t;
 using PCRE2_SPTR8  = const std::uint8_t*;
 using PCRE2_UCHAR8 = std::uint8_t;
 
