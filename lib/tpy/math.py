@@ -5,15 +5,6 @@
 # specific compiler gap tracked in TODO.md / BUGS.md; once fixed, update
 # this module.
 #
-# - `prod` int overload. Current `Iterable[float]` signature coerces each
-#   element to float; CPython's `math.prod` is polymorphic and returns int
-#   for all-int input (`math.prod(range(1, 6)) == 120`, not `120.0`).
-#   Attempted twice; blocked on "Overload resolution doesn't use keyword
-#   arguments to disambiguate" in BUGS.md -- `math.prod([], start=1.0)`
-#   can't be disambiguated to the float overload when positional args
-#   alone (`[]`) conform to both. A generic `prod[T: Numeric]` is the
-#   cleaner long-term answer (blocked on a broader `Numeric` protocol --
-#   see TODO.md).
 # - Tuple inputs to `prod`, `fsum`, `sumprod`, `dist`. CPython accepts
 #   tuples for all four (`math.prod((1.0, 2.0, 3.0))`). Currently fails
 #   conformance to `Iterable[float]`. Blocked on the "Tuple iteration +
@@ -317,6 +308,14 @@ def isclose(a: float, b: float, *, rel_tol: float = 1e-09, abs_tol: float = 0.0)
         max_ab = fabs(b)
     return diff <= abs_tol or diff <= rel_tol * max_ab
 
+@overload
+def prod(iterable: Iterable[Int32], *, start: Int32 = Int32(1)) -> Int32:
+    result: Int32 = start
+    for x in iterable:
+        result = result * x
+    return result
+
+@overload
 def prod(iterable: Iterable[float], *, start: float = 1.0) -> float:
     result: float = start
     for x in iterable:
