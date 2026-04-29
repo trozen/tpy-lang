@@ -873,9 +873,11 @@ class ExpressionAnalyzer:
 
         # Tuple comparison: ==, !=, <, <=, >, >= with element-wise validation
         if isinstance(left_effective, TupleType) or isinstance(right_effective, TupleType):
-            # Tuple membership is handled below in the 'in'/'not in' section
-            if expr.op in ("in", "not in") and isinstance(right_effective, TupleType):
-                pass  # fall through to membership handling
+            # Both shapes (membership in a tuple literal `x in (a, b, c)` and
+            # tuple-as-key `key in dict`) are handled by the in/not-in section
+            # below; fall through here.
+            if expr.op in ("in", "not in"):
+                pass
             elif expr.op in ("==", "!=", "<", "<=", ">", ">="):
                 if not (isinstance(left_effective, TupleType) and isinstance(right_effective, TupleType)):
                     raise self.ctx.error(
@@ -1840,24 +1842,10 @@ class ExpressionAnalyzer:
             # Keep IntLiteralType so array can coerce to either Int32 or BigInt based on context
 
             for i, elem_type in enumerate(elem_types[1:], 2):
-                # IntLiteralType elements are compatible with each other
-                if isinstance(first_type, IntLiteralType) and isinstance(elem_type, IntLiteralType):
-                    continue
-                # IntLiteral coerces to concrete integer types
-                if isinstance(elem_type, IntLiteralType) and is_integer_type(first_type):
-                    continue
-                if isinstance(first_type, IntLiteralType) and is_integer_type(elem_type):
-                    # First was literal, but later element is concrete - update first_type
-                    first_type = elem_type
-                    continue
-                # FloatLiteralType elements are compatible with each other
-                if isinstance(first_type, FloatLiteralType) and isinstance(elem_type, FloatLiteralType):
-                    continue
-                # FloatLiteral coerces to concrete float types
-                if isinstance(elem_type, FloatLiteralType) and is_float_type(first_type):
-                    continue
-                if isinstance(first_type, FloatLiteralType) and is_float_type(elem_type):
-                    first_type = elem_type
+                # Literal-aware unification (int/float literals, tuples of literals)
+                unified = self._unify_literal_types(first_type, elem_type)
+                if unified is not None:
+                    first_type = unified
                     continue
                 # Nested lists with IntLiteralType elements are compatible
                 if (is_list(first_type) and is_list(elem_type) and
@@ -1873,15 +1861,6 @@ class ExpressionAnalyzer:
                         continue
                     if first_type.element_type == elem_type.element_type:
                         continue
-                # Tuples with same structure but different IntLiteralType values
-                if (isinstance(first_type, TupleType) and isinstance(elem_type, TupleType)
-                        and len(first_type.element_types) == len(elem_type.element_types)
-                        and all(
-                            a == b
-                            or (isinstance(a, IntLiteralType) and isinstance(b, IntLiteralType))
-                            or (isinstance(a, FloatLiteralType) and isinstance(b, FloatLiteralType))
-                            for a, b in zip(first_type.element_types, elem_type.element_types))):
-                    continue
                 if elem_type != first_type:
                     ft = self._user_type_name(first_type)
                     et = self._user_type_name(elem_type)
@@ -2114,6 +2093,65 @@ class ExpressionAnalyzer:
             expr,
         )
 
+    def _resolve_literals_with_hint(self, t: TpyType, hint: TpyType | None) -> TpyType:
+        """Resolve IntLiteralType / FloatLiteralType inside t using hint as a
+        structural guide. Recurses into TupleType. Falls back to default_int /
+        FLOAT when hint doesn't match the literal's family.
+
+        Mirrors the asymmetric behavior of the bare-literal path: integer
+        literals adopt the hint when present (compat-checked downstream),
+        float literals only adopt the hint when it's a float type.
+        """
+        if isinstance(t, IntLiteralType):
+            return hint if hint is not None else self.ctx.default_int_for_literal(t)
+        if isinstance(t, FloatLiteralType):
+            return hint if is_float_type(hint) else FLOAT
+        if isinstance(t, TupleType):
+            if isinstance(hint, TupleType) and len(t.element_types) == len(hint.element_types):
+                elems = tuple(
+                    self._resolve_literals_with_hint(et, ht)
+                    for et, ht in zip(t.element_types, hint.element_types)
+                )
+            else:
+                elems = tuple(
+                    self._resolve_literals_with_hint(et, None)
+                    for et in t.element_types
+                )
+            return TupleType(elems)
+        return t
+
+    def _unify_literal_types(self, a: TpyType, b: TpyType) -> TpyType | None:
+        """Unify two dict/set literal element types, treating IntLiteralType /
+        FloatLiteralType as compatible with their concrete equivalents and
+        recursing into TupleType. Returns the unified type or None if they
+        cannot be unified.
+        """
+        if a == b:
+            return a
+        if isinstance(a, IntLiteralType) and isinstance(b, IntLiteralType):
+            return a
+        if isinstance(a, IntLiteralType) and is_integer_type(b):
+            return b
+        if isinstance(b, IntLiteralType) and is_integer_type(a):
+            return a
+        if isinstance(a, FloatLiteralType) and isinstance(b, FloatLiteralType):
+            return a
+        if isinstance(a, FloatLiteralType) and is_float_type(b):
+            return b
+        if isinstance(b, FloatLiteralType) and is_float_type(a):
+            return a
+        if isinstance(a, TupleType) and isinstance(b, TupleType):
+            if len(a.element_types) != len(b.element_types):
+                return None
+            unified: list[TpyType] = []
+            for ea, eb in zip(a.element_types, b.element_types):
+                u = self._unify_literal_types(ea, eb)
+                if u is None:
+                    return None
+                unified.append(u)
+            return TupleType(tuple(unified))
+        return None
+
     def _analyze_dict_literal(
         self, expr: TpyDictLiteral,
         expected_key: TpyType | None = None,
@@ -2161,25 +2199,13 @@ class ExpressionAnalyzer:
         else:
             key_type = key_types[0]
             for i, kt in enumerate(key_types[1:], 2):
-                if isinstance(key_type, IntLiteralType) and isinstance(kt, IntLiteralType):
-                    continue
-                if isinstance(kt, IntLiteralType) and is_integer_type(key_type):
-                    continue
-                if isinstance(key_type, IntLiteralType) and is_integer_type(kt):
-                    key_type = kt
-                    continue
-                if isinstance(key_type, FloatLiteralType) and isinstance(kt, FloatLiteralType):
-                    continue
-                if isinstance(kt, FloatLiteralType) and is_float_type(key_type):
-                    continue
-                if isinstance(key_type, FloatLiteralType) and is_float_type(kt):
-                    key_type = kt
-                    continue
-                if kt != key_type:
+                unified = self._unify_literal_types(key_type, kt)
+                if unified is None:
                     raise self.ctx.error(
                         f"Dict has mixed key types: key {i} is {self._user_type_name(kt)}, "
                         f"but earlier keys are {self._user_type_name(key_type)}", expr,
                     )
+                key_type = unified
 
         # Unify value types
         if is_union_or_optional_type(expected_value) or isinstance(expected_value, AnyType):
@@ -2200,35 +2226,18 @@ class ExpressionAnalyzer:
         else:
             value_type = value_types[0]
             for i, vt in enumerate(value_types[1:], 2):
-                if isinstance(value_type, IntLiteralType) and isinstance(vt, IntLiteralType):
-                    continue
-                if isinstance(vt, IntLiteralType) and is_integer_type(value_type):
-                    continue
-                if isinstance(value_type, IntLiteralType) and is_integer_type(vt):
-                    value_type = vt
-                    continue
-                if isinstance(value_type, FloatLiteralType) and isinstance(vt, FloatLiteralType):
-                    continue
-                if isinstance(vt, FloatLiteralType) and is_float_type(value_type):
-                    continue
-                if isinstance(value_type, FloatLiteralType) and is_float_type(vt):
-                    value_type = vt
-                    continue
-                if vt != value_type:
+                unified = self._unify_literal_types(value_type, vt)
+                if unified is None:
                     raise self.ctx.error(
                         f"Dict has mixed value types: value {i} is {self._user_type_name(vt)}, "
                         f"but earlier values are {self._user_type_name(value_type)}", expr,
                     )
+                value_type = unified
 
-        # Use annotation types when literal elements are IntLiteralType or FloatLiteralType
-        if isinstance(key_type, IntLiteralType):
-            key_type = expected_key if expected_key else self.ctx.default_int_for_literal(key_type)
-        if isinstance(value_type, IntLiteralType):
-            value_type = expected_value if expected_value else self.ctx.default_int_for_literal(value_type)
-        if isinstance(key_type, FloatLiteralType):
-            key_type = expected_key if is_float_type(expected_key) else FLOAT
-        if isinstance(value_type, FloatLiteralType):
-            value_type = expected_value if is_float_type(expected_value) else FLOAT
+        # Resolve any literal types (bare or nested in tuples) using the
+        # annotation as a structural hint.
+        key_type = self._resolve_literals_with_hint(key_type, expected_key)
+        value_type = self._resolve_literals_with_hint(value_type, expected_value)
         # Container elements must be owned -- views can't be stored in a dict.
         if isinstance(key_type, PendingViewType):
             key_type = key_type.family.owned_type
@@ -2273,30 +2282,15 @@ class ExpressionAnalyzer:
         else:
             elem_type = elem_types[0]
             for i, et in enumerate(elem_types[1:], 2):
-                if isinstance(elem_type, IntLiteralType) and isinstance(et, IntLiteralType):
-                    continue
-                if isinstance(et, IntLiteralType) and is_integer_type(elem_type):
-                    continue
-                if isinstance(elem_type, IntLiteralType) and is_integer_type(et):
-                    elem_type = et
-                    continue
-                if isinstance(elem_type, FloatLiteralType) and isinstance(et, FloatLiteralType):
-                    continue
-                if isinstance(et, FloatLiteralType) and is_float_type(elem_type):
-                    continue
-                if isinstance(elem_type, FloatLiteralType) and is_float_type(et):
-                    elem_type = et
-                    continue
-                if et != elem_type:
+                unified = self._unify_literal_types(elem_type, et)
+                if unified is None:
                     raise self.ctx.error(
                         f"Set has mixed element types: element {i} is {self._user_type_name(et)}, "
                         f"but earlier elements are {self._user_type_name(elem_type)}", expr,
                     )
+                elem_type = unified
 
-        if isinstance(elem_type, IntLiteralType):
-            elem_type = expected_elem if expected_elem else self.ctx.default_int_for_literal(elem_type)
-        if isinstance(elem_type, FloatLiteralType):
-            elem_type = expected_elem if is_float_type(expected_elem) else FLOAT
+        elem_type = self._resolve_literals_with_hint(elem_type, expected_elem)
         # Container elements must be owned -- views can't be stored in a set.
         if isinstance(elem_type, PendingViewType):
             elem_type = elem_type.family.owned_type

@@ -718,9 +718,11 @@ print(a2 == b2)       # True
 print((1, 2) < (1, 3))  # True (lexicographic)
 
 # Hashing -- tuples can be used as dict keys
-d: dict[tuple[Int32, Int32], str] = {}
-d[(Int32(1), Int32(2))] = "one-two"
-print(hash((1, 2, 3)))  # hash of a tuple
+d: dict[tuple[Int32, Int32], str] = {(1, 2): "one-two", (3, 4): "three-four"}
+key: tuple[Int32, Int32] = (1, 2)
+print(key in d)            # True -- membership test with tuple LHS
+print((3, 4) in d)         # True -- tuple-literal LHS coerces to dict's key type
+print(hash((1, 2, 3)))     # hash of a tuple
 ```
 
 Reference types in tuples follow context-dependent semantics (same rules as standalone `T`):
