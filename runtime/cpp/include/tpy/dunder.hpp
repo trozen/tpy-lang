@@ -273,6 +273,7 @@ bool __bool__(const T& x) {
 
 // Builtin type overloads (needed for generic T contexts)
 inline std::string __str__(bool x) { return x ? "True" : "False"; }
+inline std::string __str__(std::nullptr_t) { return "None"; }
 inline std::string __str__(char x) { return std::string(1, x); }
 inline std::string __str__(int8_t x) { return std::to_string(x); }
 inline std::string __str__(int16_t x) { return std::to_string(x); }
@@ -338,6 +339,11 @@ auto __repr__(const T& x) {
 // Bool: Python repr uses True/False (not C++ true/false)
 inline std::string_view __repr__(bool x) {
     return x ? "True" : "False";
+}
+
+// None: repr matches str ("None")
+inline std::string_view __repr__(std::nullptr_t) {
+    return "None";
 }
 
 // Strings: Python repr wraps in single quotes

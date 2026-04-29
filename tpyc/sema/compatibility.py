@@ -11,9 +11,9 @@ from typing import TYPE_CHECKING, Optional
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, ListRepeatType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, UnknownElementType,
-    LiteralType,
+    LiteralType, FLOAT, make_list, make_dict, make_set,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
-    NominalType, TypeParamRef, NoneType, OptionalType, UnionType,
+    NominalType, TypeParamRef, NoneType, AnyType, OptionalType, UnionType,
     is_protocol_type, unwrap_own, unwrap_readonly, unwrap_optional_own,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     CallableType, is_fn_type, RefType, unwrap_ref_type,
@@ -24,7 +24,7 @@ from ..parse import (
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFunction, TpyIfExpr, TpyTupleLiteral, SourceLocation
 )
-from ..coercions import resolve_coercion, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN
+from ..coercions import resolve_coercion, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY
 from ..modules import get_span_return_type
 from .context import addr_taken_roots
 from .numeric_lattice import numeric_info
@@ -322,6 +322,54 @@ class TypeCompatibility:
         # None -> Optional[T] / Ptr[T] / Ptr[readonly[T]]: always compatible
         if isinstance(actual, NoneType) and isinstance(expected, (OptionalType, PtrType)):
             return None
+
+        # T -> Any: any copyable type stores into Any. Move-only sources
+        # (Own[T] / @nocopy records / containers thereof) are rejected --
+        # v1 supports copyable contents only. The INTO_ANY coercion wraps
+        # the source as `tpy::Any{std::any{value}, &any_ops_for<T>}` and
+        # upgrades view types (StrView, BytesView) to their owning form.
+        if isinstance(expected, AnyType) and not isinstance(actual, AnyType):
+            actual_for_check = unwrap_ref_type(actual)
+            if self.ctx.is_type_nocopy(actual_for_check):
+                return CompatError(
+                    f"cannot store move-only type '{actual}' in Any "
+                    f"(v1 supports copyable contents only)",
+                    loc,
+                )
+            return INTO_ANY
+
+        # Any -> T: runtime-checked auto-coerce. Target T must be a concrete
+        # type -- Union / Optional / generic-type-param / protocol targets
+        # are too ambiguous (which member to extract? what concrete T to
+        # any_cast against?). Users narrow first via isinstance or call
+        # typing.cast(T, x) explicitly. Codegen emits any_cast_or_panic<T_cpp>;
+        # typeid mismatches panic at runtime with the documented message.
+        # Protocol targets fall through to the structural-conformance path
+        # (Any satisfies Hashable / Equatable / Stringable / Representable
+        # at the type-system level; runtime ops may panic if the contained
+        # T lacks the capability). Own[Any] / readonly[Any] targets also
+        # fall through (Any -> Any is a no-op, not an extraction).
+        if isinstance(actual, AnyType):
+            expected_inner = expected
+            if isinstance(expected_inner, OwnType):
+                expected_inner = expected_inner.wrapped
+            expected_inner = unwrap_readonly(expected_inner)
+            if isinstance(expected_inner, AnyType):
+                return None
+            if isinstance(expected_inner, (UnionType, OptionalType)):
+                return CompatError(
+                    f"cannot auto-coerce Any to {expected} -- "
+                    f"narrow first via isinstance(x, T) or typing.cast(T, x)",
+                    loc,
+                )
+            if isinstance(expected_inner, TypeParamRef):
+                return CompatError(
+                    f"cannot auto-coerce Any to generic type parameter "
+                    f"'{expected_inner.name}' -- typing.cast(ConcreteT, x) first",
+                    loc,
+                )
+            if not is_protocol_type(expected_inner):
+                return FROM_ANY
 
         # Union[A, B] -> Union[A, B, C]: each actual member must match some expected member
         if isinstance(actual, UnionType) and isinstance(expected, UnionType):
@@ -939,6 +987,13 @@ class TypeCompatibility:
         runtime_bigint = False
         if coercion.name == "int_literal_to_fixed_int":
             runtime_bigint = self.is_runtime_bigint_expr(expr)
+        # INTO_ANY needs a concrete actual_type for codegen (the storage
+        # typeid). PendingListType / PendingDictType / PendingSetType
+        # would normally resolve later via coerced_element_type, but that
+        # signal is set by typed targets -- Any provides no element
+        # constraint. Default-resolve here so the cell's typeid is stable.
+        if coercion.name == "into_any":
+            actual = self._resolve_pending_for_any_storage(actual)
         coerced = TpyCoerce(
             expr=expr,
             actual_type=actual,
@@ -951,6 +1006,33 @@ class TypeCompatibility:
         )
         self.ctx.set_expr_type(coerced, expected)
         return coerced
+
+    def _resolve_pending_for_any_storage(self, actual: TpyType) -> TpyType:
+        """Convert Pending{List,Dict,Set}Type to its concrete container
+        form using the literal-info's inferred element types, defaulting
+        IntLiteralType / FloatLiteralType to the configured defaults.
+        """
+        if isinstance(actual, PendingListType):
+            elem = self._default_resolve_element(actual.element_type)
+            info = self.ctx.list_literals.get(actual.literal_id)
+            if info is not None and info.coerced_element_type is None:
+                info.coerced_element_type = elem
+            return make_list(elem)
+        if isinstance(actual, PendingDictType):
+            k = self._default_resolve_element(actual.key_type)
+            v = self._default_resolve_element(actual.value_type)
+            return make_dict(k, v)
+        if isinstance(actual, PendingSetType):
+            elem = self._default_resolve_element(actual.element_type)
+            return make_set(elem)
+        return actual
+
+    def _default_resolve_element(self, t: TpyType) -> TpyType:
+        if isinstance(t, IntLiteralType):
+            return self.ctx.default_int_type
+        if isinstance(t, FloatLiteralType):
+            return FLOAT
+        return t
 
     def is_runtime_bigint_expr(self, expr: TpyExpr) -> bool:
         """Check if an IntLiteralType expression could be BigInt at runtime."""

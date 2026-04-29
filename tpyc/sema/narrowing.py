@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, OptionalType, NoneType, VoidType, PtrType, OwnType, NominalType,
-    TypeParamRef, IntLiteralType,
+    TypeParamRef, IntLiteralType, AnyType,
     ReadonlyType, UnionType, unwrap_readonly, unwrap_ref_type, make_union, union_none_narrow,
     is_protocol_type, LiteralType, LiteralValue, is_any_int_type,
 
@@ -250,6 +250,12 @@ class NarrowingTracker:
             name = expr.isinstance_var
             check_type = expr.isinstance_type
             effective = self.effective_union_type(name)
+            # Any narrowing (D15): non-consuming -- the true branch sees the
+            # variable as `check_type` (a borrow into the cell); the false
+            # branch keeps the original Any (no narrowing). The outer cell
+            # remains alive in both branches.
+            if isinstance(effective, AnyType):
+                return {name: check_type}, {}
             if isinstance(effective, UnionType):
                 # Tuple form isinstance(x, (A, B)) packs check types as a union.
                 check_members = (tuple(check_type.members)

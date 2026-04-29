@@ -697,6 +697,11 @@ class FunctionGenerator:
             return False
         if func.cpp_template:
             return False
+        # @builtin_function-keyed functions have sema/codegen handled
+        # specially per call site; the stub function itself has no C++
+        # representation (typing.cast, builtins.isinstance, ...).
+        if func.builtin_function_key is not None:
+            return False
         # @overload implementation: emit forward decls for each stub instead
         overload_stubs = self.ctx.analyzer.overload_groups.get(id(func))
         if overload_stubs:
@@ -778,6 +783,10 @@ class FunctionGenerator:
             return False
         # @cpp_template functions expand inline at call sites -- no C++ declaration
         if func.cpp_template:
+            return False
+        # @builtin_function-keyed functions have sema/codegen handled
+        # specially per call site; the stub itself has no C++ representation.
+        if func.builtin_function_key is not None:
             return False
 
         # Bodyless @overload stubs are handled via the implementation function;

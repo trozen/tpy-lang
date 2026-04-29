@@ -24,7 +24,7 @@ from ..typesys import (
     CallableType, make_union, make_fn_type,
     TypeParamRef, TypeParamKind, LiteralType,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW,
-    BOOL, FLOAT, FLOAT32, BIGINT, SELF, BASIC_SLICE, SLICE,
+    BOOL, FLOAT, FLOAT32, BIGINT, SELF, BASIC_SLICE, SLICE, ANY, AnyType,
     ALL_FIXED_INTS,
 )
 from .. import qnames
@@ -174,6 +174,21 @@ class TypeResolver:
         if isinstance(ref, TpyUnionRef):
             parsed = [self.resolve(m, type_param_scope) for m in ref.members]
             non_none = [t for t in parsed if not isinstance(t, VoidType)]
+            # Any is the universal supertype -- combining it with None or
+            # any other type is redundant.
+            for t in parsed:
+                if isinstance(t, AnyType):
+                    has_none = any(isinstance(p, VoidType) for p in parsed)
+                    if has_none:
+                        raise ParseError(
+                            "Any | None is redundant -- Any already accepts None",
+                            loc=ref.loc,
+                        )
+                    if len(parsed) > 1:
+                        raise ParseError(
+                            "Any | T is redundant -- Any is the universal supertype",
+                            loc=ref.loc,
+                        )
             if len(non_none) > 1:
                 for t in non_none:
                     if isinstance(t, OwnType):
@@ -243,6 +258,11 @@ class TypeResolver:
                     return PtrType(inner.wrapped, is_readonly=True)
                 return PtrType(inner)
             if name == "tpy:Own":
+                if isinstance(inner, AnyType):
+                    raise ParseError(
+                        "Own[Any] is redundant -- Any is already owning",
+                        loc=ref.loc,
+                    )
                 return OwnType(inner)
             if name == "tpy:readonly":
                 return ReadonlyType(inner)
@@ -251,6 +271,11 @@ class TypeResolver:
             if name == "tpy:auto_own":
                 return AutoOwnType(inner)
             if name == "typing:Optional":
+                if isinstance(inner, AnyType):
+                    raise ParseError(
+                        "Optional[Any] is redundant -- Any already accepts None",
+                        loc=ref.loc,
+                    )
                 return OptionalType(inner)
             if name == "typing:Final":
                 return FinalType(inner)
@@ -564,6 +589,8 @@ class TypeResolver:
         elif module == "typing":
             if original == "Self":
                 return SELF
+            elif original == "Any":
+                return ANY
             elif original == "Protocol":
                 raise ParseError("'Protocol' cannot be used as a type annotation", node, loc=loc)
         return None

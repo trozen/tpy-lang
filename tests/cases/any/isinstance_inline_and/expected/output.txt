@@ -1,0 +1,2 @@
+positive int
+either str or non-empty literal

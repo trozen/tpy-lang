@@ -15,7 +15,7 @@ from ..typesys import (
     LiteralType, LiteralValue, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, ParamInfo, ReadonlyType,
     UNKNOWN_ELEMENT, UnknownElementType, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
-    UnionType, VOID, BIGINT, BOOL, STR, INT32, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own, make_union,
+    UnionType, VOID, BIGINT, BOOL, STR, INT32, AnyType, ANY, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own, make_union,
     is_any_str_type, container_to_str_template, error_return_matches,
     is_protocol_union, protocol_union_protocols,
     STRVIEW, MutationCallEdge,
@@ -1106,6 +1106,8 @@ class CallAnalyzer:
             return self._analyze_tpy_try_parse(expr)
         if qname == "builtins.isinstance":
             return self._analyze_isinstance(expr)
+        if qname == "typing.cast":
+            return self._analyze_typing_cast(expr)
         if qname == "builtins.print":
             return self._analyze_print_call(expr)
         raise self.ctx.error(f"Unknown special builtin: '{qname}'", expr)
@@ -1329,12 +1331,28 @@ class CallAnalyzer:
         )
         return OptionalType(enum_type)
 
-    def _resolve_isinstance_type(self, name: str, expr: TpyCall) -> TpyType:
-        """Resolve a type name used as the second argument to isinstance().
+    def _resolve_isinstance_type(
+        self, name: str, expr: TpyCall, *, allow_any: bool = False,
+    ) -> TpyType:
+        """Resolve a type name used as the second argument to isinstance()
+        (or as the first arg to typing.cast).
 
         Handles user-defined records and builtin type names (int, str, bool, float,
-        fixed-int types like Int32, etc.).
+        fixed-int types like Int32, etc.). Resolves `Any` (bare or aliased
+        via `from typing import Any as A`) to AnyType when `allow_any=True`;
+        otherwise rejects with the isinstance-flavoured "Any is not a
+        runtime class" error. typing.cast wants the resolved AnyType so it
+        can raise its own cast-flavoured rejection at one site.
         """
+        if (name == "Any"
+                or self.ctx.imported_names.get(name) == ("typing", "Any")):
+            if allow_any:
+                return ANY
+            raise self.ctx.error(
+                "isinstance() second argument cannot be Any -- "
+                "Any is not a runtime class",
+                expr,
+            )
         # User-defined records
         record = self.ctx.registry.get_record(name)
         if record:
@@ -1508,6 +1526,37 @@ class CallAnalyzer:
                 f"got '{effective_type}'",
                 expr,
             )
+
+        # Any narrowing (D15): non-consuming borrow extraction. Inside the
+        # true branch, the variable is bound to a `const T&` that aliases
+        # the contents of the cell. The outer Any survives. Reject Union /
+        # Optional / Any / protocol check types -- v1 supports only
+        # concrete-type narrowing.
+        if isinstance(effective_type, AnyType):
+            for ct in check_types:
+                if isinstance(ct, AnyType):
+                    raise self.ctx.error(
+                        "isinstance() second argument cannot be Any -- "
+                        "Any is not a runtime class",
+                        expr,
+                    )
+                if isinstance(ct, (UnionType, OptionalType)):
+                    raise self.ctx.error(
+                        "isinstance() check type on Any must be a concrete "
+                        f"type, got '{ct}'",
+                        expr,
+                    )
+                if is_protocol_type(ct):
+                    raise self.ctx.error(
+                        "isinstance() against a protocol on Any is not "
+                        "supported in v1 -- protocols are structural; "
+                        "narrow to a concrete type first",
+                        expr,
+                    )
+            expr.isinstance_var = first_arg.name
+            expr.isinstance_type = (check_types[0] if len(check_types) == 1
+                                    else make_union(*check_types))
+            return BOOL
 
         if not isinstance(effective_type, UnionType):
             # Non-union: compile-time evaluate against the static type,
@@ -1691,6 +1740,90 @@ class CallAnalyzer:
             special_handling=True,
             qualified_name="builtins.isinstance",
         )
+
+    def _analyze_any_construct(self, expr: TpyCall) -> TpyType:
+        """Analyze `Any(value)` -- constructor sugar for INTO_ANY coercion.
+
+        Wraps the single arg in the same INTO_ANY coercion that fires for
+        annotated targets, then replaces the call with that coerced arg
+        via `macro_expansion`. Codegen then emits `make_any(...)`
+        directly without going through the constructor path.
+        """
+        self._reject_kwargs_for_builtin(expr, "Any")
+        if len(expr.args) != 1:
+            raise self.ctx.error(
+                f"Any(...) takes exactly 1 argument, got {len(expr.args)}",
+                expr,
+            )
+        arg = expr.args[0]
+        arg_type = self.expr.analyze_expr(arg)
+        if isinstance(arg_type, AnyType):
+            raise self.ctx.error(
+                "Any(x) where x is already Any is redundant -- "
+                "use the value directly",
+                expr,
+            )
+        coerced = self.compat.coerce_expr(
+            arg, arg_type, ANY,
+            "argument to Any(...)",
+            coercion_ctx=CoercionContext.INIT,
+        )
+        expr.macro_expansion = coerced
+        self.ctx.set_expr_type(expr, ANY)
+        return ANY
+
+    def _analyze_typing_cast(self, expr: TpyCall) -> TpyType:
+        """Analyze typing.cast(T, x) -- runtime checked extraction from Any.
+
+        For non-Any sources this is a static-only no-op (matches CPython
+        semantics). For Any sources, codegen emits any_cast_or_panic<T>.
+        Either way the static result type is T.
+        """
+        self._reject_kwargs_for_builtin(expr, "cast")
+        if len(expr.args) != 2:
+            raise self.ctx.error(
+                f"typing.cast() takes exactly 2 arguments, got {len(expr.args)}",
+                expr,
+            )
+
+        type_arg = expr.args[0]
+        if not isinstance(type_arg, TpyName):
+            raise self.ctx.error(
+                "typing.cast() target must be a concrete type, not a union "
+                "or other expression",
+                expr,
+            )
+        # _resolve_isinstance_type with allow_any=True resolves bare `Any`
+        # and aliased imports (`from typing import Any as A`) to AnyType
+        # rather than raising; we reject Any with a cast-flavoured message
+        # in one place below.
+        target_type = self._resolve_isinstance_type(
+            type_arg.name, expr, allow_any=True)
+        if isinstance(target_type, AnyType):
+            raise self.ctx.error(
+                "typing.cast(Any, ...) is meaningless -- pick a concrete type",
+                expr,
+            )
+        if isinstance(target_type, (UnionType, OptionalType)):
+            raise self.ctx.error(
+                "typing.cast() target must be a concrete type, not a union",
+                expr,
+            )
+
+        source_type = self.expr.analyze_expr(expr.args[1])
+
+        expr.cast_target_type = target_type
+        expr.cast_source_is_any = isinstance(source_type, AnyType)
+        expr.resolved_function_info = FunctionInfo(
+            name="cast",
+            params=[],
+            return_type=target_type,
+            is_readonly=True,
+            is_builtin_function=True,
+            special_handling=True,
+            qualified_name="typing.cast",
+        )
+        return target_type
 
     def _analyze_enum_from_value(self, expr: TpyCall, enum_type: NominalType) -> TpyType:
         """Analyze enum value lookup: Color(0) -> Color."""
@@ -3221,6 +3354,14 @@ class CallAnalyzer:
 
     def _analyze_record_constructor(self, expr: TpyCall, record: RecordInfo) -> TpyType:
         """Analyze a call to a record constructor."""
+        # `Any(value)` is constructor sugar for the INTO_ANY coercion.
+        # CPython's `typing.Any(x)` raises TypeError, but TPy has a real
+        # runtime Any wrapper (`tpy::Any`) and `make_any<T>` factory --
+        # treating Any() as inline construction lets users write
+        # `[Any(p), Any(q)]` without typed intermediates. The arg flows
+        # through the same INTO_ANY path used for annotated targets.
+        if record.qualified_name() == "typing.Any":
+            return self._analyze_any_construct(expr)
         # Skip re-analysis for already-analyzed synthetic constructor calls
         cached = self.ctx.get_expr_type(expr)
         if cached is not None:

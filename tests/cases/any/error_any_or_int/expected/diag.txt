@@ -1,0 +1,1 @@
+main.py:7: error: Any | T is redundant -- Any is the universal supertype

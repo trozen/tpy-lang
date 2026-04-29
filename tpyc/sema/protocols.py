@@ -13,7 +13,7 @@ import re
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, OwnType, ReadonlyType, RefType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, PropertyInfo, is_protocol_type,
-    ListRepeatType, GenExprType, make_list, TupleType, OptionalType, IntLiteralType, FloatLiteralType, PendingListType, UnknownElementType, BIGINT, FLOAT,
+    ListRepeatType, GenExprType, make_list, TupleType, OptionalType, IntLiteralType, FloatLiteralType, AnyType, PendingListType, UnknownElementType, BIGINT, FLOAT,
     impl_proto_matches_name, get_protocol_qname,
 )
 from ..coercions import is_protocol_safe_coercion, is_protocol_type_arg_widening
@@ -223,6 +223,21 @@ class ProtocolChecker:
         # Enum/IntEnum: hashable, comparable, and equatable at C++ level
         if is_enum_type(actual):
             if protocol.qualified_name() in (qnames.HASHABLE, qnames.COMPARABLE, qnames.EQUATABLE):
+                return ProtocolConformanceKind.EXPLICIT
+
+        # Any: satisfies Hashable / Equatable / Stringable / Representable at
+        # the type-system level. Runtime ops may panic if the contained T
+        # lacks the corresponding capability (see docs/ANY_TYPE_DESIGN.md);
+        # this is the trade-off for accepting arbitrary copyable contents.
+        # Iterable / Sized / Comparable / Sequence remain non-conforming;
+        # the user must narrow first.
+        if isinstance(actual, AnyType):
+            if protocol.qualified_name() in (
+                qnames.HASHABLE,
+                qnames.EQUATABLE,
+                qnames.STRINGABLE,
+                qnames.REPRESENTABLE,
+            ):
                 return ProtocolConformanceKind.EXPLICIT
 
         # Tuple: hashable if all element types are hashable. Tuple<->Hashable

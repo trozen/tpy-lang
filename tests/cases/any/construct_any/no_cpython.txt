@@ -1,0 +1,3 @@
+CPython rejects typing.Any(value) with `TypeError: Any cannot be instantiated`.
+TPy treats Any(value) as constructor sugar for the INTO_ANY coercion since
+TPy has a real runtime Any wrapper (tpy::Any). Documented divergence.

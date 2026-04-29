@@ -1,0 +1,1 @@
+main.py:8: error: Cannot call method 'upper' on type Any

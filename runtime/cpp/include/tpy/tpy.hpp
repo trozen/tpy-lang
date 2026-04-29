@@ -103,6 +103,9 @@
 // File I/O: TextFile for open() builtin (depends on core)
 #include "file.hpp"
 
+// Any: type-erased value cell (depends on dunder, builtins, core)
+#include "any.hpp"
+
 // Output-sink dispatch for print(file=...) (depends on system, file)
 #include "as_ostream.hpp"
 

@@ -12,7 +12,7 @@ from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, LiteralType, LiteralValue,
-    NominalType, PtrType, OwnType, OptionalType, NoneType, make_array,
+    NominalType, PtrType, OwnType, OptionalType, NoneType, AnyType, make_array,
     PendingListType, ListRepeatType,
     TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     TupleType, CallableType,
@@ -961,6 +961,8 @@ class ExpressionGenerator:
             return f"(static_cast<{cpp_underlying}>({rendered}) != 0)"
         if is_enum_type(var_type):
             return "true"
+        if isinstance(var_type, AnyType):
+            return f"::tpy::to_bool({rendered})"
         if isinstance(var_type, OptionalType) and not var_type.uses_pointer_repr():
             return f"::tpy::is_truthy({rendered})"
         if is_any_str_type(var_type):
@@ -1312,6 +1314,21 @@ class ExpressionGenerator:
                     return f"({check})"
                 else:
                     return f"(!{check})"
+            # Any vs None: typeid-based check (D15). The Any cell stores
+            # None as a value of type std::nullptr_t; an empty/moved-from
+            # Any is *not* None (it has no value at all).
+            any_expr = None
+            if isinstance(left_type, AnyType) and isinstance(expr.right, TpyNoneLiteral):
+                any_expr = expr.left
+            elif isinstance(right_type, AnyType) and isinstance(expr.left, TpyNoneLiteral):
+                any_expr = expr.right
+            if any_expr is not None:
+                val = self.gen_expr(any_expr)
+                check = (f"({val}.value.has_value() && "
+                         f"{val}.value.type() == typeid(std::nullptr_t))")
+                if expr.op == "is":
+                    return check
+                return f"(!{check})"
             # Fallback: pointer comparison
             cpp_op = "==" if expr.op == "is" else "!="
             left = self.gen_expr(expr.left)
@@ -1798,6 +1815,15 @@ class ExpressionGenerator:
                 var_ref = self.ctx.narrowed_vars[var_name]
             elif self.ctx.is_indirect_name(TpyName(var_name)):
                 var_ref = f"(*{var_name})"
+            # Any narrowing (D15): the source is a tpy::Any cell, not a
+            # variant. The inline narrowed expression must be a
+            # std::any_cast borrow, mirroring the statement-level
+            # _emit_isinstance_extractions path.
+            if isinstance(self.ctx.lookup_var_type(var_name), AnyType):
+                result[var_name] = (
+                    f"std::any_cast<const {cpp_type}&>({var_ref}.value)"
+                )
+                continue
             # Pointer-variant unions: *std::get<T*>(var) or *std::get<const T*>(var)
             if var_name in self.ctx.ptr_variant_locals:
                 const_pfx = "const " if var_name in self.ctx.const_indirect_locals else ""
@@ -1925,6 +1951,14 @@ class ExpressionGenerator:
         # Expression callees: callbacks[0](x), get_handler()(x), etc.
         if not isinstance(expr.func, TpyName):
             return self._gen_expr_callee(expr)
+        # typing.cast(T, x): runtime check + extract for Any sources;
+        # static-only no-op for everything else (matches CPython).
+        if expr.cast_target_type is not None:
+            source_code = self.gen_expr(expr.args[1])
+            if expr.cast_source_is_any:
+                target_cpp = expr.cast_target_type.to_cpp()
+                return f"::tpy::any_cast_or_panic<{target_cpp}>({source_code})"
+            return source_code
         # isinstance(x, Protocol) -> Concept<T_x>  (compile-time)
         if expr.isinstance_var is not None and expr.isinstance_is_protocol and expr.isinstance_type is not None:
             var_name = expr.isinstance_var
@@ -1949,6 +1983,27 @@ class ExpressionGenerator:
                 if isinstance(check_type, UnionType) and concrete in check_type.members:
                     return "true"
                 return "false"
+            # Any narrowing (D15): typeid-based check. The runtime value
+            # of an empty/moved-from Any has no value() and is *not*
+            # treated as any concrete type, so the has_value() guard is
+            # essential. NoneType extracts as typeid(std::nullptr_t).
+            # Tuple form (isinstance(x, (A, B))) packs the check types
+            # into a UnionType -- emit an OR of per-member typeid checks
+            # rather than typeid(std::variant<A, B>) which would never
+            # match the cell's stored typeid.
+            var_decl = self.ctx.lookup_var_type(expr.isinstance_var)
+            if isinstance(var_decl, AnyType):
+                check_type = expr.isinstance_type
+                var_ref = expr.isinstance_var
+                if isinstance(check_type, UnionType):
+                    typeid_checks = " || ".join(
+                        f"{var_ref}.value.type() == typeid({self.types.type_to_cpp(m)})"
+                        for m in check_type.members
+                    )
+                    return f"({var_ref}.value.has_value() && ({typeid_checks}))"
+                check_cpp = self.types.type_to_cpp(check_type)
+                return (f"({var_ref}.value.has_value() && "
+                        f"{var_ref}.value.type() == typeid({check_cpp}))")
             # holds_alternative needs the original variant; narrowed_vars
             # aliases (extracted member refs or std::get expressions) are not
             # variants, so we deliberately skip that lookup here.
@@ -3139,7 +3194,7 @@ class ExpressionGenerator:
                 elem_target = TupleType((target_type.type_args[0], target_type.type_args[1]))
             else:
                 et = target_type.get_element_type()
-                if isinstance(et, (OptionalType, UnionType, TupleType)) or is_str_type(et):
+                if isinstance(et, (OptionalType, UnionType, TupleType, AnyType)) or is_str_type(et):
                     elem_target = et
                 # Recursive union element type: pass it as elem_target so nested
                 # array literals trigger union_prefix. Alias placeholders are
@@ -3157,6 +3212,17 @@ class ExpressionGenerator:
                 # reach nested str slots).
                 code = self.gen_expr_deref(e, elem_target)
                 resolved = self.types.get_resolved_type(e, elem_target)
+                # Any slot + int/float literal source: pass the literal
+                # type through so wrap_into_any constructs an explicit
+                # ::tpy::BigInt / double wrapper. Otherwise std::any
+                # would store the C++ literal under typeid(int) /
+                # typeid(double_literal_type), mismatching any_ops_for.
+                # Typed variables retain their declared resolved type.
+                if isinstance(elem_target, AnyType):
+                    if isinstance(e, TpyIntLiteral):
+                        resolved = IntLiteralType()
+                    elif isinstance(e, TpyFloatLiteral):
+                        resolved = FloatLiteralType()
                 code = self._wrap_for_owned_slot(code, resolved, elem_target)
                 # Pointer-variant locals/calls must be converted to value
                 # variants for container storage.
@@ -3340,9 +3406,19 @@ class ExpressionGenerator:
         with self._container_element_context():
             for k, v in zip(expr.keys, expr.values):
                 k_resolved = self.types.get_resolved_type(k, k_type)
+                if isinstance(k_type, AnyType):
+                    if isinstance(k, TpyIntLiteral):
+                        k_resolved = IntLiteralType()
+                    elif isinstance(k, TpyFloatLiteral):
+                        k_resolved = FloatLiteralType()
                 k_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(k, k_type), k_resolved, k_type)
                 k_cpp = self._to_value_variant_if_needed(k, k_cpp, k_type)
                 v_resolved = self.types.get_resolved_type(v, v_type)
+                if isinstance(v_type, AnyType):
+                    if isinstance(v, TpyIntLiteral):
+                        v_resolved = IntLiteralType()
+                    elif isinstance(v, TpyFloatLiteral):
+                        v_resolved = FloatLiteralType()
                 v_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(v, v_type), v_resolved, v_type)
                 v_cpp = self._to_value_variant_if_needed(v, v_cpp, v_type)
                 pairs.append(f"{{{k_cpp}, {v_cpp}}}")
@@ -3362,6 +3438,11 @@ class ExpressionGenerator:
         with self._container_element_context():
             for e in expr.elements:
                 e_resolved = self.types.get_resolved_type(e, elem_type)
+                if isinstance(elem_type, AnyType):
+                    if isinstance(e, TpyIntLiteral):
+                        e_resolved = IntLiteralType()
+                    elif isinstance(e, TpyFloatLiteral):
+                        e_resolved = FloatLiteralType()
                 e_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(e, elem_type), e_resolved, elem_type)
                 e_cpp = self._to_value_variant_if_needed(e, e_cpp, elem_type)
                 elems.append(e_cpp)
@@ -3402,6 +3483,11 @@ class ExpressionGenerator:
         repeat_elems = []
         for e in expr.elements:
             e_resolved = self.types.get_resolved_type(e, elem_type)
+            if isinstance(elem_type, AnyType):
+                if isinstance(e, TpyIntLiteral):
+                    e_resolved = IntLiteralType()
+                elif isinstance(e, TpyFloatLiteral):
+                    e_resolved = FloatLiteralType()
             repeat_elems.append(self._wrap_for_owned_slot(self.gen_expr_deref(e, elem_type or e_resolved), e_resolved, elem_type))
         elements = ", ".join(repeat_elems)
         cpp_elem_type = elem_type.to_cpp() if elem_type else "auto"
@@ -3960,17 +4046,29 @@ class ExpressionGenerator:
                 or is_dict(typ) or is_set(typ) or is_dict_view(typ))
 
     def _wrap_for_owned_slot(self, code: str, resolved: TpyType, slot_type: TpyType | None) -> str:
-        """Wrap a str-view expression with std::string() when placed in an owned-str slot.
+        """Wrap a value expression to fit a container's element slot type.
 
-        Container elements (list, dict, set, tuple str slots) must be owned std::string.
-        A string_view variable that ends up in such a slot is copied at the call site
-        rather than promoting the variable's type to std::string for its whole lifetime.
+        Two cases handled:
+
+        1. **str slot, view source.** A string_view ending up in an owned-str
+           slot (list[str], dict[K, str], tuple str element) is copied to
+           std::string at the insertion site rather than promoting the source
+           variable's type to std::string for its lifetime.
+
+        2. **Any slot.** Heterogeneous element coercion into list[Any] /
+           dict[K, Any] / set[Any] / tuple[..., Any, ...]: the per-element
+           into-Any wrapping (typeid + ops table instantiation, owning
+           upgrade for views) is emitted here. Note: directly nested Any
+           values bypass the wrap -- they're already cells.
         """
         if is_str_view_type(resolved):
             if is_str_type(slot_type):
                 return f"std::string({code})"
             if isinstance(slot_type, OptionalType) and is_str_type(slot_type.inner):
                 return f"std::string({code})"
+        if isinstance(slot_type, AnyType) and not isinstance(resolved, AnyType):
+            from ..coercions import wrap_into_any, CoercionContext
+            return wrap_into_any(code, resolved, CoercionContext.INIT)
         return code
 
     def _gen_tuple_literal(self, expr: TpyTupleLiteral, target_type: TpyType | None) -> str:
@@ -3986,6 +4084,11 @@ class ExpressionGenerator:
                 if isinstance(elem_target, RefType):
                     elem_target = elem_target.wrapped
                 resolved = self.types.get_resolved_type(elem, elem_target)
+                if isinstance(elem_target, AnyType):
+                    if isinstance(elem, TpyIntLiteral):
+                        resolved = IntLiteralType()
+                    elif isinstance(elem, TpyFloatLiteral):
+                        resolved = FloatLiteralType()
                 elem_str = self._wrap_for_owned_slot(self.gen_expr_deref(elem, elem_target), resolved, elem_target)
                 # Use elem_target for the tuple type when a target was given: the code was
                 # generated with that target in mind, so the C++ expression's type is elem_target.

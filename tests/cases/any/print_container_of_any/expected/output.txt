@@ -1,0 +1,2 @@
+{'name': 'tpy', 'version': 1, 'debug': True}
+[1, 'hi', None, 2.5]

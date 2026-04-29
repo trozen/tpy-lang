@@ -56,6 +56,15 @@ void print_element(std::ostream& os, const ordered_set<T>& elem);
 template <typename K, typename V>
 void print_element(std::ostream& os, const ordered_map<K, V>& elem);
 
+// Forward declare Any overload (defined in any.hpp). The forward decl
+// must precede the generic `print_element<T>` template so two-phase
+// lookup picks the non-template Any overload at template-definition
+// time even when any.hpp is included after dict_ops.hpp / set_ops.hpp.
+}  // namespace detail
+struct Any;
+namespace detail {
+void print_element(std::ostream& os, const ::tpy::Any& a);
+
 template <typename T>
 void print_element(std::ostream& os, const T& elem) {
     os << elem;

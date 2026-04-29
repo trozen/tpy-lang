@@ -331,6 +331,8 @@ class TpyCall(TpyExpr):
     isinstance_var: str | None = None        # Set by sema: variable name being isinstance-checked
     isinstance_type: TpyType | None = None   # Set by sema: resolved type being checked for
     isinstance_is_protocol: bool = False     # Set by sema: protocol isinstance (if constexpr)
+    cast_target_type: TpyType | None = None  # Set by sema for typing.cast(T, x): the resolved target type
+    cast_source_is_any: bool = False         # Set by sema for typing.cast: True iff source's static type is Any
     macro_expansion: 'TpyExpr | None' = None  # Set by sema: replacement expr from @call_macro
     dunder_call: 'TpyMethodCall | None' = None  # Set by sema: obj(args) -> obj.__call__(args)
 

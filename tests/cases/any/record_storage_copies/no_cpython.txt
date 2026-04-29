@@ -1,0 +1,4 @@
+Documented divergence: TPy's Any is a runtime wrapper that copies on
+storage (per design Principle #1); CPython's typing.Any is just a type
+annotation, so `a: Any = c` is reference assignment. Mutating the
+original record after storage shows through a in CPython, not in TPy.

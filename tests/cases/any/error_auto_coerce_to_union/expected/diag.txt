@@ -1,0 +1,1 @@
+main.py:9: error: cannot auto-coerce Any to int | str -- narrow first via isinstance(x, T) or typing.cast(T, x)

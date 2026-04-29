@@ -12,6 +12,7 @@
 #include <iostream>
 #include <ranges>
 #include <span>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -92,6 +93,19 @@ inline std::ostream& operator<<(std::ostream& os, const ByteArrayPrinter& bp) {
     os << ')';
     return os;
 }
+
+// __str__ / __repr__ overloads for raw Bytes / BytesView. Needed for
+// generic dispatch (e.g. tpy::Any storing bytes), where the BytesPrinter
+// wrapper isn't available at the call site.
+inline std::string __str__(BytesView b) {
+    std::ostringstream ss;
+    ss << BytesPrinter{b};
+    return ss.str();
+}
+
+inline std::string __str__(const Bytes& b) { return __str__(BytesView{b}); }
+inline std::string __repr__(BytesView b) { return __str__(b); }
+inline std::string __repr__(const Bytes& b) { return __str__(BytesView{b}); }
 
 // -- Construction -----------------------------------------------------------
 

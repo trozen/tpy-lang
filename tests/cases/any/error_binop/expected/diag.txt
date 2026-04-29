@@ -1,0 +1,1 @@
+main.py:8: error: Invalid operand types for '+': Any and IntLiteral(1)

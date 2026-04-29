@@ -1,0 +1,1 @@
+main.py:8: error: Own[Any] is redundant -- Any is already owning

@@ -1752,6 +1752,29 @@ class NoneType(TpyType):
         return True
 
 
+@dataclass(frozen=True)
+class AnyType(TpyType):
+    """`typing.Any`: type-erased value cell holding any copyable concrete type.
+
+    Backed at runtime by `tpy::Any` (std::any + per-type ops table). See
+    `docs/ANY_TYPE_DESIGN.md` for the full design and composition rules.
+    """
+
+    def to_cpp(self) -> str:
+        return "::tpy::Any"
+
+    def __str__(self) -> str:
+        return "Any"
+
+    def is_value_type(self) -> bool:
+        # Owns its contents and copies them on assignment (via std::any's
+        # internal manager). Move semantics auto-std::move at last use.
+        return True
+
+    def is_expensive_copy(self) -> bool:
+        return True
+
+
 def contains_type_param(t: TpyType) -> bool:
     """Return True if the type contains any TypeParamRef (recursively)."""
     if isinstance(t, TypeParamRef):
@@ -2821,6 +2844,7 @@ FLOAT32 = NominalType("Float32", (), _module_qname="tpy.Float32")
 
 BIGINT = NominalType("int", (), _module_qname="builtins.int")
 NONE = NoneType()
+ANY = AnyType()
 BASIC_SLICE = NominalType("basic_slice", (), _module_qname="tpy.basic_slice")
 SLICE = NominalType("slice", (), _module_qname="builtins.slice")
 

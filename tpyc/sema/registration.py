@@ -72,6 +72,8 @@ def _contains_self_type(typ: TpyType) -> bool:
     return any(_contains_self_type(inner) for inner in typ.inner_types())
 
 
+
+
 def _validate_const_field_default(expr: TpyExpr, loc: object) -> None:
     """Validate that a field default expression is a compile-time constant."""
     if expr_to_cpp_default(expr) is not None:

@@ -1044,6 +1044,23 @@ class CodeGenContext:
         for line_no, source_line in reversed(collected):
             self._write_source_comment(out, line_no, source_line, indent)
 
+    def lookup_var_type(self, var_name: str) -> 'TpyType | None':
+        """Resolve a variable's declared type in any visible scope.
+
+        Function-locals and parameters live in `var_types`; module-level
+        globals are bound on the analyzer's `global_ns`. Returns None when
+        the name isn't found in either.
+        """
+        typ = self.var_types.get(var_name)
+        if typ is not None:
+            return typ
+        global_ns = self.analyzer.ctx.global_ns
+        if global_ns is not None:
+            binding = global_ns.lookup(var_name)
+            if binding is not None and binding.type is not None:
+                return binding.type
+        return None
+
     def is_global_name(self, expr: TpyExpr) -> bool:
         """Check if expression is a reference to a global variable.
 

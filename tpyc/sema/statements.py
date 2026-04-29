@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, OwnType, ReadonlyType,
     FinalType,
     PendingListType, PendingDictType, make_list, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, TypeParamRef,
-    ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType, UnknownElementType,
+    ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType,
     unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType,
     LiteralType,
     ViewTypeFamily, VIEW_TYPE_FAMILIES, STR_FAMILY, BYTES_FAMILY,
@@ -1236,7 +1236,7 @@ class StatementAnalyzer:
         """
         return {
             name: ty for name, ty in facts.items()
-            if (isinstance(unwrap_readonly(self.narrowing.declared_type_for_name(name)), UnionType)
+            if (isinstance(unwrap_readonly(self.narrowing.declared_type_for_name(name)), (UnionType, AnyType))
                 or isinstance(ty, LiteralType)
                 or is_protocol_type(ty))
         }

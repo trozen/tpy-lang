@@ -1,0 +1,1 @@
+main.py:7: error: Optional[Any] is redundant -- Any already accepts None

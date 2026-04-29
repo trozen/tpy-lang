@@ -1,0 +1,1 @@
+main.py:9: error: typing.cast() target must be a concrete type, not a union or other expression

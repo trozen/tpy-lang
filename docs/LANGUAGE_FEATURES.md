@@ -218,6 +218,7 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `BytesView` | `std::span<const uint8_t>` |
 | `basic_slice` | `tpy::BasicSlice` (start, stop) |
 | `slice` | `tpy::Slice` (start, stop, step) |
+| `Any` | `tpy::Any` (std::any + per-type ops table) |
 
 ### Numeric
 - **Working**: `int` (Python's int -> `tpy::BigInt` arbitrary precision, custom runtime implementation)
@@ -2969,6 +2970,55 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
 - **Open**: `T | U` → templates with `if constexpr`, or overloads
 
 For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
+
+### Any (Working)
+- **Working**: `from typing import Any` -- type-erased value cell holding any
+  copyable concrete value. Backed at runtime by `tpy::Any` (`std::any` plus a
+  per-type ops table). See [docs/ANY_TYPE_DESIGN.md](ANY_TYPE_DESIGN.md) for
+  the full design.
+- **Storage**: `a: Any = 42` / `lst: list[Any] = [1, "x", None]` /
+  `cfg: dict[str, Any] = {...}`. Inline construction via `Any(value)` is
+  supported (TPy-specific sugar for the INTO_ANY coercion -- CPython
+  rejects this; documented divergence). View types upgrade to owned at the storage
+  site (`StrView` -> `std::string`, `BytesView` -> `std::vector<uint8_t>`)
+  so the cell owns its contents. `int` literals store as `BigInt` (matches
+  TPy's `int` annotation and makes `cast(int, x)` round-trip naturally).
+  Move-only contents (`@nocopy` records, `Own[T]` of `@nocopy`) rejected.
+- **Universal ops on raw `Any`** (no narrowing required): `print`, `str`,
+  `repr`, f-string interpolation, `bool` / `if x:` / `not x`, `==` / `!=`,
+  `hash`, `x is None` / `x is not None`. `==` is typeid-checked: same-typeid
+  contents compare via the underlying `==`; mismatched typeid returns False
+  (`Any(1) == Any(1.0)` is False -- documented divergence from CPython).
+  `hash` panics if the contained type isn't Hashable.
+- **`isinstance(x, T)` narrowing**: non-consuming borrow into the cell.
+  Inside the true branch the variable is a `const T&` aliasing the contents;
+  the outer `Any` survives. Single concrete `T` only (no `Optional`, no
+  `Any`, no protocol). Tuple form `isinstance(x, (A, B))` is supported via
+  an OR of typeid checks; the branch keeps the variable as `Any` (no
+  single-typed extraction). Works on both function locals and module
+  globals. Cast is exact-typeid only -- no inheritance walk in v1.
+- **`typing.cast(T, x)`**: runtime checked extraction. Concrete `T`; typeid
+  mismatch panics with "Any: expected ..., got ...". For non-`Any` sources,
+  `cast` is a static no-op (matches CPython). `cast(Any, x)` rejected at
+  compile time (including aliased imports like `from typing import Any as A`).
+- **Auto-coerce out**: `n: int = any_var` and other annotated-target sites
+  (function arg, return, container insert) emit the same runtime check as
+  `cast(T, x)`. Union / Optional / generic-type-param targets are rejected
+  with a "narrow first" diagnostic; protocol targets fall through to
+  structural conformance (Any satisfies Hashable / Equatable / Stringable /
+  Representable at the type-system level).
+- **Narrow-required ops** (compile error on raw `Any`): attribute / method,
+  call, iter, subscript, `len`, binary operators, `is` against any non-None
+  RHS. User must narrow first.
+- **Composition**: `Any | None`, `Any | T`, `Optional[Any]`, `Own[Any]` all
+  rejected as redundant. `isinstance(x, Any)` rejected (Any is not a runtime
+  class).
+- **`@noalloc`**: not enforced today (TPy's `@noalloc` decorator is
+  parsed but doesn't policy allocation behaviour yet). Any will join
+  the reject list once broader `@noalloc` enforcement lands -- `std::any`
+  may heap-allocate for non-trivial contents.
+- **`set[Any]` / `dict[Any, V]`**: allowed; runtime hash via the cell's
+  hash slot. Inserting an Any holding a non-Hashable value panics.
 
 ---
 

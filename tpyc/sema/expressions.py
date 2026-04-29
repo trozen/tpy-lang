@@ -13,7 +13,7 @@ from typing import Literal, TYPE_CHECKING
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, RecordInfo,
     NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_span, make_list, span_as_const, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType,
-    TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType, VoidType,
+    TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, AnyType, OptionalType, UnionType, VoidType,
     ReadonlyType, unwrap_readonly, is_any_str_type, PendingStrType, PendingViewType,
     is_any_bytes_type, PendingBytesType,
     make_union,
@@ -811,6 +811,13 @@ class ExpressionAnalyzer:
                 return BOOL
             if isinstance(left_check, NoneType) and isinstance(right_check, UnionType) and right_check.has_none_member():
                 return BOOL
+            # Any vs None: typeid-based check (D15). Other RHS forms of
+            # `is` on Any are still rejected -- see the Future Extensions
+            # row in docs/ANY_TYPE_DESIGN.md.
+            if isinstance(right_check, NoneType) and isinstance(left_check, AnyType):
+                return BOOL
+            if isinstance(left_check, NoneType) and isinstance(right_check, AnyType):
+                return BOOL
             raise self.ctx.error(
                 f"'is' / 'is not' can only compare Optional/Ptr/union types with None, "
                 f"got {left_type} and {right_type}",
@@ -1265,6 +1272,7 @@ class ExpressionAnalyzer:
                     or is_any_int_type(effective_type)
                     or is_any_float_type(effective_type)
                     or isinstance(effective_type, OptionalType)
+                    or isinstance(effective_type, AnyType)
                     or is_enum_type(effective_type)):
                 return BOOL
             record = self.ctx.registry.get_record_for_type(effective_type)
@@ -2138,7 +2146,7 @@ class ExpressionAnalyzer:
             value_types = [self._analyze_and_strip(v) for v in expr.values]
 
         # Unify key types
-        if is_union_or_optional_type(expected_key):
+        if is_union_or_optional_type(expected_key) or isinstance(expected_key, AnyType):
             key_type = expected_key
             for i, kt in enumerate(key_types, 1):
                 if kt == expected_key:
@@ -2174,8 +2182,10 @@ class ExpressionAnalyzer:
                     )
 
         # Unify value types
-        if is_union_or_optional_type(expected_value):
-            # Annotation provides a union/optional -- validate each value against it
+        if is_union_or_optional_type(expected_value) or isinstance(expected_value, AnyType):
+            # Annotation provides a union/optional/Any -- each value validates
+            # against the slot independently rather than against its peers
+            # (heterogeneous values are the whole point of these slot types).
             value_type = expected_value
             for i, vt in enumerate(value_types, 1):
                 if vt == expected_value:
@@ -2245,7 +2255,9 @@ class ExpressionAnalyzer:
             elem_types = [self._analyze_and_strip(e) for e in expr.elements]
 
         # Unify element types
-        if is_union_or_optional_type(expected_elem):
+        if is_union_or_optional_type(expected_elem) or isinstance(expected_elem, AnyType):
+            # Annotation provides a union/optional/Any -- each element validates
+            # against the slot independently rather than against its peers.
             elem_type = expected_elem
             for i, et in enumerate(elem_types, 1):
                 if et == expected_elem:
@@ -2928,6 +2940,8 @@ class ExpressionAnalyzer:
 
                 if container_to_str_template(resolved) is not None:
                     pass  # containers have runtime to_str
+                elif isinstance(resolved, AnyType):
+                    pass  # Any dispatches via the per-type str/repr ops slot
                 elif conv == FSTRING_CONV_REPR:
                     if not self.protocols.type_conforms_to_protocol(resolved, self._REPRESENTABLE):
                         raise self.ctx.error(

@@ -83,7 +83,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D12 | Set comprehension | S | Done | [VI](#set-comprehension) |
 | D13 | Generator expressions | M | Done | [VI](#generator-expressions) |
 | D14 | Walrus operator (`:=`) | S-M | Done | [VI](#walrus-operator) |
-| D15 | `Any` type | M | Not started | [I](#any-type) |
+| D15 | `Any` type | M | Done | [I](#any-type) |
 | D16 | Dynamic attributes (`__getattr__`/`__setattr__`) | M-L | Not started | [VII](#dynamic-attributes) |
 | D17 | `*args` (variadic positional arguments) | M | Done (homogeneous) | [VI](#args--kwargs) |
 | D18 | `**kwargs` (variadic keyword arguments) | M-L | Done | [VI](#args--kwargs) |
@@ -510,50 +510,71 @@ function references can be passed as values. Lambda expressions work as both `Fn
 ### Any Type
 
 ```python
-from typing import Any
+from typing import Any, cast
 
 def process(data: Any) -> None:
+    print(data)                # universal op (ops dispatch)
     if isinstance(data, str):
-        print(data.upper())
-    elif isinstance(data, int):
-        print(data + 1)
+        print(data.upper())    # narrowed (borrow); outer Any survives
+    n: int = data              # auto-coerce: runtime check, panic on mismatch
+    s = cast(str, data)        # explicit checked extraction
 ```
 
-Type-erased value that can hold any type. Maps to `std::any` in C++. Requires
-`isinstance` to extract the concrete type before use -- direct field access or
-method calls on `Any` are compile errors.
+Type-erased owning value cell. v1 holds any **copyable** value type or
+user type. Universal operations -- `print`, `str`, `repr`, f-string,
+`bool`, `==`/`!=`, `hash`, `x is None` -- work on raw `Any` via a small
+per-type ops table. Where the target type is statically known (annotated
+assignment, non-overloaded function arg, return, container insert), the
+compiler auto-coerces with a runtime check that panics on mismatch. Method
+calls, attribute access, subscript, iteration, `len`, binary operators
+require narrowing first via `isinstance` (non-consuming borrow) or
+`typing.cast(T, x)`.
 
-**Why it matters**: Prerequisite for CPython stdlib compatibility. The project goal
-is to run as much CPython code as possible without changes -- many stdlib APIs use
-`Any` in their signatures (`json.loads() -> Any`, `argparse.Namespace` attributes,
-`pickle`, `copy.deepcopy`, etc.). Without `Any`, these APIs cannot be stubbed with
-matching signatures. Also useful as a migration tool when porting Python code that
-lacks type annotations -- type incrementally, with `Any` as the "not yet typed"
-escape hatch.
+**Why it matters**: motivating use case is **dynamic configuration /
+argument systems** where the schema is determined at runtime
+(config-driven CLI, plugin-registered options, schema documents). Static
+declaration via macros isn't possible there. Also a migration crutch for
+porting untyped Python code. Better-typed alternatives exist for several
+originally-cited motivations: `json.loads` -> recursive `JsonValue` ADT;
+`argparse.Namespace` -> macro API.
 
-For performance-sensitive code, users would gradually replace `Any` with concrete
-types, unions, or generics. But the untyped version should compile and run first.
+**Design**: see `docs/ANY_TYPE_DESIGN.md`. Highlights:
+- `std::any`-backed storage + per-type `AnyOps` table (~24-32 bytes total).
+- v1 is **copyable contents only**; `Own[T]` / `@nocopy` storage rejected.
+- Move-only contents and binary-op auto-coerce are explicitly deferred to a
+  Future Extensions table; documented rationale.
+- `isinstance(x, T)` is **non-consuming**: exposes a `T const&` borrow in
+  the true branch; the outer `Any` survives.
+- `typing.cast(T, x)` reused as the explicit checked-extraction mechanism.
+  In CPython it stays a static no-op; in TPy compiled binaries it gets
+  runtime panic-on-mismatch semantics. mypy/pyright already cannot check
+  casts on `Any`, panic-test cases skip the cpy phase, and the divergence
+  is consistent with auto-coerce. No `lib/cpy/` shim needed.
+- `==` / `!=` via ops `equals` slot (type mismatch -> False).
+  `equals` / `hash` slots are conditionally generated (null if T isn't Eq /
+  Hashable; runtime panic on use).
+- `x is None` allowed; general `x is y` rejected at compile time.
+- `Any | None`, `Any | T`, `Own[Any]` rejected as redundant.
+- `@noalloc` rejection of `Any` deferred until broader `@noalloc`
+  enforcement lands (parsed-only today; one-off Any rejection would be
+  misleading).
+- Inheritance walk on `cast` / `isinstance` deferred to v2.
 
-Design questions:
-- **`isinstance` integration**: `isinstance(x, T)` on `Any` maps to `std::any_cast<T*>(&x) != nullptr`,
-  narrowing `x` to `T` in the guarded branch. This reuses existing isinstance/narrowing
-  infrastructure. Note: `std::any_cast` checks exact type only -- no inheritance.
-  A TPy-specific type-erased wrapper with RTTI-based inheritance checks may be needed
-  for full Python isinstance semantics.
-- **Value semantics**: `std::any` copies values internally. Large objects may want
-  `std::any` with move semantics or a `Box`-like indirection.
-- **`@noalloc` interaction**: `std::any` allocates for non-trivial types. Probably
-  banned in `@noalloc` contexts.
-- **Printing**: `print(any_val)` would need runtime dispatch or be an error without
-  narrowing.
+**Current state**: Done. All 9 phases landed. Full feature surface:
+type system, runtime header (`tpy::Any` = `std::any` + per-type ops),
+into-Any codegen with view-to-owned upgrade, universal ops on raw `Any`
+(`print`/`str`/`repr`/f-string/`bool`/`==`/`!=`/`hash`/`is None`),
+`typing.cast(T, x)` checked extraction, non-consuming `isinstance`
+narrowing (const T& borrow, outer survives), auto-coerce out (annotated
+assignment, function arg, return, container insert), narrow-required
+diagnostics on raw `Any` (attr/method/call/iter/subscript/len/binop/
+non-None-is), and `set[Any]` / `dict[Any, V]`
+support via `std::hash<tpy::Any>` + runtime hashable check.
 
-**Current state**: Not started.
+**Dependencies**: isinstance narrowing (done). Move semantics + `@nocopy`
+(done).
 
-**Dependencies**: isinstance narrowing (done). Union codegen patterns are related
-but `Any` is open-ended (not a closed variant). Enables dynamic attributes (D16)
-and CPython stdlib stubs.
-
-**Effort**: M (new type kind + std::any codegen + isinstance integration)
+**Effort**: M (done).
 
 ---
 

@@ -11,7 +11,7 @@ from typing import Callable, TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
-    NoneType, NominalType, STR, BYTES, TupleType, VoidType,
+    NoneType, NominalType, AnyType, STR, BYTES, TupleType, VoidType,
     INT32, BIGINT, FLOAT, is_protocol_type, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType,
     resolve_int_literals,
@@ -1794,6 +1794,23 @@ class StatementGenerator:
             if var_name in self.ctx.overload_param_types:
                 continue
             cpp_type = self.types.type_to_cpp(narrowed_type)
+            # Any narrowing (D15): the source variable is a tpy::Any cell;
+            # the narrowed binding is a `const T&` borrow into its
+            # contents. The outer Any survives unchanged.
+            var_decl = self.ctx.lookup_var_type(var_name)
+            if isinstance(var_decl, AnyType):
+                local_name = f"__{var_name}"
+                if self.ctx.is_indirect_name(TpyName(var_name)):
+                    var_ref = f"(*{var_name})"
+                else:
+                    var_ref = var_name
+                out.write(
+                    f"{inner_indent}const {cpp_type}& {local_name} = "
+                    f"std::any_cast<const {cpp_type}&>({var_ref}.value);\n"
+                )
+                saved[var_name] = self.ctx.narrowed_vars.get(var_name)
+                self.ctx.narrowed_vars[var_name] = local_name
+                continue
             # std::get needs the underlying variant. Previously-extracted T&
             # aliases in narrowed_vars (from outer if-branch narrowing, match
             # binds, or inline isinstance facts) point at non-variants, so we

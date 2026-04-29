@@ -1,0 +1,4 @@
+int 1
+str hi
+float 2.5
+other

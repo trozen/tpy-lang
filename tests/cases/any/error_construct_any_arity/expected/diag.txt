@@ -1,0 +1,1 @@
+main.py:8: error: Any(...) takes exactly 1 argument, got 0

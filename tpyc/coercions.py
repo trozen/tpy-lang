@@ -7,13 +7,13 @@ from enum import Enum
 from typing import Callable, Optional
 
 from .typesys import (
-    TpyType, IntLiteralType, FloatLiteralType,
+    TpyType, IntLiteralType, FloatLiteralType, LiteralType,
     NominalType, PtrType, OptionalType, OwnType, is_readonly_ptr,
     is_readonly_span, PendingListType, TypeParamRef, TypeParamKind, ReadonlyType,
-    is_integer_type, unwrap_readonly,
+    is_integer_type, unwrap_readonly, AnyType,
 )
 from .type_def_registry import (
-    is_array, is_span, is_list, int_traits_of,
+    is_array, is_span, is_list, is_dict, is_set, int_traits_of,
     is_fixed_int_type, is_big_int_type, is_float64_type, is_float32_type,
     is_char_type, is_str_type, is_string_type, is_str_view_type,
     is_bytes_type, is_bytearray_type, is_bytes_view_type,
@@ -641,4 +641,101 @@ UPCAST_TO_CONST_PTR = Coercion(
     requires_lvalue=True,
     forbid_return_local=True,
     codegen=lambda e, _a, _b, _c: f"&{e}",
+)
+
+
+# T -> Any: type-erased storage. View types are converted to their owning
+# equivalent at the storage site so the Any cell owns its contents (the
+# typeid stored in std::any is the owning type, not the view type). All
+# other copyable types are stored as-is. Sema (compatibility.py) gates
+# move-only sources before this coercion is reached.
+def _any_storage_form(
+    e: str, actual: TpyType, c: CoercionContext,
+) -> str:
+    """Return the C++ expression to pass to `::tpy::make_any(...)` for
+    storing `e` (statically typed `actual`) inside a tpy::Any.
+
+    The expression must produce a value whose decayed C++ type is the
+    intended storage typeid -- argument deduction in `make_any<T>(value)`
+    picks T from this expression. Three flavours of conversion happen
+    here:
+
+    - Literal-typed sources (IntLiteralType / FloatLiteralType /
+      LiteralType) resolve to their canonical storage type so the typeid
+      is stable regardless of which literal value triggered the coercion
+      (`x: Any = 42` and `[42]: list[Any]` both store BigInt).
+
+    - str-like sources are always wrapped in `std::string{...}` because
+      string-literal expressions lower to `const char*`. Without this,
+      argument deduction would pick `const char*` and the cell's typeid
+      would mismatch the canonical `std::string`. The redundant
+      std::string copy when the source is already a std::string variable
+      is accepted; correctness over micro-efficiency.
+
+    - Bytes-like view/span sources are converted to the owning
+      `std::vector<uint8_t>`; bytes/bytearray at value positions are
+      already vectors and pass through.
+
+    - Container literals reach codegen as raw brace-init expressions
+      (`{1, 2, 3}`); make_any's argument deduction can't pick a type
+      from a braced-init, so we prefix with the explicit C++ container
+      type. For non-literal sources the same prefix is just a copy ctor.
+    """
+    if isinstance(actual, IntLiteralType):
+        # TPy's `int` annotation is BigInt; storing IntLiteral sources as
+        # BigInt makes `cast(int, x)` work for the natural pattern
+        # `x: Any = 42; cast(int, x)`.
+        return f"::tpy::BigInt({e})"
+    if isinstance(actual, FloatLiteralType):
+        return f"static_cast<double>({e})"
+    if isinstance(actual, LiteralType):
+        return _any_storage_form(e, actual.base_type, c)
+    if is_str_view_type(actual) or is_str_type(actual) or is_string_type(actual):
+        return f"std::string({e})"
+    if is_bytes_view_type(actual):
+        return f"std::vector<uint8_t>({e}.begin(), {e}.end())"
+    if is_bytes_type(actual) or is_bytearray_type(actual):
+        if c == CoercionContext.ARG:
+            return f"std::vector<uint8_t>({e}.begin(), {e}.end())"
+        return e
+    if is_list(actual) or is_dict(actual) or is_set(actual):
+        cpp = actual.to_cpp()
+        return f"{cpp}{e}" if e.startswith("{") else f"{cpp}({e})"
+    return e
+
+
+def wrap_into_any(
+    e: str, actual: TpyType,
+    ctx: CoercionContext = CoercionContext.INIT,
+) -> str:
+    """Build the C++ expression that wraps `e` (typed `actual`) as a tpy::Any.
+    Shared by the INTO_ANY coercion and by container-element codegen sites
+    where the element slot type is Any (list[Any], dict[K, Any], ...).
+    """
+    return f"::tpy::make_any({_any_storage_form(e, actual, ctx)})"
+
+
+def _into_any_codegen(
+    e: str, actual: TpyType, _expected: TpyType, c: CoercionContext,
+) -> str:
+    return wrap_into_any(e, actual, c)
+
+
+INTO_ANY = Coercion(
+    name="into_any",
+    from_type=_match_any_side,
+    to_type=_is(AnyType),
+    codegen=_into_any_codegen,
+)
+
+
+# Any -> T auto-coerce: runtime checked extraction. Target T must be a
+# concrete type (sema gates Union / Optional / generic-type-param targets
+# before reaching this codegen). When the typeid mismatches at runtime,
+# any_cast_or_panic delivers the documented panic message.
+FROM_ANY = Coercion(
+    name="from_any",
+    from_type=_is(AnyType),
+    to_type=_match_any_side,
+    codegen=lambda e, _a, b, _c: f"::tpy::any_cast_or_panic<{b.to_cpp()}>({e})",
 )

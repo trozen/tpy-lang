@@ -1,0 +1,1 @@
+main.py:16: error: cannot store move-only type 'Resource' in Any (v1 supports copyable contents only)

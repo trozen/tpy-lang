@@ -1,0 +1,4 @@
+int-or-str
+int-or-str
+float-or-bool
+other
