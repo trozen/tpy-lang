@@ -1701,6 +1701,14 @@ class Compiler:
             exports.variables[name] = var_type
             if name in analyzer.ctx.final_globals:
                 exports.final_variables.add(name)
+            elif is_reexport:
+                # Re-exported names are never in final_globals (only locally
+                # declared Finals are); look through to the source module so
+                # downstream sees the original Final marker.
+                src_info = analyzer.ctx.registry.get_module(source_module)
+                src_var = src_info.variables.get(original_name) if src_info else None
+                if src_var is not None and src_var.is_final:
+                    exports.final_variables.add(name)
 
     def _exports_to_module_info(self, name: str, exports: ModuleExports,
                                compiled: 'CompiledModule | None' = None) -> 'ModuleInfo':
