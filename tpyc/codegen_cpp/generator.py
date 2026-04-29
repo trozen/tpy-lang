@@ -357,6 +357,12 @@ class CodeGenerator:
                         cpp, method, record_name=record.name)
                     cpp.write("\n")
 
+        # Non-trivial method bodies live in the .cpp (matches free-function
+        # placement). Trivial bodies stay in the .hpp -- emitted earlier by
+        # the matching `mode="def_hpp"` pass in `_generate_protocol_ordering`.
+        for record in self.records.sort_records_by_inheritance(module.records):
+            self.records.gen_record_method_defs(cpp, record, mode="def_cpp")
+
         # Generate module init function and main()
         # Always generate __tpy_init for global initialization (Python semantics)
         # Pass ALL top-level statements to init function (including globals)
@@ -790,6 +796,13 @@ class CodeGenerator:
                     hpp.write(f"inline {struct_name} {cpp_record}::{method.name}({params}){const_suffix} {{\n")
                     hpp.write(f"    return {struct_name}({args});\n")
                     hpp.write(f"}}\n\n")
+
+        # Trivial out-of-line method bodies (single-statement getters /
+        # setters / forwarders) stay in the .hpp with ``inline`` so the
+        # compiler can inline at the call site without LTO. Larger bodies
+        # land in the .cpp via the matching pass at the end of `generate()`.
+        for record in sorted_records:
+            self.records.gen_record_method_defs(hpp, record, mode="def_hpp")
 
         # ValueType specializations: exit namespace, emit, re-enter
         value_type_records = [

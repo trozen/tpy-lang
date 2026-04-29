@@ -1,24 +1,20 @@
-# Variant of cases/macros/builder_method_body that adds a user record
-# (Holder) so pass 5.5's record-method-body walk fires on a real user
-# method body. The builder trace itself stays in a free function
-# (`compute`) because emitting one inside an inline user method body
-# trips a C++ codegen ordering issue (see BUGS.md "synth record after
-# user record breaks inline method use").
+# Variant of cases/macros/builder_method_body that places the builder
+# trace inside a user record's method. Regression guard for two things:
+# (1) pass 5.5's record-method-body walk firing on a real user method
+# body; (2) out-of-line method-body codegen letting the inline reference
+# to a synth record (`__tpy_builder_counter_1`) compile even though the
+# synth record is declared after `Holder` in the .hpp.
 from tpy import Int32
 from _method_builder import Counter
 
 
-def compute() -> Int32:
-    c = Counter()
-    c.add(7)
-    c.add(35)
-    res = c.build()
-    return res.total()
-
-
 class Holder:
     def make(self) -> Int32:
-        return compute()
+        c = Counter()
+        c.add(7)
+        c.add(35)
+        res = c.build()
+        return res.total()
 
 
 def main() -> Int32:

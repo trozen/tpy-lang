@@ -1368,6 +1368,14 @@ class TpyModule:
         return result
 
 
+def is_docstring(stmt: TpyStmt) -> bool:
+    """True for a bare string-literal expression statement -- i.e. the
+    syntactic form Python recognises as a docstring at the top of a
+    function/method/class/module body.
+    """
+    return isinstance(stmt, TpyExprStmt) and isinstance(stmt.expr, TpyStrLiteral)
+
+
 def is_super_del_call(stmt: TpyStmt) -> bool:
     """Check if a statement is a super().__del__() call."""
     if isinstance(stmt, TpyExprStmt):

@@ -5,7 +5,21 @@ Generates C++ function declarations, definitions, and global variables.
 """
 
 from __future__ import annotations
-from typing import TextIO, TYPE_CHECKING
+from typing import Literal, TextIO, TYPE_CHECKING
+
+# Method body placement when emitting from `gen_method_def` and friends.
+# - "inline": signature + body, indented, inside the struct definition (the
+#   default; required for templates and methods that emit a C++ template
+#   header).
+# - "decl": signature + ``;``, indented, inside the struct.
+# - "def_hpp": ``inline ReturnType ClassName::method(...) { body }`` at
+#   namespace scope in the .hpp, after every struct decl is complete. Used
+#   for trivial methods so the call site can inline without LTO.
+# - "def_cpp": ``ReturnType ClassName::method(...) { body }`` at namespace
+#   scope in the .cpp. No ``inline`` keyword (single TU owns the symbol).
+#   Used for non-trivial method bodies; consistent with how free functions
+#   are emitted.
+MethodEmitMode = Literal["inline", "decl", "def_hpp", "def_cpp"]
 
 from ..typesys import (
     TpyType, NominalType, OwnType, ReadonlyType, OptionalType, PendingListType, IntLiteralType, is_fn_type, CallableType,
@@ -1196,6 +1210,7 @@ class FunctionGenerator:
         record_name: str, *,
         record_type_param_bounds: dict[str, TpyType] | None = None,
         dynamic_overrides: dict[str, bool] | None = None,
+        mode: MethodEmitMode = "inline",
     ) -> None:
         """Generate a specialized C++ method for one @overload stub.
 
@@ -1252,7 +1267,8 @@ class FunctionGenerator:
             missing_params, impl_defaults, start_idx=len(stub.params))
         try:
             self.gen_method_def(out, synth, record_name, dynamic_overrides,
-                                record_type_param_bounds=record_type_param_bounds)
+                                record_type_param_bounds=record_type_param_bounds,
+                                mode=mode)
         finally:
             self.ctx.overload_param_types = {}
             self.ctx.overload_missing_param_locals = []
@@ -1263,6 +1279,7 @@ class FunctionGenerator:
         record_name: str, *,
         record_type_param_bounds: dict[str, TpyType] | None = None,
         dynamic_overrides: dict[str, bool] | None = None,
+        mode: MethodEmitMode = "inline",
     ) -> None:
         """Generate a per-literal specialized C++ method.
 
@@ -1311,7 +1328,8 @@ class FunctionGenerator:
 
         try:
             self.gen_method_def(out, synth, record_name, dynamic_overrides,
-                                record_type_param_bounds=record_type_param_bounds)
+                                record_type_param_bounds=record_type_param_bounds,
+                                mode=mode)
         finally:
             self.ctx.literal_overload_facts = {}
 
@@ -1336,8 +1354,11 @@ class FunctionGenerator:
 
     def gen_method_def(self, out: TextIO, method: TpyFunction, record_name: str,
                        dynamic_overrides: dict[str, bool] | None = None,
-                       record_type_param_bounds: dict[str, TpyType] | None = None) -> None:
-        """Generate a method definition inside a struct."""
+                       record_type_param_bounds: dict[str, TpyType] | None = None,
+                       mode: MethodEmitMode = "inline") -> None:
+        """Generate a method definition for a record. ``mode`` is
+        forwarded to ``_gen_method_overload``.
+        """
         cpp_name = method.name
         cpp_return_type = method.return_type
 
@@ -1359,24 +1380,37 @@ class FunctionGenerator:
             is_override = override_const is True
             self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type,
                                       const=True, override=is_override,
-                                      record_type_param_bounds=record_type_param_bounds)
+                                      record_type_param_bounds=record_type_param_bounds,
+                                      mode=mode)
         else:
             is_override = override_const is False and not is_static  # base is non-const
             self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,
                                       static=is_static, override=is_override,
-                                      record_type_param_bounds=record_type_param_bounds)
+                                      record_type_param_bounds=record_type_param_bounds,
+                                      mode=mode)
 
     def _gen_method_overload(
         self, out: TextIO, method: TpyFunction, record_name: str,
         cpp_name: str, cpp_return_type: TpyType, *, const: bool, static: bool = False,
         override: bool = False, record_type_param_bounds: dict[str, TpyType] | None = None,
+        mode: MethodEmitMode = "inline",
     ) -> None:
-        """Emit a single method overload (const or non-const)."""
-        # Inplace dunders return T& (reference to self) in C++
+        """Emit a single method overload. See ``MethodEmitMode`` for the
+        contract of ``mode``.
+        """
+        # ``def_*`` modes emit at namespace scope -- the class scope only
+        # opens after the qualified method name, so the return type and
+        # method-name parts must use the fully-qualified form
+        # (``Outer::Inner``). In-class emission uses the short name.
+        is_def_mode = mode in ("def_hpp", "def_cpp")
+        cpp_record_qualified = escape_cpp_name(record_name.replace(".", "::"))
+        rec_short = record_name.rsplit(".", 1)[-1] if "." in record_name else record_name
+
+        # Inplace dunders return T& (reference to self) in C++.
         is_inplace_dunder = method.name in CONST_PARAMS_METHODS
         if is_inplace_dunder:
-            rec_short = record_name.rsplit(".", 1)[-1] if "." in record_name else record_name
-            ret_type = f"{escape_cpp_name(rec_short)}&"
+            ret_type_class = cpp_record_qualified if is_def_mode else escape_cpp_name(rec_short)
+            ret_type = f"{ret_type_class}&"
         elif method.is_property_getter:
             # Property getters return references to fields. For pointer-repr types
             # (Optional[non-value], Union[non-value]), use the storage type
@@ -1425,17 +1459,20 @@ class FunctionGenerator:
         # return-borrow) to avoid false positives from transitive propagation
         # or return-borrow marking.
         gmp = self._get_method_genuine_mutated_params(method, record_name) if use_const_params else None
+        # C++ rejects default arguments repeated on both the in-class declaration
+        # and the out-of-line definition. Emit defaults only on the decl side.
+        emit_defaults = not is_def_mode
         if use_protocol_params:
             if use_const_params:
                 params = self.gen_params_with_protocols(method.params, method.type_params,
                                                         const_params=True,
                                                         mutated_params=gmp,
                                                         use_readonly_params=const,
-                                                        defaults=dfl, emit_defaults=True)
+                                                        defaults=dfl, emit_defaults=emit_defaults)
             else:
                 params = self.gen_params_with_protocols(method.params, method.type_params,
                                                         mutated_params=mp,
-                                                        defaults=dfl, emit_defaults=True)
+                                                        defaults=dfl, emit_defaults=emit_defaults)
         else:
             ctp = class_type_params or None
             if use_const_params:
@@ -1443,7 +1480,7 @@ class FunctionGenerator:
                                          mutated_params=gmp,
                                          addr_escapes_params=ae,
                                          use_readonly_params=const,
-                                         defaults=dfl, emit_defaults=True,
+                                         defaults=dfl, emit_defaults=emit_defaults,
                                          class_type_params=ctp, func=method)
             else:
                 use_ro = const and not method.auto_readonly_params_resolved
@@ -1451,7 +1488,7 @@ class FunctionGenerator:
                                          reassigned_params=rp, mutated_params=mp,
                                          addr_escapes_params=ae,
                                          use_readonly_params=use_ro,
-                                         defaults=dfl, emit_defaults=True,
+                                         defaults=dfl, emit_defaults=emit_defaults,
                                          class_type_params=ctp, func=method)
         const_suffix = " const" if const else ""
         # auto_own borrowing clone needs & qualifier so C++ can distinguish
@@ -1461,7 +1498,20 @@ class FunctionGenerator:
         override_suffix = " override" if override else ""
         static_prefix = "static " if static else ""
 
+        # Indent / qualifier / line-prefix differ by mode:
+        # - inline / decl: lives inside the struct, indented.
+        # - def_hpp / def_cpp: lives at namespace scope, no leading indent,
+        #   class-qualified method name, no static/override qualifiers. The
+        #   two ``def_*`` variants differ only in whether ``inline`` is
+        #   needed for ODR (yes in the header, no in the source TU).
+        sig_indent = "" if is_def_mode else INDENT
+        body_indent_level = 1 if is_def_mode else 2
+        body_indent = INDENT * body_indent_level
+
         # Build requires clause for per-method bounds on class type params
+        # (only fires for templated records, which are blocked from out-of-line
+        # by `_method_can_be_out_of_line` -- so `sig_indent` is always INDENT
+        # here, but keep the binding so future loosening doesn't misalign).
         requires_clause = ""
         if class_param_bounds:
             req_parts = []
@@ -1472,11 +1522,21 @@ class FunctionGenerator:
                     req_parts.append(f"{concept_name}<{type_args_cpp}, {tp}>")
                 else:
                     req_parts.append(f"{concept_name}<{tp}>")
-            requires_clause = f"\n{INDENT}  requires {' && '.join(req_parts)}"
+            requires_clause = f"\n{sig_indent}  requires {' && '.join(req_parts)}"
+        if is_def_mode:
+            inline_prefix = "inline " if mode == "def_hpp" else ""
+            qualified_name = f"{cpp_record_qualified}::{cpp_name}"
+            sig_static_prefix = ""
+            sig_override_suffix = ""
+        else:
+            inline_prefix = ""
+            qualified_name = cpp_name
+            sig_static_prefix = static_prefix
+            sig_override_suffix = override_suffix
 
         out.write("\n")
-        self.ctx.emit_preceding_comments(out, method.loc, indent=INDENT)
-        self.ctx.emit_source_comment(out, method.loc, indent=INDENT)
+        self.ctx.emit_preceding_comments(out, method.loc, indent=sig_indent)
+        self.ctx.emit_source_comment(out, method.loc, indent=sig_indent)
         fn_params = self._collect_fn_params(method.params)
         if proto_params or new_method_params or fn_params:
             # Bounds for new method type params only (class param bounds go on the requires clause)
@@ -1491,12 +1551,18 @@ class FunctionGenerator:
             if fn_params:
                 fn_tpl_parts, fn_req_parts = self._gen_fn_template_parts(fn_params)
                 template_header = self._merge_fn_into_header(
-                    base_header, fn_tpl_parts, fn_req_parts, indent=INDENT)
+                    base_header, fn_tpl_parts, fn_req_parts, indent=sig_indent)
             else:
                 template_header = base_header
-            out.write(f"{INDENT}{template_header}")
+            out.write(f"{sig_indent}{template_header}")
         ref_suffix = rvalue_suffix or lvalue_suffix
-        out.write(f"{INDENT}{static_prefix}{ret_type} {cpp_name}({params}){const_suffix}{ref_suffix}{override_suffix}{requires_clause} {{\n")
+        sig_line = (f"{sig_indent}{inline_prefix}{sig_static_prefix}{ret_type} "
+                    f"{qualified_name}({params}){const_suffix}{ref_suffix}"
+                    f"{sig_override_suffix}{requires_clause}")
+        if mode == "decl":
+            out.write(f"{sig_line};\n")
+            return
+        out.write(f"{sig_line} {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         if not static:
@@ -1506,7 +1572,7 @@ class FunctionGenerator:
         # Consuming methods on types with __del__: suppress destructor at method entry.
         # Walk the parent chain since __del__ may be inherited.
         if method.is_consuming and record_info is not None and self.ctx.record_or_ancestor_has_del(record_name):
-            out.write(f"{INDENT}{INDENT}this->__tpy_owned_ = false;\n")
+            out.write(f"{body_indent}this->__tpy_owned_ = false;\n")
 
         prev_consuming = self.ctx.in_consuming_method
         self.ctx.in_consuming_method = method.is_consuming
@@ -1516,12 +1582,12 @@ class FunctionGenerator:
         if use_const_params and not static:
             method_crp.add("self")
         self.statements.gen_body(out, method.body, method.params, method.return_type,
-                                 method, local_ns, indent_level=2, is_method=True,
+                                 method, local_ns, indent_level=body_indent_level, is_method=True,
                                  record_type_param_bounds=record_type_param_bounds,
                                  const_ref_params=method_crp)
         self.ctx.in_consuming_method = prev_consuming
 
-        out.write(f"{INDENT}}}\n")
+        out.write(f"{sig_indent}}}\n")
 
     def gen_body(self, *args, **kwargs) -> None:
         """Delegate to StatementGenerator.gen_body()."""

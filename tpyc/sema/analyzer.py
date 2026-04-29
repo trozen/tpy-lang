@@ -17,7 +17,7 @@ from ..typesys import (
     _contains_self_reference, validate_recursive_union_paths,
 )
 from ..namespace import Namespace, NameBinding, BindingKind
-from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call, is_base_init_call, ParseError
+from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_docstring, is_super_del_call, is_base_init_call, ParseError
 from ..parse.nodes import RecordLinkage
 from .registration import build_record_self_type, _vararg_span_type
 from ..parse.nodes import (
@@ -1877,8 +1877,7 @@ class SemanticAnalyzer:
         for i, stmt in enumerate(method.body):
             if is_base_init_call(stmt):
                 continue
-            # Skip docstrings (TpyExprStmt wrapping a string literal)
-            if isinstance(stmt, TpyExprStmt) and isinstance(stmt.expr, TpyStrLiteral):
+            if is_docstring(stmt):
                 continue
             if (isinstance(stmt, TpyAssign)
                     and isinstance(stmt.target, TpyFieldAccess)

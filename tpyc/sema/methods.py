@@ -17,6 +17,7 @@ from ..typesys import (
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
+    is_docstring,
     TpyFString, TpyExpr,
     is_super_del_call,
 )
@@ -1962,12 +1963,10 @@ class MethodAnalyzer:
     def find_first_non_docstring_stmt(stmts: list[TpyStmt]) -> TpyStmt | None:
         """Find the first non-docstring statement in a list.
 
-        Docstrings are expression statements containing a string literal.
         Returns None if all statements are docstrings or list is empty.
         """
         for stmt in stmts:
-            # Skip docstrings (expression statements with string literals)
-            if isinstance(stmt, TpyExprStmt) and isinstance(stmt.expr, TpyStrLiteral):
+            if is_docstring(stmt):
                 continue
             return stmt
         return None
@@ -1976,13 +1975,12 @@ class MethodAnalyzer:
     def find_last_non_docstring_stmt(stmts: list[TpyStmt]) -> TpyStmt | None:
         """Find the last statement, skipping only a leading docstring.
 
-        Only the first statement can be a docstring (string-literal expression).
-        Trailing string literals are regular statements, not docstrings.
+        Only the first statement can be a docstring; trailing string literals
+        are regular statements, not docstrings.
         """
         if not stmts:
             return None
-        # A single string-literal expression is a docstring-only body
-        if len(stmts) == 1 and isinstance(stmts[0], TpyExprStmt) and isinstance(stmts[0].expr, TpyStrLiteral):
+        if len(stmts) == 1 and is_docstring(stmts[0]):
             return None
         return stmts[-1]
 

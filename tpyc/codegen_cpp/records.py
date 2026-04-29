@@ -17,7 +17,8 @@ from ..typesys import (
 )
 from ..parse import (
     TpyRecord, TpyEnum, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
-    TpyMethodCall, TpyFieldAccess, TpyName, TpyCoerce, TpyNestedDef, is_super_del_call,
+    TpyMethodCall, TpyFieldAccess, TpyName, TpyCoerce, TpyNestedDef,
+    is_docstring, is_super_del_call,
     is_base_init_call, collect_name_refs, collect_top_level_local_names,
 )
 from ..namespace import Namespace
@@ -34,7 +35,7 @@ if TYPE_CHECKING:
     from .context import CodeGenContext
     from .types import TypeResolver
     from .expressions import ExpressionGenerator
-    from .functions import FunctionGenerator
+    from .functions import FunctionGenerator, MethodEmitMode
     from .gen_generators import GeneratorCodegen
     from .protocols import ProtocolGenerator
 
@@ -81,22 +82,24 @@ class RecordGenerator:
 
         # Topological sort (Kahn's algorithm)
         result = []
+        result_names: set[str] = set()
         no_deps = [name for name, deps in dependencies.items() if not deps]
 
         while no_deps:
             name = no_deps.pop(0)
             result.append(record_by_name[name])
+            result_names.add(name)
 
             # Remove this record from all dependents
             for dep_name, deps in dependencies.items():
                 if name in deps:
                     deps.remove(name)
-                    if not deps and dep_name not in [r.name for r in result]:
+                    if not deps and dep_name not in result_names:
                         no_deps.append(dep_name)
 
         # If any records are left (circular dependency), add them at the end
         for record in records:
-            if record not in result:
+            if record.name not in result_names:
                 result.append(record)
 
         return result
@@ -407,22 +410,15 @@ class RecordGenerator:
                         out.write(f"{INDENT}auto begin() const {{ return this->__span__().begin(); }}\n")
                         out.write(f"{INDENT}auto end() const {{ return this->__span__().end(); }}\n")
 
-        # Generate methods (excluding __init__ and __del__)
+        # Methods qualifying for out-of-line emission go through ``mode="decl"``
+        # here; their bodies land in `gen_record_method_defs` at namespace scope.
         dynamic_overrides = self.functions._get_dynamic_override_info(record.name)
-        # Track names already dispatched via @overload so that the const clone of a
-        # @auto_readonly @overload implementation is not emitted as a plain method.
-        # (The mutable clone emits specialized methods for all stubs including const ones.)
+        # Track names already dispatched via @overload so the const clone of a
+        # @auto_readonly @overload impl is not emitted as a plain method (the
+        # mutable clone emits specialized methods for all stubs including const).
         overload_dispatched: set[str] = set()
         for method in record.methods:
-            if method.name in ("__init__", "__del__"):
-                continue
-            # Skip bodyless @overload stubs -- their trailing impl emits all
-            # overloads. Bodied @overload stubs (mode b) are self-contained and
-            # emit their own method definitions below.
-            if method.is_overload_stub and method.is_stub:
-                continue
-            # Skip @inline methods -- body is inlined at call sites
-            if method.skip_codegen:
+            if self._skip_method_emission(method):
                 continue
             # Generator methods: emit inline (simple) or declaration-only (complex)
             if method.is_generator:
@@ -438,7 +434,10 @@ class RecordGenerator:
                     const_suffix = " const" if method.is_readonly else ""
                     out.write(f"\n{INDENT}{struct_name} {method.name}({params}){const_suffix};\n")
                 continue
-            # Check if this is an @overload implementation
+            # @overload-dispatched methods stay inline-in-struct regardless of
+            # body size -- the specialized-method emitters take a `mode` param
+            # but it's always "inline" here (small/large split for those would
+            # need partition-aware overload dispatch; not worth the wiring yet).
             overload_stubs = self.ctx.analyzer.overload_groups.get(id(method))
             if overload_stubs:
                 overload_dispatched.add(method.name)
@@ -460,8 +459,10 @@ class RecordGenerator:
                 # Const clone of a @auto_readonly @overload impl -- already emitted above.
                 pass
             else:
+                method_mode = "decl" if self._method_can_be_out_of_line(method, record) else "inline"
                 self.functions.gen_method_def(out, method, record.name, dynamic_overrides,
-                                                record_type_param_bounds=record.type_param_bounds or None)
+                                                record_type_param_bounds=record.type_param_bounds or None,
+                                                mode=method_mode)
 
         # Generate const operator[] for subscript read syntax (obj[i])
         self._gen_subscript_operators(out, record)
@@ -495,6 +496,126 @@ class RecordGenerator:
                 continue
             self._gen_record_ostream(out, nested_rec)
             self._gen_nested_ostream_operators(out, nested_rec)
+
+    @staticmethod
+    def _skip_method_emission(method: TpyFunction) -> bool:
+        """True for methods that don't get C++ emitted as a struct member.
+
+        Shared by ``gen_record_decl`` and ``gen_record_method_defs`` so the
+        in-class decl pass and the out-of-line def pass agree on what is
+        a method (drift here would link-error or double-emit).
+
+        - ``__init__`` / ``__del__``: handled by dedicated code paths
+          (constructor + destructor).
+        - Bodyless ``@overload`` stubs: the trailing impl emits all
+          overloads. Bodied ``@overload`` stubs (mode b) self-emit and so
+          aren't filtered here.
+        - ``skip_codegen``: ``@inline`` methods get inlined at call sites.
+        """
+        if method.name in ("__init__", "__del__"):
+            return True
+        if method.is_overload_stub and method.is_stub:
+            return True
+        if method.skip_codegen:
+            return True
+        return False
+
+    def _method_can_be_out_of_line(self, method: TpyFunction, record: TpyRecord) -> bool:
+        """Return True iff this method should have its body emitted at namespace
+        scope (after every struct decl) instead of inline inside the struct.
+
+        Out-of-line emission is the default for plain non-template methods so
+        that body-references between records don't impose ordering constraints
+        on struct decls. Anything that produces a C++ template header has to
+        stay inline because the body must be visible at every instantiation.
+        Dynamic protocol params lower to ``Base&`` (no template header), so
+        they're fine to move out-of-line.
+        """
+        if record.type_params:
+            return False
+        if method.type_params:
+            return False
+        if self.functions.protocols.get_all_protocol_params(method.params):
+            return False
+        if self.functions._collect_fn_params(method.params):
+            return False
+        return True
+
+    # Picked by hand to match the spirit of GCC's ``max-inline-insns-auto``
+    # default (30 insns) -- bodies above this go to .cpp; smaller bodies
+    # stay inline in the .hpp so call sites can inline without LTO. The
+    # insns/source-stmts ratio is rough; revisit with measurements if the
+    # split feels wrong.
+    _SMALL_METHOD_STMT_THRESHOLD = 7
+
+    @classmethod
+    def _stmt_count(cls, stmts: list[TpyStmt]) -> int:
+        """Count statements, descending into nested control-flow bodies.
+        Nested function definitions count as 1 -- their bodies live in their
+        own scope and don't add to the enclosing method's complexity.
+        """
+        n = 0
+        for stmt in stmts:
+            n += 1
+            for nested in stmt.sub_bodies():
+                n += cls._stmt_count(nested)
+        return n
+
+    @classmethod
+    def _method_body_is_small(cls, method: TpyFunction) -> bool:
+        body = method.body
+        start = 1 if body and is_docstring(body[0]) else 0
+        return cls._stmt_count(body[start:]) <= cls._SMALL_METHOD_STMT_THRESHOLD
+
+    def gen_record_method_defs(self, out: TextIO, record: TpyRecord,
+                                *, mode: MethodEmitMode) -> None:
+        """Emit out-of-line method definitions for ``record`` at namespace
+        scope. ``mode`` selects the partition: ``"def_hpp"`` emits the small
+        bodies as ``inline`` in the header, ``"def_cpp"`` emits the larger
+        bodies without ``inline`` in the source. The same skip set
+        (``__init__``/``__del__``, generators, overload-dispatched,
+        templated) applies to both.
+        """
+        if self._is_native(record):
+            return
+        # Recurse into nested records first so a nested method's def sits next
+        # to its outer container's defs in the file (matches struct emission
+        # order).
+        for nested in record.nested_records:
+            self.gen_record_method_defs(out, nested, mode=mode)
+        if record.type_params:
+            # Templated class: methods stay inline-in-struct; nothing to emit
+            # here. (`_method_can_be_out_of_line` already returned False.)
+            return
+        dynamic_overrides = self.functions._get_dynamic_override_info(record.name)
+        overload_dispatched: set[str] = set()
+        want_small = mode == "def_hpp"
+        for method in record.methods:
+            if self._skip_method_emission(method):
+                continue
+            # Generators self-emit through GeneratorCodegen elsewhere.
+            if method.is_generator:
+                continue
+            # Overload-dispatched methods emit specialized methods inline (one
+            # per stub) inside the struct -- not handled here. Track them so
+            # the const clone of an `@auto_readonly @overload` impl, which
+            # immediately follows the mutable impl in `record.methods`, also
+            # gets skipped (the mutable clone already emitted both stubs).
+            overload_stubs = self.ctx.analyzer.overload_groups.get(id(method))
+            if overload_stubs:
+                overload_dispatched.add(method.name)
+                continue
+            if method.name in overload_dispatched:
+                continue
+            if not self._method_can_be_out_of_line(method, record):
+                continue
+            if self._method_body_is_small(method) != want_small:
+                continue
+            self.functions.gen_method_def(
+                out, method, record.name, dynamic_overrides,
+                record_type_param_bounds=record.type_param_bounds or None,
+                mode=mode,
+            )
 
     def _gen_nested_enum_decl(self, out: TextIO, enum: TpyEnum) -> None:
         """Generate an enum class declaration inside a parent struct."""
