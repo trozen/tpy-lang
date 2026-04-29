@@ -261,6 +261,11 @@ def is_lvalue_iterable(
             return False
         if isinstance(expr, TpyCall) and isinstance(expr.func, TpyName) and get_record(expr.func_name):
             return False
+        # Own[T] returns are by-value rvalues even when T is a reference type;
+        # get_type strips OwnType, so consult resolved_function_info to see it.
+        rfi = expr.resolved_function_info
+        if rfi is not None and isinstance(rfi.return_type, OwnType):
+            return False
         ret_type = get_type(expr)
         # Protocol return types (e.g. Iterator[T] from generators) are
         # value types in practice -- the C++ return is a concrete struct.
