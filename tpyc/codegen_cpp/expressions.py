@@ -4480,6 +4480,10 @@ class ExpressionGenerator:
                     gen_arg = f"static_cast<int>({gen_arg})"
                 elif is_user_type:
                     gen_arg = f"::tpy::__str__({gen_arg})"
+                elif isinstance(arg_type, UnionType):
+                    # std::variant isn't std::formattable; route through the
+                    # runtime visitor that dispatches __str__ per alternative.
+                    gen_arg = f"::tpy::__str__({gen_arg})"
 
                 args.append(gen_arg)
 

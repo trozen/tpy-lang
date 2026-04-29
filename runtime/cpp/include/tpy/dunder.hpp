@@ -325,6 +325,21 @@ std::string __str__(const T& x) {
     return ss.str();
 }
 
+// Union (std::variant): visit the active alternative and recurse. Pointer
+// alternatives (T*) are dereffed before dispatch (matches the variant
+// repr overload below).
+template<typename... Ts>
+std::string __str__(const std::variant<Ts...>& v) {
+    return std::visit([](auto&& a) -> std::string {
+        using A = std::remove_cvref_t<decltype(a)>;
+        if constexpr (std::is_pointer_v<A>) {
+            return std::string(::tpy::__str__(*a));
+        } else {
+            return std::string(::tpy::__str__(a));
+        }
+    }, v);
+}
+
 // =============================================
 // tpy::__repr__
 // =============================================
@@ -402,6 +417,21 @@ std::string __repr__(const T& x) {
     std::ostringstream ss;
     ss << x;
     return ss.str();
+}
+
+// Union (std::variant): visit the active alternative and recurse. Each
+// alternative type must have its own __repr__ overload reachable above;
+// pointer-variant alternatives (T*) are dereffed before dispatch.
+template<typename... Ts>
+std::string __repr__(const std::variant<Ts...>& v) {
+    return std::visit([](auto&& a) -> std::string {
+        using A = std::remove_cvref_t<decltype(a)>;
+        if constexpr (std::is_pointer_v<A>) {
+            return std::string(::tpy::__repr__(*a));
+        } else {
+            return std::string(::tpy::__repr__(a));
+        }
+    }, v);
 }
 
 // =============================================

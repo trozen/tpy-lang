@@ -1,1 +1,1 @@
-main.py:5: error: Type int cannot use !r conversion (no __repr__ method)
+main.py:11: error: Type Bare cannot use !r conversion (no __repr__ method)

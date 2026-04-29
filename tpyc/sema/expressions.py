@@ -2918,6 +2918,25 @@ class ExpressionAnalyzer:
                 or isinstance(t, (IntLiteralType, FloatLiteralType))
                 or is_enum_type(t))
 
+    def _is_fstring_renderable(self, t: TpyType, repr_only: bool = False) -> bool:
+        """True if t can appear in an f-string slot (and is __repr__-able when
+        repr_only). Recurses into UnionType members (codegen dispatches via
+        std::visit to the runtime variant __str__/__repr__ overloads)."""
+        if isinstance(t, UnionType):
+            return all(self._is_fstring_renderable(m, repr_only) for m in t.members)
+        if repr_only:
+            if self.protocols.type_conforms_to_protocol(t, self._REPRESENTABLE):
+                return True
+            # Built-in primitives have runtime __repr__ overloads but no
+            # method-level Representable conformance; treat formattable
+            # types as repr-able too.
+            return self._is_formattable(t)
+        if self._is_formattable(t):
+            return True
+        if self.protocols.type_conforms_to_protocol(t, self._STRINGABLE):
+            return True
+        return self.protocols.type_conforms_to_protocol(t, self._REPRESENTABLE)
+
     def _analyze_fstring(self, expr: TpyFString, *, for_fstr: bool = False) -> TpyType:
         """Analyze f-string parts and return STR (owned string).
 
@@ -2941,28 +2960,24 @@ class ExpressionAnalyzer:
                 elif isinstance(resolved, AnyType):
                     pass  # Any dispatches via the per-type str/repr ops slot
                 elif conv == FSTRING_CONV_REPR:
-                    if not self.protocols.type_conforms_to_protocol(resolved, self._REPRESENTABLE):
+                    if not self._is_fstring_renderable(resolved, repr_only=True):
                         raise self.ctx.error(
                             f"Type {part_type} cannot use !r conversion (no __repr__ method)",
                             part.expr,
                         )
                 elif conv == FSTRING_CONV_STR:
-                    if not self._is_formattable(resolved):
-                        if not self.protocols.type_conforms_to_protocol(resolved, self._STRINGABLE):
-                            if not self.protocols.type_conforms_to_protocol(resolved, self._REPRESENTABLE):
-                                raise self.ctx.error(
-                                    f"Type {part_type} cannot use !s conversion"
-                                    " (no __str__ or __repr__ method)",
-                                    part.expr,
-                                )
-                elif not self._is_formattable(resolved):
-                    if not self.protocols.type_conforms_to_protocol(resolved, self._STRINGABLE):
-                        if not self.protocols.type_conforms_to_protocol(resolved, self._REPRESENTABLE):
-                            raise self.ctx.error(
-                                f"Type {part_type} cannot be used in f-string"
-                                " (no __str__ or __repr__ method)",
-                                part.expr,
-                            )
+                    if not self._is_fstring_renderable(resolved):
+                        raise self.ctx.error(
+                            f"Type {part_type} cannot use !s conversion"
+                            " (no __str__ or __repr__ method)",
+                            part.expr,
+                        )
+                elif not self._is_fstring_renderable(resolved):
+                    raise self.ctx.error(
+                        f"Type {part_type} cannot be used in f-string"
+                        " (no __str__ or __repr__ method)",
+                        part.expr,
+                    )
                 if part.format_spec is not None and (is_big_int_type(resolved) or isinstance(resolved, IntLiteralType)):
                     raise self.ctx.error(
                         "Format specs on int are not yet supported (use a fixed-width type like Int32)",

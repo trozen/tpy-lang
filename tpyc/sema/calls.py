@@ -419,7 +419,9 @@ def _repr_fallback_template(typ: TpyType) -> str | None:
     or None if the type has no known repr path.
 
     Covers: bool, fixed ints, float, BigInt, strings, optionals,
-    enums, and user records (which always have operator<<).
+    enums, user records (which always have operator<<), and unions
+    of types that each have their own repr path. Union dispatch lives
+    in runtime/cpp/include/tpy/dunder.hpp as a `std::variant` overload.
     """
     if is_bool_type(typ):
         return _REPR_TEMPLATE
@@ -437,6 +439,9 @@ def _repr_fallback_template(typ: TpyType) -> str | None:
         return _REPR_TEMPLATE
     if isinstance(typ, NominalType) and typ.is_user_record:
         return _REPR_TEMPLATE
+    if isinstance(typ, UnionType):
+        if all(_repr_fallback_template(m) is not None for m in typ.members):
+            return _REPR_TEMPLATE
     return None
 
 

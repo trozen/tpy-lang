@@ -1,0 +1,10 @@
+42
+'hello'
+Point(7)
+42 and hello
+hello
+'hello'
+Point(7)
+Point(7)
+Point(7)
+99
