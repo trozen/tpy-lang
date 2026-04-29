@@ -1,5 +1,5 @@
 # tpy: macro_module
-"""argparse builder-trace macro -- v1.
+"""argparse builder-trace macro.
 
 Mirrors a slice of CPython's argparse.ArgumentParser surface as a
 @builder_macro: the user writes ordinary builder-style code, the
@@ -9,6 +9,17 @@ stdlib argparse module (this file is invisible outside tpyc's lib
 search path), so test programs run under both backends without
 code changes.
 
+Subparsers are layered on top via @builder_returns: the macro
+classes ``_SubparsersAction`` (returned by ``add_subparsers()``)
+and ``_SubparserBuilder`` (returned by ``add_parser(name)``)
+collect per-sub arg specs that the top-level terminal walks to
+emit per-sub records and parse fns. The top namespace flattens
+per-sub fields as ``Optional[T]`` (CPython argparse Namespace
+shape); a typed-union escape hatch is **not** stored -- see the
+argparse Future Work table in ``docs/MACRO_DESIGN.md`` for the
+phasing reason and the planned pre-pass-6 expansion that would
+unlock it.
+
 v1 surface, future-work tiers, and known CPython divergences are
 tracked in ``docs/MACRO_DESIGN.md`` (the argparse use-case section)
 and mirrored in ``docs/STDLIB_ROADMAP.md``. Keeping the canonical
@@ -16,9 +27,9 @@ list there avoids drift between the macro module and the design doc.
 """
 
 from tpyc.macro_api import (
-    builder_macro, builder_method, builder_terminal,
+    builder_macro, builder_method, builder_returns, builder_terminal,
     BuilderContext, MacroArg, MacroArgs, TypeInfo, MacroError,
-    macro_deps, types, ast,
+    macro_deps, types, ast, Type,
 )
 
 macro_deps("tpy", "sys")
@@ -295,6 +306,17 @@ def _is_flag(name: str) -> bool:
     return name.startswith("-")
 
 
+def _unwrap_optional(t):
+    """Strip one ``Optional[...]`` wrapper if present, else return ``t``
+    unchanged. Used to compare per-sub field types under the flat
+    namespace where ``T`` and ``Optional[T]`` should be treated as
+    equivalent (the top record always wraps once anyway).
+    """
+    ti = TypeInfo.from_tpy_type(t)
+    inner = ti.unwrap_optional()
+    return inner.raw_type if inner is not None else t
+
+
 def _resolve_nargs_kwarg(ctx: BuilderContext, args: MacroArgs):
     """Read ``nargs=`` and validate. Returns None | '?' | '*' | '+' | int."""
     ma = ctx.kwarg_macroarg(args, "nargs")
@@ -357,6 +379,295 @@ def _action_implicit_default(action: str):
 
 
 # ---------------------------------------------------------------------------
+# Internal: shared add_argument body
+# ---------------------------------------------------------------------------
+
+def _build_arg_spec(
+    ctx: BuilderContext, args: MacroArgs, *,
+    add_help_reserved: bool,
+) -> _ArgSpec:
+    """Validate add_argument() kwargs and construct an _ArgSpec.
+
+    Shared between ArgumentParser.add_argument and
+    _SubparserBuilder.add_argument. ``add_help_reserved`` controls
+    whether ``-h``/``--help`` are rejected as user-registered flag
+    names (true for the top-level parser when ``add_help=True``;
+    always false for sub-parsers in v1, since sub-help is not yet
+    auto-emitted).
+    """
+    names = ctx.positional_strs(args)
+    if not names:
+        ctx.error("argparse: add_argument() requires at least one name")
+
+    help_text = ctx.kwarg_str(args, "help")
+    metavar = ctx.kwarg_str(args, "metavar")
+    explicit_dest = ctx.kwarg_str(args, "dest")
+    required_kw = ctx.kwarg_bool(args, "required", False)
+    choices_arg = ctx.kwarg_macroarg(args, "choices")
+    choices: list | None = None
+    if choices_arg is not None:
+        choices = ctx.eval_sequence_of_literal_or_final(choices_arg.expr)
+        if not choices:
+            ctx.error("argparse: choices= must be non-empty")
+
+    flags = [n for n in names if _is_flag(n)]
+    positionals = [n for n in names if not _is_flag(n)]
+    if flags and positionals:
+        ctx.error(
+            "argparse: add_argument() positional and optional names "
+            "cannot be mixed"
+        )
+
+    action = ctx.kwarg_str(args, "action") or "store"
+    if action not in _ALLOWED_ACTIONS:
+        ctx.error(
+            f"argparse: action={action!r} is not supported "
+            f"(supported: store, store_true, store_false, count, "
+            f"append, extend, store_const)"
+        )
+
+    # type= is meaningful only for value-taking actions. Reject
+    # explicit type= on the value-free ones to mirror CPython.
+    if action in _VALUE_FREE_ACTIONS and ctx.kwarg_macroarg(args, "type") is not None:
+        ctx.error(
+            f"argparse: type= cannot be combined with action={action!r}"
+        )
+    type_info, is_arg_type = _resolve_type_info(ctx, args)
+
+    nargs = _resolve_nargs_kwarg(ctx, args)
+    # Custom ``type=<MyType>`` (ArgType) v1: ``store`` /
+    # ``append`` / ``extend`` plus all four nargs shapes are
+    # supported via the same synthesis as the built-in types
+    # (``T.from_arg`` is just a different value-coercion than the
+    # builtin constructor). ``choices=`` stays out of v1 because
+    # comparing the unparsed token against a literal set would
+    # diverge from CPython's "compare parsed values" semantics.
+    if is_arg_type and choices is not None:
+        ctx.error(
+            "argparse: type=<custom> does not support choices= in v1"
+        )
+    if nargs is not None and action in _VALUE_FREE_ACTIONS and action != "store_const":
+        ctx.error(
+            f"argparse: nargs= cannot be combined with action={action!r}"
+        )
+    # store_const + nargs is allowed only as nargs='?' (and means
+    # "if flag-bare use const, if flag-with-value use value, if
+    # absent use default"). For now reject the explicit pairing.
+    if action == "store_const" and nargs is not None:
+        ctx.error(
+            "argparse: nargs= is not supported with action='store_const'"
+        )
+    # extend without nargs is the confusing CPython case (iterates
+    # the converted value); require nargs explicitly.
+    if action == "extend" and nargs is None:
+        ctx.error(
+            "argparse: action='extend' requires nargs= (otherwise "
+            "the converted value gets iterated, which is rarely "
+            "what callers want)"
+        )
+
+    # const= is required for store_const and for store + nargs='?'
+    # (where it's the value used when the flag appears bare).
+    const_arg = ctx.kwarg_macroarg(args, "const")
+    const = None
+    has_const = False
+    if const_arg is not None:
+        if action == "store_const":
+            pass  # always allowed
+        elif action == "store" and nargs == "?":
+            pass  # const provides the bare-flag value
+        else:
+            ctx.error(
+                f"argparse: const= is only valid with action='store_const' "
+                f"or action='store' + nargs='?' (got action={action!r}, "
+                f"nargs={nargs!r})"
+            )
+        const = ctx.eval_literal_or_final(const_arg.expr)
+        has_const = True
+    elif action == "store_const":
+        ctx.error("argparse: action='store_const' requires const=")
+
+    # Default handling. ``default=`` is a literal at macro time;
+    # absent for required positionals, None-typed for absent flags
+    # without explicit default. List literals are accepted only
+    # for list-typed actions (append / extend / store + nargs=*/+/N).
+    default_arg = ctx.kwarg_macroarg(args, "default")
+    if default_arg is not None:
+        default = ctx.eval_literal_or_final(default_arg.expr)
+        has_default = True
+        if is_arg_type and not isinstance(default, str):
+            # Mirrors CPython's "string defaults run through type="
+            # rule: a single string literal is routed through
+            # ``T.from_arg`` at parse-fn entry. List defaults
+            # diverge from CPython (CPython keeps the elements as
+            # strings while TPy needs them typed as T to fit a
+            # ``list[T]`` field), so they're rejected; users can
+            # omit ``default=`` to get ``Optional[list[T]]`` or an
+            # empty ``list[T]``.
+            ctx.error(
+                f"argparse: type=<custom> with default= requires "
+                f"a string literal (got {type(default).__name__})"
+            )
+        if isinstance(default, list):
+            list_action_ok = (
+                action in _LIST_ACTIONS
+                or (action == "store"
+                    and (isinstance(nargs, int) or nargs in ("*", "+")))
+            )
+            if not list_action_ok:
+                ctx.error(
+                    f"argparse: list default is only valid for "
+                    f"list-typed actions (append/extend or store + "
+                    f"nargs=*/+/<int>); got action={action!r}, "
+                    f"nargs={nargs!r}"
+                )
+            for v in default:
+                _check_default_elem(ctx, v, type_info)
+    else:
+        default = _action_implicit_default(action)
+        has_default = default is not None
+
+    if positionals:
+        if action != "store":
+            ctx.error(
+                f"argparse: action={action!r} is only valid for "
+                f"optional flags, not positional arguments"
+            )
+        if has_default and nargs != "?":
+            # nargs='?' positionals can use default= when the slot
+            # is missing from argv; non-'?' positionals are always
+            # required.
+            ctx.error(
+                "argparse: positional arguments may only specify "
+                "default= when nargs='?'"
+            )
+        if required_kw:
+            ctx.error(
+                "argparse: required= is meaningless for positional "
+                "arguments (they are always required)"
+            )
+        name = positionals[0]
+        dest = explicit_dest if explicit_dest is not None else name
+        return _ArgSpec(
+            is_flag=False, flag_names=[], name=name, dest=dest,
+            type_info=type_info, is_arg_type=is_arg_type, action=action,
+            default=default, has_default=has_default,
+            choices=choices, required=True,
+            nargs=nargs, help_text=help_text,
+            metavar=metavar,
+        )
+
+    # Optional flag(s). Absent flags fall back to their default
+    # (or None when no default is given; field type becomes
+    # Optional[T] or Optional[list[T]] depending on action).
+    # nargs='?' on a flag uses const when the flag is bare and
+    # value when the flag carries one.
+    name = flags[0]
+    dest = _dest_for_flags(flags, explicit_dest)
+    if add_help_reserved:
+        for f in flags:
+            if f in ("-h", "--help"):
+                ctx.error(
+                    "argparse: -h / --help is reserved by the "
+                    "auto-generated help printer; pass "
+                    "add_help=False to ArgumentParser() to "
+                    "register your own"
+                )
+    return _ArgSpec(
+        is_flag=True, flag_names=list(flags), name=name, dest=dest,
+        type_info=type_info, is_arg_type=is_arg_type, action=action,
+        default=default, has_default=has_default,
+        const=const, has_const=has_const,
+        choices=choices, required=required_kw,
+        nargs=nargs, help_text=help_text,
+        metavar=metavar,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Public macro: nested builders for subparsers
+# ---------------------------------------------------------------------------
+
+class _SubparserBuilder:
+    """One sub-parser registered via ``parser.add_subparsers().add_parser(name)``.
+
+    Holds its own arg specs; the top-level terminal walks every
+    sub-parser registered on the enclosing _SubparsersAction to
+    synthesize per-sub records and parse functions. v1 does not
+    auto-emit ``--help`` on sub-parsers, so ``add_help_reserved`` is
+    always false for sub-arg validation -- users may register their
+    own ``-h`` / ``--help`` here.
+    """
+
+    def __init__(self, name: str, help_text: str | None) -> None:
+        self.name = name
+        self.help_text = help_text
+        self.specs: list[_ArgSpec] = []
+        self._dest_seen: set[str] = set()
+
+    @builder_method
+    def add_argument(self, ctx: BuilderContext, args: MacroArgs) -> None:
+        spec = _build_arg_spec(ctx, args, add_help_reserved=False)
+        if spec.dest in self._dest_seen:
+            ctx.error(f"argparse: duplicate argument destination {spec.dest!r}")
+        self._dest_seen.add(spec.dest)
+        self.specs.append(spec)
+
+    @builder_method
+    def add_subparsers(self, ctx: BuilderContext, args: MacroArgs) -> None:
+        # No nested subparsers in v1: the top-level synth assumes a
+        # flat (top, sub*) shape so it can emit a single union field.
+        # Lifting this requires recursive sub-record synthesis and a
+        # nested union representation -- defer.
+        ctx.error(
+            "argparse: nested add_subparsers() is not supported in v1"
+        )
+
+
+class _SubparsersAction:
+    """Result of ``parser.add_subparsers()``.
+
+    Tracks the subparser dispatch parameters (`dest=`, `required=`,
+    optional `help=`/`title=` for help-formatting hooks) and the
+    list of registered sub-parsers. Reachable through the trace via
+    ``add_parser(name)``, which returns a fresh _SubparserBuilder.
+    """
+
+    def __init__(
+        self, *, dest: str, required: bool,
+        title: str | None, action_help: str | None,
+        loc: object,
+    ) -> None:
+        self.dest = dest
+        self.required = required
+        self.title = title
+        self.action_help = action_help
+        self.loc = loc
+        self.subparsers: list[_SubparserBuilder] = []
+        self._names_seen: set[str] = set()
+
+    @builder_returns(_SubparserBuilder)
+    def add_parser(
+        self, ctx: BuilderContext, args: MacroArgs,
+    ) -> _SubparserBuilder:
+        if not args.positional:
+            ctx.error("argparse: add_parser() requires a name argument")
+        name = ctx.positional_str(args, 0)
+        if name in self._names_seen:
+            ctx.error(f"argparse: duplicate sub-parser name {name!r}")
+        if not name or name.startswith("-"):
+            ctx.error(
+                f"argparse: sub-parser name must be a non-empty "
+                f"non-flag token, got {name!r}"
+            )
+        self._names_seen.add(name)
+        help_text = ctx.kwarg_str(args, "help")
+        sub = _SubparserBuilder(name=name, help_text=help_text)
+        self.subparsers.append(sub)
+        return sub
+
+
+# ---------------------------------------------------------------------------
 # Public macro: ArgumentParser
 # ---------------------------------------------------------------------------
 
@@ -377,201 +688,53 @@ class ArgumentParser:
         self.add_help: bool = ctx.kwarg_bool(args, "add_help", True)
         self.specs: list[_ArgSpec] = []
         self._dest_seen: set[str] = set()
+        # Set by add_subparsers(); a single _SubparsersAction holds
+        # every registered sub-parser. v1 allows at most one call.
+        self._subparsers: _SubparsersAction | None = None
 
     @builder_method
     def add_argument(self, ctx: BuilderContext, args: MacroArgs) -> None:
-        names = ctx.positional_strs(args)
-        if not names:
-            ctx.error("argparse: add_argument() requires at least one name")
-
-        help_text = ctx.kwarg_str(args, "help")
-        metavar = ctx.kwarg_str(args, "metavar")
-        explicit_dest = ctx.kwarg_str(args, "dest")
-        required_kw = ctx.kwarg_bool(args, "required", False)
-        choices_arg = ctx.kwarg_macroarg(args, "choices")
-        choices: list | None = None
-        if choices_arg is not None:
-            choices = ctx.eval_sequence_of_literal_or_final(choices_arg.expr)
-            if not choices:
-                ctx.error("argparse: choices= must be non-empty")
-
-        flags = [n for n in names if _is_flag(n)]
-        positionals = [n for n in names if not _is_flag(n)]
-        if flags and positionals:
-            ctx.error(
-                "argparse: add_argument() positional and optional names "
-                "cannot be mixed"
-            )
-
-        action = ctx.kwarg_str(args, "action") or "store"
-        if action not in _ALLOWED_ACTIONS:
-            ctx.error(
-                f"argparse: action={action!r} is not supported "
-                f"(supported: store, store_true, store_false, count, "
-                f"append, extend, store_const)"
-            )
-
-        # type= is meaningful only for value-taking actions. Reject
-        # explicit type= on the value-free ones to mirror CPython.
-        if action in _VALUE_FREE_ACTIONS and ctx.kwarg_macroarg(args, "type") is not None:
-            ctx.error(
-                f"argparse: type= cannot be combined with action={action!r}"
-            )
-        type_info, is_arg_type = _resolve_type_info(ctx, args)
-
-        nargs = _resolve_nargs_kwarg(ctx, args)
-        # Custom ``type=<MyType>`` (ArgType) v1: ``store`` /
-        # ``append`` / ``extend`` plus all four nargs shapes are
-        # supported via the same synthesis as the built-in types
-        # (``T.from_arg`` is just a different value-coercion than the
-        # builtin constructor). ``choices=`` stays out of v1 because
-        # comparing the unparsed token against a literal set would
-        # diverge from CPython's "compare parsed values" semantics.
-        if is_arg_type and choices is not None:
-            ctx.error(
-                "argparse: type=<custom> does not support choices= in v1"
-            )
-        if nargs is not None and action in _VALUE_FREE_ACTIONS and action != "store_const":
-            ctx.error(
-                f"argparse: nargs= cannot be combined with action={action!r}"
-            )
-        # store_const + nargs is allowed only as nargs='?' (and means
-        # "if flag-bare use const, if flag-with-value use value, if
-        # absent use default"). For now reject the explicit pairing.
-        if action == "store_const" and nargs is not None:
-            ctx.error(
-                "argparse: nargs= is not supported with action='store_const'"
-            )
-        # extend without nargs is the confusing CPython case (iterates
-        # the converted value); require nargs explicitly.
-        if action == "extend" and nargs is None:
-            ctx.error(
-                "argparse: action='extend' requires nargs= (otherwise "
-                "the converted value gets iterated, which is rarely "
-                "what callers want)"
-            )
-
-        # const= is required for store_const and for store + nargs='?'
-        # (where it's the value used when the flag appears bare).
-        const_arg = ctx.kwarg_macroarg(args, "const")
-        const = None
-        has_const = False
-        if const_arg is not None:
-            if action == "store_const":
-                pass  # always allowed
-            elif action == "store" and nargs == "?":
-                pass  # const provides the bare-flag value
-            else:
-                ctx.error(
-                    f"argparse: const= is only valid with action='store_const' "
-                    f"or action='store' + nargs='?' (got action={action!r}, "
-                    f"nargs={nargs!r})"
-                )
-            const = ctx.eval_literal_or_final(const_arg.expr)
-            has_const = True
-        elif action == "store_const":
-            ctx.error("argparse: action='store_const' requires const=")
-
-        # Default handling. ``default=`` is a literal at macro time;
-        # absent for required positionals, None-typed for absent flags
-        # without explicit default. List literals are accepted only
-        # for list-typed actions (append / extend / store + nargs=*/+/N).
-        default_arg = ctx.kwarg_macroarg(args, "default")
-        if default_arg is not None:
-            default = ctx.eval_literal_or_final(default_arg.expr)
-            has_default = True
-            if is_arg_type and not isinstance(default, str):
-                # Mirrors CPython's "string defaults run through type="
-                # rule: a single string literal is routed through
-                # ``T.from_arg`` at parse-fn entry. List defaults
-                # diverge from CPython (CPython keeps the elements as
-                # strings while TPy needs them typed as T to fit a
-                # ``list[T]`` field), so they're rejected; users can
-                # omit ``default=`` to get ``Optional[list[T]]`` or an
-                # empty ``list[T]``.
-                ctx.error(
-                    f"argparse: type=<custom> with default= requires "
-                    f"a string literal (got {type(default).__name__})"
-                )
-            if isinstance(default, list):
-                list_action_ok = (
-                    action in _LIST_ACTIONS
-                    or (action == "store"
-                        and (isinstance(nargs, int) or nargs in ("*", "+")))
-                )
-                if not list_action_ok:
-                    ctx.error(
-                        f"argparse: list default is only valid for "
-                        f"list-typed actions (append/extend or store + "
-                        f"nargs=*/+/<int>); got action={action!r}, "
-                        f"nargs={nargs!r}"
-                    )
-                for v in default:
-                    _check_default_elem(ctx, v, type_info)
-        else:
-            default = _action_implicit_default(action)
-            has_default = default is not None
-
-        if positionals:
-            if action != "store":
-                ctx.error(
-                    f"argparse: action={action!r} is only valid for "
-                    f"optional flags, not positional arguments"
-                )
-            if has_default and nargs != "?":
-                # nargs='?' positionals can use default= when the slot
-                # is missing from argv; non-'?' positionals are always
-                # required.
-                ctx.error(
-                    "argparse: positional arguments may only specify "
-                    "default= when nargs='?'"
-                )
-            if required_kw:
-                ctx.error(
-                    "argparse: required= is meaningless for positional "
-                    "arguments (they are always required)"
-                )
-            name = positionals[0]
-            dest = explicit_dest if explicit_dest is not None else name
-            spec = _ArgSpec(
-                is_flag=False, flag_names=[], name=name, dest=dest,
-                type_info=type_info, is_arg_type=is_arg_type, action=action,
-                default=default, has_default=has_default,
-                choices=choices, required=True,
-                nargs=nargs, help_text=help_text,
-                metavar=metavar,
-            )
-        else:
-            # Optional flag(s). Absent flags fall back to their default
-            # (or None when no default is given; field type becomes
-            # Optional[T] or Optional[list[T]] depending on action).
-            # nargs='?' on a flag uses const when the flag is bare and
-            # value when the flag carries one.
-            name = flags[0]
-            dest = _dest_for_flags(flags, explicit_dest)
-            if self.add_help:
-                for f in flags:
-                    if f in ("-h", "--help"):
-                        ctx.error(
-                            "argparse: -h / --help is reserved by the "
-                            "auto-generated help printer; pass "
-                            "add_help=False to ArgumentParser() to "
-                            "register your own"
-                        )
-            spec = _ArgSpec(
-                is_flag=True, flag_names=list(flags), name=name, dest=dest,
-                type_info=type_info, is_arg_type=is_arg_type, action=action,
-                default=default, has_default=has_default,
-                const=const, has_const=has_const,
-                choices=choices, required=required_kw,
-                nargs=nargs, help_text=help_text,
-                metavar=metavar,
-            )
-
+        spec = _build_arg_spec(ctx, args, add_help_reserved=self.add_help)
         if spec.dest in self._dest_seen:
             ctx.error(f"argparse: duplicate argument destination {spec.dest!r}")
         self._dest_seen.add(spec.dest)
         self.specs.append(spec)
+
+    @builder_returns(_SubparsersAction)
+    def add_subparsers(
+        self, ctx: BuilderContext, args: MacroArgs,
+    ) -> _SubparsersAction:
+        if self._subparsers is not None:
+            ctx.error(
+                "argparse: add_subparsers() can only be called once "
+                "per parser"
+            )
+        # CPython argparse rejects sub-parsers when any positional
+        # argument is already registered (the regex matcher can't
+        # disambiguate where the subcommand starts). v1 keeps that
+        # restriction; lifting it requires the regex matcher.
+        for s in self.specs:
+            if not s.is_flag:
+                ctx.error(
+                    "argparse: add_subparsers() is not supported when "
+                    "the parser also has positional arguments"
+                )
+        dest = ctx.kwarg_str(args, "dest") or "cmd"
+        if dest in self._dest_seen:
+            ctx.error(
+                f"argparse: subparsers dest={dest!r} collides with "
+                f"a top-level argument of the same dest"
+            )
+        required = ctx.kwarg_bool(args, "required", False)
+        title = ctx.kwarg_str(args, "title")
+        action_help = ctx.kwarg_str(args, "help")
+        action = _SubparsersAction(
+            dest=dest, required=required,
+            title=title, action_help=action_help,
+            loc=ctx.call_loc,
+        )
+        self._subparsers = action
+        return action
 
     @builder_terminal
     def parse_args(self, ctx: BuilderContext, args: MacroArgs) -> TypeInfo:
@@ -589,6 +752,13 @@ class ArgumentParser:
                 type=TypeInfo("?", _tpy_type=None),
             ))
 
+        if self._subparsers is None:
+            return self._terminal_single(ctx, args)
+        return self._terminal_with_subparsers(ctx, args)
+
+    def _terminal_single(
+        self, ctx: BuilderContext, args: MacroArgs,
+    ) -> TypeInfo:
         # Validate positional layout before code synthesis: ``*``,
         # ``+``, and ``?`` positionals must be the LAST positional --
         # earlier ones can't be deterministically consumed without
@@ -648,10 +818,268 @@ class ArgumentParser:
         ctx.replace_call(fn_name, args)
         return record_type
 
+    def _terminal_with_subparsers(
+        self, ctx: BuilderContext, args: MacroArgs,
+    ) -> TypeInfo:
+        """Synthesize the subparsers-aware parser.
+
+        Layout (Phase 1, no property forwarders):
+          per_sub_record_i: <fields for sub_i>             # one record per sub-parser
+          per_sub_parse_i: list[str] -> per_sub_record_i   # one parse fn per sub
+          top_record: <common arg fields>
+                      <dest=:str | Optional[str]>          # CPython-shape subcommand name
+                      <_subcommand: Union[Sub] | Optional[Union[Sub]]>
+                                                            # TPy-only typed union
+          top_parse: list[str] -> top_record
+
+        Top-level parse:
+          - --help / -h scan (top help only; sub-help is v2)
+          - main loop dispatches common flags
+          - non-flag token -> sub-parser dispatch:
+              tail = list(argv[i+1:]); _subcommand = sub_parse_<name>(tail); break
+          - post-loop required-flag and required-subparser checks.
+        """
+        sp = self._subparsers
+        assert sp is not None
+        if not sp.subparsers:
+            ctx.error(
+                "argparse: add_subparsers() requires at least one "
+                "add_parser() call before parse_args()"
+            )
+
+        # Per-sub vs common-arg collisions are checked further below
+        # when per-sub flat fields are added to the top record.
+        # ``add_subparsers`` already rejected ``sp.dest`` colliding
+        # with an existing common-arg dest at registration time.
+        top_dests = {s.dest for s in self.specs}
+
+        prog = self.prog if self.prog is not None else _DEFAULT_PROG
+
+        # Synthesize per-sub records + per-sub parse fns. Each sub's
+        # error path uses ``"<top-prog> <sub-name>"`` as the prog so
+        # error messages match CPython's "prog cmd: error: ..." shape.
+        sub_record_types: list = []  # parallel to sp.subparsers
+        sub_record_names: list[str] = []  # bare names, parallel to sp.subparsers
+        sub_parse_fn_names: list[str] = []
+        for sub in sp.subparsers:
+            positional_in_sub = [x for x in sub.specs if not x.is_flag]
+            for i, s in enumerate(positional_in_sub):
+                if s.nargs in ("*", "+", "?") and i != len(positional_in_sub) - 1:
+                    ctx.error(
+                        f"argparse: positional {s.name!r} with "
+                        f"nargs={s.nargs!r} must be the last "
+                        f"positional in sub-parser {sub.name!r}"
+                    )
+            sub_record_name = ctx.fresh_module_name(f"argparse_{sub.name}_args")
+            sub_fields = [(s.dest, s.field_type) for s in sub.specs]
+            sub_record_type = ctx.emit_record(sub_record_name, sub_fields)
+            sub_record_types.append(sub_record_type)
+            sub_record_names.append(sub_record_name)
+
+            sub_prog = f"{prog} {sub.name}"
+            sub_usage_text = _format_usage(
+                sub.specs, prog=sub_prog, usage=None,
+                include_help_opt=False,
+            )
+            sub_body = _build_parse_body(
+                sub.specs, sub_record_name, None, sub_usage_text,
+                prog=sub_prog, add_help=False,
+            )
+            sub_fn_name = ctx.fresh_module_name(f"argparse_{sub.name}_parse")
+            ctx.emit_function(
+                sub_fn_name,
+                [("argv", types.list(types.str))],
+                sub_record_type.raw_type,
+                sub_body,
+            )
+            sub_parse_fn_names.append(sub_fn_name)
+
+        cmd_field_type = types.str if sp.required else types.optional(types.str)
+
+        # Per-sub flat fields on the top record. CPython argparse
+        # exposes per-sub args directly as Optional[T] attributes on
+        # the Namespace; we mirror that. A typed-union escape hatch
+        # ``_subcommand: A | B`` is intentionally NOT stored: users
+        # can't reference the synthesized sub-record names (they
+        # carry the ``__tpy_builder_`` private prefix), so a stored
+        # union would be unreachable. Once builder-trace expansion
+        # moves to a dedicated pre-pass-6 pass (see MACRO_DESIGN.md's
+        # "Move builder-trace expansion to a dedicated pre-pass-6
+        # pass"), property forwarders that match over the union
+        # become viable and the union storage can be added back as
+        # the underlying state.
+        flat_field_map: dict[str, list[tuple[int, _ArgSpec]]] = {}
+        for sub_idx, sub in enumerate(sp.subparsers):
+            for spec in sub.specs:
+                flat_field_map.setdefault(spec.dest, []).append(
+                    (sub_idx, spec)
+                )
+        flat_fields: list[tuple[str, Type, list[tuple[int, _ArgSpec]]]] = []
+        # Reserve the cmd dest now -- the top record carries cmd as a
+        # stored field too, so a per-sub arg named the same as sp.dest
+        # would shadow it.
+        reserved_dests = {sp.dest}
+        for name in sorted(flat_field_map.keys()):
+            occurrences = flat_field_map[name]
+            if name in top_dests:
+                ctx.error(
+                    f"argparse: per-sub argument {name!r} collides with "
+                    f"a top-level argument of the same dest; rename one "
+                    f"of them so the top record can carry distinct fields"
+                )
+            if name in reserved_dests:
+                ctx.error(
+                    f"argparse: per-sub argument {name!r} is reserved "
+                    f"by the subparsers machinery (matches the "
+                    f"subcommand-name field on the top record)"
+                )
+            # Compare *unwrapped* field types: a sub with ``required=True``
+            # carries ``T`` and another with the same flag but no required=
+            # carries ``Optional[T]`` -- both unify to a single ``Optional[T]``
+            # field on the top record (matching CPython, which doesn't care
+            # which sub set the attribute). Reject only when the underlying
+            # base types disagree.
+            base_types = {_unwrap_optional(spec.field_type) for _, spec in occurrences}
+            if len(base_types) > 1:
+                ctx.error(
+                    f"argparse: per-sub argument {name!r} has conflicting "
+                    f"field types across sub-parsers; under Option B "
+                    f"(flat namespace) the top record needs a single "
+                    f"field type per name. Rename one of them, or unify "
+                    f"the types (same ``type=`` and same default-shape)"
+                )
+            top_type = types.optional(next(iter(base_types)))
+            flat_fields.append((name, top_type, occurrences))
+
+        top_record_name = ctx.fresh_module_name("argparse_args")
+        top_fields: list = [(s.dest, s.field_type) for s in self.specs]
+        top_fields.append((sp.dest, cmd_field_type))
+        for name, top_type, _ in flat_fields:
+            top_fields.append((name, top_type))
+        top_record_type = ctx.emit_record(top_record_name, top_fields)
+
+        # Top-level usage / help. v1 lists subcommands as a single
+        # positional placeholder ``{a,b,c}`` to match CPython's output
+        # shape; per-sub help is not auto-emitted in v1.
+        usage_text = _format_usage(
+            self.specs, prog=prog, usage=self.usage,
+            include_help_opt=self.add_help,
+            subparser_action=sp,
+        )
+        help_fn_name: str | None = None
+        if self.add_help:
+            help_fn_name = ctx.fresh_module_name("argparse_help")
+            help_text = _format_help_text(
+                self.specs, self.description,
+                usage_text=usage_text, epilog=self.epilog,
+                subparser_action=sp,
+            )
+            ctx.emit_function(
+                help_fn_name, [], types.void,
+                ast.quote(f"print({help_text!r})\nsys.exit(Int32(0))"),
+            )
+
+        body = _build_subparser_parse_body(
+            self.specs, sp, sub_parse_fn_names, flat_fields,
+            top_record_name, help_fn_name, usage_text,
+            prog=prog, add_help=self.add_help,
+        )
+
+        fn_name = ctx.fresh_module_name("argparse_parse")
+        ctx.emit_function(
+            fn_name,
+            [("argv", types.list(types.str))],
+            top_record_type.raw_type,
+            body,
+        )
+        ctx.replace_call(fn_name, args)
+        return top_record_type
+
 
 # ---------------------------------------------------------------------------
 # Internal: parse-function body synthesis
 # ---------------------------------------------------------------------------
+
+def _emit_parse_prelude(
+    specs: list[_ArgSpec], usage_text: str, *,
+    add_help: bool, help_fn_name: str | None,
+) -> tuple[list, list[str]]:
+    """Returns ``(init_stmts, src_lines)`` for the boilerplate every
+    parse-fn body opens with: usage local, optional ``-h``/``--help``
+    pre-scan, per-spec init, required-flag-seen tracking. Shared by
+    the single-parser and subparser-aware parse-body builders.
+
+    Both lists are returned mutable; callers append further AST
+    decls / source lines onto them before assembling the final body
+    (e.g. the subparser path adds ``acc_<dest>`` and per-sub flat
+    locals to ``init_stmts`` and emits its dispatch loop into
+    ``src_lines``).
+
+    The help fn prints help and calls ``sys.exit(0)``, so the
+    pre-scan loop never returns from the call -- but its return type
+    is ``None``, so sema sees normal flow and the post-call increment
+    compiles fine.
+    """
+    init_stmts: list = []
+    src_lines: list[str] = []
+    src_lines.append(f"__tpy_argparse_usage = {usage_text!r}")
+    if add_help:
+        assert help_fn_name is not None
+        src_lines.append("__tpy_argparse_h = 0")
+        src_lines.append("while __tpy_argparse_h < len(argv):")
+        src_lines.append(
+            '    if argv[__tpy_argparse_h] == "-h" '
+            'or argv[__tpy_argparse_h] == "--help":'
+        )
+        src_lines.append(f"        {help_fn_name}()")
+        src_lines.append("    __tpy_argparse_h = __tpy_argparse_h + 1")
+    for s in specs:
+        init_stmts.extend(_spec_init_stmts(s))
+    for s in specs:
+        if s.is_flag and s.required:
+            src_lines.append(f"__tpy_argparse_seen_{s.dest} = False")
+    return init_stmts, src_lines
+
+
+def _emit_parse_reconciliation(
+    specs: list[_ArgSpec], *, error_prefix: str,
+) -> list[str]:
+    """Returns ``src_lines`` for the post-loop reconciliation shared
+    by both parse-body builders: required-flag missing checks, then
+    Optional[list[T]] accumulator -> dest copy, then ArgType
+    accumulator unwrap (assert + copy).
+    """
+    src_lines: list[str] = []
+    for s in specs:
+        if s.is_flag and s.required:
+            src_lines.append(f"if not __tpy_argparse_seen_{s.dest}:")
+            src_lines.extend(_error_emit_lines(
+                "    ", repr(f"missing required argument: {s.flag_names[0]}"),
+                error_prefix=error_prefix,
+            ))
+    # Optional[list[T]] reconciliation: ``tpy.copy`` is here for the
+    # implicit-copy warning, not correctness -- assigning a
+    # ``list[T]`` local into an ``Optional[list[T]]`` slot warns even
+    # when the local is at its last use. Codegen lowers ``copy`` to a
+    # ``vector(acc)`` copy ctor, so this is one redundant allocation
+    # per seen flag. Replace with a true move once TPy core gains
+    # move-into-Optional.
+    for s in specs:
+        if s.is_optional_list_field:
+            src_lines.append(f"if {_seen_local(s)}:")
+            src_lines.append(f"    {s.dest} = tpy.copy({_acc_local(s)})")
+    # ArgType accumulator unwrap: missing-required checks above
+    # already exited via sys.exit(2) when the accumulator stayed
+    # None, so the assert is for sema's flow-narrowing
+    # (Optional[T] -> T) rather than runtime safety. ``tpy.copy``
+    # makes the implicit copy explicit so the record ctor (which
+    # moves into owned storage) doesn't warn.
+    for s in specs:
+        if _needs_arg_type_accumulator(s):
+            src_lines.append(f"assert {_acc_local(s)} is not None")
+            src_lines.append(f"{s.dest} = tpy.copy({_acc_local(s)})")
+    return src_lines
+
 
 def _build_parse_body(
     specs: list[_ArgSpec], record_name: str, help_fn_name: str | None,
@@ -673,56 +1101,29 @@ def _build_parse_body(
       <required-flag check>
       return Record(...)
     """
-    init_stmts: list = []
-    src_lines: list[str] = []
     error_prefix = f"{prog}: error: "
-
-    # Usage line bound as a local so each parse-error site can write
-    # `usage + "\\n<prog>: error: <msg>"` to stderr without re-rendering.
-    # The prefix itself is inlined as a literal at each emit site
-    # (threaded as a Python string through the helpers) so the
-    # generated code stays compact when prog is at its default.
-    src_lines.append(f"__tpy_argparse_usage = {usage_text!r}")
-
-    # Help-detection prelude (only when add_help=True): scan argv for
-    # ``-h`` / ``--help`` BEFORE any other dispatch. The synthesized
-    # help fn prints help and calls sys.exit(0), so the loop never
-    # returns from the call -- but its return type is ``None``, so
-    # sema sees normal flow and the post-call increment compiles fine.
-    if add_help:
-        assert help_fn_name is not None
-        src_lines.append("__tpy_argparse_h = 0")
-        src_lines.append("while __tpy_argparse_h < len(argv):")
-        src_lines.append(
-            '    if argv[__tpy_argparse_h] == "-h" '
-            'or argv[__tpy_argparse_h] == "--help":'
-        )
-        src_lines.append(f"        {help_fn_name}()")
-        src_lines.append("    __tpy_argparse_h = __tpy_argparse_h + 1")
 
     # Empty parser: no add_argument() was called. Reject any argv
     # tokens (matching CPython argparse) and return an empty record
     # without entering the main loop -- the loop body would otherwise
     # never advance __tpy_argparse_i and hang on non-empty argv.
     if not specs:
+        init_stmts, src_lines = _emit_parse_prelude(
+            specs, usage_text, add_help=add_help, help_fn_name=help_fn_name,
+        )
         src_lines.append("if len(argv) != 0:")
         src_lines.extend(_error_emit_lines(
             "    ", '"unrecognized arguments: " + argv[0]',
             error_prefix=error_prefix,
         ))
         src_lines.append(f"return {record_name}()")
-        return ast.quote("\n".join(src_lines))
+        return init_stmts + ast.quote("\n".join(src_lines))
 
-    # --- 1. Initialization for each spec ---
-    for s in specs:
-        init_stmts.extend(_spec_init_stmts(s))
+    init_stmts, src_lines = _emit_parse_prelude(
+        specs, usage_text, add_help=add_help, help_fn_name=help_fn_name,
+    )
 
-    # --- 2. Required-flag seen tracking ---
-    required_flags = [s for s in specs if s.is_flag and s.required]
-    for s in required_flags:
-        src_lines.append(f"__tpy_argparse_seen_{s.dest} = False")
-
-    # --- 3. Main loop ---
+    # --- Main loop ---
     src_lines.append("__tpy_argparse_i = 0")
     src_lines.append("__tpy_argparse_pi = 0")
     src_lines.append("while __tpy_argparse_i < len(argv):")
@@ -773,10 +1174,12 @@ def _build_parse_body(
             error_prefix=error_prefix,
         ))
 
-    # --- 4. Post-loop validation ---
     # Missing-positional check: every required positional slot must
     # have been filled. Variable-nargs trailing positionals (* / ?)
     # are themselves optional; +/N/none are required.
+    # nargs='+' on the trailing positional must have got at least
+    # one value; the dispatch sets pi only when consumed, so the
+    # count check below already covers this.
     required_positional_count = sum(
         1 for s in positional_specs
         if s.nargs not in ("*", "?")
@@ -787,43 +1190,9 @@ def _build_parse_body(
             "    ", '"missing required positional argument(s)"',
             error_prefix=error_prefix,
         ))
-    # nargs='+' on the trailing positional must have got at least
-    # one value; the dispatch sets pi only when consumed, so the
-    # count check above already covers this.
-    for s in required_flags:
-        src_lines.append(f"if not __tpy_argparse_seen_{s.dest}:")
-        src_lines.extend(_error_emit_lines(
-            "    ", repr(f"missing required argument: {s.flag_names[0]}"),
-            error_prefix=error_prefix,
-        ))
 
-    # --- 4b. Optional[list[T]] reconciliation ---
-    # Assign each accumulator into its dest field when the flag was
-    # actually seen. ``tpy.copy`` is here for the implicit-copy
-    # warning, not for correctness -- assigning a ``list[T]`` local
-    # into an ``Optional[list[T]]`` slot warns ("use copy() to make
-    # this explicit") even when the local is at its last use.
-    # Codegen lowers ``copy(acc)`` to a ``vector(acc)`` copy ctor, so
-    # this is technically one redundant allocation per seen flag.
-    # Replace with a true move once TPy core gains move-into-Optional.
-    for s in specs:
-        if s.is_optional_list_field:
-            src_lines.append(f"if {_seen_local(s)}:")
-            src_lines.append(f"    {s.dest} = tpy.copy({_acc_local(s)})")
+    src_lines.extend(_emit_parse_reconciliation(specs, error_prefix=error_prefix))
 
-    # --- 4c. ArgType accumulator unwrap ---
-    # The missing-required checks above already exited via sys.exit(2)
-    # when the accumulator stayed None, so the assert is for sema's
-    # flow-narrowing benefit (Optional[T] -> T) rather than runtime
-    # safety. ``tpy.copy`` makes the implicit copy explicit so the
-    # record-constructor call (which moves into owned storage) doesn't
-    # warn -- mirrors the Optional[list[T]] reconciliation step above.
-    for s in specs:
-        if _needs_arg_type_accumulator(s):
-            src_lines.append(f"assert {_acc_local(s)} is not None")
-            src_lines.append(f"{s.dest} = tpy.copy({_acc_local(s)})")
-
-    # --- 5. Construct & return ---
     ctor_args = ", ".join(s.dest for s in specs)
     src_lines.append(f"return {record_name}({ctor_args})")
 
@@ -1362,13 +1731,17 @@ def _format_usage(
     prog: str = _DEFAULT_PROG,
     usage: str | None = None,
     include_help_opt: bool = True,
+    subparser_action: '_SubparsersAction | None' = None,
 ) -> str:
     """Render just the usage line. Reused by parse-error path.
 
     When ``usage`` is provided, it overrides the auto-generated tail
     after ``"usage: "`` (matching CPython's ``ArgumentParser(usage=)``
     behavior). When ``include_help_opt`` is False, the ``[-h]`` token
-    is omitted from the auto-generated form.
+    is omitted from the auto-generated form. When ``subparser_action``
+    is provided, the ``{a,b} ...`` subcommand placeholder is appended
+    after any common positionals (matches CPython's rendering of the
+    subparsers action).
 
     Long usage lines wrap at ``_USAGE_TEXT_WIDTH`` (80) cols, matching
     CPython argparse's behavior when stdout isn't a TTY. Continuation
@@ -1384,6 +1757,9 @@ def _format_usage(
         if s.is_flag:
             opt_parts.append(_flag_usage_token(s))
     pos_parts = [_positional_usage_token(s) for s in specs if not s.is_flag]
+    if subparser_action is not None:
+        pos_parts.append(_subcommand_metavar(subparser_action))
+        pos_parts.append("...")
 
     # Try the single-line form first.
     flat = " ".join([prog, *opt_parts, *pos_parts]).rstrip()
@@ -1443,16 +1819,42 @@ def _wrap_usage_parts(
     return lines
 
 
+def _subcommand_metavar(sp: _SubparsersAction) -> str:
+    """``{a,b,c}`` placeholder shown in usage / help. Matches CPython
+    argparse's rendering of the subparsers positional.
+    """
+    return "{" + ",".join(s.name for s in sp.subparsers) + "}"
+
+
+def _subparser_cmd_acc(sp: _SubparsersAction) -> str:
+    return f"__tpy_argparse_acc_{sp.dest}"
+
+
+def _subparser_flat_local(field_name: str) -> str:
+    return f"__tpy_argparse_flat_{field_name}"
+
+
+def _subparser_sub_local(sub_name: str) -> str:
+    return f"__tpy_argparse_sub_{sub_name}"
+
+
 def _format_help_text(
     specs: list[_ArgSpec], description: str | None, *,
     usage_text: str,
     epilog: str | None = None,
+    subparser_action: '_SubparsersAction | None' = None,
 ) -> str:
     """Render the full --help output: usage line, description (if
     any), per-section listings of positionals and options, optional
     epilog. Only emitted when ``add_help=True``, so the auto
     ``-h, --help`` row is always present. The caller pre-renders
     ``usage_text`` so it isn't walked twice.
+
+    When ``subparser_action`` is provided, the positional section
+    shows the ``{a,b}`` subcommand metavar plus one indented row per
+    registered sub-parser instead of plain positional rows. v1
+    rejects mixing positionals with subparsers, so the two cases
+    don't overlap.
     """
     flags = [s for s in specs if s.is_flag]
     positionals = [s for s in specs if not s.is_flag]
@@ -1460,11 +1862,19 @@ def _format_help_text(
     pos_rows = [(_positional_usage_token(s), s.help_text or "")
                 for s in positionals]
     flag_rows = [(_flag_help_signature(s), s.help_text or "") for s in flags]
+    sub_rows: list[tuple[str, str]] = []
+    sub_token = ""
+    if subparser_action is not None:
+        sub_token = _subcommand_metavar(subparser_action)
+        sub_rows = [(s.name, s.help_text or "")
+                    for s in subparser_action.subparsers]
     # Match CPython's ``self._action_max_length + 2``: align all rows
     # (including the auto ``-h, --help`` entry) to the longest
     # signature plus two spaces of separation.
     sigs = [_HELP_OPT_FORM, *(sig for sig, _ in pos_rows),
-            *(sig for sig, _ in flag_rows)]
+            *(sig for sig, _ in flag_rows),
+            *([sub_token] if sub_token else []),
+            *(sig for sig, _ in sub_rows)]
     pad = max(len(s) for s in sigs) + 2
 
     lines = [usage_text, ""]
@@ -1472,7 +1882,14 @@ def _format_help_text(
         lines.append(description)
         lines.append("")
 
-    if positionals:
+    if subparser_action is not None:
+        lines.append("positional arguments:")
+        sub_action_help = subparser_action.action_help or ""
+        lines.append(f"  {sub_token.ljust(pad)}{sub_action_help}".rstrip())
+        for name, text in sub_rows:
+            lines.append(f"    {name.ljust(pad - 2)}{text}".rstrip())
+        lines.append("")
+    elif positionals:
         lines.append("positional arguments:")
         for sig, text in pos_rows:
             lines.append(f"  {sig.ljust(pad)}{text}".rstrip())
@@ -1488,3 +1905,157 @@ def _format_help_text(
             lines.append("")
         lines.append(epilog)
     return "\n".join(lines)
+
+
+def _build_subparser_parse_body(
+    specs: list[_ArgSpec], sp: _SubparsersAction,
+    sub_parse_fn_names: list[str],
+    flat_fields: list[tuple[str, Type, list[tuple[int, _ArgSpec]]]],
+    record_name: str, help_fn_name: str | None,
+    usage_text: str, *, prog: str, add_help: bool,
+) -> list:
+    """Generate the body of the synthesized top-level parse function
+    when subparsers are present (Option B / flat namespace).
+
+    Each per-sub field appears as an ``Optional[T]`` stored field on
+    the top record. The parse fn dispatches the subcommand name,
+    invokes the matching sub-parser, then copies the chosen sub
+    record's fields into the corresponding flat locals (per-sub
+    fields not on the chosen sub stay None). Layout:
+
+      __tpy_argparse_usage = <usage>
+      <-h/--help scan>
+      <init common arg defaults>
+      <init required-flag-seen tracking>
+      __tpy_argparse_acc_<dest>: Optional[str] = None
+      <flat_field_i>: Optional[T_i] = None        # one per per-sub field name
+      while __tpy_argparse_i < len(argv):
+          __tpy_argparse_tok = argv[__tpy_argparse_i]
+          if __tpy_argparse_tok == "--top-flag-1": ...
+          elif __tpy_argparse_tok == "<sub-name-1>":
+              __tpy_argparse_acc_<dest> = "<sub-name-1>"
+              __tpy_argparse_i = __tpy_argparse_i + 1
+              <sub_var> = <sub_parse_1>(list(argv[i:]))
+              <copy sub_var.field into flat_field for each field on this sub>
+              break
+          ...
+          else: <unknown / invalid-choice error>
+      <required flag missing checks>
+      <Optional[list[T]] / ArgType reconciliation for common args>
+      if sp.required and __tpy_argparse_acc_<dest> is None: <error>
+      <build top record>
+    """
+    error_prefix = f"{prog}: error: "
+    init_stmts, src_lines = _emit_parse_prelude(
+        specs, usage_text, add_help=add_help, help_fn_name=help_fn_name,
+    )
+
+    # Subcommand-name accumulator. cmd is always typed Optional[str]
+    # in the body even when sp.required forces the field to str: the
+    # post-loop required-check converts None -> error and the assert
+    # narrows back to str for the field write.
+    init_stmts.append(ast.var_decl(
+        _subparser_cmd_acc(sp),
+        types.optional(types.str),
+        ast.none_lit(),
+    ))
+
+    # Per-sub flat field locals (Optional[T] = None). Populated inside
+    # the matching sub-parser dispatch branch from the chosen sub
+    # record's fields.
+    flat_local_for: dict[str, str] = {
+        name: _subparser_flat_local(name) for name, _, _ in flat_fields
+    }
+    for name, top_type, _ in flat_fields:
+        init_stmts.append(ast.var_decl(
+            flat_local_for[name], top_type, ast.none_lit(),
+        ))
+
+    # Main loop.
+    src_lines.append("__tpy_argparse_i = 0")
+    src_lines.append("while __tpy_argparse_i < len(argv):")
+    src_lines.append("    __tpy_argparse_tok = argv[__tpy_argparse_i]")
+
+    flag_specs = [s for s in specs if s.is_flag]
+    first = True
+    for s in flag_specs:
+        match_expr = " or ".join(
+            f"__tpy_argparse_tok == {f!r}" for f in s.flag_names
+        )
+        kw = "if" if first else "elif"
+        first = False
+        src_lines.append(f"    {kw} {match_expr}:")
+        for line in _flag_handler_lines(s, indent="        ",
+                                         error_prefix=error_prefix):
+            src_lines.append(line)
+        if s.required:
+            src_lines.append(f"        __tpy_argparse_seen_{s.dest} = True")
+
+    # Subcommand dispatch: each registered sub-parser becomes a
+    # branch. After calling the sub parse fn, copy each declared
+    # field on the chosen sub into its flat local on the top record.
+    cmd_acc = _subparser_cmd_acc(sp)
+    for sub_idx, sub in enumerate(sp.subparsers):
+        kw = "if" if first else "elif"
+        first = False
+        src_lines.append(
+            f'    {kw} __tpy_argparse_tok == {sub.name!r}:'
+        )
+        src_lines.append(f"        {cmd_acc} = {sub.name!r}")
+        src_lines.append("        __tpy_argparse_i = __tpy_argparse_i + 1")
+        sub_var = _subparser_sub_local(sub.name)
+        src_lines.append(
+            f"        {sub_var} = "
+            f"{sub_parse_fn_names[sub_idx]}"
+            f"(list(argv[__tpy_argparse_i:]))"
+        )
+        sub_field_names = {s.dest for s in sub.specs}
+        for name, _, _ in flat_fields:
+            if name in sub_field_names:
+                src_lines.append(
+                    f"        {flat_local_for[name]} = {sub_var}.{name}"
+                )
+        src_lines.append("        break")
+
+    # Else branch: unknown token. Distinguishes "unknown flag" (token
+    # starts with '-') from "invalid choice" (positional that doesn't
+    # match any sub-parser name) so error messages match CPython.
+    src_lines.append("    else:")
+    src_lines.append(
+        "        if __tpy_argparse_tok.startswith(\"-\"):"
+    )
+    src_lines.extend(_error_emit_lines(
+        "            ",
+        '"unknown argument: " + __tpy_argparse_tok',
+        error_prefix=error_prefix,
+    ))
+    src_lines.append("        else:")
+    src_lines.extend(_error_emit_lines(
+        "            ",
+        '"invalid choice: " + __tpy_argparse_tok',
+        error_prefix=error_prefix,
+    ))
+
+    src_lines.extend(_emit_parse_reconciliation(specs, error_prefix=error_prefix))
+
+    # Subcommand resolution. ``__tpy_argparse_cmd`` is bound here as
+    # the ctor input for the top record's cmd field; sp.required
+    # widens / narrows the accumulator type.
+    if sp.required:
+        src_lines.append(f"if {cmd_acc} is None:")
+        src_lines.extend(_error_emit_lines(
+            "    ",
+            repr(f"the following argument is required: {_subcommand_metavar(sp)}"),
+            error_prefix=error_prefix,
+        ))
+        src_lines.append(f"assert {cmd_acc} is not None")
+    src_lines.append(f"__tpy_argparse_cmd = {cmd_acc}")
+
+    ctor_args = ", ".join(
+        [s.dest for s in specs]
+        + ["__tpy_argparse_cmd"]
+        + [flat_local_for[name] for name, _, _ in flat_fields]
+    )
+    src_lines.append(f"return {record_name}({ctor_args})")
+
+    return init_stmts + ast.quote("\n".join(src_lines))

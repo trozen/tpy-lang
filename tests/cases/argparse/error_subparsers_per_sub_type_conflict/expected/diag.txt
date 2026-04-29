@@ -1,0 +1,1 @@
+main.py:15: error: argparse: per-sub argument 'x' has conflicting field types across sub-parsers; under Option B (flat namespace) the top record needs a single field type per name. Rename one of them, or unify the types (same ``type=`` and same default-shape)

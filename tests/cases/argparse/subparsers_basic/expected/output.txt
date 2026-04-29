@@ -1,0 +1,3 @@
+set
+key=color
+value=blue

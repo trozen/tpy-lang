@@ -1,0 +1,1 @@
+main.py:13: error: argparse: per-sub argument 'out' collides with a top-level argument of the same dest; rename one of them so the top record can carry distinct fields

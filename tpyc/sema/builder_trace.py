@@ -65,6 +65,12 @@ class _TrackedSymbol:
     state: object
     macro_qname: str
     handlers: dict[str, _HandlerSpec]
+    # var_name of the @builder_returns parent that spawned this symbol,
+    # or None for top-level (ctor-bound) symbols. Used to cascade
+    # close-on-terminal: when the root @builder_terminal fires, every
+    # descendant sub-builder is closed too. Sub-builders don't have
+    # their own terminal -- they contribute to the root's terminal.
+    parent_var: str | None = None
 
 
 @dataclass
@@ -418,6 +424,7 @@ class BuilderTraceExpander:
                 var_name=lhs, state=child_state,
                 macro_qname=f"{sym.macro_qname}::{child_cls.__name__}",
                 handlers=child_handlers,
+                parent_var=sym.var_name,
             )
             self._all_tracked_names.add(lhs)
             self._open_traces[lhs] = mcall.loc
@@ -435,8 +442,30 @@ class BuilderTraceExpander:
                 mcall.loc,
             )
         # Tracked symbol's trace is finished; remove from active tracking.
-        del self._tracked[sym.var_name]
-        self._open_traces.pop(sym.var_name, None)
+        # Sub-builders spawned via @builder_returns from this symbol (or
+        # from any of those descendants) are closed alongside the root --
+        # they don't have their own terminal and contribute their state
+        # to the root's terminal handler. Walk the parent_var chain to
+        # find every descendant before mutating the dicts.
+        #
+        # Cost is O(D * N) where D is chain depth and N is the number of
+        # tracked symbols still alive: each iteration extends ``closing``
+        # by one depth level. Fine for argparse (max depth 3: parser ->
+        # subparsers_action -> sub_builder); a reverse parent->children
+        # map would flatten this to O(N) if deeper builder chains land.
+        closing = {sym.var_name}
+        changed = True
+        while changed:
+            changed = False
+            for name, ts in self._tracked.items():
+                if name in closing:
+                    continue
+                if ts.parent_var in closing:
+                    closing.add(name)
+                    changed = True
+        for name in closing:
+            self._tracked.pop(name, None)
+            self._open_traces.pop(name, None)
         rewritten = self._build_replacement_call(replacement, mcall.loc)
         if isinstance(stmt, TpyAssign):
             stmt.value = rewritten
@@ -489,9 +518,16 @@ class BuilderTraceExpander:
         and ValueType-conformance constraints on emitted records are
         currently unchecked. The current argparse use case (plain data
         structs) doesn't hit either.
+
+        ``methods`` may include any combination of methods; a default
+        positional ``__init__`` is auto-injected unless one is already
+        present in the list. This lets builder-trace macros emit
+        property forwarders / helper methods alongside the default init
+        without having to re-implement the init shape themselves.
         """
-        if not methods:
-            methods = [_build_default_init(fields, loc)]
+        methods = list(methods)
+        if not any(m.name == "__init__" for m in methods):
+            methods.insert(0, _build_default_init(fields, loc))
         record = _build_record(name, fields, methods, loc)
         # Append to module so codegen sees it; register with the registrar
         # so subsequent sema lookups find it.
@@ -590,12 +626,22 @@ def _build_default_init(
     Used by ``emit_record`` when the caller doesn't supply methods.
     """
     from ..parse.nodes import TpyAssign, TpyFieldAccess, TpyName
-    from ..typesys import OwnType
+    from ..typesys import OwnType, UnionType
 
     params: list[tuple[str, TpyType]] = []
     body: list[Any] = []
     for fname, ftype in fields:
-        param_type = ftype if ftype.is_value_type() else OwnType(ftype)
+        # Union[A, B] non-value fields use the bare type as the param
+        # (pointer-variant convention) -- codegen expects the body's
+        # implicit assignment to lower through `to_value_variant`,
+        # which assumes a pointer-variant input. Wrapping in OwnType
+        # here renders the param as `value_variant&&` and breaks that
+        # body lowering. Mirrors how user-written ctors for Union-
+        # typed fields are spelled (`s: A | B`, not `s: Own[A | B]`).
+        if ftype.is_value_type() or isinstance(ftype, UnionType):
+            param_type = ftype
+        else:
+            param_type = OwnType(ftype)
         params.append((fname, param_type))
         body.append(TpyAssign(
             target=TpyFieldAccess(obj=TpyName("self"), field=fname),

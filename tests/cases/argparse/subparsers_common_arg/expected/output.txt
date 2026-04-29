@@ -1,0 +1,3 @@
+verbose=True
+cmd=a
+x=hello

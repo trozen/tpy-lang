@@ -1,0 +1,12 @@
+usage: prog [-h] [--verbose] {show,set} ...
+
+A test program.
+
+positional arguments:
+  {show,set}     sub-command
+    show         show a value
+    set          set a value
+
+options:
+  -h, --help     show this help message and exit
+  --verbose, -v  be loud

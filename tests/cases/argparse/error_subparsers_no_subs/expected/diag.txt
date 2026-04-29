@@ -1,0 +1,1 @@
+main.py:8: error: argparse: add_subparsers() requires at least one add_parser() call before parse_args()

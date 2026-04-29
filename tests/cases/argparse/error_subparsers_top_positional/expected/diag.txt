@@ -1,0 +1,1 @@
+main.py:9: error: argparse: add_subparsers() is not supported when the parser also has positional arguments

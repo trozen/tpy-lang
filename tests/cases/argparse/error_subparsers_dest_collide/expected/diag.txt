@@ -1,0 +1,1 @@
+main.py:7: error: argparse: subparsers dest='cmd' collides with a top-level argument of the same dest
