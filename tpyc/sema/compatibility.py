@@ -336,6 +336,22 @@ class TypeCompatibility:
                     f"(v1 supports copyable contents only)",
                     loc,
                 )
+            # Storing a reference type (record/list/dict/set) into Any
+            # silently copies (Principle #1: Any owns its contents).
+            # That contradicts TPy's reference-type baseline -- elsewhere a
+            # copy of a record/container requires explicit copy(). Suppressed
+            # for rvalue sources (no other handle), copy()-wrapped sources,
+            # and last-use auto-move (matches the dict.update convention).
+            inner = unwrap_own(unwrap_readonly(actual_for_check))
+            if (source_expr is not None
+                    and self.is_lvalue(source_expr)
+                    and not self.is_copy_call(source_expr)
+                    and not self._is_auto_moved(source_expr)
+                    and self._warns_copy_into_any(inner)):
+                self.ctx.warning(
+                    f"copies {inner} into Any; use copy() to make this explicit",
+                    source_expr,
+                )
             return INTO_ANY
 
         # Any -> T: runtime-checked auto-coerce. Target T must be a concrete
@@ -475,10 +491,7 @@ class TypeCompatibility:
                     is_lvalue_src = self.is_lvalue(source_expr)
                     # Suppress at last use: no observable semantic divergence from
                     # CPython when the source is dead after this point (Framing A).
-                    is_auto_moved = (is_lvalue_src
-                                     and isinstance(source_expr, TpyName)
-                                     and id(source_expr) in self.ctx.all_last_uses
-                                     and self._is_owned_var(source_expr.name))
+                    is_auto_moved = self._is_auto_moved(source_expr)
                     if not is_auto_moved:
                         for inner_t in expected.inner_types():
                             if not isinstance(inner_t, OwnType):
@@ -618,9 +631,7 @@ class TypeCompatibility:
             # (returns are handled separately as errors in statements.py)
             # Skip warning when auto-move applies (last use of an owned variable).
             # Only locals and Own[T] params are movable -- regular params are borrowed.
-            is_auto_moved = False
-            if isinstance(source_expr, TpyName) and id(source_expr) in self.ctx.all_last_uses:
-                is_auto_moved = self._is_owned_var(source_expr.name)
+            is_auto_moved = self._is_auto_moved(source_expr)
             self.check_own_consumption(source_expr)
             # Mark loop variables as consumed for auto-consuming heuristic
             if isinstance(source_expr, TpyName):
@@ -1091,6 +1102,23 @@ class TypeCompatibility:
             if expr_type is not None and isinstance(expr_type, ReadonlyType):
                 return True
         return False
+
+    def _is_auto_moved(self, source_expr: 'TpyExpr | None') -> bool:
+        """Last-use of an owned local: auto-move makes the copy invisible."""
+        return (isinstance(source_expr, TpyName)
+                and id(source_expr) in self.ctx.all_last_uses
+                and self._is_owned_var(source_expr.name))
+
+    def _warns_copy_into_any(self, inner: TpyType) -> bool:
+        """Reference types whose into-Any storage silently copies.
+
+        Caller must pre-unwrap Ref/Readonly/Own. Returns True for non-value
+        records, list, dict, set; False for primitives, value-type records,
+        str (collapses to std::string), bytes/BytesView, Ptr[T].
+        """
+        if isinstance(inner, NominalType):
+            return not inner.is_value_type() and not inner.is_protocol
+        return is_list(inner) or is_dict(inner) or is_set(inner)
 
     def is_copy_call(self, expr: TpyExpr) -> bool:
         """Check if expression is a copy() or copy_iter() call from the tpy module."""

@@ -29,7 +29,6 @@
 | Pickling / serialization | Out of scope. |
 | Cross-type numeric equality on `Any` (`Any(1) == Any(1.0)` -> True) | Would need a "category" tag on `AnyOps` and cross-promotion logic in the equals slot. Cost on every `==`; CPython compat win is real but rarely matters in the dict[str, Any] use case. Defer; users extract first. |
 | Unmangled type names in `cast`/`hash` panic messages | Current panics show `typeid::name()` which is the platform mangled form (e.g. `N3tpy6BigIntE` for `tpy::BigInt`, `NSt7__cxx1112basic_stringI...E` for `std::string`). User-facing TPy names would be friendlier. Options: GCC `__cxa_demangle` (libstdc++-only, allocates), or a TPy-side typeid -> friendly-name registry seeded by `any_ops_for<T>` instantiations. Low priority; the mangled form is unambiguous if ugly. |
-| Copy-warning on reference-type into-Any conversions (**known inconsistency**) | Storing a reference type (`record`, `list`, `dict`, `set`) in Any silently copies (Principle #1, pinned by `record_storage_copies/`). This is inconsistent with TPy's "reference types are passed by reference" baseline -- elsewhere a copy of a record requires explicit `tpy.copy()`. The fix is to warn at the storage site and suggest the explicit form (`a: Any = tpy.copy(record)`), matching the existing inline-storage copy-warning machinery in LANGUAGE_FEATURES. Primitives, str (already owned via the view->std::string collapse), and bytes stay silent; the warning attaches only to reference-type sources at the INTO_ANY site (not narrowing, which is non-consuming). Should land alongside any broader sweep over silent-copy sites in the compiler. |
 
 ## Vision
 
@@ -382,6 +381,46 @@ If the source's underlying contents type is non-copyable (`@nocopy`,
 v1 (see Future Extensions). Note that `Own[T]` of a copyable T is fine --
 the contents are copyable; the move from the consumed handle into the
 `Any`'s storage is the natural codegen.
+
+#### Copy warning for reference-type sources
+
+Storing a reference type (`record`, `list`, `dict`, `set`) into `Any`
+silently copies (Principle #1: `Any` owns its contents). That contradicts
+TPy's reference-type baseline -- elsewhere a copy of a record/container
+requires explicit `copy()`. The compiler warns at the storage site and
+suggests the explicit form:
+
+```python
+n = Node(1)
+a: Any = n               # warning: copies Node into Any; use copy() to make this explicit
+print(n.n)               # n still alive -- mutations through n don't reach a
+
+a: Any = copy(n)         # ok: explicit copy acknowledged
+a: Any = Node(2)         # ok: rvalue, no other handle exists
+
+xs: list[Any] = [n]      # warning: element n is an lvalue
+xs: list[Any] = [Node(3)]  # ok: element is an rvalue
+```
+
+The check fires uniformly across every INTO_ANY site: annotated
+assignment (`a: Any = ...`), function argument (`f(x)` where the
+parameter is `Any`), return value (`return x` where return type is `Any`),
+container-literal element (`[x]: list[Any]`, `{"k": x}: dict[str, Any]`),
+and subscript / field assignment when the target slot is `Any` (`d["k"]
+= x`, `holder.payload = x`).
+
+**Suppression rules** (mirror the dict.update / iter copy-warning
+machinery):
+- Source wrapped in `copy()` -- explicit acknowledgement.
+- Rvalue source (call result, constructor call) -- no other handle exists,
+  so no observable divergence. Container literals are not blanket rvalue
+  sources: each element is checked independently.
+- Last use of an owned local -- auto-move makes the copy invisible.
+
+**Silent (no warning)**: primitives, value-type records, `str` (collapses
+to `std::string` at INTO_ANY), `bytes`/`BytesView` (Python-immutable
+semantics make share-vs-copy unobservable), `Ptr[T]` (storing the
+address, not the pointee).
 
 #### Owning conversion at the storage site
 

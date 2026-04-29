@@ -2986,6 +2986,12 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   so the cell owns its contents. `int` literals store as `BigInt` (matches
   TPy's `int` annotation and makes `cast(int, x)` round-trip naturally).
   Move-only contents (`@nocopy` records, `Own[T]` of `@nocopy`) rejected.
+- **Copy-warning for reference-type sources**: storing a `record` / `list`
+  / `dict` / `set` from a named lvalue into `Any` warns ("copies T into
+  Any; use `copy()` to make this explicit"). Suppressed for `copy()`
+  calls, rvalue sources, last-use auto-move, value types, `str`, and
+  `bytes`/`BytesView`. Same convention as the existing dict.update /
+  iter copy-warning machinery.
 - **Universal ops on raw `Any`** (no narrowing required): `print`, `str`,
   `repr`, f-string interpolation, `bool` / `if x:` / `not x`, `==` / `!=`,
   `hash`, `x is None` / `x is not None`. `==` is typeid-checked: same-typeid

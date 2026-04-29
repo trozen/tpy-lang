@@ -3189,9 +3189,14 @@ class StatementAnalyzer:
             )
             # Ptr[T] target takes the address of the source (`_a(&a)`), no copy.
             target_is_ptr = isinstance(unwrap_qualifiers(target_type), PtrType)
+            # Any target: INTO_ANY in compatibility.py emits its own copy
+            # warning for reference-type sources -- skip the generic
+            # field/container warning here to avoid a double-fire.
+            target_is_any = isinstance(unwrap_qualifiers(target_type), AnyType)
             if ((isinstance(value_type, RefType) or is_own_from_name or is_compound_ref)
                     and stmt.loc is not None
                     and not target_is_ptr
+                    and not target_is_any
                     and not self.compat.is_copy_call(stmt.value)):
                 inner = unwrap_qualifiers(value_type)
                 dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"

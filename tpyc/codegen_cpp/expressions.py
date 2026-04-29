@@ -758,7 +758,22 @@ class ExpressionGenerator:
                 inner_target = coerce_target
             else:
                 inner_target = expr.actual_type
-            gen_inner = self.gen_expr(expr.expr, inner_target)
+            inner_expr = expr.expr
+            # INTO_ANY copies internally via std::any -- an explicit copy()
+            # wrapper at the source is redundant. Sema kept the call for the
+            # warning-silencing semantics; codegen unwraps so we don't emit
+            # T(x) on top of make_any's already-copying construction. Skip
+            # the unwrap for ptr-variant unions: copy() there generates
+            # to_value_variant(...), which converts representation; dropping
+            # it would store the ptr-variant directly (dangling pointers).
+            if expr.coercion.name == "into_any":
+                candidate = self.ctx.unwrap_copy(inner_expr)
+                if candidate is not inner_expr:
+                    cand_type = self.ctx.get_expr_type(candidate)
+                    if not (cand_type is not None
+                            and self.ctx.is_ptr_variant_union(cand_type)):
+                        inner_expr = candidate
+            gen_inner = self.gen_expr(inner_expr, inner_target)
             if is_span(coerce_target):
                 return self._gen_span_coercion(expr.expr, coerce_target, gen_inner)
             # IntLiteralType may be runtime BigInt; sema records this on the coercion.

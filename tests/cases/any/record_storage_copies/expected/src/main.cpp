@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // c = Counter(1)
     Counter c = Counter(::tpy::BigInt(1));
-    // a: Any = c
+    // a: Any = copy(c)
     ::tpy::Any a = ::tpy::make_any(c);
     // c.n = 99
     c.n = ::tpy::BigInt(99);

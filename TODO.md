@@ -89,7 +89,6 @@ Goal: speed up test runs (currently ~3 min parallel, ~6 min single-threaded for 
 
 ## Python features
 - Enum name lookup: `Kind["TEXT"]` -> `Kind.TEXT`. CPython uses `EnumMeta.__getitem__` with a string key. C++ codegen: `EnumUtil<Kind>::from_name("TEXT")` (already exists in runtime). Needs subscript support on enum types in sema + codegen.
-- Any
 - dynamic attributes
 - properties master
 - Generator: `yield from`, `send()`, `throw()`, `close()`

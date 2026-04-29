@@ -9,6 +9,7 @@
 # guarantees (no dangling references, std::any-managed lifetime).
 
 from typing import Any
+from tpy import copy
 
 
 class Counter:
@@ -18,7 +19,7 @@ class Counter:
 
 def main() -> None:
     c = Counter(1)
-    a: Any = c
+    a: Any = copy(c)
     c.n = 99
     if isinstance(a, Counter):
         print("a.n =", a.n)   # 1 in TPy, 99 in CPython

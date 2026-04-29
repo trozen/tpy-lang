@@ -1829,7 +1829,8 @@ class ExpressionAnalyzer:
                     self.compat.check_type_compatible(
                         elem_type, expected_elem,
                         f"array literal element {i}",
-                        expr.loc
+                        expr.loc,
+                        source_expr=expr.elements[i - 1],
                     )
                 except SemanticError:
                     raise self.ctx.error(
@@ -2191,7 +2192,8 @@ class ExpressionAnalyzer:
                     continue
                 try:
                     self.compat.check_type_compatible(
-                        kt, expected_key, f"dict literal key {i}", expr.loc)
+                        kt, expected_key, f"dict literal key {i}", expr.loc,
+                        source_expr=expr.keys[i - 1])
                 except SemanticError:
                     raise self.ctx.error(
                         f"Dict literal key {i} has type {kt}, "
@@ -2218,7 +2220,8 @@ class ExpressionAnalyzer:
                     continue
                 try:
                     self.compat.check_type_compatible(
-                        vt, expected_value, f"dict literal value {i}", expr.loc)
+                        vt, expected_value, f"dict literal value {i}", expr.loc,
+                        source_expr=expr.values[i - 1])
                 except SemanticError:
                     raise self.ctx.error(
                         f"Dict literal value {i} has type {vt}, "
@@ -2273,7 +2276,8 @@ class ExpressionAnalyzer:
                     continue
                 try:
                     self.compat.check_type_compatible(
-                        et, expected_elem, f"set literal element {i}", expr.loc)
+                        et, expected_elem, f"set literal element {i}", expr.loc,
+                        source_expr=expr.elements[i - 1])
                 except SemanticError:
                     raise self.ctx.error(
                         f"Set literal element {i} has type {et}, "
