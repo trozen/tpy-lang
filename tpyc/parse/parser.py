@@ -3478,6 +3478,10 @@ class Parser:
         if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral,
                              TpyStrLiteral, TpyNoneLiteral, TpyTypeParamConstruct)):
             return
+        # Bare name reference: must resolve to a module-level Final[T] constant.
+        # Sema validates the binding (parser doesn't see globals or imports yet).
+        if isinstance(expr, TpyName):
+            return
         if isinstance(expr, TpyUnaryOp) and expr.op == "-":
             if isinstance(expr.operand, (TpyIntLiteral, TpyFloatLiteral)):
                 return
@@ -3490,7 +3494,8 @@ class Parser:
                 return
         raise ParseError(
             f"Default parameter value must be a constant expression "
-            f"(literal, None, or fixed-int constructor like Int32(5))", node)
+            f"(literal, None, fixed-int constructor like Int32(5), "
+            f"or a Final[T] module constant)", node)
 
     def _parse_param_defaults(self, node: ast.FunctionDef, params: list,
                               skip_self: bool = False,

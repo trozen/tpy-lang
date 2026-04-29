@@ -822,6 +822,8 @@ class SemanticAnalyzer:
         prev_consuming = self.ctx.in_consuming_method
         self.ctx.in_consuming_method = func.is_consuming
 
+        self._validate_named_defaults(func)
+
         # Shared core: bind params, prescan, analyze body
         scan = self.stmts._prescan_and_analyze_body(func, resolved_params, scope, local_ns)
         self.deduction.resolve_all()
@@ -912,6 +914,30 @@ class SemanticAnalyzer:
         if self.ctx.func.global_declarations:
             self.function_global_decls[id(func)] = self.ctx.func.global_declarations.copy()
         self.if_branch_decls.update(self.ctx.if_branch_decls)
+
+    def _validate_named_defaults(self, func: TpyFunction) -> None:
+        """Validate `def f(x: T = NAME)` defaults: NAME must be a Final[T] global.
+
+        The parser accepts any TpyName in default position; binding shape is
+        deferred here so module-level Finals (declared after functions in the
+        registration order) and imported Finals are visible.
+        """
+        for default in func.defaults:
+            if not isinstance(default, TpyName):
+                continue
+            name = default.name
+            if name in self.ctx.final_globals:
+                continue
+            imp = self.ctx.user_imported_variables.get(name)
+            if imp is not None:
+                source_module, original_name = imp
+                source_info = self.ctx.registry.get_module(source_module)
+                var_info = source_info.variables.get(original_name) if source_info else None
+                if var_info is not None and var_info.is_final:
+                    continue
+            raise self.ctx.error(
+                f"Default parameter value '{name}' must be a module-level "
+                f"Final[T] constant", default)
 
     def _finalize_nested_def_escapes(self) -> None:
         """Finalize escape analysis for nested defs after the enclosing function is analyzed."""
@@ -1664,6 +1690,8 @@ class SemanticAnalyzer:
             # Track consuming method for ownership propagation through fields
             prev_consuming = self.ctx.in_consuming_method
             self.ctx.in_consuming_method = method.is_consuming
+
+            self._validate_named_defaults(method)
 
             # Shared core: bind params, prescan, analyze body
             scan = self.stmts._prescan_and_analyze_body(method, resolved_params, scope, local_ns)

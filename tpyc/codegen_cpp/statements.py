@@ -41,6 +41,7 @@ from ..type_def_registry import (
     is_str_view_type, is_bytes_view_type, is_string_type,
     protocol_info_of,
 )
+from .functions import default_to_cpp
 from .type_resolution import resolve_stmt_binding_type
 from ..prescan import match_is_none
 from .match import MatchGenerator
@@ -194,7 +195,6 @@ class StatementGenerator:
         # omitted as locals initialized to the impl's defaults.
         missing_locals = self.ctx.overload_missing_param_locals
         if missing_locals:
-            from .functions import FunctionGenerator
             from ..typesys import NoneType as _NoneType
             self.ctx.overload_missing_param_locals = []
             reassigned = scan.reassigned if scan else set()
@@ -209,7 +209,7 @@ class StatementGenerator:
                 narrowed = self.ctx.overload_param_types.get(pname)
                 if isinstance(narrowed, _NoneType) and pname not in reassigned:
                     continue
-                cpp_default = FunctionGenerator.default_to_cpp(default_expr, ptype)
+                cpp_default = default_to_cpp(self.ctx, default_expr, ptype)
                 # default_to_cpp falls back to "0" for unrecognized exprs.
                 # Use C++ value-initialization ({}) instead -- valid for any
                 # default-constructible type (empty vector, 0 for ints, etc.).

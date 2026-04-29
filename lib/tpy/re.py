@@ -301,11 +301,7 @@ class Pattern:
     pattern: str
     flags: Int32
 
-    # TODO(compiler): `flags: Int32 = 0` should read `= NOFLAG`
-    # but Final-named-constant-as-default-arg-value is rejected by sema --
-    # see "Final[X] = SOME_NAMED_CONST rejected as default-parameter value"
-    # in BUGS.md. Same for every other signature in this file.
-    def __init__(self, pattern: str, flags: Int32 = 0) -> None:
+    def __init__(self, pattern: str, flags: Int32 = NOFLAG) -> None:
         # Both field initializers reference only ctor params / module-level
         # names -- no body-locals -- so they MIL-hoist into move-construction
         # (safe on @nocopy+__del__ fields).
@@ -481,29 +477,29 @@ class Pattern:
 # `re.search("...", subj)` etc. compile-and-throw-away -- the compile cache
 # that CPython has needs module-level mutable state, deferred.
 
-def compile(pattern: str, flags: Int32 = 0) -> Own[Pattern]:
+def compile(pattern: str, flags: Int32 = NOFLAG) -> Own[Pattern]:
     return Pattern(pattern, flags)
 
 def search(pattern: str, subject: str,
-           flags: Int32 = 0) -> Optional[Own[Match]]:
+           flags: Int32 = NOFLAG) -> Optional[Own[Match]]:
     return Pattern(pattern, flags).search(subject)
 
 def match(pattern: str, subject: str,
-          flags: Int32 = 0) -> Optional[Own[Match]]:
+          flags: Int32 = NOFLAG) -> Optional[Own[Match]]:
     return Pattern(pattern, flags).match(subject)
 
 def fullmatch(pattern: str, subject: str,
-              flags: Int32 = 0) -> Optional[Own[Match]]:
+              flags: Int32 = NOFLAG) -> Optional[Own[Match]]:
     return Pattern(pattern, flags).fullmatch(subject)
 
 def findall(pattern: str, subject: str,
-            flags: Int32 = 0) -> Own[list[str]]:
+            flags: Int32 = NOFLAG) -> Own[list[str]]:
     return Pattern(pattern, flags).findall(subject)
 
 def sub(pattern: str, repl: str, subject: str,
-        flags: Int32 = 0) -> str:
+        flags: Int32 = NOFLAG) -> str:
     return Pattern(pattern, flags).sub(repl, subject)
 
 def split(pattern: str, subject: str, maxsplit: Int32 = Int32(0),
-          flags: Int32 = 0) -> Own[list[str]]:
+          flags: Int32 = NOFLAG) -> Own[list[str]]:
     return Pattern(pattern, flags).split(subject, maxsplit)

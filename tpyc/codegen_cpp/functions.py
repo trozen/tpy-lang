@@ -23,7 +23,7 @@ from ..parse.nodes import (
     TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyName,
 )
 from ..namespace import Namespace
-from .context import INDENT, module_to_cpp_namespace, escape_cpp_name
+from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name
 from .type_resolution import resolve_stmt_type_cascade
 
 if TYPE_CHECKING:
@@ -100,6 +100,64 @@ def factory_default_to_cpp(field_type: TpyType) -> str:
     if isinstance(inner, NominalType) and inner.is_user_record:
         return f"{inner.to_cpp()}()"
     return "{}"
+
+
+def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
+    """Convert a constant default expression to its C++ representation."""
+    if isinstance(expr, TpyTypeParamConstruct):
+        return f"{expr.param_name}{{}}"
+    if isinstance(expr, TpyIntLiteral):
+        return str(expr.value)
+    if isinstance(expr, TpyFloatLiteral):
+        v = repr(expr.value)
+        if '.' not in v and 'e' not in v and 'E' not in v:
+            v += '.0'
+        return v
+    if isinstance(expr, TpyBoolLiteral):
+        return "true" if expr.value else "false"
+    if isinstance(expr, TpyStrLiteral):
+        if is_char_type(ptype) and len(expr.value) == 1:
+            ch = expr.value[0]
+            if ch == "'":
+                return "'\\''"
+            if ch == '\\':
+                return "'\\\\'"
+            return f"'{ch}'"
+        escaped = (expr.value
+                   .replace('\\', '\\\\')
+                   .replace('"', '\\"')
+                   .replace('\n', '\\n')
+                   .replace('\r', '\\r')
+                   .replace('\t', '\\t'))
+        return f'"{escaped}"'
+    if isinstance(expr, TpyNoneLiteral):
+        # OwnType(OptionalType) -> std::optional<T>&& param, needs std::nullopt.
+        # Bare OptionalType with pointer repr -> T* param, needs nullptr.
+        inner = ptype.wrapped if isinstance(ptype, OwnType) else ptype
+        if isinstance(inner, OptionalType):
+            if isinstance(ptype, OwnType) or not inner.uses_pointer_repr():
+                return "std::nullopt"
+        return "nullptr"
+    if isinstance(expr, TpyName):
+        # Final[T] module constant in default position; sema validated the
+        # binding. Cross-module names need qualification because each module's
+        # `inline constexpr` lives in its own C++ namespace.
+        imp = ctx.user_imported_variables.get(expr.name)
+        if imp is not None:
+            source_module, original_name = imp
+            return qualified_cpp_name(source_module, original_name)
+        return escape_cpp_name(expr.name)
+    if isinstance(expr, TpyUnaryOp) and expr.op == "-":
+        return f"-{default_to_cpp(ctx, expr.operand, ptype)}"
+    if isinstance(expr, TpyCall):
+        # Int32(5) -> just the literal value
+        if expr.args:
+            return default_to_cpp(ctx, expr.args[0], ptype)
+        # Zero-arg call: Int32() -> 0, list()/dict()/Record() -> {}
+        if isinstance(expr.func, TpyName) and expr.func_name in _SCALAR_ZERO_CTOR_NAMES:
+            return "0"
+        return factory_default_to_cpp(ptype)
+    return "0"
 
 
 class FunctionGenerator:
@@ -222,57 +280,6 @@ class FunctionGenerator:
         fn_tpl_parts, fn_req_parts = self._gen_fn_template_parts(fn_params)
         return self._merge_fn_into_header(base_header, fn_tpl_parts, fn_req_parts, indent=indent)
 
-    @staticmethod
-    def default_to_cpp(expr: TpyExpr, ptype: TpyType) -> str:
-        """Convert a constant default expression to its C++ representation."""
-        if isinstance(expr, TpyTypeParamConstruct):
-            return f"{expr.param_name}{{}}"
-        if isinstance(expr, TpyIntLiteral):
-            return str(expr.value)
-        if isinstance(expr, TpyFloatLiteral):
-            v = repr(expr.value)
-            if '.' not in v and 'e' not in v and 'E' not in v:
-                v += '.0'
-            return v
-        if isinstance(expr, TpyBoolLiteral):
-            return "true" if expr.value else "false"
-        if isinstance(expr, TpyStrLiteral):
-            if is_char_type(ptype) and len(expr.value) == 1:
-                ch = expr.value[0]
-                if ch == "'":
-                    return "'\\''"
-                if ch == '\\':
-                    return "'\\\\'"
-                return f"'{ch}'"
-            escaped = (expr.value
-                       .replace('\\', '\\\\')
-                       .replace('"', '\\"')
-                       .replace('\n', '\\n')
-                       .replace('\r', '\\r')
-                       .replace('\t', '\\t'))
-            return f'"{escaped}"'
-        if isinstance(expr, TpyNoneLiteral):
-            # Unwrap OwnType to check the underlying Optional.
-            # OwnType(OptionalType) -> std::optional<T>&& param, needs std::nullopt.
-            # Bare OptionalType with pointer repr -> T* param, needs nullptr.
-            inner = ptype.wrapped if isinstance(ptype, OwnType) else ptype
-            if isinstance(inner, OptionalType):
-                if isinstance(ptype, OwnType) or not inner.uses_pointer_repr():
-                    return "std::nullopt"
-            return "nullptr"
-        if isinstance(expr, TpyUnaryOp) and expr.op == "-":
-            inner = FunctionGenerator.default_to_cpp(expr.operand, ptype)
-            return f"-{inner}"
-        if isinstance(expr, TpyCall):
-            # Int32(5) -> just the literal value
-            if expr.args:
-                return FunctionGenerator.default_to_cpp(expr.args[0], ptype)
-            # Zero-arg call: Int32() -> 0, list()/dict()/Record() -> {}
-            if isinstance(expr.func, TpyName) and expr.func_name in _SCALAR_ZERO_CTOR_NAMES:
-                return "0"
-            return factory_default_to_cpp(ptype)
-        return "0"
-
     def gen_params(self, params: list[tuple[str, TpyType]],
                    func_type_params: list[str] | None = None,
                    *, const_params: bool = False,
@@ -314,7 +321,7 @@ class FunctionGenerator:
                 part = f"__F{fn_idx}&& {cpp_pname}"
                 fn_idx += 1
                 if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
-                    part += f" = {self.default_to_cpp(defaults[i], ptype)}"
+                    part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
                 parts.append(part)
                 continue
             own = unwrap_readonly(unwrap_ref_type(ptype))
@@ -324,7 +331,7 @@ class FunctionGenerator:
                 inner_cpp = unwrap_readonly(bare_ptype.type_args[0]).to_cpp()
                 part = f"::tpy::varargs<{inner_cpp}> {escape_cpp_name(pname)}"
                 if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
-                    part += f" = {self.default_to_cpp(defaults[i], ptype)}"
+                    part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
                 parts.append(part)
                 continue
             # Recursive union wrapper structs are value types -- render as
@@ -382,7 +389,7 @@ class FunctionGenerator:
                 tp_cpp = ptype.wrapped.to_cpp()
                 part = part.replace(f"std::type_identity_t<{tp_cpp}>&&", f"{tp_cpp}&&")
             if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
-                part += f" = {self.default_to_cpp(defaults[i], ptype)}"
+                part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
             parts.append(part)
         return ", ".join(parts)
 
@@ -428,7 +435,7 @@ class FunctionGenerator:
                 part = f"__F{fn_idx}&& {cpp_pname}"
                 fn_idx += 1
                 if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
-                    part += f" = {self.default_to_cpp(defaults[i], ptype)}"
+                    part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
                 result.append(part)
                 continue
             unwrapped = unwrap_readonly(unwrap_ref_type(ptype))
@@ -480,7 +487,7 @@ class FunctionGenerator:
                     else:
                         part = ptype.to_cpp_param(cpp_pname)
             if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
-                part += f" = {self.default_to_cpp(defaults[i], ptype)}"
+                part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
             result.append(part)
         return ", ".join(result)
 
