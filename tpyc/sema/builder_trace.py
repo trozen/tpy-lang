@@ -1,11 +1,15 @@
 """Builder-trace macro expansion sub-pass.
 
-Runs as a pre-body pass before ``_prescan_and_analyze_body`` inside
-``_analyze_function`` / ``_analyze_record_methods``, and once over the
-module's top-level statements. Detects @builder_macro constructor calls,
-walks the body linearly, dispatches builder methods to user handlers,
-and splices synthesized declarations + a rewritten call site back into
-the body. See docs/MACRO_DESIGN.md (Phase 7) for the design.
+Function-body and record-method-body expansion runs in pass 5.5
+(``SemanticAnalyzer._expand_builder_traces``), after class-constants
+analysis (pass 5) and before record-method-body analysis (pass 6), so
+synthesized records / functions are first-class participants in passes
+6 and 7. Top-level expansion runs inside ``_analyze_top_level`` (pass
+4 is itself the body-analysis pass for module-level code, so expansion
+has to run there). Detects @builder_macro constructor calls, walks the
+body linearly, dispatches builder methods to user handlers, and splices
+synthesized declarations + a rewritten call site back into the body.
+See docs/MACRO_DESIGN.md (Phase 7) for the design.
 
 Phase A (current): the happy path -- ctor, methods, terminal -- without
 the full v1 hard-error rules around tracked-symbol misuse, conditionals,
@@ -203,7 +207,7 @@ class BuilderTraceExpander:
         if body is None:
             return body
         macro_reg = self.ctx.macro_registry
-        if macro_reg is None or not macro_reg._builder_macros:
+        if macro_reg is None or not macro_reg.has_builder_macros():
             return body
         new_body: list[TpyStmt] = []
         for stmt in body:
@@ -546,11 +550,11 @@ class BuilderTraceExpander:
         return_type: TpyType, body: list[TpyStmt], loc: Any,
     ) -> str:
         """Caveat: ``_normalize_function_info_refs`` runs in pass 2 of
-        analyze(); synthesized functions are added in passes 4-6 and
-        skip that normalization, so ``FunctionInfo.params`` are not
-        wrapped with ``RefType`` for non-value parameter types. Masked
-        today because overload resolution unwraps refs on both sides;
-        any future check that distinguishes ``ListType`` from
+        analyze(); synthesized functions are added in passes 4 / 5.5
+        and skip that normalization, so ``FunctionInfo.params`` are
+        not wrapped with ``RefType`` for non-value parameter types.
+        Masked today because overload resolution unwraps refs on both
+        sides; any future check that distinguishes ``ListType`` from
         ``RefType(ListType)`` on registered params would expose this.
         """
         # Returning a freshly constructed reference type requires Own[T] --

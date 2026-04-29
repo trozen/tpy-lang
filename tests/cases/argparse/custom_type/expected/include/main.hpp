@@ -70,7 +70,7 @@ struct __tpy_builder_argparse_args_1 {
 
     // args = parser.parse_args(["core:strict", "--out", "release"])
     __tpy_builder_argparse_args_1() = default;
-    explicit __tpy_builder_argparse_args_1(Tag&& input, std::optional<Tag>&& out, Tag&& label) : input(input), out(out), label(label) {}
+    explicit __tpy_builder_argparse_args_1(Tag&& input, std::optional<Tag>&& out, Tag&& label) : input(std::move(input)), out(std::move(out)), label(std::move(label)) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_1& obj) {

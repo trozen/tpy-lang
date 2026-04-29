@@ -400,6 +400,10 @@ class MacroRegistry:
         """Module names that have any registered @builder_macro classes."""
         return {mod for mod, _ in self._builder_macros}
 
+    def has_builder_macros(self) -> bool:
+        """True if any @builder_macro classes are registered."""
+        return bool(self._builder_macros)
+
     def get_export(self, module: str, name: str) -> Any | None:
         """Look up any exported name from a loaded macro module."""
         mod = self._modules.get(module)

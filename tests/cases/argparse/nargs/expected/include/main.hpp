@@ -31,7 +31,7 @@ struct __tpy_builder_argparse_args_1 {
 
     // a1 = p1.parse_args(["a.txt", "b.txt"])
     __tpy_builder_argparse_args_1() = default;
-    explicit __tpy_builder_argparse_args_1(std::vector<std::string>&& files) : files(files) {}
+    explicit __tpy_builder_argparse_args_1(std::vector<std::string>&& files) : files(std::move(files)) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_1& obj) {
@@ -46,7 +46,7 @@ struct __tpy_builder_argparse_args_2 {
 
     // a2 = p2.parse_args(["--coord", "10", "20", "--tag", "x", "y", "--tag", "z"])
     __tpy_builder_argparse_args_2() = default;
-    explicit __tpy_builder_argparse_args_2(std::optional<std::vector<::tpy::BigInt>>&& coord, std::optional<std::vector<std::string>>&& tag) : coord(coord), tag(tag) {}
+    explicit __tpy_builder_argparse_args_2(std::optional<std::vector<::tpy::BigInt>>&& coord, std::optional<std::vector<std::string>>&& tag) : coord(std::move(coord)), tag(std::move(tag)) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_2& obj) {

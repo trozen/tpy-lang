@@ -518,11 +518,14 @@ class SemanticAnalyzer:
         for record in module.all_records():
             self._analyze_class_constants(record)
 
+        # Pass 5.5: see `_expand_builder_traces`.
+        self._expand_builder_traces(module)
+
         # Sixth pass: analyze record methods (including nested records)
         for record in module.all_records():
             self._analyze_record_methods(record)
 
-        # Sixth pass: analyze function bodies (skip bodyless @overload stubs and @inline)
+        # Seventh pass: analyze function bodies (skip bodyless @overload stubs and @inline)
         for func in module.functions:
             if func.is_inline and not func.is_stub:
                 func.skip_codegen = True
@@ -818,10 +821,6 @@ class SemanticAnalyzer:
         # Track consuming method for ownership propagation through fields
         prev_consuming = self.ctx.in_consuming_method
         self.ctx.in_consuming_method = func.is_consuming
-
-        # Builder-trace expansion: rewrite the body, splicing synthesized
-        # records and functions into the module before normal sema runs.
-        self._expand_builder_trace_body(func, func.name)
 
         # Shared core: bind params, prescan, analyze body
         scan = self.stmts._prescan_and_analyze_body(func, resolved_params, scope, local_ns)
@@ -1666,9 +1665,6 @@ class SemanticAnalyzer:
             prev_consuming = self.ctx.in_consuming_method
             self.ctx.in_consuming_method = method.is_consuming
 
-            # Builder-trace expansion (see _analyze_function for the same hook).
-            self._expand_builder_trace_body(method, f"{record.name}.{method.name}")
-
             # Shared core: bind params, prescan, analyze body
             scan = self.stmts._prescan_and_analyze_body(method, resolved_params, scope, local_ns)
 
@@ -2005,7 +2001,9 @@ class SemanticAnalyzer:
         # New local variables will be added to global_ns as they're declared
         self.ctx.func.current_ns = self.ctx.global_ns
 
-        # Builder-trace expansion at module level (see _analyze_function).
+        # Top-level builder-trace expansion runs here (not in pass 5.5)
+        # because pass 4 is itself the body-analysis pass for module
+        # code -- the rewrite has to land before the analyze loop below.
         self._expand_builder_trace_top_level(stmts)
 
         # Pre-scan for codegen
@@ -2218,6 +2216,34 @@ class SemanticAnalyzer:
 
         raise self._error(f"'{original_name}' not found in module '{module_name}'")
 
+    def _expand_builder_traces(self, module: TpyModule) -> None:
+        """Pass 5.5: walk every record-method body and free-function body
+        in the module, running the builder-trace expander on each.
+        Splices synthesized records / functions into ``module`` before
+        passes 6/7 iterate, so emitted method bodies get sema-analyzed
+        like user-written ones.
+
+        Top-level statements are expanded later, inside
+        ``_analyze_top_level`` (pass 4 is itself the body-analysis pass
+        for module-level code, so expansion has to run there).
+
+        No-op when no @builder_macro classes are registered.
+        """
+        if (self.ctx.macro_registry is None
+                or not self.ctx.macro_registry.has_builder_macros()):
+            return
+        # Both loops iterate snapshots: `all_records()` already returns a
+        # fresh list, and `list(module.functions)` is explicit because that
+        # one is live. Records and functions synthesized during expansion
+        # need no further expansion -- they are built from quoted fragments
+        # / AST primitives, not user source containing more builder traces.
+        for record in module.all_records():
+            for method in record.methods:
+                self._expand_builder_trace_body(
+                    method, f"{record.name}.{method.name}")
+        for func in list(module.functions):
+            self._expand_builder_trace_body(func, func.name)
+
     def _expand_builder_trace_body(self, func: TpyFunction, function_qname: str) -> None:
         """Run BuilderTraceExpander on a function/method body in place.
 
@@ -2227,7 +2253,7 @@ class SemanticAnalyzer:
         if not func.body:
             return
         if (self.ctx.macro_registry is None
-                or not self.ctx.macro_registry._builder_macros):
+                or not self.ctx.macro_registry.has_builder_macros()):
             return
         expander = BuilderTraceExpander(
             ctx=self.ctx, registrar=self.registrar,
@@ -2245,7 +2271,7 @@ class SemanticAnalyzer:
         if not stmts:
             return
         if (self.ctx.macro_registry is None
-                or not self.ctx.macro_registry._builder_macros):
+                or not self.ctx.macro_registry.has_builder_macros()):
             return
         expander = BuilderTraceExpander(
             ctx=self.ctx, registrar=self.registrar,
