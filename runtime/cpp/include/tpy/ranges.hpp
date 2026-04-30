@@ -44,8 +44,13 @@ public:
         using iterator_category = std::input_iterator_tag;
         using value_type = T;
         using difference_type = std::ptrdiff_t;
-        using pointer = const T*;
-        using reference = const T&;
+        // For T=bool we must return by value: vector<bool>::operator[] returns
+        // a proxy, and a `const bool&` return would bind to a temporary bool
+        // created from the proxy and dangle past the function return. For all
+        // other T we keep zero-copy `const T&` so std::string/etc. don't pay
+        // an extra copy on every dereference.
+        using reference = std::conditional_t<std::is_same_v<T, bool>, T, const T&>;
+        using pointer = std::conditional_t<std::is_same_v<T, bool>, void, const T*>;
 
         iterator() : parent_(nullptr), rep_(0), idx_(0) {}
         iterator(const repeat_range* p, std::size_t r, std::size_t i)
