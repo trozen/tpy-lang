@@ -12,6 +12,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <expected>
 #include <format>
 #include <functional>
@@ -645,6 +646,29 @@ struct std::hash<std::vector<uint8_t>> {
     size_t operator()(const std::vector<uint8_t>& v) const noexcept {
         return std::hash<std::string_view>{}(
             std::string_view(reinterpret_cast<const char*>(v.data()), v.size()));
+    }
+};
+
+// std::hash + std::equal_to specializations for BytesView (std::span<const uint8_t>).
+// std::span has no built-in operator==, so unordered_map/set need an explicit
+// equality comparator alongside the hash.
+template<>
+struct std::hash<std::span<const uint8_t>> {
+    size_t operator()(std::span<const uint8_t> v) const noexcept {
+        // Empty span may hold (nullptr, 0); string_view's hash on a null
+        // pointer is implementation-defined. Match equal_to's empty short-circuit.
+        if (v.empty()) return 0;
+        return std::hash<std::string_view>{}(
+            std::string_view(reinterpret_cast<const char*>(v.data()), v.size()));
+    }
+};
+template<>
+struct std::equal_to<std::span<const uint8_t>> {
+    bool operator()(std::span<const uint8_t> a, std::span<const uint8_t> b) const noexcept {
+        if (a.size() != b.size()) return false;
+        // memcmp on null pointers is UB even with size 0; std::span is
+        // allowed to hold (nullptr, 0) for an empty span.
+        return a.empty() || std::memcmp(a.data(), b.data(), a.size()) == 0;
     }
 };
 

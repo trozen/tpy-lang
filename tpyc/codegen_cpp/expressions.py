@@ -45,7 +45,7 @@ from ..parse import (
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
-from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, loop_var_binding, is_lvalue_iterable
+from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, view_key_target
 from .functions import literal_mangled_name
 
 if TYPE_CHECKING:
@@ -649,13 +649,24 @@ class ExpressionGenerator:
         natively accepts lvalues, so the copy-into-temp + move is unnecessary
         for plain names and literals.
         """
-        # Bytes literal passed to bytes/BytesView param: use static storage.
-        # The C++ param is std::span<const uint8_t>, so bytes_literal()
-        # avoids the heap allocation of a temporary vector.
-        if isinstance(arg, TpyBytesLiteral) and (is_bytes_type(ptype) or is_bytes_view_type(ptype)):
-            if not arg.value:
-                return "std::span<const uint8_t>{}"
-            return self._gen_bytes_literal_span(arg.value)
+        # Bytes literal targeting a span-storage slot: pin to static storage
+        # via bytes_literal() so the stored span doesn't borrow a temporary
+        # vector. Own[bytes] is excluded -- its storage IS vector (list.append
+        # of bytes elements expects vector<uint8_t>, not span).
+        bytes_lit_arg = arg
+        while isinstance(bytes_lit_arg, TpyCoerce):
+            bytes_lit_arg = bytes_lit_arg.expr
+        if isinstance(bytes_lit_arg, TpyBytesLiteral) and ptype is not None:
+            use_static_span = is_bytes_type(ptype) or is_bytes_view_type(ptype)
+            if not use_static_span:
+                inner_ptype = unwrap_readonly(unwrap_ref_type(ptype))
+                if isinstance(inner_ptype, OwnType):
+                    inner_ptype = unwrap_readonly(inner_ptype.wrapped)
+                    use_static_span = is_bytes_view_type(inner_ptype)
+            if use_static_span:
+                if not bytes_lit_arg.value:
+                    return "std::span<const uint8_t>{}"
+                return self._gen_bytes_literal_span(bytes_lit_arg.value)
         gen_arg = self.gen_expr_deref(arg, ptype if target_type is _UNSET else target_type)
         if ptype is not None:
             # Auto-consuming iteration: Iterable[Own[T]] param with last-use arg
@@ -791,7 +802,7 @@ class ExpressionGenerator:
             # If target type is Char and single char, output as char literal
             if is_char_type(target_type) and len(expr.value) == 1:
                 return f"'{escape_cpp_char(expr.value)}'"
-            return f'"{escape_cpp_string(expr.value)}"'
+            return cpp_string_literal_expr(expr.value)
 
         elif isinstance(expr, TpyBytesLiteral):
             if not expr.value:
@@ -1205,7 +1216,8 @@ class ExpressionGenerator:
                 if expr.op == "not in":
                     return f"(!({joined}))" if len(conditions) > 1 else f"(!{conditions[0]})"
                 return f"({joined})"
-            left = self.gen_expr(expr.left)
+            right_type_for_left = self.types.get_resolved_type(expr.right)
+            left = self.gen_expr(expr.left, view_key_target(right_type_for_left))
             right = self.gen_expr(expr.right)
             # Dereference globals for .begin()/.end() calls
             if self.ctx.is_indirect_name(expr.right):
@@ -4277,7 +4289,7 @@ class ExpressionGenerator:
                 # For pointer-globals with wrapper storage, this yields raw `T*`.
                 ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
                 subscript_obj = f"::tpy::deref_check({ptr_expr})"
-        index_expr = self.gen_index_expr(expr.index, index_type)
+        index_expr = self.gen_index_expr(expr.index, index_type, view_key_target(obj_type))
 
         # Bounds-safe: index provably in [0, len(obj)), skip normalize_index
         if expr.bounds_safe:
@@ -4290,13 +4302,16 @@ class ExpressionGenerator:
         # Fallback: operator[] (user records generate const operator[] from __getitem__)
         return f"{subscript_obj}[{index_expr}]"
 
-    def gen_index_expr(self, index: TpyExpr, index_type: TpyType) -> str:
+    def gen_index_expr(self, index: TpyExpr, index_type: TpyType,
+                       target_type: TpyType | None = None) -> str:
         """Generate index expression, converting BigInt indices to int32_t.
 
         The raw index (possibly negative) is passed through to the runtime
         helpers which handle normalization and bounds checking, matching CPython.
+        target_type, when set, threads the container's key type so view-typed
+        keys (BytesView/StrView) can pin literal indices to static storage.
         """
-        index_expr = self.gen_expr_deref(index)
+        index_expr = self.gen_expr_deref(index, target_type)
         if not self._is_int_constant(index) and self.types.is_runtime_bigint(index, index_type):
             index_expr = f"{index_expr}.to_fixed_check<int32_t>()"
         return index_expr
@@ -4445,6 +4460,8 @@ class ExpressionGenerator:
         """Generate std::format(...) for an f-string."""
         fmt_parts: list[str] = []
         raw_parts: list[str] = []  # without brace-escaping, for pure-literal path
+        raw_value = ""  # original (unescaped) literal content, for NUL detection
+        decoded_fmt_parts: list[str] = []  # runtime view of the format string (NUL-byte length)
         args: list[str] = []
         all_literal = True
 
@@ -4452,8 +4469,10 @@ class ExpressionGenerator:
             if isinstance(part, str):
                 escaped = escape_cpp_string(part)
                 raw_parts.append(escaped)
+                raw_value += part
                 # Escape braces for std::format
                 fmt_parts.append(escaped.replace("{", "{{").replace("}", "}}"))
+                decoded_fmt_parts.append(part.replace("{", "{{").replace("}", "}}"))
             else:
                 all_literal = False
                 gen_arg, arg_type = self.gen_expr_narrowed(part.expr)
@@ -4461,9 +4480,11 @@ class ExpressionGenerator:
                 conv = part.conversion
 
                 if has_spec:
-                    fmt_parts.append("{:" + part.format_spec + "}")
+                    placeholder = "{:" + part.format_spec + "}"
                 else:
-                    fmt_parts.append("{}")
+                    placeholder = "{}"
+                fmt_parts.append(placeholder)
+                decoded_fmt_parts.append(placeholder)
 
                 is_user_type = (
                     (isinstance(arg_type, NominalType) and arg_type.is_user_record)
@@ -4506,11 +4527,24 @@ class ExpressionGenerator:
                 args.append(gen_arg)
 
         if all_literal:
-            # Pure literal f-string -- use raw parts (no brace-escaping needed)
-            return f'std::string("{"".join(raw_parts)}")'
+            # Pure literal f-string -- use raw parts (no brace-escaping needed).
+            joined = "".join(raw_parts)
+            # Embedded NUL: explicit-length std::string ctor; the
+            # const-char-pointer ctor would truncate via strlen.
+            if '\x00' in raw_value:
+                nbytes = len(raw_value.encode('utf-8'))
+                return f'std::string("{joined}", {nbytes})'
+            return f'std::string("{joined}")'
 
         fmt_str = "".join(fmt_parts)
         args_str = ", ".join(args)
+        # Embedded NUL: route through vformat with an explicit-length view.
+        # std::format's consteval ctor would truncate the format string via
+        # string_view(const char*) -> strlen.
+        if '\x00' in raw_value:
+            nbytes = len("".join(decoded_fmt_parts).encode('utf-8'))
+            return (f'std::vformat(std::string_view{{"{fmt_str}", {nbytes}}}, '
+                    f'std::make_format_args({args_str}))')
         return f'std::format("{fmt_str}", {args_str})'
 
     def _gen_named_expr(self, expr: TpyNamedExpr) -> str:

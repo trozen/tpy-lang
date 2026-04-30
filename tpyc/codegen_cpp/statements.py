@@ -34,7 +34,7 @@ from ..namespace import Namespace
 from ..sema.context import PENDING_CONTAINER_TYPES
 from ..diagnostics import SemanticError
 
-from .context import INDENT, CodeGenError, FinallyContext, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable
+from .context import INDENT, CodeGenError, FinallyContext, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable, view_key_target
 from ..type_def_registry import (
     is_list,
     is_fixed_int_type, is_big_int_type, is_bytes_type, is_str_type,
@@ -1430,7 +1430,10 @@ class StatementGenerator:
             index_type = self.ctx.analyzer.get_expr_type(stmt.target.index)
             # Dereference globals for subscript access
             subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(stmt.target.obj) else obj
-            index_expr = self.expressions.gen_index_expr(stmt.target.index, index_type)
+            # Thread the dict/set's view-typed key through so bytes/str
+            # literals pin to static storage (avoiding a stored dangling view).
+            index_expr = self.expressions.gen_index_expr(
+                stmt.target.index, index_type, view_key_target(obj_type))
 
             # Bounds-safe: index provably in [0, len(obj)), skip normalize_index
             if stmt.target.bounds_safe:

@@ -23,7 +23,9 @@ from ..parse import (
     TpyIfExpr,
 )
 from ..namespace import Namespace, BindingKind
-from ..type_def_registry import is_bool_type
+from ..type_def_registry import (
+    is_bool_type, is_dict, is_set, is_bytes_view_type, is_str_view_type,
+)
 
 if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
@@ -101,12 +103,49 @@ def expand_cpp_template(template: str, self_val: str, *args: str,
 
 def escape_cpp_string(value: str) -> str:
     """Escape a Python string for use in a C++ string literal (double-quoted)."""
-    return value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+    return (value.replace('\\', '\\\\')
+                 .replace('"', '\\"')
+                 .replace('\n', '\\n')
+                 .replace('\r', '\\r')
+                 .replace('\t', '\\t')
+                 .replace('\x00', '\\000'))
+
+
+def cpp_string_literal_expr(value: str) -> str:
+    """Render a Python string as a C++ string_view expression.
+
+    NUL-free literals emit as bare `"..."` (decay; string_view ctor uses
+    strlen). Embedded NUL needs `std::string_view{"...", N}` with explicit
+    UTF-8 byte length, otherwise strlen truncates at the first NUL.
+    """
+    escaped = escape_cpp_string(value)
+    if '\x00' in value:
+        nbytes = len(value.encode('utf-8'))
+        return f'std::string_view{{"{escaped}", {nbytes}}}'
+    return f'"{escaped}"'
+
+
+def view_key_target(container_type) -> "TpyType | None":
+    """For dict/set with a view-typed key (BytesView/StrView), return that
+    key type so callers can thread it as a target_type into key-position
+    codegen. Lets bytes/str literals pin to static storage instead of
+    being stored as dangling spans/string_views."""
+    if not (is_dict(container_type) or is_set(container_type)):
+        return None
+    type_args = getattr(container_type, "type_args", None)
+    if not type_args:
+        return None
+    k = type_args[0]
+    if is_bytes_view_type(k) or is_str_view_type(k):
+        return k
+    return None
 
 
 def escape_cpp_char(value: str) -> str:
     """Escape a Python char for use in a C++ char literal (single-quoted)."""
-    return value.replace('\\', '\\\\').replace("'", "\\'").replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+    return (value.replace('\\', '\\\\').replace("'", "\\'")
+                 .replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+                 .replace('\x00', '\\000'))
 
 
 # Namespace map: module_name -> C++ namespace (set by Compiler before codegen)

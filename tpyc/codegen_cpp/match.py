@@ -19,7 +19,7 @@ from ..parse import (
     TpyWildcardPattern, TpyCapturePattern, TpyClassPattern, TpyLiteralPattern,
     TpyValuePattern, TpyOrPattern, TpyAsPattern,
 )
-from .context import INDENT, CodeGenError, escape_cpp_name, escape_cpp_string, escape_cpp_char
+from .context import INDENT, CodeGenError, escape_cpp_name, escape_cpp_string, escape_cpp_char, cpp_string_literal_expr
 from .string_dispatch import find_best_discriminator, STRING_SWITCH_THRESHOLD
 from ..type_def_registry import is_fixed_int_type, is_bool_type, is_enum_type
 
@@ -1023,7 +1023,7 @@ class MatchGenerator:
             for case, string_val in entries:
                 self.ctx.emit_source_comment(out, case.loc, sw_inner)
                 pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
-                out.write(f'{sw_inner}if (__match_subject == "{escape_cpp_string(string_val)}") {{\n')
+                out.write(f'{sw_inner}if (__match_subject == {cpp_string_literal_expr(string_val)}) {{\n')
                 self._emit_binding(out, as_name, as_raw, "__match_subject", sw_deep)
                 self.ctx.indent_level += (3 if kind == "char_at" else 2)
                 self._emit_case_body(out, case.body, case.type_facts)
@@ -1553,7 +1553,7 @@ class MatchGenerator:
         elif isinstance(val, float):
             return f"{subject_expr} == {val!r}"
         elif isinstance(val, str):
-            return f'{subject_expr} == "{escape_cpp_string(val)}"'
+            return f'{subject_expr} == {cpp_string_literal_expr(val)}'
         else:
             raise CodeGenError(f"Unsupported literal in match: {val!r}")
 
@@ -1730,7 +1730,7 @@ class MatchGenerator:
                 elif isinstance(val, float):
                     conds.append(f"{subject_expr}.{field_name} == {val!r}")
                 elif isinstance(val, str):
-                    conds.append(f'{subject_expr}.{field_name} == "{escape_cpp_string(val)}"')
+                    conds.append(f'{subject_expr}.{field_name} == {cpp_string_literal_expr(val)}')
             elif isinstance(inner, TpyClassPattern) and inner.is_union_field_guard:
                 # Union-typed field: runtime holds_alternative check
                 assert inner.resolved_type is not None

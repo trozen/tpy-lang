@@ -20,7 +20,7 @@ from ..parse import (
     TpyBoolLiteral, TpyFieldAccess,
 )
 
-from .context import escape_cpp_string, CodeGenError, expand_cpp_template, qualify_native_name
+from .context import escape_cpp_string, CodeGenError, expand_cpp_template, qualify_native_name, cpp_string_literal_expr
 from ..type_def_registry import (
     is_dict_view, is_set, is_dict, is_array, is_span, is_list,
     is_fixed_int_type, is_big_int_type, is_bool_type, is_float32_type, is_float64_type,
@@ -289,8 +289,9 @@ class BuiltinGenerator:
             if kw_expr is None:
                 return f'"{default_literal}"' if default_literal else None
             if isinstance(kw_expr, TpyStrLiteral):
-                lit = escape_cpp_string(kw_expr.value)
-                return f'"{lit}"' if lit else None
+                if not kw_expr.value:
+                    return None
+                return cpp_string_literal_expr(kw_expr.value)
             return self._gen_expr_deref(kw_expr)
 
         end_token = chain_token("end", "\\n")
@@ -337,7 +338,7 @@ class BuiltinGenerator:
             if isinstance(arg, TpyNoneLiteral):
                 parts.append('"None"')
             elif isinstance(arg, TpyStrLiteral):
-                parts.append(f'"{escape_cpp_string(arg.value)}"')
+                parts.append(cpp_string_literal_expr(arg.value))
             elif self.types.is_runtime_bigint(arg, arg_type):
                 # BigInt has operator<< for std::ostream, no .to_string() needed
                 parts.append(self._gen_expr_deref(arg))

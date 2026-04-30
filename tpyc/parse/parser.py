@@ -3476,7 +3476,8 @@ class Parser:
     def _validate_const_default(self, expr: TpyExpr, node: ast.expr) -> None:
         """Validate that a default value expression is a compile-time constant."""
         if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral,
-                             TpyStrLiteral, TpyNoneLiteral, TpyTypeParamConstruct)):
+                             TpyStrLiteral, TpyBytesLiteral, TpyNoneLiteral,
+                             TpyTypeParamConstruct)):
             return
         # Bare name reference: must resolve to a module-level Final[T] constant.
         # Sema validates the binding (parser doesn't see globals or imports yet).

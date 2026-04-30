@@ -31,13 +31,14 @@ from ..typesys import (
     error_return_to_cpp, unwrap_ref_type,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
-from ..type_def_registry import is_span, is_char_type, is_str_type, protocol_info_of
+from ..type_def_registry import is_span, is_char_type, is_str_type, is_bytes_view_type, protocol_info_of
 from ..parse.nodes import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
-    TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyName,
+    TpyBytesLiteral, TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct,
+    TpyCall, TpyName,
 )
 from ..namespace import Namespace
-from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name
+from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr
 from .type_resolution import resolve_stmt_type_cascade
 
 if TYPE_CHECKING:
@@ -137,13 +138,15 @@ def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
             if ch == '\\':
                 return "'\\\\'"
             return f"'{ch}'"
-        escaped = (expr.value
-                   .replace('\\', '\\\\')
-                   .replace('"', '\\"')
-                   .replace('\n', '\\n')
-                   .replace('\r', '\\r')
-                   .replace('\t', '\\t'))
-        return f'"{escaped}"'
+        return cpp_string_literal_expr(expr.value)
+    if isinstance(expr, TpyBytesLiteral):
+        if not expr.value:
+            return "{}"
+        if is_bytes_view_type(ptype):
+            escaped = "".join(f"\\x{b:02x}" for b in expr.value)
+            return f'::tpy::bytes_literal("{escaped}", {len(expr.value)})'
+        hex_bytes = ", ".join(f"0x{b:02x}" for b in expr.value)
+        return f"std::vector<uint8_t>{{{hex_bytes}}}"
     if isinstance(expr, TpyNoneLiteral):
         # OwnType(OptionalType) -> std::optional<T>&& param, needs std::nullopt.
         # Bare OptionalType with pointer repr -> T* param, needs nullptr.

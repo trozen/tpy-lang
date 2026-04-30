@@ -27,6 +27,10 @@ struct BaseException : std::exception {
     std::string message;
     BaseException() = default;
     explicit BaseException(std::string msg) : message(std::move(msg)) {}
+    explicit BaseException(std::string_view msg) : message(msg) {}
+    // Disambiguates string-literal calls that would otherwise be ambiguous
+    // between the std::string and std::string_view ctors above.
+    explicit BaseException(const char* msg) : message(msg) {}
     const char* what() const noexcept override { return message.c_str(); }
     std::string_view __str__() const { return message; }
     friend std::ostream& operator<<(std::ostream& os, const BaseException& e) { return os << e.message; }

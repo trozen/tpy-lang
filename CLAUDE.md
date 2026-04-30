@@ -138,7 +138,7 @@ For test snippets (`tests/cases/*/src/main.py`):
 
 ## Terminology
 
-TurboPython distinguishes **value types** (primitives, `bool`, `Char`, views like `str`/`Span[T]`, tuples, user types implementing `ValueType` -- copied when passed around) from **reference types** (classes/records, `list`, `dict`, `set`, `bytes`/`bytearray` -- passed by reference to functions, stored inline in fields and containers). Always use "reference types" for the latter, never "object types". `Own[T]` means ownership transfer (move), not heap allocation.
+TurboPython distinguishes **value types** (primitives, `bool`, `Char`, views like `str`/`Span[T]`, tuples, user types implementing `ValueType` -- copied when passed around) from **reference types** (classes/records, `list`, `dict`, `set`, `bytes`/`bytearray` -- not copied at function boundaries, stored inline in fields and containers). Always use "reference types" for the latter, never "object types". The exact param shape varies: classes/records/list/dict/set/bytearray pass by C++ reference (`T&`/`const T&`), while `bytes` passes as `std::span<const uint8_t>` (parallel to `str` passing as `std::string_view`) -- both avoid the copy without an explicit reference. `Own[T]` means ownership transfer (move), not heap allocation.
 
 ## Architecture
 
