@@ -163,12 +163,28 @@ class MatchGenerator:
             f"in @overload specialization"
         )
 
+    def _subject_is_ptr_variant(
+        self, subject: TpyExpr, subject_type: TpyType,
+    ) -> bool:
+        """Whether the match subject's storage is pointer-variant.
+
+        ``is_ptr_variant_union(subject_type)`` reflects the type's repr in
+        its primary contexts (params, locals, returns) but the same union
+        is stored value-variant when it's a record field or container
+        element. The match ``get_expr`` ('*std::get' vs 'std::get') has to
+        match actual storage, not just type. Falls back to the assignment
+        path's classifier so the same rules apply on both sides.
+        """
+        if not self.ctx.is_ptr_variant_union(subject_type):
+            return False
+        return self.stmts._is_ptr_variant_source(subject)
+
     def _gen_match_switch_union(
         self, out: TextIO, stmt: TpyMatch, subject_type: UnionType, indent: str,
     ) -> None:
         """Generate switch (__match_subject.index()) for union subjects."""
         inner = INDENT * (self.ctx.indent_level + 1)
-        is_ptr_var = self.ctx.is_ptr_variant_union(subject_type)
+        is_ptr_var = self._subject_is_ptr_variant(stmt.subject, subject_type)
         # Recursive union wrapper: access .data for variant operations
         data_sfx = ".value" if self.ctx.is_recursive_union(subject_type) else ""
         out.write(f"{indent}switch (__match_subject{data_sfx}.index()) {{\n")
@@ -539,7 +555,7 @@ class MatchGenerator:
         end_label = f"__match_end_{self.ctx.match_counter}"
         inner = INDENT * (self.ctx.indent_level + 1)
         inner2 = INDENT * (self.ctx.indent_level + 2)
-        is_ptr_var = self.ctx.is_ptr_variant_union(subject_type)
+        is_ptr_var = self._subject_is_ptr_variant(stmt.subject, subject_type)
         # Variant indices come from the wrapper struct's std::variant ordering;
         # for narrowed recursive unions this is wider than subject_type.members.
         is_recursive, full_members_opt = self.ctx.recursive_union_info(subject_type)
@@ -1785,6 +1801,21 @@ class MatchGenerator:
         else:
             raise CodeGenError(f"Cannot use literal {val!r} in switch case label")
 
+    def _record_capture_type(
+        self, pattern: TpyClassPattern, field_name: str, capture_name: str,
+    ) -> None:
+        """Register the field's declared type for a match-bound capture so
+        ``_get_cpp_declared_type`` (which only looks at ``var_types``) can
+        drive narrowing-aware deref on the captured name."""
+        record_type = pattern.resolved_type
+        if not isinstance(record_type, NominalType):
+            return
+        record = self.ctx.analyzer.registry.get_record_for_type(record_type)
+        for f in record.fields:
+            if f.name == field_name:
+                self.ctx.var_types[capture_name] = f.type
+                return
+
     def _gen_match_field_bindings(
         self, out: TextIO, pattern: TpyClassPattern, case_var: str, indent: str,
     ) -> None:
@@ -1792,6 +1823,7 @@ class MatchGenerator:
         for field_name, sub_pattern in pattern.keywords:
             if isinstance(sub_pattern, TpyCapturePattern):
                 self._emit_binding(out, escape_cpp_name(sub_pattern.name), sub_pattern.name, f"{case_var}.{field_name}", indent)
+                self._record_capture_type(pattern, field_name, sub_pattern.name)
             elif isinstance(sub_pattern, TpyWildcardPattern):
                 pass
             elif isinstance(sub_pattern, TpyLiteralPattern):
@@ -1828,4 +1860,6 @@ class MatchGenerator:
                 elif isinstance(inner_sub, (TpyWildcardPattern, TpyCapturePattern)):
                     if isinstance(inner_sub, TpyCapturePattern):
                         self._emit_binding(out, escape_cpp_name(inner_sub.name), inner_sub.name, f"{case_var}.{field_name}", indent)
+                        self._record_capture_type(pattern, field_name, inner_sub.name)
                     self._emit_binding(out, escape_cpp_name(sub_pattern.name), sub_pattern.name, f"{case_var}.{field_name}", indent)
+                    self._record_capture_type(pattern, field_name, sub_pattern.name)

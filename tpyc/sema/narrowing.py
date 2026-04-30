@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, OptionalType, NoneType, VoidType, PtrType, OwnType, NominalType,
     TypeParamRef, IntLiteralType, AnyType,
-    ReadonlyType, UnionType, unwrap_readonly, unwrap_ref_type, make_union, union_none_narrow,
+    ReadonlyType, UnionType, unwrap_readonly, unwrap_qualifiers, unwrap_ref_type, make_union, union_none_narrow,
     is_protocol_type, LiteralType, LiteralValue, is_any_int_type,
 
 )
@@ -703,9 +703,13 @@ class NarrowingTracker:
             inner_target = inner_target.wrapped
         if not isinstance(inner_target, OptionalType):
             return
-        if isinstance(rhs_type, (NoneType, OptionalType)) or isinstance(rhs_expr, TpyNoneLiteral):
-            return
         if rhs_type is None:
+            return
+        # Peel readonly/own/ref wrappers on the RHS to mirror the LHS unwrap
+        # above -- a readonly Optional field read produces an Optional under
+        # a wrapper, and that's still possibly-None.
+        rhs_unwrapped = unwrap_qualifiers(rhs_type)
+        if isinstance(rhs_unwrapped, (NoneType, OptionalType)) or isinstance(rhs_expr, TpyNoneLiteral):
             return
         self.ctx.func.narrowed_types[name] = self._optional_inner_type(target_type)
 

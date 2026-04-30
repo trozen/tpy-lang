@@ -1,0 +1,1 @@
+main.py:21: warning: copies A | B into field; use copy() to make this explicit

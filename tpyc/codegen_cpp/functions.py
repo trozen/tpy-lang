@@ -1579,7 +1579,10 @@ class FunctionGenerator:
         method_crp = self._build_const_ref_params(
             method.params, mp, rp, use_const_params,
             addr_escapes_params=ae)
-        if use_const_params and not static:
+        # ``self`` is const in any const method, including the
+        # auto_readonly_params_resolved clone where ``use_const_params``
+        # is False (its params already carry explicit ``readonly[T]``).
+        if const and not static:
             method_crp.add("self")
         self.statements.gen_body(out, method.body, method.params, method.return_type,
                                  method, local_ns, indent_level=body_indent_level, is_method=True,

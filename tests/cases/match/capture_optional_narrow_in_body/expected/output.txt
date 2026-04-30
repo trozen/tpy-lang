@@ -1,0 +1,4 @@
+target=release
+jobs=4
+jobs=1
+filter=smoke
