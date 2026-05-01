@@ -13,12 +13,12 @@ template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x);
 template<typename T>
 ::tpy::val_or_ref_t<T> first(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
-void test_literal_infer_strview();
-void test_explicit_no_downgrade();
+void test_literal_infers_str();
+void test_explicit_str();
+void test_explicit_strview();
 std::string make_str();
-void test_non_literal_no_downgrade();
+void test_non_literal_str();
 
-// # Test that generic inference prefers StrView for string literal arguments.
 // def identity[T](x: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {

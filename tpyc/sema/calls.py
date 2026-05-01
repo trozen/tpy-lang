@@ -18,7 +18,7 @@ from ..typesys import (
     UnionType, VOID, BIGINT, BOOL, STR, INT32, AnyType, ANY, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own, make_union,
     is_any_str_type, container_to_str_template, error_return_matches,
     is_protocol_union, protocol_union_protocols,
-    STRVIEW, MutationCallEdge,
+    MutationCallEdge,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     CallableType, is_fn_type, unwrap_ref_type,
     is_integer_type, is_any_int_type,
@@ -61,55 +61,6 @@ from ..type_def_registry import (
     is_enum_type,
     find_factory_by_simple_name, find_factory_in_module,
 )
-
-
-def _tp_in_record_type(name: str, typ: TpyType) -> bool:
-    """Check if type param `name` appears as a direct type arg of a record."""
-    if isinstance(typ, NominalType) and typ.is_record:
-        for inner in typ.inner_types():
-            if isinstance(inner, TypeParamRef) and inner.name == name:
-                return True
-    for inner in typ.inner_types():
-        if _tp_in_record_type(name, inner):
-            return True
-    return False
-
-
-def prefer_strview_for_literals(
-    type_subst: dict[str, TpyType],
-    func: FunctionInfo,
-    args: list,
-    type_conforms_to_protocol: 'Callable',
-    explicit_count: int = 0,
-) -> None:
-    """Downgrade T=str to T=StrView when all args at bare-T
-    positions are string literals (static lifetime, safe as string_view)."""
-    explicit_params = set(func.type_params[:explicit_count])
-    for tp, inferred_type in list(type_subst.items()):
-        if tp in explicit_params:
-            continue
-        if not is_str_type(inferred_type):
-            continue
-        # Skip if T would become a record field (StrView not allowed as field)
-        if _tp_in_record_type(tp, func.return_type):
-            continue
-        if any(_tp_in_record_type(tp, ptype) for _, ptype in func.params):
-            continue
-        all_literals = True
-        any_match = False
-        for (pname, ptype), arg in zip(func.params, args):
-            ptype_bare = unwrap_ref_type(ptype)
-            if isinstance(ptype_bare, TypeParamRef) and ptype_bare.name == tp:
-                any_match = True
-                if not isinstance(arg, TpyStrLiteral):
-                    all_literals = False
-                    break
-        if any_match and all_literals:
-            # Re-check bounds if present
-            if tp in func.type_param_bounds:
-                if not type_conforms_to_protocol(STRVIEW, func.type_param_bounds[tp]):
-                    continue
-            type_subst[tp] = STRVIEW
 
 
 def _enrich_literal_types(
@@ -2620,10 +2571,6 @@ class CallAnalyzer:
                 for k, v in type_subst.items():
                     if isinstance(v, PendingViewType):
                         type_subst[k] = v.family.owned_type
-                n_explicit = len(explicit) if explicit else 0
-                if n_explicit < len(overload.type_params):
-                    prefer_strview_for_literals(type_subst, overload, expr.args,
-                                               protocol_checker, n_explicit)
                 resolved = self.type_ops.substitute_method_type_params(overload, type_subst)
                 candidates.append(resolved)
                 generic_originals[id(resolved)] = (overload, type_subst)
@@ -3212,13 +3159,6 @@ class CallAnalyzer:
                     f"Specify explicitly: {func.name}[{', '.join(func.type_params)}](...)",
                     expr
                 )
-
-        # Prefer StrView for string literal args (skip fully-explicit)
-        n_explicit = sum(1 for a in expr.type_args if a is not None) if expr.type_args else 0
-        if n_explicit < len(func.type_params):
-            prefer_strview_for_literals(type_subst, func, expr.args,
-                                        self.protocols.type_conforms_to_protocol,
-                                        n_explicit)
 
         # Store inferred type args for codegen (preserves Ref for val_or_ref<T>)
         expr.inferred_type_args = tuple(type_subst[p] for p in func.type_params)

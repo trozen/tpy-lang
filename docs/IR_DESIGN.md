@@ -9,6 +9,7 @@
 | `--dump-thir` debug output | Not started |
 | THIR-backed codegen context | Not started |
 | Codegen migration from analyzer/AST to THIR | Not started |
+| Descriptor-based generic ABI (post-THIR codegen, see Open Questions item 8) | Not started |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | Not started |
 | `--dump-mir` debug output | Not started |
@@ -473,17 +474,25 @@ analyzer coupling:
 4. **Create a `THIRCodeGenContext`** that reads from THIR instead of analyzer
 5. **Migrate codegen modules one at a time** (expressions, statements, functions, records)
 6. **Remove analyzer references from codegen**
-7. **Define MIR nodes** in `tpyc/mir/nodes.py`
-8. **Lower THIR -> MIR** in `tpyc/mir/lower.py`
-9. **Add `--dump-mir`**
-10. **Implement MIR liveness + move/copy passes**
-11. **Implement MIR advisory loan checker**
-12. **Run MIR checker in parallel with existing sema borrow/move logic**
-13. **Make MIR authoritative for ownership/borrow diagnostics**
-14. **Add safe opt-in mode** on top of the same MIR analysis
-15. **Switch codegen from THIR to MIR** once MIR carries enough information for readable,
+7. **Descriptor-based generic ABI** -- replace the C++-storage-keyed
+   `param_val_or_ref_t<T>` template plumbing with TPy-type descriptors threaded through
+   generic instantiation (see Open Questions item 8). Explicit milestone, not a Phase 2
+   catch-all: do this **after THIR-backed codegen is complete and before MIR-backed
+   codegen is considered done**. Conceptually a generic-ABI/codegen feature, not a
+   borrow-checker/MIR feature -- THIR gives the right implementation point without
+   waiting for the whole MIR ownership program. Doing this earlier (pre-IR) is feasible
+   but most compiler plumbing would be churn that gets retired by THIR/MIR codegen.
+8. **Define MIR nodes** in `tpyc/mir/nodes.py`
+9. **Lower THIR -> MIR** in `tpyc/mir/lower.py`
+10. **Add `--dump-mir`**
+11. **Implement MIR liveness + move/copy passes**
+12. **Implement MIR advisory loan checker**
+13. **Run MIR checker in parallel with existing sema borrow/move logic**
+14. **Make MIR authoritative for ownership/borrow diagnostics**
+15. **Add safe opt-in mode** on top of the same MIR analysis
+16. **Switch codegen from THIR to MIR** once MIR carries enough information for readable,
     stable emission
-16. **Retire old sema/codegen ownership logic**
+17. **Retire old sema/codegen ownership logic**
 
 #### Why THIR-Backed Codegen Comes First
 
@@ -1342,3 +1351,88 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    from a `str` variable is conceptually the same as any other borrow. The `BorrowKind`
    may need a `View` variant to capture the "invalidated by any mutation of source"
    semantics.
+
+8. **Generic param/storage representation for two-faced TPy types.** Several TPy types
+   have a storage/param C++ split: `str` (storage `std::string`, param
+   `std::string_view`), `String` (storage `std::string`, param `const std::string&`),
+   `bytes` (storage `std::vector<uint8_t>`, param `std::span<const uint8_t>`),
+   `bytearray` (storage `std::vector<uint8_t>`, param mutable ref). Today's
+   non-generic codegen handles this position-aware (param positions emit the param
+   formatter, storage positions emit the storage formatter), but generic codegen uses
+   the runtime trait `param_val_or_ref_t<T>` keyed on the C++ storage type -- which
+   cannot distinguish `str` from `String` (both `std::string`) or `bytes` from
+   `bytearray` (both `std::vector<uint8_t>`). Net effects today: generic-T-over-str
+   pays a `std::string` materialization at every call site; mutability of `bytearray`
+   would be silently lost if the trait were specialized to a const view. **The
+   constraint is structural to C++ templates**: by the time the C++ template
+   machinery instantiates `f<T>`, the original TPy type information is erased to the
+   C++ storage type.
+
+   This is fundamentally a consequence of using C++ as the back-end. A direct binary
+   back-end would not have the constraint -- codegen could emit per-TPy-type entries
+   without the template-erasure step. Until/unless the LLVM path is taken, the
+   compiler must thread TPy-type identity through generic instantiation explicitly.
+
+   Recommendation: encode the TPy type as a **descriptor/tag template parameter**,
+   not the plain C++ storage type:
+
+   ```cpp
+   template<class TDesc>
+   typename TDesc::storage echo(typename TDesc::param x) {
+       return TDesc::store(x);
+   }
+
+   // str_desc       = { storage = std::string,        param = std::string_view }
+   // String_desc    = { storage = std::string,        param = const std::string& }
+   // bytes_desc     = { storage = std::vector<uint8_t>, param = std::span<const uint8_t> }
+   // bytearray_desc = { storage = std::vector<uint8_t>, param = std::vector<uint8_t>& }
+   ```
+
+   Each TPy type owns its descriptor. Generic dispatch goes through the descriptor,
+   so param/storage forms are chosen from the **TPy type**, not the erased C++
+   storage type. This:
+   - Fixes the generic-vs-non-generic asymmetry (generic-T-over-str matches direct
+     `str` at the param boundary).
+   - Preserves `bytearray` mutability through generics.
+   - Preserves `String` ABI for `@native` interop.
+   - Keeps current runtime storage choices (no wrapper migration).
+   - Stays compatible with C++ template instantiation (just a richer parameter).
+
+   Costs: invasive call-site migration (every generic call passes a descriptor),
+   refactor of every generic API surface, descriptor table for each TPy type, and
+   integration with `Fn[..., T]` concept dispatch. Best done as part of the codegen
+   migration when codegen already has TPy types as first-class entities, rather than
+   bolted on top of the current C++-storage-keyed traits.
+
+   Alternatives that were considered and rejected:
+   - **Trait specialization (`param_val_or_ref_t<std::string> = std::string_view`)**:
+     conflates `str`/`String` and `bytes`/`bytearray`; structurally cannot distinguish
+     them at the C++ trait layer.
+   - **Per-call-site explicit template specializations**: amounts to compiler-driven
+     monomorphization with the related complexity (instantiation registry, cross-
+     module emission rules); fights C++ template generics.
+   - **Distinct C++ wrapper types per TPy type** (`tpy::str` wrapping `std::string`):
+     architecturally clean but broad migration (operators, hashing, printing, native
+     calls, runtime helpers); also tricky to keep `String` ABI-raw alongside.
+   - **Drop the storage/param split entirely**: predictable but a perf retreat from
+     "fast by default"; creates double-allocation patterns at storage sites; not
+     aligned with the project's stated efficiency goals.
+
+   Until this lands, generic-T-over-str will pay an extra `std::string`
+   materialization at call sites compared to non-generic `str` (SSO covers short
+   literals; long literals heap-allocate once per call). Document the asymmetry as a
+   known perf gap rather than work around it with partial fixes.
+
+   **Scheduling**: this work is feasible pre-IR (TPy type info already exists via
+   `TypeDef.param_cpp_formatter` and `expr.inferred_type_args` is already threaded
+   through call codegen), but a pre-IR implementation would have to be substantially
+   re-done after THIR/MIR migration -- the runtime descriptor structs survive, but
+   most compiler plumbing (template headers, generic param/return rendering, explicit
+   type-arg emission, generic methods/records, `Fn[...]` interaction, protocol
+   interaction, native/template calls, tuple/ref helpers) gets churned by the
+   THIR/MIR codegen rewrite. Recommendation: schedule as an explicit post-THIR
+   codegen milestone (Recommended Rollout step 7), to land before or during
+   MIR-backed codegen migration -- not as a generic "Phase 2" item that could sit
+   indefinitely behind the rest of the MIR ownership program. Conceptually this is
+   a generic-ABI/codegen feature, not a borrow-checker/MIR feature; THIR provides
+   the right implementation point.

@@ -20,8 +20,8 @@ void main() {
     }
     // # Generic while-generator with str
     // for s in repeat("hi", 2):
-    std::string_view __tmp_2 = "hi";
-    auto __src_2 = repeat<std::string_view>(__tmp_2, 2);
+    std::string __tmp_2 = "hi";
+    auto __src_2 = repeat<std::string>(__tmp_2, 2);
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
         auto __r_3 = __itr_2.__next__();
@@ -66,14 +66,14 @@ void main() {
     }
     // # compose: enumerate directly over repeat (generator over generator)
     // for i, s in enumerate(repeat("x", 3)):
-    std::string_view __tmp_3 = "x";
-    auto __tmp_4 = repeat<std::string_view>(__tmp_3, 3);
-    auto __src_8 = enumerate<std::string_view>(__tmp_4);
+    std::string __tmp_3 = "x";
+    auto __tmp_4 = repeat<std::string>(__tmp_3, 3);
+    auto __src_8 = enumerate<std::string>(__tmp_4);
     auto&& __itr_8 = ::tpy::__iter__(__src_8);
     for (;;) {
         auto __r_9 = __itr_8.__next__();
         if (!__r_9.has_value()) break;
-        auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_9);
+        const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_9);
         // # compose: enumerate directly over repeat (generator over generator)
         // for i, s in enumerate(repeat("x", 3)):
         const auto& __tup_3 = __for_tup_2;

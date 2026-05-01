@@ -11,7 +11,7 @@ void main() {
     // print(c.identity(42))
     std::cout << c.identity<int32_t>(42) << "\n";
     // print(c.identity("hello"))
-    std::cout << c.identity<std::string_view>("hello") << "\n";
+    std::cout << c.identity<std::string>("hello") << "\n";
     // print(c.identity(True))
     std::cout << ::tpy::print_bool(c.identity<bool>(true)) << "\n";
 }

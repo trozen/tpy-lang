@@ -3085,6 +3085,7 @@ class ExpressionAnalyzer:
             if isinstance(body_type, IntLiteralType):
                 body_type = self.ctx.default_int_for_literal(body_type)
             expr.inferred_return_type = body_type
+            self.compat.check_view_return_dangle(expr.body, body_type, expr.loc)
             concrete_params = tuple(fn_type.param_types)
             if fn_type.is_template:
                 return make_fn_type(concrete_params, body_type)
@@ -3100,6 +3101,7 @@ class ExpressionAnalyzer:
                     f"expected return type '{fn_type.return_type}'",
                     expr
                 )
+        self.compat.check_view_return_dangle(expr.body, fn_type.return_type, expr.loc)
 
         expr.inferred_return_type = fn_type.return_type
         return fn_type

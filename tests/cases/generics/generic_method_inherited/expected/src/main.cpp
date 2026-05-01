@@ -11,7 +11,7 @@ void main() {
     // print(c.transform(42))
     std::cout << c.transform<int32_t>(42) << "\n";
     // print(c.transform("inherited"))
-    std::cout << c.transform<std::string_view>("inherited") << "\n";
+    std::cout << c.transform<std::string>("inherited") << "\n";
 }
 
 void __tpy_init() {

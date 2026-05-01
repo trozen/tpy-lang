@@ -64,6 +64,14 @@ void main() {
     auto __tmp_9 = ::tpy::Range<int32_t>(1, 5);
     int32_t __tmp_10 = 0;
     std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, __tmp_9, __tmp_10) << "\n";
+    // # str accumulator (U=str). Used to dangle silently because U was
+    // # auto-downgraded to StrView and the lambda's owned-string return
+    // # converted to a view of a temporary.
+    // parts: list[str] = ["foo", "bar", "baz"]
+    std::vector<std::string> parts = {"foo", "bar", "baz"};
+    // print(reduce(lambda a, b: a + b, parts, ""))   # foobarbaz
+    std::string __tmp_11 = "";
+    std::cout << ::tpystd::functools::reduce<std::string, std::string>([](std::string_view a, std::string_view b) -> std::string { return (::tpy::str_concat(a, b)); }, parts, __tmp_11) << "\n";
 }
 
 void __tpy_init() {

@@ -1540,6 +1540,18 @@ class TypeCompatibility:
         # Default: assume safe
         return False
 
+    def check_view_return_dangle(self, expr: TpyExpr, return_type: TpyType,
+                                 loc: SourceLocation | None) -> None:
+        """Variant of check_dangling_reference for value-return contexts
+        (lambda bodies, yield values). The full check_dangling_reference
+        rejects local/temporary returns when the return type is a non-value
+        object -- a false positive for value-return contexts where the C++
+        callable/generator machinery moves/copies by value. Only the
+        view-dangling and pointer-dangling sub-rules apply here.
+        """
+        if isinstance(return_type, PtrType) or is_borrowing_view_type(return_type):
+            self.check_dangling_reference(expr, return_type, loc)
+
     def check_dangling_reference(self, expr: TpyExpr, return_type: TpyType, loc: SourceLocation | None) -> None:
         """Check if returning expr as a reference would be a dangling reference.
 

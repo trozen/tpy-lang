@@ -29,7 +29,7 @@ from ..type_def_registry import is_list, is_fstr_type
 from .overloads import resolve_overload, OverloadAmbiguityError
 from .calls import (
     arity_error_msg, resolve_kwargs, validate_generic_defaults,
-    validate_type_param_bounds, prefer_strview_for_literals,
+    validate_type_param_bounds,
     _enrich_literal_types,
 )
 from .statements import _root_name_of_expr, _is_self_call_deferred
@@ -1760,11 +1760,6 @@ class MethodAnalyzer:
                 self.protocols.type_conforms_to_protocol,
                 lambda msg: self.ctx.error(msg, expr),
             )
-
-        # Prefer StrView for string literal args (skip fully-explicit)
-        if not expr.type_args or has_wildcards:
-            prefer_strview_for_literals(method_subst, partial_func, expr.args,
-                                       self.protocols.type_conforms_to_protocol)
 
         # Store inferred type args (new params only) for codegen
         expr.inferred_type_args = tuple(method_subst[p] for p in new_params)

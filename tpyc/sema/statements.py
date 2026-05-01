@@ -2237,6 +2237,7 @@ class StatementAnalyzer:
         stmt.value = self.compat.coerce_expr(
             stmt.value, yield_type, elem_type, "yield value",
             coercion_ctx=CoercionContext.RETURN)
+        self.compat.check_view_return_dangle(stmt.value, elem_type, stmt.loc)
         # Assign a unique yield state number
         self.ctx._yield_counter += 1
         self.ctx.generator_yield_states[id(stmt)] = self.ctx._yield_counter

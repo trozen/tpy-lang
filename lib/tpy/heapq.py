@@ -24,14 +24,17 @@
 #     instantiated with a user class. Needs codegen fix for generic-T
 #     returns that take ownership.
 #
-# Codegen perf gap affecting this module (see TODO.md "Missed optimizations"):
-#   - Generic-T params lowered through `param_val_or_ref_t<T>` don't specialize
-#     `T = std::string` to `std::string_view`, so heappush[str]/heapreplace[str]
-#     take `const std::string&`. Every string literal push forces materializing
-#     a std::string at the call site. Direct `def f(s: str)` params lower to
-#     string_view correctly; only generics miss it. A `param_type_t<T>` trait
-#     with `std::string -> std::string_view` would fix heapq str heaps and
-#     every other generic-over-str stdlib function.
+# Codegen perf gap affecting this module (see TODO.md "Missed optimizations" and
+# `docs/IR_DESIGN.md` "Open Questions" item 8):
+#   - Generic-T params route through the trait `param_val_or_ref_t<T>` which is
+#     keyed on the C++ storage type, so `heappush[str]` lands on `const
+#     std::string&` instead of `std::string_view` (the trait can't distinguish
+#     TPy `str` from TPy `String`, since both share `std::string` storage).
+#     Every string literal push materializes a `std::string` at the call site
+#     (SSO covers short literals). Direct `def f(s: str)` params lower to
+#     string_view correctly; only generics miss it. The proper fix needs
+#     TPy-type-aware generic codegen (descriptor template parameters) and is
+#     deferred to the IR migration -- see IR_DESIGN.md.
 # tpy: cpp_namespace("tpystd::heapq")
 from tpy import Int32, Comparable, Own, copy
 

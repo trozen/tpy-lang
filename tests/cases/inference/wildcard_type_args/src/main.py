@@ -81,8 +81,8 @@ def main() -> None:
     r5 = m.transform[_, Int64](Int32(1), Int64(100))  # tpyc: type(Int64)
     print(r5)
 
-    # String literal: wildcard should produce StrView (same as full inference)
-    s = identity[_]("hello")  # tpyc: type(StrView)
+    # String literal: wildcard should produce str (same as full inference)
+    s = identity[_]("hello")  # tpyc: type(str)
     print(s)
 
 main()

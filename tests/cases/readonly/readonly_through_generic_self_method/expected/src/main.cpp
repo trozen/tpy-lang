@@ -11,7 +11,7 @@ void main() {
     // print(h.lookup(Int32(11)))
     std::cout << h.lookup(11) << "\n";
     // print(h.identity("hello"))
-    std::cout << h.identity<std::string_view>("hello") << "\n";
+    std::cout << h.identity<std::string>("hello") << "\n";
     // s = SubHolder[Int32](Int32(9))
     SubHolder<int32_t> s = SubHolder<int32_t>(9);
     // print(s.super_lookup(Int32(13)))

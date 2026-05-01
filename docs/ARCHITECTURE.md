@@ -253,8 +253,7 @@ callee, etc. The methods share:
   `self.compat`, `self.deduce`, `self.methods`,
 - the module-level helpers (`resolve_kwargs`, `arity_error_msg`,
   `validate_generic_defaults`, `validate_type_param_bounds`,
-  `prefer_strview_for_literals`, `_enrich_literal_types`) which are
-  also imported directly by `methods.py`.
+  `_enrich_literal_types`) which are also imported directly by `methods.py`.
 
 Splitting `CallAnalyzer` by call-shape would either require mix-ins
 (all assembled back into one `CallAnalyzer` -- no structural gain)

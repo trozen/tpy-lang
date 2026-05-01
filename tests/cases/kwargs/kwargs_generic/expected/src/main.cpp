@@ -15,9 +15,9 @@ void main() {
     int32_t __tmp_4 = 20;
     std::cout << first<int32_t>(__tmp_3, __tmp_4) << "\n";
     // print(first(b="world", a="hello"))
-    std::string_view __tmp_5 = "hello";
-    std::string_view __tmp_6 = "world";
-    std::cout << first<std::string_view>(__tmp_5, __tmp_6) << "\n";
+    std::string __tmp_5 = "hello";
+    std::string __tmp_6 = "world";
+    std::cout << first<std::string>(__tmp_5, __tmp_6) << "\n";
 }
 
 void __tpy_init() {

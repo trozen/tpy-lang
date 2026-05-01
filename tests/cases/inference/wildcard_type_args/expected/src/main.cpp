@@ -69,10 +69,10 @@ void main() {
     int64_t r5 = m.transform<int32_t, int64_t>(1, 100);
     // print(r5)
     std::cout << r5 << "\n";
-    // # String literal: wildcard should produce StrView (same as full inference)
-    // s = identity[_]("hello")  # tpyc: type(StrView)
-    std::string_view __tmp_10 = "hello";
-    std::string_view s = identity<std::string_view>(__tmp_10);
+    // # String literal: wildcard should produce str (same as full inference)
+    // s = identity[_]("hello")  # tpyc: type(str)
+    std::string __tmp_10 = "hello";
+    std::string s = identity<std::string>(__tmp_10);
     // print(s)
     std::cout << s << "\n";
 }

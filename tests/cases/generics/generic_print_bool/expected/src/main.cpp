@@ -16,8 +16,8 @@ void main() {
     int32_t __tmp_3 = 42;
     show<int32_t>(__tmp_3);
     // show("hello")
-    std::string_view __tmp_4 = "hello";
-    show<std::string_view>(__tmp_4);
+    std::string __tmp_4 = "hello";
+    show<std::string>(__tmp_4);
 }
 
 void __tpy_init() {

@@ -12,12 +12,6 @@
 #     overload back (raises on empty input).
 #   - Higher-arity / closure-heavy items (partial, lru_cache, singledispatch,
 #     cached_property, partialmethod) are not yet available.
-#   - `reduce` on `str` accumulators silently produces garbage output: the
-#     generic `U` is lowered as `std::string_view` (param form) rather than
-#     `std::string` (storage form), and the lambda's owned-string result
-#     becomes a dangling view. Use an explicit non-generic wrapper or switch
-#     to Int/bytes until the compiler bug lands. See BUGS.md "Generic U over
-#     str drops lifetime".
 # tpy: cpp_namespace("tpystd::functools")
 from typing import Iterable
 from tpy import Fn, Own, copy

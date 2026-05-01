@@ -421,6 +421,19 @@ def peek(data: StrView) -> StrView:    # string_view in, string_view out
 - Cannot use `+=` (would dangle -- use `str` or `String` for mutable strings)
 - Returning a `StrView` referencing a local or temporary is an error
 
+When a generic type parameter `T` is inferred from a string literal, sema picks
+`T = str` (storage form `std::string`), not `T = StrView`. The auto-downgrade
+to `StrView` was unsound (it could silently demote owned-string returns through
+callable parameters into dangling views) and was removed; users who want explicit
+view semantics in a generic call write `f[StrView]("...")`. Generic returns and
+yields of view types are still subject to dangling-view checks at sema (a lambda
+or generator that materializes an owned string at a `StrView` return slot is
+rejected with a clear diagnostic). The trade-off is one `std::string`
+materialization at the call site for generic-over-`str` calls vs. zero materialization
+for direct-`str` calls -- SSO covers short literals; longer ones heap-allocate
+once per call. Tracked as a known asymmetry to be closed by descriptor-based
+generic codegen post-IR migration (see `docs/IR_DESIGN.md` Open Questions item 8).
+
 #### F-string Formatting (Working)
 
 F-strings use `std::format` as the backend:

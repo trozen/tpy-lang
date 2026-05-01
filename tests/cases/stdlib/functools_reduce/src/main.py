@@ -45,4 +45,10 @@ def main() -> None:
     print(reduce(add, [1, 2, 3], 0))  # 6
     print(reduce(add, range(1, 5), 0))  # 10 (range(1,5) = 1+2+3+4)
 
+    # str accumulator (U=str). Used to dangle silently because U was
+    # auto-downgraded to StrView and the lambda's owned-string return
+    # converted to a view of a temporary.
+    parts: list[str] = ["foo", "bar", "baz"]
+    print(reduce(lambda a, b: a + b, parts, ""))   # foobarbaz
+
 main()
