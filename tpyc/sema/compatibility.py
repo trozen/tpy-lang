@@ -27,7 +27,7 @@ from ..parse import (
 from ..coercions import resolve_coercion, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY
 from ..modules import get_span_return_type
 from .context import addr_taken_roots
-from .numeric_lattice import numeric_info
+from .numeric_lattice import fixed_int_range_contains, numeric_info
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_span_iter, is_list,
@@ -146,6 +146,7 @@ if TYPE_CHECKING:
     from .type_ops import TypeOperations
     from .protocols import ProtocolChecker
     from .methods import MethodAnalyzer
+    from .local_deduction import LocalTypeDeduction
 
 
 class TypeCompatibility:
@@ -157,6 +158,7 @@ class TypeCompatibility:
         self.type_ops: TypeOperations
         self.protocols: ProtocolChecker
         self.methods: MethodAnalyzer
+        self.deduction: 'LocalTypeDeduction'
 
     def _mark_addr_taken(self, expr: TpyExpr) -> None:
         """Mark all param roots of expr as mutated because their address is taken."""
@@ -180,8 +182,31 @@ class TypeCompatibility:
         Returns a Coercion if a conversion should be applied at codegen time,
         or None if compatible with no coercion needed.
         """
+        # check_type_compatible raises on failure, so all callers are
+        # commit points -- safe to apply the retro-widen side effect here
+        # without leaking it into overload probes (which use _check_compat
+        # / is_type_compatible directly).
+        if isinstance(source_expr, TpyName):
+            new_actual = self.deduction.try_retro_widen_literal_arg(
+                source_expr.name, actual, expected,
+                getattr(source_expr, "loc", None) or loc,
+            )
+            if new_actual is not None:
+                actual = new_actual
+                self.ctx.set_expr_type(source_expr, new_actual)
+            else:
+                self._maybe_raise_literal_local_range(source_expr, actual, expected, context)
         result = self._check_compat(actual, expected, context, loc, source_expr, is_return, coercion_ctx)
         if isinstance(result, CompatError):
+            # Surface where a previously retro-widened local's type got
+            # pinned, so the user sees why a non-default type appears in
+            # the message even though they wrote `a = 0`.
+            prior_loc = (self.ctx.func.retro_widened_locs.get(source_expr.name)
+                         if isinstance(source_expr, TpyName) else None)
+            if prior_loc is not None:
+                hint = (f" ('{source_expr.name}' was promoted to '{actual}' by "
+                        f"earlier use at line {prior_loc.line})")
+                raise SemanticError(result.message + hint, result.loc)
             raise SemanticError(result.message, result.loc)
         return result
 
@@ -1017,6 +1042,28 @@ class TypeCompatibility:
         )
         self.ctx.set_expr_type(coerced, expected)
         return coerced
+
+    def _maybe_raise_literal_local_range(
+        self, expr: TpyName, actual: TpyType, expected: TpyType, context: str,
+    ) -> None:
+        """Raise a range error when a literal-seeded local would have
+        retro-widened to `expected` except a recorded literal value falls
+        outside the target's range. Surfaces the literal value (e.g. -1,
+        or 300 against UInt8) instead of the bare "got Int32" mismatch.
+        """
+        cand = self.deduction.literal_retro_candidate(expr.name, actual, expected)
+        if cand is None:
+            return
+        target, values = cand
+        bad = [v for v in values if not fixed_int_range_contains(target, v)]
+        if not bad:
+            return
+        tr = int_traits_of(target)
+        raise self.ctx.error(
+            f"Integer literal {bad[0]} assigned to '{expr.name}' is outside "
+            f"{target} range [{tr.min_value}, {tr.max_value}] in {context}",
+            expr,
+        )
 
     def _resolve_pending_for_any_storage(self, actual: TpyType) -> TpyType:
         """Convert Pending{List,Dict,Set}Type to its concrete container

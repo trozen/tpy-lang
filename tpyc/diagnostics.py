@@ -96,6 +96,20 @@ class Scope:
     def define(self, name: str, typ: TpyType) -> None:
         self.bindings[name] = typ
 
+    def set_existing(self, name: str, typ: TpyType) -> bool:
+        """Update an existing binding at the level where it was defined.
+
+        Walks up the parent chain and rewrites the binding in-place at the
+        owning scope. Returns True on update, False if the name was not bound.
+        """
+        scope: Optional[Scope] = self
+        while scope is not None:
+            if name in scope.bindings:
+                scope.bindings[name] = typ
+                return True
+            scope = scope.parent
+        return False
+
     def all(self) -> dict[str, TpyType]:
         """Return all bindings in this scope (not including parent)."""
         return dict(self.bindings)

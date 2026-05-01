@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ..coercions import CoercionContext
+from ..coercions import CoercionContext, resolve_coercion
 from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction, TpyListRepeat
 from ..parse.nodes import TpyStrLiteral, TpyBytesLiteral, TpySubscript, TpyFieldAccess, TpyBinOp, TpyIfExpr
 from ..typesys import (
@@ -41,11 +41,15 @@ from ..typesys import (
     FLOAT,
     UnknownElementType,
     resolve_int_literals,
+    unwrap_qualifiers,
     unwrap_ref_type,
 )
 from .context import PENDING_CONTAINER_TYPES
 from ..diagnostics import SemanticError
-from .numeric_lattice import merge_literal_seed_target, numeric_info, widen_numeric_types
+from .numeric_lattice import (
+    fixed_int_range_contains, merge_literal_seed_target,
+    numeric_info, widen_numeric_types,
+)
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_list, is_fixed_int_type, is_big_int_type,
     is_str_type, is_str_view_type, is_bytes_type, is_bytes_view_type,
@@ -54,6 +58,7 @@ from ..type_def_registry import (
 if TYPE_CHECKING:
     from .compatibility import TypeCompatibility
     from .context import SemanticContext
+    from ..parse.nodes import SourceLocation
 
 
 def _contains_literal_type(typ: TpyType) -> bool:
@@ -216,6 +221,76 @@ class LocalTypeDeduction:
             return widened
 
         return existing_type
+
+    def literal_retro_candidate(
+        self, name: str, actual: TpyType, expected: TpyType,
+    ) -> tuple[TpyType, list[int]] | None:
+        """Probe whether `name` is a literal-seeded local that could in
+        principle retro-widen to `expected`. Returns (unwrapped target,
+        recorded literal values) when the gate passes; None otherwise.
+        Callers decide what to do based on whether the recorded values
+        fit the target -- promote (try_retro_widen_literal_arg) or raise
+        a range error (TypeCompatibility._maybe_raise_literal_local_range).
+
+        Standard fixed-int widening (Int32->Int64 etc.) already has a
+        Coercion entry, so we only step in when the directional COERCIONS
+        table has nothing for actual->target. widen_numeric_types is a
+        symmetric common-merge predicate (Int32+UInt8 -> Int32 either
+        order) and would mis-gate this.
+        """
+        if name not in self.ctx.func.literal_default_vars:
+            return None
+        target = unwrap_qualifiers(expected)
+        if not is_fixed_int_type(actual) or not is_fixed_int_type(target):
+            return None
+        if actual == target:
+            return None
+        if resolve_coercion(actual, target, CoercionContext.ARG) is not None:
+            return None
+        return target, self.ctx.func.literal_values.get(name, [])
+
+    def try_retro_widen_literal_arg(
+        self,
+        name: str,
+        actual: TpyType,
+        expected: TpyType,
+        call_loc: 'SourceLocation | None',
+    ) -> TpyType | None:
+        """Retro-widen a literal-seeded local to a fixed-int target slot.
+
+        Fires when every recorded literal value fits `target`. Mutates the
+        var's declared type in place across var_types, declared_var_types,
+        scope, and namespace -- subsequent expression analysis in the same
+        function sees the new type, and codegen reads it through
+        var_types[id(decl)]. Returns the new (unwrapped) target on
+        success; None when the gate fails or some recorded value is out
+        of range.
+        """
+        cand = self.literal_retro_candidate(name, actual, expected)
+        if cand is None:
+            return None
+        target, values = cand
+        if not values:
+            return None
+        if not all(fixed_int_range_contains(target, v) for v in values):
+            return None
+        var_decl = self.ctx.func.var_decl_by_name.get(name)
+        if var_decl is None:
+            return None
+        self.ctx.var_types[id(var_decl)] = target
+        for key in list(self.ctx.declared_var_types):
+            if key[1] == name:
+                self.ctx.declared_var_types[key] = target
+        if self.ctx.func.current_scope is not None:
+            self.ctx.func.current_scope.set_existing(name, target)
+        if self.ctx.func.current_ns is not None:
+            self.ctx.func.current_ns.update_variable_type_recursive(name, target)
+        self.ctx.func.literal_default_vars.discard(name)
+        # Always record the promotion even when no loc is available (synthetic
+        # nodes from macros etc.), so the staleness-refresh in _analyze_assign
+        # has a consistent signal; the hint formatter guards against None.
+        self.ctx.func.retro_widened_locs[name] = call_loc
+        return target
 
     def check_conflicting_annotation(
         self,

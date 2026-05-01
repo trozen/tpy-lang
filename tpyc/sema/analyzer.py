@@ -166,6 +166,7 @@ class SemanticAnalyzer:
         # Wire up compatibility's deferred dependencies
         self.compat.type_ops = self.type_ops
         self.compat.protocols = self.protocols
+        self.compat.deduction = self.deduction
 
         # Narrowing tracker (depends on type_ops, protocols)
         self.narrowing = NarrowingTracker(self.ctx, self.type_ops, self.protocols)

@@ -140,6 +140,24 @@ class Namespace:
             return True
         return False
 
+    def update_variable_type_recursive(self, name: str, typ: TpyType) -> bool:
+        """Update an existing variable binding at the level where it lives.
+
+        Walks up the parent chain; rewrites the first VARIABLE binding found
+        and returns True. Returns False if the name is not bound or the
+        binding is non-variable.
+        """
+        ns: Optional[Namespace] = self
+        while ns is not None:
+            binding = ns._bindings.get(name)
+            if binding is not None:
+                if binding.kind == BindingKind.VARIABLE:
+                    binding.type = typ
+                    return True
+                return False
+            ns = ns.parent
+        return False
+
     def all_bindings(self) -> dict[str, NameBinding]:
         """Return all bindings in this namespace (not including parents)."""
         return dict(self._bindings)

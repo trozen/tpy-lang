@@ -54,16 +54,12 @@ from tpy.mem import UninitArrayStorage, UninitHeapStorage
 from tpy.unsafe import unsafe_ptr, unsafe_cast, unsafe_load, unsafe_str_from_buf
 from tpy import take_ptr
 
-# TODO(compiler): the `UInt64(0)` / `UInt32(0)` constructor calls scattered
-# through this file (on call-site args to `_pcre_match`, `_pcre_substitute`,
-# `_do_match`, etc.) are consistent with TPy's documented widening rules
-# -- `Int32 -> UInt64` is deliberately not automatic because negative
-# signed values don't round-trip through unsigned. This file surfaces the
-# friction heavily because PCRE2's C API uses `size_t` / `uint32_t`
-# throughout. See BUGS.md entry on treating integer literals as untyped
-# at call sites (Rust-style). When that lands, these constructors can
-# collapse to bare `0`/`1`/`256` (the values are compile-time-known to
-# fit the unsigned target).
+# Bare `0`/`1` flow through to `size_t` / `uint32_t` PCRE2 args because the
+# compiler treats integer literals (and literal-seeded locals like
+# `offset = 0`) as polymorphic enough to retro-fit unsigned targets when
+# the value provably fits. The remaining `UInt64(...)` / `UInt32(...)`
+# casts in this file are on `len(...)` results (BigInt) and other typed
+# sources, where a runtime narrowing check is intentional.
 # TODO(compiler): aliased import block here is a workaround for two related
 # entries in BUGS.md:
 #   * `from _bindings import pcre2` doesn't bind the submodule -- forces
@@ -328,13 +324,13 @@ class Pattern:
         return Match(md, subject, rc)           # md moves into the Match
 
     def search(self, subject: str) -> Optional[Own[Match]]:
-        return self._do_match(subject, UInt64(0), UInt32(0))
+        return self._do_match(subject, 0, 0)
 
     def match(self, subject: str) -> Optional[Own[Match]]:
-        return self._do_match(subject, UInt64(0), PCRE2_ANCHORED)
+        return self._do_match(subject, 0, PCRE2_ANCHORED)
 
     def fullmatch(self, subject: str) -> Optional[Own[Match]]:
-        return self._do_match(subject, UInt64(0),
+        return self._do_match(subject, 0,
                               PCRE2_ANCHORED | PCRE2_ENDANCHORED)
 
     def finditer(self, subject: str) -> Own[list[Match]]:
@@ -344,7 +340,7 @@ class Pattern:
         Today materializes the full list -- fine for typical cases, real
         memory cost on huge subjects."""
         out: list[Match] = []
-        offset = UInt64(0)
+        offset = 0
         sub_len = UInt64(len(subject))
         s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
         while offset <= sub_len:
@@ -353,19 +349,19 @@ class Pattern:
                 raise error("out of memory allocating match data")
             md = _OwnedMatchData(md_raw)
             rc = _pcre_match(self._code.get(), s_data, sub_len, offset,
-                             UInt32(0), md.get(), self._mctx.get())
+                             0, md.get(), self._mctx.get())
             if rc < 0:
                 if rc == PCRE2_ERROR_NOMATCH:
                     break          # md drops at end of iteration
                 raise error(_pcre2_error_msg(rc))   # md drops
             ovec = _pcre_ovec(md.get())
             mstart = unsafe_load(ovec, 0)
-            mend = unsafe_load(ovec, UInt32(1))
+            mend = unsafe_load(ovec, 1)
             out.append(Match(md, subject, rc))   # md moves into Match
             # Bump-along by one byte on zero-width match to avoid an
             # infinite loop.
             if mend == mstart:
-                offset = mend + UInt64(1)
+                offset = mend + 1
             else:
                 offset = mend
         return out
@@ -416,7 +412,7 @@ class Pattern:
         opts = PCRE2_SUBSTITUTE_GLOBAL | PCRE2_SUBSTITUTE_OVERFLOW_LENGTH
         rc = _pcre_substitute(
             self._code.get(), sub_data, UInt64(len(subject)),
-            UInt64(0), opts, None, self._mctx.get(),
+            0, opts, None, self._mctx.get(),
             repl_data, UInt64(len(repl)),
             outbuf.ptr(), take_ptr(outlen),
         )
@@ -429,7 +425,7 @@ class Pattern:
             outbuf = UninitHeapStorage[UInt8](UInt32.trunc(outlen))
             rc = _pcre_substitute(
                 self._code.get(), sub_data, UInt64(len(subject)),
-                UInt64(0), PCRE2_SUBSTITUTE_GLOBAL, None,
+                0, PCRE2_SUBSTITUTE_GLOBAL, None,
                 self._mctx.get(), repl_data, UInt64(len(repl)),
                 outbuf.ptr(), take_ptr(outlen),
             )
@@ -440,7 +436,7 @@ class Pattern:
     def split(self, subject: str, maxsplit: Int32 = 0) -> Own[list[str]]:
         """Split `subject` at each match. `maxsplit=0` means no limit."""
         out: list[str] = []
-        offset = UInt64(0)
+        offset = 0
         splits: Int32 = 0
         sub_len = UInt64(len(subject))
         s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
@@ -452,17 +448,17 @@ class Pattern:
             if maxsplit > Int32(0) and splits >= maxsplit:
                 break
             rc = _pcre_match(self._code.get(), s_data, sub_len, offset,
-                             UInt32(0), md.get(), self._mctx.get())
+                             0, md.get(), self._mctx.get())
             if rc < 0:
                 if rc == PCRE2_ERROR_NOMATCH:
                     break
                 raise error(_pcre2_error_msg(rc))   # md drops
             ovec = _pcre_ovec(md.get())
             mstart = unsafe_load(ovec, 0)
-            mend = unsafe_load(ovec, UInt32(1))
+            mend = unsafe_load(ovec, 1)
             out.append(subject[Int32.trunc(offset):Int32.trunc(mstart)])
             if mend == mstart:
-                offset = mend + UInt64(1)
+                offset = mend + 1
             else:
                 offset = mend
             splits += Int32(1)

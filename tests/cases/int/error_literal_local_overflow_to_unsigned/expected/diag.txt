@@ -1,0 +1,1 @@
+main.py:13: error: Integer literal 300 assigned to 'a' is outside UInt8 range [0, 255] in argument 'x'

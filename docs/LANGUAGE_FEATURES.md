@@ -271,6 +271,10 @@ z = x + y       # Result is int (BigInt), not Int32
 - Unsigned: `UInt8` → `UInt16` → `UInt32` → `UInt64`
 - Cross-sign: `UInt8` → `Int16`, `UInt16` → `Int32`, `UInt32` → `Int64`
 
+`Int32 → UInt64` and similar same-or-narrower cross-sign conversions are deliberately **not** implicit -- negative signed values don't round-trip through unsigned types. Direct integer literals at a fixed-width call site (`f(0)` for `f: UInt64`) bypass this gap because the value is known at compile time; non-fitting literals (`f(-1)`, `f(300)` for `UInt8`) are rejected at compile time with a range error.
+
+**Literal-seeded local retro-widening**: A function-local initialized from a non-negative integer literal (`offset = 0`, `n = 5`) without an annotation takes the configured default integer type at the assignment, then retroactively re-types to a fixed-width target the first time it flows into a typed slot the standard widening rules can't reach -- call argument, return value, annotated init, reassignment to a typed local, container element, field assign, or dict-key in subscript-assign. This makes `offset = 0; _pcre_match(..., offset, ...)` work when the parameter is `UInt64` without an explicit cast. The lock is one-shot: the first such use pins the local's type, and a later use demanding a different type produces a type-mismatch error with a hint pointing at the locking site. Reassigning the local from a non-literal source (`offset = some_func()`) drops the seed; module-level globals and collection-element literals are not covered (see `INTEGER_INFERENCE_DESIGN.md`).
+
 Negation (`-x`) is only available on signed types — unsigned types produce a compile error.
 
 **Explicit cross-type casts**: Any fixed-width integer type can be explicitly converted to any other using the constructor. Out-of-range values panic at runtime:

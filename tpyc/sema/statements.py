@@ -2624,6 +2624,17 @@ class StatementAnalyzer:
                     line=(stmt.loc.line if stmt.loc else None),
                 )
             elif existing_type:
+                # If RHS analysis triggered a retro-widen on this name
+                # (literal-seeded local promoted to a fixed-int target by
+                # any typed-slot use), the existing_type captured before
+                # the RHS is stale -- refresh from the scope so the
+                # reassignment's compat check sees the now-final declared
+                # type.
+                if (stmt.name in self.ctx.func.retro_widened_locs
+                        and self.ctx.func.current_scope is not None):
+                    fresh = self.ctx.func.current_scope.lookup(stmt.name)
+                    if fresh is not None and fresh != existing_type:
+                        existing_type = fresh
                 # Unwrap ReadonlyType for reassignment type resolution and
                 # coercion -- this is a binding, not passing by reference.
                 inner_existing = unwrap_readonly(existing_type)

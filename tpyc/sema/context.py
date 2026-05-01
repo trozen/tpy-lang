@@ -449,6 +449,14 @@ class FunctionTrackingState:
     write_history: dict[str, list[tuple[TpyType, TpyExpr]]] = field(default_factory=dict)
     authoritative_types: dict[str, TpyType] = field(default_factory=dict)
     authoritative_type_lines: dict[str, int] = field(default_factory=dict)
+    # Locals whose type was retroactively promoted from the literal-seeded
+    # default to a fixed-int target by a typed-slot use (ARG, RETURN, INIT,
+    # ASSIGN, SETITEM, FIELD, dict-key). Maps name to the loc of the use
+    # that triggered the promotion -- surfaced in later type-mismatch
+    # errors when a subsequent use disagrees with the locked type, and
+    # consulted by _analyze_assign to refresh stale existing_type when
+    # the RHS triggered the promotion of the LHS.
+    retro_widened_locs: dict[str, 'SourceLocation | None'] = field(default_factory=dict)
 
     # --- Global declaration tracking ---
     global_declarations: set[str] = field(default_factory=set)

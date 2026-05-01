@@ -5,7 +5,8 @@
 | Phase | Scope | Status |
 |-------|-------|--------|
 | **Phase 1** | Global `--default-int` CLI flag, configurable default (Int32/Int64/BigInt), explicit `int` stays BigInt | Done |
-| **Phase 2** | Deferred `IntLiteralType` resolution (context-sensitive per usage site) | Planned |
+| **Phase 2a** | Retro-widening of literal-seeded function locals at typed-slot uses (cross-sign Int32→UInt64 etc., the standard widening rules can't reach), with range diagnostics | Done |
+| **Phase 2b** | Full deferred `IntLiteralType` resolution (carry the literal type through arbitrary use chains, including module globals and collection elements, with multi-constraint reconciliation) | Planned |
 | **Future** | Per-module/per-function overrides (`# tpy:` directives, `@tpy.config`), constant folding | Planned |
 
 Decision date: 2026-02-16
@@ -161,7 +162,38 @@ Mitigation path:
 3. Optional per-module/per-function policy override (`# tpy:` / decorators).
 4. Policy interaction with future profiles (`@noalloc`, backend profiles).
 
-## Phase 2 Proposal: Deferred IntLiteralType Resolution
+## Phase 2a: Literal-Seeded Local Retro-Widening (Shipped)
+
+A narrow slice of the original deferred-resolution proposal landed: a
+function-local initialized from a non-negative integer literal (`offset = 0`)
+takes the configured default at the assignment as before, but the
+`literal_default_vars` scaffold (already used for BigInt/Int64/Float
+anchors set by *later assigns*) was extended with one additional edge --
+retroactive promotion to a fixed-int target on the first typed-slot use
+that the standard widening rules can't reach (cross-sign Int32→UInt64
+etc.).
+
+Triggers: ARG, RETURN, INIT to annotated local, ASSIGN to existing typed
+local, SETITEM into typed container, FIELD assign, dict-key in
+subscript-assign. The hook lives in `TypeCompatibility.check_type_compatible`
+(the canonical commit boundary; probes use `_check_compat` /
+`is_type_compatible` / `type_matches_*` directly so they don't fire).
+
+Diagnostics: when retro-widening would have fired except a recorded
+literal value falls outside the target's range (`a = -1; f(a)` for
+`UInt64`, `a = 300; f(a)` for `UInt8`), the error names the literal
+value and target range instead of the bare "got Int32" mismatch. When a
+retro-widened local later fails compat at a different typed slot
+(`a = 0; fu(a) /* UInt64 */; fi(a) /* Int32 */`), the type-mismatch
+message gets a "promoted to T by earlier use at line N" suffix pointing
+at the locking site.
+
+The lock is one-shot per local. Reassigning from a non-literal source
+drops the seed (existing `record_write` behavior). Module-level globals
+(`literal_default_vars` is per-function) and collection-element literals
+are not covered -- see Phase 2b below.
+
+## Phase 2b Proposal: Full Deferred IntLiteralType Resolution
 
 This section preserves the earlier design direction for a later phase.
 

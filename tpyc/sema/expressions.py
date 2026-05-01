@@ -2777,6 +2777,7 @@ class ExpressionAnalyzer:
                     index_type, actual_obj.key_type,
                     f"dict key (expected {actual_obj.key_type})",
                     loc=expr.loc,
+                    source_expr=expr.index,
                 )
             return make_ref(actual_obj.value_type)
         if is_dict(actual_obj):
@@ -2786,6 +2787,7 @@ class ExpressionAnalyzer:
                 index_type, k_type,
                 f"dict key (expected {k_type})",
                 loc=expr.loc,
+                source_expr=expr.index,
             )
             return make_ref(v_type)
 
