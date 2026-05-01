@@ -1,0 +1,4 @@
+main.py:12: warning: Mutation of 's' while borrowed (reassignment invalidates view 'view')
+main.py:22: warning: Mutation of 'b' while borrowed (reassignment invalidates view 'bv')
+main.py:44: warning: Mutation of 's' while borrowed (reassignment invalidates view 'alpha')
+main.py:44: warning: Mutation of 's' while borrowed (reassignment invalidates view 'beta')

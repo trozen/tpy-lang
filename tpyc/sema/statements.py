@@ -237,6 +237,34 @@ def _view_family_for_type(var_type: TpyType) -> ViewTypeFamily | None:
     return _VIEW_OWNED_QNAME_TO_FAMILY.get(qn) if qn else None
 
 
+def _handle_pinned_view_rebind(ctx: SemanticContext, name: str, stmt: TpyStmt) -> None:
+    """Handle the two pinned-view tracker effects of rebinding ``name``.
+
+    1. If ``name`` is a source with pinned-view borrowers, those views dangle
+       (str/bytes is value-type storage with no slot/pointer indirection) --
+       warn for each and drop the entry. ``sorted`` for deterministic order.
+    2. If ``name`` is itself a pinned view, remove it from its source's set
+       so the source no longer warns about it on subsequent rebinds.
+    """
+    aliases = ctx.func.pinned_view_aliases
+    if not aliases:
+        return
+    pinned_views = aliases.pop(name, None)
+    if pinned_views:
+        for view_name in sorted(pinned_views):
+            ctx.warning(
+                f"Mutation of '{name}' while borrowed"
+                f" (reassignment invalidates view '{view_name}')",
+                stmt
+            )
+    for source in list(aliases):
+        views = aliases[source]
+        if name in views:
+            views.discard(name)
+            if not views:
+                del aliases[source]
+
+
 class StatementAnalyzer:
     """Statement analysis."""
 
@@ -2742,16 +2770,22 @@ class StatementAnalyzer:
         if (stmt.init is not None and isinstance(stmt.init, TpyName)
                 and var_type is not None and not var_type.is_value_type()):
             self.ctx.mark_loop_var_mutated(stmt.init.name)
-        # Borrow tracking: reassignment breaks aliases in both directions
+        # Borrow tracking: reassignment breaks aliases in both directions.
+        # `retarget_storage_borrows` runs before `remove_borrower` so that
+        # borrowers of `name` get re-pointed to `name`'s former upstream
+        # (with kind promoted to the most-restrictive in the chain) rather
+        # than silently dropped. Required for chains through reassigned vars
+        # (e.g. `view = s; s = items[1]`) to keep tracking the source.
         self.ctx.mark_all_view_borrowers_mutated(stmt.name)
+        _handle_pinned_view_rebind(self.ctx, stmt.name, stmt)
         bt = self.ctx.func.borrow_tracker
+        bt.retarget_storage_borrows(stmt.name)
         bt.remove_borrower(stmt.name)
-        bt.remove_storage_borrows(stmt.name)
         # Create borrow when the target aliases another variable's storage.
-        # Skipped for reassigned vars (they use T* pointer-locals in codegen;
-        # general alias tracking would require pointer-alias analysis).
+        # Reassigned vars register too: codegen uses T* pointer-locals, so
+        # `view = s` aliases the storage `s` currently points into; the
+        # retarget logic above keeps the chain valid across reassignments.
         if (stmt.init is not None
-                and stmt.name not in self.ctx.func.current_reassigned_vars
                 and var_type is not None):
             if not var_type.is_value_type():
                 # Non-value lvalue: y = x, v = items[i], v = obj.field
@@ -2801,6 +2835,15 @@ class StatementAnalyzer:
                     root = _borrow_storage_root(init_inner)
                     if root is not None:
                         bt.add_borrow(root, stmt.name, BorrowKind.ELEMENT)
+            elif is_str_view_type(var_type) or is_bytes_view_type(var_type):
+                # Pinned view annotation aliasing a name source: register so
+                # source reassignment warns. Pending views handle this via
+                # source_mutated fall-back; the explicit annotation can't
+                # fall back so we warn at the mutation site instead.
+                init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
+                if isinstance(init_inner, TpyName):
+                    self.ctx.func.pinned_view_aliases.setdefault(
+                        init_inner.name, set()).add(stmt.name)
         # 8b: Register call result borrow for ALL assignments (including reassignments).
         # Unlike general alias tracking, borrow contracts use precise return_borrows_from
         # facts and don't need pointer-alias analysis -- safe to apply to reassigned vars.
@@ -3279,13 +3322,14 @@ class StatementAnalyzer:
             # Reassignment revives a consumed variable
             self.ctx.func.consumed_vars.discard(stmt.target.name)
             # Borrow tracking: reassignment breaks aliases in both directions.
-            # Note: borrow creation is skipped for reassigned vars (they use T*
-            # pointer-locals in codegen); tracking borrows for them would require
-            # pointer-alias analysis beyond the current design scope.
+            # Retarget runs before remove_borrower so borrowers of the target
+            # get re-pointed to the upstream source (with promoted kind),
+            # keeping chains through reassigned vars valid.
             self.ctx.mark_all_view_borrowers_mutated(stmt.target.name)
+            _handle_pinned_view_rebind(self.ctx, stmt.target.name, stmt)
             bt = self.ctx.func.borrow_tracker
+            bt.retarget_storage_borrows(stmt.target.name)
             bt.remove_borrower(stmt.target.name)
-            bt.remove_storage_borrows(stmt.target.name)
             # Rebinding a non-value pointer-local generates local = &(source) in C++,
             # requiring source param to be T& (not const T&).
             if not inner_target.is_value_type() and self.compat.is_lvalue(stmt.value):

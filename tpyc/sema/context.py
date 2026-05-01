@@ -103,6 +103,19 @@ class BorrowKind(Enum):
     PTR = "ptr"           # pointer into storage
 
 
+# Restrictiveness order: PTR/ITER/ELEMENT > FIELD > ALIAS. Used by retarget
+# logic to promote a chained borrow to the most-restrictive kind in the chain
+# (an ALIAS of an ELEMENT borrower is invalidated by structural mutation of
+# the source container) and by FlowFacts borrow merging.
+BORROW_KIND_RANK: dict[BorrowKind, int] = {
+    BorrowKind.ALIAS: 0,
+    BorrowKind.FIELD: 1,
+    BorrowKind.ITER: 2,
+    BorrowKind.ELEMENT: 3,
+    BorrowKind.PTR: 3,
+}
+
+
 class BorrowTracker:
     """Tracks borrow relationships between variables for mutation safety.
 
@@ -144,18 +157,48 @@ class BorrowTracker:
         for storage in to_clean:
             del self.borrows[storage]
 
-    def remove_storage_borrows(self, storage: str) -> None:
-        """Remove all borrows of ``storage`` and any field-path borrows (``storage.*``).
+    def retarget_storage_borrows(self, storage: str) -> None:
+        """Reassignment of ``storage``: retarget its borrowers to the upstream source.
 
-        When a variable is reassigned (``obj = Foo()``), borrows stored under
-        dotted keys like ``obj.items`` must also be cleared since the old
-        object's fields are no longer reachable through the variable.
+        The reassigned variable is generated as a ``T*`` pointer-local in C++,
+        so any borrower like ``view = storage`` aliases whatever ``storage``
+        currently points into. After the reassignment we want chains to keep
+        tracking the original container, not break silently.
+
+        The retargeted borrow kind is the most-restrictive in the chain
+        (PTR/ITER/ELEMENT > FIELD > ALIAS): an ALIAS of an ELEMENT borrower
+        is still invalidated by structural mutation of the source container.
+
+        Field-path borrows (``storage.*``) refer to the old object's fields
+        and are dropped unconditionally -- the variable will be rebound to a
+        different object, so those paths are unreachable.
+
+        If ``storage`` itself was not borrowing anything (no upstream chain),
+        its borrowers had nowhere to retarget to and are dropped.
         """
+        upstream = self.borrow_source(storage)
+        upstream_kind = self.borrow_kinds.get((upstream, storage)) if upstream else None
+
         borrowers = self.borrows.pop(storage, None)
         if borrowers:
-            for b in borrowers:
-                self.borrow_kinds.pop((storage, b), None)
-        # Clear field-path borrows: "storage.field"
+            if upstream is not None and upstream_kind is not None:
+                for b in borrowers:
+                    child_kind = self.borrow_kinds.pop((storage, b), None)
+                    if child_kind is None:
+                        continue
+                    promoted = (child_kind
+                                if BORROW_KIND_RANK[child_kind] >= BORROW_KIND_RANK[upstream_kind]
+                                else upstream_kind)
+                    existing = self.borrow_kinds.get((upstream, b))
+                    if existing is None or BORROW_KIND_RANK[promoted] > BORROW_KIND_RANK[existing]:
+                        self.borrows.setdefault(upstream, set()).add(b)
+                        self.borrow_kinds[(upstream, b)] = promoted
+            else:
+                for b in borrowers:
+                    self.borrow_kinds.pop((storage, b), None)
+
+        # Field-path borrows (storage.X) are dropped: the variable rebinds to
+        # a different object, so dotted-key borrows are unreachable.
         prefix = storage + "."
         to_remove = [k for k in self.borrows if k.startswith(prefix)]
         for k in to_remove:
@@ -361,6 +404,12 @@ class FunctionTrackingState:
     variable_to_bytes_var: dict[str, int] = field(default_factory=dict)
     bytes_source_borrows: dict[str, set[int]] = field(default_factory=dict)
     pending_bytes_resolutions: list[int] = field(default_factory=list)
+
+    # --- Pinned-view alias tracking (StrView/BytesView annotations) ---
+    # source_name -> set of pinned-view borrower names. Pending views fall
+    # back to the owned type via source_mutated; pinned views can't, so we
+    # warn at source reassignment that the view dangles.
+    pinned_view_aliases: dict[str, set[str]] = field(default_factory=dict)
 
     # --- Control flow ---
     super_init_call: TpyMethodCall | None = None

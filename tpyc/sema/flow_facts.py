@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
-from .context import BorrowKind
+from .context import BorrowKind, BORROW_KIND_RANK
 from .value_range import ValueRange
 
 if TYPE_CHECKING:
@@ -131,18 +131,9 @@ def _merge_borrow_triples(
     for storage, borrower, kind in combined:
         key = (storage, borrower)
         prev = best.get(key)
-        if prev is None or _BORROW_KIND_RANK[kind] > _BORROW_KIND_RANK[prev]:
+        if prev is None or BORROW_KIND_RANK[kind] > BORROW_KIND_RANK[prev]:
             best[key] = kind
     return frozenset((s, b, k) for (s, b), k in best.items())
-
-
-_BORROW_KIND_RANK: dict[BorrowKind, int] = {
-    BorrowKind.ALIAS: 0,
-    BorrowKind.FIELD: 1,
-    BorrowKind.ITER: 2,
-    BorrowKind.ELEMENT: 3,
-    BorrowKind.PTR: 3,
-}
 
 
 @dataclass(frozen=True, slots=True)
