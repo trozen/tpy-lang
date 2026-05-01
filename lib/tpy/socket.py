@@ -231,7 +231,7 @@ def gethostbyname(hostname: str) -> str:
 def _ipv4_to_str(addr_bytes: Ptr[UInt8]) -> str:
     # INET_ADDRSTRLEN = 16 ("255.255.255.255\0").
     buf = UninitArrayStorage[UInt8, 16]()
-    if _raw_inet_ntop(AF_INET, addr_bytes, buf.ptr(), UInt32(16)) is None:
+    if _raw_inet_ntop(AF_INET, addr_bytes, buf.ptr(), 16) is None:
         _raise_errno("inet_ntop")
     return unsafe_str_from_cstr(unsafe_cast(buf.ptr()))
 
@@ -250,7 +250,7 @@ def _build_sockaddr_in(host: str, port: Int32) -> Own[SockaddrIn]:
     """
     port_no = _raw_htons(UInt16.trunc(port))
     if len(hostname := host) == 0:
-        return SockaddrIn(UInt16.trunc(AF_INET), port_no, UInt32(0))
+        return SockaddrIn(UInt16.trunc(AF_INET), port_no, 0)
 
     addr_bytes = UninitArrayStorage[UInt8, 4]()
     host_ptr: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(hostname))
@@ -263,12 +263,12 @@ def _build_sockaddr_in(host: str, port: Int32) -> Own[SockaddrIn]:
 
     addr_u32_ptr: Ptr[UInt32] = unsafe_cast(addr_bytes.ptr())
     return SockaddrIn(UInt16.trunc(AF_INET), port_no,
-                      unsafe_load(addr_u32_ptr, UInt32(0)))
+                      unsafe_load(addr_u32_ptr, 0))
 
 
 # ---------- Socket class ----------
 
-_SOCKADDR_IN_LEN: Final[UInt32] = UInt32(16)
+_SOCKADDR_IN_LEN: Final[UInt32] = 16
 
 
 @nocopy
@@ -337,7 +337,7 @@ class Socket:
         """Block until a client connects, return a Socket around the new fd.
         Peer address available via `.getpeername()` on the result (CPython's
         `(sock, addr)` shape blocked by a codegen bug -- see module TODO)."""
-        addr = SockaddrIn(UInt16(0), UInt16(0), UInt32(0))
+        addr = SockaddrIn(0, 0, 0)
         addrlen: UInt32 = _SOCKADDR_IN_LEN
         new_fd = _raw_accept(self.fd, take_ptr(addr), take_ptr(addrlen))
         if new_fd < Int32(0):
@@ -356,7 +356,7 @@ class Socket:
     def sendall(self, data: bytes) -> None:
         """Send every byte in `data` (loops over send)."""
         total: UInt64 = UInt64(len(data))
-        sent: UInt64 = UInt64(0)
+        sent: UInt64 = 0
         data_ptr: Ptr[readonly[UInt8]] = unsafe_ptr(data)
         while sent < total:
             chunk = _raw_send(self.fd,
@@ -381,11 +381,11 @@ class Socket:
     def setsockopt_int(self, level: Int32, optname: Int32, value: Int32) -> None:
         """Set an int-valued socket option. Struct options deferred."""
         v = value
-        if _raw_setsockopt(self.fd, level, optname, take_ptr(v), UInt32(4)) < Int32(0):
+        if _raw_setsockopt(self.fd, level, optname, take_ptr(v), 4) < Int32(0):
             _raise_errno("setsockopt")
 
     def getsockname(self) -> tuple[str, Int32]:
-        addr = SockaddrIn(UInt16(0), UInt16(0), UInt32(0))
+        addr = SockaddrIn(0, 0, 0)
         addrlen: UInt32 = _SOCKADDR_IN_LEN
         if _raw_getsockname(self.fd, take_ptr(addr), take_ptr(addrlen)) < Int32(0):
             _raise_errno("getsockname")
@@ -393,7 +393,7 @@ class Socket:
                 Int32.trunc(_raw_ntohs(addr.sin_port)))
 
     def getpeername(self) -> tuple[str, Int32]:
-        addr = SockaddrIn(UInt16(0), UInt16(0), UInt32(0))
+        addr = SockaddrIn(0, 0, 0)
         addrlen: UInt32 = _SOCKADDR_IN_LEN
         if _raw_getpeername(self.fd, take_ptr(addr), take_ptr(addrlen)) < Int32(0):
             _raise_errno("getpeername")

@@ -85,7 +85,7 @@ class SHA256:
             self.h.append(_SHA256_H0[i])
             i += 1
         self.buffer = bytearray()
-        self.length = UInt64(0)
+        self.length = 0
         self.digest_size = 32
         self.block_size = 64
         self.name = "sha256"
@@ -119,8 +119,8 @@ class SHA256:
         while i < 64:
             w15: UInt32 = w[i - 15]
             w2: UInt32 = w[i - 2]
-            s0: UInt32 = rotr32(w15, 7) ^ rotr32(w15, 18) ^ (w15 >> UInt32(3))
-            s1: UInt32 = rotr32(w2, 17) ^ rotr32(w2, 19) ^ (w2 >> UInt32(10))
+            s0: UInt32 = rotr32(w15, 7) ^ rotr32(w15, 18) ^ (w15 >> 3)
+            s1: UInt32 = rotr32(w2, 17) ^ rotr32(w2, 19) ^ (w2 >> 10)
             w.append(UInt32.add_wrap(UInt32.add_wrap(UInt32.add_wrap(w[i - 16], s0), w[i - 7]), s1))
             i += 1
         a: UInt32 = self.h[0]
@@ -162,13 +162,13 @@ class SHA256:
         bit_len: UInt64 = UInt64.add_wrap(clone.length, clone.length)
         bit_len = UInt64.add_wrap(bit_len, bit_len)
         bit_len = UInt64.add_wrap(bit_len, bit_len)  # x8 for bits
-        clone.buffer.append(UInt8(0x80))
+        clone.buffer.append(0x80)
         while Int32(len(clone.buffer)) % 64 != 56:
-            clone.buffer.append(UInt8(0))
+            clone.buffer.append(0)
         i: Int32 = 7
         while i >= 0:
             shift: UInt64 = UInt64(i * 8)
-            clone.buffer.append(UInt8((bit_len >> shift) & UInt64(0xFF)))
+            clone.buffer.append(UInt8((bit_len >> shift) & 0xFF))
             i -= 1
         clone._drain_blocks()
         out: bytearray = bytearray()
