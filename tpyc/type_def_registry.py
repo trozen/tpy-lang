@@ -138,6 +138,11 @@ class TypeDef:
     is_sync: Optional[Union[bool, Callable[[tuple], bool]]] = None
     cpp_formatter: Optional[Callable[[tuple], str]] = None
     param_cpp_formatter: Optional[Callable[[tuple], str]] = None
+    # Mutable param form. Used by to_cpp_param when the param is detected
+    # mutated. Only needed when param_cpp_formatter encodes the const form
+    # (e.g. bytearray's `const std::vector<uint8_t>&`); otherwise the
+    # mutable form falls back to param_cpp_formatter.
+    param_mut_cpp_formatter: Optional[Callable[[tuple], str]] = None
     # element_of(type_args) -> "element type produced by iterating this type".
     # Overrides NominalType.get_element_type's default (first TpyType arg).
     # Needed when the raw first type_arg carries decoration that iteration
@@ -586,6 +591,7 @@ def _populate() -> None:
         "builtins.bytearray", TC.BYTES, is_value_type=True,
         cpp_formatter=lambda args: "std::vector<uint8_t>",
         param_cpp_formatter=lambda args: "const std::vector<uint8_t>&",
+        param_mut_cpp_formatter=lambda args: "std::vector<uint8_t>&",
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
         element_of=_u8_elem,
     ))

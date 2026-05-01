@@ -111,6 +111,14 @@ def escape_cpp_string(value: str) -> str:
                  .replace('\x00', '\\000'))
 
 
+def cpp_bytes_literal_span(value: bytes) -> str:
+    """Render a bytes literal as a `::tpy::bytes_literal(...)` call --
+    a `std::span<const uint8_t>` over a C++ string literal (static
+    storage), avoiding the heap allocation of a temporary vector."""
+    escaped = "".join(f"\\x{b:02x}" for b in value)
+    return f'::tpy::bytes_literal("{escaped}", {len(value)})'
+
+
 def cpp_string_literal_expr(value: str) -> str:
     """Render a Python string as a C++ string_view expression.
 

@@ -31,14 +31,14 @@ from ..typesys import (
     error_return_to_cpp, unwrap_ref_type,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
-from ..type_def_registry import is_span, is_char_type, is_str_type, is_bytes_view_type, protocol_info_of
+from ..type_def_registry import is_span, is_char_type, is_str_type, is_bytes_type, is_bytes_view_type, protocol_info_of
 from ..parse.nodes import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
     TpyBytesLiteral, TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyName,
 )
 from ..namespace import Namespace
-from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr
+from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span
 from .type_resolution import resolve_stmt_type_cascade
 
 if TYPE_CHECKING:
@@ -142,9 +142,10 @@ def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
     if isinstance(expr, TpyBytesLiteral):
         if not expr.value:
             return "{}"
-        if is_bytes_view_type(ptype):
-            escaped = "".join(f"\\x{b:02x}" for b in expr.value)
-            return f'::tpy::bytes_literal("{escaped}", {len(expr.value)})'
+        # bytes/BytesView params both lower to span<const uint8_t>; pinning
+        # the literal to static storage avoids a per-call vector allocation.
+        if is_bytes_view_type(ptype) or is_bytes_type(ptype):
+            return cpp_bytes_literal_span(expr.value)
         hex_bytes = ", ".join(f"0x{b:02x}" for b in expr.value)
         return f"std::vector<uint8_t>{{{hex_bytes}}}"
     if isinstance(expr, TpyNoneLiteral):

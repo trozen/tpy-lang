@@ -982,13 +982,32 @@ class ExpressionAnalyzer:
                         idx = subst_overloads.index(matched)
                         expr.resolved_contains = contains_overloads[idx]
                         return BOOL
-                    # No overload matched -- report error using first overload's param type
-                    param_type = subst_overloads[0].params[0].type
-                    self.compat.check_type_compatible(
-                        left_type, param_type,
-                        f"membership test (expected {param_type})",
-                        loc=expr.loc,
-                    )
+                    # No __contains__ overload matched. Defer to
+                    # check_type_compatible: it raises for genuine mismatches
+                    # (preserving int-literal range diagnostics) and accepts
+                    # compatible coercions, in which case control falls
+                    # through to the outer iterable-membership path.
+                    int_overload = None
+                    if isinstance(left_type, IntLiteralType):
+                        for o in subst_overloads:
+                            if int_traits_of(o.params[0].type) is not None:
+                                int_overload = o
+                                break
+                    if int_overload is not None or len(subst_overloads) == 1:
+                        param_type = (int_overload or subst_overloads[0]).params[0].type
+                        self.compat.check_type_compatible(
+                            left_type, param_type,
+                            f"membership test (expected {param_type})",
+                            loc=expr.loc,
+                        )
+                    else:
+                        expected_str = " or ".join(
+                            str(o.params[0].type) for o in subst_overloads)
+                        raise self.ctx.error(
+                            f"Type mismatch in membership test: "
+                            f"expected {expected_str}, got {left_type}",
+                            expr,
+                        )
             # Tuple literal membership: x in (1, 2, 3) -> x == 1 || x == 2 || x == 3
             if isinstance(right_type, TupleType) and isinstance(expr.right, TpyTupleLiteral):
                 for et in right_type.element_types:

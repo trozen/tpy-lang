@@ -1,0 +1,7 @@
+Animal(rex)
+Animal(rex)
+Cat(whiskers)
+Cat(whiskers)
+<hello>
+Animal(rover)
+Cat(garfield)

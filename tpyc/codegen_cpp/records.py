@@ -634,9 +634,9 @@ class RecordGenerator:
         # Use :: for nested types (e.g., Outer::Inner)
         name = escape_cpp_name(record.name.replace(".", "::"))
 
-        # Check if record defines its own __str__ or __repr__ -- delegate if so.
-        # Only check direct methods (not inherited) so that e.g. BaseException.__str__
-        # doesn't override the field-by-field printer for user exception subclasses.
+        # Delegate to direct or inherited __str__ / __repr__ if defined.
+        # Native ancestors are skipped: BaseException.__str__ would otherwise
+        # override the field-by-field default for user Exception subclasses.
         record_info = self.ctx.analyzer.registry.get_record(record.name)
         has_str = False
         has_repr = False
@@ -644,6 +644,16 @@ class RecordGenerator:
             has_str = bool(record_info.get_method_overloads("__str__"))
             if not has_str:
                 has_repr = bool(record_info.get_method_overloads("__repr__"))
+            if not has_str and not has_repr:
+                for anc in self.ctx.analyzer.registry.iter_ancestor_records(record_info):
+                    if anc.is_native:
+                        continue
+                    if anc.get_method_overloads("__str__"):
+                        has_str = True
+                        break
+                    if anc.get_method_overloads("__repr__"):
+                        has_repr = True
+                        break
         # For template structs, generate a template operator<<
         if record.type_params:
             # Build params respecting INT type params

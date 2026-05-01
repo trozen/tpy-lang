@@ -64,16 +64,27 @@ def error_return_to_cpp(name: str, current_module: str | None,
     - @native types: record.native_name (works for builtins AND user native types)
     - User types in current module: bare name
     - User types in other modules: qualified_cpp_name(module, name)
+    Aliased imports (`from X import error as MyErr`) resolve to the
+    underlying record's canonical name before cross-module qualification.
     """
+    from tpyc.codegen_cpp.context import qualified_cpp_name
     bare = name.rsplit(".", 1)[-1] if "." in name else name
     record = registry.find_record(bare)
     if record and record.native_name:
         return record.native_name
+    # Aliased import: registry holds the record under the alias, but its
+    # canonical record.name + defining_module are the original. Use the
+    # canonical pair to qualify when the source module differs.
+    if record is not None and record.name != bare and current_module is not None:
+        qual = registry.record_qualification(record, current_module)
+        if qual is not None:
+            source_module, original_name = qual
+            return qualified_cpp_name(source_module, original_name)
+        return record.name
     if "." in name:
         module_path, bare_name = name.rsplit(".", 1)
         if module_path == current_module:
             return bare_name
-        from tpyc.codegen_cpp.context import qualified_cpp_name
         return qualified_cpp_name(module_path, bare_name)
     return name
 
@@ -393,11 +404,20 @@ class TpyType:
         return f"{self.to_cpp()}&"
 
     def to_cpp_param(self, name: str) -> str:
-        """Return the C++ parameter declaration for this type.
+        """Return the C++ mutable-context parameter declaration for this type.
 
-        Value types (primitives, views) are passed by value: T name
-        Object types (containers, records) are passed by mutable reference: T& name
+        Value types (primitives, views): T name (no &).
+        Object types (containers, records): T& name.
+        Types with param_mut_cpp_formatter (e.g. bytearray): use the
+        registered mutable form (`std::vector<uint8_t>&`) -- their
+        param_cpp_formatter encodes the const form for non-mutating use.
+
+        Caller (gen_params) selects between this and to_cpp_const_param
+        based on whether the param is in the function's mutated set.
         """
+        td = self._nominal_td()
+        if td is not None and td.param_mut_cpp_formatter is not None:
+            return f"{td.param_mut_cpp_formatter(self.type_args)} {name}"
         return f"{self.to_cpp_param_type()} {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
@@ -425,7 +445,13 @@ class TpyType:
 
     def is_ref_param(self) -> bool:
         """Return True if this type is passed by mutable reference as a parameter."""
-        return not self.is_value_type()
+        if not self.is_value_type():
+            return True
+        # is_value_type=True with a separate mutable param form (e.g. bytearray)
+        # is conceptually a ref-param: the auto-const path needs to fire so
+        # non-mutated params use the const formatter, not the mutable one.
+        td = self._nominal_td()
+        return td is not None and td.param_mut_cpp_formatter is not None
 
     def param_needs_copy_for_reassign(self) -> bool:
         """Return True if reassigned params need a mutable local copy.

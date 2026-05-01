@@ -45,7 +45,7 @@ from ..parse import (
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
-from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, view_key_target
+from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, view_key_target
 from .functions import literal_mangled_name
 
 if TYPE_CHECKING:
@@ -666,7 +666,7 @@ class ExpressionGenerator:
             if use_static_span:
                 if not bytes_lit_arg.value:
                     return "std::span<const uint8_t>{}"
-                return self._gen_bytes_literal_span(bytes_lit_arg.value)
+                return cpp_bytes_literal_span(bytes_lit_arg.value)
         gen_arg = self.gen_expr_deref(arg, ptype if target_type is _UNSET else target_type)
         if ptype is not None:
             # Auto-consuming iteration: Iterable[Own[T]] param with last-use arg
@@ -810,7 +810,7 @@ class ExpressionGenerator:
                     return "std::span<const uint8_t>{}"
                 return "std::vector<uint8_t>{}"
             if is_bytes_view_type(target_type):
-                return self._gen_bytes_literal_span(expr.value)
+                return cpp_bytes_literal_span(expr.value)
             hex_bytes = ", ".join(f"0x{b:02x}" for b in expr.value)
             return f"std::vector<uint8_t>{{{hex_bytes}}}"
 
@@ -1058,12 +1058,6 @@ class ExpressionGenerator:
                     and self._is_bytes_view_at_runtime(expr.else_expr))
         return is_bytes_view_type(self.types.get_resolved_type(expr))
 
-    @staticmethod
-    def _gen_bytes_literal_span(value: bytes) -> str:
-        """Generate a bytes_literal() call that returns a span over a C++ string
-        literal (which has static storage), avoiding heap allocation."""
-        escaped = "".join(f"\\x{b:02x}" for b in value)
-        return f'::tpy::bytes_literal("{escaped}", {len(value)})'
 
     def _gen_logical_value(self, expr: TpyBinOp, result_type: TpyType) -> str:
         """Generate and/or with Python operand semantics (returns operand, not bool).

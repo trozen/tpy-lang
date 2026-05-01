@@ -1,0 +1,1 @@
+main.py:18: warning: Method 'Cat.__repr__' hides 'Animal.__repr__' -- any 'Animal' reference will call 'Animal.__repr__', not 'Cat.__repr__' (differs from Python's dynamic dispatch); make 'Animal' a @dynamic protocol for runtime dispatch
