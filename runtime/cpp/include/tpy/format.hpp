@@ -123,23 +123,24 @@ inline std::string repr_quote_string(std::string_view s) {
     std::string out;
     out.reserve(s.size() + 2);
     out.push_back(quote);
-    for (unsigned char c : s) {
+    for (auto ch : s) {
+        unsigned char c = static_cast<unsigned char>(ch);
         switch (c) {
             case '\\': out.append("\\\\"); break;
             case '\n': out.append("\\n"); break;
             case '\r': out.append("\\r"); break;
             case '\t': out.append("\\t"); break;
             default:
-                if (static_cast<char>(c) == quote) {
+                if (ch == quote) {
                     out.push_back('\\');
-                    out.push_back(static_cast<char>(c));
+                    out.push_back(ch);
                 } else if (c < 0x20 || c == 0x7f) {
                     static const char kHex[] = "0123456789abcdef";
                     out.append("\\x");
                     out.push_back(kHex[c >> 4]);
                     out.push_back(kHex[c & 0xf]);
                 } else {
-                    out.push_back(static_cast<char>(c));
+                    out.push_back(ch);
                 }
                 break;
         }
