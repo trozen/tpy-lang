@@ -39,6 +39,15 @@ path = "tpyc/_build_hook.py"
 "docs/STDLIB_ROADMAP.md" = "tpyc/_data/docs/STDLIB_ROADMAP.md"
 "tpyc/_buildinfo.py" = "tpyc/_buildinfo.py"
 
+# Stamp _buildinfo.py for sdist too, so wheel-from-sdist (uv build's
+# default flow) inherits a real GIT_COMMIT instead of falling back to
+# "unknown" when the temp build dir isn't a git repo.
+[tool.hatch.build.targets.sdist.hooks.custom]
+path = "tpyc/_build_hook.py"
+
+[tool.hatch.build.targets.sdist.force-include]
+"tpyc/_buildinfo.py" = "tpyc/_buildinfo.py"
+
 [tool.pyright]
 extraPaths = ["lib/cpy"]
 
