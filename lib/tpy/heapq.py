@@ -31,10 +31,9 @@
 #     std::string&` instead of `std::string_view` (the trait can't distinguish
 #     TPy `str` from TPy `String`, since both share `std::string` storage).
 #     Every string literal push materializes a `std::string` at the call site
-#     (SSO covers short literals). Direct `def f(s: str)` params lower to
-#     string_view correctly; only generics miss it. The proper fix needs
-#     TPy-type-aware generic codegen (descriptor template parameters) and is
-#     deferred to the IR migration -- see IR_DESIGN.md.
+#     (SSO covers short literals). No fix planned -- the perf gap is small
+#     in practice and every idiomatic alternative pays a real cost. See
+#     IR_DESIGN.md for the design landscape.
 # tpy: cpp_namespace("tpystd::heapq")
 from tpy import Int32, Comparable, Own, copy
 

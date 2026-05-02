@@ -9,7 +9,6 @@
 | `--dump-thir` debug output | Not started |
 | THIR-backed codegen context | Not started |
 | Codegen migration from analyzer/AST to THIR | Not started |
-| Descriptor-based generic ABI (post-THIR codegen, see Open Questions item 8) | Not started |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | Not started |
 | `--dump-mir` debug output | Not started |
@@ -474,25 +473,22 @@ analyzer coupling:
 4. **Create a `THIRCodeGenContext`** that reads from THIR instead of analyzer
 5. **Migrate codegen modules one at a time** (expressions, statements, functions, records)
 6. **Remove analyzer references from codegen**
-7. **Descriptor-based generic ABI** -- replace the C++-storage-keyed
-   `param_val_or_ref_t<T>` template plumbing with TPy-type descriptors threaded through
-   generic instantiation (see Open Questions item 8). Explicit milestone, not a Phase 2
-   catch-all: do this **after THIR-backed codegen is complete and before MIR-backed
-   codegen is considered done**. Conceptually a generic-ABI/codegen feature, not a
-   borrow-checker/MIR feature -- THIR gives the right implementation point without
-   waiting for the whole MIR ownership program. Doing this earlier (pre-IR) is feasible
-   but most compiler plumbing would be churn that gets retired by THIR/MIR codegen.
-8. **Define MIR nodes** in `tpyc/mir/nodes.py`
-9. **Lower THIR -> MIR** in `tpyc/mir/lower.py`
-10. **Add `--dump-mir`**
-11. **Implement MIR liveness + move/copy passes**
-12. **Implement MIR advisory loan checker**
-13. **Run MIR checker in parallel with existing sema borrow/move logic**
-14. **Make MIR authoritative for ownership/borrow diagnostics**
-15. **Add safe opt-in mode** on top of the same MIR analysis
-16. **Switch codegen from THIR to MIR** once MIR carries enough information for readable,
+7. **Define MIR nodes** in `tpyc/mir/nodes.py`
+8. **Lower THIR -> MIR** in `tpyc/mir/lower.py`
+9. **Add `--dump-mir`**
+10. **Implement MIR liveness + move/copy passes**
+11. **Implement MIR advisory loan checker**
+12. **Run MIR checker in parallel with existing sema borrow/move logic**
+13. **Make MIR authoritative for ownership/borrow diagnostics**
+14. **Add safe opt-in mode** on top of the same MIR analysis
+15. **Switch codegen from THIR to MIR** once MIR carries enough information for readable,
     stable emission
-17. **Retire old sema/codegen ownership logic**
+16. **Retire old sema/codegen ownership logic**
+
+The distinct-types-via-inheritance fix for the str/bytes generic param ABI
+(Open Questions item 8) is **independent of this rollout** -- it operates on the
+runtime type layer and the C++-template-keyed paths and does not require THIR/MIR
+to land first. It can be scheduled separately whenever the team is ready.
 
 #### Why THIR-Backed Codegen Comes First
 
@@ -1352,87 +1348,79 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    may need a `View` variant to capture the "invalidated by any mutation of source"
    semantics.
 
-8. **Generic param/storage representation for two-faced TPy types.** Several TPy types
+8. **Generic param ABI for TPy types with storage/param split.** Several TPy types
    have a storage/param C++ split: `str` (storage `std::string`, param
    `std::string_view`), `String` (storage `std::string`, param `const std::string&`),
    `bytes` (storage `std::vector<uint8_t>`, param `std::span<const uint8_t>`),
-   `bytearray` (storage `std::vector<uint8_t>`, param mutable ref). Today's
-   non-generic codegen handles this position-aware (param positions emit the param
-   formatter, storage positions emit the storage formatter), but generic codegen uses
-   the runtime trait `param_val_or_ref_t<T>` keyed on the C++ storage type -- which
+   `bytearray` (storage `std::vector<uint8_t>`, param mutable ref). Non-generic
+   codegen handles the split position-aware (param positions emit the param
+   formatter, storage positions emit the storage formatter). Generic codegen uses
+   the runtime trait `param_val_or_ref_t<T>` keyed on the C++ storage type, which
    cannot distinguish `str` from `String` (both `std::string`) or `bytes` from
-   `bytearray` (both `std::vector<uint8_t>`). Net effects today: generic-T-over-str
-   pays a `std::string` materialization at every call site; mutability of `bytearray`
-   would be silently lost if the trait were specialized to a const view. **The
-   constraint is structural to C++ templates**: by the time the C++ template
-   machinery instantiates `f<T>`, the original TPy type information is erased to the
-   C++ storage type.
+   `bytearray` (both `std::vector<uint8_t>`). Net effect today: generic-T-over-str
+   pays a `std::string` materialization at every call site (SSO covers short
+   literals; long literals heap-allocate once per call). C++ template instantiation
+   erases TPy-type identity by the time it sees `T`; no runtime trait keyed on the
+   C++ type can recover it.
 
-   This is fundamentally a consequence of using C++ as the back-end. A direct binary
-   back-end would not have the constraint -- codegen could emit per-TPy-type entries
-   without the template-erasure step. Until/unless the LLVM path is taken, the
-   compiler must thread TPy-type identity through generic instantiation explicitly.
+   No fix is unambiguously best. The honest design landscape:
 
-   Recommendation: encode the TPy type as a **descriptor/tag template parameter**,
-   not the plain C++ storage type:
+   | Approach | Idiomatic C++ | `vector<str>` interop | Perf gap closed | Cost |
+   |----------|---------------|-----------------------|-----------------|------|
+   | **Current state (accept asymmetry)** | yes | preserved | no (small gap) | none |
+   | **Distinct C++ types** (`auto_string : public std::string`) | yes | **broken** -- `vector<auto_string>` is not `vector<std::string>` | yes | medium runtime + audit churn |
+   | **Codegen monomorphization** (per-call function emission, no template) | yes (output-wise) | preserved | yes | heavy compiler internals (instantiation registry, cross-module emission) |
+   | **Descriptor template parameter** (`template<class TDesc>` with `TDesc::storage`, `TDesc::param`) | **no** -- compromises readable C++ output goal | preserved | yes | medium codegen churn but readers must learn descriptor pattern |
+   | **Drop the split entirely** | yes | preserved | no (bigger gap, applies to non-generic too) | none |
+   | **Trait specialization on shared C++ types** | yes | preserved | yes | unsound -- conflates `str`/`String` and `bytes`/`bytearray`; rejected |
+   | **Auto-downgrade `T=str` to `T=StrView` for literals** | no | preserved | yes | unsound -- signature-level safety check can't cover body-side dangling cases; rejected |
 
-   ```cpp
-   template<class TDesc>
-   typename TDesc::storage echo(typename TDesc::param x) {
-       return TDesc::store(x);
-   }
+   The three idiomatic options each pay a distinct cost. There is no row that wins
+   all three of `idiomatic / vector interop / perf gap closed` without paying a
+   real cost somewhere.
 
-   // str_desc       = { storage = std::string,        param = std::string_view }
-   // String_desc    = { storage = std::string,        param = const std::string& }
-   // bytes_desc     = { storage = std::vector<uint8_t>, param = std::span<const uint8_t> }
-   // bytearray_desc = { storage = std::vector<uint8_t>, param = std::vector<uint8_t>& }
-   ```
+   **Codegen monomorphization** is the cleanest long-term path *if* the perf gap
+   ever becomes worth solving. Compiler emits one C++ function per `(generic, TPy
+   type args)` instantiation instead of a single template. Each emitted function
+   uses normal C++ types (no descriptors, no traits, no `auto_string` wrapper) --
+   `inline std::string echo_str(std::string_view x) { return std::string(x); }`
+   reads the way C++ developers expect. Vector interop preserved because storage
+   types stay unchanged (`list[str]` still `std::vector<std::string>`). Cost is
+   compiler-internal: instantiation registry, cross-module emission rules, header
+   placement for inline functions, generic methods/classes/`Fn[..., T]`/protocol
+   integration. Estimate: 2-4 weeks of focused work.
 
-   Each TPy type owns its descriptor. Generic dispatch goes through the descriptor,
-   so param/storage forms are chosen from the **TPy type**, not the erased C++
-   storage type. This:
-   - Fixes the generic-vs-non-generic asymmetry (generic-T-over-str matches direct
-     `str` at the param boundary).
-   - Preserves `bytearray` mutability through generics.
-   - Preserves `String` ABI for `@native` interop.
-   - Keeps current runtime storage choices (no wrapper migration).
-   - Stays compatible with C++ template instantiation (just a richer parameter).
+   **Distinct C++ types** (auto_string approach) is the lighter-touch idiomatic
+   option but pays its cost user-visible: existing user code that does `@native`
+   interop with `std::vector<std::string>` against TPy `list[str]` would have to
+   migrate to `list[String]` (which stays `std::vector<std::string>`). Mechanical
+   migration but real surface change. Estimate: 1-2 weeks.
 
-   Costs: invasive call-site migration (every generic call passes a descriptor),
-   refactor of every generic API surface, descriptor table for each TPy type, and
-   integration with `Fn[..., T]` concept dispatch. Best done as part of the codegen
-   migration when codegen already has TPy types as first-class entities, rather than
-   bolted on top of the current C++-storage-keyed traits.
+   **Current state** is the pragmatic answer. The perf gap is small in practice
+   (SSO covers the common case of short literals; longer literals through pure
+   pass-through generics is a rare pattern); users who hit a real hot path can
+   write `def f(s: StrView)` explicitly. Aligns with TPy's "opt-in constraints
+   for hot paths" philosophy: the perf gap is the cost of *not* opting in to
+   compiler complexity. Recommendation: stay here unless measured workloads
+   justify the upgrade.
 
-   Alternatives that were considered and rejected:
-   - **Trait specialization (`param_val_or_ref_t<std::string> = std::string_view`)**:
-     conflates `str`/`String` and `bytes`/`bytearray`; structurally cannot distinguish
-     them at the C++ trait layer.
-   - **Per-call-site explicit template specializations**: amounts to compiler-driven
-     monomorphization with the related complexity (instantiation registry, cross-
-     module emission rules); fights C++ template generics.
-   - **Distinct C++ wrapper types per TPy type** (`tpy::str` wrapping `std::string`):
-     architecturally clean but broad migration (operators, hashing, printing, native
-     calls, runtime helpers); also tricky to keep `String` ABI-raw alongside.
-   - **Drop the storage/param split entirely**: predictable but a perf retreat from
-     "fast by default"; creates double-allocation patterns at storage sites; not
-     aligned with the project's stated efficiency goals.
+   **Descriptor template parameter** -- documented for completeness, but the
+   non-idiomatic generated C++ output (`f<tpy::str_desc>(...)` instead of
+   `f<std::string>(...)`) compromises a stated TPy goal: readable C++ output for
+   debugging, auditing, and interop. Demoted to "considered but compromises
+   primary goal." Could still serve as a fallback for future TPy types whose
+   semantics genuinely cannot be expressed via distinct C++ types, but for the
+   str/bytes case the output cost outweighs the benefits.
 
-   Until this lands, generic-T-over-str will pay an extra `std::string`
-   materialization at call sites compared to non-generic `str` (SSO covers short
-   literals; long literals heap-allocate once per call). Document the asymmetry as a
-   known perf gap rather than work around it with partial fixes.
+   **Drop the split** is the simplification answer. Single representation per
+   TPy type (`str` always `std::string`, `bytes` always `std::vector<uint8_t>`).
+   `StrView`/`BytesView` remain as explicit opt-in for view semantics. Predictable,
+   uniform, no special machinery. Pays the materialization cost at every str
+   param boundary (SSO covers it for short literals). Worth considering if/when
+   the architectural simplification becomes more valuable than the optimization.
 
-   **Scheduling**: this work is feasible pre-IR (TPy type info already exists via
-   `TypeDef.param_cpp_formatter` and `expr.inferred_type_args` is already threaded
-   through call codegen), but a pre-IR implementation would have to be substantially
-   re-done after THIR/MIR migration -- the runtime descriptor structs survive, but
-   most compiler plumbing (template headers, generic param/return rendering, explicit
-   type-arg emission, generic methods/records, `Fn[...]` interaction, protocol
-   interaction, native/template calls, tuple/ref helpers) gets churned by the
-   THIR/MIR codegen rewrite. Recommendation: schedule as an explicit post-THIR
-   codegen milestone (Recommended Rollout step 7), to land before or during
-   MIR-backed codegen migration -- not as a generic "Phase 2" item that could sit
-   indefinitely behind the rest of the MIR ownership program. Conceptually this is
-   a generic-ABI/codegen feature, not a borrow-checker/MIR feature; THIR provides
-   the right implementation point.
+   **Scheduling**: no work planned. The current state is the safety floor. If the
+   perf gap becomes worth fixing (driven by measured workloads, not preemptive
+   optimization), the recommended target is codegen monomorphization. That work
+   does *not* require THIR/MIR to land first but probably benefits from being
+   done concurrently with the THIR codegen migration to avoid double-churn.
