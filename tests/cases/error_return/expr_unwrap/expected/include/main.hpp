@@ -29,6 +29,7 @@ void test_as_binding();
 // class E(Exception, ReturnException):
 struct E : ::tpy::Exception {
 
+    using ::tpy::Exception::Exception;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const E& obj) {

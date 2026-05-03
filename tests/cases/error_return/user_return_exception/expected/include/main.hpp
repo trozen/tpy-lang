@@ -17,6 +17,7 @@ void main();
 // class ParseError(Exception, ReturnException):
 struct ParseError : ::tpy::Exception {
 
+    using ::tpy::Exception::Exception;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {

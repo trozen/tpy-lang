@@ -17,6 +17,7 @@ void main();
 // class StopIteration(Exception, ReturnException):
 struct StopIteration : ::tpy::Exception {
 
+    using ::tpy::Exception::Exception;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const StopIteration& obj) {

@@ -1,0 +1,3 @@
+caught MyError
+caught Outer as MyError
+bare

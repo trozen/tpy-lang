@@ -22,6 +22,7 @@ from ..typesys import (
     OptionalType,
     C3LinearizationError,
     same_base_type,
+    bare_name,
 )
 from ..module_names import public_module_name
 from ..parse import (
@@ -142,7 +143,7 @@ class TypeRegistrar:
         # Compile-time-only types (e.g. FStr) are also registered as type aliases
         # so the parser resolves them directly to their NominalType singleton.
         for qname in factory_qnames_in_module("tpy"):
-            simple_name = qname.split(".")[-1]
+            simple_name = bare_name(qname)
             if simple_name not in self.ctx.imported_names:
                 self.ctx.imported_names[simple_name] = ("tpy", simple_name)
                 self.ctx.global_ns.bind_imported_name(simple_name, "tpy", simple_name)
@@ -288,9 +289,9 @@ class TypeRegistrar:
         for method in record.methods:
             same_class_names.setdefault(method.name, "method")
         for nested in record.nested_records:
-            same_class_names.setdefault(nested.name.rsplit(".", 1)[-1], "nested record")
+            same_class_names.setdefault(bare_name(nested.name), "nested record")
         for nested in record.nested_enums:
-            same_class_names.setdefault(nested.name.rsplit(".", 1)[-1], "nested enum")
+            same_class_names.setdefault(bare_name(nested.name), "nested enum")
         for cc_name, cc_fld in class_constants.items():
             kind = same_class_names.get(cc_name)
             if kind is not None:
@@ -1221,10 +1222,10 @@ class TypeRegistrar:
         # Nested names are the dotted form (set by Parser._prefix_nested_names),
         # so strip the prefix for the short-name comparison.
         nested_type_names = {
-            nr.name.rsplit(".", 1)[-1] for nr in record.nested_records
+            bare_name(nr.name) for nr in record.nested_records
         }
         nested_type_names.update(
-            ne.name.rsplit(".", 1)[-1] for ne in record.nested_enums
+            bare_name(ne.name) for ne in record.nested_enums
         )
         collisions = nested_type_names & user_names
         if collisions:
@@ -1369,6 +1370,21 @@ class TypeRegistrar:
                 f"Inconsistent base-class ordering in '{record.name}': {exc}",
                 record.loc,
             ) from exc
+
+        # Mirror Python's MRO-based ctor inheritance: 'class B(A): pass' should
+        # accept whatever A() does; mixins (`class C(Base, Mixin): pass`) work
+        # the same way when Mixin contributes no __init__.
+        # Two+ init-bearing parents stay rejected (silently picking MRO-first
+        # is more error-prone than helpful). Generic parents are skipped: their
+        # init_params reference unsubstituted type params. @native records are
+        # excluded because their C++ struct may not inherit the parent's ctors
+        # (e.g. tpy::StopIteration uses `{}`).
+        init_parent = self._find_unique_init_parent(record_info)
+        if init_parent is not None:
+            parent_info = self.ctx.registry.get_record_for_type(init_parent)
+            record_info.has_init = True
+            record_info.inherits_init_from = init_parent
+            record_info.init_params = list(parent_info.init_params)
 
         # Needs MRO, so cannot run earlier.
         self._check_field_shadowing(record, record_info)
@@ -1559,6 +1575,32 @@ class TypeRegistrar:
                     record.loc
                 )
 
+    def _find_unique_init_parent(self, record_info: RecordInfo) -> NominalType | None:
+        """Return the parent whose __init__ this record can inherit, or None.
+
+        Returns None when the record itself has __init__/fields/is_native, when
+        no parent has __init__, when more than one does, or when the candidate
+        is generic (would leak unsubstituted type params).
+        """
+        if (record_info.has_init
+                or record_info.fields
+                or record_info.is_native
+                or not record_info.parents):
+            return None
+        found: NominalType | None = None
+        for parent in record_info.parents:
+            if not isinstance(parent, NominalType):
+                continue
+            parent_info = self.ctx.registry.get_record_for_type(parent)
+            if parent_info is None or not parent_info.has_init:
+                continue
+            if parent_info.type_params:
+                return None
+            if found is not None:
+                return None
+            found = parent
+        return found
+
     def _check_field_shadowing(self, record: TpyRecord, record_info: RecordInfo) -> None:
         """Warn when the record's own field shadows an inherited one."""
         for fld in record.fields:
@@ -1585,6 +1627,10 @@ class TypeRegistrar:
         existing super().__init__() path.
         """
         if len(record_info.parents) < 2:
+            return
+        # Only one initializing base means sister bases default-construct via
+        # `using <Base>::<Base>;` -- no explicit per-base call needed.
+        if record_info.inherits_init_from is not None:
             return
         bases_with_init: list[tuple[str, NominalType]] = []
         for p in record_info.parents:

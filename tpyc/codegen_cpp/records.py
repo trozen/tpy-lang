@@ -14,6 +14,7 @@ from ..typesys import (
     TypeParamRef, TypeParamKind, RecordInfo, TupleType, UnionType,
     unwrap_readonly, unwrap_optional_own,
     get_covariant_params, PtrType,
+    bare_name,
 )
 from ..parse import (
     TpyRecord, TpyEnum, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -171,7 +172,7 @@ class RecordGenerator:
                 if proto_info and proto_info.is_dynamic:
                     bases.append(self.protocols.get_dynamic_base_name(proto.name))
         # Use short name for nested types (e.g., "Inner" not "Outer.Inner")
-        short_name = record.name.rsplit(".", 1)[-1] if "." in record.name else record.name
+        short_name = bare_name(record.name)
         cpp_rec_name = escape_cpp_name(short_name)
         if bases:
             out.write(f"struct {cpp_rec_name} : {', '.join(bases)} {{\n")
@@ -330,6 +331,13 @@ class RecordGenerator:
             # suppress the implicit default ctor, so they still need = default --
             # except @nocopy + __del__, which has no safe default state (see the
             # guard on the parameterized-ctor path above for the full rationale).
+            if record_info and record_info.inherits_init_from is not None:
+                # `using Foo::Foo` only compiles if both halves match the C++
+                # class name. @native renames let the Python and C++ short
+                # names diverge, so split on the C++ side, not parent.name.
+                parent_cpp = record_info.inherits_init_from.to_cpp()
+                parent_cpp_short = parent_cpp.rsplit("::", 1)[-1]
+                out.write(f"{INDENT}using {parent_cpp}::{parent_cpp_short};\n")
             if record_info and (record_info.is_nocopy or record_info.has_del or record_info.has_copy):
                 if not (record_info.is_nocopy and record_info.has_del):
                     out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
@@ -623,7 +631,7 @@ class RecordGenerator:
         if not enum_type:
             return
         underlying = enum_info_of(enum_type).underlying_type.to_cpp()
-        short_name = enum.name.rsplit(".", 1)[-1]
+        short_name = bare_name(enum.name)
         out.write(f"{INDENT}enum class {short_name} : {underlying} {{\n")
         for member_name, value, _ in enum.members:
             out.write(f"{INDENT}{INDENT}{member_name} = {value},\n")
@@ -756,7 +764,7 @@ class RecordGenerator:
         if not covariant:
             return
 
-        short_name = record.name.rsplit(".", 1)[-1] if "." in record.name else record.name
+        short_name = bare_name(record.name)
         cpp_name = escape_cpp_name(short_name)
 
         # Build template params and requires clause
@@ -1245,7 +1253,7 @@ class RecordGenerator:
 
             # Generate friend operator that delegates to the dunder method
             # Using friend function allows symmetric operand handling
-            rec_short = record.name.rsplit(".", 1)[-1] if "." in record.name else record.name
+            rec_short = bare_name(record.name)
             out.write(f"\n{INDENT}friend {ret_cpp} operator{cpp_op}(const {escape_cpp_name(rec_short)}& lhs, {param_cpp}) {{\n")
             out.write(f"{INDENT}{INDENT}return lhs.{method.name}({param_name});\n")
             out.write(f"{INDENT}}}\n")
@@ -1335,7 +1343,7 @@ class RecordGenerator:
                 continue  # Unary operators take no params
             cpp_op = DUNDER_TO_UNARY_OP[method.name]
             ret_cpp = method.return_type.to_cpp()
-            rec_short = record.name.rsplit(".", 1)[-1] if "." in record.name else record.name
+            rec_short = bare_name(record.name)
             out.write(f"\n{INDENT}friend {ret_cpp} operator{cpp_op}(const {escape_cpp_name(rec_short)}& operand) {{\n")
             out.write(f"{INDENT}{INDENT}return operand.{method.name}();\n")
             out.write(f"{INDENT}}}\n")

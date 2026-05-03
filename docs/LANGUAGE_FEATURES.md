@@ -3692,6 +3692,15 @@ struct Dog : Animal {
 **Key points:**
 - Single and multiple class inheritance both supported (static MI, non-virtual; see below)
 - Use `super().__init__(args)` to call the parent constructor
+- An empty subclass (`class B(A): pass`) inherits the parent's `__init__` -- `B(...)`
+  accepts whatever `A(...)` does. The child must declare neither `__init__` nor
+  instance fields; the parent may be a regular class or an `@native` class such
+  as `Exception`. Mixin shapes also work: `class C(Base, Mixin): pass` picks
+  `Base.__init__` as long as `Mixin` contributes no `__init__` of its own
+  (CPython's MRO ctor lookup, with sister bases default-constructing). Two or
+  more init-bearing parents stay rejected -- define `C.__init__` and invoke
+  each base explicitly. Generic parents are not yet supported -- declare the
+  child's `__init__` explicitly when inheriting from `class A[T]`.
 - Method override works by simply defining a method with the same name
 - Inherited fields and methods are accessible via `self.field` and `self.method()`
 - Use `@override` (from `typing`) to explicitly annotate overrides -- errors on typos,

@@ -16,6 +16,7 @@ from typing import Any, Literal, NoReturn, TYPE_CHECKING
 from ..typesys import (
     FieldInfo, RecordInfo, TypeRegistry,
     FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, LiteralValue,
+    bare_name,
 )
 from ..module_names import public_module_name
 from ..type_def_registry import (
@@ -1139,7 +1140,7 @@ class Parser:
         schema = _DECORATOR_ARG_SCHEMAS.get(qname) or self._decorator_schemas.get(qname)
         if schema is None:
             return (arg, {})
-        dec_name = self._decorator_local_name(dec) or qname.rsplit(".", 1)[-1]
+        dec_name = self._decorator_local_name(dec) or bare_name(qname)
 
         # Handle tuple form: (positional, {kwargs}) from @native("name", function=True)
         pos_arg = arg
@@ -1314,7 +1315,7 @@ class Parser:
                         new_linkage = RecordLinkage.NATIVE_C
                 elif binding and binding != "":
                     raise ParseError(
-                        f"@{qname.rsplit('.', 1)[-1]}(binding=...) only supports binding=\"C\"", dec)
+                        f"@{bare_name(qname)}(binding=...) only supports binding=\"C\"", dec)
                 if linkage != RecordLinkage.DEFAULT:
                     raise ParseError(
                         f"Class '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
@@ -1892,7 +1893,7 @@ class Parser:
                 method_linkage = self._METHOD_LINKAGE_MAP[qname]
                 if isinstance(pos, tuple):
                     raise ParseError(
-                        f"@{qname.rsplit('.', 1)[-1]}() decorator kwargs not parsed "
+                        f"@{bare_name(qname)}() decorator kwargs not parsed "
                         f"(schema unavailable -- ensure _bootstrap._extern is imported "
                         f"before modules that use decorator kwargs)", dec)
                 # binding="C" overrides method linkage
@@ -1901,7 +1902,7 @@ class Parser:
                     method_linkage = FunctionLinkage.NATIVE_C
                 elif binding and binding != "" and binding != "C":
                     raise ParseError(
-                        f"@{qname.rsplit('.', 1)[-1]}(binding=...) only supports binding=\"C\"", dec)
+                        f"@{bare_name(qname)}(binding=...) only supports binding=\"C\"", dec)
                 native_name = pos
                 native_function = kw.get("function", False)
             else:
@@ -2188,7 +2189,7 @@ class Parser:
                         new_linkage = FunctionLinkage.NATIVE_C
                 elif binding and binding != "":
                     raise ParseError(
-                        f"@{qname.rsplit('.', 1)[-1]}(binding=...) only supports binding=\"C\"", dec)
+                        f"@{bare_name(qname)}(binding=...) only supports binding=\"C\"", dec)
                 # @export requires binding="C"
                 if qname == qnames.EXPORT and binding != "C":
                     raise ParseError(
@@ -2196,7 +2197,7 @@ class Parser:
                 linkage = new_linkage
                 if isinstance(pos, tuple):
                     raise ParseError(
-                        f"@{qname.rsplit('.', 1)[-1]}() decorator kwargs not parsed "
+                        f"@{bare_name(qname)}() decorator kwargs not parsed "
                         f"(schema unavailable -- ensure _bootstrap._extern is imported "
                         f"before modules that use decorator kwargs)", dec)
                 native_name = pos

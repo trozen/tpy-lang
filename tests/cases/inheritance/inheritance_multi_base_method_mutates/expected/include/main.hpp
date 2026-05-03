@@ -34,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 // class Wrapper(Counter):
 struct Wrapper : Counter {
 
+    using Counter::Counter;
 
     // def bump_twice(self) -> None:
     void bump_twice();

@@ -27,6 +27,15 @@ class TypeParamKind(Enum):
     INT = "int"    # An integer literal like N
 
 
+def bare_name(name: str) -> str:
+    """Strip the dotted prefix from a (possibly nested) qualified name.
+
+    `rsplit` returns the original string when the separator is absent, so
+    this is safe for both `Foo` and `Outer.Inner` shapes.
+    """
+    return name.rsplit(".", 1)[-1]
+
+
 def qualify_exception_name(name: str, registry: 'TypeRegistry') -> str:
     """Qualify a bare exception name with its defining module.
 
@@ -68,7 +77,7 @@ def error_return_to_cpp(name: str, current_module: str | None,
     underlying record's canonical name before cross-module qualification.
     """
     from tpyc.codegen_cpp.context import qualified_cpp_name
-    bare = name.rsplit(".", 1)[-1] if "." in name else name
+    bare = bare_name(name)
     record = registry.find_record(bare)
     if record and record.native_name:
         return record.native_name
@@ -82,10 +91,10 @@ def error_return_to_cpp(name: str, current_module: str | None,
             return qualified_cpp_name(source_module, original_name)
         return record.name
     if "." in name:
-        module_path, bare_name = name.rsplit(".", 1)
+        module_path, short = name.rsplit(".", 1)
         if module_path == current_module:
-            return bare_name
-        return qualified_cpp_name(module_path, bare_name)
+            return short
+        return qualified_cpp_name(module_path, short)
     return name
 
 
@@ -146,9 +155,7 @@ def error_return_matches(a: str | None, b: str | None) -> bool:
     """
     if a is None or b is None:
         return a is b
-    bare_a = a.rsplit(".", 1)[-1] if "." in a else a
-    bare_b = b.rsplit(".", 1)[-1] if "." in b else b
-    return bare_a == bare_b
+    return bare_name(a) == bare_name(b)
 
 
 def is_return_exception(name: str) -> bool:
@@ -158,8 +165,7 @@ def is_return_exception(name: str) -> bool:
     names -- extracts the bare name for matching since a ReturnException type
     is ReturnException regardless of which module references it.
     """
-    bare = name.rsplit(".", 1)[-1] if "." in name else name
-    return bare in _return_exception_names
+    return bare_name(name) in _return_exception_names
 
 
 def is_exception_type(name: str, registry: 'TypeRegistry') -> bool:
@@ -3054,6 +3060,7 @@ class RecordInfo:
     name: str
     fields: list[FieldInfo]
     has_init: bool = False
+    inherits_init_from: 'Optional[NominalType]' = None  # Set when init_params were copied from an MRO ancestor; drives `using Base::Base;` codegen.
     init_params: list[tuple[str, TpyType, Optional[str]]] = field(default_factory=list)  # (name, type, default)
     methods: dict[str, list['FunctionInfo']] = field(default_factory=dict)  # method_name -> list of overloads
     properties: dict[str, 'PropertyInfo'] = field(default_factory=dict)  # property_name -> PropertyInfo
@@ -3763,8 +3770,8 @@ class TypeRegistry:
             return result
         # Fall back to module lookup
         if "." in qname:
-            module_name, bare_name = qname.rsplit(".", 1)
-            return self.find_module_record(module_name, bare_name)
+            module_name, short = qname.rsplit(".", 1)
+            return self.find_module_record(module_name, short)
         return self.find_record(qname)
 
     def get_builtin_record(self, qname: str) -> Optional[RecordInfo]:

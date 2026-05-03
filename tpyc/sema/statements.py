@@ -22,7 +22,8 @@ from ..typesys import (
     FunctionInfo, ParamInfo, RecordInfo,
     make_ref, unwrap_ref_type, RefType,
     is_integer_type, is_any_int_type, is_numeric_type, is_readonly_span,
-    is_float_type, is_any_float_type)
+    is_float_type, is_any_float_type,
+    bare_name)
 from ..parse import (
     TpyExpr,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyExprStmt, TpyReturn, TpyYield,
@@ -1352,7 +1353,7 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 f"'raise {stmt.exception_type}' can only be used inside a function", stmt)
 
-        bare_exc = stmt.exception_type.rsplit(".", 1)[-1] if "." in stmt.exception_type else stmt.exception_type
+        bare_exc = bare_name(stmt.exception_type)
         record = self.ctx.registry.find_record(bare_exc)
         if not record:
             # Not a type -- check if it's a variable of exception type
@@ -1566,7 +1567,7 @@ class StatementAnalyzer:
                 "'except ReturnException as' binding is not supported", stmt)
 
         if not is_return_exception_catch_all:
-            bare_exc = handler.exception_type.rsplit(".", 1)[-1] if "." in handler.exception_type else handler.exception_type
+            bare_exc = bare_name(handler.exception_type)
             if not self.ctx.registry.find_record(bare_exc):
                 raise self.ctx.error(
                     f"Unknown error type '{handler.exception_type}'", stmt)

@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 import io
 import sys as _sys
 
-from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names, is_void_like_type
+from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names, is_void_like_type, bare_name
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
@@ -1020,7 +1020,7 @@ class CodeGenerator:
         """Generate inline operator<< inside user namespace."""
         cpp_name = enum.name.replace(".", "::")
         # Use short name for repr to match CPython (Kind.TEXT, not Message.Kind.TEXT)
-        short_name = enum.name.rsplit(".", 1)[-1]
+        short_name = bare_name(enum.name)
         out.write(f"inline std::ostream& operator<<(std::ostream& __os, {cpp_name} __e) {{\n")
         out.write(f"    return __os << \"{short_name}.\" << ::tpy::EnumUtil<{cpp_name}>::name(__e);\n")
         out.write(f"}}\n\n")

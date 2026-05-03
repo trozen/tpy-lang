@@ -19,6 +19,7 @@ void main();
 // class MyError(Exception):
 struct MyError : ::tpy::Exception {
 
+    using ::tpy::Exception::Exception;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyError& obj) {

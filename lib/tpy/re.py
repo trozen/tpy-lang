@@ -121,8 +121,6 @@ class _OwnedMatchData:
 # Must be defined BEFORE _OwnedCode because its _compile staticmethod is
 # emitted inline in the generated header and throws `error`, which
 # requires a complete type at the throw site (not just a forward decl).
-# See "User Exception subclass doesn't auto-inherit native __init__" in
-# BUGS.md for why `__init__` is declared explicitly.
 class error(Exception):
     """Raised when PCRE2 rejects a pattern at compile time, or hits a
     match-time error (rare). Catchable as a normal exception.
@@ -131,8 +129,7 @@ class error(Exception):
     the qualified-except-clause limitation (BUGS.md). Users today
     must `from re import error` (no alias) then `except error:`.
     """
-    def __init__(self, message: str = "") -> None:
-        super().__init__(message)
+    pass
 
 
 # Convert a PCRE2 negative error code into a human-readable message via

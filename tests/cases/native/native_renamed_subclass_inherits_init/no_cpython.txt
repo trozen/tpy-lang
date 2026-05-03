@@ -1,0 +1,1 @@
+@native binding has no CPython equivalent

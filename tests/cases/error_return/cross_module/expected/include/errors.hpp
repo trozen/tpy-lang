@@ -16,6 +16,7 @@ std::expected<int32_t, NotFound> find(const std::vector<int32_t>& items, int32_t
 // class NotFound(Exception, ReturnException):
 struct NotFound : ::tpy::Exception {
 
+    using ::tpy::Exception::Exception;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NotFound& obj) {

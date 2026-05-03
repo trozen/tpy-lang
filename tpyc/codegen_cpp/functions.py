@@ -29,6 +29,7 @@ from ..typesys import (
     is_primitive_type,
     resolve_int_literals, CONST_PARAMS_METHODS,
     error_return_to_cpp, unwrap_ref_type,
+    bare_name,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..type_def_registry import is_span, is_char_type, is_str_type, is_bytes_type, is_bytes_view_type, protocol_info_of
@@ -1408,7 +1409,7 @@ class FunctionGenerator:
         # (``Outer::Inner``). In-class emission uses the short name.
         is_def_mode = mode in ("def_hpp", "def_cpp")
         cpp_record_qualified = escape_cpp_name(record_name.replace(".", "::"))
-        rec_short = record_name.rsplit(".", 1)[-1] if "." in record_name else record_name
+        rec_short = bare_name(record_name)
 
         # Inplace dunders return T& (reference to self) in C++.
         is_inplace_dunder = method.name in CONST_PARAMS_METHODS
