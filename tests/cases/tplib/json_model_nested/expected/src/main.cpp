@@ -3,39 +3,39 @@
 
 namespace tpy {
 
-std::string_view EnumUtil<tpyapp::main::Role>::name(tpyapp::main::Role __e) {
+std::string_view EnumUtil<::tpyapp::main::Role>::name(::tpyapp::main::Role __e) {
     switch (__e) {
-        case tpyapp::main::Role::Admin: return "Admin";
-        case tpyapp::main::Role::User: return "User";
-        case tpyapp::main::Role::Guest: return "Guest";
+        case ::tpyapp::main::Role::Admin: return "Admin";
+        case ::tpyapp::main::Role::User: return "User";
+        case ::tpyapp::main::Role::Guest: return "Guest";
         default: tpy_panic("invalid enum value");
     }
 }
 
-const std::array<tpyapp::main::Role, 3>
-EnumUtil<tpyapp::main::Role>::members = {
-    tpyapp::main::Role::Admin,
-    tpyapp::main::Role::User,
-    tpyapp::main::Role::Guest,
+const std::array<::tpyapp::main::Role, 3>
+EnumUtil<::tpyapp::main::Role>::members = {
+    ::tpyapp::main::Role::Admin,
+    ::tpyapp::main::Role::User,
+    ::tpyapp::main::Role::Guest,
 };
 
-tpyapp::main::Role EnumUtil<tpyapp::main::Role>::from_value(int32_t __v) {
+::tpyapp::main::Role EnumUtil<::tpyapp::main::Role>::from_value(int32_t __v) {
     switch (__v) {
-        case 0: return tpyapp::main::Role::Admin;
-        case 1: return tpyapp::main::Role::User;
-        case 2: return tpyapp::main::Role::Guest;
+        case 0: return ::tpyapp::main::Role::Admin;
+        case 1: return ::tpyapp::main::Role::User;
+        case 2: return ::tpyapp::main::Role::Guest;
         default: tpy_panic("invalid value for enum 'Role'");
     }
 }
 
-std::optional<tpyapp::main::Role> EnumUtil<tpyapp::main::Role>::try_parse(std::string_view __name) {
-    if (__name == "Admin") return tpyapp::main::Role::Admin;
-    if (__name == "User") return tpyapp::main::Role::User;
-    if (__name == "Guest") return tpyapp::main::Role::Guest;
+std::optional<::tpyapp::main::Role> EnumUtil<::tpyapp::main::Role>::try_parse(std::string_view __name) {
+    if (__name == "Admin") return ::tpyapp::main::Role::Admin;
+    if (__name == "User") return ::tpyapp::main::Role::User;
+    if (__name == "Guest") return ::tpyapp::main::Role::Guest;
     return std::nullopt;
 }
 
-tpyapp::main::Role EnumUtil<tpyapp::main::Role>::from_name(std::string_view __name) {
+::tpyapp::main::Role EnumUtil<::tpyapp::main::Role>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
     if (!__result.has_value()) tpy_panic("invalid name for enum 'Role'");
     return *__result;
@@ -743,7 +743,7 @@ void __tpy_init() {
 
 int __tpy_main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    tpyapp::main::__tpy_init();
+    ::tpyapp::main::__tpy_init();
     return 0;
 }
 

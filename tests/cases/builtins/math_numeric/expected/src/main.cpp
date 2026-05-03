@@ -21,26 +21,26 @@ void main() {
     std::cout << ::tpy::print_bool(::std::isfinite(1.5)) << "\n";
     // # isinf / isfinite on infinity
     // print(math.isinf(math.inf))
-    std::cout << ::tpy::print_bool(::std::isinf(tpystd::math::inf)) << "\n";
+    std::cout << ::tpy::print_bool(::std::isinf(::tpystd::math::inf)) << "\n";
     // print(math.isfinite(math.inf))
-    std::cout << ::tpy::print_bool(::std::isfinite(tpystd::math::inf)) << "\n";
+    std::cout << ::tpy::print_bool(::std::isfinite(::tpystd::math::inf)) << "\n";
     // # NaN via inf - inf detects as NaN
     // nan = math.inf - math.inf
-    double nan = ((tpystd::math::inf) - (tpystd::math::inf));
+    double nan = ((::tpystd::math::inf) - (::tpystd::math::inf));
     // print(math.isnan(nan))
     std::cout << ::tpy::print_bool(::std::isnan(nan)) << "\n";
     // print(math.isfinite(nan))
     std::cout << ::tpy::print_bool(::std::isfinite(nan)) << "\n";
     // # math.nan is accessible as a Final[float] constant (constexpr nan)
     // print(math.isnan(math.nan))
-    std::cout << ::tpy::print_bool(::std::isnan(tpystd::math::nan)) << "\n";
+    std::cout << ::tpy::print_bool(::std::isnan(::tpystd::math::nan)) << "\n";
     // print(math.isfinite(math.nan))
-    std::cout << ::tpy::print_bool(::std::isfinite(tpystd::math::nan)) << "\n";
+    std::cout << ::tpy::print_bool(::std::isfinite(::tpystd::math::nan)) << "\n";
     // # NaN never equals itself (IEEE 754); isclose(nan, nan) is False in CPython
     // print(math.nan == math.nan)
-    std::cout << ::tpy::print_bool((tpystd::math::nan == tpystd::math::nan)) << "\n";
+    std::cout << ::tpy::print_bool((::tpystd::math::nan == ::tpystd::math::nan)) << "\n";
     // print(math.isclose(math.nan, math.nan))
-    std::cout << ::tpy::print_bool(::tpystd::math::isclose(tpystd::math::nan, tpystd::math::nan, 1e-09, 0.0)) << "\n";
+    std::cout << ::tpy::print_bool(::tpystd::math::isclose(::tpystd::math::nan, ::tpystd::math::nan, 1e-09, 0.0)) << "\n";
     // # copysign
     // print(math.copysign(3.0, -1.0))
     std::cout << ::tpy::print_float(::std::copysign(3.0, -(1.0))) << "\n";
@@ -155,9 +155,9 @@ void main() {
     // print(math.isclose(0.0, 1e-10, abs_tol=1e-8))
     std::cout << ::tpy::print_bool(::tpystd::math::isclose(0.0, 1e-10, 1e-09, 1e-08)) << "\n";
     // print(math.isclose(math.inf, math.inf))
-    std::cout << ::tpy::print_bool(::tpystd::math::isclose(tpystd::math::inf, tpystd::math::inf, 1e-09, 0.0)) << "\n";
+    std::cout << ::tpy::print_bool(::tpystd::math::isclose(::tpystd::math::inf, ::tpystd::math::inf, 1e-09, 0.0)) << "\n";
     // print(math.isclose(math.inf, -math.inf))
-    std::cout << ::tpy::print_bool(::tpystd::math::isclose(tpystd::math::inf, -(tpystd::math::inf), 1e-09, 0.0)) << "\n";
+    std::cout << ::tpy::print_bool(::tpystd::math::isclose(::tpystd::math::inf, -(::tpystd::math::inf), 1e-09, 0.0)) << "\n";
     // # prod
     // print(math.prod([2.0, 3.0, 4.0]))
     auto __tmp_13 = std::array<double, 3>{2.0, 3.0, 4.0};
@@ -227,7 +227,7 @@ void __tpy_init() {
 
 int __tpy_main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    tpyapp::main::__tpy_init();
+    ::tpyapp::main::__tpy_init();
     return 0;
 }
 

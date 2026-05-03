@@ -3,35 +3,35 @@
 
 namespace tpy {
 
-std::string_view EnumUtil<tpyapp::shapes::Container::Kind>::name(tpyapp::shapes::Container::Kind __e) {
+std::string_view EnumUtil<::tpyapp::shapes::Container::Kind>::name(::tpyapp::shapes::Container::Kind __e) {
     switch (__e) {
-        case tpyapp::shapes::Container::Kind::A: return "A";
-        case tpyapp::shapes::Container::Kind::B: return "B";
+        case ::tpyapp::shapes::Container::Kind::A: return "A";
+        case ::tpyapp::shapes::Container::Kind::B: return "B";
         default: tpy_panic("invalid enum value");
     }
 }
 
-const std::array<tpyapp::shapes::Container::Kind, 2>
-EnumUtil<tpyapp::shapes::Container::Kind>::members = {
-    tpyapp::shapes::Container::Kind::A,
-    tpyapp::shapes::Container::Kind::B,
+const std::array<::tpyapp::shapes::Container::Kind, 2>
+EnumUtil<::tpyapp::shapes::Container::Kind>::members = {
+    ::tpyapp::shapes::Container::Kind::A,
+    ::tpyapp::shapes::Container::Kind::B,
 };
 
-tpyapp::shapes::Container::Kind EnumUtil<tpyapp::shapes::Container::Kind>::from_value(int32_t __v) {
+::tpyapp::shapes::Container::Kind EnumUtil<::tpyapp::shapes::Container::Kind>::from_value(int32_t __v) {
     switch (__v) {
-        case 1: return tpyapp::shapes::Container::Kind::A;
-        case 2: return tpyapp::shapes::Container::Kind::B;
+        case 1: return ::tpyapp::shapes::Container::Kind::A;
+        case 2: return ::tpyapp::shapes::Container::Kind::B;
         default: tpy_panic("invalid value for enum 'Container.Kind'");
     }
 }
 
-std::optional<tpyapp::shapes::Container::Kind> EnumUtil<tpyapp::shapes::Container::Kind>::try_parse(std::string_view __name) {
-    if (__name == "A") return tpyapp::shapes::Container::Kind::A;
-    if (__name == "B") return tpyapp::shapes::Container::Kind::B;
+std::optional<::tpyapp::shapes::Container::Kind> EnumUtil<::tpyapp::shapes::Container::Kind>::try_parse(std::string_view __name) {
+    if (__name == "A") return ::tpyapp::shapes::Container::Kind::A;
+    if (__name == "B") return ::tpyapp::shapes::Container::Kind::B;
     return std::nullopt;
 }
 
-tpyapp::shapes::Container::Kind EnumUtil<tpyapp::shapes::Container::Kind>::from_name(std::string_view __name) {
+::tpyapp::shapes::Container::Kind EnumUtil<::tpyapp::shapes::Container::Kind>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
     if (!__result.has_value()) tpy_panic("invalid name for enum 'Container.Kind'");
     return *__result;

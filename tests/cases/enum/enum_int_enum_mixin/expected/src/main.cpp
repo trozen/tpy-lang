@@ -3,39 +3,39 @@
 
 namespace tpy {
 
-std::string_view EnumUtil<tpyapp::main::SmallEnum>::name(tpyapp::main::SmallEnum __e) {
+std::string_view EnumUtil<::tpyapp::main::SmallEnum>::name(::tpyapp::main::SmallEnum __e) {
     switch (__e) {
-        case tpyapp::main::SmallEnum::A: return "A";
-        case tpyapp::main::SmallEnum::B: return "B";
-        case tpyapp::main::SmallEnum::C: return "C";
+        case ::tpyapp::main::SmallEnum::A: return "A";
+        case ::tpyapp::main::SmallEnum::B: return "B";
+        case ::tpyapp::main::SmallEnum::C: return "C";
         default: tpy_panic("invalid enum value");
     }
 }
 
-const std::array<tpyapp::main::SmallEnum, 3>
-EnumUtil<tpyapp::main::SmallEnum>::members = {
-    tpyapp::main::SmallEnum::A,
-    tpyapp::main::SmallEnum::B,
-    tpyapp::main::SmallEnum::C,
+const std::array<::tpyapp::main::SmallEnum, 3>
+EnumUtil<::tpyapp::main::SmallEnum>::members = {
+    ::tpyapp::main::SmallEnum::A,
+    ::tpyapp::main::SmallEnum::B,
+    ::tpyapp::main::SmallEnum::C,
 };
 
-tpyapp::main::SmallEnum EnumUtil<tpyapp::main::SmallEnum>::from_value(int8_t __v) {
+::tpyapp::main::SmallEnum EnumUtil<::tpyapp::main::SmallEnum>::from_value(int8_t __v) {
     switch (__v) {
-        case 0: return tpyapp::main::SmallEnum::A;
-        case 1: return tpyapp::main::SmallEnum::B;
-        case 127: return tpyapp::main::SmallEnum::C;
+        case 0: return ::tpyapp::main::SmallEnum::A;
+        case 1: return ::tpyapp::main::SmallEnum::B;
+        case 127: return ::tpyapp::main::SmallEnum::C;
         default: tpy_panic("invalid value for enum 'SmallEnum'");
     }
 }
 
-std::optional<tpyapp::main::SmallEnum> EnumUtil<tpyapp::main::SmallEnum>::try_parse(std::string_view __name) {
-    if (__name == "A") return tpyapp::main::SmallEnum::A;
-    if (__name == "B") return tpyapp::main::SmallEnum::B;
-    if (__name == "C") return tpyapp::main::SmallEnum::C;
+std::optional<::tpyapp::main::SmallEnum> EnumUtil<::tpyapp::main::SmallEnum>::try_parse(std::string_view __name) {
+    if (__name == "A") return ::tpyapp::main::SmallEnum::A;
+    if (__name == "B") return ::tpyapp::main::SmallEnum::B;
+    if (__name == "C") return ::tpyapp::main::SmallEnum::C;
     return std::nullopt;
 }
 
-tpyapp::main::SmallEnum EnumUtil<tpyapp::main::SmallEnum>::from_name(std::string_view __name) {
+::tpyapp::main::SmallEnum EnumUtil<::tpyapp::main::SmallEnum>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
     if (!__result.has_value()) tpy_panic("invalid name for enum 'SmallEnum'");
     return *__result;
@@ -80,7 +80,7 @@ void __tpy_init() {
 
 int __tpy_main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    tpyapp::main::__tpy_init();
+    ::tpyapp::main::__tpy_init();
     return 0;
 }
 

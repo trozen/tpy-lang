@@ -3,39 +3,39 @@
 
 namespace tpy {
 
-std::string_view EnumUtil<tpyapp::pkg::colors::Color>::name(tpyapp::pkg::colors::Color __e) {
+std::string_view EnumUtil<::tpyapp::pkg::colors::Color>::name(::tpyapp::pkg::colors::Color __e) {
     switch (__e) {
-        case tpyapp::pkg::colors::Color::Red: return "Red";
-        case tpyapp::pkg::colors::Color::Green: return "Green";
-        case tpyapp::pkg::colors::Color::Blue: return "Blue";
+        case ::tpyapp::pkg::colors::Color::Red: return "Red";
+        case ::tpyapp::pkg::colors::Color::Green: return "Green";
+        case ::tpyapp::pkg::colors::Color::Blue: return "Blue";
         default: tpy_panic("invalid enum value");
     }
 }
 
-const std::array<tpyapp::pkg::colors::Color, 3>
-EnumUtil<tpyapp::pkg::colors::Color>::members = {
-    tpyapp::pkg::colors::Color::Red,
-    tpyapp::pkg::colors::Color::Green,
-    tpyapp::pkg::colors::Color::Blue,
+const std::array<::tpyapp::pkg::colors::Color, 3>
+EnumUtil<::tpyapp::pkg::colors::Color>::members = {
+    ::tpyapp::pkg::colors::Color::Red,
+    ::tpyapp::pkg::colors::Color::Green,
+    ::tpyapp::pkg::colors::Color::Blue,
 };
 
-tpyapp::pkg::colors::Color EnumUtil<tpyapp::pkg::colors::Color>::from_value(int32_t __v) {
+::tpyapp::pkg::colors::Color EnumUtil<::tpyapp::pkg::colors::Color>::from_value(int32_t __v) {
     switch (__v) {
-        case 0: return tpyapp::pkg::colors::Color::Red;
-        case 1: return tpyapp::pkg::colors::Color::Green;
-        case 2: return tpyapp::pkg::colors::Color::Blue;
+        case 0: return ::tpyapp::pkg::colors::Color::Red;
+        case 1: return ::tpyapp::pkg::colors::Color::Green;
+        case 2: return ::tpyapp::pkg::colors::Color::Blue;
         default: tpy_panic("invalid value for enum 'Color'");
     }
 }
 
-std::optional<tpyapp::pkg::colors::Color> EnumUtil<tpyapp::pkg::colors::Color>::try_parse(std::string_view __name) {
-    if (__name == "Red") return tpyapp::pkg::colors::Color::Red;
-    if (__name == "Green") return tpyapp::pkg::colors::Color::Green;
-    if (__name == "Blue") return tpyapp::pkg::colors::Color::Blue;
+std::optional<::tpyapp::pkg::colors::Color> EnumUtil<::tpyapp::pkg::colors::Color>::try_parse(std::string_view __name) {
+    if (__name == "Red") return ::tpyapp::pkg::colors::Color::Red;
+    if (__name == "Green") return ::tpyapp::pkg::colors::Color::Green;
+    if (__name == "Blue") return ::tpyapp::pkg::colors::Color::Blue;
     return std::nullopt;
 }
 
-tpyapp::pkg::colors::Color EnumUtil<tpyapp::pkg::colors::Color>::from_name(std::string_view __name) {
+::tpyapp::pkg::colors::Color EnumUtil<::tpyapp::pkg::colors::Color>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
     if (!__result.has_value()) tpy_panic("invalid name for enum 'Color'");
     return *__result;

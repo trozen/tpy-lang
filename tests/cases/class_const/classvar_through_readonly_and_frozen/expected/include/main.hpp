@@ -59,8 +59,8 @@ inline std::ostream& operator<<(std::ostream& os, const FrozenCounter& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<tpyapp::main::FrozenCounter> {
-    size_t operator()(const tpyapp::main::FrozenCounter& val) const noexcept {
+template<> struct std::hash<::tpyapp::main::FrozenCounter> {
+    size_t operator()(const ::tpyapp::main::FrozenCounter& val) const noexcept {
         return static_cast<size_t>(::tpy::__hash__(val));
     }
 };

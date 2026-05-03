@@ -7,12 +7,12 @@ namespace tpyapp::main {
 // def main() -> Int32:
 int32_t main() {
     // if len(sys.argv) > 0:
-    if ((::tpy::__len__((*tpystd::sys::argv)) > 0)) {
+    if ((::tpy::__len__((*::tpystd::sys::argv)) > 0)) {
         // # exercises the user's own sys.argv read
         // pass
     }
     // args = parser.parse_args()
-    std::vector<std::string> __tmp_1 = ::tpy::construct<std::vector<std::string>>(::tpy::list_slice((*tpystd::sys::argv), ::tpy::BasicSlice{1, std::nullopt}));
+    std::vector<std::string> __tmp_1 = ::tpy::construct<std::vector<std::string>>(::tpy::list_slice((*::tpystd::sys::argv), ::tpy::BasicSlice{1, std::nullopt}));
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
     // print(args.name)
     std::cout << args.name << "\n";
@@ -43,13 +43,13 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
         std::string_view __tpy_argparse_tok = argv[__tpy_argparse_i];
         if ((__tpy_argparse_tok == "--name")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
-                ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n";
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n";
                 ::tpy::sys_exit(2);
             }
             name = ::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1)));
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 2));
         } else {
-            ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n";
+            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n";
             ::tpy::sys_exit(2);
         }
     }
@@ -79,7 +79,7 @@ void __tpy_init() {
 
 int __tpy_main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    tpyapp::main::__tpy_init();
+    ::tpyapp::main::__tpy_init();
     return 0;
 }
 

@@ -174,6 +174,21 @@ class CodeGenerator:
                 local_name, current_module)
             if qual is not None:
                 register_native_cpp_name(local_name, qualified_cpp_name(*qual))
+        # `submod.X` (after `from pkg import submod`) doesn't import X by
+        # short name, so the loop above misses it. Walk each registered
+        # dep module's exports to register cross-module qualified names.
+        for dep_module in self.analyzer.registry.modules.values():
+            if dep_module.is_builtin or dep_module.name == current_module:
+                continue
+            for short, record_info in dep_module.records.items():
+                if record_info.is_native or record_info.builtin_type_key:
+                    continue
+                if short in _native_cpp_names:
+                    continue
+                if record_info.module is None or record_info.module == current_module:
+                    continue
+                register_native_cpp_name(
+                    short, qualified_cpp_name(record_info.module, short))
         for local_name in list(self.analyzer.registry.enums.keys()):
             qual = self.analyzer.registry.imported_enum_qualification(
                 local_name, current_module)
@@ -492,7 +507,7 @@ class CodeGenerator:
         if record.type_params or record.builtin_type_key:
             return
         ns = module_to_cpp_namespace(self.ctx.module_name)
-        cpp_name = f"{ns}::{record.name.replace('.', '::')}"
+        cpp_name = qualified_cpp_name(self.ctx.module_name, record.name)
         hpp.write(f"}} // namespace {ns}\n\n")
         hpp.write(f"template<> struct std::hash<{cpp_name}> {{\n")
         hpp.write(f"    size_t operator()(const {cpp_name}& val) const noexcept {{\n")
@@ -1004,8 +1019,7 @@ class CodeGenerator:
             if not enum_type:
                 continue
             underlying = enum_info_of(enum_type).underlying_type.to_cpp()
-            cpp_enum_name = enum.name.replace(".", "::")
-            qualified = f"{ns}::{cpp_enum_name}"
+            qualified = qualified_cpp_name(self.ctx.module_name, enum.name)
             member_count = len(enum.members)
             out.write(f"template<>\n")
             out.write(f"struct tpy::EnumUtil<{qualified}> {{\n")
@@ -1034,8 +1048,7 @@ class CodeGenerator:
             if not enum_type:
                 continue
             underlying = enum_info_of(enum_type).underlying_type.to_cpp()
-            cpp_enum_name = enum.name.replace(".", "::")
-            qualified = f"{ns}::{cpp_enum_name}"
+            qualified = qualified_cpp_name(self.ctx.module_name, enum.name)
             member_count = len(enum.members)
 
             # name()
@@ -1189,6 +1202,14 @@ class CodeGenerator:
                 if parent_pkg == self.ctx.module_name:
                     continue
                 if parent_pkg in self.ctx.all_user_modules and parent_pkg not in included:
+                    parent_info = self.analyzer.registry.get_module(parent_pkg)
+                    if parent_info is not None and not parent_info.generates_header:
+                        # Native-module package init has no .hpp; surface its
+                        # raw includes (if any) and mark as visited so we don't
+                        # try again for sibling submodules.
+                        emit_native_includes(parent_info)
+                        included.add(parent_pkg)
+                        continue
                     out.write(f'#include "{self._module_to_include_path(parent_pkg)}"\n')
                     included.add(parent_pkg)
             out.write(f'#include "{self._module_to_include_path(mod_name)}"\n')

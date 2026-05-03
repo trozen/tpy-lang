@@ -4489,14 +4489,15 @@ s = repr([1, 2, 3])          # → "[1, 2, 3]" (same as str for containers)
   - Aliases work for both type annotations (`x: I32`, `x: Opt[I32]`) and constructor calls (`I32(42)`)
 - **Working**: Module-level aliases: `import time as t`, `import tpy as tp`, `import typing as t`
   - Qualified type annotations work: `tp.Int32`, `t.Optional[tp.Int32]`, `typing.Protocol`
-  - Requires `import` (not `from ... import`): `import tpy` or `import tpy as tp`
+- **Working**: Submodule namespace binding -- `from pkg import submod` binds `submod` as a usable namespace. Qualified calls (`submod.fn(...)`), record constructors (`submod.RecordName(...)`), and type annotations (`field: submod.RecordName`) all resolve through the submodule's exports. Aliased form (`from pkg import submod as alias`) works the same way.
+- **Working**: `import pkg.sub` then `pkg.sub.X` for both function calls and variable / constant access (`pkg.sub.fn()`, `pkg.sub.CONST`).
 - **Working**: `import sys` - system module with `sys.argv`
 - **Working**: `import math` - mathematical functions
 - **Working**: Namespace wrapping for modules (each module gets its own C++ namespace)
 - **Working**: User-defined modules (multi-file projects)
 - **Working**: Package support (dotted imports, `__init__.py`, namespace packages)
 - **Working**: Relative imports (`from . import sibling`, `from ..pkg import func`)
-- **Working**: Re-exports in `__init__.py` (functions, records, protocols, variables)
+- **Working**: Re-exports through `__init__.py` and flat `# tpy: native_module` facades (functions, records, protocols, variables; runtime init chained for non-native source modules)
 - **Working**: Shadowing detection -- local definitions (def, class, assignment) that shadow imported names are detected. Parser-resolved names (type annotations, decorators, base classes like `Enum`/`Protocol`/`TypedDict`, `auto()`) correctly respect shadowing. Warnings are emitted for `typing` and `enum` module names (e.g., `class Sized` after `from typing import Sized`, or `def auto()` after `from enum import auto`)
 - **Working**: Standard library infrastructure (`tplib`, `stdlib`) with `-L` search paths
 - **Working**: `tplib.Box[T]` -- heap-allocated owning container (via `from tplib import Box`)
@@ -4544,8 +4545,10 @@ print(MAX)  # 100
 **Supported import styles:**
 - `from mod import func, Record, Protocol` - import specific items
 - `from mod import *` - star import (respects `__all__` if defined)
-- `import mod` then `mod.func()` - module-qualified access
+- `import mod` then `mod.func()` / `mod.CONST` / `mod.Record` - module-qualified access (calls, variables, types)
 - `from mod import X as Y` - import with alias
+- `from pkg import submod` - bind submodule as namespace (`submod.fn()`, `submod.Type` annotations)
+- `import pkg.sub` - dotted import; both `pkg.sub.fn()` and `pkg.sub.CONST` work
 
 **Module resolution:**
 - Looks for `mod.py` in the project directory
@@ -4651,9 +4654,9 @@ from ...outside import X  # ERROR: Relative import beyond top-level package
 
 **TurboPython extension:** Unlike CPython, TurboPython allows relative imports that reach root level when the compiler has full visibility of the module structure. For example, `from .. import utils` in `pkg/mod.py` can import a root-level `utils.py` module. This may not work when running the same file with CPython directly.
 
-### Re-exports in `__init__.py` (Working)
+### Re-exports through facade modules (Working)
 
-Package `__init__.py` files can re-export items from submodules, making them available at the package level:
+Package `__init__.py` files **and** flat `# tpy: native_module` facade modules can re-export items from other modules, making them available at the facade's surface:
 
 ```python
 # mypackage/__init__.py
@@ -4678,7 +4681,7 @@ print(VERSION)         # Package variable
 - Protocols
 - Variables
 
-**C++ implementation:** Re-exported items use `using` declarations and reference aliases:
+**C++ implementation:** Re-exported items use `using` declarations and reference aliases when the facade has its own `.hpp`:
 ```cpp
 // mypackage.hpp (generated)
 namespace tpyapp::mypackage {
@@ -4694,6 +4697,8 @@ namespace tpyapp::mypackage {
 inline auto& f = tpyapp::mypackage::utils::func;    // Function alias
 using Pt = tpyapp::mypackage::utils::Point;         // Record alias
 ```
+
+**Native-module facades:** When the facade is `# tpy: native_module` (no `.hpp` is generated), consumer codegen chases the re-export chain at the use site and emits a direct reference to the defining module. The facade's `__tpy_init()` is also synthesized at the consumer side: when a re-exported variable's source has runtime initialization, the consumer's `__tpy_init()` calls the source module's `__tpy_init()` directly.
 
 ### Standard Library Infrastructure (Working)
 

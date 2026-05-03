@@ -16,12 +16,12 @@ enum class SmallEnum : int8_t {
 } // namespace tpyapp::main
 
 template<>
-struct tpy::EnumUtil<tpyapp::main::SmallEnum> {
-    static std::string_view name(tpyapp::main::SmallEnum e);
-    static const std::array<tpyapp::main::SmallEnum, 3> members;
-    static tpyapp::main::SmallEnum from_value(int8_t v);
-    static tpyapp::main::SmallEnum from_name(std::string_view s);
-    static std::optional<tpyapp::main::SmallEnum> try_parse(std::string_view s);
+struct tpy::EnumUtil<::tpyapp::main::SmallEnum> {
+    static std::string_view name(::tpyapp::main::SmallEnum e);
+    static const std::array<::tpyapp::main::SmallEnum, 3> members;
+    static ::tpyapp::main::SmallEnum from_value(int8_t v);
+    static ::tpyapp::main::SmallEnum from_name(std::string_view s);
+    static std::optional<::tpyapp::main::SmallEnum> try_parse(std::string_view s);
 };
 
 namespace tpyapp::main {

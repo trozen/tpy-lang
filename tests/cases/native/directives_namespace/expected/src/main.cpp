@@ -31,7 +31,7 @@ void __tpy_init() {
 
 int __tpy_main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    myproject::core::__tpy_init();
+    ::myproject::core::__tpy_init();
     return 0;
 }
 

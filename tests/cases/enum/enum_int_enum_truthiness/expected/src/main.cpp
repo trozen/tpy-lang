@@ -3,39 +3,39 @@
 
 namespace tpy {
 
-std::string_view EnumUtil<tpyapp::main::Status>::name(tpyapp::main::Status __e) {
+std::string_view EnumUtil<::tpyapp::main::Status>::name(::tpyapp::main::Status __e) {
     switch (__e) {
-        case tpyapp::main::Status::Off: return "Off";
-        case tpyapp::main::Status::On: return "On";
-        case tpyapp::main::Status::Standby: return "Standby";
+        case ::tpyapp::main::Status::Off: return "Off";
+        case ::tpyapp::main::Status::On: return "On";
+        case ::tpyapp::main::Status::Standby: return "Standby";
         default: tpy_panic("invalid enum value");
     }
 }
 
-const std::array<tpyapp::main::Status, 3>
-EnumUtil<tpyapp::main::Status>::members = {
-    tpyapp::main::Status::Off,
-    tpyapp::main::Status::On,
-    tpyapp::main::Status::Standby,
+const std::array<::tpyapp::main::Status, 3>
+EnumUtil<::tpyapp::main::Status>::members = {
+    ::tpyapp::main::Status::Off,
+    ::tpyapp::main::Status::On,
+    ::tpyapp::main::Status::Standby,
 };
 
-tpyapp::main::Status EnumUtil<tpyapp::main::Status>::from_value(int32_t __v) {
+::tpyapp::main::Status EnumUtil<::tpyapp::main::Status>::from_value(int32_t __v) {
     switch (__v) {
-        case 0: return tpyapp::main::Status::Off;
-        case 1: return tpyapp::main::Status::On;
-        case 2: return tpyapp::main::Status::Standby;
+        case 0: return ::tpyapp::main::Status::Off;
+        case 1: return ::tpyapp::main::Status::On;
+        case 2: return ::tpyapp::main::Status::Standby;
         default: tpy_panic("invalid value for enum 'Status'");
     }
 }
 
-std::optional<tpyapp::main::Status> EnumUtil<tpyapp::main::Status>::try_parse(std::string_view __name) {
-    if (__name == "Off") return tpyapp::main::Status::Off;
-    if (__name == "On") return tpyapp::main::Status::On;
-    if (__name == "Standby") return tpyapp::main::Status::Standby;
+std::optional<::tpyapp::main::Status> EnumUtil<::tpyapp::main::Status>::try_parse(std::string_view __name) {
+    if (__name == "Off") return ::tpyapp::main::Status::Off;
+    if (__name == "On") return ::tpyapp::main::Status::On;
+    if (__name == "Standby") return ::tpyapp::main::Status::Standby;
     return std::nullopt;
 }
 
-tpyapp::main::Status EnumUtil<tpyapp::main::Status>::from_name(std::string_view __name) {
+::tpyapp::main::Status EnumUtil<::tpyapp::main::Status>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
     if (!__result.has_value()) tpy_panic("invalid name for enum 'Status'");
     return *__result;
@@ -90,7 +90,7 @@ void __tpy_init() {
 
 int __tpy_main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    tpyapp::main::__tpy_init();
+    ::tpyapp::main::__tpy_init();
     return 0;
 }
 

@@ -94,7 +94,7 @@ void main() {
     // print(u1 > 0.0 and u1 < 1e-15)
     std::cout << ::tpy::print_bool(((u1 > 0.0) && (u1 < 1e-15))) << "\n";
     // u2 = math.ulp(math.inf)
-    double u2 = ::tpy::stdlib::math::ulp(tpystd::math::inf);
+    double u2 = ::tpy::stdlib::math::ulp(::tpystd::math::inf);
     // print(math.isinf(u2))
     std::cout << ::tpy::print_bool(::std::isinf(u2)) << "\n";
     // # ulp(-x) == ulp(x) (C++ helper takes fabs internally)
@@ -120,7 +120,7 @@ void __tpy_init() {
 
 int __tpy_main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    tpyapp::main::__tpy_init();
+    ::tpyapp::main::__tpy_init();
     return 0;
 }
 

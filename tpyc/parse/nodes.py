@@ -402,6 +402,7 @@ class TpyFieldAccess(TpyExpr):
     property_setter_call: 'TpyMethodCall | None' = None  # Set by sema: setter method call for codegen
     unbound_self_parent_type: Optional[TpyType] = None  # Set by sema for BaseN.field access on an ancestor subobject
     class_constant_owner: Optional['RecordInfo'] = None  # Set by sema: RecordInfo for ClassName.X class-constant access; codegen emits <cpp_qname>::<member>
+    module_var_access: Optional[tuple[str, str]] = None  # Set by sema for `pkg.sub.X` variable access on a dotted module: (module_qname, var_name)
 
     def children(self) -> list[TpyExpr]:
         return [self.obj]

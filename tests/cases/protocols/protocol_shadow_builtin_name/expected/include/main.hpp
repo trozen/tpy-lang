@@ -22,12 +22,12 @@ enum class Priority : int32_t {
 } // namespace tpyapp::main
 
 template<>
-struct tpy::EnumUtil<tpyapp::main::Priority> {
-    static std::string_view name(tpyapp::main::Priority e);
-    static const std::array<tpyapp::main::Priority, 3> members;
-    static tpyapp::main::Priority from_value(int32_t v);
-    static tpyapp::main::Priority from_name(std::string_view s);
-    static std::optional<tpyapp::main::Priority> try_parse(std::string_view s);
+struct tpy::EnumUtil<::tpyapp::main::Priority> {
+    static std::string_view name(::tpyapp::main::Priority e);
+    static const std::array<::tpyapp::main::Priority, 3> members;
+    static ::tpyapp::main::Priority from_value(int32_t v);
+    static ::tpyapp::main::Priority from_name(std::string_view s);
+    static std::optional<::tpyapp::main::Priority> try_parse(std::string_view s);
 };
 
 namespace tpyapp::main {

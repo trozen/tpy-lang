@@ -1213,6 +1213,22 @@ class MethodAnalyzer:
                 expr.resolved_function_info = temp_call.resolved_function_info
                 return result
 
+        # User record constructor invoked via qualified access (e.g.
+        # `module.RecordName(...)` after `from pkg import module`).
+        # Generic records left out -- this path doesn't forward type_args,
+        # so let them fall through to the existing generic handling below.
+        if (module_info and module_info.records
+                and expr.method in module_info.records
+                and not module_info.records[expr.method].type_params):
+            record_info = module_info.records[expr.method]
+            expr.user_module_call = module_name
+            temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc), args=expr.args, kwargs=expr.kwargs, loc=expr.loc)
+            result = self.calls._analyze_record_constructor(temp_call, record_info)
+            expr.args = temp_call.args
+            expr.kwargs = temp_call.kwargs
+            expr.resolved_function_info = temp_call.resolved_function_info
+            return result
+
         # Check for call-site macro (e.g. dataclasses.asdict(...))
         if self.ctx.macro_registry:
             macro_fn = self.ctx.macro_registry.get_call_macro(module_name, expr.method)

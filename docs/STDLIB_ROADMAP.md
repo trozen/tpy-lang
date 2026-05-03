@@ -195,16 +195,15 @@ ramps up.
 
 | Tracker entry | Effect on stdlib | Blocks |
 |---|---|---|
-| BUGS.md "Variable re-exports through native_module facades don't produce usable VARIABLE bindings downstream" | Any stdlib module that exposes module-level constants through a facade (re-export via `__init__.py`) can't be used via the idiomatic `from module import CONST` | `sys` (stdout/stderr as objects), `math` constants, `time` constants, any singleton instance |
-| BUGS.md "Init chain doesn't propagate transitively through native_module facades" | Non-trivial module-level init (building a lookup table, opening stdout/stderr) is silently not run when reached via a facade import | `logging` (root logger), `locale`, `sys.stdout` wrapping |
-| BUGS.md "`import pkg.sub` followed by attribute access (`pkg.sub.X`) not supported" | Forces `from pkg.sub import X` everywhere. Any stdlib module that users canonically access as `os.path.join(...)` or `logging.info(...)` is painful | `os.path`, `logging.*` module-level functions, `http.client`, `urllib.parse`, any stdlib with sub-packages |
 | _open verification, no entry yet_: Module-level mutable state across compilation units. Verified working for regular stdlib modules with a reference-type module-level singleton (e.g. `random`'s shared RNG instance); still needs checking for facade-routed or reassignment-based patterns -- file as a bug if a real failure is reproduced. | Single source of truth for per-process state | `logging` (handlers registry), `sys.path`, `warnings` |
-| TODO.md Refactor "Always fully-qualify `@native` references in generated C++" -- non-native functions in builtin modules can't be called from user code because codegen emits unqualified names that collide with `@native` lookup | Can't mix pure-TPy functions into a native-facade module. Forces workaround through `@cpp_template` / `@native` shims | `itertools` (would want to re-export C++ generators as pure-TPy functions), any facade that mixes thin bindings + pure helpers |
 
-Recommendation: bundle these as a **"stdlib enablement"** workstream and fix
-them before doing meaningful `random` / `logging` / `os.path` work. Each is
-individually S-M effort; together they unblock a large fraction of the pure-
-TPy stdlib surface.
+The original "stdlib enablement" workstream (variable re-exports through
+native_module facades, init chain propagation, `import pkg.sub` + attribute
+access for variables, `from pkg import submod` namespace binding, qualified
+type names in annotations, always-qualify `@native` refs) shipped on branch
+`stdlib-enablement-imports` plus the earlier `D24 Phase 10` commit -- now
+behaviour-tested under `tests/cases/imports/native_facade_*`,
+`from_pkg_import_submod`, and `import_pkg_sub_attr_var`.
 
 ---
 
@@ -611,9 +610,9 @@ Existing builtins `enumerate`, `zip`, `reversed`, `map`, `filter` live in
 | `groupby`, `accumulate`, `pairwise`, `batched` | Missing | Wrapper / pure |
 
 Key question: whether the module is pure TPy re-exporting C++ generators
-(requires fixing the @native qualification gap -- TODO.md Refactor "Always
-fully-qualify @native references" -- so non-native functions in a facade
-module are reachable from user code) or `@native` thin shims.
+or `@native` thin shims. The @native qualification gap that previously
+blocked the pure-TPy approach has been resolved (codegen always emits
+`::`-qualified names for `@native` refs).
 
 ### functools
 
@@ -1073,7 +1072,7 @@ Architecture (mirrors the re / PCRE2 split):
 
 | Item | Status | Notes |
 |---|---|---|
-| `Socket(family, type, proto)` | Done | `@nocopy`, RAII close in `__del__`. No module-level `socket()` factory -- blocked on @native-name-collision codegen bug (TODO.md "Always fully-qualify @native references"); use `Socket(AF_INET, SOCK_STREAM)` or `create_connection`/`create_server` |
+| `Socket(family, type, proto)` | Done | `@nocopy`, RAII close in `__del__`. Use `Socket(AF_INET, SOCK_STREAM)` or `create_connection` / `create_server`; a CPython-style module-level `socket()` factory is a future addition |
 | `bind`, `connect`, `listen`, `accept` | Done | `accept() -> Own[Socket]` instead of CPython's `(sock, (host, port))` -- blocked on tuple-of-@nocopy codegen bug (BUGS.md "Tuple construction of @nocopy/Own[T] elements"). Callers get the peer via `.getpeername()` on the returned Socket |
 | `send`, `sendall`, `recv` | Done | `send` returns `Int32` (truncated from `ssize_t`); realistic per-call sends are well under 2 GiB. `recv` returns a fresh `bytes` |
 | `close`, `shutdown`, `fileno` | Done | |

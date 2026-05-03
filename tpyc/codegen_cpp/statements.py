@@ -528,8 +528,18 @@ class StatementGenerator:
             # Skip builtins (no .cpp) and native_module (binding-only, no .cpp).
             module_info = self.ctx.analyzer.registry.get_module(stmt.module_name)
             skip_init = module_info and (module_info.is_builtin or module_info.is_native_module)
+            result = ""
+            if (module_info is not None
+                    and module_info.is_native_module
+                    and stmt.module_name in self.ctx.user_module_imports):
+                # Native facades have no __tpy_init() of their own; chain into
+                # the non-native source modules of any re-exported variables.
+                for reached in self._native_facade_init_targets(stmt.module_name):
+                    if reached in self.ctx.emitted_tpy_inits:
+                        continue
+                    result += f"{indent}{qualified_cpp_name(reached, '__tpy_init')}();\n"
+                    self.ctx.emitted_tpy_inits.add(reached)
             if stmt.module_name in self.ctx.user_module_imports and not skip_init:
-                result = ""
                 # For dotted imports, emit parent package inits first (Python semantics)
                 # e.g., "mypackage.utils" -> init mypackage first, then mypackage.utils
                 parts = stmt.module_name.split('.')
@@ -544,9 +554,41 @@ class StatementGenerator:
                 if stmt.module_name != self.ctx.module_name and stmt.module_name not in self.ctx.emitted_tpy_inits:
                     result += f"{indent}{qualified_cpp_name(stmt.module_name, '__tpy_init')}();\n"
                     self.ctx.emitted_tpy_inits.add(stmt.module_name)
-                return result
-            return ""  # Builtin module - no init needed
+            return result
         return None
+
+    def _native_facade_init_targets(self, native_module: str) -> list[str]:
+        """Defining modules of variables re-exported by ``native_module``.
+
+        Records, functions, and protocols re-exported by the facade are pure
+        declarations; only re-exported variables involve runtime
+        construction the consumer must trigger.
+        """
+        registry = self.ctx.analyzer.registry
+        info = registry.get_module(native_module)
+        if info is None or not info.reexported_variables:
+            return []
+        order: list[str] = []
+        seen: set[str] = set()
+        for src_mod, src_name in info.reexported_variables.values():
+            cur_mod, cur_name = src_mod, src_name
+            visited_chain: set[tuple[str, str]] = set()
+            while True:
+                key = (cur_mod, cur_name)
+                if key in visited_chain:
+                    break
+                visited_chain.add(key)
+                cur_info = registry.get_module(cur_mod)
+                if cur_info is None or cur_info.is_builtin:
+                    break
+                next_step = cur_info.reexported_variables.get(cur_name)
+                if next_step is None:
+                    if not cur_info.is_native_module and cur_mod not in seen:
+                        seen.add(cur_mod)
+                        order.append(cur_mod)
+                    break
+                cur_mod, cur_name = next_step
+        return order
 
     def _is_plain_nonvalue(self, t: TpyType) -> bool:
         """True for non-value types that need indirection (list, dict, record, etc.).

@@ -3,39 +3,39 @@
 
 namespace tpy {
 
-std::string_view EnumUtil<tpyapp::main::Signal>::name(tpyapp::main::Signal __e) {
+std::string_view EnumUtil<::tpyapp::main::Signal>::name(::tpyapp::main::Signal __e) {
     switch (__e) {
-        case tpyapp::main::Signal::Error: return "Error";
-        case tpyapp::main::Signal::Ok: return "Ok";
-        case tpyapp::main::Signal::Warning: return "Warning";
+        case ::tpyapp::main::Signal::Error: return "Error";
+        case ::tpyapp::main::Signal::Ok: return "Ok";
+        case ::tpyapp::main::Signal::Warning: return "Warning";
         default: tpy_panic("invalid enum value");
     }
 }
 
-const std::array<tpyapp::main::Signal, 3>
-EnumUtil<tpyapp::main::Signal>::members = {
-    tpyapp::main::Signal::Error,
-    tpyapp::main::Signal::Ok,
-    tpyapp::main::Signal::Warning,
+const std::array<::tpyapp::main::Signal, 3>
+EnumUtil<::tpyapp::main::Signal>::members = {
+    ::tpyapp::main::Signal::Error,
+    ::tpyapp::main::Signal::Ok,
+    ::tpyapp::main::Signal::Warning,
 };
 
-tpyapp::main::Signal EnumUtil<tpyapp::main::Signal>::from_value(int32_t __v) {
+::tpyapp::main::Signal EnumUtil<::tpyapp::main::Signal>::from_value(int32_t __v) {
     switch (__v) {
-        case -1: return tpyapp::main::Signal::Error;
-        case 0: return tpyapp::main::Signal::Ok;
-        case 1: return tpyapp::main::Signal::Warning;
+        case -1: return ::tpyapp::main::Signal::Error;
+        case 0: return ::tpyapp::main::Signal::Ok;
+        case 1: return ::tpyapp::main::Signal::Warning;
         default: tpy_panic("invalid value for enum 'Signal'");
     }
 }
 
-std::optional<tpyapp::main::Signal> EnumUtil<tpyapp::main::Signal>::try_parse(std::string_view __name) {
-    if (__name == "Error") return tpyapp::main::Signal::Error;
-    if (__name == "Ok") return tpyapp::main::Signal::Ok;
-    if (__name == "Warning") return tpyapp::main::Signal::Warning;
+std::optional<::tpyapp::main::Signal> EnumUtil<::tpyapp::main::Signal>::try_parse(std::string_view __name) {
+    if (__name == "Error") return ::tpyapp::main::Signal::Error;
+    if (__name == "Ok") return ::tpyapp::main::Signal::Ok;
+    if (__name == "Warning") return ::tpyapp::main::Signal::Warning;
     return std::nullopt;
 }
 
-tpyapp::main::Signal EnumUtil<tpyapp::main::Signal>::from_name(std::string_view __name) {
+::tpyapp::main::Signal EnumUtil<::tpyapp::main::Signal>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
     if (!__result.has_value()) tpy_panic("invalid name for enum 'Signal'");
     return *__result;
@@ -77,7 +77,7 @@ void __tpy_init() {
 
 int __tpy_main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    tpyapp::main::__tpy_init();
+    ::tpyapp::main::__tpy_init();
     return 0;
 }
 

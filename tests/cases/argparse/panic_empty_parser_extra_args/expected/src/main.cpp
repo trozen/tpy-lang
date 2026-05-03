@@ -30,7 +30,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
         __tpy_argparse_h = (::tpy::add_check<int32_t>(__tpy_argparse_h, 1));
     }
     if ((::tpy::__len__(argv) != 0)) {
-        ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unrecognized arguments: ")), ::tpy::__getitem__(argv, 0))) << "\n";
+        ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unrecognized arguments: ")), ::tpy::__getitem__(argv, 0))) << "\n";
         ::tpy::sys_exit(2);
     }
     return __tpy_builder_argparse_args_1();
@@ -51,7 +51,7 @@ void __tpy_init() {
 
 int __tpy_main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    tpyapp::main::__tpy_init();
+    ::tpyapp::main::__tpy_init();
     return 0;
 }
 

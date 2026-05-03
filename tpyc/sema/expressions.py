@@ -1677,6 +1677,18 @@ class ExpressionAnalyzer:
                     if class_const is not None:
                         return class_const
 
+        # `import pkg.sub` + `pkg.sub.X`: walk the chain to recover a dotted
+        # module name and treat the leaf as a variable on that module.
+        # Mirrors the method-call form that already works via
+        # MethodAnalyzer._try_resolve_dotted_module.
+        if isinstance(expr.obj, TpyFieldAccess):
+            dotted_name = self.methods._try_resolve_dotted_module(expr.obj)
+            if dotted_name is not None:
+                module_info = self.ctx.registry.get_module(dotted_name)
+                if module_info is not None and expr.field in module_info.variables:
+                    expr.module_var_access = (dotted_name, expr.field)
+                    return module_info.variables[expr.field].type
+
         # Handle chained nested type access: Outer.Mid.Inner.field
         if isinstance(expr.obj, TpyFieldAccess):
             chain = self._resolve_nested_chain(expr.obj)

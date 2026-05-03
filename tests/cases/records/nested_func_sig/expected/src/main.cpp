@@ -3,35 +3,35 @@
 
 namespace tpy {
 
-std::string_view EnumUtil<tpyapp::main::Container::Kind>::name(tpyapp::main::Container::Kind __e) {
+std::string_view EnumUtil<::tpyapp::main::Container::Kind>::name(::tpyapp::main::Container::Kind __e) {
     switch (__e) {
-        case tpyapp::main::Container::Kind::A: return "A";
-        case tpyapp::main::Container::Kind::B: return "B";
+        case ::tpyapp::main::Container::Kind::A: return "A";
+        case ::tpyapp::main::Container::Kind::B: return "B";
         default: tpy_panic("invalid enum value");
     }
 }
 
-const std::array<tpyapp::main::Container::Kind, 2>
-EnumUtil<tpyapp::main::Container::Kind>::members = {
-    tpyapp::main::Container::Kind::A,
-    tpyapp::main::Container::Kind::B,
+const std::array<::tpyapp::main::Container::Kind, 2>
+EnumUtil<::tpyapp::main::Container::Kind>::members = {
+    ::tpyapp::main::Container::Kind::A,
+    ::tpyapp::main::Container::Kind::B,
 };
 
-tpyapp::main::Container::Kind EnumUtil<tpyapp::main::Container::Kind>::from_value(int32_t __v) {
+::tpyapp::main::Container::Kind EnumUtil<::tpyapp::main::Container::Kind>::from_value(int32_t __v) {
     switch (__v) {
-        case 1: return tpyapp::main::Container::Kind::A;
-        case 2: return tpyapp::main::Container::Kind::B;
+        case 1: return ::tpyapp::main::Container::Kind::A;
+        case 2: return ::tpyapp::main::Container::Kind::B;
         default: tpy_panic("invalid value for enum 'Container.Kind'");
     }
 }
 
-std::optional<tpyapp::main::Container::Kind> EnumUtil<tpyapp::main::Container::Kind>::try_parse(std::string_view __name) {
-    if (__name == "A") return tpyapp::main::Container::Kind::A;
-    if (__name == "B") return tpyapp::main::Container::Kind::B;
+std::optional<::tpyapp::main::Container::Kind> EnumUtil<::tpyapp::main::Container::Kind>::try_parse(std::string_view __name) {
+    if (__name == "A") return ::tpyapp::main::Container::Kind::A;
+    if (__name == "B") return ::tpyapp::main::Container::Kind::B;
     return std::nullopt;
 }
 
-tpyapp::main::Container::Kind EnumUtil<tpyapp::main::Container::Kind>::from_name(std::string_view __name) {
+::tpyapp::main::Container::Kind EnumUtil<::tpyapp::main::Container::Kind>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
     if (!__result.has_value()) tpy_panic("invalid name for enum 'Container.Kind'");
     return *__result;
@@ -84,7 +84,7 @@ void __tpy_init() {
 
 int __tpy_main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    tpyapp::main::__tpy_init();
+    ::tpyapp::main::__tpy_init();
     return 0;
 }
 

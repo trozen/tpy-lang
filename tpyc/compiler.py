@@ -28,7 +28,7 @@ from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
 from .type_def_registry import get_type_def as _get_type_def
 from .codegen_cpp import CodeGenerator, CodeGenOptions
-from .codegen_cpp.context import module_to_cpp_namespace, set_namespace_map, set_include_path_map, get_include_path, clear_namespace_map, module_to_include_path
+from .codegen_cpp.context import qualified_cpp_name, set_namespace_map, set_include_path_map, get_include_path, clear_namespace_map, module_to_include_path
 from .typesys import TpyType, INT32, INT64, BIGINT, clear_all_compilation_state
 from .macro_loader import MacroRegistry, is_macro_module_source
 
@@ -1232,6 +1232,65 @@ class Compiler:
         self._discover_package_inits(imported_name, new_chain, import_lineno)
         self._discover_modules(resolved.canonical_name, resolved.path, new_chain, import_lineno,
                                is_package_init=resolved.is_package_init)
+        # `from pkg import submod`: each imported name might be a submodule
+        # (as opposed to a value in pkg). Mirrors the relative-import handler:
+        # when the resolver finds `pkg.submod`, also pull it into the build
+        # set so consumer code can do `submod.X(...)` qualified access.
+        if parent_ast is not None and resolved.canonical_name in parent_ast.imports:
+            self._discover_absolute_submodule_imports(
+                parent_ast, resolved.canonical_name, new_chain, import_lineno,
+            )
+
+    def _discover_absolute_submodule_imports(
+        self, ast: TpyModule, package_name: str, import_chain: list[str],
+        import_lineno: int | None,
+    ) -> None:
+        """For `from pkg import X` where X resolves to a submodule, pull
+        `pkg.X` into the build set and bind it as a module alias on the
+        importing AST so consumer code can do `X.SomeType` qualified access
+        and `X.fn(...)` qualified calls.
+
+        Mirrors the relative-import path's submodule conversion (in
+        ``_resolve_relative_import``) but for absolute imports. Names that
+        don't resolve as submodules are left alone -- they're presumably
+        values / types in the package's exports.
+        """
+        assert self.resolver is not None
+        names = ast.imports.get(package_name)
+        if not isinstance(names, set):
+            return
+        promoted = False
+        for orig_name, local_name in list(names):
+            submod_name = f"{package_name}.{orig_name}"
+            submod_resolved = (
+                self.resolver.resolve(submod_name)
+                if submod_name not in self.modules else None
+            )
+            if submod_name not in self.modules and submod_resolved is None:
+                continue
+            # Promote `from pkg import submod` to a full submodule import so
+            # downstream lookups (qualified types, qualified calls) resolve
+            # against pkg.submod's exports rather than treating submod as a
+            # name in pkg.
+            names.discard((orig_name, local_name))
+            ast.imports.setdefault(submod_name, set())
+            ast.bare_module_imports.add(submod_name)
+            ast.user_module_imports.setdefault(submod_name, import_lineno or 0)
+            if local_name != submod_name:
+                ast.module_aliases[submod_name] = local_name
+            promoted = True
+            if submod_resolved is not None:
+                self._discover_package_inits(submod_name, import_chain, import_lineno)
+                self._discover_modules(
+                    submod_resolved.canonical_name, submod_resolved.path,
+                    import_chain, import_lineno,
+                    is_package_init=submod_resolved.is_package_init,
+                )
+        # The parser's reverse-alias cache is built once at parse time;
+        # ask the resolver to refresh it now so qualified-name lookup sees
+        # the freshly promoted module aliases.
+        if promoted and ast.resolver is not None:
+            ast.resolver.refresh_module_aliases()
 
     def _discover_imports(self, module_name: str, ast: TpyModule,
                           import_chain: list[str]) -> None:
@@ -1349,6 +1408,37 @@ class Compiler:
         if resolver is None:
             return
         resolver.canonicalize_import_table(self._lookup_defining_module)
+        # Make submodule-imported source modules visible to the parser's
+        # type resolver so qualified types like `submod.X` (where the user
+        # wrote `from pkg import submod`) can resolve to the submodule's
+        # records / enums / protocols / type aliases. Without this the
+        # resolver only sees names directly imported by this module.
+        self._populate_submodule_registry(compiled)
+
+    def _populate_submodule_registry(self, compiled: CompiledModule) -> None:
+        """Register submodule ModuleInfo + their records into the importer's
+        parser.registry so the type resolver can look up `submod.X` qualified
+        types and downstream codegen can render them with cross-module qnames.
+        """
+        resolver = compiled.ast.resolver
+        if resolver is None:
+            return
+        parser_registry = resolver.registry
+        for mod_name in compiled.ast.user_module_imports:
+            if mod_name in parser_registry.modules:
+                continue
+            dep_compiled = self.modules.get(mod_name)
+            if dep_compiled is None:
+                continue
+            module_info = self._exports_to_module_info(
+                mod_name, dep_compiled.exports, dep_compiled)
+            parser_registry.modules[mod_name] = module_info
+            # Hoist visible records under their short name so the type
+            # resolver finds `submod.X` without needing a side-effecting
+            # registration during type resolution.
+            for short, rinfo in module_info.records.items():
+                if parser_registry.get_record(short) is None:
+                    parser_registry.register_record(rinfo, short)
 
     def _lookup_defining_module(
         self, surface_module: str, name: str,
@@ -1561,11 +1651,16 @@ class Compiler:
             analyzer: The semantic analyzer with registered items.
         """
         exports = compiled.exports
-        # Package inits and implicit stdlib facade modules can re-export
-        # imported symbols (functions, records, protocols, enums) from other
-        # modules. The stdlib extension is safe because native re-exports are
-        # filtered out in codegen (no spurious using-declarations).
-        can_reexport = compiled.is_package_init or compiled.name in self._implicit_stdlib_set()
+        # Package inits, implicit stdlib facade modules, and any
+        # `# tpy: native_module` facade can re-export imported symbols
+        # (functions, records, protocols, enums, variables) from other
+        # modules. native_module facades have no .hpp of their own, so codegen
+        # at consumer sites chases ModuleInfo.reexported_* chains directly --
+        # see CodeGenerator._follow_reexport_chain.
+        is_native = compiled.ast.directives.native_module if compiled else False
+        can_reexport = (compiled.is_package_init
+                        or is_native
+                        or compiled.name in self._implicit_stdlib_set())
 
         # Export all user-defined functions
         exported_funcs: set[str] = set()
@@ -1683,17 +1778,18 @@ class Compiler:
         # Export global variables (from top-level statements)
         # These are tracked in the global scope, but we must exclude imported variables
         # UNLESS they were redefined at the top level (in top_level_decls)
-        # Exception: __init__.py files can re-export imports (Python package semantics)
+        # Exception: package __init__.py files and stdlib facade modules
+        # (see can_reexport above) can re-export imports.
         imported_var_names = set(analyzer.ctx.user_imported_variables.keys())
         top_level_decls = analyzer.ctx.top_level_decls
         for name, var_type in analyzer.global_scope.all().items():
             if name == "__name__":  # Don't export synthetic __name__
                 continue
             # Don't re-export imported variables unless redefined at top level
-            # Exception: __init__.py files can re-export for package-level access
+            # Exception: package __init__.py files and stdlib facades can re-export.
             is_reexport = name in imported_var_names and name not in top_level_decls
             if is_reexport:
-                if not compiled.is_package_init:
+                if not can_reexport:
                     continue
                 # Track re-export source for codegen
                 source_module, original_name = analyzer.ctx.user_imported_variables[name]
@@ -1736,16 +1832,17 @@ class Compiler:
                     cpp_name = stmt.native_name or stmt.name
                     native_globals_by_name[stmt.name] = f"::{cpp_name}"
 
-        # Create ModuleVarInfo with generated cpp_expr
-        # For re-exported variables, use the source module's namespace
-        ns = module_to_cpp_namespace(name)
+        # Create ModuleVarInfo with generated cpp_expr.
+        # cpp_expr is the cross-module use-site form, so always absolute
+        # (`::tpyapp::...`); re-exported variables resolve to their defining
+        # module's namespace.
         variables = {}
         for k, v in exports.variables.items():
             if k in exports.reexported_variables:
                 source_module, original_name = exports.reexported_variables[k]
-                cpp_expr = f"{module_to_cpp_namespace(source_module)}::{original_name}"
+                cpp_expr = qualified_cpp_name(source_module, original_name)
             else:
-                cpp_expr = f"{ns}::{k}"
+                cpp_expr = qualified_cpp_name(name, k)
             # Non-Final non-value-type globals are stored as T* pointers in C++;
             # native_globals are declared directly via `extern T name;` so they
             # don't add the pointer indirection layer regardless of value-type-ness.
@@ -1775,6 +1872,7 @@ class Compiler:
             type_aliases=exports.type_aliases,
             recursive_union_names=set(exports.recursive_union_names),
             enums=exports.enums,
+            reexported_variables=dict(exports.reexported_variables),
             reached=set(exports.reached),
         )
 

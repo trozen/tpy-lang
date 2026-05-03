@@ -1809,7 +1809,7 @@ class FunctionGenerator:
         out.write(f"}} // namespace {ns}\n\n")
         out.write("int __tpy_main(int argc, char* argv[]) {\n")
         out.write(f"{INDENT}::tpy::init_sys_argv(argc, argv);\n")
-        out.write(f"{INDENT}{ns}::__tpy_init();\n")
+        out.write(f"{INDENT}{qualified_cpp_name(self.ctx.module_name, '__tpy_init')}();\n")
         out.write(f"{INDENT}return 0;\n")
         out.write("}\n")
         if not no_main:

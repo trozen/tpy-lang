@@ -98,6 +98,20 @@ class TypeResolver:
         """
         self._parser._imports.canonicalize_name_index(lookup)
 
+    def refresh_module_aliases(self) -> None:
+        """Rebuild the reverse-alias cache from the current module_aliases.
+
+        Called by the compiler after promoting `from pkg import submod` to
+        a full submodule import (which appends to ``ast.module_aliases``);
+        the parser builds the reverse map once at parse time, so post-parse
+        promotions need an explicit refresh to stay visible to qualified-name
+        lookup.
+        """
+        self._parser._reverse_module_aliases = {
+            alias: canonical
+            for canonical, alias in self._parser._module_aliases.items()
+        }
+
     # ------------------------------------------------------------------
     # Public entry point
     # ------------------------------------------------------------------
@@ -313,6 +327,15 @@ class TypeResolver:
                         if registered is not None:
                             return self._upgrade_from_type_def(
                                 registered, resolved_q, loc=ref.loc)
+                        # Submodule-import path (`from pkg import submod`):
+                        # `attr` is not in the importer's local registry but
+                        # is exported by the source module. Consult the source
+                        # module directly so the type carries its cross-module
+                        # qname.
+                        cross = self._resolve_qualified_cross_module(
+                            *resolved_q, loc=ref.loc)
+                        if cross is not None:
+                            return cross
                 # Nested dotted class: Outer.Inner, Outer.Mid.Inner, ...
                 dotted = self._resolve_dotted_class_name_str(name)
                 if dotted is not None:
@@ -651,6 +674,46 @@ class TypeResolver:
             if rinfo is not None and rinfo.module and not rinfo.builtin_type_key:
                 return NominalType(name, _module_qname=f"{rinfo.module}.{name}")
             return NominalType(name)
+        return None
+
+    def _resolve_qualified_cross_module(
+        self, source_module: str, attr: str,
+        *, loc: SourceLocation | None = None,
+    ) -> TpyType | None:
+        """Resolve `attr` against the named source module's exports.
+
+        Used when ``submod.X`` qualifies a type from a submodule that the
+        importing module has bound (via `from pkg import submod`) but
+        whose individual records / enums / type aliases are not in the
+        importer's local registry. Returns a NominalType / enum_type /
+        alias type with the correct cross-module qname, or None.
+        """
+        parser = self._parser
+        mod_info = parser.registry.get_module(source_module)
+        if mod_info is None:
+            return None
+        if mod_info.records and attr in mod_info.records:
+            rinfo = mod_info.records[attr]
+            qname = f"{rinfo.module}.{attr}" if rinfo.module else f"{source_module}.{attr}"
+            return NominalType(attr, _module_qname=qname)
+        if mod_info.enums and attr in mod_info.enums:
+            return mod_info.enums[attr]
+        if mod_info.type_aliases and attr in mod_info.type_aliases:
+            return mod_info.type_aliases[attr]
+        if mod_info.protocols and attr in mod_info.protocols:
+            proto = mod_info.protocols[attr]
+            if proto.type_params:
+                from ..diagnostics import SemanticError
+                raise SemanticError(
+                    f"Generic protocol '{attr}' requires type arguments: "
+                    f"{attr}[{', '.join(proto.type_params)}]",
+                    loc=loc,
+                )
+            qname = f"{source_module}.{attr}"
+            return NominalType(
+                attr, is_protocol=True, _module_qname=qname,
+                is_dynamic_protocol=proto.is_dynamic,
+            )
         return None
 
     def _resolve_qualified_type_name_str(

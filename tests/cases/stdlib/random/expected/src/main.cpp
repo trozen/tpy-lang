@@ -23,7 +23,7 @@ void main() {
     // for _ in range(10):
     for (int32_t _ = 0; _ < 10; ++_) {
         // print(int(random._inst.getrandbits(32)))
-        std::cout << ::tpy::BigInt(static_cast<uint64_t>((*tpystd::random::_inst).getrandbits(32))) << "\n";
+        std::cout << ::tpy::BigInt(static_cast<uint64_t>((*::tpystd::random::_inst).getrandbits(32))) << "\n";
     }
     // # Another seed, shorter run.
     // random.seed(Int32(1))
@@ -33,7 +33,7 @@ void main() {
     // for _ in range(5):
     for (int32_t _ = 0; _ < 5; ++_) {
         // print(int(random._inst.getrandbits(32)))
-        std::cout << ::tpy::BigInt(static_cast<uint64_t>((*tpystd::random::_inst).getrandbits(32))) << "\n";
+        std::cout << ::tpy::BigInt(static_cast<uint64_t>((*::tpystd::random::_inst).getrandbits(32))) << "\n";
     }
     // # --- Reproducibility of random() on the same seed.
     // random.seed(Int32(42))
@@ -345,7 +345,7 @@ void __tpy_init() {
 
 int __tpy_main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    tpyapp::main::__tpy_init();
+    ::tpyapp::main::__tpy_init();
     return 0;
 }
 

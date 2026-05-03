@@ -8,19 +8,19 @@ namespace tpyapp::main {
 void main() {
     // # Constants
     // print(math.pi > 3.14)
-    std::cout << ::tpy::print_bool((tpystd::math::pi > 3.14)) << "\n";
+    std::cout << ::tpy::print_bool((::tpystd::math::pi > 3.14)) << "\n";
     // print(math.pi < 3.15)
-    std::cout << ::tpy::print_bool((tpystd::math::pi < 3.15)) << "\n";
+    std::cout << ::tpy::print_bool((::tpystd::math::pi < 3.15)) << "\n";
     // print(math.tau > 6.28)
-    std::cout << ::tpy::print_bool((tpystd::math::tau > 6.28)) << "\n";
+    std::cout << ::tpy::print_bool((::tpystd::math::tau > 6.28)) << "\n";
     // print(math.tau < 6.29)
-    std::cout << ::tpy::print_bool((tpystd::math::tau < 6.29)) << "\n";
+    std::cout << ::tpy::print_bool((::tpystd::math::tau < 6.29)) << "\n";
     // print(math.e > 2.71)
-    std::cout << ::tpy::print_bool((tpystd::math::e > 2.71)) << "\n";
+    std::cout << ::tpy::print_bool((::tpystd::math::e > 2.71)) << "\n";
     // print(math.e < 2.72)
-    std::cout << ::tpy::print_bool((tpystd::math::e < 2.72)) << "\n";
+    std::cout << ::tpy::print_bool((::tpystd::math::e < 2.72)) << "\n";
     // print(math.inf > 1e308)
-    std::cout << ::tpy::print_bool((tpystd::math::inf > 1e+308)) << "\n";
+    std::cout << ::tpy::print_bool((::tpystd::math::inf > 1e+308)) << "\n";
     // # hypot
     // h = math.hypot(3.0, 4.0)
     std::array<double, 2> __tmp_1{3.0, 4.0};
@@ -98,7 +98,7 @@ void __tpy_init() {
 
 int __tpy_main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    tpyapp::main::__tpy_init();
+    ::tpyapp::main::__tpy_init();
     return 0;
 }
 

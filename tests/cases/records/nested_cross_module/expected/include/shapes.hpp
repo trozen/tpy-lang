@@ -49,12 +49,12 @@ inline std::ostream& operator<<(std::ostream& os, const Container::Inner& obj) {
 } // namespace tpyapp::shapes
 
 template<>
-struct tpy::EnumUtil<tpyapp::shapes::Container::Kind> {
-    static std::string_view name(tpyapp::shapes::Container::Kind e);
-    static const std::array<tpyapp::shapes::Container::Kind, 2> members;
-    static tpyapp::shapes::Container::Kind from_value(int32_t v);
-    static tpyapp::shapes::Container::Kind from_name(std::string_view s);
-    static std::optional<tpyapp::shapes::Container::Kind> try_parse(std::string_view s);
+struct tpy::EnumUtil<::tpyapp::shapes::Container::Kind> {
+    static std::string_view name(::tpyapp::shapes::Container::Kind e);
+    static const std::array<::tpyapp::shapes::Container::Kind, 2> members;
+    static ::tpyapp::shapes::Container::Kind from_value(int32_t v);
+    static ::tpyapp::shapes::Container::Kind from_name(std::string_view s);
+    static std::optional<::tpyapp::shapes::Container::Kind> try_parse(std::string_view s);
 };
 
 namespace tpyapp::shapes {

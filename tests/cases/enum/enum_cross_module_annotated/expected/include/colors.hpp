@@ -16,12 +16,12 @@ enum class Color : int32_t {
 } // namespace tpyapp::colors
 
 template<>
-struct tpy::EnumUtil<tpyapp::colors::Color> {
-    static std::string_view name(tpyapp::colors::Color e);
-    static const std::array<tpyapp::colors::Color, 3> members;
-    static tpyapp::colors::Color from_value(int32_t v);
-    static tpyapp::colors::Color from_name(std::string_view s);
-    static std::optional<tpyapp::colors::Color> try_parse(std::string_view s);
+struct tpy::EnumUtil<::tpyapp::colors::Color> {
+    static std::string_view name(::tpyapp::colors::Color e);
+    static const std::array<::tpyapp::colors::Color, 3> members;
+    static ::tpyapp::colors::Color from_value(int32_t v);
+    static ::tpyapp::colors::Color from_name(std::string_view s);
+    static std::optional<::tpyapp::colors::Color> try_parse(std::string_view s);
 };
 
 namespace tpyapp::colors {

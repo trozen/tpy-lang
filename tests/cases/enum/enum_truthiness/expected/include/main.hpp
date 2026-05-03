@@ -15,12 +15,12 @@ enum class Signal : int32_t {
 } // namespace tpyapp::main
 
 template<>
-struct tpy::EnumUtil<tpyapp::main::Signal> {
-    static std::string_view name(tpyapp::main::Signal e);
-    static const std::array<tpyapp::main::Signal, 2> members;
-    static tpyapp::main::Signal from_value(int32_t v);
-    static tpyapp::main::Signal from_name(std::string_view s);
-    static std::optional<tpyapp::main::Signal> try_parse(std::string_view s);
+struct tpy::EnumUtil<::tpyapp::main::Signal> {
+    static std::string_view name(::tpyapp::main::Signal e);
+    static const std::array<::tpyapp::main::Signal, 2> members;
+    static ::tpyapp::main::Signal from_value(int32_t v);
+    static ::tpyapp::main::Signal from_name(std::string_view s);
+    static std::optional<::tpyapp::main::Signal> try_parse(std::string_view s);
 };
 
 namespace tpyapp::main {

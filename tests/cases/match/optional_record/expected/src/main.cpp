@@ -3,35 +3,35 @@
 
 namespace tpy {
 
-std::string_view EnumUtil<tpyapp::main::Color>::name(tpyapp::main::Color __e) {
+std::string_view EnumUtil<::tpyapp::main::Color>::name(::tpyapp::main::Color __e) {
     switch (__e) {
-        case tpyapp::main::Color::Red: return "Red";
-        case tpyapp::main::Color::Green: return "Green";
+        case ::tpyapp::main::Color::Red: return "Red";
+        case ::tpyapp::main::Color::Green: return "Green";
         default: tpy_panic("invalid enum value");
     }
 }
 
-const std::array<tpyapp::main::Color, 2>
-EnumUtil<tpyapp::main::Color>::members = {
-    tpyapp::main::Color::Red,
-    tpyapp::main::Color::Green,
+const std::array<::tpyapp::main::Color, 2>
+EnumUtil<::tpyapp::main::Color>::members = {
+    ::tpyapp::main::Color::Red,
+    ::tpyapp::main::Color::Green,
 };
 
-tpyapp::main::Color EnumUtil<tpyapp::main::Color>::from_value(int32_t __v) {
+::tpyapp::main::Color EnumUtil<::tpyapp::main::Color>::from_value(int32_t __v) {
     switch (__v) {
-        case 1: return tpyapp::main::Color::Red;
-        case 2: return tpyapp::main::Color::Green;
+        case 1: return ::tpyapp::main::Color::Red;
+        case 2: return ::tpyapp::main::Color::Green;
         default: tpy_panic("invalid value for enum 'Color'");
     }
 }
 
-std::optional<tpyapp::main::Color> EnumUtil<tpyapp::main::Color>::try_parse(std::string_view __name) {
-    if (__name == "Red") return tpyapp::main::Color::Red;
-    if (__name == "Green") return tpyapp::main::Color::Green;
+std::optional<::tpyapp::main::Color> EnumUtil<::tpyapp::main::Color>::try_parse(std::string_view __name) {
+    if (__name == "Red") return ::tpyapp::main::Color::Red;
+    if (__name == "Green") return ::tpyapp::main::Color::Green;
     return std::nullopt;
 }
 
-tpyapp::main::Color EnumUtil<tpyapp::main::Color>::from_name(std::string_view __name) {
+::tpyapp::main::Color EnumUtil<::tpyapp::main::Color>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
     if (!__result.has_value()) tpy_panic("invalid name for enum 'Color'");
     return *__result;
@@ -130,7 +130,7 @@ void __tpy_init() {
 
 int __tpy_main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    tpyapp::main::__tpy_init();
+    ::tpyapp::main::__tpy_init();
     return 0;
 }
 

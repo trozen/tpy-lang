@@ -43,8 +43,8 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<tpyapp::main::Tag> {
-    size_t operator()(const tpyapp::main::Tag& val) const noexcept {
+template<> struct std::hash<::tpyapp::main::Tag> {
+    size_t operator()(const ::tpyapp::main::Tag& val) const noexcept {
         return static_cast<size_t>(::tpy::__hash__(val));
     }
 };

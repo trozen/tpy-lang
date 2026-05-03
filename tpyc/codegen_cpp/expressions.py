@@ -388,6 +388,28 @@ class ExpressionGenerator:
                 result = f"(*{result})"
         return result
 
+    def _follow_reexport_chain(self, module_name: str,
+                                name: str) -> tuple[str, str]:
+        """Follow ``module.reexported_variables[name]`` until a defining module.
+
+        For re-exports through native_module facades, the facade module exposes
+        no .hpp alias, so codegen has to resolve to the original source module's
+        symbol directly.
+        """
+        visited: set[tuple[str, str]] = set()
+        while True:
+            key = (module_name, name)
+            if key in visited:
+                return module_name, name
+            visited.add(key)
+            mod_info = self.ctx.analyzer.registry.get_module(module_name)
+            if mod_info is None:
+                return module_name, name
+            chain = mod_info.reexported_variables.get(name)
+            if chain is None:
+                return module_name, name
+            module_name, name = chain
+
     def _maybe_convert_opt_str_param(self, name: str, result: str,
                                       target_type: TpyType | None) -> str:
         """Convert Optional[str] param (optional<string_view>) to optional<string>
@@ -848,10 +870,17 @@ class ExpressionGenerator:
                 # Pointer indirection for non-value-type globals is handled by
                 # is_indirect_name() -> gen_expr_deref() at call sites.
                 source_module, original_name = self.ctx.user_imported_variables[expr.name]
+                source_info = self.ctx.analyzer.registry.get_module(source_module)
+                # If the source re-exports the symbol from yet another module
+                # (package __init__.py or native_module facade), follow the
+                # chain so codegen lands at the original definition site.
+                if source_info is not None and source_info.reexported_variables:
+                    source_module, original_name = self._follow_reexport_chain(
+                        source_module, original_name)
+                    source_info = self.ctx.analyzer.registry.get_module(source_module)
                 # native_global variables use a user-specified C++ symbol name
                 # (e.g. "engine::score") that's independent of the module's
                 # cpp_namespace -- look it up in the source module's ModuleInfo.
-                source_info = self.ctx.analyzer.registry.get_module(source_module)
                 if source_info is not None:
                     var_info = source_info.variables.get(original_name)
                     if var_info is not None and var_info.native_cpp_name is not None:
@@ -3077,6 +3106,21 @@ class ExpressionGenerator:
     def _gen_field_access(self, expr: TpyFieldAccess) -> str:
         """Generate field access code."""
         cpp_field = escape_cpp_name(expr.field)
+
+        # Dotted-module variable access: `pkg.sub.X` after `import pkg.sub`.
+        # Sema attached (module_qname, var_name) for the qualified emit; reuse
+        # the same shape as the bare `mod.X` path below so native_cpp_name and
+        # pointer-deref handling stay consistent.
+        if expr.module_var_access is not None:
+            module_name, var_name = expr.module_var_access
+            module_info = self.ctx.analyzer.registry.get_module(module_name)
+            if module_info is not None and var_name in module_info.variables:
+                var_info = module_info.variables[var_name]
+                if var_info.native_cpp_name is not None:
+                    return var_info.native_cpp_name
+                if var_info.is_pointer:
+                    return f"(*{var_info.cpp_expr})"
+                return var_info.cpp_expr
 
         # Class constant access: <cpp_qname>::<member>. Sema sets
         # `class_constant_owner` on accesses that resolve to a class constant

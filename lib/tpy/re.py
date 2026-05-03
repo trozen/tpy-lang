@@ -60,36 +60,7 @@ from tpy import take_ptr
 # the value provably fits. The remaining `UInt64(...)` / `UInt32(...)`
 # casts in this file are on `len(...)` results (BigInt) and other typed
 # sources, where a runtime narrowing check is intentional.
-# TODO(compiler): aliased import block here is a workaround for two related
-# entries in BUGS.md:
-#   * `from _bindings import pcre2` doesn't bind the submodule -- forces
-#     `from _bindings.pcre2 import X` for every used symbol;
-#   * `pcre2.MatchData` qualified type names rejected in annotations --
-#     forces aliasing the types (`_PcreMatchData` etc.) so they're plain
-#     names by the time annotations reference them.
-# When either lands, this can collapse to `from _bindings import pcre2` +
-# `pcre2.MatchData` / `pcre2.compile(...)` throughout the file.
-from _bindings.pcre2 import (
-    Code as _PcreCode,
-    MatchData as _PcreMatchData,
-    MatchContext as _PcreMatchContext,
-    PCRE2_CASELESS, PCRE2_MULTILINE, PCRE2_DOTALL, PCRE2_EXTENDED, PCRE2_UTF, PCRE2_UCP,
-    PCRE2_ANCHORED, PCRE2_ENDANCHORED,
-    PCRE2_SUBSTITUTE_GLOBAL, PCRE2_SUBSTITUTE_OVERFLOW_LENGTH,
-    PCRE2_JIT_COMPLETE,
-    PCRE2_ERROR_NOMATCH, PCRE2_ERROR_NOMEMORY,
-    PCRE2_UNSET,
-    compile as _pcre_compile, code_free as _pcre_code_free,
-    jit_compile as _pcre_jit_compile,
-    get_error_message as _pcre_get_error_message,
-    match_context_create as _pcre_mctx_create,
-    match_context_free as _pcre_mctx_free,
-    match_data_create_from_pattern as _pcre_md_create,
-    match_data_free as _pcre_md_free,
-    match as _pcre_match,
-    get_ovector_pointer as _pcre_ovec,
-    substitute as _pcre_substitute,
-)
+from _bindings import pcre2
 
 
 # ---------- RAII wrappers for PCRE2 handles ----------
@@ -102,18 +73,18 @@ from _bindings.pcre2 import (
 # the enclosing record's field init must MIL-hoist (RHS references only
 # ctor params / module-level names, no body-locals). That's why _OwnedCode
 # takes high-level args in __init__ and delegates the multi-step PCRE2
-# call sequence to a staticmethod returning Ptr[_PcreCode] -- the
+# call sequence to a staticmethod returning Ptr[pcre2.Code] -- the
 # dangling-return check trusts locals bound from call returns.
 
 
 @nocopy
 class _OwnedMatchData:
-    _p: Ptr[_PcreMatchData]
-    def __init__(self, p: Ptr[_PcreMatchData]) -> None:
+    _p: Ptr[pcre2.MatchData]
+    def __init__(self, p: Ptr[pcre2.MatchData]) -> None:
         self._p = p
     def __del__(self) -> None:
-        _pcre_md_free(self._p)
-    def get(self) -> Ptr[_PcreMatchData]:
+        pcre2.match_data_free(self._p)
+    def get(self) -> Ptr[pcre2.MatchData]:
         return self._p
 
 
@@ -137,7 +108,7 @@ class error(Exception):
 # UninitArrayStorage -- RAII, no manual free.
 def _pcre2_error_msg(errcode: Int32) -> str:
     buf = UninitArrayStorage[UInt8, 256]()
-    n = _pcre_get_error_message(errcode, buf.ptr(), 256)
+    n = pcre2.get_error_message(errcode, buf.ptr(), 256)
     if n < 0:
         return "unknown error"
     return unsafe_str_from_buf(unsafe_cast(buf.ptr()), UInt64(n))
@@ -145,21 +116,21 @@ def _pcre2_error_msg(errcode: Int32) -> str:
 
 @nocopy
 class _OwnedCode:
-    _p: Ptr[_PcreCode]
+    _p: Ptr[pcre2.Code]
     def __init__(self, pattern: str, flags: Int32) -> None:
         self._p = _OwnedCode._compile(pattern, flags)
     def __del__(self) -> None:
-        _pcre_code_free(self._p)
-    def get(self) -> Ptr[_PcreCode]:
+        pcre2.code_free(self._p)
+    def get(self) -> Ptr[pcre2.Code]:
         return self._p
 
     @staticmethod
-    def _compile(pattern: str, flags: Int32) -> Ptr[_PcreCode]:
+    def _compile(pattern: str, flags: Int32) -> Ptr[pcre2.Code]:
         errcode: Int32 = 0
         erroff: UInt64 = 0
         opts = _to_pcre2_opts(flags)
         p_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(pattern))
-        code = _pcre_compile(p_data, UInt64(len(pattern)),
+        code = pcre2.compile(p_data, UInt64(len(pattern)),
                              opts, take_ptr(errcode), take_ptr(erroff),
                              None)
         if code is None:
@@ -170,12 +141,12 @@ class _OwnedCode:
 
 @nocopy
 class _OwnedMatchContext:
-    _p: Ptr[_PcreMatchContext]
+    _p: Ptr[pcre2.MatchContext]
     def __init__(self) -> None:
-        self._p = _pcre_mctx_create(None)
+        self._p = pcre2.match_context_create(None)
     def __del__(self) -> None:
-        _pcre_mctx_free(self._p)
-    def get(self) -> Ptr[_PcreMatchContext]:
+        pcre2.match_context_free(self._p)
+    def get(self) -> Ptr[pcre2.MatchContext]:
         return self._p
 
 
@@ -185,7 +156,7 @@ class _OwnedMatchContext:
 # negative values are never valid, and Int32 is TPy's DefaultInt so users
 # don't need to write `UInt32(...)` when mixing flags with bare literals.
 # Internally `_to_pcre2_opts` translates to PCRE2's `UInt32` flag space
-# where top-bit values like PCRE2_ANCHORED require the wider unsigned range.
+# where top-bit values like pcre2.PCRE2_ANCHORED require the wider unsigned range.
 NOFLAG:     Final[Int32] = 0
 IGNORECASE: Final[Int32] = 2
 MULTILINE:  Final[Int32] = 8
@@ -207,17 +178,17 @@ def _to_pcre2_opts(flags: Int32) -> UInt32:
     UTF + UCP are on by default (matches CPython str-mode regex behavior:
     Unicode-aware \\d, \\w, \\s, case-folding). `re.ASCII` opts out.
     """
-    opts: UInt32 = PCRE2_UTF | PCRE2_UCP
+    opts: UInt32 = pcre2.PCRE2_UTF | pcre2.PCRE2_UCP
     if (flags & IGNORECASE) != 0:
-        opts |= PCRE2_CASELESS
+        opts |= pcre2.PCRE2_CASELESS
     if (flags & MULTILINE) != 0:
-        opts |= PCRE2_MULTILINE
+        opts |= pcre2.PCRE2_MULTILINE
     if (flags & DOTALL) != 0:
-        opts |= PCRE2_DOTALL
+        opts |= pcre2.PCRE2_DOTALL
     if (flags & VERBOSE) != 0:
-        opts |= PCRE2_EXTENDED
+        opts |= pcre2.PCRE2_EXTENDED
     if (flags & ASCII) != 0:
-        opts &= ~(PCRE2_UTF | PCRE2_UCP)
+        opts &= ~(pcre2.PCRE2_UTF | pcre2.PCRE2_UCP)
     return opts
 
 
@@ -240,7 +211,7 @@ class Match:
         self._ngroups = ngroups
 
     def _ovec_load(self, i: UInt32) -> UInt64:
-        ovec = _pcre_ovec(self._md.get())
+        ovec = pcre2.get_ovector_pointer(self._md.get())
         return unsafe_load(ovec, i)
 
     def span(self, group: Int32 = 0) -> tuple[Int32, Int32]:
@@ -255,7 +226,7 @@ class Match:
             raise error(f"no such group: {group}")
         start = self._ovec_load(UInt32.trunc(group * 2))
         end = self._ovec_load(UInt32.trunc(group * 2 + 1))
-        if start == PCRE2_UNSET or end == PCRE2_UNSET:
+        if start == pcre2.PCRE2_UNSET or end == pcre2.PCRE2_UNSET:
             return (0, 0)
         return (Int32.trunc(start), Int32.trunc(end))
 
@@ -301,21 +272,21 @@ class Pattern:
         # JIT-compile for ~10x match speedup. Failure here is non-fatal --
         # PCRE2 falls back to interpreted matching on patterns the JIT
         # can't handle.
-        _pcre_jit_compile(self._code.get(), PCRE2_JIT_COMPLETE)
+        pcre2.jit_compile(self._code.get(), pcre2.PCRE2_JIT_COMPLETE)
         self.pattern = pattern
         self.flags = flags
 
     def _do_match(self, subject: str, start_offset: UInt64,
                   opts: UInt32) -> Optional[Own[Match]]:
-        md_raw = _pcre_md_create(self._code.get(), None)
+        md_raw = pcre2.match_data_create_from_pattern(self._code.get(), None)
         if md_raw is None:
             raise error("out of memory allocating match data")
         md = _OwnedMatchData(md_raw)
         s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
-        rc = _pcre_match(self._code.get(), s_data, UInt64(len(subject)),
+        rc = pcre2.match(self._code.get(), s_data, UInt64(len(subject)),
                          start_offset, opts, md.get(), self._mctx.get())
         if rc < 0:
-            if rc == PCRE2_ERROR_NOMATCH:
+            if rc == pcre2.PCRE2_ERROR_NOMATCH:
                 return None            # md drops here, frees automatically
             raise error(_pcre2_error_msg(rc))   # same
         return Match(md, subject, rc)           # md moves into the Match
@@ -324,11 +295,11 @@ class Pattern:
         return self._do_match(subject, 0, 0)
 
     def match(self, subject: str) -> Optional[Own[Match]]:
-        return self._do_match(subject, 0, PCRE2_ANCHORED)
+        return self._do_match(subject, 0, pcre2.PCRE2_ANCHORED)
 
     def fullmatch(self, subject: str) -> Optional[Own[Match]]:
         return self._do_match(subject, 0,
-                              PCRE2_ANCHORED | PCRE2_ENDANCHORED)
+                              pcre2.PCRE2_ANCHORED | pcre2.PCRE2_ENDANCHORED)
 
     def finditer(self, subject: str) -> Own[list[Match]]:
         """All non-overlapping matches as a list.
@@ -341,17 +312,17 @@ class Pattern:
         sub_len = UInt64(len(subject))
         s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
         while offset <= sub_len:
-            md_raw = _pcre_md_create(self._code.get(), None)
+            md_raw = pcre2.match_data_create_from_pattern(self._code.get(), None)
             if md_raw is None:
                 raise error("out of memory allocating match data")
             md = _OwnedMatchData(md_raw)
-            rc = _pcre_match(self._code.get(), s_data, sub_len, offset,
+            rc = pcre2.match(self._code.get(), s_data, sub_len, offset,
                              0, md.get(), self._mctx.get())
             if rc < 0:
-                if rc == PCRE2_ERROR_NOMATCH:
+                if rc == pcre2.PCRE2_ERROR_NOMATCH:
                     break          # md drops at end of iteration
                 raise error(_pcre2_error_msg(rc))   # md drops
-            ovec = _pcre_ovec(md.get())
+            ovec = pcre2.get_ovector_pointer(md.get())
             mstart = unsafe_load(ovec, 0)
             mend = unsafe_load(ovec, 1)
             out.append(Match(md, subject, rc))   # md moves into Match
@@ -406,23 +377,23 @@ class Pattern:
         cap = UInt64(len(subject) * 2 + len(repl) + 16)
         outlen: UInt64 = cap
         outbuf = UninitHeapStorage[UInt8](UInt32.trunc(cap))
-        opts = PCRE2_SUBSTITUTE_GLOBAL | PCRE2_SUBSTITUTE_OVERFLOW_LENGTH
-        rc = _pcre_substitute(
+        opts = pcre2.PCRE2_SUBSTITUTE_GLOBAL | pcre2.PCRE2_SUBSTITUTE_OVERFLOW_LENGTH
+        rc = pcre2.substitute(
             self._code.get(), sub_data, UInt64(len(subject)),
             0, opts, None, self._mctx.get(),
             repl_data, UInt64(len(repl)),
             outbuf.ptr(), take_ptr(outlen),
         )
-        if rc == PCRE2_ERROR_NOMEMORY:
+        if rc == pcre2.PCRE2_ERROR_NOMEMORY:
             # PCRE2 wrote the required size into outlen. Reallocate outbuf
             # at that exact size (reassignment drops the old storage).
             # Drop OVERFLOW_LENGTH on retry: buffer is now correctly sized,
             # and asking for overflow-length again would make PCRE2 redo
             # the sizing pass for nothing.
             outbuf = UninitHeapStorage[UInt8](UInt32.trunc(outlen))
-            rc = _pcre_substitute(
+            rc = pcre2.substitute(
                 self._code.get(), sub_data, UInt64(len(subject)),
-                0, PCRE2_SUBSTITUTE_GLOBAL, None,
+                0, pcre2.PCRE2_SUBSTITUTE_GLOBAL, None,
                 self._mctx.get(), repl_data, UInt64(len(repl)),
                 outbuf.ptr(), take_ptr(outlen),
             )
@@ -437,20 +408,20 @@ class Pattern:
         splits: Int32 = 0
         sub_len = UInt64(len(subject))
         s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
-        md_raw = _pcre_md_create(self._code.get(), None)
+        md_raw = pcre2.match_data_create_from_pattern(self._code.get(), None)
         if md_raw is None:
             raise error("out of memory allocating match data")
         md = _OwnedMatchData(md_raw)
         while offset <= sub_len:
             if maxsplit > Int32(0) and splits >= maxsplit:
                 break
-            rc = _pcre_match(self._code.get(), s_data, sub_len, offset,
+            rc = pcre2.match(self._code.get(), s_data, sub_len, offset,
                              0, md.get(), self._mctx.get())
             if rc < 0:
-                if rc == PCRE2_ERROR_NOMATCH:
+                if rc == pcre2.PCRE2_ERROR_NOMATCH:
                     break
                 raise error(_pcre2_error_msg(rc))   # md drops
-            ovec = _pcre_ovec(md.get())
+            ovec = pcre2.get_ovector_pointer(md.get())
             mstart = unsafe_load(ovec, 0)
             mend = unsafe_load(ovec, 1)
             out.append(subject[Int32.trunc(offset):Int32.trunc(mstart)])

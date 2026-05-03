@@ -3,39 +3,39 @@
 
 namespace tpy {
 
-std::string_view EnumUtil<tpyapp::main::Message::Kind>::name(tpyapp::main::Message::Kind __e) {
+std::string_view EnumUtil<::tpyapp::main::Message::Kind>::name(::tpyapp::main::Message::Kind __e) {
     switch (__e) {
-        case tpyapp::main::Message::Kind::TEXT: return "TEXT";
-        case tpyapp::main::Message::Kind::IMAGE: return "IMAGE";
-        case tpyapp::main::Message::Kind::VIDEO: return "VIDEO";
+        case ::tpyapp::main::Message::Kind::TEXT: return "TEXT";
+        case ::tpyapp::main::Message::Kind::IMAGE: return "IMAGE";
+        case ::tpyapp::main::Message::Kind::VIDEO: return "VIDEO";
         default: tpy_panic("invalid enum value");
     }
 }
 
-const std::array<tpyapp::main::Message::Kind, 3>
-EnumUtil<tpyapp::main::Message::Kind>::members = {
-    tpyapp::main::Message::Kind::TEXT,
-    tpyapp::main::Message::Kind::IMAGE,
-    tpyapp::main::Message::Kind::VIDEO,
+const std::array<::tpyapp::main::Message::Kind, 3>
+EnumUtil<::tpyapp::main::Message::Kind>::members = {
+    ::tpyapp::main::Message::Kind::TEXT,
+    ::tpyapp::main::Message::Kind::IMAGE,
+    ::tpyapp::main::Message::Kind::VIDEO,
 };
 
-tpyapp::main::Message::Kind EnumUtil<tpyapp::main::Message::Kind>::from_value(int32_t __v) {
+::tpyapp::main::Message::Kind EnumUtil<::tpyapp::main::Message::Kind>::from_value(int32_t __v) {
     switch (__v) {
-        case 1: return tpyapp::main::Message::Kind::TEXT;
-        case 2: return tpyapp::main::Message::Kind::IMAGE;
-        case 3: return tpyapp::main::Message::Kind::VIDEO;
+        case 1: return ::tpyapp::main::Message::Kind::TEXT;
+        case 2: return ::tpyapp::main::Message::Kind::IMAGE;
+        case 3: return ::tpyapp::main::Message::Kind::VIDEO;
         default: tpy_panic("invalid value for enum 'Message.Kind'");
     }
 }
 
-std::optional<tpyapp::main::Message::Kind> EnumUtil<tpyapp::main::Message::Kind>::try_parse(std::string_view __name) {
-    if (__name == "TEXT") return tpyapp::main::Message::Kind::TEXT;
-    if (__name == "IMAGE") return tpyapp::main::Message::Kind::IMAGE;
-    if (__name == "VIDEO") return tpyapp::main::Message::Kind::VIDEO;
+std::optional<::tpyapp::main::Message::Kind> EnumUtil<::tpyapp::main::Message::Kind>::try_parse(std::string_view __name) {
+    if (__name == "TEXT") return ::tpyapp::main::Message::Kind::TEXT;
+    if (__name == "IMAGE") return ::tpyapp::main::Message::Kind::IMAGE;
+    if (__name == "VIDEO") return ::tpyapp::main::Message::Kind::VIDEO;
     return std::nullopt;
 }
 
-tpyapp::main::Message::Kind EnumUtil<tpyapp::main::Message::Kind>::from_name(std::string_view __name) {
+::tpyapp::main::Message::Kind EnumUtil<::tpyapp::main::Message::Kind>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
     if (!__result.has_value()) tpy_panic("invalid name for enum 'Message.Kind'");
     return *__result;
@@ -78,7 +78,7 @@ void __tpy_init() {
 
 int __tpy_main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    tpyapp::main::__tpy_init();
+    ::tpyapp::main::__tpy_init();
     return 0;
 }
 

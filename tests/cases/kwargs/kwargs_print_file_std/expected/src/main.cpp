@@ -9,9 +9,9 @@ void main() {
     // print("default sink")
     std::cout << "default sink" << "\n";
     // print("explicit stdout", file=sys.stdout)
-    ::tpy::as_ostream((*tpystd::sys::stdout)) << "explicit stdout" << "\n";
+    ::tpy::as_ostream((*::tpystd::sys::stdout)) << "explicit stdout" << "\n";
     // print("to stderr", file=sys.stderr)
-    ::tpy::as_ostream((*tpystd::sys::stderr)) << "to stderr" << "\n";
+    ::tpy::as_ostream((*::tpystd::sys::stderr)) << "to stderr" << "\n";
     // print("after stderr write")
     std::cout << "after stderr write" << "\n";
 }
@@ -34,7 +34,7 @@ void __tpy_init() {
 
 int __tpy_main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    tpyapp::main::__tpy_init();
+    ::tpyapp::main::__tpy_init();
     return 0;
 }
 

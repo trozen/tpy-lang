@@ -374,6 +374,13 @@ class SemanticAnalyzer:
                     # Register tpy type aliases from .py stubs (no-op for non-alias names)
                     elif import_module_name == "tpy":
                         self._register_tpy_type_alias(original_name, local_name)
+                        # Re-exported module-level variables from tpy/__init__.py
+                        # need explicit promotion to VARIABLE bindings (the implicit
+                        # path otherwise leaves them as IMPORTED_NAME, which use
+                        # sites reject). Records/functions/factories already resolve
+                        # through other machinery -- leave them alone here.
+                        self._register_implicit_module_variable(
+                            import_module_name, original_name, local_name)
             elif names is None:
                 # "import X" for special modules (tpy, typing, etc.)
                 alias = module.module_aliases.get(import_module_name)
@@ -2062,6 +2069,33 @@ class SemanticAnalyzer:
         """Get the cached type of an expression."""
         return self.ctx.get_expr_type(expr)
 
+    def _register_implicit_module_variable(self, module_name: str,
+                                            original_name: str,
+                                            local_name: str) -> bool:
+        """Promote an IMPORTED_NAME to VARIABLE when the implicit module
+        re-exports a module-level constant.
+
+        The parser's special handling for ``tpy`` / ``typing`` / ``builtins``
+        skips ``user_module_imports``, so the regular
+        ``_register_user_module_import`` path doesn't run on imports from these
+        modules. Records / functions / type aliases already have dedicated
+        resolution paths in the implicit-module branch; module-level variables
+        do not. This helper covers the variable-only case so re-exported
+        constants (e.g. ``__version__`` from a ``# tpy: native_module``
+        ``tpy/__init__.py``) become first-class VARIABLE bindings instead of
+        being rejected at use site as "not a variable".
+        """
+        module_info = self.ctx.registry.get_module(module_name)
+        if module_info is None or module_info.is_builtin:
+            return False
+        if not module_info.variables or original_name not in module_info.variables:
+            return False
+        var_info = module_info.variables[original_name]
+        self.ctx.global_scope.define(local_name, var_info.type)
+        self.ctx.global_ns.bind_variable(local_name, var_info.type)
+        self.ctx.user_imported_variables[local_name] = (module_name, original_name)
+        return True
+
     def _register_tpy_type_alias(self, original_name: str, local_name: str) -> None:
         """Register a single tpy type alias from the compiled tpy module_info."""
         # Compile-time-only types (e.g. FStr) take priority
@@ -2233,6 +2267,15 @@ class SemanticAnalyzer:
             return True
         if (self.ctx.registry.get_builtin_type_key(original_name) or
                 self.ctx.registry.get_builtin_decorator_key(original_name)):
+            return True
+
+        # `from pkg import submod` where submod is itself a registered user
+        # module: bind it as a MODULE so consumer code can do
+        # `submod.X(...)` / `submod.Type` qualified access (mirrors CPython
+        # which treats the imported name as the submodule namespace object).
+        submodule_qname = f"{module_name}.{original_name}"
+        if self.ctx.registry.get_module(submodule_qname) is not None:
+            self.ctx.global_ns.bind_module(submodule_qname, alias=local_name)
             return True
 
         # Star imports include all public names from the source (matching

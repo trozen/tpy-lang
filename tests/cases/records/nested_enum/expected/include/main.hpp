@@ -39,12 +39,12 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
 } // namespace tpyapp::main
 
 template<>
-struct tpy::EnumUtil<tpyapp::main::Message::Kind> {
-    static std::string_view name(tpyapp::main::Message::Kind e);
-    static const std::array<tpyapp::main::Message::Kind, 3> members;
-    static tpyapp::main::Message::Kind from_value(int32_t v);
-    static tpyapp::main::Message::Kind from_name(std::string_view s);
-    static std::optional<tpyapp::main::Message::Kind> try_parse(std::string_view s);
+struct tpy::EnumUtil<::tpyapp::main::Message::Kind> {
+    static std::string_view name(::tpyapp::main::Message::Kind e);
+    static const std::array<::tpyapp::main::Message::Kind, 3> members;
+    static ::tpyapp::main::Message::Kind from_value(int32_t v);
+    static ::tpyapp::main::Message::Kind from_name(std::string_view s);
+    static std::optional<::tpyapp::main::Message::Kind> try_parse(std::string_view s);
 };
 
 namespace tpyapp::main {

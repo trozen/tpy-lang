@@ -19,7 +19,7 @@ int32_t main() {
 __tpy_builder_argparse_show_args_1 __tpy_builder_argparse_show_parse_1(const std::vector<std::string>& argv) {
     std::string_view __tpy_argparse_usage = "usage: prog show";
     if ((::tpy::__len__(argv) != 0)) {
-        ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog show: error: ", "unrecognized arguments: ")), ::tpy::__getitem__(argv, 0))) << "\n";
+        ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog show: error: ", "unrecognized arguments: ")), ::tpy::__getitem__(argv, 0))) << "\n";
         ::tpy::sys_exit(2);
     }
     return __tpy_builder_argparse_show_args_1();
@@ -29,7 +29,7 @@ __tpy_builder_argparse_show_args_1 __tpy_builder_argparse_show_parse_1(const std
 __tpy_builder_argparse_set_args_1 __tpy_builder_argparse_set_parse_1(const std::vector<std::string>& argv) {
     std::string_view __tpy_argparse_usage = "usage: prog set";
     if ((::tpy::__len__(argv) != 0)) {
-        ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog set: error: ", "unrecognized arguments: ")), ::tpy::__getitem__(argv, 0))) << "\n";
+        ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog set: error: ", "unrecognized arguments: ")), ::tpy::__getitem__(argv, 0))) << "\n";
         ::tpy::sys_exit(2);
     }
     return __tpy_builder_argparse_set_args_1();
@@ -68,15 +68,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
             __tpy_builder_argparse_set_args_1 __tpy_argparse_sub_set = __tpy_builder_argparse_set_parse_1(__tmp_3);
             break;
         } else if (::tpy::str_startswith(__tpy_argparse_tok, "-")) {
-            ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n";
+            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n";
             ::tpy::sys_exit(2);
         } else {
-            ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "invalid choice: ")), __tpy_argparse_tok)) << "\n";
+            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "invalid choice: ")), __tpy_argparse_tok)) << "\n";
             ::tpy::sys_exit(2);
         }
     }
     if ((!__tpy_argparse_acc_cmd.has_value())) {
-        ::tpy::as_ostream((*tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat("prog: error: ", "the following argument is required: {show,set}")) << "\n";
+        ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat("prog: error: ", "the following argument is required: {show,set}")) << "\n";
         ::tpy::sys_exit(2);
     }
     if (!((__tpy_argparse_acc_cmd.has_value()))) ::tpy::tpy_panic("assertion failed");
@@ -101,7 +101,7 @@ void __tpy_init() {
 
 int __tpy_main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    tpyapp::main::__tpy_init();
+    ::tpyapp::main::__tpy_init();
     return 0;
 }
 

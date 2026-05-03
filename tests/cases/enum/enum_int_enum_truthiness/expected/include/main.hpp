@@ -16,12 +16,12 @@ enum class Status : int32_t {
 } // namespace tpyapp::main
 
 template<>
-struct tpy::EnumUtil<tpyapp::main::Status> {
-    static std::string_view name(tpyapp::main::Status e);
-    static const std::array<tpyapp::main::Status, 3> members;
-    static tpyapp::main::Status from_value(int32_t v);
-    static tpyapp::main::Status from_name(std::string_view s);
-    static std::optional<tpyapp::main::Status> try_parse(std::string_view s);
+struct tpy::EnumUtil<::tpyapp::main::Status> {
+    static std::string_view name(::tpyapp::main::Status e);
+    static const std::array<::tpyapp::main::Status, 3> members;
+    static ::tpyapp::main::Status from_value(int32_t v);
+    static ::tpyapp::main::Status from_name(std::string_view s);
+    static std::optional<::tpyapp::main::Status> try_parse(std::string_view s);
 };
 
 namespace tpyapp::main {

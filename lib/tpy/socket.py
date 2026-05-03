@@ -14,9 +14,9 @@ Phase 1 scope:
 
 TODO -- v1 compiler follow-ups. Rough edges where a specific TPy compiler
 bug forced a CPython-incompatible shape or awkward workaround. Each bug
-is tracked in BUGS.md (or TODO.md for the @native qualification one); we
-list them here too so the module's rough edges are discoverable from one
-place. Reclaim these as the corresponding compiler fixes land:
+is tracked in BUGS.md; we list them here too so the module's rough edges
+are discoverable from one place. Reclaim these as the corresponding
+compiler fixes land:
 
   * **CPython's `accept() -> (sock, (host, port))` shape.** Blocked on
     "tuple construction of @nocopy/Own elements is broken in both
@@ -26,34 +26,8 @@ place. Reclaim these as the corresponding compiler fixes land:
     returns `Own[Socket]` only; the peer address is available via
     `.getpeername()` on the returned Socket.
 
-  * **CPython's `socket.socket(...)` module-level factory.** Blocked on
-    "Always fully-qualify @native references" (TODO.md Refactor). A
-    module-level `def socket(...)` in namespace `tpystd::socket` collides
-    with `@native("socket")` resolution at every internal call site.
-    Workaround used throughout `_bindings/posix_socket.py`: every @native
-    binding name carries a leading `::` (`@native("::socket")` etc.) to
-    force global-scope lookup. Drop the `::` prefixes when codegen emits
-    them automatically. Users today construct via `Socket(AF_INET,
-    SOCK_STREAM)` or the higher-level `create_connection` /
-    `create_server` factories.
-
   * **socketpair().** Same tuple-construction blocker as accept(). No
     in-process connected pair until the fix lands.
-
-  * **`except socket.SocketError:`.** Blocked on "qualified except-
-    clause" (BUGS.md). Users must `from socket import SocketError`
-    and then catch the bare name.
-
-  * **Readable defaults (`listen(backlog=_DEFAULT_BACKLOG)` etc.).**
-    Blocked on "Final[X] = SOME_NAMED_CONST as default-param value"
-    (BUGS.md). Values are inlined as `Int32(128)` etc. until the
-    fix lands.
-
-  * **`from _bindings import posix_socket`.** Blocked on submodule-binding
-    gap (BUGS.md). The top-of-file import block aliases every
-    symbol with a `_raw_` prefix (`socket as _raw_socket`,
-    `close as _raw_close`, ...) instead of using the natural submodule-
-    qualified form.
 
 TODO -- v2 feature follow-ups. New scope, not compiler-blocked:
 
@@ -141,31 +115,8 @@ from tpy.unsafe import (
     unsafe_str_from_cstr, unsafe_bytes_from_buf,
 )
 
-# Aliased import workaround for submodule-binding gap -- see module TODO.
-from _bindings.posix_socket import (
-    SockaddrIn,
-    socket as _raw_socket,
-    close as _raw_close,
-    shutdown as _raw_shutdown,
-    bind as _raw_bind,
-    connect as _raw_connect,
-    listen as _raw_listen,
-    accept as _raw_accept,
-    send as _raw_send,
-    recv as _raw_recv,
-    setsockopt as _raw_setsockopt,
-    getsockname as _raw_getsockname,
-    getpeername as _raw_getpeername,
-    socketpair as _raw_socketpair,
-    htons as _raw_htons,
-    ntohs as _raw_ntohs,
-    inet_pton as _raw_inet_pton,
-    inet_ntop as _raw_inet_ntop,
-    tpy_resolve_ipv4 as _raw_resolve_ipv4,
-    tpy_errno as _raw_errno,
-    tpy_last_resolve_error as _raw_last_resolve_error,
-    strerror as _raw_strerror,
-)
+from _bindings import posix_socket
+from _bindings.posix_socket import SockaddrIn
 
 
 # ---------- Wire constants ----------
@@ -206,13 +157,13 @@ class SocketError(Exception):
 
 def _raise_errno(op: str) -> None:
     """Raise SocketError("<op>: <strerror(errno)>")."""
-    msg = unsafe_str_from_cstr(_raw_strerror(_raw_errno()))
+    msg = unsafe_str_from_cstr(posix_socket.strerror(posix_socket.tpy_errno()))
     raise SocketError(op + ": " + msg)
 
 
 def _raise_resolve_error(host: str) -> None:
     """Raise SocketError from the last getaddrinfo gai_strerror message."""
-    msg = unsafe_str_from_cstr(_raw_last_resolve_error())
+    msg = unsafe_str_from_cstr(posix_socket.tpy_last_resolve_error())
     raise SocketError("resolve " + host + ": " + msg)
 
 
@@ -222,7 +173,7 @@ def gethostbyname(hostname: str) -> str:
     """Resolve a hostname to the first IPv4 dotted-quad string."""
     host_ptr: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(hostname))
     out = UninitArrayStorage[UInt8, 4]()
-    rc = _raw_resolve_ipv4(host_ptr, UInt64(len(hostname)), out.ptr())
+    rc = posix_socket.tpy_resolve_ipv4(host_ptr, UInt64(len(hostname)), out.ptr())
     if rc != 0:
         _raise_resolve_error(hostname)
     return _ipv4_to_str(out.ptr())
@@ -231,7 +182,7 @@ def gethostbyname(hostname: str) -> str:
 def _ipv4_to_str(addr_bytes: Ptr[UInt8]) -> str:
     # INET_ADDRSTRLEN = 16 ("255.255.255.255\0").
     buf = UninitArrayStorage[UInt8, 16]()
-    if _raw_inet_ntop(AF_INET, addr_bytes, buf.ptr(), 16) is None:
+    if posix_socket.inet_ntop(AF_INET, addr_bytes, buf.ptr(), 16) is None:
         _raise_errno("inet_ntop")
     return unsafe_str_from_cstr(unsafe_cast(buf.ptr()))
 
@@ -248,15 +199,15 @@ def _build_sockaddr_in(host: str, port: Int32) -> Own[SockaddrIn]:
     un-zeroed padding can make bind return EINVAL. Do not switch to an
     init style that skips zero-fill.
     """
-    port_no = _raw_htons(UInt16.trunc(port))
+    port_no = posix_socket.htons(UInt16.trunc(port))
     if len(hostname := host) == 0:
         return SockaddrIn(UInt16.trunc(AF_INET), port_no, 0)
 
     addr_bytes = UninitArrayStorage[UInt8, 4]()
     host_ptr: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(hostname))
-    rc = _raw_inet_pton(AF_INET, host_ptr, addr_bytes.ptr())
+    rc = posix_socket.inet_pton(AF_INET, host_ptr, addr_bytes.ptr())
     if rc != 1:
-        rc2 = _raw_resolve_ipv4(host_ptr, UInt64(len(hostname)),
+        rc2 = posix_socket.tpy_resolve_ipv4(host_ptr, UInt64(len(hostname)),
                                 addr_bytes.ptr())
         if rc2 != 0:
             _raise_resolve_error(hostname)
@@ -294,14 +245,14 @@ class Socket:
         if fileno >= Int32(0):
             self.fd = fileno
         else:
-            new_fd = _raw_socket(family, type_, proto)
+            new_fd = posix_socket.socket(family, type_, proto)
             if new_fd < Int32(0):
                 _raise_errno("socket")
             self.fd = new_fd
 
     def __del__(self) -> None:
         if self.fd >= Int32(0):
-            _raw_close(self.fd)
+            posix_socket.close(self.fd)
             self.fd = Int32(-1)
 
     def fileno(self) -> Int32:
@@ -309,28 +260,28 @@ class Socket:
 
     def close(self) -> None:
         if self.fd >= Int32(0):
-            _raw_close(self.fd)
+            posix_socket.close(self.fd)
             self.fd = Int32(-1)
 
     def shutdown(self, how: Int32) -> None:
-        if _raw_shutdown(self.fd, how) < Int32(0):
+        if posix_socket.shutdown(self.fd, how) < Int32(0):
             _raise_errno("shutdown")
 
     def bind(self, address: tuple[str, Int32]) -> None:
         host, port = address
         addr = _build_sockaddr_in(host, port)
-        if _raw_bind(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < Int32(0):
+        if posix_socket.bind(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < Int32(0):
             _raise_errno("bind")
 
     def connect(self, address: tuple[str, Int32]) -> None:
         host, port = address
         addr = _build_sockaddr_in(host, port)
-        if _raw_connect(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < Int32(0):
+        if posix_socket.connect(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < Int32(0):
             _raise_errno("connect")
 
     # Literal 128 = SOMAXCONN; named-Final-as-default rejected by sema.
     def listen(self, backlog: Int32 = Int32(128)) -> None:
-        if _raw_listen(self.fd, backlog) < Int32(0):
+        if posix_socket.listen(self.fd, backlog) < Int32(0):
             _raise_errno("listen")
 
     def accept(self) -> Own[Socket]:
@@ -339,7 +290,7 @@ class Socket:
         `(sock, addr)` shape blocked by a codegen bug -- see module TODO)."""
         addr = SockaddrIn(0, 0, 0)
         addrlen: UInt32 = _SOCKADDR_IN_LEN
-        new_fd = _raw_accept(self.fd, take_ptr(addr), take_ptr(addrlen))
+        new_fd = posix_socket.accept(self.fd, take_ptr(addr), take_ptr(addrlen))
         if new_fd < Int32(0):
             _raise_errno("accept")
         return Socket(Int32(0), Int32(0), Int32(0), fileno=new_fd)
@@ -348,7 +299,7 @@ class Socket:
         """Send (some of) `data`; returns bytes actually sent. Use
         `sendall` for full-buffer delivery. Return truncated to Int32
         from libc's ssize_t -- see module TODO."""
-        n = _raw_send(self.fd, unsafe_ptr(data), UInt64(len(data)), Int32(0))
+        n = posix_socket.send(self.fd, unsafe_ptr(data), UInt64(len(data)), Int32(0))
         if n < Int64(0):
             _raise_errno("send")
         return Int32.trunc(n)
@@ -359,7 +310,7 @@ class Socket:
         sent: UInt64 = 0
         data_ptr: Ptr[readonly[UInt8]] = unsafe_ptr(data)
         while sent < total:
-            chunk = _raw_send(self.fd,
+            chunk = posix_socket.send(self.fd,
                               unsafe_ptr_add(data_ptr, Int64.trunc(sent)),
                               total - sent, Int32(0))
             if chunk < Int64(0):
@@ -373,7 +324,7 @@ class Socket:
         if bufsize <= Int32(0):
             return bytes()
         buf = UninitHeapStorage[UInt8](UInt32.trunc(bufsize))
-        n = _raw_recv(self.fd, buf.ptr(), UInt64(bufsize), Int32(0))
+        n = posix_socket.recv(self.fd, buf.ptr(), UInt64(bufsize), Int32(0))
         if n < Int64(0):
             _raise_errno("recv")
         return unsafe_bytes_from_buf(buf.ptr(), UInt64(n))
@@ -381,24 +332,24 @@ class Socket:
     def setsockopt_int(self, level: Int32, optname: Int32, value: Int32) -> None:
         """Set an int-valued socket option. Struct options deferred."""
         v = value
-        if _raw_setsockopt(self.fd, level, optname, take_ptr(v), 4) < Int32(0):
+        if posix_socket.setsockopt(self.fd, level, optname, take_ptr(v), 4) < Int32(0):
             _raise_errno("setsockopt")
 
     def getsockname(self) -> tuple[str, Int32]:
         addr = SockaddrIn(0, 0, 0)
         addrlen: UInt32 = _SOCKADDR_IN_LEN
-        if _raw_getsockname(self.fd, take_ptr(addr), take_ptr(addrlen)) < Int32(0):
+        if posix_socket.getsockname(self.fd, take_ptr(addr), take_ptr(addrlen)) < Int32(0):
             _raise_errno("getsockname")
         return (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-                Int32.trunc(_raw_ntohs(addr.sin_port)))
+                Int32.trunc(posix_socket.ntohs(addr.sin_port)))
 
     def getpeername(self) -> tuple[str, Int32]:
         addr = SockaddrIn(0, 0, 0)
         addrlen: UInt32 = _SOCKADDR_IN_LEN
-        if _raw_getpeername(self.fd, take_ptr(addr), take_ptr(addrlen)) < Int32(0):
+        if posix_socket.getpeername(self.fd, take_ptr(addr), take_ptr(addrlen)) < Int32(0):
             _raise_errno("getpeername")
         return (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-                Int32.trunc(_raw_ntohs(addr.sin_port)))
+                Int32.trunc(posix_socket.ntohs(addr.sin_port)))
 
     def __enter__(self) -> Socket:
         return self
@@ -408,9 +359,8 @@ class Socket:
 
 
 # ---------- Module-level factories ----------
-# No `socket.socket(...)` factory at module level -- collides with
-# @native("socket") binding; see module TODO. No `socketpair()` -- same
-# tuple-of-@nocopy codegen blocker as accept(); see module TODO.
+# No `socketpair()` -- tuple-of-@nocopy codegen blocker as accept();
+# see module TODO.
 
 
 def create_connection(address: tuple[str, Int32]) -> Own[Socket]:

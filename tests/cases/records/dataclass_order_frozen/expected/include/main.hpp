@@ -67,8 +67,8 @@ inline std::ostream& operator<<(std::ostream& os, const Version& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<tpyapp::main::Version> {
-    size_t operator()(const tpyapp::main::Version& val) const noexcept {
+template<> struct std::hash<::tpyapp::main::Version> {
+    size_t operator()(const ::tpyapp::main::Version& val) const noexcept {
         return static_cast<size_t>(::tpy::__hash__(val));
     }
 };
