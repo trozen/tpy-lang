@@ -1,0 +1,51 @@
+choice_seed42:
+10
+10
+30
+20
+20
+20
+10
+50
+choice_str:
+gamma
+beta
+delta
+alpha
+alpha
+alpha
+shuffle_99:
+7
+2
+0
+8
+5
+1
+4
+3
+9
+6
+shuffle_multiset_sum: 15
+shuffle_empty_len: 0
+shuffle_single: 42
+getrandbits_32:
+2746317213
+478163327
+107420369
+3184935163
+getrandbits_33:
+2746317213
+4402387665
+1181241943
+getrandbits_64:
+2053695854357871005
+13679192365072849617
+4517457392071889495
+getrandbits_100:
+873491343714207852616756591005
+176140902141063639299770569303
+getrandbits_small:
+1
+14
+seed_neg_eq_pos: True
+seed_int32min_reproducible: True

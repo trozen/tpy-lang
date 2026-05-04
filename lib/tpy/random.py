@@ -28,16 +28,7 @@
 # Until then, multi-threaded code should construct its own `Random(seed)`
 # per thread rather than calling `random.random()` directly.
 #
-# TODO -- Tier 2 (should work, haven't pressure-tested; mostly require
-# verifying a sub-feature and then tracing through):
-#   - `choice(seq)`: straightforward for `list[T]` with value-type T; may
-#     hit the `list.pop()` ref-type gap (STDLIB_ROADMAP cross-cutting
-#     table, ref-type list ops) for user-class elements.
-#   - `shuffle(seq)`: depends on whether `seq[i], seq[j] = seq[j], seq[i]`
-#     lowers correctly for list elements (tuple-swap on subscripts); if
-#     not, a temp var works.
-#   - `getrandbits(k)` for k > 32: needs BigInt `<<`/`|` -- straightforward
-#     if BigInt bit-ops are wired.
+# TODO -- Tier 2 (should work, haven't pressure-tested):
 #   - `getstate()` / `setstate(state)`: TPy can't easily synthesize a
 #     625-tuple to match CPython's state type. A `list[UInt32]`-based
 #     shape works but is not CPython-compat.
@@ -49,9 +40,9 @@
 #     conformance gap that used to block this is now resolved.
 #   - `sample(pop, k, counts=None)`: more involved algorithm (reservoir /
 #     Floyd's) + same signature shape.
-#   - `seed(None)` implicit auto-seed / `SystemRandom`: both need an OS
-#     entropy primitive (~10-line `@native` to `getentropy(3)` /
-#     `std::random_device`). Independent of the `os` module.
+#   - `SystemRandom`: needs class-hierarchy decisions (subclass Random
+#     with overrides, or standalone class). The OS entropy primitive
+#     itself is wired (see `_os_entropy_uint32`).
 #   - `seed(int)` for BigInt / `seed(bytes)` / `seed(str)`: need BigInt
 #     word-iteration for the key array and/or bytes hashing.
 #   - `binomialvariate(n, p)`: BTRS algorithm (Hormann 1993) is a
@@ -59,9 +50,8 @@
 #     demand surfaces.
 #
 # User-visible caveats (limitations of the currently-shipped API):
-#   - `seed(n)` takes a non-negative Int32 only. Negative values panic on
-#     the Int32->UInt32 coercion; BigInt/bytes/str are not accepted. See
-#     Tier 3 above.
+#   - `seed(n)` takes any Int32 (negatives are mapped to abs()); BigInt /
+#     bytes / str seeds are not accepted (see Tier 3 above).
 #   - `randint(a, b)` requires `b - a + 1` to fit in Int32. `randint(0,
 #     INT32_MAX)` panics on the width computation. Use explicit `Random`
 #     instances with custom code for wider ranges today.
@@ -69,7 +59,12 @@
 #     `getrandbits(n*8).to_bytes(n, 'little')` for all n on any host,
 #     including `n % 4 != 0` (partial-word packing uses the TOP bytes of
 #     the final uint32, per CPython's getrandbits packing).
-#   - `getrandbits(k)` rejects k > 32 with ValueError. See Tier 2 above.
+#   - `getrandbits(0)` raises `ValueError`. CPython returns 0 for k=0;
+#     supporting it would require special-casing the BigInt zero return
+#     and is rarely used. Match CPython if a real workload needs it.
+#   - `choice([])` raises `ValueError`. CPython raises `IndexError`; TPy
+#     doesn't yet have `IndexError` as a catchable type (STDLIB_ROADMAP
+#     "builtins" section). Switch to `IndexError` once it lands.
 #
 # Uses `UInt32.add_wrap / sub_wrap / mul_wrap / shl_wrap` for the modular
 # arithmetic MT needs (TPy's +/-/*/<< on fixed-width ints are
@@ -109,19 +104,21 @@
 #   - `-fno-stack-protector` on release / noalloc builds (compiler-flag
 #     decision, affects all code).
 # tpy: cpp_namespace("tpystd::random")
-from tpy import Int32, UInt8, UInt32, Array
-from typing import Final, overload
+# tpy: include("<tpy/stdlib/random.hpp>")
+from tpy import Int32, UInt8, UInt32, Array, copy
+from tpy.extern import native
+from typing import overload
 import math
+
+
+@native("tpy::stdlib::random::os_entropy_uint32")
+def _os_entropy_uint32() -> UInt32: ...
 
 _N: Int32 = 624
 _M: Int32 = 397
 _MATRIX_A: UInt32 = 0x9908b0df
 _UPPER_MASK: UInt32 = 0x80000000
 _LOWER_MASK: UInt32 = 0x7fffffff
-
-# Historical default MT seed. Used only before the user calls seed();
-# a real auto-seed-from-entropy comes with the OS-entropy binding.
-_DEFAULT_SEED: Final[UInt32] = 5489
 
 # Constants for distributions, mirroring CPython's Lib/random.py.
 _TWOPI: float = 2.0 * math.pi
@@ -141,13 +138,16 @@ class Random:
     _gauss_next: float
     _has_gauss_next: bool
 
-    def __init__(self, seed_value: UInt32 = _DEFAULT_SEED) -> None:
+    def __init__(self, seed_value: UInt32 | None = None) -> None:
         # std::array<uint32_t, 624>{} zero-inits every slot.
         self._state = Array[UInt32, 624]()
         self._index = _N
         self._gauss_next = 0.0
         self._has_gauss_next = False
-        self._seed(seed_value)
+        if seed_value is None:
+            self._seed(_os_entropy_uint32())
+        else:
+            self._seed(seed_value)
 
     def _init_genrand(self, s: UInt32) -> None:
         self._state[0] = s
@@ -244,19 +244,35 @@ class Random:
         b: UInt32 = self._genrand_uint32() >> 6   # top 26 bits
         return (float(a) * 67108864.0 + float(b)) * (1.0 / 9007199254740992.0)
 
-    def getrandbits(self, k: Int32) -> UInt32:
-        # CPython supports arbitrary k via multi-word concatenation; this
-        # v1 covers k in [1, 32] which is the common-case path (matches
-        # CPython's byte-identical uint32 slice).
-        if k <= 0 or k > 32:
-            raise ValueError("number of bits must be in 1..32 (v1 limit)")
+    def _genrand_top_bits(self, k: Int32) -> UInt32:
+        # k in [1, 32]. Avoids the BigInt promotion that public
+        # getrandbits does, so _randbelow's rejection loop stays uint32.
         return self._genrand_uint32() >> UInt32(32 - k)
+
+    def getrandbits(self, k: Int32) -> int:
+        # CPython-compatible: returns an int (BigInt) of k random bits.
+        # k in [1, 32] uses one MT word; k > 32 concatenates ceil(k/32)
+        # words little-endian (word[0] = low 32 bits), matching CPython.
+        if k <= 0:
+            raise ValueError("number of bits must be greater than zero")
+        if k <= 32:
+            return int(self._genrand_top_bits(k))
+        numwords: Int32 = (k + 31) // 32
+        result: int = int(0)
+        i: Int32 = 0
+        while i < numwords - 1:
+            result = result | (int(self._genrand_uint32()) << (32 * i))
+            i += 1
+        last_k: Int32 = k - 32 * i
+        last_word: UInt32 = self._genrand_uint32() >> UInt32(32 - last_k)
+        result = result | (int(last_word) << (32 * i))
+        return result
 
     # ---------- Integer helpers ----------
 
     def _randbelow(self, n: UInt32) -> UInt32:
-        # Uniform int in [0, n) via rejection sampling over getrandbits(k)
-        # where k = bit_length(n). Matches CPython's
+        # Uniform int in [0, n) via rejection sampling over a top-bits
+        # slice where k = bit_length(n). Matches CPython's
         # _randbelow_with_getrandbits. Using bit_length(n-1) would agree
         # for non-power-of-2 widths but draws fewer bits per call for
         # powers of 2, diverging the MT stream from CPython.
@@ -269,9 +285,9 @@ class Random:
         while m > 0:
             k += 1
             m = m >> 1
-        r: UInt32 = self.getrandbits(k)
+        r: UInt32 = self._genrand_top_bits(k)
         while r >= n:
-            r = self.getrandbits(k)
+            r = self._genrand_top_bits(k)
         return r
 
     def randint(self, a: Int32, b: Int32) -> Int32:
@@ -339,6 +355,27 @@ class Random:
                 out.append(UInt8((w >> UInt32(shift_base + j * 8)) & 0xFF))
                 j += 1
         return bytes(out)
+
+    # ---------- Sequence helpers ----------
+
+    def choice[T](self, seq: list[T]) -> T:
+        n: Int32 = Int32(len(seq))
+        if n == 0:
+            # ValueError instead of CPython's IndexError -- see caveats.
+            raise ValueError("Cannot choose from an empty sequence")
+        return copy(seq[Int32(self._randbelow(UInt32(n)))])
+
+    def shuffle[T](self, seq: list[T]) -> None:
+        # Fisher-Yates / Durstenfeld in place. Matches CPython's
+        # random.shuffle MT call sequence (one _randbelow(i+1) per step,
+        # i from len-1 down to 1).
+        i: Int32 = Int32(len(seq)) - 1
+        while i > 0:
+            j: Int32 = Int32(self._randbelow(UInt32(i + 1)))
+            tmp: T = copy(seq[i])
+            seq[i] = copy(seq[j])
+            seq[j] = tmp
+            i -= 1
 
     # ---------- Continuous distributions ----------
     # All straight ports of CPython's Lib/random.py methods. Byte-identical
@@ -475,7 +512,7 @@ class Random:
         return theta % _TWOPI
 
 
-_inst: Random = Random(_DEFAULT_SEED)
+_inst: Random = Random()
 
 # ---------- Module-level convenience API ----------
 # All delegate to the singleton _inst. CPython does the same.
@@ -483,16 +520,33 @@ _inst: Random = Random(_DEFAULT_SEED)
 def random() -> float:
     return _inst.random()
 
-def seed(n: Int32) -> None:
-    # CPython accepts negative ints (treats as abs) and bigints; we accept
-    # a non-negative Int32. Negative Int32 will panic on the UInt32 coercion.
-    _inst._seed(UInt32(n))
+@overload
+def seed() -> None:
+    # No-arg form: re-seed from OS entropy (matches CPython's seed()
+    # default behavior when called without arguments).
+    _inst._seed(_os_entropy_uint32())
 
-def getrandbits(k: Int32) -> UInt32:
+@overload
+def seed(n: Int32) -> None:
+    # CPython treats negative seeds as their absolute value. For
+    # INT32_MIN the mathematical abs doesn't fit in Int32, but
+    # `0 - n` in UInt32 (mod 2^32) equals abs(n) for any negative n.
+    if n < 0:
+        _inst._seed(UInt32.sub_wrap(UInt32(0), UInt32.trunc(n)))
+    else:
+        _inst._seed(UInt32(n))
+
+def getrandbits(k: Int32) -> int:
     return _inst.getrandbits(k)
 
 def randint(a: Int32, b: Int32) -> Int32:
     return _inst.randint(a, b)
+
+def choice[T](seq: list[T]) -> T:
+    return _inst.choice(seq)
+
+def shuffle[T](seq: list[T]) -> None:
+    _inst.shuffle(seq)
 
 @overload
 def randrange(stop: Int32) -> Int32:

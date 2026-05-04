@@ -133,7 +133,7 @@ Examples of the policy in action:
 | [`collections`](#collections) | P0 | Missing | 0% | -- | OrderedDict trivial (have ordered_map); deque needs C++ struct; Counter/defaultdict/namedtuple need macros |
 | [`itertools`](#itertools) | P0 | Missing | 0% | -- | C++ primitives exist in `runtime/itertools.hpp`; needs Python-surface module |
 | [`functools`](#functools) | P0 | Partial | ~15% | pure | `reduce(func, a, initial)` and `reduce(func, a)` done. `cmp_to_key`, `total_ordering`, `wraps` gated on specific compiler fixes (see section). partial/lru_cache/singledispatch/cached_property/partialmethod need closures + macros |
-| [`random`](#random) | P1 | Partial | ~80% | pure | Pure-TPy MT19937 + CPython's distribution suite, byte-identical to CPython on the same seed. Done: `Random` class, `random`, `seed(Int32)`, `getrandbits(k<=32)`, `randint`, `randrange`, `randbytes`, `uniform`, `triangular`, `gauss`, `normalvariate`, `lognormvariate`, `expovariate`, `paretovariate`, `weibullvariate`, `gammavariate`, `betavariate`, `vonmisesvariate`. Missing: `choice`/`shuffle` (Tier 2, straightforward), `choices`/`sample`/`SystemRandom`/auto-seed/`binomialvariate`/`getstate` (Tier 3, blocked on Iterable protocol or OS-entropy binding). See module docstring TODOs |
+| [`random`](#random) | P1 | Partial | ~90% | pure | Pure-TPy MT19937 + CPython's distribution suite, byte-identical to CPython on the same seed. Done: `Random` class, `random`, `seed(Int32)` (negatives mapped to abs), `seed()` no-arg auto-seed via OS entropy, `getrandbits(k)` for arbitrary k, `randint`, `randrange`, `randbytes`, `choice`, `shuffle`, `uniform`, `triangular`, `gauss`, `normalvariate`, `lognormvariate`, `expovariate`, `paretovariate`, `weibullvariate`, `gammavariate`, `betavariate`, `vonmisesvariate`. Missing: `choices`/`sample`/`SystemRandom`/`binomialvariate`/`getstate` (Tier 3). See module docstring TODOs |
 | [`struct`](#struct) | P1 | Partial | ~60% | macro | unpack/calcsize only; `pack` needs statement-expr or buffer builder |
 | [`bisect`](#bisect) | P1 | Done | 100% | pure | All four functions implemented generically over `Comparable` |
 | [`enum`](#enum) | P1 | Partial | ~50% | macro | Enum/IntEnum/auto; missing functional API, lookup by name/value, iteration |
@@ -643,10 +643,12 @@ BUGS.md / TODO.md, not on macro or closure infrastructure:
 
 Current: `lib/tpy/random.py` -- pure-TPy MT19937 engine. `Random` class
 holds the 624-word state; module-level `random()` / `seed()` /
-`getrandbits()` delegate to a module-level `_inst: Random` singleton.
-Byte-identical to CPython's `random._inst.getrandbits(32)` for non-negative
-Int32 seeds (verified against seed 42, 1, 7, 99, 12345; `cases/stdlib/random`
-exercises this under both TPy and CPython).
+`getrandbits()` delegate to a module-level `_inst: Random` singleton
+(auto-seeded from OS entropy at module init, like CPython). Byte-
+identical to CPython's `random._inst.getrandbits(32)` for any Int32
+seed (negatives are mapped to `abs()` to match CPython); verified
+against seeds 42, 1, 7, 99, 12345, -42, INT32_MIN; `cases/stdlib/random`
+and `cases/stdlib/random_seq` exercise both TPy and CPython phases.
 
 Target under the policy: the Mersenne Twister state machine itself is **pure
 TPy** (same as CPython's `_randommodule.c` logic, but in .py). The only native
@@ -684,36 +686,46 @@ Sketch:
         _state: Array[UInt32, 624]
         _index: UInt32
 
-        def __init__(self, seed: UInt32 = UInt32(5489)) -> None: ...
+        def __init__(self, seed_value: UInt32 | None = None) -> None: ...
         def _seed(self, s: UInt32) -> None: ...          # init_by_array
         def _genrand_uint32(self) -> UInt32: ...         # MT step + twist
         def random(self) -> float: ...                   # genrand_res53
-        # randint, choice, shuffle, gauss, ... as methods
+        def choice[T](self, seq: list[T]) -> T: ...
+        def shuffle[T](self, seq: list[T]) -> None: ...
+        # randint, gauss, ... as methods
 
-    _inst: Random = Random(UInt32(5489))
+    _inst: Random = Random()  # auto-seeds via _os_entropy_uint32()
 
-    def random() -> float: return _inst.random()
-    def seed(n: UInt32) -> None: _inst._seed(n)
+    @overload
+    def seed() -> None: _inst._seed(_os_entropy_uint32())
+    @overload
+    def seed(n: Int32) -> None: ...                       # negatives -> abs()
     # ...
 
-Soft gaps for full CPython compat (neither gates the core MT port):
+OS entropy primitive shipped as `tpy::stdlib::random::os_entropy_uint32`
+in `runtime/cpp/include/tpy/stdlib/random.hpp`, backed by
+`std::random_device`. Used for the no-arg `seed()` and `Random(None)`
+auto-seed paths. `SystemRandom` reuses the same primitive but is
+deferred pending class-hierarchy decisions (subclass `Random` with
+overrides vs standalone class).
+
+Soft gaps for full CPython compat (none gate the core MT port):
 - `choices` / `sample` kwarg iterables (`weights=`, `cum_weights=`, `counts=`)
   ship as `list[float]`/`list[int]` rather than `Iterable[T]`. The list-
   literal-vs-protocol conformance gap that blocked this has been closed
   (see functools/math stdlib updates); remaining work is a mechanical
   signature swap plus mixed-positional+kwarg argument wiring.
-- OS entropy primitive for implicit auto-seed and `SystemRandom`: ~10-line
-  `@native` binding to `getentropy(3)` / `std::random_device`. Independent
-  of the `os` module.
 
 | Item | Status | Notes |
 |---|---|---|
 | `random()` | Done | Uniform [0, 1); MT19937 `genrand_res53`. Byte-identical to CPython |
-| `seed(a)` | Partial | Non-negative Int32 only; CPython accepts `None`/`int`/`str`/`bytes`. Negative Int32 panics on the `UInt32(n)` coercion |
-| `getrandbits(k)` | Partial | k in [1, 32]; CPython supports arbitrary k via multi-word concat |
+| `seed(a)` | Partial | Int32 (negatives mapped to abs()) and `seed()` no-arg auto-seed via OS entropy. CPython also accepts BigInt / `bytes` / `str` (Tier 3 below) |
+| `getrandbits(k)` | Done | Returns `int` (BigInt). k in [1, 32] uses one MT word; k > 32 concatenates ceil(k/32) words little-endian, matching CPython byte-identical |
 | `randint(a, b)` | Done | Inclusive [a, b]; `b - a + 1` must fit Int32 |
 | `randrange(stop)`, `randrange(start, stop)`, `randrange(start, stop, step)` | Done | Three overloads; step can be negative |
 | `randbytes(n)` | Done | Byte-identical to CPython's `getrandbits(n*8).to_bytes(n, 'little')` for any `n` on any host |
+| `choice(seq)` | Done | Pure-TPy generic `choice[T](seq: list[T]) -> T`. Byte-identical to CPython on the same seed |
+| `shuffle(seq)` | Done | Fisher-Yates / Durstenfeld in place; byte-identical to CPython |
 | `uniform(a, b)` | Done | |
 | `triangular(low=0.0, high=1.0, mode=None)` | Done | |
 | `gauss(mu, sigma)` | Done | Box-Muller with cached second value. Reseed clears cache |
@@ -725,17 +737,19 @@ Soft gaps for full CPython compat (neither gates the core MT port):
 | `gammavariate(alpha, beta)` | Done | Cheng 1977 (alpha>1) + Ahrens-Dieter (0<alpha<1) + exponential (alpha==1) |
 | `betavariate(alpha, beta)` | Done | Composed over `gammavariate` |
 | `vonmisesvariate(mu, kappa)` | Done | Floor-mod workaround for BUGS.md "tpy::fmod uses C semantics" (`%` sign semantics) |
-| `Random` class (per-instance state) | Done | Per-instance 624-word state; module-level functions delegate to `_inst: Random` singleton |
-| `choice(seq)`, `shuffle(seq)` | Missing | Tier 2: works today for value-type T; deferred pending one pass of verification |
+| `Random` class (per-instance state) | Done | Per-instance 624-word state; `Random(None)` / `Random()` auto-seed from OS entropy |
 | `getstate()`, `setstate(state)` | Missing | Tier 2; CPython tuple shape awkward, `list[UInt32]` variant viable |
 | `choices(pop, weights=, cum_weights=, k=)` | Missing | Tier 3. The `Iterable[T]` conformance gap that previously blocked this is resolved; remaining work is a mechanical signature swap plus weighted-selection wiring |
 | `sample(pop, k, counts=None)` | Missing | Tier 3: same `Iterable[T]` gap + complex algorithm |
 | `binomialvariate(n, p)` | Missing | Tier 3: BTRS state machine; defer until demand |
-| `SystemRandom` class | Missing | Tier 3: depends on OS entropy primitive |
+| `SystemRandom` class | Missing | Tier 3: OS entropy primitive is wired (`tpy::stdlib::random::os_entropy_uint32`); needs class-hierarchy decisions (subclass `Random` with overrides vs standalone) |
 
 Tests: `cases/builtins/random_basic` (existing API smoke test);
 `cases/stdlib/random` (MT engine byte-identity with CPython + per-instance
-Random + singleton isolation, `cpy` phase enabled).
+Random + singleton isolation, `cpy` phase enabled);
+`cases/stdlib/random_seq` (choice/shuffle/getrandbits k>32/seed(negative)
+byte-identity); `cases/stdlib/random_autoseed` (entropy-driven `seed()` /
+`Random(None)`, `no_cpython` since entropy is non-deterministic).
 
 ### struct
 
