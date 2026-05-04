@@ -30,6 +30,7 @@ struct ROBuffer {
 
     // def __span__(self) -> Span[readonly[Int32]]:
     std::span<const int32_t> __span__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ROBuffer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ROBuffer& obj) {
@@ -57,6 +58,7 @@ struct MutBuffer {
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> __span__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MutBuffer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MutBuffer& obj) {

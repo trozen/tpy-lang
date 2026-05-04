@@ -106,7 +106,7 @@ inline bool Tag::__eq__(const Tag& other) const {
 }
 
 inline std::string Tag::__repr__() const {
-    return std::format("Tag(name={}, value={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->value));
+    return std::format("Tag(name={}, value={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->value));
 }
 
 inline uint64_t Tag::__hash__() const {
@@ -120,7 +120,7 @@ inline bool SetItem::__eq__(const SetItem& other) const {
 }
 
 inline std::string SetItem::__repr__() const {
-    return std::format("SetItem(name={}, tags={})", ::tpy::__repr__(this->name), ::tpy::set_to_str(this->tags));
+    return std::format("SetItem(name={}, tags={})", ::tpy::repr_of(this->name), ::tpy::set_to_str(this->tags));
 }
 
 inline bool DictItem::__eq__(const DictItem& other) const {

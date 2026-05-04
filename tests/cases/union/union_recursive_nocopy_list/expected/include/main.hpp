@@ -72,7 +72,7 @@ inline bool Heavy::__eq__(const Heavy& other) const {
 }
 
 inline std::string Heavy::__repr__() const {
-    return std::format("Heavy(value={})", ::tpy::__repr__(this->value));
+    return std::format("Heavy(value={})", ::tpy::repr_of(this->value));
 }
 
 inline bool Light::__eq__(const Light& other) const {
@@ -80,7 +80,7 @@ inline bool Light::__eq__(const Light& other) const {
 }
 
 inline std::string Light::__repr__() const {
-    return std::format("Light(value={})", ::tpy::__repr__(this->value));
+    return std::format("Light(value={})", ::tpy::repr_of(this->value));
 }
 using Item = std::variant<Heavy, Light>;
 

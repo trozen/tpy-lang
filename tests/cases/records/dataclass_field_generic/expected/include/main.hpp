@@ -34,6 +34,7 @@ struct Pair {
     friend bool operator==(const Pair& lhs, const Pair<T>& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
 template<typename T>
@@ -73,7 +74,7 @@ inline bool Wrapper::__eq__(const Wrapper& other) const {
 }
 
 inline std::string Wrapper::__repr__() const {
-    return std::format("Wrapper(name={}, pair={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->pair));
+    return std::format("Wrapper(name={}, pair={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->pair));
 }
 void __tpy_init();
 } // namespace tpyapp::main

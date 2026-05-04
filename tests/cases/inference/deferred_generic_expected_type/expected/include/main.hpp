@@ -39,6 +39,7 @@ struct Container {
         // return self.val
         return this->val;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>
@@ -71,6 +72,7 @@ struct Pair {
         // return self.b
         return this->b;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
 template<typename T, typename U>

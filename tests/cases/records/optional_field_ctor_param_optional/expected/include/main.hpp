@@ -30,6 +30,7 @@ struct Point {
     // def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -45,6 +46,7 @@ struct Edge {
     // def __init__(self, p: Point | None):
     Edge() = default;
     explicit Edge(const Point* p) : target(::tpy::ptr_to_optional(p)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Edge";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Edge& obj) {

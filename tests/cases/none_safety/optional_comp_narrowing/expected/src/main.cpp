@@ -34,7 +34,7 @@ void main() {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             const auto& item = *__beg_1;
-            __result.push_back((((item.has_value())) ? (::tpy::__repr__(item)) : ("none")));
+            __result.push_back((((item.has_value())) ? (::tpy::repr_of(item)) : ("none")));
         }
         __result;
     });

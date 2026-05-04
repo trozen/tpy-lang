@@ -21,6 +21,7 @@ struct Code {
     // def __init__(self, n: Int32) -> None:
     Code() = default;
     explicit Code(int32_t n) : n(n) {}
+    static constexpr std::string_view __tpy_class_name__ = "_bindings.pcre2.Code";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Code& obj) {

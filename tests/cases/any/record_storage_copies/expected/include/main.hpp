@@ -21,6 +21,7 @@ struct Counter {
     // def __init__(self, n: int) -> None:
     Counter() = default;
     explicit Counter(const ::tpy::BigInt& n) : n(n) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {

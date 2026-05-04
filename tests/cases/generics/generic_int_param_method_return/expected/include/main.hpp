@@ -34,6 +34,7 @@ struct Grid {
         // return Grid[T, N](value)
         return Grid<T, N>(value);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Grid";
 };
 
 template<typename T, std::size_t N>

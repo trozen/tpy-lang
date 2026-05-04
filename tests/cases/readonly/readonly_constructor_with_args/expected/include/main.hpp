@@ -21,6 +21,7 @@ struct Box {
     // def __init__(self, x: Int32) -> None:
     Box() = default;
     explicit Box(int32_t x) : x(x) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {

@@ -41,6 +41,7 @@ struct Box {
         // self._has = False
         this->_has = false;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 template<typename T>

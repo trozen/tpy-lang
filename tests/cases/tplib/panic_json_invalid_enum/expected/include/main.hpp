@@ -86,7 +86,7 @@ inline bool Item::__eq__(const Item& other) const {
 }
 
 inline std::string Item::__repr__() const {
-    return std::format("Item(name={}, color={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->color));
+    return std::format("Item(name={}, color={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->color));
 }
 
 inline Item Item::from_json(std::string_view __s) {

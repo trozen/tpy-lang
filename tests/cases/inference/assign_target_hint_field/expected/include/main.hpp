@@ -24,6 +24,7 @@ struct WithArray {
 
     // def __init__(self):
     WithArray() : data(std::array<T, N>()) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.WithArray";
 };
 
 template<typename T, std::size_t N>
@@ -40,6 +41,7 @@ struct WithList {
 
     // def __init__(self):
     WithList() : items(std::vector<T>()) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.WithList";
 };
 
 template<typename T>
@@ -56,6 +58,7 @@ struct WithDict {
 
     // def __init__(self):
     WithDict() : data(::tpy::ordered_map<K, V>()) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.WithDict";
 };
 
 template<typename K, typename V>
@@ -103,6 +106,7 @@ struct WithHeapStorage {
         // return self._storage.load0()
         return this->_storage.load0();
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.WithHeapStorage";
 };
 
 template<typename T>

@@ -29,6 +29,7 @@ struct Counter {
     // @readonly
     // def doubled(self) -> Int32:
     int32_t doubled() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {

@@ -27,6 +27,7 @@ struct Message {
 
     // def to_string(self) -> str:
     std::string to_string() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Message";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Message& obj) {

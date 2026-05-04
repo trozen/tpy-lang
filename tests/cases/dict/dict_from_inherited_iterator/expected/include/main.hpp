@@ -30,6 +30,7 @@ struct PairIter {
 
     // def __next__(self) -> tuple[str, Int32]:
     std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> __next__();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.PairIter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PairIter& obj) {
@@ -43,6 +44,7 @@ struct DoublePairIter : PairIter {
     // def __init__(self, limit: Int32) -> None:
     DoublePairIter() = default;
     explicit DoublePairIter(int32_t limit) : PairIter((::tpy::mul_check<int32_t>(limit, 2))) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.DoublePairIter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DoublePairIter& obj) {

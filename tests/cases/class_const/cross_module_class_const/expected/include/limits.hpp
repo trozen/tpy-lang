@@ -18,6 +18,7 @@ struct Limits {
     // GREETING: Final[str] = "hello"
     static constexpr std::string_view GREETING = "hello";
 
+    static constexpr std::string_view __tpy_class_name__ = "limits.Limits";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Limits& obj) {

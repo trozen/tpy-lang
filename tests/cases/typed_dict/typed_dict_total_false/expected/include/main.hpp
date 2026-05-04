@@ -20,6 +20,7 @@ struct Info {
     // age: Int32
     std::optional<int32_t> age = std::nullopt;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Info";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Info& obj) {

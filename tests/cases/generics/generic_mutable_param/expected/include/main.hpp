@@ -35,6 +35,7 @@ struct Box {
         // self.value = value
         this->value = value;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 template<typename T>

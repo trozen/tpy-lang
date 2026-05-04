@@ -39,6 +39,7 @@ struct Impl {
 
     // def write(self, v: Int32) -> None:
     void write(int32_t v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Impl";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {

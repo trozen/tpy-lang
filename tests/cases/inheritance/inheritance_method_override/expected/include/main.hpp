@@ -30,6 +30,7 @@ struct Shape {
 
     // def describe(self) -> str:
     std::string describe() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Shape";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shape& obj) {
@@ -51,6 +52,7 @@ struct Square : Shape {
 
     // def area(self) -> Int32:
     int32_t area() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Square";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
@@ -74,6 +76,7 @@ struct Rectangle : Shape {
 
     // def area(self) -> Int32:
     int32_t area() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Rectangle";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rectangle& obj) {

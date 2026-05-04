@@ -54,6 +54,7 @@ struct Base {
 
     // def get(self) -> Int32:
     int32_t get() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -73,6 +74,7 @@ struct Child : Base {
 
     // def take(self: Own[Self]) -> Int32:
     int32_t take() &&;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {

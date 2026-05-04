@@ -114,6 +114,7 @@ struct Registry {
 
     // def update(self, key: Int32, color: Color) -> None:
     void update(int32_t key, Color color);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Registry";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Registry& obj) {
@@ -127,7 +128,7 @@ inline bool Msg::__eq__(const Msg& other) const {
 }
 
 inline std::string Msg::__repr__() const {
-    return std::format("Msg(color={}, value={})", ::tpy::__repr__(this->color), ::tpy::__repr__(this->value));
+    return std::format("Msg(color={}, value={})", ::tpy::repr_of(this->color), ::tpy::repr_of(this->value));
 }
 
 inline Msg Msg::from_json(std::string_view __s) {
@@ -242,7 +243,7 @@ inline bool Item::__eq__(const Item& other) const {
 }
 
 inline std::string Item::__repr__() const {
-    return std::format("Item(color={})", ::tpy::__repr__(this->color));
+    return std::format("Item(color={})", ::tpy::repr_of(this->color));
 }
 
 // def update(self, key: Int32, color: Color) -> None:

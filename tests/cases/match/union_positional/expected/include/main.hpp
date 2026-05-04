@@ -69,7 +69,7 @@ inline bool Circle::__eq__(const Circle& other) const {
 }
 
 inline std::string Circle::__repr__() const {
-    return std::format("Circle(radius={})", ::tpy::__repr__(this->radius));
+    return std::format("Circle(radius={})", ::tpy::repr_of(this->radius));
 }
 
 inline bool Rect::__eq__(const Rect& other) const {
@@ -77,7 +77,7 @@ inline bool Rect::__eq__(const Rect& other) const {
 }
 
 inline std::string Rect::__repr__() const {
-    return std::format("Rect(width={}, height={})", ::tpy::__repr__(this->width), ::tpy::__repr__(this->height));
+    return std::format("Rect(width={}, height={})", ::tpy::repr_of(this->width), ::tpy::repr_of(this->height));
 }
 void __tpy_init();
 } // namespace tpyapp::main

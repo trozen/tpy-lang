@@ -46,6 +46,7 @@ struct Resource {
         // print("drop", self.name)
         std::cout << "drop" << " " << this->name << "\n";
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Resource";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
@@ -81,6 +82,7 @@ struct Base {
         // print("~Base", self.tag)
         std::cout << "~Base" << " " << this->tag << "\n";
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -113,6 +115,7 @@ struct Child : Base {
         // print("~Child", self.tag)
         std::cout << "~Child" << " " << this->tag << "\n";
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {

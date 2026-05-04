@@ -24,6 +24,7 @@ struct Counter {
 
     // def bump(self) -> None:
     void bump();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -38,6 +39,7 @@ struct Wrapper : Counter {
 
     // def bump_twice(self) -> None:
     void bump_twice();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {

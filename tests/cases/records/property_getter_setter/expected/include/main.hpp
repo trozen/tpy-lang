@@ -29,6 +29,7 @@ struct Clamped {
     // @value.setter
     // def value(self, v: Int32) -> None:
     void set_value(int32_t v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Clamped";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Clamped& obj) {

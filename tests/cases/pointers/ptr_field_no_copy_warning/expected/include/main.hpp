@@ -22,6 +22,7 @@ struct A {
     // def __init__(self, v: Int32) -> None:
     A() = default;
     explicit A(int32_t v) : v(v) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
@@ -37,6 +38,7 @@ struct Holder {
     // def __init__(self, a: A) -> None:
     Holder() = default;
     explicit Holder(const A& a) : _a(&a) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {

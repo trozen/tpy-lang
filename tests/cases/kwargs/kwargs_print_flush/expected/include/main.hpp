@@ -28,6 +28,7 @@ struct CountingSink {
 
     // def flush(self) -> None:
     void flush();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.CountingSink";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CountingSink& obj) {

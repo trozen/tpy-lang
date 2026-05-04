@@ -52,6 +52,7 @@ struct Wrapper {
         // return self._storage.load0()
         return this->_storage.load0();
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 template<typename T>

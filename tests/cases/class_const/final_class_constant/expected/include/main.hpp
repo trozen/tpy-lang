@@ -24,6 +24,7 @@ struct HttpClient {
     // ENABLED: Final[bool] = True
     static constexpr bool ENABLED = true;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.HttpClient";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HttpClient& obj) {

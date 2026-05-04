@@ -44,6 +44,7 @@ struct Wrapper {
     // @readonly
     // def get_pair(self) -> tuple[Container, Int32]:
     std::tuple<const Container&, int32_t> get_pair() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {

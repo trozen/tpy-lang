@@ -92,7 +92,7 @@ inline bool Vec2::__eq__(const Vec2& other) const {
 }
 
 inline std::string Vec2::__repr__() const {
-    return std::format("Vec2(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+    return std::format("Vec2(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
 
 inline uint64_t Vec2::__hash__() const {
@@ -106,7 +106,7 @@ inline bool Vec3::__eq__(const Vec3& other) const {
 }
 
 inline std::string Vec3::__repr__() const {
-    return std::format("Vec3(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
+    return std::format("Vec3(x={}, y={}, z={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y), ::tpy::repr_of(this->z));
 }
 
 inline uint64_t Vec3::__hash__() const {

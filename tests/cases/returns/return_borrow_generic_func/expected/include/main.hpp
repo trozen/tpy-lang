@@ -35,6 +35,7 @@ struct Point {
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -59,6 +60,7 @@ struct Box {
         // return self._items[0]  # borrows from self
         return ::tpy::__getitem__(this->_items, 0);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 template<typename T>

@@ -60,6 +60,7 @@ struct Circle : Shape {
 
     // def area(self) -> float:
     double area() override;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Circle";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
@@ -78,6 +79,7 @@ struct Square : Shape {
 
     // def area(self) -> float:
     double area() override;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Square";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Square& obj) {

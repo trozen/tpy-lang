@@ -17,6 +17,7 @@ std::expected<::tpy::BigInt, ParseError> parse_int(std::string_view s);
 struct ParseError : ::tpy::Exception {
 
     using ::tpy::Exception::Exception;
+    static constexpr std::string_view __tpy_class_name__ = "errors_impl.ParseError";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {

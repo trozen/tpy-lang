@@ -52,6 +52,7 @@ struct Dog : Pet {
 
     // def make_noise(self) -> str:
     std::string make_noise() override;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {

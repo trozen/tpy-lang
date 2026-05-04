@@ -31,6 +31,7 @@ struct Printer {
 
     // def process(self, x: str | None) -> None:
     void process(std::optional<std::string_view> x) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Printer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Printer& obj) {
@@ -45,6 +46,7 @@ struct Node {
 
     // def __init__(self, label: str | None = None) -> None:
     explicit Node(std::optional<std::string_view> label = std::nullopt) : label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Node& obj) {

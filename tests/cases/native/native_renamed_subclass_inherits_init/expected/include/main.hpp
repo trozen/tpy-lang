@@ -19,6 +19,7 @@ void main();
 struct Sub : ::CppCounter {
 
     using ::CppCounter::CppCounter;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Sub";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {

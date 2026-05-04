@@ -22,6 +22,7 @@ struct UserInfo {
     // active: bool
     bool active;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.UserInfo";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const UserInfo& obj) {

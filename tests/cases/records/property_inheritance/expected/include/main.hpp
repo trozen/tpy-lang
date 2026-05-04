@@ -26,6 +26,7 @@ struct Base {
     // @property
     // def x(self) -> Int32:
     int32_t x() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -48,6 +49,7 @@ struct Child : Base {
 
     // def sum(self) -> Int32:
     int32_t sum() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {

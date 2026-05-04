@@ -44,6 +44,7 @@ struct StorageIter {
         // raise StopIteration
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.StorageIter";
 };
 
 template<typename T, std::size_t N>
@@ -101,6 +102,7 @@ struct SimpleList {
         // return StorageIter[T, N](take_ptr(self._storage), self._size)
         return StorageIter<T, N>(&this->_storage, this->_size);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.SimpleList";
 };
 
 template<typename T, std::size_t N>

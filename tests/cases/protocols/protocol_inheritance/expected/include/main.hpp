@@ -47,6 +47,7 @@ struct Message {
         if (len < 0) ::tpy::tpy_panic("__len__ returned negative value");
         return static_cast<size_t>(len);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Message";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
@@ -71,6 +72,7 @@ struct Container {
         // print(len(self.value))
         std::cout << ::tpy::__len__(this->value) << "\n";
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>

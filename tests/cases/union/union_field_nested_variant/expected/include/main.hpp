@@ -29,6 +29,7 @@ struct Ball {
     // def __init__(self, color: str) -> None:
     Ball() = default;
     explicit Ball(std::string_view color) : color(color) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Ball";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ball& obj) {
@@ -44,6 +45,7 @@ struct Mouse {
     // def __init__(self, size: str) -> None:
     Mouse() = default;
     explicit Mouse(std::string_view size) : size(size) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Mouse";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mouse& obj) {
@@ -60,6 +62,7 @@ struct Cat {
 
     // def __init__(self, name: str, toy: Ball | Mouse) -> None:
     explicit Cat(std::string_view name, const std::variant<Ball*, Mouse*> toy) : name(name), toy(::tpy::to_value_variant<std::variant<Ball, Mouse>>(toy)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
@@ -75,6 +78,7 @@ struct Dog {
     // def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
@@ -89,6 +93,7 @@ struct Zoo {
 
     // def __init__(self, animal: Cat | Dog) -> None:
     explicit Zoo(const std::variant<Cat*, Dog*> animal) : animal(::tpy::to_value_variant<std::variant<Cat, Dog>>(animal)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Zoo";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Zoo& obj) {

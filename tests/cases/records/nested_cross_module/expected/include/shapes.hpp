@@ -26,6 +26,7 @@ struct Container {
         // def __init__(self, val: Int32) -> None:
         Inner() = default;
         explicit Inner(int32_t val) : val(val) {}
+        static constexpr std::string_view __tpy_class_name__ = "shapes.Container.Inner";
     };
 
     // kind: Kind
@@ -34,6 +35,7 @@ struct Container {
     // def __init__(self, kind: Kind) -> None:
     Container() = default;
     explicit Container(Container::Kind kind) : kind(kind) {}
+    static constexpr std::string_view __tpy_class_name__ = "shapes.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {

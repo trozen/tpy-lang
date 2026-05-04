@@ -25,6 +25,7 @@ struct Point {
     // y: Int32
     int32_t y;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -45,6 +46,7 @@ struct Rect {
 
     // def set_width(self, w: Int32) -> None:
     void set_width(int32_t w);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Rect";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
@@ -60,6 +62,7 @@ struct Container {
 
     // def set_items(self, data: list[Int32]) -> None:
     void set_items(const std::vector<int32_t>& data);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -81,6 +84,7 @@ struct Holder {
         // self.value = copy(v)      # tpyc: ok
         this->value = T(v);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 template<typename T>
@@ -99,6 +103,7 @@ struct OptHolder {
 
     // def set_value(self, p: Point | None) -> None:
     void set_value(Point* p);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OptHolder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OptHolder& obj) {

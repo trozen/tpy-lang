@@ -24,6 +24,7 @@ struct Base {
     // def __init__(self, x: Int32) -> None:
     Base() = default;
     explicit Base(int32_t x) : x(x) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -37,6 +38,7 @@ struct Mixin {
 
     // def hello(self) -> str:
     std::string hello() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Mixin";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mixin& obj) {
@@ -48,6 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Mixin& obj) {
 struct Child : Base, Mixin {
 
     using Base::Base;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
@@ -59,6 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 struct GrandChild : Child {
 
     using Child::Child;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.GrandChild";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const GrandChild& obj) {

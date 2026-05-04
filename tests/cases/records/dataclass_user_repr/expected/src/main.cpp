@@ -11,7 +11,7 @@ void main() {
     // print(p)
     std::cout << p << "\n";
     // print(repr(p))
-    std::cout << ::tpy::__repr__(p) << "\n";
+    std::cout << ::tpy::repr_of(p) << "\n";
 }
 
 void __tpy_init() {

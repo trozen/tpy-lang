@@ -37,6 +37,7 @@ struct Buffer {
     int32_t operator[](int32_t index) const {
         return __getitem__(index);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Buffer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {

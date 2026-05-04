@@ -25,6 +25,7 @@ struct __tpy_builder_argparse_args_1 {
     // args = parser.parse_args(["-h"])
     __tpy_builder_argparse_args_1() = default;
     explicit __tpy_builder_argparse_args_1(std::string_view path, const ::tpy::BigInt& count, std::optional<std::vector<std::string>>&& names) : path(path), count(count), names(std::move(names)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_1& obj) {

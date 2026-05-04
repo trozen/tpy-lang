@@ -29,6 +29,7 @@ struct Point {
 
     // def describe(self) -> str:
     std::string describe() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {

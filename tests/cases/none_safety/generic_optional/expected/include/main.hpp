@@ -35,6 +35,7 @@ struct Container {
         // self._val = val
         this->_val = ::tpy::ptr_to_optional(val);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>

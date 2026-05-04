@@ -33,6 +33,7 @@ struct GoodReader {
     // @readonly
     // def read(self) -> Int32:
     int32_t read() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.GoodReader";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const GoodReader& obj) {

@@ -52,6 +52,7 @@ struct Parrot {
 
     // def make_noise(self) -> str:
     std::string make_noise() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Parrot";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Parrot& obj) {

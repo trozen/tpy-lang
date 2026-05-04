@@ -20,6 +20,7 @@ struct Grand {
     // LIMIT: Final[Int32] = 10
     static constexpr int32_t LIMIT = 10;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Grand";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Grand& obj) {
@@ -30,6 +31,7 @@ inline std::ostream& operator<<(std::ostream& os, const Grand& obj) {
 // class Mid(Grand):
 struct Mid : Grand {
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Mid";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mid& obj) {
@@ -40,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Mid& obj) {
 // class Grandchild(Mid):
 struct Grandchild : Mid {
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Grandchild";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Grandchild& obj) {

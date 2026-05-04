@@ -20,6 +20,7 @@ struct HttpClient {
     // MAX_RETRIES: ClassVar[Final[Int32]] = 5
     static constexpr int32_t MAX_RETRIES = 5;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.HttpClient";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HttpClient& obj) {

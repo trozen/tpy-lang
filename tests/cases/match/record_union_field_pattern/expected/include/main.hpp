@@ -28,6 +28,7 @@ struct Cat {
     // def __init__(self, name: str) -> None:
     Cat() = default;
     explicit Cat(std::string_view name) : name(name) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
@@ -43,6 +44,7 @@ struct Dog {
     // def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
@@ -57,6 +59,7 @@ struct Wrapper {
 
     // def __init__(self, pet: Cat | Dog) -> None:
     explicit Wrapper(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
@@ -74,6 +77,7 @@ struct Tagged {
 
     // def __init__(self, tag: str, value: str | Int32) -> None:
     explicit Tagged(std::string_view tag, const std::variant<int32_t, std::string>& value) : tag(tag), value(value) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {

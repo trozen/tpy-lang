@@ -52,6 +52,7 @@ struct Holder {
         // return self._storage.take0()
         return this->_storage.take0();
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 template<typename T>

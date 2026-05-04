@@ -27,6 +27,7 @@ struct __tpy_builder_argparse_show_args_1 {
     // args = parser.parse_args(["show", "config.toml"])
     __tpy_builder_argparse_show_args_1() = default;
     explicit __tpy_builder_argparse_show_args_1(std::string_view filename) : filename(filename) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_show_args_1";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_show_args_1& obj) {
@@ -41,6 +42,7 @@ struct __tpy_builder_argparse_set_args_1 {
     // args = parser.parse_args(["show", "config.toml"])
     __tpy_builder_argparse_set_args_1() = default;
     explicit __tpy_builder_argparse_set_args_1(std::optional<std::string_view> value) : value(value ? std::make_optional(std::string(*value)) : std::nullopt) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_set_args_1";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_set_args_1& obj) {
@@ -57,6 +59,7 @@ struct __tpy_builder_argparse_args_1 {
     // args = parser.parse_args(["show", "config.toml"])
     __tpy_builder_argparse_args_1() = default;
     explicit __tpy_builder_argparse_args_1(std::string_view cmd, std::optional<std::string_view> filename, std::optional<std::string_view> value) : cmd(cmd), filename(filename ? std::make_optional(std::string(*filename)) : std::nullopt), value(value ? std::make_optional(std::string(*value)) : std::nullopt) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_1& obj) {

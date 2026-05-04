@@ -22,6 +22,7 @@ struct Bag {
     Bag() = default;
     template<::tpystd::typing::Iterable<int32_t> T_src>
     explicit Bag(T_src&& src) : items(::tpy::construct<std::vector<int32_t>>(src)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {

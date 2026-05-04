@@ -17,6 +17,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // class Base:
 struct Base {
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -32,6 +33,7 @@ struct Child : Base {
     // def __init__(self, value: int) -> None:
     Child() = default;
     explicit Child(const ::tpy::BigInt& value) : Base(), value(value) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {

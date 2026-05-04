@@ -92,7 +92,7 @@ inline bool Dog::__eq__(const Dog& other) const {
 }
 
 inline std::string Dog::__repr__() const {
-    return std::format("Dog(name={})", ::tpy::__repr__(this->name));
+    return std::format("Dog(name={})", ::tpy::repr_of(this->name));
 }
 
 inline bool Cat::__eq__(const Cat& other) const {
@@ -100,7 +100,7 @@ inline bool Cat::__eq__(const Cat& other) const {
 }
 
 inline std::string Cat::__repr__() const {
-    return std::format("Cat(name={})", ::tpy::__repr__(this->name));
+    return std::format("Cat(name={})", ::tpy::repr_of(this->name));
 }
 
 inline bool Bird::__eq__(const Bird& other) const {
@@ -108,7 +108,7 @@ inline bool Bird::__eq__(const Bird& other) const {
 }
 
 inline std::string Bird::__repr__() const {
-    return std::format("Bird(name={})", ::tpy::__repr__(this->name));
+    return std::format("Bird(name={})", ::tpy::repr_of(this->name));
 }
 void __tpy_init();
 } // namespace tpyapp::main

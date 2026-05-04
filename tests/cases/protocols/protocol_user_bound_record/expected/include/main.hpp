@@ -26,6 +26,7 @@ struct Message {
 
     // def to_str(self) -> str:
     std::string to_str() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Message";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
@@ -66,6 +67,7 @@ struct Container {
         // print(self.value.to_str())
         std::cout << this->value.to_str() << "\n";
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>
@@ -81,6 +83,7 @@ struct DefaultFactory {
 
     // def make(self, text: str) -> Own[Container[Message]]:
     Container<Message> make(std::string_view text) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.DefaultFactory";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {

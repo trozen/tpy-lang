@@ -18,6 +18,7 @@ void main();
 struct ParseError : ::tpy::Exception {
 
     using ::tpy::Exception::Exception;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ParseError";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {

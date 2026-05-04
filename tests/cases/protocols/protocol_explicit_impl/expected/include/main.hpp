@@ -33,6 +33,7 @@ struct Person {
 
     // def __str__(self) -> str:
     std::string __str__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Person";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Person& obj) {

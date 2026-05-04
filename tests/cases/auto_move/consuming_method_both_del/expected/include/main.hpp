@@ -51,6 +51,7 @@ struct Base {
         // unsafe_free(self._ptr)
         ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -91,6 +92,7 @@ struct Child : Base {
 
     // def take(self: Own[Self]) -> Int32:
     int32_t take() &&;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {

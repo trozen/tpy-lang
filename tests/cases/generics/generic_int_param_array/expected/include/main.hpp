@@ -35,6 +35,7 @@ struct Buffer {
         // return self.data[idx]
         return ::tpy::__getitem__(this->data, idx);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Buffer";
 };
 
 template<typename T, std::size_t N>

@@ -29,6 +29,7 @@ struct Base {
 
     // def get(self) -> Int32:
     int32_t get() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -46,6 +47,7 @@ struct Other {
 
     // def bump_other(self) -> None:
     void bump_other();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Other";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
@@ -64,6 +66,7 @@ struct Child : Base {
 
     // def call_super_get(self) -> Int32:
     int32_t call_super_get() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
@@ -79,6 +82,7 @@ struct Multi : Child, Other {
 
     // def call_super_bump_other(self) -> None:
     void call_super_bump_other();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Multi";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Multi& obj) {

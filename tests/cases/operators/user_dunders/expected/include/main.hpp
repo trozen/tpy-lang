@@ -103,6 +103,7 @@ struct Vec2 {
     friend Vec2 operator+(const Vec2& operand) {
         return operand.__pos__();
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Vec2";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
@@ -163,6 +164,7 @@ struct Score {
     friend bool operator>=(const Score& lhs, const Score& other) {
         return lhs.__ge__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Score";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Score& obj) {
@@ -185,6 +187,7 @@ struct Mask {
     friend Mask operator~(const Mask& operand) {
         return operand.__invert__();
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Mask";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mask& obj) {
@@ -214,6 +217,7 @@ struct Tag {
     friend bool operator!=(const Tag& lhs, const Tag& other) {
         return lhs.__ne__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tag";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
@@ -227,6 +231,7 @@ struct Child : Vec2 {
     // def __init__(self, x: Int32, y: Int32) -> None:
     Child() = default;
     explicit Child(int32_t x, int32_t y) : Vec2(x, y) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {

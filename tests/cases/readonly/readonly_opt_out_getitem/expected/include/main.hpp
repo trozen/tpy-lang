@@ -29,6 +29,7 @@ struct CachedList {
     int32_t operator[](int32_t idx) {
         return __getitem__(idx);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.CachedList";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CachedList& obj) {

@@ -51,7 +51,7 @@ void test_repr() {
     // a.append(20)
     a.append(20);
     // print(repr(a))
-    std::cout << ::tpy::__repr__(a) << "\n";
+    std::cout << ::tpy::repr_of(a) << "\n";
 }
 
 // def test_swap() -> None:

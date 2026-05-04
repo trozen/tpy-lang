@@ -116,7 +116,7 @@ inline bool Base::__eq__(const Base& other) const {
 }
 
 inline std::string Base::__repr__() const {
-    return std::format("Base(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+    return std::format("Base(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
 
 inline bool Base::__lt__(const Base& other) const {
@@ -152,7 +152,7 @@ inline bool Child::__eq__(const Child& other) const {
 }
 
 inline std::string Child::__repr__() const {
-    return std::format("Child(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
+    return std::format("Child(x={}, y={}, z={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y), ::tpy::repr_of(this->z));
 }
 
 inline bool Child::__lt__(const Child& other) const {

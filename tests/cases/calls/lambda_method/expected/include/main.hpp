@@ -41,6 +41,7 @@ struct Processor {
         // return f(self.value, other)
         return f(this->value, other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Processor";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Processor& obj) {

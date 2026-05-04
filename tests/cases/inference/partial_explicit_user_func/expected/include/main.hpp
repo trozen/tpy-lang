@@ -25,6 +25,7 @@ struct Box {
     // def __init__(self, val: Own[T]) -> None:
     Box() = default;
     explicit Box(T&& val) : val(std::move(val)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 template<typename T>
@@ -44,6 +45,7 @@ struct Wrapper {
     // def __init__(self, inner: Own[A], tag: Own[B]) -> None:
     Wrapper() = default;
     explicit Wrapper(A&& inner, B&& tag) : inner(std::move(inner)), tag(std::move(tag)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 template<typename A, typename B>

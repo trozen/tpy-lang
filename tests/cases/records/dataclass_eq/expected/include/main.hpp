@@ -96,7 +96,7 @@ inline bool Id::__eq__(const Id& other) const {
 }
 
 inline std::string Id::__repr__() const {
-    return std::format("Id(value={})", ::tpy::__repr__(this->value));
+    return std::format("Id(value={})", ::tpy::repr_of(this->value));
 }
 
 inline bool Point::__eq__(const Point& other) const {
@@ -104,7 +104,7 @@ inline bool Point::__eq__(const Point& other) const {
 }
 
 inline std::string Point::__repr__() const {
-    return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+    return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
 
 inline bool Config::__eq__(const Config& other) const {
@@ -112,7 +112,7 @@ inline bool Config::__eq__(const Config& other) const {
 }
 
 inline std::string Config::__repr__() const {
-    return std::format("Config(name={}, value={}, label={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->value), ::tpy::__repr__(this->label));
+    return std::format("Config(name={}, value={}, label={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->value), ::tpy::repr_of(this->label));
 }
 void __tpy_init();
 } // namespace tpyapp::main

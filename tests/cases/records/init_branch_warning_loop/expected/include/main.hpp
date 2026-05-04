@@ -31,6 +31,7 @@ struct Accum {
             i = (::tpy::add_check<int32_t>(i, 1));
         }
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Accum";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Accum& obj) {

@@ -19,6 +19,7 @@ struct Ops {
     // @readonly
     // def plus_one(x: Int32) -> Int32:
     static int32_t plus_one(int32_t x);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Ops";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ops& obj) {

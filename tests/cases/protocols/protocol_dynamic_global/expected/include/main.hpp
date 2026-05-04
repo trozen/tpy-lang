@@ -52,6 +52,7 @@ struct Dog : Pet {
 
     // def name(self) -> str:
     std::string name() override;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
@@ -65,6 +66,7 @@ struct Cat {
 
     // def name(self) -> str:
     std::string name() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
@@ -78,6 +80,7 @@ struct Parrot {
 
     // def name(self) -> str:
     std::string name() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Parrot";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Parrot& obj) {

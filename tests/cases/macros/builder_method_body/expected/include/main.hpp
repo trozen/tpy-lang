@@ -25,6 +25,7 @@ struct __tpy_builder_counter_1 {
     explicit __tpy_builder_counter_1(int32_t v0, int32_t v1, int32_t v2) : v0(v0), v1(v1), v2(v2) {}
 
     int32_t total() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_counter_1";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_counter_1& obj) {

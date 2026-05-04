@@ -30,6 +30,7 @@ struct Lit {
     // def __init__(self, value: int) -> None:
     Lit() = default;
     explicit Lit(const ::tpy::BigInt& value) : value(value) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Lit";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Lit& obj) {
@@ -47,6 +48,7 @@ struct BinOp {
     // def __init__(self, left: Own[Box[Expr]], right: Own[Box[Expr]]) -> None:
     BinOp() = default;
     explicit BinOp(::tpystd::tplib::box::Box<Expr>&& left, ::tpystd::tplib::box::Box<Expr>&& right) : left(std::move(left)), right(std::move(right)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.BinOp";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BinOp& obj) {
@@ -62,6 +64,7 @@ struct Neg {
     // def __init__(self, inner: Own[Box[Value]]) -> None:
     Neg() = default;
     explicit Neg(::tpystd::tplib::box::Box<Value>&& inner) : inner(std::move(inner)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Neg";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Neg& obj) {

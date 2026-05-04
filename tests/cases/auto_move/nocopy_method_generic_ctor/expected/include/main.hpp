@@ -27,6 +27,7 @@ struct Handle {
     Handle& operator=(const Handle&) = delete;
     Handle(Handle&&) = default;
     Handle& operator=(Handle&&) = default;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Handle";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
@@ -48,6 +49,7 @@ struct Holder {
 
     // def take(self, h: Own[Handle]) -> None:
     void take(Handle&& h);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
@@ -70,6 +72,7 @@ struct GenericHolder {
         // self.item = item
         this->item = std::move(item);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.GenericHolder";
 };
 
 template<typename T>

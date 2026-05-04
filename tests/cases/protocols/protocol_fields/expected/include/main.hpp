@@ -64,6 +64,7 @@ struct Point {
     // def __init__(self, v: Int32):
     Point() = default;
     explicit Point(int32_t v) : value(v) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -82,6 +83,7 @@ struct Vec2 {
     // def __init__(self, x: Int32, y: Int32):
     Vec2() = default;
     explicit Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Vec2";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
@@ -101,6 +103,7 @@ struct Box {
 
     // def is_empty(self) -> bool:
     bool is_empty() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
@@ -117,6 +120,7 @@ struct IntHolder {
     // def __init__(self, v: Int32):
     IntHolder() = default;
     explicit IntHolder(int32_t v) : item(v) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.IntHolder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntHolder& obj) {
@@ -140,6 +144,7 @@ struct Wrapper {
         // return self.inner.value
         return this->inner.value;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 template<typename T>

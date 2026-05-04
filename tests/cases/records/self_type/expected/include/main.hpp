@@ -42,6 +42,7 @@ struct Builder {
     // @auto_readonly
     // def find_match(self, target: Int32) -> Optional[Self]:
     const Builder* find_match(int32_t target) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Builder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Builder& obj) {
@@ -75,6 +76,7 @@ struct Stack {
         // return self.label
         return this->label;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Stack";
 };
 
 template<typename T>

@@ -44,6 +44,7 @@ struct Point {
     // @readonly
     // def value(self) -> Int32:
     int32_t value() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -58,6 +59,7 @@ struct Container {
 
     // def __init__(self) -> None:
     Container() : items({1, 2}) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {

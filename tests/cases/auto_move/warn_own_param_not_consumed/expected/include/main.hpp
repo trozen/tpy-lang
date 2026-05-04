@@ -34,6 +34,7 @@ struct Box {
     // def __init__(self, value: Int32) -> None:
     Box() = default;
     explicit Box(int32_t value) : value(value) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
@@ -49,6 +50,7 @@ struct Holder {
     // def __init__(self, item: Own[Box]) -> None:
     Holder() = default;
     explicit Holder(Box&& item) : item(std::move(item)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {

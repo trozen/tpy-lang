@@ -24,6 +24,7 @@ struct Box {
     // def __init__(self, v: T) -> None:
     Box() = default;
     explicit Box(const T& v) : val(v) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 template<typename T>
@@ -38,6 +39,7 @@ struct Logger {
 
     // def log(self, msg: str) -> None:
     void log(std::string_view msg) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Logger";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Logger& obj) {
@@ -51,6 +53,7 @@ struct IntBox : Box<int32_t>, Logger {
     // def __init__(self, v: Int32) -> None:
     IntBox() = default;
     explicit IntBox(int32_t v) : Box<int32_t>(v) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.IntBox";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {

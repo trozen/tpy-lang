@@ -24,6 +24,7 @@ struct Leaf {
     // def __init__(self, value: int) -> None:
     Leaf() = default;
     explicit Leaf(const ::tpy::BigInt& value) : value(value) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Leaf";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {

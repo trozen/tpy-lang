@@ -23,6 +23,7 @@ struct Left {
     // def __init__(self, a: Int32) -> None:
     Left() = default;
     explicit Left(int32_t a) : a(a) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Left";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Left& obj) {
@@ -38,6 +39,7 @@ struct Right {
     // def __init__(self, b: Int32) -> None:
     Right() = default;
     explicit Right(int32_t b) : b(b) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Right";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Right& obj) {
@@ -51,6 +53,7 @@ struct Child : Left, Right {
     // def __init__(self, a: Int32, b: Int32) -> None:
     Child() = default;
     explicit Child(int32_t a, int32_t b) : Left(a), Right(b) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {

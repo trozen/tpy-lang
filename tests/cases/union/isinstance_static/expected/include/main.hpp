@@ -31,6 +31,7 @@ struct A {
     // def __init__(self, x: int) -> None:
     A() = default;
     explicit A(const ::tpy::BigInt& x) : x(x) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
@@ -46,6 +47,7 @@ struct B {
     // def __init__(self, y: int) -> None:
     B() = default;
     explicit B(const ::tpy::BigInt& y) : y(y) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {

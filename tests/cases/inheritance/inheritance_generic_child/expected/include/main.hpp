@@ -25,6 +25,7 @@ struct Animal {
     // def __init__(self, name: str) -> None:
     Animal() = default;
     explicit Animal(std::string_view name) : name(name) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Animal";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
@@ -48,6 +49,7 @@ struct Container {
         // return self.value
         return this->value;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>
@@ -74,6 +76,7 @@ struct Box : Animal {
         // return self.value
         return this->value;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 template<typename T>
@@ -94,6 +97,7 @@ struct Wrapper : Container<int32_t> {
         // self.value = value
         this->value = value;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 template<typename U>

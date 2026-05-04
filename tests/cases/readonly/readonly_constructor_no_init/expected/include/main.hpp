@@ -21,6 +21,7 @@ struct Logger {
     Logger() {
         // pass
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Logger";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Logger& obj) {

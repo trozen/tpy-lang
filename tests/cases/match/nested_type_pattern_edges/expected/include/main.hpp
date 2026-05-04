@@ -80,6 +80,7 @@ struct Wrapper {
 
     // def __init__(self, pet: Cat | Dog) -> None:
     explicit Wrapper(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
@@ -96,6 +97,7 @@ struct Box {
     // def __init__(self, value: Own[T]) -> None:
     Box() = default;
     explicit Box(T&& value) : value(std::move(value)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 template<typename T>
@@ -113,6 +115,7 @@ struct Tag {
     // def __init__(self, label: str) -> None:
     Tag() = default;
     explicit Tag(std::string_view label) : label(label) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tag";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
@@ -128,6 +131,7 @@ struct FloatHolder {
 
     // def __init__(self, value: float | str) -> None:
     explicit FloatHolder(const std::variant<double, std::string>& value) : value(value) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.FloatHolder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const FloatHolder& obj) {
@@ -142,6 +146,7 @@ struct BoolHolder {
 
     // def __init__(self, value: bool | str) -> None:
     explicit BoolHolder(const std::variant<bool, std::string>& value) : value(value) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.BoolHolder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BoolHolder& obj) {
@@ -155,7 +160,7 @@ inline bool Cat::__eq__(const Cat& other) const {
 }
 
 inline std::string Cat::__repr__() const {
-    return std::format("Cat(name={})", ::tpy::__repr__(this->name));
+    return std::format("Cat(name={})", ::tpy::repr_of(this->name));
 }
 
 inline bool Dog::__eq__(const Dog& other) const {
@@ -163,7 +168,7 @@ inline bool Dog::__eq__(const Dog& other) const {
 }
 
 inline std::string Dog::__repr__() const {
-    return std::format("Dog(name={})", ::tpy::__repr__(this->name));
+    return std::format("Dog(name={})", ::tpy::repr_of(this->name));
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -29,6 +29,7 @@ struct PairIter {
 
     // def __next__(self) -> tuple[str, Int32]:
     std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> __next__();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.PairIter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PairIter& obj) {

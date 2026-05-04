@@ -163,7 +163,7 @@ inline bool Address::__eq__(const Address& other) const {
 }
 
 inline std::string Address::__repr__() const {
-    return std::format("Address(street={}, city={})", ::tpy::__repr__(this->street), ::tpy::__repr__(this->city));
+    return std::format("Address(street={}, city={})", ::tpy::repr_of(this->street), ::tpy::repr_of(this->city));
 }
 
 inline Address Address::from_json(std::string_view __s) {
@@ -281,7 +281,7 @@ inline bool Profile::__eq__(const Profile& other) const {
 }
 
 inline std::string Profile::__repr__() const {
-    return std::format("Profile(name={}, age={}, score={}, precision={}, active={}, big_id={}, role={}, address={}, tags={}, scores={}, friends={}, roles={}, metadata={}, nested_map={}, coord={}, backup_role={}, alt_address={}, email={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age), ::tpy::__repr__(this->score), ::tpy::__repr__(this->precision), ::tpy::__repr__(this->active), ::tpy::__repr__(this->big_id), ::tpy::__repr__(this->role), ::tpy::__repr__(this->address), ::tpy::list_to_str(this->tags), ::tpy::list_to_str(this->scores), ::tpy::list_to_str(this->friends), ::tpy::list_to_str(this->roles), ::tpy::dict_to_str(this->metadata), ::tpy::dict_to_str(this->nested_map), ::tpy::tuple_to_str(this->coord), ::tpy::__repr__(this->backup_role), ::tpy::__repr__(this->alt_address), ::tpy::__repr__(this->email));
+    return std::format("Profile(name={}, age={}, score={}, precision={}, active={}, big_id={}, role={}, address={}, tags={}, scores={}, friends={}, roles={}, metadata={}, nested_map={}, coord={}, backup_role={}, alt_address={}, email={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->age), ::tpy::repr_of(this->score), ::tpy::repr_of(this->precision), ::tpy::repr_of(this->active), ::tpy::repr_of(this->big_id), ::tpy::repr_of(this->role), ::tpy::repr_of(this->address), ::tpy::list_to_str(this->tags), ::tpy::list_to_str(this->scores), ::tpy::list_to_str(this->friends), ::tpy::list_to_str(this->roles), ::tpy::dict_to_str(this->metadata), ::tpy::dict_to_str(this->nested_map), ::tpy::tuple_to_str(this->coord), ::tpy::repr_of(this->backup_role), ::tpy::repr_of(this->alt_address), ::tpy::repr_of(this->email));
 }
 
 inline Profile Profile::from_json(std::string_view __s) {

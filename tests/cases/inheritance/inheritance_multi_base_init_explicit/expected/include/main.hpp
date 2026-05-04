@@ -26,6 +26,7 @@ struct Named {
 
     // def describe(self) -> str:
     std::string describe() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Named";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
@@ -44,6 +45,7 @@ struct Counted {
 
     // def inc(self) -> None:
     void inc();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counted";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counted& obj) {
@@ -59,6 +61,7 @@ struct Widget : Named, Counted {
     // def __init__(self, name: str, count: Int32, tag: str) -> None:
     Widget() = default;
     explicit Widget(std::string_view name, int32_t count, std::string_view tag) : Named(name), Counted(count), tag(tag) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Widget";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {

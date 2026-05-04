@@ -25,6 +25,7 @@ struct Vec2 {
     // def __init__(self, x: Int32, y: Int32) -> None:
     Vec2() = default;
     explicit Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Vec2";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
@@ -43,6 +44,7 @@ struct Pair {
     // def __init__(self, first: T, second: T) -> None:
     Pair() = default;
     explicit Pair(const T& first, const T& second) : first(first), second(second) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
 template<typename T>

@@ -20,6 +20,7 @@ struct Version {
     // LABEL: Final[tuple[str, bool]] = ("alpha", True)
     static constexpr std::tuple<std::string_view, bool> LABEL = std::tuple<std::string_view, bool>{"alpha", true};
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Version";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Version& obj) {

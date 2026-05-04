@@ -21,6 +21,7 @@ struct AppError : ::tpy::Exception {
     // def __init__(self, code: Int32) -> None:
     AppError() = default;
     explicit AppError(int32_t code) : code(code) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.AppError";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {

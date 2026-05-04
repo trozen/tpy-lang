@@ -19,6 +19,7 @@ struct Base {
     // @readonly
     // def value(self) -> Int32:
     int32_t value() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -33,6 +34,7 @@ struct Child : Base {
     // @readonly
     // def value_plus_one(self) -> Int32:
     int32_t value_plus_one() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {

@@ -20,9 +20,11 @@ struct Limits {
         // TAG: Final[str] = "inner-aliased"
         static constexpr std::string_view TAG = "inner-aliased";
 
+        static constexpr std::string_view __tpy_class_name__ = "limits.Limits.Inner";
     };
 
 
+    static constexpr std::string_view __tpy_class_name__ = "limits.Limits";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Limits& obj) {

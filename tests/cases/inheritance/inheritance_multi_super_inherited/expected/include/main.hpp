@@ -22,6 +22,7 @@ struct A {
 
     // def foo(self) -> str:
     std::string foo() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
@@ -35,6 +36,7 @@ struct C {
 
     // def bar(self) -> str:
     std::string bar() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
@@ -45,6 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 // class B(A):
 struct B : A {
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
@@ -58,6 +61,7 @@ struct D : B, C {
 
     // def describe(self) -> str:
     std::string describe() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.D";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const D& obj) {

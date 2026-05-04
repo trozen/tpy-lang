@@ -201,7 +201,7 @@ inline bool Point::__eq__(const Point& other) const {
 }
 
 inline std::string Point::__repr__() const {
-    return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+    return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
 
 inline bool MaybePoint::__eq__(const MaybePoint& other) const {
@@ -209,7 +209,7 @@ inline bool MaybePoint::__eq__(const MaybePoint& other) const {
 }
 
 inline std::string MaybePoint::__repr__() const {
-    return std::format("MaybePoint(label={}, pos={})", ::tpy::__repr__(this->label), ::tpy::__repr__(this->pos));
+    return std::format("MaybePoint(label={}, pos={})", ::tpy::repr_of(this->label), ::tpy::repr_of(this->pos));
 }
 
 inline bool PointList::__eq__(const PointList& other) const {
@@ -225,7 +225,7 @@ inline bool Line::__eq__(const Line& other) const {
 }
 
 inline std::string Line::__repr__() const {
-    return std::format("Line(start={}, end={})", ::tpy::__repr__(this->start), ::tpy::__repr__(this->end));
+    return std::format("Line(start={}, end={})", ::tpy::repr_of(this->start), ::tpy::repr_of(this->end));
 }
 
 inline bool MaybeLine::__eq__(const MaybeLine& other) const {
@@ -233,7 +233,7 @@ inline bool MaybeLine::__eq__(const MaybeLine& other) const {
 }
 
 inline std::string MaybeLine::__repr__() const {
-    return std::format("MaybeLine(line={})", ::tpy::__repr__(this->line));
+    return std::format("MaybeLine(line={})", ::tpy::repr_of(this->line));
 }
 
 inline bool Mixed::__eq__(const Mixed& other) const {
@@ -241,7 +241,7 @@ inline bool Mixed::__eq__(const Mixed& other) const {
 }
 
 inline std::string Mixed::__repr__() const {
-    return std::format("Mixed(name={}, required={}, optional={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->required), ::tpy::__repr__(this->optional));
+    return std::format("Mixed(name={}, required={}, optional={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->required), ::tpy::repr_of(this->optional));
 }
 
 inline bool LabeledPoints::__eq__(const LabeledPoints& other) const {

@@ -18,7 +18,7 @@ def len(x: Sized) -> Int32: ...
 
 @pure
 @readonly
-@cpp_template("::tpy::__repr__({0})")
+@cpp_template("::tpy::repr_of({0})")
 def repr(x: Representable) -> str: ...
 
 

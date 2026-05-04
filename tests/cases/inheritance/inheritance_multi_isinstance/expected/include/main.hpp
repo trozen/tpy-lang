@@ -20,6 +20,7 @@ struct Named {
     // name: str
     std::string name;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Named";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
@@ -32,6 +33,7 @@ struct Counted {
     // count: Int32
     int32_t count;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counted";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counted& obj) {
@@ -50,6 +52,7 @@ struct Widget : Named, Counted {
         // self.count = count
         this->count = count;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Widget";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {

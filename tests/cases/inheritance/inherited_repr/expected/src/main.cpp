@@ -11,13 +11,13 @@ void main() {
     // print(d)
     std::cout << d << "\n";
     // print(repr(d))
-    std::cout << ::tpy::__repr__(d) << "\n";
+    std::cout << ::tpy::repr_of(d) << "\n";
     // c = Cat("whiskers")
     Cat c = Cat("whiskers");
     // print(c)
     std::cout << c << "\n";
     // print(repr(c))
-    std::cout << ::tpy::__repr__(c) << "\n";
+    std::cout << ::tpy::repr_of(c) << "\n";
     // e = Echo("hello")
     Echo e = Echo("hello");
     // print(e)

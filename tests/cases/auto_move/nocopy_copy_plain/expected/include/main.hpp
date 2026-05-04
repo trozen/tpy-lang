@@ -32,6 +32,7 @@ struct Counter {
 
     // def __copy__(self) -> Own[Counter]:
     Counter __copy__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {

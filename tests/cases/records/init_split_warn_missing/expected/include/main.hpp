@@ -28,6 +28,7 @@ struct Config {
         // print("init")          # tpyc: warning(/y.*is not initialized before the constructor body/)
         std::cout << "init" << "\n";
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {

@@ -24,6 +24,7 @@ struct GA {
 
     // def tag(self) -> str:
     std::string tag() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.GA";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const GA& obj) {
@@ -34,6 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const GA& obj) {
 // class B:
 struct B {
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
@@ -44,6 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 // class A(GA):
 struct A : GA {
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
@@ -57,6 +60,7 @@ struct C : A, B {
 
     // def tag(self) -> str:
     std::string tag() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {

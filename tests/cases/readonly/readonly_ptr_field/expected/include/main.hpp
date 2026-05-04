@@ -23,6 +23,7 @@ struct Data {
     // def __init__(self, v: Int32) -> None:
     Data() = default;
     explicit Data(int32_t v) : value(v) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Data";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Data& obj) {
@@ -41,6 +42,7 @@ struct Container {
     // @readonly
     // def read_value(self) -> Int32:
     int32_t read_value() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {

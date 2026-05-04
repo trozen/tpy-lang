@@ -29,6 +29,7 @@ struct __tpy_builder_argparse_args_1 {
     // args = parser.parse_args([])
     __tpy_builder_argparse_args_1() = default;
     explicit __tpy_builder_argparse_args_1(std::vector<std::string>&& tag, std::vector<::tpy::BigInt>&& count) : tag(std::move(tag)), count(std::move(count)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_1& obj) {
@@ -44,6 +45,7 @@ struct __tpy_builder_argparse_args_2 {
     // args = parser.parse_args(["--tag", "gamma", "--count", "10", "20"])
     __tpy_builder_argparse_args_2() = default;
     explicit __tpy_builder_argparse_args_2(std::vector<std::string>&& tag, std::vector<::tpy::BigInt>&& count) : tag(std::move(tag)), count(std::move(count)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_2";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_2& obj) {

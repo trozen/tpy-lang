@@ -23,6 +23,7 @@ struct Container {
         // return N  # N coerces to BigInt
         return ::tpy::BigInt(static_cast<int64_t>(N));
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T, std::size_t N>

@@ -40,6 +40,7 @@ struct IntListIter {
 
     // def __next__(self) -> Int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.IntListIter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntListIter& obj) {
@@ -63,6 +64,7 @@ struct IntList {
 
     // def __iter__(self) -> Own[IntListIter]:
     IntListIter __iter__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.IntList";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntList& obj) {

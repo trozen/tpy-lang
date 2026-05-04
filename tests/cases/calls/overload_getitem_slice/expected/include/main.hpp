@@ -50,6 +50,7 @@ struct MyList {
     std::span<const int32_t> operator[](::tpy::Slice index) const {
         return __getitem__(index);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MyList";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyList& obj) {

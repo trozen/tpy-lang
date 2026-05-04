@@ -24,6 +24,7 @@ struct Numbers {
 
     // def sum(self) -> Int32:
     int32_t sum() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Numbers";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Numbers& obj) {

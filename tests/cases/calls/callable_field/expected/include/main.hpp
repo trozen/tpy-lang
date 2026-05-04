@@ -26,6 +26,7 @@ struct Handler {
 
     // def __str__(self) -> str:
     std::string __str__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Handler";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {

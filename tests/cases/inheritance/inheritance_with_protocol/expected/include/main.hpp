@@ -34,6 +34,7 @@ struct Entity {
 
     // def get_name(self) -> str:
     std::string get_name() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Entity";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Entity& obj) {
@@ -58,6 +59,7 @@ struct Person : Entity {
 
     // def __str__(self) -> str:
     std::string __str__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Person";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Person& obj) {

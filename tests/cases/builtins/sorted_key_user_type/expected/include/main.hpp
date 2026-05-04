@@ -29,6 +29,7 @@ struct Score {
     friend bool operator<(const Score& lhs, const Score& other) {
         return lhs.__lt__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Score";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Score& obj) {
@@ -46,6 +47,7 @@ struct Item {
     // def __init__(self, name: str, score: Own[Score]) -> None:
     Item() = default;
     explicit Item(std::string_view name, Score&& score) : name(name), score(std::move(score)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {

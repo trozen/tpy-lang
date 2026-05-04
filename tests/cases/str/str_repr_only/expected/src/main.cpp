@@ -9,9 +9,9 @@ void main() {
     // t: Tag = Tag("hello")
     Tag t = Tag("hello");
     // print(repr(t))
-    std::cout << ::tpy::__repr__(t) << "\n";
+    std::cout << ::tpy::repr_of(t) << "\n";
     // print(f"{t!r}")
-    std::cout << std::format("{}", ::tpy::__repr__(t)) << "\n";
+    std::cout << std::format("{}", ::tpy::repr_of(t)) << "\n";
     // print(t)
     std::cout << t << "\n";
     // print(str(t))

@@ -44,6 +44,7 @@ struct Point {
     // def __init__(self, a: Int32, b: Int32) -> None:
     Point() = default;
     explicit Point(int32_t a, int32_t b) : a(a), b(b) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -63,6 +64,7 @@ struct Counter {
 
     // def add(self, a: Int32) -> Int32:
     int32_t add(int32_t a) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {

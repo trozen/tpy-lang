@@ -41,6 +41,7 @@ struct Key {
     friend bool operator==(const Key& lhs, const Key& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Key";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Key& obj) {
@@ -78,6 +79,7 @@ struct Point {
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -121,6 +123,7 @@ struct Edge {
     friend bool operator==(const Edge& lhs, const Edge& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Edge";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Edge& obj) {

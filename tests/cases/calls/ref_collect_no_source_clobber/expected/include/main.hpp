@@ -22,6 +22,7 @@ struct Named {
     // def __init__(self, name: str) -> None:
     Named() = default;
     explicit Named(std::string_view name) : name(name) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Named";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Named& obj) {

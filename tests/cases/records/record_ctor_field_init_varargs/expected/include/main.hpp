@@ -28,6 +28,7 @@ struct Seg {
         std::array<double, 2> __tmp_2{static_cast<double>(x), static_cast<double>(y)};
         this->length = ::tpystd::math::hypot(::tpy::varargs<double>(__tmp_2));
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Seg";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Seg& obj) {
@@ -43,6 +44,7 @@ struct Picture {
     // def __init__(self, w: int) -> None:
     Picture() = default;
     explicit Picture(const ::tpy::BigInt& w) : width(w) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Picture";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Picture& obj) {
@@ -69,6 +71,7 @@ struct Triangle {
         std::array<double, 2> __tmp_6{static_cast<double>(p2x), static_cast<double>(p2y)};
         this->b = ::tpystd::math::hypot(::tpy::varargs<double>(__tmp_6));
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Triangle";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Triangle& obj) {

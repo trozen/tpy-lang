@@ -16,6 +16,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // class Token:
 struct Token {
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Token";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Token& obj) {

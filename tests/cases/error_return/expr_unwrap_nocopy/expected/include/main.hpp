@@ -20,6 +20,7 @@ void main();
 struct E : ::tpy::Exception {
 
     using ::tpy::Exception::Exception;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.E";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const E& obj) {
@@ -41,6 +42,7 @@ struct Data {
     Data& operator=(const Data&) = delete;
     Data(Data&&) = default;
     Data& operator=(Data&&) = default;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Data";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Data& obj) {

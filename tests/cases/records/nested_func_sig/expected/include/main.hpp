@@ -28,9 +28,11 @@ struct Container {
         // def __init__(self, val: Int32) -> None:
         Inner() = default;
         explicit Inner(int32_t val) : val(val) {}
+        static constexpr std::string_view __tpy_class_name__ = "__main__.Container.Inner";
     };
 
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {

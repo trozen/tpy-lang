@@ -22,6 +22,7 @@ struct MyError : ::tpy::Exception {
     // def __init__(self, code: Int32) -> None:
     MyError() = default;
     explicit MyError(int32_t code) : code(code) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MyError";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyError& obj) {

@@ -11,13 +11,13 @@ void main() {
     // print(str(wp))
     std::cout << std::string(::tpy::__str__(wp)) << "\n";
     // print(repr(wp))
-    std::cout << ::tpy::__repr__(wp) << "\n";
+    std::cout << ::tpy::repr_of(wp) << "\n";
     // print(wp)
     std::cout << wp << "\n";
     // print(f"val = {wp}")
     std::cout << std::format("val = {}", ::tpy::__str__(wp)) << "\n";
     // print(f"debug: {wp!r}")
-    std::cout << std::format("debug: {}", ::tpy::__repr__(wp)) << "\n";
+    std::cout << std::format("debug: {}", ::tpy::repr_of(wp)) << "\n";
 }
 
 void __tpy_init() {

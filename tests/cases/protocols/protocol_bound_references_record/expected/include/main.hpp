@@ -25,6 +25,7 @@ struct Foo {
     // def __init__(self, value: Int32) -> None:
     Foo() = default;
     explicit Foo(int32_t value) : value(value) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Foo";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
@@ -39,6 +40,7 @@ struct DefaultFooMaker {
 
     // def make(self) -> Own[Foo]:
     Foo make() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.DefaultFooMaker";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DefaultFooMaker& obj) {
@@ -76,6 +78,7 @@ struct Bar {
         // return self.factory.make()
         return this->factory.make();
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Bar";
 };
 
 template<typename T>

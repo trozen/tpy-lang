@@ -26,6 +26,7 @@ struct Box {
     // @readonly
     // def get_value(self) -> Int32:
     int32_t get_value() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {

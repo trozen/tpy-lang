@@ -20,6 +20,7 @@ struct A {
     // buf: list[Int32]
     std::vector<int32_t> buf;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
@@ -32,6 +33,7 @@ struct B {
     // buf: list[str]
     std::vector<std::string> buf;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
@@ -57,6 +59,7 @@ struct Combined : A, B {
     // @readonly
     // def first_str(self) -> str:
     std::string first_str() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Combined";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {

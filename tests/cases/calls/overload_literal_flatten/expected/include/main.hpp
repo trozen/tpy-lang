@@ -53,6 +53,7 @@ struct Record {
         // return self.data_name
         return this->data_name;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Record";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Record& obj) {

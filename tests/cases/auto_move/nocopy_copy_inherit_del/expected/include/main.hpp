@@ -45,6 +45,7 @@ struct Resource {
         // print("free", self.id)
         std::cout << "free" << " " << this->id << "\n";
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Resource";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
@@ -69,6 +70,7 @@ struct CopyableResource : Resource {
 
     // def __copy__(self) -> Own[CopyableResource]:
     CopyableResource __copy__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.CopyableResource";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CopyableResource& obj) {

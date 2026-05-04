@@ -27,6 +27,7 @@ struct Point {
 
     // def sum(self) -> Int32:
     int32_t sum() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -54,6 +55,7 @@ struct Ref {
     auto operator*() -> decltype(__deref__()) {
         return __deref__();
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Ref";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ref& obj) {

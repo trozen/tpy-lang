@@ -24,6 +24,7 @@ struct Wrapper {
 
     // def take(self: Own[Self]) -> int:
     ::tpy::BigInt take() &&;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {

@@ -28,6 +28,7 @@ struct Handle {
     Handle& operator=(const Handle&) = delete;
     Handle(Handle&&) = default;
     Handle& operator=(Handle&&) = default;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Handle";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
@@ -58,6 +59,7 @@ struct TaggedValue {
         // return TaggedValue[T](self.data)
         return TaggedValue<T>(this->data);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.TaggedValue";
 };
 
 template<typename T>

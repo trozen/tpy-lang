@@ -26,6 +26,7 @@ struct A {
     // def __init__(self, x: float) -> None:
     A() = default;
     explicit A(double x) : x(x) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
@@ -41,6 +42,7 @@ struct B {
     // def __init__(self, y: float) -> None:
     B() = default;
     explicit B(double y) : y(y) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
@@ -56,6 +58,7 @@ struct C {
     // def __init__(self, x: float) -> None:
     C() = default;
     explicit C(double x) : x(x) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {

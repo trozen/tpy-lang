@@ -28,6 +28,7 @@ struct Required {
     // age: Int32
     int32_t age;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Required";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Required& obj) {
@@ -42,6 +43,7 @@ struct NullableField {
     // count: Int32
     int32_t count;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.NullableField";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NullableField& obj) {
@@ -56,6 +58,7 @@ struct Partial {
     // age: Int32
     std::optional<int32_t> age = std::nullopt;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Partial";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Partial& obj) {

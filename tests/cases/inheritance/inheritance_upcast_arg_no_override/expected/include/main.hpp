@@ -26,6 +26,7 @@ struct Animal {
 
     // def describe(self) -> str:
     std::string describe() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Animal";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
@@ -45,6 +46,7 @@ struct Dog : Animal {
 
     // def bark(self) -> str:  # new method, not an override
     std::string bark() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {

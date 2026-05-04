@@ -30,6 +30,7 @@ void test_as_binding();
 struct E : ::tpy::Exception {
 
     using ::tpy::Exception::Exception;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.E";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const E& obj) {
@@ -45,6 +46,7 @@ struct ParseErr : ::tpy::Exception {
     // def __init__(self, code: int) -> None:
     ParseErr() = default;
     explicit ParseErr(const ::tpy::BigInt& code) : code(code) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ParseErr";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ParseErr& obj) {
@@ -96,7 +98,7 @@ inline bool Point::__eq__(const Point& other) const {
 }
 
 inline std::string Point::__repr__() const {
-    return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+    return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
 void __tpy_init();
 } // namespace tpyapp::main

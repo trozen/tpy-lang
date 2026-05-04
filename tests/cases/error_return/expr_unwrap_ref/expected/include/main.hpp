@@ -20,6 +20,7 @@ void main();
 struct E : ::tpy::Exception {
 
     using ::tpy::Exception::Exception;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.E";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const E& obj) {
@@ -40,6 +41,7 @@ struct Point {
 
     // def updated(self) -> Self:
     Point& updated();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {

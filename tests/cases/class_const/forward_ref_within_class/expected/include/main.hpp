@@ -22,6 +22,7 @@ struct Limits {
     // TRIPLE: Final[Int32] = BASE + DOUBLE
     static constexpr int32_t TRIPLE = (::tpy::add_check<int32_t>(BASE, DOUBLE));
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Limits";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Limits& obj) {

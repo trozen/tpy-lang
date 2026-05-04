@@ -25,6 +25,7 @@ struct Negate {
     int32_t operator()(int32_t x) const {
         return __call__(x);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Negate";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Negate& obj) {
@@ -48,6 +49,7 @@ struct ScaleBy {
     int32_t operator()(int32_t x) const {
         return __call__(x);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ScaleBy";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ScaleBy& obj) {

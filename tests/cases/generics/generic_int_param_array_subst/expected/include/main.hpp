@@ -38,6 +38,7 @@ struct Buffer {
         // self.data = arr
         this->data = arr;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Buffer";
 };
 
 template<typename T, std::size_t N>

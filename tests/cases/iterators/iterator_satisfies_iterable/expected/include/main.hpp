@@ -31,6 +31,7 @@ struct Counter {
 
     // def __iter__(self) -> Counter:
     Counter& __iter__();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {

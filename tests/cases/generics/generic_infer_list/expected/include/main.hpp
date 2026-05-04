@@ -21,6 +21,7 @@ struct Box {
     // def __init__(self, value: T) -> None:
     Box() = default;
     explicit Box(const T& value) : value(value) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 template<typename T>

@@ -23,6 +23,7 @@ struct Shape {
 
     // def describe(self) -> str:
     std::string describe() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Shape";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shape& obj) {
@@ -46,6 +47,7 @@ struct Square : Shape {
     // @override
     // def describe(self) -> str:  # tpyc: warning(/non-polymorphic/)
     std::string describe() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Square";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Square& obj) {

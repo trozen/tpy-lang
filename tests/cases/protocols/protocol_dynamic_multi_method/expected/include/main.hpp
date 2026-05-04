@@ -69,6 +69,7 @@ struct Circle : Shape {
 
     // def scale(self, factor: float) -> None:
     void scale(double factor) override;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Circle";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {

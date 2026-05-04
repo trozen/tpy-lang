@@ -28,6 +28,7 @@ struct Wrapper {
         // return self._storage.load(index)
         return ::tpy::deref_check(this->_storage).load(index);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 template<typename T>

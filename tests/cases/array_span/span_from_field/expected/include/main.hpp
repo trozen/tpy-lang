@@ -21,6 +21,7 @@ struct Box {
     // def __init__(self, items: Array[Int32, 3]) -> None:
     Box() = default;
     explicit Box(const std::array<int32_t, 3>& items) : items(items) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {

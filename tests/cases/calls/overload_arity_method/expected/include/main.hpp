@@ -36,6 +36,7 @@ struct Calculator {
         // return (x * factor) + self.offset
         return ((((x) * (factor))) + (this->offset));
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Calculator";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Calculator& obj) {

@@ -32,6 +32,7 @@ struct Dog {
 
     // def name(self) -> str:
     std::string name() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {

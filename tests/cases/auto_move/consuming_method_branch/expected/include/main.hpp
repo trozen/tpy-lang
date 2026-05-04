@@ -28,6 +28,7 @@ struct Wrapper {
     // @readonly
     // def get(self) -> int:
     ::tpy::BigInt get() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {

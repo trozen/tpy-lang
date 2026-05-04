@@ -782,6 +782,7 @@ class CodeGenerator:
             for enum in nested_enums:
                 self._gen_enum_operator_ostream(hpp, enum)
 
+
         # Generator struct full definitions (after records, so struct fields
         # and inline __next__() can use fully-defined user types).
         for func in module.functions:

@@ -26,6 +26,7 @@ struct Outer {
 
         // def doubled(self) -> Int32:
         int32_t doubled() const;
+        static constexpr std::string_view __tpy_class_name__ = "__main__.Outer.Inner";
     };
 
     // x: Int32
@@ -34,6 +35,7 @@ struct Outer {
     // def __init__(self, x: Int32) -> None:
     Outer() = default;
     explicit Outer(int32_t x) : x(x) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {

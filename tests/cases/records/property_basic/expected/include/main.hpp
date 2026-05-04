@@ -29,6 +29,7 @@ struct Circle {
     // @property
     // def diameter(self) -> Int32:
     int32_t diameter() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Circle";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {

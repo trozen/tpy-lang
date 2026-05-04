@@ -21,6 +21,7 @@ struct Box {
     // value: T
     T value;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 template<typename T>
@@ -34,6 +35,7 @@ struct Label {
     // value: str
     std::string value;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Label";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Label& obj) {
@@ -59,6 +61,7 @@ struct Container : Box<U>, Label {
         // return Label.value + "=" + str(Box.value)
         return (::tpy::str_concat((::tpy::str_concat(this->Label::value, "=")), std::string(::tpy::__str__(this->Box<U>::value))));
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename U>

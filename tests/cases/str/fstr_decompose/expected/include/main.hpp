@@ -29,6 +29,7 @@ struct Module {
     // # Auto-discover via _logger field
     // def log_auto(self, tag: str, n: Int32) -> None:
     void log_auto(std::string_view tag, int32_t n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Module";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Module& obj) {
@@ -52,6 +53,7 @@ struct Service {
     // # Auto-discover via get_logger() method
     // def log_auto(self, msg: str) -> None:
     void log_auto(std::string_view msg);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Service";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Service& obj) {

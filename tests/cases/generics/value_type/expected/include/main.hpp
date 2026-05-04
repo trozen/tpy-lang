@@ -25,6 +25,7 @@ struct Vec2 {
     // def __init__(self, x: Int32, y: Int32) -> None:
     Vec2() = default;
     explicit Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Vec2";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
@@ -43,6 +44,7 @@ struct Rect {
     // def __init__(self, pos: Vec2, size: Vec2) -> None:
     Rect() = default;
     explicit Rect(Vec2 pos, Vec2 size) : pos(pos), size(size) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Rect";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {

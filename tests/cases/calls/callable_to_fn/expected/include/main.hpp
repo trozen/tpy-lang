@@ -26,6 +26,7 @@ struct Handler {
 
     // def __init__(self, cb: Callable[[Int32], Int32]) -> None:
     explicit Handler(std::function<int32_t(int32_t)> cb) : cb(cb) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Handler";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {

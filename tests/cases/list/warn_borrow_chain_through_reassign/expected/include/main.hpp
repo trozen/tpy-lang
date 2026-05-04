@@ -24,6 +24,7 @@ struct Point {
 
     // def __init__(self, x: Int32 = Int32(0), y: Int32 = Int32(0)) -> None:
     explicit Point(int32_t x = 0, int32_t y = 0) : x(x), y(y) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {

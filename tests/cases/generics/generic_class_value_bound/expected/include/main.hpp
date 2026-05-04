@@ -37,6 +37,7 @@ struct Box {
         // self.value = value  # tpyc: ok
         this->value = value;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 template<typename T>
@@ -70,6 +71,7 @@ struct Ring {
         // return self.data[i]
         return ::tpy::__getitem__(this->data, i);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Ring";
 };
 
 template<typename T>

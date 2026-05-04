@@ -22,6 +22,7 @@ struct Inner {
     // def __init__(self, value: str) -> None:
     Inner() = default;
     explicit Inner(std::string_view value) : value(value) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
@@ -41,6 +42,7 @@ struct Holder {
     // @property
     // def value(self) -> Optional[str]:
     std::optional<std::string> value() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {

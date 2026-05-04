@@ -25,6 +25,7 @@ struct Root {
 
     // def identify(self) -> str:
     std::string identify() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Root";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Root& obj) {
@@ -35,6 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Root& obj) {
 // class Middle(Root):
 struct Middle : Root {
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Middle";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Middle& obj) {
@@ -48,6 +50,7 @@ struct Leaf : Middle {
 
     // def delegate(self) -> str:
     std::string delegate() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Leaf";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {

@@ -24,6 +24,7 @@ struct Point {
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -64,6 +65,7 @@ struct PointList {
         if (len < 0) ::tpy::tpy_panic("__len__ returned negative value");
         return static_cast<size_t>(len);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.PointList";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PointList& obj) {

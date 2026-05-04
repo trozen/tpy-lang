@@ -13,23 +13,23 @@ namespace tpyapp::main {
 void main() {
     // # Control characters
     // print(repr("a\nb"))         # 'a\nb'
-    std::cout << ::tpy::__repr__("a\nb") << "\n";
+    std::cout << ::tpy::repr_of("a\nb") << "\n";
     // print(repr("tab\there"))    # 'tab\there'
-    std::cout << ::tpy::__repr__("tab\there") << "\n";
+    std::cout << ::tpy::repr_of("tab\there") << "\n";
     // print(repr("cr\rfoo"))      # 'cr\rfoo'
-    std::cout << ::tpy::__repr__("cr\rfoo") << "\n";
+    std::cout << ::tpy::repr_of("cr\rfoo") << "\n";
     // # Backslash
     // print(repr("back\\slash"))  # 'back\\slash'
-    std::cout << ::tpy::__repr__("back\\slash") << "\n";
+    std::cout << ::tpy::repr_of("back\\slash") << "\n";
     // # Quote selection
     // print(repr("plain"))        # 'plain'
-    std::cout << ::tpy::__repr__("plain") << "\n";
+    std::cout << ::tpy::repr_of("plain") << "\n";
     // print(repr("can't"))        # "can't" (switches to double)
-    std::cout << ::tpy::__repr__("can't") << "\n";
+    std::cout << ::tpy::repr_of("can't") << "\n";
     // print(repr("dq\"x"))        # 'dq"x' (keeps single)
-    std::cout << ::tpy::__repr__("dq\"x") << "\n";
+    std::cout << ::tpy::repr_of("dq\"x") << "\n";
     // print(repr("'and\""))       # '\'and"' (both present, escape `'`)
-    std::cout << ::tpy::__repr__("'and\"") << "\n";
+    std::cout << ::tpy::repr_of("'and\"") << "\n";
     // # Containers: print_element uses the same escaping
     // items: list[str] = []
     std::vector<std::string> items = std::vector<std::string>{};
@@ -62,13 +62,13 @@ void main() {
     show_optional(std::nullopt);
     // # Edge case: empty string.
     // print(repr(""))
-    std::cout << ::tpy::__repr__("") << "\n";
+    std::cout << ::tpy::repr_of("") << "\n";
 }
 
 // def show_optional(s: str | None) -> None:
 void show_optional(std::optional<std::string_view> s) {
     // print(repr(s))
-    std::cout << ::tpy::__repr__(s ? std::make_optional(std::string(*s)) : std::nullopt) << "\n";
+    std::cout << ::tpy::repr_of(s ? std::make_optional(std::string(*s)) : std::nullopt) << "\n";
 }
 
 void __tpy_init() {

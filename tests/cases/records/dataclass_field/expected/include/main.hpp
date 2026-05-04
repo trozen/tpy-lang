@@ -100,7 +100,7 @@ inline bool Point::__eq__(const Point& other) const {
 }
 
 inline std::string Point::__repr__() const {
-    return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+    return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
 
 inline bool Config::__eq__(const Config& other) const {
@@ -108,7 +108,7 @@ inline bool Config::__eq__(const Config& other) const {
 }
 
 inline std::string Config::__repr__() const {
-    return std::format("Config(name={}, value={}, tags={}, lookup={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->value), ::tpy::list_to_str(this->tags), ::tpy::dict_to_str(this->lookup));
+    return std::format("Config(name={}, value={}, tags={}, lookup={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->value), ::tpy::list_to_str(this->tags), ::tpy::dict_to_str(this->lookup));
 }
 
 inline bool Canvas::__eq__(const Canvas& other) const {
@@ -116,7 +116,7 @@ inline bool Canvas::__eq__(const Canvas& other) const {
 }
 
 inline std::string Canvas::__repr__() const {
-    return std::format("Canvas(name={}, origin={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->origin));
+    return std::format("Canvas(name={}, origin={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->origin));
 }
 void __tpy_init();
 } // namespace tpyapp::main

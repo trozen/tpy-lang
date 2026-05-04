@@ -29,6 +29,7 @@ struct Handle {
     Handle& operator=(const Handle&) = delete;
     Handle(Handle&&) = default;
     Handle& operator=(Handle&&) = default;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Handle";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
@@ -48,6 +49,7 @@ struct Handles {
     Handles& operator=(const Handles&) = delete;
     Handles(Handles&&) = default;
     Handles& operator=(Handles&&) = default;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Handles";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handles& obj) {

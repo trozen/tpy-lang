@@ -28,6 +28,7 @@ struct Node {
 
     // def doubled(self) -> Int32:
     int32_t doubled() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
@@ -42,6 +43,7 @@ struct Wrapper {
 
     // def __init__(self) -> None:
     Wrapper() : _node(std::nullopt) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {

@@ -28,6 +28,7 @@ struct Container {
         // return self.value
         return this->value;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>
@@ -54,6 +55,7 @@ struct Wrapper : Container<T> {
         // return self.extra
         return this->extra;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 template<typename T>

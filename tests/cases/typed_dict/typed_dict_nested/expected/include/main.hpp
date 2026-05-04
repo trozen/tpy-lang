@@ -21,6 +21,7 @@ struct Address {
     // zip_code: Int32
     int32_t zip_code;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Address";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Address& obj) {
@@ -38,6 +39,7 @@ struct Person {
     // def __init__(self, name: str, addr: Address) -> None:
     Person() = default;
     explicit Person(std::string_view name, const Address& addr) : name(name), addr(addr) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Person";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Person& obj) {

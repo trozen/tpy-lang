@@ -33,6 +33,7 @@ struct Wrapper {
 
     // def get_val(self) -> Int32:
     int32_t get_val() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {

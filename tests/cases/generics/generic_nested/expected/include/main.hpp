@@ -29,6 +29,7 @@ struct Box {
         // return self.value
         return this->value;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 template<typename T>
@@ -58,6 +59,7 @@ struct Container {
         // return self.inner.get()
         return this->inner.get();
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>

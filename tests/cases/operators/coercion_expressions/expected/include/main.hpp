@@ -37,6 +37,7 @@ struct Counter {
 
     // def add(self, x: int) -> int:
     ::tpy::BigInt add(const ::tpy::BigInt& x) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -54,6 +55,7 @@ struct Point {
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -69,6 +71,7 @@ struct Container {
     // def __init__(self, x: Int32, y: Int32) -> None:
     Container() = default;
     explicit Container(int32_t x, int32_t y) : pt(Point(x, y)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -84,6 +87,7 @@ struct Outer {
     // def __init__(self, x: Int32, y: Int32) -> None:
     Outer() = default;
     explicit Outer(int32_t x, int32_t y) : inner(Container(x, y)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {

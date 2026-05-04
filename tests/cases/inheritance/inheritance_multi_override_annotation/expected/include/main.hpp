@@ -21,6 +21,7 @@ struct A {
 
     // def foo(self) -> str:
     std::string foo() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
@@ -34,6 +35,7 @@ struct B {
 
     // def bar(self) -> str:
     std::string bar() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
@@ -52,6 +54,7 @@ struct Both : A, B {
     // @override
     // def bar(self) -> str:  # tpyc: warning(/non-polymorphic/)
     std::string bar() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Both";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Both& obj) {

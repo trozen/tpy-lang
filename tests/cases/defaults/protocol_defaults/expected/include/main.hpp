@@ -43,6 +43,7 @@ struct Impl {
 
     // def process(self, x: Int32, scale: Int32 = Int32(1)) -> Int32:
     int32_t process(int32_t x, int32_t scale = 1) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Impl";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {

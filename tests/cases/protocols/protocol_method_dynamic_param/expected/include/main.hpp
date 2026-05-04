@@ -58,6 +58,7 @@ struct Dog : Speaker {
 
     // def speak(self) -> str:
     std::string speak() override;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
@@ -76,6 +77,7 @@ struct Cat : Speaker {
 
     // def speak(self) -> str:
     std::string speak() override;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
@@ -91,6 +93,7 @@ struct Recorder {
     // def __init__(self, s: Speaker) -> None:
     Recorder() = default;
     explicit Recorder(Speaker& s) : message(s.speak()) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Recorder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Recorder& obj) {
@@ -109,6 +112,7 @@ struct Announcer {
 
     // def announce(self, s: Speaker) -> None:
     void announce(Speaker& s) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Announcer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Announcer& obj) {

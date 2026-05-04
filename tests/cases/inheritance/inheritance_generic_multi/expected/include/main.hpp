@@ -43,6 +43,7 @@ struct Base {
         // return self.second
         return this->second;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 template<typename T, typename U>
@@ -63,6 +64,7 @@ struct Middle : Base<T, int32_t> {
         // self.second = second
         this->second = second;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Middle";
 };
 
 template<typename T>
@@ -91,6 +93,7 @@ struct Leaf : Middle<T> {
         // return self.extra
         return this->extra;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Leaf";
 };
 
 template<typename T>

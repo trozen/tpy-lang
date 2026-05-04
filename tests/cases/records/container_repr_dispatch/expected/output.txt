@@ -1,0 +1,17 @@
+Both_str(1)
+StrOnly_str(2)
+ReprOnly_repr(3)
+Both_repr(1)
+True
+ReprOnly_repr(3)
+[Both_repr(1)]
+True
+[ReprOnly_repr(3)]
+(Both_repr(1), ReprOnly_repr(3))
+{'a': ReprOnly_repr(3)}
+ReprOnly_repr(7)
+None
+True
+ReprOnly_repr(9)
+Both_repr(1)
+ReprOnly_repr(3)

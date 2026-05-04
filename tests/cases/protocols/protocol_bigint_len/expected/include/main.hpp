@@ -26,6 +26,7 @@ struct MyCollection {
 
     // def __len__(self) -> int:
     ::tpy::BigInt __len__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MyCollection";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyCollection& obj) {

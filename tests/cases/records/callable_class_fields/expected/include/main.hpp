@@ -28,6 +28,7 @@ struct Counter {
     int32_t operator()(int32_t inc) {
         return __call__(inc);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -50,6 +51,7 @@ struct Accumulator {
     double operator()(double value) {
         return __call__(value);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Accumulator";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Accumulator& obj) {

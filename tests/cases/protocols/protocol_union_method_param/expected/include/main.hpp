@@ -49,6 +49,7 @@ struct Processor {
             this->count = items.walk();
         }
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Processor";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Processor& obj) {
@@ -62,6 +63,7 @@ struct Ruler {
 
     // def measure(self) -> int:
     ::tpy::BigInt measure() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Ruler";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ruler& obj) {
@@ -75,6 +77,7 @@ struct Walker {
 
     // def walk(self) -> int:
     ::tpy::BigInt walk() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Walker";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Walker& obj) {

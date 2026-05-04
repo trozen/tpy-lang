@@ -26,6 +26,7 @@ struct Node {
     // def __init__(self, val: Int32) -> None:
     Node() = default;
     explicit Node(int32_t val) : val(val) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Node& obj) {

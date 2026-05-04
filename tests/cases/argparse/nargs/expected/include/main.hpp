@@ -32,6 +32,7 @@ struct __tpy_builder_argparse_args_1 {
     // a1 = p1.parse_args(["a.txt", "b.txt"])
     __tpy_builder_argparse_args_1() = default;
     explicit __tpy_builder_argparse_args_1(std::vector<std::string>&& files) : files(std::move(files)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_1& obj) {
@@ -47,6 +48,7 @@ struct __tpy_builder_argparse_args_2 {
     // a2 = p2.parse_args(["--coord", "10", "20", "--tag", "x", "y", "--tag", "z"])
     __tpy_builder_argparse_args_2() = default;
     explicit __tpy_builder_argparse_args_2(std::optional<std::vector<::tpy::BigInt>>&& coord, std::optional<std::vector<std::string>>&& tag) : coord(std::move(coord)), tag(std::move(tag)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_2";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_2& obj) {
@@ -61,6 +63,7 @@ struct __tpy_builder_argparse_args_3 {
     // a3 = p3.parse_args(["--mode"])
     __tpy_builder_argparse_args_3() = default;
     explicit __tpy_builder_argparse_args_3(std::string_view mode) : mode(mode) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_3";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_3& obj) {
@@ -75,6 +78,7 @@ struct __tpy_builder_argparse_args_4 {
     // a4 = p4.parse_args([])
     __tpy_builder_argparse_args_4() = default;
     explicit __tpy_builder_argparse_args_4(std::optional<::tpy::BigInt> limit) : limit(limit) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_4";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_4& obj) {

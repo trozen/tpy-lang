@@ -57,6 +57,7 @@ struct Pair {
         // return self.b
         return this->b;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
 template<typename T, typename U>

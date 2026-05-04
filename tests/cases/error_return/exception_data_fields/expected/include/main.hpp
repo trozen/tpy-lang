@@ -26,6 +26,7 @@ struct ParseError : ::tpy::Exception {
     // def __init__(self, line: Int32, column: Int32, detail: str) -> None:
     ParseError() = default;
     explicit ParseError(int32_t line, int32_t column, std::string_view detail) : line(line), column(column), detail(detail) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ParseError";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {

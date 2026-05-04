@@ -38,6 +38,7 @@ struct Point {
     friend Point operator+(const Point& lhs, const Point& other) {
         return lhs.__add__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {

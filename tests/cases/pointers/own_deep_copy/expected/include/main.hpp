@@ -20,6 +20,7 @@ struct Point {
     // x: Int32
     int32_t x;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -32,6 +33,7 @@ struct Container {
     // items: list[Point]
     std::vector<Point> items;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {

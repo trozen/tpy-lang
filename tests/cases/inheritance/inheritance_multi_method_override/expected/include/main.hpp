@@ -21,6 +21,7 @@ struct Speaker {
 
     // def greet(self) -> str:
     std::string greet() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Speaker";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Speaker& obj) {
@@ -34,6 +35,7 @@ struct Greeter {
 
     // def greet(self) -> str:
     std::string greet() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Greeter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Greeter& obj) {
@@ -47,6 +49,7 @@ struct Both : Speaker, Greeter {
 
     // def greet(self) -> str:
     std::string greet() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Both";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Both& obj) {

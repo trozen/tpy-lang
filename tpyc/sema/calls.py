@@ -362,7 +362,7 @@ def validate_type_param_bounds(
                     f"for type parameter '{param_name}' of '{func_name}'")
 
 
-_REPR_TEMPLATE = "::tpy::__repr__({0})"
+_REPR_TEMPLATE = "::tpy::repr_of({0})"
 
 
 def _repr_fallback_template(typ: TpyType) -> str | None:

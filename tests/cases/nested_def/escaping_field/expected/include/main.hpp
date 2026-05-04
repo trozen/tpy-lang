@@ -28,6 +28,7 @@ struct Handler {
         // self.callback = add_offset
         this->callback = add_offset;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Handler";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {

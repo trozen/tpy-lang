@@ -23,6 +23,7 @@ struct C {
     C() {
         // pass
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {

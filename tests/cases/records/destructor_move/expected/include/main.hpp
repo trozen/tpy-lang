@@ -42,6 +42,7 @@ struct Tracker {
         // print("drop", self.name)
         std::cout << "drop" << " " << this->name << "\n";
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tracker";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tracker& obj) {

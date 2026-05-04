@@ -43,6 +43,7 @@ struct Base {
         // print("drop", self.name)
         std::cout << "drop" << " " << this->name << "\n";
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -58,6 +59,7 @@ struct Child : Base {
     // def __init__(self, name: str, tag: str):
     Child() = default;
     explicit Child(std::string_view name, std::string_view tag) : Base(name), tag(tag) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {

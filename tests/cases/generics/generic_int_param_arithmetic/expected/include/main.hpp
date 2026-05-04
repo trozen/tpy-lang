@@ -35,6 +35,7 @@ struct Container {
         // return Int32(N - 5)
         return (::tpy::sub_check<int32_t>(N, 5));
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T, std::size_t N>

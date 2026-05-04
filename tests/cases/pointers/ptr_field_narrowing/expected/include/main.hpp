@@ -33,6 +33,7 @@ struct Node {
 
     // def get_value(self) -> Int32:
     int32_t get_value() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
@@ -71,6 +72,7 @@ struct Container {
     // # Field reassignment invalidates narrowing
     // def read_after_reassign(self, other: Ptr[Node]) -> Int32:
     int32_t read_after_reassign(Node* other);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -90,6 +92,7 @@ struct Wrapper {
     // # Method call on nested field invalidates its sub-path narrowing
     // def read_after_inner_mutate(self) -> Int32:
     int32_t read_after_inner_mutate() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {

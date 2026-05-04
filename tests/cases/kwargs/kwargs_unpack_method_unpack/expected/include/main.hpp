@@ -21,6 +21,7 @@ struct Options {
     // port: Int32
     int32_t port;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Options";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Options& obj) {
@@ -39,6 +40,7 @@ struct Client {
 
     // def connect(self, **kwargs: Unpack[Options]) -> None:
     void connect(const Options& kwargs) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Client";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Client& obj) {

@@ -23,6 +23,7 @@ struct Counter {
         // Counter.instances += 1
         Counter::instances = ::tpy::add_check<int32_t>(Counter::instances, 1);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {

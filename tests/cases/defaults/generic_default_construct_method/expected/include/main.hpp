@@ -28,6 +28,7 @@ struct Container {
         // return fallback
         return fallback;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>

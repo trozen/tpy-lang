@@ -26,6 +26,7 @@ struct Inner {
     // def __init__(self, x: Int32) -> None:
     Inner() = default;
     explicit Inner(int32_t x) : x(x) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
@@ -41,6 +42,7 @@ struct Outer {
     // def __init__(self, x: Int32) -> None:
     Outer() = default;
     explicit Outer(int32_t x) : inner(Inner(x)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {

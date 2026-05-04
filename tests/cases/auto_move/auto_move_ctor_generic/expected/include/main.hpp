@@ -19,6 +19,7 @@ struct Inner {
     // value: Int32
     int32_t value;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
@@ -35,6 +36,7 @@ struct Box {
     // def __init__(self, item: Own[T]):
     Box() = default;
     explicit Box(T&& item) : item(std::move(item)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 template<typename T>

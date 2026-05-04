@@ -345,11 +345,32 @@ std::string __str__(const std::variant<Ts...>& v) {
 // tpy::__repr__
 // =============================================
 
+// Forward decl: repr_of is the user-facing dispatch helper, defined in
+// tpy.hpp after every header that contributes __repr__ overloads (notably
+// bytes_ops.hpp which adds __repr__ for raw Bytes). Optional/variant repr
+// templates above use it for ADL into per-record __repr__ overrides;
+// qualified lookup of `::tpy::repr_of` from a template body needs the
+// name visible at parse time, so the forward declaration precedes those
+// template bodies.
+template<typename T> auto repr_of(const T& x);
+
 // Default template: user types that define __repr__() method
 template<typename T>
     requires requires(const T& t) { t.__repr__(); }
 auto __repr__(const T& x) {
     return x.__repr__();
+}
+
+// User records without __repr__: emit the Python default
+// `<ClassName object at 0xADDR>` form. The class name comes from a
+// `static constexpr __tpy_class_name__` member emitted by codegen.
+template<typename T>
+    requires (!requires(const T& t) { t.__repr__(); })
+          && requires { T::__tpy_class_name__; }
+inline std::string __repr__(const T& x) {
+    std::ostringstream ss;
+    ::tpy::print_object_default(ss, T::__tpy_class_name__, x);
+    return ss.str();
 }
 
 // Bool: Python repr uses True/False (not C++ true/false)
@@ -375,27 +396,21 @@ inline std::string __repr__(const char* x) {
     return repr_quote_string(std::string_view(x));
 }
 
-// Optional: None or repr(value)
-// Uses __str__ (which delegates to __repr__ or operator<< via the
-// tpy::__str__ fallback chain) to avoid qualified lookup issues with
-// user-defined operator<< in non-tpy namespaces.
+// Optional: None or repr(value).
 template<typename T>
 std::string __repr__(const std::optional<T>& x) {
     if (!x.has_value()) return "None";
-    // For strings, use proper repr (quoted + escaped).
     if constexpr (std::same_as<T, std::string> || std::same_as<T, std::string_view>) {
         return repr_quote_string(*x);
     } else if constexpr (std::same_as<T, bool>) {
         return *x ? "True" : "False";
     } else if constexpr (std::floating_point<T>) {
         return format_float(static_cast<double>(*x));
-    } else if constexpr (requires(const T& t) { t.__repr__(); }) {
-        return std::string((*x).__repr__());
     } else {
-        // Fallback via operator<< (which is always generated for user records)
-        std::ostringstream ss;
-        ss << *x;
-        return ss.str();
+        // repr_of (not direct ::tpy::__repr__) so ADL into T's namespace
+        // can reach per-record overrides; a qualified call from a runtime
+        // template body would freeze the candidate set at definition.
+        return std::string(::tpy::repr_of(*x));
     }
 }
 
@@ -415,8 +430,12 @@ auto __repr__(const T& x) {
 }
 
 // Fallback for types with operator<< but no __repr__/formattable.
+// Excludes TPy records (`__tpy_class_name__`-tagged) so the default-repr
+// template above wins unambiguously -- otherwise both templates match
+// for records without __repr__.
 template<typename T>
     requires (!requires(const T& t) { t.__repr__(); })
+          && (!requires { T::__tpy_class_name__; })
           && (!std::formattable<T, char>)
           && requires(std::ostream& os, const T& t) { os << t; }
 std::string __repr__(const T& x) {
@@ -427,15 +446,17 @@ std::string __repr__(const T& x) {
 
 // Union (std::variant): visit the active alternative and recurse. Each
 // alternative type must have its own __repr__ overload reachable above;
-// pointer-variant alternatives (T*) are dereffed before dispatch.
+// pointer-variant alternatives (T*) are dereffed before dispatch. Goes
+// through repr_of so ADL on the alternative type finds per-record
+// overrides emitted alongside user records.
 template<typename... Ts>
 std::string __repr__(const std::variant<Ts...>& v) {
     return std::visit([](auto&& a) -> std::string {
         using A = std::remove_cvref_t<decltype(a)>;
         if constexpr (std::is_pointer_v<A>) {
-            return std::string(::tpy::__repr__(*a));
+            return std::string(::tpy::repr_of(*a));
         } else {
-            return std::string(::tpy::__repr__(a));
+            return std::string(::tpy::repr_of(a));
         }
     }, v);
 }

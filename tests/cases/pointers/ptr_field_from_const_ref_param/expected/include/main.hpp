@@ -23,6 +23,7 @@ struct A {
     // def __init__(self, v: Int32) -> None:
     A() = default;
     explicit A(int32_t v) : v(v) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
@@ -43,6 +44,7 @@ struct Mut {
     // # Same escape through a non-__init__ method.
     // def set_a(self, a: A) -> None:
     void set_a(A& a);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Mut";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mut& obj) {
@@ -59,6 +61,7 @@ struct Const {
     // def __init__(self, a: A) -> None:
     Const() = default;
     explicit Const(const A& a) : _a(&a) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Const";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Const& obj) {

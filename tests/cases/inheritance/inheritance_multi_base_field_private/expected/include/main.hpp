@@ -20,6 +20,7 @@ struct RateLimiter {
     // _count: Int32
     int32_t _count;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.RateLimiter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const RateLimiter& obj) {
@@ -32,6 +33,7 @@ struct CacheStats {
     // _count: Int32
     int32_t _count;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.CacheStats";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CacheStats& obj) {
@@ -58,6 +60,7 @@ struct Service : RateLimiter, CacheStats {
 
     // def report(self) -> str:
     std::string report() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Service";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Service& obj) {

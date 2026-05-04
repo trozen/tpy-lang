@@ -27,6 +27,7 @@ struct MyIter {
 
     // def __next__(self) -> Int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MyIter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyIter& obj) {
@@ -52,6 +53,7 @@ struct Dual {
 
     // def __iter__(self) -> Own[MyIter]:
     MyIter __iter__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Dual";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dual& obj) {

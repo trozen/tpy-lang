@@ -46,7 +46,7 @@ inline bool Counter::__eq__(const Counter& other) const {
 }
 
 inline std::string Counter::__repr__() const {
-    return std::format("Counter(count={}, label={})", ::tpy::__repr__(this->count), ::tpy::__repr__(this->label));
+    return std::format("Counter(count={}, label={})", ::tpy::repr_of(this->count), ::tpy::repr_of(this->label));
 }
 void __tpy_init();
 } // namespace tpyapp::main

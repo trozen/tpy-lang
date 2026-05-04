@@ -71,7 +71,7 @@ inline bool Point::__eq__(const Point& other) const {
 }
 
 inline std::string Point::__repr__() const {
-    return std::format("Point(x={}, y={}, z={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y), ::tpy::__repr__(this->z));
+    return std::format("Point(x={}, y={}, z={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y), ::tpy::repr_of(this->z));
 }
 
 inline bool Label::__eq__(const Label& other) const {
@@ -79,7 +79,7 @@ inline bool Label::__eq__(const Label& other) const {
 }
 
 inline std::string Label::__repr__() const {
-    return std::format("Label(text={})", ::tpy::__repr__(this->text));
+    return std::format("Label(text={})", ::tpy::repr_of(this->text));
 }
 void __tpy_init();
 } // namespace tpyapp::main

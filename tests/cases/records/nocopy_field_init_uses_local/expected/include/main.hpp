@@ -29,6 +29,7 @@ struct Wrap {
     Wrap& operator=(const Wrap&) = delete;
     Wrap(Wrap&&) = default;
     Wrap& operator=(Wrap&&) = default;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrap";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrap& obj) {
@@ -54,6 +55,7 @@ struct Foo {
     Foo& operator=(const Foo&) = delete;
     Foo(Foo&&) = default;
     Foo& operator=(Foo&&) = default;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Foo";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {

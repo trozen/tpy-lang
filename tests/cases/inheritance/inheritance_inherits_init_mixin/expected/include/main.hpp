@@ -24,6 +24,7 @@ struct Base {
     // def __init__(self, x: Int32) -> None:
     Base() = default;
     explicit Base(int32_t x) : x(x) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -37,6 +38,7 @@ struct Greeter {
 
     // def hello(self) -> str:
     std::string hello() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Greeter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Greeter& obj) {
@@ -48,6 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Greeter& obj) {
 struct WithMixin : Base, Greeter {
 
     using Base::Base;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.WithMixin";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WithMixin& obj) {
@@ -60,6 +63,7 @@ inline std::ostream& operator<<(std::ostream& os, const WithMixin& obj) {
 struct WithMixinReversed : Greeter, Base {
 
     using Base::Base;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.WithMixinReversed";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WithMixinReversed& obj) {

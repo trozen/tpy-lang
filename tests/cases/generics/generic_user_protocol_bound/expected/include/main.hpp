@@ -41,6 +41,7 @@ struct IntBox {
 
     // def set(self, value: Int32) -> None:
     void set(int32_t value);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.IntBox";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
@@ -62,6 +63,7 @@ struct StrBox {
 
     // def set(self, value: str) -> None:
     void set(std::string_view value);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.StrBox";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const StrBox& obj) {

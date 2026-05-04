@@ -25,6 +25,7 @@ struct Foo {
     // @readonly()
     // def get_x(self) -> Int32:
     int32_t get_x() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Foo";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {

@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "bigint.hpp"
+#include "dunder.hpp"
 #include "format.hpp"
 
 namespace tpy {
@@ -65,9 +66,13 @@ struct Any;
 namespace detail {
 void print_element(std::ostream& os, const ::tpy::Any& a);
 
+// Container element printing goes through tpy::repr_of so containers emit
+// the repr form (Python: `print([rec])` uses __repr__, not __str__).
+// Specific overloads above cover bool/double/string/BigInt; this generic
+// is the fallback for user records and other types.
 template <typename T>
 void print_element(std::ostream& os, const T& elem) {
-    os << elem;
+    os << ::tpy::repr_of(elem);
 }
 
 inline void print_element(std::ostream& os, bool elem) {

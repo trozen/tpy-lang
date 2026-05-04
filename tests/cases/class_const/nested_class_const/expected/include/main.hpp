@@ -22,9 +22,11 @@ struct Outer {
         // TAG: Final[str] = "inner"
         static constexpr std::string_view TAG = "inner";
 
+        static constexpr std::string_view __tpy_class_name__ = "__main__.Outer.Inner";
     };
 
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {

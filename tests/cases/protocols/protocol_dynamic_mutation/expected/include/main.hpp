@@ -64,6 +64,7 @@ struct MyCounter : Counter {
 
     // def value(self) -> Int32:
     int32_t value() override;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MyCounter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyCounter& obj) {
@@ -85,6 +86,7 @@ struct Tally {
 
     // def value(self) -> Int32:
     int32_t value() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tally";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {

@@ -25,6 +25,7 @@ struct Point {
     // def __init__(self, x: int) -> None:
     Point() = default;
     explicit Point(const ::tpy::BigInt& x) : x(x) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -42,6 +43,7 @@ struct Holder {
 
     // def get(self) -> Point:
     Point& get();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {

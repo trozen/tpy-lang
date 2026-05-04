@@ -29,6 +29,7 @@ struct Base {
     int32_t operator()(int32_t x) const {
         return __call__(x);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -39,6 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 // class Child(Base):
 struct Child : Base {
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {

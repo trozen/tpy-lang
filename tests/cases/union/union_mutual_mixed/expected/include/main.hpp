@@ -22,6 +22,7 @@ struct Neg {
     // inner: Box[Value]
     ::tpystd::tplib::box::Box<Value> inner;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Neg";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Neg& obj) {

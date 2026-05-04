@@ -23,6 +23,7 @@ struct Item {
     // def __init__(self, v: Int32) -> None:
     Item() = default;
     explicit Item(int32_t v) : value(v) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {

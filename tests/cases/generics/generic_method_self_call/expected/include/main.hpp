@@ -35,6 +35,7 @@ struct Processor {
         // return self.wrap(Int32(99))
         return this->wrap<int32_t>(99);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Processor";
 };
 
 template<typename T>

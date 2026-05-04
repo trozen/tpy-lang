@@ -23,7 +23,7 @@ void main() {
     std::cout << ::tpy::str_stepped_slice(s, ::tpy::Slice{1, std::nullopt, 3}) << "\n";
     // # Edge: very negative start with negative step -> empty
     // print(repr(s[-100::-1]))
-    std::cout << ::tpy::__repr__(::tpy::str_stepped_slice(s, ::tpy::Slice{-100, std::nullopt, -1})) << "\n";
+    std::cout << ::tpy::repr_of(::tpy::str_stepped_slice(s, ::tpy::Slice{-100, std::nullopt, -1})) << "\n";
 }
 
 void __tpy_init() {

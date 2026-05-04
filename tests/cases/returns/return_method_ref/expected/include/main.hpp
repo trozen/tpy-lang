@@ -25,6 +25,7 @@ struct Inner {
 
     // def mutate(self) -> None:
     void mutate();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
@@ -45,6 +46,7 @@ struct Holder {
 
     // def get_ro(self) -> readonly[Inner]:
     const Inner& get_ro();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {

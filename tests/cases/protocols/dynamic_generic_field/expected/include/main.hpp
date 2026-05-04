@@ -54,6 +54,7 @@ struct Tagged {
     // def __init__(self, tag: Int32):
     Tagged() = default;
     explicit Tagged(int32_t tag) : tag(tag) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
 };
 
 template<typename T>
@@ -70,6 +71,7 @@ struct Owner {
     // def __init__(self, item: Tagged[Greeter]):
     Owner() = default;
     explicit Owner(const Tagged<Greeter>& item) : item(item) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Owner";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {

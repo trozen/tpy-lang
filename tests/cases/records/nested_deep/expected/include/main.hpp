@@ -25,6 +25,7 @@ struct Outer {
             // def __init__(self, val: Int32) -> None:
             Deep() = default;
             explicit Deep(int32_t val) : val(val) {}
+            static constexpr std::string_view __tpy_class_name__ = "__main__.Outer.Mid.Deep";
         };
 
         // name: str
@@ -33,6 +34,7 @@ struct Outer {
         // def __init__(self, name: str) -> None:
         Mid() = default;
         explicit Mid(std::string_view name) : name(name) {}
+        static constexpr std::string_view __tpy_class_name__ = "__main__.Outer.Mid";
     };
 
     // x: Int32
@@ -41,6 +43,7 @@ struct Outer {
     // def __init__(self, x: Int32) -> None:
     Outer() = default;
     explicit Outer(int32_t x) : x(x) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {

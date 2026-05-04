@@ -29,6 +29,7 @@ struct Foo {
     // @property
     // def items(self) -> list[Int32]:
     const std::vector<int32_t>& items() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Foo";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {

@@ -21,6 +21,7 @@ struct Box {
     // value: T
     T value;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 template<typename T>
@@ -34,6 +35,7 @@ struct Label {
     // value: str
     std::string value;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Label";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Label& obj) {
@@ -58,6 +60,7 @@ struct Combined : Box<int32_t>, Label {
 
     // def combined(self) -> str:
     std::string combined() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Combined";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {

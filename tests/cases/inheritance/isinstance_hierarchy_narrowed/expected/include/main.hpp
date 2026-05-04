@@ -30,6 +30,7 @@ struct Animal {
     // def __init__(self, name: str) -> None:
     Animal() = default;
     explicit Animal(std::string_view name) : name(name) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Animal";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
@@ -44,6 +45,7 @@ struct Cat {
 
     // def __init__(self) -> None:
     Cat() : whiskers(::tpy::BigInt(6)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
@@ -59,6 +61,7 @@ struct Dog : Animal {
     // def __init__(self, name: str, breed: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
@@ -74,6 +77,7 @@ struct Puppy : Dog {
     // def __init__(self, name: str, breed: str, age: int) -> None:
     Puppy() = default;
     explicit Puppy(std::string_view name, std::string_view breed, const ::tpy::BigInt& age) : Dog(name, breed), age(age) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Puppy";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Puppy& obj) {

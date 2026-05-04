@@ -21,6 +21,7 @@ struct Point {
     // y: Int32
     int32_t y;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -46,6 +47,7 @@ struct Wrapper {
             this->tag = -1;
         }
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {

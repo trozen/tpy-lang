@@ -57,6 +57,7 @@ struct Container {
             this->count = ((this->count) + (::tpy::BigInt(::tpy::__len__((*extra)))));
         }
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -81,6 +82,7 @@ struct MixedContainer {
             this->count = ((this->count) + (::tpy::BigInt(::tpy::__len__((*extra)))));
         }
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MixedContainer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MixedContainer& obj) {
@@ -110,6 +112,7 @@ struct GenericContainer {
             this->count = ::tpy::BigInt(0);
         }
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.GenericContainer";
 };
 
 template<typename T>

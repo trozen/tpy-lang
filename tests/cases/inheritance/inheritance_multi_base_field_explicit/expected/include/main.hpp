@@ -20,6 +20,7 @@ struct Counter {
     // value: Int32
     int32_t value;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -32,6 +33,7 @@ struct Tag {
     // value: str
     std::string value;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tag";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
@@ -53,6 +55,7 @@ struct Combined : Counter, Tag {
 
     // def summary(self) -> str:
     std::string summary() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Combined";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {

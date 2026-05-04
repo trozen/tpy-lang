@@ -31,6 +31,7 @@ struct IntListHolder {
 
     // def items(self) -> list[Int32]:
     std::vector<int32_t>& items();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.IntListHolder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntListHolder& obj) {
@@ -54,6 +55,7 @@ struct Wrapper {
         // return self.holder
         return this->holder;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 template<typename V>

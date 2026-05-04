@@ -38,6 +38,7 @@ struct Counter {
             }
         );
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {

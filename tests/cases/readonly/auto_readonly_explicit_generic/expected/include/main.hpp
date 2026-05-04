@@ -42,6 +42,7 @@ struct Vec {
         // return self._data
         return ::tpy::as_span(this->_data);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Vec";
 };
 
 template<typename T>

@@ -23,6 +23,7 @@ struct Point {
     // def __init__(self, x: int) -> None:
     Point() = default;
     explicit Point(const ::tpy::BigInt& x) : x(x) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -47,6 +48,7 @@ struct Container {
 
     // def first_x(self) -> int:            # auto-const: value return, no self borrow
     ::tpy::BigInt first_x() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -64,6 +66,7 @@ struct Wrapper {
 
     // def get_mutable(self) -> Point:      # non-const: transitive through non-readonly callee
     Point& get_mutable();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {

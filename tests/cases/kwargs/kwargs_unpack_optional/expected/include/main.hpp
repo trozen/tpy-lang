@@ -22,6 +22,7 @@ struct Config {
     // port: Int32
     std::optional<int32_t> port = std::nullopt;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {

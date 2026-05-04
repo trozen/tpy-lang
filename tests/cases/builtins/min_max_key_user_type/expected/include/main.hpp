@@ -29,6 +29,7 @@ struct Priority {
     friend bool operator<(const Priority& lhs, const Priority& other) {
         return lhs.__lt__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Priority";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Priority& obj) {
@@ -46,6 +47,7 @@ struct Task {
     // def __init__(self, name: str, prio: Own[Priority]) -> None:
     Task() = default;
     explicit Task(std::string_view name, Priority&& prio) : name(name), prio(std::move(prio)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Task";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Task& obj) {

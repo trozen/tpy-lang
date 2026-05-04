@@ -25,6 +25,7 @@ struct Point {
 
     // def __init__(self) -> None:
     Point() : x(0), y(0) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {

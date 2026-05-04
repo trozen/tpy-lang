@@ -29,6 +29,7 @@ struct Wrapper {
         // return a < b
         return (a < b);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 template<typename T>

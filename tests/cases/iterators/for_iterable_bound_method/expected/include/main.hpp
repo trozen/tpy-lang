@@ -30,6 +30,7 @@ struct RangeIter {
 
     // def __next__(self) -> Int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.RangeIter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const RangeIter& obj) {
@@ -50,6 +51,7 @@ struct MyRange {
 
     // def __iter__(self) -> Own[RangeIter]:
     RangeIter __iter__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MyRange";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyRange& obj) {
@@ -84,6 +86,7 @@ struct Summer {
         // return result
         return result;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Summer";
 };
 
 template<typename T>

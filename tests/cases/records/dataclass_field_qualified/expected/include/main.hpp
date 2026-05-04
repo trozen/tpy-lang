@@ -43,7 +43,7 @@ inline bool Foo::__eq__(const Foo& other) const {
 }
 
 inline std::string Foo::__repr__() const {
-    return std::format("Foo(items={}, x={})", ::tpy::list_to_str(this->items), ::tpy::__repr__(this->x));
+    return std::format("Foo(items={}, x={})", ::tpy::list_to_str(this->items), ::tpy::repr_of(this->x));
 }
 void __tpy_init();
 } // namespace tpyapp::main

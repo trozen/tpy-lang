@@ -31,6 +31,7 @@ struct Box {
     // @override
     // def measure(self) -> Int32:  # tpyc: ok
     int32_t measure() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {

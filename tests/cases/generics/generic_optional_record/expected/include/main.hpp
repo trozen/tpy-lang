@@ -28,6 +28,7 @@ struct Point {
 
     // def sum(self) -> int:
     ::tpy::BigInt sum() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -57,6 +58,7 @@ struct Container {
         // return None
         return nullptr;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>

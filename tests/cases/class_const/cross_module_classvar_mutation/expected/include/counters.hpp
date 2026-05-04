@@ -18,6 +18,7 @@ struct Counters {
     // total: ClassVar[Int32] = 0
     static inline int32_t total = 0;
 
+    static constexpr std::string_view __tpy_class_name__ = "counters.Counters";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counters& obj) {

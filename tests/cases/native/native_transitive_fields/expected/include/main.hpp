@@ -28,6 +28,7 @@ struct M {
 
     // def write(self) -> None:
     void write();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.M";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const M& obj) {

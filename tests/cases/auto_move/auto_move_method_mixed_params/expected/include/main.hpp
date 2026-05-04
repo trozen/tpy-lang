@@ -21,6 +21,7 @@ struct Inner {
     // value: Int32
     int32_t value;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
@@ -36,6 +37,7 @@ struct Holder {
 
     // def set_with_tag(self, inner: Own[Inner], tag: Int32) -> None:
     void set_with_tag(Inner&& inner, int32_t tag);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
@@ -60,6 +62,7 @@ struct GenericHolder {
         // return flag
         return flag;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.GenericHolder";
 };
 
 template<typename T>
@@ -77,6 +80,7 @@ struct GenericBox {
     // def __init__(self, item: T):
     GenericBox() = default;
     explicit GenericBox(const T& item) : item(item) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.GenericBox";
 };
 
 template<typename T>

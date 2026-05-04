@@ -19,6 +19,7 @@ struct Parent {
     // token: Int32
     int32_t token;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Parent";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Parent& obj) {
@@ -40,6 +41,7 @@ struct Child : Parent {
 
     // def as_pair(self) -> str:
     std::string as_pair() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {

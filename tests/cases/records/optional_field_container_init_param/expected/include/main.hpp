@@ -31,6 +31,7 @@ struct Holder {
             this->items = std::vector<int32_t>{};
         }
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {

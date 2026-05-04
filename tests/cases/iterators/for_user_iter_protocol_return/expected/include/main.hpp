@@ -23,6 +23,7 @@ struct Stack {
 
     // def __iter__(self) -> Iterator[Int32]:
     auto __iter__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Stack";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {

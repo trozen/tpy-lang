@@ -346,6 +346,17 @@ class ExpressionGenerator:
                 inner_cpp = expr_type_for_check.inner.to_cpp()
                 result = (f"{result} ? std::optional<{inner_cpp}>"
                           f"(std::move(*{result})) : std::nullopt")
+            elif (isinstance(eff, OptionalType)
+                    and isinstance(expr_type_for_check, OptionalType)
+                    and expr_type_for_check.uses_pointer_repr()):
+                # Source and target are both the same pointer-repr
+                # Optional[T]; pass the pointer through. Hit when the
+                # variable is not sema-narrowed (e.g. assigned from None
+                # or a function param with no narrowing) -- falling
+                # through to the unconditional `(*result)` would deref
+                # null. Sema-narrowed locals get is_narrowed=True above
+                # and skip this whole block, so the deref there is safe.
+                pass
             else:
                 result = f"(*{result})"
         # Value optionals are represented as std::optional<T> and must be
@@ -4531,11 +4542,12 @@ class ExpressionGenerator:
 
                 container_str = self._container_to_str(arg_type, gen_arg)
 
-                # !r conversion: always wrap with __repr__
+                # !r conversion: always wrap with repr_of (the helper that
+                # routes through ADL so per-record __repr__ overrides bind).
                 if container_str is not None:
                     gen_arg = container_str
                 elif conv == FSTRING_CONV_REPR:
-                    gen_arg = f"::tpy::__repr__({gen_arg})"
+                    gen_arg = f"::tpy::repr_of({gen_arg})"
                 # !s conversion on user types: wrap with __str__
                 elif conv == FSTRING_CONV_STR and is_user_type:
                     gen_arg = f"::tpy::__str__({gen_arg})"

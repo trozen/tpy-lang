@@ -27,6 +27,7 @@ struct InfiniteCounter {
     // # tpyc: warning(/no 'raise StopIteration'/)
     // def __next__(self) -> Int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.InfiniteCounter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const InfiniteCounter& obj) {

@@ -23,6 +23,7 @@ struct NotFound : ::tpy::Exception {
     // def __init__(self, code: Int32) -> None:
     NotFound() = default;
     explicit NotFound(int32_t code) : code(code) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.NotFound";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NotFound& obj) {

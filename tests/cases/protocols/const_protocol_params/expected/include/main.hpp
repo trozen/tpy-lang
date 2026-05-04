@@ -79,6 +79,7 @@ struct Rect {
     // @readonly
     // def area(self) -> Int32:
     int32_t area() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Rect";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
@@ -101,6 +102,7 @@ struct Box {
 
     // def resize(self, v: Int32) -> None:
     void resize(int32_t v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {

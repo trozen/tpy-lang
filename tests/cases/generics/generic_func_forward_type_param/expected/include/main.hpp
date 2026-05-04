@@ -29,6 +29,7 @@ struct Box {
     // value: Int32
     int32_t value;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
@@ -49,6 +50,7 @@ struct Container {
         // return identity[T](self.val)  # tpyc: ok
         return identity<T>(this->val);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>

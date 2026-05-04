@@ -33,6 +33,7 @@ struct Words {
     // @readonly
     // def length(self) -> int:
     ::tpy::BigInt length() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Words";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Words& obj) {
@@ -52,6 +53,7 @@ struct Numbers {
     // @readonly
     // def length(self) -> int:
     ::tpy::BigInt length() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Numbers";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Numbers& obj) {
@@ -83,6 +85,7 @@ struct Container {
         // return self.count + other.length()
         return ((this->count) + (other.length()));
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {

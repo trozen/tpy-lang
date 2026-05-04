@@ -25,6 +25,7 @@ struct Settings {
 
     // def area(self) -> Int32:
     int32_t area() const;
+    static constexpr std::string_view __tpy_class_name__ = "config.Settings";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Settings& obj) {

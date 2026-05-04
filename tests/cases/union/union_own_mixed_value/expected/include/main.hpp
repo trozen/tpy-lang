@@ -31,6 +31,7 @@ struct Box {
 
     // def get_via_var(self) -> Own[Span[Int32] | list[Int32]]:  # tpyc: ok
     std::variant<std::span<int32_t>, std::vector<int32_t>> get_via_var();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {

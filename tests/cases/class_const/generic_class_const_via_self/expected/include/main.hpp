@@ -29,6 +29,7 @@ struct Bounded {
         // return n >= self.LIMIT
         return (n >= Bounded<T>::LIMIT);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Bounded";
 };
 
 template<typename T>

@@ -30,6 +30,7 @@ struct Resource {
     Resource& operator=(const Resource&) = delete;
     Resource(Resource&&) = default;
     Resource& operator=(Resource&&) = default;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Resource";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
@@ -50,6 +51,7 @@ struct Wrapper {
     Wrapper& operator=(const Wrapper&) = delete;
     Wrapper(Wrapper&&) = default;
     Wrapper& operator=(Wrapper&&) = default;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
@@ -70,6 +72,7 @@ struct Outer {
     Outer& operator=(const Outer&) = delete;
     Outer(Outer&&) = default;
     Outer& operator=(Outer&&) = default;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {

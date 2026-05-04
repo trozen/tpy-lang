@@ -24,6 +24,7 @@ struct Base {
     // def __init__(self, v: T) -> None:
     Base() = default;
     explicit Base(const T& v) : value(v) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 template<typename T, std::size_t N>
@@ -44,6 +45,7 @@ struct Child : Base<T, N> {
         // self.value = v
         this->value = v;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 template<typename T, std::size_t N>
@@ -66,6 +68,7 @@ struct GrandChild : Child<T, N> {
         // self.extra = e
         this->extra = e;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.GrandChild";
 };
 
 template<typename T, std::size_t N>

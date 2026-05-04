@@ -26,6 +26,7 @@ struct Box {
 
     // def get(self) -> Int32:
     int32_t get() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
@@ -37,6 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 struct IntBox : Box {
 
     using Box::Box;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.IntBox";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
@@ -48,6 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
 struct TaggedBox : IntBox {
 
     using IntBox::IntBox;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.TaggedBox";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TaggedBox& obj) {

@@ -24,6 +24,7 @@ struct Inner {
     // def __init__(self, value: T) -> None:
     Inner() = default;
     explicit Inner(const T& value) : value(value) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
 template<typename T>
@@ -41,6 +42,7 @@ struct Outer {
     // def __init__(self, inner: T) -> None:
     Outer() = default;
     explicit Outer(const T& inner) : inner(inner) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
 template<typename T>

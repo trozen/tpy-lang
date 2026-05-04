@@ -23,6 +23,7 @@ struct Point {
 
     // def __init__(self, x: Int32 = Int32(0), y: Int32 = Int32(0)) -> None:
     explicit Point(int32_t x = 0, int32_t y = 0) : x(x), y(y) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -40,6 +41,7 @@ struct Named {
     // def __init__(self, name: str, value: Int32 = Int32(42)) -> None:
     Named() = default;
     explicit Named(std::string_view name, int32_t value = 42) : name(name), value(value) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Named";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Named& obj) {

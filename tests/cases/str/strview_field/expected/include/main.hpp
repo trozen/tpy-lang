@@ -24,6 +24,7 @@ struct Wrapper {
 
     // def get(self) -> StrView:
     std::string_view get() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {

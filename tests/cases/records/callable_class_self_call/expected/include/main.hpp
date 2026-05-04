@@ -24,6 +24,7 @@ struct Recursive {
     int32_t operator()(int32_t x) const {
         return __call__(x);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Recursive";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Recursive& obj) {
@@ -41,6 +42,7 @@ struct Fibonacci {
     int32_t operator()(int32_t n) const {
         return __call__(n);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Fibonacci";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Fibonacci& obj) {

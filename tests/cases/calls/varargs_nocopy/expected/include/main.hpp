@@ -43,6 +43,7 @@ struct Resource {
         // print("drop", self.id)
         std::cout << "drop" << " " << this->id << "\n";
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Resource";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {

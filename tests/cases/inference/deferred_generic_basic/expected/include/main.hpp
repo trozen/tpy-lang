@@ -43,6 +43,7 @@ struct Container {
         // return self.count
         return this->count;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>

@@ -29,6 +29,7 @@ struct Buffer {
     // @auto_readonly
     // def merge_span(self, other: list[Int32]) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> merge_span(const std::vector<int32_t>& other) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Buffer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {

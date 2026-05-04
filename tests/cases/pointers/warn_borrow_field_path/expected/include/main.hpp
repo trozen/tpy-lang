@@ -29,6 +29,7 @@ struct Point {
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -58,6 +59,7 @@ struct Container {
 
     // def field_reassign_while_borrowed(self) -> None:
     void field_reassign_while_borrowed();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -73,6 +75,7 @@ struct Holder {
     // def __init__(self, p: Point) -> None:
     Holder() = default;
     explicit Holder(const Point& p) : point(p) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {

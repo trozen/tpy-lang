@@ -29,6 +29,7 @@ struct Point {
     // @readonly
     // def magnitude_sq(self) -> Int32:
     int32_t magnitude_sq() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {

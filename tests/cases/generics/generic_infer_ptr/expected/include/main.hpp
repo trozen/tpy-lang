@@ -28,6 +28,7 @@ struct PtrHolder {
     // def __init__(self, ptr: Ptr[T]) -> None:
     PtrHolder() = default;
     explicit PtrHolder(T* ptr) : ptr(ptr) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.PtrHolder";
 };
 
 template<typename T>
@@ -45,6 +46,7 @@ struct ReadOnlyPtrHolder {
     // def __init__(self, ptr: Ptr[readonly[T]]) -> None:
     ReadOnlyPtrHolder() = default;
     explicit ReadOnlyPtrHolder(const T* ptr) : ptr(ptr) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ReadOnlyPtrHolder";
 };
 
 template<typename T>
@@ -60,6 +62,7 @@ struct Point {
     // y: Int32
     int32_t y;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {

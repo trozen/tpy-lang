@@ -20,6 +20,7 @@ struct Container {
     // def __init__(self, value: Int32):
     Container() = default;
     explicit Container(int32_t value) : value(value) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {

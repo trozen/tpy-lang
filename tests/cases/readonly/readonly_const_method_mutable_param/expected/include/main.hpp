@@ -27,6 +27,7 @@ struct Writer {
 
     // def result(self) -> str:
     std::string result() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Writer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Writer& obj) {
@@ -47,6 +48,7 @@ struct Point {
 
     // def encode(self, writer: Writer) -> None:
     void encode(Writer& writer) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {

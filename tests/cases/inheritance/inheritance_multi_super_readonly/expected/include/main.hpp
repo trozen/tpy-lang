@@ -26,6 +26,7 @@ struct Counter {
     // @readonly
     // def get_n(self) -> Int32:
     int32_t get_n() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -40,6 +41,7 @@ struct Greeter {
     // @readonly
     // def greet(self) -> str:
     std::string greet() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Greeter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Greeter& obj) {
@@ -56,6 +58,7 @@ struct Both : Counter, Greeter {
     // @readonly
     // def describe(self) -> str:
     std::string describe() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Both";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Both& obj) {

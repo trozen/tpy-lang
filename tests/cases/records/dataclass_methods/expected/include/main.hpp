@@ -64,7 +64,7 @@ inline bool Rect::__eq__(const Rect& other) const {
 }
 
 inline std::string Rect::__repr__() const {
-    return std::format("Rect(width={}, height={})", ::tpy::__repr__(this->width), ::tpy::__repr__(this->height));
+    return std::format("Rect(width={}, height={})", ::tpy::repr_of(this->width), ::tpy::repr_of(this->height));
 }
 void __tpy_init();
 } // namespace tpyapp::main

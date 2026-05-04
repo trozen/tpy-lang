@@ -52,6 +52,7 @@ struct Dog : Speaker {
     // @override
     // def speak(self) -> str:  # tpyc: ok
     std::string speak() override;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {

@@ -24,6 +24,7 @@ struct Pair {
     // def __init__(self, x: Int32):
     Pair() = default;
     explicit Pair(int32_t x) : a(x), b(twice(x)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {

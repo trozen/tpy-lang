@@ -25,6 +25,7 @@ struct Config {
 
     // def inc(self) -> None:
     void inc();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {

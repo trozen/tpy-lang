@@ -71,6 +71,7 @@ struct Vec {
     friend Vec operator-(const Vec& operand) {
         return operand.__neg__();
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Vec";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec& obj) {
@@ -94,6 +95,7 @@ struct Segment {
 
     // def midpoint(self) -> Own[Vec]:
     Vec midpoint() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Segment";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Segment& obj) {

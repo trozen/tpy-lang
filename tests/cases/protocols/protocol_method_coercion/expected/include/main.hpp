@@ -36,6 +36,7 @@ struct SimpleCalc {
 
     // def multiply(self, x: Int32, y: Int32) -> Int32:
     int32_t multiply(int32_t x, int32_t y) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.SimpleCalc";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SimpleCalc& obj) {

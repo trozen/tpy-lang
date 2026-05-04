@@ -48,6 +48,7 @@ struct Pixel {
     // def __init__(self, x: int, y: int, color: Color) -> None:
     Pixel() = default;
     explicit Pixel(const ::tpy::BigInt& x, const ::tpy::BigInt& y, Color color) : x(x), y(y), color(color) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Pixel";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pixel& obj) {

@@ -29,6 +29,7 @@ struct Box {
     // @overload
     // def apply(self, x: Int32, *, tag: Int32 = 0) -> Int32:
     int32_t apply(int32_t x, int32_t tag = 0);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {

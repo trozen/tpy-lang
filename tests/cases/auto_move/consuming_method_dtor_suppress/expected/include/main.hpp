@@ -53,6 +53,7 @@ struct HeapVal {
 
     // def take(self: Own[Self]) -> Int32:
     int32_t take() &&;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.HeapVal";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HeapVal& obj) {

@@ -21,6 +21,7 @@ struct Root {
     // token: Int32
     int32_t token;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Root";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Root& obj) {
@@ -33,6 +34,7 @@ struct Other {
     // token: str
     std::string token;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Other";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
@@ -43,6 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
 // class Middle(Root):
 struct Middle : Root {
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Middle";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Middle& obj) {
@@ -63,6 +66,7 @@ struct Leaf : Middle, Other {
 
     // def as_pair(self) -> str:
     std::string as_pair() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Leaf";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {

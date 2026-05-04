@@ -47,7 +47,7 @@ inline bool Settings::__eq__(const Settings& other) const {
 }
 
 inline std::string Settings::__repr__() const {
-    return std::format("Settings(count={}, flag={}, ratio={}, label={})", ::tpy::__repr__(this->count), ::tpy::__repr__(this->flag), ::tpy::__repr__(this->ratio), ::tpy::__repr__(this->label));
+    return std::format("Settings(count={}, flag={}, ratio={}, label={})", ::tpy::repr_of(this->count), ::tpy::repr_of(this->flag), ::tpy::repr_of(this->ratio), ::tpy::repr_of(this->label));
 }
 void __tpy_init();
 } // namespace tpyapp::main

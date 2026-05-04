@@ -52,6 +52,7 @@ struct Speaker {
 
     // def __str__(self) -> str:
     std::string __str__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Speaker";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Speaker& obj) {
@@ -94,6 +95,7 @@ struct Echo : Speaker {
     // def __init__(self, msg: str) -> None:
     Echo() = default;
     explicit Echo(std::string_view msg) : Speaker(msg) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Echo";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Echo& obj) {

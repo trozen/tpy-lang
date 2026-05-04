@@ -29,7 +29,7 @@ struct Container {
     // def __repr__(self) -> str:
     std::string __repr__() const {
         // return f"Container(val={self.val!r})"
-        return std::format("Container(val={})", ::tpy::__repr__(this->val));
+        return std::format("Container(val={})", ::tpy::repr_of(this->val));
     }
 };
 
@@ -54,7 +54,7 @@ struct Pair {
     // def __repr__(self) -> str:
     std::string __repr__() const {
         // return f"Pair(first={self.first!r}, second={self.second!r})"
-        return std::format("Pair(first={}, second={})", ::tpy::__repr__(this->first), ::tpy::__repr__(this->second));
+        return std::format("Pair(first={}, second={})", ::tpy::repr_of(this->first), ::tpy::repr_of(this->second));
     }
 };
 

@@ -32,6 +32,7 @@ struct Value {
 
     // def duplicate(self) -> Own[Value]:
     Value duplicate() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Value";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Value& obj) {

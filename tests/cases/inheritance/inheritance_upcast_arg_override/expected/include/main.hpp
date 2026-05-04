@@ -29,6 +29,7 @@ struct Animal {
 
     // def speak(self) -> str:
     std::string speak() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Animal";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
@@ -47,6 +48,7 @@ struct Dog : Animal {
 
     // def speak(self) -> str:
     std::string speak() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {

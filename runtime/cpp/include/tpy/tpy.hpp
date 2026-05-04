@@ -109,6 +109,33 @@
 // Output-sink dispatch for print(file=...) (depends on system, file)
 #include "as_ostream.hpp"
 
+// repr_of: user-facing repr dispatch helper. Defined here, after every
+// header that contributes a tpy::__repr__ overload, so unqualified
+// `__repr__(x)` inside its body sees the full overload set. Goes through
+// here (not direct `::tpy::__repr__`) so ADL into the argument's
+// namespace can find per-record overrides; qualified callers from inside
+// runtime templates would freeze the candidate set at template-definition
+// time and miss them.
+namespace tpy {
+template<typename T>
+inline auto repr_of(const T& x) {
+    using ::tpy::__repr__;
+    return __repr__(x);
+}
+
+// Pointer-repr Optional[Record] (`A | None` lowers to nullable `A*`):
+// emit "None" for null, otherwise repr the pointee. Restricted to class
+// pointers so raw `int*`/`char*` don't get caught (the latter has its
+// own __repr__ for string literals).
+template<typename T>
+    requires std::is_class_v<T>
+inline std::string repr_of(T* p) {
+    if (!p) return "None";
+    using ::tpy::__repr__;
+    return std::string(__repr__(*p));
+}
+} // namespace tpy
+
 // Expose types in global namespace for TurboPython generated code
 using ::tpy::UninitArrayStorage;
 using ::tpy::UninitHeapStorage;

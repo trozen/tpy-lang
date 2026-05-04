@@ -22,6 +22,7 @@ struct Maker {
 
     // def make(self, n: Int32) -> Own[list[Int32]]:
     std::vector<int32_t> make(int32_t n) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Maker";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Maker& obj) {

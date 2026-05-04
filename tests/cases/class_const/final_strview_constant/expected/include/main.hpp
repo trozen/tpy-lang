@@ -20,6 +20,7 @@ struct HttpClient {
     // SCHEME: Final[str] = "https"
     static constexpr std::string_view SCHEME = "https";
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.HttpClient";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HttpClient& obj) {

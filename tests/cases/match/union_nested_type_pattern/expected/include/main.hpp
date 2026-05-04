@@ -26,6 +26,7 @@ struct Box {
     // def __init__(self, value: Own[T]) -> None:
     Box() = default;
     explicit Box(T&& value) : value(std::move(value)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 template<typename T>
@@ -46,6 +47,7 @@ struct Pair {
     // def __init__(self, first: Own[T], second: str) -> None:
     Pair() = default;
     explicit Pair(T&& first, std::string_view second) : first(std::move(first)), second(second) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
 template<typename T>

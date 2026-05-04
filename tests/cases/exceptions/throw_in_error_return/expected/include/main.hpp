@@ -19,6 +19,7 @@ void main();
 struct NotFound : ::tpy::Exception {
 
     using ::tpy::Exception::Exception;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.NotFound";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NotFound& obj) {
@@ -34,6 +35,7 @@ struct BadKey : ::tpy::Exception {
     // def __init__(self, key: str) -> None:
     BadKey() = default;
     explicit BadKey(std::string_view key) : key(key) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.BadKey";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BadKey& obj) {

@@ -23,6 +23,7 @@ struct Dog {
     // def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
@@ -38,6 +39,7 @@ struct Cat {
     // def __init__(self, lives: int) -> None:
     Cat() = default;
     explicit Cat(const ::tpy::BigInt& lives) : lives(lives) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
@@ -70,6 +72,7 @@ struct Vet {
         // return "Treated cat with " + str(animal.lives) + " lives"
         return (::tpy::str_concat((::tpy::str_concat("Treated cat with ", (animal.lives).to_string())), " lives"));
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Vet";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vet& obj) {

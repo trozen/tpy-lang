@@ -38,6 +38,7 @@ struct Box {
         // return self.val
         return this->val;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 template<typename T>
@@ -57,6 +58,7 @@ struct Pair {
     // def __init__(self, a: T, b: U) -> None:
     Pair() = default;
     explicit Pair(const T& a, const U& b) : a(a), b(b) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
 template<typename T, typename U>
@@ -87,6 +89,7 @@ struct Container {
         // return self.val
         return this->val;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>
@@ -111,6 +114,7 @@ struct Mapper {
         // return v
         return v;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Mapper";
 };
 
 template<typename T>

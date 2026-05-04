@@ -44,6 +44,7 @@ struct Tag {
 
     // def __str__(self) -> str:
     std::string __str__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tag";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
@@ -60,6 +61,7 @@ struct __tpy_builder_argparse_args_1 {
     // args = parser.parse_args(["core:strict", "--out", "release"])
     __tpy_builder_argparse_args_1() = default;
     explicit __tpy_builder_argparse_args_1(Tag&& input, std::optional<Tag>&& out, Tag&& label) : input(std::move(input)), out(std::move(out)), label(std::move(label)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_1& obj) {

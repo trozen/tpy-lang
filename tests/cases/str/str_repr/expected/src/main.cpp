@@ -13,7 +13,7 @@ void main() {
     std::cout << std::string(::tpy::__str__(p)) << "\n";
     // # repr() dispatches to __repr__
     // print(repr(p))
-    std::cout << ::tpy::__repr__(p) << "\n";
+    std::cout << ::tpy::repr_of(p) << "\n";
     // # print() uses operator<< which delegates to __str__
     // print(p)
     std::cout << p << "\n";
@@ -22,7 +22,7 @@ void main() {
     std::cout << std::format("point = {}", ::tpy::__str__(p)) << "\n";
     // # !r uses __repr__
     // print(f"debug: {p!r}")
-    std::cout << std::format("debug: {}", ::tpy::__repr__(p)) << "\n";
+    std::cout << std::format("debug: {}", ::tpy::repr_of(p)) << "\n";
     // # !s uses __str__
     // print(f"display: {p!s}")
     std::cout << std::format("display: {}", ::tpy::__str__(p)) << "\n";

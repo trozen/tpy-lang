@@ -27,6 +27,7 @@ struct Config {
 
     // def get_retries(self) -> Int32 | None:
     std::optional<int32_t> get_retries() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {

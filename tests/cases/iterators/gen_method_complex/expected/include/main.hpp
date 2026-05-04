@@ -33,6 +33,7 @@ struct Range {
     __gen_Range___iter__ __iter__() const;
 
     __gen_Range_pairs pairs() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Range";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Range& obj) {

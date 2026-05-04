@@ -26,7 +26,7 @@ struct Container {
     // def __repr__(self) -> str:
     std::string __repr__() const {
         // return f"Container(value={self.value!r})"
-        return std::format("Container(value={})", ::tpy::__repr__(this->value));
+        return std::format("Container(value={})", ::tpy::repr_of(this->value));
     }
 
     // @staticmethod

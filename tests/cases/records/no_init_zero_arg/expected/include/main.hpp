@@ -20,6 +20,7 @@ struct Foo {
     // y: Int32
     int32_t y;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Foo";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {

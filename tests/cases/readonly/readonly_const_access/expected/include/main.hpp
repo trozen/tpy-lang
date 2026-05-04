@@ -29,6 +29,7 @@ struct Container {
     // @readonly
     // def count(self) -> Int32:
     int32_t count() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {

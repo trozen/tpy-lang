@@ -25,6 +25,7 @@ struct __tpy_builder_argparse_args_1 {
     // args = parser.parse_args(["--verbose", "-c", "-c", "-c"])
     __tpy_builder_argparse_args_1() = default;
     explicit __tpy_builder_argparse_args_1(bool verbose, bool no_cache, const ::tpy::BigInt& c) : verbose(verbose), no_cache(no_cache), c(c) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_1& obj) {

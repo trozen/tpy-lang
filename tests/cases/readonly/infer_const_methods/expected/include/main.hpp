@@ -80,6 +80,7 @@ struct Counter {
 
     // def is_zero(self) -> bool:          # only reads -- inferred const
     bool is_zero() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -103,6 +104,7 @@ struct Box {
 
     // def size(self) -> Int32:           # only reads -- inferred const
     int32_t size() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
@@ -129,6 +131,7 @@ struct SortableBox {
 
     // def get_first(self) -> Int32:                  # only reads -- inferred const
     int32_t get_first() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.SortableBox";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SortableBox& obj) {
@@ -150,6 +153,7 @@ struct Inner {
 
     // def get(self) -> Int32:
     int32_t get() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
@@ -175,6 +179,7 @@ struct Outer {
 
     // def mutate_extra(self) -> None:                # field.method() mutating -- must NOT be const
     void mutate_extra();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
@@ -194,6 +199,7 @@ struct WithOpt {
 
     // def get_child_value(self) -> Int32:            # Optional field + readonly -- inferred const
     int32_t get_child_value() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.WithOpt";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WithOpt& obj) {
@@ -212,6 +218,7 @@ struct Valued : DynValued {
 
     // def value(self) -> Int32:           # must NOT be const (pure virtual override)
     int32_t value() override;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Valued";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Valued& obj) {

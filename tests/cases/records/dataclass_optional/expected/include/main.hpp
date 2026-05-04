@@ -44,7 +44,7 @@ inline bool Node::__eq__(const Node& other) const {
 }
 
 inline std::string Node::__repr__() const {
-    return std::format("Node(value={}, label={})", ::tpy::__repr__(this->value), ::tpy::__repr__(this->label));
+    return std::format("Node(value={}, label={})", ::tpy::repr_of(this->value), ::tpy::repr_of(this->label));
 }
 void __tpy_init();
 } // namespace tpyapp::main

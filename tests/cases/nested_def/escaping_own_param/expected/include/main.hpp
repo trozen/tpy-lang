@@ -22,6 +22,7 @@ struct Config {
     // def __init__(self, v: Int32) -> None:
     Config() = default;
     explicit Config(int32_t v) : value(v) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {

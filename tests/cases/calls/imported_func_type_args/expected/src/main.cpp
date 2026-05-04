@@ -13,7 +13,7 @@ void main() {
     // b: str = make_default()
     std::string b = std::string{};
     // print(repr(b))
-    std::cout << ::tpy::__repr__(b) << "\n";
+    std::cout << ::tpy::repr_of(b) << "\n";
 }
 
 void __tpy_init() {

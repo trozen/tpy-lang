@@ -29,6 +29,7 @@ struct Animal {
     // @overload
     // def greet(self, x: str) -> str:  # tpyc: ok
     std::string greet(std::string_view x);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Animal";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {

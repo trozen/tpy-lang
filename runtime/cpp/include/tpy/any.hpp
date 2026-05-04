@@ -85,6 +85,16 @@ concept any_str_capable = requires(const T& t) {
     { ::tpy::__str__(t) } -> std::convertible_to<std::string>;
 };
 
+// The concept stays on `::tpy::__repr__` rather than `::tpy::repr_of`
+// because repr_of is a single template that always SFINAE-passes here
+// (then hard-errors inside), so it can't act as a capability check.
+// `::tpy::__repr__(t)` resolves against the explicit overload set: if no
+// matching __repr__ exists for T (e.g. raw containers like
+// std::vector<T>, ordered_set<T> -- they print via *Printer wrappers,
+// not free __repr__), the requires-clause cleanly fails and the slot
+// falls back to __str__/typeid. The actual call site uses repr_of so
+// ADL into a user record's namespace still picks up per-record default
+// overrides.
 template <typename T>
 concept any_repr_capable = requires(const T& t) {
     { ::tpy::__repr__(t) } -> std::convertible_to<std::string>;
@@ -131,7 +141,7 @@ template <typename T, bool prefer_repr, typename Sink>
 inline void _write_str_or_repr(Sink& sink, const std::any& a) {
     if constexpr (prefer_repr) {
         if constexpr (any_repr_capable<T>) {
-            _emit_to(sink, ::tpy::__repr__(std::any_cast<const T&>(a)));
+            _emit_to(sink, ::tpy::repr_of(std::any_cast<const T&>(a)));
             return;
         } else if constexpr (any_str_capable<T>) {
             _emit_to(sink, ::tpy::__str__(std::any_cast<const T&>(a)));
@@ -142,7 +152,7 @@ inline void _write_str_or_repr(Sink& sink, const std::any& a) {
             _emit_to(sink, ::tpy::__str__(std::any_cast<const T&>(a)));
             return;
         } else if constexpr (any_repr_capable<T>) {
-            _emit_to(sink, ::tpy::__repr__(std::any_cast<const T&>(a)));
+            _emit_to(sink, ::tpy::repr_of(std::any_cast<const T&>(a)));
             return;
         }
     }

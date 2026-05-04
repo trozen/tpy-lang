@@ -122,7 +122,7 @@ inline bool Point::__eq__(const Point& other) const {
 }
 
 inline std::string Point::__repr__() const {
-    return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+    return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
 
 inline bool Person::__eq__(const Person& other) const {
@@ -130,7 +130,7 @@ inline bool Person::__eq__(const Person& other) const {
 }
 
 inline std::string Person::__repr__() const {
-    return std::format("Person(name={}, age={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age));
+    return std::format("Person(name={}, age={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->age));
 }
 
 inline bool NamedPoint::__eq__(const NamedPoint& other) const {
@@ -138,7 +138,7 @@ inline bool NamedPoint::__eq__(const NamedPoint& other) const {
 }
 
 inline std::string NamedPoint::__repr__() const {
-    return std::format("NamedPoint(name={}, pos={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->pos));
+    return std::format("NamedPoint(name={}, pos={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->pos));
 }
 
 inline bool Group::__eq__(const Group& other) const {
@@ -146,7 +146,7 @@ inline bool Group::__eq__(const Group& other) const {
 }
 
 inline std::string Group::__repr__() const {
-    return std::format("Group(label={}, members={})", ::tpy::__repr__(this->label), ::tpy::list_to_str(this->members));
+    return std::format("Group(label={}, members={})", ::tpy::repr_of(this->label), ::tpy::list_to_str(this->members));
 }
 void __tpy_init();
 } // namespace tpyapp::main

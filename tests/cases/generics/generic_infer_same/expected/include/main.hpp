@@ -23,6 +23,7 @@ struct Same {
     // def __init__(self, a: T, b: T) -> None:
     Same() = default;
     explicit Same(const T& a, const T& b) : a(a), b(b) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Same";
 };
 
 template<typename T>

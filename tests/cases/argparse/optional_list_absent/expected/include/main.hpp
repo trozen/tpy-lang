@@ -30,6 +30,7 @@ struct __tpy_builder_argparse_args_1 {
     // a1 = p1.parse_args([])
     __tpy_builder_argparse_args_1() = default;
     explicit __tpy_builder_argparse_args_1(std::optional<std::vector<std::string>>&& tag, std::optional<std::vector<::tpy::BigInt>>&& num) : tag(std::move(tag)), num(std::move(num)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_1& obj) {
@@ -44,6 +45,7 @@ struct __tpy_builder_argparse_args_2 {
     // a2 = p2.parse_args(["--tag", "x", "--tag", "y"])
     __tpy_builder_argparse_args_2() = default;
     explicit __tpy_builder_argparse_args_2(std::optional<std::vector<std::string>>&& tag) : tag(std::move(tag)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_2";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_2& obj) {
@@ -58,6 +60,7 @@ struct __tpy_builder_argparse_args_3 {
     // a3 = p3.parse_args([])
     __tpy_builder_argparse_args_3() = default;
     explicit __tpy_builder_argparse_args_3(std::optional<std::vector<::tpy::BigInt>>&& coord) : coord(std::move(coord)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_3";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_3& obj) {

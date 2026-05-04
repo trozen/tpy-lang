@@ -13,7 +13,7 @@ void main() {
     // print(p.x, p.y)
     std::cout << p.x << " " << p.y << "\n";
     // print(repr(p))
-    std::cout << ::tpy::__repr__(p) << "\n";
+    std::cout << ::tpy::repr_of(p) << "\n";
     // p2 = Point(x=10, y=20)
     Point p2 = Point(10, 20);
     // print(p2)

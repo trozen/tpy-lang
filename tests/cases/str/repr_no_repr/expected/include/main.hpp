@@ -23,6 +23,7 @@ struct Foo {
     // def __init__(self, x: int) -> None:
     Foo() = default;
     explicit Foo(const ::tpy::BigInt& x) : x(x) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Foo";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {

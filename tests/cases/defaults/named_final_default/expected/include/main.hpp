@@ -22,6 +22,7 @@ struct Engine {
 
     // def run(self, flags: UInt32 = NOFLAG, limit: Int32 = DEFAULT_LIMIT) -> Int32:
     int32_t run(uint32_t flags = NOFLAG, int32_t limit = DEFAULT_LIMIT) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Engine";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Engine& obj) {

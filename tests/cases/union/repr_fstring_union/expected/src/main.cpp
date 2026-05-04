@@ -32,17 +32,17 @@ void main() {
     std::variant<int32_t, Point, std::string> __slot_1 = make_3u();
     std::variant<int32_t*, Point*, std::string*> c = ::tpy::to_ptr_variant(__slot_1);
     // print(repr(a))
-    std::cout << ::tpy::__repr__(a) << "\n";
+    std::cout << ::tpy::repr_of(a) << "\n";
     // print(repr(b))
-    std::cout << ::tpy::__repr__(b) << "\n";
+    std::cout << ::tpy::repr_of(b) << "\n";
     // print(repr(c))
-    std::cout << ::tpy::__repr__(c) << "\n";
+    std::cout << ::tpy::repr_of(c) << "\n";
     // print(f"{a} and {b}")
     std::cout << std::format("{} and {}", ::tpy::__str__(a), ::tpy::__str__(b)) << "\n";
     // print(f"{b!s}")
     std::cout << std::format("{}", ::tpy::__str__(b)) << "\n";
     // print(f"{b!r}")
-    std::cout << std::format("{}", ::tpy::__repr__(b)) << "\n";
+    std::cout << std::format("{}", ::tpy::repr_of(b)) << "\n";
     // # Pointer-variant union (`c` holds a Point*): exercises the runtime
     // # variant overload's pointer-deref branch through the f-string path.
     // print(f"{c}")
@@ -50,13 +50,13 @@ void main() {
     // print(f"{c!s}")
     std::cout << std::format("{}", ::tpy::__str__(c)) << "\n";
     // print(f"{c!r}")
-    std::cout << std::format("{}", ::tpy::__repr__(c)) << "\n";
+    std::cout << std::format("{}", ::tpy::repr_of(c)) << "\n";
     // # Formattable type reaches __repr__ via runtime fallback; previously
     // # rejected at sema, now accepted.
     // n: Int32 = 99
     int32_t n = 99;
     // print(f"{n!r}")
-    std::cout << std::format("{}", ::tpy::__repr__(n)) << "\n";
+    std::cout << std::format("{}", ::tpy::repr_of(n)) << "\n";
 }
 
 void __tpy_init() {

@@ -45,6 +45,7 @@ struct SimpleBuffer {
     // @auto_readonly
     // def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
     ::tpy::SpanIter<const int32_t> __iter__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.SimpleBuffer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SimpleBuffer& obj) {

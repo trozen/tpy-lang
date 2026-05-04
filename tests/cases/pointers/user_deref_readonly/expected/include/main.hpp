@@ -33,6 +33,7 @@ struct Point {
 
     // def set_x(self, v: Int32) -> None:
     void set_x(int32_t v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -60,6 +61,7 @@ struct Ref {
     auto operator*() -> decltype(__deref__()) {
         return __deref__();
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Ref";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ref& obj) {

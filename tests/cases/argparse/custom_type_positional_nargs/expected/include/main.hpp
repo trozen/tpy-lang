@@ -46,6 +46,7 @@ struct __tpy_builder_argparse_args_1 {
     // args = parser.parse_args(["src/main.py", "src/util.py", "tests/main.py"])
     __tpy_builder_argparse_args_1() = default;
     explicit __tpy_builder_argparse_args_1(std::vector<Tag>&& paths) : paths(std::move(paths)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_1& obj) {

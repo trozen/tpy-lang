@@ -18,6 +18,7 @@ struct Foo {
 
     // def __init__(self) -> None:
     Foo() : tag("from_sub") {}
+    static constexpr std::string_view __tpy_class_name__ = "pkg.sub.Foo";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {

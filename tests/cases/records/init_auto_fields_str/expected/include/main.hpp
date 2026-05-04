@@ -24,6 +24,7 @@ struct Person {
     // def __init__(self, name: str, city: str):
     Person() = default;
     explicit Person(std::string_view name, std::string_view city) : name(name), city(city) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Person";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Person& obj) {

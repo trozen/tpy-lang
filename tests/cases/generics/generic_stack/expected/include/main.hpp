@@ -39,6 +39,7 @@ struct Stack {
         // return len(self.items) == 0
         return (::tpy::__len__(this->items) == 0);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Stack";
 };
 
 template<typename T>

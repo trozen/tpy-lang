@@ -26,6 +26,7 @@ struct Holder {
 
     // def __init__(self, value: Own[V]) -> None:
     explicit Holder(::tpyapp::pkg_v::V&& value) : value(std::move(value)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {

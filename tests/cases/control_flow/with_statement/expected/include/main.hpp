@@ -45,6 +45,7 @@ struct Logger {
 
     // def log(self, msg: str) -> None:
     void log(std::string_view msg) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Logger";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Logger& obj) {
@@ -65,6 +66,7 @@ struct Connection {
 
     // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
     void __exit__();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Connection";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Connection& obj) {

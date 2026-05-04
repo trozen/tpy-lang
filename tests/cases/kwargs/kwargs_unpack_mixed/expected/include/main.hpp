@@ -21,6 +21,7 @@ struct Options {
     // debug: bool
     bool debug;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Options";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Options& obj) {

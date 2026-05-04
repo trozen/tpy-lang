@@ -28,6 +28,7 @@ struct Container {
         // return self.value
         return this->value;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>
@@ -47,6 +48,7 @@ struct IntContainer : Container<int32_t> {
         // self.value = value
         this->value = value;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.IntContainer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntContainer& obj) {

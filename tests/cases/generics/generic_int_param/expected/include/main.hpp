@@ -22,6 +22,7 @@ struct Container {
     // def __init__(self, v: T) -> None:
     Container() = default;
     explicit Container(const T& v) : value(v) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T, std::size_t N>

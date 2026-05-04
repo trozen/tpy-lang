@@ -23,6 +23,7 @@ struct Cat {
     // def __init__(self, name: str) -> None:
     Cat() = default;
     explicit Cat(std::string_view name) : name(name) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {

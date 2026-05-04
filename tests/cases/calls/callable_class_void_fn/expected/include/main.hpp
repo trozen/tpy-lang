@@ -28,6 +28,7 @@ struct Doubler {
     int32_t operator()(int32_t x) const {
         return __call__(x);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Doubler";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Doubler& obj) {

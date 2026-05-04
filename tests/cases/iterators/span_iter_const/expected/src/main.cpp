@@ -27,7 +27,7 @@ void main() {
     }
     // # Const iteration via __repr__
     // print(repr(s))
-    std::cout << ::tpy::__repr__(s) << "\n";
+    std::cout << ::tpy::repr_of(s) << "\n";
     // # Const iteration via readonly method
     // print(s.sum())
     std::cout << s.sum() << "\n";

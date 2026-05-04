@@ -18,6 +18,7 @@ void main();
 // class NoInitMixin:
 struct NoInitMixin {
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.NoInitMixin";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NoInitMixin& obj) {
@@ -33,6 +34,7 @@ struct HasInit {
     // def __init__(self, x: Int32) -> None:
     HasInit() = default;
     explicit HasInit(int32_t x) : x(x) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.HasInit";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HasInit& obj) {
@@ -46,6 +48,7 @@ struct C : NoInitMixin, HasInit {
     // def __init__(self, x: Int32) -> None:
     C() = default;
     explicit C(int32_t x) : HasInit(x) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {

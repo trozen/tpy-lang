@@ -22,6 +22,7 @@ struct Options {
     // port: Int32
     int32_t port;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Options";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Options& obj) {

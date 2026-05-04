@@ -25,6 +25,7 @@ struct Result {
     // def __init__(self, value: Int32) -> None:
     Result() = default;
     explicit Result(int32_t value) : value(value) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Result";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Result& obj) {
@@ -44,6 +45,7 @@ struct Message {
 
     // def to_result(self) -> Own[Result]:
     Result to_result() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Message";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
@@ -83,6 +85,7 @@ struct Wrapper {
         // return self.value.to_result()
         return this->value.to_result();
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 template<typename T>
@@ -98,6 +101,7 @@ struct DefaultWrapperMaker {
 
     // def make(self, text: str) -> Own[Wrapper[Message]]:
     Wrapper<Message> make(std::string_view text) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.DefaultWrapperMaker";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DefaultWrapperMaker& obj) {
@@ -121,6 +125,7 @@ struct Container {
         // return self.factory.make(text)
         return this->factory.make(text);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>

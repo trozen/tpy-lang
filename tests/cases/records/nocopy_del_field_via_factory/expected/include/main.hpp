@@ -48,6 +48,7 @@ struct Resource {
     // @staticmethod
     // def make(seed: Int32) -> Own[Resource]:
     static Resource make(int32_t seed);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Resource";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
@@ -69,6 +70,7 @@ struct Holder {
     Holder& operator=(const Holder&) = delete;
     Holder(Holder&&) = default;
     Holder& operator=(Holder&&) = default;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {

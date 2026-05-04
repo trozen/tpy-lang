@@ -51,7 +51,7 @@ inline bool Leaf::__eq__(const Leaf& other) const {
 }
 
 inline std::string Leaf::__repr__() const {
-    return std::format("Leaf(value={})", ::tpy::__repr__(this->value));
+    return std::format("Leaf(value={})", ::tpy::repr_of(this->value));
 }
 struct IntTree {
     using variant_type = std::variant<::tpy::BigInt, std::vector<IntTree>>;

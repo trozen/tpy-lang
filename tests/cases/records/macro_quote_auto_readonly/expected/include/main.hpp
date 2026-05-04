@@ -31,6 +31,7 @@ struct Holder {
     // # Regression: macro-emitted @auto_readonly methods flow through sema expansion.
     // from tpy import Int32, readonly
     int32_t first() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {

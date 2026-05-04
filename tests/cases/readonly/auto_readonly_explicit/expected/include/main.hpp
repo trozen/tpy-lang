@@ -29,6 +29,7 @@ struct Buffer {
     // @auto_readonly
     // def as_span(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> as_span() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Buffer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {

@@ -55,6 +55,7 @@ struct Widget {
 
     // def compare_to(self) -> Int32:
     int32_t compare_to() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Widget";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {

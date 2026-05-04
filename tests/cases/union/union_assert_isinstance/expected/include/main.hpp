@@ -23,6 +23,7 @@ struct Circle {
     // def __init__(self, r: Int32) -> None:
     Circle() = default;
     explicit Circle(int32_t r) : radius(r) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Circle";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
@@ -38,6 +39,7 @@ struct Rect {
     // def __init__(self, w: Int32) -> None:
     Rect() = default;
     explicit Rect(int32_t w) : width(w) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Rect";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {

@@ -67,6 +67,7 @@ struct Printer {
         // return item.to_str()
         return item.to_str();
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Printer";
 };
 
 template<typename T>
@@ -96,6 +97,7 @@ struct MyValue {
         if (len < 0) ::tpy::tpy_panic("__len__ returned negative value");
         return static_cast<size_t>(len);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MyValue";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyValue& obj) {
@@ -117,6 +119,7 @@ struct Point {
 
     // def to_str(self) -> str:
     std::string to_str() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -141,6 +144,7 @@ struct Widget {
 
     // def get_value(self) -> Int32:
     int32_t get_value() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Widget";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
@@ -160,6 +164,7 @@ struct Box {
 
     // def clone(self) -> Own[Box]:
     Box clone() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {

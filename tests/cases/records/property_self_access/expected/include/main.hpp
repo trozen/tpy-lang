@@ -45,6 +45,7 @@ struct Rect {
 
     // def scale(self, factor: Int32) -> None:
     void scale(int32_t factor);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Rect";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {

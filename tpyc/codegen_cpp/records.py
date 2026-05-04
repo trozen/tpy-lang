@@ -490,11 +490,30 @@ class RecordGenerator:
         # Generate unary operators from dunder methods
         self._gen_unary_operators(out, record)
 
+        # Tag consumed by the default-repr runtime template in dunder.hpp.
+        # Records that already have __repr__ skip the tag; the runtime
+        # template's `requires t.__repr__()` branch handles them. The
+        # stored name is module-qualified (e.g. `__main__.Animal`,
+        # `mypkg.mymod.Outer.Inner`) so the rendered repr matches
+        # CPython's `<module.qualname object at 0x...>` form. Module is
+        # taken from the analyzer's `module_name` (which is `"__main__"`
+        # for the entry point, matching `__name__`) rather than codegen's
+        # which uses the file basename.
+        record_info = self.ctx.analyzer.registry.get_record(record.name)
+        has_str_repr = self._record_has_str_repr(record_info)
+        if not has_str_repr[1]:
+            python_module = self.ctx.analyzer.ctx.module_name
+            qualified_name = f"{python_module}.{record.name}"
+            out.write(
+                f'{INDENT}static constexpr std::string_view '
+                f'__tpy_class_name__ = "{qualified_name}";\n'
+            )
+
         out.write("};\n")
         # operator<< and nested ostream operators must be at namespace scope,
         # so skip for nested records (they are emitted by the top-level parent)
         if "." not in record.name:
-            self._gen_record_ostream(out, record)
+            self._gen_record_ostream(out, record, has_str_repr=has_str_repr)
             self._gen_nested_ostream_operators(out, record)
 
     def _gen_nested_ostream_operators(self, out: TextIO, record: TpyRecord) -> None:
@@ -637,31 +656,49 @@ class RecordGenerator:
             out.write(f"{INDENT}{INDENT}{member_name} = {value},\n")
         out.write(f"{INDENT}}};\n\n")
 
-    def _gen_record_ostream(self, out: TextIO, record: TpyRecord) -> None:
-        """Generate operator<< overload for printing a record."""
+    def _record_has_str_repr(self, record_info: RecordInfo | None) -> tuple[bool, bool]:
+        """Return (has_str, has_repr) for a record, walking non-native ancestors.
+
+        Operator<< prefers __str__ then __repr__; if neither is found in the
+        chain we fall back to the field-by-field default. Native ancestors
+        are skipped: BaseException.__str__ would otherwise override the
+        default for user Exception subclasses.
+        """
+        if record_info is None:
+            return False, False
+        has_str = bool(record_info.get_method_overloads("__str__"))
+        has_repr = bool(record_info.get_method_overloads("__repr__"))
+        if has_str and has_repr:
+            return True, True
+        for anc in self.ctx.analyzer.registry.iter_ancestor_records(record_info):
+            if anc.is_native:
+                continue
+            if not has_str and anc.get_method_overloads("__str__"):
+                has_str = True
+            if not has_repr and anc.get_method_overloads("__repr__"):
+                has_repr = True
+            if has_str and has_repr:
+                break
+        return has_str, has_repr
+
+    def _gen_record_ostream(
+        self, out: TextIO, record: TpyRecord,
+        has_str_repr: tuple[bool, bool] | None = None,
+    ) -> None:
+        """Generate operator<< overload for printing a record. ``has_str_repr``
+        may be passed by callers that already computed the (has_str, has_repr)
+        pair to avoid a second ancestor walk."""
         # Use :: for nested types (e.g., Outer::Inner)
         name = escape_cpp_name(record.name.replace(".", "::"))
 
-        # Delegate to direct or inherited __str__ / __repr__ if defined.
-        # Native ancestors are skipped: BaseException.__str__ would otherwise
-        # override the field-by-field default for user Exception subclasses.
-        record_info = self.ctx.analyzer.registry.get_record(record.name)
-        has_str = False
-        has_repr = False
-        if record_info:
-            has_str = bool(record_info.get_method_overloads("__str__"))
-            if not has_str:
-                has_repr = bool(record_info.get_method_overloads("__repr__"))
-            if not has_str and not has_repr:
-                for anc in self.ctx.analyzer.registry.iter_ancestor_records(record_info):
-                    if anc.is_native:
-                        continue
-                    if anc.get_method_overloads("__str__"):
-                        has_str = True
-                        break
-                    if anc.get_method_overloads("__repr__"):
-                        has_repr = True
-                        break
+        if has_str_repr is None:
+            record_info = self.ctx.analyzer.registry.get_record(record.name)
+            has_str_repr = self._record_has_str_repr(record_info)
+        has_str, _ = has_str_repr
+        # operator<< follows Python's print(rec) semantics: __str__ first,
+        # then __repr__ as fallback. When __str__ is available, ignore the
+        # __repr__ bit so the body emits the str form.
+        has_repr = False if has_str else has_str_repr[1]
         # For template structs, generate a template operator<<
         if record.type_params:
             # Build params respecting INT type params

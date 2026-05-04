@@ -24,6 +24,7 @@ struct Obj {
     // def __init__(self, val: int) -> None:
     Obj() = default;
     explicit Obj(const ::tpy::BigInt& val) : val(val) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Obj";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Obj& obj) {
@@ -45,6 +46,7 @@ struct Pair {
         this->x = ::tpy::BigInt(__ma_0);
         this->y = ::tpy::BigInt(__ma_0);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
@@ -67,6 +69,7 @@ struct Clamped {
     // @val.setter
     // def val(self, v: int) -> None:
     void set_val(const ::tpy::BigInt& v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Clamped";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Clamped& obj) {

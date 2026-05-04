@@ -20,6 +20,7 @@ struct Handle {
     // value: Int32
     int32_t value;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Handle";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {

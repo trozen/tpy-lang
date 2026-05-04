@@ -31,6 +31,7 @@ struct Counter {
 
     // def maybe_increment(self, flag: Int32) -> None:
     void maybe_increment(int32_t flag);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {

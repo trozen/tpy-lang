@@ -26,6 +26,7 @@ struct Stack {
 
     // def consume(self: auto_own[Self]) -> auto_own[Int32]:
     int32_t consume() const &&;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Stack";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {

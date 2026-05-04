@@ -29,6 +29,7 @@ struct Resource {
     Resource& operator=(const Resource&) = delete;
     Resource(Resource&&) = default;
     Resource& operator=(Resource&&) = default;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Resource";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {

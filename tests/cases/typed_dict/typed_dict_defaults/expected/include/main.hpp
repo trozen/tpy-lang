@@ -22,6 +22,7 @@ struct Config {
     // debug: bool = False  # tpyc: warning(/default value.*ignored/)
     bool debug = false;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {

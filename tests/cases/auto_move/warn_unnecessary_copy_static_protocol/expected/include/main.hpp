@@ -31,6 +31,7 @@ struct Point {
     // y: Int32
     int32_t y;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -44,6 +45,7 @@ struct MyHolder {
 
     // def store(self, p: Own[Point]) -> None:
     void store(Point&& p) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MyHolder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyHolder& obj) {
@@ -58,6 +60,7 @@ struct Factory {
     // @staticmethod
     // def consume(p: Own[Point]) -> Int32:
     static int32_t consume(Point&& p);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Factory";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {

@@ -30,6 +30,7 @@ struct Counter {
         if (len < 0) ::tpy::tpy_panic("__len__ returned negative value");
         return static_cast<size_t>(len);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {

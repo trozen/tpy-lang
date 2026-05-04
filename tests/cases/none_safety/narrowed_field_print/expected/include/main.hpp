@@ -29,6 +29,7 @@ struct Config {
     // def __init__(self, port: Optional[Int32], name: Optional[str],
     Config() = default;
     explicit Config(std::optional<int32_t> port, std::optional<std::string_view> name, std::optional<bool> flag, std::optional<double> ratio) : port(port), name(name ? std::make_optional(std::string(*name)) : std::nullopt), flag(flag), ratio(ratio) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {

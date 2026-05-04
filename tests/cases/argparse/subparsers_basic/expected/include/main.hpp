@@ -27,6 +27,7 @@ struct __tpy_builder_argparse_show_args_1 {
     // args = parser.parse_args(["set", "--key", "color", "--value", "blue"])
     __tpy_builder_argparse_show_args_1() = default;
     explicit __tpy_builder_argparse_show_args_1(std::optional<std::string_view> key) : key(key ? std::make_optional(std::string(*key)) : std::nullopt) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_show_args_1";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_show_args_1& obj) {
@@ -42,6 +43,7 @@ struct __tpy_builder_argparse_set_args_1 {
     // args = parser.parse_args(["set", "--key", "color", "--value", "blue"])
     __tpy_builder_argparse_set_args_1() = default;
     explicit __tpy_builder_argparse_set_args_1(std::optional<std::string_view> key, std::optional<std::string_view> value) : key(key ? std::make_optional(std::string(*key)) : std::nullopt), value(value ? std::make_optional(std::string(*value)) : std::nullopt) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_set_args_1";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_set_args_1& obj) {
@@ -58,6 +60,7 @@ struct __tpy_builder_argparse_args_1 {
     // args = parser.parse_args(["set", "--key", "color", "--value", "blue"])
     __tpy_builder_argparse_args_1() = default;
     explicit __tpy_builder_argparse_args_1(std::string_view cmd, std::optional<std::string_view> key, std::optional<std::string_view> value) : cmd(cmd), key(key ? std::make_optional(std::string(*key)) : std::nullopt), value(value ? std::make_optional(std::string(*value)) : std::nullopt) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_1& obj) {

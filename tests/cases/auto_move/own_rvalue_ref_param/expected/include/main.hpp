@@ -24,6 +24,7 @@ struct Box {
     // def __init__(self, value: Int32) -> None:
     Box() = default;
     explicit Box(int32_t value) : value(value) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
@@ -45,6 +46,7 @@ struct Container {
         // self.items.append(item)
         this->items.push_back(std::move(item));
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>

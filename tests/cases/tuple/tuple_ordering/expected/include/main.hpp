@@ -63,6 +63,7 @@ struct Rank {
     friend bool operator>=(const Rank& lhs, const Rank& other) {
         return lhs.__ge__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Rank";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rank& obj) {

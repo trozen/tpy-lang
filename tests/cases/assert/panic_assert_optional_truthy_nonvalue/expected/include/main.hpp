@@ -20,6 +20,7 @@ struct C {
     // def __init__(self, v: Int32):
     C() = default;
     explicit C(int32_t v) : v(v) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {

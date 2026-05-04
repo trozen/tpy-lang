@@ -31,6 +31,7 @@ struct MyNumber {
 
     // def add(self, x: Int32) -> Int32:
     int32_t add(int32_t x) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MyNumber";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyNumber& obj) {
@@ -53,6 +54,7 @@ struct Holder {
         // return self.item
         return this->item;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 template<typename T>

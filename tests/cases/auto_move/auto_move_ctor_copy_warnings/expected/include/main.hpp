@@ -28,6 +28,7 @@ struct Inner {
     // value: Int32
     int32_t value;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
@@ -46,6 +47,7 @@ struct Holder {
 
     // def set_inner(self, inner: Own[Inner]) -> None:
     void set_inner(Inner&& inner);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
@@ -64,6 +66,7 @@ struct NotLastUse {
         // print(inner.value)
         std::cout << inner.value << "\n";
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.NotLastUse";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NotLastUse& obj) {
@@ -86,6 +89,7 @@ struct GenericHolder {
         // self.item = item  # tpyc: ok (generic method, last use -- std::move)
         this->item = std::move(item);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.GenericHolder";
 };
 
 template<typename T>
@@ -106,6 +110,7 @@ struct GenericNotLastUse {
         // print(item)
         std::cout << ::tpy::ValuePrinter(item) << "\n";
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.GenericNotLastUse";
 };
 
 template<typename T>
@@ -125,6 +130,7 @@ struct OptHolder {
 
     // def set_not_last(self, inner: Own[Inner]) -> None:
     void set_not_last(Inner&& inner);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OptHolder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OptHolder& obj) {
@@ -137,6 +143,7 @@ struct Outer {
     // inner: Inner
     Inner inner;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {

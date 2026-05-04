@@ -20,6 +20,7 @@ struct A {
     // X: ClassVar[Int32] = 1
     static inline int32_t X = 1;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
@@ -32,6 +33,7 @@ struct B {
     // X: ClassVar[Int32] = 2
     static inline int32_t X = 2;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
@@ -44,6 +46,7 @@ struct C : A, B {
     // X: ClassVar[Int32] = 3
     static inline int32_t X = 3;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {

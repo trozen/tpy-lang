@@ -30,6 +30,7 @@ struct Base {
         // return other
         return other;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 template<typename T>
@@ -52,6 +53,7 @@ struct Child : Base<T> {
         // return super().transform(other)
         return this->Base<T>::template transform<U>(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 template<typename T>

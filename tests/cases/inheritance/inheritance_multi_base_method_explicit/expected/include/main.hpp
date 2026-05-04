@@ -25,6 +25,7 @@ struct Left {
 
     // def describe(self) -> str:
     std::string describe() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Left";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Left& obj) {
@@ -38,6 +39,7 @@ struct Right {
 
     // def describe(self) -> str:
     std::string describe() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Right";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Right& obj) {
@@ -51,6 +53,7 @@ struct Both : Left, Right {
 
     // def describe(self) -> str:
     std::string describe() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Both";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Both& obj) {

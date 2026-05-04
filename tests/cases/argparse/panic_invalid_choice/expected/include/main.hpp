@@ -23,6 +23,7 @@ struct __tpy_builder_argparse_args_1 {
     // parser.parse_args(["--mode", "bogus"])
     __tpy_builder_argparse_args_1() = default;
     explicit __tpy_builder_argparse_args_1(std::optional<std::string_view> mode) : mode(mode ? std::make_optional(std::string(*mode)) : std::nullopt) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_1& obj) {

@@ -22,6 +22,7 @@ struct time {
     // def __init__(self, v: int):
     time() = default;
     explicit time(const ::tpy::BigInt& v) : value(v) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.time";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const time& obj) {

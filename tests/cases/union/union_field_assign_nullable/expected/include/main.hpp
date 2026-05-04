@@ -25,6 +25,7 @@ struct Dog {
     // def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
@@ -40,6 +41,7 @@ struct Cat {
     // def __init__(self, name: str) -> None:
     Cat() = default;
     explicit Cat(std::string_view name) : name(name) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
@@ -54,6 +56,7 @@ struct Shelter {
 
     // def __init__(self, pet: Dog | Cat | None) -> None:
     explicit Shelter(const std::variant<std::monostate, Cat*, Dog*> pet) : pet(::tpy::to_value_variant<std::variant<std::monostate, Cat, Dog>>(pet)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Shelter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shelter& obj) {

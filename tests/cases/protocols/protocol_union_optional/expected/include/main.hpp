@@ -42,6 +42,7 @@ struct Holder {
             }
         }
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {

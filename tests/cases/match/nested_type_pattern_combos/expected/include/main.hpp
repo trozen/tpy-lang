@@ -29,6 +29,7 @@ struct Box {
     // def __init__(self, value: Own[T]) -> None:
     Box() = default;
     explicit Box(T&& value) : value(std::move(value)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 template<typename T>
@@ -45,6 +46,7 @@ struct Container {
 
     // def __init__(self, value: str | Int32) -> None:
     explicit Container(const std::variant<int32_t, std::string>& value) : value(value) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -60,6 +62,7 @@ struct Outer {
 
     // def __init__(self, item: Box[str] | Box[Int32]) -> None:
     explicit Outer(const std::variant<Box<int32_t>*, Box<std::string>*> item) : item(::tpy::to_value_variant<std::variant<Box<int32_t>, Box<std::string>>>(item)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
@@ -77,6 +80,7 @@ struct Tagged {
 
     // def __init__(self, label: str, inner: str | Int32) -> None:
     explicit Tagged(std::string_view label, const std::variant<int32_t, std::string>& inner) : label(label), inner(inner) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {

@@ -31,6 +31,7 @@ struct Key {
     friend bool operator==(const Key& lhs, const Key& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Key";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Key& obj) {

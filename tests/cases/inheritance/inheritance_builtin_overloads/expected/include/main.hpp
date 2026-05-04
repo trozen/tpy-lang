@@ -24,6 +24,7 @@ struct MyList : std::vector<int32_t> {
     // def __init__(self, name: str) -> None:
     MyList() = default;
     explicit MyList(std::string_view name) : name(name) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MyList";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyList& obj) {

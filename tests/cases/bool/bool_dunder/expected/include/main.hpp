@@ -25,6 +25,7 @@ struct Container {
 
     // def __bool__(self) -> bool:
     bool __bool__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {

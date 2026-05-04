@@ -21,6 +21,7 @@ struct Box {
     Box() {
         // pass
     }
+    static constexpr std::string_view __tpy_class_name__ = "box.Box";
 };
 
 template<typename T>

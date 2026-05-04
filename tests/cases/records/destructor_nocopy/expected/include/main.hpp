@@ -43,6 +43,7 @@ struct Handle {
         // print("close", self.id)
         std::cout << "close" << " " << this->id << "\n";
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Handle";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {

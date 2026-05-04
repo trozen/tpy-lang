@@ -357,7 +357,7 @@ inline bool Point::__eq__(const Point& other) const {
 }
 
 inline std::string Point::__repr__() const {
-    return std::format("Point(x={}, y={})", ::tpy::__repr__(this->x), ::tpy::__repr__(this->y));
+    return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
 
 inline bool Person::__eq__(const Person& other) const {
@@ -365,7 +365,7 @@ inline bool Person::__eq__(const Person& other) const {
 }
 
 inline std::string Person::__repr__() const {
-    return std::format("Person(name={}, age={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->age));
+    return std::format("Person(name={}, age={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->age));
 }
 
 inline bool Line::__eq__(const Line& other) const {
@@ -373,7 +373,7 @@ inline bool Line::__eq__(const Line& other) const {
 }
 
 inline std::string Line::__repr__() const {
-    return std::format("Line(start={}, end={})", ::tpy::__repr__(this->start), ::tpy::__repr__(this->end));
+    return std::format("Line(start={}, end={})", ::tpy::repr_of(this->start), ::tpy::repr_of(this->end));
 }
 
 inline bool NamedPoint::__eq__(const NamedPoint& other) const {
@@ -381,7 +381,7 @@ inline bool NamedPoint::__eq__(const NamedPoint& other) const {
 }
 
 inline std::string NamedPoint::__repr__() const {
-    return std::format("NamedPoint(name={}, pos={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->pos));
+    return std::format("NamedPoint(name={}, pos={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->pos));
 }
 
 inline bool Polygon::__eq__(const Polygon& other) const {
@@ -397,7 +397,7 @@ inline bool Drawing::__eq__(const Drawing& other) const {
 }
 
 inline std::string Drawing::__repr__() const {
-    return std::format("Drawing(title={}, shapes={})", ::tpy::__repr__(this->title), ::tpy::list_to_str(this->shapes));
+    return std::format("Drawing(title={}, shapes={})", ::tpy::repr_of(this->title), ::tpy::list_to_str(this->shapes));
 }
 
 inline bool Wrapper::__eq__(const Wrapper& other) const {
@@ -405,7 +405,7 @@ inline bool Wrapper::__eq__(const Wrapper& other) const {
 }
 
 inline std::string Wrapper::__repr__() const {
-    return std::format("Wrapper(inner={})", ::tpy::__repr__(this->inner));
+    return std::format("Wrapper(inner={})", ::tpy::repr_of(this->inner));
 }
 
 inline bool MaybeNamed::__eq__(const MaybeNamed& other) const {
@@ -413,7 +413,7 @@ inline bool MaybeNamed::__eq__(const MaybeNamed& other) const {
 }
 
 inline std::string MaybeNamed::__repr__() const {
-    return std::format("MaybeNamed(name={}, value={})", ::tpy::__repr__(this->name), ::tpy::__repr__(this->value));
+    return std::format("MaybeNamed(name={}, value={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->value));
 }
 
 inline bool Container::__eq__(const Container& other) const {

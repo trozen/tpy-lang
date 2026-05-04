@@ -31,6 +31,7 @@ struct Base {
     // @auto_readonly
     // def items(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> items() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -55,6 +56,7 @@ struct Child : Base {
     // @auto_readonly
     // def items(self) -> Span[auto_readonly[Int32]]:  # tpyc: warning(/non-polymorphic/)
     std::span<const int32_t> items() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {

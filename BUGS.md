@@ -14,8 +14,6 @@ Each entry's first line is a **[priority size]** tag plus a one-sentence summary
 Size is one of `small` (hours-1d), `medium` (1-3d), `large` (~week), `xlarge` (bigger).
 
 ## Compiler bugs
-- **[HIGH medium]** `__str__` vs `__repr__` not distinguished for user records -- container printing of records uses `__str__` instead of `__repr__`.
-  `__str__` vs `__repr__` separation for user records: C++ `operator<<` serves as both, but Python distinguishes them. `print(x)` should use `__str__`, while container printing (`print([x])`) should use `__repr__`. For str specifically, container printing now correctly emits the repr form (quoted + escaped) via `repr_quote_string`. The remaining gap is user-defined types: `print(record)` and `print([record])` both go through `operator<<` which the user typically writes to match `__str__`, so containers don't get the repr form. Fix: implement proper `__str__`/`__repr__` method-level dispatch and have container printing call `__repr__`.
 - **[LOW large]** Several codegen patterns trip `-Werror`, blocking warnings-as-errors.
   Enable C++ compiler warnings as errors (see `CppCompilerConfig.warn_flags` in compiler.py): blocked on exhaustive match/finally/with not emitting `__builtin_unreachable()` after end labels (`-Werror=return-type`), INT64_MIN/UINT64_MAX emitted as bare literals (`-Werror` large-integer-constant), and native globals emitting `extern T x = val` (`-Werror` extern-initialized). Also need generated code cleanup for `-Wall`/`-Wextra`/`-Wsign-conversion` (unused vars/labels/params, sign-conversion on array indexing).
 - **[MED medium]** Borrow checker doesn't flag `old = d.get(k); del d[k]; use(old)` as a dangling pointer use.

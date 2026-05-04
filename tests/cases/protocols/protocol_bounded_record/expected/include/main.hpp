@@ -50,6 +50,7 @@ struct SortedPair {
             this->second = a;
         }
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.SortedPair";
 };
 
 template<typename T>
@@ -64,6 +65,7 @@ struct DefaultPairFactory {
 
     // def make_pair(self, a: Int32, b: Int32) -> Own[SortedPair[Int32]]:
     SortedPair<int32_t> make_pair(int32_t a, int32_t b) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.DefaultPairFactory";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DefaultPairFactory& obj) {

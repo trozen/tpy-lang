@@ -30,6 +30,7 @@ struct Base {
         // return other
         return other;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 template<typename T>
@@ -45,6 +46,7 @@ struct Child : Base<T> {
     // def __init__(self, val: T):
     Child() = default;
     explicit Child(const T& val) : Base<T>(val) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 template<typename T>

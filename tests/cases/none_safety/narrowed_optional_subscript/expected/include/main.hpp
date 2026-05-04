@@ -27,6 +27,7 @@ struct Wrapper {
 
     // def first_char(self) -> None:
     void first_char() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {

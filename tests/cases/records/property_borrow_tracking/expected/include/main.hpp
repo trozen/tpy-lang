@@ -35,6 +35,7 @@ struct Container {
     // @items.setter
     // def items(self, v: list[Int32]) -> None:
     void set_items(std::vector<int32_t>&& v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {

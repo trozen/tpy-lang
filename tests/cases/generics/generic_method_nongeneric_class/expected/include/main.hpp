@@ -28,6 +28,7 @@ struct Converter {
         // return val
         return val;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Converter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Converter& obj) {

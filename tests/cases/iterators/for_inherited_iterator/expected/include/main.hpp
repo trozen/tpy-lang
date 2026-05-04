@@ -29,6 +29,7 @@ struct Counter {
 
     // def __next__(self) -> Int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -42,6 +43,7 @@ struct DoubleCounter : Counter {
     // def __init__(self, limit: Int32) -> None:
     DoubleCounter() = default;
     explicit DoubleCounter(int32_t limit) : Counter((::tpy::mul_check<int32_t>(limit, 2))) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.DoubleCounter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DoubleCounter& obj) {
@@ -56,6 +58,7 @@ struct GrandChild : DoubleCounter {
     // def __init__(self, limit: Int32) -> None:
     GrandChild() = default;
     explicit GrandChild(int32_t limit) : DoubleCounter(limit) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.GrandChild";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const GrandChild& obj) {

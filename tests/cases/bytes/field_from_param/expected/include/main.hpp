@@ -23,6 +23,7 @@ struct Packet {
 
     // def __init__(self, data: bytes) -> None:
     explicit Packet(std::span<const uint8_t> data) : data(std::vector<uint8_t>(data.begin(), data.end())) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Packet";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Packet& obj) {
@@ -39,6 +40,7 @@ struct MultiField {
 
     // def __init__(self, name: str, payload: bytes) -> None:
     explicit MultiField(std::string_view name, std::span<const uint8_t> payload) : name(name), payload(std::vector<uint8_t>(payload.begin(), payload.end())) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MultiField";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MultiField& obj) {

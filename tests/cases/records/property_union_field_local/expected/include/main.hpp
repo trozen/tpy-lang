@@ -23,6 +23,7 @@ struct A {
     // def __init__(self, target: Optional[str]) -> None:
     A() = default;
     explicit A(std::optional<std::string_view> target) : target(target ? std::make_optional(std::string(*target)) : std::nullopt) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
@@ -38,6 +39,7 @@ struct B {
     // def __init__(self, filter_: Optional[str]) -> None:
     B() = default;
     explicit B(std::optional<std::string_view> filter_) : filter_(filter_ ? std::make_optional(std::string(*filter_)) : std::nullopt) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
@@ -56,6 +58,7 @@ struct Holder {
     // @property
     // def label(self) -> str:
     std::string label() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {

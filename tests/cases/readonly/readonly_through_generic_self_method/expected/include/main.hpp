@@ -36,6 +36,7 @@ struct Holder {
         // return self.identity(x)
         return this->identity<int32_t>(x);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 template<typename T>
@@ -57,6 +58,7 @@ struct SubHolder : Holder<T> {
         // return super().identity(x)
         return this->Holder<T>::template identity<int32_t>(x);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.SubHolder";
 };
 
 template<typename T>

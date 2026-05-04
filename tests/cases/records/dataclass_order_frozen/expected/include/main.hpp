@@ -82,7 +82,7 @@ inline bool Version::__eq__(const Version& other) const {
 }
 
 inline std::string Version::__repr__() const {
-    return std::format("Version(major={}, minor={}, patch={})", ::tpy::__repr__(this->major), ::tpy::__repr__(this->minor), ::tpy::__repr__(this->patch));
+    return std::format("Version(major={}, minor={}, patch={})", ::tpy::repr_of(this->major), ::tpy::repr_of(this->minor), ::tpy::repr_of(this->patch));
 }
 
 inline uint64_t Version::__hash__() const {

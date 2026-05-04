@@ -29,6 +29,7 @@ struct Buffer {
     // # Per-param: only self is auto_readonly; dest stays mutable in both overloads.
     // def copy_into(self: auto_readonly[Self], dest: list[Int32]) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> copy_into(std::vector<int32_t>& dest) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Buffer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {

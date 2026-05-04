@@ -24,6 +24,7 @@ struct Circle {
     // def __init__(self, radius: float) -> None:
     Circle() = default;
     explicit Circle(double radius) : radius(radius) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Circle";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
@@ -39,6 +40,7 @@ struct Square {
     // def __init__(self, side: float) -> None:
     Square() = default;
     explicit Square(double side) : side(side) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Square";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Square& obj) {

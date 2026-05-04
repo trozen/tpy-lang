@@ -19,6 +19,7 @@ struct Parent {
     // LIMIT: Final[Int32] = 10
     static constexpr int32_t LIMIT = 10;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Parent";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Parent& obj) {
@@ -29,6 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Parent& obj) {
 // class Child(Parent):
 struct Child : Parent {
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {

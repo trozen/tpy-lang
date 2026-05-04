@@ -20,6 +20,7 @@ struct Parent {
     // counter: ClassVar[Int32] = 0
     static inline int32_t counter = 0;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Parent";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Parent& obj) {
@@ -30,6 +31,7 @@ inline std::ostream& operator<<(std::ostream& os, const Parent& obj) {
 // class ChildA(Parent):
 struct ChildA : Parent {
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ChildA";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ChildA& obj) {
@@ -40,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const ChildA& obj) {
 // class ChildB(Parent):
 struct ChildB : Parent {
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ChildB";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ChildB& obj) {

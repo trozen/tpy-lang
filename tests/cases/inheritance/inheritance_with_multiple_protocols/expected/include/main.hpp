@@ -46,6 +46,7 @@ struct Vehicle {
 
     // def get_brand(self) -> str:
     std::string get_brand() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Vehicle";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vehicle& obj) {
@@ -78,6 +79,7 @@ struct Car : Vehicle {
 
     // def describe(self) -> str:
     std::string describe() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Car";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Car& obj) {

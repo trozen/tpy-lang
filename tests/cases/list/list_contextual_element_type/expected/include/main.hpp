@@ -22,6 +22,7 @@ struct Rect {
     // h: Int32
     int32_t h;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Rect";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
@@ -34,6 +35,7 @@ struct Circle {
     // r: Int32
     int32_t r;
 
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Circle";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {

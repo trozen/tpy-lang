@@ -28,6 +28,7 @@ struct Container {
         // return self.item
         return this->item;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>

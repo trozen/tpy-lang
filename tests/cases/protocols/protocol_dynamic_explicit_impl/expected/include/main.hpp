@@ -64,6 +64,7 @@ struct Item : Describable {
 
     // def id(self) -> Int32:
     int32_t id() override;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
