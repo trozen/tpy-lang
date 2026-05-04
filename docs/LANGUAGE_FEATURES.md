@@ -226,6 +226,7 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 - **Working**: `Float32` (32-bit single precision -> `float`), `Float64` (alias for `float`)
 - **Working**: `Int8`, `Int16`, `Int32`, `Int64`, `UInt8`, `UInt16`, `UInt32`, `UInt64`, `bool`, `Char`
 - **Working**: `%` on floats follows Python floor semantics (sign-of-divisor) -- `-1.5 % 2.5 == 1.0`, `7.0 % -3.0 == -2.0`, `-0.0 % 3.0 == 0.0`. Distinct from `math.fmod`, which keeps C truncation semantics (sign-of-dividend) for compatibility with CPython's `math.fmod`.
+- **Working**: `int.bit_length()` returns the number of bits to represent `abs(self)`, matching CPython (`(0).bit_length() == 0`, sign is ignored). Returns `Int32`.
 
 #### Default Integer Type for Unannotated Literals (Working)
 
@@ -4855,13 +4856,27 @@ STDLIB_ROADMAP.md before relying on a module name.
 ```python
 import time
 # or
-from time import time, sleep
+from time import time, time_ns, sleep, perf_counter, perf_counter_ns,
+#                  monotonic, monotonic_ns, process_time
 
-# time.time() - returns seconds since epoch as float
-t = time.time()  # → double
+# Wall-clock time
+t = time.time()              # → double, seconds since epoch
+tn = time.time_ns()          # → Int64, nanoseconds since epoch
+time.sleep(0.5)              # suspend for 500ms
 
-# time.sleep(seconds) - suspend execution
-time.sleep(0.5)  # sleep for 500ms
+# Monotonic clock (use for elapsed-time measurements; CPython ties
+# perf_counter and monotonic to the same backing on POSIX)
+start = time.perf_counter()
+# ... do work ...
+elapsed = time.perf_counter() - start
+
+start_ns = time.perf_counter_ns()    # → Int64
+m = time.monotonic()                 # → double, alias of perf_counter
+mn = time.monotonic_ns()             # → Int64
+
+# Process CPU time (~1us resolution; CPython uses ns via
+# CLOCK_PROCESS_CPUTIME_ID, see STDLIB_ROADMAP.md)
+cpu = time.process_time()
 ```
 
 #### `sys` module (Working)

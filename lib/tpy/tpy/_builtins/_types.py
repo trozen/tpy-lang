@@ -171,6 +171,10 @@ class int(Comparable, Equatable):
     @readonly
     @pure
     def __lt__(self, other: int) -> bool: ...
+    @cpp_template("({self}).bit_length()")
+    @readonly
+    @pure
+    def bit_length(self) -> Int32: ...
 
 
 @builtin_type("builtins.float")

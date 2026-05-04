@@ -1,0 +1,8 @@
+perf_monotonic: True
+monotonic_monotonic: True
+perf_ns_monotonic: True
+monotonic_ns_monotonic: True
+time_ns_after_2024: True
+time_after_2024: True
+process_time_nonneg: True
+process_time_monotonic: True

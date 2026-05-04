@@ -122,7 +122,7 @@ Examples of the policy in action:
 |---|---|---|---|---|---|
 | [`builtins`](#builtins) | P0 | Partial | ~70% | mixed | Implicit import. Core types + most common functions + key exceptions present. Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, most specialized exceptions (`IndexError`, `KeyError`, `TypeError`, etc. -- currently panic), `hasattr` (D16 v1.5), `callable`, `id`, `type(x)` runtime. `getattr`/`setattr`/`delattr` literal-name dynamic-fallback shipped in D16 v1. See [builtins](#builtins) for per-item status |
 | [`math`](#math) | P0 | Done | ~99% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for prod/fsum/sumprod/dist). Remaining gaps are minor: int-typed `prod` variant (exact BigInt product on all-int iterables) and tuple as iterable (blocked on tuple-iteration bundle) |
-| [`time`](#time) | P0 | Stub | ~10% | mixed | Thin clock/sleep syscalls + pure TPy. Missing perf_counter/monotonic/struct_time/strftime |
+| [`time`](#time) | P0 | Partial | ~50% | mixed | Thin clock/sleep syscalls. `time`, `sleep`, `perf_counter`, `monotonic`, `time_ns`, `perf_counter_ns`, `monotonic_ns`, `process_time` all done. Missing `struct_time`/`strftime`/`gmtime`/`localtime`/timezone constants |
 | [`sys`](#sys) | P0 | Stub | ~15% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr` done; needs `stdin`/`exit`/`path`/`version_info` |
 | [`os`](#os) | P0 | Missing | 0% | -- | Needs filesystem wrapper + path handling |
 | [`os.path`](#ospath) | P0 | Missing | 0% | -- | Independent of `os`; candidate for pure TPy over C++ `<filesystem>` |
@@ -388,16 +388,16 @@ Tests: `math_module`, `math_extended`, `math_log_base`, `math_hyperbolic`,
 
 ### time
 
-Current: `lib/tpy/time.py` -- native_module. Very thin.
+Current: `lib/tpy/time.py` -- native_module. Wall-clock + monotonic +
+process-CPU clocks shipped; calendar / formatting surface deferred.
 
 | Item | Status | Notes |
 |---|---|---|
 | `time()` | Done | Seconds since epoch as float |
 | `sleep(s)` | Done | |
-| `perf_counter()` | Missing | `std::chrono::steady_clock` |
-| `monotonic()` | Missing | Same |
-| `time_ns()`, `perf_counter_ns()`, `monotonic_ns()` | Missing | Return `int` (BigInt) or Int64 |
-| `process_time()` | Missing | `std::clock` |
+| `perf_counter()` / `monotonic()` | Done | `std::chrono::steady_clock`. CPython's `perf_counter` and `monotonic` share the same underlying clock on POSIX; we mirror that |
+| `perf_counter_ns()` / `monotonic_ns()` / `time_ns()` | Done | Return `Int64`; epoch reasonable through year 2262 (INT64_MAX ns) |
+| `process_time()` | Done | `std::clock() / CLOCKS_PER_SEC`. CPU time, ~1us resolution on Linux glibc (CPython uses `clock_gettime(CLOCK_PROCESS_CPUTIME_ID)` for ns precision -- a future tightening) |
 | `struct_time` | Missing | Needs named-tuple-like or @dataclass |
 | `gmtime`, `localtime` | Missing | Depends on struct_time |
 | `strftime`, `strptime` | Missing | Formatting strings; depends on struct_time |
@@ -405,7 +405,9 @@ Current: `lib/tpy/time.py` -- native_module. Very thin.
 | `asctime`, `ctime` | Missing | Depends on struct_time |
 | `timezone`, `altzone`, `tzname` | Missing | Module-level constants |
 
-Tests: `time_module`, `time_sleep`, `time_import`.
+Tests: `time_module`, `time_sleep`, `time_import`, `stdlib/time_clocks`
+(invariants on perf_counter / monotonic / process_time / time_ns since
+absolute timing values are non-deterministic).
 
 ### sys
 

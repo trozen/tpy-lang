@@ -4,14 +4,12 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
-#include <tpy/system.hpp>
-#include <tpy/stdlib/time.hpp>
 
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-::tpy::BigInt time();
+void main();
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -698,6 +698,14 @@ public:
         return true;
     }
 
+    // Public Python-API name; abs_bit_length() is the size_t internal
+    // form used elsewhere in the runtime. The int32_t return is fixed
+    // (independent of --default-int) and sufficient for any BigInt
+    // that fits in addressable memory; the cast is silent on overflow.
+    int32_t bit_length() const {
+        return static_cast<int32_t>(abs_bit_length());
+    }
+
 private:
     struct HeapBig {
         uint32_t len;     // Number of used limbs.
