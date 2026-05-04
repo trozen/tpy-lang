@@ -49,6 +49,7 @@ std::string describe(const std::variant<Cat*, Dog*> a) {
     }
     }
 __match_end_1:;
+    ::std::unreachable();
     // return ""
     return "";
 }

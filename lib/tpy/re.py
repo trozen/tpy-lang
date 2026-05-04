@@ -308,7 +308,7 @@ class Pattern:
         Today materializes the full list -- fine for typical cases, real
         memory cost on huge subjects."""
         out: list[Match] = []
-        offset = 0
+        offset: UInt64 = 0
         sub_len = UInt64(len(subject))
         s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
         while offset <= sub_len:
@@ -404,7 +404,7 @@ class Pattern:
     def split(self, subject: str, maxsplit: Int32 = 0) -> Own[list[str]]:
         """Split `subject` at each match. `maxsplit=0` means no limit."""
         out: list[str] = []
-        offset = 0
+        offset: UInt64 = 0
         splits: Int32 = 0
         sub_len = UInt64(len(subject))
         s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))

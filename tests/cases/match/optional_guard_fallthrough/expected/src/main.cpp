@@ -17,6 +17,7 @@ std::string with_wildcard(std::optional<int32_t> x, bool flag) {
         // return "other"
         return "other";
     }
+    ::std::unreachable();
 }
 
 // def with_capture(x: Optional[Int32], flag: bool) -> str:
@@ -33,6 +34,7 @@ std::string with_capture(std::optional<int32_t> x, bool flag) {
         // return str(v)
         return ::tpy::fixed_to_str<int32_t>(v);
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

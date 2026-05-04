@@ -25,6 +25,7 @@ std::string describe_zoo(const Zoo& z) {
         // return "other"
         return "other";
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

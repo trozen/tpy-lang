@@ -46,6 +46,7 @@ Expr make_lit(const ::tpy::BigInt& v) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

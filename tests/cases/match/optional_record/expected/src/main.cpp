@@ -64,6 +64,7 @@ std::string check_point(Point* p) {
             return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(x), ",")), ::tpy::fixed_to_str<int32_t>(y)));
         }
     }
+    ::std::unreachable();
     // return ""
     return "";
 }
@@ -93,6 +94,7 @@ std::string check_color(std::optional<Color> c) {
         }
         }
     }
+    ::std::unreachable();
     // return ""
     return "";
 }

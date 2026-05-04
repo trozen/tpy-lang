@@ -3062,6 +3062,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: Chained comparisons (`a < b < c`, `a <= b <= c`, `1 < x < 10`, etc.) -- each operand evaluated exactly once
 - **Working**: `is`, `is not` (identity comparison with `None`, enum values, and bool literals `True`/`False`)
 - **Working**: Mixed `int`/`float` comparisons (BigInt promoted to double)
+- **Working**: Mixed-sign fixed-int comparisons (e.g. `Int32 < UInt32`, `Int64 >= UInt64`) -- codegen routes through `std::cmp_*` so the result is mathematically correct regardless of value range (no signed-to-unsigned reinterpretation surprises). Sema emits a warning at the comparison site naming both types and suggesting an explicit cast, except when one side is a literal or a literal-seeded local that retro-widens to the other side's type (those resolve to same-sign and don't warn).
 
 ### Membership
 - **Working**: `in`, `not in` (for list, Array, Span, str, tuple literals)

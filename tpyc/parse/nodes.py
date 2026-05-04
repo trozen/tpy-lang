@@ -988,6 +988,12 @@ class TpyMatch(TpyStmt):
     cases: list[TpyMatchCase]
     # Set by sema: resolved type of the subject expression
     subject_type: TpyType | None = None
+    # Set by sema: true when the match covers every possible subject value
+    # (either via a wildcard arm or by enumerating every value of a finite
+    # type). Codegen relies on this to emit ``std::unreachable()`` past the
+    # match end-label so non-void functions whose only exit is the match
+    # don't trip -Wreturn-type.
+    is_exhaustive: bool = False
 
     def exprs(self) -> list[TpyExpr]:
         result: list[TpyExpr] = [self.subject]

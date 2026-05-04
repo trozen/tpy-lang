@@ -25,6 +25,7 @@ std::string describe(const std::variant<Cat*, Dog*> a) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

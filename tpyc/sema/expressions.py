@@ -917,6 +917,27 @@ class ExpressionAnalyzer:
 
         # Comparison operators return Bool
         if expr.op in ("==", "!=", "<", ">", "<=", ">="):
+            # Mixed-sign fixed-int comparison is well-defined under C++'s usual
+            # arithmetic conversions (the signed operand is reinterpreted as
+            # unsigned), but the result rarely matches user intent on negative
+            # values. Codegen routes these through std::cmp_* so the answer is
+            # mathematically correct; warn here so the user can choose to
+            # cast explicitly if they care about readability. Skipped when
+            # either side is still literal-seeded -- retro-widening may yet
+            # resolve the operand to a compatible type.
+            if (not self._is_literal_seed_operand(expr.left)
+                    and not self._is_literal_seed_operand(expr.right)
+                    and is_fixed_int_type(left_effective)
+                    and is_fixed_int_type(right_effective)):
+                lt = int_traits_of(left_effective)
+                rt = int_traits_of(right_effective)
+                if lt is not None and rt is not None and lt.signed != rt.signed:
+                    self.ctx.warning(
+                        f"comparison between signed and unsigned integer types "
+                        f"('{left_effective}' and '{right_effective}'); "
+                        f"cast one operand to make the type intent explicit",
+                        expr,
+                    )
             # Validate that user record types support the comparison
             self._validate_comparison(expr, left_effective, right_effective)
             # Resolve comparison method (__eq__, __lt__, etc.) for codegen.
@@ -1342,6 +1363,20 @@ class ExpressionAnalyzer:
     def _is_user_record_type(self, typ: TpyType) -> bool:
         """Check if a type is a user-defined record (not a builtin container)."""
         return isinstance(typ, NominalType) and typ.is_record and typ.is_user_record
+
+    def _is_literal_seed_operand(self, operand: TpyExpr) -> bool:
+        """True when ``operand`` is still pending literal-driven type resolution.
+
+        Two cases: an analyzer-level ``IntLiteralType`` (the operand is itself a
+        literal), or a ``TpyName`` whose local is in ``literal_default_vars``
+        (literal-seeded local awaiting retro-widen). Used to suppress the
+        mixed-sign-comparison warning before sema has finalised the type --
+        the operand may yet resolve to a same-sign type.
+        """
+        if isinstance(self.ctx.get_expr_type(operand), IntLiteralType):
+            return True
+        return (isinstance(operand, TpyName)
+                and operand.name in self.ctx.func.literal_default_vars)
 
     def _validate_comparison(self, expr: TpyBinOp, left_type: TpyType, right_type: TpyType) -> None:
         """Error when comparing user record types that lack the relevant dunder."""

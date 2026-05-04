@@ -29,6 +29,7 @@ std::string classify(int32_t n) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

@@ -23,6 +23,7 @@ std::string classify(double x) {
         // return "other"
         return "other";
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

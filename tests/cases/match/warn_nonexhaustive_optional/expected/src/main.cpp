@@ -23,6 +23,7 @@ std::string classify(std::optional<int32_t> x) {
             return "one";
             break;
         }
+        default: break;
         }
     }
     // return "unknown"

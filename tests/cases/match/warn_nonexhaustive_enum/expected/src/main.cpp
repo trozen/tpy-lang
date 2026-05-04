@@ -63,6 +63,7 @@ std::string describe(Color c) {
         return "green";
         break;
     }
+    default: break;
     }
     // return "unknown"
     return "unknown";

@@ -50,6 +50,7 @@ def or_nested(x: Wrapper | Tag) -> str:
             return "pet: " + n
         case Tag(label=l):
             return "tag: " + l
+    return ""  # unreachable in practice; sema flags the match as non-exhaustive
 
 
 # --- 3 levels deep (type-param disambiguation) ---

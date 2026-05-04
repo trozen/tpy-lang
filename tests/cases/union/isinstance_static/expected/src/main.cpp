@@ -80,6 +80,7 @@ std::string match_guard(int32_t x) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

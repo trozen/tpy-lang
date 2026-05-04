@@ -33,6 +33,7 @@ std::string describe(const std::variant<Bird*, Cat*, Dog*> a) {
         break;
     }
     }
+    ::std::unreachable();
     // return ""
     return "";
 }

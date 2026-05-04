@@ -355,6 +355,45 @@ def get_or_build_pch(
     return None
 
 
+#: Recommended strict warning set for compiling tpy-generated code.
+#: Mirrors the minimal subset we know downstream consumers run with -Werror.
+#: The test suite turns these on (see tests/conftest.py); end-user CLI builds
+#: do NOT enable them by default -- it's the consumer's choice whether to opt
+#: in by feeding them via CXXFLAGS or a build-system flag.
+#:
+#: Notable choices:
+#: - -Wno-unused-parameter: downstream suppresses; we may want to enable later
+#:   if we want to be stricter than downstream (revisit if we add a sema pass
+#:   that flags unread parameters at the source level).
+#: - -Wshadow: NOT in this set. Record/dataclass constructors emit the
+#:   idiomatic `T(P p) : p(p) {}` pattern, which always shadows. Downstream
+#:   consumers compiling tpy-generated TUs should add -Wno-shadow per-TU.
+#: - -Wconversion / -Wsign-conversion: deferred. Container indexing emits
+#:   signed Python ints into size_t (see TODO.md); enable once that's fixed.
+STRICT_WARN_FLAGS: list[str] = [
+    "-Werror",
+    "-Wall", "-Wextra",
+    "-Wno-missing-field-initializers",
+    "-Wno-unused-parameter",
+    # Generated codegen artifacts that we accept as costing more than they
+    # would be worth fixing piecemeal. Each has a different rationale -- see
+    # the inventory in PR notes.
+    "-Wno-unused-label",             # for/else and with/finally end labels
+    "-Wno-unused-but-set-variable",  # tuple-unpack and error_return temps
+    "-Wno-unused-but-set-parameter", # by-value params written via v.field = X but never read
+    # User TPy code can write `x = compute()` followed by no read -- which
+    # is silently allowed in Python. Per the "users never see C++ errors"
+    # invariant we suppress at the C++ level. The user-facing signal lives
+    # at the TPy layer; see TODO.md for a planned sema diagnostic.
+    "-Wno-unused-variable",
+    # Class-hygiene checks: zero hits today; cheap future-proofing.
+    "-Wsign-compare",
+    "-Wnon-virtual-dtor", "-Woverloaded-virtual",
+    "-Wswitch-bool", "-Wsizeof-array-argument", "-Wbool-compare",
+    "-Wsuggest-override",
+]
+
+
 @dataclass
 class CppCompilerConfig:
     """Configuration for the C++ compiler used to build generated code."""
@@ -363,11 +402,8 @@ class CppCompilerConfig:
     extra_flags: list[str] = field(default_factory=list)
     link_flags: list[str] = field(default_factory=list)
     ccache: bool = False
-    # TODO: enable stricter warnings once generated code is clean. Blocked on:
-    # - exhaustive match/finally/with codegen not emitting __builtin_unreachable() at end labels (return-type)
-    # - INT64_MIN/UINT64_MAX emitted as bare integer literals (large-integer-constant)
-    # - native global codegen emitting extern + initializer together (extern-initialized)
-    # Candidate set: -Werror -Wall -Wextra -Wsign-conversion -Wnull-dereference
+    # End-user CLI builds default to no extra warnings. Tests override this to
+    # STRICT_WARN_FLAGS so we catch generated-code regressions.
     warn_flags: list[str] = field(default_factory=list)
 
     @property

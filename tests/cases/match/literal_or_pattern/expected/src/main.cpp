@@ -33,6 +33,7 @@ std::string classify_num(int32_t x) {
         break;
     }
     }
+    ::std::unreachable();
     // return ""
     return "";
 }
@@ -54,6 +55,7 @@ std::string classify_str(std::string_view s) {
         // return "unknown"
         return "unknown";
     }
+    ::std::unreachable();
     // return ""
     return "";
 }
@@ -79,6 +81,7 @@ std::string classify_as(int32_t x) {
         break;
     }
     }
+    ::std::unreachable();
     // return ""
     return "";
 }

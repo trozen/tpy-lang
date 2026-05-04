@@ -56,6 +56,7 @@ std::string kind(const V& v) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def make_dict() -> Own[V]:
@@ -131,6 +132,7 @@ std::string kind_after_null_guard(const V& v) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def flat_kind(v: W) -> str:
@@ -161,6 +163,7 @@ std::string flat_kind(const W& v) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def kind_guarded(v: V) -> str:
@@ -244,6 +247,7 @@ std::string kind_guarded(const V& v) {
     }
     }
 __match_end_1:;
+    ::std::unreachable();
 }
 
 // def main() -> None:

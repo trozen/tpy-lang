@@ -30,6 +30,7 @@ std::string greet(std::string_view s, bool formal) {
         // return "?"
         return "?";
     }
+    ::std::unreachable();
     // return ""
     return "";
 }
@@ -51,6 +52,7 @@ std::string bucket(double x) {
         // return "other"
         return "other";
     }
+    ::std::unreachable();
     // return ""
     return "";
 }

@@ -1123,14 +1123,15 @@ def _build_parse_body(
         specs, usage_text, add_help=add_help, help_fn_name=help_fn_name,
     )
 
-    # --- Main loop ---
-    src_lines.append("__tpy_argparse_i = 0")
-    src_lines.append("__tpy_argparse_pi = 0")
-    src_lines.append("while __tpy_argparse_i < len(argv):")
-    src_lines.append("    __tpy_argparse_tok = argv[__tpy_argparse_i]")
-
     flag_specs = [s for s in specs if s.is_flag]
     positional_specs = [s for s in specs if not s.is_flag]
+
+    # --- Main loop ---
+    src_lines.append("__tpy_argparse_i = 0")
+    if positional_specs:
+        src_lines.append("__tpy_argparse_pi = 0")
+    src_lines.append("while __tpy_argparse_i < len(argv):")
+    src_lines.append("    __tpy_argparse_tok = argv[__tpy_argparse_i]")
 
     # Flag dispatch
     first = True

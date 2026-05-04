@@ -24,6 +24,7 @@ std::string classify(int32_t x) {
         break;
     }
     }
+    ::std::unreachable();
     // return ""
     return "";
 }
@@ -46,6 +47,7 @@ std::string describe(int32_t x) {
         break;
     }
     }
+    ::std::unreachable();
     // return ""
     return "";
 }

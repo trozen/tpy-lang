@@ -90,6 +90,7 @@ inline std::string Holder::label() const {
         break;
     }
     }
+    ::std::unreachable();
 }
 void __tpy_init();
 } // namespace tpyapp::main

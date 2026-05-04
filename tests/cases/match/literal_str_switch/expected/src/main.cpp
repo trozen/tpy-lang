@@ -73,6 +73,7 @@ std::string classify(std::string_view s) {
         return "unknown";
     }
     __match_end_1:;
+    ::std::unreachable();
 }
 
 // def with_guard(cmd: str, verbose: bool) -> str:
@@ -150,6 +151,7 @@ std::string with_guard(std::string_view cmd, bool verbose) {
         return (::tpy::str_concat("unknown: ", s));
     }
     __match_end_1:;
+    ::std::unreachable();
 }
 
 // def with_or(s: str) -> str:
@@ -238,6 +240,7 @@ std::string with_or(std::string_view s) {
         return "other";
     }
     __match_end_1:;
+    ::std::unreachable();
 }
 
 // def by_length(s: str) -> str:
@@ -297,6 +300,7 @@ std::string by_length(std::string_view s) {
         return "other";
     }
     __match_end_1:;
+    ::std::unreachable();
 }
 
 // def main() -> None:

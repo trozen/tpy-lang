@@ -29,6 +29,7 @@ std::string guarded(const Point& p) {
         return "other";
     }
     __match_end_1:;
+    ::std::unreachable();
     // return ""
     return "";
 }
@@ -46,6 +47,7 @@ std::string or_pattern(const Point& p) {
         // return "other"
         return "other";
     }
+    ::std::unreachable();
     // return ""
     return "";
 }

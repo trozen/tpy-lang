@@ -28,6 +28,7 @@ std::string priority_label(int32_t level) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

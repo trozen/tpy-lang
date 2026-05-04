@@ -46,6 +46,7 @@ std::string describe_exhaustive(const Point& p) {
         // return "point"
         return "point";
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

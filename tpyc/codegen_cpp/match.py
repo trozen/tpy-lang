@@ -22,6 +22,7 @@ from ..parse import (
 from .context import INDENT, CodeGenError, escape_cpp_name, escape_cpp_string, escape_cpp_char, cpp_string_literal_expr
 from .string_dispatch import find_best_discriminator, STRING_SWITCH_THRESHOLD
 from ..type_def_registry import is_fixed_int_type, is_bool_type, is_enum_type
+from ..liveness import stmts_terminate
 
 if TYPE_CHECKING:
     from ..parse import SourceLocation
@@ -84,12 +85,17 @@ class MatchGenerator:
                     self._gen_match_switch_str(out, stmt, indent)
                 else:
                     self._gen_match_if_elif(out, stmt, indent)
-            elif is_fixed_int_type(base) or is_bool_type(base):
+            elif is_fixed_int_type(base):
                 self._gen_match_switch_primitive(out, stmt, indent)
             else:
+                # bool (and anything else literal-like) falls through to if/elif:
+                # `switch(bool_var)` is valid C++ but trips -Wswitch-bool, and an
+                # if-chain is the same shape with two arms anyway.
                 self._gen_match_if_elif(out, stmt, indent)
-        elif is_fixed_int_type(subject_type) or is_bool_type(subject_type):
+        elif is_fixed_int_type(subject_type):
             self._gen_match_switch_primitive(out, stmt, indent)
+        elif is_bool_type(subject_type):
+            self._gen_match_if_elif(out, stmt, indent)
         elif isinstance(subject_type, NominalType) and subject_type.is_user_record:
             has_guard = any(c.guard is not None for c in stmt.cases)
             if has_guard:
@@ -112,6 +118,20 @@ class MatchGenerator:
                 self._gen_match_if_elif(out, stmt, indent)
         else:
             self._gen_match_if_elif(out, stmt, indent)
+
+        # If the match is exhaustive (sema-proven) AND every arm body
+        # terminates, the post-match control point is unreachable. Tell the
+        # compiler so -- otherwise it warns "control reaches end of non-void
+        # function" when the match is the function's last statement.
+        #
+        # For non-exhaustive matches, falling through the end-label is the
+        # user's intent (sema only warns), so emitting std::unreachable()
+        # there would let the optimizer eliminate code that the user expects
+        # to execute.
+        if (stmt.is_exhaustive
+                and stmt.cases
+                and all(stmts_terminate(c.body) for c in stmt.cases)):
+            out.write(f"{indent}::std::unreachable();\n")
 
     def _gen_match_overload_specialized(
         self, out: TextIO, stmt: TpyMatch, concrete_type: 'TpyType', indent: str,
@@ -291,12 +311,12 @@ class MatchGenerator:
     def _gen_match_switch_enum(self, out: TextIO, stmt: TpyMatch, indent: str) -> None:
         """Generate switch (__match_subject) for enum subjects."""
         groups = self._group_switch_arms(stmt, kind="enum")
-        self._emit_switch_groups(out, groups, indent)
+        self._emit_switch_groups(out, groups, indent, is_exhaustive=stmt.is_exhaustive)
 
     def _gen_match_switch_primitive(self, out: TextIO, stmt: TpyMatch, indent: str) -> None:
         """Generate switch (__match_subject) for int/bool subjects."""
         groups = self._group_switch_arms(stmt, kind="primitive")
-        self._emit_switch_groups(out, groups, indent)
+        self._emit_switch_groups(out, groups, indent, is_exhaustive=stmt.is_exhaustive)
 
     # Entry in a switch arm group:
     # (guard, body, capture_escaped, as_escaped, raw_names, loc, type_facts)
@@ -387,8 +407,14 @@ class MatchGenerator:
         groups: list[tuple[list[str], list[_SwitchEntry]]],
         indent: str,
         subject_expr: str = "__match_subject",
+        is_exhaustive: bool = False,
     ) -> None:
-        """Emit a switch statement from grouped arms."""
+        """Emit a switch statement from grouped arms.
+
+        is_exhaustive: caller's promise that the match covers every possible
+        subject value. When true, the synthetic ``default: break;`` is omitted
+        so future enum members added upstream still trigger ``-Wswitch``.
+        """
         inner = INDENT * (self.ctx.indent_level + 1)
 
         # Check if any non-default group needs guard fallback to default
@@ -474,6 +500,16 @@ class MatchGenerator:
 
             out.write(f"{inner}break;\n")
             out.write(f"{indent}}}\n")
+
+        # Synthetic default for non-exhaustive switches. -Wswitch (in -Wall)
+        # flags an enum switch that doesn't list every enum value; non-
+        # exhaustive matches on int/bool don't trigger it but adding a
+        # default is harmless. Skipped when the user already provided a
+        # wildcard arm (`has_default`) or when sema proved the match
+        # exhaustive (so future enum members added upstream still trigger
+        # -Wswitch instead of being silently swallowed).
+        if not has_default and not is_exhaustive:
+            out.write(f"{indent}default: break;\n")
 
         out.write(f"{indent}}}\n")
 

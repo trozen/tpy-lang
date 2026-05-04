@@ -79,6 +79,7 @@ int32_t process(T_items& items, std::string_view tag) {
         // return -2
         return -2;
     }
+    ::std::unreachable();
 }
 
 void __tpy_init();

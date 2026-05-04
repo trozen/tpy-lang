@@ -70,6 +70,7 @@ std::string kind(const V& v) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 void __tpy_init() {

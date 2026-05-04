@@ -96,6 +96,7 @@ std::string kind(const V& v) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

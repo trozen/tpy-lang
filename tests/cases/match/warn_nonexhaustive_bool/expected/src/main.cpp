@@ -9,13 +9,10 @@ namespace tpyapp::main {
 std::string describe(bool b) {
     // match b:  # tpyc: warning(/non-exhaustive match.*missing: False.*case _:/)
     auto& __match_subject = b;
-    switch (__match_subject) {
     // case True:
-    case true: {
+    if (__match_subject == true) {
         // return "yes"
         return "yes";
-        break;
-    }
     }
     // return "unknown"
     return "unknown";

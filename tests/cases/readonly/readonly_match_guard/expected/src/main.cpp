@@ -41,6 +41,7 @@ std::string describe(std::variant<const Cat*, const Dog*> pet) {
     }
     }
 __match_end_1:;
+    ::std::unreachable();
 }
 
 // def main() -> None:

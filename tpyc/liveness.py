@@ -18,7 +18,7 @@ from __future__ import annotations
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
     TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyAssert, TpyRaise,
-    TpyExprStmt, TpyMatch, TpyNestedDef, TpyDelItem, TpyDelVar,
+    TpyExprStmt, TpyMatch, TpyNestedDef, TpyDelItem, TpyDelVar, TpyTry, TpyWith,
     TpyName, TpyFieldAccess, TpySubscript, TpyNamedExpr,
 )
 
@@ -141,7 +141,7 @@ def _compute_alias_detachment(
 
 # -- Termination check --------------------------------------------------------
 
-def _stmts_terminate(stmts: list[TpyStmt]) -> bool:
+def stmts_terminate(stmts: list[TpyStmt]) -> bool:
     """Do all execution paths through stmts end with return/break/raise?
 
     Only inspects the last statement -- relies on the invariant that the
@@ -155,11 +155,28 @@ def _stmts_terminate(stmts: list[TpyStmt]) -> bool:
     if isinstance(last, (TpyReturn, TpyBreak, TpyRaise)):
         return True
     if isinstance(last, TpyIf):
-        return (_stmts_terminate(last.then_body)
-                and _stmts_terminate(last.else_body))
+        return (stmts_terminate(last.then_body)
+                and stmts_terminate(last.else_body))
     if isinstance(last, TpyMatch):
         return (bool(last.cases)
-                and all(_stmts_terminate(case.body) for case in last.cases))
+                and all(stmts_terminate(case.body) for case in last.cases))
+    if isinstance(last, TpyTry):
+        # try-finally only (no handlers): try-body terminating is enough.
+        # The finally re-throws on exception; a finally body that itself
+        # terminates only changes behavior if the try body fell through,
+        # which we don't analyze here (conservative: ignore finally-body).
+        if not last.handlers:
+            return stmts_terminate(last.try_body)
+        # try with handlers: terminates iff try-body terminates AND every
+        # handler body terminates. else-body (Python try-else) runs when
+        # the try body completed normally; if try terminates, else is dead.
+        return (stmts_terminate(last.try_body)
+                and all(stmts_terminate(h.body) for h in last.handlers))
+    if isinstance(last, TpyWith):
+        # Assumes the context manager's __exit__ never suppresses exceptions
+        # (TPy's codegen for `with` always re-throws via catch(...) { ... throw; }).
+        # If TPy ever supports exception-suppressing __exit__, this needs revisiting.
+        return stmts_terminate(last.body)
     return False
 
 
@@ -305,8 +322,8 @@ def _analyze_if(
     detached_aliases: set[str],
 ) -> None:
     """Analyze if/else with branch merging."""
-    then_terminates = _stmts_terminate(stmt.then_body)
-    else_terminates = _stmts_terminate(stmt.else_body)
+    then_terminates = stmts_terminate(stmt.then_body)
+    else_terminates = stmts_terminate(stmt.else_body)
 
     # If a branch terminates, post-if code is unreachable on that path --
     # start with empty live set instead of inheriting post-if liveness.
@@ -335,7 +352,7 @@ def _analyze_match(
     """Analyze match/case with per-arm branch merging (same as if/else)."""
     merged_live: set[str] = set()
     for case in stmt.cases:
-        arm_terminates = _stmts_terminate(case.body)
+        arm_terminates = stmts_terminate(case.body)
         arm_live = set() if arm_terminates else live.copy()
         _analyze_stmts_backward(case.body, arm_live, last_uses, source_aliases, detached_aliases)
         # Guard expression reads
@@ -445,8 +462,8 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
     """Update live set for a statement without marking last uses."""
 
     if isinstance(stmt, TpyIf):
-        then_terminates = _stmts_terminate(stmt.then_body)
-        else_terminates = _stmts_terminate(stmt.else_body)
+        then_terminates = stmts_terminate(stmt.then_body)
+        else_terminates = stmts_terminate(stmt.else_body)
         live_then = set() if then_terminates else live.copy()
         _compute_live_only(stmt.then_body, live_then)
         live_else = set() if else_terminates else live.copy()
@@ -459,7 +476,7 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
     elif isinstance(stmt, TpyMatch):
         merged: set[str] = set()
         for case in stmt.cases:
-            arm_terminates = _stmts_terminate(case.body)
+            arm_terminates = stmts_terminate(case.body)
             arm_live = set() if arm_terminates else live.copy()
             _compute_live_only(case.body, arm_live)
             if case.guard is not None:

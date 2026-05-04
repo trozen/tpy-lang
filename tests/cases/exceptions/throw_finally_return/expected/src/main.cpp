@@ -21,7 +21,7 @@ int32_t return_from_try() {
         __finally_1:;
         // print("finally 1")
         std::cout << "finally 1" << "\n";
-        if (__retval_2) return (*__retval_2);
+        return (*__retval_2);
     }
 }
 
@@ -47,7 +47,7 @@ int32_t return_from_except() {
         __finally_3:;
         // print("finally 2")
         std::cout << "finally 2" << "\n";
-        if (__retval_4) return (*__retval_4);
+        return (*__retval_4);
     }
 }
 
@@ -83,7 +83,7 @@ std::string return_from_multiple_paths(bool flag) {
         __finally_5:;
         // print("finally 3")
         std::cout << "finally 3" << "\n";
-        if (__retval_6) return (*__retval_6);
+        return (*__retval_6);
     }
 }
 
@@ -110,7 +110,7 @@ std::optional<int32_t> return_optional(bool flag) {
         __finally_7:;
         // print("finally 4")
         std::cout << "finally 4" << "\n";
-        if (__retval_8) return (*__retval_8);
+        return (*__retval_8);
     }
 }
 

@@ -140,6 +140,7 @@ int32_t match_all_arms(Box&& b, int32_t x) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

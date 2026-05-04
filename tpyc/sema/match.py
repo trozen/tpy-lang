@@ -207,24 +207,25 @@ class MatchAnalyzer:
                 had_wildcard = True
 
         # Exhaustiveness check for finite-valued types
-        if not had_wildcard:
-            missing = self._match_missing_cases(
-                effective_type, seen_types, seen_values,
-            )
-            if missing:
-                if missing == [None]:
-                    msg = (
-                        f"non-exhaustive match on '{effective_type}'; "
-                        f"no unconditional catch-all arm "
-                        f"(add 'case _:' to suppress)"
-                    )
-                else:
-                    msg = (
-                        f"non-exhaustive match on '{effective_type}'; "
-                        f"missing: {', '.join(missing)} "
-                        f"(add 'case _:' to suppress)"
-                    )
-                self.ctx.warning(msg, stmt)
+        missing = (
+            [] if had_wildcard
+            else self._match_missing_cases(effective_type, seen_types, seen_values)
+        )
+        stmt.is_exhaustive = not missing
+        if missing:
+            if missing == [None]:
+                msg = (
+                    f"non-exhaustive match on '{effective_type}'; "
+                    f"no unconditional catch-all arm "
+                    f"(add 'case _:' to suppress)"
+                )
+            else:
+                msg = (
+                    f"non-exhaustive match on '{effective_type}'; "
+                    f"missing: {', '.join(missing)} "
+                    f"(add 'case _:' to suppress)"
+                )
+            self.ctx.warning(msg, stmt)
 
         # Merge flow states across all arms
         self._merge_match_arms(arm_states, before)

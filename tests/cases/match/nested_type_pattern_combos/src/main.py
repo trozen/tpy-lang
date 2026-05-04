@@ -32,6 +32,7 @@ def union_subj_union_field(x: Int32 | Container) -> str:
             return "string: " + s
         case Container(value=Int32() as n):
             return "number: " + str(n)
+    return ""  # unreachable in practice; sema flags the match as non-exhaustive
 
 
 # --- Case 3: union-field x type-param (record field is parameterized union) ---

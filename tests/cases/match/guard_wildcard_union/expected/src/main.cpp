@@ -55,6 +55,7 @@ std::string classify(const std::variant<Cat*, Dog*> a, bool strict) {
     }
     }
 __match_end_1:;
+    ::std::unreachable();
     // return ""
     return "";
 }
@@ -96,6 +97,7 @@ std::string as_guard(const std::variant<Cat*, Dog*> a) {
     }
     }
 __match_end_1:;
+    ::std::unreachable();
     // return ""
     return "";
 }

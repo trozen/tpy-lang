@@ -33,6 +33,7 @@ from ..parse import (
 from ..namespace import Namespace
 from ..sema.context import PENDING_CONTAINER_TYPES
 from ..diagnostics import SemanticError
+from ..liveness import stmts_terminate
 
 from .context import INDENT, CodeGenError, FinallyContext, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable, view_key_target
 from ..type_def_registry import (
@@ -2110,6 +2111,7 @@ class StatementGenerator:
             self.gen_stmt(out, s)
 
         # Close try/catch blocks and emit epilogues (inner = last pushed = last in list)
+        body_terminates = stmts_terminate(stmt.body)
         for fctx_cur, emit_fn in reversed(ctx_levels):
             self.ctx.indent_level -= 1
             indent = self.ctx.indent()
@@ -2118,7 +2120,9 @@ class StatementGenerator:
             self._gen_finally_catch_body(out, self.ctx.indent(), emit_fn)
             self.ctx.indent_level -= 1
             out.write(f"{indent}}}\n")
-            self._gen_finally_body_and_epilogue(out, fctx_cur, indent, emit_fn)
+            self._gen_finally_body_and_epilogue(
+                out, fctx_cur, indent, emit_fn,
+                body_terminates=body_terminates)
 
     def _gen_nested_def(self, out: TextIO, stmt: TpyNestedDef, indent: str) -> None:
         """Generate a C++ lambda for a nested function definition."""
@@ -2281,10 +2285,25 @@ class StatementGenerator:
 
     def _gen_finally_body_and_epilogue(self, out: TextIO,
                                        fctx: FinallyContext, indent: str,
-                                       emit_finally: Callable[[TextIO, str], None]) -> None:
+                                       emit_finally: Callable[[TextIO, str], None],
+                                       body_terminates: bool = False) -> None:
         """Emit the finally label, body, and action-specific copies (normal path).
 
         The finally_stack must already be popped (done by _gen_finally_catch_body).
+
+        body_terminates: caller's promise that every reachable path through the
+        try/with body returns/raises. When true, the normal-path retval check is
+        emitted unconditionally so the C++ compiler sees the function as ending
+        in a terminator (no -Wreturn-type warning at the function's closing brace).
+
+        Why dropping the ``if ({retval})`` guard is safe: the normal-path
+        ``fctx.finally_label`` is reached only via explicit ``goto`` from a
+        return statement (which always assigns ``__retval`` first; see
+        ``_make_return``) -- never via raise (exception propagates through the
+        catch block), break (goes to ``fctx.break_label``), continue (goes to
+        ``fctx.continue_label``), or natural fall-through of a body that
+        terminates. So when ``body_terminates`` holds, every path reaching
+        this label has set ``__retval``.
         """
         saved_retval = self.ctx.finally_retval_var
         outer = self.ctx.finally_stack[-1] if self.ctx.finally_stack else None
@@ -2298,9 +2317,15 @@ class StatementGenerator:
         # Return check for non-void (retval-based)
         if saved_retval:
             if outer:
-                out.write(f"{indent}if ({saved_retval}) goto {outer.finally_label};\n")
+                if body_terminates:
+                    out.write(f"{indent}goto {outer.finally_label};\n")
+                else:
+                    out.write(f"{indent}if ({saved_retval}) goto {outer.finally_label};\n")
             else:
-                out.write(f"{indent}if ({saved_retval}) return (*{saved_retval});\n")
+                if body_terminates:
+                    out.write(f"{indent}return (*{saved_retval});\n")
+                else:
+                    out.write(f"{indent}if ({saved_retval}) return (*{saved_retval});\n")
 
         # Skip past action copies on normal path
         if has_action_copies:
@@ -2424,7 +2449,9 @@ class StatementGenerator:
         self.ctx.indent_level -= 1
         out.write(f"{inner}}}\n")
 
-        self._gen_finally_body_and_epilogue(out, fctx, inner, emit_finally)
+        self._gen_finally_body_and_epilogue(
+            out, fctx, inner, emit_finally,
+            body_terminates=stmts_terminate([stmt]))
 
         self.ctx.indent_level -= 1
         out.write(f"{indent}}}\n")
@@ -2522,7 +2549,9 @@ class StatementGenerator:
             self._gen_finally_catch_body(out, self.ctx.indent(), emit_finally, terminates)
             self.ctx.indent_level -= 1
             out.write(f"{inner}}}\n")
-            self._gen_finally_body_and_epilogue(out, fctx, inner, emit_finally)
+            self._gen_finally_body_and_epilogue(
+                out, fctx, inner, emit_finally,
+                body_terminates=stmts_terminate([stmt]))
 
         self.ctx.indent_level -= 1
         out.write(f"{indent}}}\n")
@@ -2600,7 +2629,9 @@ class StatementGenerator:
             self._gen_finally_catch_body(out, self.ctx.indent(), emit_finally, terminates)
             self.ctx.indent_level -= 1
             out.write(f"{inner}}}\n")
-            self._gen_finally_body_and_epilogue(out, fctx, inner, emit_finally)
+            self._gen_finally_body_and_epilogue(
+                out, fctx, inner, emit_finally,
+                body_terminates=stmts_terminate([stmt]))
 
         self.ctx.indent_level -= 1
         out.write(f"{indent}}}\n")

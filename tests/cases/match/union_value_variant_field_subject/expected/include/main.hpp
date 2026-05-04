@@ -92,6 +92,7 @@ inline std::string W::get_label() const {
         break;
     }
     }
+    ::std::unreachable();
 }
 void __tpy_init();
 } // namespace tpyapp::main

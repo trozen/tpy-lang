@@ -9,20 +9,16 @@ namespace tpyapp::main {
 std::string describe(bool b) {
     // match b:
     auto& __match_subject = b;
-    switch (__match_subject) {
     // case True:
-    case true: {
+    if (__match_subject == true) {
         // return "yes"
         return "yes";
-        break;
-    }
     // case False:
-    case false: {
+    } else if (__match_subject == false) {
         // return "no"
         return "no";
-        break;
     }
-    }
+    ::std::unreachable();
 }
 
 // def main() -> None:

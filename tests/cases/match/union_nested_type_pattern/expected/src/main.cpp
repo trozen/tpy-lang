@@ -27,6 +27,7 @@ std::string unwrap(const std::variant<Box<int32_t>*, Box<std::string>*> x) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // # Type pattern without as-binding (just disambiguation)
@@ -50,6 +51,7 @@ std::string describe(const std::variant<Box<int32_t>*, Box<std::string>*> x) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def mixed(x: Pair[str] | Pair[Int32]) -> str:
@@ -76,6 +78,7 @@ std::string mixed(const std::variant<Pair<int32_t>*, Pair<std::string>*> x) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

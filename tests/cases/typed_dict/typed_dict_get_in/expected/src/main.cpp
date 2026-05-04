@@ -65,9 +65,9 @@ void test_get_total_true() {
     }
     // # get with default -> T
     // print(r.get("name", "default"))
-    std::cout << ("default", r.name) << "\n";
+    std::cout << ((void)"default", r.name) << "\n";
     // print(r.get("age", Int32(0)))
-    std::cout << (0, r.age) << "\n";
+    std::cout << ((void)0, r.age) << "\n";
 }
 
 // def test_get_nullable_field() -> None:
@@ -88,9 +88,9 @@ void test_get_nullable_field() {
     }
     // # get with default -- field is present with None value, returns None (not default)
     // print(n.get("name", "fallback"))
-    std::cout << ::tpy::print_optional_val(("fallback", n.name)) << "\n";
+    std::cout << ::tpy::print_optional_val(((void)"fallback", n.name)) << "\n";
     // print(n.get("count", Int32(0)))
-    std::cout << (0, n.count) << "\n";
+    std::cout << ((void)0, n.count) << "\n";
 }
 
 // def test_get_total_false() -> None:

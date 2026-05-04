@@ -27,6 +27,7 @@ std::string nested_param(const std::variant<Box<Box<int32_t>>*, Box<Box<std::str
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def union_subj_union_field(x: Int32 | Container) -> str:
@@ -67,6 +68,8 @@ std::string union_subj_union_field(const std::variant<Container*, int32_t*> x) {
     }
     }
 __match_end_1:;
+    // return ""  # unreachable in practice; sema flags the match as non-exhaustive
+    return "";
 }
 
 // def union_field_param(o: Outer) -> str:
@@ -90,6 +93,7 @@ std::string union_field_param(const Outer& o) {
         // return "other"
         return "other";
     }
+    ::std::unreachable();
 }
 
 // def double_union(items: list[Tagged]) -> None:

@@ -86,6 +86,7 @@ std::string match_guard(const std::variant<A*, B*, C*> v) {
     }
     }
 __match_end_1:;
+    ::std::unreachable();
 }
 
 // def main() -> None:

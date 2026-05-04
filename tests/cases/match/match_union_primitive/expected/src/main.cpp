@@ -43,6 +43,7 @@ std::string describe(const std::variant<Cat*, Dog*, int32_t*, std::string*> x) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def depth(t: Tree) -> Int32:
@@ -82,6 +83,7 @@ int32_t depth(const Tree& t) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def unbox(x: Int32 | Box[str]) -> str:
@@ -106,6 +108,7 @@ std::string unbox(const std::variant<Box<std::string>*, int32_t*> x) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

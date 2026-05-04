@@ -31,6 +31,7 @@ std::string opt_wrapper(Wrapper* w) {
             return "unknown";
         }
     }
+    ::std::unreachable();
 }
 
 // def or_nested(x: Wrapper | Tag) -> str:
@@ -73,6 +74,8 @@ std::string or_nested(const std::variant<Tag*, Wrapper*> x) {
     }
     }
 __match_end_1:;
+    // return ""  # unreachable in practice; sema flags the match as non-exhaustive
+    return "";
 }
 
 // # --- 3 levels deep (type-param disambiguation) ---
@@ -98,6 +101,7 @@ std::string deep3(const std::variant<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::s
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // # --- Positional nested patterns ---
@@ -123,6 +127,7 @@ std::string positional_nested(const std::variant<Box<int32_t>*, Box<std::string>
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // # --- Nested positional field extraction on union field ---
@@ -147,6 +152,7 @@ std::string nested_pos_extract(const Wrapper& w) {
         // return "other"
         return "other";
     }
+    ::std::unreachable();
 }
 
 // # --- Guard clause + union field guard ---
@@ -186,6 +192,7 @@ std::string guard_combo(const Wrapper& w) {
         return "other";
     }
     __match_end_1:;
+    ::std::unreachable();
 }
 
 // def check_float(h: FloatHolder) -> str:
@@ -207,6 +214,7 @@ std::string check_float(const FloatHolder& h) {
         // return "other"
         return "other";
     }
+    ::std::unreachable();
 }
 
 // def check_bool(h: BoolHolder) -> str:
@@ -233,6 +241,7 @@ std::string check_bool(const BoolHolder& h) {
         // return "other"
         return "other";
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

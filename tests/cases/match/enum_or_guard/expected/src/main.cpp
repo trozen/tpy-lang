@@ -66,6 +66,7 @@ std::string classify(Color c) {
         break;
     }
     }
+    ::std::unreachable();
     // return ""
     return "";
 }
@@ -93,6 +94,7 @@ std::string check(Color c, bool allow_red) {
         break;
     }
     }
+    ::std::unreachable();
     // return ""
     return "";
 }
@@ -126,6 +128,7 @@ std::string mixed(Color c, bool allow) {
         break;
     }
     }
+    ::std::unreachable();
     // return ""
     return "";
 }
@@ -153,6 +156,7 @@ std::string or_guard(Color c, bool flag) {
         break;
     }
     }
+    ::std::unreachable();
     // return ""
     return "";
 }
@@ -183,6 +187,7 @@ std::string multi_guard(Color c, bool x, bool y) {
         break;
     }
     }
+    ::std::unreachable();
     // return ""
     return "";
 }

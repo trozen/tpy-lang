@@ -29,6 +29,7 @@ std::string classify(std::optional<int32_t> x) {
         }
         }
     }
+    ::std::unreachable();
     // return ""
     return "";
 }
@@ -53,6 +54,7 @@ std::string describe(std::optional<std::string_view> s) {
             return (::tpy::str_concat("other: ", (*s)));
         }
     }
+    ::std::unreachable();
     // return ""
     return "";
 }

@@ -39,6 +39,7 @@ namespace tpyapp::main {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

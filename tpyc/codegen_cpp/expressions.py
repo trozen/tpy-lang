@@ -29,6 +29,33 @@ from ..type_def_registry import (
     is_enum_type, is_int_enum_type, enum_info_of,
     protocol_info_of,
 )
+
+
+_CMP_HELPER: Final = {
+    "<":  "::std::cmp_less",
+    "<=": "::std::cmp_less_equal",
+    ">":  "::std::cmp_greater",
+    ">=": "::std::cmp_greater_equal",
+    "==": "::std::cmp_equal",
+    "!=": "::std::cmp_not_equal",
+}
+
+
+def _mixed_sign_fixed_int(left_type: "TpyType", right_type: "TpyType") -> bool:
+    """True when comparing fixed-int operands with different signedness.
+
+    Same-rank or otherwise sign-mixed comparisons trip -Wsign-compare under
+    GCC's "usual arithmetic conversions". Codegen routes these through
+    ``std::cmp_*`` (C++20) so the comparison is mathematically correct
+    regardless of bit-pattern reinterpretation.
+    """
+    if not (is_fixed_int_type(left_type) and is_fixed_int_type(right_type)):
+        return False
+    lt = int_traits_of(left_type)
+    rt = int_traits_of(right_type)
+    if lt is None or rt is None:
+        return False
+    return lt.signed != rt.signed
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
@@ -1434,6 +1461,27 @@ class ExpressionGenerator:
                 if folded is not None:
                     return folded
             left_target, right_target = self._comparison_targets(expr)
+            # Mixed-sign fixed-int comparison: use std::cmp_* so the result is
+            # mathematically correct without the "promote signed to unsigned"
+            # reinterpretation that -Wsign-compare warns about. Done before
+            # operand emission so we sidestep target/coercion adjustments that
+            # would force a same-sign cast (and therefore the bug we're avoiding).
+            #
+            # Skip when either operand's analyzer-level type is IntLiteralType:
+            # the literal coerces cleanly to the typed side (`x > 0` etc.),
+            # GCC doesn't trip -Wsign-compare on literal-vs-typed comparisons
+            # for in-range values, and emitting cmp_* there is just noise.
+            # (Sema's gate has an additional `literal_default_vars` check for
+            # locals still pending retro-widen; codegen runs after retro-widen
+            # so those locals already have their final type here.)
+            left_lit = isinstance(self.ctx.get_expr_type(expr.left), IntLiteralType)
+            right_lit = isinstance(self.ctx.get_expr_type(expr.right), IntLiteralType)
+            if (left_target is None and right_target is None
+                    and not left_lit and not right_lit
+                    and _mixed_sign_fixed_int(left_raw, right_raw)):
+                left = self.gen_expr_deref(expr.left)
+                right = self.gen_expr_deref(expr.right)
+                return f"{_CMP_HELPER[expr.op]}({left}, {right})"
             left = self.gen_expr_deref(expr.left, left_target)
             right = self.gen_expr_deref(expr.right, right_target)
 
@@ -1953,6 +2001,14 @@ class ExpressionGenerator:
             if -2**63 <= v <= 2**63 - 1:
                 return f"::tpy::BigInt(static_cast<int64_t>({v}LL))"
             return f'::tpy::BigInt::from_str("{v}")'
+        # Suffix wide literals so GCC doesn't auto-promote to unsigned and warn.
+        # Values in (INT64_MAX, UINT64_MAX] need 'ull'; INT64_MIN can't be
+        # written directly (parsed as unary-minus over an out-of-range literal),
+        # so emit it as the standard (-INT64_MAX - 1) idiom.
+        if v > 0x7FFFFFFFFFFFFFFF:
+            return f"{v}ull"
+        if v == -0x8000000000000000:
+            return "(-9223372036854775807LL - 1)"
         return str(v)
 
     def _maybe_error_return_unwrap(self, expr: TpyCall | TpyMethodCall, call_cpp: str) -> str:
@@ -2503,7 +2559,10 @@ class ExpressionGenerator:
                         default = f"std::string({default})"
                     return f"{obj}.{cpp_field}.value_or({default})"
                 else:
-                    return f"({default}, {obj}.{cpp_field})"
+                    # The field is statically present; the default is evaluated
+                    # for side-effect-order consistency but its value is unused.
+                    # Cast to void so -Wunused-value stays quiet.
+                    return f"((void){default}, {obj}.{cpp_field})"
             else:
                 if expr.typed_dict_get_optional:
                     return f"{obj}.{cpp_field}"

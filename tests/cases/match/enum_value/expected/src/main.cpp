@@ -70,6 +70,7 @@ std::string describe(Color c) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

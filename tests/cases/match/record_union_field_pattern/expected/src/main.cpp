@@ -24,6 +24,7 @@ std::string describe(const Wrapper& w) {
         // return "unknown"
         return "unknown";
     }
+    ::std::unreachable();
 }
 
 // # Nested record pattern with field extraction on union field
@@ -48,6 +49,7 @@ std::string get_name(const Wrapper& w) {
         // return "unknown"
         return "unknown";
     }
+    ::std::unreachable();
 }
 
 // # Type pattern without binding (condition only)
@@ -64,6 +66,7 @@ std::string is_cat(const Wrapper& w) {
         // return "no"
         return "no";
     }
+    ::std::unreachable();
 }
 
 // def show_tagged(t: Tagged) -> str:
@@ -85,6 +88,7 @@ std::string show_tagged(const Tagged& t) {
         // return "other"
         return "other";
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

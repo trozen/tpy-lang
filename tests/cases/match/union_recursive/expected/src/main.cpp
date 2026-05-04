@@ -24,6 +24,7 @@ std::string describe(const Tree& t) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

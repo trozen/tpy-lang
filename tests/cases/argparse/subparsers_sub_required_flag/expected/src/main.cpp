@@ -26,7 +26,6 @@ __tpy_builder_argparse_show_args_1 __tpy_builder_argparse_show_parse_1(const std
     std::string_view __tpy_argparse_usage = "usage: prog show --key KEY";
     bool __tpy_argparse_seen_key = false;
     int32_t __tpy_argparse_i = 0;
-    int32_t __tpy_argparse_pi = 0;
     while ((__tpy_argparse_i < ::tpy::__len__(argv))) {
         std::string_view __tpy_argparse_tok = argv[__tpy_argparse_i];
         if ((__tpy_argparse_tok == "--key")) {

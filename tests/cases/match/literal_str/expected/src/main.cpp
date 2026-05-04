@@ -23,6 +23,7 @@ std::string handle(std::string_view cmd) {
         // return "unknown: " + other
         return (::tpy::str_concat("unknown: ", other));
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

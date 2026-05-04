@@ -30,15 +30,21 @@ from tpyc.codegen_cpp import CodeGenOptions, CodeGenError
 from tpyc.parse import Parser, ParseError
 from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from tpyc.compiler import (
-    Compiler, CompileError, BuildLayout, CppCompilerConfig, get_or_build_pch,
+    Compiler, CompileError, BuildLayout, CppCompilerConfig, STRICT_WARN_FLAGS,
+    get_or_build_pch,
 )
 from tpyc.build.third_party import resolve_build_plan
 
 # Default options for tests: emit source comments for easier debugging
 TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True, comment_line_numbers=False)
 
-# Shared C++ compiler config (auto-detects ccache)
+# Shared C++ compiler config (auto-detects ccache).
+# Tests run with the strict warning set so regressions in generated code or
+# runtime headers fail the build instead of slipping through. End-user CLI
+# builds (`tpy`, `tpyc`) keep an empty default -- consumers opt in via their
+# own toolchain flags. See STRICT_WARN_FLAGS for the rationale per flag.
 CPP_CONFIG = CppCompilerConfig.from_env()
+CPP_CONFIG.warn_flags = list(STRICT_WARN_FLAGS)
 
 # Paths
 TESTS_DIR = Path(__file__).parent

@@ -53,6 +53,7 @@ std::string describe(const std::variant<Bird*, Cat*, Dog*> a, bool verbose) {
     }
     }
 __match_end_1:;
+    ::std::unreachable();
     // return ""
     return "";
 }
@@ -113,6 +114,7 @@ std::string find(const std::variant<Bird*, Cat*, Dog*> a) {
     }
     }
 __match_end_1:;
+    ::std::unreachable();
     // return ""
     return "";
 }

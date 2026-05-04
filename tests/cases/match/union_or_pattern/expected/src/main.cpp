@@ -25,6 +25,7 @@ std::string describe(const std::variant<Bird*, Cat*, Dog*> a) {
         break;
     }
     }
+    ::std::unreachable();
     // return ""
     return "";
 }
@@ -48,6 +49,7 @@ std::string with_default(const std::variant<Bird*, Cat*, Dog*> a) {
         break;
     }
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

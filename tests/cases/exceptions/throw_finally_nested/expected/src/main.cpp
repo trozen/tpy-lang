@@ -24,7 +24,7 @@ int32_t nested_return() {
                 __finally_3:;
                 // print("inner")
                 std::cout << "inner" << "\n";
-                if (__retval_2) goto __finally_1;
+                goto __finally_1;
             }
         } catch (...) {
             // print("outer")
@@ -34,7 +34,7 @@ int32_t nested_return() {
         __finally_1:;
         // print("outer")
         std::cout << "outer" << "\n";
-        if (__retval_2) return (*__retval_2);
+        return (*__retval_2);
     }
 }
 

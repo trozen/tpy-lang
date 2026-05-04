@@ -29,6 +29,7 @@ std::string describe(const Point& p) {
         // return "(" + str(x) + ", " + str(y) + ")"
         return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", ::tpy::fixed_to_str<int32_t>(x))), ", ")), ::tpy::fixed_to_str<int32_t>(y))), ")"));
     }
+    ::std::unreachable();
     // return ""
     return "";
 }
@@ -46,6 +47,7 @@ std::string check_quadrant(const Point& p) {
         // return "not origin"
         return "not origin";
     }
+    ::std::unreachable();
     // return ""
     return "";
 }
@@ -67,6 +69,7 @@ std::string positional(const Point& p) {
         // return "other"
         return "other";
     }
+    ::std::unreachable();
     // return ""
     return "";
 }
@@ -81,6 +84,7 @@ std::string with_capture(const Point& p) {
         // return "point: " + str(q.x) + ", " + str(q.y)
         return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("point: ", ::tpy::fixed_to_str<int32_t>(q.x))), ", ")), ::tpy::fixed_to_str<int32_t>(q.y)));
     }
+    ::std::unreachable();
     // return ""
     return "";
 }

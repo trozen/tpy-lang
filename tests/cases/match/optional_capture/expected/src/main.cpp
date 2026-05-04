@@ -24,6 +24,7 @@ std::string classify(std::optional<int32_t> x) {
         }
         }
     }
+    ::std::unreachable();
 }
 
 // def describe(x: Optional[str]) -> str:
@@ -43,6 +44,7 @@ std::string describe(std::optional<std::string_view> x) {
             return (::tpy::str_concat("got: ", s));
         }
     }
+    ::std::unreachable();
 }
 
 // def main() -> None:

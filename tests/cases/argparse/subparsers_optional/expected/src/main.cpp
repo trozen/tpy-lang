@@ -24,7 +24,6 @@ __tpy_builder_argparse_a_args_1 __tpy_builder_argparse_a_parse_1(const std::vect
     std::optional<std::string> x = std::nullopt;
     std::string_view __tpy_argparse_usage = "usage: prog a [--x X]";
     int32_t __tpy_argparse_i = 0;
-    int32_t __tpy_argparse_pi = 0;
     while ((__tpy_argparse_i < ::tpy::__len__(argv))) {
         std::string_view __tpy_argparse_tok = argv[__tpy_argparse_i];
         if ((__tpy_argparse_tok == "--x")) {
