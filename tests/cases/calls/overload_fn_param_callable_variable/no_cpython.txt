@@ -1,4 +1,0 @@
-CPython's overload dispatcher (lib/cpy/typing.py) can't isinstance-
-check Callable types so it picks the first arity-matching overload,
-which mismatches the variable's callable arity at the body's call
-site. Compiler-only test.

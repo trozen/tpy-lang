@@ -828,6 +828,10 @@ class TypeRegistrar:
 
         # Register all methods
         methods = {}
+        # Parallel map of method-name -> source nodes, in registration order.
+        # Used by `_reject_same_param_overloads` to anchor diagnostics at the
+        # offending method's location.
+        method_nodes: dict[str, list] = {}
         # Compute the record's qname once so method FunctionInfos can carry it
         # (enables qname-based identification at codegen, e.g. peephole folds).
         if record.builtin_type_key:
@@ -1050,9 +1054,11 @@ class TypeRegistrar:
             if method.is_property_getter or method.is_property_setter:
                 # Property getter/setter share a name -- store both in the list
                 methods.setdefault(method.name, []).append(func_info)
+                method_nodes.setdefault(method.name, []).append(method)
             elif method.is_overload_stub:
                 # Accumulate overload stubs for this method name
                 methods.setdefault(method.name, []).append(func_info)
+                method_nodes.setdefault(method.name, []).append(method)
             elif (method.name in methods
                   and method.name not in overload_names
                   and any(m.is_readonly != func_info.is_readonly
@@ -1060,6 +1066,7 @@ class TypeRegistrar:
                           for m in methods[method.name])):
                 # auto_readonly or auto_own clone: add the complementary overload
                 methods[method.name].append(func_info)
+                method_nodes[method.name].append(method)
             elif method.name in methods:
                 # Implementation following stubs: stubs are the callable
                 # overloads. Don't add the implementation to the method list --
@@ -1067,6 +1074,28 @@ class TypeRegistrar:
                 pass
             else:
                 methods[method.name] = [func_info]
+                method_nodes[method.name] = [method]
+
+        # Per-method same-param-diff-return check. Mirrors the free-function
+        # check in register_overload_group, with the auto_readonly /
+        # auto_own const-qualified variants exempted (they emit as
+        # `&` / `const &` / `&&` qualified C++ overloads and are not
+        # ambiguous). Property getter/setter pairs are excluded too --
+        # they're a pair, not alternative overloads, and codegen emits
+        # them under the property's distinct lvalue/rvalue paths.
+        # Dynamic-attr dunders are excluded so their own
+        # `_validate_dyn_dunder_kind` can produce a more specific
+        # diagnostic ("__getattr__ cannot be @overload").
+        _DYN_DUNDER_NAMES = ("__getattr__", "__setattr__", "__delattr__")
+        for method_name, method_infos in methods.items():
+            if len(method_infos) <= 1:
+                continue
+            if method_name in _DYN_DUNDER_NAMES:
+                continue
+            if any(fi.is_property_getter or fi.is_property_setter for fi in method_infos):
+                continue
+            self._reject_same_param_overloads(
+                method_infos, method_nodes.get(method_name), is_method=True)
 
         # Auto-synthesize __iter__() -> Self on iterator types (has __next__ but no __iter__)
         if "__next__" in methods and "__iter__" not in methods:
@@ -2428,12 +2457,64 @@ class TypeRegistrar:
             infos.append(info)
 
         if infos:
+            self._reject_same_param_overloads(infos, stubs)
             self.ctx.registry.register_function_group(infos[0].name, infos)
             self.ctx.global_ns.bind(NameBinding(
                 kind=BindingKind.FUNCTION,
                 name=infos[0].name,
                 func_infos=infos,
             ))
+
+    def _reject_same_param_overloads(
+        self,
+        infos: list[FunctionInfo],
+        nodes: list[TpyFunction] | None,
+        is_method: bool = False,
+    ) -> None:
+        """Reject overload sets where two members have identical
+        positional + keyword-only parameter types.
+
+        The C++ realization mangles the function by parameter shape, not
+        return type, so two overloads with the same parameter signature
+        produce an "ambiguating new declaration" linker error. Catch
+        this at sema with a pointed diagnostic instead of letting the
+        C++ compiler complain.
+
+        For methods, two overloads that share param types but differ in
+        ``is_readonly`` or ``is_consuming`` are legitimate const-qualified
+        variants (auto_readonly / auto_own) -- C++ emits them with ``&``
+        / ``const &`` / ``&&`` qualifiers and there's no ambiguity. The
+        check skips those.
+        """
+        seen: dict[tuple, int] = {}
+        for i, info in enumerate(infos):
+            key_parts: list = [
+                (p.type, p.keyword_only)
+                for p in info.params
+                if not p.is_variadic
+            ]
+            if is_method:
+                key_parts.append(info.is_readonly)
+                key_parts.append(info.is_consuming)
+            key = tuple(key_parts)
+            prev = seen.get(key)
+            if prev is not None:
+                params_str = ", ".join(str(p.type) for p in info.params if not p.is_variadic)
+                node = nodes[i] if nodes and i < len(nodes) else None
+                prev_loc_hint = ""
+                if nodes and prev < len(nodes):
+                    prev_node = nodes[prev]
+                    prev_loc = self.ctx._resolve_loc(prev_node)
+                    if prev_loc is not None:
+                        prev_loc_hint = f" (first defined at line {prev_loc.line})"
+                raise self.ctx.error(
+                    f"@overload variants of '{info.name}' have identical "
+                    f"parameter types ({params_str}){prev_loc_hint}; overloads "
+                    f"must differ in at least one parameter type, not just "
+                    f"the return type",
+                    node,
+                )
+            seen[key] = i
 
     def register_globals(self, stmts: list[TpyStmt]) -> None:
         """Register top-level variable declarations in global scope.

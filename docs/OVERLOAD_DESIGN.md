@@ -117,6 +117,15 @@ Rules:
 - Exactly one non-stub implementation with the same name must follow the stubs
 - The implementation's union-typed parameters must be supertypes of each stub's params
 - Stubs can have different return types (the key use case)
+- Two stubs cannot share identical positional + keyword-only parameter
+  types (sema rejects the overload set up front). C++ realises overloads
+  by parameter shape only, so two stubs with the same params and
+  different return types would produce an "ambiguating new declaration"
+  linker error. The check applies to free functions and methods
+  (`tpyc/sema/registration.py:_reject_same_param_overloads`); method
+  overloads that differ only in `is_readonly` / `is_consuming` (auto_readonly
+  / auto_own const-qualified clones) are exempt because C++ emits them
+  as `&` / `const &` / `&&` qualified overloads.
 
 ### Exhaustiveness
 
@@ -374,6 +383,11 @@ Single-candidate calls (Regime B) are unaffected because the
   + lambda + return TPR rejected),
   `error_overload_fn_param_named_ref_ambiguous` (catch-and-stash ambiguous
   named ref against one Regime C candidate while another rejects).
+- Same-params-diff-return rejection:
+  `tests/cases/calls/error_overload_same_params_diff_return` (free
+  function), `..._method_same_params_diff_return` (method),
+  `tests/cases/readonly/auto_readonly_overload_check_passes`
+  (regression guard that auto_readonly clones are exempted).
 
 ## Codegen: Dead Branch Elimination
 

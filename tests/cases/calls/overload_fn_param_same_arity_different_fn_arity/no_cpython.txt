@@ -1,9 +1,0 @@
-CPython's runtime overload dispatcher (lib/cpy/typing.py) picks the
-first arity-matching overload because Fn type annotations are complex
-generics that _type_matches can't isinstance-check. With two same-arity
-overloads differing only in Fn shape, CPython always picks the first
-and the lambda's parameter count mismatches the body's call site.
-
-This test exercises the compiler's per-candidate Fn arg typing logic,
-which IS arity-aware. CPython's dispatcher would need similar logic to
-handle this shape -- not in scope.
