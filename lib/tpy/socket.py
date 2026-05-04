@@ -12,23 +12,6 @@ Phase 1 scope:
   * with-statement support (context manager).
   * Errors surface as SocketError (wraps errno + strerror).
 
-TODO -- v1 compiler follow-ups. Rough edges where a specific TPy compiler
-bug forced a CPython-incompatible shape or awkward workaround. Each bug
-is tracked in BUGS.md; we list them here too so the module's rough edges
-are discoverable from one place. Reclaim these as the corresponding
-compiler fixes land:
-
-  * **CPython's `accept() -> (sock, (host, port))` shape.** Blocked on
-    "tuple construction of @nocopy/Own elements is broken in both
-    wrapping shapes" (BUGS.md): neither `tuple[Own[Socket], ...]`
-    nor `Own[tuple[Socket, ...]]` codegens correctly (copy-construct and
-    tuple-of-references-to-locals respectively). Phase 1 `accept()`
-    returns `Own[Socket]` only; the peer address is available via
-    `.getpeername()` on the returned Socket.
-
-  * **socketpair().** Same tuple-construction blocker as accept(). No
-    in-process connected pair until the fix lands.
-
 TODO -- v2 feature follow-ups. New scope, not compiler-blocked:
 
   * **IPv6.** AF_INET6 = 10 is declared below but there's no SockaddrIn6
@@ -92,10 +75,9 @@ TODO -- v2 feature follow-ups. New scope, not compiler-blocked:
   * **gethostbyname_ex, gethostbyaddr, getservbyname.** CPython legacy
     DNS APIs; low priority.
 
-  * **Typed address record.** Even once the tuple-of-@nocopy codegen
-    bug is fixed, a typed record (`InetAddress(host: str, port: Int32)`)
-    would read better than a bare tuple. Tabled until we decide on the
-    module's record shapes overall.
+  * **Typed address record.** A typed record (`InetAddress(host: str,
+    port: Int32)`) would read better than a bare tuple. Tabled until we
+    decide on the module's record shapes overall.
 
   * **struct hostent / addrinfo accessors.** We only expose the flat
     tpy_resolve_ipv4 helper today. A proper getaddrinfo wrapper that
@@ -284,16 +266,18 @@ class Socket:
         if posix_socket.listen(self.fd, backlog) < Int32(0):
             _raise_errno("listen")
 
-    def accept(self) -> Own[Socket]:
-        """Block until a client connects, return a Socket around the new fd.
-        Peer address available via `.getpeername()` on the result (CPython's
-        `(sock, addr)` shape blocked by a codegen bug -- see module TODO)."""
+    def accept(self) -> tuple[Own[Socket], tuple[str, Int32]]:
+        """Block until a client connects, return `(conn, (host, port))`
+        matching CPython's `socket.accept()` shape."""
         addr = SockaddrIn(0, 0, 0)
         addrlen: UInt32 = _SOCKADDR_IN_LEN
         new_fd = posix_socket.accept(self.fd, take_ptr(addr), take_ptr(addrlen))
         if new_fd < Int32(0):
             _raise_errno("accept")
-        return Socket(Int32(0), Int32(0), Int32(0), fileno=new_fd)
+        conn = Socket(Int32(0), Int32(0), Int32(0), fileno=new_fd)
+        peer = (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
+                Int32.trunc(posix_socket.ntohs(addr.sin_port)))
+        return (conn, peer)
 
     def send(self, data: bytes) -> Int32:
         """Send (some of) `data`; returns bytes actually sent. Use
@@ -359,8 +343,20 @@ class Socket:
 
 
 # ---------- Module-level factories ----------
-# No `socketpair()` -- tuple-of-@nocopy codegen blocker as accept();
-# see module TODO.
+
+
+def socketpair(family: Int32 = AF_UNIX, type_: Int32 = SOCK_STREAM,
+               proto: Int32 = Int32(0)) -> tuple[Own[Socket], Own[Socket]]:
+    """Create a pair of connected sockets via `::socketpair`.
+
+    Defaults match CPython: AF_UNIX + SOCK_STREAM. Useful for in-process
+    full-duplex pipes; AF_UNIX is POSIX-only (no Windows support yet)."""
+    sv = UninitArrayStorage[Int32, 2]()
+    if posix_socket.socketpair(family, type_, proto, sv.ptr()) < Int32(0):
+        _raise_errno("socketpair")
+    a = Socket(Int32(0), Int32(0), Int32(0), fileno=unsafe_load(sv.ptr(), 0))
+    b = Socket(Int32(0), Int32(0), Int32(0), fileno=unsafe_load(sv.ptr(), 1))
+    return (a, b)
 
 
 def create_connection(address: tuple[str, Int32]) -> Own[Socket]:

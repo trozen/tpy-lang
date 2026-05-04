@@ -1,1 +1,1 @@
-main.py:11: error: argument 'p' must be a mutable lvalue
+main.py:11: error: argument 'p' must be a variable, attribute, or container element (not a temporary or expression)

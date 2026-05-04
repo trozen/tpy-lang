@@ -2221,7 +2221,8 @@ class CallAnalyzer:
             if param.requires_mutable_lvalue:
                 if not self.compat.is_mutable_lvalue(expr.args[i]):
                     raise self.ctx.error(
-                        f"argument '{param.name}' must be a mutable lvalue", expr)
+                        f"argument '{param.name}' must be a variable, attribute, "
+                        f"or container element (not a temporary or expression)", expr)
                 # Address-taking requires T& -- mark params and loop vars as mutated.
                 for name in addr_taken_roots(expr.args[i]):
                     root = self.ctx.func.borrow_tracker.effective_storage(name)
@@ -3349,7 +3350,8 @@ class CallAnalyzer:
                     source = expr.args[i]
                     if not self.compat.is_mutable_lvalue(source):
                         raise self.ctx.error(
-                            f"argument '{pname}' must be a mutable lvalue", expr)
+                            f"argument '{pname}' must be a variable, attribute, "
+                            f"or container element (not a temporary or expression)", expr)
                     for name in addr_taken_roots(source):
                         root = self.ctx.func.borrow_tracker.effective_storage(name)
                         self.ctx.mark_param_mutated(root)

@@ -1,1 +1,1 @@
-main.py:12: error: Cannot return lvalue as tuple element 1 Own[Point] without explicit copy(). Use 'copy(...)' instead.
+main.py:12: error: Cannot return borrowed value as tuple element 1 Own[Point] without explicit copy(). The source is borrowed (parameter, attribute, or non-last-use variable); use 'copy(...)' to make an owned copy.

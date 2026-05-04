@@ -4250,6 +4250,15 @@ class ExpressionGenerator:
 
     def _gen_tuple_literal(self, expr: TpyTupleLiteral, target_type: TpyType | None) -> str:
         """Generate tuple literal code."""
+        # Own[tuple[...]] returns a value tuple whose non-value elements
+        # are implicitly Own slots. Sema's `own_tuple_target()` synthesizes
+        # the matching tuple shape and sets elem_capture=VALUE for those
+        # elements; we mirror that decision here just to drive `_maybe_move`.
+        # If sema's synthesis rule changes, this flag must change with it.
+        outer_own_tuple = (isinstance(target_type, OwnType)
+                           and isinstance(target_type.wrapped, TupleType))
+        if outer_own_tuple:
+            target_type = target_type.wrapped
         target_tuple = target_type if isinstance(target_type, TupleType) else None
         resolved_elem_types = []
         elem_strs = []
@@ -4267,6 +4276,18 @@ class ExpressionGenerator:
                     elif isinstance(elem, TpyFloatLiteral):
                         resolved = FloatLiteralType()
                 elem_str = self._wrap_for_owned_slot(self.gen_expr_deref(elem, elem_target), resolved, elem_target)
+                # Matches the auto-move sema rule for `return x` of an Own var.
+                # Sema annotates VALUE for any slot that takes the element by
+                # value (Own[T], Own[Tuple], or field-context tuple element);
+                # we mirror that universal signal to drive _maybe_move.
+                captured_by_value = (i < len(expr.elem_capture)
+                                     and expr.elem_capture[i] == TupleElemCapture.VALUE)
+                slot_owned = (isinstance(elem_target, OwnType)
+                              or outer_own_tuple or captured_by_value)
+                slot_inner = elem_target.wrapped if isinstance(elem_target, OwnType) else elem_target
+                if (slot_owned and slot_inner is not None
+                        and not slot_inner.is_value_type()):
+                    elem_str = self._maybe_move(elem, elem_str)
                 # Use elem_target for the tuple type when a target was given: the code was
                 # generated with that target in mind, so the C++ expression's type is elem_target.
                 effective_type = elem_target if elem_target is not None else resolved

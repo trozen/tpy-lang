@@ -12,7 +12,7 @@ from ..typesys import (
     FinalType,
     PendingListType, PendingDictType, make_list, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, TypeParamRef,
     ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType,
-    unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType,
+    unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType, own_tuple_target,
     LiteralType,
     ViewTypeFamily, VIEW_TYPE_FAMILIES, STR_FAMILY, BYTES_FAMILY,
     PendingGenericInstanceType, contains_fn_type,
@@ -416,8 +416,10 @@ class StatementAnalyzer:
                 expr
             )
         raise self.ctx.error(
-            f"Cannot return lvalue as {context} Own[{own_type.wrapped}] without explicit copy(). "
-            f"Use 'copy(...)' instead.",
+            f"Cannot return borrowed value as {context} Own[{own_type.wrapped}] "
+            f"without explicit copy(). The source is borrowed (parameter, "
+            f"attribute, or non-last-use variable); use 'copy(...)' to make "
+            f"an owned copy.",
             expr
         )
 
@@ -463,9 +465,14 @@ class StatementAnalyzer:
             # Warn if not an explicit copy() -- same as scalar field assignment
             if is_field:
                 elem_val_type = self.ctx.get_raw_expr_type(elem)
+                # Last-use of an owned local moves into the slot (matches
+                # scalar `self.f = local` auto-move) -- no copy, no warning.
+                is_auto_moved = (isinstance(elem, TpyName)
+                                 and id(elem) in self.ctx.all_last_uses
+                                 and self.compat._is_owned_var(elem.name))
                 should_warn = False
                 if elem_val_type is not None and isinstance(elem_val_type, (RefType, OwnType)):
-                    if not self.compat.is_copy_call(elem):
+                    if not self.compat.is_copy_call(elem) and not is_auto_moved:
                         should_warn = isinstance(elem_val_type, RefType) or isinstance(elem, TpyName)
                 elif self._is_non_owned_var_copy(elem, et):
                     should_warn = True
@@ -522,10 +529,26 @@ class StatementAnalyzer:
             # (including constructor params which are typed as ReadonlyType)
             if not self.compat.is_lvalue(elem):
                 literal.elem_capture.append(V)
-            elif self.compat.is_const_ref_source(elem):
-                literal.elem_capture.append(CR)
             else:
-                literal.elem_capture.append(R)
+                # A ref-tuple of a non-copyable element (`tuple<T&, ...>`) has
+                # no path to a value tuple later -- the C++ conversion fails
+                # with cryptic <tuple> template errors. Reject with a clean
+                # diagnostic; users either annotate the local for ownership
+                # transfer or place the literal directly at its consumer.
+                if self.ctx.is_type_non_copyable(et):
+                    raise self.ctx.error(
+                        f"cannot bind tuple element {i} of non-copyable type "
+                        f"'{et}' by reference. Annotate the local as "
+                        f"'tuple[Own[{et}], ...]' to consume the source, or "
+                        f"place the literal directly at its consumer (return, "
+                        f"call, outer literal) without an intermediate "
+                        f"variable{NOCOPY_REMEDIATION_HINT}",
+                        elem,
+                    )
+                if self.compat.is_const_ref_source(elem):
+                    literal.elem_capture.append(CR)
+                else:
+                    literal.elem_capture.append(R)
 
     def _save_ns_var_types(self) -> dict[str, TpyType]:
         """Save namespace variable types for later restoration."""
@@ -794,16 +817,17 @@ class StatementAnalyzer:
                         self._warn_unnecessary_return_copy(stmt.value)
                     else:
                         self._check_own_lvalue_return(expected, stmt.value, "return type")
-                # Check Own[T] elements in tuple literals
-                if (isinstance(expected, TupleType)
-                        and isinstance(stmt.value, TpyTupleLiteral)):
-                    for i, et in enumerate(expected.element_types):
-                        if isinstance(et, OwnType) and i < len(stmt.value.elements):
-                            self._check_own_lvalue_return(et, stmt.value.elements[i],
-                                                          f"tuple element {i}")
-                    # Annotate per-element capture mode (ref/value/const_ref)
-                    self._annotate_tuple_elem_capture(
-                        stmt.value, expected, is_return=True)
+                # Check Own[T] elements in tuple literals.
+                if isinstance(stmt.value, TpyTupleLiteral):
+                    tuple_target = own_tuple_target(expected)
+                    if tuple_target is not None:
+                        for i, et in enumerate(tuple_target.element_types):
+                            if isinstance(et, OwnType) and i < len(stmt.value.elements):
+                                self._check_own_lvalue_return(et, stmt.value.elements[i],
+                                                              f"tuple element {i}")
+                        # Annotate per-element capture mode (ref/value/const_ref)
+                        self._annotate_tuple_elem_capture(
+                            stmt.value, tuple_target, is_return=True)
                 # Check for dangling reference (returning local/temporary as reference)
                 self.compat.check_dangling_reference(stmt.value, expected, stmt.loc)
                 # Returning a non-value type by reference takes the source's address.
@@ -3517,10 +3541,12 @@ class StatementAnalyzer:
         stmt.value = self.compat.coerce_expr(stmt.value, value_type, target_type, "assignment",
                                               coercion_ctx=CoercionContext.ASSIGN)
         # Annotate tuple literal element capture modes
-        if isinstance(stmt.value, TpyTupleLiteral) and isinstance(target_type, TupleType):
-            is_field = isinstance(stmt.target, TpyFieldAccess)
-            self._annotate_tuple_elem_capture(
-                stmt.value, target_type, is_field=is_field)
+        if isinstance(stmt.value, TpyTupleLiteral):
+            tuple_target = own_tuple_target(target_type)
+            if tuple_target is not None:
+                is_field = isinstance(stmt.target, TpyFieldAccess)
+                self._annotate_tuple_elem_capture(
+                    stmt.value, tuple_target, is_field=is_field)
         # Residual copy warning: reassigned vars without OwnType in scope
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             if stmt.loc is not None and not copy_warning_fired:

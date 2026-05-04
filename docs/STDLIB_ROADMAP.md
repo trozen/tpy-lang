@@ -1074,7 +1074,7 @@ Architecture (mirrors the re / PCRE2 split):
 | Item | Status | Notes |
 |---|---|---|
 | `Socket(family, type, proto)` | Done | `@nocopy`, RAII close in `__del__`. Use `Socket(AF_INET, SOCK_STREAM)` or `create_connection` / `create_server`; a CPython-style module-level `socket()` factory is a future addition |
-| `bind`, `connect`, `listen`, `accept` | Done | `accept() -> Own[Socket]` instead of CPython's `(sock, (host, port))` -- blocked on tuple-of-@nocopy codegen bug (BUGS.md "Tuple construction of @nocopy/Own[T] elements"). Callers get the peer via `.getpeername()` on the returned Socket |
+| `bind`, `connect`, `listen`, `accept` | Done | `accept() -> tuple[Own[Socket], tuple[str, Int32]]` matches CPython's `(conn, (host, port))` shape |
 | `send`, `sendall`, `recv` | Done | `send` returns `Int32` (truncated from `ssize_t`); realistic per-call sends are well under 2 GiB. `recv` returns a fresh `bytes` |
 | `close`, `shutdown`, `fileno` | Done | |
 | `setsockopt_int` | Done | Int-valued options only; struct options (`SO_RCVTIMEO`, `SO_LINGER`) deferred |
@@ -1084,7 +1084,7 @@ Architecture (mirrors the re / PCRE2 split):
 | `with socket(...) as s:` | Done | `__enter__` returns self, `__exit__` closes |
 | `SocketError` | Done | Wraps errno + strerror. `except socket.SocketError` blocked by qualified-except-clause gap; use `from socket import SocketError` |
 | Constants (`AF_INET`, `SOCK_STREAM`, `SOL_SOCKET`, ...) | Done | Linux glibc values hardcoded. macOS/BSD values differ -- deferred |
-| `socketpair()` | Missing | Same tuple-of-@nocopy blocker as accept() |
+| `socketpair()` | Done | Defaults to `AF_UNIX` + `SOCK_STREAM`; returns `tuple[Own[Socket], Own[Socket]]` |
 | IPv6 / `AF_INET6` | Missing | Needs `SockaddrIn6` binding |
 | `AF_UNIX` | Missing | Needs `SockaddrUn` binding |
 | `sendto`, `recvfrom`, `recv_into` | Missing | UDP out-addr + recv-into-caller-buffer variants |

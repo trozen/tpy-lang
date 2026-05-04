@@ -1,1 +1,1 @@
-main.py:9: error: Cannot return lvalue as return type Own[Box] without explicit copy(). Use 'copy(...)' instead.
+main.py:9: error: Cannot return borrowed value as return type Own[Box] without explicit copy(). The source is borrowed (parameter, attribute, or non-last-use variable); use 'copy(...)' to make an owned copy.

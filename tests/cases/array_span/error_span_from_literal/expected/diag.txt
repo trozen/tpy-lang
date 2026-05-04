@@ -1,1 +1,1 @@
-main.py:4: error: Cannot take address of temporary or rvalue in variable 's'; assign to a variable first
+main.py:4: error: Cannot take address of a temporary or expression in variable 's'; assign to a variable first

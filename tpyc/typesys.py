@@ -1811,6 +1811,30 @@ def unwrap_optional_own(t: 'TpyType') -> 'OwnType | None':
     return None
 
 
+def own_tuple_target(expected: 'TpyType') -> 'TupleType | None':
+    """Return the elem-capture-shaped TupleType for a tuple-target type.
+
+    Both `tuple[Own[T], ...]` and `Own[tuple[T, ...]]` imply per-element
+    move semantics: the value tuple owns its elements, so non-value
+    elements need ownership transfer at construction. For `Own[Tuple]`
+    we synthesize an Own-wrapped inner tuple so the existing per-element
+    `Own[T]` handling (sema's `_check_own_lvalue_return` and
+    `_annotate_tuple_elem_capture`) covers both shapes uniformly.
+    """
+    if isinstance(expected, TupleType):
+        return expected
+    if isinstance(expected, OwnType) and isinstance(expected.wrapped, TupleType):
+        inner = expected.wrapped
+        if all(et.is_value_type() or isinstance(et, OwnType)
+               for et in inner.element_types):
+            return inner
+        return TupleType(tuple(
+            et if (et.is_value_type() or isinstance(et, OwnType)) else OwnType(et)
+            for et in inner.element_types
+        ))
+    return None
+
+
 @dataclass(frozen=True)
 class NoneType(TpyType):
     """The type of the None literal (distinct from VoidType which is for return types)."""

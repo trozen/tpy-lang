@@ -986,7 +986,7 @@ class TypeCompatibility:
         elif coercion.requires_lvalue:
             if source_expr is None or not self.is_lvalue(source_expr):
                 return CompatError(
-                    f"Cannot take address of temporary or rvalue in {context}; "
+                    f"Cannot take address of a temporary or expression in {context}; "
                     f"assign to a variable first",
                     loc
                 )

@@ -781,6 +781,29 @@ pt, found = find(p)  # pt is Point&, found is bool
 | Container (`list[...]`) | `std::tuple<int32_t, Point>` | Same as `list[Point]` = owned |
 | Local variable | `auto` (deduced from RHS) | Same as `p2 = p` = reference |
 
+Ownership transfer (all three forms produce identical codegen):
+
+- `tuple[Own[T], Own[T], ...]` -- per-element Own. Each non-value element is moved into the value tuple; `@nocopy` elements at last-use are auto-moved.
+- `Own[tuple[T, T, ...]]` -- outer Own. Equivalent to per-element Own for non-value elements; the value tuple owns its contents.
+- `tuple[T, T, ...]` in field/owning-destination context -- last-use owned locals auto-move into the slot, matching scalar `field: T` semantics ("a tuple field of N objects behaves like N scalar fields"). The `Own[T]` annotation is redundant on field elements.
+
+```python
+def make_pair() -> tuple[Own[Handle], Own[Handle]]:
+    a = Handle(Int32(1))
+    b = Handle(Int32(2))
+    return (a, b)              # std::tuple<Handle, Handle>{std::move(a), std::move(b)}
+
+def make_pair_alt() -> Own[tuple[Handle, Handle]]:
+    return (Handle(Int32(1)), Handle(Int32(2)))   # same codegen
+
+class Container:
+    pair: tuple[Handle, Handle]              # no Own[T] needed
+    def __init__(self) -> None:
+        a = Handle(Int32(1))
+        b = Handle(Int32(2))
+        self.pair = (a, b)                   # auto-moves at last-use
+```
+
 Restrictions:
 - Index must be a compile-time integer literal (variable indexing is rejected)
 - Bare `tuple` without type arguments is rejected (must use `tuple[T1, T2, ...]`)
@@ -789,6 +812,7 @@ Restrictions:
 - Nested unpacking (`a, (b, c) = ...`) is not yet supported
 - `Optional[T]` / `Union` elements in tuples are not yet supported (codegen and printing need work)
 - Comparison (`==`, `!=`) requires element-wise type compatibility; `<`, `>`, `<=`, `>=` are not supported
+- An inferred ref-tuple of `@nocopy` elements (`p = (a, b)` of two `@nocopy` locals, no annotation) is rejected with a clean diagnostic. The default ref-capture (`std::tuple<T&, T&>`) cannot be promoted to a value tuple later, which would otherwise produce cryptic C++ errors on use. Annotate `p: tuple[Own[T], ...]` to consume the sources, or place the literal directly at its consumer.
 
 ### Pointers/References
 - **Working**: `Ptr[T]` -> `T*`
