@@ -132,7 +132,7 @@ Examples of the policy in action:
 | [`re`](#re) | P0 | Partial | ~50% | pure | Pure-TPy facade over `_bindings.pcre2` raw bindings. PCRE2 vendored under `runtime/cpp/third_party/pcre2/` (5MB) and built bundled by default; `--pcre2={bundled,system,auto}` selects backend. compile/search/match/fullmatch/findall/sub/split + Pattern/Match classes + IGNORECASE/MULTILINE/DOTALL/VERBOSE/ASCII flags + `re.error`. Missing: named-group accessors, `count` arg on sub, true generator finditer, bytes input, compile cache |
 | [`collections`](#collections) | P0 | Missing | 0% | -- | OrderedDict trivial (have ordered_map); deque needs C++ struct; Counter/defaultdict/namedtuple need macros |
 | [`itertools`](#itertools) | P0 | Missing | 0% | -- | C++ primitives exist in `runtime/itertools.hpp`; needs Python-surface module |
-| [`functools`](#functools) | P0 | Partial | ~10% | pure | `reduce(func, a, initial)` (3-arg only) done. 2-arg `reduce(func, a)`, `cmp_to_key`, `total_ordering`, `wraps` gated on specific compiler fixes (see section). partial/lru_cache/singledispatch/cached_property/partialmethod need closures + macros |
+| [`functools`](#functools) | P0 | Partial | ~15% | pure | `reduce(func, a, initial)` and `reduce(func, a)` done. `cmp_to_key`, `total_ordering`, `wraps` gated on specific compiler fixes (see section). partial/lru_cache/singledispatch/cached_property/partialmethod need closures + macros |
 | [`random`](#random) | P1 | Partial | ~80% | pure | Pure-TPy MT19937 + CPython's distribution suite, byte-identical to CPython on the same seed. Done: `Random` class, `random`, `seed(Int32)`, `getrandbits(k<=32)`, `randint`, `randrange`, `randbytes`, `uniform`, `triangular`, `gauss`, `normalvariate`, `lognormvariate`, `expovariate`, `paretovariate`, `weibullvariate`, `gammavariate`, `betavariate`, `vonmisesvariate`. Missing: `choice`/`shuffle` (Tier 2, straightforward), `choices`/`sample`/`SystemRandom`/auto-seed/`binomialvariate`/`getstate` (Tier 3, blocked on Iterable protocol or OS-entropy binding). See module docstring TODOs |
 | [`struct`](#struct) | P1 | Partial | ~60% | macro | unpack/calcsize only; `pack` needs statement-expr or buffer builder |
 | [`bisect`](#bisect) | P1 | Done | 100% | pure | All four functions implemented generically over `Comparable` |
@@ -617,14 +617,10 @@ blocked the pure-TPy approach has been resolved (codegen always emits
 
 ### functools
 
-Current: `lib/tpy/functools.py` -- pure-TPy 3-arg `reduce` only. Landing the
-rest is gated on specific compiler fixes tracked in BUGS.md / TODO.md, not on
-macro or closure infrastructure:
+Current: `lib/tpy/functools.py` -- pure-TPy `reduce` (both 2-arg and 3-arg
+forms). Landing the rest is gated on specific compiler fixes tracked in
+BUGS.md / TODO.md, not on macro or closure infrastructure:
 
-- **2-arg `reduce(func, a)`** (CPython uses `a[0]` as the seed and raises on
-  empty) requires overload resolution + `Fn[...]` param to resolve named
-  function refs and lambdas in the callable slot. Currently both fail.
-  See BUGS.md "Overload resolution + `Fn[...]` param".
 - **`cmp_to_key`** requires either `copy()` to strip readonly through
   generic `T`, arithmetic on `readonly[FixedInt]`, or an opt-out from the
   unconditional readonly deduction on comparison dunders. See BUGS.md
@@ -633,7 +629,7 @@ macro or closure infrastructure:
 | Item | Status | Notes |
 |---|---|---|
 | `reduce(func, a, initial)` | Done | Pure TPy. Takes `Iterable[T]` -- accepts list literals, `range()`, bound list/iter vars |
-| `reduce(func, a)` | Blocked | 2-arg form; blocked on overload + `Fn` resolution. See BUGS.md |
+| `reduce(func, a)` | Done | Pure TPy. Takes `list[T]` (random-access; raises on empty). Restricted to list rather than `Iterable[T]` because TPy doesn't have CPython's iter/next + StopIteration pattern |
 | `cmp_to_key` | Blocked | Pure TPy; blocked on readonly-through-generics. See BUGS.md |
 | `total_ordering` | Missing | Class macro -- reuses `build_order` from `_macro_helpers.py`. Unblocked, a few hours of work |
 | `wraps`, `update_wrapper` | Missing | No-op identity call_macro (TPy functions don't carry runtime `__name__`/`__doc__`). Unblocked, trivial |

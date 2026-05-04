@@ -3207,8 +3207,12 @@ class ExpressionAnalyzer:
                 if binding.kind == BindingKind.VARIABLE:
                     return None  # local variable shadows any function
                 if binding.kind == BindingKind.FUNCTION and binding.func_infos:
-                    matched = self._match_function_to_hint(binding.func_infos, hint, expr)
-                    if matched is not None:
+                    matched_data = self._match_function_to_hint_data(
+                        binding.func_infos, hint, expr.name, expr)
+                    if matched_data is not None:
+                        matched, type_args = matched_data
+                        if type_args is not None:
+                            expr.function_ref_type_args = type_args
                         expr.is_function_ref = True
                         expr.function_ref_info = matched
                         # Escape tracking: passing nested def to Callable (type-erased)
@@ -3221,8 +3225,12 @@ class ExpressionAnalyzer:
         # Check registry (covers imported functions not yet in namespace)
         func_infos = self.ctx.registry.get_function(expr.name)
         if func_infos:
-            matched = self._match_function_to_hint(func_infos, hint, expr)
-            if matched is not None:
+            matched_data = self._match_function_to_hint_data(
+                func_infos, hint, expr.name, expr)
+            if matched_data is not None:
+                matched, type_args = matched_data
+                if type_args is not None:
+                    expr.function_ref_type_args = type_args
                 expr.is_function_ref = True
                 expr.function_ref_info = matched
                 return self._concrete_fn_type(matched, expr, hint)
@@ -3240,16 +3248,27 @@ class ExpressionAnalyzer:
         """
         if not contains_type_param(hint):
             return hint
-        # Build concrete param/return types from the matched function info.
-        # Strip Ref from param types and Own from return type -- the Fn type
-        # represents the logical callable contract. Ref on return type IS preserved so type
-        # inference can track reference semantics through combinators
-        # (e.g. map(identity, pts) infers U=Ref[Point] -> val_or_ref<Point>).
+        return self.build_concrete_callable(fi, expr.function_ref_type_args, hint)
 
+    def build_concrete_callable(
+        self, fi: FunctionInfo,
+        type_args: tuple[TpyType, ...] | None,
+        hint: CallableType,
+    ) -> CallableType:
+        """Concrete Fn/Callable from `fi`'s actual signature, optionally
+        substituted with `type_args`.
+
+        Strips Ref from param types and Own from return type -- the Fn
+        type represents the logical callable contract. Ref on return
+        type IS preserved so type inference can track reference
+        semantics through combinators (e.g. map(identity, pts) infers
+        U=Ref[Point] -> val_or_ref<Point>). Shape mirrors `hint` -- Fn
+        if template, Callable otherwise.
+        """
         param_types = tuple(unwrap_ref_type(ptype) for _, ptype in fi.params)
         return_type = unwrap_own(fi.return_type)
-        if fi.is_generic() and expr.function_ref_type_args:
-            subst = dict(zip(fi.type_params, expr.function_ref_type_args))
+        if fi.is_generic() and type_args:
+            subst = dict(zip(fi.type_params, type_args))
             param_types = tuple(
                 self.type_ops.substitute_type_params(p, subst) for p in param_types
             )
@@ -3258,14 +3277,23 @@ class ExpressionAnalyzer:
             return make_fn_type(param_types, return_type)
         return CallableType(param_types, return_type)
 
-    def _match_function_to_hint(
-        self, func_infos: list[FunctionInfo], hint: CallableType, expr: TpyName,
-    ) -> FunctionInfo | None:
+    def _match_function_to_hint_data(
+        self, func_infos: list[FunctionInfo], hint: CallableType,
+        name: str, err_node: TpyName,
+    ) -> tuple[FunctionInfo, tuple[TpyType, ...] | None] | None:
         """Find a function overload matching the Fn/Callable hint signature.
 
-        Returns the matched FunctionInfo or raises an error if ambiguous.
-        For generic functions, infers type parameters from the hint and stores
-        the inferred type args on the expr node.
+        Pure data lookup: returns ``(matched_fi, inferred_type_args)`` on a
+        unique match (``type_args`` is ``None`` for non-generic matches),
+        ``None`` when no overload matches (callers may treat the name as a
+        variable instead). Raises ``SemanticError`` on ambiguity or
+        generic-rejection -- ``err_node`` provides source location and is
+        not otherwise mutated, so this matcher is safe to use during
+        speculative overload probing.
+
+        Callers that want the AST mutated (``is_function_ref``,
+        ``function_ref_info``, ``function_ref_type_args``) commit those
+        themselves after a winning candidate is chosen.
         """
         hint_params = hint.param_types
         hint_return = hint.return_type
@@ -3307,17 +3335,14 @@ class ExpressionAnalyzer:
                         continue
             candidates.append((fi, None))
         if len(candidates) == 1:
-            fi, type_args = candidates[0]
-            if type_args is not None:
-                expr.function_ref_type_args = type_args
-            return fi
+            return candidates[0]
         if len(candidates) > 1:
             raise self.ctx.error(
-                f"Ambiguous function reference: multiple overloads of '{expr.name}' "
-                f"match {hint}", expr)
+                f"Ambiguous function reference: multiple overloads of '{name}' "
+                f"match {hint}", err_node)
         # No match -- emit generic rejection diagnostic if we have one
         if generic_rejection is not None:
-            raise self.ctx.error(generic_rejection, expr)
+            raise self.ctx.error(generic_rejection, err_node)
         # Return None to fall through (might be a variable, not a function)
         return None
 

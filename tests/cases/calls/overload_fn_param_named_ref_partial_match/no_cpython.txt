@@ -1,0 +1,6 @@
+Same-arity Fn-bearing overloads can't be distinguished by CPython's
+runtime overload dispatcher (lib/cpy/typing.py) -- it can't isinstance-
+check generic Fn types, so it picks the first arity-matching overload
+which mismatches the lambda's parameter count. The compiler's per-
+candidate Fn arg typing IS arity-aware. Out of scope for the CPython
+shim.

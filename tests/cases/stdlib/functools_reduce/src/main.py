@@ -1,11 +1,12 @@
-# functools.reduce -- 3-arg form only (see lib/tpy/functools.py for the
-# 2-arg form blocker). Covers lambda and named-function callables, cross-type
-# T/U (summing str lengths into Int32), the empty-input + initial case that
-# just returns the seed, and a reference-type accumulator (list[Int32]) that
-# verifies copy(initial) actually copies rather than aliasing the caller's
-# seed. Also exercises non-list iterables: literal list, range(), empty list
-# literal -- unblocked by the list-literal-vs-Iterable[T] conformance work
-# and the post-overload-resolution element-type coercion.
+# functools.reduce -- 3-arg form. Covers lambda and named-function callables,
+# cross-type T/U (summing str lengths into Int32), the empty-input + initial
+# case that just returns the seed, and a reference-type accumulator
+# (list[Int32]) that verifies copy(initial) actually copies rather than
+# aliasing the caller's seed. Also exercises non-list iterables: literal
+# list, range(), empty list literal -- unblocked by the
+# list-literal-vs-Iterable[T] conformance work and the
+# post-overload-resolution element-type coercion. The 2-arg form is in
+# functools_reduce_2arg.
 from functools import reduce
 from tpy import Int32
 

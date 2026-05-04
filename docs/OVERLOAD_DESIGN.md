@@ -301,6 +301,49 @@ diagnostic before the generic *"no matching overload"* fallback. Applies
 to both free-function and method `@overload` groups; not to overloaded
 builtins (which still reject kwargs at the call-site gate).
 
+#### `Fn[...]` parameters and contextual callable typing
+
+Callable args (lambdas, named function refs) need a target type to resolve.
+`tpyc/sema/calls.py:_resolve_call_overloads` (shared by user and builtin
+paths) classifies overload sets via a *regime predicate* before tier
+ranking. For each candidate, `_supplied_fn_slots` walks positional + kwarg
+args against `func.params` and reports which Fn-typed slots are filled by
+a *supplied* (non-default) arg. Three regimes:
+
+- **Regime A** (zero candidates with supplied Fn slots): the existing
+  direct arg analysis -- no two-phase Fn typing needed.
+- **Regime B** (exactly one candidate with supplied Fn slots): the
+  existing two-phase `_infer_arg_types` path runs against that candidate.
+  Lambdas are typed via `_analyze_lambda_with_fn_hint`, which has a
+  TPR-return body-inference branch -- this is what lets shapes like
+  `map[T, U](Fn[[T], U], Iterable[T])` extract `U` from the lambda body
+  without the call site having to pin it.
+- **Regime C** (2+ candidates with supplied Fn slots, or 1 with a
+  kwarg-supplied Fn slot): per-candidate evidence collection in
+  `_resolve_regime_c` + `_build_regime_c_evidence`. Each candidate
+  substitutes partial inference into its Fn-slot param to get a hint,
+  then synthesises the lambda's "type" as that hint (no body analysis).
+  Named function refs go through a pure data matcher
+  (`_match_function_to_hint_data`) that returns the matched
+  `FunctionInfo` plus inferred type args without mutating the AST; the
+  matcher's concrete callable type pins return TPRs for named refs even
+  when the partial-substitution hint can't.
+
+Regime C runs the same tier ranking as Regime A/B over the per-candidate
+evidence (via `_classify_overload`), then a coercion-pass fallback
+mirroring pass 2 above. The legacy structural-match fallback at the user
+path's no-match recovery is gated on `contextual_callable_used` so it
+can't reason over synthesized callable types.
+
+**V1 limit (BUGS.md):** Regime C with a `TpyLambda` whose hint return
+type is still a `TypeParamRef` after partial inference is rejected --
+without per-candidate body analysis we can't pin the return TPR.
+Workaround: hoist the lambda to a typed local (a callable variable
+supplies a concrete return type via the variable's declared type), or
+use a `def` (named refs use the matcher's concrete callable type).
+Single-candidate calls (Regime B) are unaffected because the
+`_analyze_lambda_with_fn_hint` body path runs.
+
 #### Testing
 
 - Unit tests: `tpyc/test_overloads.py` pins `MatchTier` ordering, the cost
@@ -318,6 +361,19 @@ builtins (which still reject kwargs at the call-site gate).
   (overloads with distinct kwonly names + defaulted positional gap),
   `tests/cases/calls/error_overload_kwarg_unknown` (targeted
   unexpected-kwarg diagnostic).
+- `Fn[...]` regime tests: `tests/cases/calls/overload_fn_param_arity_2_3_named_ref`
+  / `..._lambda` (Regime B picking by arity for named ref + lambda),
+  `tests/cases/calls/overload_fn_param_same_arity_different_fn_arity`
+  (Regime C picking by lambda arity), `..._named_ref_partial_match`
+  (Regime C picking by named ref shape), `..._kwarg_callable` (kwarg-supplied
+  Fn args route through Regime C), `..._callable_variable` (callable-typed
+  variable disambiguates by hint), `..._single_candidate_body_inference`
+  (Regime B preserves `_analyze_lambda_with_fn_hint` body return-TPR
+  inference inside an overload group),
+  `error_overload_fn_param_lambda_return_tpr` (V1 limit -- multi-Fn-bearing
+  + lambda + return TPR rejected),
+  `error_overload_fn_param_named_ref_ambiguous` (catch-and-stash ambiguous
+  named ref against one Regime C candidate while another rejects).
 
 ## Codegen: Dead Branch Elimination
 

@@ -6,7 +6,7 @@ Function and constructor call analysis.
 
 from __future__ import annotations
 import copy
-from dataclasses import replace as dc_replace
+from dataclasses import dataclass, replace as dc_replace
 from typing import Callable, NoReturn, TYPE_CHECKING
 
 from ..typesys import (
@@ -35,7 +35,11 @@ from ..namespace import BindingKind
 from ..coercions import CoercionContext, VALUE_TO_PTR
 from .context import PENDING_CONTAINER_TYPES, addr_taken_roots
 from ..diagnostics import SemanticError
-from .overloads import type_matches_numeric, resolve_overload, OverloadAmbiguityError
+from .overloads import (
+    type_matches_numeric, type_matches_with_coercion,
+    resolve_overload, OverloadAmbiguityError,
+    _classify_overload, _score, _expand_arg_types_with_kwargs,
+)
 from .statements import _root_name_of_expr, _is_self_call_deferred
 from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo, _is_static_str
 from ..macro_loader import expand_call_macro
@@ -291,6 +295,52 @@ def _partial_substitute(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
     if isinstance(typ, TypeParamRef):
         return subst.get(typ.name, typ)
     return typ.map_inner_types(lambda t: _partial_substitute(t, subst))
+
+
+@dataclass
+class ResolveResult:
+    """Output of overload-resolution selection (`_resolve_call_overloads`).
+
+    Selection only -- callers do post-resolution work (commit-side
+    coercion, no-match diagnostics, legacy fallback) using these fields.
+
+    `matched_origin` is `(original_generic, type_subst)` for a generic
+    winner, `None` for non-generic winners or no match. Today's user
+    path only needs `original_generic`; builtin path needs the full
+    `type_subst` for `inferred_type_args`.
+
+    `contextual_callable_used` is True iff any Fn-position arg was typed
+    using contextual evidence (a `TpyLambda`, or a `TpyName` resolving
+    to a function ref via `_match_function_to_hint_data`). Callers gate
+    fallback behavior on this -- structural-match fallbacks must not
+    reason over synthesized callable evidence.
+
+    `first_contextual_error` stashes the first per-candidate
+    `SemanticError` raised by function-ref ambiguity / generic
+    rejection during Regime C trial. Surfaced by the caller when no
+    candidate ultimately wins.
+    """
+    matched: FunctionInfo | None
+    matched_origin: tuple[FunctionInfo, dict[str, TpyType]] | None
+    arg_types: list[TpyType]
+    enriched_types: list[TpyType]
+    kwarg_types: dict[str, TpyType] | None
+    contextual_callable_used: bool = False
+    first_contextual_error: SemanticError | None = None
+
+
+@dataclass(frozen=True)
+class SuppliedFnSlot:
+    """An Fn-typed param of a candidate filled by a supplied (non-default) arg.
+
+    Used to identify which candidates are "Fn-bearing-by-supplied-args"
+    for regime selection in `_resolve_call_overloads`, and which arg
+    expression maps to which Fn param slot for per-candidate trial.
+    """
+    param_index: int       # index in func.params
+    arg_expr: TpyExpr      # the supplied arg expression
+    arg_index: int | None  # index in expr.args (None if supplied via kwarg)
+    kwarg_name: str | None # kwarg name (None if supplied positionally)
 
 
 def _is_numeric_or_int_literal(t: TpyType) -> bool:
@@ -2652,6 +2702,670 @@ class CallAnalyzer:
             expr.args.append(key_arg)
             expr.kwargs = {}
 
+    def _supplied_fn_slots(
+        self, expr: TpyCall, func: FunctionInfo,
+    ) -> list[SuppliedFnSlot] | None:
+        """Walk expr's positional + keyword args against func.params,
+        returning the list of Fn-typed slots filled by supplied
+        (non-default) arguments.
+
+        Returns ``None`` when the call shape rejects this candidate:
+        unknown kwarg, positional/keyword collision, missing required
+        param, or too many positional args. An empty list means the
+        candidate is viable but has no supplied Fn args.
+
+        Mirrors the validity rules in `_expand_arg_types_with_kwargs`
+        but tracks supplied-vs-default per slot, which the type-only
+        expansion loses.
+
+        Variadic stubs (`*args` on `@overload`) are parser-blocked, so
+        this helper returns ``None`` for any candidate with
+        ``has_variadic`` -- callers fall back to the existing
+        non-regime-aware flow if needed.
+        """
+        if func.has_variadic:
+            return None
+
+        args = expr.args
+        kwargs = expr.kwargs or {}
+
+        if len(args) > len(func.params):
+            return None  # too many positional
+
+        # Reject any positional fill of a keyword-only param.
+        for i in range(min(len(args), len(func.params))):
+            if func.params[i].keyword_only:
+                return None
+
+        name_to_index = {p.name: i for i, p in enumerate(func.params)}
+
+        # Validate kwargs against param names + reject collisions.
+        rightmost = len(args) - 1
+        for kw_name in kwargs:
+            idx = name_to_index.get(kw_name)
+            if idx is None:
+                return None  # unknown kwarg
+            if idx < len(args) and not func.params[idx].keyword_only:
+                return None  # positional/keyword collision
+            if idx > rightmost:
+                rightmost = idx
+
+        result: list[SuppliedFnSlot] = []
+        for i in range(rightmost + 1):
+            p = func.params[i]
+            ptype = unwrap_ref_type(p.type)
+            if i < len(args):
+                if is_callable_type(ptype):
+                    result.append(SuppliedFnSlot(
+                        param_index=i, arg_expr=args[i],
+                        arg_index=i, kwarg_name=None))
+            elif p.name in kwargs:
+                if is_callable_type(ptype):
+                    result.append(SuppliedFnSlot(
+                        param_index=i, arg_expr=kwargs[p.name],
+                        arg_index=None, kwarg_name=p.name))
+            elif p.has_default:
+                pass  # default; not supplied
+            else:
+                return None  # missing required positional
+
+        # Required positional / keyword-only params beyond rightmost
+        # must have a default (positional case) or be in kwargs
+        # (keyword-only case). Otherwise the candidate isn't viable for
+        # this call shape.
+        for i, p in enumerate(func.params):
+            if i <= rightmost:
+                continue
+            if p.keyword_only:
+                if not p.has_default and p.name not in kwargs:
+                    return None
+            else:
+                if not p.has_default:
+                    return None
+
+        return result
+
+    def _resolve_call_overloads(
+        self,
+        expr: TpyCall,
+        func_infos: list[FunctionInfo],
+        *,
+        is_generic_for_pool: Callable[[FunctionInfo], bool],
+        deref_checker: Callable[[TpyType], TpyType | None] | None = None,
+        explicit_type_args: tuple[TpyType, ...] | None = None,
+        strip_ref_own: bool = False,
+        resolve_pending_view: bool = False,
+        preserve_declaration_order: bool = True,
+    ) -> ResolveResult:
+        """Selection-only overload resolution shared by builtin and user paths.
+
+        Picks a regime based on how many candidates have an Fn-typed param
+        filled by a *supplied* (non-default) call argument:
+
+        - 0 -> existing flow with ``fn_generic = None`` (no two-phase Fn
+          arg analysis).
+        - 1 -> existing flow with that single candidate as ``fn_generic``
+          (preserves builtin behavior including
+          ``_analyze_lambda_with_fn_hint`` body-return TPR inference).
+        - 2+ -> per-candidate Fn arg trial (Regime C).
+
+        Per-path knobs (``is_generic_for_pool``, Ref/Own stripping, etc.)
+        cover divergences in pool building between user and builtin paths.
+
+        Raises ``OverloadAmbiguityError`` from ``resolve_overload`` --
+        the caller wraps to surface a located diagnostic.
+        """
+        # Regime predicate: which candidates have at least one Fn-typed
+        # param filled by a supplied (non-default) arg? Short-circuit when
+        # no overload has any callable-typed param at all -- skips the
+        # per-candidate _supplied_fn_slots walks for the common
+        # non-callable overload set.
+        any_fn_typed_param = any(
+            is_callable_type(unwrap_ref_type(p.type))
+            for f in func_infos for p in f.params
+        )
+        fn_bearing_supplied: list[tuple[FunctionInfo, list[SuppliedFnSlot]]] = []
+        if any_fn_typed_param:
+            for f in func_infos:
+                slots = self._supplied_fn_slots(expr, f)
+                if slots:  # non-None and non-empty
+                    fn_bearing_supplied.append((f, slots))
+
+        # Route to Regime C when there are 2+ Fn-bearing-by-supplied
+        # candidates, or when any candidate has a kwarg-supplied Fn slot
+        # (Regime B's `_infer_arg_types` is positional-only and would
+        # leave a kwarg-supplied lambda untyped).
+        any_kwarg_fn_slot = any(
+            s.kwarg_name is not None
+            for _, slots in fn_bearing_supplied
+            for s in slots
+        )
+        if len(fn_bearing_supplied) >= 2 or (
+            fn_bearing_supplied and any_kwarg_fn_slot
+        ):
+            return self._resolve_regime_c(
+                expr, fn_bearing_supplied,
+                deref_checker=deref_checker,
+                explicit_type_args=explicit_type_args,
+                strip_ref_own=strip_ref_own,
+                resolve_pending_view=resolve_pending_view,
+            )
+
+        # Regime A (0) or B (1): single fn_generic candidate (or none).
+        fn_generic = fn_bearing_supplied[0][0] if fn_bearing_supplied else None
+
+        if fn_generic is not None:
+            arg_types = self._infer_arg_types(expr, fn_generic)
+        else:
+            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+
+        if strip_ref_own:
+            arg_types = [unwrap_own(unwrap_ref_type(t)) for t in arg_types]
+
+        kwarg_types: dict[str, TpyType] | None = None
+        if expr.kwargs:
+            kwarg_types = {k: self.expr.analyze_expr(v) for k, v in expr.kwargs.items()}
+
+        # Build the unified candidate pool. Pool ordering matters for
+        # ambiguity tiebreak in resolve_overload's stable-sort dedupe,
+        # so we mirror each path's existing order.
+        if preserve_declaration_order:
+            iter_funcs = func_infos
+        else:
+            non_generic = [f for f in func_infos if not is_generic_for_pool(f)]
+            generic = [f for f in func_infos if is_generic_for_pool(f)]
+            iter_funcs = non_generic + generic
+
+        candidates: list[FunctionInfo] = []
+        generic_originals: dict[int, tuple[FunctionInfo, dict[str, TpyType]]] = {}
+
+        for func in iter_funcs:
+            if is_generic_for_pool(func):
+                type_subst = self.type_ops.infer_type_params_for_function(
+                    func, arg_types, self.protocols.type_conforms_to_protocol,
+                    expected_return_type=self.ctx.expr_type_hint,
+                    explicit_type_args=explicit_type_args,
+                )
+                if type_subst is not None:
+                    if resolve_pending_view:
+                        for k, v in type_subst.items():
+                            if isinstance(v, PendingViewType):
+                                type_subst[k] = v.family.owned_type
+                    resolved = self.type_ops.substitute_method_type_params(func, type_subst)
+                    candidates.append(resolved)
+                    generic_originals[id(resolved)] = (func, type_subst)
+            else:
+                candidates.append(func)
+
+        enriched_types = _enrich_literal_types(arg_types, expr.args, candidates)
+        matched = resolve_overload(
+            candidates, enriched_types,
+            protocol_checker=self.protocols.type_conforms_to_protocol,
+            deref_checker=deref_checker,
+            default_int_type=self.ctx.default_int_type,
+            subclass_checker=self.ctx.registry.is_subclass_of,
+            protocol_classifier=self.protocols.classify_protocol_conformance,
+            type_ops=self.type_ops,
+            kwarg_types=kwarg_types,
+        )
+
+        matched_origin = generic_originals.get(id(matched)) if matched is not None else None
+
+        # Regime A/B contextual_callable_used: True when a TpyLambda or
+        # TpyName/FUNCTION at a Fn-supplied position participated in
+        # arg typing (via _infer_arg_types -> analyze_expr_with_hint or
+        # _try_resolve_function_ref). This gates the legacy
+        # structural-match fallback at the caller.
+        contextual = (
+            fn_generic is not None
+            and any(self._is_contextual_fn_arg(s.arg_expr)
+                    for _, slots in fn_bearing_supplied
+                    for s in slots)
+        )
+
+        return ResolveResult(
+            matched=matched,
+            matched_origin=matched_origin,
+            arg_types=arg_types,
+            enriched_types=enriched_types,
+            kwarg_types=kwarg_types,
+            contextual_callable_used=contextual,
+        )
+
+    def _is_function_binding(self, expr: TpyName) -> bool:
+        """True iff ``expr`` resolves to a function (local FUNCTION binding,
+        imported function, or registry function), as opposed to a
+        variable, record, module, etc. Used by Regime C to decide which
+        TpyName args need the per-candidate dry matcher vs. unhinted
+        pre-analysis.
+
+        Falls through to the registry only when the namespace lookup
+        misses entirely; an existing non-FUNCTION binding (RECORD, ENUM,
+        MODULE, IMPORTED_NAME, BUILTIN) shadows the registry.
+        """
+        if self.ctx.func.current_ns:
+            binding = self.ctx.func.current_ns.lookup(expr.name)
+            if binding:
+                return (binding.kind == BindingKind.FUNCTION
+                        and bool(binding.func_infos))
+        return self.ctx.registry.get_function(expr.name) is not None
+
+    def _is_contextual_fn_arg(self, arg: TpyExpr) -> bool:
+        """True iff ``arg`` is contextual evidence for callable typing:
+        a `TpyLambda`, or a `TpyName` that resolves to a function (local
+        FUNCTION binding, imported, or registry).
+        """
+        if isinstance(arg, TpyLambda):
+            return True
+        if isinstance(arg, TpyName):
+            return self._is_function_binding(arg)
+        return False
+
+    def _resolve_regime_c(
+        self,
+        expr: TpyCall,
+        fn_bearing_supplied: list[tuple[FunctionInfo, list[SuppliedFnSlot]]],
+        *,
+        deref_checker: Callable[[TpyType], TpyType | None] | None,
+        explicit_type_args: tuple[TpyType, ...] | None,
+        strip_ref_own: bool,
+        resolve_pending_view: bool,
+    ) -> ResolveResult:
+        """Per-candidate Fn arg typing for 2+ Fn-bearing-by-supplied
+        candidates.
+
+        Each candidate's substituted Fn signature drives the synthesized
+        arg type for its Fn-typed positions. Lambdas use the candidate's
+        hint directly (no body analysis); named function refs use
+        `_match_function_to_hint_data`'s concrete callable type so
+        return TPRs can be pinned without body analysis.
+
+        V1 limit: a TpyLambda at a slot whose substituted hint return
+        type is still a TPR (after partial inference) and isn't pinned
+        by `ctx.expr_type_hint` rejects that candidate. Workaround:
+        hoist the lambda to a typed local.
+        """
+        # Identify positional indices and kwarg names that are Fn-supplied
+        # for at least one candidate -- those need per-candidate handling.
+        fn_pos_idx_supplied: set[int] = set()
+        fn_kw_names_supplied: set[str] = set()
+        for _, slots in fn_bearing_supplied:
+            for s in slots:
+                if s.arg_index is not None:
+                    fn_pos_idx_supplied.add(s.arg_index)
+                else:
+                    assert s.kwarg_name is not None
+                    fn_kw_names_supplied.add(s.kwarg_name)
+
+        baseline_pos: list[TpyType | None] = [None] * len(expr.args)
+        baseline_kw: dict[str, TpyType] = {}
+        saved_unhinted_error: SemanticError | None = None
+
+        # Pre-analyze: positions/kwargs that don't need contextual typing.
+        # An arg needs contextual typing iff it's a TpyLambda or a TpyName
+        # resolving to a function. Everything else (variables, literals,
+        # arbitrary expressions) is pre-analyzed once.
+        for i, arg in enumerate(expr.args):
+            if i in fn_pos_idx_supplied and self._is_contextual_fn_arg(arg):
+                continue  # defer to per-candidate
+            try:
+                baseline_pos[i] = self.expr.analyze_expr(arg)
+            except SemanticError as e:
+                if saved_unhinted_error is None:
+                    saved_unhinted_error = e
+        if expr.kwargs:
+            for k, v in expr.kwargs.items():
+                if k in fn_kw_names_supplied and self._is_contextual_fn_arg(v):
+                    continue
+                try:
+                    baseline_kw[k] = self.expr.analyze_expr(v)
+                except SemanticError as e:
+                    if saved_unhinted_error is None:
+                        saved_unhinted_error = e
+
+        if strip_ref_own:
+            baseline_pos = [
+                unwrap_own(unwrap_ref_type(t)) if t is not None else None
+                for t in baseline_pos
+            ]
+            baseline_kw = {k: unwrap_own(unwrap_ref_type(v)) for k, v in baseline_kw.items()}
+
+        # Per-candidate trial: build (substituted_candidate, arg_types,
+        # kwarg_types, original, type_subst) for each candidate that
+        # passes the trial.
+        candidate_evidences: list[tuple[
+            FunctionInfo,                                  # substituted
+            list[TpyType],                                 # arg_types
+            dict[str, TpyType],                            # kwarg_types
+            tuple[FunctionInfo, dict[str, TpyType]] | None,  # origin
+        ]] = []
+        saved_dry_error: SemanticError | None = None
+        # Mark contextual usage if ANY supplied Fn slot has contextual
+        # evidence (TpyLambda or TpyName -> function), regardless of
+        # whether per-candidate trials succeed. This gates the caller's
+        # legacy structural-match fallback -- if we already reasoned over
+        # contextual callable typing, the fallback (which would match a
+        # synthesized ANY placeholder) must not fire.
+        contextual_callable_used = any(
+            self._is_contextual_fn_arg(s.arg_expr)
+            for _, slots in fn_bearing_supplied
+            for s in slots
+        )
+
+        for func, fn_slots in fn_bearing_supplied:
+            try:
+                evidence = self._build_regime_c_evidence(
+                    expr, func, fn_slots,
+                    baseline_pos=baseline_pos,
+                    baseline_kw=baseline_kw,
+                    explicit_type_args=explicit_type_args,
+                    resolve_pending_view=resolve_pending_view,
+                )
+            except SemanticError as e:
+                if saved_dry_error is None:
+                    saved_dry_error = e
+                continue
+            if evidence is None:
+                continue
+            candidate_evidences.append(evidence)
+
+        # Score candidates manually (resolve_overload takes a single
+        # arg_types; we have per-candidate arg_types here).
+        protocol_checker = self.protocols.type_conforms_to_protocol
+        classifier = self.protocols.classify_protocol_conformance
+        scored: list[tuple[
+            tuple[tuple[int, ...], int],
+            FunctionInfo,
+            list[TpyType],
+            dict[str, TpyType],
+            tuple[FunctionInfo, dict[str, TpyType]] | None,
+        ]] = []
+        for substituted, arg_types, kwarg_types, origin in candidate_evidences:
+            per_arg = _classify_overload(
+                substituted, arg_types,
+                protocol_checker, classifier,
+                self.ctx.default_int_type, self.type_ops,
+                kwarg_types=kwarg_types or None,
+            )
+            if per_arg is not None:
+                scored.append((_score(per_arg), substituted, arg_types, kwarg_types, origin))
+
+        matched: FunctionInfo | None = None
+        matched_origin: tuple[FunctionInfo, dict[str, TpyType]] | None = None
+        winner_arg_types: list[TpyType] | None = None
+        winner_kwarg_types: dict[str, TpyType] | None = None
+
+        if scored:
+            scored.sort(key=lambda c: c[0])
+            best_score = scored[0][0]
+            seen: set[tuple[TpyType, ...]] = set()
+            unique_tied: list[tuple[FunctionInfo, list[TpyType], dict[str, TpyType], tuple[FunctionInfo, dict[str, TpyType]] | None]] = []
+            for score, substituted, args, kwargs, origin in scored:
+                if score != best_score:
+                    break
+                key = tuple(p.type for p in substituted.params)
+                if key not in seen:
+                    seen.add(key)
+                    unique_tied.append((substituted, args, kwargs, origin))
+            if len(unique_tied) > 1:
+                raise OverloadAmbiguityError(tuple(u[0] for u in unique_tied))
+            matched, winner_arg_types, winner_kwarg_types, matched_origin = unique_tied[0]
+        else:
+            # Coercion-pass fallback: mirror resolve_overload's pass 2 so
+            # `Ptr[T] -> T`, `BigInt -> Int32`, and other registered
+            # coercions still apply at non-Fn slots when no candidate
+            # passed strict scoring.
+            subclass_checker = self.ctx.registry.is_subclass_of
+            coercion_scored: list[tuple[
+                int, int,
+                FunctionInfo,
+                list[TpyType],
+                dict[str, TpyType],
+                tuple[FunctionInfo, dict[str, TpyType]] | None,
+            ]] = []
+            for substituted, arg_types, kwarg_types, origin in candidate_evidences:
+                effective_args = arg_types
+                if kwarg_types:
+                    expanded = _expand_arg_types_with_kwargs(
+                        effective_args, kwarg_types, substituted)
+                    if expanded is None:
+                        continue
+                    effective_args = expanded
+                if not (substituted.min_args <= len(effective_args) <= substituted.max_args):
+                    continue
+                if all(type_matches_with_coercion(arg_t, ptype, protocol_checker,
+                                                  deref_checker, subclass_checker)
+                       for arg_t, (_, ptype) in zip(effective_args, substituted.params)):
+                    numeric_score = sum(1 for arg_t, (_, ptype) in zip(effective_args, substituted.params)
+                                        if type_matches_numeric(arg_t, ptype))
+                    narrowing = sum(1 for arg_t, (_, ptype) in zip(effective_args, substituted.params)
+                                    if is_big_int_type(arg_t) and is_fixed_int_type(unwrap_ref_type(ptype)))
+                    coercion_scored.append(
+                        (numeric_score, narrowing, substituted, arg_types, kwarg_types, origin))
+            if coercion_scored:
+                coercion_scored.sort(key=lambda x: (-x[0], x[1]))
+                _, _, matched, winner_arg_types, winner_kwarg_types, matched_origin = coercion_scored[0]
+
+        # arg_types for downstream diagnostics: the winner's typed list
+        # if any candidate matched, else the baseline (with ANY at any
+        # contextual slot that was deferred and never filled in).
+        if winner_arg_types is not None:
+            display_arg_types = winner_arg_types
+        else:
+            display_arg_types = [
+                baseline_pos[i] if baseline_pos[i] is not None else ANY
+                for i in range(len(expr.args))
+            ]
+        display_kwarg_types = winner_kwarg_types if winner_kwarg_types is not None else baseline_kw
+
+        # Stash priority: per-candidate dry error (most informative for
+        # the user's call shape) > pre-analysis failure.
+        first_contextual_error = saved_dry_error or saved_unhinted_error
+
+        # Enrichment uses the substituted candidate pool for literal
+        # promotion. Build a candidate list from the scored entries (or
+        # candidate_evidences if none scored) for enriched_types.
+        pool_for_enrich = [s[1] for s in scored] if scored else [e[0] for e in candidate_evidences]
+        enriched_types = _enrich_literal_types(display_arg_types, expr.args, pool_for_enrich)
+
+        return ResolveResult(
+            matched=matched,
+            matched_origin=matched_origin,
+            arg_types=display_arg_types,
+            enriched_types=enriched_types,
+            kwarg_types=display_kwarg_types or None,
+            contextual_callable_used=contextual_callable_used,
+            first_contextual_error=first_contextual_error,
+        )
+
+    def _build_regime_c_evidence(
+        self,
+        expr: TpyCall,
+        func: FunctionInfo,
+        fn_slots: list[SuppliedFnSlot],
+        *,
+        baseline_pos: list[TpyType | None],
+        baseline_kw: dict[str, TpyType],
+        explicit_type_args: tuple[TpyType, ...] | None,
+        resolve_pending_view: bool,
+    ) -> tuple[
+        FunctionInfo,                                # substituted candidate
+        list[TpyType],                               # arg_types
+        dict[str, TpyType],                          # kwarg_types
+        tuple[FunctionInfo, dict[str, TpyType]] | None,  # origin
+    ] | None:
+        """Build per-candidate evidence for Regime C scoring.
+
+        Returns None to silently reject this candidate (e.g. a baseline
+        slot is None because pre-analysis failed, or a Fn slot's
+        substituted hint has unresolved param TPRs). May raise
+        ``SemanticError`` for ambiguity / generic-rejection on a
+        function-ref dry match -- caller stashes and treats as
+        candidate rejection.
+        """
+        # Reject early when this candidate would need a non-Fn-slot
+        # arg whose baseline analysis failed (saved_unhinted_error path).
+        # After this check every non-Fn-slot position has a real
+        # baseline type; Fn-slot positions are filled below.
+        fn_slot_pos_indices = {s.arg_index for s in fn_slots if s.arg_index is not None}
+        fn_slot_kw_names = {s.kwarg_name for s in fn_slots if s.kwarg_name is not None}
+        for i in range(len(expr.args)):
+            if i not in fn_slot_pos_indices and baseline_pos[i] is None:
+                return None
+        # Same check for kwargs: a non-Fn kwarg whose pre-analysis raised
+        # is absent from baseline_kw. Don't let inference run with a
+        # silently-missing kwarg type -- reject the candidate.
+        if expr.kwargs:
+            for kw_name in expr.kwargs:
+                if kw_name in fn_slot_kw_names:
+                    continue
+                if kw_name not in baseline_kw:
+                    return None
+
+        # Build arg_types -- non-Fn slots from baseline, Fn slots filled
+        # by the per-slot trial below. The placeholder for Fn slots is
+        # overwritten unconditionally before scoring.
+        arg_types: list[TpyType] = [
+            baseline_pos[i] if i not in fn_slot_pos_indices else VOID
+            for i in range(len(expr.args))
+        ]
+        kwarg_types: dict[str, TpyType] = dict(baseline_kw)
+
+        # Partial inference from already-typed args (non-Fn slots only,
+        # so the inference reflects what non-callable args determine).
+        partial_inferred: dict[str, TpyType] = {}
+        if func.is_generic():
+            for i, ((_, ptype), arg_type) in enumerate(zip(func.params, arg_types)):
+                if i in fn_slot_pos_indices:
+                    continue  # Fn slot placeholder; filled below
+                self.type_ops.match_type_with_inference(ptype, arg_type, partial_inferred)
+            for kw_name, kw_t in kwarg_types.items():
+                if kw_name in fn_slot_kw_names:
+                    continue  # Fn slot; defer
+                idx = next((i for i, p in enumerate(func.params) if p.name == kw_name), None)
+                if idx is None:
+                    continue
+                self.type_ops.match_type_with_inference(func.params[idx].type, kw_t, partial_inferred)
+            # Resolve IntLit -> default int, PendingView -> owned (mirrors
+            # _infer_arg_types' resolution step).
+            for k, v in list(partial_inferred.items()):
+                if isinstance(v, IntLiteralType):
+                    partial_inferred[k] = self.ctx.default_int_type or INT32
+                elif isinstance(v, PendingViewType):
+                    partial_inferred[k] = v.family.owned_type
+
+        # Per-Fn-slot trial.
+        for slot in fn_slots:
+            ptype = unwrap_ref_type(func.params[slot.param_index].type)
+            hint = (_partial_substitute(ptype, partial_inferred)
+                    if func.is_generic() else ptype)
+            if not is_callable_type(hint):
+                return None
+            if any(_has_type_param_ref(p) for p in hint.param_types):
+                # V1 limit: hint param types still have unresolved TPRs.
+                # No way to validate the lambda/ref against this slot.
+                return None
+
+            arg = slot.arg_expr
+            if isinstance(arg, TpyLambda):
+                if len(arg.param_names) != len(hint.param_types):
+                    return None
+                # V1 limit: if hint return is TPR after partial inference,
+                # the lambda body would have to resolve it. We don't run
+                # body analysis per-candidate. Allow only if ctx.expr_type_hint
+                # could pin the return TPR (downstream inference will
+                # try to use the call-site hint).
+                if isinstance(hint.return_type, TypeParamRef):
+                    if not self._return_tpr_pinnable_from_context(func, hint.return_type):
+                        return None
+                slot_type: TpyType = hint
+            elif isinstance(arg, TpyName) and self._is_function_binding(arg):
+                # Pure dry matcher: returns matched data, raises on ambiguity.
+                if self.ctx.func.current_ns:
+                    binding = self.ctx.func.current_ns.lookup(arg.name)
+                    if binding and binding.kind == BindingKind.FUNCTION and binding.func_infos:
+                        func_infos = binding.func_infos
+                    else:
+                        func_infos = self.ctx.registry.get_function(arg.name)
+                else:
+                    func_infos = self.ctx.registry.get_function(arg.name)
+                if not func_infos:
+                    return None
+                matched_data = self.expr._match_function_to_hint_data(
+                    func_infos, hint, arg.name, arg)
+                if matched_data is None:
+                    return None
+                # Build the matcher's concrete callable type from the
+                # function's actual signature substituted with inferred
+                # type args. This can supply a return type the partial
+                # hint didn't.
+                fi, type_args = matched_data
+                slot_type = self.expr.build_concrete_callable(fi, type_args, hint)
+            else:
+                # Pre-analyzed at baseline (variable / arbitrary expr).
+                # If pre-analysis failed (baseline is None), reject.
+                if slot.arg_index is not None:
+                    if baseline_pos[slot.arg_index] is None:
+                        return None
+                    slot_type = baseline_pos[slot.arg_index]
+                else:
+                    if slot.kwarg_name not in baseline_kw:
+                        return None
+                    slot_type = baseline_kw[slot.kwarg_name]
+
+            if slot.arg_index is not None:
+                arg_types[slot.arg_index] = slot_type
+            else:
+                kwarg_types[slot.kwarg_name] = slot_type
+
+        # Run full inference on the candidate. The inference takes a
+        # positional list, so expand kwargs into positional slots first.
+        if func.is_generic():
+            expanded_args = _expand_arg_types_with_kwargs(
+                arg_types, kwarg_types, func
+            ) if kwarg_types else arg_types
+            if expanded_args is None:
+                return None
+            type_subst = self.type_ops.infer_type_params_for_function(
+                func, expanded_args, self.protocols.type_conforms_to_protocol,
+                expected_return_type=self.ctx.expr_type_hint,
+                explicit_type_args=explicit_type_args,
+            )
+            if type_subst is None:
+                return None
+            if resolve_pending_view:
+                for k, v in type_subst.items():
+                    if isinstance(v, PendingViewType):
+                        type_subst[k] = v.family.owned_type
+            substituted = self.type_ops.substitute_method_type_params(func, type_subst)
+            origin = (func, type_subst)
+        else:
+            substituted = func
+            origin = None
+
+        return substituted, arg_types, kwarg_types, origin
+
+    def _return_tpr_pinnable_from_context(
+        self, func: FunctionInfo, return_tpr: TypeParamRef,
+    ) -> bool:
+        """Heuristic: would `ctx.expr_type_hint` pin `return_tpr` via
+        cross-arg inference downstream?
+
+        True if the call site has an expected return type and matching
+        ``func.return_type`` against it would resolve ``return_tpr``.
+        Used by Regime C to decide whether to keep a candidate whose
+        Fn-slot hint has an unresolved return TPR after partial
+        inference -- if context can pin it, we don't need lambda body
+        analysis.
+        """
+        hint = self.ctx.expr_type_hint
+        if hint is None:
+            return False
+        trial: dict[str, TpyType] = {}
+        if not self.type_ops.match_type_with_inference(func.return_type, hint, trial):
+            return False
+        return return_tpr.name in trial
+
     def _analyze_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> TpyType:
         """Type-check a call to a builtin function using unified FunctionInfo overloads.
 
@@ -2662,63 +3376,32 @@ class CallAnalyzer:
         self._reject_kwargs_for_builtin(expr, overloads[0].name)
         protocol_checker = self.protocols.type_conforms_to_protocol
 
-        # Build unified candidate pool: resolve generics to concrete candidates
-        # so they compete with non-generic ones in the same scoring pool.
-        non_generic = [o for o in overloads if not _has_type_param_ref_in_params(o)]
-        generic = [o for o in overloads if _has_type_param_ref_in_params(o)]
-
-        # For generic overloads with Fn/Callable params, use two-phase arg analysis
-        # so function refs and lambdas can be resolved with concrete type hints.
-        fn_generic = next((o for o in generic
-                           if any(is_callable_type(unwrap_ref_type(p.type)) for p in o.params)
-                           and len(expr.args) >= o.min_args and len(expr.args) <= o.max_args),
-                          None)
-        if fn_generic is not None:
-            arg_types = self._infer_arg_types(expr, fn_generic)
-        else:
-            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-        # Strip Ref/Own from arg types: builtin overloads are defined with bare
-        # types, and Ref/Own are semantic annotations not type differences.
-        arg_types = [unwrap_own(unwrap_ref_type(t)) for t in arg_types]
-
         # Validate explicit type args before generic inference
         if expr.type_args_parse_error:
             raise self.ctx.error(expr.type_args_parse_error, expr)
         explicit: tuple[TpyType, ...] | None = None
+        generic = [o for o in overloads if _has_type_param_ref_in_params(o)]
         if expr.type_args and generic:
             max_tp = max(len(o.type_params) for o in generic)
             self._validate_explicit_type_args(expr, max_tp)
             explicit = expr.type_args
 
-        candidates = list(non_generic)
-        generic_originals: dict[int, tuple[FunctionInfo, dict[str, TpyType]]] = {}
-        for overload in generic:
-            type_subst = self.type_ops.infer_type_params_for_function(
-                overload, arg_types, protocol_checker,
-                expected_return_type=self.ctx.expr_type_hint,
-                explicit_type_args=explicit,
-            )
-            if type_subst is not None:
-                # Resolve PendingViewType to owned type for builtin overloads
-                # (codegen can't resolve these via view_vars like user functions)
-                for k, v in type_subst.items():
-                    if isinstance(v, PendingViewType):
-                        type_subst[k] = v.family.owned_type
-                resolved = self.type_ops.substitute_method_type_params(overload, type_subst)
-                candidates.append(resolved)
-                generic_originals[id(resolved)] = (overload, type_subst)
-
-        # Unified resolution: score all candidates (non-generic + resolved generics)
-        enriched_types = _enrich_literal_types(arg_types, expr.args, candidates)
         try:
-            matched = resolve_overload(candidates, enriched_types, protocol_checker,
-                                       deref_checker=self.type_ops.get_deref_coercion_target,
-                                       default_int_type=self.ctx.default_int_type,
-                                       subclass_checker=self.ctx.registry.is_subclass_of,
-                                       protocol_classifier=self.protocols.classify_protocol_conformance,
-                                       type_ops=self.type_ops)
+            result = self._resolve_call_overloads(
+                expr, overloads,
+                is_generic_for_pool=_has_type_param_ref_in_params,
+                deref_checker=self.type_ops.get_deref_coercion_target,
+                explicit_type_args=explicit,
+                strip_ref_own=True,
+                resolve_pending_view=True,
+                preserve_declaration_order=False,
+            )
         except OverloadAmbiguityError as e:
             raise self._ambiguous_overload_error(expr, overloads[0].name, e)
+
+        arg_types = result.arg_types
+        matched = result.matched
+
         if matched is not None:
             expr.resolved_function_info = matched
             self._validate_lvalue_params(expr)
@@ -2731,9 +3414,8 @@ class CallAnalyzer:
                     expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
                                                             f"argument '{pname}'",
                                                             coercion_ctx=CoercionContext.ARG)
-            generic_info = generic_originals.get(id(matched))
-            if generic_info is not None:
-                overload, type_subst = generic_info
+            if result.matched_origin is not None:
+                overload, type_subst = result.matched_origin
                 expr.inferred_type_args = tuple(
                     self._resolve_inferred_type_arg(type_subst[p])
                     for p in overload.type_params)
@@ -2752,6 +3434,14 @@ class CallAnalyzer:
                     ret = strip_template_repr(ret)
                 return ret
             return matched.return_type
+
+        # Surface the most informative per-candidate Regime C error
+        # before generic fallbacks. The contextual_callable_used flag
+        # ensures we only surface this when synthesized callable
+        # evidence was actually used (see Regime C in
+        # _resolve_call_overloads).
+        if result.contextual_callable_used and result.first_contextual_error is not None:
+            raise result.first_contextual_error
 
         # repr() fallback for types without Representable protocol but with
         # known C++ __repr__ overloads (containers, primitives, optionals,
@@ -2853,86 +3543,58 @@ class CallAnalyzer:
     ) -> TpyType:
         """Analyze a call to a user-defined function (single or @overload group)."""
         if len(func_infos) > 1:
-            # @overload group: resolve generic overloads to concrete candidates
-            # so they compete with non-generic ones in the same scoring pool.
-            # This ensures IntLiteralType preference (default_int) works across
-            # generic and non-generic overloads.
-            # For generic overloads with Fn/Callable params, use two-phase analysis.
-            fn_generic = next((f for f in func_infos
-                               if f.is_generic()
-                               and any(is_callable_type(p.type) for p in f.params)),
-                              None)
-            if fn_generic is not None:
-                arg_types = self._infer_arg_types(expr, fn_generic)
-            else:
-                arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-
-            kwarg_types: dict[str, TpyType] | None = None
-            if expr.kwargs:
-                kwarg_types = {k: self.expr.analyze_expr(v) for k, v in expr.kwargs.items()}
-
-            # Build candidate pool: non-generic originals + resolved generics
-            candidates = []
-            generic_originals: dict[int, FunctionInfo] = {}
-            for func in func_infos:
-                if func.is_generic():
-                    type_subst = self.type_ops.infer_type_params_for_function(
-                        func, arg_types, self.protocols.type_conforms_to_protocol,
-                        expected_return_type=self.ctx.expr_type_hint,
-                    )
-                    if type_subst is not None:
-                        resolved = self.type_ops.substitute_method_type_params(func, type_subst)
-                        candidates.append(resolved)
-                        generic_originals[id(resolved)] = func
-                else:
-                    candidates.append(func)
-
-            enriched_types = _enrich_literal_types(arg_types, expr.args, candidates)
             try:
-                matched = resolve_overload(
-                    candidates, enriched_types,
-                    protocol_checker=self.protocols.type_conforms_to_protocol,
-                    protocol_classifier=self.protocols.classify_protocol_conformance,
-                    default_int_type=self.ctx.default_int_type,
-                    subclass_checker=self.ctx.registry.is_subclass_of,
-                    type_ops=self.type_ops,
-                    kwarg_types=kwarg_types,
+                result = self._resolve_call_overloads(
+                    expr, func_infos,
+                    is_generic_for_pool=lambda f: f.is_generic(),
                 )
             except OverloadAmbiguityError as e:
                 raise self._ambiguous_overload_error(expr, expr.func_name, e)
-            if matched is not None:
-                original = generic_originals.get(id(matched))
-                if original is not None:
+
+            arg_types = result.arg_types
+            kwarg_types = result.kwarg_types
+            enriched_types = result.enriched_types
+
+            if result.matched is not None:
+                if result.matched_origin is not None:
+                    original, _ = result.matched_origin
                     return self._analyze_single_function_call(expr, original)
-                return self._analyze_single_function_call(expr, matched)
+                return self._analyze_single_function_call(expr, result.matched)
 
-            # No match in unified pool. Fall back to original resolution
-            # (structural matching for generics) to preserve error messages:
-            # a structural hit on the un-resolved generic overload lets
-            # _analyze_single_function_call below raise the targeted diagnostic
-            # (e.g. "unsafe_cast() requires a type argument"). Intentionally
-            # does not pass type_ops (inference would reject the same
-            # overload) or default_int_type (the per-literal cost penalty only
-            # affects ranking among multiple matches, which this fallback
-            # treats as first-match-wins anyway).
-            try:
-                matched = resolve_overload(
-                    func_infos, enriched_types,
-                    protocol_checker=self.protocols.type_conforms_to_protocol,
-                    protocol_classifier=self.protocols.classify_protocol_conformance,
-                    subclass_checker=self.ctx.registry.is_subclass_of,
-                    kwarg_types=kwarg_types,
-                )
-            except OverloadAmbiguityError as e:
-                raise self._ambiguous_overload_error(expr, expr.func_name, e)
-            if matched is not None:
-                return self._analyze_single_function_call(expr, matched)
-            for func in func_infos:
-                if func.is_generic():
-                    try:
-                        return self._analyze_single_function_call(expr, func)
-                    except SemanticError:
-                        continue
+            # No match in unified pool.
+            #
+            # The legacy structural-match fallback preserves targeted
+            # diagnostics like unsafe_cast's "requires a type argument".
+            # It uses raw _structural_match against un-resolved generics
+            # and runs _analyze_single_function_call, which would feed
+            # contextual evidence (lambdas, function refs) back through
+            # full hint-driven analysis. If our pool already used
+            # synthesized callable evidence via Regime C, running the
+            # fallback would either reintroduce the bug class or produce
+            # misleading diagnostics. Skip in that case and surface the
+            # stashed per-candidate error instead.
+            if not result.contextual_callable_used:
+                try:
+                    matched = resolve_overload(
+                        func_infos, enriched_types,
+                        protocol_checker=self.protocols.type_conforms_to_protocol,
+                        protocol_classifier=self.protocols.classify_protocol_conformance,
+                        subclass_checker=self.ctx.registry.is_subclass_of,
+                        kwarg_types=kwarg_types,
+                    )
+                except OverloadAmbiguityError as e:
+                    raise self._ambiguous_overload_error(expr, expr.func_name, e)
+                if matched is not None:
+                    return self._analyze_single_function_call(expr, matched)
+                for func in func_infos:
+                    if func.is_generic():
+                        try:
+                            return self._analyze_single_function_call(expr, func)
+                        except SemanticError:
+                            continue
+            elif result.first_contextual_error is not None:
+                # Surface the most informative per-candidate rejection.
+                raise result.first_contextual_error
             # Targeted diagnostic: a kwarg name that no overload accepts is
             # the most actionable failure cause; report it instead of a
             # bare arg-types listing that omits the kwarg.
