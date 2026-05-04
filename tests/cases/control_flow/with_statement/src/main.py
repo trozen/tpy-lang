@@ -75,6 +75,27 @@ def test_early_return() -> None:
     print(val)
 
 
+def nested_with_all_return(flag: bool) -> str:
+    """Nested `with` where every path through the body returns: exercises the
+    body_terminates=True + outer-finally branch in _gen_finally_body_and_epilogue
+    (inner with's normal-path label gotos outer's finally label without the
+    `if (retval)` guard). Also covers the inner with-as target getting
+    pre-declared as std::optional<T> by the outer's _emit_branch_decls --
+    the inner _gen_with must assign to the slot, not declare a shadowing local."""
+    with Logger("OUT") as nw_outer:
+        with Logger("IN") as nw_inner:
+            nw_outer.log("outer ctx")
+            nw_inner.log("inner ctx")
+            if flag:
+                return "yes"
+            return "no"
+
+
+def test_nested_with_all_return() -> None:
+    print(nested_with_all_return(True))
+    print(nested_with_all_return(False))
+
+
 def test_body_var_survives_scope() -> None:
     """Variables declared inside with body must be visible after the block."""
     with Logger("S") as s:
@@ -160,6 +181,8 @@ print("---")
 test_variable_visible_after()
 print("---")
 test_early_return()
+print("---")
+test_nested_with_all_return()
 print("---")
 test_body_var_survives_scope()
 print("---")

@@ -31,6 +31,21 @@ enter R
 exit R
 result
 ---
+enter OUT
+enter IN
+[OUT] outer ctx
+[IN] inner ctx
+exit IN
+exit OUT
+yes
+enter OUT
+enter IN
+[OUT] outer ctx
+[IN] inner ctx
+exit IN
+exit OUT
+no
+---
 enter S
 exit S
 10

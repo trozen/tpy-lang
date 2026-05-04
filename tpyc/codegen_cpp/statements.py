@@ -2065,19 +2065,30 @@ class StatementGenerator:
                 is_reassigned = name in self.ctx.reassigned_vars
                 already_declared = name in self.ctx.declared_vars
 
-                if is_reassigned and not item.enter_type.is_value_type():
-                    # Pointer-local: T* for rebindable non-value with-targets
-                    if not already_declared:
-                        cpp_type = self.types.type_to_cpp(item.enter_type)
-                        out.write(f"{indent}{cpp_type}* {name} = &(__ctx_{n}.__enter__());\n")
-                        self.ctx.pointer_locals.add(name)
+                if already_declared:
+                    # Pre-declared by _emit_branch_decls (an enclosing
+                    # with/if/try captured this as-target into its
+                    # if_branch_decls so it could outlive the inner block in
+                    # Python semantics). Bind into the existing slot instead
+                    # of declaring a fresh local that would shadow it -- the
+                    # pre-decl already added `name` to pointer_locals (and to
+                    # optional_locals when stored as std::optional<T>), so
+                    # downstream method-access codegen emits `name->method()`,
+                    # which is valid C++ for both `T*` and `std::optional<T>`.
+                    if name in self.ctx.optional_locals:
+                        # std::optional<T> slot: assignment populates it.
+                        out.write(f"{indent}{name} = __ctx_{n}.__enter__();\n")
                     else:
+                        # T* pointer-local: rebind to the new __enter__()
+                        # storage (lifetime is the with's try-block scope).
                         out.write(f"{indent}{name} = &(__ctx_{n}.__enter__());\n")
-                elif is_reassigned and already_declared:
-                    # Value type, subsequent occurrence: plain reassignment
-                    out.write(f"{indent}{name} = __ctx_{n}.__enter__();\n")
+                elif is_reassigned and not item.enter_type.is_value_type():
+                    # Pointer-local: T* for rebindable non-value with-targets
+                    cpp_type = self.types.type_to_cpp(item.enter_type)
+                    out.write(f"{indent}{cpp_type}* {name} = &(__ctx_{n}.__enter__());\n")
+                    self.ctx.pointer_locals.add(name)
                 else:
-                    # Normal path: single-use or first-occurrence value type
+                    # Normal path: single-use, first-occurrence
                     if item.enter_type.is_value_type():
                         out.write(f"{indent}auto {name} = __ctx_{n}.__enter__();\n")
                     else:

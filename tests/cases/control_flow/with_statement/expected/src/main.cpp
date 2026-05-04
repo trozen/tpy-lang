@@ -123,7 +123,7 @@ std::string early_return_helper() {
     }
     __finally_7:;
     __ctx_7.__exit__();
-    if (__retval_8) return (*__retval_8);
+    return (*__retval_8);
 }
 
 // def test_early_return() -> None:
@@ -134,24 +134,73 @@ void test_early_return() {
     std::cout << val << "\n";
 }
 
-// def test_body_var_survives_scope() -> None:
-void test_body_var_survives_scope() {
-    // with Logger("S") as s:
-    int32_t x;
-    std::string_view y;
-    auto __ctx_8 = Logger("S");
-    auto& s = __ctx_8.__enter__();
+// def nested_with_all_return(flag: bool) -> str:
+std::string nested_with_all_return(bool flag) {
+    // with Logger("OUT") as nw_outer:
+    std::optional<Logger> nw_inner;
+    auto __ctx_8 = Logger("OUT");
+    auto& nw_outer = __ctx_8.__enter__();
+    std::optional<std::string> __retval_10;
     try {
-        // x = 10
-        x = 10;
-        // y = "hello"
-        y = "hello";
+        // with Logger("IN") as nw_inner:
+        auto __ctx_9 = Logger("IN");
+        nw_inner = __ctx_9.__enter__();
+        try {
+            // nw_outer.log("outer ctx")
+            nw_outer.log("outer ctx");
+            // nw_inner.log("inner ctx")
+            nw_inner->log("inner ctx");
+            // if flag:
+            if (flag) {
+                // return "yes"
+                __retval_10 = "yes";
+                goto __finally_11;
+            }
+            // return "no"
+            __retval_10 = "no";
+            goto __finally_11;
+        } catch (...) {
+            __ctx_9.__exit__();
+            throw;
+        }
+        __finally_11:;
+        __ctx_9.__exit__();
+        goto __finally_9;
     } catch (...) {
         __ctx_8.__exit__();
         throw;
     }
     __finally_9:;
     __ctx_8.__exit__();
+    return (*__retval_10);
+}
+
+// def test_nested_with_all_return() -> None:
+void test_nested_with_all_return() {
+    // print(nested_with_all_return(True))
+    std::cout << nested_with_all_return(true) << "\n";
+    // print(nested_with_all_return(False))
+    std::cout << nested_with_all_return(false) << "\n";
+}
+
+// def test_body_var_survives_scope() -> None:
+void test_body_var_survives_scope() {
+    // with Logger("S") as s:
+    int32_t x;
+    std::string_view y;
+    auto __ctx_10 = Logger("S");
+    auto& s = __ctx_10.__enter__();
+    try {
+        // x = 10
+        x = 10;
+        // y = "hello"
+        y = "hello";
+    } catch (...) {
+        __ctx_10.__exit__();
+        throw;
+    }
+    __finally_12:;
+    __ctx_10.__exit__();
     // print(x)
     std::cout << x << "\n";
     // print(y)
@@ -162,19 +211,19 @@ void test_body_var_survives_scope() {
 void test_body_record_var_survives_scope() {
     // with Logger("T") as t:
     std::optional<Logger> inner;
-    auto __ctx_9 = Logger("T");
-    auto& t = __ctx_9.__enter__();
+    auto __ctx_11 = Logger("T");
+    auto& t = __ctx_11.__enter__();
     try {
         // inner = Logger("inner")
         inner = Logger("inner");
         // inner.log("inside")
         inner->log("inside");
     } catch (...) {
-        __ctx_9.__exit__();
+        __ctx_11.__exit__();
         throw;
     }
-    __finally_10:;
-    __ctx_9.__exit__();
+    __finally_13:;
+    __ctx_11.__exit__();
     // inner.log("after")
     inner->log("after");
 }
@@ -182,29 +231,29 @@ void test_body_record_var_survives_scope() {
 // def test_reuse_with_var_name() -> None:
 void test_reuse_with_var_name() {
     // with Logger("V1") as v:
-    auto __ctx_10 = Logger("V1");
-    Logger* v = &(__ctx_10.__enter__());
+    auto __ctx_12 = Logger("V1");
+    Logger* v = &(__ctx_12.__enter__());
     try {
         // v.log("first")
         v->log("first");
     } catch (...) {
-        __ctx_10.__exit__();
+        __ctx_12.__exit__();
         throw;
     }
-    __finally_11:;
-    __ctx_10.__exit__();
+    __finally_14:;
+    __ctx_12.__exit__();
     // with Logger("V2") as v:
-    auto __ctx_11 = Logger("V2");
-    v = &(__ctx_11.__enter__());
+    auto __ctx_13 = Logger("V2");
+    v = &(__ctx_13.__enter__());
     try {
         // v.log("second")
         v->log("second");
     } catch (...) {
-        __ctx_11.__exit__();
+        __ctx_13.__exit__();
         throw;
     }
-    __finally_12:;
-    __ctx_11.__exit__();
+    __finally_15:;
+    __ctx_13.__exit__();
     // v.log("after reuse")
     v->log("after reuse");
 }
@@ -215,19 +264,19 @@ void test_exception_in_body() {
     {
         try {
             // with Logger("E") as e:
-            auto __ctx_12 = Logger("E");
-            auto& e = __ctx_12.__enter__();
+            auto __ctx_14 = Logger("E");
+            auto& e = __ctx_14.__enter__();
             try {
                 // e.log("before throw")
                 e.log("before throw");
                 // raise ValueError("boom")
                 throw ::tpy::ValueError("boom");
             } catch (...) {
-                __ctx_12.__exit__();
+                __ctx_14.__exit__();
                 throw;
             }
-            __finally_13:;
-            __ctx_12.__exit__();
+            __finally_16:;
+            __ctx_14.__exit__();
         } catch (const ::tpy::ValueError&) {
             // print("caught")
             std::cout << "caught" << "\n";
@@ -241,10 +290,10 @@ void test_exception_multi() {
     {
         try {
             // with Logger("M1") as m1, Logger("M2") as m2:
-            auto __ctx_13 = Logger("M1");
-            auto& m1 = __ctx_13.__enter__();
-            auto __ctx_14 = Logger("M2");
-            auto& m2 = __ctx_14.__enter__();
+            auto __ctx_15 = Logger("M1");
+            auto& m1 = __ctx_15.__enter__();
+            auto __ctx_16 = Logger("M2");
+            auto& m2 = __ctx_16.__enter__();
             try {
                 try {
                     // m1.log("ok")
@@ -252,17 +301,17 @@ void test_exception_multi() {
                     // raise ValueError("multi")
                     throw ::tpy::ValueError("multi");
                 } catch (...) {
-                    __ctx_14.__exit__();
+                    __ctx_16.__exit__();
                     throw;
                 }
-                __finally_15:;
-                __ctx_14.__exit__();
+                __finally_18:;
+                __ctx_16.__exit__();
             } catch (...) {
-                __ctx_13.__exit__();
+                __ctx_15.__exit__();
                 throw;
             }
-            __finally_14:;
-            __ctx_13.__exit__();
+            __finally_17:;
+            __ctx_15.__exit__();
         } catch (const ::tpy::ValueError&) {
             // print("caught multi")
             std::cout << "caught multi" << "\n";
@@ -276,23 +325,23 @@ void test_with_in_try_finally() {
     {
         try {
             // with Logger("N"):
-            auto __ctx_15 = Logger("N");
-            __ctx_15.__enter__();
+            auto __ctx_17 = Logger("N");
+            __ctx_17.__enter__();
             try {
                 // print("inside with")
                 std::cout << "inside with" << "\n";
             } catch (...) {
-                __ctx_15.__exit__();
+                __ctx_17.__exit__();
                 throw;
             }
-            __finally_17:;
-            __ctx_15.__exit__();
+            __finally_20:;
+            __ctx_17.__exit__();
         } catch (...) {
             // print("outer finally")
             std::cout << "outer finally" << "\n";
             throw;
         }
-        __finally_16:;
+        __finally_19:;
         // print("outer finally")
         std::cout << "outer finally" << "\n";
     }
@@ -303,27 +352,27 @@ void test_break_in_with() {
     // for i in range(5):
     for (int32_t i = 0; i < 5; ++i) {
         // with Logger("BK"):
-        auto __ctx_16 = Logger("BK");
-        __ctx_16.__enter__();
+        auto __ctx_18 = Logger("BK");
+        __ctx_18.__enter__();
         try {
             // if i == 2:
             if ((i == 2)) {
                 // break
-                goto __finally_break_18;
+                goto __finally_break_21;
             }
             // print(i)
             std::cout << i << "\n";
         } catch (...) {
-            __ctx_16.__exit__();
+            __ctx_18.__exit__();
             throw;
         }
-        __finally_18:;
-        __ctx_16.__exit__();
-        goto __after_finally_19;
-        __finally_break_18:;
-        __ctx_16.__exit__();
+        __finally_21:;
+        __ctx_18.__exit__();
+        goto __after_finally_22;
+        __finally_break_21:;
+        __ctx_18.__exit__();
         break;
-        __after_finally_19:;
+        __after_finally_22:;
     }
     // print("after break loop")
     std::cout << "after break loop" << "\n";
@@ -334,27 +383,27 @@ void test_continue_in_with() {
     // for i in range(5):
     for (int32_t i = 0; i < 5; ++i) {
         // with Logger("CT"):
-        auto __ctx_17 = Logger("CT");
-        __ctx_17.__enter__();
+        auto __ctx_19 = Logger("CT");
+        __ctx_19.__enter__();
         try {
             // if i == 2:
             if ((i == 2)) {
                 // continue
-                goto __finally_continue_20;
+                goto __finally_continue_23;
             }
             // print(i)
             std::cout << i << "\n";
         } catch (...) {
-            __ctx_17.__exit__();
+            __ctx_19.__exit__();
             throw;
         }
-        __finally_20:;
-        __ctx_17.__exit__();
-        goto __after_finally_21;
-        __finally_continue_20:;
-        __ctx_17.__exit__();
+        __finally_23:;
+        __ctx_19.__exit__();
+        goto __after_finally_24;
+        __finally_continue_23:;
+        __ctx_19.__exit__();
         continue;
-        __after_finally_21:;
+        __after_finally_24:;
     }
     // print("after continue loop")
     std::cout << "after continue loop" << "\n";
@@ -387,6 +436,10 @@ void __tpy_init() {
     std::cout << "---" << "\n";
     // test_early_return()
     test_early_return();
+    // print("---")
+    std::cout << "---" << "\n";
+    // test_nested_with_all_return()
+    test_nested_with_all_return();
     // print("---")
     std::cout << "---" << "\n";
     // test_body_var_survives_scope()

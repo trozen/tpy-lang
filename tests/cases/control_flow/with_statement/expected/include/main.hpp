@@ -19,6 +19,8 @@ void test_multiple_ctx_managers();
 void test_variable_visible_after();
 std::string early_return_helper();
 void test_early_return();
+std::string nested_with_all_return(bool flag);
+void test_nested_with_all_return();
 void test_body_var_survives_scope();
 void test_body_record_var_survives_scope();
 void test_reuse_with_var_name();
