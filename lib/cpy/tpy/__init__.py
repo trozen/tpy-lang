@@ -95,10 +95,24 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
     def mul_wrap(cls, a, b):
         return cls(int(a) * int(b))
 
+    @classmethod
+    def shl_wrap(cls, a, b):
+        return cls(int(a) << int(b))
+
+    @classmethod
+    def shr_wrap(cls, a, b):
+        # Logical (zero-fill) shift via unsigned route, matching the C++
+        # codegen for signed types. For unsigned types this is the same
+        # as Python's `>>`; for signed it differs (Python `>>` is
+        # arithmetic / sign-extending).
+        return cls((int(a) & (mod - 1)) >> int(b))
+
     FixedInt.trunc = trunc
     FixedInt.add_wrap = add_wrap
     FixedInt.sub_wrap = sub_wrap
     FixedInt.mul_wrap = mul_wrap
+    FixedInt.shl_wrap = shl_wrap
+    FixedInt.shr_wrap = shr_wrap
 
     if signed:
         def __neg__(self): return FixedInt(int.__neg__(self))

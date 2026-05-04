@@ -400,6 +400,14 @@ class Int8(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
     @staticmethod
     @cpp_template("static_cast<int8_t>(static_cast<uint8_t>({0}) * static_cast<uint8_t>({1}))")
     def mul_wrap(x: Int8, y: Int8) -> Int8: ...
+    # Wrapping shifts via unsigned route. Caller must ensure 0 <= n <
+    # bitwidth. Signed shr_wrap is logical (zero-fill), not arithmetic.
+    @staticmethod
+    @cpp_template("static_cast<int8_t>(static_cast<uint8_t>({0}) << ({1}))")
+    def shl_wrap(x: Int8, n: Int8) -> Int8: ...
+    @staticmethod
+    @cpp_template("static_cast<int8_t>(static_cast<uint8_t>({0}) >> ({1}))")
+    def shr_wrap(x: Int8, n: Int8) -> Int8: ...
     @cpp_template("::tpy::BigInt({self})")
     def __int__(self) -> int: ...
     @cpp_template("::tpy::add_check<int8_t>({self}, {0})")
@@ -518,6 +526,12 @@ class Int16(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
     @staticmethod
     @cpp_template("static_cast<int16_t>(static_cast<uint16_t>({0}) * static_cast<uint16_t>({1}))")
     def mul_wrap(x: Int16, y: Int16) -> Int16: ...
+    @staticmethod
+    @cpp_template("static_cast<int16_t>(static_cast<uint16_t>({0}) << ({1}))")
+    def shl_wrap(x: Int16, n: Int16) -> Int16: ...
+    @staticmethod
+    @cpp_template("static_cast<int16_t>(static_cast<uint16_t>({0}) >> ({1}))")
+    def shr_wrap(x: Int16, n: Int16) -> Int16: ...
     @cpp_template("::tpy::BigInt({self})")
     def __int__(self) -> int: ...
     @cpp_template("::tpy::add_check<int16_t>({self}, {0})")
@@ -636,6 +650,12 @@ class Int32(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
     @staticmethod
     @cpp_template("static_cast<int32_t>(static_cast<uint32_t>({0}) * static_cast<uint32_t>({1}))")
     def mul_wrap(x: Int32, y: Int32) -> Int32: ...
+    @staticmethod
+    @cpp_template("static_cast<int32_t>(static_cast<uint32_t>({0}) << ({1}))")
+    def shl_wrap(x: Int32, n: Int32) -> Int32: ...
+    @staticmethod
+    @cpp_template("static_cast<int32_t>(static_cast<uint32_t>({0}) >> ({1}))")
+    def shr_wrap(x: Int32, n: Int32) -> Int32: ...
     @cpp_template("::tpy::BigInt({self})")
     def __int__(self) -> int: ...
     @cpp_template("::tpy::add_check<int32_t>({self}, {0})")
@@ -754,6 +774,12 @@ class Int64(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
     @staticmethod
     @cpp_template("static_cast<int64_t>(static_cast<uint64_t>({0}) * static_cast<uint64_t>({1}))")
     def mul_wrap(x: Int64, y: Int64) -> Int64: ...
+    @staticmethod
+    @cpp_template("static_cast<int64_t>(static_cast<uint64_t>({0}) << ({1}))")
+    def shl_wrap(x: Int64, n: Int64) -> Int64: ...
+    @staticmethod
+    @cpp_template("static_cast<int64_t>(static_cast<uint64_t>({0}) >> ({1}))")
+    def shr_wrap(x: Int64, n: Int64) -> Int64: ...
     @cpp_template("::tpy::BigInt({self})")
     def __int__(self) -> int: ...
     @cpp_template("::tpy::add_check<int64_t>({self}, {0})")
@@ -872,6 +898,12 @@ class UInt8(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
     @staticmethod
     @cpp_template("static_cast<uint8_t>({0} * {1})")
     def mul_wrap(x: UInt8, y: UInt8) -> UInt8: ...
+    @staticmethod
+    @cpp_template("static_cast<uint8_t>(static_cast<uint8_t>({0}) << ({1}))")
+    def shl_wrap(x: UInt8, n: UInt8) -> UInt8: ...
+    @staticmethod
+    @cpp_template("static_cast<uint8_t>(static_cast<uint8_t>({0}) >> ({1}))")
+    def shr_wrap(x: UInt8, n: UInt8) -> UInt8: ...
     @cpp_template("::tpy::BigInt({self})")
     def __int__(self) -> int: ...
     @cpp_template("::tpy::add_check<uint8_t>({self}, {0})")
@@ -988,6 +1020,12 @@ class UInt16(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
     @staticmethod
     @cpp_template("static_cast<uint16_t>({0} * {1})")
     def mul_wrap(x: UInt16, y: UInt16) -> UInt16: ...
+    @staticmethod
+    @cpp_template("static_cast<uint16_t>(static_cast<uint16_t>({0}) << ({1}))")
+    def shl_wrap(x: UInt16, n: UInt16) -> UInt16: ...
+    @staticmethod
+    @cpp_template("static_cast<uint16_t>(static_cast<uint16_t>({0}) >> ({1}))")
+    def shr_wrap(x: UInt16, n: UInt16) -> UInt16: ...
     @cpp_template("::tpy::BigInt({self})")
     def __int__(self) -> int: ...
     @cpp_template("::tpy::add_check<uint16_t>({self}, {0})")
@@ -1105,6 +1143,16 @@ class UInt32(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
     @staticmethod
     @cpp_template("static_cast<uint32_t>({0} * {1})")
     def mul_wrap(x: UInt32, y: UInt32) -> UInt32: ...
+    # Inner LHS cast forces the shift at target unsigned width. Without
+    # it, a bare int literal {0} (e.g. shl_wrap(1, 31)) would shift as
+    # signed int -- UB for UInt32 (1 << 31 overflows signed int) and
+    # -Wshift-count-overflow for UInt64 (count >= int width).
+    @staticmethod
+    @cpp_template("static_cast<uint32_t>(static_cast<uint32_t>({0}) << ({1}))")
+    def shl_wrap(x: UInt32, n: UInt32) -> UInt32: ...
+    @staticmethod
+    @cpp_template("static_cast<uint32_t>(static_cast<uint32_t>({0}) >> ({1}))")
+    def shr_wrap(x: UInt32, n: UInt32) -> UInt32: ...
     @cpp_template("::tpy::BigInt({self})")
     def __int__(self) -> int: ...
     @cpp_template("::tpy::add_check<uint32_t>({self}, {0})")
@@ -1221,6 +1269,12 @@ class UInt64(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
     @staticmethod
     @cpp_template("static_cast<uint64_t>({0} * {1})")
     def mul_wrap(x: UInt64, y: UInt64) -> UInt64: ...
+    @staticmethod
+    @cpp_template("static_cast<uint64_t>(static_cast<uint64_t>({0}) << ({1}))")
+    def shl_wrap(x: UInt64, n: UInt64) -> UInt64: ...
+    @staticmethod
+    @cpp_template("static_cast<uint64_t>(static_cast<uint64_t>({0}) >> ({1}))")
+    def shr_wrap(x: UInt64, n: UInt64) -> UInt64: ...
     @cpp_template("::tpy::BigInt({self})")
     def __int__(self) -> int: ...
     @cpp_template("::tpy::add_check<uint64_t>({self}, {0})")

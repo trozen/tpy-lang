@@ -71,23 +71,9 @@
 #     the final uint32, per CPython's getrandbits packing).
 #   - `getrandbits(k)` rejects k > 32 with ValueError. See Tier 2 above.
 #
-# Pending simplifications (fold back in when the referenced language bug
-# lands; keeping these documented so we don't forget the code is awkward
-# on purpose):
-#   - MT tempering uses `UInt32.mul_wrap(y, 1 << n)` instead of the direct
-#     `y << n` because TPy's `<<` on UInt32 is overflow-checked. A
-#     `UInt32.shl_wrap(y, n)` static method paralleling `add_wrap` /
-#     `sub_wrap` / `mul_wrap` would let the code read as a shift (not a
-#     multiply). Every bit-twiddling stdlib module that lands (re-usable
-#     ciphers, RNG variants, hash follow-ups beyond SHA-256) will want
-#     this same helper; consider adding it to `fixed_int.hpp` alongside
-#     the existing wrap helpers.
-#
-# Uses `UInt32.add_wrap / sub_wrap / mul_wrap` for the modular arithmetic
-# MT needs (TPy's +/-/* on fixed-width ints are overflow-checked). `<< n`
-# on UInt32 is overflow-checked too, so the tempering step uses
-# `mul_wrap(y, 1 << n)` instead of `y << n` (see pending-simplifications
-# above).
+# Uses `UInt32.add_wrap / sub_wrap / mul_wrap / shl_wrap` for the modular
+# arithmetic MT needs (TPy's +/-/*/<< on fixed-width ints are
+# overflow-checked).
 #
 # Performance notes (bench: tpyc -xO, x86_64, ccache):
 #   Raw engine (genrand_uint32):   ~2 ns/call  (hand-C++ same algo: 1.2 ns)
@@ -245,10 +231,10 @@ class Random:
             self._generate()
         y: UInt32 = self._state[self._index]
         self._index += 1
-        # Tempering. `<<` on UInt32 is overflow-checked; use mul_wrap.
+        # Tempering.
         y = y ^ (y >> 11)
-        y = y ^ (UInt32.mul_wrap(y, 128) & 0x9d2c5680)
-        y = y ^ (UInt32.mul_wrap(y, 32768) & 0xefc60000)
+        y = y ^ (UInt32.shl_wrap(y, 7) & 0x9d2c5680)
+        y = y ^ (UInt32.shl_wrap(y, 15) & 0xefc60000)
         y = y ^ (y >> 18)
         return y
 
