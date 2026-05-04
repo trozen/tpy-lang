@@ -3,7 +3,7 @@
 from tpy._builtins import (
     BaseException, Exception, ValueError, OSError, FileNotFoundError, StopIteration,
     Range, range,
-    len, repr, hash, chr, ord, abs, min, max, pow, divmod, next, iter, round, print, isinstance,
+    len, repr, hash, chr, ord, abs, min, max, pow, divmod, next, iter, round, print, isinstance, getattr, setattr, delattr,
     all, any, sum, sorted, bin, hex, oct, enumerate, reversed, zip, map, filter,
     bytes, bytearray,
     bool, int, float, str, slice,
@@ -23,7 +23,7 @@ __all__ = [
     "list", "dict", "dict_keys", "dict_values", "dict_items", "set",
     "Range", "range",
     "len", "repr", "hash", "chr", "ord", "abs", "min", "max", "pow", "divmod", "next", "iter", "round",
-    "print", "isinstance",
+    "print", "isinstance", "getattr", "setattr", "delattr",
     "all", "any", "sum", "sorted", "bin", "hex", "oct", "enumerate", "reversed", "zip",
     "map", "filter",
     "StopIteration",

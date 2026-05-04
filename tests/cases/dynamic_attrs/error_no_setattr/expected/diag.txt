@@ -1,0 +1,1 @@
+main.py:16: error: Record 'ReadOnlyBag' has no field 'x' and does not define __setattr__

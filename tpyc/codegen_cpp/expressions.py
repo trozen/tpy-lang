@@ -3207,6 +3207,11 @@ class ExpressionGenerator:
         if expr.property_getter_call is not None:
             return self._gen_method_call(expr.property_getter_call)
 
+        # D16 dynamic-attribute getattr fallback: synthesized __getattr__
+        # method call routed through the normal method-call codegen path.
+        if expr.dyn_getattr_call is not None:
+            return self._gen_method_call(expr.dyn_getattr_call)
+
         # Explicit `this->` + base qualifier picks the specific ancestor
         # subobject in non-virtual MI; without it, `field` would be ambiguous.
         if expr.unbound_self_parent_type is not None:

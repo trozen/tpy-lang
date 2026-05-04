@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, NominalType, OwnType, OptionalType, PendingListType, PendingDictType, PendingSetType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
-    PendingGenericInstanceType, IntLiteralType, CallableType, unwrap_ref_type, is_any_int_type,
+    PendingGenericInstanceType, IntLiteralType, CallableType, unwrap_ref_type, unwrap_qualifiers, is_any_int_type,
 
 )
 from ..parse import (

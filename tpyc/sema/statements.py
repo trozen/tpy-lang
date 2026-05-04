@@ -26,7 +26,7 @@ from ..typesys import (
     bare_name)
 from ..parse import (
     TpyExpr,
-    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyExprStmt, TpyReturn, TpyYield,
+    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyDelAttr, TpyExprStmt, TpyReturn, TpyYield,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
     TpyRaise, TpyExceptHandler, TpyTry, TpyWith,
     TpyGlobal, TpyNonlocal, TpyNestedDef,
@@ -773,6 +773,8 @@ class StatementAnalyzer:
             self._analyze_del_item(stmt)
         elif isinstance(stmt, TpyDelVar):
             self._analyze_del_var(stmt)
+        elif isinstance(stmt, TpyDelAttr):
+            self._analyze_del_attr(stmt)
         elif isinstance(stmt, TpyExprStmt):
             self.expr.analyze_expr(stmt.expr)
         elif isinstance(stmt, TpyReturn):
@@ -3190,8 +3192,58 @@ class StatementAnalyzer:
         if isinstance(stmt.target, TpySubscript) and isinstance(stmt.target.index, TpySlice):
             self._analyze_slice_assign(stmt)
             return
+        # D16 dyn-attr write: if the target is `obj.foo` where foo is undeclared
+        # AND the class has __setattr__, the read-side analysis would either
+        # resolve via __getattr__ (handled below) or raise "no field". Detect
+        # the latter by analyzing the target with a recovery path: pre-check
+        # for an undeclared FieldAccess target on a dyn-writable class.
+        if (isinstance(stmt.target, TpyFieldAccess)
+                and self._target_is_dyn_writable_only(stmt.target)):
+            self._analyze_dyn_setattr_assign(stmt)
+            return
         target_type = self.expr.analyze_expr(stmt.target)
         self._check_class_constant_write(stmt.target, stmt)
+        # D16 dyn-attr write detection: if the read-side analysis resolved the
+        # target via __getattr__ (static lookup miss + dyn-readable class),
+        # reinterpret as a __setattr__ write. Synthesize a method call and
+        # delegate to the normal method-call analyzer so all standard arg
+        # coercion (e.g. into-Any wrapping) is applied uniformly.
+        if (isinstance(stmt.target, TpyFieldAccess)
+                and stmt.target.dyn_getattr_call is not None):
+            obj_type = self.ctx.get_expr_type(stmt.target.obj)
+            actual = unwrap_qualifiers(obj_type) if obj_type is not None else None
+            record = (self.ctx.registry.get_record_for_type(actual)
+                      if isinstance(actual, NominalType) else None)
+            sa_overloads, _sa_subst = (
+                self.protocols.lookup_record_method_overloads(record, "__setattr__")
+                if record is not None else ([], {}))
+            if not sa_overloads:
+                rec_name = record.name if record is not None else str(actual)
+                raise self.ctx.error(
+                    f"Record '{rec_name}' has no field '{stmt.target.field}' "
+                    f"and does not define __setattr__",
+                    stmt,
+                )
+            # Clear the read-side resolution; this is a write. Then synthesize
+            # a __setattr__ call with the original value AST and analyze it
+            # via the method-call path -- coerce_expr applies arg coercion
+            # (including into-Any wrapping) on the value automatically.
+            stmt.target.dyn_getattr_call = None
+            setter_call = TpyMethodCall(
+                obj=stmt.target.obj,
+                method="__setattr__",
+                args=[TpyStrLiteral(value=stmt.target.field), stmt.value],
+                loc=stmt.loc,
+            )
+            self.expr.analyze_expr(setter_call)
+            stmt.target.dyn_setattr_call = setter_call
+            # Mark mutation: writing through a dyn-attr is mutating self/obj.
+            root = _root_name_of_expr(stmt.target.obj)
+            if root is not None:
+                self.ctx.mark_loop_var_mutated(root)
+                self.ctx.mark_param_mutated(root)
+            self._enforce_readonly_assignment_target(stmt.target)
+            return
         value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
         # Property setter: validate and tag for codegen
         if isinstance(stmt.target, TpyFieldAccess) and stmt.target.is_property_access:
@@ -3573,6 +3625,143 @@ class StatementAnalyzer:
                     f"'del' is not supported for type {actual}", stmt)
             # Analyze the index expression only after confirming __delitem__ exists
             self.expr.analyze_expr(subscript.index)
+
+    def _target_is_dyn_writable_only(self, target: TpyFieldAccess) -> bool:
+        """D16: True if `target` is `obj.foo` where foo is undeclared on the
+        receiver's class AND the class has __setattr__ but not __getattr__.
+
+        In that combination the read-side analyzer would raise "no field"
+        before reaching the assign-time dunder routing, so the assign path
+        needs to take over BEFORE calling analyze_expr on the target.
+        """
+        try:
+            obj_type = self.expr.analyze_expr(target.obj)
+        except SemanticError:
+            return False
+        actual = unwrap_qualifiers(obj_type) if obj_type is not None else None
+        if not (isinstance(actual, NominalType) and actual.is_record):
+            return False
+        record = self.ctx.registry.get_record_for_type(actual)
+        if record is None:
+            return False
+        # Cheap reject first: if the class has __getattr__, the standard path
+        # (dyn_getattr_call) handles it -- this fast-path is for the
+        # __setattr__-only case. If there is also no __setattr__, irrelevant.
+        if self.protocols.lookup_record_method_overloads(record, "__getattr__")[0]:
+            return False
+        if not self.protocols.lookup_record_method_overloads(record, "__setattr__")[0]:
+            return False
+        # Static lookup must miss for the dyn-setattr fallback to fire.
+        if self.protocols.lookup_record_field(record, target.field) is not None:
+            return False
+        if self.protocols.lookup_record_property(record, target.field) is not None:
+            return False
+        if self.protocols.lookup_record_method_overloads(record, target.field)[0]:
+            return False
+        if target.field in record.class_constants:
+            return False
+        return True
+
+    def _analyze_dyn_setattr_assign(self, stmt: TpyAssign) -> None:
+        """D16: write-only dyn-setattr path used when the class has __setattr__
+        but no __getattr__ (so the read-side analyzer can't resolve the target).
+        """
+        assert isinstance(stmt.target, TpyFieldAccess)
+        setter_call = TpyMethodCall(
+            obj=stmt.target.obj,
+            method="__setattr__",
+            args=[TpyStrLiteral(value=stmt.target.field), stmt.value],
+            loc=stmt.loc,
+        )
+        self.expr.analyze_expr(setter_call)
+        stmt.target.dyn_setattr_call = setter_call
+        # Mutation tracking parallel to plain field assignment.
+        root = _root_name_of_expr(stmt.target.obj)
+        if root is not None:
+            self.ctx.mark_loop_var_mutated(root)
+            self.ctx.mark_param_mutated(root)
+        self._enforce_readonly_assignment_target(stmt.target)
+
+    def _analyze_del_attr(self, stmt: 'TpyDelAttr') -> None:
+        """D16 Phase 3: del obj.foo, obj2.bar -- route through __delattr__.
+
+        Declared fields, properties, methods, and class constants are not
+        deletable in TPy regardless of whether the class defines __delattr__
+        (record layout is fixed). For undeclared names, route through the
+        dunder if present.
+        """
+        for target in stmt.targets:
+            obj_type = self.expr.analyze_expr(target.obj)
+            actual = unwrap_qualifiers(obj_type) if obj_type is not None else None
+            if not (isinstance(actual, NominalType) and actual.is_record):
+                raise self.ctx.error(
+                    f"Cannot delete attribute '{target.field}' on type {obj_type}",
+                    stmt,
+                )
+            record = self.ctx.registry.get_record_for_type(actual)
+            if record is None:
+                raise self.ctx.error(
+                    f"Cannot delete attribute '{target.field}' on type {obj_type}",
+                    stmt,
+                )
+            field_name = target.field
+            # Reject declared-member targets uniformly.
+            if self.protocols.lookup_record_field(record, field_name) is not None:
+                raise self.ctx.error(
+                    f"Cannot delete declared field '{field_name}' from "
+                    f"'{record.name}' (record layout is fixed)",
+                    stmt,
+                )
+            if self.protocols.lookup_record_property(record, field_name) is not None:
+                raise self.ctx.error(
+                    f"Cannot delete declared property '{field_name}' from "
+                    f"'{record.name}'",
+                    stmt,
+                )
+            method_overloads, _ = self.protocols.lookup_record_method_overloads(record, field_name)
+            if method_overloads:
+                raise self.ctx.error(
+                    f"Cannot delete method '{field_name}' from '{record.name}'",
+                    stmt,
+                )
+            if field_name in record.class_constants:
+                raise self.ctx.error(
+                    f"Cannot delete class constant '{field_name}' from '{record.name}'",
+                    stmt,
+                )
+            # Route through __delattr__ if defined.
+            da_overloads, _da_subst = self.protocols.lookup_record_method_overloads(
+                record, "__delattr__")
+            if not da_overloads:
+                # Only mention __delattr__ when the class has already opted
+                # into dyn-attrs (any of __getattr__/__setattr__ defined);
+                # for a plain record, just say the field doesn't exist.
+                has_dyn_attrs = bool(
+                    self.protocols.lookup_record_method_overloads(record, "__getattr__")[0]
+                    or self.protocols.lookup_record_method_overloads(record, "__setattr__")[0]
+                )
+                if has_dyn_attrs:
+                    raise self.ctx.error(
+                        f"Record '{record.name}' has no field '{field_name}' and does not "
+                        f"define __delattr__",
+                        stmt,
+                    )
+                raise self.ctx.error(
+                    f"Record '{record.name}' has no field '{field_name}'", stmt)
+            synth = TpyMethodCall(
+                obj=target.obj,
+                method="__delattr__",
+                args=[TpyStrLiteral(value=field_name)],
+                loc=stmt.loc,
+            )
+            self.expr.analyze_expr(synth)
+            target.dyn_delattr_call = synth
+            # Mark mutation: deletion through dunder mutates the receiver.
+            root = _root_name_of_expr(target.obj)
+            if root is not None:
+                self.ctx.mark_loop_var_mutated(root)
+                self.ctx.mark_param_mutated(root)
+            self._enforce_readonly_assignment_target(target)
 
     def _analyze_del_var(self, stmt: TpyDelVar) -> None:
         """Analyze a variable deletion statement (del x)."""

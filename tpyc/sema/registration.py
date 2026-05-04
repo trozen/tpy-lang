@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
-    TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type,
+    TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type, AnyType, PtrType, RefType,
     IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, make_span,
     is_final_allowed_inner, FINAL_INNER_TYPE_ERROR, try_unwrap_class_constant,
     is_classvar_allowed_inner, CLASSVAR_INNER_TYPE_ERROR,
@@ -35,6 +35,7 @@ from ..type_def_registry import (
     is_fixed_int_type, is_fstr_type, int_traits_of,
     attach_dynamic_type_def, TypeCategory, EnumInfo,
     factory_qnames_in_module, protocol_info_of,
+    is_str_type, is_borrowing_view_type,
 )
 from ..diagnostics import SemanticError
 from .method_expansion import expand_methods_for_record
@@ -108,6 +109,55 @@ def build_record_self_type(record: TpyRecord, qname: str | None = None) -> Nomin
         )
         return NominalType(record.name, type_args, _module_qname=qname)
     return NominalType(record.name, _module_qname=qname)
+
+
+def _validate_dyn_dunder_kind(record: 'TpyRecord', dunder_name: str) -> object:
+    """D16 Phase 4: reject decorator/kind forms that don't make sense for the
+    dynamic-attribute dunders. Returns the method's source location (or
+    `record.loc` when the dunder isn't on the class) so callers can reuse it
+    without a second `record.methods` scan.
+    """
+    method = next((m for m in record.methods if m.name == dunder_name), None)
+    if method is None:
+        return record.loc
+    loc = method.loc
+    # @native records are owned by hand-written C++; mixing dyn-attr dunders
+    # with native record shape is out of scope (see DYNAMIC_ATTRS_DESIGN.md).
+    from ..parse import RecordLinkage
+    if record.linkage != RecordLinkage.DEFAULT:
+        raise SemanticError(
+            f"{dunder_name} cannot be declared on @native records", loc)
+    if method.is_staticmethod:
+        raise SemanticError(f"{dunder_name} cannot be a @staticmethod", loc)
+    if method.is_property_getter or method.is_property_setter:
+        raise SemanticError(f"{dunder_name} cannot be a @property", loc)
+    if method.is_overload_stub:
+        raise SemanticError(f"{dunder_name} cannot be @overload", loc)
+    if method.is_generator:
+        raise SemanticError(f"{dunder_name} cannot be a generator (no `yield` in body)", loc)
+    if method.error_return:
+        raise SemanticError(f"{dunder_name} cannot use @error_return", loc)
+    return loc
+
+
+def _is_valid_dyn_getattr_return(ret: TpyType) -> bool:
+    """D16 Phase 1: __getattr__ return type allow-list.
+
+    Allowed: value types (primitives, Char, str, BigInt, tuples, value-type
+    user records), Any, or Own[T]. Bare reference types (non-value records,
+    list/dict/set/bytes/bytearray) and views (Span/Ptr/Ref/StrView/BytesView)
+    are rejected -- the dunder body computes a result with no place to borrow
+    from.
+    """
+    if isinstance(ret, AnyType):
+        return True
+    if isinstance(ret, OwnType):
+        return True
+    if isinstance(ret, (PtrType, RefType)):
+        return False
+    if is_borrowing_view_type(ret):
+        return False
+    return ret.is_value_type()
 
 
 class TypeRegistrar:
@@ -1065,6 +1115,96 @@ class TypeRegistrar:
                 raise SemanticError(
                     f"__copy__ must return {record.name}, got {ret}",
                     copy_loc,
+                )
+
+        # Validate __getattr__ signature (D16 / dynamic attributes Phase 1).
+        # Full rejection rules (decorators, async, generators, etc.) come in
+        # Phase 4; Phase 1 enforces the load-bearing shape: param count, name
+        # type, and return-type allow-list.
+        if "__getattr__" in methods:
+            ga_loc = _validate_dyn_dunder_kind(record, "__getattr__")
+            ga_info = methods["__getattr__"][0]
+            if len(methods["__getattr__"]) > 1:
+                raise SemanticError(
+                    "__getattr__ cannot be overloaded",
+                    ga_loc,
+                )
+            if len(ga_info.params) != 1:
+                raise SemanticError(
+                    f"__getattr__ must take exactly one parameter besides self (the attribute name)",
+                    ga_loc,
+                )
+            name_param = ga_info.params[0]
+            if not is_str_type(name_param.type):
+                raise SemanticError(
+                    f"__getattr__ name parameter must be 'str', got {name_param.type}",
+                    ga_loc,
+                )
+            ret = ga_info.return_type
+            if ret is None or not _is_valid_dyn_getattr_return(ret):
+                raise SemanticError(
+                    f"__getattr__ return type must be a value type, Any, or Own[T]; "
+                    f"got {ret} (bare reference / view types are not allowed)",
+                    ga_loc,
+                )
+
+        # Validate __setattr__ signature (D16 Phase 2). Same baseline shape
+        # as __getattr__: exact param count, str name, no overloads. Value
+        # type V is unrestricted (any TPy type). Return must be None.
+        if "__setattr__" in methods:
+            sa_loc = _validate_dyn_dunder_kind(record, "__setattr__")
+            sa_info = methods["__setattr__"][0]
+            if len(methods["__setattr__"]) > 1:
+                raise SemanticError(
+                    "__setattr__ cannot be overloaded",
+                    sa_loc,
+                )
+            if len(sa_info.params) != 2:
+                raise SemanticError(
+                    "__setattr__ must take exactly two parameters besides self "
+                    "(the attribute name and the value)",
+                    sa_loc,
+                )
+            sa_name_param = sa_info.params[0]
+            if not is_str_type(sa_name_param.type):
+                raise SemanticError(
+                    f"__setattr__ name parameter must be 'str', got {sa_name_param.type}",
+                    sa_loc,
+                )
+            sa_ret = sa_info.return_type
+            if not isinstance(sa_ret, VoidType):
+                raise SemanticError(
+                    f"__setattr__ must return None, got {sa_ret}",
+                    sa_loc,
+                )
+
+        # Validate __delattr__ signature (D16 Phase 3). Mirrors __setattr__
+        # without the value param.
+        if "__delattr__" in methods:
+            da_loc = _validate_dyn_dunder_kind(record, "__delattr__")
+            da_info = methods["__delattr__"][0]
+            if len(methods["__delattr__"]) > 1:
+                raise SemanticError(
+                    "__delattr__ cannot be overloaded",
+                    da_loc,
+                )
+            if len(da_info.params) != 1:
+                raise SemanticError(
+                    "__delattr__ must take exactly one parameter besides self "
+                    "(the attribute name)",
+                    da_loc,
+                )
+            da_name_param = da_info.params[0]
+            if not is_str_type(da_name_param.type):
+                raise SemanticError(
+                    f"__delattr__ name parameter must be 'str', got {da_name_param.type}",
+                    da_loc,
+                )
+            da_ret = da_info.return_type
+            if not isinstance(da_ret, VoidType):
+                raise SemanticError(
+                    f"__delattr__ must return None, got {da_ret}",
+                    da_loc,
                 )
 
         # Build property registry from @property getter/setter methods

@@ -1,0 +1,1 @@
+main.py:16: error: Record 'Bag' has no field 'x' and does not define __delattr__

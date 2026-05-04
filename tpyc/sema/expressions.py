@@ -1843,9 +1843,44 @@ class ExpressionAnalyzer:
             current_type = deref_target
             deref_depth += 1
 
+        # D16 dynamic-attribute fallback: if the receiver is a record with
+        # __getattr__ reachable via MRO, route the access through the dunder
+        # as a synthesized method call (parallel to property routing). Fires
+        # only after the static-resolution + deref loop has failed.
         if isinstance(actual_type, NominalType) and actual_type.is_record:
+            dyn_result = self._try_dyn_getattr(actual_type, expr)
+            if dyn_result is not None:
+                return make_ref(dyn_result)
             raise self.ctx.error(f"Record '{actual_type.name}' has no field '{expr.field}'", expr)
         raise self.ctx.error(f"Cannot access field '{expr.field}' on type {obj_type}", expr)
+
+    def _try_dyn_getattr(self, typ: NominalType, expr: TpyFieldAccess) -> TpyType | None:
+        """D16 Phase 1: try routing `obj.field` through __getattr__.
+
+        Returns the dunder's substituted return type (and stashes the
+        synthesized TpyMethodCall on `expr.dyn_getattr_call`) if the
+        receiver's class has `__getattr__` via MRO; None otherwise.
+        """
+        record = self.ctx.registry.get_record_for_type(typ)
+        if record is None:
+            return None
+        overloads, _ = self.protocols.lookup_record_method_overloads(
+            record, "__getattr__")
+        if not overloads:
+            return None
+        # Delegate to method-call analysis so @readonly enforcement, mutation
+        # propagation, and call-edge recording all fire uniformly. Returns
+        # the (substituted) dunder return type. Bypassing this path was the
+        # original D16 v1 review gap.
+        getter_call = TpyMethodCall(
+            obj=expr.obj,
+            method="__getattr__",
+            args=[TpyStrLiteral(value=expr.field)],
+            loc=expr.loc,
+        )
+        ret_type = self.analyze_expr(getter_call)
+        expr.dyn_getattr_call = getter_call
+        return ret_type
 
     def _analyze_array_literal(
         self, expr: TpyArrayLiteral, expected_elem: TpyType | None = None

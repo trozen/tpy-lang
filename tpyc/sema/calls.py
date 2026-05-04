@@ -22,7 +22,7 @@ from ..typesys import (
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     CallableType, is_fn_type, unwrap_ref_type,
     is_integer_type, is_any_int_type,
-    is_callable_type, is_float_type, is_readonly_span)
+    is_callable_type, is_float_type, is_readonly_span, unwrap_qualifiers)
 from ..parse import (
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
@@ -1066,7 +1066,139 @@ class CallAnalyzer:
             return self._analyze_typing_cast(expr)
         if qname == "builtins.print":
             return self._analyze_print_call(expr)
+        if qname == "builtins.getattr":
+            return self._analyze_getattr_builtin(expr)
+        if qname == "builtins.setattr":
+            return self._analyze_setattr_builtin(expr)
+        if qname == "builtins.delattr":
+            return self._analyze_delattr_builtin(expr)
         raise self.ctx.error(f"Unknown special builtin: '{qname}'", expr)
+
+    def _extract_dyn_builtin_target(
+        self, expr: TpyCall, builtin: str, expected_args: int,
+    ) -> tuple[TpyExpr, TpyStrLiteral, str, NominalType, 'RecordInfo']:
+        """Shared validation for getattr/setattr/delattr builtins (D16 v1).
+
+        Validates: no kwargs, exact arg count, literal name, record receiver.
+        Returns (obj_arg, name_arg, name_str, actual_type, record).
+        """
+        if expr.kwargs:
+            raise self.ctx.error(f"{builtin}() does not accept keyword arguments", expr)
+        if len(expr.args) != expected_args:
+            raise self.ctx.error(
+                f"{builtin}() expects {expected_args} arguments, got {len(expr.args)}", expr)
+        obj_arg = expr.args[0]
+        name_arg = expr.args[1]
+        if not isinstance(name_arg, TpyStrLiteral):
+            raise self.ctx.error(
+                f"{builtin}() requires a string-literal name; "
+                f"dynamic-name {builtin} is not yet supported",
+                expr,
+            )
+        obj_type = self.expr.analyze_expr(obj_arg)
+        actual_type = unwrap_qualifiers(obj_type)
+        record = (self.ctx.registry.get_record_for_type(actual_type)
+                  if isinstance(actual_type, NominalType) and actual_type.is_record
+                  else None)
+        if record is None:
+            raise self.ctx.error(
+                f"{builtin}() requires a record receiver; got '{obj_type}'", expr)
+        return obj_arg, name_arg, name_arg.value, actual_type, record
+
+    def _reject_declared_member_in_dyn_builtin(
+        self, record: 'RecordInfo', name: str, builtin: str, expr: TpyCall,
+        op_suffix: str, fixit: str,
+    ) -> None:
+        """Reject `<builtin>(obj, "<name>", ...)` when name resolves to a
+        declared field / property / method / class constant. v1 builtins are
+        dynamic-fallback only; these cases are TODO.md:101 territory.
+
+        op_suffix is interpolated into the error (e.g. "" for getattr,
+        ", v" for setattr, "" for delattr) so each builtin's wording stays
+        consistent. fixit is the suggested replacement (e.g. "obj.{name}").
+        """
+        for kind, found in (
+            ("field", self.protocols.lookup_record_field(record, name) is not None),
+            ("property", self.protocols.lookup_record_property(record, name) is not None),
+            ("method", bool(self.protocols.lookup_record_method_overloads(record, name)[0])),
+            ("class constant", name in record.class_constants),
+        ):
+            if found:
+                hint = f"; use '{fixit}'" if fixit else ""
+                raise self.ctx.error(
+                    f"{builtin}(obj, \"{name}\"{op_suffix}) for declared {kind} "
+                    f"is not supported{hint}",
+                    expr,
+                )
+
+    def _analyze_getattr_builtin(self, expr: TpyCall) -> TpyType:
+        """D16 Phase 1: `getattr(obj, "name")` -- dynamic-fallback only."""
+        if len(expr.args) == 3:
+            raise self.ctx.error(
+                "3-arg getattr(obj, name, default) is not yet supported "
+                "(needs catchable AttributeError)",
+                expr,
+            )
+        obj_arg, name_arg, name, actual_type, record = self._extract_dyn_builtin_target(
+            expr, "getattr", expected_args=2)
+        self._reject_declared_member_in_dyn_builtin(
+            record, name, "getattr", expr, op_suffix="", fixit=f"obj.{name}")
+        ga_overloads, type_subst = self.protocols.lookup_record_method_overloads(
+            record, "__getattr__")
+        if not ga_overloads:
+            raise self.ctx.error(
+                f"Record '{actual_type.name}' has no field '{name}' and does not "
+                f"define __getattr__",
+                expr,
+            )
+        ga = ga_overloads[0]
+        synth = TpyMethodCall(obj=obj_arg, method="__getattr__", args=[name_arg])
+        synth.resolved_function_info = ga
+        expr.macro_expansion = synth
+        ret_type = ga.return_type
+        if type_subst and ret_type is not None:
+            ret_type = self.type_ops.substitute_type_params(ret_type, type_subst)
+        return ret_type
+
+    def _analyze_setattr_builtin(self, expr: TpyCall) -> TpyType:
+        """D16 Phase 2: `setattr(obj, "name", value)` -- dynamic-fallback only."""
+        obj_arg, name_arg, name, actual_type, record = self._extract_dyn_builtin_target(
+            expr, "setattr", expected_args=3)
+        value_arg = expr.args[2]
+        self._reject_declared_member_in_dyn_builtin(
+            record, name, "setattr", expr, op_suffix=", v", fixit=f"obj.{name} = v")
+        sa_overloads, _ = self.protocols.lookup_record_method_overloads(record, "__setattr__")
+        if not sa_overloads:
+            raise self.ctx.error(
+                f"Record '{actual_type.name}' has no field '{name}' and does not "
+                f"define __setattr__",
+                expr,
+            )
+        # Delegate to method-call analysis so arg coercion (e.g. into-Any) applies.
+        synth = TpyMethodCall(
+            obj=obj_arg, method="__setattr__", args=[name_arg, value_arg], loc=expr.loc)
+        self.expr.analyze_expr(synth)
+        expr.macro_expansion = synth
+        return VOID
+
+    def _analyze_delattr_builtin(self, expr: TpyCall) -> TpyType:
+        """D16 Phase 3: `delattr(obj, "name")` -- dynamic-fallback only."""
+        obj_arg, name_arg, name, actual_type, record = self._extract_dyn_builtin_target(
+            expr, "delattr", expected_args=2)
+        self._reject_declared_member_in_dyn_builtin(
+            record, name, "delattr", expr, op_suffix="", fixit="")
+        da_overloads, _ = self.protocols.lookup_record_method_overloads(record, "__delattr__")
+        if not da_overloads:
+            raise self.ctx.error(
+                f"Record '{actual_type.name}' has no field '{name}' and does not "
+                f"define __delattr__",
+                expr,
+            )
+        synth = TpyMethodCall(
+            obj=obj_arg, method="__delattr__", args=[name_arg], loc=expr.loc)
+        self.expr.analyze_expr(synth)
+        expr.macro_expansion = synth
+        return VOID
 
     def _analyze_print_call(self, expr: TpyCall) -> TpyType:
         """Validate and type-check builtins.print() with sep=/end=/file=/flush=.

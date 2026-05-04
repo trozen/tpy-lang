@@ -1,0 +1,1 @@
+main.py:17: error: Cannot call non-readonly method '__setattr__' on readonly reference

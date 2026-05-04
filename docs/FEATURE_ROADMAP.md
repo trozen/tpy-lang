@@ -84,7 +84,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D13 | Generator expressions | M | Done | [VI](#generator-expressions) |
 | D14 | Walrus operator (`:=`) | S-M | Done | [VI](#walrus-operator) |
 | D15 | `Any` type | M | Done | [I](#any-type) |
-| D16 | Dynamic attributes (`__getattr__`/`__setattr__`) | M-L | Not started | [VII](#dynamic-attributes) |
+| D16 | Dynamic attributes (`__getattr__`/`__setattr__`/`__delattr__`) | M-L | v1 done; v1.5 (hasattr / 3-arg getattr / dynamic-name builtins) blocked on catchable AttributeError | [VII](#dynamic-attributes) |
 | D17 | `*args` (variadic positional arguments) | M | Done (homogeneous) | [VI](#args--kwargs) |
 | D18 | `**kwargs` (variadic keyword arguments) | M-L | Done | [VI](#args--kwargs) |
 | D19 | Recursive type aliases | M | Done (non-generic) | [I](#recursive-type-aliases) |
@@ -2573,11 +2573,31 @@ The `__getattr__` approach is needed for full CPython compat. Declaration-based
 stubs can layer on top for common libraries (argparse, json) to provide better
 type checking and performance when the attribute set is known.
 
-**Current state**: Not started.
+**Current state**: v1 done. User-defined `__getattr__` / `__setattr__` /
+`__delattr__` recognized and routed through sema-synthesized
+`TpyMethodCall`s. Builtin `getattr` / `setattr` / `delattr` available
+for literal-name dynamic-fallback.
 
-**Dependencies**: `Any` type (D15) -- dynamic attributes store/return `Any` values.
+v1 is fallback-only: declared field/method/property/class-constant
+writes never route through `__setattr__` (intentional CPython divergence
+that avoids the recursion gotcha). `__getattr__` return type must be a
+value type, `Any`, or `Own[T]`; bare reference / view types rejected.
+Inheritance via MRO works for all three dunders. TPy does not recognize
+CPython's `object.__setattr__` escape syntax -- code that defines
+`__setattr__` and writes declared fields in `__init__` works under TPy
+but recurses under CPython; tests using that shape are TPy-only via
+`no_cpython.txt`.
 
-**Effort**: M-L (design + sema attribute fallback + codegen)
+v1.5 (`hasattr`, 3-arg `getattr` with default, dynamic-name 2-arg
+builtins) is blocked on catchable `AttributeError` (panic-vs-catchable
+decision in `TODO.md:81`). See `docs/DYNAMIC_ATTRS_DESIGN.md` for the
+full design including divergences, future extensions, and the broader
+adjacent design space.
+
+**Dependencies**: `Any` type (D15, done) -- dynamic attributes typically
+return `Any`. `D22` multi-inheritance for the MRO routing.
+
+**Effort**: M-L (v1 done; v1.5 small but blocked).
 
 ---
 

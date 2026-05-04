@@ -1,0 +1,1 @@
+main.py:23: error: setattr(obj, "x", v) for declared property is not supported; use 'obj.x = v'

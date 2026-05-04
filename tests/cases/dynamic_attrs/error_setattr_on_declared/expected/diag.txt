@@ -1,0 +1,1 @@
+main.py:16: error: setattr(obj, "_data", v) for declared field is not supported; use 'obj._data = v'

@@ -20,7 +20,7 @@ from ..typesys import (
     is_void_like_type,
 )
 from ..parse import (
-    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyExprStmt, TpyReturn, TpyYield,
+    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyDelAttr, TpyExprStmt, TpyReturn, TpyYield,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt,
     TpyRaise, TpyExceptHandler, TpyTry, TpyWith,
     TpyGlobal, TpyNonlocal, TpyNestedDef,
@@ -351,6 +351,8 @@ class StatementGenerator:
             return self._gen_del_item_code(stmt, indent)
         elif isinstance(stmt, TpyDelVar):
             return self._gen_del_var_code(stmt, indent)
+        elif isinstance(stmt, TpyDelAttr):
+            return self._gen_del_attr_code(stmt, indent)
         elif isinstance(stmt, TpyExprStmt):
             if isinstance(stmt.expr, TpyStrLiteral):
                 return None  # Skip docstrings
@@ -1501,6 +1503,11 @@ class StatementGenerator:
             call = self.expressions._gen_method_call(stmt.target.property_setter_call)
             return f"{indent}{call};\n"
 
+        # D16 dyn-attr __setattr__ fallback: delegate to normal method call codegen
+        if isinstance(stmt.target, TpyFieldAccess) and stmt.target.dyn_setattr_call is not None:
+            call = self.expressions._gen_method_call(stmt.target.dyn_setattr_call)
+            return f"{indent}{call};\n"
+
         # Field assignment: boundary conversions for optional/union pointer repr
         if isinstance(stmt.target, TpyFieldAccess):
             target_type = self.ctx.get_expr_type(stmt.target)
@@ -1584,6 +1591,16 @@ class StatementGenerator:
                 parts.append(f"{indent}{code};\n")
             else:
                 parts.append(f"{indent}::tpy::__delitem__({subscript_obj}, {index_expr});\n")
+        return "".join(parts)
+
+    def _gen_del_attr_code(self, stmt: TpyDelAttr, indent: str) -> str:
+        """D16 Phase 3: codegen for `del obj.foo` -- delegate to __delattr__."""
+        parts: list[str] = []
+        for target in stmt.targets:
+            assert target.dyn_delattr_call is not None, (
+                "TpyDelAttr without resolved dyn_delattr_call: sema bug")
+            call = self.expressions._gen_method_call(target.dyn_delattr_call)
+            parts.append(f"{indent}{call};\n")
         return "".join(parts)
 
     def _gen_del_var_code(self, stmt: TpyDelVar, indent: str) -> str:

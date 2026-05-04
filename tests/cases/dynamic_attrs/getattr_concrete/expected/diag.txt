@@ -1,0 +1,1 @@
+main.py:6: warning: copies dict[str, str] into field; use copy() to make this explicit

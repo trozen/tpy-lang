@@ -1,0 +1,1 @@
+main.py:23: error: Type DynBag does not conform to protocol Greeter in argument 'g'

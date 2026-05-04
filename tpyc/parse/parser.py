@@ -40,7 +40,7 @@ from .nodes import (
     TpyComprehensionGenerator, TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr, TpyNamedExpr, TpyLambda,
-    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyExprStmt, TpyReturn, TpyYield,
+    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyDelAttr, TpyExprStmt, TpyReturn, TpyYield,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyNonlocal, TpyRaise, TpyExceptHandler, TpyTry, TpyWithItem, TpyWith,
     TpyNestedDef,
@@ -3026,9 +3026,10 @@ class Parser:
         return stmts
 
     def _parse_delete(self, node: ast.Delete, loc: SourceLocation | None) -> TpyStmt:
-        """Parse a del statement. Supports subscript and variable targets."""
+        """Parse a del statement. Supports subscript, variable, and attribute targets."""
         subscripts: list[TpySubscript] = []
         names: list[str] = []
+        attrs: list[TpyFieldAccess] = []
         for target in node.targets:
             if isinstance(target, ast.Subscript):
                 obj = self._parse_expr(target.value)
@@ -3037,13 +3038,22 @@ class Parser:
             elif isinstance(target, ast.Name):
                 names.append(target.id)
             elif isinstance(target, ast.Attribute):
-                raise ParseError("'del' on attributes is not supported", node)
+                obj = self._parse_expr(target.value)
+                attrs.append(TpyFieldAccess(obj=obj, field=target.attr, loc=loc))
             else:
                 raise ParseError(f"Unsupported del target: {type(target).__name__}", node)
-        if subscripts and names:
-            raise ParseError("Cannot mix variable and subscript targets in a single 'del' statement", node)
+        # Mixing the three kinds in one statement is rare; reject for clarity
+        # (matches the existing subscript+name rejection).
+        kinds_present = sum(1 for k in (subscripts, names, attrs) if k)
+        if kinds_present > 1:
+            raise ParseError(
+                "Cannot mix variable, subscript, and attribute targets in a single 'del' statement",
+                node,
+            )
         if names:
             return TpyDelVar(names, loc=loc)
+        if attrs:
+            return TpyDelAttr(attrs, loc=loc)
         return TpyDelItem(subscripts, loc=loc)
 
     def _parse_match(self, node: ast.Match, loc: SourceLocation | None) -> TpyMatch:

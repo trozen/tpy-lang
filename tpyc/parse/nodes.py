@@ -400,6 +400,9 @@ class TpyFieldAccess(TpyExpr):
     property_setter: bool = False  # Set by sema: assignment target is a property setter
     property_getter_call: 'TpyMethodCall | None' = None  # Set by sema: getter method call for codegen
     property_setter_call: 'TpyMethodCall | None' = None  # Set by sema: setter method call for codegen
+    dyn_getattr_call: 'TpyMethodCall | None' = None  # Set by sema: __getattr__ fallback method call (D16)
+    dyn_setattr_call: 'TpyMethodCall | None' = None  # Set by sema: __setattr__ fallback method call (D16)
+    dyn_delattr_call: 'TpyMethodCall | None' = None  # Set by sema: __delattr__ fallback method call (D16)
     unbound_self_parent_type: Optional[TpyType] = None  # Set by sema for BaseN.field access on an ancestor subobject
     class_constant_owner: Optional['RecordInfo'] = None  # Set by sema: RecordInfo for ClassName.X class-constant access; codegen emits <cpp_qname>::<member>
     module_var_access: Optional[tuple[str, str]] = None  # Set by sema for `pkg.sub.X` variable access on a dotted module: (module_qname, var_name)
@@ -705,6 +708,15 @@ class TpyDelVar(TpyStmt):
 
     def exprs(self) -> list[TpyExpr]:
         return []
+
+
+@dataclass
+class TpyDelAttr(TpyStmt):
+    """Delete statement for attributes: del obj.foo, obj2.bar, ... (D16 Phase 3)"""
+    targets: list[TpyFieldAccess]
+
+    def exprs(self) -> list[TpyExpr]:
+        return list(self.targets)
 
 
 @dataclass

@@ -120,7 +120,7 @@ Examples of the policy in action:
 
 | Module | Priority | Status | % | Approach | Blockers / Notes |
 |---|---|---|---|---|---|
-| [`builtins`](#builtins) | P0 | Partial | ~70% | mixed | Implicit import. Core types + most common functions + key exceptions present. Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, most specialized exceptions (`IndexError`, `KeyError`, `TypeError`, etc. -- currently panic), `hasattr`/`getattr`/`setattr` (dynamic attr), `callable`, `id`, `type(x)` runtime. See [builtins](#builtins) for per-item status |
+| [`builtins`](#builtins) | P0 | Partial | ~70% | mixed | Implicit import. Core types + most common functions + key exceptions present. Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, most specialized exceptions (`IndexError`, `KeyError`, `TypeError`, etc. -- currently panic), `hasattr` (D16 v1.5), `callable`, `id`, `type(x)` runtime. `getattr`/`setattr`/`delattr` literal-name dynamic-fallback shipped in D16 v1. See [builtins](#builtins) for per-item status |
 | [`math`](#math) | P0 | Done | ~99% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for prod/fsum/sumprod/dist). Remaining gaps are minor: int-typed `prod` variant (exact BigInt product on all-int iterables) and tuple as iterable (blocked on tuple-iteration bundle) |
 | [`time`](#time) | P0 | Stub | ~10% | mixed | Thin clock/sleep syscalls + pure TPy. Missing perf_counter/monotonic/struct_time/strftime |
 | [`sys`](#sys) | P0 | Stub | ~15% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr` done; needs `stdin`/`exit`/`path`/`version_info` |
@@ -264,7 +264,8 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 | `repr` | Done | User-type fallback partial; see BUGS.md "repr() and f-string {} don't work on union types" |
 | `issubclass` | Missing | |
 | `callable` | Missing | Compile-time evaluable under static dispatch |
-| `hasattr`, `getattr`, `setattr`, `delattr` | Missing | Needs dynamic attribute support (see LANGUAGE_FEATURES) |
+| `getattr`, `setattr`, `delattr` (literal-name dynamic-fallback) | Done (D16 v1) | 2-arg literal-name form routes to `__getattr__` / `__setattr__` / `__delattr__`. Declared-member names rejected (use direct attribute access). Dynamic-name and 3-arg `getattr` deferred to v1.5. See `docs/DYNAMIC_ATTRS_DESIGN.md` |
+| `hasattr`, 3-arg `getattr`, dynamic-name 2-arg builtins | Blocked | Phase v1.5 of D16; gated on catchable `AttributeError` (TODO.md:81 panic-vs-catchable decision) |
 | `id` | Missing | `tpy.unsafe.unsafe_address_of` exists as an approximation; `id` semantics differ under static compilation |
 | `type(x)` (runtime value) | Missing | See TODO.md "type(); T = type(x); z = T()" |
 | `vars`, `dir` | Missing | Not meaningful without runtime object introspection |

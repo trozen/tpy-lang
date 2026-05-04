@@ -95,7 +95,7 @@ Goal: speed up test runs (currently ~3 min parallel, ~6 min single-threaded for 
 
 ## Python features
 - Enum name lookup: `Kind["TEXT"]` -> `Kind.TEXT`. CPython uses `EnumMeta.__getitem__` with a string key. C++ codegen: `EnumUtil<Kind>::from_name("TEXT")` (already exists in runtime). Needs subscript support on enum types in sema + codegen.
-- dynamic attributes
+- dynamic attributes v1.5 (`hasattr`, 3-arg `getattr`, dynamic-name 2-arg builtins) -- v1 done; gated on catchable `AttributeError` (see entry above on the runtime exception model decision)
 - properties master
 - Generator: `yield from`, `send()`, `throw()`, `close()`
 - Generator: protocol-typed params (`def gen(it: Iterator[T])`) -- needs template struct + factory. Currently emits `T&` without `template<typename T>` and simple generator path tries `begin()/end()` instead of `__next__()`.
