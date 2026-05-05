@@ -132,7 +132,7 @@ Examples of the policy in action:
 | [`re`](#re) | P0 | Partial | ~50% | pure | Pure-TPy facade over `_bindings.pcre2` raw bindings. PCRE2 vendored under `runtime/cpp/third_party/pcre2/` (5MB) and built bundled by default; `--pcre2={bundled,system,auto}` selects backend. compile/search/match/fullmatch/findall/sub/split + Pattern/Match classes + IGNORECASE/MULTILINE/DOTALL/VERBOSE/ASCII flags + `re.error`. Missing: named-group accessors, `count` arg on sub, true generator finditer, bytes input, compile cache |
 | [`collections`](#collections) | P0 | Missing | 0% | -- | OrderedDict trivial (have ordered_map); deque needs C++ struct; Counter/defaultdict/namedtuple need macros |
 | [`itertools`](#itertools) | P0 | Missing | 0% | -- | C++ primitives exist in `runtime/itertools.hpp`; needs Python-surface module |
-| [`functools`](#functools) | P0 | Partial | ~15% | pure | `reduce(func, a, initial)` and `reduce(func, a)` done. `cmp_to_key`, `total_ordering`, `wraps` gated on specific compiler fixes (see section). partial/lru_cache/singledispatch/cached_property/partialmethod need closures + macros |
+| [`functools`](#functools) | P0 | Partial | ~15% | pure | `reduce(func, a, initial)` and `reduce(func, a)` done. `cmp_to_key`, `total_ordering`, `wraps` blocked on specific compiler / macro-infrastructure gaps (see section). partial/lru_cache/singledispatch/cached_property/partialmethod need closures + macros |
 | [`random`](#random) | P1 | Partial | ~90% | pure | Pure-TPy MT19937 + CPython's distribution suite, byte-identical to CPython on the same seed. Done: `Random` class, `random`, `seed(Int32)` (negatives mapped to abs), `seed()` no-arg auto-seed via OS entropy, `getrandbits(k)` for arbitrary k, `randint`, `randrange`, `randbytes`, `choice`, `shuffle`, `uniform`, `triangular`, `gauss`, `normalvariate`, `lognormvariate`, `expovariate`, `paretovariate`, `weibullvariate`, `gammavariate`, `betavariate`, `vonmisesvariate`. Missing: `choices`/`sample`/`SystemRandom`/`binomialvariate`/`getstate` (Tier 3). See module docstring TODOs |
 | [`struct`](#struct) | P1 | Partial | ~60% | macro | unpack/calcsize only; `pack` needs statement-expr or buffer builder |
 | [`bisect`](#bisect) | P1 | Done | 100% | pure | All four functions implemented generically over `Comparable` |
@@ -367,7 +367,7 @@ Current: `lib/tpy/math.py` -- native C++ wrappers. Sufficient for numerics-heavy
 | `frexp` | Done | Generic over the exponent type: `frexp[T](x) -> tuple[float, T]`. Default T is `DefaultInt` (Int32 under default config); users can pick `Int64` or `int` (BigInt) for wider ranges |
 | `gcd`, `lcm` | Done | Variadic `gcd(*ints)` / `lcm(*ints)` over BigInt. Internal `_gcd2` binary helper; `lcm` uses `(a // gcd(a,b)) * b` to keep the intermediate bounded by `max(|a|, |b|)`. Generic-over-int-type is a follow-up (see math.py header) |
 | `factorial` | Done | Pure-TPy over BigInt; raises `ValueError` on negative |
-| `isqrt` | Done | Pure-TPy Newton's method over BigInt |
+| `isqrt` | Done | Pure-TPy Newton's method over BigInt; initial guess from `bit_length()` for O(log log n) iteration count |
 | `perm`, `comb` | Done | Pure-TPy over BigInt. `perm` has both one-arg (`perm(n) == factorial(n)`) and two-arg overloads via `@overload`. `comb` is binary only |
 | `isclose` | Done | Pure-TPy; `rel_tol` / `abs_tol` are kw-only to match CPython |
 | `prod` | Done | Pure-TPy; `start` is kw-only to match CPython. Takes `Iterable[float]`. Int variant is a follow-up (currently all iterables are coerced element-wise to float) |
@@ -633,8 +633,8 @@ BUGS.md / TODO.md, not on macro or closure infrastructure:
 | `reduce(func, a, initial)` | Done | Pure TPy. Takes `Iterable[T]` -- accepts list literals, `range()`, bound list/iter vars |
 | `reduce(func, a)` | Done | Pure TPy. Takes `list[T]` (random-access; raises on empty). Restricted to list rather than `Iterable[T]` because TPy doesn't have CPython's iter/next + StopIteration pattern |
 | `cmp_to_key` | Blocked | Pure TPy; blocked on readonly-through-generics. See BUGS.md |
-| `total_ordering` | Missing | Class macro -- reuses `build_order` from `_macro_helpers.py`. Unblocked, a few hours of work |
-| `wraps`, `update_wrapper` | Missing | No-op identity call_macro (TPy functions don't carry runtime `__name__`/`__doc__`). Unblocked, trivial |
+| `total_ordering` | Blocked | Class macro. Blocked architecturally: `functools.py` hosts the runtime `reduce`, and TPy modules are either macro-only (`# tpy: macro_module`) or runtime-only -- no mixing. Lift by splitting `reduce` out so `functools.py` becomes a macro module, or by extending TPy with per-function macro markers. CPython's formulas (`functools._convert`) are the reference for the synthesizer when implementing |
+| `wraps`, `update_wrapper` | Blocked | Primary: CPython's `@wraps(f)` is a decorator factory (`wraps(f)` returns a decorator that takes the wrapper). TPy macro_api has no "decorator factory that's identity" form; would need new infrastructure separate from class/call/builder macros. Secondary: same module-mixing blocker as `total_ordering` once a macro form exists |
 | `partial` | Missing | Full variadic form needs function-macro or `*args` forwarding on user classes |
 | `partialmethod` | Missing | Descriptor-protocol heavy |
 | `lru_cache`, `cache` | Missing | Decorator must wrap + return a new callable with mutable cache dict; needs function-macro (not supported today) |

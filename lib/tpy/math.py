@@ -30,12 +30,6 @@
 #   adopting if users depend on fsum for bit-exact precision.
 # - `sumprod`: naive fold. CPython uses compensated arithmetic (similar
 #   to fsum) for precision. Large vectors can lose low bits in our impl.
-# - `isqrt`: Newton's method currently starts at `n`, which takes
-#   ~log2(n) extra iterations. Better initial guess:
-#   `1 << ((n.bit_length() + 1) // 2)` converges in ~log2(log2(n)) steps.
-#   Blocked on exposing `bit_length()` on int to Python -- the BigInt
-#   runtime has `abs_bit_length()` internally but no Python-visible method.
-#   Logged separately under builtins.
 # - `log(x, base)`: always `log(x) / log(base)`. CPython special-cases
 #   `base == 2` to dispatch to `log2` (one fewer transcendental call).
 #   Minor; consider if benchmarks warrant.
@@ -259,8 +253,15 @@ def isqrt(n: int) -> int:
         raise ValueError("isqrt() argument must be nonnegative")
     if n == 0:
         return 0
-    x: int = n
-    y: int = (x + 1) // 2
+    # Newton's method from a bit-length-derived initial guess: for an
+    # n-bit input, sqrt(n) has ~n/2 bits, so 1 << ((bits + 1) // 2) is
+    # already an upper bound within a factor of 2 of the answer (factor
+    # is sqrt(2) for even bit_length, exactly 2 for odd). Convergence
+    # drops from O(log n) iterations (when starting at n) to O(log log n).
+    # The `int(1)` LHS forces BigInt arithmetic so the shift can exceed
+    # Int32 width without overflow-checking.
+    x: int = int(1) << ((n.bit_length() + 1) // 2)
+    y: int = (x + n // x) // 2
     while y < x:
         x = y
         y = (x + n // x) // 2

@@ -9,8 +9,11 @@
 #
 # Gaps vs. CPython (tracked in STDLIB_ROADMAP.md):
 #   - 2-arg reduce accepts list, not arbitrary Iterable.
-#   - Higher-arity / closure-heavy items (partial, lru_cache, singledispatch,
-#     cached_property, partialmethod) are not yet available.
+#   - total_ordering / wraps / partial / lru_cache / singledispatch /
+#     cached_property / partialmethod not yet available. total_ordering
+#     and wraps are blocked on the macro/runtime module split (this
+#     file hosts the runtime `reduce` and TPy modules can't mix macros
+#     with runtime functions); see STDLIB_ROADMAP.md for the lift path.
 # tpy: cpp_namespace("tpystd::functools")
 from typing import Iterable, overload
 from tpy import Fn, Own, copy

@@ -74,6 +74,10 @@ def main() -> None:
     print(math.isqrt(10))
     print(math.isqrt(100))
     print(math.isqrt(1000))
+    # Large n: bit_length > 32 forces the BigInt shift path that
+    # `int(1) <<` enables; a bare `1 <<` would overflow-panic at Int32.
+    print(math.isqrt(int(10) ** int(40)) == int(10) ** int(20))
+    print(math.isqrt((int(1) << int(200)) - int(1)).bit_length())  # 100
 
     # perm / comb
     print(math.perm(5, 0))

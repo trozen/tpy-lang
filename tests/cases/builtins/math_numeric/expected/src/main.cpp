@@ -123,6 +123,12 @@ void main() {
     std::cout << ::tpystd::math::isqrt(::tpy::BigInt(100)) << "\n";
     // print(math.isqrt(1000))
     std::cout << ::tpystd::math::isqrt(::tpy::BigInt(1000)) << "\n";
+    // # Large n: bit_length > 32 forces the BigInt shift path that
+    // # `int(1) <<` enables; a bare `1 <<` would overflow-panic at Int32.
+    // print(math.isqrt(int(10) ** int(40)) == int(10) ** int(20))
+    std::cout << ::tpy::print_bool((::tpystd::math::isqrt(((::tpy::BigInt(10)).pow(::tpy::BigInt(40)))) == ((::tpy::BigInt(10)).pow(::tpy::BigInt(20))))) << "\n";
+    // print(math.isqrt((int(1) << int(200)) - int(1)).bit_length())  # 100
+    std::cout << (::tpystd::math::isqrt(((((::tpy::BigInt(1)) << (::tpy::BigInt(200)))) - (::tpy::BigInt(1))))).bit_length() << "\n";
     // # perm / comb
     // print(math.perm(5, 0))
     std::cout << ::tpystd::math::perm(::tpy::BigInt(5), ::tpy::BigInt(0)) << "\n";
