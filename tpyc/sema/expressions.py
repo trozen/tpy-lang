@@ -1877,6 +1877,7 @@ class ExpressionAnalyzer:
             method="__getattr__",
             args=[TpyStrLiteral(value=expr.field)],
             loc=expr.loc,
+            error_return_auto_unwrap=True,
         )
         ret_type = self.analyze_expr(getter_call)
         expr.dyn_getattr_call = getter_call

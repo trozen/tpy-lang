@@ -14,7 +14,7 @@ void __tpy_init() {
     // x: C | None = None
     x = nullptr;
     // assert x
-    if (!(x)) ::tpy::tpy_panic("assertion failed");
+    if (!(x)) ::tpy::assert_failed();
 }
 
 } // namespace tpyapp::main

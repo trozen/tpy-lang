@@ -27,7 +27,7 @@ struct Bag {
     }
 
     // def __getattr__(self, name: str) -> Any:
-    ::tpy::Any __getattr__(std::string_view name) const;
+    std::expected<::tpy::Any, ::tpy::AttributeError> __getattr__(std::string_view name) const;
 
     // def __setattr__(self, name: str, value: Any) -> None:
     void __setattr__(std::string_view name, ::tpy::Any value);
@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __getattr__(self, name: str) -> Any:
-inline ::tpy::Any Bag::__getattr__(std::string_view name) const {
+inline std::expected<::tpy::Any, ::tpy::AttributeError> Bag::__getattr__(std::string_view name) const {
     // return self._data[name]
     return ::tpy::__getitem__(this->_data, name);
 }

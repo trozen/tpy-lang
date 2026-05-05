@@ -38,7 +38,7 @@ int32_t test_is_none_early_return(Point* p) {
 // def test_assert(p: Ptr[Point]) -> Int32:
 int32_t test_assert(Point* p) {
     // assert p is not None
-    if (!((p != nullptr))) ::tpy::tpy_panic("assertion failed");
+    if (!((p != nullptr))) ::tpy::assert_failed();
     // return p.x  # tpyc: non_null(p)
     return p->x;
 }

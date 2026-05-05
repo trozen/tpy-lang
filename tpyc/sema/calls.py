@@ -1122,21 +1122,26 @@ class CallAnalyzer:
             return self._analyze_setattr_builtin(expr)
         if qname == "builtins.delattr":
             return self._analyze_delattr_builtin(expr)
+        if qname == "builtins.hasattr":
+            return self._analyze_hasattr_builtin(expr)
         raise self.ctx.error(f"Unknown special builtin: '{qname}'", expr)
 
     def _extract_dyn_builtin_target(
-        self, expr: TpyCall, builtin: str, expected_args: int,
+        self, expr: TpyCall, builtin: str, expected_args: int | tuple[int, ...],
     ) -> tuple[TpyExpr, TpyStrLiteral, str, NominalType, 'RecordInfo']:
-        """Shared validation for getattr/setattr/delattr builtins (D16 v1).
+        """Shared validation for getattr/setattr/delattr/hasattr builtins (D16).
 
-        Validates: no kwargs, exact arg count, literal name, record receiver.
+        Validates: no kwargs, arg count, literal name, record receiver.
+        `expected_args` may be a single count or a tuple of accepted counts.
         Returns (obj_arg, name_arg, name_str, actual_type, record).
         """
         if expr.kwargs:
             raise self.ctx.error(f"{builtin}() does not accept keyword arguments", expr)
-        if len(expr.args) != expected_args:
+        accepted = (expected_args,) if isinstance(expected_args, int) else expected_args
+        if len(expr.args) not in accepted:
+            wanted = " or ".join(str(n) for n in accepted)
             raise self.ctx.error(
-                f"{builtin}() expects {expected_args} arguments, got {len(expr.args)}", expr)
+                f"{builtin}() expects {wanted} arguments, got {len(expr.args)}", expr)
         obj_arg = expr.args[0]
         name_arg = expr.args[1]
         if not isinstance(name_arg, TpyStrLiteral):
@@ -1155,6 +1160,19 @@ class CallAnalyzer:
                 f"{builtin}() requires a record receiver; got '{obj_type}'", expr)
         return obj_arg, name_arg, name_arg.value, actual_type, record
 
+    def _declared_member_kind(self, record: 'RecordInfo', name: str) -> str | None:
+        """Return the kind ('field' / 'property' / 'method' / 'class constant')
+        if `name` resolves to a declared member of `record`, else None."""
+        if self.protocols.lookup_record_field(record, name) is not None:
+            return "field"
+        if self.protocols.lookup_record_property(record, name) is not None:
+            return "property"
+        if self.protocols.lookup_record_method_overloads(record, name)[0]:
+            return "method"
+        if name in record.class_constants:
+            return "class constant"
+        return None
+
     def _reject_declared_member_in_dyn_builtin(
         self, record: 'RecordInfo', name: str, builtin: str, expr: TpyCall,
         op_suffix: str, fixit: str,
@@ -1167,30 +1185,20 @@ class CallAnalyzer:
         ", v" for setattr, "" for delattr) so each builtin's wording stays
         consistent. fixit is the suggested replacement (e.g. "obj.{name}").
         """
-        for kind, found in (
-            ("field", self.protocols.lookup_record_field(record, name) is not None),
-            ("property", self.protocols.lookup_record_property(record, name) is not None),
-            ("method", bool(self.protocols.lookup_record_method_overloads(record, name)[0])),
-            ("class constant", name in record.class_constants),
-        ):
-            if found:
-                hint = f"; use '{fixit}'" if fixit else ""
-                raise self.ctx.error(
-                    f"{builtin}(obj, \"{name}\"{op_suffix}) for declared {kind} "
-                    f"is not supported{hint}",
-                    expr,
-                )
-
-    def _analyze_getattr_builtin(self, expr: TpyCall) -> TpyType:
-        """D16 Phase 1: `getattr(obj, "name")` -- dynamic-fallback only."""
-        if len(expr.args) == 3:
+        kind = self._declared_member_kind(record, name)
+        if kind is not None:
+            hint = f"; use '{fixit}'" if fixit else ""
             raise self.ctx.error(
-                "3-arg getattr(obj, name, default) is not yet supported "
-                "(needs catchable AttributeError)",
+                f"{builtin}(obj, \"{name}\"{op_suffix}) for declared {kind} "
+                f"is not supported{hint}",
                 expr,
             )
+
+    def _analyze_getattr_builtin(self, expr: TpyCall) -> TpyType:
+        """D16 Phase 1 + v1.5 Phase 8: `getattr(obj, "name")` and
+        `getattr(obj, "name", default)` -- dynamic-fallback only."""
         obj_arg, name_arg, name, actual_type, record = self._extract_dyn_builtin_target(
-            expr, "getattr", expected_args=2)
+            expr, "getattr", expected_args=(2, 3))
         self._reject_declared_member_in_dyn_builtin(
             record, name, "getattr", expr, op_suffix="", fixit=f"obj.{name}")
         ga_overloads, type_subst = self.protocols.lookup_record_method_overloads(
@@ -1204,11 +1212,46 @@ class CallAnalyzer:
         ga = ga_overloads[0]
         synth = TpyMethodCall(obj=obj_arg, method="__getattr__", args=[name_arg])
         synth.resolved_function_info = ga
-        expr.macro_expansion = synth
         ret_type = ga.return_type
         if type_subst and ret_type is not None:
             ret_type = self.type_ops.substitute_type_params(ret_type, type_subst)
-        return ret_type
+        if len(expr.args) == 3:
+            default_arg = expr.args[2]
+            if ret_type is not None:
+                default_type = self.expr.analyze_expr_with_hint(default_arg, ret_type)
+                expr.args[2] = self.compat.coerce_expr(
+                    default_arg, default_type, ret_type,
+                    "getattr() default argument",
+                    coercion_ctx=CoercionContext.ARG,
+                )
+            else:
+                self.expr.analyze_expr(default_arg)
+            expr.dyn_getattr_default_call = synth
+        else:
+            expr.macro_expansion = synth
+        return ret_type if ret_type is not None else VOID
+
+    def _analyze_hasattr_builtin(self, expr: TpyCall) -> TpyType:
+        """D16 v1.5 Phase 7: `hasattr(obj, "name")` -- literal-name only.
+
+        Static result if name resolves to a declared member or class is not
+        dyn-readable; otherwise emits a runtime try/catch over `__getattr__`.
+        """
+        obj_arg, name_arg, name, actual_type, record = self._extract_dyn_builtin_target(
+            expr, "hasattr", expected_args=2)
+        if self._declared_member_kind(record, name) is not None:
+            expr.macro_expansion = TpyBoolLiteral(value=True, loc=expr.loc)
+            return BOOL
+        ga_overloads, _ = self.protocols.lookup_record_method_overloads(
+            record, "__getattr__")
+        if not ga_overloads:
+            expr.macro_expansion = TpyBoolLiteral(value=False, loc=expr.loc)
+            return BOOL
+        ga = ga_overloads[0]
+        synth = TpyMethodCall(obj=obj_arg, method="__getattr__", args=[name_arg])
+        synth.resolved_function_info = ga
+        expr.dyn_hasattr_call = synth
+        return BOOL
 
     def _analyze_setattr_builtin(self, expr: TpyCall) -> TpyType:
         """D16 Phase 2: `setattr(obj, "name", value)` -- dynamic-fallback only."""
@@ -3879,6 +3922,16 @@ class CallAnalyzer:
         # REPL mode: allow error_return calls at top level (codegen panics on error)
         if self.ctx.is_top_level and self.ctx.allow_top_level_error_unwrap:
             return
+        # Auto-unwrap (synth dyn-attr __getattr__ from `obj.foo`): codegen will
+        # panic at runtime when there's no enclosing handler. But if the caller
+        # has a non-matching @error_return, codegen would propagate as the wrong
+        # type -- a real type mismatch the user must resolve with try/except.
+        if isinstance(expr, TpyMethodCall) and expr.error_return_auto_unwrap:
+            in_error_return = (isinstance(current, TpyFunction)
+                               and current.error_return is not None)
+            in_try = ctx_error_type is not None
+            if not in_error_return and not in_try:
+                return
         # Strip module prefix for user-facing message
         display_name = func.error_return_type
         if "." in display_name:

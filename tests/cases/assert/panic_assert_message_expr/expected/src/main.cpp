@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def fail(msg: str) -> None:
 void fail(std::string_view msg) {
     // assert False, msg
-    ::tpy::tpy_panic(msg);
+    ::tpy::assert_failed(msg);
 }
 
 void __tpy_init() {

@@ -1,1 +1,1 @@
-TurboPython panic: dynamic message
+TurboPython panic: uncaught tpy::AssertionError: dynamic message

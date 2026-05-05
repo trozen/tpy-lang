@@ -29,7 +29,7 @@ template<typename T, ::tpystd::typing::Iterable<T> T_items>
         return x;
     }
     // assert False, "empty"
-    ::tpy::tpy_panic("empty");
+    ::tpy::assert_failed("empty");
 }
 // def to_list[T](items: Own[Iterable[T]]) -> Own[list[T]]:  # tpyc: warning(/never consumed/)
 template<typename T, ::tpystd::typing::Iterable<T> T_items>

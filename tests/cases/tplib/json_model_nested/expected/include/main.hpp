@@ -181,11 +181,11 @@ inline Address Address::from_json(std::string_view __s) {
         __except_1:;
         {
             auto& __e = *__err_opt_1;
-            ::tpy::tpy_panic(__e.message);
+            ::tpy::assert_failed(__e.message);
         }
         __after_try_1:;
     }
-    if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
+    if (!((__result.has_value()))) ::tpy::assert_failed("json: unreachable");
     return (*__result);
 }
 
@@ -299,11 +299,11 @@ inline Profile Profile::from_json(std::string_view __s) {
         __except_8:;
         {
             auto& __e = *__err_opt_8;
-            ::tpy::tpy_panic(__e.message);
+            ::tpy::assert_failed(__e.message);
         }
         __after_try_8:;
     }
-    if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
+    if (!((__result.has_value()))) ::tpy::assert_failed("json: unreachable");
     return (*__result);
 }
 

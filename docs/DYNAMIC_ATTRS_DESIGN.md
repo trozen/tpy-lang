@@ -5,9 +5,10 @@ User-defined `__getattr__`, `__setattr__`, `__delattr__` dunders. Roadmap entry:
 
 ## Progress
 
-D16 ships in two stages because the dynamic-name builtins (`hasattr`, 3-arg
-`getattr`) require catchable `AttributeError`, which is currently part of the
-unresolved panic-vs-catchable decision (`TODO.md:81`, `STDLIB_ROADMAP.md:316`).
+D16 v1 + v1.5 phases 7-8 are shipped. `AttributeError` is now a
+catchable throw-tier exception, which unblocked `hasattr` and 3-arg
+`getattr`. Phase 9 (dynamic-name builtins) still deferred, gated on a
+design decision rather than the type system.
 
 ### v1 -- core attribute routing
 
@@ -24,9 +25,9 @@ unresolved panic-vs-catchable decision (`TODO.md:81`, `STDLIB_ROADMAP.md:316`).
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 7 | `hasattr(obj, name)` for static + dyn-readable classes | Blocked on catchable `AttributeError` (`TODO.md:81`) |
-| 8 | 3-arg `getattr(obj, name, default)` with `AttributeError` catch | Blocked on catchable `AttributeError` |
-| 9 | Dynamic-name 2-arg builtins: `getattr(obj, name_var)`, `setattr(obj, name_var, v)`, `delattr(obj, name_var)` | Not blocked on `AttributeError` (whatever the dunder raises propagates). Deferred for v1 scope: phase 9 needs a divergence call (route ALL dynamic names directly to the dunder, making declared members invisible to dynamic builtins -- simpler, but a CPython divergence; OR runtime string dispatch over declared members + dunder fallback -- matches CPython but reopens the value-category questions of phase 7's declared-member case). Pick when there's a driver |
+| 7 | `hasattr(obj, name)` for static + dyn-readable classes | Done. Literal name only. `__getattr__` is auto-`@error_return(AttributeError)`, so dyn-readable classes compile to `(call).has_value()` -- no try/catch. Declared members fold to compile-time `True`; classes without `__getattr__` fold to `False` |
+| 8 | 3-arg `getattr(obj, name, default)` with `AttributeError` catch | Done. Literal name only. Compiles to `(call).value_or(default)` on the dunder's `std::expected<T, AttributeError>`. `default` must be coercible to `T` (e.g. into-Any for `T = Any`) |
+| 9 | Dynamic-name 2-arg builtins: `getattr(obj, name_var)`, `setattr(obj, name_var, v)`, `delattr(obj, name_var)` | Deferred. Needs a divergence call (route ALL dynamic names directly to the dunder, making declared members invisible to dynamic builtins -- simpler, but a CPython divergence; OR runtime string dispatch over declared members + dunder fallback -- matches CPython but reopens the value-category questions of phase 7's declared-member case). Pick when there's a driver |
 
 ### Known Limitations (v1)
 
@@ -38,7 +39,7 @@ unresolved panic-vs-catchable decision (`TODO.md:81`, `STDLIB_ROADMAP.md:316`).
 | No overloaded dunders | Each dunder has a single signature |
 | Not on `@native` records | Native record shape is owned by hand-written C++; mixing dyn-attr is out of scope |
 | Single-name dispatch only | The dunder receives the requested name as `str`; no compile-time multi-name specialization |
-| No `hasattr` / 3-arg `getattr` / dynamic-name builtins | Deferred to v1.5; gated on `AttributeError` becoming catchable (`TODO.md:81`) |
+| No dynamic-name builtins (`getattr(obj, name_var, ...)`, `setattr(obj, name_var, v)`, `delattr(obj, name_var)`) | Deferred (phase 9). Needs a route-all-vs-runtime-dispatch design call; not blocked on the type system |
 | Builtin `getattr` / `setattr` / `delattr` are dynamic-fallback only | `getattr(obj, "declared_field")` is a compile error in v1 (use `obj.declared_field` instead). Avoids the bound-method / value-category snake pit until method references (TODO.md:101) land |
 | `__getattr__` returns must be non-borrowed | Reference / view returns from `__getattr__` deferred (borrow-checker interaction non-trivial). Owned and value-type returns are fine |
 | Async / generator dunders rejected | Same rejection list as `@staticmethod` / `@classmethod` / `@property` / `@overload` |
@@ -261,22 +262,28 @@ In v1 the builtin only handles the **dynamic-fallback** case:
    as `obj.foo`, same result type `T`.
 3. Else -> existing "no field" error.
 
-### Read: `getattr(obj, name_var, ...)` and 3-arg form (v1.5)
+### Read: `getattr(obj, "foo", default)` (v1.5 phase 8, literal name only)
 
-Deferred to v1.5, gated on `AttributeError` becoming catchable
-(`TODO.md:81`, `STDLIB_ROADMAP.md:316`). Sketch for the eventual design:
+Implemented for literal names. `__getattr__` is auto-`@error_return(AttributeError)`,
+so the dunder returns `std::expected<T, AttributeError>` and the 3-arg
+form substitutes `default` via `.value_or(...)`. Type rule: `default`
+must be coercible to `T` (the dunder's declared return type); result is
+typed as `T`. (Users wanting `T | D` widening declare `T = Optional[X]`
+explicitly.)
 
-- Non-literal name on dyn-readable class -> emit `obj.__getattr__(name_var)`.
-- Non-literal name on non-dyn-readable class -> compile error.
-- 3-arg form catches `AttributeError` from the dunder and substitutes
-  `default`. Type rule: `default` must be coercible to `T`; result is typed as
-  `T`. (Users wanting `T | D` widening declare `T = Optional[X]` explicitly.)
+1. If `"foo"` matches a declared member -> compile error (same v1 rule).
+2. Else if class is dyn-readable -> emit `(obj.__getattr__("foo")).value_or(<default-coerced>)`.
+3. Else -> existing "no field" error.
+
+Dynamic-name `getattr(obj, name_var, ...)` is deferred to phase 9.
 
 ### Write: `obj.foo = v`
 
 1. If `foo` is a declared field -> existing static assignment. Dunder NOT called.
 2. Else if class is dyn-writable -> emit `obj.__setattr__("foo", v)`. Value `v`
-   must be coercible to `V`.
+   must be coercible to `V`. When the dunder body raises `AttributeError`
+   the parser auto-applies `@error_return(AttributeError)` and codegen
+   wraps the statement with the panic/propagate/goto-except check.
 3. Else -> existing "no field" error.
 
 ### Write: `setattr(obj, "foo", v)` (v1, fallback-only)
@@ -314,20 +321,20 @@ sema and codegen.
 
 Dynamic-name `delattr(obj, name_var)` is v1.5.
 
-### `hasattr(obj, name)` (v1.5)
+### `hasattr(obj, "foo")` (v1.5 phase 7, literal name only)
 
-Deferred entirely to v1.5. v1 has no `hasattr`; user code that needs the
-"does this attribute exist" check must use a try/except (also v1.5 because of
-the `AttributeError` dependency) or static knowledge.
+Implemented for literal names. Rules:
 
-When v1.5 lands, the rules will be:
+- Literal name matches a declared field / property / method / class
+  constant -> compile-time `True` (folded to `TpyBoolLiteral` in sema).
+- Literal name not declared, class has no `__getattr__` -> compile-time
+  `False`.
+- Literal name not declared, class is dyn-readable -> emit
+  `(obj.__getattr__("foo")).has_value()` on the dunder's `std::expected`.
+- Reports the AttributeError signal only; the dunder body shouldn't
+  raise other ReturnException types (rejected by the validator).
 
-- Literal name on static class: compile-time True/False from declared members.
-- Literal name on dyn-readable class: True if statically declared, otherwise
-  runtime call to `__getattr__` with `AttributeError` caught.
-- Non-literal name on dyn-readable class: runtime call as above.
-- Non-literal name on non-dyn-readable class: compile error.
-- Catches only `AttributeError`; other exceptions propagate (matches Python 3).
+Dynamic-name `hasattr(obj, name_var)` is deferred to phase 9.
 
 ---
 
@@ -499,11 +506,11 @@ Numbered for the LANGUAGE_FEATURES note that will reference this list.
    or bound method. Restriction lifts in v2 alongside method-reference support
    (`TODO.md:101`).
 
-8. **`hasattr` and dynamic-name builtins are deferred to v1.5** (gated on
-   `AttributeError` becoming catchable). v1 has no `hasattr`. Code intended to
-   run unchanged under CPython that uses `hasattr` will not compile under TPy
-   v1; rewrite to direct attribute access with try/except (also v1.5) or
-   restructure to avoid the introspection.
+8. **Dynamic-name builtins are deferred to phase 9.** `getattr(obj, name_var, ...)`,
+   `setattr(obj, name_var, v)`, `delattr(obj, name_var)` need a divergence
+   call (route all dynamic names directly to the dunder vs runtime string
+   dispatch over declared members + dunder fallback). `hasattr` and 3-arg
+   `getattr` ship in v1.5 for literal names only.
 
 9. **`del obj.declared_field` is rejected, never routed to `__delattr__`.**
    Declared field deletion is illegal in TPy regardless of whether
@@ -512,16 +519,21 @@ Numbered for the LANGUAGE_FEATURES note that will reference this list.
    user wanting that semantics must use a non-declared name, or implement the
    delete semantics via a method.
 
-10. **`raise AttributeError(name)` not portable in v1.** v1 has no catchable
-    `AttributeError` type, so a CPython-idiomatic missing-attribute body that
-    does `raise AttributeError(name)` either won't compile in TPy or will
-    panic. Until v1.5, dynamic-attr proxies that need to signal "no such
-    attribute" should use an explicit sentinel / result type when that fits
-    the API (e.g. an enum-like result, or a `T | NotFound` value-type union),
-    or panic explicitly (`tpy_panic("...")`) and skip the CPython phase via
-    `no_cpython.txt`. Avoid `__getattr__ -> Optional[T]` as the default
-    workaround -- it makes every successful access nullable and doesn't model
-    Python's "missing attribute" protocol.
+10. **`AttributeError` is a `ReturnException` in TPy.** It inherits from
+    both `Exception` and `ReturnException`, so it uses the zero-cost
+    `std::expected<T, AttributeError>` machinery (like `StopIteration`),
+    not stack-unwinding throw. `__getattr__` is auto-`@error_return(AttributeError)`
+    unconditionally; `__setattr__` and `__delattr__` get the same
+    auto-decoration only when the body literally raises `AttributeError`
+    (the read protocol is fallible by contract; writes/deletes typically
+    succeed and we don't tax all writers with `@error_return`-matching
+    friction). User-side raise outside any of the three dunders requires
+    `@error_return(AttributeError)` on the function. `try/except AttributeError`
+    works in all contexts (return-tier dispatch). CPython idiom of
+    `raise AttributeError(name)` from `__getattr__` is portable as long
+    as it's inside the dunder; raising from a regular function in code
+    intended to run under both backends needs the `@error_return`
+    annotation (no-op in CPython).
 
 ---
 
@@ -543,17 +555,49 @@ obj.__setattr__("foo", v)
 obj.__delattr__("foo")
 ```
 
-v1.5 (gated on `AttributeError` becoming catchable):
+`__getattr__` is auto-decorated with `@error_return(AttributeError)`,
+mirroring `__next__` -> `@error_return(StopIteration)`. The dunder
+returns `std::expected<T, AttributeError>`; missing-attribute is the
+`unexpected` arm. Direct attribute access (`obj.foo`) and the 2-arg
+`getattr(obj, "foo")` builtin reuse the existing `_maybe_error_return_unwrap`
+codegen (panic on top-level / propagate inside `@error_return(AttributeError)`
+/ goto-except inside `try/except AttributeError`). `hasattr` and 3-arg
+`getattr` collapse to one-liners on the expected:
+
+`__setattr__` and `__delattr__` get the same auto-`@error_return(AttributeError)`,
+but **only when the body literally raises `AttributeError`** (the parser
+scans for `raise AttributeError(...)` or bare `raise AttributeError`).
+Writes/deletes that don't reject stay plain (`-> void`) -- callers
+don't pay the `@error_return`-matching friction at every `obj.foo = v`
+site. When the body does raise, direct write/delete codegen emits a
+wrapped statement (`auto __er = obj.__setattr__(...); if (!__er.has_value())
+panic/propagate/goto`).
+
+Body-scan limitations (use explicit `@error_return(AttributeError)` to
+opt in):
+- **Aliased name**: `AE = AttributeError; raise AE(...)` -- the parser
+  matches the bare local name, so the alias isn't recognized. The user
+  gets a "must be handled" sema error at the raise; decorate the dunder
+  explicitly.
+- **Helper-call indirection**: `def __setattr__: reject_helper(name)`
+  where `reject_helper` is `@error_return(AttributeError)`. The body
+  scan won't see a raise -- decorate `__setattr__` explicitly.
+- **Raise inside a nested def**: walker stops at function boundaries
+  (it walks via `_stmt_child_bodies` which doesn't descend into nested
+  function bodies). A raise inside a nested helper defined in the
+  dunder body doesn't trigger auto-apply.
 
 ```cpp
-// getattr(obj, name_var, default)  (dyn-readable, v1.5)  ->
-[&]() { try { return obj.__getattr__(name_var); }
-        catch (const ::tpy::AttributeError&) { return default; } }()
+// hasattr(obj, "foo")  (dyn-readable, v1.5)  ->
+(obj.__getattr__("foo")).has_value()
+
+// getattr(obj, "foo", default)  (dyn-readable, v1.5)  ->
+(obj.__getattr__("foo")).value_or(<default-coerced>)
 ```
 
-A lambda IIFE is required (not a GCC statement expression): a try/catch
-construct does not yield a value as the last statement of a stmt-expr.
-v1.5 also lifts `AttributeError` from the panic set per `TODO.md:81`.
+No try/catch on the consumer side -- the cost of the "missing" arm is a
+single expected-state check, not exception unwinding. Matches the
+StopIteration/`__next__`/for-loop precedent.
 
 ---
 
@@ -626,6 +670,11 @@ the directory for the full list):
 - **Declared-member rejections**: `error_getattr_on_declared`,
   `error_setattr_on_declared`, `error_delattr_on_declared`,
   `error_setattr_on_property`.
+- **v1.5 builtins**: `hasattr_basic` (dyn-readable runtime check),
+  `hasattr_static_members` (declared field/property/method/class-constant -> compile-time True),
+  `hasattr_no_dunder` (no `__getattr__` -> compile-time True/False from declared set),
+  `getattr_default_concrete` (3-arg with `T = str`),
+  `getattr_default_any` (3-arg with `T = Any`, default coerced into Any).
 - **Dunder validation rejections**: `error_static_getattr` (`@staticmethod`),
   `error_overloaded_getattr` (`@overload`), `error_borrowed_return`,
   `error_bare_record_return`, `error_error_return_getattr` (`@error_return`),
@@ -640,8 +689,11 @@ the directory for the full list):
   readonly enforcement), `error_protocol_no_dunder_match` (protocol
   conformance ignores dunder).
 
-Deferred to v1.5: `hasattr_*`, `getattr_default/` (3-arg),
-`dyn_name_*` (non-literal name) -- gated on catchable `AttributeError`.
+- **v1.5 builtin error**: `error_getattr_default_type_mismatch` (default
+  not coercible to dunder return type).
+
+Deferred (phase 9): `dyn_name_*` (non-literal name) -- needs the
+route-all-vs-runtime-dispatch design call.
 Deferred indefinitely: `nocopy_value/` -- `__setattr__(self, name, value:
 Own[T])` drags move semantics into the test surface; not core to dyn-attr
 correctness. `inherited_generic/` (generic parent's `__getattr__ -> T`)

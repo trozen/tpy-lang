@@ -3258,6 +3258,7 @@ class StatementAnalyzer:
                 method="__setattr__",
                 args=[TpyStrLiteral(value=stmt.target.field), stmt.value],
                 loc=stmt.loc,
+                error_return_auto_unwrap=True,
             )
             self.expr.analyze_expr(setter_call)
             stmt.target.dyn_setattr_call = setter_call
@@ -3698,6 +3699,7 @@ class StatementAnalyzer:
             method="__setattr__",
             args=[TpyStrLiteral(value=stmt.target.field), stmt.value],
             loc=stmt.loc,
+            error_return_auto_unwrap=True,
         )
         self.expr.analyze_expr(setter_call)
         stmt.target.dyn_setattr_call = setter_call
@@ -3779,6 +3781,7 @@ class StatementAnalyzer:
                 method="__delattr__",
                 args=[TpyStrLiteral(value=field_name)],
                 loc=stmt.loc,
+                error_return_auto_unwrap=True,
             )
             self.expr.analyze_expr(synth)
             target.dyn_delattr_call = synth

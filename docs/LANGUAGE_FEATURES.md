@@ -4325,7 +4325,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `__call__` → C++ `operator()` (callable objects). Classes with `__call__` can be invoked with `obj(args)` syntax and passed to `Fn`/`Callable` parameters. Supports `@readonly`, mutable state, and recursive `self(args)` calls.
 - **Working** (builtins only): `__setitem__` -> `::tpy::__setitem__()` free function dispatch. Works for builtin types (list, dict, Array, ArrayList) via registry lookup. User-defined `__setitem__` on custom records with `obj[key] = value` syntax is not yet tested.
 - **Working**: `__enter__`, `__exit__` -> context manager protocol for `with` statement. Duck-typed: sema validates methods exist, codegen emits try/catch cleanup. See [with statement](#with-statement-context-managers).
-- **Working** (D16 v1): `__getattr__`, `__setattr__`, `__delattr__` -- user-defined dynamic attribute access. `__getattr__(self, name: str) -> T` is fallback-only: called for `obj.foo` and `getattr(obj, "foo")` when `foo` is not a declared field/method/property/class-constant. `__setattr__(self, name: str, value: V) -> None` is fallback-only: declared-field writes bypass it (intentional CPython divergence -- code that defines `__setattr__` and writes declared fields in `__init__` recurses under CPython but works under TPy; tests using this shape are TPy-only). `__delattr__(self, name: str) -> None` is fallback-only: `del obj.foo` and `delattr(obj, "foo")` route through it. Return-type allow-list: value type, `Any`, or `Own[T]`. Builtin `getattr` / `setattr` / `delattr` are dynamic-fallback only in v1 (declared-member names rejected; use direct attribute access). `hasattr`, 3-arg `getattr`, and dynamic-name builtins are deferred to v1.5 (gated on catchable `AttributeError`). See [docs/DYNAMIC_ATTRS_DESIGN.md](DYNAMIC_ATTRS_DESIGN.md) for full semantics, divergences, and future extensions.
+- **Working** (D16 v1 + v1.5 phases 7+8): `__getattr__`, `__setattr__`, `__delattr__` -- user-defined dynamic attribute access. `__getattr__(self, name: str) -> T` is fallback-only and auto-decorated with `@error_return(AttributeError)` (mirroring `__next__` -> `@error_return(StopIteration)`); the dunder returns `std::expected<T, AttributeError>` and missing-attribute is the `unexpected` arm -- zero-cost, no exception unwinding. `__setattr__(self, name: str, value: V) -> None` is fallback-only: declared-field writes bypass it (intentional CPython divergence -- code that defines `__setattr__` and writes declared fields in `__init__` recurses under CPython but works under TPy; tests using this shape are TPy-only). `__delattr__(self, name: str) -> None` is fallback-only: `del obj.foo` and `delattr(obj, "foo")` route through it. Return-type allow-list: value type, `Any`, or `Own[T]`. Builtin `getattr` / `setattr` / `delattr` are dynamic-fallback only (declared-member names rejected). `hasattr(obj, "name")` compiles to `.has_value()`; 3-arg `getattr(obj, "name", default)` compiles to `.value_or(default)`. Declared-member names fold to compile-time True / direct access. Dynamic-name (`name_var`) builtins still deferred -- needs a route-all-vs-runtime-dispatch design call. See [docs/DYNAMIC_ATTRS_DESIGN.md](DYNAMIC_ATTRS_DESIGN.md).
 
 ---
 
@@ -5282,16 +5282,16 @@ Unknown directives produce a warning. Directives after the first line of code pr
 
 ## Error Handling
 
-- **Working**: Runtime panics (bounds checks → abort)
+- **Working**: Runtime panics (e.g. fixed-int overflow, internal invariants -> abort)
 - **Working**: `assert` (`assert cond`, `assert cond, msg`)
-  - Emits runtime panic when condition is false
+  - Emits `throw ::tpy::AssertionError(msg)` when condition is false (catchable)
   - Message can be any string expression (literal, variable, field access, method call)
   - Contributes control-flow narrowing facts
 - **Working**: `@error_return(E)` -- zero-cost error returns via `std::expected<T, E>`
   - `@error_return(E)` requires E to be a `ReturnException` type: `class MyError(Exception, ReturnException): pass`
   - `ReturnException` is a marker protocol that splits exception types into return (zero-cost) vs throw (C++ exceptions) categories
   - `StopIteration` is a built-in `ReturnException` type; user-defined types opt in via `ReturnException` marker
-  - `BaseException`/`Exception`/`ValueError`/`OSError`/`FileNotFoundError`/`StopIteration` defined as `@native` classes in `lib/tpy/builtins/`, mapping to `::tpy::` runtime structs (inherit from `std::exception`)
+  - `BaseException`/`Exception`/`ValueError`/`OSError`/`FileNotFoundError`/`AssertionError` are throw-tier; `StopIteration`/`AttributeError` are `ReturnException` (return-tier, used via `std::expected<T, E>`). All defined as `@native` classes in `lib/tpy/builtins/`, mapping to `::tpy::` runtime structs (inherit from `std::exception`)
   - Decorator on functions: `raise E` compiles to `return std::unexpected(E{})`; `raise E(args)` passes constructor arguments
   - Callers must use `try/except E` or be `@error_return(E)` themselves (auto-propagation)
   - `try/except/else` supported; `except E as e` binds the error value for field access

@@ -53,7 +53,7 @@ void test_assert_not_zero() {
     // b: Int32 = 5
     int32_t b = 5;
     // assert b != 0
-    if (!((b != 0))) ::tpy::tpy_panic("assertion failed");
+    if (!((b != 0))) ::tpy::assert_failed();
     // x = a // b  # tpyc: div_safe(b)
     int32_t x = (::tpy::div_floor<int32_t>(a, b));
     // y = a % b  # tpyc: div_safe(b)
@@ -71,7 +71,7 @@ void test_assert_positive() {
     // b: Int32 = 7
     int32_t b = 7;
     // assert b > 0
-    if (!((b > 0))) ::tpy::tpy_panic("assertion failed");
+    if (!((b > 0))) ::tpy::assert_failed();
     // x = a // b  # tpyc: div_safe(b)
     int32_t x = (::tpy::div_floor<int32_t>(a, b));
     // print(x)
@@ -85,7 +85,7 @@ void test_no_elision_after_reassign() {
     // b: Int32 = 3
     int32_t b = 3;
     // assert b != 0
-    if (!((b != 0))) ::tpy::tpy_panic("assertion failed");
+    if (!((b != 0))) ::tpy::assert_failed();
     // b = a  # reassignment clears range fact
     b = a;
     // x = a // b  # tpyc: div_checked(b)

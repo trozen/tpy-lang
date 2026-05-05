@@ -1,1 +1,1 @@
-TurboPython panic: list.index(x): x not in list
+TurboPython panic: uncaught tpy::AssertionError: list.index(x): x not in list

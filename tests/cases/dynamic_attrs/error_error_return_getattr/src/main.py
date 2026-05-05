@@ -1,5 +1,5 @@
-# D16: __getattr__ cannot be @error_return -- attribute-access routing should
-# not surface expected<T, E> machinery into every undeclared `obj.foo` site.
+# D16: __getattr__ implicitly uses @error_return(AttributeError); user may not
+# override with a different ReturnException type.
 from tpy import error_return, ReturnException
 from typing import Any
 
@@ -14,7 +14,7 @@ class Bag:
         self._data = d
 
     @error_return(AttrErr)
-    def __getattr__(self, name: str) -> Any:  # tpyc: error(/cannot use @error_return/)
+    def __getattr__(self, name: str) -> Any:  # tpyc: error(/may only use @error_return\(AttributeError\)/)
         return self._data[name]
 
 def main() -> None:

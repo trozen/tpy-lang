@@ -1,1 +1,1 @@
-TurboPython panic: boom
+TurboPython panic: uncaught tpy::AssertionError: boom

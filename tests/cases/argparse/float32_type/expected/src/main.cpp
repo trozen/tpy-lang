@@ -10,7 +10,7 @@ void main() {
     std::vector<std::string> __tmp_1 = {"2.5", "--gain", "1.25"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
     // assert args.gain is not None
-    if (!((args.gain.has_value()))) ::tpy::tpy_panic("assertion failed");
+    if (!((args.gain.has_value()))) ::tpy::assert_failed();
     // print(args.scale)
     std::cout << ::tpy::print_float(static_cast<double>(args.scale)) << "\n";
     // print(args.bias)

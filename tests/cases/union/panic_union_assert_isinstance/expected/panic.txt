@@ -1,1 +1,1 @@
-TurboPython panic: assertion failed
+TurboPython panic: uncaught tpy::AssertionError: assertion failed

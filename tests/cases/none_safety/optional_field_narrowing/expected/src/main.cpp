@@ -28,7 +28,7 @@ void test_nested_field() {
     // w._node = Node(99)
     w._node = Node(99);
     // assert w._node is not None
-    if (!((w._node.has_value()))) ::tpy::tpy_panic("assertion failed");
+    if (!((w._node.has_value()))) ::tpy::assert_failed();
     // print(w._node.val)
     std::cout << (*w._node).val << "\n";
 }

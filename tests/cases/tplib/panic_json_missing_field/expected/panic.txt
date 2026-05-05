@@ -1,1 +1,1 @@
-TurboPython panic: missing required field 'color'
+TurboPython panic: uncaught tpy::AssertionError: missing required field 'color'

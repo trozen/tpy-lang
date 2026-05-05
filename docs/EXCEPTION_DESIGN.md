@@ -13,6 +13,34 @@
 | E7 | General C++ exceptions: `try`/`except`/`finally`/`raise` with stack unwinding for non-control-flow errors | Done |
 | E8 | Multiple `except` handlers, bare `except:`, re-raise (`raise` with no argument) | Done |
 
+### Runtime exception migration (panic -> catchable throw)
+
+A separate, ongoing track moves runtime panics that correspond to
+Python exception types into the throw tier. Modern table-based EH is
+zero-cost on the happy path, so well-placed throws cost no more than
+panics until they fire (matches `std::vector::at()`).
+
+| Type | Status | Notes |
+|------|--------|-------|
+| `AttributeError` | Done -- **return-tier** | `ReturnException`, used via `std::expected<T, AttributeError>`. Auto-applied as `@error_return(AttributeError)` on `__getattr__`. `hasattr(obj, "foo")` becomes `.has_value()`, 3-arg `getattr` becomes `.value_or(default)` |
+| `AssertionError` | Done -- throw-tier | `assert` failure throws `AssertionError(msg)` via `::tpy::assert_failed(...)` helper |
+| `KeyError` | Pending | Dict miss / set pop-empty / dunder lookups (~6 sites) |
+| `IndexError` | Pending | List/bytes/bytearray bounds (after value-range elision) |
+| `ZeroDivisionError` | Pending | Division by zero across fixed-int / BigInt / float |
+| `ValueError` panic migrations | Pending | Type already catchable; ~10 panic sites for `list.index`, `str.index`, `bytearray.remove`, etc. |
+| `OverflowError` | **Stays panic** | TPy divergence: Python uses BigInt and never overflows, so catchable form doesn't help port CPython code |
+| Internal invariants (uninit slot bookkeeping, OOM, "should not happen") | Stays panic | Not Python-exception-shaped |
+
+`@noalloc` does not yet enforce "no may-throw expressions" on hot
+paths -- the marker is parsed and threaded through registration but no
+sema check rejects raise / try / may-throw expressions today. When that
+enforcement lands (separate feature), it will reject any may-throw site
+(including `assert`, `d[k]`, `arr[i]`) inside `@noalloc` unless the
+compiler can statically prove it's safe (value-range elision, key
+narrowing, etc.). Until then, hot paths that need to avoid throw should
+use the explicit no-throw APIs (`d.get(k, default)`, in-bounds indexing
+proven by value-range, etc.).
+
 ### Future Extensions
 
 | Feature | Notes |
@@ -76,6 +104,7 @@ Built-in control-flow exceptions:
 
 ```python
 class StopIteration(Exception, ReturnException): ...
+class AttributeError(Exception, ReturnException): ...
 ```
 
 User-defined control-flow exceptions:
@@ -197,6 +226,8 @@ class TypeError(Exception): ...
 class RuntimeError(Exception): ...
 class IndexError(Exception): ...
 class KeyError(Exception): ...
+class AttributeError(Exception): ...
+class AssertionError(Exception): ...
 class IOError(Exception): ...
 class FileNotFoundError(IOError): ...
 ```

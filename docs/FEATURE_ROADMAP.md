@@ -84,7 +84,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D13 | Generator expressions | M | Done | [VI](#generator-expressions) |
 | D14 | Walrus operator (`:=`) | S-M | Done | [VI](#walrus-operator) |
 | D15 | `Any` type | M | Done | [I](#any-type) |
-| D16 | Dynamic attributes (`__getattr__`/`__setattr__`/`__delattr__`) | M-L | v1 done; v1.5 (hasattr / 3-arg getattr / dynamic-name builtins) blocked on catchable AttributeError | [VII](#dynamic-attributes) |
+| D16 | Dynamic attributes (`__getattr__`/`__setattr__`/`__delattr__`) | M-L | v1 + v1.5 phases 7-8 done (hasattr, 3-arg getattr); phase 9 (dynamic-name builtins) deferred pending design call | [VII](#dynamic-attributes) |
 | D17 | `*args` (variadic positional arguments) | M | Done (homogeneous) | [VI](#args--kwargs) |
 | D18 | `**kwargs` (variadic keyword arguments) | M-L | Done | [VI](#args--kwargs) |
 | D19 | Recursive type aliases | M | Done (non-generic) | [I](#recursive-type-aliases) |
@@ -2573,10 +2573,19 @@ The `__getattr__` approach is needed for full CPython compat. Declaration-based
 stubs can layer on top for common libraries (argparse, json) to provide better
 type checking and performance when the attribute set is known.
 
-**Current state**: v1 done. User-defined `__getattr__` / `__setattr__` /
-`__delattr__` recognized and routed through sema-synthesized
-`TpyMethodCall`s. Builtin `getattr` / `setattr` / `delattr` available
-for literal-name dynamic-fallback.
+**Current state**: v1 + v1.5 phases 7-8 done. User-defined
+`__getattr__` / `__setattr__` / `__delattr__` recognized and routed
+through sema-synthesized `TpyMethodCall`s. Builtin `getattr` / `setattr`
+/ `delattr` available for literal-name dynamic-fallback. `hasattr` and
+3-arg `getattr` work for literal names: declared members fold to
+compile-time True / direct access; otherwise compile to `.has_value()`
+/ `.value_or(default)` on the dunder's `std::expected<T, AttributeError>`.
+
+`AttributeError` is a `ReturnException` (return-tier); `__getattr__`
+gets auto-`@error_return(AttributeError)` (mirroring `__next__` ->
+`@error_return(StopIteration)`), so missing-attribute is zero-cost on
+the consumer side. `raise AttributeError(name)` from a function outside
+`__getattr__` requires `@error_return(AttributeError)` on that function.
 
 v1 is fallback-only: declared field/method/property/class-constant
 writes never route through `__setattr__` (intentional CPython divergence
@@ -2588,16 +2597,17 @@ CPython's `object.__setattr__` escape syntax -- code that defines
 but recurses under CPython; tests using that shape are TPy-only via
 `no_cpython.txt`.
 
-v1.5 (`hasattr`, 3-arg `getattr` with default, dynamic-name 2-arg
-builtins) is blocked on catchable `AttributeError` (panic-vs-catchable
-decision in `TODO.md:81`). See `docs/DYNAMIC_ATTRS_DESIGN.md` for the
+Phase 9 (dynamic-name 2-arg builtins: `getattr(obj, name_var)`,
+`setattr(obj, name_var, v)`, `delattr(obj, name_var)`) is deferred
+pending a divergence call (route all dynamic to dunder vs runtime
+dispatch + dunder fallback). See `docs/DYNAMIC_ATTRS_DESIGN.md` for the
 full design including divergences, future extensions, and the broader
 adjacent design space.
 
 **Dependencies**: `Any` type (D15, done) -- dynamic attributes typically
 return `Any`. `D22` multi-inheritance for the MRO routing.
 
-**Effort**: M-L (v1 done; v1.5 small but blocked).
+**Effort**: M-L (v1 + v1.5 phases 7-8 done; phase 9 small, gated on the divergence call).
 
 ---
 

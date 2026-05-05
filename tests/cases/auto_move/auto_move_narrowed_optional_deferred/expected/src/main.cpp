@@ -20,7 +20,7 @@ int32_t test() {
     // h.value = Int32(77)
     h->value = 77;
     // assert h is not None
-    if (!((h != nullptr))) ::tpy::tpy_panic("assertion failed");
+    if (!((h != nullptr))) ::tpy::assert_failed();
     // return consume(h)  # tpyc: ok
     return consume(std::move((*h)));
 }

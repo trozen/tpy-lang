@@ -137,7 +137,7 @@ def register_union_alias(members: tuple['TpyType', ...], alias_name: str) -> Non
 # (which uses @error_return(StopIteration)) may be compiled before
 # _exceptions.py registers StopIteration as ReturnException.
 # Stored as bare names -- is_return_exception strips module prefixes.
-_BUILTIN_RETURN_EXCEPTIONS: frozenset[str] = frozenset({"StopIteration"})
+_BUILTIN_RETURN_EXCEPTIONS: frozenset[str] = frozenset({"StopIteration", "AttributeError"})
 _return_exception_names: set[str] = set(_BUILTIN_RETURN_EXCEPTIONS)
 
 

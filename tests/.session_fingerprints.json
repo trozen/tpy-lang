@@ -1,5 +1,10 @@
 {
   "cpy_stubs": "007dfc8fe0e4b94bfc2fa2e635f01262991e59dedfcb0c7cfe9273ae0a8bcca1",
+<<<<<<< HEAD
   "libtpy": "c80a07f9820c878c0db70e048c9e2a3ddf588f84c573851bf8eb143e74a42ae2",
   "runtime": "bce052e6e3990a4114a7986a22d6c53743ee044c4c2f794990655234002ddca6"
+=======
+  "libtpy": "4729ece794820c3844e0c5db9895dffec44f04094140c178934bfe5dfa7abad0",
+  "runtime": "a452b06111adbe6ef63f99f9ea3370d0e3b4d7a1737050cfd06617c7a212b92d"
+>>>>>>> dyn-attr-dev
 }

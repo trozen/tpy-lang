@@ -1,1 +1,1 @@
-TurboPython panic: invalid enum value for 'Color'
+TurboPython panic: uncaught tpy::AssertionError: invalid enum value for 'Color'

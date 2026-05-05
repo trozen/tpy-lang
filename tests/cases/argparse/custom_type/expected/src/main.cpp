@@ -71,7 +71,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
         ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat("prog: error: ", "missing required positional argument(s)")) << "\n";
         ::tpy::sys_exit(2);
     }
-    if (!((__tpy_argparse_acc_input != nullptr))) ::tpy::tpy_panic("assertion failed");
+    if (!((__tpy_argparse_acc_input != nullptr))) ::tpy::assert_failed();
     Tag input = Tag((*__tpy_argparse_acc_input));
     return __tpy_builder_argparse_args_1(std::move(input), std::move(out ? std::optional<Tag>(std::move(*out)) : std::nullopt), std::move((*label)));
 }

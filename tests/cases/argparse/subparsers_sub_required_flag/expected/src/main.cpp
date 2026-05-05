@@ -88,7 +88,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
         ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat("prog: error: ", "the following argument is required: {show}")) << "\n";
         ::tpy::sys_exit(2);
     }
-    if (!((__tpy_argparse_acc_cmd.has_value()))) ::tpy::tpy_panic("assertion failed");
+    if (!((__tpy_argparse_acc_cmd.has_value()))) ::tpy::assert_failed();
     std::string __tpy_argparse_cmd = (*__tpy_argparse_acc_cmd);
     return __tpy_builder_argparse_args_1(__tpy_argparse_cmd, __tpy_argparse_flat_key);
 }

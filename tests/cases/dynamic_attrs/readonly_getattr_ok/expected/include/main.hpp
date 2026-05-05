@@ -30,7 +30,7 @@ struct Bag {
 
     // @readonly
     // def __getattr__(self, name: str) -> Any:
-    ::tpy::Any __getattr__(std::string_view name) const;
+    std::expected<::tpy::Any, ::tpy::AttributeError> __getattr__(std::string_view name) const;
 
     // @readonly
     // def peek(self) -> Any:
@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 // @readonly
 // def __getattr__(self, name: str) -> Any:
-inline ::tpy::Any Bag::__getattr__(std::string_view name) const {
+inline std::expected<::tpy::Any, ::tpy::AttributeError> Bag::__getattr__(std::string_view name) const {
     // return self._data[name]
     return ::tpy::__getitem__(this->_data, name);
 }
@@ -55,7 +55,7 @@ inline ::tpy::Any Bag::__getattr__(std::string_view name) const {
 // def peek(self) -> Any:
 inline ::tpy::Any Bag::peek() const {
     // return self.k
-    return this->__getattr__("k");
+    return ({ auto __er_1 = this->__getattr__("k"); if (!__er_1.has_value()) ::tpy::tpy_panic("unhandled error return"); ::tpy::unwrap_ref_move(*__er_1); });
 }
 void __tpy_init();
 } // namespace tpyapp::main

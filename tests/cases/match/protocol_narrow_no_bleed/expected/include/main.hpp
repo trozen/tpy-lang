@@ -46,7 +46,7 @@ int32_t process(T_items& items, std::string_view tag) {
         // # in main() below to keep the test CPython-compatible (list does
         // # not match the runtime_checkable Spannable protocol in CPython).
         // assert isinstance(items, Spannable)
-        if (!(::tpystd::tpy::Spannable<T_items, int32_t>)) ::tpy::tpy_panic("assertion failed");
+        if (!(::tpystd::tpy::Spannable<T_items, int32_t>)) ::tpy::assert_failed();
         // s = span(items)
         std::span<const int32_t> s = ::tpy::as_span(items);
         // total: Int32 = 0

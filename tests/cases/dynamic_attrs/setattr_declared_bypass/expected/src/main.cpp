@@ -16,7 +16,7 @@ void main() {
     // print(c._counter)
     std::cout << c._counter << "\n";
     // print(cast(str, c.x))
-    std::cout << ::tpy::any_cast_or_panic<std::string>(c.__getattr__("x")) << "\n";
+    std::cout << ::tpy::any_cast_or_panic<std::string>(({ auto __er_1 = c.__getattr__("x"); if (!__er_1.has_value()) ::tpy::tpy_panic("unhandled error return"); ::tpy::unwrap_ref_move(*__er_1); })) << "\n";
 }
 
 void __tpy_init() {

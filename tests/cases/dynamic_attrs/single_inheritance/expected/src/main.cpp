@@ -9,7 +9,7 @@ void main() {
     // c = Child({"key": "value"})
     Child c = Child(::tpy::ordered_map<std::string, std::string>({{"key", "value"}}));
     // print(c.key)
-    std::cout << c.__getattr__("key") << "\n";
+    std::cout << ({ auto __er_1 = c.__getattr__("key"); if (!__er_1.has_value()) ::tpy::tpy_panic("unhandled error return"); ::tpy::unwrap_ref_move(*__er_1); }) << "\n";
 }
 
 void __tpy_init() {

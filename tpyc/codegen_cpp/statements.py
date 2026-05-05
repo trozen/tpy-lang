@@ -357,28 +357,9 @@ class StatementGenerator:
         elif isinstance(stmt, TpyExprStmt):
             if isinstance(stmt.expr, TpyStrLiteral):
                 return None  # Skip docstrings
-            fi = self._get_error_return_fi(stmt.expr)
-            if fi:
-                self.ctx.try_except_counter += 1
-                tmp = f"__try_tmp_{self.ctx.try_except_counter}"
-                call_cpp = self._gen_error_return_call(stmt.expr)
-                if self.ctx.try_except_label:
-                    label = self.ctx.try_except_label
-                    goto_line = self._gen_error_goto(f"{indent}{INDENT}", tmp, label)
-                    return (f"{indent}{{\n"
-                            f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
-                            f"{goto_line}"
-                            f"{indent}}}\n")
-                if self.ctx.current_error_return:
-                    return (f"{indent}{{\n"
-                            f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
-                            f"{indent}{INDENT}if (!{tmp}.has_value()) return ::tpy::make_unexpected({tmp}.error());\n"
-                            f"{indent}}}\n")
-                # Top-level: unwrap with panic on error
-                return (f"{indent}{{\n"
-                        f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
-                        f"{indent}{INDENT}if (!{tmp}.has_value()) ::tpy::tpy_panic(\"unhandled error return\");\n"
-                        f"{indent}}}\n")
+            if self._get_error_return_fi(stmt.expr):
+                return self._gen_error_return_stmt_block(
+                    self._gen_error_return_call(stmt.expr), indent)
             return f"{indent}{self.expressions.gen_expr(stmt.expr)};\n"
         elif isinstance(stmt, TpyReturn):
             if self.ctx.in_generator_body:
@@ -1512,10 +1493,10 @@ class StatementGenerator:
             call = self.expressions._gen_method_call(stmt.target.property_setter_call)
             return f"{indent}{call};\n"
 
-        # D16 dyn-attr __setattr__ fallback: delegate to normal method call codegen
+        # D16 dyn-attr __setattr__ fallback: delegate to normal method call codegen,
+        # wrapping with error-return unwrap when the dunder is @error_return(AttributeError).
         if isinstance(stmt.target, TpyFieldAccess) and stmt.target.dyn_setattr_call is not None:
-            call = self.expressions._gen_method_call(stmt.target.dyn_setattr_call)
-            return f"{indent}{call};\n"
+            return self._gen_dyn_dunder_stmt(stmt.target.dyn_setattr_call, indent)
 
         # Field assignment: boundary conversions for optional/union pointer repr
         if isinstance(stmt.target, TpyFieldAccess):
@@ -1608,9 +1589,18 @@ class StatementGenerator:
         for target in stmt.targets:
             assert target.dyn_delattr_call is not None, (
                 "TpyDelAttr without resolved dyn_delattr_call: sema bug")
-            call = self.expressions._gen_method_call(target.dyn_delattr_call)
-            parts.append(f"{indent}{call};\n")
+            parts.append(self._gen_dyn_dunder_stmt(target.dyn_delattr_call, indent))
         return "".join(parts)
+
+    def _gen_dyn_dunder_stmt(self, synth: 'TpyMethodCall', indent: str) -> str:
+        """Emit `obj.__setattr__(...)` / `obj.__delattr__(...)` as a statement,
+        wrapping with the appropriate error-handling (panic / propagate /
+        goto-except) when the dunder is @error_return(AttributeError)."""
+        call = self.expressions._gen_method_call(synth)
+        fi = synth.resolved_function_info
+        if fi is None or fi.error_return_type is None:
+            return f"{indent}{call};\n"
+        return self._gen_error_return_stmt_block(call, indent)
 
     def _gen_del_var_code(self, stmt: TpyDelVar, indent: str) -> str:
         """Generate code for variable deletion (del x).
@@ -2681,6 +2671,25 @@ class StatementGenerator:
                     f"{{ {err_opt} = std::move({tmp}.error()); goto {label}; }}\n")
         return f"{indent}if (!{tmp}.has_value()) goto {label};\n"
 
+    def _gen_error_return_stmt_block(self, call_cpp: str, indent: str) -> str:
+        """Wrap a fallible call as a statement block with the appropriate
+        error-handling: goto-except (in try), propagate (in @error_return),
+        or panic (top-level). Discards the success value."""
+        self.ctx.try_except_counter += 1
+        tmp = f"__try_tmp_{self.ctx.try_except_counter}"
+        if self.ctx.try_except_label:
+            check = self._gen_error_goto(f"{indent}{INDENT}", tmp, self.ctx.try_except_label)
+        elif self.ctx.current_error_return:
+            check = (f"{indent}{INDENT}if (!{tmp}.has_value()) "
+                     f"return ::tpy::make_unexpected({tmp}.error());\n")
+        else:
+            check = (f"{indent}{INDENT}if (!{tmp}.has_value()) "
+                     f"::tpy::tpy_panic(\"unhandled error return\");\n")
+        return (f"{indent}{{\n"
+                f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
+                f"{check}"
+                f"{indent}}}\n")
+
     def _gen_error_return_var_decl(self, stmt: TpyVarDecl, indent: str) -> str:
         """Generate a variable declaration where the init is an @error_return call.
 
@@ -3090,16 +3099,16 @@ class StatementGenerator:
         self.ctx.current_ns = old_ns
         out.write(f"{indent}}}\n")
 
-    def _gen_assert_panic(self, out: TextIO, stmt: TpyAssert, indent: str) -> str:
-        """Generate the tpy_panic call string for an assert statement."""
+    def _gen_assert_throw(self, out: TextIO, stmt: TpyAssert, indent: str) -> str:
+        """Generate the assertion-failure call for an assert statement."""
         if stmt.message is None:
-            return '::tpy::tpy_panic("assertion failed")'
+            return '::tpy::assert_failed()'
         if isinstance(stmt.message, TpyStrLiteral):
             msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
-            return f'::tpy::tpy_panic("{msg}")'
+            return f'::tpy::assert_failed("{msg}")'
         msg_expr = self.expressions.gen_expr(stmt.message)
         self.ctx.temps.flush(out, indent)
-        return f'::tpy::tpy_panic({msg_expr})'
+        return f'::tpy::assert_failed({msg_expr})'
 
     def _gen_assert(self, out: TextIO, stmt: TpyAssert, indent: str) -> None:
         """Generate an assert statement with optional isinstance union narrowing."""
@@ -3107,24 +3116,24 @@ class StatementGenerator:
         if isinstance(stmt.condition, TpyBoolLiteral):
             if stmt.condition.value:
                 return
-            panic = self._gen_assert_panic(out, stmt, indent)
-            out.write(f'{indent}{panic};\n')
+            throw = self._gen_assert_throw(out, stmt, indent)
+            out.write(f'{indent}{throw};\n')
             return
         if isinstance(stmt.condition, TpyNoneLiteral):
-            panic = self._gen_assert_panic(out, stmt, indent)
-            out.write(f'{indent}{panic};\n')
+            throw = self._gen_assert_throw(out, stmt, indent)
+            out.write(f'{indent}{throw};\n')
             return
         bool_cond = self.expressions.gen_truthy_expr(stmt.condition)
         self.ctx.temps.flush(out, indent)
         if stmt.message is None or isinstance(stmt.message, TpyStrLiteral):
-            panic = self._gen_assert_panic(out, stmt, indent)
-            out.write(f'{indent}if (!({bool_cond})) {panic};\n')
+            throw = self._gen_assert_throw(out, stmt, indent)
+            out.write(f'{indent}if (!({bool_cond})) {throw};\n')
         else:
             # Evaluate message inside the if block (lazy, per Python semantics)
             inner = indent + "    "
             out.write(f'{indent}if (!({bool_cond})) {{\n')
-            panic = self._gen_assert_panic(out, stmt, inner)
-            out.write(f'{inner}{panic};\n')
+            throw = self._gen_assert_throw(out, stmt, inner)
+            out.write(f'{inner}{throw};\n')
             out.write(f'{indent}}}\n')
         # Emit std::get<T> extractions for isinstance-narrowed union variables.
         # Unlike if-branch narrowing, assert narrowing persists for the rest of scope,

@@ -39,7 +39,7 @@ int32_t sum_items(const std::vector<int32_t>& items, std::optional<int32_t> bonu
 // def assert_then_loop(x: Int32 | None, items: list[Int32]) -> Int32:
 int32_t assert_then_loop(std::optional<int32_t> x, const std::vector<int32_t>& items) {
     // assert x is not None
-    if (!((x.has_value()))) ::tpy::tpy_panic("assertion failed");
+    if (!((x.has_value()))) ::tpy::assert_failed();
     // total: Int32 = 0
     int32_t total = 0;
     // for item in items:

@@ -9,7 +9,7 @@ void main() {
     // b = Bag({"label": "ready"})
     Bag b = Bag(::tpy::ordered_map<std::string, ::tpy::Any>({{"label", ::tpy::make_any(std::string("ready"))}}));
     // x = b.label
-    ::tpy::Any x = b.__getattr__("label");
+    ::tpy::Any x = ({ auto __er_1 = b.__getattr__("label"); if (!__er_1.has_value()) ::tpy::tpy_panic("unhandled error return"); ::tpy::unwrap_ref_move(*__er_1); });
     // if isinstance(x, str):
     if ((x.value.has_value() && x.value.type() == typeid(std::string))) {
         const std::string& __x = std::any_cast<const std::string&>(x.value);

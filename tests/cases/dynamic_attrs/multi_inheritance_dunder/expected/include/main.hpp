@@ -27,7 +27,7 @@ struct WithGetattr {
     explicit WithGetattr(const ::tpy::ordered_map<std::string, std::string>& store) : _store(store) {}
 
     // def __getattr__(self, name: str) -> str:
-    std::string __getattr__(std::string_view name) const;
+    std::expected<std::string, ::tpy::AttributeError> __getattr__(std::string_view name) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.WithGetattr";
 };
 
@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
 
 
 // def __getattr__(self, name: str) -> str:
-inline std::string WithGetattr::__getattr__(std::string_view name) const {
+inline std::expected<std::string, ::tpy::AttributeError> WithGetattr::__getattr__(std::string_view name) const {
     // return self._store[name]
     return ::tpy::__getitem__(this->_store, name);
 }

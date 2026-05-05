@@ -9,9 +9,9 @@ void main() {
     // h = Headers({"content_type": "application/json", "host": "example.com"})
     Headers h = Headers(::tpy::ordered_map<std::string, std::string>({{"content_type", "application/json"}, {"host", "example.com"}}));
     // print(h.content_type.upper())
-    std::cout << ::tpy::str_upper(h.__getattr__("content_type")) << "\n";
+    std::cout << ::tpy::str_upper(({ auto __er_1 = h.__getattr__("content_type"); if (!__er_1.has_value()) ::tpy::tpy_panic("unhandled error return"); ::tpy::unwrap_ref_move(*__er_1); })) << "\n";
     // print(h.host)
-    std::cout << h.__getattr__("host") << "\n";
+    std::cout << ({ auto __er_2 = h.__getattr__("host"); if (!__er_2.has_value()) ::tpy::tpy_panic("unhandled error return"); ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
 }
 
 void __tpy_init() {

@@ -1,0 +1,3 @@
+5
+caught: must be positive
+caught: x is falsy

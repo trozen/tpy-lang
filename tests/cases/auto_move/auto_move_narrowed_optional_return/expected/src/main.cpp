@@ -12,7 +12,7 @@ Handle extract() {
     // h.value = Int32(99)
     h->value = 99;
     // assert h is not None
-    if (!((h != nullptr))) ::tpy::tpy_panic("assertion failed");
+    if (!((h != nullptr))) ::tpy::assert_failed();
     // return h  # tpyc: ok
     return std::move((*h));
 }

@@ -956,6 +956,11 @@ class ExpressionGenerator:
         elif isinstance(expr, TpyCall):
             if expr.macro_expansion is not None:
                 return self.gen_expr(expr.macro_expansion, target_type)
+            if expr.dyn_hasattr_call is not None:
+                return self._gen_dyn_hasattr_block(expr.dyn_hasattr_call)
+            if expr.dyn_getattr_default_call is not None:
+                return self._gen_dyn_getattr_default_block(
+                    expr.dyn_getattr_default_call, expr.args[2], target_type)
             return self._post_process_call(expr, self._gen_call(expr))
 
         elif isinstance(expr, TpyMethodCall):
@@ -3062,6 +3067,24 @@ class ExpressionGenerator:
         accessor = "->" if use_arrow else "."
         return f"{obj}{accessor}{escape_cpp_name(cpp_method)}{method_targs}({args})"
 
+    def _gen_dyn_hasattr_block(self, synth: 'TpyMethodCall') -> str:
+        """D16 v1.5 Phase 7: __getattr__ is @error_return(AttributeError),
+        so existence is just a has_value check on the std::expected."""
+        call = self._gen_method_call(synth)
+        return f"({call}).has_value()"
+
+    def _gen_dyn_getattr_default_block(
+        self, synth: 'TpyMethodCall', default_expr: 'TpyExpr',
+        target_type: 'TpyType | None',
+    ) -> str:
+        """D16 v1.5 Phase 8: __getattr__ returns std::expected<T, AttributeError>;
+        substitute `default` when the dunder reported missing."""
+        call = self._gen_method_call(synth)
+        ret_type = synth.resolved_function_info.return_type if synth.resolved_function_info else None
+        effective_type = ret_type if ret_type is not None else target_type
+        default_code = self.gen_expr(default_expr, effective_type)
+        return f"({call}).value_or({default_code})"
+
     def _is_overloaded_method(self, expr: TpyMethodCall) -> bool:
         """Check if a method call targets an overloaded method (multiple stubs)."""
         obj_type = self.ctx.get_expr_type(expr.obj)
@@ -3266,6 +3289,8 @@ class ExpressionGenerator:
             return self._post_process_call(inner, self._gen_method_call(inner))
 
         # D16 dynamic-attribute getattr fallback: synthesized __getattr__.
+        # _post_process_call applies the @error_return(AttributeError) auto-unwrap
+        # (panic on missing in non-error_return / non-try contexts).
         if expr.dyn_getattr_call is not None:
             inner = expr.dyn_getattr_call
             return self._post_process_call(inner, self._gen_method_call(inner))

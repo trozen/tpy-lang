@@ -14,7 +14,7 @@ int32_t process(bool flag) {
     __slot_2.emplace(Rect(3));
     v = ::tpy::to_ptr_variant(*__slot_2);
     // assert isinstance(v, Rect)
-    if (!(std::holds_alternative<Rect*>(v))) ::tpy::tpy_panic("assertion failed");
+    if (!(std::holds_alternative<Rect*>(v))) ::tpy::assert_failed();
     auto& __v = *std::get<Rect*>(v);
     // return v.width
     return __v.width;

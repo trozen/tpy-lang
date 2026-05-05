@@ -39,7 +39,15 @@ struct Exception : BaseException { using BaseException::BaseException; };
 struct ValueError : Exception { using Exception::Exception; };
 struct OSError : Exception { using Exception::Exception; };
 struct FileNotFoundError : OSError { using OSError::OSError; };
+struct AttributeError : Exception { using Exception::Exception; };
+struct AssertionError : Exception { using Exception::Exception; };
 struct StopIteration : Exception {};
+
+// `assert cond[, msg]` failure path. Mirrors tpy_panic's call-site shape
+// but throws AssertionError so user code can catch it.
+[[noreturn]] inline void assert_failed(std::string_view msg = "assertion failed") {
+    throw AssertionError(msg);
+}
 
 // Portable replacement for std::unexpected(). Some libc++ versions (e.g. zig's
 // bundled clang) expose both the deprecated std::unexpected() function and the

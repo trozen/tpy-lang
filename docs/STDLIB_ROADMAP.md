@@ -264,8 +264,9 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 | `repr` | Done | User-type fallback partial; see BUGS.md "repr() and f-string {} don't work on union types" |
 | `issubclass` | Missing | |
 | `callable` | Missing | Compile-time evaluable under static dispatch |
-| `getattr`, `setattr`, `delattr` (literal-name dynamic-fallback) | Done (D16 v1) | 2-arg literal-name form routes to `__getattr__` / `__setattr__` / `__delattr__`. Declared-member names rejected (use direct attribute access). Dynamic-name and 3-arg `getattr` deferred to v1.5. See `docs/DYNAMIC_ATTRS_DESIGN.md` |
-| `hasattr`, 3-arg `getattr`, dynamic-name 2-arg builtins | Blocked | Phase v1.5 of D16; gated on catchable `AttributeError` (TODO.md:81 panic-vs-catchable decision) |
+| `getattr`, `setattr`, `delattr` (literal-name dynamic-fallback) | Done (D16 v1) | 2-arg literal-name form routes to `__getattr__` / `__setattr__` / `__delattr__`. Declared-member names rejected (use direct attribute access). See `docs/DYNAMIC_ATTRS_DESIGN.md` |
+| `hasattr`, 3-arg `getattr` (literal name) | Done (D16 v1.5) | Phase 7+8 of D16; `__getattr__` auto-`@error_return(AttributeError)`, so `hasattr` becomes `.has_value()` and 3-arg `getattr` becomes `.value_or(default)` -- zero-cost on the happy path |
+| Dynamic-name 2-arg builtins | Deferred (phase 9) | Needs route-all-vs-runtime-dispatch design call; not blocked on the type system |
 | `id` | Missing | `tpy.unsafe.unsafe_address_of` exists as an approximation; `id` semantics differ under static compilation |
 | `type(x)` (runtime value) | Missing | See TODO.md "type(); T = type(x); z = T()" |
 | `vars`, `dir` | Missing | Not meaningful without runtime object introspection |
@@ -313,10 +314,10 @@ each to a proper catchable exception is tracked per-site.
 | `IndexError` | Missing | Bounds violations currently panic |
 | `KeyError` | Missing | Dict miss currently panics |
 | `TypeError` | Missing | Static type errors are compile-time, but runtime `TypeError` has some use cases |
-| `AttributeError` | Missing | Fields are static; rare dynamic-access path would need this |
+| `AttributeError` | Done | `ReturnException` (return-tier, zero-cost). Auto-applied as `@error_return(AttributeError)` on `__getattr__`. `hasattr` / 3-arg `getattr` consume via `.has_value()` / `.value_or(...)` |
 | `OverflowError` | Missing | Fixed-int overflow currently panics |
 | `ZeroDivisionError` | Missing | Div-by-zero currently panics |
-| `AssertionError` | Missing | `assert` works (panics on failure); `AssertionError` type is not defined, so `except AssertionError:` cannot match |
+| `AssertionError` | Done | `assert` failure throws `AssertionError(msg)`; catchable via `try/except` |
 | `ArithmeticError`, `FloatingPointError` | Missing | |
 | `RuntimeError`, `NotImplementedError`, `RecursionError` | Missing | |
 | `LookupError` | Missing | Base of IndexError/KeyError |

@@ -136,7 +136,14 @@ def _validate_dyn_dunder_kind(record: 'TpyRecord', dunder_name: str) -> object:
     if method.is_generator:
         raise SemanticError(f"{dunder_name} cannot be a generator (no `yield` in body)", loc)
     if method.error_return:
-        raise SemanticError(f"{dunder_name} cannot use @error_return", loc)
+        # All three dyn-attr dunders may use @error_return(AttributeError):
+        # __getattr__ gets it auto-applied unconditionally; __setattr__ /
+        # __delattr__ get it auto-applied only when the body raises
+        # AttributeError. Other error_return types are rejected.
+        if bare_name(method.error_return) != "AttributeError":
+            raise SemanticError(
+                f"{dunder_name} may only use @error_return(AttributeError); "
+                f"got '{method.error_return}'", loc)
     return loc
 
 

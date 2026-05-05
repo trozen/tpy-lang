@@ -1,0 +1,2 @@
+6
+caught: n must be positive

@@ -26,7 +26,7 @@ int32_t read_field(const Container& c) {
 // def read_after_assert(c: Container) -> Int32:
 int32_t read_after_assert(const Container& c) {
     // assert c.node is not None
-    if (!((c.node != nullptr))) ::tpy::tpy_panic("assertion failed");
+    if (!((c.node != nullptr))) ::tpy::assert_failed();
     // return c.node.value  # tpyc: non_null(c.node)
     return c.node->value;
 }
