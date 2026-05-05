@@ -1,6 +1,7 @@
-# math.prod has overloads for Iterable[Int32] and Iterable[float]. The
-# return type matches the input type family; kwargs disambiguate when
-# positional args alone are ambiguous (empty list literal).
+# math.prod has overloads for Iterable[Int32], Iterable[int] (BigInt),
+# and Iterable[float]. The return type matches the input type family;
+# kwargs disambiguate when positional args alone are ambiguous (empty
+# list literal).
 import math
 from tpy import Int32
 
@@ -11,7 +12,7 @@ def main() -> None:
     ints.append(Int32(3))
     ints.append(Int32(4))
     n: Int32 = math.prod(ints)
-    print(n)  # 24 -- int overload preserves Int32 result
+    print(n)  # 24 -- Int32 overload preserves Int32 result
 
     n_with_start: Int32 = math.prod(ints, start=Int32(10))
     print(n_with_start)  # 240
@@ -30,6 +31,20 @@ def main() -> None:
     # Empty Iterable[Int32] disambiguated by the int kwarg type.
     n_empty: Int32 = math.prod(empty_int, start=Int32(7))
     print(n_empty)  # 7
+
+    # BigInt iterable picks the Iterable[int] overload; result is BigInt
+    # so products outside Int32 range are exact.
+    bigs: list[int] = []
+    bigs.append(1000000)
+    bigs.append(1000000)
+    bigs.append(1000000)
+    big_prod: int = math.prod(bigs)
+    print(big_prod)  # 1000000000000000000 -- exceeds Int32 max
+
+    # Empty Iterable[Int32] disambiguated to the BigInt overload by an
+    # explicit BigInt start kwarg.
+    big_empty: int = math.prod(empty_int, start=int(42))
+    print(big_empty)  # 42
 
 
 main()

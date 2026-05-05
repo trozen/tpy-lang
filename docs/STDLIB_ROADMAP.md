@@ -121,7 +121,7 @@ Examples of the policy in action:
 | Module | Priority | Status | % | Approach | Blockers / Notes |
 |---|---|---|---|---|---|
 | [`builtins`](#builtins) | P0 | Partial | ~70% | mixed | Implicit import. Core types + most common functions + key exceptions present. Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, most specialized exceptions (`IndexError`, `KeyError`, `TypeError`, etc. -- currently panic), `hasattr` (D16 v1.5), `callable`, `id`, `type(x)` runtime. `getattr`/`setattr`/`delattr` literal-name dynamic-fallback shipped in D16 v1. See [builtins](#builtins) for per-item status |
-| [`math`](#math) | P0 | Done | ~99% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for prod/fsum/sumprod/dist). Remaining gaps are minor: int-typed `prod` variant (exact BigInt product on all-int iterables) and tuple as iterable (blocked on tuple-iteration bundle) |
+| [`math`](#math) | P0 | Done | ~99% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for fsum/sumprod/dist; `prod` has Int32 / int (BigInt) / float overloads). Remaining gap: tuple as iterable (blocked on tuple-iteration bundle) |
 | [`time`](#time) | P0 | Partial | ~50% | mixed | Thin clock/sleep syscalls. `time`, `sleep`, `perf_counter`, `monotonic`, `time_ns`, `perf_counter_ns`, `monotonic_ns`, `process_time` all done. Missing `struct_time`/`strftime`/`gmtime`/`localtime`/timezone constants |
 | [`sys`](#sys) | P0 | Stub | ~15% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr` done; needs `stdin`/`exit`/`path`/`version_info` |
 | [`os`](#os) | P0 | Missing | 0% | -- | Needs filesystem wrapper + path handling |
@@ -371,7 +371,7 @@ Current: `lib/tpy/math.py` -- native C++ wrappers. Sufficient for numerics-heavy
 | `isqrt` | Done | Pure-TPy Newton's method over BigInt; initial guess from `bit_length()` for O(log log n) iteration count |
 | `perm`, `comb` | Done | Pure-TPy over BigInt. `perm` has both one-arg (`perm(n) == factorial(n)`) and two-arg overloads via `@overload`. `comb` is binary only |
 | `isclose` | Done | Pure-TPy; `rel_tol` / `abs_tol` are kw-only to match CPython |
-| `prod` | Done | Pure-TPy; `start` is kw-only to match CPython. Takes `Iterable[float]`. Int variant is a follow-up (currently all iterables are coerced element-wise to float) |
+| `prod` | Done | Pure-TPy; `start` is kw-only to match CPython. Three overloads: `Iterable[Int32]` -> Int32 (fast path), `Iterable[int]` -> int (exact BigInt for arbitrary-precision products), `Iterable[float]` -> float. Kwarg disambiguation lets `prod(empty, start=1.0)` / `start=int(1)` / `start=Int32(1)` pick the right family |
 | `fsum` | Done | Pure-TPy Neumaier compensated summation. Takes `Iterable[float]` |
 | `sumprod` | Done | Pure-TPy; raises `ValueError` on length mismatch via iterator lockstep drive (mirrors CPython's `zip(..., strict=True)`). Takes `Iterable[float]` |
 | `dist` | Done | Pure-TPy Euclidean distance via hypot-fold (overflow-safe for coordinates up to `DBL_MAX`). Takes `Iterable[float]` |
@@ -384,7 +384,6 @@ Tests: `math_module`, `math_extended`, `math_log_base`, `math_hyperbolic`,
 (covers `float("nan"/"inf"/"-inf")` fold).
 
 **Remaining gaps to reach 100%:**
-- `math.prod` int variant. Current signature `Iterable[float]` coerces each element to float; an `Iterable[int]` overload would return an exact BigInt product (matches CPython's polymorphic behavior, where `math.prod(range(1, 6)) == 120` not `120.0`). Attempted and reverted -- blocked on overload resolution not considering kwargs (BUGS.md "Overload resolution doesn't use keyword arguments to disambiguate"), so `math.prod([], start=1.0)` can't be disambiguated to the float overload.
 - Tuples as `Iterable[T]`. Tuples don't iterate today in TPy regardless of protocol context -- real CPython compat gap but bundled scope (needs coordinated sema + codegen + runtime story, not just a conformance flag flip). See TODO.md.
 
 ### time

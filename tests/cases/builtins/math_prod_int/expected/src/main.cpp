@@ -16,7 +16,7 @@ void main() {
     ints.push_back(4);
     // n: Int32 = math.prod(ints)
     int32_t n = ::tpystd::math::prod(ints, 1);
-    // print(n)  # 24 -- int overload preserves Int32 result
+    // print(n)  # 24 -- Int32 overload preserves Int32 result
     std::cout << n << "\n";
     // n_with_start: Int32 = math.prod(ints, start=Int32(10))
     int32_t n_with_start = ::tpystd::math::prod(ints, 10);
@@ -44,6 +44,26 @@ void main() {
     int32_t n_empty = ::tpystd::math::prod(empty_int, 7);
     // print(n_empty)  # 7
     std::cout << n_empty << "\n";
+    // # BigInt iterable picks the Iterable[int] overload; result is BigInt
+    // # so products outside Int32 range are exact.
+    // bigs: list[int] = []
+    std::vector<::tpy::BigInt> bigs = std::vector<::tpy::BigInt>{};
+    // bigs.append(1000000)
+    bigs.push_back(1000000);
+    // bigs.append(1000000)
+    bigs.push_back(1000000);
+    // bigs.append(1000000)
+    bigs.push_back(1000000);
+    // big_prod: int = math.prod(bigs)
+    ::tpy::BigInt big_prod = ::tpystd::math::prod(bigs, ::tpy::BigInt(1));
+    // print(big_prod)  # 1000000000000000000 -- exceeds Int32 max
+    std::cout << big_prod << "\n";
+    // # Empty Iterable[Int32] disambiguated to the BigInt overload by an
+    // # explicit BigInt start kwarg.
+    // big_empty: int = math.prod(empty_int, start=int(42))
+    ::tpy::BigInt big_empty = ::tpystd::math::prod(empty_int, ::tpy::BigInt(42));
+    // print(big_empty)  # 42
+    std::cout << big_empty << "\n";
 }
 
 void __tpy_init() {
@@ -51,9 +71,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # math.prod has overloads for Iterable[Int32] and Iterable[float]. The
-    // # return type matches the input type family; kwargs disambiguate when
-    // # positional args alone are ambiguous (empty list literal).
+    // # math.prod has overloads for Iterable[Int32], Iterable[int] (BigInt),
+    // # and Iterable[float]. The return type matches the input type family;
+    // # kwargs disambiguate when positional args alone are ambiguous (empty
+    // # list literal).
     // import math
     ::tpystd::math::__tpy_init();
     // main()

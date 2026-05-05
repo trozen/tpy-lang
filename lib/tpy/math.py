@@ -317,6 +317,13 @@ def prod(iterable: Iterable[Int32], *, start: Int32 = Int32(1)) -> Int32:
     return result
 
 @overload
+def prod(iterable: Iterable[int], *, start: int = 1) -> int:
+    result: int = start
+    for x in iterable:
+        result = result * x
+    return result
+
+@overload
 def prod(iterable: Iterable[float], *, start: float = 1.0) -> float:
     result: float = start
     for x in iterable:
