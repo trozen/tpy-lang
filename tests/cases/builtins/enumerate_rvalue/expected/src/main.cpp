@@ -44,9 +44,10 @@ void main() {
         // print(i, s)
         std::cout << i << " " << s << "\n";
     }
-    // # rvalue: list() from generator expression
-    // nums = [1, 2, 3]
-    std::array<int32_t, 3> nums = {1, 2, 3};
+    // # rvalue: list() from generator expression.
+    // # annotation works around BUGS.md "str(x) overload selection picks the smallest-fitting fixed-int"
+    // nums: list[Int32] = [1, 2, 3]
+    std::vector<int32_t> nums = {1, 2, 3};
     // for i, s in enumerate(list(str(x) for x in nums)):
     auto __src_4 = ::tpy::builtin_enumerate<std::string>(::tpy::construct<std::vector<std::string>>([&nums]() {
         auto& __src = nums;
@@ -54,7 +55,7 @@ void main() {
             [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::string> {
                 while (__beg != __end) {
                     int32_t x = *__beg++;
-                    return std::optional<std::string>(::tpy::fixed_to_str<int8_t>(x));
+                    return std::optional<std::string>(::tpy::fixed_to_str<int32_t>(x));
                 }
                 return std::nullopt;
             }

@@ -14,7 +14,7 @@ void main() {
     // print(Int32.add_wrap(Int32(2147483647), Int32(1)))
     std::cout << static_cast<int32_t>(static_cast<uint32_t>(2147483647) + static_cast<uint32_t>(1)) << "\n";
     // print(Int64.add_wrap(Int64(9223372036854775807), Int64(1)))
-    std::cout << static_cast<int64_t>(static_cast<uint64_t>(9223372036854775807) + static_cast<uint64_t>(1)) << "\n";
+    std::cout << static_cast<int64_t>(static_cast<uint64_t>(static_cast<int64_t>(9223372036854775807)) + static_cast<uint64_t>(1)) << "\n";
     // # Signed underflow: MIN - 1 -> MAX
     // print(Int8.sub_wrap(Int8(-128), Int8(1)))
     std::cout << static_cast<int>(static_cast<int8_t>(static_cast<uint8_t>(-128) - static_cast<uint8_t>(1))) << "\n";
@@ -23,7 +23,7 @@ void main() {
     // print(Int32.sub_wrap(Int32(-2147483648), Int32(1)))
     std::cout << static_cast<int32_t>(static_cast<uint32_t>(-2147483648) - static_cast<uint32_t>(1)) << "\n";
     // print(Int64.sub_wrap(Int64(-9223372036854775808), Int64(1)))
-    std::cout << static_cast<int64_t>(static_cast<uint64_t>((-9223372036854775807LL - 1)) - static_cast<uint64_t>(1)) << "\n";
+    std::cout << static_cast<int64_t>(static_cast<uint64_t>(static_cast<int64_t>((-9223372036854775807LL - 1))) - static_cast<uint64_t>(1)) << "\n";
     // # Signed mul overflow: bit-pattern-preserving
     // print(Int8.mul_wrap(Int8(127), Int8(2)))      # 254 -> -2
     std::cout << static_cast<int>(static_cast<int8_t>(static_cast<uint8_t>(127) * static_cast<uint8_t>(2))) << "\n";
@@ -37,9 +37,9 @@ void main() {
     // print(UInt16.add_wrap(UInt16(65535), UInt16(1)))
     std::cout << static_cast<uint16_t>(65535 + 1) << "\n";
     // print(UInt32.add_wrap(UInt32(4294967295), UInt32(1)))
-    std::cout << static_cast<uint32_t>(4294967295 + 1) << "\n";
+    std::cout << static_cast<uint32_t>(static_cast<uint32_t>(4294967295) + 1) << "\n";
     // print(UInt64.add_wrap(UInt64(18446744073709551615), UInt64(1)))
-    std::cout << static_cast<uint64_t>(18446744073709551615ull + 1) << "\n";
+    std::cout << static_cast<uint64_t>(static_cast<uint64_t>(18446744073709551615ull) + 1) << "\n";
     // # Unsigned underflow: 0 - 1 -> MAX
     // print(UInt8.sub_wrap(UInt8(0), UInt8(1)))
     std::cout << static_cast<int>(static_cast<uint8_t>(0 - 1)) << "\n";
@@ -53,7 +53,7 @@ void main() {
     // print(UInt8.mul_wrap(UInt8(16), UInt8(16)))      # 256 -> 0
     std::cout << static_cast<int>(static_cast<uint8_t>(16 * 16)) << "\n";
     // print(UInt32.mul_wrap(UInt32(0x80000000), UInt32(2)))  # 2^31 * 2 -> 0
-    std::cout << static_cast<uint32_t>(2147483648 * 2) << "\n";
+    std::cout << static_cast<uint32_t>(static_cast<uint32_t>(2147483648) * 2) << "\n";
     // # Non-overflowing cases still work
     // print(Int32.add_wrap(Int32(5), Int32(7)))
     std::cout << static_cast<int32_t>(static_cast<uint32_t>(5) + static_cast<uint32_t>(7)) << "\n";

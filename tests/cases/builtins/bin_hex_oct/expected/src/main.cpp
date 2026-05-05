@@ -43,7 +43,7 @@ void main() {
     std::cout << ::tpy::builtin_oct(-8) << "\n";
     // # Int64
     // big: Int64 = 1000000000000
-    int64_t big = 1000000000000;
+    int64_t big = static_cast<int64_t>(1000000000000);
     // print(hex(big))
     std::cout << ::tpy::builtin_hex(big) << "\n";
     // # BigInt (int)

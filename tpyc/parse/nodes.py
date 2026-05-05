@@ -1144,6 +1144,8 @@ class TpyFunction:
     native_name: str | None = None
     native_function: bool = False
     native_preserves_refs: bool = False
+    # @native(cpp_return_type=T) -- see FunctionInfo.native_cpp_return_type.
+    native_cpp_return_type: str | None = None
     cpp_template: str | None = None
     is_stub: bool = False
     value_ptr_coercion: bool = False

@@ -4951,6 +4951,14 @@ def abs(x: Int32) -> Int32: ...
 @native("clock", binding="C")
 def get_clock() -> Int32: ...
 
+# Narrowing C++ return: cpp_return_type signals codegen to insert
+# static_cast<DECLARED>(...) when the C++ side returns a wider type.
+# `@native` is otherwise an exact-match binding -- the TPy signature
+# must match C++ -- so this is the escape hatch for size_t -> Int32
+# patterns without dropping to @cpp_template.
+@native("std::strlen", binding="C", cpp_return_type=UInt64)
+def strlen(s: Ptr[readonly[Char]]) -> Int32: ...
+
 # Export a TPy function with C linkage
 @export(binding="C")
 def app_init() -> None:

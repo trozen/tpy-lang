@@ -10,7 +10,7 @@ void range_basic() {
     std::array<int32_t, 5> squares = ({
         std::array<int32_t, 5> __result;
         for (int32_t x = 0; x < 5; ++x) {
-            __result[x] = (::tpy::mul_check<int32_t>(x, x));
+            __result[static_cast<std::size_t>(x)] = (::tpy::mul_check<int32_t>(x, x));
         }
         __result;
     });
@@ -31,7 +31,7 @@ void range_transform() {
     std::array<int32_t, 4> doubled = ({
         std::array<int32_t, 4> __result;
         for (int32_t x = 0; x < 4; ++x) {
-            __result[x] = (::tpy::mul_check<int32_t>(x, 2));
+            __result[static_cast<std::size_t>(x)] = (::tpy::mul_check<int32_t>(x, 2));
         }
         __result;
     });
@@ -47,7 +47,7 @@ void range_empty() {
     std::array<int32_t, 0> empty = ({
         std::array<int32_t, 0> __result;
         for (int32_t x = 0; x < 0; ++x) {
-            __result[x] = x;
+            __result[static_cast<std::size_t>(x)] = x;
         }
         __result;
     });
@@ -62,7 +62,7 @@ void range_two_arg() {
         std::array<int32_t, 5> __result;
         const int32_t __start_0 = 2;
         for (int32_t x = __start_0, __idx_0 = 0; __idx_0 < 5; ++x, ++__idx_0) {
-            __result[__idx_0] = x;
+            __result[static_cast<std::size_t>(__idx_0)] = x;
         }
         __result;
     });
@@ -112,7 +112,7 @@ void array_filter_fallback() {
     std::vector<int32_t> evens = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = src;
-        __result.reserve(__obj_0.size());
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -233,7 +233,7 @@ void explicit_array_annotation() {
     std::array<int32_t, 5> items = ({
         std::array<int32_t, 5> __result;
         for (int32_t x = 0; x < 5; ++x) {
-            __result[x] = x;
+            __result[static_cast<std::size_t>(x)] = x;
         }
         __result;
     });

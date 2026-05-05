@@ -13,7 +13,7 @@ int32_t count_char(std::string_view text, char target) {
     // while i < len(text):
     while ((i < ::tpy::__len__(text))) {
         // if text[i] == target:
-        if ((text[i] == target)) {
+        if ((text[static_cast<std::size_t>(i)] == target)) {
             // count += 1
             count = ::tpy::add_check<int32_t>(count, 1);
         }

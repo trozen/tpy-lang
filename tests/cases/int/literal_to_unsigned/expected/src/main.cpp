@@ -51,7 +51,7 @@ void main() {
     // print(take_u16(65535))
     std::cout << take_u16(65535) << "\n";
     // print(take_u32(4294967295))
-    std::cout << take_u32(4294967295) << "\n";
+    std::cout << take_u32(static_cast<uint32_t>(4294967295)) << "\n";
     // print(take_u64(255))
     std::cout << take_u64(255) << "\n";
     // # multi-arg

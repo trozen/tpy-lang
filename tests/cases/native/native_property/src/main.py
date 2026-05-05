@@ -1,5 +1,5 @@
 # @property with @native and @cpp_template on @native class methods
-from tpy import Int32, readonly, pure
+from tpy import Int32, UInt64, readonly, pure
 from tpy.extern import native, cpp_template
 
 @native("std::vector")
@@ -14,9 +14,13 @@ class Vec[T]:
     @readonly
     def count(self) -> Int32: ...
 
-    # @property + @native rename getter
+    # @property + @native rename, with cpp_return_type declaring that the
+    # underlying C++ method (`capacity()`) returns size_t. Codegen wraps the
+    # call in static_cast<int32_t>(...) so -Wsign-conversion / -Wconversion
+    # don't fire. Without cpp_return_type, @native means exact-match-to-C++
+    # and the implicit narrowing would warn.
     @property
-    @native("capacity")
+    @native("capacity", cpp_return_type=UInt64)
     @pure
     @readonly
     def cap(self) -> Int32: ...
@@ -40,7 +44,7 @@ def main() -> None:
     # setter via @cpp_template
     v.cap = 100
 
-    # getter via @native rename (deterministic after reserve)
+    # getter via @native(cpp_return_type=UInt64) (deterministic after reserve)
     c = v.cap  # tpyc: type(Int32)
     print(c)
 

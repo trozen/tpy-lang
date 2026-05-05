@@ -22,7 +22,7 @@ int32_t sum_span(std::span<int32_t> values) {
     // while i < len(values):
     while ((i < ::tpy::__len__(values))) {
         // total += values[i]
-        total = ::tpy::add_check<int32_t>(total, values[i]);
+        total = ::tpy::add_check<int32_t>(total, values[static_cast<std::size_t>(i)]);
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }

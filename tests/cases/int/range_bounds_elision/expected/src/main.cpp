@@ -14,7 +14,7 @@ void test_for_range_len_array() {
     int32_t __stop_0 = ::tpy::__len__(arr);
     for (int32_t i = 0; i < __stop_0; ++i) {
         // total += arr[i]  # tpyc: bounds_safe(arr)
-        total = ::tpy::add_check<int32_t>(total, arr[i]);
+        total = ::tpy::add_check<int32_t>(total, arr[static_cast<std::size_t>(i)]);
     }
     // print(total)
     std::cout << total << "\n";
@@ -30,7 +30,7 @@ void test_for_range_len_list() {
     int32_t __stop_0 = ::tpy::__len__(lst);
     for (int32_t i = 0; i < __stop_0; ++i) {
         // total += lst[i]  # tpyc: bounds_safe(lst)
-        total = ::tpy::add_check<int32_t>(total, lst[i]);
+        total = ::tpy::add_check<int32_t>(total, lst[static_cast<std::size_t>(i)]);
     }
     // print(total)
     std::cout << total << "\n";
@@ -95,13 +95,13 @@ void test_write_subscript_elision() {
     int32_t __stop_0 = ::tpy::__len__(arr);
     for (int32_t i = 0; i < __stop_0; ++i) {
         // arr[i] = i * 10  # tpyc: bounds_safe(arr)
-        arr[i] = (::tpy::mul_check<int32_t>(i, 10));
+        arr[static_cast<std::size_t>(i)] = (::tpy::mul_check<int32_t>(i, 10));
     }
     // for i in range(len(arr)):
     int32_t __stop_1 = ::tpy::__len__(arr);
     for (int32_t i = 0; i < __stop_1; ++i) {
         // print(arr[i])  # tpyc: bounds_safe(arr)
-        std::cout << arr[i] << "\n";
+        std::cout << arr[static_cast<std::size_t>(i)] << "\n";
     }
 }
 
@@ -115,7 +115,7 @@ void test_no_elision_after_method_call() {
     int32_t __stop_0 = ::tpy::__len__(lst);
     for (int32_t i = 0; i < __stop_0; ++i) {
         // total += lst[i]  # tpyc: bounds_safe(lst)
-        total = ::tpy::add_check<int32_t>(total, lst[i]);
+        total = ::tpy::add_check<int32_t>(total, lst[static_cast<std::size_t>(i)]);
     }
     // lst.pop()
     ::tpy::pop_back(lst);

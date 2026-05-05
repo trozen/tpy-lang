@@ -72,6 +72,7 @@ from ..parse import (
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
+from ..sema.numeric_lattice import fixed_int_range_contains
 from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, view_key_target
 from .functions import literal_mangled_name
 
@@ -189,6 +190,19 @@ def _is_simple_lvalue(expr: TpyExpr) -> bool:
     if isinstance(expr, TpyFieldAccess):
         return _is_simple_lvalue(expr.obj)
     return False
+
+
+def _is_concrete_user_record(t: TpyType | None, registry) -> bool:
+    """True for a user-defined record whose C++ operator[] takes the user's
+    declared parameter type (typically int32_t), not size_t. Excludes built-in
+    containers (their stubs have builtin_type_key, so is_user_record is
+    False), protocols, unresolved placeholders, and @native records that wrap
+    STL types (where operator[] is C++-defined, takes size_t).
+    """
+    if not (isinstance(t, NominalType) and t.is_user_record):
+        return False
+    record = registry.get_record_for_type(t)
+    return record is not None and not record.is_native
 
 
 class _Unset:
@@ -942,16 +956,14 @@ class ExpressionGenerator:
         elif isinstance(expr, TpyCall):
             if expr.macro_expansion is not None:
                 return self.gen_expr(expr.macro_expansion, target_type)
-            result = self._gen_call(expr)
-            return self._maybe_error_return_unwrap(expr, result)
+            return self._post_process_call(expr, self._gen_call(expr))
 
         elif isinstance(expr, TpyMethodCall):
             if expr.fstr_expansion is not None:
                 return self.gen_expr(expr.fstr_expansion)
             if expr.macro_expansion is not None:
                 return self.gen_expr(expr.macro_expansion, target_type)
-            result = self._gen_method_call(expr)
-            return self._maybe_error_return_unwrap(expr, result)
+            return self._post_process_call(expr, self._gen_method_call(expr))
 
         elif isinstance(expr, TpyFieldAccess):
             return self._gen_field_access(expr)
@@ -2001,15 +2013,60 @@ class ExpressionGenerator:
             if -2**63 <= v <= 2**63 - 1:
                 return f"::tpy::BigInt(static_cast<int64_t>({v}LL))"
             return f'::tpy::BigInt::from_str("{v}")'
-        # Suffix wide literals so GCC doesn't auto-promote to unsigned and warn.
-        # Values in (INT64_MAX, UINT64_MAX] need 'ull'; INT64_MIN can't be
-        # written directly (parsed as unary-minus over an out-of-range literal),
-        # so emit it as the standard (-INT64_MAX - 1) idiom.
+        # Wide values need explicit suffix so the C++ parser accepts them
+        # without auto-promoting to unsigned. INT64_MIN can't be written as
+        # `-N` (parsed as unary-minus over an out-of-range positive); use
+        # the (-INT64_MAX - 1) idiom.
         if v > 0x7FFFFFFFFFFFFFFF:
-            return f"{v}ull"
-        if v == -0x8000000000000000:
-            return "(-9223372036854775807LL - 1)"
-        return str(v)
+            bare = f"{v}ull"
+        elif v == -0x8000000000000000:
+            bare = "(-9223372036854775807LL - 1)"
+        else:
+            bare = str(v)
+        # GCC exempts compile-time integer constants of natural type `int`
+        # that fit the target from -Wsign-conversion / -Wconversion. Cast
+        # only when neither holds, and only for non-default fixed-int
+        # targets (the default-int case has bare literal `int` == int32_t
+        # so the implicit conversion is identity).
+        if target_type is None:
+            return bare
+        if not is_fixed_int_type(target_type):
+            return bare
+        if target_type is self.ctx.analyzer.ctx.default_int_type:
+            return bare
+        if -2**31 <= v <= 2**31 - 1 and fixed_int_range_contains(target_type, v):
+            return bare
+        cpp_type = self.types.type_to_cpp(target_type)
+        return f"static_cast<{cpp_type}>({bare})"
+
+    def _post_process_call(self, expr: TpyCall | TpyMethodCall, call_cpp: str) -> str:
+        """Apply the standard post-processing chain to a freshly-generated
+        call expression. Keeps the four call-emission sites (gen_expr's
+        TpyCall/TpyMethodCall + property-getter and dyn-getattr in
+        _gen_field_access) in lockstep when post-steps are added.
+        """
+        result = self._maybe_error_return_unwrap(expr, call_cpp)
+        return self._maybe_native_return_cast(expr, result)
+
+    def _maybe_native_return_cast(self, expr: TpyCall | TpyMethodCall, call_cpp: str) -> str:
+        """Wrap a call in static_cast when @native declared cpp_return_type.
+
+        Triggered only when the user explicitly annotated `@native(...,
+        cpp_return_type=T)`, signaling the C++ side returns a wider/different
+        type than the declared TPy return. Wraps `call_cpp` in
+        `static_cast<DECLARED_TPY_RETURN>(...)` so the implicit conversion at
+        the use site doesn't trip -Wsign-conversion / -Wconversion. Bare
+        @native (no cpp_return_type) keeps exact-match-to-C++ semantics --
+        no implicit cast.
+        """
+        fi = expr.resolved_function_info
+        if (fi is not None
+                and fi.native_cpp_return_type is not None
+                and fi.error_return_type is None
+                and fi.return_type is not None):
+            cpp_type = self.types.type_to_cpp(fi.return_type)
+            return f"static_cast<{cpp_type}>({call_cpp})"
+        return call_cpp
 
     def _maybe_error_return_unwrap(self, expr: TpyCall | TpyMethodCall, call_cpp: str) -> str:
         """Wrap an @error_return call in a statement expression that unwraps it.
@@ -3203,14 +3260,15 @@ class ExpressionGenerator:
                 return f"({{ {receiver_eval}; {qualified}; }})"
             return qualified
 
-        # Property getter: delegate to normal method call codegen
+        # Property getter: delegate to normal method call codegen.
         if expr.property_getter_call is not None:
-            return self._gen_method_call(expr.property_getter_call)
+            inner = expr.property_getter_call
+            return self._post_process_call(inner, self._gen_method_call(inner))
 
-        # D16 dynamic-attribute getattr fallback: synthesized __getattr__
-        # method call routed through the normal method-call codegen path.
+        # D16 dynamic-attribute getattr fallback: synthesized __getattr__.
         if expr.dyn_getattr_call is not None:
-            return self._gen_method_call(expr.dyn_getattr_call)
+            inner = expr.dyn_getattr_call
+            return self._post_process_call(inner, self._gen_method_call(inner))
 
         # Explicit `this->` + base qualifier picks the specific ancestor
         # subobject in non-virtual MI; without it, `field` would be ambiguous.
@@ -3736,7 +3794,7 @@ class ExpressionGenerator:
                     buf.write(f"{ind1}for ({cpp_iter_type} {cpp_var} = __start_0, __idx_0 = 0;"
                               f" __idx_0 < {size}; ++{cpp_var}, ++__idx_0) {{\n")
                 idx_expr = cpp_var if nargs == 1 else "__idx_0"
-                buf.write(f"{ind2}__result[{idx_expr}] = {insert_code};\n")
+                buf.write(f"{ind2}__result[static_cast<std::size_t>({idx_expr})] = {insert_code};\n")
             else:
                 # Array/container source -- begin/end loop with index counter
                 n = self.ctx.iter_counter
@@ -4055,7 +4113,10 @@ class ExpressionGenerator:
         iterable_type = self.types.get_resolved_type(gen.iterable)
         buf.write(f"{ind1}{obj_binding} __obj_{n} = {iterable_code};\n")
         if not skip_reserve and self._is_sized_type(iterable_type):
-            buf.write(f"{ind1}__result.reserve(__obj_{n}.size());\n")
+            # TPy view types (dict_keys/values/items, varargs) return int32_t
+            # from .size(), but std::vector<T>::reserve takes size_t -- cast
+            # explicitly to avoid -Wsign-conversion at the use site.
+            buf.write(f"{ind1}__result.reserve(static_cast<std::size_t>(__obj_{n}.size()));\n")
         buf.write(f"{ind1}auto __beg_{n} = __obj_{n}.begin();\n")
         buf.write(f"{ind1}auto __end_{n} = __obj_{n}.end();\n")
         buf.write(f"{ind1}for (; __beg_{n} != __end_{n}; ++__beg_{n}) {{\n")
@@ -4425,9 +4486,19 @@ class ExpressionGenerator:
                 subscript_obj = f"::tpy::deref_check({ptr_expr})"
         index_expr = self.gen_index_expr(expr.index, index_type, view_key_target(obj_type))
 
-        # Bounds-safe: index provably in [0, len(obj)), skip normalize_index
+        # Bounds-safe: index provably in [0, len(obj)), skip normalize_index.
+        # The index type is signed (int32_t typically); built-in container
+        # operator[] takes size_t, so the cast silences -Wsign-conversion.
+        # Concrete user records' operator[] takes the user's declared param
+        # type (typically int32_t) and don't need the cast. Protocol-bound
+        # type-params keep the cast: at template instantiation the type may
+        # be an STL container, where the cast is required. Compile-time
+        # integer constants are exempt under GCC.
         if expr.bounds_safe:
-            return f"{subscript_obj}[{index_expr}]"
+            if isinstance(expr.index, TpyIntLiteral) or _is_concrete_user_record(
+                    obj_type, self.ctx.analyzer.registry):
+                return f"{subscript_obj}[{index_expr}]"
+            return f"{subscript_obj}[static_cast<std::size_t>({index_expr})]"
 
         # Use registry lookup for __getitem__
         fi = self.builtins.get_type_method_fi(obj_type, "__getitem__")

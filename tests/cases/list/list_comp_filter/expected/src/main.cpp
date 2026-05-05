@@ -13,7 +13,7 @@ void main() {
     std::vector<int32_t> pos = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = data;
-        __result.reserve(__obj_0.size());
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -63,7 +63,7 @@ void main() {
     std::vector<std::string> short_ = ({
         std::vector<std::string> __result;
         auto& __obj_3 = words;
-        __result.reserve(__obj_3.size());
+        __result.reserve(static_cast<std::size_t>(__obj_3.size()));
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {

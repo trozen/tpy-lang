@@ -13,7 +13,7 @@ void main() {
     std::vector<int32_t> xs = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = items;
-        __result.reserve(__obj_0.size());
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -29,7 +29,7 @@ void main() {
     std::vector<std::string> reprs = ({
         std::vector<std::string> __result;
         auto& __obj_1 = items;
-        __result.reserve(__obj_1.size());
+        __result.reserve(static_cast<std::size_t>(__obj_1.size()));
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {

@@ -25,7 +25,7 @@ void main() {
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::variant<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, std::variant<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>({{"label", g.label}, {"members", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_0 = g.members;
-        __result.reserve(__obj_0.size());
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {

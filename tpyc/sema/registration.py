@@ -1012,6 +1012,7 @@ class TypeRegistrar:
                 native_name=method.native_name,
                 native_function=method.native_function,
                 native_preserves_refs=method.native_preserves_refs,
+                native_cpp_return_type=method.native_cpp_return_type,
                 cpp_template=method.cpp_template or (DUNDER_CPP_TEMPLATES.get(method.name)
                              if not method.native_function else None),
                 type_params=list(method.type_params),
@@ -2320,6 +2321,7 @@ class TypeRegistrar:
             is_inline=func.is_inline,
             linkage=fi_linkage,
             native_name=func.native_name,
+            native_cpp_return_type=func.native_cpp_return_type,
             cpp_template=func.cpp_template,
             value_ptr_coercion=func.value_ptr_coercion,
             type_params=func.type_params,
@@ -2445,6 +2447,7 @@ class TypeRegistrar:
                 is_pure=func.is_pure,
                 linkage=_LINKAGE_MAP[func.linkage.name],
                 native_name=func.native_name,
+                native_cpp_return_type=func.native_cpp_return_type,
                 cpp_template=func.cpp_template,
                 type_params=func.type_params,
                 type_param_bounds=type_param_bounds,

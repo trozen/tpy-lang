@@ -23,7 +23,7 @@ void set_values(::tpy::varargs<Counter> args) {
     int32_t __stop_0 = ::tpy::__len__(args);
     for (int32_t i = 0; i < __stop_0; ++i) {
         // args[i].value = (i + 1) * 10
-        args[i].value = ::tpy::BigInt((::tpy::mul_check<int32_t>((::tpy::add_check<int32_t>(i, 1)), 10)));
+        args[static_cast<std::size_t>(i)].value = ::tpy::BigInt((::tpy::mul_check<int32_t>((::tpy::add_check<int32_t>(i, 1)), 10)));
     }
 }
 

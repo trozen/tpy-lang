@@ -159,7 +159,7 @@ template<::tpystd::typing::Sequence<::tpy::BigInt> T_items, typename T_extra>
     // while i < len(items):
     while ((i < ::tpy::BigInt(::tpy::__len__(items)))) {
         // result = result + items[i]
-        result = ((result) + (items[i.to_fixed_check<int32_t>()]));
+        result = ((result) + (items[static_cast<std::size_t>(i.to_fixed_check<int32_t>())]));
         // i = i + 1
         i = ((i) + (::tpy::BigInt(1)));
     }
@@ -170,7 +170,7 @@ template<::tpystd::typing::Sequence<::tpy::BigInt> T_items, typename T_extra>
         // while j < len(extra):
         while ((j < ::tpy::BigInt(::tpy::__len__((*extra))))) {
             // result = result + extra[j]
-            result = ((result) + ((*extra)[j.to_fixed_check<int32_t>()]));
+            result = ((result) + ((*extra)[static_cast<std::size_t>(j.to_fixed_check<int32_t>())]));
             // j = j + 1
             j = ((j) + (::tpy::BigInt(1)));
         }

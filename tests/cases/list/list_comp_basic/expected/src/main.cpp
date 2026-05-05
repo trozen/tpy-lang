@@ -26,7 +26,7 @@ void main() {
     std::vector<int32_t> copy = ({
         std::vector<int32_t> __result;
         auto& __obj_1 = items;
-        __result.reserve(__obj_1.size());
+        __result.reserve(static_cast<std::size_t>(__obj_1.size()));
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
@@ -60,7 +60,7 @@ void main() {
     std::vector<int32_t> xs = ({
         std::vector<int32_t> __result;
         auto& __obj_4 = points;
-        __result.reserve(__obj_4.size());
+        __result.reserve(static_cast<std::size_t>(__obj_4.size()));
         auto __beg_4 = __obj_4.begin();
         auto __end_4 = __obj_4.end();
         for (; __beg_4 != __end_4; ++__beg_4) {
@@ -89,7 +89,7 @@ void main() {
     std::vector<std::string> upper = ({
         std::vector<std::string> __result;
         auto& __obj_6 = words;
-        __result.reserve(__obj_6.size());
+        __result.reserve(static_cast<std::size_t>(__obj_6.size()));
         auto __beg_6 = __obj_6.begin();
         auto __end_6 = __obj_6.end();
         for (; __beg_6 != __end_6; ++__beg_6) {

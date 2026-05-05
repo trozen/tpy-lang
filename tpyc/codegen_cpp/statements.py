@@ -42,6 +42,7 @@ from ..type_def_registry import (
     is_str_view_type, is_bytes_view_type, is_string_type,
     protocol_info_of,
 )
+from .expressions import _is_concrete_user_record
 from .functions import default_to_cpp
 from .type_resolution import resolve_stmt_binding_type
 from ..prescan import match_is_none
@@ -1480,9 +1481,17 @@ class StatementGenerator:
             index_expr = self.expressions.gen_index_expr(
                 stmt.target.index, index_type, view_key_target(obj_type))
 
-            # Bounds-safe: index provably in [0, len(obj)), skip normalize_index
+            # Bounds-safe: index provably in [0, len(obj)), skip normalize_index.
+            # See the matching note in expressions.py _gen_subscript: cast to
+            # size_t for non-literal indices to avoid -Wsign-conversion,
+            # except for concrete user records whose operator[] takes the
+            # user's declared param type (typically int32_t).
             if stmt.target.bounds_safe:
-                return f"{indent}{subscript_obj}[{index_expr}] = {value};\n"
+                if (isinstance(stmt.target.index, TpyIntLiteral)
+                        or _is_concrete_user_record(obj_type,
+                                                     self.ctx.analyzer.registry)):
+                    return f"{indent}{subscript_obj}[{index_expr}] = {value};\n"
+                return f"{indent}{subscript_obj}[static_cast<std::size_t>({index_expr})] = {value};\n"
 
             # Use registry lookup for __setitem__
             fi = self.builtins.get_type_method_fi(obj_type, "__setitem__")

@@ -368,8 +368,6 @@ def get_or_build_pch(
 #: - -Wshadow: NOT in this set. Record/dataclass constructors emit the
 #:   idiomatic `T(P p) : p(p) {}` pattern, which always shadows. Downstream
 #:   consumers compiling tpy-generated TUs should add -Wno-shadow per-TU.
-#: - -Wconversion / -Wsign-conversion: deferred. Container indexing emits
-#:   signed Python ints into size_t (see TODO.md); enable once that's fixed.
 STRICT_WARN_FLAGS: list[str] = [
     "-Werror",
     "-Wall", "-Wextra",
@@ -391,6 +389,11 @@ STRICT_WARN_FLAGS: list[str] = [
     "-Wnon-virtual-dtor", "-Woverloaded-virtual",
     "-Wswitch-bool", "-Wsizeof-array-argument", "-Wbool-compare",
     "-Wsuggest-override",
+    # Container indexing and other int32 / size_t crossings: codegen emits
+    # explicit static_cast<size_t> at bounds-safe subscript sites and at
+    # comprehension reserve / array-comp index sites; runtime headers cast
+    # at audited internal boundaries.
+    "-Wsign-conversion", "-Wconversion",
 ]
 
 

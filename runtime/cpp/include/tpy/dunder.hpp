@@ -510,7 +510,7 @@ uint64_t __hash__(T x) {
 template<typename T>
     requires requires(const T& t) { { t.__hash__() } -> std::convertible_to<uint64_t>; }
 uint64_t __hash__(const T& x) {
-    return x.__hash__();
+    return static_cast<uint64_t>(x.__hash__());
 }
 
 // User types with __hash__() returning BigInt

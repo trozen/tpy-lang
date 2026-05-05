@@ -77,7 +77,7 @@ void main() {
     // print_u64(e)
     print_u64(static_cast<uint64_t>(e));
     // f: UInt32 = UInt32(3000000000)
-    uint32_t f = 3000000000;
+    uint32_t f = static_cast<uint32_t>(3000000000);
     // print_u64(f)
     print_u64(static_cast<uint64_t>(f));
     // # Cross-sign widening: UInt8 -> Int16, UInt16 -> Int32, UInt32 -> Int64

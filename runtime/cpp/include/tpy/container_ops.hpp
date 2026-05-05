@@ -379,7 +379,7 @@ template<typename T>
 T list_pop_at(std::vector<T>& v, int32_t index) {
     auto i = normalize_index(v, index, "pop index out of range");
     T result = std::move(v[i]);
-    v.erase(v.begin() + i);
+    v.erase(v.begin() + static_cast<std::ptrdiff_t>(i));
     return result;
 }
 

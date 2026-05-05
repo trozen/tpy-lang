@@ -13,7 +13,7 @@ void test_while_basic() {
     // while i < len(arr):
     while ((i < ::tpy::__len__(arr))) {
         // print(arr[i])  # tpyc: bounds_safe(arr)
-        std::cout << arr[i] << "\n";
+        std::cout << arr[static_cast<std::size_t>(i)] << "\n";
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
@@ -75,7 +75,7 @@ void test_while_list() {
     // while i < len(lst):
     while ((i < ::tpy::__len__(lst))) {
         // print(lst[i])  # tpyc: bounds_safe(lst)
-        std::cout << lst[i] << "\n";
+        std::cout << lst[static_cast<std::size_t>(i)] << "\n";
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
@@ -90,7 +90,7 @@ void test_while_bigint_index() {
     // while i < len(lst):
     while ((i < ::tpy::BigInt(::tpy::__len__(lst)))) {
         // print(lst[i])  # tpyc: bounds_safe(lst)
-        std::cout << lst[i.to_fixed_check<int32_t>()] << "\n";
+        std::cout << lst[static_cast<std::size_t>(i.to_fixed_check<int32_t>())] << "\n";
         // i += 1
         i = (i) + (::tpy::BigInt(1));
     }
@@ -105,7 +105,7 @@ void test_while_post_loop_not_safe() {
     // while i < len(arr):
     while ((i < ::tpy::__len__(arr))) {
         // print(arr[i])  # tpyc: bounds_safe(arr)
-        std::cout << arr[i] << "\n";
+        std::cout << arr[static_cast<std::size_t>(i)] << "\n";
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }

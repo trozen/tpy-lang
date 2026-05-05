@@ -22,6 +22,7 @@ from tpy.extern import native, export
 | `@native("ns::func")` -- qualified C++ name | **Done** |
 | `@native(binding="C")` -- import C function | **Done** |
 | `@native(binding="C")` -- import C struct | **Done** |
+| `@native(cpp_return_type=T)` -- declare wider C++ return for narrowing cast | **Done** |
 | `@native` class -- import C++ class (fields, stub methods) | **Done** |
 | `native_field("cpp_name")` -- per-field C++ rename on `@native` classes | **Done** |
 | `@export(binding="C")` -- export TPy function | **Done** |
@@ -171,6 +172,24 @@ class StdVector(Generic[T]):
     def push_back(self, val: T) -> None: ...
     def size(self) -> Int32: ...
 ```
+
+### Narrowing C++ returns: `cpp_return_type=T`
+
+`@native` declares an exact-match binding to a C++ symbol -- the TPy signature must match the C++ side. When the C++ side returns a wider type than the TPy declared return (e.g. `std::vector::capacity()` returns `size_t`, but the user wants an `Int32` view), use `cpp_return_type=T` to tell codegen the underlying type:
+
+```python
+@native("std::vector")
+class Vec[T]:
+    @property
+    @native("capacity", cpp_return_type=UInt64)  # capacity() returns size_t
+    def cap(self) -> Int32: ...
+
+# Codegen emits:  static_cast<int32_t>(v.capacity())
+```
+
+Without `cpp_return_type`, the implicit narrowing would trip `-Wconversion` / `-Wsign-conversion` at the use site. With it, codegen wraps the call in `static_cast<DECLARED_TPY_RETURN>(...)` so the conversion is explicit. Works on both methods and free functions. The annotated value is a TPy type name (e.g. `UInt64`); the cast target is always the declared TPy return type.
+
+For more involved transformations (computed expressions, multi-step conversions), use `@cpp_template` instead -- it gives full control over the emitted call expression.
 
 ---
 

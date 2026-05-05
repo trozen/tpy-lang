@@ -13,7 +13,7 @@ void main() {
     std::vector<int32_t> values = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = pairs;
-        __result.reserve(__obj_0.size());
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -30,7 +30,7 @@ void main() {
     std::vector<std::string> keys = ({
         std::vector<std::string> __result;
         auto& __obj_1 = pairs;
-        __result.reserve(__obj_1.size());
+        __result.reserve(static_cast<std::size_t>(__obj_1.size()));
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
@@ -50,7 +50,7 @@ void main() {
     std::vector<int32_t> doubled = ({
         std::vector<int32_t> __result;
         auto __obj_2 = ::tpy::dict_items(d);
-        __result.reserve(__obj_2.size());
+        __result.reserve(static_cast<std::size_t>(__obj_2.size()));
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
@@ -68,7 +68,7 @@ void main() {
     std::vector<std::string> big_keys = ({
         std::vector<std::string> __result;
         auto __obj_3 = ::tpy::dict_items(d);
-        __result.reserve(__obj_3.size());
+        __result.reserve(static_cast<std::size_t>(__obj_3.size()));
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
@@ -88,7 +88,7 @@ void main() {
     std::vector<std::string> labels = ({
         std::vector<std::string> __result;
         auto __obj_4 = ::tpy::dict_items(d);
-        __result.reserve(__obj_4.size());
+        __result.reserve(static_cast<std::size_t>(__obj_4.size()));
         auto __beg_4 = __obj_4.begin();
         auto __end_4 = __obj_4.end();
         for (; __beg_4 != __end_4; ++__beg_4) {
@@ -106,7 +106,7 @@ void main() {
     std::vector<int32_t> vals_only = ({
         std::vector<int32_t> __result;
         auto& __obj_5 = pairs;
-        __result.reserve(__obj_5.size());
+        __result.reserve(static_cast<std::size_t>(__obj_5.size()));
         auto __beg_5 = __obj_5.begin();
         auto __end_5 = __obj_5.end();
         for (; __beg_5 != __end_5; ++__beg_5) {
@@ -123,7 +123,7 @@ void main() {
     std::vector<int32_t> filtered = ({
         std::vector<int32_t> __result;
         auto __obj_6 = ::tpy::dict_items(d);
-        __result.reserve(__obj_6.size());
+        __result.reserve(static_cast<std::size_t>(__obj_6.size()));
         auto __beg_6 = __obj_6.begin();
         auto __end_6 = __obj_6.end();
         for (; __beg_6 != __end_6; ++__beg_6) {
@@ -145,7 +145,7 @@ void main() {
     std::vector<int32_t> middle = ({
         std::vector<int32_t> __result;
         auto& __obj_7 = triples;
-        __result.reserve(__obj_7.size());
+        __result.reserve(static_cast<std::size_t>(__obj_7.size()));
         auto __beg_7 = __obj_7.begin();
         auto __end_7 = __obj_7.end();
         for (; __beg_7 != __end_7; ++__beg_7) {
@@ -161,7 +161,7 @@ void main() {
     std::vector<std::string> first_and_last = ({
         std::vector<std::string> __result;
         auto& __obj_8 = triples;
-        __result.reserve(__obj_8.size());
+        __result.reserve(static_cast<std::size_t>(__obj_8.size()));
         auto __beg_8 = __obj_8.begin();
         auto __end_8 = __obj_8.end();
         for (; __beg_8 != __end_8; ++__beg_8) {
@@ -181,7 +181,7 @@ void main() {
     std::vector<Point> pts = ({
         std::vector<Point> __result;
         auto __obj_9 = ::tpy::dict_items(point_map);
-        __result.reserve(__obj_9.size());
+        __result.reserve(static_cast<std::size_t>(__obj_9.size()));
         auto __beg_9 = __obj_9.begin();
         auto __end_9 = __obj_9.end();
         for (; __beg_9 != __end_9; ++__beg_9) {

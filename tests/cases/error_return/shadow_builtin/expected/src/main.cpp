@@ -11,9 +11,9 @@ std::expected<int32_t, StopIteration> first_negative(const std::vector<int32_t>&
     int32_t __stop_0 = ::tpy::__len__(items);
     for (int32_t i = 0; i < __stop_0; ++i) {
         // if items[i] < 0:
-        if ((items[i] < 0)) {
+        if ((items[static_cast<std::size_t>(i)] < 0)) {
             // return items[i]
-            return items[i];
+            return items[static_cast<std::size_t>(i)];
         }
     }
     // raise StopIteration

@@ -24,9 +24,9 @@ void main() {
     // # setter via @cpp_template
     // v.cap = 100
     v.reserve(100);
-    // # getter via @native rename (deterministic after reserve)
+    // # getter via @native(cpp_return_type=UInt64) (deterministic after reserve)
     // c = v.cap  # tpyc: type(Int32)
-    int32_t c = v.capacity();
+    int32_t c = static_cast<int32_t>(v.capacity());
     // print(c)
     std::cout << c << "\n";
     // print(v.count)

@@ -1,0 +1,1 @@
+@native binding to a C++ free function defined in native_types.hpp; no CPython equivalent.

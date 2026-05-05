@@ -34,7 +34,7 @@ int32_t sum_all(const T_items& items) {
     // while i < len(items):
     while ((i < ::tpy::__len__(items))) {
         // total += items[i]
-        total = ::tpy::add_check<int32_t>(total, items[i]);
+        total = ::tpy::add_check<int32_t>(total, items[static_cast<std::size_t>(i)]);
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }

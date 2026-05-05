@@ -25,7 +25,7 @@ void main() {
     // print(UInt16.shl_wrap(UInt16(0x8000), UInt16(1)))
     std::cout << static_cast<uint16_t>(static_cast<uint16_t>(32768) << (1)) << "\n";
     // print(UInt32.shl_wrap(UInt32(0x80000000), UInt32(1)))
-    std::cout << static_cast<uint32_t>(static_cast<uint32_t>(2147483648) << (1)) << "\n";
+    std::cout << static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(2147483648)) << (1)) << "\n";
     // print(UInt32.shl_wrap(UInt32(1), UInt32(31)))
     std::cout << static_cast<uint32_t>(static_cast<uint32_t>(1) << (31)) << "\n";
     // print(UInt64.shl_wrap(UInt64(1), UInt64(63)))
@@ -52,9 +52,9 @@ void main() {
     // print(UInt16.shr_wrap(UInt16(0xFFFF), UInt16(1)))
     std::cout << static_cast<uint16_t>(static_cast<uint16_t>(65535) >> (1)) << "\n";
     // print(UInt32.shr_wrap(UInt32(0xFFFFFFFF), UInt32(1)))
-    std::cout << static_cast<uint32_t>(static_cast<uint32_t>(4294967295) >> (1)) << "\n";
+    std::cout << static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(4294967295)) >> (1)) << "\n";
     // print(UInt64.shr_wrap(UInt64(0xFFFFFFFFFFFFFFFF), UInt64(63)))
-    std::cout << static_cast<uint64_t>(static_cast<uint64_t>(18446744073709551615ull) >> (63)) << "\n";
+    std::cout << static_cast<uint64_t>(static_cast<uint64_t>(static_cast<uint64_t>(18446744073709551615ull)) >> (63)) << "\n";
     // # n=0 round-trip
     // print(Int32.shl_wrap(Int32(42), Int32(0)))
     std::cout << static_cast<int32_t>(static_cast<uint32_t>(42) << (0)) << "\n";

@@ -12,18 +12,18 @@ void main() {
     // print(rotl32(UInt32(1), 31))                   # 0x80000000
     std::cout << std::rotl<uint32_t>(1, 31) << "\n";
     // print(rotl32(UInt32(0x80000000), 1))           # 1 (bit wraps)
-    std::cout << std::rotl<uint32_t>(2147483648, 1) << "\n";
+    std::cout << std::rotl<uint32_t>(static_cast<uint32_t>(2147483648), 1) << "\n";
     // print(rotr32(UInt32(1), 1))                    # 0x80000000
     std::cout << std::rotr<uint32_t>(1, 1) << "\n";
     // print(rotr32(UInt32(0x80000000), 1))           # 0x40000000
-    std::cout << std::rotr<uint32_t>(2147483648, 1) << "\n";
+    std::cout << std::rotr<uint32_t>(static_cast<uint32_t>(2147483648), 1) << "\n";
     // print(rotr32(UInt32(0x12345678), 8))           # 0x78123456
     std::cout << std::rotr<uint32_t>(305419896, 8) << "\n";
     // # Rotation by 0 and by width: identity
     // print(rotl32(UInt32(0xdeadbeef), 0))           # 0xdeadbeef
-    std::cout << std::rotl<uint32_t>(3735928559, 0) << "\n";
+    std::cout << std::rotl<uint32_t>(static_cast<uint32_t>(3735928559), 0) << "\n";
     // print(rotr32(UInt32(0xdeadbeef), 32))          # 0xdeadbeef
-    std::cout << std::rotr<uint32_t>(3735928559, 32) << "\n";
+    std::cout << std::rotr<uint32_t>(static_cast<uint32_t>(3735928559), 32) << "\n";
     // # 64-bit rotations
     // print(rotl64(UInt64(1), 1))                    # 2
     std::cout << std::rotl<uint64_t>(1, 1) << "\n";
@@ -32,19 +32,19 @@ void main() {
     // print(rotr64(UInt64(1), 1))                    # 0x8000000000000000
     std::cout << std::rotr<uint64_t>(1, 1) << "\n";
     // print(rotr64(UInt64(0x0123456789abcdef), 16))  # 0xcdef0123456789ab
-    std::cout << std::rotr<uint64_t>(81985529216486895, 16) << "\n";
+    std::cout << std::rotr<uint64_t>(static_cast<uint64_t>(81985529216486895), 16) << "\n";
     // # Byte swap: 32-bit
     // print(byteswap32(UInt32(0x12345678)))          # 0x78563412
     std::cout << std::byteswap<uint32_t>(305419896) << "\n";
     // print(byteswap32(UInt32(0x00000001)))          # 0x01000000
     std::cout << std::byteswap<uint32_t>(1) << "\n";
     // print(byteswap32(UInt32(0xff00ff00)))          # 0x00ff00ff
-    std::cout << std::byteswap<uint32_t>(4278255360) << "\n";
+    std::cout << std::byteswap<uint32_t>(static_cast<uint32_t>(4278255360)) << "\n";
     // # Byte swap: 64-bit
     // print(byteswap64(UInt64(0x0123456789abcdef)))  # 0xefcdab8967452301
-    std::cout << std::byteswap<uint64_t>(81985529216486895) << "\n";
+    std::cout << std::byteswap<uint64_t>(static_cast<uint64_t>(81985529216486895)) << "\n";
     // print(byteswap64(UInt64(0x00000000ffffffff)))  # 0xffffffff00000000
-    std::cout << std::byteswap<uint64_t>(4294967295) << "\n";
+    std::cout << std::byteswap<uint64_t>(static_cast<uint64_t>(4294967295)) << "\n";
 }
 
 void __tpy_init() {

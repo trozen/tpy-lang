@@ -8,11 +8,11 @@ namespace tpyapp::main {
 void main() {
     // # Int64 constructors and large values
     // a: Int64 = Int64(9223372036854775807)  # Max Int64
-    int64_t a = 9223372036854775807;
+    int64_t a = static_cast<int64_t>(9223372036854775807);
     // print(a)
     std::cout << a << "\n";
     // b: Int64 = Int64(-9223372036854775808)  # Min Int64
-    int64_t b = (-9223372036854775807LL - 1);
+    int64_t b = static_cast<int64_t>((-9223372036854775807LL - 1));
     // print(b)
     std::cout << b << "\n";
     // # Int64 arithmetic
@@ -28,16 +28,16 @@ void main() {
     // c: UInt64 = UInt64(0)
     uint64_t c = 0;
     // d: UInt64 = UInt64(18446744073709551615)  # Max UInt64
-    uint64_t d = 18446744073709551615ull;
+    uint64_t d = static_cast<uint64_t>(18446744073709551615ull);
     // print(c)
     std::cout << c << "\n";
     // print(d)
     std::cout << d << "\n";
     // # UInt64 arithmetic
     // u: UInt64 = UInt64(10000000000)
-    uint64_t u = 10000000000;
+    uint64_t u = static_cast<uint64_t>(10000000000);
     // v: UInt64 = UInt64(5000000000)
-    uint64_t v = 5000000000;
+    uint64_t v = static_cast<uint64_t>(5000000000);
     // print(u + v)
     std::cout << (::tpy::add_check<uint64_t>(u, v)) << "\n";
     // print(u - v)

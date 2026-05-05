@@ -95,7 +95,7 @@ template<typename T, std::ranges::input_range R>
 std::vector<T> to_vector(R&& range) {
     std::vector<T> result;
     if constexpr (requires { range.size(); }) {
-        result.reserve(range.size());
+        result.reserve(static_cast<std::size_t>(range.size()));
     }
     for (auto&& elem : range) {
         result.push_back(elem);
@@ -146,7 +146,7 @@ Container from_range(R&& range) {
     } else if constexpr (requires(Container& c) { c.reserve(std::size_t{}); } &&
                   std::ranges::sized_range<R>) {
         Container result;
-        result.reserve(std::ranges::size(range));
+        result.reserve(static_cast<std::size_t>(std::ranges::size(range)));
         result.assign(std::ranges::begin(range), std::ranges::end(range));
         return result;
     } else {

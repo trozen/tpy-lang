@@ -60,7 +60,7 @@ void __tpy_init() {
     static std::vector<int32_t> __global_slot_2 = ({
         std::vector<int32_t> __result;
         auto __obj_0 = {"a", "bb", "ccc"};
-        __result.reserve(__obj_0.size());
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -116,7 +116,7 @@ void __tpy_init() {
     static std::vector<int32_t> __global_slot_6 = ({
         std::vector<int32_t> __result;
         auto __obj_3 = {"a", "bb", "ccc", "dd"};
-        __result.reserve(__obj_3.size());
+        __result.reserve(static_cast<std::size_t>(__obj_3.size()));
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
@@ -145,7 +145,7 @@ void __tpy_init() {
     static std::array<::tpy::BigInt, 5> __global_slot_8 = ({
         std::array<::tpy::BigInt, 5> __result;
         for (int32_t x = 0; x < 5; ++x) {
-            __result[x] = ::tpy::BigInt((::tpy::mul_check<int32_t>(x, x)));
+            __result[static_cast<std::size_t>(x)] = ::tpy::BigInt((::tpy::mul_check<int32_t>(x, x)));
         }
         __result;
     });

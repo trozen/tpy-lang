@@ -39,7 +39,7 @@ void main() {
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>({{"vertices", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_0 = poly.vertices;
-        __result.reserve(__obj_0.size());
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -55,7 +55,7 @@ void main() {
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::variant<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, std::variant<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>({{"title", d.title}, {"shapes", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_1 = d.shapes;
-        __result.reserve(__obj_1.size());
+        __result.reserve(static_cast<std::size_t>(__obj_1.size()));
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
@@ -81,7 +81,7 @@ void main() {
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>({{"items", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_2 = c.items;
-        __result.reserve(__obj_2.size());
+        __result.reserve(static_cast<std::size_t>(__obj_2.size()));
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
@@ -97,7 +97,7 @@ void main() {
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::variant<std::vector<::tpy::ordered_map<std::string, int32_t>>, std::vector<std::string>>>(::tpy::ordered_map<std::string, std::variant<std::vector<::tpy::ordered_map<std::string, int32_t>>, std::vector<std::string>>>({{"points", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_3 = ml.points;
-        __result.reserve(__obj_3.size());
+        __result.reserve(static_cast<std::size_t>(__obj_3.size()));
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {

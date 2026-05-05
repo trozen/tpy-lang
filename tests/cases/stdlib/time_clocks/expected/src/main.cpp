@@ -34,7 +34,7 @@ void main() {
     // tn: Int64 = time.time_ns()
     int64_t tn = ::tpy::stdlib::time::time_ns();
     // print("time_ns_after_2024:", tn > Int64(1704067200000000000))
-    std::cout << "time_ns_after_2024:" << " " << ::tpy::print_bool((tn > 1704067200000000000)) << "\n";
+    std::cout << "time_ns_after_2024:" << " " << ::tpy::print_bool((tn > static_cast<int64_t>(1704067200000000000))) << "\n";
     // t: float = time.time()
     double t = ::tpy::time_time();
     // print("time_after_2024:", t > 1704067200.0)

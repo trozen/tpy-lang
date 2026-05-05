@@ -18,7 +18,7 @@ std::string join_parts(std::string_view sep, ::tpy::varargs<std::string> parts) 
             result += sep;
         }
         // result += parts[i]
-        result += parts[i];
+        result += parts[static_cast<std::size_t>(i)];
     }
     // return result
     return result;

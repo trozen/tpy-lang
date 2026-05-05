@@ -27,7 +27,7 @@ void main() {
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::vector<std::optional<::tpy::ordered_map<std::string, int32_t>>>>({{"items", ({
         std::vector<std::optional<::tpy::ordered_map<std::string, int32_t>>> __result;
         auto& __obj_0 = pl.items;
-        __result.reserve(__obj_0.size());
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -40,7 +40,7 @@ void main() {
     std::cout << ::tpy::TuplePrinter(std::tuple<std::vector<std::optional<std::tuple<int32_t, int32_t>>>>(({
         std::vector<std::optional<std::tuple<int32_t, int32_t>>> __result;
         auto& __obj_1 = pl.items;
-        __result.reserve(__obj_1.size());
+        __result.reserve(static_cast<std::size_t>(__obj_1.size()));
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {

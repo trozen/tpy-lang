@@ -17,7 +17,7 @@ std::string f(::tpy::varargs<int32_t> args, std::string_view sep) {
             result += sep;
         }
         // result += str(args[i])
-        result += ::tpy::fixed_to_str<int32_t>(args[i]);
+        result += ::tpy::fixed_to_str<int32_t>(args[static_cast<std::size_t>(i)]);
     }
     // return result
     return result;

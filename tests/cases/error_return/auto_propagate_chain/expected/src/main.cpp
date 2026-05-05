@@ -11,7 +11,7 @@ std::expected<int32_t, NotFound> lookup(const std::vector<int32_t>& items, int32
     int32_t __stop_0 = ::tpy::__len__(items);
     for (int32_t i = 0; i < __stop_0; ++i) {
         // if items[i] == target:
-        if ((items[i] == target)) {
+        if ((items[static_cast<std::size_t>(i)] == target)) {
             // return i
             return i;
         }

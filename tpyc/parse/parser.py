@@ -14,7 +14,7 @@ import textwrap
 from typing import Any, Literal, NoReturn, TYPE_CHECKING
 
 from ..typesys import (
-    FieldInfo, RecordInfo, TypeRegistry,
+    FieldInfo, NominalType, OptionalType, RecordInfo, TypeRegistry,
     FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, LiteralValue,
     bare_name,
 )
@@ -980,6 +980,8 @@ class Parser:
                     for kw in dec.keywords:
                         if isinstance(kw.value, ast.Constant):
                             kw_dict[kw.arg] = kw.value.value
+                        elif isinstance(kw.value, ast.Name):
+                            kw_dict[kw.arg] = _NameArg(kw.value.id)
                     arg_value = (dec.args[0].value, kw_dict)
                 elif not dec.args:
                     # @type_param_default(T=int) -- kwargs only
@@ -1095,12 +1097,18 @@ class Parser:
             return _DecoratorArgSchema()  # bare only
 
         def _map_type(ptype: TpyType) -> tuple[type, str] | None:
+            # Optional[T] kwargs default to None and accept either a value of T
+            # or no value -- unwrap to T for the schema.
+            if isinstance(ptype, OptionalType):
+                ptype = ptype.inner
             if is_bool_type(ptype):
                 return (bool, "bool")
             if is_str_type(ptype):
                 return (str, "str")
-            td = type_def_of(ptype)
-            if td is not None and td.qname == qnames.TYPE:
+            # `type` annotation -> _NameArg (type-name reference). The TYPE
+            # qname has no registered TypeDef, so check by qualified name.
+            if (isinstance(ptype, NominalType)
+                    and ptype.qualified_name() == qnames.TYPE):
                 return (_NameArg, "type name")
             return None
 
@@ -1851,6 +1859,7 @@ class Parser:
         is_property_getter = False
         is_property_setter = False
         property_setter_name: str | None = None
+        native_cpp_return_type: str | None = None
         for dec in node.decorator_list:
             # Detect @prop_name.setter / @prop_name.deleter before general resolution
             func_node_check = dec.func if isinstance(dec, ast.Call) else dec
@@ -1905,6 +1914,12 @@ class Parser:
                         f"@{bare_name(qname)}(binding=...) only supports binding=\"C\"", dec)
                 native_name = pos
                 native_function = kw.get("function", False)
+                cpp_rt = kw.get("cpp_return_type")
+                if isinstance(cpp_rt, _NameArg):
+                    native_cpp_return_type = cpp_rt.name
+                elif cpp_rt is not None:
+                    raise ParseError(
+                        f"@{bare_name(qname)}(cpp_return_type=...) requires a type name", dec)
             else:
                 dec_name = self._decorator_local_name(dec) or "?"
                 raise ParseError(f"Unknown decorator '{dec_name}' on method '{node.name}'", dec)
@@ -2100,6 +2115,7 @@ class Parser:
             native_name=native_name,
             native_function=native_function,
             native_preserves_refs=native_preserves_refs,
+            native_cpp_return_type=native_cpp_return_type,
             cpp_template=cpp_template,
             type_params=method_type_params,
             type_param_bounds=method_type_param_bounds,
@@ -2144,6 +2160,7 @@ class Parser:
         linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         cpp_template: str | None = None
+        native_cpp_return_type: str | None = None
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"function '{node.name}'")
             if qname == qnames.TYPE_PARAM_DEFAULT:
@@ -2201,6 +2218,12 @@ class Parser:
                         f"(schema unavailable -- ensure _bootstrap._extern is imported "
                         f"before modules that use decorator kwargs)", dec)
                 native_name = pos
+                cpp_rt = kw.get("cpp_return_type")
+                if isinstance(cpp_rt, _NameArg):
+                    native_cpp_return_type = cpp_rt.name
+                elif cpp_rt is not None:
+                    raise ParseError(
+                        f"@{bare_name(qname)}(cpp_return_type=...) requires a type name", dec)
             else:
                 dec_name = self._decorator_local_name(dec) or "?"
                 raise ParseError(f"Unknown decorator '{dec_name}' on function '{node.name}'", dec)
@@ -2370,6 +2393,7 @@ class Parser:
             is_overload_stub=is_overload_stub,
             linkage=linkage,
             native_name=native_name,
+            native_cpp_return_type=native_cpp_return_type,
             cpp_template=cpp_template,
             is_stub=is_overload_stub_body if is_overload_stub else is_stub,
             value_ptr_coercion=value_ptr_coercion,
