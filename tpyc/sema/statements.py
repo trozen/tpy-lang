@@ -1021,6 +1021,7 @@ class StatementAnalyzer:
             if enum_type is not None:
                 stmt.enum_iterable = enum_type
                 elem_type = enum_type
+                self._record_for_loop_var_type(stmt, elem_type)
                 before = self.init.save()
                 consumed_before_loop = self.ctx.func.current_consumed_own_params.copy()
                 ns_types_before_foreach = self._save_ns_var_types()
@@ -1194,6 +1195,7 @@ class StatementAnalyzer:
                     self.ctx.func.mutated_loop_vars.discard(stmt.var)
                     self.ctx.func.consumed_loop_vars.discard(stmt.var)
                     self.ctx.func.deferred_loop_copy_warnings.pop(stmt.var, None)
+                    self._record_for_loop_var_type(stmt, elem_type)
                     with self.scopes.loop_var(inner_scope, stmt.var, elem_type, iter_depth, is_foreach=True):
                         for s in stmt.body:
                             self.analyze_stmt(s)
@@ -2035,6 +2037,25 @@ class StatementAnalyzer:
             return FLOAT
         return t
 
+    def _record_for_loop_var_type(self, stmt: TpyForEach, elem_type: TpyType) -> None:
+        """Record the resolved loop var type for `# tpyc: type()` validation
+        and IDE display. The actual `loop_var` binding keeps `elem_type` as-is
+        so the body's overload resolution retains IntLiteralType-to-BigInt
+        flexibility (heapq pattern: `for v in [literals]: heappush(h: list[int], v)`).
+        Tuple-unpack for-loops have a synthetic `stmt.var` -- the user-facing
+        names are recorded by the body's TpyTupleUnpack handler instead.
+
+        Limitation: if the body retro-widens the loop var to BigInt (heapq
+        pattern), this recording isn't updated -- local_deduction's retro-widen
+        path keys on var_decl_by_name, which only contains TpyVarDecl-backed
+        names. `# tpyc: type()` on such a loop var would show the literal-
+        defaulted Int32, not the widened BigInt.
+        """
+        if not stmt.loc or stmt.is_tuple_unpack:
+            return
+        self.ctx.declared_var_types[(stmt.loc.line, stmt.var)] = (
+            resolve_int_literals(elem_type, self.ctx.default_int_for_literal))
+
     def _propagate_loop_body_vars(self, stmt: TpyStmt,
                                    inner_scope: 'Scope',
                                    skip_var: str | None = None) -> None:
@@ -2750,6 +2771,12 @@ class StatementAnalyzer:
                     self.ctx.func.unresolved_none_vars.add(stmt.name)
                 else:
                     var_type = init_type
+                # Resolve IntLiteralType nested inside TupleType / Array / list
+                # so `t = (1, 2)` records `tuple[Int32, Int32]` rather than
+                # `tuple[IntLiteral(1), IntLiteral(2)]`. Codegen already lowers
+                # the storage to concrete types via downstream passes; this
+                # aligns sema's view so type queries return the same answer.
+                var_type = resolve_int_literals(var_type, self.ctx.default_int_for_literal)
             # Strip OwnType from init_type: ownership of the source variable
             # doesn't transfer to the target. The target determines its own
             # ownership via the OwnType wrapping logic below (line ~2570).

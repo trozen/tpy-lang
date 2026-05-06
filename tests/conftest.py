@@ -1319,6 +1319,7 @@ def parse_type_annotations(source: str) -> list[TypeAnnotation]:
 
 
 _VAR_NAME_RE = re.compile(r'\s*(\w+)\s*(?::\s*[\w\[\], .|]+\s*)?(?:\s*,\s*\w+)*\s*=')
+_FOR_LOOP_VAR_RE = re.compile(r'\s*for\s+(\w+)(?:\s*,\s*\w+)*\s+in\b')
 
 
 def validate_type_annotations(
@@ -1334,9 +1335,13 @@ def validate_type_annotations(
     errors = []
 
     for ann in annotations:
-        # Extract variable name from the source line
+        # Extract variable name from the source line. Supports vardecl /
+        # tuple-unpack (`x = ...`, `a, b = ...`) and for-loop forms
+        # (`for n in xs:`, `for u, v in pairs:`). For tuple targets the first
+        # name is checked -- targets of the same unpack share the resolved
+        # element type, so one is sufficient.
         line_text = source.splitlines()[ann.line - 1]
-        var_match = _VAR_NAME_RE.match(line_text)
+        var_match = _VAR_NAME_RE.match(line_text) or _FOR_LOOP_VAR_RE.match(line_text)
         if not var_match:
             errors.append(f"Line {ann.line}: could not extract variable name from line")
             continue

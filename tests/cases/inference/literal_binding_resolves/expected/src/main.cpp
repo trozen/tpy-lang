@@ -6,17 +6,11 @@ namespace tpyapp::main {
 // # IntLiteralType is committed to default_int_type at binding sites that feed
 // # expression analysis: str() picks int32_t (not int8_t), and tuple-unpack
 // # locals get a concrete C++ type (not the literal value as a "type").
-// # Type annotations validate the resolved binding type; for-loop loop vars
-// # are not yet tracked in declared_var_types so are verified via the str()
-// # generated code in the snapshot instead.
 // a, b = 1, 2  # tpyc: type(Int32)
 int32_t a{};
 // # IntLiteralType is committed to default_int_type at binding sites that feed
 // # expression analysis: str() picks int32_t (not int8_t), and tuple-unpack
 // # locals get a concrete C++ type (not the literal value as a "type").
-// # Type annotations validate the resolved binding type; for-loop loop vars
-// # are not yet tracked in declared_var_types so are verified via the str()
-// # generated code in the snapshot instead.
 // a, b = 1, 2  # tpyc: type(Int32)
 int32_t b{};
 
@@ -24,7 +18,7 @@ int32_t b{};
 void main() {
     // nums = [10, 20, 30]  # tpyc: type(Array[Int32, 3])
     std::array<int32_t, 3> nums = {10, 20, 30};
-    // for n in nums:
+    // for n in nums:  # tpyc: type(Int32)
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -59,7 +53,7 @@ void main() {
     int32_t q2 = std::get<1>(__tup_2);
     // print(str(p), str(q), str(p2), str(q2))
     std::cout << ::tpy::fixed_to_str<int32_t>(p) << " " << ::tpy::fixed_to_str<int32_t>(q) << " " << ::tpy::fixed_to_str<int32_t>(p2) << " " << ::tpy::fixed_to_str<int32_t>(q2) << "\n";
-    // t = (6, 7)
+    // t = (6, 7)  # tpyc: type(tuple[Int32, Int32])
     std::tuple<int32_t, int32_t> t = std::tuple<int32_t, int32_t>{6, 7};
     // r, s = t  # tpyc: type(Int32)
     const auto& __tup_3 = t;
@@ -69,13 +63,13 @@ void main() {
     std::cout << ::tpy::fixed_to_str<int32_t>(r) << " " << ::tpy::fixed_to_str<int32_t>(s) << "\n";
     // pairs = [(1, 2), (3, 4)]  # tpyc: type(Array[tuple[Int32, Int32], 2])
     std::array<std::tuple<int32_t, int32_t>, 2> pairs = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
-    // for u, v in pairs:
+    // for u, v in pairs:  # tpyc: type(Int32)
     auto& __obj_1 = pairs;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_0 = *__beg_1;
-        // for u, v in pairs:
+        // for u, v in pairs:  # tpyc: type(Int32)
         const auto& __tup_4 = __for_tup_0;
         int32_t u = std::get<0>(__tup_4);
         int32_t v = std::get<1>(__tup_4);
@@ -94,9 +88,6 @@ void __tpy_init() {
     // # IntLiteralType is committed to default_int_type at binding sites that feed
     // # expression analysis: str() picks int32_t (not int8_t), and tuple-unpack
     // # locals get a concrete C++ type (not the literal value as a "type").
-    // # Type annotations validate the resolved binding type; for-loop loop vars
-    // # are not yet tracked in declared_var_types so are verified via the str()
-    // # generated code in the snapshot instead.
     // a, b = 1, 2  # tpyc: type(Int32)
     auto __tup_1 = std::tuple<int32_t, int32_t>{1, 2};
     a = std::get<0>(__tup_1);
