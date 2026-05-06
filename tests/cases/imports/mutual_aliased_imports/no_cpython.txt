@@ -1,0 +1,1 @@
+CPython rejects the cycle at import time.

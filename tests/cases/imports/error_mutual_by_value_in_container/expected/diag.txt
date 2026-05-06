@@ -1,0 +1,1 @@
+a.py:5: error: Cyclic import: field 'A.children' stores 'B' from 'b' by value. Cycle members can only reference each other through `Ptr[T]`, references, `Optional[T]` (when `T` is a non-value type), or pointer-variant union positions. Use `Ptr[B]` or move the field out of the cycle. Cycle: a <-> b

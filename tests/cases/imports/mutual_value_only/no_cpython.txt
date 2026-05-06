@@ -1,0 +1,3 @@
+CPython rejects the circular `from a import K` / `from b import H` at import
+time (partially initialized module). TPy compiles cycles via Phase 7+ skeletal
+cross-module pre-registration + Phase 8 per-module fwd.hpp.

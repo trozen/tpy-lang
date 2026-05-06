@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Iterable, TYPE_CHECKING
 
-from .parse import Parser, ParseError, TpyModule, TpyImport, RelativeImportKey, SourceLocation, scan_star_exports
+from .parse import Parser, ParseError, TpyModule, TpyImport, TpyVarDecl, RelativeImportKey, SourceLocation, scan_star_exports
 from .parse.imports import (
     StarImportResolver, NonLiteralAllError, _PRIVATE_MODULE_PUBLIC_NAMES,
 )
@@ -26,20 +26,86 @@ from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from .sema.reach_analysis import compute_reached_symbols
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
-from .type_def_registry import get_type_def as _get_type_def
+from .type_def_registry import (
+    get_type_def as _get_type_def,
+    attach_dynamic_type_def, TypeCategory,
+)
 from .codegen_cpp import CodeGenerator, CodeGenOptions
 from .codegen_cpp.context import qualified_cpp_name, set_namespace_map, set_include_path_map, get_include_path, clear_namespace_map, module_to_include_path
-from .typesys import TpyType, INT32, INT64, BIGINT, clear_all_compilation_state
+from .typesys import (
+    TpyType, INT32, INT64, BIGINT, VOID, NominalType,
+    RecordInfo, FunctionInfo, ProtocolInfo,
+    OwnType, OptionalType, UnionType, TupleType, PtrType, RefType, ReadonlyType,
+    is_fn_type, unwrap_ref_type, is_protocol_type, is_protocol_union,
+    clear_all_compilation_state,
+)
+from .type_def_registry import protocol_info_of
+from .module_names import public_module_name
 from .macro_loader import MacroRegistry, is_macro_module_source
 
 if TYPE_CHECKING:
-    from .typesys import FunctionInfo, RecordInfo, ProtocolInfo, NominalType, ModuleInfo, ModuleVarInfo
+    from .typesys import ModuleInfo, ModuleVarInfo
 
 
 DEFAULT_INT_CHOICES = ("Int32", "Int64", "BigInt")
 
 # Maps user-facing platform names in # tpy: link() to sys.platform prefixes
 _PLATFORM_MAP = {"windows": "win32", "linux": "linux", "macos": "darwin"}
+
+
+def _has_static_protocol_param(params) -> bool:
+    """Mirror codegen's static-protocol-param detection (see
+    `tpyc.codegen_cpp.protocols.ProtocolGenerator.get_all_protocol_params`)
+    using sema-level type predicates only. A static protocol param
+    forces the function to be emitted as a C++ template; a @dynamic
+    protocol param does not. Used by the completeness-graph reject
+    gate to recognize the same set of "in-header-bodied" functions
+    as codegen.
+    """
+    for _, ptype in params:
+        unwrapped = ptype
+        if isinstance(unwrapped, RefType):
+            unwrapped = unwrapped.wrapped
+        if isinstance(unwrapped, ReadonlyType):
+            unwrapped = unwrapped.wrapped
+        if isinstance(unwrapped, OwnType):
+            unwrapped = unwrapped.wrapped
+        if isinstance(unwrapped, OptionalType):
+            inner = unwrapped.inner
+            if is_protocol_type(inner) and isinstance(inner, NominalType):
+                pi = protocol_info_of(inner)
+                if pi is None or not pi.is_dynamic:
+                    return True
+            continue
+        if isinstance(unwrapped, UnionType) and is_protocol_union(unwrapped):
+            for m in unwrapped.members:
+                if isinstance(m, NominalType) and is_protocol_type(m):
+                    pi = protocol_info_of(m)
+                    if pi is None or not pi.is_dynamic:
+                        return True
+            continue
+        if is_protocol_type(unwrapped) and isinstance(unwrapped, NominalType):
+            pi = protocol_info_of(unwrapped)
+            if pi is None or not pi.is_dynamic:
+                return True
+    return False
+
+
+def _is_template_emitted_in_header(func) -> bool:
+    """True when codegen will emit the function's *definition* in the
+    .hpp rather than .cpp -- the gate-relevant predicate for
+    cycle-member functions and methods. Mirrors
+    `FunctionGenerator.is_template_function` plus @cpp_template stubs.
+    """
+    if func.type_params:
+        return True
+    if getattr(func, "cpp_template", None) is not None:
+        return True
+    if any(is_fn_type(unwrap_ref_type(p[1])) for p in func.params):
+        return True
+    if _has_static_protocol_param(func.params):
+        return True
+    return False
 
 
 def parse_default_int_type(name: str) -> TpyType:
@@ -477,23 +543,38 @@ class BuildLayout:
 
     def hpp_path(self, module_name: str) -> Path:
         """Path to the generated header for a module."""
-        override = get_include_path(module_name)
-        if override is not None:
-            return self.include_dir / override
-        parts = module_name.split('.')
-        if len(parts) == 1:
-            return self.include_dir / f"{parts[0]}.hpp"
-        return self.include_dir / Path(*parts[:-1]) / f"{parts[-1]}.hpp"
+        return self._module_path(module_name, ".hpp", self.include_dir)
+
+    def fwd_hpp_path(self, module_name: str) -> Path:
+        """Path to the cycle-member forward-declaration header
+        (`<mod>_fwd.hpp`). Cycle peers include this instead of the
+        full header to break the complete-type cycle for pointer /
+        reference positions.
+        """
+        return self._module_path(module_name, "_fwd.hpp", self.include_dir)
 
     def cpp_path(self, module_name: str) -> Path:
         """Path to the generated source for a module."""
+        return self._module_path(module_name, ".cpp", self.src_dir)
+
+    @staticmethod
+    def _module_path(module_name: str, suffix: str, base_dir: Path) -> Path:
+        """Build a file path for `module_name` under `base_dir`.
+
+        Honors the `# tpy: include()` override (which gives a `.hpp`
+        path; we strip and re-suffix). Otherwise dotted names map to
+        nested directories with the leaf name as the file stem.
+        `suffix` is the trailing component (".hpp", ".cpp",
+        "_fwd.hpp", ...).
+        """
         override = get_include_path(module_name)
         if override is not None:
-            return self.src_dir / (override.removesuffix('.hpp') + '.cpp')
+            return base_dir / (override.removesuffix('.hpp') + suffix)
         parts = module_name.split('.')
+        leaf = f"{parts[-1]}{suffix}"
         if len(parts) == 1:
-            return self.src_dir / f"{parts[0]}.cpp"
-        return self.src_dir / Path(*parts[:-1]) / f"{parts[-1]}.cpp"
+            return base_dir / leaf
+        return base_dir / Path(*parts[:-1]) / leaf
 
     def binary_path(self) -> Path:
         """Path to the output binary."""
@@ -866,6 +947,18 @@ class Compiler:
     def _init_shared(self) -> None:
         """Initialize state shared by both file and stdin compilation paths."""
         self.modules: dict[str, CompiledModule] = {}
+        # Workspace-wide ModuleInfo dict aliased into every analyzer's
+        # TypeRegistry.modules. See SemanticAnalyzer.__init__ for the
+        # ownership rule: per-module short-name bindings stay
+        # per-analyzer; only the qname-keyed `modules` surface is shared
+        # so cross-module lookups see every peer's contribution.
+        from .typesys import ModuleInfo as _ModuleInfo
+        self._shared_modules: dict[str, _ModuleInfo] = {}
+        # Per-module map of cycle peers (populated by
+        # `_compute_compile_order` from Tarjan SCC output). Codegen
+        # consults this to swap full <peer>.hpp includes for
+        # <peer>_fwd.hpp in the header path.
+        self._cycle_peers: dict[str, frozenset[str]] = {}
         self.compile_order: list[str] = []
         self.shadowed_builtins: dict[str, set[tuple[str, int | None]]] = {}
         self.diagnostics: list[Diagnostic] = []
@@ -961,8 +1054,23 @@ class Compiler:
             ns_map = self._build_namespace_map()
             set_namespace_map(ns_map)
             set_include_path_map(self._build_include_path_map(ns_map))
+            # Workspace-wide two-pass sema. Pre-populate compiled.exports
+            # with skeletons for cross-module bind_imports to find;
+            # then resolve types per module; then finalize decls per
+            # module; then bodies per module.
             for name in self.compile_order:
-                self._analyze_module(self.modules[name])
+                self._pre_populate_decl_exports(self.modules[name])
+            for name in self.compile_order:
+                compiled = self.modules[name]
+                self._resolve_types_for_module(compiled)
+                self._finalize_declarations(compiled)
+            self._check_workspace_completeness_cycles()
+            for name in self.compile_order:
+                self._analyze_bodies(self.modules[name])
+            for name in self.compile_order:
+                analyzer = self.modules[name].analyzer
+                if analyzer is not None:
+                    analyzer.finalize_borrow_checks()
             return [self.modules[name] for name in self.compile_order]
 
         # 1. Discover implicit stdlib first so @builtin_decorator schemas
@@ -991,10 +1099,40 @@ class Compiler:
         set_namespace_map(ns_map)
         set_include_path_map(self._build_include_path_map(ns_map))
 
-        # 5. Parse and analyze in dependency order
+        # 5. Workspace-wide two-pass sema (cyclic-import support).
+        # First pre-populate every module's `compiled.exports` with
+        # skeleton RecordInfo / FunctionInfo / ProtocolInfo / enum
+        # NominalType so peers' `bind_imports` can find a stable Python
+        # object for each cross-module imported name -- including
+        # between cycle members. Then resolve types + finalize decls per
+        # module; then bodies per module. Canonicalization itself is
+        # parser-level so it does not depend on order.
+        for module_name in self.compile_order:
+            self._pre_populate_decl_exports(self.modules[module_name])
         for module_name in self.compile_order:
             compiled = self.modules[module_name]
-            self._analyze_module(compiled)
+            self._resolve_types_for_module(compiled)
+            self._finalize_declarations(compiled)
+        # Completeness-graph reject gate.
+        # Run after all decls are finalized so RecordInfo.fields / .parents
+        # are populated. Scans cycle members for by-value cross-cycle
+        # record references (concrete inheritance, by-value fields, value-
+        # variant fields, by-value containers / tuples) and produces a
+        # structured TPy diagnostic naming the offending positions and
+        # modules. Without this, the cycle would compile through sema and
+        # fail at the C++ build with a complete-type compiler error.
+        self._check_workspace_completeness_cycles()
+        for module_name in self.compile_order:
+            self._analyze_bodies(self.modules[module_name])
+        # Workspace-wide borrow-check resolution. Each module's pending
+        # borrow checks are queued during body sema; resolving them
+        # only after every module's propagation has completed
+        # guarantees the resolution reads finalized cross-module
+        # mutation facts regardless of body-sema iteration order.
+        for module_name in self.compile_order:
+            analyzer = self.modules[module_name].analyzer
+            if analyzer is not None:
+                analyzer.finalize_borrow_checks()
 
         # Return in dependency order
         return [self.modules[name] for name in self.compile_order]
@@ -1073,15 +1211,15 @@ class Compiler:
             is_package_init: True if this is a package __init__ file.
 
         Raises:
-            CompileError: If circular import detected or module not found.
+            CompileError: If module not found.
         """
-        # Check for circular imports
+        # Cyclic imports are tolerated at discovery time -- the module
+        # is already on the chain, recursing would loop forever, so
+        # just bail. The conservatism gate (which cycle shapes are
+        # supported) lives in `_reject_unsupported_cycle`, called
+        # from `_compute_compile_order` once we know the SCC structure.
         if module_name in import_chain:
-            cycle = " -> ".join(import_chain + [module_name])
-            importing_module = import_chain[-1] if import_chain else module_name
-            importing_path = self.modules[importing_module].path if importing_module in self.modules else path
-            raise CompileError(f"Circular import detected: {cycle}", importing_module, importing_path,
-                               lineno=import_lineno)
+            return
 
         if module_name in self.modules:
             return
@@ -1379,45 +1517,97 @@ class Compiler:
                                            is_package_init=True)
 
     def _compute_compile_order(self) -> None:
-        """Compute topological sort of modules (dependencies first).
+        """Compute compilation order via Tarjan SCC + condensation topo sort.
 
-        Uses Kahn's algorithm for deterministic ordering.
+        Cyclic imports are accepted at the discovery layer. Tarjan
+        collapses the import graph into SCCs; the condensation is
+        acyclic and gets a deterministic topo sort. Within each SCC,
+        members are ordered alphabetically for stability. Non-cyclic
+        codebases yield identical output to the prior Kahn's algorithm.
+
+        Each non-trivial SCC (>= 2 modules, or a self-loop) goes through
+        `_reject_unsupported_cycle` which enforces the v1 conservatism
+        gate (top-level statements not in allowlist, by-value cross-
+        module type-completeness cycles, re-export facades inside cycles).
         """
-        # Build dependency graph
-        in_degree: dict[str, int] = {name: 0 for name in self.modules}
-        dependents: dict[str, list[str]] = {name: [] for name in self.modules}
-
+        # Build adjacency: module -> list of in-workspace deps
+        succ: dict[str, list[str]] = {name: [] for name in self.modules}
         for name, compiled in self.modules.items():
             for dep_name in compiled.ast.user_module_imports:
                 if dep_name in self.modules:
-                    in_degree[name] += 1
-                    dependents[dep_name].append(name)
+                    succ[name].append(dep_name)
 
-        # Start with modules that have no dependencies
-        queue = [name for name, degree in in_degree.items() if degree == 0]
-        queue.sort()  # Deterministic ordering
+        # Tarjan SCC. Iterative for safety on deep import graphs.
+        index_counter = [0]
+        stack: list[str] = []
+        on_stack: set[str] = set()
+        index: dict[str, int] = {}
+        lowlink: dict[str, int] = {}
+        sccs: list[list[str]] = []
 
-        result = []
-        while queue:
-            current = queue.pop(0)
-            result.append(current)
+        def _strongconnect(start: str) -> None:
+            # Iterative DFS via an explicit work stack of (node, iterator).
+            work: list[tuple[str, list[str], int]] = []
+            index[start] = index_counter[0]
+            lowlink[start] = index_counter[0]
+            index_counter[0] += 1
+            stack.append(start)
+            on_stack.add(start)
+            work.append((start, sorted(succ[start]), 0))
+            while work:
+                v, neighbors, i = work[-1]
+                if i < len(neighbors):
+                    w = neighbors[i]
+                    work[-1] = (v, neighbors, i + 1)
+                    if w not in index:
+                        index[w] = index_counter[0]
+                        lowlink[w] = index_counter[0]
+                        index_counter[0] += 1
+                        stack.append(w)
+                        on_stack.add(w)
+                        work.append((w, sorted(succ[w]), 0))
+                    elif w in on_stack:
+                        lowlink[v] = min(lowlink[v], index[w])
+                else:
+                    work.pop()
+                    if work:
+                        parent = work[-1][0]
+                        lowlink[parent] = min(lowlink[parent], lowlink[v])
+                    if lowlink[v] == index[v]:
+                        component: list[str] = []
+                        while True:
+                            w = stack.pop()
+                            on_stack.discard(w)
+                            component.append(w)
+                            if w == v:
+                                break
+                        sccs.append(sorted(component))
 
-            for dependent in dependents[current]:
-                in_degree[dependent] -= 1
-                if in_degree[dependent] == 0:
-                    # Insert in sorted order for determinism
-                    inserted = False
-                    for i, name in enumerate(queue):
-                        if dependent < name:
-                            queue.insert(i, dependent)
-                            inserted = True
-                            break
-                    if not inserted:
-                        queue.append(dependent)
+        for name in sorted(self.modules):
+            if name not in index:
+                _strongconnect(name)
 
-        if len(result) != len(self.modules):
-            # Should not happen since we check for cycles earlier
-            raise CompileError("Internal error: could not resolve module dependencies")
+        # Tarjan emits SCCs in reverse topo order (callees before callers
+        # in successor-edge sense, i.e. deps before dependents).
+        # Reject unsupported cycle shapes before the condensation topo
+        # sort uses them.
+        for component in sccs:
+            if len(component) > 1 or component[0] in succ.get(component[0], []):
+                self._reject_unsupported_cycle(component)
+
+        # Record cycle peers so codegen can emit `<peer>_fwd.hpp`
+        # includes for SCC members and avoid the cyclic complete-
+        # header include problem.
+        self._cycle_peers = {}
+        for component in sccs:
+            if len(component) > 1 or component[0] in succ.get(component[0], []):
+                peers = frozenset(component)
+                for member in component:
+                    self._cycle_peers[member] = peers
+
+        result: list[str] = []
+        for component in sccs:
+            result.extend(component)
 
         # Move implicit stdlib modules (and their submodules) to the front
         # so they're analyzed before any user code. The topological sort
@@ -1429,6 +1619,549 @@ class Compiler:
             implicit = [m for m in result if m in implicit_set]
             result = implicit + [m for m in result if m not in implicit_set]
         self.compile_order = result
+
+    def _check_workspace_completeness_cycles(self) -> None:
+        """Reject by-value cross-module cycles with a structured diagnostic.
+
+        Walks every cycle member's records (parents, fields) and rejects
+        positions that require a peer cycle member's *complete* type --
+        positions where the cycle's `<peer>_fwd.hpp` is insufficient
+        and the C++ build would otherwise fail with a complete-type error
+        ("invalid use of incomplete type", "field has incomplete type",
+        ...). The check runs after decl finalization so RecordInfo
+        fields / parents are populated.
+
+        v1 conservative gate. Detected positions:
+        - **Concrete inheritance**: `class A(Peer):` always needs `Peer`
+          complete.
+        - **By-value record field**: `field: peer_record_type` (the
+          field stores the record by value -- only matters for
+          `ValueType` records but we flag any by-value position to
+          give a useful error before C++ does).
+        - **`Own[T]` field**: `field: Own[peer_record]` -- ownership
+          transfer, value layout.
+        - **Tuple field**: `field: tuple[peer_record, ...]`.
+        - **Value-variant union field**: `field: peer_record | other`
+          where the variant is value-kind.
+        - **Container of by-value cycle peer**: `field: list[peer]`,
+          `set[peer]`, `Array[peer, N]`, etc. -- containers store
+          elements by value internally.
+
+        Forward-declarable positions (NOT flagged):
+        - `Ptr[peer]`, `peer&` (via RefType wrapping).
+        - Pointer-variant unions (the typical non-value record union).
+        - Optional with pointer rep (`OptionalType.uses_pointer_repr`).
+        - `@dynamic` protocol references (base-class fwd suffices).
+
+        Diagnostic shape names the offending field path, the cycle
+        members in the SCC, and points the user at the workaround
+        (use `Ptr[T]` / `Optional[T]` instead of by-value).
+        """
+        if not self.compile_order:
+            return
+        # Use the cycle-peers map produced by `_compute_compile_order`
+        # via Tarjan SCC -- only modules already in a non-trivial
+        # import SCC need checking. Records in non-cyclic modules can
+        # always be made complete via a normal #include.
+        if not self._cycle_peers:
+            return
+        # Group cycle members by SCC for the diagnostic.
+        seen_components: set[frozenset[str]] = set()
+        for peers in self._cycle_peers.values():
+            if peers in seen_components:
+                continue
+            seen_components.add(peers)
+            self._reject_completeness_cycle_in_scc(peers)
+
+    def _reject_completeness_cycle_in_scc(self, scc: frozenset[str]) -> None:
+        """Inspect every record in this SCC for complete-type cross-cycle
+        references; raise if any. The diagnostic names the first
+        offender (deterministic order over modules + record name +
+        field name)."""
+
+        def _find_complete_required_peer(
+            typ, current_module: str,
+            _seen: set[int] | None = None,
+        ) -> tuple[str, str] | None:
+            """Return (peer_module, type_name) for the first cycle-peer
+            record this type stores by value, or None. `_seen` is a
+            per-traversal cycle guard against recursive type aliases
+            that would otherwise loop on the NominalType / type_args
+            descent. It must NOT be shared across separate field
+            checks -- a NominalType singleton referenced by two
+            distinct fields would silently skip the second on a
+            shared set, hiding a real completeness violation.
+            """
+            if _seen is None:
+                _seen = set()
+            tid = id(typ)
+            if tid in _seen:
+                return None
+            _seen.add(tid)
+            # Strip wrappers that don't change layout.
+            if isinstance(typ, ReadonlyType):
+                return _find_complete_required_peer(typ.wrapped, current_module, _seen)
+            # Pointer / reference: forward-declarable.
+            if isinstance(typ, (PtrType, RefType)):
+                return None
+            # Own[T]: ownership transfer, value layout -> complete required.
+            if isinstance(typ, OwnType):
+                return _find_complete_required_peer(typ.wrapped, current_module, _seen)
+            # Optional with pointer repr: T*-stored, forward-declarable.
+            if isinstance(typ, OptionalType):
+                if typ.uses_pointer_repr():
+                    return None
+                return _find_complete_required_peer(typ.inner, current_module, _seen)
+            # Union: pointer-variant uses pointers (forward-declarable);
+            # value-variant uses std::variant (complete required).
+            if isinstance(typ, UnionType):
+                if not all(m.is_value_type() for m in typ.members):
+                    return None
+                for m in typ.members:
+                    found = _find_complete_required_peer(m, current_module, _seen)
+                    if found is not None:
+                        return found
+                return None
+            # Tuple: by-value, complete required for all elements.
+            if isinstance(typ, TupleType):
+                for m in typ.element_types:
+                    found = _find_complete_required_peer(m, current_module, _seen)
+                    if found is not None:
+                        return found
+                return None
+            # NominalType: user record, builtin container, or protocol.
+            if isinstance(typ, NominalType):
+                if typ.is_user_record:
+                    qname = typ._module_qname
+                    if qname:
+                        module = qname.rsplit('.', 1)[0]
+                        if module != current_module and module in scc:
+                            return (module, typ.name)
+                    # Generic-record instantiation: a non-cycle-peer
+                    # record parameterized over a cycle-peer arg
+                    # (e.g. `Box[B]`) still needs the peer's complete
+                    # layout when the template instantiates. Descend
+                    # into type_args so we don't miss those.
+                    if typ.type_args:
+                        for arg in typ.type_args:
+                            if not hasattr(arg, "is_value_type"):
+                                continue
+                            found = _find_complete_required_peer(arg, current_module, _seen)
+                            if found is not None:
+                                return found
+                    return None
+                if typ.is_protocol and not typ.is_dynamic_protocol:
+                    # Static protocol used as a type: template constraint
+                    # needs complete concept.
+                    qname = typ._module_qname
+                    if qname:
+                        module = qname.rsplit('.', 1)[0]
+                        if module != current_module and module in scc:
+                            return (module, typ.name)
+                    return None
+                # Builtin container (list / dict / set / Array / ...):
+                # walk args looking for cycle-peer references.
+                if typ.type_args:
+                    for arg in typ.type_args:
+                        if not hasattr(arg, "is_value_type"):
+                            continue  # int literal, string literal, etc.
+                        found = _find_complete_required_peer(arg, current_module, _seen)
+                        if found is not None:
+                            return found
+            return None
+
+        for member in sorted(scc):
+            compiled = self.modules.get(member)
+            if compiled is None or compiled.analyzer is None:
+                continue
+            registry = compiled.analyzer.registry
+            for record_name, record_info in registry.records.items():
+                if record_info.defining_module != member:
+                    continue  # imported records flow through their owning module's check
+                # Concrete inheritance from a peer in the same SCC.
+                for parent in record_info.parents:
+                    if isinstance(parent, NominalType) and parent.is_user_record:
+                        qn = parent._module_qname
+                        if not qn:
+                            continue
+                        parent_mod = qn.rsplit('.', 1)[0]
+                        if parent_mod != member and parent_mod in scc:
+                            cycle_repr = " <-> ".join(sorted(scc))
+                            # RecordInfo carries no source location; pin
+                            # to the first cross-cycle import in this
+                            # module so the diagnostic has a usable line.
+                            lineno_n = self._first_cycle_import_line(compiled, scc)
+                            raise CompileError(
+                                f"Cyclic import: '{record_name}' in "
+                                f"'{member}' concretely inherits from "
+                                f"'{parent.name}' (defined in "
+                                f"'{parent_mod}'). Concrete inheritance "
+                                f"is not allowed across an import "
+                                f"cycle; inherit from a `@dynamic` "
+                                f"protocol or break the cycle. Cycle: "
+                                f"{cycle_repr}",
+                                member, compiled.path, lineno=lineno_n,
+                            )
+                # By-value field referencing a peer record.
+                for field in record_info.fields:
+                    found = _find_complete_required_peer(field.type, member)
+                    if found is not None:
+                        peer_mod, peer_name = found
+                        cycle_repr = " <-> ".join(sorted(scc))
+                        lineno_n = field.loc.line if field.loc else None
+                        raise CompileError(
+                            f"Cyclic import: field "
+                            f"'{record_name}.{field.name}' stores "
+                            f"'{peer_name}' from '{peer_mod}' by value. "
+                            f"Cycle members can only reference each "
+                            f"other through `Ptr[T]`, references, "
+                            f"`Optional[T]` (when `T` is a non-value "
+                            f"type), or pointer-variant union "
+                            f"positions. Use `Ptr[{peer_name}]` or "
+                            f"move the field out of the cycle. Cycle: "
+                            f"{cycle_repr}",
+                            member, compiled.path, lineno=lineno_n,
+                        )
+
+            # In-header-bodied functions: codegen emits the function
+            # *definition* in the .hpp when any of these holds:
+            # generic (type_params), @cpp_template stub, any Fn-typed
+            # param, or any static (non-@dynamic) protocol param. For
+            # cycle members, the .hpp only includes peer fwd headers,
+            # so any by-value cross-cycle peer in those signatures
+            # fails at C++ instantiation time. Reject at sema with a
+            # structured diagnostic. Mirrors
+            # `FunctionGenerator.is_template_function` so the gate's
+            # set of "templated" functions matches what codegen
+            # actually emits inline.
+            for func in compiled.ast.functions:
+                if func.is_overload_stub:
+                    continue
+                if not _is_template_emitted_in_header(func):
+                    continue
+                self._check_signature_for_cross_cycle_by_value(
+                    func, member, scc, compiled,
+                    name_label=f"'{func.name}'",
+                    where_label="function",
+                    finder=_find_complete_required_peer,
+                )
+
+            # Methods on cycle-member records: a non-generic record
+            # emits non-templated methods to .cpp, but generic records
+            # emit *all* methods inline in the header, and any
+            # individual method that is itself templated (type_params,
+            # Fn-typed param, static protocol param) emits its body
+            # inline regardless of the record. Walk both.
+            ast_records_by_name = {
+                r.name: r for r in compiled.ast.all_records()
+            }
+            for record_name, record_info in registry.records.items():
+                if record_info.defining_module != member:
+                    continue
+                record_is_generic = bool(record_info.type_params)
+                ast_record = ast_records_by_name.get(record_name)
+                if ast_record is None:
+                    continue
+                # Method overload groups -- `analyzer.overload_groups`
+                # is populated for methods only during body sema (in
+                # `_analyze_record_methods`), which has not run yet
+                # when this gate fires. Build the index locally from
+                # the AST instead. Codegen
+                # (`records.py:_method_can_be_out_of_line`) keeps any
+                # overload-dispatched impl inline-in-struct because
+                # each specialization is emitted under a different
+                # mangled name in the struct body, so the .hpp needs
+                # the peer's complete layout.
+                overload_dispatched_names = {
+                    m.name for m in ast_record.methods if m.is_overload_stub
+                }
+                for method in ast_record.methods:
+                    if method.is_overload_stub:
+                        continue
+                    method_inline = (
+                        record_is_generic
+                        or _is_template_emitted_in_header(method)
+                        # __init__/__del__ are always emitted inline
+                        # in the struct (codegen excludes them from
+                        # out-of-line emission), so their body needs
+                        # the peer's complete layout in the .hpp.
+                        or method.name in ("__init__", "__del__")
+                        or method.name in overload_dispatched_names
+                    )
+                    if not method_inline:
+                        continue
+                    self._check_signature_for_cross_cycle_by_value(
+                        method, member, scc, compiled,
+                        name_label=f"'{record_name}.{method.name}'",
+                        where_label="method",
+                        finder=_find_complete_required_peer,
+                    )
+
+            # Recursive type aliases that reference cycle peers by-value
+            # in their body. TPy synthesizes a wrapper struct for these,
+            # so the body needs the peer's complete layout -- same
+            # constraint as a record field.
+            recursive_aliases = (
+                compiled.ast.recursive_union_names
+                if compiled.ast.recursive_union_names else set()
+            )
+            for alias_name, (alias_type, alias_loc) in compiled.ast.type_aliases.items():
+                if alias_name not in recursive_aliases:
+                    continue
+                found = _find_complete_required_peer(unwrap_ref_type(alias_type), member)
+                if found is None:
+                    continue
+                peer_mod, peer_name = found
+                cycle_repr = " <-> ".join(sorted(scc))
+                lineno_n = alias_loc.line if alias_loc else None
+                raise CompileError(
+                    f"Cyclic import: recursive type alias "
+                    f"'{alias_name}' in '{member}' references "
+                    f"'{peer_name}' from '{peer_mod}' by value. "
+                    f"Recursive aliases store their members directly, "
+                    f"which is not allowed across an import cycle. "
+                    f"Use `Ptr[{peer_name}]` or move the alias out of "
+                    f"the cycle. Cycle: {cycle_repr}",
+                    member, compiled.path, lineno=lineno_n,
+                )
+
+    def _check_signature_for_cross_cycle_by_value(
+        self, func, member: str, scc, compiled, *,
+        name_label: str, where_label: str, finder,
+    ) -> None:
+        """Walk a function/method signature for by-value cross-cycle
+        peer references and raise a structured diagnostic if found.
+
+        `finder` is the SCC-bound `_find_complete_required_peer`
+        closure from the caller; it descends through containers /
+        unions / tuples / generic records.
+        """
+        positions: list[tuple[str, TpyType]] = [("return type", func.return_type)]
+        for pname, ptype in func.params:
+            positions.append((f"parameter '{pname}'", ptype))
+        for pos_label, pos_type in positions:
+            found = finder(unwrap_ref_type(pos_type), member)
+            if found is None:
+                continue
+            peer_mod, peer_name = found
+            cycle_repr = " <-> ".join(sorted(scc))
+            lineno_n = func.loc.line if func.loc else None
+            raise CompileError(
+                f"Cyclic import: {pos_label} of {name_label} in "
+                f"'{member}' is '{peer_name}' from '{peer_mod}' by "
+                f"value. Generic, `Fn`-typed, static-protocol-typed, "
+                f"and `@cpp_template` {where_label}s (and methods on "
+                f"generic records, `__init__`/`__del__`, and "
+                f"overload-dispatched methods) are monomorphized at "
+                f"every call site, so their parameter and return "
+                f"types must be fully visible to callers -- which is "
+                f"not allowed across an import cycle. Pass the peer "
+                f"through a `Ptr[T]`, reference, or `@dynamic` "
+                f"protocol position, or move the {where_label} out "
+                f"of the cycle. Cycle: {cycle_repr}",
+                member, compiled.path, lineno=lineno_n,
+            )
+
+    @staticmethod
+    def _first_cycle_import_line(
+        compiled: CompiledModule, cycle_members,
+    ) -> int | None:
+        """Source line of the first import in `compiled` that targets
+        a cycle peer, used to pin completeness / facade reject
+        diagnostics. None when the module has no such import (rare;
+        falls back to file-level error)."""
+        cycle_set = set(cycle_members)
+        for stmt in compiled.ast.top_level_stmts or []:
+            if isinstance(stmt, TpyImport) and stmt.module_name in cycle_set:
+                return stmt.loc.line if stmt.loc else None
+        return None
+
+    def _reject_unsupported_cycle(self, component: list[str]) -> None:
+        """Conservative reject gate for cycle members.
+
+        Three rejection categories:
+
+        1. **Top-level statements not in the allowlist.** Cycle
+           members must consist of declarations and imports only --
+           any executable top-level code (calls, conditionals, loops,
+           assignments other than empty `name: T` decls) breaks the
+           order-independent body-sema invariant.
+        2. **C++ type-completeness cycles.** Tarjan SCC over the
+           *resolved type-dependency graph* (by-value fields,
+           value-types in containers / tuples / unions / Own /
+           value-variants, concrete inheritance, value enum members,
+           by-value cross-module function param/return where the
+           function definition needs full layout). Any SCC there is
+           rejected -- forward declarations alone do not provide the
+           layout the C++ back-end needs.
+        3. **Re-export facades** in cycles (`is_package_init`,
+           `# tpy: native_module`, implicit stdlib facade members).
+           Their re-export semantics conflict with the simple decl-
+           registration ordering used inside an SCC.
+
+        v1 implementation: only category 1 + category 3 are checked
+        here. Category 2 is enforced by the C++ build the user runs
+        (a cycle through by-value fields produces a complete-type
+        compile error). A future tightening can move category-2 into
+        sema with a dedicated diagnostic; the design pre-decides the
+        full position list.
+        """
+        # Self-loop ('a' imports 'a'): degenerate; the parser should
+        # already prevent this, but treat defensively.
+        members = sorted(component)
+        # Category 3: re-export facades cannot be cycle members in v1.
+        implicit = self._implicit_stdlib_set()
+        for name in members:
+            compiled = self.modules.get(name)
+            if compiled is None:
+                continue
+            is_native = bool(compiled.ast.directives.native_module)
+            if compiled.is_package_init or is_native or name in implicit:
+                cycle_repr = " <-> ".join(members)
+                kind = ("package __init__" if compiled.is_package_init
+                        else "native_module facade" if is_native
+                        else "implicit stdlib facade")
+                lineno_n = self._first_cycle_import_line(compiled, members)
+                raise CompileError(
+                    f"Cyclic import involves a {kind} ('{name}'): "
+                    f"{cycle_repr}. Re-export facades cannot participate "
+                    f"in a cyclic import. Move the cyclic types out of "
+                    f"the facade or break the cycle with explicit imports.",
+                    name, compiled.path, lineno=lineno_n,
+                )
+        # Category 1: top-level statements not in the allowlist.
+        # Allowed: TpyImport, TpyVarDecl with init=None whose codegen is
+        # inert (declarations only). The synthetic `__name__` Final[str]
+        # is injected later (sub-phase 3); at this discovery-time check
+        # we only see user-authored statements.
+        for name in members:
+            compiled = self.modules.get(name)
+            if compiled is None:
+                continue
+            for stmt in compiled.ast.top_level_stmts or []:
+                if isinstance(stmt, TpyImport):
+                    continue
+                if isinstance(stmt, TpyVarDecl) and stmt.init is None:
+                    continue
+                cycle_repr = " <-> ".join(members)
+                lineno_n = stmt.loc.line if stmt.loc else None
+                raise CompileError(
+                    f"Cyclic import members may only contain imports "
+                    f"and bare type declarations at module level; "
+                    f"found executable code in '{name}'. Move the "
+                    f"statement into a function, or break the cycle. "
+                    f"Cycle: {cycle_repr}",
+                    name, compiled.path, lineno=lineno_n,
+                )
+
+    def _pre_populate_decl_exports(self, compiled: CompiledModule) -> None:
+        """Mint skeleton RecordInfo / FunctionInfo / ProtocolInfo / enum
+        NominalType objects from the parsed AST and stash them in
+        `compiled.exports`. Runs once per module after type resolution
+        and before any module's `_finalize_declarations`.
+
+        The skeletons exist so peers' `bind_imports` can find a stable
+        Python object for each cross-module imported name -- including
+        between cycle members where neither module's full sema has
+        completed when the other binds. Sub-phase 2/3 of
+        `_finalize_declarations` sees the skeleton via
+        `ctx.module_decl_exports` (set in `_finalize_declarations`) and
+        mutates its fields in place rather than allocating a new object,
+        so peer registries that captured a reference at bind-imports
+        time stay live.
+        """
+        ast = compiled.ast
+        if ast is None:
+            return
+        module_name = compiled.name
+        public = public_module_name(module_name, ast.directives.cpp_namespace) or module_name
+        # Records: skeletons carry just identity + type-params so cross-
+        # module type references can find them; fields/methods/parents
+        # fill in during sub-phase 2 via in-place mutation in
+        # register_record (which adopts the skeleton via _adopt_skeleton).
+        # Skip @builtin_type records (Int32, Float32, list, dict, ...) --
+        # those already have authoritative TypeDef entries; pre-mining a
+        # skeleton would pollute `_user_qname_index` via the implicit
+        # stdlib registration loop and shadow the real RecordInfo at
+        # conformance-check time.
+        for record in ast.all_records():
+            if record.builtin_type_key:
+                continue
+            if record.name in compiled.exports.records:
+                continue
+            compiled.exports.records[record.name] = RecordInfo(
+                name=record.name,
+                fields=[],
+                module=public,
+                defining_module=module_name,
+                type_params=list(record.type_params) if record.type_params else [],
+                type_param_kinds=(list(record.type_param_kinds)
+                                  if record.type_param_kinds else []),
+            )
+        # Protocols: skeleton carries identity. `register_protocol`
+        # adopts it via `_adopt_skeleton` so peers' references see the
+        # freshly-finalized methods / parents.
+        # Also pre-attach the skeleton onto the TypeDef registry under
+        # the canonical qname so the parser-level type resolver
+        # (`type_resolver.py`'s `_resolve_registered_type`) can detect
+        # this name as a protocol BEFORE its defining module's
+        # register_protocol runs. Without this, cycle members that
+        # import a peer protocol would see `is_protocol=False` on the
+        # resolved NominalType (TypeDef.protocol still None at resolve
+        # time) and method dispatch would fail.
+        for protocol in ast.protocols:
+            if protocol.name in compiled.exports.protocols:
+                continue
+            skel = ProtocolInfo(
+                name=protocol.name,
+                methods=[],
+                type_params=list(protocol.type_params) if protocol.type_params else [],
+                module=public,
+                is_dynamic=protocol.is_dynamic,
+            )
+            compiled.exports.protocols[protocol.name] = skel
+            attach_dynamic_type_def(
+                f"{public}.{protocol.name}",
+                TypeCategory.PROTOCOL,
+                protocol=skel,
+            )
+        # Enums: pre-mint a NominalType (enum-kind) so peers can find
+        # the enum by name during bind_imports. The qname matches what
+        # `register_enum` will emit so the TypeDef-registry lookup
+        # (`type_def_of(typ)`) finds the same `EnumInfo` regardless of
+        # which analyzer's NominalType reference is used. The
+        # NominalType itself is essentially an immutable identity --
+        # peer references stay valid; the EnumInfo payload that
+        # register_enum attaches to TypeDef is the per-qname source of
+        # truth for member lists, underlying type, etc.
+        for enum in ast.all_enums():
+            if enum.name in compiled.exports.enums:
+                continue
+            compiled.exports.enums[enum.name] = NominalType(
+                enum.name, type_args=(),
+                _module_qname=f"{public}.{enum.name}",
+            )
+        # Functions: skeletons carry just `name` + a placeholder return
+        # type; sub-phase 3 mutates in place. The empty params list is
+        # fine -- peers only check that a name exists in
+        # `module_info.functions[name]` during bind_imports; the
+        # subsequent overload resolution in body sema reads the
+        # then-mutated fields.
+        for func in ast.functions:
+            if func.is_overload_stub:
+                # Stubs are grouped with their implementation in
+                # `register_function_group`; don't pre-populate
+                # individually -- the group is created together.
+                continue
+            if func.name in compiled.exports.functions:
+                continue
+            compiled.exports.functions[func.name] = [FunctionInfo(
+                name=func.name,
+                params=[],
+                return_type=VOID,
+                qualified_name=f"{module_name}.{func.name}",
+                originating_module=module_name,
+            )]
 
     def _canonicalize_import_sources(self, compiled: CompiledModule) -> None:
         """Rewrite the module's parser import table to defining modules.
@@ -1532,33 +2265,65 @@ class Compiler:
 
     def _lookup_in_module(
         self, module_name: str, name: str,
+        _seen: set[str] | None = None,
     ) -> tuple[str, str] | None:
-        """Resolve a (module, name) against a module's exports. Returns
-        the (defining_module, canonical_name) tuple if `name` is
-        exported as a record / enum / protocol; None otherwise."""
-        compiled = self.modules.get(module_name)
-        if compiled is None:
+        """Parser-level (defining_module, canonical_name) lookup for
+        record / enum / protocol type names.
+
+        Walks each module's parsed AST -- records / enums / protocols
+        for *local* definitions, and `ast.imports` for re-exports --
+        so the lookup does NOT require dep sema to have completed.
+        Required for cycle-member canonicalization: with workspace-
+        wide two-pass sema, no peer's exports are guaranteed to be
+        populated when canonicalize runs for the cycle's first edge.
+
+        Type aliases / functions / globals are excluded by design --
+        only canonical *type* names mint a `_module_qname` in
+        `parser_imports.canonicalize_name_index`. Adding non-type
+        names there would mark them `is_canonical` and short-circuit
+        downstream resolution (e.g. Float64-the-alias would gain a
+        spurious qname before its alias body is resolved).
+
+        Re-export chains follow `ast.imports` recursively. The
+        `_seen` set guards against rare re-export-chain cycles.
+        """
+        if _seen is None:
+            _seen = set()
+        seen_key = f"{module_name}::{name}"
+        if seen_key in _seen:
             return None
-        exports = compiled.exports
-        if name in exports.records:
-            rinfo = exports.records[name]
-            if rinfo.module:
-                return (rinfo.module, rinfo.name)
-        if name in exports.enums:
-            etype = exports.enums[name]
-            qn = etype._module_qname
-            if qn:
-                # Enum NominalTypes minted in sema.registration.register_enum
-                # (and parser's register_enum_placeholder) always use the
-                # `{module}.{name}` shape; anything else is a bug in the
-                # registration path.
-                dot = qn.rfind('.')
-                assert dot > 0, f"enum qname '{qn}' missing module prefix"
-                return (qn[:dot], qn[dot + 1:])
-        if name in exports.protocols:
-            pinfo = exports.protocols[name]
-            if pinfo.module:
-                return (pinfo.module, pinfo.name)
+        _seen.add(seen_key)
+        compiled = self.modules.get(module_name)
+        if compiled is None or compiled.ast is None:
+            return None
+        ast = compiled.ast
+        public_name = _public_module_name_of(
+            module_name, ast.directives.cpp_namespace,
+        ) or module_name
+        # Local definitions take precedence over any same-named import.
+        for record in ast.all_records():
+            if record.name == name:
+                return (public_name, name)
+        for enum in ast.all_enums():
+            if enum.name == name:
+                return (public_name, name)
+        for protocol in ast.protocols:
+            if protocol.name == name:
+                return (public_name, name)
+        # Re-export chase: scan `ast.imports` for an entry whose local
+        # name matches `name`, then recurse into the source module.
+        if ast.imports:
+            for src_module, names in ast.imports.items():
+                if not isinstance(names, set):
+                    continue
+                for original_name, local_name in names:
+                    if local_name != name:
+                        continue
+                    nested = self._lookup_in_module(
+                        src_module, original_name, _seen=_seen,
+                    )
+                    if nested is not None:
+                        return nested
         return None
 
     def _resolve_module_refs(self, compiled: CompiledModule) -> None:
@@ -1570,11 +2335,12 @@ class Compiler:
         from tpyc.parse.resolve_refs import resolve_refs
         resolve_refs(compiled.ast)
 
-    def _analyze_module(self, compiled: CompiledModule) -> None:
-        """Analyze a single module.
-
-        Args:
-            compiled: The compiled module to analyze.
+    def _resolve_types_for_module(self, compiled: CompiledModule) -> None:
+        """Canonicalize imports and resolve TypeRefNodes for one
+        module. The per-module pipeline reads as `resolve -> sema`;
+        canonicalization is parser-AST-only so it does not require
+        dep sema to have completed (cycle members can canonicalize
+        each other before either has run sub-phases 2-3).
         """
         # Canonicalize the import table to defining modules so the
         # resolve phase that follows mints authoritative `_module_qname`
@@ -1589,10 +2355,28 @@ class Compiler:
         # methods don't exist yet at this point.
         self._resolve_module_refs(compiled)
 
+    def _finalize_declarations(self, compiled: CompiledModule) -> SemanticAnalyzer:
+        """Create the analyzer for `compiled`, register dep
+        ModuleInfo, and run the three declaration-time sub-phases
+        (`bind_imports`, `register_records_and_protocols`,
+        `register_signatures`). Returns the analyzer so a subsequent
+        body-sema pass can consume it.
+
+        Compile loop runs all `_finalize_declarations` first, then
+        all `_analyze_bodies` -- so by the time any module's body
+        sema starts, every peer module's declarations are finalized
+        and visible through `_shared_modules`.
+        """
         # Create analyzer
-        analyzer = SemanticAnalyzer(default_int_type=self.default_int_type)
+        analyzer = SemanticAnalyzer(default_int_type=self.default_int_type,
+                                    shared_modules=self._shared_modules)
         analyzer.ctx.macro_registry = self._macro_registry
         analyzer.ctx.allow_top_level_error_unwrap = self.allow_top_level_error_unwrap
+        # Hand the pre-populated exports to the analyzer so the
+        # registration paths can adopt skeleton objects from peers'
+        # shared dict instead of allocating new ones (see
+        # `_pre_populate_decl_exports`).
+        analyzer.ctx.module_decl_exports = compiled.exports
 
         # Register already-analyzed user modules in this analyzer's registry
         # This must happen before analyze() so _register_user_module_import can find them
@@ -1645,12 +2429,46 @@ class Compiler:
         # Set module name for __name__
         module_name = "__main__" if compiled.is_entry_point else compiled.name
 
-        # Analyze the module
+        # Run the three declaration-time sub-phases. Body sema (sub-phases 4
+        # and 5) is deferred to `_analyze_bodies`.
         try:
-            analyzer.analyze(
-                compiled.ast,
-                module_name=module_name,
-            )
+            analyzer.bind_imports(compiled.ast, module_name=module_name)
+            analyzer.register_records_and_protocols(compiled.ast)
+            analyzer.register_signatures(compiled.ast)
+        except SemanticError as e:
+            if e.filename is None and not compiled.is_entry_point:
+                e.filename = os.path.relpath(compiled.path)
+            raise
+
+        # Store analyzer for codegen and for the subsequent body-sema pass.
+        compiled.analyzer = analyzer
+        # Populate declaration exports right after sub-phases 1-3 so peer
+        # modules' canonicalization can see authoritative records /
+        # protocols / enums / functions / type_aliases / variables /
+        # decl re-exports without waiting for our body sema. With
+        # `register_globals` now in sub-phase 3, variable state is
+        # already final at this point; both halves of `_extract_exports`
+        # are safe to run here. The body-sema pass adds the `reached`
+        # set and refreshes the workspace ModuleInfo entry.
+        self._extract_declaration_exports(compiled, analyzer)
+        self._extract_body_exports(compiled, analyzer)
+        return analyzer
+
+    def _analyze_bodies(self, compiled: CompiledModule) -> None:
+        """Run sub-phase 4 (analyze_bodies) and sub-phase 5
+        (run_phase2_fixpoint) on the analyzer prepared by
+        `_finalize_declarations`, then extract exports + compute
+        reached symbols.
+        """
+        analyzer = compiled.analyzer
+        assert analyzer is not None, (
+            "_analyze_bodies called before _finalize_declarations populated "
+            f"compiled.analyzer for module '{compiled.name}'"
+        )
+        module_name = "__main__" if compiled.is_entry_point else compiled.name
+        try:
+            analyzer.analyze_bodies(compiled.ast)
+            analyzer.run_phase2_fixpoint(compiled.ast)
         except SemanticError as e:
             if e.filename is None and not compiled.is_entry_point:
                 e.filename = os.path.relpath(compiled.path)
@@ -1669,11 +2487,10 @@ class Compiler:
                         SourceLocation(lineno or 0, 0)
                     ))
 
-        # Store analyzer for codegen
-        compiled.analyzer = analyzer
-
-        # Extract exports from the analyzed module
-        self._extract_exports(compiled, analyzer)
+        # Body-level exports were already populated by
+        # `_finalize_declarations` (since `register_globals` runs in
+        # sub-phase 3). The remaining body-sema-dependent piece is the
+        # `reached` set (computed below from the fully-analyzed AST).
 
         # Compute reached external symbols for include propagation. Stored
         # on analyzer.ctx for codegen and on compiled.exports so downstream
@@ -1682,12 +2499,55 @@ class Compiler:
         analyzer.ctx.reached = reached
         compiled.exports.reached = reached
 
-    def _extract_exports(self, compiled: CompiledModule, analyzer: SemanticAnalyzer) -> None:
-        """Extract exports from an analyzed module.
+        # Refresh this module's entry in `_shared_modules` with the now-
+        # complete ModuleInfo (including body-level variables / final
+        # markers / reached set). Peer analyzers in the same compilation
+        # share the dict (see SemanticAnalyzer.__init__), so any module
+        # whose `_analyze_bodies` runs after this one will see the
+        # fully-populated entry. The declarations-pass setup loops only
+        # ever construct ModuleInfo from a peer's *declaration* exports;
+        # without this refresh, body sema would read a stale partial entry.
+        analyzer.registry.register_module(
+            self._exports_to_module_info(compiled.name, compiled.exports, compiled)
+        )
 
-        Args:
-            compiled: The compiled module to update.
-            analyzer: The semantic analyzer with registered items.
+    def _analyze_module(self, compiled: CompiledModule) -> None:
+        """Analyze a single module: run declaration finalization then body
+        sema. Thin wrapper preserving the legacy per-module analyze cycle;
+        callers preferring the explicit two-stage form (Phase 6) call
+        `_finalize_declarations` and `_analyze_bodies` directly.
+        """
+        self._finalize_declarations(compiled)
+        self._analyze_bodies(compiled)
+
+    def _extract_exports(self, compiled: CompiledModule, analyzer: SemanticAnalyzer) -> None:
+        """Extract exports from a fully-analyzed module.
+
+        Convenience wrapper that runs both halves in sequence; preserves
+        the legacy single-call signature for callers that still drive the
+        per-module analyze cycle directly.
+        """
+        self._extract_declaration_exports(compiled, analyzer)
+        self._extract_body_exports(compiled, analyzer)
+
+    def _extract_declaration_exports(
+        self, compiled: CompiledModule, analyzer: SemanticAnalyzer,
+    ) -> None:
+        """Extract declaration-level exports (no body sema required).
+
+        Populates `compiled.exports` with everything that's known after the
+        three declaration sub-phases (`bind_imports`,
+        `register_records_and_protocols`, `register_signatures`):
+        functions, records, protocols, enums, type_aliases, and the
+        recursive-union name set, plus their re-export entries (which
+        depend only on the analyzer's import-binding tables and the
+        registry indexes -- both populated by sub-phase 1+2).
+
+        Idempotent: callers may invoke this between
+        `_finalize_declarations` and `_analyze_bodies` so peer modules
+        canonicalizing through `compiled.exports.{records,protocols,enums}`
+        see authoritative entries even before bodies have been analyzed.
+        Body-level export state lives in `_extract_body_exports`.
         """
         exports = compiled.exports
         # Package inits, implicit stdlib facade modules, and any
@@ -1813,6 +2673,25 @@ class Compiler:
         for name, (typ, _loc) in compiled.ast.type_aliases.items():
             exports.type_aliases[name] = typ
         exports.recursive_union_names = set(compiled.ast.recursive_union_names)
+
+    def _extract_body_exports(
+        self, compiled: CompiledModule, analyzer: SemanticAnalyzer,
+    ) -> None:
+        """Extract body-sema-dependent exports.
+
+        After moving `register_globals` to sub-phase 3 (so cross-module
+        `from X import VAR` resolves at decl-time), variable / final-
+        marker / reexport state is actually known by the end of
+        `_finalize_declarations`. This method now extracts them too --
+        keeping the symmetric "decl + body" split intact while the
+        actual data dependencies sit on the decl side. The body-sema
+        pass would otherwise have nothing left to extract.
+        """
+        exports = compiled.exports
+        is_native = compiled.ast.directives.native_module if compiled else False
+        can_reexport = (compiled.is_package_init
+                        or is_native
+                        or compiled.name in self._implicit_stdlib_set())
 
         # Export global variables (from top-level statements)
         # These are tracked in the global scope, but we must exclude imported variables
@@ -2024,6 +2903,11 @@ class Compiler:
         # Pass actual user modules (those in self.modules, not builtins without user files)
         actual_user_modules = set(self.modules.keys())
         implicit_stdlib = self._implicit_stdlib_set()
+        # Peer modules in the same SCC. Codegen uses this to swap
+        # full <peer>.hpp includes for <peer>_fwd.hpp in the .hpp
+        # (cycle-breaking forward declarations) and to emit our own
+        # <mod>_fwd.hpp. Empty for non-cycle modules.
+        cycle_peers = self._cycle_peers.get(mod_name, frozenset())
         hpp_code, cpp_code = codegen.generate(
             compiled.ast, mod_name,
             is_entry_point=compiled.is_entry_point,
@@ -2033,12 +2917,20 @@ class Compiler:
             reexported_records=compiled.exports.reexported_records,
             reexported_variables=compiled.exports.reexported_variables,
             reexported_enums=compiled.exports.reexported_enums,
+            cycle_peers=cycle_peers,
         )
 
         if not hpp_code:
             return None, None
         hpp_path.parent.mkdir(parents=True, exist_ok=True)
         hpp_path.write_text(hpp_code)
+        # Cycle members get a `<mod>_fwd.hpp` so peers can include
+        # forward declarations without pulling in full layout.
+        if cycle_peers:
+            fwd_code = codegen.generate_fwd_header(compiled.ast, mod_name)
+            fwd_path = layout.fwd_hpp_path(mod_name)
+            fwd_path.parent.mkdir(parents=True, exist_ok=True)
+            fwd_path.write_text(fwd_code)
         cpp_path.parent.mkdir(parents=True, exist_ok=True)
         cpp_path.write_text(cpp_code)
 

@@ -1,0 +1,1 @@
+CPython rejects the circular `from a import lookup` / `from b import Color, describe` at import time. TPy compiles the cycle via skeletal pre-registration of records, functions, and enums.

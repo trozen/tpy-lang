@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // @error_return(JsonError)
 // def test_reader_standard() -> None:
-std::expected<void, ::tpystd::tplib::json::JsonError> test_reader_standard() {
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_reader_standard() {
     // reader = JsonReader('["a\\nb", "c\\td", "e\\\\f", "g\\"h"]')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("[\"a\\nb\", \"c\\td\", \"e\\\\f\", \"g\\\"h\"]");
     // reader.read_array_start()
@@ -38,7 +38,7 @@ std::expected<void, ::tpystd::tplib::json::JsonError> test_reader_standard() {
 
 // @error_return(JsonError)
 // def test_reader_bf() -> None:
-std::expected<void, ::tpystd::tplib::json::JsonError> test_reader_bf() {
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_reader_bf() {
     // reader = JsonReader('["x\\by", "x\\fy"]')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("[\"x\\by\", \"x\\fy\"]");
     // reader.read_array_start()
@@ -70,7 +70,7 @@ std::expected<void, ::tpystd::tplib::json::JsonError> test_reader_bf() {
 
 // @error_return(JsonError)
 // def test_reader_unicode() -> None:
-std::expected<void, ::tpystd::tplib::json::JsonError> test_reader_unicode() {
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_reader_unicode() {
     // reader = JsonReader('["\\u0041", "\\u004F\\u004B"]')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("[\"\\u0041\", \"\\u004F\\u004B\"]");
     // reader.read_array_start()
@@ -122,7 +122,7 @@ void test_writer_control_chars() {
 
 // @error_return(JsonError)
 // def test_roundtrip() -> None:
-std::expected<void, ::tpystd::tplib::json::JsonError> test_roundtrip() {
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_roundtrip() {
     // w = JsonWriter()
     ::tpystd::tplib::json::writer::JsonWriter w = ::tpystd::tplib::json::writer::JsonWriter();
     // w.array_start()

@@ -1,0 +1,1 @@
+a.py:1: error: Cyclic import: 'A' in 'a' concretely inherits from 'B' (defined in 'b'). Concrete inheritance is not allowed across an import cycle; inherit from a `@dynamic` protocol or break the cycle. Cycle: a <-> b

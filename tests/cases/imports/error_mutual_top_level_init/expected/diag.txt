@@ -1,0 +1,1 @@
+b.py:3: error: Cyclic import members may only contain imports and bare type declarations at module level; found executable code in 'b'. Move the statement into a function, or break the cycle. Cycle: a <-> b

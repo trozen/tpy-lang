@@ -1,1 +1,0 @@
-b.py:1: error: Circular import detected: main -> a -> b -> a

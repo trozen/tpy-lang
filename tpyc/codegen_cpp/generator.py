@@ -117,7 +117,8 @@ class CodeGenerator:
                  reexported_functions: dict[str, tuple[str, str]] | None = None,
                  reexported_records: dict[str, tuple[str, str]] | None = None,
                  reexported_variables: dict[str, tuple[str, str]] | None = None,
-                 reexported_enums: dict[str, tuple[str, str]] | None = None) -> tuple[str, str]:
+                 reexported_enums: dict[str, tuple[str, str]] | None = None,
+                 cycle_peers: 'frozenset[str] | None' = None) -> tuple[str, str]:
         """Generate C++ header and source files.
 
         Args:
@@ -133,6 +134,7 @@ class CodeGenerator:
         """
         self.ctx.module_name = module_name
         self.ctx.source_lines = module.source_lines
+        self.ctx.cycle_peers = cycle_peers or frozenset()
         # Filter out keyword stubs (@builtin_type classes / @builtin_decorator functions
         # that exist only for import resolution -- no C++ code needed).
         module.records = [
@@ -177,6 +179,13 @@ class CodeGenerator:
         # `submod.X` (after `from pkg import submod`) doesn't import X by
         # short name, so the loop above misses it. Walk each registered
         # dep module's exports to register cross-module qualified names.
+        # Locally-defined record short names are excluded so a same-named
+        # peer record in a registered dep module never shadows the local
+        # `Foo`'s unqualified emission. Without this guard, a workspace
+        # that registers all modules into a shared dict (or any path that
+        # transitively pulls a peer module with a colliding short name)
+        # would misqualify the local record.
+        local_short_record_names = {r.name for r in module.records}
         for dep_module in self.analyzer.registry.modules.values():
             if dep_module.is_builtin or dep_module.name == current_module:
                 continue
@@ -184,6 +193,8 @@ class CodeGenerator:
                 if record_info.is_native or record_info.builtin_type_key:
                     continue
                 if short in _native_cpp_names:
+                    continue
+                if short in local_short_record_names:
                     continue
                 if record_info.module is None or record_info.module == current_module:
                     continue
@@ -817,8 +828,13 @@ class CodeGenerator:
         # setters / forwarders) stay in the .hpp with ``inline`` so the
         # compiler can inline at the call site without LTO. Larger bodies
         # land in the .cpp via the matching pass at the end of `generate()`.
-        for record in sorted_records:
-            self.records.gen_record_method_defs(hpp, record, mode="def_hpp")
+        # Cycle members skip the inline-in-header pass: any method body
+        # that touches a cycle peer's type would need that peer's
+        # complete header included from .hpp, which `<peer>_fwd.hpp`
+        # doesn't carry.
+        if not self.ctx.cycle_peers:
+            for record in sorted_records:
+                self.records.gen_record_method_defs(hpp, record, mode="def_hpp")
 
         # ValueType specializations: exit namespace, emit, re-enter
         value_type_records = [
@@ -1137,10 +1153,22 @@ class CodeGenerator:
         if kind == "char_at":
             out.write(f"    }}\n")
 
-    def _module_to_include_path(self, module_name: str) -> str:
-        """Convert dotted module name to include path."""
+    def _module_to_include_path(self, module_name: str, *,
+                                 prefer_fwd: bool = False) -> str:
+        """Convert dotted module name to include path.
+
+        When `prefer_fwd` is True AND `module_name` is a cycle peer of
+        the current module, returns `<mod>_fwd.hpp` instead of
+        `<mod>.hpp`. The fwd header carries forward declarations of
+        the peer's records / enums / @dynamic protocols so the cyclic
+        include resolves without requiring complete types.
+        """
         from .context import module_to_include_path
-        return module_to_include_path(module_name)
+        path = module_to_include_path(module_name)
+        if prefer_fwd and module_name in self.ctx.cycle_peers:
+            if path.endswith(".hpp"):
+                return path[:-len(".hpp")] + "_fwd.hpp"
+        return path
 
     def _write_header_preamble(self, out: TextIO,
                                native_funcs: list[TpyFunction] | None = None,
@@ -1211,9 +1239,9 @@ class CodeGenerator:
                         emit_native_includes(parent_info)
                         included.add(parent_pkg)
                         continue
-                    out.write(f'#include "{self._module_to_include_path(parent_pkg)}"\n')
+                    out.write(f'#include "{self._module_to_include_path(parent_pkg, prefer_fwd=True)}"\n')
                     included.add(parent_pkg)
-            out.write(f'#include "{self._module_to_include_path(mod_name)}"\n')
+            out.write(f'#include "{self._module_to_include_path(mod_name, prefer_fwd=True)}"\n')
             included.add(mod_name)
 
         def visit(mod_name: str) -> None:
@@ -1284,11 +1312,72 @@ class CodeGenerator:
         ns = module_to_cpp_namespace(self.ctx.module_name)
         out.write(f"namespace {ns} {{\n\n")
 
+    def generate_fwd_header(self, module: TpyModule, module_name: str) -> str:
+        """Emit `<mod>_fwd.hpp` -- forward declarations of every record /
+        enum / @dynamic protocol defined in this module's namespace,
+        plus the namespace skeleton itself. Cycle peers in the same SCC
+        include this header in place of `<mod>.hpp` to break the
+        cyclic complete-type include while keeping access to the type
+        names.
+
+        Carries declarations only (no method bodies, no field
+        layouts), so positions that need complete-type info (by-value
+        fields, container elements, concrete inheritance, ...) are
+        rejected up-front by `_check_workspace_completeness_cycles`.
+        """
+        from .context import module_to_cpp_namespace
+        ns = module_to_cpp_namespace(module_name)
+        out_buf = io.StringIO()
+        out_buf.write("// Generated by TurboPython Compiler -- forward declarations for cycle peers\n")
+        out_buf.write("#pragma once\n\n")
+        out_buf.write(f"namespace {ns} {{\n\n")
+        for record in module.all_records():
+            cpp_name = record.name.replace(".", "::")
+            out_buf.write(f"struct {cpp_name};\n")
+        for enum in module.all_enums():
+            cpp_name = enum.name.replace(".", "::")
+            # `enum class Name : underlying;` -- the underlying type
+            # in the forward declaration MUST agree with the
+            # definition's. Pull it from the EnumInfo attached to
+            # the registered NominalType so both this fwd header
+            # and the full header in `_gen_enum_decl` use the same
+            # type and the C++ compiler accepts the redeclaration.
+            enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
+            if enum_type is None:
+                # Skeleton-pre-pop NominalType lacks an EnumInfo until
+                # `register_enum` runs; default to `int32_t` (matches
+                # `register_enum`'s default). The peer's full header
+                # will redeclare with the same underlying type.
+                underlying = "int32_t"
+            else:
+                underlying = enum_info_of(enum_type).underlying_type.to_cpp()
+            out_buf.write(f"enum class {cpp_name} : {underlying};\n")
+        for protocol in module.protocols:
+            # @dynamic protocols emit a `struct {Name}` base class that
+            # IS forward-declarable. Static (structural) protocols emit
+            # only a C++20 concept, which is NOT forward-declarable;
+            # cycle peers using a static protocol's name as a template
+            # constraint must include the full peer header (a complete-
+            # type position for the completeness-graph reject gate).
+            if protocol.is_dynamic:
+                cpp_name = protocol.name.replace(".", "::")
+                out_buf.write(f"struct {cpp_name};\n")
+        out_buf.write(f"\n}} // namespace {ns}\n")
+        return out_buf.getvalue()
+
     def _write_source_preamble(self, out: TextIO, module: TpyModule) -> None:
         out.write("// Generated by TurboPython Compiler\n")
         # Use full include path from include root (consistent with header includes)
         include_path = self._module_to_include_path(self.ctx.module_name)
-        out.write(f'#include "{include_path}"\n\n')
+        out.write(f'#include "{include_path}"\n')
+        # Cycle peers: the .hpp included <peer>_fwd.hpp for each, but
+        # the .cpp needs the FULL <peer>.hpp so function bodies can
+        # see complete types of cycle peers' records.
+        for peer in sorted(self.ctx.cycle_peers):
+            if peer == self.ctx.module_name:
+                continue
+            out.write(f'#include "{self._module_to_include_path(peer)}"\n')
+        out.write("\n")
         # EnumUtil definitions go before user namespace (they live in namespace tpy)
         if module.all_enums():
             self._gen_enum_source_defs(out, module)

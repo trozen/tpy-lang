@@ -1,0 +1,1 @@
+CPython rejects the circular `from a import Pair` / `from b import sum_pair` at import time. TPy compiles the cycle via skeletal pre-registration; class macros (@dataclass here) on cycle members work because pre-populate runs before any module's macros.

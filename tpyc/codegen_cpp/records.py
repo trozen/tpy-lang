@@ -636,7 +636,15 @@ class RecordGenerator:
                 continue
             if not self._method_can_be_out_of_line(method, record):
                 continue
-            if self._method_body_is_small(method) != want_small:
+            # Cycle members (Phase 8) skip the def_hpp partition entirely
+            # (the .hpp can only see <peer>_fwd.hpp; inline bodies that
+            # touch a peer's complete type would fail to compile). All
+            # out-of-line bodies for cycle members go to .cpp regardless
+            # of size.
+            if not self.ctx.cycle_peers:
+                if self._method_body_is_small(method) != want_small:
+                    continue
+            elif mode == "def_hpp":
                 continue
             self.functions.gen_method_def(
                 out, method, record.name, dynamic_overrides,

@@ -12,14 +12,14 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::expected<void, ::tpystd::tplib::json::JsonError> test_basic_object();
-std::expected<void, ::tpystd::tplib::json::JsonError> test_nested();
-std::expected<void, ::tpystd::tplib::json::JsonError> test_null_and_escape();
-std::expected<void, ::tpystd::tplib::json::JsonError> test_float();
-std::expected<void, ::tpystd::tplib::json::JsonError> test_skip();
-std::expected<void, ::tpystd::tplib::json::JsonError> test_empty_containers();
-std::expected<void, ::tpystd::tplib::json::JsonError> test_negative_int();
-std::expected<void, ::tpystd::tplib::json::JsonError> test_raw_methods();
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_basic_object();
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_nested();
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_null_and_escape();
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_float();
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_skip();
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_empty_containers();
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_negative_int();
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_raw_methods();
 void test_describe();
 void main();
 

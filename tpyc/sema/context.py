@@ -573,6 +573,18 @@ class SemanticContext:
     # --- Cross-module support ---
     module_name: str = "__main__"
     module_cpp_namespace: str | None = None  # from # tpy: cpp_namespace directive
+    # Reference to the current module's `CompiledModule.exports`. Set by
+    # `Compiler._finalize_declarations` so the registration paths can
+    # find pre-populated skeleton RecordInfo / FunctionInfo /
+    # ProtocolInfo / enum NominalType objects (created by
+    # `_pre_populate_decl_exports`) and mutate them in place rather than
+    # allocating new ones. Peer modules' analyzer registries, populated
+    # by `bind_imports` via `module_info.{records,functions,...}`,
+    # capture references to the same skeletons; in-place mutation lets
+    # those peer registries see the freshly-finalized data without a
+    # post-hoc resync. None when no pre-populated exports are
+    # attached (e.g. ad-hoc analyzer construction in tests / REPL).
+    module_decl_exports: 'object | None' = None
     user_imported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_protocols: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)

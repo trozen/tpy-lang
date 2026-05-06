@@ -1,0 +1,1 @@
+CPython rejects the circular `from b import g` / `from a import use_g_int` at import time. TPy resolves the cycle via skeletal pre-registration; this case specifically exercises the @overload-group adopt-skeleton path -- without it, peers' analyzer registries hold the empty placeholder FunctionInfo and overload resolution fails with `'g' expects 0 argument(s), got 1`.

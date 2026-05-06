@@ -1,0 +1,1 @@
+CPython rejects the 3-module cycle at import time. TPy compiles via Tarjan SCC + skeletal pre-registration.

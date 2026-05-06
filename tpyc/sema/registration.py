@@ -5,8 +5,25 @@ Registers builtin types, records, protocols, and functions.
 """
 
 from __future__ import annotations
-from dataclasses import replace as dc_replace
+from dataclasses import replace as dc_replace, fields as _dc_fields
 from typing import TYPE_CHECKING
+
+
+def _adopt_skeleton(skeleton, full):
+    """Copy every dataclass field of `full` onto `skeleton` in place
+    and return the skeleton. Peers' analyzer registries capture a
+    reference to the skeleton during `bind_imports`; mutating its
+    fields in place propagates freshly-finalized data without
+    orphaning peer references. The name-equality check guards
+    against a future `register_*` site picking up the wrong
+    skeleton.
+    """
+    assert skeleton.name == full.name, (
+        f"skeleton/full name mismatch: {skeleton.name!r} vs {full.name!r}"
+    )
+    for fld in _dc_fields(skeleton.__class__):
+        setattr(skeleton, fld.name, getattr(full, fld.name))
+    return skeleton
 
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
@@ -648,14 +665,34 @@ class TypeRegistrar:
         # comment here so the skip is still audited.
         if not record.builtin_type_key:
             record_module = public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace) or None
-            self.ctx.registry.records[record.name] = RecordInfo(
-                name=record.name,
-                fields=[],
-                module=record_module,
-                defining_module=self.ctx.module_name,
-                type_params=list(record.type_params) if record.type_params else [],
-                type_param_kinds=list(record.type_param_kinds) if record.type_param_kinds else [],
-            )
+            # If `_pre_populate_decl_exports` minted a skeleton
+            # RecordInfo for this record (so cycle peers' bind_imports
+            # could find it before our sub-phase 2 ran), adopt that
+            # skeleton as the placeholder. The full registration at
+            # the bottom mutates the same object so peer registries
+            # see the freshly-finalized data.
+            placeholder: RecordInfo
+            decl_exports = self.ctx.module_decl_exports
+            existing_skeleton = (decl_exports.records.get(record.name)
+                                 if decl_exports is not None else None)
+            if existing_skeleton is not None:
+                placeholder = existing_skeleton
+                placeholder.module = record_module
+                placeholder.defining_module = self.ctx.module_name
+                placeholder.type_params = (list(record.type_params)
+                                           if record.type_params else [])
+                placeholder.type_param_kinds = (list(record.type_param_kinds)
+                                                if record.type_param_kinds else [])
+            else:
+                placeholder = RecordInfo(
+                    name=record.name,
+                    fields=[],
+                    module=record_module,
+                    defining_module=self.ctx.module_name,
+                    type_params=list(record.type_params) if record.type_params else [],
+                    type_param_kinds=list(record.type_param_kinds) if record.type_param_kinds else [],
+                )
+            self.ctx.registry.records[record.name] = placeholder
 
         # Partition class-body Final/ClassVar annotations into class_constants
         # (PEP 591 implicit-ClassVar rule for `Final[T] = value`; PEP 526
@@ -1017,11 +1054,13 @@ class TypeRegistrar:
                              if not method.native_function else None),
                 type_params=list(method.type_params),
                 type_param_bounds=method_type_param_bounds,
-                error_return_type=(qualify_exception_name(method.error_return, self.ctx.registry)
+                error_return_type=(qualify_exception_name(method.error_return, self.ctx.registry,
+                                                          self.ctx.module_name)
                                    if method.error_return else None),
                 kwarg_name=method.kwarg_name,
                 owning_type_qname=owning_type_qname,
                 is_auto_readonly_mutable_clone=method.is_auto_readonly_mutable_clone,
+                originating_module=self.ctx.module_name,
             )
             # @inline: store the body expression for call-site inlining.
             # Body must be a single call statement. Cloned and substituted at call sites.
@@ -1342,6 +1381,14 @@ class TypeRegistrar:
             module=public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace) or None,
             defining_module=self.ctx.module_name,
         )
+        # Adopt the pre-populated skeleton when available so peer
+        # registries that captured a reference during bind_imports
+        # see the freshly-finalized fields without a separate resync.
+        decl_exports = self.ctx.module_decl_exports
+        if decl_exports is not None and not record.builtin_type_key:
+            existing_skeleton = decl_exports.records.get(record.name)
+            if existing_skeleton is not None:
+                info = _adopt_skeleton(existing_skeleton, info)
         self.ctx.registry.register_record(info)
         self.ctx.global_ns.bind_record(info)
         # Attach RecordInfo to the TypeDef registry under a stable qname:
@@ -2088,6 +2135,14 @@ class TypeRegistrar:
             is_dynamic=protocol.is_dynamic,
             module=public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace),
         )
+        # Cycle peers' bind_imports captures a reference to a
+        # pre-populated ProtocolInfo skeleton; mutate it in place so
+        # peers see the freshly-finalized methods / parents.
+        decl_exports = self.ctx.module_decl_exports
+        if decl_exports is not None:
+            existing_skeleton = decl_exports.protocols.get(protocol.name)
+            if existing_skeleton is not None:
+                info = _adopt_skeleton(existing_skeleton, info)
         self.ctx.registry.register_protocol(info)
         # Attach ProtocolInfo to the TypeDef registry under a stable qname.
         # User protocols in entry-point modules fall back to `__main__.<name>`,
@@ -2329,12 +2384,18 @@ class TypeRegistrar:
             type_param_defaults=func.type_param_defaults,
             is_builtin_function=bool(func.builtin_function_key),
             special_handling=bool(func.builtin_function_key),
-            error_return_type=(qualify_exception_name(func.error_return, self.ctx.registry)
+            error_return_type=(qualify_exception_name(func.error_return, self.ctx.registry,
+                                                      self.ctx.module_name)
                                if func.error_return else None),
             qualified_name=(func.builtin_function_key
                             if func.builtin_function_key
                             else f"{self.ctx.module_name}.{func.name}"),
             kwarg_name=func.kwarg_name,
+            # Stamp the defining module so cross-module mutation
+            # propagation can gate ownership precisely. Opaque /
+            # builtin FIs leave this None so the gate excludes them.
+            originating_module=(None if func.builtin_function_key
+                                else self.ctx.module_name),
         )
         # @inline: store body for call-site inlining
         if func.is_inline and not func.is_stub:
@@ -2381,6 +2442,18 @@ class TypeRegistrar:
                     func
                 )
             self.ctx.extern_symbols[symbol] = func.name
+
+        # If the Compiler pre-populated a skeleton FunctionInfo for
+        # `func.name` (so cycle peers' bind_imports could find it
+        # before our sub-phase 3 ran), mutate the skeleton in place
+        # and use it instead of `info`. Peer registries that captured
+        # the skeleton via `_register_user_module_import` see the
+        # freshly-finalized fields without a post-hoc resync.
+        decl_exports = self.ctx.module_decl_exports
+        if decl_exports is not None:
+            existing = decl_exports.functions.get(func.name)
+            if existing and len(existing) == 1:
+                info = _adopt_skeleton(existing[0], info)
 
         self.ctx.registry.register_function(info)
         self.ctx.global_ns.bind_function(info)
@@ -2453,6 +2526,7 @@ class TypeRegistrar:
                 type_param_bounds=type_param_bounds,
                 type_param_defaults=func.type_param_defaults,
                 qualified_name=f"{self.ctx.module_name}.{func.name}",
+                originating_module=self.ctx.module_name,
             )
             # Propagate resolved types back to AST (matches register_record behavior)
             func.params = list(resolved_params)
@@ -2461,6 +2535,21 @@ class TypeRegistrar:
 
         if infos:
             self._reject_same_param_overloads(infos, stubs)
+            # Adopt the pre-populated skeleton list (if any) by mutating
+            # it in place. Cycle peers' bind_imports may have captured a
+            # reference to that single-element placeholder list before
+            # this overload group ran; mutating its contents here
+            # propagates the freshly-finalized FunctionInfos to those
+            # captured references. Without this the peer's analyzer
+            # registry stays bound to an empty FI and overload
+            # resolution at peer call sites picks the placeholder.
+            decl_exports = self.ctx.module_decl_exports
+            if decl_exports is not None:
+                skeleton_list = decl_exports.functions.get(infos[0].name)
+                if skeleton_list is not None:
+                    skeleton_list.clear()
+                    skeleton_list.extend(infos)
+                    infos = skeleton_list
             self.ctx.registry.register_function_group(infos[0].name, infos)
             self.ctx.global_ns.bind(NameBinding(
                 kind=BindingKind.FUNCTION,

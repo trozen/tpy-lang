@@ -1,0 +1,5 @@
+CPython rejects the circular `from a import A` / `from b import H` at import time
+(partially initialized module). TPy compiles cycles via Phase 7+ skeletal
+cross-module pre-registration + Phase 8 per-module fwd.hpp; both name binding
+and the C++ build resolve. CPython's runtime initialization model is not
+compatible with this shape.

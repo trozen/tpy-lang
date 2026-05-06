@@ -18,7 +18,7 @@ from ..typesys import (
     PendingGenericInstanceType, contains_fn_type,
     INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, is_protocol_type, is_protocol_union, final_type_str_to_strview,
     is_final_allowed_inner, FINAL_INNER_TYPE_ERROR,
-    qualify_exception_name, is_return_exception, is_exception_type,
+    qualify_exception_name, is_return_exception, is_exception_type, error_return_matches,
     FunctionInfo, ParamInfo, RecordInfo,
     make_ref, unwrap_ref_type, RefType,
     is_integer_type, is_any_int_type, is_numeric_type, is_readonly_span,
@@ -1388,7 +1388,7 @@ class StatementAnalyzer:
             return
 
         qualified_exc = qualify_exception_name(
-            stmt.exception_type, self.ctx.registry)
+            stmt.exception_type, self.ctx.registry, self.ctx.module_name)
         is_cf = is_return_exception(qualified_exc)
 
         if is_cf:
@@ -1398,7 +1398,7 @@ class StatementAnalyzer:
                     f"'raise {stmt.exception_type}' requires "
                     f"@error_return({stmt.exception_type}) on the enclosing function",
                     stmt)
-            if func.error_return != qualified_exc:
+            if not error_return_matches(func.error_return, qualified_exc):
                 raise self.ctx.error(
                     f"'raise {stmt.exception_type}' does not match "
                     f"@error_return({stmt.exception_type})", stmt)
@@ -1450,7 +1450,7 @@ class StatementAnalyzer:
         expr_type = self.expr.analyze_expr(stmt.raise_expr)
         type_name = self._raise_expr_type_name(expr_type, stmt)
         if is_return_exception(
-                qualify_exception_name(type_name, self.ctx.registry)):
+                qualify_exception_name(type_name, self.ctx.registry, self.ctx.module_name)):
             raise self.ctx.error(
                 f"'raise <expr>' cannot be used with ReturnException type "
                 f"'{type_name}'; use direct 'raise {type_name}' inside "
@@ -1512,7 +1512,7 @@ class StatementAnalyzer:
             )
             if is_cf_catch_all or is_return_exception(
                     qualify_exception_name(
-                        h.exception_type, self.ctx.registry)):
+                        h.exception_type, self.ctx.registry, self.ctx.module_name)):
                 has_cf = True
             else:
                 has_throw = True
@@ -1605,7 +1605,7 @@ class StatementAnalyzer:
             self.ctx.try_except_error_type = "*"
         else:
             self.ctx.try_except_error_type = qualify_exception_name(
-                handler.exception_type, self.ctx.registry)
+                handler.exception_type, self.ctx.registry, self.ctx.module_name)
 
         for s in stmt.try_body:
             self.analyze_stmt(s)
@@ -1691,7 +1691,7 @@ class StatementAnalyzer:
         for h in stmt.handlers:
             if h.exception_type is not None:
                 qualified = qualify_exception_name(
-                    h.exception_type, self.ctx.registry)
+                    h.exception_type, self.ctx.registry, self.ctx.module_name)
                 record = self.ctx.registry.find_record_by_qname(qualified)
                 if not record:
                     raise self.ctx.error(

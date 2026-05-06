@@ -1,0 +1,1 @@
+CPython rejects the circular `from a import Counter` / `from b import Greeter` at import time. TPy compiles via skeletal pre-registration; the Counter→Greeter relationship is structural protocol conformance, not concrete inheritance.

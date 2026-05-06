@@ -138,10 +138,20 @@ def _body_has_raise(stmts: list[TpyStmt], exception_type: str) -> bool:
 class SemanticAnalyzer:
     """Semantic analyzer for TurboPython."""
 
-    def __init__(self, default_int_type: TpyType = INT32):
-        # Create shared context
+    def __init__(self, default_int_type: TpyType = INT32,
+                 shared_modules: 'dict[str, object] | None' = None):
+        # Create shared context. `shared_modules`, when provided, gives
+        # this analyzer's TypeRegistry the workspace-wide ModuleInfo dict
+        # owned by the Compiler -- every analyzer in one compilation
+        # reads/writes the same dict, so cross-module qname lookups
+        # (`get_record_for_type`, recursive-union detection, builder-trace
+        # type rendering) see every peer module's contribution. Per-module
+        # short-name bindings (records / functions / protocols /
+        # type_aliases / enums) stay strictly per-analyzer; only the
+        # `modules` surface is shared. None preserves the legacy
+        # per-analyzer behavior (used by REPL, tests, ad-hoc callers).
         self.ctx = SemanticContext(
-            registry=TypeRegistry(),
+            registry=TypeRegistry(shared_modules=shared_modules),
             global_scope=Scope(),
             default_int_type=default_int_type,
             builtins_ns=Namespace(),
@@ -310,6 +320,31 @@ class SemanticAnalyzer:
             self.ctx.builtins_ns.bind_imported_name(name, "builtins", name)
             self.ctx.imported_names[name] = ("builtins", name)
 
+    # Sub-phase indices used by the phase-counter assertion. The five
+    # public methods below must be called in this exact order; calling
+    # them out of order raises AssertionError.  Compiler still drives
+    # all five through `analyze()` today; future phases (Phase 3+) will
+    # call individual sub-phases workspace-wide.
+    _PHASE_NONE = 0
+    _PHASE_BIND_IMPORTS = 1
+    _PHASE_REGISTER_RECORDS_AND_PROTOCOLS = 2
+    _PHASE_REGISTER_SIGNATURES = 3
+    _PHASE_ANALYZE_BODIES = 4
+    _PHASE_PHASE2_FIXPOINT = 5
+
+    def _advance_phase(self, expected_prev: int, completed: int) -> None:
+        """Phase-counter guard. `expected_prev` is the phase that must
+        have just completed; `completed` is the phase the caller is
+        finishing now. Raises AssertionError on out-of-order calls.
+        """
+        current = getattr(self, "_completed_phase", self._PHASE_NONE)
+        assert current == expected_prev, (
+            f"sub-phase ordering violated: expected previous phase "
+            f"{expected_prev}, got {current} (trying to complete "
+            f"{completed})"
+        )
+        self._completed_phase = completed
+
     def analyze(self, module: TpyModule, module_name: str = "__main__") -> None:
         """Analyze a module for semantic correctness.
 
@@ -319,6 +354,25 @@ class SemanticAnalyzer:
 
         Note: User module dependencies should be registered in registry.modules
         before calling this method (via register_module).
+
+        This drives the five public sub-phases in order. Workspace-wide
+        callers (Phase 3+) will eventually call the sub-phases directly
+        across all modules; for now `analyze()` is a thin wrapper that
+        preserves the legacy per-module-with-publishing pipeline.
+        """
+        self.bind_imports(module, module_name)
+        self.register_records_and_protocols(module)
+        self.register_signatures(module)
+        self.analyze_bodies(module)
+        self.run_phase2_fixpoint(module)
+
+    def bind_imports(self, module: TpyModule, module_name: str = "__main__") -> None:
+        """Sub-phase 1: set module context, bind imports + bare modules.
+
+        Establishes `ctx.module_name`, `ctx.parser_resolver`, the imports
+        dict, star-import registrations, tpy type-alias bindings, and
+        bare-module bindings. Macro registries and resolved type refs
+        are expected to already be in place (compiler-driven).
         """
         # Set module context
         self.ctx.module_name = module_name
@@ -399,7 +453,14 @@ class SemanticAnalyzer:
         # called (by `Compiler._resolve_module_refs` between
         # canonicalization and sema).  Everything downstream can read
         # TpyType uniformly.
+        self._advance_phase(self._PHASE_NONE, self._PHASE_BIND_IMPORTS)
 
+    def register_records_and_protocols(self, module: TpyModule) -> None:
+        """Sub-phase 2: enums, records (incl. macro application), then
+        protocols, inheritance + value-type validation, recursive-union
+        detection, and type-alias registration. Everything declaration-
+        level except function signatures.
+        """
         # Method-linkage validation (stubs allowed/required per record
         # linkage, @native decorator restrictions) runs here so any
         # base-resolution errors from the resolve phase fire first.
@@ -485,7 +546,17 @@ class SemanticAnalyzer:
         for name, (typ, loc) in module.type_aliases.items():
             self._validate_type_alias_members(name, typ, loc)
             self.ctx.registry.register_type_alias(name, typ)
+        self._advance_phase(
+            self._PHASE_BIND_IMPORTS,
+            self._PHASE_REGISTER_RECORDS_AND_PROTOCOLS,
+        )
 
+    def register_signatures(self, module: TpyModule) -> None:
+        """Sub-phase 3: register function signatures with @overload
+        grouping, normalize FunctionInfo refs (`make_ref` over params /
+        returns now that records/protocols/value-type flags are final),
+        inject synthetic `__name__` Final[str] for non-private modules.
+        """
         # Second pass: register all functions (with @overload grouping)
         self._register_functions_with_overloads(module.functions)
 
@@ -513,13 +584,37 @@ class SemanticAnalyzer:
                 module.top_level_stmts = []
             module.top_level_stmts.insert(0, name_decl)
 
-        # Third pass: register top-level variable declarations (globals)
+        # Register top-level variable declarations (globals) here, in
+        # sub-phase 3, rather than waiting for body sema. The
+        # registration only inspects each TpyVarDecl's name + declared
+        # type (no init-expression analysis); doing it now lets peer
+        # modules' `from X import VAR` resolve at decl-time, which the
+        # workspace-wide two-pass sema needs (Phase 5 split).
         self.registrar.register_globals(module.top_level_stmts)
-
-        # Fourth pass: analyze top-level statements (globals must be in scope for functions)
+        # Top-level statement analysis also moves into the declaration
+        # sub-phases. It populates `global_scope` with names assigned via
+        # top-level expressions, including tuple-unpacks
+        # (`lo, hi = get_bounds()`) whose types only emerge from
+        # analyzing the RHS. Without this, peer modules' `from X import lo`
+        # would fail because `lo` would not yet be in
+        # `X.exports.variables` when the peer's declarations pass runs.
+        # Cross-module function calls in top-level statements resolve
+        # against decl-finalized peer ModuleInfos (deps run first in
+        # topo order in the declarations pass).
         if module.top_level_stmts:
             self._analyze_top_level(module.top_level_stmts)
+        self._advance_phase(
+            self._PHASE_REGISTER_RECORDS_AND_PROTOCOLS,
+            self._PHASE_REGISTER_SIGNATURES,
+        )
 
+    def analyze_bodies(self, module: TpyModule) -> None:
+        """Sub-phase 4: analyze class-constant initializers, builder-trace
+        expansion, record method bodies, free function bodies. Top-level
+        statement analysis moved into `register_signatures` so peer
+        modules' decl pass sees globals defined via tuple-unpack
+        assignments.
+        """
         # Fifth pass: analyze class-constant initializers. Runs after
         # `_analyze_top_level` so module-level Final globals are in scope, and
         # before `_analyze_record_methods` so methods see typed constants.
@@ -544,11 +639,36 @@ class SemanticAnalyzer:
             if func.is_overload_stub and func.is_stub:
                 continue
             self._analyze_function(func)
+        self._advance_phase(
+            self._PHASE_REGISTER_SIGNATURES,
+            self._PHASE_ANALYZE_BODIES,
+        )
 
-        # Phase 2: propagate mutation facts through intra-module call graph,
-        # then emit/suppress deferred borrow warnings with resolved facts
+    def run_phase2_fixpoint(self, module: TpyModule) -> None:
+        """Sub-phase 5: call-graph mutation-fact propagation + readonly
+        inference. Borrow-check resolution is deferred to a post-pass
+        (`finalize_borrow_checks`) that the Compiler runs after every
+        module's propagation has completed so cross-module mutation
+        facts are settled before borrow warnings are emitted.
+        """
         self._propagate_mutation_facts()
         self._sync_inferred_const(module)
+        self._advance_phase(
+            self._PHASE_ANALYZE_BODIES,
+            self._PHASE_PHASE2_FIXPOINT,
+        )
+
+    def finalize_borrow_checks(self) -> None:
+        """Emit / suppress deferred borrow warnings using fully-propagated
+        cross-module facts. Compiler runs this once per analyzer in a
+        third workspace-wide pass after every module has completed
+        `run_phase2_fixpoint`, guaranteeing that
+        `resolve_pending_borrow_checks` reads finalized
+        `mutated_params` / `structural_mutated_params` regardless of
+        body-sema iteration order. This is what makes the suite pass
+        byte-identical when body sema runs in reverse-topo order
+        (Phase 6 acceptance criterion).
+        """
         self.calls.resolve_pending_borrow_checks()
 
     def _normalize_function_info_refs(self) -> None:
@@ -558,7 +678,16 @@ class SemanticAnalyzer:
         explicit reference semantics. Called after all types (including value
         type markers) are registered, so make_ref correctly identifies which
         types need wrapping.
+
+        Stamps `originating_module` on every FunctionInfo registered
+        in this module's analyzer. Imported peer FIs already carry
+        their defining module's stamp, so we skip when set. Opaque
+        FIs (builtin / @builtin_decorator stubs) keep
+        `originating_module=None` so mutation propagation treats
+        them as unowned and skips them.
         """
+        current_module = self.ctx.module_name
+
         def _ref_params(params: list) -> list:
             result = []
             for p in params:
@@ -571,6 +700,8 @@ class SemanticAnalyzer:
 
         for overloads in self.ctx.registry.functions.values():
             for fi in overloads:
+                if fi.originating_module is None and not fi.is_builtin_function and not fi.builtin_decorator_key:
+                    fi.originating_module = current_module
                 if isinstance(fi.return_type, RefType):
                     continue
                 fi.return_type = make_ref(fi.return_type)
@@ -578,25 +709,58 @@ class SemanticAnalyzer:
         for rec in self.ctx.registry.records.values():
             for method_list in rec.methods.values():
                 for fi in method_list:
+                    if fi.originating_module is None and not fi.is_builtin_function and not fi.builtin_decorator_key:
+                        # Method's defining module = the record's defining module,
+                        # not the current module. Records that flow in via cross-
+                        # module registration carry RecordInfo.module set during
+                        # their owning module's sema; trust that when present.
+                        fi.originating_module = rec.module or current_module
                     if isinstance(fi.return_type, RefType):
                         continue
                     fi.return_type = make_ref(fi.return_type)
                     fi.params = _ref_params(fi.params)
 
     def _propagate_mutation_facts(self) -> None:
-        """Collect all module-local FunctionInfos and run call-graph propagation."""
+        """Run call-graph mutation-fact propagation, taking advantage of
+        the workspace-shared `registry.modules` dict to pull peer
+        modules' FunctionInfos in addition to this module's own.
+
+        Each per-analyzer call walks the workspace once. After the
+        first call clears `call_edges` on its propagated FIs, the
+        gate (`call_edges is not None`) excludes them from later
+        analyzers' collections, so subsequent calls only process
+        whatever module just finished body sema -- effectively
+        incremental rather than re-doing all modules' work.
+
+        The `originating_module` distinction from Phase 6 stays
+        (gates body-sema-time fact production); cross-module
+        mutating calls propagate facts uniformly through the
+        workspace call graph.
+        """
         all_fis: list = []
-        for overloads in self.ctx.registry.functions.values():
-            for fi in overloads:
-                # call_edges is None for imported functions (cleared by their own Phase 2).
-                # Only process functions from the current module (call_edges set during Phase 1).
-                if fi.direct_mutated_params is not None and fi.call_edges is not None:
-                    all_fis.append(fi)
-        for rec in self.ctx.registry.records.values():
-            for overloads in rec.methods.values():
+        seen: set[int] = set()
+
+        def _collect_from(reg_or_mod) -> None:
+            for overloads in reg_or_mod.functions.values():
                 for fi in overloads:
+                    if id(fi) in seen:
+                        continue
                     if fi.direct_mutated_params is not None and fi.call_edges is not None:
+                        seen.add(id(fi))
                         all_fis.append(fi)
+            for rec in reg_or_mod.records.values():
+                for method_overloads in rec.methods.values():
+                    for fi in method_overloads:
+                        if id(fi) in seen:
+                            continue
+                        if fi.direct_mutated_params is not None and fi.call_edges is not None:
+                            seen.add(id(fi))
+                            all_fis.append(fi)
+
+        _collect_from(self.ctx.registry)
+        for mod_info in self.ctx.registry.modules.values():
+            if not mod_info.is_builtin:
+                _collect_from(mod_info)
         propagate_mutation_facts(all_fis)
         infer_method_const(all_fis)
 
@@ -853,10 +1017,22 @@ class SemanticAnalyzer:
         # Finalize nested def escape analysis
         self._finalize_nested_def_escapes()
 
-        # Store Phase 1 local mutation facts (resolved by Phase 2 propagation)
+        # Store Phase 1 local mutation facts (resolved by Phase 2 propagation).
+        # Phase 6 (mutual-imports) ownership gate: only mutate body-sema
+        # fields on FunctionInfos that originate in this module. The
+        # `direct_mutated_params is None` check covers the legacy case
+        # (FI not yet body-analyzed); the strict `originating_module ==
+        # self.ctx.module_name` check enforces the doc's ownership rule
+        # -- declaration-time `_normalize_function_info_refs` stamps
+        # `originating_module` on every non-opaque FI, so by the time a
+        # body sema reaches this gate, any reachable FI should carry
+        # its defining module's name. A None at this point indicates a
+        # missing-origin-stamping bug, not a reason to write through.
         func_overloads = self.ctx.registry.get_function(func.name)
         func_info = func_overloads[-1] if func_overloads else None
-        if func_info is not None and func_info.direct_mutated_params is None:
+        if (func_info is not None
+                and func_info.direct_mutated_params is None
+                and func_info.originating_module == self.ctx.module_name):
             param_list = [pname for pname, _ in func.params]
             direct = frozenset(
                 i for i, pname in enumerate(param_list)
@@ -1800,7 +1976,9 @@ class SemanticAnalyzer:
                     prop = record_info.properties.get(method.property_name)
                     if prop is not None:
                         method_fi = prop.setter
-                if method_fi is not None and method_fi.direct_mutated_params is None:
+                if (method_fi is not None
+                        and method_fi.direct_mutated_params is None
+                        and method_fi.originating_module == self.ctx.module_name):
                     param_list = [pname for pname, _ in method.params]
                     direct = frozenset(
                         i for i, pname in enumerate(param_list)

@@ -176,7 +176,7 @@ class StatementGenerator:
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type
         raw_error_return = getattr(func, 'error_return', None)
-        self.ctx.current_error_return = error_return_to_cpp(raw_error_return, self.ctx.module_name, self.ctx.analyzer.registry) if raw_error_return else None
+        self.ctx.current_error_return = error_return_to_cpp(raw_error_return, self.ctx.analyzer.ctx.module_name, self.ctx.analyzer.registry) if raw_error_return else None
         self.ctx.current_func_params = {pname: ptype for pname, ptype in params}
         self.ctx.in_property_getter = getattr(func, 'is_property_getter', False)
         self.ctx.current_type_param_bounds = dict(record_type_param_bounds) if record_type_param_bounds else {}
@@ -2228,7 +2228,7 @@ class StatementGenerator:
             expr = self.expressions.gen_expr_deref(stmt.raise_expr)
             return f"{indent}throw {expr};\n"
 
-        cpp_type = error_return_to_cpp(stmt.exception_type, self.ctx.module_name, self.ctx.analyzer.registry)
+        cpp_type = error_return_to_cpp(stmt.exception_type, self.ctx.analyzer.ctx.module_name, self.ctx.analyzer.registry)
         is_cf = is_return_exception(stmt.exception_type)
 
         if is_cf:
@@ -2502,8 +2502,9 @@ class StatementGenerator:
             err_opt_var = f"__err_opt_{n}"
             cpp_err_type = error_return_to_cpp(
                 qualify_exception_name(handler.exception_type,
-                                       self.ctx.analyzer.registry),
-                self.ctx.module_name,
+                                       self.ctx.analyzer.registry,
+                                       self.ctx.analyzer.ctx.module_name),
+                self.ctx.analyzer.ctx.module_name,
                 self.ctx.analyzer.registry)
             out.write(f"{inner}std::optional<{cpp_err_type}> {err_opt_var};\n")
             self.ctx.try_except_err_opt = err_opt_var
@@ -2612,11 +2613,11 @@ class StatementGenerator:
             if h.exception_type is None:
                 out.write(f" catch (...) {{\n")
             elif h.binding:
-                cpp_type = error_return_to_cpp(h.exception_type, self.ctx.module_name, self.ctx.analyzer.registry)
+                cpp_type = error_return_to_cpp(h.exception_type, self.ctx.analyzer.ctx.module_name, self.ctx.analyzer.registry)
                 binding = escape_cpp_name(h.binding)
                 out.write(f" catch (const {cpp_type}& {binding}) {{\n")
             else:
-                cpp_type = error_return_to_cpp(h.exception_type, self.ctx.module_name, self.ctx.analyzer.registry)
+                cpp_type = error_return_to_cpp(h.exception_type, self.ctx.analyzer.ctx.module_name, self.ctx.analyzer.registry)
                 out.write(f" catch (const {cpp_type}&) {{\n")
             self.ctx.indent_level += 1
             self.ctx.in_except_tier = "throw"

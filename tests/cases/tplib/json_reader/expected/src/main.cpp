@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // @error_return(JsonError)
 // def test_basic_object() -> None:
-std::expected<void, ::tpystd::tplib::json::JsonError> test_basic_object() {
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_basic_object() {
     // reader = JsonReader('{"name": "Alice", "age": 30, "active": true}')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("{\"name\": \"Alice\", \"age\": 30, \"active\": true}");
     // reader.read_object_start()
@@ -68,7 +68,7 @@ std::expected<void, ::tpystd::tplib::json::JsonError> test_basic_object() {
 
 // @error_return(JsonError)
 // def test_nested() -> None:
-std::expected<void, ::tpystd::tplib::json::JsonError> test_nested() {
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_nested() {
     // reader = JsonReader('{"user": {"name": "Bob"}, "scores": [1, 2, 3]}')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("{\"user\": {\"name\": \"Bob\"}, \"scores\": [1, 2, 3]}");
     // reader.read_object_start()
@@ -155,7 +155,7 @@ std::expected<void, ::tpystd::tplib::json::JsonError> test_nested() {
 
 // @error_return(JsonError)
 // def test_null_and_escape() -> None:
-std::expected<void, ::tpystd::tplib::json::JsonError> test_null_and_escape() {
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_null_and_escape() {
     // reader = JsonReader('{"x": null, "msg": "hello\\nworld"}')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("{\"x\": null, \"msg\": \"hello\\nworld\"}");
     // reader.read_object_start()
@@ -209,7 +209,7 @@ std::expected<void, ::tpystd::tplib::json::JsonError> test_null_and_escape() {
 
 // @error_return(JsonError)
 // def test_float() -> None:
-std::expected<void, ::tpystd::tplib::json::JsonError> test_float() {
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_float() {
     // reader = JsonReader('[3.14, -0.5, 1e3]')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("[3.14, -0.5, 1e3]");
     // reader.read_array_start()
@@ -239,7 +239,7 @@ std::expected<void, ::tpystd::tplib::json::JsonError> test_float() {
 
 // @error_return(JsonError)
 // def test_skip() -> None:
-std::expected<void, ::tpystd::tplib::json::JsonError> test_skip() {
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_skip() {
     // reader = JsonReader('{"keep": 42, "skip": {"nested": [1,2,3]}, "also": "yes"}')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("{\"keep\": 42, \"skip\": {\"nested\": [1,2,3]}, \"also\": \"yes\"}");
     // reader.read_object_start()
@@ -297,7 +297,7 @@ std::expected<void, ::tpystd::tplib::json::JsonError> test_skip() {
 
 // @error_return(JsonError)
 // def test_empty_containers() -> None:
-std::expected<void, ::tpystd::tplib::json::JsonError> test_empty_containers() {
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_empty_containers() {
     // reader = JsonReader('{"obj": {}, "arr": []}')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("{\"obj\": {}, \"arr\": []}");
     // reader.read_object_start()
@@ -354,7 +354,7 @@ std::expected<void, ::tpystd::tplib::json::JsonError> test_empty_containers() {
 
 // @error_return(JsonError)
 // def test_negative_int() -> None:
-std::expected<void, ::tpystd::tplib::json::JsonError> test_negative_int() {
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_negative_int() {
     // reader = JsonReader('[-42, 0, 100]')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("[-42, 0, 100]");
     // reader.read_array_start()
@@ -384,7 +384,7 @@ std::expected<void, ::tpystd::tplib::json::JsonError> test_negative_int() {
 
 // @error_return(JsonError)
 // def test_raw_methods() -> None:
-std::expected<void, ::tpystd::tplib::json::JsonError> test_raw_methods() {
+std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_raw_methods() {
     // reader = JsonReader('{"name": "Alice", "city": "NYC"}')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("{\"name\": \"Alice\", \"city\": \"NYC\"}");
     // reader.read_object_start()
@@ -429,7 +429,7 @@ void test_describe() {
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader(data);
     // try:
     {
-        std::optional<::tpystd::tplib::json::JsonError> __err_opt_45;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_45;
         // reader.read_object_start()
         {
             auto __try_tmp_46 = reader.read_object_start();
@@ -457,7 +457,7 @@ void test_describe() {
     ::tpystd::tplib::json::parser::JsonReader reader2 = ::tpystd::tplib::json::parser::JsonReader(data2);
     // try:
     {
-        std::optional<::tpystd::tplib::json::JsonError> __err_opt_48;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_48;
         // reader2.read_object_start()
         {
             auto __try_tmp_49 = reader2.read_object_start();
@@ -490,7 +490,7 @@ void test_describe() {
     ::tpystd::tplib::json::parser::JsonReader reader3 = ::tpystd::tplib::json::parser::JsonReader(data3);
     // try:
     {
-        std::optional<::tpystd::tplib::json::JsonError> __err_opt_52;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_52;
         // reader3.read_object_start()
         {
             auto __try_tmp_53 = reader3.read_object_start();
@@ -526,7 +526,7 @@ void test_describe() {
     ::tpystd::tplib::json::parser::JsonReader reader4 = ::tpystd::tplib::json::parser::JsonReader(data4);
     // try:
     {
-        std::optional<::tpystd::tplib::json::JsonError> __err_opt_56;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_56;
         // reader4.read_object_start()
         {
             auto __try_tmp_57 = reader4.read_object_start();
@@ -568,7 +568,7 @@ void test_describe() {
         ::tpystd::tplib::json::parser::JsonReader reader5 = ::tpystd::tplib::json::parser::JsonReader(bad);
         // try:
         {
-            std::optional<::tpystd::tplib::json::JsonError> __err_opt_61;
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_61;
             // reader5.read_array_start()
             {
                 auto __try_tmp_62 = reader5.read_array_start();

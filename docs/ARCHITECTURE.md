@@ -8,12 +8,64 @@ level and usage overview.
 ## Compilation pipeline
 
 ```
-parse        -> AST with TypeRefNodes               [parse/]
-canonicalize -> import table -> defining modules    [compiler.py]
-resolve      -> TypeRefNodes -> TpyType             [parse/resolve_refs.py]
-analyze      -> type check, narrow, substitute      [sema/]
-codegen      -> C++ .hpp / .cpp                     [codegen_cpp/]
+parse              -> AST with TypeRefNodes              [parse/]
+collect DTOs       -> workspace-wide AST snapshot        [compiler.py]
+canonicalize       -> import table -> defining modules   [compiler.py]
+resolve            -> TypeRefNodes -> TpyType            [parse/resolve_refs.py]
+finalize decls     -> records / sigs / globals (per mod) [sema/, sub-phases 1-3]
+analyze bodies     -> per-function/method body sema      [sema/, sub-phases 4-5]
+codegen            -> C++ .hpp / .cpp                    [codegen_cpp/]
 ```
+
+The sema half runs as a workspace-wide two-pass loop: every module
+finalizes declarations first, then bodies run as a second sweep.
+Inside each module, sema is factored into five publicly callable
+sub-phases (`bind_imports`, `register_records_and_protocols`,
+`register_signatures`, `analyze_bodies`, `run_phase2_fixpoint`) with
+a phase-counter assertion enforcing the ordering. The ModuleInfo
+`registry.modules` dict is shared across all analyzers in a single
+compilation; per-module short-name bindings (records / functions /
+protocols / enums / type aliases) stay per-analyzer.
+
+Cyclic imports between user modules are detected via Tarjan SCC over
+the import graph. Cycle members must be import + declaration only
+at top level; package `__init__.py` and `# tpy: native_module`
+re-export facades cannot participate. All `from b import X` shapes
+(record, function, protocol, enum) work: skeletal
+`RecordInfo` / `FunctionInfo` / `ProtocolInfo` are minted from
+parsed ASTs before any module's full sema runs (so peer
+`bind_imports` finds stable references), and the registration paths
+adopt the skeletons via in-place mutation so peer registries that
+captured a reference see the freshly-finalized fields. Protocols
+also pre-attach a `TypeDef.protocol` entry under the canonical
+qname so the parser-level type resolver detects cycle-peer protocol
+references as `is_protocol=True` even before the defining module's
+`register_protocol` runs.
+
+The C++ back-end emits `<mod>_fwd.hpp` per cycle member with
+forward declarations of the module's records / enums / `@dynamic`
+protocol bases; cycle peers `#include` the fwd header in their
+`.hpp` and the full header in their `.cpp`. Method bodies on cycle
+members always emit out-of-line in `.cpp` so a small body's
+inline-in-header optimization doesn't reach into a peer's complete
+type from the .hpp.
+
+A workspace-wide completeness-graph reject gate
+(`_check_workspace_completeness_cycles`) runs after decl
+finalization and before body sema. For every non-trivial import
+SCC it walks each member's record fields and parents and rejects
+positions that would require a peer's *complete* type (concrete
+inheritance, by-value record fields, by-value containers, value-
+variant unions, static-protocol template constraints). The
+diagnostic names the offending field/parent + cycle members and
+points the user at `Ptr[T]` as the workaround.
+
+Phase 2 mutation propagation runs workspace-wide: each analyzer's
+`_propagate_mutation_facts` collects FunctionInfos from every
+ModuleInfo in the shared `registry.modules` dict (deduplicated by
+`id()`), so cross-module mutating calls propagate facts uniformly
+through the workspace call graph instead of getting conservative
+defaults at module boundaries.
 
 Parsing is mostly syntactic: the parser emits `TypeRefNode` (see
 `parse/nodes.py`) for every annotation site and a dedicated resolve
@@ -33,9 +85,13 @@ classes for backward compatibility.
 
 `Compiler._canonicalize_import_sources` rewrites each module's
 import table from surface names (`from tplib import ArrayList`) to
-defining modules (`tplib.array_list`) using the already-analyzed
-dependency modules' exports. This runs before `_resolve_module_refs`
-so that `TypeResolver` can mint canonical `_module_qname` directly.
+defining modules (`tplib.array_list`). The lookup walks parsed
+ASTs (records / protocols / enums for local definitions; chases
+`ast.imports` for re-export chains) so it does not require the
+dep's sema to have completed -- which is what allows cyclic
+imports to canonicalize without a topological order. Runs before
+`_resolve_module_refs` so `TypeResolver` can mint canonical
+`_module_qname` directly.
 
 Re-export chains work because `Compiler._extract_exports` share-
 points the `RecordInfo` / `ProtocolInfo` / enum `NominalType` object

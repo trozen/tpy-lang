@@ -36,28 +36,67 @@ def bare_name(name: str) -> str:
     return name.rsplit(".", 1)[-1]
 
 
-def qualify_exception_name(name: str, registry: 'TypeRegistry') -> str:
+def qualify_exception_name(
+    name: str, registry: 'TypeRegistry', current_module: str | None = None,
+) -> str:
     """Qualify a bare exception name with its defining module.
 
     Returns 'module.Name' for cross-module error_return matching.
     Prefers the builtins module (the public namespace) over internal
     submodules that happen to be compiled first.
+
+    `current_module` (when provided) is excluded from the registry-
+    modules iteration -- a module never finds its *own* ModuleInfo
+    entry in the workspace-shared dict during its own analyze. This
+    preserves the legacy per-analyzer invariant under the shared
+    `registry.modules` from Phase 1.
+
+    Resolution order:
+
+    1. Already-qualified names pass through unchanged.
+    2. If the analyzer's local registry has a record entry for `name`
+       with a known defining module, use that. This guarantees that
+       sub-phase 3 (decl) and sub-phase 4 (body) agree on the
+       qualified shape regardless of which peer modules have been
+       registered into the shared dict in between -- exact-string
+       `func.error_return == qualified_exc` comparisons in
+       statements.py rely on both sides producing identical strings.
+       For locally-defined exceptions, `RecordInfo.module` is set in
+       sub-phase 2 (`register_records_and_protocols`) so it's stable
+       by the time exception qualification runs.
+    3. Fall back to the public builtins module when applicable.
+    4. Finally, scan the workspace-shared modules dict (excluding self).
     """
     if '.' in name:
         return name
+    # Local-record fast path: when the analyzer's per-module registry has
+    # a record entry for `name`, that record carries the *defining*
+    # module via `RecordInfo.module` (set in sub-phase 2). Returning
+    # this directly:
+    #   1. Stabilizes the qname across decl/body sub-phases regardless
+    #      of which peer modules' decl passes have populated the
+    #      workspace-shared `registry.modules` dict in between.
+    #   2. Honors the design's "defining qname" rendering policy: a
+    #      package init that re-exports `JsonError` from
+    #      `tplib.json.parser` resolves to the parser-defining qname,
+    #      not the surface re-export. Codegen then matches the
+    #      current module and emits the bare local name.
+    local_record = registry.get_record(name)
+    if local_record is not None and local_record.module:
+        return f"{local_record.module}.{name}"
     # Prefer builtins -- it's the public namespace for built-in exceptions.
     # Without this, iteration order would find them in tpy._builtins._exceptions
     # (compiled first) instead of the public builtins module.
     builtins_mod = registry.get_module("builtins")
     if builtins_mod and name in builtins_mod.records:
-        local_record = registry.get_record(name)
         if local_record is None or local_record is builtins_mod.records[name]:
             return f"builtins.{name}"
         # User shadowed the builtin -- fall through to local resolution
     # Find the defining module. Skip modules whose record is shadowed
     # by a local definition.
-    local_record = registry.get_record(name)
     for mod_name, mod_info in registry.modules.items():
+        if mod_name == current_module:
+            continue
         if name in mod_info.records:
             if local_record is not None and local_record is not mod_info.records[name]:
                 continue
@@ -3292,6 +3331,14 @@ class FunctionInfo:
     # FStr inlining: body expression to inline at call sites.
     # Set during method body analysis for methods with FStr params.
     inline_body: Optional[Any] = None  # TpyExpr: body expression for @inline functions
+    # Defining module name. Set when this FunctionInfo is registered
+    # during the current module's signature finalization sub-phase,
+    # so cross-module mutation propagation can tell apart "I own
+    # this fi" from "I'm looking at a peer's signature". None on
+    # opaque FIs (builtin / native / @builtin_function stubs and
+    # ad-hoc FunctionInfos minted in sema for virtual calls / partial
+    # application) -- readers must tolerate None as "unknown owner".
+    originating_module: str | None = None
 
     @property
     def root(self) -> 'FunctionInfo':
@@ -3507,7 +3554,7 @@ class ModuleInfo:
 class TypeRegistry:
     """Registry of all known types and symbols."""
 
-    def __init__(self):
+    def __init__(self, shared_modules: 'dict[str, ModuleInfo] | None' = None):
         self.records: dict[str, RecordInfo] = {}
         # Qname -> RecordInfo indexes, split so builtin consumers
         # (`get_builtin_record` and its callers) don't accidentally
@@ -3522,7 +3569,16 @@ class TypeRegistry:
         # `type_def_registry.protocol_info_of(typ)` / `TypeDef.protocol`,
         # which is the authoritative payload store.
         self._protocols_by_local_name: dict[str, ProtocolInfo] = {}
-        self.modules: dict[str, ModuleInfo] = {}  # module_name -> ModuleInfo
+        # `shared_modules` (when provided) is the workspace-wide
+        # ModuleInfo dict owned by the Compiler. Every analyzer in the
+        # same compilation aliases the same dict so qname-keyed cross-
+        # module reads (`get_record_for_type`, recursive-union
+        # detection, builder-trace type rendering) see every peer
+        # module's records / type_aliases. Default = fresh per-registry
+        # dict for the legacy per-analyzer mode.
+        self.modules: dict[str, ModuleInfo] = (
+            shared_modules if shared_modules is not None else {}
+        )
         self.type_aliases: dict[str, 'TpyType'] = {}  # alias_name -> resolved type
         # Source tracking for imported aliases: local_name -> (declaring_module, original_name).
         # Type alias bodies (UnionType, OptionalType, ...) have no `_module_qname` of
@@ -3803,10 +3859,23 @@ class TypeRegistry:
         result = self._qname_index.get(qname)
         if result is not None:
             return result
-        # Fall back to module lookup
+        # User record qname index (records added via register_record /
+        # register_module since Phase 1's workspace-shared modules dict
+        # populates this for cross-module lookups).
+        result = self._user_qname_index.get(qname)
+        if result is not None:
+            return result
+        # Fall back to module lookup, then short-name fallback. The
+        # short-name fallback covers the entry-point case: a module
+        # never has its own ModuleInfo registered in `registry.modules`
+        # during its own analyze, so `find_module_record("__main__", ...)`
+        # would return None even though the record is in `self.records`.
         if "." in qname:
             module_name, short = qname.rsplit(".", 1)
-            return self.find_module_record(module_name, short)
+            result = self.find_module_record(module_name, short)
+            if result is not None:
+                return result
+            return self.records.get(short)
         return self.find_record(qname)
 
     def get_builtin_record(self, qname: str) -> Optional[RecordInfo]:

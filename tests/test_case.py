@@ -50,8 +50,12 @@ from conftest import (
 
 
 def _module_to_expected_path(expected_dir: Path, mod_name: str, ext: str) -> Path:
-    """Convert module name to expected file path for generated code snapshots."""
-    subdir = "include" if ext == ".hpp" else "src"
+    """Convert module name to expected file path for generated code snapshots.
+
+    Recognizes both the `.hpp` / `.cpp` extensions and the `_fwd.hpp`
+    cycle-peer forward-declaration header suffix (lives under include/).
+    """
+    subdir = "src" if ext == ".cpp" else "include"
     parts = mod_name.split('.')
     if len(parts) == 1:
         return expected_dir / subdir / f"{parts[0]}{ext}"
@@ -148,6 +152,12 @@ def test_case(case_dir, main_src, request):
         pairs: list[tuple[str, Path]] = []
         if hpp_path is not None:  # None for native_module
             pairs.append((".hpp", hpp_path))
+            # Cycle members get a sibling `<mod>_fwd.hpp`. It only
+            # exists for actual cycle peers, so probe the filesystem
+            # rather than threading a separate compiler-side flag.
+            fwd_path = hpp_path.with_name(hpp_path.stem + "_fwd.hpp")
+            if fwd_path.exists():
+                pairs.append(("_fwd.hpp", fwd_path))
         if cpp_path is not None:
             pairs.append((".cpp", cpp_path))
         for ext, gen_path in pairs:
