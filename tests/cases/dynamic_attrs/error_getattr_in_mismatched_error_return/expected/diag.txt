@@ -1,1 +1,0 @@
-main.py:17: error: call to '__getattr__' may return 'AttributeError' which must be handled with try/except

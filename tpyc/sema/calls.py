@@ -3955,16 +3955,6 @@ class CallAnalyzer:
         # REPL mode: allow error_return calls at top level (codegen panics on error)
         if self.ctx.is_top_level and self.ctx.allow_top_level_error_unwrap:
             return
-        # Auto-unwrap (synth dyn-attr __getattr__ from `obj.foo`): codegen will
-        # panic at runtime when there's no enclosing handler. But if the caller
-        # has a non-matching @error_return, codegen would propagate as the wrong
-        # type -- a real type mismatch the user must resolve with try/except.
-        if isinstance(expr, TpyMethodCall) and expr.error_return_auto_unwrap:
-            in_error_return = (isinstance(current, TpyFunction)
-                               and current.error_return is not None)
-            in_try = ctx_error_type is not None
-            if not in_error_return and not in_try:
-                return
         # Strip module prefix for user-facing message
         display_name = func.error_return_type
         if "." in display_name:

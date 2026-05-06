@@ -960,7 +960,7 @@ class ExpressionGenerator:
                 return self._gen_dyn_hasattr_block(expr.dyn_hasattr_call)
             if expr.dyn_getattr_default_call is not None:
                 return self._gen_dyn_getattr_default_block(
-                    expr.dyn_getattr_default_call, expr.args[2], target_type)
+                    expr.dyn_getattr_default_call, expr.args[2])
             return self._post_process_call(expr, self._gen_call(expr))
 
         elif isinstance(expr, TpyMethodCall):
@@ -3068,22 +3068,36 @@ class ExpressionGenerator:
         return f"{obj}{accessor}{escape_cpp_name(cpp_method)}{method_targs}({args})"
 
     def _gen_dyn_hasattr_block(self, synth: 'TpyMethodCall') -> str:
-        """D16 v1.5 Phase 7: __getattr__ is @error_return(AttributeError),
-        so existence is just a has_value check on the std::expected."""
+        """D16 v1.5 Phase 7: try/catch IIFE that yields true if __getattr__
+        succeeds, false on AttributeError."""
         call = self._gen_method_call(synth)
-        return f"({call}).has_value()"
+        return (
+            "[&]() -> bool { "
+            f"try {{ (void)({call}); return true; }} "
+            "catch (const ::tpy::AttributeError&) { return false; } "
+            "}()"
+        )
 
     def _gen_dyn_getattr_default_block(
         self, synth: 'TpyMethodCall', default_expr: 'TpyExpr',
-        target_type: 'TpyType | None',
     ) -> str:
-        """D16 v1.5 Phase 8: __getattr__ returns std::expected<T, AttributeError>;
-        substitute `default` when the dunder reported missing."""
+        """D16 v1.5 Phase 8: try/catch IIFE that yields __getattr__'s result,
+        or the default on AttributeError. Explicit lambda return type unifies
+        the two arms (e.g. std::string vs const char* literal default)."""
         call = self._gen_method_call(synth)
-        ret_type = synth.resolved_function_info.return_type if synth.resolved_function_info else None
-        effective_type = ret_type if ret_type is not None else target_type
+        # Sema always sets resolved_function_info on the synth before codegen
+        # reaches this path; the explicit return type is required for the
+        # lambda's two arms to unify.
+        assert synth.resolved_function_info is not None
+        effective_type = synth.resolved_function_info.return_type
         default_code = self.gen_expr(default_expr, effective_type)
-        return f"({call}).value_or({default_code})"
+        ret_cpp = self.types.type_to_cpp(effective_type)
+        return (
+            f"[&]() -> {ret_cpp} {{ "
+            f"try {{ return {call}; }} "
+            f"catch (const ::tpy::AttributeError&) {{ return {default_code}; }} "
+            "}()"
+        )
 
     def _is_overloaded_method(self, expr: TpyMethodCall) -> bool:
         """Check if a method call targets an overloaded method (multiple stubs)."""
@@ -3289,8 +3303,6 @@ class ExpressionGenerator:
             return self._post_process_call(inner, self._gen_method_call(inner))
 
         # D16 dynamic-attribute getattr fallback: synthesized __getattr__.
-        # _post_process_call applies the @error_return(AttributeError) auto-unwrap
-        # (panic on missing in non-error_return / non-try contexts).
         if expr.dyn_getattr_call is not None:
             inner = expr.dyn_getattr_call
             return self._post_process_call(inner, self._gen_method_call(inner))

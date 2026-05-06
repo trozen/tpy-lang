@@ -35,7 +35,7 @@ struct Box {
     std::string label() const;
 
     // def __getattr__(self, name: str) -> str:
-    std::expected<std::string, ::tpy::AttributeError> __getattr__(std::string_view name) const;
+    std::string __getattr__(std::string_view name) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -59,9 +59,9 @@ inline std::string Box::label() const {
 }
 
 // def __getattr__(self, name: str) -> str:
-inline std::expected<std::string, ::tpy::AttributeError> Box::__getattr__(std::string_view name) const {
+inline std::string Box::__getattr__(std::string_view name) const {
     // raise AttributeError(name)
-    return ::tpy::make_unexpected(::tpy::AttributeError(name));
+    throw ::tpy::AttributeError(name);
 }
 void __tpy_init();
 } // namespace tpyapp::main

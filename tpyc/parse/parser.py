@@ -418,18 +418,6 @@ def _body_contains_yield(stmts: list[TpyStmt]) -> bool:
     return False
 
 
-def _body_raises(stmts: list[TpyStmt], exc_name: str) -> bool:
-    """Check if a function body has a literal `raise <exc_name>(...)` or
-    `raise <exc_name>` statement. Does not chase helper calls."""
-    for stmt in stmts:
-        if isinstance(stmt, TpyRaise) and stmt.exception_type == exc_name:
-            return True
-        for child_body in _stmt_child_bodies(stmt):
-            if _body_raises(child_body, exc_name):
-                return True
-    return False
-
-
 def _check_no_return_value_in_generator(
     stmts: list[TpyStmt], func_name: str,
 ) -> None:
@@ -2101,20 +2089,9 @@ class Parser:
                 raise ParseError(f"@staticmethod method '{node.name}' cannot be a generator", node)
             _check_no_return_value_in_generator(body, node.name)
 
-        # __next__ methods implicitly get @error_return(StopIteration).
-        # __getattr__ implicitly gets @error_return(AttributeError) -- the
-        # read protocol is fallible by contract. __setattr__ / __delattr__
-        # only get it when the body literally raises AttributeError (the
-        # write/delete protocol normally succeeds; we don't tax all writes
-        # with @error_return-matching friction at call sites).
+        # __next__ methods implicitly get @error_return(StopIteration)
         if node.name == "__next__" and error_return is None:
             error_return = "StopIteration"
-        elif node.name == "__getattr__" and error_return is None:
-            error_return = "AttributeError"
-        elif (node.name in ("__setattr__", "__delattr__")
-                and error_return is None
-                and _body_raises(body, "AttributeError")):
-            error_return = "AttributeError"
 
         method = TpyFunction(
             name=node.name,

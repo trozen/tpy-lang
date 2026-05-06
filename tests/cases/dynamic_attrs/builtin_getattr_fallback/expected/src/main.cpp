@@ -9,7 +9,7 @@ void main() {
     // b = Bag({"alpha": "first", "beta": "second"})
     Bag b = Bag(::tpy::ordered_map<std::string, ::tpy::Any>({{"alpha", ::tpy::make_any(std::string("first"))}, {"beta", ::tpy::make_any(std::string("second"))}}));
     // a = cast(str, getattr(b, "alpha"))
-    std::string a = ::tpy::any_cast_or_panic<std::string>(({ auto __er_1 = b.__getattr__("alpha"); if (!__er_1.has_value()) ::tpy::tpy_panic("unhandled error return"); ::tpy::unwrap_ref_move(*__er_1); }));
+    std::string a = ::tpy::any_cast_or_panic<std::string>(b.__getattr__("alpha"));
     // print(a)
     std::cout << a << "\n";
 }

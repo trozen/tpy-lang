@@ -1,9 +1,7 @@
-# AttributeError is a ReturnException -- raised via @error_return(AttributeError),
-# caught by try/except. CPython parity: AttributeError is a CPython builtin.
-from tpy import error_return
+# raise AttributeError(...) is a throw-tier exception. Catchable via
+# try/except. CPython parity: AttributeError is a CPython builtin.
 
 
-@error_return(AttributeError)
 def looker(name: str) -> str:
     if name == "host":
         return "example.com"

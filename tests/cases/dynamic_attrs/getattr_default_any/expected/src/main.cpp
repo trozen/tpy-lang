@@ -9,11 +9,11 @@ void main() {
     // b = Bag()
     Bag b = Bag();
     // a: Any = getattr(b, "count", -1)
-    ::tpy::Any a = (b.__getattr__("count")).value_or(::tpy::make_any(::tpy::BigInt(-1)));
+    ::tpy::Any a = [&]() -> ::tpy::Any { try { return b.__getattr__("count"); } catch (const ::tpy::AttributeError&) { return ::tpy::make_any(::tpy::BigInt(-1)); } }();
     // print(cast(int, a))     # dunder -> 7
     std::cout << ::tpy::any_cast_or_panic<::tpy::BigInt>(a) << "\n";
     // a = getattr(b, "missing", -1)
-    a = (b.__getattr__("missing")).value_or(::tpy::make_any(::tpy::BigInt(-1)));
+    a = [&]() -> ::tpy::Any { try { return b.__getattr__("missing"); } catch (const ::tpy::AttributeError&) { return ::tpy::make_any(::tpy::BigInt(-1)); } }();
     // print(cast(int, a))     # dunder raises -> -1
     std::cout << ::tpy::any_cast_or_panic<::tpy::BigInt>(a) << "\n";
 }

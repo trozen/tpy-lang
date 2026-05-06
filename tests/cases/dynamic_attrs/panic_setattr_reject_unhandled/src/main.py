@@ -1,5 +1,5 @@
-# `__setattr__` rejects at top-level (no try/except, no @error_return wrapper):
-# panics at runtime since AttributeError has nowhere to propagate.
+# `__setattr__` rejects with no enclosing try/except: the throw propagates
+# out of main() and the terminate handler prints the uncaught AttributeError.
 from typing import Any
 
 

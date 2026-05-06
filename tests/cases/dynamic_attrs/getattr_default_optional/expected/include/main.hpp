@@ -18,7 +18,7 @@ struct Bag {
 
 
     // def __getattr__(self, name: str) -> Optional[str]:
-    std::expected<std::optional<std::string>, ::tpy::AttributeError> __getattr__(std::string_view name) const;
+    std::optional<std::string> __getattr__(std::string_view name) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -29,14 +29,14 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __getattr__(self, name: str) -> Optional[str]:
-inline std::expected<std::optional<std::string>, ::tpy::AttributeError> Bag::__getattr__(std::string_view name) const {
+inline std::optional<std::string> Bag::__getattr__(std::string_view name) const {
     // if name == "host":
     if ((name == "host")) {
         // return "example.com"
         return "example.com";
     }
     // raise AttributeError(name)
-    return ::tpy::make_unexpected(::tpy::AttributeError(name));
+    throw ::tpy::AttributeError(name);
 }
 void __tpy_init();
 } // namespace tpyapp::main

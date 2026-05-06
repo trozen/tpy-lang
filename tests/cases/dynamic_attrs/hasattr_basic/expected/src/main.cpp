@@ -9,9 +9,9 @@ void main() {
     // h = Headers("example.com")
     Headers h = Headers("example.com");
     // print(hasattr(h, "host"))     # True via dunder
-    std::cout << ::tpy::print_bool((h.__getattr__("host")).has_value()) << "\n";
+    std::cout << ::tpy::print_bool([&]() -> bool { try { (void)(h.__getattr__("host")); return true; } catch (const ::tpy::AttributeError&) { return false; } }()) << "\n";
     // print(hasattr(h, "missing"))  # False via dunder raise
-    std::cout << ::tpy::print_bool((h.__getattr__("missing")).has_value()) << "\n";
+    std::cout << ::tpy::print_bool([&]() -> bool { try { (void)(h.__getattr__("missing")); return true; } catch (const ::tpy::AttributeError&) { return false; } }()) << "\n";
 }
 
 void __tpy_init() {

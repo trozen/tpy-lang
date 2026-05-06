@@ -9,9 +9,9 @@ void main() {
     // cfg = Config({"host": "localhost", "port": Int32(8080)})
     Config cfg = Config(::tpy::ordered_map<std::string, ::tpy::Any>({{"host", ::tpy::make_any(std::string("localhost"))}, {"port", ::tpy::make_any(8080)}}));
     // host = cast(str, cfg.host)
-    std::string host = ::tpy::any_cast_or_panic<std::string>(({ auto __er_1 = cfg.__getattr__("host"); if (!__er_1.has_value()) ::tpy::tpy_panic("unhandled error return"); ::tpy::unwrap_ref_move(*__er_1); }));
+    std::string host = ::tpy::any_cast_or_panic<std::string>(cfg.__getattr__("host"));
     // port = cast(Int32, cfg.port)
-    int32_t port = ::tpy::any_cast_or_panic<int32_t>(({ auto __er_2 = cfg.__getattr__("port"); if (!__er_2.has_value()) ::tpy::tpy_panic("unhandled error return"); ::tpy::unwrap_ref_move(*__er_2); }));
+    int32_t port = ::tpy::any_cast_or_panic<int32_t>(cfg.__getattr__("port"));
     // print(host)
     std::cout << host << "\n";
     // print(port)

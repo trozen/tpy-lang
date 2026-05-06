@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::expected<std::string, ::tpy::AttributeError> looker(std::string_view name);
+std::string looker(std::string_view name);
 void main();
 
 void __tpy_init();

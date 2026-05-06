@@ -1,1 +1,0 @@
-main.py:26: error: call to '__setattr__' may return 'AttributeError' which must be handled with try/except

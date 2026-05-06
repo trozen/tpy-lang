@@ -2578,14 +2578,17 @@ type checking and performance when the attribute set is known.
 through sema-synthesized `TpyMethodCall`s. Builtin `getattr` / `setattr`
 / `delattr` available for literal-name dynamic-fallback. `hasattr` and
 3-arg `getattr` work for literal names: declared members fold to
-compile-time True / direct access; otherwise compile to `.has_value()`
-/ `.value_or(default)` on the dunder's `std::expected<T, AttributeError>`.
+compile-time True / direct access; otherwise wrap the dunder call in a
+try/catch lambda IIFE that converts the `AttributeError` throw to a
+boolean / default.
 
-`AttributeError` is a `ReturnException` (return-tier); `__getattr__`
-gets auto-`@error_return(AttributeError)` (mirroring `__next__` ->
-`@error_return(StopIteration)`), so missing-attribute is zero-cost on
-the consumer side. `raise AttributeError(name)` from a function outside
-`__getattr__` requires `@error_return(AttributeError)` on that function.
+`AttributeError` is a throw-tier exception (inherits `Exception`).
+`raise AttributeError(name)` from any function compiles to a normal C++
+throw and propagates through the call stack; catchable via
+`try/except AttributeError`. Unhandled at top-level, the runtime's
+terminate handler prints "TurboPython panic: uncaught tpy::AttributeError:
+<name>". CPython parity preserved -- the raise/catch shape is identical
+on both backends.
 
 v1 is fallback-only: declared field/method/property/class-constant
 writes never route through `__setattr__` (intentional CPython divergence

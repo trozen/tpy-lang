@@ -14,13 +14,13 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // # Direct `obj.foo` access inside try/except AttributeError: the missing-attribute
-// # signal routes through the goto-based dispatch to the except clause.
+// # raise propagates as a throw and is caught by the except clause.
 // class Bag:
 struct Bag {
 
 
     // def __getattr__(self, name: str) -> str:
-    std::expected<std::string, ::tpy::AttributeError> __getattr__(std::string_view name) const;
+    std::string __getattr__(std::string_view name) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -31,14 +31,14 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __getattr__(self, name: str) -> str:
-inline std::expected<std::string, ::tpy::AttributeError> Bag::__getattr__(std::string_view name) const {
+inline std::string Bag::__getattr__(std::string_view name) const {
     // if name == "host":
     if ((name == "host")) {
         // return "example.com"
         return "example.com";
     }
     // raise AttributeError(name)
-    return ::tpy::make_unexpected(::tpy::AttributeError(name));
+    throw ::tpy::AttributeError(name);
 }
 void __tpy_init();
 } // namespace tpyapp::main

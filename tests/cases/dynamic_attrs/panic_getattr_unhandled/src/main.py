@@ -1,5 +1,5 @@
-# Direct `obj.foo` access at top-level (no @error_return, no try/except):
-# the dyn-attr miss panics at runtime since there's nowhere to propagate.
+# Direct `obj.foo` access with no enclosing try/except: the throw propagates
+# out of main() and the terminate handler prints the uncaught AttributeError.
 
 
 class Bag:

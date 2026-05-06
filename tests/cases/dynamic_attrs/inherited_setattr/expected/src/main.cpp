@@ -11,7 +11,7 @@ void main() {
     // c.color = "blue"
     c.__setattr__("color", ::tpy::make_any(std::string("blue")));
     // print(cast(str, c.color))
-    std::cout << ::tpy::any_cast_or_panic<std::string>(({ auto __er_1 = c.__getattr__("color"); if (!__er_1.has_value()) ::tpy::tpy_panic("unhandled error return"); ::tpy::unwrap_ref_move(*__er_1); })) << "\n";
+    std::cout << ::tpy::any_cast_or_panic<std::string>(c.__getattr__("color")) << "\n";
 }
 
 void __tpy_init() {

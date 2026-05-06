@@ -1493,10 +1493,10 @@ class StatementGenerator:
             call = self.expressions._gen_method_call(stmt.target.property_setter_call)
             return f"{indent}{call};\n"
 
-        # D16 dyn-attr __setattr__ fallback: delegate to normal method call codegen,
-        # wrapping with error-return unwrap when the dunder is @error_return(AttributeError).
+        # D16 dyn-attr __setattr__ fallback: delegate to normal method call codegen
         if isinstance(stmt.target, TpyFieldAccess) and stmt.target.dyn_setattr_call is not None:
-            return self._gen_dyn_dunder_stmt(stmt.target.dyn_setattr_call, indent)
+            call = self.expressions._gen_method_call(stmt.target.dyn_setattr_call)
+            return f"{indent}{call};\n"
 
         # Field assignment: boundary conversions for optional/union pointer repr
         if isinstance(stmt.target, TpyFieldAccess):
@@ -1589,18 +1589,9 @@ class StatementGenerator:
         for target in stmt.targets:
             assert target.dyn_delattr_call is not None, (
                 "TpyDelAttr without resolved dyn_delattr_call: sema bug")
-            parts.append(self._gen_dyn_dunder_stmt(target.dyn_delattr_call, indent))
+            call = self.expressions._gen_method_call(target.dyn_delattr_call)
+            parts.append(f"{indent}{call};\n")
         return "".join(parts)
-
-    def _gen_dyn_dunder_stmt(self, synth: 'TpyMethodCall', indent: str) -> str:
-        """Emit `obj.__setattr__(...)` / `obj.__delattr__(...)` as a statement,
-        wrapping with the appropriate error-handling (panic / propagate /
-        goto-except) when the dunder is @error_return(AttributeError)."""
-        call = self.expressions._gen_method_call(synth)
-        fi = synth.resolved_function_info
-        if fi is None or fi.error_return_type is None:
-            return f"{indent}{call};\n"
-        return self._gen_error_return_stmt_block(call, indent)
 
     def _gen_del_var_code(self, stmt: TpyDelVar, indent: str) -> str:
         """Generate code for variable deletion (del x).

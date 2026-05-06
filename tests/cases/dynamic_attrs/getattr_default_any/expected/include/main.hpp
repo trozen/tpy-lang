@@ -18,7 +18,7 @@ struct Bag {
 
 
     // def __getattr__(self, name: str) -> Any:
-    std::expected<::tpy::Any, ::tpy::AttributeError> __getattr__(std::string_view name) const;
+    ::tpy::Any __getattr__(std::string_view name) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -29,14 +29,14 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __getattr__(self, name: str) -> Any:
-inline std::expected<::tpy::Any, ::tpy::AttributeError> Bag::__getattr__(std::string_view name) const {
+inline ::tpy::Any Bag::__getattr__(std::string_view name) const {
     // if name == "count":
     if ((name == "count")) {
         // return 7
         return ::tpy::make_any(::tpy::BigInt(7));
     }
     // raise AttributeError(name)
-    return ::tpy::make_unexpected(::tpy::AttributeError(name));
+    throw ::tpy::AttributeError(name);
 }
 void __tpy_init();
 } // namespace tpyapp::main

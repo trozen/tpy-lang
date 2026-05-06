@@ -1,1 +1,1 @@
-main.py:17: error: __getattr__ may only use @error_return(AttributeError); got 'AttrErr'
+main.py:17: error: __getattr__ cannot use @error_return

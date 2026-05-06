@@ -17,7 +17,7 @@ void main() {
     // print(hasattr(b, "KIND"))     # class constant -> compile-time True
     std::cout << ::tpy::print_bool(true) << "\n";
     // print(hasattr(b, "zzz"))      # not declared, dunder raises -> False at runtime
-    std::cout << ::tpy::print_bool((b.__getattr__("zzz")).has_value()) << "\n";
+    std::cout << ::tpy::print_bool([&]() -> bool { try { (void)(b.__getattr__("zzz")); return true; } catch (const ::tpy::AttributeError&) { return false; } }()) << "\n";
 }
 
 void __tpy_init() {

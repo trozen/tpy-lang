@@ -383,10 +383,6 @@ class TpyMethodCall(TpyExpr):
     is_nested_constructor: bool = False  # Set by sema: Outer.Inner() nested record constructor
     is_nested_enum_constructor: bool = False  # Set by sema: Outer.Kind(v) nested enum from_value
     nested_type_name: str | None = None  # Set by sema: dotted name for nested type calls
-    # Set on synth calls (e.g. dyn-attr __getattr__) where the @error_return
-    # is implicit and codegen handles the unwrap (panic / propagate / goto)
-    # rather than the user. Bypasses the "must be handled" enforcement.
-    error_return_auto_unwrap: bool = False
 
     def children(self) -> list[TpyExpr]:
         if self.fstr_expansion is not None:

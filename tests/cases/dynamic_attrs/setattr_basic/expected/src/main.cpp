@@ -13,9 +13,9 @@ void main() {
     // b.size = 42
     b.__setattr__("size", ::tpy::make_any(::tpy::BigInt(42)));
     // print(cast(str, b.color))
-    std::cout << ::tpy::any_cast_or_panic<std::string>(({ auto __er_1 = b.__getattr__("color"); if (!__er_1.has_value()) ::tpy::tpy_panic("unhandled error return"); ::tpy::unwrap_ref_move(*__er_1); })) << "\n";
+    std::cout << ::tpy::any_cast_or_panic<std::string>(b.__getattr__("color")) << "\n";
     // print(cast(int, b.size))
-    std::cout << ::tpy::any_cast_or_panic<::tpy::BigInt>(({ auto __er_2 = b.__getattr__("size"); if (!__er_2.has_value()) ::tpy::tpy_panic("unhandled error return"); ::tpy::unwrap_ref_move(*__er_2); })) << "\n";
+    std::cout << ::tpy::any_cast_or_panic<::tpy::BigInt>(b.__getattr__("size")) << "\n";
 }
 
 void __tpy_init() {

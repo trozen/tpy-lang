@@ -9,31 +9,20 @@ void main() {
     // s = Strict()
     Strict s = Strict();
     // s.host = "ok"
-    {
-        auto __try_tmp_1 = s.__setattr__("host", "ok");
-        if (!__try_tmp_1.has_value()) ::tpy::tpy_panic("unhandled error return");
-    }
+    s.__setattr__("host", "ok");
     // print("set host")
     std::cout << "set host" << "\n";
     // try:
     {
-        std::optional<::tpy::AttributeError> __err_opt_2;
-        // s._private = "bad"
-        {
-            auto __try_tmp_3 = s.__setattr__("_private", "bad");
-            if (!__try_tmp_3.has_value()) { __err_opt_2 = std::move(__try_tmp_3.error()); goto __except_2; }
-        }
-        // print("never")
-        std::cout << "never" << "\n";
-        goto __after_try_2;
-        // except AttributeError:
-        __except_2:;
-        {
-            auto& e = *__err_opt_2;
+        try {
+            // s._private = "bad"
+            s.__setattr__("_private", "bad");
+            // print("never")
+            std::cout << "never" << "\n";
+        } catch (const ::tpy::AttributeError& e) {
             // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
-        __after_try_2:;
     }
 }
 

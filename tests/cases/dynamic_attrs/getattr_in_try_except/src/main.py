@@ -1,5 +1,5 @@
 # Direct `obj.foo` access inside try/except AttributeError: the missing-attribute
-# signal routes through the goto-based dispatch to the except clause.
+# raise propagates as a throw and is caught by the except clause.
 
 
 class Bag:

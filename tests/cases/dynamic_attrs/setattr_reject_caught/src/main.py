@@ -1,6 +1,5 @@
 # __setattr__ raises AttributeError to reject some writes; caller catches via
-# try/except. Body-conditional auto-@error_return(AttributeError) makes the
-# raise a return-tier signal -- no throw machinery on the call site.
+# try/except. AttributeError is throw-tier; the raise propagates naturally.
 from typing import Any
 
 

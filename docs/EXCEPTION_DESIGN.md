@@ -22,7 +22,7 @@ panics until they fire (matches `std::vector::at()`).
 
 | Type | Status | Notes |
 |------|--------|-------|
-| `AttributeError` | Done -- **return-tier** | `ReturnException`, used via `std::expected<T, AttributeError>`. Auto-applied as `@error_return(AttributeError)` on `__getattr__`. `hasattr(obj, "foo")` becomes `.has_value()`, 3-arg `getattr` becomes `.value_or(default)` |
+| `AttributeError` | Done -- throw-tier | Catchable. Raised by user `__getattr__` / `__setattr__` / `__delattr__` bodies; propagates as a normal C++ throw. `hasattr` and 3-arg `getattr` wrap the dunder call in a try/catch lambda IIFE |
 | `AssertionError` | Done -- throw-tier | `assert` failure throws `AssertionError(msg)` via `::tpy::assert_failed(...)` helper |
 | `KeyError` | Pending | Dict miss / set pop-empty / dunder lookups (~6 sites) |
 | `IndexError` | Pending | List/bytes/bytearray bounds (after value-range elision) |
@@ -104,7 +104,6 @@ Built-in control-flow exceptions:
 
 ```python
 class StopIteration(Exception, ReturnException): ...
-class AttributeError(Exception, ReturnException): ...
 ```
 
 User-defined control-flow exceptions:

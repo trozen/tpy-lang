@@ -27,7 +27,7 @@ struct Strict {
     }
 
     // def __delattr__(self, name: str) -> None:
-    std::expected<void, ::tpy::AttributeError> __delattr__(std::string_view name);
+    void __delattr__(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Strict";
 };
 
@@ -38,15 +38,14 @@ inline std::ostream& operator<<(std::ostream& os, const Strict& obj) {
 
 
 // def __delattr__(self, name: str) -> None:
-inline std::expected<void, ::tpy::AttributeError> Strict::__delattr__(std::string_view name) {
+inline void Strict::__delattr__(std::string_view name) {
     // if name.startswith("_"):
     if (::tpy::str_startswith(name, "_")) {
         // raise AttributeError(name)
-        return ::tpy::make_unexpected(::tpy::AttributeError(name));
+        throw ::tpy::AttributeError(name);
     }
     // del self._data[name]
     ::tpy::__delitem__(this->_data, name);
-    return {};
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -25,7 +25,7 @@ struct Parent {
     explicit Parent(const ::tpy::ordered_map<std::string, std::string>& store) : _store(store) {}
 
     // def __getattr__(self, name: str) -> str:
-    std::expected<std::string, ::tpy::AttributeError> __getattr__(std::string_view name) const;
+    std::string __getattr__(std::string_view name) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Parent";
 };
 
@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __getattr__(self, name: str) -> str:
-inline std::expected<std::string, ::tpy::AttributeError> Parent::__getattr__(std::string_view name) const {
+inline std::string Parent::__getattr__(std::string_view name) const {
     // return self._store[name]
     return ::tpy::__getitem__(this->_store, name);
 }

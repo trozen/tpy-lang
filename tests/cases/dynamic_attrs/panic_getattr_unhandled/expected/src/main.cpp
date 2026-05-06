@@ -9,7 +9,7 @@ void main() {
     // b = Bag()
     Bag b = Bag();
     // print(b.missing)
-    std::cout << ({ auto __er_1 = b.__getattr__("missing"); if (!__er_1.has_value()) ::tpy::tpy_panic("unhandled error return"); ::tpy::unwrap_ref_move(*__er_1); }) << "\n";
+    std::cout << b.__getattr__("missing") << "\n";
 }
 
 void __tpy_init() {

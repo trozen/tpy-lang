@@ -9,9 +9,9 @@ void main() {
     // h = Headers()
     Headers h = Headers();
     // print(getattr(h, "host", "fallback"))      # dunder -> "example.com"
-    std::cout << (h.__getattr__("host")).value_or("fallback") << "\n";
+    std::cout << [&]() -> std::string { try { return h.__getattr__("host"); } catch (const ::tpy::AttributeError&) { return "fallback"; } }() << "\n";
     // print(getattr(h, "absent", "fallback"))    # dunder raises -> "fallback"
-    std::cout << (h.__getattr__("absent")).value_or("fallback") << "\n";
+    std::cout << [&]() -> std::string { try { return h.__getattr__("absent"); } catch (const ::tpy::AttributeError&) { return "fallback"; } }() << "\n";
 }
 
 void __tpy_init() {

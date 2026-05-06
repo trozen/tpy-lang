@@ -9,10 +9,7 @@ void main() {
     // s = Strict()
     Strict s = Strict();
     // s._private = "bad"
-    {
-        auto __try_tmp_1 = s.__setattr__("_private", "bad");
-        if (!__try_tmp_1.has_value()) ::tpy::tpy_panic("unhandled error return");
-    }
+    s.__setattr__("_private", "bad");
 }
 
 void __tpy_init() {

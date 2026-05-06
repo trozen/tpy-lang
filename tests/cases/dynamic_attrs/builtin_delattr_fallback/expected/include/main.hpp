@@ -33,7 +33,7 @@ struct Bag {
     void __delattr__(std::string_view name);
 
     // def __getattr__(self, name: str) -> Any:
-    std::expected<::tpy::Any, ::tpy::AttributeError> __getattr__(std::string_view name) const;
+    ::tpy::Any __getattr__(std::string_view name) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -56,7 +56,7 @@ inline void Bag::__delattr__(std::string_view name) {
 }
 
 // def __getattr__(self, name: str) -> Any:
-inline std::expected<::tpy::Any, ::tpy::AttributeError> Bag::__getattr__(std::string_view name) const {
+inline ::tpy::Any Bag::__getattr__(std::string_view name) const {
     // return self._data[name]
     return ::tpy::__getitem__(this->_data, name);
 }

@@ -25,8 +25,8 @@ design decision rather than the type system.
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 7 | `hasattr(obj, name)` for static + dyn-readable classes | Done. Literal name only. `__getattr__` is auto-`@error_return(AttributeError)`, so dyn-readable classes compile to `(call).has_value()` -- no try/catch. Declared members fold to compile-time `True`; classes without `__getattr__` fold to `False` |
-| 8 | 3-arg `getattr(obj, name, default)` with `AttributeError` catch | Done. Literal name only. Compiles to `(call).value_or(default)` on the dunder's `std::expected<T, AttributeError>`. `default` must be coercible to `T` (e.g. into-Any for `T = Any`) |
+| 7 | `hasattr(obj, name)` for static + dyn-readable classes | Done. Literal name only. Declared members fold to compile-time `True`; classes without `__getattr__` fold to `False`; dyn-readable classes emit a try/catch lambda IIFE that yields `false` on `AttributeError`, `true` otherwise |
+| 8 | 3-arg `getattr(obj, name, default)` with `AttributeError` catch | Done. Literal name only. Lambda IIFE returns the dunder's result, or `default` (coerced to `T`) on `AttributeError` |
 | 9 | Dynamic-name 2-arg builtins: `getattr(obj, name_var)`, `setattr(obj, name_var, v)`, `delattr(obj, name_var)` | Deferred. Needs a divergence call (route ALL dynamic names directly to the dunder, making declared members invisible to dynamic builtins -- simpler, but a CPython divergence; OR runtime string dispatch over declared members + dunder fallback -- matches CPython but reopens the value-category questions of phase 7's declared-member case). Pick when there's a driver |
 
 ### Known Limitations (v1)
@@ -264,15 +264,16 @@ In v1 the builtin only handles the **dynamic-fallback** case:
 
 ### Read: `getattr(obj, "foo", default)` (v1.5 phase 8, literal name only)
 
-Implemented for literal names. `__getattr__` is auto-`@error_return(AttributeError)`,
-so the dunder returns `std::expected<T, AttributeError>` and the 3-arg
-form substitutes `default` via `.value_or(...)`. Type rule: `default`
-must be coercible to `T` (the dunder's declared return type); result is
-typed as `T`. (Users wanting `T | D` widening declare `T = Optional[X]`
+Implemented for literal names. The 3-arg form catches `AttributeError`
+from the dunder and substitutes `default`. Type rule: `default` must be
+coercible to `T` (the dunder's declared return type); result is typed as
+`T`. (Users wanting `T | D` widening declare `T = Optional[X]`
 explicitly.)
 
 1. If `"foo"` matches a declared member -> compile error (same v1 rule).
-2. Else if class is dyn-readable -> emit `(obj.__getattr__("foo")).value_or(<default-coerced>)`.
+2. Else if class is dyn-readable -> emit a lambda IIFE that calls
+   `__getattr__("foo")` in a try block and returns `default` (coerced to
+   `T`) in the catch.
 3. Else -> existing "no field" error.
 
 Dynamic-name `getattr(obj, name_var, ...)` is deferred to phase 9.
@@ -281,9 +282,8 @@ Dynamic-name `getattr(obj, name_var, ...)` is deferred to phase 9.
 
 1. If `foo` is a declared field -> existing static assignment. Dunder NOT called.
 2. Else if class is dyn-writable -> emit `obj.__setattr__("foo", v)`. Value `v`
-   must be coercible to `V`. When the dunder body raises `AttributeError`
-   the parser auto-applies `@error_return(AttributeError)` and codegen
-   wraps the statement with the panic/propagate/goto-except check.
+   must be coercible to `V`. AttributeError raised in the body propagates
+   as a normal C++ throw.
 3. Else -> existing "no field" error.
 
 ### Write: `setattr(obj, "foo", v)` (v1, fallback-only)
@@ -329,10 +329,11 @@ Implemented for literal names. Rules:
   constant -> compile-time `True` (folded to `TpyBoolLiteral` in sema).
 - Literal name not declared, class has no `__getattr__` -> compile-time
   `False`.
-- Literal name not declared, class is dyn-readable -> emit
-  `(obj.__getattr__("foo")).has_value()` on the dunder's `std::expected`.
-- Reports the AttributeError signal only; the dunder body shouldn't
-  raise other ReturnException types (rejected by the validator).
+- Literal name not declared, class is dyn-readable -> emit a lambda
+  IIFE that calls `__getattr__("foo")` in a try block and returns
+  `false` on `AttributeError`, `true` otherwise.
+- Catches only `AttributeError`; other exceptions propagate (matches
+  Python 3).
 
 Dynamic-name `hasattr(obj, name_var)` is deferred to phase 9.
 
@@ -519,21 +520,22 @@ Numbered for the LANGUAGE_FEATURES note that will reference this list.
    user wanting that semantics must use a non-declared name, or implement the
    delete semantics via a method.
 
-10. **`AttributeError` is a `ReturnException` in TPy.** It inherits from
-    both `Exception` and `ReturnException`, so it uses the zero-cost
-    `std::expected<T, AttributeError>` machinery (like `StopIteration`),
-    not stack-unwinding throw. `__getattr__` is auto-`@error_return(AttributeError)`
-    unconditionally; `__setattr__` and `__delattr__` get the same
-    auto-decoration only when the body literally raises `AttributeError`
-    (the read protocol is fallible by contract; writes/deletes typically
-    succeed and we don't tax all writers with `@error_return`-matching
-    friction). User-side raise outside any of the three dunders requires
-    `@error_return(AttributeError)` on the function. `try/except AttributeError`
-    works in all contexts (return-tier dispatch). CPython idiom of
-    `raise AttributeError(name)` from `__getattr__` is portable as long
-    as it's inside the dunder; raising from a regular function in code
-    intended to run under both backends needs the `@error_return`
-    annotation (no-op in CPython).
+10. **`AttributeError` is a throw-tier exception** (inherits `Exception`).
+    `raise AttributeError(name)` compiles to a normal C++ throw and
+    propagates through the call stack via standard EH. `try/except
+    AttributeError` catches as throw-tier; unhandled at top-level, the
+    terminate handler prints "TurboPython panic: uncaught tpy::AttributeError:
+    <name>". Modern table-based EH is zero-cost on the happy path; the
+    fire path is microsecond-scale (matters only for hot probe-and-miss
+    loops, which `hasattr` / 3-arg `getattr` handle internally with a
+    single try/catch frame -- no propagation up the user's stack). This
+    is a deliberate departure from the StopIteration / return-tier model
+    used for `__next__`: an attribute miss is genuinely exceptional from
+    the caller's perspective, not control flow, and this avoids the
+    `@error_return`-coloring friction that would otherwise force every
+    dyn-attr-using function to either decorate or wrap in try/except.
+    CPython parity: `raise AttributeError(name)` works identically in
+    any function on either backend.
 
 ---
 
@@ -555,49 +557,39 @@ obj.__setattr__("foo", v)
 obj.__delattr__("foo")
 ```
 
-`__getattr__` is auto-decorated with `@error_return(AttributeError)`,
-mirroring `__next__` -> `@error_return(StopIteration)`. The dunder
-returns `std::expected<T, AttributeError>`; missing-attribute is the
-`unexpected` arm. Direct attribute access (`obj.foo`) and the 2-arg
-`getattr(obj, "foo")` builtin reuse the existing `_maybe_error_return_unwrap`
-codegen (panic on top-level / propagate inside `@error_return(AttributeError)`
-/ goto-except inside `try/except AttributeError`). `hasattr` and 3-arg
-`getattr` collapse to one-liners on the expected:
-
-`__setattr__` and `__delattr__` get the same auto-`@error_return(AttributeError)`,
-but **only when the body literally raises `AttributeError`** (the parser
-scans for `raise AttributeError(...)` or bare `raise AttributeError`).
-Writes/deletes that don't reject stay plain (`-> void`) -- callers
-don't pay the `@error_return`-matching friction at every `obj.foo = v`
-site. When the body does raise, direct write/delete codegen emits a
-wrapped statement (`auto __er = obj.__setattr__(...); if (!__er.has_value())
-panic/propagate/goto`).
-
-Body-scan limitations (use explicit `@error_return(AttributeError)` to
-opt in):
-- **Aliased name**: `AE = AttributeError; raise AE(...)` -- the parser
-  matches the bare local name, so the alias isn't recognized. The user
-  gets a "must be handled" sema error at the raise; decorate the dunder
-  explicitly.
-- **Helper-call indirection**: `def __setattr__: reject_helper(name)`
-  where `reject_helper` is `@error_return(AttributeError)`. The body
-  scan won't see a raise -- decorate `__setattr__` explicitly.
-- **Raise inside a nested def**: walker stops at function boundaries
-  (it walks via `_stmt_child_bodies` which doesn't descend into nested
-  function bodies). A raise inside a nested helper defined in the
-  dunder body doesn't trigger auto-apply.
+`AttributeError` is a throw-tier exception. The dunders return their
+declared `T`; missing-attribute is signaled via `raise AttributeError(name)`
+which compiles to a normal C++ throw. Direct `obj.foo` access compiles
+to a bare method call -- the throw propagates through the call stack
+via standard EH. `hasattr` and 3-arg `getattr` wrap the dunder call in
+a try/catch lambda IIFE so they can convert the throw to a boolean /
+default value:
 
 ```cpp
 // hasattr(obj, "foo")  (dyn-readable, v1.5)  ->
-(obj.__getattr__("foo")).has_value()
+[&]() -> bool {
+    try { (void)(obj.__getattr__("foo")); return true; }
+    catch (const ::tpy::AttributeError&) { return false; }
+}()
 
 // getattr(obj, "foo", default)  (dyn-readable, v1.5)  ->
-(obj.__getattr__("foo")).value_or(<default-coerced>)
+[&]() -> T {
+    try { return obj.__getattr__("foo"); }
+    catch (const ::tpy::AttributeError&) { return <default-coerced>; }
+}()
 ```
 
-No try/catch on the consumer side -- the cost of the "missing" arm is a
-single expected-state check, not exception unwinding. Matches the
-StopIteration/`__next__`/for-loop precedent.
+A lambda IIFE is required (not a GCC stmt-expr): try/catch is a
+statement, not an expression that yields a value. The explicit lambda
+return type unifies the success and catch arms (e.g. `std::string` from
+the dunder vs `const char*` literal default).
+
+Cost note: throw-fire is microsecond-scale (vs nanos for return-tier),
+which matters only for hot probe-and-miss loops. `hasattr` /
+`getattr-default` catch one frame away (inside the IIFE), so they don't
+unwind your call stack on misses. Direct `obj.foo` access on a missing
+attribute is a programmer error -- if unhandled it terminates with a
+clean message via the runtime's `tpy_terminate_handler`.
 
 ---
 
@@ -673,8 +665,17 @@ the directory for the full list):
 - **v1.5 builtins**: `hasattr_basic` (dyn-readable runtime check),
   `hasattr_static_members` (declared field/property/method/class-constant -> compile-time True),
   `hasattr_no_dunder` (no `__getattr__` -> compile-time True/False from declared set),
+  `hasattr_inherited` (inherited `__getattr__` via MRO),
   `getattr_default_concrete` (3-arg with `T = str`),
-  `getattr_default_any` (3-arg with `T = Any`, default coerced into Any).
+  `getattr_default_any` (3-arg with `T = Any`, default coerced into Any),
+  `getattr_default_optional` (3-arg with `T = Optional[X]`, None default),
+  `getattr_in_try_except` (direct `obj.foo` inside try/except AttributeError).
+- **Throw-tier integration**: `setattr_reject_caught`, `delattr_reject_caught`
+  (dunder raises AttributeError, caller catches),
+  `panic_getattr_unhandled`, `panic_setattr_reject_unhandled`
+  (uncaught throws hit the terminate handler).
+- **Throw-tier raise outside dunder**: `tests/cases/exceptions/throw_attribute_error/`
+  (regular function raising AttributeError, caller catches).
 - **Dunder validation rejections**: `error_static_getattr` (`@staticmethod`),
   `error_overloaded_getattr` (`@overload`), `error_borrowed_return`,
   `error_bare_record_return`, `error_error_return_getattr` (`@error_return`),

@@ -23,7 +23,7 @@ struct Config {
     explicit Config(const ::tpy::ordered_map<std::string, ::tpy::Any>& data) : _data(data) {}
 
     // def __getattr__(self, name: str) -> Any:
-    std::expected<::tpy::Any, ::tpy::AttributeError> __getattr__(std::string_view name) const;
+    ::tpy::Any __getattr__(std::string_view name) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
 };
 
@@ -34,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 
 
 // def __getattr__(self, name: str) -> Any:
-inline std::expected<::tpy::Any, ::tpy::AttributeError> Config::__getattr__(std::string_view name) const {
+inline ::tpy::Any Config::__getattr__(std::string_view name) const {
     // return self._data[name]
     return ::tpy::__getitem__(this->_data, name);
 }

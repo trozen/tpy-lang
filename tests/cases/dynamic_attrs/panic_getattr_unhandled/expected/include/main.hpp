@@ -13,14 +13,14 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// # Direct `obj.foo` access at top-level (no @error_return, no try/except):
-// # the dyn-attr miss panics at runtime since there's nowhere to propagate.
+// # Direct `obj.foo` access with no enclosing try/except: the throw propagates
+// # out of main() and the terminate handler prints the uncaught AttributeError.
 // class Bag:
 struct Bag {
 
 
     // def __getattr__(self, name: str) -> str:
-    std::expected<std::string, ::tpy::AttributeError> __getattr__(std::string_view name) const;
+    std::string __getattr__(std::string_view name) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -31,9 +31,9 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __getattr__(self, name: str) -> str:
-inline std::expected<std::string, ::tpy::AttributeError> Bag::__getattr__(std::string_view name) const {
+inline std::string Bag::__getattr__(std::string_view name) const {
     // raise AttributeError(name)
-    return ::tpy::make_unexpected(::tpy::AttributeError(name));
+    throw ::tpy::AttributeError(name);
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -11,7 +11,7 @@ void main() {
     // b.x = "hello"
     b.__setattr__("x", ::tpy::make_any(std::string("hello")));
     // print(cast(str, b.x))
-    std::cout << ::tpy::any_cast_or_panic<std::string>(({ auto __er_1 = b.__getattr__("x"); if (!__er_1.has_value()) ::tpy::tpy_panic("unhandled error return"); ::tpy::unwrap_ref_move(*__er_1); })) << "\n";
+    std::cout << ::tpy::any_cast_or_panic<std::string>(b.__getattr__("x")) << "\n";
     // del b.x
     b.__delattr__("x");
     // print(len(b._data))

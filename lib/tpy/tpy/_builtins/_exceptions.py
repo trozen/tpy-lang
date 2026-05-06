@@ -35,7 +35,7 @@ class FileNotFoundError(OSError):
     def __init__(self, message: str = "") -> None: ...
 
 @native("tpy::AttributeError")
-class AttributeError(Exception, ReturnException):
+class AttributeError(Exception):
     @native("tpy::AttributeError", function=True)
     def __init__(self, message: str = "") -> None: ...
 

@@ -25,7 +25,7 @@ struct Headers {
     explicit Headers(std::string_view origin) : _origin(origin) {}
 
     // def __getattr__(self, name: str) -> str:
-    std::expected<std::string, ::tpy::AttributeError> __getattr__(std::string_view name) const;
+    std::string __getattr__(std::string_view name) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Headers";
 };
 
@@ -36,14 +36,14 @@ inline std::ostream& operator<<(std::ostream& os, const Headers& obj) {
 
 
 // def __getattr__(self, name: str) -> str:
-inline std::expected<std::string, ::tpy::AttributeError> Headers::__getattr__(std::string_view name) const {
+inline std::string Headers::__getattr__(std::string_view name) const {
     // if name == "host":
     if ((name == "host")) {
         // return self._origin
         return this->_origin;
     }
     // raise AttributeError(name)
-    return ::tpy::make_unexpected(::tpy::AttributeError(name));
+    throw ::tpy::AttributeError(name);
 }
 void __tpy_init();
 } // namespace tpyapp::main

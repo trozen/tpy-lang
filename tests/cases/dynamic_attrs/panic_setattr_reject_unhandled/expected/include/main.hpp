@@ -27,7 +27,7 @@ struct Strict {
     }
 
     // def __setattr__(self, name: str, value: str) -> None:
-    std::expected<void, ::tpy::AttributeError> __setattr__(std::string_view name, std::string_view value);
+    void __setattr__(std::string_view name, std::string_view value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Strict";
 };
 
@@ -38,15 +38,14 @@ inline std::ostream& operator<<(std::ostream& os, const Strict& obj) {
 
 
 // def __setattr__(self, name: str, value: str) -> None:
-inline std::expected<void, ::tpy::AttributeError> Strict::__setattr__(std::string_view name, std::string_view value) {
+inline void Strict::__setattr__(std::string_view name, std::string_view value) {
     // if name.startswith("_"):
     if (::tpy::str_startswith(name, "_")) {
         // raise AttributeError(name)
-        return ::tpy::make_unexpected(::tpy::AttributeError(name));
+        throw ::tpy::AttributeError(name);
     }
     // self._data[name] = value
     ::tpy::__setitem__(this->_data, name, ::tpy::make_any(std::string(value)));
-    return {};
 }
 void __tpy_init();
 } // namespace tpyapp::main

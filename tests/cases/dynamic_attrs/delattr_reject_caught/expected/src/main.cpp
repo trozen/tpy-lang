@@ -9,31 +9,20 @@ void main() {
     // s = Strict()
     Strict s = Strict();
     // del s.a
-    {
-        auto __try_tmp_1 = s.__delattr__("a");
-        if (!__try_tmp_1.has_value()) ::tpy::tpy_panic("unhandled error return");
-    }
+    s.__delattr__("a");
     // print("deleted a")
     std::cout << "deleted a" << "\n";
     // try:
     {
-        std::optional<::tpy::AttributeError> __err_opt_2;
-        // del s._private
-        {
-            auto __try_tmp_3 = s.__delattr__("_private");
-            if (!__try_tmp_3.has_value()) { __err_opt_2 = std::move(__try_tmp_3.error()); goto __except_2; }
-        }
-        // print("never")
-        std::cout << "never" << "\n";
-        goto __after_try_2;
-        // except AttributeError:
-        __except_2:;
-        {
-            auto& e = *__err_opt_2;
+        try {
+            // del s._private
+            s.__delattr__("_private");
+            // print("never")
+            std::cout << "never" << "\n";
+        } catch (const ::tpy::AttributeError& e) {
             // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
-        __after_try_2:;
     }
 }
 
