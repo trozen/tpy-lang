@@ -5,10 +5,11 @@ Contains the shared state that is passed to all semantic analysis components.
 """
 
 from __future__ import annotations
+from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Literal, TYPE_CHECKING
+from typing import Any, Iterator, Literal, TYPE_CHECKING
 
 from ..macro_loader import MacroRegistry
 from ..parse.nodes import SourceLocation
@@ -906,6 +907,68 @@ class SemanticContext:
     def restore_function_state(self, saved: FunctionTrackingState) -> None:
         """Restore per-function state from a snapshot."""
         self.func = saved
+
+    @contextmanager
+    def trial_scope(self) -> Iterator[None]:
+        """Snapshot/restore for tentative semantic analysis (e.g. per-candidate
+        lambda body trial under Regime C overload resolution).
+
+        Wraps a body of analysis work whose state changes must be rolled back
+        unconditionally on exit -- both on success and on exception.
+
+        Snapshotted surfaces:
+
+        - Per-function state (FunctionTrackingState) -- includes call_edges,
+          mutated/struct/addr-escape/returned param sets, self-mutation flags,
+          borrow tracker, definitely_assigned, narrowed_types, etc. Deep-copied
+          since FunctionTrackingState contains nested mutable containers.
+        - Module-level type cache (``expr_types``) and the literal/view
+          counters and registries (``literal_counter``, ``list_literals``,
+          ``dict_literals``, ``set_literals``, ``pending_generic_counter``,
+          ``str_var_counter``, ``str_vars``, ``bytes_var_counter``,
+          ``bytes_vars``).
+        - The diagnostics list -- truncated to its pre-trial length so
+          warnings/errors emitted during a rejected trial don't leak into
+          the user-visible output.
+
+        Lambda AST mutations (``inferred_param_types``, ``inferred_return_type``,
+        ``captured_names``, ``captures_by_value``) are the caller's
+        responsibility -- save and restore them around the trial. They are
+        not part of SemanticContext state.
+        """
+        saved_func = self.save_function_state()
+        saved_expr_types = dict(self.expr_types)
+        saved_literal_counter = self.literal_counter
+        saved_list_literals = dict(self.list_literals)
+        saved_dict_literals = dict(self.dict_literals)
+        saved_set_literals = dict(self.set_literals)
+        saved_pending_generic_counter = self.pending_generic_counter
+        saved_str_var_counter = self.str_var_counter
+        saved_str_vars = dict(self.str_vars)
+        saved_bytes_var_counter = self.bytes_var_counter
+        saved_bytes_vars = dict(self.bytes_vars)
+        saved_diagnostics_len = len(self.diagnostics)
+        try:
+            yield
+        finally:
+            self.restore_function_state(saved_func)
+            self.expr_types.clear()
+            self.expr_types.update(saved_expr_types)
+            self.literal_counter = saved_literal_counter
+            self.list_literals.clear()
+            self.list_literals.update(saved_list_literals)
+            self.dict_literals.clear()
+            self.dict_literals.update(saved_dict_literals)
+            self.set_literals.clear()
+            self.set_literals.update(saved_set_literals)
+            self.pending_generic_counter = saved_pending_generic_counter
+            self.str_var_counter = saved_str_var_counter
+            self.str_vars.clear()
+            self.str_vars.update(saved_str_vars)
+            self.bytes_var_counter = saved_bytes_var_counter
+            self.bytes_vars.clear()
+            self.bytes_vars.update(saved_bytes_vars)
+            del self.diagnostics[saved_diagnostics_len:]
 
     def mark_loop_var_mutated(self, name: str) -> None:
         """Mark a for-each loop variable as mutated (prevents const-ref binding)."""

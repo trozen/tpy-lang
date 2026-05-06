@@ -3345,15 +3345,19 @@ class CallAnalyzer:
             if isinstance(arg, TpyLambda):
                 if len(arg.param_names) != len(hint.param_types):
                     return None
-                # V1 limit: if hint return is TPR after partial inference,
-                # the lambda body would have to resolve it. We don't run
-                # body analysis per-candidate. Allow only if ctx.expr_type_hint
-                # could pin the return TPR (downstream inference will
-                # try to use the call-site hint).
-                if isinstance(hint.return_type, TypeParamRef):
-                    if not self._return_tpr_pinnable_from_context(func, hint.return_type):
-                        return None
-                slot_type: TpyType = hint
+                # An unresolved return TPR after partial inference is pinned
+                # via a body-analysis trial under ``trial_scope`` -- the
+                # winner is re-analyzed by _analyze_single_function_call so
+                # the trial commits no state. The context-pinnable shortcut
+                # skips the trial when downstream cross-arg inference can
+                # pin the TPR from the call-site hint alone.
+                needs_body_trial = (
+                    isinstance(hint.return_type, TypeParamRef)
+                    and not self._return_tpr_pinnable_from_context(func, hint.return_type)
+                )
+                slot_type: TpyType = (
+                    self._lambda_body_dry_run(arg, hint) if needs_body_trial else hint
+                )
             elif isinstance(arg, TpyName) and self._is_function_binding(arg):
                 # Pure dry matcher: returns matched data, raises on ambiguity.
                 if self.ctx.func.current_ns:
@@ -3440,6 +3444,38 @@ class CallAnalyzer:
         if not self.type_ops.match_type_with_inference(func.return_type, hint, trial):
             return False
         return return_tpr.name in trial
+
+    def _lambda_body_dry_run(
+        self, lambda_expr: TpyLambda, hint: 'CallableType',
+    ) -> 'CallableType':
+        """Tentatively analyze ``lambda_expr`` body under ``hint`` to pin
+        an unresolved return TPR; roll back all state on exit.
+
+        Returns the resolved CallableType (with the body's inferred type
+        substituted for the return TPR). Propagates ``SemanticError`` from
+        body analysis -- the caller (``_build_regime_c_evidence``) lets it
+        propagate so the regime-driver stashes it into ``saved_dry_error``
+        and surfaces the most informative per-candidate error when no
+        candidate passes.
+
+        The trial commits no state. The winning candidate's lambda body is
+        re-analyzed by the post-Regime-C single-function-call path, which
+        sets the lambda AST's ``inferred_*`` fields and registers all body
+        sub-expression types and call edges into the live function state.
+        """
+        # AST-side state is not part of SemanticContext, so save/restore here.
+        saved_inferred_param_types = list(lambda_expr.inferred_param_types)
+        saved_inferred_return_type = lambda_expr.inferred_return_type
+        saved_captured_names = list(lambda_expr.captured_names)
+        saved_captures_by_value = lambda_expr.captures_by_value
+        try:
+            with self.ctx.trial_scope():
+                return self.expr._analyze_lambda_with_fn_hint(lambda_expr, hint)
+        finally:
+            lambda_expr.inferred_param_types = saved_inferred_param_types
+            lambda_expr.inferred_return_type = saved_inferred_return_type
+            lambda_expr.captured_names = saved_captured_names
+            lambda_expr.captures_by_value = saved_captures_by_value
 
     def _analyze_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> TpyType:
         """Type-check a call to a builtin function using unified FunctionInfo overloads.

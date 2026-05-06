@@ -331,27 +331,30 @@ a *supplied* (non-default) arg. Three regimes:
   kwarg-supplied Fn slot): per-candidate evidence collection in
   `_resolve_regime_c` + `_build_regime_c_evidence`. Each candidate
   substitutes partial inference into its Fn-slot param to get a hint,
-  then synthesises the lambda's "type" as that hint (no body analysis).
-  Named function refs go through a pure data matcher
-  (`_match_function_to_hint_data`) that returns the matched
-  `FunctionInfo` plus inferred type args without mutating the AST; the
-  matcher's concrete callable type pins return TPRs for named refs even
-  when the partial-substitution hint can't.
+  then synthesises the lambda's "type" as that hint. When the hint
+  return is still a `TypeParamRef` and the call-site context can't
+  pin it (`_return_tpr_pinnable_from_context` returns False), the
+  body is analyzed under `SemanticContext.trial_scope()` via
+  `_lambda_body_dry_run` so the resolved return type pins the TPR;
+  trial state changes (call edges, mutated params, borrow tracker,
+  `expr_types`, counters/registries, diagnostics, lambda AST fields)
+  roll back unconditionally and the winner's body is re-analyzed by
+  `_analyze_single_function_call`. Named function refs go through a
+  pure data matcher (`_match_function_to_hint_data`) that returns the
+  matched `FunctionInfo` plus inferred type args without mutating the
+  AST; the matcher's concrete callable type pins return TPRs for
+  named refs.
 
 Regime C runs the same tier ranking as Regime A/B over the per-candidate
 evidence (via `_classify_overload`), then a coercion-pass fallback
 mirroring pass 2 above. The legacy structural-match fallback at the user
 path's no-match recovery is gated on `contextual_callable_used` so it
-can't reason over synthesized callable types.
-
-**V1 limit (BUGS.md):** Regime C with a `TpyLambda` whose hint return
-type is still a `TypeParamRef` after partial inference is rejected --
-without per-candidate body analysis we can't pin the return TPR.
-Workaround: hoist the lambda to a typed local (a callable variable
-supplies a concrete return type via the variable's declared type), or
-use a `def` (named refs use the matcher's concrete callable type).
-Single-candidate calls (Regime B) are unaffected because the
-`_analyze_lambda_with_fn_hint` body path runs.
+can't reason over synthesized callable types. Lambda body errors raised
+during a trial propagate through `_build_regime_c_evidence` into
+`saved_dry_error`, surfaced via `result.first_contextual_error` when no
+candidate passes -- the user sees the body diagnostic (e.g. "Invalid
+operand types for '+': Int32 and str") instead of a generic
+"no matching overload" message.
 
 #### Testing
 
@@ -379,8 +382,12 @@ Single-candidate calls (Regime B) are unaffected because the
   variable disambiguates by hint), `..._single_candidate_body_inference`
   (Regime B preserves `_analyze_lambda_with_fn_hint` body return-TPR
   inference inside an overload group),
-  `error_overload_fn_param_lambda_return_tpr` (V1 limit -- multi-Fn-bearing
-  + lambda + return TPR rejected),
+  `overload_fn_param_lambda_return_from_body` (Regime C body-trial pins
+  unresolved return TPR for both 1-arg and 2-arg lambda candidates),
+  `..._return_from_body_capture` (trial scope rolls back capture state),
+  `error_overload_fn_param_lambda_body_type_error` (lambda-body
+  `SemanticError` surfaces via `saved_dry_error` instead of a generic
+  no-match diagnostic),
   `error_overload_fn_param_named_ref_ambiguous` (catch-and-stash ambiguous
   named ref against one Regime C candidate while another rejects).
 - Same-params-diff-return rejection:
