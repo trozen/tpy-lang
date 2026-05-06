@@ -9,7 +9,6 @@ from tpy import Int32
 class PyCounter:
     value: Int32
 
-    @native("CppCounter", function=True)
     def __init__(self, value: Int32) -> None: ...
 
     def get(self) -> Int32: ...
