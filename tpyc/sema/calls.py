@@ -39,6 +39,7 @@ from .overloads import (
     type_matches_numeric, type_matches_with_coercion,
     resolve_overload, OverloadAmbiguityError,
     _classify_overload, _score, _expand_arg_types_with_kwargs,
+    _scalar_widening_cost,
 )
 from .statements import _root_name_of_expr, _is_self_call_deferred
 from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo, _is_static_str
@@ -2503,33 +2504,63 @@ class CallAnalyzer:
         # in Python, so we look up the actual type via the type factory.
         record_type = builtin_modules.get_builtin_type_obj(record.builtin_type_key)
 
-        # Find a matching constructor overload
+        # First-match-wins, except when multiple fixed-int overloads accept an
+        # IntLiteralType arg -- there, prefer the default_int_type one over the
+        # smallest-fitting one (str(IntLiteralType) -> fixed_to_str<int32_t>
+        # rather than <int8_t>). Other-shape ctors (BigInt, float, etc.) and
+        # single-fixed-int ctors (Int64(20)) keep declaration-order behavior.
+        default_int_type = self.ctx.default_int_type
+        best_ctor: FunctionInfo | None = None
+        best_cost = 0
         for ctor in init_overloads:
             if len(ctor.params) != len(arg_types):
                 continue
-            if all(type_matches_numeric(arg_type, ptype)
-                   for (pname, ptype), arg_type in zip(ctor.params, arg_types)):
-                ret = record_type or ctor.return_type
-                # Reject int literals that are out of range for the target fixed-int type
-                if (is_fixed_int_type(ret) and len(arg_types) == 1
-                        and isinstance(arg_types[0], IntLiteralType)):
-                    lit = arg_types[0]
-                    ret_tr = int_traits_of(ret)
-                    if lit.value is not None and not (ret_tr.min_value <= lit.value <= ret_tr.max_value):
-                        raise self.ctx.error(
-                            f"{ret} overflow: {lit.value} is outside range "
-                            f"[{ret_tr.min_value}, {ret_tr.max_value}]",
-                            expr,
-                        )
-                expr.resolved_function_info = _resolve_cpp_template_type_params(ctor, result_type=ret)
-                self._check_cast_safe(expr, ctor, arg_types, ret)
-                # Borrowing views (StrView/BytesView/Span/SpanIter) need call_type
-                # populated so downstream dangling/provenance checks can see
-                # through the constructor. Other builtin constructors leave
-                # call_type unset to preserve their existing codegen paths.
-                if is_borrowing_view_type(ret):
-                    expr.call_type = ret
-                return ret
+            if not all(type_matches_numeric(arg_type, ptype)
+                       for (pname, ptype), arg_type in zip(ctor.params, arg_types)):
+                continue
+            # Single pass: detect IntLiteralType -> fixed-int matches and
+            # accumulate their widening cost from default_int_type.
+            is_fixed_int = False
+            cost = 0
+            for (_pname, ptype), arg_type in zip(ctor.params, arg_types):
+                if isinstance(arg_type, IntLiteralType) and is_fixed_int_type(ptype):
+                    is_fixed_int = True
+                    cost += _scalar_widening_cost(arg_type, ptype, default_int_type)
+            if best_ctor is None:
+                best_ctor = ctor
+                best_cost = cost
+                # Tie-break only fires when the first match was fixed-int;
+                # otherwise no later ctor can improve on this one.
+                if not is_fixed_int:
+                    break
+            elif is_fixed_int and cost < best_cost:
+                best_ctor = ctor
+                best_cost = cost
+            if best_cost == 0:
+                break
+        if best_ctor is not None:
+            ctor = best_ctor
+            ret = record_type or ctor.return_type
+            # Reject int literals that are out of range for the target fixed-int type
+            if (is_fixed_int_type(ret) and len(arg_types) == 1
+                    and isinstance(arg_types[0], IntLiteralType)):
+                lit = arg_types[0]
+                ret_tr = int_traits_of(ret)
+                if lit.value is not None and not (ret_tr.min_value <= lit.value <= ret_tr.max_value):
+                    raise self.ctx.error(
+                        f"{ret} overflow: {lit.value} is outside range "
+                        f"[{ret_tr.min_value}, {ret_tr.max_value}]",
+                        expr,
+                    )
+            expr.resolved_function_info = _resolve_cpp_template_type_params(ctor, result_type=ret)
+            self._check_cast_safe(expr, ctor, arg_types, ret)
+            # Borrowing views (StrView/BytesView/Span/SpanIter) need call_type
+            # populated so downstream dangling/provenance checks can see
+            # through the constructor. Other builtin constructors leave
+            # call_type unset to preserve their existing codegen paths.
+            if is_borrowing_view_type(ret):
+                expr.call_type = ret
+            return ret
 
         # Fallback: try protocol-aware overload resolution (e.g. bool(obj) via Truthy)
         try:
@@ -2537,6 +2568,7 @@ class CallAnalyzer:
                 init_overloads, arg_types,
                 protocol_checker=self.protocols.type_conforms_to_protocol,
                 protocol_classifier=self.protocols.classify_protocol_conformance,
+                default_int_type=self.ctx.default_int_type,
                 subclass_checker=self.ctx.registry.is_subclass_of,
                 type_ops=self.type_ops,
             )
@@ -3622,6 +3654,7 @@ class CallAnalyzer:
                         func_infos, enriched_types,
                         protocol_checker=self.protocols.type_conforms_to_protocol,
                         protocol_classifier=self.protocols.classify_protocol_conformance,
+                        default_int_type=self.ctx.default_int_type,
                         subclass_checker=self.ctx.registry.is_subclass_of,
                         kwarg_types=kwarg_types,
                     )

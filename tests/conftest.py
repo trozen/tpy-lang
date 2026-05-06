@@ -1318,7 +1318,7 @@ def parse_type_annotations(source: str) -> list[TypeAnnotation]:
     return annotations
 
 
-_VAR_NAME_RE = re.compile(r'\s*(\w+)\s*(?::\s*[\w\[\], .|]+\s*)?=')
+_VAR_NAME_RE = re.compile(r'\s*(\w+)\s*(?::\s*[\w\[\], .|]+\s*)?(?:\s*,\s*\w+)*\s*=')
 
 
 def validate_type_annotations(

@@ -300,7 +300,11 @@ def test_classify_strict_no_match_returns_none():
 
 def test_classify_strict_int_literal_fits_fixed_int():
     il = IntLiteralType(value=1)
-    assert _classify_strict_match(il, INT32) == (MatchTier.EXACT_CONCRETE, 0)
+    # Cost 0 for exact-default match, larger for narrower/wider widths so
+    # str(IntLiteralType) picks the int32_t overload over int8_t.
+    assert _classify_strict_match(il, INT32, default_int_type=INT32) == (MatchTier.EXACT_CONCRETE, 0)
+    int8_cost = _classify_strict_match(il, INT8, default_int_type=INT32)
+    assert int8_cost is not None and int8_cost[0] == MatchTier.EXACT_CONCRETE and int8_cost[1] > 0
     # Value out of range for Int8 -> not a match.
     big = IntLiteralType(value=1000)
     assert _classify_strict_match(big, INT8) is None
@@ -309,8 +313,9 @@ def test_classify_strict_int_literal_fits_fixed_int():
 def test_classify_strict_int_literal_unknown_value_matches_any_fixed_int():
     # value=None: compiler can't range-check, accept.
     il = IntLiteralType(value=None)
-    assert _classify_strict_match(il, INT8) == (MatchTier.EXACT_CONCRETE, 0)
-    assert _classify_strict_match(il, UINT64) == (MatchTier.EXACT_CONCRETE, 0)
+    assert _classify_strict_match(il, INT8, default_int_type=INT32) == (MatchTier.EXACT_CONCRETE, 1)
+    assert _classify_strict_match(il, INT32, default_int_type=INT32) == (MatchTier.EXACT_CONCRETE, 0)
+    assert _classify_strict_match(il, UINT64, default_int_type=INT32)[0] == MatchTier.EXACT_CONCRETE
 
 
 def test_classify_strict_none_matches_void():

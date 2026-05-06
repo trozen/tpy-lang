@@ -21,7 +21,7 @@ void test_ternary(std::string_view a, std::string_view b) {
     std::cout << z << "\n";
     // # One operand owned: falls back to std::string
     // w = a if True else str(42)  # tpyc: type(str)
-    std::string w = ((true) ? (std::string(a)) : (::tpy::fixed_to_str<int8_t>(42)));
+    std::string w = ((true) ? (std::string(a)) : (::tpy::fixed_to_str<int32_t>(42)));
     // print(w)
     std::cout << w << "\n";
 }
@@ -39,7 +39,7 @@ void test_or(std::string_view a, std::string_view b) {
     std::cout << y << "\n";
     // # One operand owned: falls back to std::string
     // z = a or str(42)  # tpyc: type(str)
-    auto&& __tmp_2 = ::tpy::fixed_to_str<int8_t>(42);
+    auto&& __tmp_2 = ::tpy::fixed_to_str<int32_t>(42);
     std::string z = ((!a.empty()) ? std::string(a) : __tmp_2);
     // print(z)
     std::cout << z << "\n";

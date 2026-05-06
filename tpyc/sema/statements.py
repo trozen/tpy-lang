@@ -23,6 +23,7 @@ from ..typesys import (
     make_ref, unwrap_ref_type, RefType,
     is_integer_type, is_any_int_type, is_numeric_type, is_readonly_span,
     is_float_type, is_any_float_type,
+    resolve_int_literals,
     bare_name)
 from ..parse import (
     TpyExpr,
@@ -3074,6 +3075,9 @@ class StatementAnalyzer:
                 # At module level, targets become globals with namespace-scope
                 # definitions. Mark is_new=False so codegen emits assignment
                 # (the declaration is handled by gen_global_decl).
+                # Resolve IntLiteralType so the global's declared type aligns
+                # with the int32_t storage codegen emits (sema/codegen parity).
+                elem_type = resolve_int_literals(elem_type, self.ctx.default_int_for_literal)
                 self.ctx.global_scope.define(name, elem_type)
                 self.ctx.func.current_scope.define(name, elem_type)
                 self.init.mark_assigned(name)
@@ -3109,6 +3113,14 @@ class StatementAnalyzer:
                     name, elem_type, None, None,
                     line=(stmt.loc.line if stmt.loc else None),
                 )
+                # Commit IntLiteralType to default_int_type at the new-local
+                # binding site -- otherwise codegen emits invalid C++ like
+                # `1 a = std::get<0>(...)` since IntLiteralType.to_cpp()
+                # returns the literal value, not a type. Applied here (not in
+                # _infer_new_local_type) so for-loop var binding still leaves
+                # IntLiteralType in place: `for v in [...]: f(v)` where f
+                # takes BigInt needs that flexibility (heapq pattern).
+                elem_type = resolve_int_literals(elem_type, self.ctx.default_int_for_literal)
                 stmt.target_types[i] = elem_type
                 self.ctx.func.current_scope.define(name, elem_type)
                 self.init.mark_assigned(name)

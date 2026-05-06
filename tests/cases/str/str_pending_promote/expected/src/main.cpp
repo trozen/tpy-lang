@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def test_str_constructor() -> None:
 void test_str_constructor() {
     // s = str(42)  # tpyc: type(str)
-    std::string s = ::tpy::fixed_to_str<int8_t>(42);
+    std::string s = ::tpy::fixed_to_str<int32_t>(42);
     // print(s)
     std::cout << s << "\n";
 }
@@ -28,7 +28,7 @@ void test_reassign_from_owned() {
     // s = "start"  # tpyc: type(str)
     std::string s = "start";
     // s = str(99)
-    s = ::tpy::fixed_to_str<int8_t>(99);
+    s = ::tpy::fixed_to_str<int32_t>(99);
     // print(s)
     std::cout << s << "\n";
 }

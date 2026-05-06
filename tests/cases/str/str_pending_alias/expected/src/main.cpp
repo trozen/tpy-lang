@@ -56,7 +56,7 @@ void test_reassign_from_owned_pending(bool cond) {
     // if cond:
     if (cond) {
         // s = str(123)  # tpyc: type(str)
-        std::string s = ::tpy::fixed_to_str<int8_t>(123);
+        std::string s = ::tpy::fixed_to_str<int32_t>(123);
         // result = s   # s resolves to str -> result must be promoted too
         result = s;
     }
@@ -71,7 +71,7 @@ std::string test_reassign_from_owned_pending_return(bool cond) {
     // if cond:
     if (cond) {
         // s = str(123)
-        std::string s = ::tpy::fixed_to_str<int8_t>(123);
+        std::string s = ::tpy::fixed_to_str<int32_t>(123);
         // result = s
         result = s;
     }
@@ -102,7 +102,7 @@ void test_owned_reassign_no_backprop() {
     // b = a  # tpyc: type(str)
     std::string b = std::string(a);
     // b = str(99)
-    b = ::tpy::fixed_to_str<int8_t>(99);
+    b = ::tpy::fixed_to_str<int32_t>(99);
     // print(a)
     std::cout << a << "\n";
     // print(b)

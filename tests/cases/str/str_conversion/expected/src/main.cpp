@@ -41,7 +41,7 @@ void __tpy_init() {
     std::cout << ::tpy::fixed_to_str<int32_t>(0) << "\n";
     // # From int/BigInt (inline usage - safe)
     // print(str(12345))         # 12345
-    std::cout << ::tpy::fixed_to_str<int16_t>(12345) << "\n";
+    std::cout << ::tpy::fixed_to_str<int32_t>(12345) << "\n";
     // print(str(-99999))        # -99999
     std::cout << ::tpy::fixed_to_str<int32_t>(-99999) << "\n";
     // # From float (inline usage - safe)

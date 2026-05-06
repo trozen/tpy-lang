@@ -278,10 +278,14 @@ def _classify_strict_match(
     # IntLiteralType matches the specific fixed-width int it was inferred to (from
     # generic resolution). This allows resolved-generic overloads like
     # range(stop: Int32) to match IntLiteralType(5) in the first pass.
+    # Cost ranks by widening distance from default_int_type so str(IntLiteralType)
+    # picks the default-width overload (Int32) over the smallest-fitting one
+    # (Int8) when multiple fixed-int overloads accept the value.
     if isinstance(arg_inner, IntLiteralType) and is_fixed_int_type(param_inner):
         tr = int_traits_of(param_inner)
         if arg_inner.value is None or tr.min_value <= arg_inner.value <= tr.max_value:
-            return (MatchTier.EXACT_CONCRETE, 0)
+            return (MatchTier.EXACT_CONCRETE,
+                    _scalar_widening_cost(arg_inner, param_inner, default_int_type))
     # None literal (NoneType) matches None type annotation (VoidType)
     if isinstance(arg_inner, NoneType) and isinstance(param_inner, VoidType):
         return (MatchTier.EXACT_CONCRETE, 0)

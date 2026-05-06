@@ -1,5 +1,5 @@
 # enumerate() with rvalue iterables (temporaries from function calls)
-from tpy import Int32, Own
+from tpy import Own
 
 def make_words() -> Own[list[str]]:
     return ["hello", "world", "test"]
@@ -14,8 +14,7 @@ def main() -> None:
         print(i, s)
 
     # rvalue: list() from generator expression.
-    # annotation works around BUGS.md "str(x) overload selection picks the smallest-fitting fixed-int"
-    nums: list[Int32] = [1, 2, 3]
+    nums = [1, 2, 3]
     for i, s in enumerate(list(str(x) for x in nums)):
         print(i, s)
 
