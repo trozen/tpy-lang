@@ -1129,12 +1129,14 @@ class CallAnalyzer:
 
     def _extract_dyn_builtin_target(
         self, expr: TpyCall, builtin: str, expected_args: int | tuple[int, ...],
-    ) -> tuple[TpyExpr, TpyStrLiteral, str, NominalType, 'RecordInfo']:
+    ) -> tuple[TpyExpr, TpyExpr, str | None, NominalType, 'RecordInfo']:
         """Shared validation for getattr/setattr/delattr/hasattr builtins (D16).
 
-        Validates: no kwargs, arg count, literal name, record receiver.
+        Validates: no kwargs, arg count, str-typed name, record receiver.
         `expected_args` may be a single count or a tuple of accepted counts.
-        Returns (obj_arg, name_arg, name_str, actual_type, record).
+        Returns (obj_arg, name_arg, literal_name_or_None, actual_type, record).
+        Non-literal names route everything to the dunder (D16 phase 9, Option A);
+        callers should skip the declared-member check when literal_name is None.
         """
         if expr.kwargs:
             raise self.ctx.error(f"{builtin}() does not accept keyword arguments", expr)
@@ -1145,12 +1147,11 @@ class CallAnalyzer:
                 f"{builtin}() expects {wanted} arguments, got {len(expr.args)}", expr)
         obj_arg = expr.args[0]
         name_arg = expr.args[1]
-        if not isinstance(name_arg, TpyStrLiteral):
+        name_type = self.expr.analyze_expr(name_arg)
+        if not is_any_str_type(unwrap_readonly(name_type)):
             raise self.ctx.error(
-                f"{builtin}() requires a string-literal name; "
-                f"dynamic-name {builtin} is not yet supported",
-                expr,
-            )
+                f"{builtin}() name argument must be str; got '{name_type}'", expr)
+        literal_name = name_arg.value if isinstance(name_arg, TpyStrLiteral) else None
         obj_type = self.expr.analyze_expr(obj_arg)
         actual_type = unwrap_qualifiers(obj_type)
         record = (self.ctx.registry.get_record_for_type(actual_type)
@@ -1159,7 +1160,7 @@ class CallAnalyzer:
         if record is None:
             raise self.ctx.error(
                 f"{builtin}() requires a record receiver; got '{obj_type}'", expr)
-        return obj_arg, name_arg, name_arg.value, actual_type, record
+        return obj_arg, name_arg, literal_name, actual_type, record
 
     def _declared_member_kind(self, record: 'RecordInfo', name: str) -> str | None:
         """Return the kind ('field' / 'property' / 'method' / 'class constant')
@@ -1196,17 +1197,19 @@ class CallAnalyzer:
             )
 
     def _analyze_getattr_builtin(self, expr: TpyCall) -> TpyType:
-        """D16 Phase 1 + v1.5 Phase 8: `getattr(obj, "name")` and
-        `getattr(obj, "name", default)` -- dynamic-fallback only."""
+        """`getattr(obj, name[, default])` -- always routed through `__getattr__`
+        (Option A: route-all-to-dunder, regardless of literal vs runtime name)."""
         obj_arg, name_arg, name, actual_type, record = self._extract_dyn_builtin_target(
             expr, "getattr", expected_args=(2, 3))
-        self._reject_declared_member_in_dyn_builtin(
-            record, name, "getattr", expr, op_suffix="", fixit=f"obj.{name}")
+        if name is not None:
+            self._reject_declared_member_in_dyn_builtin(
+                record, name, "getattr", expr, op_suffix="", fixit=f"obj.{name}")
         ga_overloads, type_subst = self.protocols.lookup_record_method_overloads(
             record, "__getattr__")
         if not ga_overloads:
+            target = f"'{name}'" if name is not None else "(runtime name)"
             raise self.ctx.error(
-                f"Record '{actual_type.name}' has no field '{name}' and does not "
+                f"Record '{actual_type.name}' has no field {target} and does not "
                 f"define __getattr__",
                 expr,
             )
@@ -1233,21 +1236,30 @@ class CallAnalyzer:
         return ret_type if ret_type is not None else VOID
 
     def _analyze_hasattr_builtin(self, expr: TpyCall) -> TpyType:
-        """D16 v1.5 Phase 7: `hasattr(obj, "name")` -- literal-name only.
+        """`hasattr(obj, name)`.
 
-        Static result if name resolves to a declared member or class is not
-        dyn-readable; otherwise emits a runtime try/catch over `__getattr__`.
+        Literal name: static fold if the name is declared (True) or the class
+        has no `__getattr__` (False); otherwise runtime try/catch.
+        Non-literal name: routes everything to the dunder (Option A); the
+        runtime check returns True if the dunder succeeds, False if it raises
+        AttributeError. Requires a dyn-readable receiver.
         """
         obj_arg, name_arg, name, actual_type, record = self._extract_dyn_builtin_target(
             expr, "hasattr", expected_args=2)
-        if self._declared_member_kind(record, name) is not None:
+        if name is not None and self._declared_member_kind(record, name) is not None:
             expr.macro_expansion = TpyBoolLiteral(value=True, loc=expr.loc)
             return BOOL
         ga_overloads, _ = self.protocols.lookup_record_method_overloads(
             record, "__getattr__")
         if not ga_overloads:
-            expr.macro_expansion = TpyBoolLiteral(value=False, loc=expr.loc)
-            return BOOL
+            if name is not None:
+                expr.macro_expansion = TpyBoolLiteral(value=False, loc=expr.loc)
+                return BOOL
+            raise self.ctx.error(
+                f"Record '{actual_type.name}' has no field (runtime name) and does "
+                f"not define __getattr__",
+                expr,
+            )
         ga = ga_overloads[0]
         synth = TpyMethodCall(obj=obj_arg, method="__getattr__", args=[name_arg])
         synth.resolved_function_info = ga
@@ -1255,16 +1267,18 @@ class CallAnalyzer:
         return BOOL
 
     def _analyze_setattr_builtin(self, expr: TpyCall) -> TpyType:
-        """D16 Phase 2: `setattr(obj, "name", value)` -- dynamic-fallback only."""
+        """`setattr(obj, name, value)` -- routes to `__setattr__` (dynamic-fallback only)."""
         obj_arg, name_arg, name, actual_type, record = self._extract_dyn_builtin_target(
             expr, "setattr", expected_args=3)
         value_arg = expr.args[2]
-        self._reject_declared_member_in_dyn_builtin(
-            record, name, "setattr", expr, op_suffix=", v", fixit=f"obj.{name} = v")
+        if name is not None:
+            self._reject_declared_member_in_dyn_builtin(
+                record, name, "setattr", expr, op_suffix=", v", fixit=f"obj.{name} = v")
         sa_overloads, _ = self.protocols.lookup_record_method_overloads(record, "__setattr__")
         if not sa_overloads:
+            target = f"'{name}'" if name is not None else "(runtime name)"
             raise self.ctx.error(
-                f"Record '{actual_type.name}' has no field '{name}' and does not "
+                f"Record '{actual_type.name}' has no field {target} and does not "
                 f"define __setattr__",
                 expr,
             )
@@ -1276,15 +1290,17 @@ class CallAnalyzer:
         return VOID
 
     def _analyze_delattr_builtin(self, expr: TpyCall) -> TpyType:
-        """D16 Phase 3: `delattr(obj, "name")` -- dynamic-fallback only."""
+        """`delattr(obj, name)` -- routes to `__delattr__` (dynamic-fallback only)."""
         obj_arg, name_arg, name, actual_type, record = self._extract_dyn_builtin_target(
             expr, "delattr", expected_args=2)
-        self._reject_declared_member_in_dyn_builtin(
-            record, name, "delattr", expr, op_suffix="", fixit="")
+        if name is not None:
+            self._reject_declared_member_in_dyn_builtin(
+                record, name, "delattr", expr, op_suffix="", fixit="")
         da_overloads, _ = self.protocols.lookup_record_method_overloads(record, "__delattr__")
         if not da_overloads:
+            target = f"'{name}'" if name is not None else "(runtime name)"
             raise self.ctx.error(
-                f"Record '{actual_type.name}' has no field '{name}' and does not "
+                f"Record '{actual_type.name}' has no field {target} and does not "
                 f"define __delattr__",
                 expr,
             )

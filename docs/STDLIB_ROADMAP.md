@@ -120,7 +120,7 @@ Examples of the policy in action:
 
 | Module | Priority | Status | % | Approach | Blockers / Notes |
 |---|---|---|---|---|---|
-| [`builtins`](#builtins) | P0 | Partial | ~70% | mixed | Implicit import. Core types + most common functions + key exceptions present. Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, remaining specialized exceptions (`TypeError`, `OverflowError`, `ZeroDivisionError`, etc. -- currently panic), `callable`, `id`, `type(x)` runtime. `IndexError` / `KeyError` shipped catchable; `getattr`/`setattr`/`delattr` literal-name dynamic-fallback shipped in D16 v1; `hasattr` and 3-arg `getattr` shipped in D16 v1.5. See [builtins](#builtins) for per-item status |
+| [`builtins`](#builtins) | P0 | Partial | ~70% | mixed | Implicit import. Core types + most common functions + key exceptions present. Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, remaining specialized exceptions (`TypeError`, `OverflowError`, `ZeroDivisionError`, etc. -- currently panic), `callable`, `id`, `type(x)` runtime. `IndexError` / `KeyError` shipped catchable; D16 dyn-attrs (`getattr`/`setattr`/`delattr`/`hasattr` for both literal and runtime names) fully shipped. See [builtins](#builtins) for per-item status |
 | [`math`](#math) | P0 | Done | ~99% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for fsum/sumprod/dist; `prod` has Int32 / int (BigInt) / float overloads). Remaining gap: tuple as iterable (blocked on tuple-iteration bundle) |
 | [`time`](#time) | P0 | Partial | ~50% | mixed | Thin clock/sleep syscalls. `time`, `sleep`, `perf_counter`, `monotonic`, `time_ns`, `perf_counter_ns`, `monotonic_ns`, `process_time` all done. Missing `struct_time`/`strftime`/`gmtime`/`localtime`/timezone constants |
 | [`sys`](#sys) | P0 | Stub | ~15% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr` done; needs `stdin`/`exit`/`path`/`version_info` |
@@ -265,8 +265,8 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 | `issubclass` | Missing | |
 | `callable` | Missing | Compile-time evaluable under static dispatch |
 | `getattr`, `setattr`, `delattr` (literal-name dynamic-fallback) | Done (D16 v1) | 2-arg literal-name form routes to `__getattr__` / `__setattr__` / `__delattr__`. Declared-member names rejected (use direct attribute access). See `docs/DYNAMIC_ATTRS_DESIGN.md` |
-| `hasattr`, 3-arg `getattr` (literal name) | Done (D16 v1.5) | Phase 7+8 of D16; lambda IIFE wraps the dunder call in try/catch on `AttributeError`. Zero-cost on the happy path under modern table-based EH |
-| Dynamic-name 2-arg builtins | Deferred (phase 9) | Needs route-all-vs-runtime-dispatch design call; not blocked on the type system |
+| `hasattr`, 3-arg `getattr` | Done (D16 v1.5) | Phases 7+8 of D16; lambda IIFE wraps the dunder call in try/catch on `AttributeError`. Zero-cost on the happy path under modern table-based EH |
+| Dynamic-name 2-arg builtins | Done (D16 v1.5 phase 9) | Option A: routes unconditionally to the dunder when the name is a runtime expression. CPython divergence documented in `docs/DYNAMIC_ATTRS_DESIGN.md` divergence #8 |
 | `id` | Missing | `tpy.unsafe.unsafe_address_of` exists as an approximation; `id` semantics differ under static compilation |
 | `type(x)` (runtime value) | Missing | See TODO.md "type(); T = type(x); z = T()" |
 | `vars`, `dir` | Missing | Not meaningful without runtime object introspection |

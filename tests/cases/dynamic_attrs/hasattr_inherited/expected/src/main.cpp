@@ -11,13 +11,13 @@ void main() {
     // print(hasattr(c, "declared"))   # True (declared on parent, compile-time)
     std::cout << ::tpy::print_bool(true) << "\n";
     // print(hasattr(c, "host"))       # True (inherited dunder finds it)
-    std::cout << ::tpy::print_bool([&]() -> bool { try { (void)(c.__getattr__("host")); return true; } catch (const ::tpy::AttributeError&) { return false; } }()) << "\n";
+    std::cout << ::tpy::print_bool(({ bool __ok = true; try { (void)(c.__getattr__("host")); } catch (const ::tpy::AttributeError&) { __ok = false; } __ok; })) << "\n";
     // print(hasattr(c, "missing"))    # False (inherited dunder raises)
-    std::cout << ::tpy::print_bool([&]() -> bool { try { (void)(c.__getattr__("missing")); return true; } catch (const ::tpy::AttributeError&) { return false; } }()) << "\n";
+    std::cout << ::tpy::print_bool(({ bool __ok = true; try { (void)(c.__getattr__("missing")); } catch (const ::tpy::AttributeError&) { __ok = false; } __ok; })) << "\n";
     // print(getattr(c, "host", "fallback"))     # "example.com" via inherited dunder
-    std::cout << [&]() -> std::string { try { return c.__getattr__("host"); } catch (const ::tpy::AttributeError&) { return "fallback"; } }() << "\n";
+    std::cout << ({ std::optional<std::string> __r; try { __r.emplace(c.__getattr__("host")); } catch (const ::tpy::AttributeError&) { __r.emplace("fallback"); } std::move(*__r); }) << "\n";
     // print(getattr(c, "missing", "fallback"))  # "fallback" via inherited raise
-    std::cout << [&]() -> std::string { try { return c.__getattr__("missing"); } catch (const ::tpy::AttributeError&) { return "fallback"; } }() << "\n";
+    std::cout << ({ std::optional<std::string> __r; try { __r.emplace(c.__getattr__("missing")); } catch (const ::tpy::AttributeError&) { __r.emplace("fallback"); } std::move(*__r); }) << "\n";
 }
 
 void __tpy_init() {

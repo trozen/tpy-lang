@@ -5,10 +5,11 @@ User-defined `__getattr__`, `__setattr__`, `__delattr__` dunders. Roadmap entry:
 
 ## Progress
 
-D16 v1 + v1.5 phases 7-8 are shipped. `AttributeError` is now a
-catchable throw-tier exception, which unblocked `hasattr` and 3-arg
-`getattr`. Phase 9 (dynamic-name builtins) still deferred, gated on a
-design decision rather than the type system.
+D16 v1 + v1.5 (phases 7-9) are shipped. `AttributeError` is a catchable
+throw-tier exception. `hasattr`, 3-arg `getattr`, and dynamic-name
+2-arg builtins all work. v2 features (intercept-all `__setattr__`,
+`__getattribute__`, `__dir__`, etc.) are listed under Future Extensions
+and remain driver-dependent.
 
 ### v1 -- core attribute routing
 
@@ -25,9 +26,9 @@ design decision rather than the type system.
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 7 | `hasattr(obj, name)` for static + dyn-readable classes | Done. Literal name only. Declared members fold to compile-time `True`; classes without `__getattr__` fold to `False`; dyn-readable classes emit a try/catch lambda IIFE that yields `false` on `AttributeError`, `true` otherwise |
-| 8 | 3-arg `getattr(obj, name, default)` with `AttributeError` catch | Done. Literal name only. Lambda IIFE returns the dunder's result, or `default` (coerced to `T`) on `AttributeError` |
-| 9 | Dynamic-name 2-arg builtins: `getattr(obj, name_var)`, `setattr(obj, name_var, v)`, `delattr(obj, name_var)` | Deferred. Needs a divergence call (route ALL dynamic names directly to the dunder, making declared members invisible to dynamic builtins -- simpler, but a CPython divergence; OR runtime string dispatch over declared members + dunder fallback -- matches CPython but reopens the value-category questions of phase 7's declared-member case). Pick when there's a driver |
+| 7 | `hasattr(obj, name)` for static + dyn-readable classes | Done. Declared members fold to compile-time `True`; classes without `__getattr__` fold to `False` (literal-name only); dyn-readable classes emit a try/catch stmt-expr that yields `false` on `AttributeError`, `true` otherwise |
+| 8 | 3-arg `getattr(obj, name, default)` with `AttributeError` catch | Done. Stmt-expr block yields the dunder's result, or `default` (coerced to `T`) on `AttributeError` |
+| 9 | Dynamic-name 2-arg builtins: `getattr(obj, name_var)`, `setattr(obj, name_var, v)`, `delattr(obj, name_var)`, `hasattr(obj, name_var)` | Done -- **Option A: route-all-to-dunder**. When the name is not a literal, the builtin routes unconditionally to the dunder (no static prefix dispatch over declared members). CPython divergence: `getattr(obj, declared_field_name_var)` calls `__getattr__` rather than reading the declared field -- documented in divergence #8 |
 
 ### Known Limitations (v1)
 
@@ -39,7 +40,7 @@ design decision rather than the type system.
 | No overloaded dunders | Each dunder has a single signature |
 | Not on `@native` records | Native record shape is owned by hand-written C++; mixing dyn-attr is out of scope |
 | Single-name dispatch only | The dunder receives the requested name as `str`; no compile-time multi-name specialization |
-| No dynamic-name builtins (`getattr(obj, name_var, ...)`, `setattr(obj, name_var, v)`, `delattr(obj, name_var)`) | Deferred (phase 9). Needs a route-all-vs-runtime-dispatch design call; not blocked on the type system |
+| Dynamic-name builtins always route to the dunder | `getattr(obj, name_var)` (and friends) call `__getattr__` even when `name_var` matches a declared member at runtime. CPython would read the declared field instead. Use direct `obj.field` access for declared members. See divergence #8 |
 | Builtin `getattr` / `setattr` / `delattr` are dynamic-fallback only | `getattr(obj, "declared_field")` is a compile error in v1 (use `obj.declared_field` instead). Avoids the bound-method / value-category snake pit until method references (TODO.md:101) land |
 | `__getattr__` returns must be non-borrowed | Reference / view returns from `__getattr__` deferred (borrow-checker interaction non-trivial). Owned and value-type returns are fine |
 | Async / generator dunders rejected | Same rejection list as `@staticmethod` / `@classmethod` / `@property` / `@overload` |
@@ -271,12 +272,14 @@ coercible to `T` (the dunder's declared return type); result is typed as
 explicitly.)
 
 1. If `"foo"` matches a declared member -> compile error (same v1 rule).
-2. Else if class is dyn-readable -> emit a lambda IIFE that calls
-   `__getattr__("foo")` in a try block and returns `default` (coerced to
+2. Else if class is dyn-readable -> emit a stmt-expr block that calls
+   `__getattr__("foo")` in a try block and yields `default` (coerced to
    `T`) in the catch.
 3. Else -> existing "no field" error.
 
-Dynamic-name `getattr(obj, name_var, ...)` is deferred to phase 9.
+Dynamic-name `getattr(obj, name_var, ...)` is shipped (phase 9, Option A):
+the builtin routes unconditionally to `__getattr__` -- no static prefix
+dispatch over declared members. The receiver must be dyn-readable.
 
 ### Write: `obj.foo = v`
 
@@ -298,7 +301,8 @@ Same v1 restriction as `getattr`: literal name only.
 2. Else if class is dyn-writable -> emit `obj.__setattr__("foo", v)`.
 3. Else -> error.
 
-Dynamic-name `setattr(obj, name_var, v)` is v1.5.
+Dynamic-name `setattr(obj, name_var, v)` is shipped (phase 9, Option A):
+routes to `__setattr__` unconditionally. The receiver must be dyn-writable.
 
 ### Delete: `del obj.foo`
 
@@ -319,7 +323,8 @@ sema and codegen.
 2. Else if class is dyn-deletable -> emit `obj.__delattr__("foo")`.
 3. Else -> error.
 
-Dynamic-name `delattr(obj, name_var)` is v1.5.
+Dynamic-name `delattr(obj, name_var)` is shipped (phase 9, Option A):
+routes to `__delattr__` unconditionally. The receiver must be dyn-deletable.
 
 ### `hasattr(obj, "foo")` (v1.5 phase 7, literal name only)
 
@@ -329,13 +334,16 @@ Implemented for literal names. Rules:
   constant -> compile-time `True` (folded to `TpyBoolLiteral` in sema).
 - Literal name not declared, class has no `__getattr__` -> compile-time
   `False`.
-- Literal name not declared, class is dyn-readable -> emit a lambda
-  IIFE that calls `__getattr__("foo")` in a try block and returns
+- Literal name not declared, class is dyn-readable -> emit a stmt-expr
+  block that calls `__getattr__("foo")` in a try block and yields
   `false` on `AttributeError`, `true` otherwise.
 - Catches only `AttributeError`; other exceptions propagate (matches
   Python 3).
 
-Dynamic-name `hasattr(obj, name_var)` is deferred to phase 9.
+Dynamic-name `hasattr(obj, name_var)` is shipped (phase 9, Option A):
+the builtin routes unconditionally to `__getattr__` and reports True
+if the dunder returns, False on AttributeError. The receiver must be
+dyn-readable.
 
 ---
 
@@ -501,17 +509,25 @@ Numbered for the LANGUAGE_FEATURES note that will reference this list.
    safety net -- guard with `if name.startswith("_"): raise AttributeError(...)`
    or operate on a declared backing field.
 
-7. **Builtin `getattr` / `setattr` / `delattr` are dynamic-fallback only in
-   v1.** `getattr(obj, "declared_field")` is a compile error in TPy (use
-   `obj.declared_field`); CPython evaluates it at runtime returning the value
-   or bound method. Restriction lifts in v2 alongside method-reference support
-   (`TODO.md:101`).
+7. **Builtin `getattr` / `setattr` / `delattr` are dynamic-fallback only.**
+   `getattr(obj, "declared_field")` (literal name) is a compile error in
+   TPy (use `obj.declared_field`); CPython evaluates it at runtime returning
+   the value or bound method. Restriction lifts alongside method-reference
+   support (`TODO.md:101`).
 
-8. **Dynamic-name builtins are deferred to phase 9.** `getattr(obj, name_var, ...)`,
-   `setattr(obj, name_var, v)`, `delattr(obj, name_var)` need a divergence
-   call (route all dynamic names directly to the dunder vs runtime string
-   dispatch over declared members + dunder fallback). `hasattr` and 3-arg
-   `getattr` ship in v1.5 for literal names only.
+8. **Dynamic-name builtins always route to the dunder (Option A).**
+   `getattr(obj, name_var)` (and `setattr`/`delattr`/`hasattr` with a
+   non-literal name) call `__getattr__`/`__setattr__`/`__delattr__`
+   unconditionally -- there is no static prefix dispatch over declared
+   members. CPython divergence: code that does
+   `getattr(obj, runtime_field_name)` expecting to read a declared field
+   gets the dunder instead. Workaround: route declared-member access
+   through the dunder body, or use direct attribute access. The
+   alternative design (runtime string dispatch + dunder fallback) was
+   rejected in favor of Option A because it would have reopened
+   value-category questions for every declared member kind (bound
+   methods, properties, class constants) and widened `getattr`'s static
+   return type to `Any`.
 
 9. **`del obj.declared_field` is rejected, never routed to `__delattr__`.**
    Declared field deletion is illegal in TPy regardless of whether
@@ -562,34 +578,34 @@ declared `T`; missing-attribute is signaled via `raise AttributeError(name)`
 which compiles to a normal C++ throw. Direct `obj.foo` access compiles
 to a bare method call -- the throw propagates through the call stack
 via standard EH. `hasattr` and 3-arg `getattr` wrap the dunder call in
-a try/catch lambda IIFE so they can convert the throw to a boolean /
-default value:
+a GCC stmt-expr block that converts the throw to a boolean / default
+value:
 
 ```cpp
-// hasattr(obj, "foo")  (dyn-readable, v1.5)  ->
-[&]() -> bool {
-    try { (void)(obj.__getattr__("foo")); return true; }
-    catch (const ::tpy::AttributeError&) { return false; }
-}()
+// hasattr(obj, "foo")  ->
+({ bool __ok = true;
+   try { (void)(obj.__getattr__("foo")); }
+   catch (const ::tpy::AttributeError&) { __ok = false; }
+   __ok; })
 
-// getattr(obj, "foo", default)  (dyn-readable, v1.5)  ->
-[&]() -> T {
-    try { return obj.__getattr__("foo"); }
-    catch (const ::tpy::AttributeError&) { return <default-coerced>; }
-}()
+// getattr(obj, "foo", default)  ->
+({ std::optional<T> __r;
+   try { __r.emplace(obj.__getattr__("foo")); }
+   catch (const ::tpy::AttributeError&) { __r.emplace(<default-coerced>); }
+   std::move(*__r); })
 ```
 
-A lambda IIFE is required (not a GCC stmt-expr): try/catch is a
-statement, not an expression that yields a value. The explicit lambda
-return type unifies the success and catch arms (e.g. `std::string` from
-the dunder vs `const char*` literal default).
+GCC stmt-expr matches the rest of codegen (chained compares,
+comprehensions). `std::optional<T>` defers initialization so T need not
+be default-constructible; both arms `emplace` and the block yields
+`std::move(*__r)`.
 
 Cost note: throw-fire is microsecond-scale (vs nanos for return-tier),
 which matters only for hot probe-and-miss loops. `hasattr` /
-`getattr-default` catch one frame away (inside the IIFE), so they don't
-unwind your call stack on misses. Direct `obj.foo` access on a missing
-attribute is a programmer error -- if unhandled it terminates with a
-clean message via the runtime's `tpy_terminate_handler`.
+`getattr-default` catch one frame away (inside the stmt-expr block), so
+they don't unwind your call stack on misses. Direct `obj.foo` access on
+a missing attribute is a programmer error -- if unhandled it terminates
+with a clean message via the runtime's `tpy_terminate_handler`.
 
 ---
 
@@ -643,10 +659,9 @@ bypass these.
 ### Codegen
 
 - Routed dunder calls reuse `_gen_method_call` -- no new path.
-- v1.5: 3-arg `getattr` with default uses a lambda IIFE for the
-  try/catch/default fallback. (A GCC statement expression cannot be used here
-  because a try/catch construct does not yield a value as the last "statement"
-  of a stmt-expr.)
+- v1.5: `hasattr` / 3-arg `getattr` use a GCC stmt-expr block; the
+  try/catch updates a local (`__ok` for hasattr, `std::optional<T> __r`
+  for getattr-default) and the block yields that local as its value.
 
 ### Tests
 
@@ -693,8 +708,16 @@ the directory for the full list):
 - **v1.5 builtin error**: `error_getattr_default_type_mismatch` (default
   not coercible to dunder return type).
 
-Deferred (phase 9): `dyn_name_*` (non-literal name) -- needs the
-route-all-vs-runtime-dispatch design call.
+- **Phase 9 -- dynamic-name builtins**: `dyn_name_getattr`,
+  `dyn_name_getattr_default`, `dyn_name_hasattr`, `dyn_name_setattr`,
+  `dyn_name_delattr`, `dyn_name_routes_through_dunder` (Option A:
+  `getattr(obj, "declared", default)` with runtime name routes through
+  `__getattr__` even when the name matches a declared field; CPython
+  divergence). Sema rejection tests when the matching dunder is missing:
+  `error_dyn_name_on_non_dyn_class` (getattr),
+  `error_dyn_name_setattr_no_dunder`,
+  `error_dyn_name_delattr_no_dunder`,
+  `error_dyn_name_hasattr_no_dunder`.
 Deferred indefinitely: `nocopy_value/` -- `__setattr__(self, name, value:
 Own[T])` drags move semantics into the test surface; not core to dyn-attr
 correctness. `inherited_generic/` (generic parent's `__getattr__ -> T`)

@@ -1,0 +1,1 @@
+main.py:14: error: Record 'Plain' has no field (runtime name) and does not define __delattr__

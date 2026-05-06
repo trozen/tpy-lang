@@ -1,0 +1,1 @@
+Class defines __setattr__/__delattr__; setting plain self.field = ... bypasses the dunder under TPy (fallback-only) but recurses under CPython, so this test is TPy-only.

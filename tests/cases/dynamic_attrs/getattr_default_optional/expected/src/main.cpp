@@ -9,14 +9,14 @@ void main() {
     // b = Bag()
     Bag b = Bag();
     // found = getattr(b, "host", None)
-    std::optional<std::string> found = [&]() -> std::optional<std::string> { try { return b.__getattr__("host"); } catch (const ::tpy::AttributeError&) { return std::nullopt; } }();
+    std::optional<std::string> found = ({ std::optional<std::optional<std::string>> __r; try { __r.emplace(b.__getattr__("host")); } catch (const ::tpy::AttributeError&) { __r.emplace(std::nullopt); } std::move(*__r); });
     // if found is not None:
     if ((found.has_value())) {
         // print("host:", found)
         std::cout << "host:" << " " << ::tpy::print_optional_val(found) << "\n";
     }
     // missing = getattr(b, "missing", None)
-    std::optional<std::string> missing = [&]() -> std::optional<std::string> { try { return b.__getattr__("missing"); } catch (const ::tpy::AttributeError&) { return std::nullopt; } }();
+    std::optional<std::string> missing = ({ std::optional<std::optional<std::string>> __r; try { __r.emplace(b.__getattr__("missing")); } catch (const ::tpy::AttributeError&) { __r.emplace(std::nullopt); } std::move(*__r); });
     // if missing is None:
     if ((!missing.has_value())) {
         // print("missing is None")

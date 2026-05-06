@@ -84,7 +84,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D13 | Generator expressions | M | Done | [VI](#generator-expressions) |
 | D14 | Walrus operator (`:=`) | S-M | Done | [VI](#walrus-operator) |
 | D15 | `Any` type | M | Done | [I](#any-type) |
-| D16 | Dynamic attributes (`__getattr__`/`__setattr__`/`__delattr__`) | M-L | v1 + v1.5 phases 7-8 done (hasattr, 3-arg getattr); phase 9 (dynamic-name builtins) deferred pending design call | [VII](#dynamic-attributes) |
+| D16 | Dynamic attributes (`__getattr__`/`__setattr__`/`__delattr__`) | M-L | Done | [VII](#dynamic-attributes) |
 | D17 | `*args` (variadic positional arguments) | M | Done (homogeneous) | [VI](#args--kwargs) |
 | D18 | `**kwargs` (variadic keyword arguments) | M-L | Done | [VI](#args--kwargs) |
 | D19 | Recursive type aliases | M | Done (non-generic) | [I](#recursive-type-aliases) |
@@ -2573,14 +2573,15 @@ The `__getattr__` approach is needed for full CPython compat. Declaration-based
 stubs can layer on top for common libraries (argparse, json) to provide better
 type checking and performance when the attribute set is known.
 
-**Current state**: v1 + v1.5 phases 7-8 done. User-defined
+**Current state**: Done. v1 + v1.5 (phases 7-9) shipped. User-defined
 `__getattr__` / `__setattr__` / `__delattr__` recognized and routed
 through sema-synthesized `TpyMethodCall`s. Builtin `getattr` / `setattr`
-/ `delattr` available for literal-name dynamic-fallback. `hasattr` and
-3-arg `getattr` work for literal names: declared members fold to
-compile-time True / direct access; otherwise wrap the dunder call in a
-try/catch lambda IIFE that converts the `AttributeError` throw to a
-boolean / default.
+/ `delattr` work for both literal and runtime names; `hasattr` and 3-arg
+`getattr` wrap the dunder call in a try/catch lambda IIFE that converts
+`AttributeError` to a boolean / default. With a literal name, declared
+members fold to compile-time True / direct access. With a runtime name,
+the builtins route unconditionally to the dunder (Option A; CPython
+divergence documented in `docs/DYNAMIC_ATTRS_DESIGN.md` divergence #8).
 
 `AttributeError` is a throw-tier exception (inherits `Exception`).
 `raise AttributeError(name)` from any function compiles to a normal C++
@@ -2610,7 +2611,7 @@ adjacent design space.
 **Dependencies**: `Any` type (D15, done) -- dynamic attributes typically
 return `Any`. `D22` multi-inheritance for the MRO routing.
 
-**Effort**: M-L (v1 + v1.5 phases 7-8 done; phase 9 small, gated on the divergence call).
+**Effort**: M-L. v1 + v1.5 (phases 7-9) shipped. v2 features driver-dependent.
 
 ---
 

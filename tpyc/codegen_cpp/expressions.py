@@ -3068,35 +3068,31 @@ class ExpressionGenerator:
         return f"{obj}{accessor}{escape_cpp_name(cpp_method)}{method_targs}({args})"
 
     def _gen_dyn_hasattr_block(self, synth: 'TpyMethodCall') -> str:
-        """D16 v1.5 Phase 7: try/catch IIFE that yields true if __getattr__
-        succeeds, false on AttributeError."""
+        """Stmt-expr that yields true if __getattr__ succeeds, false on AttributeError."""
         call = self._gen_method_call(synth)
         return (
-            "[&]() -> bool { "
-            f"try {{ (void)({call}); return true; }} "
-            "catch (const ::tpy::AttributeError&) { return false; } "
-            "}()"
+            "({ bool __ok = true; "
+            f"try {{ (void)({call}); }} "
+            "catch (const ::tpy::AttributeError&) { __ok = false; } "
+            "__ok; })"
         )
 
     def _gen_dyn_getattr_default_block(
         self, synth: 'TpyMethodCall', default_expr: 'TpyExpr',
     ) -> str:
-        """D16 v1.5 Phase 8: try/catch IIFE that yields __getattr__'s result,
-        or the default on AttributeError. Explicit lambda return type unifies
-        the two arms (e.g. std::string vs const char* literal default)."""
+        """Stmt-expr that yields __getattr__'s result, or the default on
+        AttributeError. std::optional defers initialization so
+        non-default-constructible T (e.g. Own[T]) works."""
         call = self._gen_method_call(synth)
-        # Sema always sets resolved_function_info on the synth before codegen
-        # reaches this path; the explicit return type is required for the
-        # lambda's two arms to unify.
         assert synth.resolved_function_info is not None
-        effective_type = synth.resolved_function_info.return_type
-        default_code = self.gen_expr(default_expr, effective_type)
-        ret_cpp = self.types.type_to_cpp(effective_type)
+        ret_type = synth.resolved_function_info.return_type
+        default_code = self.gen_expr(default_expr, ret_type)
+        ret_cpp = self.types.type_to_cpp(ret_type)
         return (
-            f"[&]() -> {ret_cpp} {{ "
-            f"try {{ return {call}; }} "
-            f"catch (const ::tpy::AttributeError&) {{ return {default_code}; }} "
-            "}()"
+            f"({{ std::optional<{ret_cpp}> __r; "
+            f"try {{ __r.emplace({call}); }} "
+            f"catch (const ::tpy::AttributeError&) {{ __r.emplace({default_code}); }} "
+            "std::move(*__r); })"
         )
 
     def _is_overloaded_method(self, expr: TpyMethodCall) -> bool:

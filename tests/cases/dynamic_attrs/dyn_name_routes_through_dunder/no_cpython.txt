@@ -1,0 +1,1 @@
+D16 phase 9 Option A divergence: dynamic-name builtins always route through the dunder, even when the runtime name matches a declared field. CPython would read the field instead.
