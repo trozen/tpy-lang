@@ -1,0 +1,7 @@
+caught: list index out of range
+caught: list assignment index out of range
+caught: list assignment index out of range
+caught: pop from empty list
+caught: pop from empty bytearray
+caught: pop index out of range
+caught: list index out of range

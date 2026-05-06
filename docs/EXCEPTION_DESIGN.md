@@ -24,8 +24,8 @@ panics until they fire (matches `std::vector::at()`).
 |------|--------|-------|
 | `AttributeError` | Done -- throw-tier | Catchable. Raised by user `__getattr__` / `__setattr__` / `__delattr__` bodies; propagates as a normal C++ throw. `hasattr` and 3-arg `getattr` wrap the dunder call in a try/catch lambda IIFE |
 | `AssertionError` | Done -- throw-tier | `assert` failure throws `AssertionError(msg)` via `::tpy::assert_failed(...)` helper |
-| `KeyError` | Pending | Dict miss / set pop-empty / dunder lookups (~6 sites) |
-| `IndexError` | Pending | List/bytes/bytearray bounds (after value-range elision) |
+| `KeyError` | Done -- throw-tier | Dict `__getitem__` / `__delitem__` / `pop`-no-default missing key, set `remove`-missing / `pop`-empty, TypedDict `total=False` field access on absent value all `throw KeyError(...)`. CPython-divergent `str(KeyError(k))` repr-of-key formatting is a v2 follow-up |
+| `IndexError` | Done -- throw-tier | List/array/span/string/bytes/bytearray out-of-range indexing and list/bytearray `pop`-empty all `throw IndexError(...)`. Messages match CPython ("list index out of range", "list assignment index out of range" for `__setitem__`/`__delitem__`, "pop index out of range" for indexed pop, etc.) |
 | `ZeroDivisionError` | Pending | Division by zero across fixed-int / BigInt / float |
 | `ValueError` panic migrations | Pending | Type already catchable; ~10 panic sites for `list.index`, `str.index`, `bytearray.remove`, etc. |
 | `OverflowError` | **Stays panic** | TPy divergence: Python uses BigInt and never overflows, so catchable form doesn't help port CPython code |

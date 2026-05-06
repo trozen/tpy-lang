@@ -1,0 +1,2 @@
+CPython's str(KeyError("custom: missing")) reprs the message ("'custom: missing'");
+TPy returns the message verbatim. Aligning is tracked as a v2 follow-up.

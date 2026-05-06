@@ -2,7 +2,7 @@
 # tpy: cpp_namespace("tpystd::builtins")
 from tpy._builtins import (
     BaseException, Exception, ValueError, OSError, FileNotFoundError,
-    AttributeError, AssertionError, StopIteration,
+    AttributeError, AssertionError, IndexError, KeyError, StopIteration,
     Range, range,
     len, repr, hash, chr, ord, abs, min, max, pow, divmod, next, iter, round, print, isinstance, getattr, setattr, delattr, hasattr,
     all, any, sum, sorted, bin, hex, oct, enumerate, reversed, zip, map, filter,
@@ -21,7 +21,7 @@ __all__ = [
     "int", "float", "bool", "str", "bytes", "bytearray", "None",
     "tuple", "basic_slice", "slice", "type",
     "Exception", "ValueError", "OSError", "FileNotFoundError", "BaseException",
-    "AttributeError", "AssertionError",
+    "AttributeError", "AssertionError", "IndexError", "KeyError",
     "list", "dict", "dict_keys", "dict_values", "dict_items", "set",
     "Range", "range",
     "len", "repr", "hash", "chr", "ord", "abs", "min", "max", "pow", "divmod", "next", "iter", "round",

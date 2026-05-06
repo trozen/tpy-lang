@@ -431,14 +431,14 @@ inline void bytearray_setitem(Bytes& b, int32_t index, int32_t value) {
 }
 
 inline uint8_t bytearray_pop(Bytes& b) {
-    if (b.empty()) tpy_panic("pop from empty bytearray");
+    if (b.empty()) throw IndexError("pop from empty bytearray");
     uint8_t val = b.back();
     b.pop_back();
     return val;
 }
 
 inline uint8_t bytearray_pop_at(Bytes& b, int32_t index) {
-    auto i = normalize_index(b, index, "bytearray index out of range");
+    auto i = normalize_index(b, index, "pop index out of range");
     uint8_t val = b[i];
     b.erase(b.begin() + static_cast<std::ptrdiff_t>(i));
     return val;

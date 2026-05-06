@@ -1,1 +1,1 @@
-TurboPython panic: pop from empty bytearray
+TurboPython panic: uncaught tpy::IndexError: pop from empty bytearray

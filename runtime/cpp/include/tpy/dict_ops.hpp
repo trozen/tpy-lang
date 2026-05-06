@@ -80,12 +80,12 @@ const V* dict_get(const ordered_map<K, V>& m, const KeyArg& key) {
     return &((*it).second);
 }
 
-// d.pop(key) -> V (panics on missing)
+// d.pop(key) -> V (throws KeyError on missing)
 template<typename K, typename V, typename KeyArg>
 V dict_pop(ordered_map<K, V>& m, const KeyArg& key) {
     auto it = m.find(K(key));
     if (it == m.items_end()) {
-        tpy_panic("KeyError");
+        throw KeyError("KeyError");
     }
     V result = std::move((*it).second);
     m.erase(it);

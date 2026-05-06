@@ -120,7 +120,7 @@ Examples of the policy in action:
 
 | Module | Priority | Status | % | Approach | Blockers / Notes |
 |---|---|---|---|---|---|
-| [`builtins`](#builtins) | P0 | Partial | ~70% | mixed | Implicit import. Core types + most common functions + key exceptions present. Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, most specialized exceptions (`IndexError`, `KeyError`, `TypeError`, etc. -- currently panic), `callable`, `id`, `type(x)` runtime. `getattr`/`setattr`/`delattr` literal-name dynamic-fallback shipped in D16 v1; `hasattr` and 3-arg `getattr` shipped in D16 v1.5. See [builtins](#builtins) for per-item status |
+| [`builtins`](#builtins) | P0 | Partial | ~70% | mixed | Implicit import. Core types + most common functions + key exceptions present. Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, remaining specialized exceptions (`TypeError`, `OverflowError`, `ZeroDivisionError`, etc. -- currently panic), `callable`, `id`, `type(x)` runtime. `IndexError` / `KeyError` shipped catchable; `getattr`/`setattr`/`delattr` literal-name dynamic-fallback shipped in D16 v1; `hasattr` and 3-arg `getattr` shipped in D16 v1.5. See [builtins](#builtins) for per-item status |
 | [`math`](#math) | P0 | Done | ~99% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for fsum/sumprod/dist; `prod` has Int32 / int (BigInt) / float overloads). Remaining gap: tuple as iterable (blocked on tuple-iteration bundle) |
 | [`time`](#time) | P0 | Partial | ~50% | mixed | Thin clock/sleep syscalls. `time`, `sleep`, `perf_counter`, `monotonic`, `time_ns`, `perf_counter_ns`, `monotonic_ns`, `process_time` all done. Missing `struct_time`/`strftime`/`gmtime`/`localtime`/timezone constants |
 | [`sys`](#sys) | P0 | Stub | ~15% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr` done; needs `stdin`/`exit`/`path`/`version_info` |
@@ -311,8 +311,8 @@ each to a proper catchable exception is tracked per-site.
 | `ValueError` | Partial | Type defined and catchable; raised by `math.factorial`, `math.isqrt`, user code. Still panicked (not thrown) by `list.remove`/`list.index` on missing item, `str.index`/`bytes.index` on missing substring, and a few other container/string ops |
 | `OSError`, `FileNotFoundError` | Done | |
 | `StopIteration` | Done | |
-| `IndexError` | Missing | Bounds violations currently panic |
-| `KeyError` | Missing | Dict miss currently panics |
+| `IndexError` | Done | Catchable. List/array/span/string/bytes/bytearray out-of-range indexing, list/bytearray `pop` empty all throw `IndexError`. Messages match CPython ("list index out of range" etc.) |
+| `KeyError` | Partial | Catchable. Dict `__getitem__` / `__delitem__` / `pop`-no-default missing key, set `remove`-missing / `pop`-empty, TypedDict `total=False` field access on absent value all throw `KeyError`. CPython's `str(KeyError(k))` reprs the key (`'missing'`); TPy currently returns the catchall message verbatim -- alignment is a v2 follow-up |
 | `TypeError` | Missing | Static type errors are compile-time, but runtime `TypeError` has some use cases |
 | `AttributeError` | Done | Catchable throw-tier type; raised by user `__getattr__` / `__setattr__` / `__delattr__` bodies. `hasattr` and 3-arg `getattr` wrap the dunder call in try/catch |
 | `OverflowError` | Missing | Fixed-int overflow currently panics |

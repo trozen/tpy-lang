@@ -1,1 +1,1 @@
-TurboPython panic: bytes index out of range
+TurboPython panic: uncaught tpy::IndexError: bytes index out of range

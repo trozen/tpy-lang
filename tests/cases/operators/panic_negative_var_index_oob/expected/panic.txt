@@ -1,1 +1,1 @@
-TurboPython panic: array index out of bounds
+TurboPython panic: uncaught tpy::IndexError: array index out of range

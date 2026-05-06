@@ -1,1 +1,1 @@
-TurboPython panic: string index out of bounds
+TurboPython panic: uncaught tpy::IndexError: string index out of range

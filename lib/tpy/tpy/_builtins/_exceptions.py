@@ -44,5 +44,13 @@ class AssertionError(Exception):
     @native("tpy::AssertionError", function=True)
     def __init__(self, message: str = "") -> None: ...
 
+@native("tpy::IndexError")
+class IndexError(Exception):
+    def __init__(self, message: str = "") -> None: ...
+
+@native("tpy::KeyError")
+class KeyError(Exception):
+    def __init__(self, message: str = "") -> None: ...
+
 @native("tpy::StopIteration")
 class StopIteration(Exception, ReturnException): ...

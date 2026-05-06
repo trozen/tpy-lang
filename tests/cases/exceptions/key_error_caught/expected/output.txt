@@ -1,0 +1,5 @@
+caught: KeyError
+caught: KeyError
+caught: KeyError
+caught: KeyError
+caught: pop from an empty set

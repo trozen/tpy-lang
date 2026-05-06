@@ -1,0 +1,2 @@
+CPython's str(KeyError(k)) reprs the key (e.g. "'age'"); TPy currently
+returns the catchall "KeyError" message. Aligning is a v2 follow-up.

@@ -38,7 +38,7 @@ inline constexpr int32_t SLICE_NONE = INT32_MIN;
  * normalize_index - Convert Python-style index to size_t.
  *
  * Supports negative indexing: -1 is last element, -2 is second-to-last, etc.
- * Panics if index is out of bounds.
+ * Throws IndexError if index is out of bounds.
  */
 template <typename Container>
 std::size_t normalize_index(const Container& c, int32_t index, const char* context) {
@@ -47,7 +47,7 @@ std::size_t normalize_index(const Container& c, int32_t index, const char* conte
         i += static_cast<std::ptrdiff_t>(c.size());
     }
     if (i < 0 || static_cast<std::size_t>(i) >= c.size()) {
-        tpy_panic(context);
+        throw IndexError(context);
     }
     return static_cast<std::size_t>(i);
 }
@@ -55,12 +55,12 @@ std::size_t normalize_index(const Container& c, int32_t index, const char* conte
 /**
  * pop_back - Python list.pop() equivalent for std::vector.
  *
- * Removes and returns the last element. Panics if vector is empty.
+ * Removes and returns the last element. Throws IndexError if vector is empty.
  */
 template <typename T>
 T pop_back(std::vector<T>& v) {
     if (v.empty()) {
-        tpy_panic("pop from empty list");
+        throw IndexError("pop from empty list");
     }
     T result = std::move(v.back());
     v.pop_back();
@@ -373,7 +373,7 @@ std::vector<T> list_concat(const std::vector<T>& a, const std::vector<T>& b) {
  * list_pop_at - Python list.pop(index) for std::vector.
  *
  * Removes and returns element at index. Supports negative indexing.
- * Panics if index is out of bounds.
+ * Throws IndexError if index is out of bounds.
  */
 template<typename T>
 T list_pop_at(std::vector<T>& v, int32_t index) {

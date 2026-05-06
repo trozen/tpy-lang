@@ -63,19 +63,19 @@ ordered_set<T> set_copy(const ordered_set<T>& s) {
 
 // -- Methods ----------------------------------------------------------------
 
-// s.remove(value) -- panics if not present
+// s.remove(value) -- throws KeyError if not present
 template<typename T>
 void set_remove(ordered_set<T>& s, const T& value) {
     if (!s.erase(value)) {
-        tpy_panic("KeyError");
+        throw KeyError("KeyError");
     }
 }
 
-// s.pop() -- remove and return first element (insertion order), panic if empty
+// s.pop() -- remove and return first element (insertion order); throws KeyError if empty
 template<typename T>
 T set_pop(ordered_set<T>& s) {
     if (s.empty()) {
-        tpy_panic("KeyError: pop from an empty set");
+        throw KeyError("pop from an empty set");
     }
     T result = s.front();
     s.pop_front();

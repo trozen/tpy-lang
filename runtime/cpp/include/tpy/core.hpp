@@ -41,6 +41,8 @@ struct OSError : Exception { using Exception::Exception; };
 struct FileNotFoundError : OSError { using OSError::OSError; };
 struct AttributeError : Exception { using Exception::Exception; };
 struct AssertionError : Exception { using Exception::Exception; };
+struct IndexError : Exception { using Exception::Exception; };
+struct KeyError : Exception { using Exception::Exception; };
 struct StopIteration : Exception {};
 
 // `assert cond[, msg]` failure path. Mirrors tpy_panic's call-site shape
@@ -169,17 +171,17 @@ const T& deref_optional_check(const std::optional<T>& opt) {
 }
 
 /**
- * Checked TypedDict optional-field access -- panics with KeyError if the
+ * Checked TypedDict optional-field access -- throws KeyError if the
  * field is absent. Used by codegen for `td["key"]` on a `total=False`
  * TypedDict. Distinct from deref_optional_check (which says "null optional
- * dereference") so the panic matches the existing TPy KeyError convention
- * for dict[k] misses, and from raw std::optional::value() whose
+ * dereference") so it matches the existing TPy KeyError convention for
+ * dict[k] misses, and avoids raw std::optional::value() whose
  * bad_optional_access::what() text diverges between libstdc++ and libc++.
  */
 template <typename T>
 T& typed_dict_field_check(std::optional<T>& opt) {
     if (!opt.has_value()) {
-        tpy_panic("KeyError");
+        throw KeyError("KeyError");
     }
     return *opt;
 }
@@ -187,7 +189,7 @@ T& typed_dict_field_check(std::optional<T>& opt) {
 template <typename T>
 const T& typed_dict_field_check(const std::optional<T>& opt) {
     if (!opt.has_value()) {
-        tpy_panic("KeyError");
+        throw KeyError("KeyError");
     }
     return *opt;
 }

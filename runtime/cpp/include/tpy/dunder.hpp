@@ -110,52 +110,52 @@ int32_t __len__(const T& x) {
 // Overload: std::vector
 template<typename T>
 decltype(auto) __getitem__(const std::vector<T>& x, int32_t i) {
-    auto idx = normalize_index(x, i, "list index out of bounds");
+    auto idx = normalize_index(x, i, "list index out of range");
     return x[idx];
 }
 
 template<typename T>
 decltype(auto) __getitem__(std::vector<T>& x, int32_t i) {
-    auto idx = normalize_index(x, i, "list index out of bounds");
+    auto idx = normalize_index(x, i, "list index out of range");
     return x[idx];
 }
 
 // Overload: std::array
 template<typename T, std::size_t N>
 decltype(auto) __getitem__(const std::array<T, N>& x, int32_t i) {
-    auto idx = normalize_index(x, i, "array index out of bounds");
+    auto idx = normalize_index(x, i, "array index out of range");
     return x[idx];
 }
 
 template<typename T, std::size_t N>
 decltype(auto) __getitem__(std::array<T, N>& x, int32_t i) {
-    auto idx = normalize_index(x, i, "array index out of bounds");
+    auto idx = normalize_index(x, i, "array index out of range");
     return x[idx];
 }
 
 // Overload: std::span (const)
 template<typename T>
 decltype(auto) __getitem__(std::span<const T> x, int32_t i) {
-    auto idx = normalize_index(x, i, "span index out of bounds");
+    auto idx = normalize_index(x, i, "span index out of range");
     return x[idx];
 }
 
 // Overload: std::span (mutable)
 template<typename T>
 T& __getitem__(std::span<T> x, int32_t i) {
-    auto idx = normalize_index(x, i, "span index out of bounds");
+    auto idx = normalize_index(x, i, "span index out of range");
     return x[idx];
 }
 
 // Overload: std::string
 inline char __getitem__(const std::string& x, int32_t i) {
-    auto idx = normalize_index(x, i, "string index out of bounds");
+    auto idx = normalize_index(x, i, "string index out of range");
     return x[idx];
 }
 
 // Overload: std::string_view
 inline char __getitem__(std::string_view x, int32_t i) {
-    auto idx = normalize_index(x, i, "string index out of bounds");
+    auto idx = normalize_index(x, i, "string index out of range");
     return x[idx];
 }
 
@@ -163,14 +163,14 @@ inline char __getitem__(std::string_view x, int32_t i) {
 template<typename K, typename V, typename KeyArg>
 const V& __getitem__(const ordered_map<K, V>& m, const KeyArg& key) {
     auto it = m.find(K(key));
-    if (it == m.items_end()) tpy_panic("KeyError");
+    if (it == m.items_end()) throw KeyError("KeyError");
     return (*it).second;
 }
 
 template<typename K, typename V, typename KeyArg>
 V& __getitem__(ordered_map<K, V>& m, const KeyArg& key) {
     auto it = m.find(K(key));
-    if (it == m.items_end()) tpy_panic("KeyError");
+    if (it == m.items_end()) throw KeyError("KeyError");
     return (*it).second;
 }
 
@@ -194,21 +194,21 @@ decltype(auto) __getitem__(T& x, int32_t i) {
 // Overload: std::vector
 template<typename T, typename V>
 void __setitem__(std::vector<T>& x, int32_t i, V&& v) {
-    auto idx = normalize_index(x, i, "list index out of bounds");
+    auto idx = normalize_index(x, i, "list assignment index out of range");
     x[idx] = std::forward<V>(v);
 }
 
 // Overload: std::array
 template<typename T, std::size_t N, typename V>
 void __setitem__(std::array<T, N>& x, int32_t i, V&& v) {
-    auto idx = normalize_index(x, i, "array index out of bounds");
+    auto idx = normalize_index(x, i, "array index out of range");
     x[idx] = std::forward<V>(v);
 }
 
 // Overload: std::span (mutable)
 template<typename T, typename V>
 void __setitem__(std::span<T> x, int32_t i, V&& v) {
-    auto idx = normalize_index(x, i, "span index out of bounds");
+    auto idx = normalize_index(x, i, "span index out of range");
     x[idx] = std::forward<V>(v);
 }
 
@@ -232,15 +232,15 @@ void __setitem__(T& x, int32_t i, V&& v) {
 // Overload: std::vector (list)
 template<typename T>
 void __delitem__(std::vector<T>& x, int32_t i) {
-    auto idx = normalize_index(x, i, "list index out of bounds");
+    auto idx = normalize_index(x, i, "list assignment index out of range");
     x.erase(x.begin() + static_cast<std::ptrdiff_t>(idx));
 }
 
-// Overload: ordered_map (dict) -- panics on missing key
+// Overload: ordered_map (dict) -- throws KeyError on missing key
 template<typename K, typename V, typename KeyArg>
 void __delitem__(ordered_map<K, V>& m, const KeyArg& key) {
     if (!m.erase(K(key))) {
-        tpy_panic("KeyError");
+        throw KeyError("KeyError");
     }
 }
 

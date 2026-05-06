@@ -1,1 +1,1 @@
-TurboPython panic: list index out of bounds
+TurboPython panic: uncaught tpy::IndexError: list index out of range

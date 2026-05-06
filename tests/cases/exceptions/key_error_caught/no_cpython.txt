@@ -1,0 +1,3 @@
+CPython's str(KeyError(k)) reprs the key (e.g. "'missing'"); TPy currently
+returns the catchall "KeyError" message. Aligning the message format with
+CPython's repr-of-key is tracked as v2 follow-up.

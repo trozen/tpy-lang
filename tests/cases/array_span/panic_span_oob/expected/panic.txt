@@ -1,1 +1,1 @@
-TurboPython panic: span index out of bounds
+TurboPython panic: uncaught tpy::IndexError: span index out of range
