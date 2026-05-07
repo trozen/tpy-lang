@@ -2,6 +2,7 @@
 
 import ast as pyast
 import io
+import re
 from contextlib import redirect_stdout
 
 from .dump_types import (
@@ -196,7 +197,7 @@ def test_dump_builtin_types_emits_toc_and_modules():
         dump_builtin_types()
     out = buf.getvalue()
     # Header + TOC markers.
-    assert out.startswith("# TurboPython Builtin Types")
+    assert out.startswith("# TurboPython API Reference")
     assert "## Modules" in out
     # A few well-known modules appear both in the TOC and as sections.
     for mod in ("math", "dataclasses", "tpy.version"):
@@ -205,6 +206,13 @@ def test_dump_builtin_types_emits_toc_and_modules():
     # tpy.version surfaces its typed constants (AnnAssign handling).
     assert "`__version__: Final[str]`" in out
     assert "`is_compiled: Final[bool]`" in out
+    # Internal _bindings.* layers are filtered out (no TOC entry, no section
+    # header). Their names may still appear in body text of other modules
+    # that reference them (e.g. `re` docstring), so check only structural
+    # positions, not raw substrings. Regex catches any future _bindings.*
+    # module without needing per-name updates.
+    assert not re.search(r"\[`_bindings\.[^`]+`\]", out)
+    assert not re.search(r"^## `_bindings\.[^`]+`", out, re.MULTILINE)
 
 
 def test_gfm_anchor():

@@ -10,7 +10,12 @@ def test_install_creates_both_files(tmp_path: Path) -> None:
     written = install_agent_docs(target)
 
     names = {p.name for p in written}
-    assert names == {"TPY_FOR_AGENTS.md", "TPY_LANGUAGE_FEATURES.md", "TPY_STDLIB_ROADMAP.md"}
+    assert names == {
+        "TPY_FOR_AGENTS.md",
+        "TPY_LANGUAGE_FEATURES.md",
+        "TPY_STDLIB_ROADMAP.md",
+        "TPY_API_REFERENCE.md",
+    }
     for p in written:
         assert p.is_file()
         assert p.read_text().startswith("#")
@@ -50,6 +55,7 @@ def test_snippet_uses_provided_path() -> None:
     assert "mydocs/TPY_FOR_AGENTS.md" in snippet
     assert "mydocs/TPY_LANGUAGE_FEATURES.md" in snippet
     assert "mydocs/TPY_STDLIB_ROADMAP.md" in snippet
+    assert "mydocs/TPY_API_REFERENCE.md" in snippet
     assert "tpyc --install-agent-docs mydocs" in snippet
 
 

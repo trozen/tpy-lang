@@ -1,9 +1,12 @@
 """Install TurboPython agent docs into a target project."""
 
+import io
+from contextlib import redirect_stdout
 from pathlib import Path
 import shutil
 
 from . import get_docs_dir
+from .dump_types import dump_builtin_types
 
 # (source name in wheel/repo, target name in user project)
 # In dev layout, get_docs_dir() resolves to the repo's docs/ which contains
@@ -14,6 +17,8 @@ _DOC_FILES: list[tuple[str, str]] = [
     ("LANGUAGE_FEATURES.md", "TPY_LANGUAGE_FEATURES.md"),
     ("STDLIB_ROADMAP.md", "TPY_STDLIB_ROADMAP.md"),
 ]
+
+_API_REFERENCE_FILENAME = "TPY_API_REFERENCE.md"
 
 
 def install_agent_docs(target_dir: Path) -> list[Path]:
@@ -34,6 +39,15 @@ def install_agent_docs(target_dir: Path) -> list[Path]:
         dst = target_dir / dst_name
         shutil.copyfile(src / src_name, dst)
         written.append(dst)
+
+    # Generated reference: API surface reflected from the installed stubs.
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        dump_builtin_types()
+    dst = target_dir / _API_REFERENCE_FILENAME
+    dst.write_text(buf.getvalue(), encoding="utf-8")
+    written.append(dst)
+
     return written
 
 
@@ -57,6 +71,10 @@ When writing or modifying `.py` files compiled by tpyc:
   features. Only sections marked **Working** are usable today.
 - Check `{path_prefix}/TPY_STDLIB_ROADMAP.md` before using a Python stdlib
   module -- coverage is partial and some modules are missing or blocked.
+- Look up concrete API surface in `{path_prefix}/TPY_API_REFERENCE.md` --
+  auto-generated from the installed stubs (builtins, `tplib.*`, and
+  bundled stdlib modules). Reflects exactly what's callable in this
+  version, with signatures and methods.
 
 These files are bundled from the installed tpyc toolchain. Refresh with
 `tpyc --install-agent-docs {path_prefix}` after upgrading tpyc.

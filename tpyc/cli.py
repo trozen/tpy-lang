@@ -230,10 +230,11 @@ def _run_cli(is_runner: bool) -> int:
     parser.add_argument("-O", "--release", action="store_true", help="Build with optimizations (default: debug)")
     parser.add_argument("--emit-source", action="store_true", help="Embed Python source as comments in generated C++")
     parser.add_argument("-i", "--repl", action="store_true", help="Start interactive REPL")
-    parser.add_argument("--print-types", action="store_true", help="Print documentation for all builtin types")
+    parser.add_argument("--print-types", action="store_true", help="Print API reference (builtins, tplib, bundled stdlib) as markdown")
     parser.add_argument("--install-agent-docs", metavar="DIR",
-                        help="Install TPy agent docs (TPY_FOR_AGENTS.md, TPY_LANGUAGE_FEATURES.md) "
-                             "into DIR and print an AGENTS.md snippet to stdout")
+                        help="Install TPy agent docs (TPY_FOR_AGENTS.md, TPY_LANGUAGE_FEATURES.md, "
+                             "TPY_STDLIB_ROADMAP.md, TPY_API_REFERENCE.md) into DIR and print "
+                             "an AGENTS.md snippet to stdout")
     parser.add_argument("--dump-code", action="store_true", help="Print generated C++ to stdout")
     parser.add_argument(
         "--default-int",

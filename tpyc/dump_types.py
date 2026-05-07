@@ -19,9 +19,17 @@ from . import get_lib_dir
 
 
 def dump_builtin_types() -> None:
-    """Print markdown documentation for all public stubs under lib/tpy/."""
-    print("# TurboPython Builtin Types\n")
-    print("Auto-generated from .py stubs under `lib/tpy/`.\n")
+    """Print markdown documentation for all public stubs under lib/tpy/.
+
+    Covers user-facing API surface: builtins (`tpy`), TPy-native types
+    (`tplib.*`), and bundled stdlib modules (`re`, `math`, `argparse`, ...).
+    Internal `_bindings.*` raw native layers are excluded.
+    """
+    print("# TurboPython API Reference\n")
+    print(
+        "Auto-generated from .py stubs under `lib/tpy/`. Covers builtins, "
+        "`tplib.*` TPy-native types, and bundled stdlib modules.\n"
+    )
 
     # Collect rendered module sections first so we can emit a TOC ahead of
     # them, then print everything. Only modules with public content end up
@@ -29,7 +37,7 @@ def dump_builtin_types() -> None:
     lib_dir = get_lib_dir() / "tpy"
     sections: list[tuple[str, str]] = []   # (module_name, rendered_body)
     for py_file in sorted(lib_dir.rglob("*.py")):
-        if _should_skip(py_file):
+        if _should_skip(py_file, lib_dir):
             continue
         rendered = _render_module(py_file, lib_dir)
         if rendered is not None:
@@ -56,11 +64,22 @@ _SKIP_BASENAMES: frozenset[str] = frozenset({
     "_macro_helpers.py",    # shared helpers for @dataclass-style macros
 })
 
+# Top-level packages under lib/tpy/ that are internal implementation details
+# and should never appear in user-facing API docs. `_bindings/` holds raw
+# @native layers (PCRE2, posix sockets) that stdlib modules wrap -- users
+# import the stdlib facade (`re`, `socket`), never the bindings directly.
+_SKIP_TOP_PACKAGES: frozenset[str] = frozenset({
+    "_bindings",
+})
 
-def _should_skip(path: Path) -> bool:
+
+def _should_skip(path: Path, lib_dir: Path) -> bool:
     if "__pycache__" in path.parts:
         return True
     if path.name in _SKIP_BASENAMES:
+        return True
+    rel_parts = path.relative_to(lib_dir).parts
+    if rel_parts and rel_parts[0] in _SKIP_TOP_PACKAGES:
         return True
     return False
 
