@@ -2501,6 +2501,30 @@ class Parser:
         if isinstance(node, ast.Constant) and node.value is None:
             return TpyTypeRef("None", (), loc)
 
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            # PEP 484 forward-ref strings (`-> "ClassName"`) and every
+            # annotation under `from __future__ import annotations` arrive
+            # as string Constants. Inner nodes from the re-parse inherit
+            # the outer Constant's location so diagnostics point at the
+            # annotation site instead of line 1 col 0 of the standalone
+            # parse. (ast.fix_missing_locations only fills missing values;
+            # the re-parsed nodes already have lineno=1, so we overwrite.)
+            src = node.value
+            try:
+                inner = ast.parse(src, mode='eval').body
+            except SyntaxError as exc:
+                raise ParseError(
+                    f"Cannot parse string type annotation {src!r}: {exc.msg}",
+                    node,
+                )
+            for child in ast.walk(inner):
+                if hasattr(child, 'lineno'):
+                    child.lineno = node.lineno
+                    child.col_offset = node.col_offset
+                    child.end_lineno = node.end_lineno
+                    child.end_col_offset = node.end_col_offset
+            return self._parse_type_ref(inner, type_param_scope)
+
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
             arms = _collect_bitor_arms(node)
             members = tuple(self._parse_type_ref(arm, type_param_scope) for arm in arms)

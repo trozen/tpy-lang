@@ -5261,6 +5261,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
 - **Working**: Contextual type inference from assignment/return/nested-call context for generic functions, record constructors, and module-type constructors; partial explicit type args; `_` wildcard type arguments
 - **Working**: `global` keyword for explicit global mutation from functions
 - **Working**: `:=` walrus operator (assignment expression) -- `if`, `while`, `and`/`or` chains, general expression positions. Value types use `T x{}`; non-value types use `std::optional<T>` wrapping. Comprehension scope leak (PEP 572) supported.
+- **Working**: PEP 484 string type annotations (`def f() -> "ClassName"`, `def f(x: "ClassName")`, `children: list["Tree"]`). Strings are re-parsed as Python expressions at parse time and resolved by the same deferred type-resolver pass as bare annotations -- forward references to classes/aliases defined later in the same module work for names, generics (`"list[T]"`), and unions (`"A | B"`). A string that is not a valid Python expression is rejected with a clean tpyc diagnostic (no SyntaxError leak). `from __future__ import annotations` is accepted and ignored: it is a CPython runtime directive (PEP 563) that does not affect `ast.parse` output, so tpyc sees the same annotation AST nodes whether the import is present or not.
 
 ---
 
