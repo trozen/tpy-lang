@@ -3004,6 +3004,9 @@ class ExpressionGenerator:
                         for p in resolved_params[len(iter_params):]:
                             iter_params.append((p.name, p.type))
                     for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, iter_params)):
+                        if isinstance(arg, TpyVarargPack):
+                            gen_args.append(self._gen_vararg_pack(arg))
+                            continue
                         ptype_bare = unwrap_ref_type(ptype)
                         if isinstance(ptype_bare, TypeParamRef) and self.ctx.is_temporary_expr(arg):
                             # Resolve TypeParamRef to actual type

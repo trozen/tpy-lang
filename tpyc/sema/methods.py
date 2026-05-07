@@ -268,6 +268,26 @@ class MethodAnalyzer:
             return obj_type
         return None
 
+    def _check_args_or_pack_varargs(
+        self, expr: TpyMethodCall,
+        resolved: FunctionInfo,
+        arg_types: list[TpyType] | None = None,
+    ) -> None:
+        """Dispatch arg checking based on whether the method has *args.
+
+        Variadic methods route through `_analyze_and_pack_varargs` (mirrors
+        the free-function path). The pre-analyzed cache is dropped because
+        it holds types analyzed against Span[T], not the element type T
+        the packer needs. ``arg_types`` is ignored on the variadic path --
+        the packer re-analyzes every arg from scratch.
+        """
+        if resolved.has_variadic:
+            self.ctx.func.pre_analyzed_method_args.pop(id(expr), None)
+            self.calls._analyze_and_pack_varargs(expr, resolved)
+        else:
+            self._check_and_coerce_args(expr, resolved.params, arg_types,
+                                        target_is_readonly=resolved.is_readonly)
+
     def _check_and_coerce_args(
         self, expr: TpyMethodCall,
         params: list[tuple[str, TpyType]],
@@ -339,7 +359,7 @@ class MethodAnalyzer:
                     arity_error_msg(expr.method, resolved.min_args, resolved.max_args, len(expr.args)),
                     expr)
             expr.resolved_function_info = resolved
-            self._check_and_coerce_args(expr, resolved.params, target_is_readonly=resolved.is_readonly)
+            self._check_args_or_pack_varargs(expr, resolved)
             if type_subst:
                 validate_generic_defaults(
                     expr.args, unresolved, type_subst, self.type_ops,
@@ -401,8 +421,7 @@ class MethodAnalyzer:
                 # _check_and_coerce_args re-analyzes every arg with a param hint.
                 self.ctx.func.pre_analyzed_method_args.pop(id(expr), None)
                 coerce_arg_types = None
-            self._check_and_coerce_args(expr, resolved.params, coerce_arg_types,
-                                        target_is_readonly=resolved.is_readonly)
+            self._check_args_or_pack_varargs(expr, resolved, coerce_arg_types)
             # Overloaded methods with generic defaults: find unresolved counterpart
             if type_subst:
                 idx = resolved_overloads.index(resolved)

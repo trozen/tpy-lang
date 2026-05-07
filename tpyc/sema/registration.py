@@ -1024,18 +1024,24 @@ class TypeRegistrar:
                         f"got '{method_return}'",
                         method.loc or record.loc,
                     )
+            kw_start = method.keyword_only_start
             method_param_infos = [
                 ParamInfo(n, t,
                           default_expr=method_defaults[i] if i < len(method_defaults) else None,
-                          keyword_only=(method.keyword_only_start is not None
-                                        and i >= method.keyword_only_start))
+                          keyword_only=(kw_start is not None and i >= kw_start))
                 for i, (n, t) in enumerate(method_params)
             ]
+            # *args goes before keyword-only params so call-site arg packing
+            # (`_analyze_and_pack_varargs`) sees the canonical
+            # [fixed..., variadic, kwonly...] layout shared with free functions.
             if method.vararg_name is not None and method.vararg_type is not None:
                 va_type = self.type_ops.resolve_type(method.vararg_type)
-                method_param_infos.append(
-                    ParamInfo(method.vararg_name, _vararg_span_type(va_type),
-                              is_variadic=True))
+                va_param = ParamInfo(method.vararg_name, _vararg_span_type(va_type),
+                                     is_variadic=True)
+                if kw_start is not None and kw_start < len(method_param_infos):
+                    method_param_infos.insert(kw_start, va_param)
+                else:
+                    method_param_infos.append(va_param)
             if method.kwarg_name is not None and method.kwarg_type is not None:
                 resolved_kwarg_type = self.type_ops.resolve_type(method.kwarg_type)
                 method_param_infos.append(ParamInfo(method.kwarg_name, resolved_kwarg_type))

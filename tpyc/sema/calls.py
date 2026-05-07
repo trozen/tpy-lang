@@ -3936,7 +3936,25 @@ class CallAnalyzer:
             if isinstance(arg_type, PendingViewType):
                 self.deduction.mark_view_param_context(arg, ptype, arg_type.family)
 
-    def _analyze_and_pack_varargs(self, expr: TpyCall, func: FunctionInfo) -> None:
+    def _typecheck_and_coerce_arg(
+        self, arg: TpyExpr, pname: str, ptype: TpyType, func_is_readonly: bool,
+    ) -> TpyExpr:
+        """Per-arg type check and coercion shared by the fixed and kwonly
+        branches of `_analyze_and_pack_varargs`. Returns the (possibly
+        rewrapped) expression to store back into the args list."""
+        arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
+        arg_type = self._restore_readonly_arg(arg, arg_type, func_is_readonly)
+        if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType):
+            arg_type = arg_type.wrapped
+        self.check_own_param(arg, arg_type, pname, ptype)
+        if (is_char_type(ptype) and is_any_str_type(arg_type)
+                and isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
+            return arg
+        return self.compat.coerce_expr(
+            arg, arg_type, ptype, f"argument '{pname}'",
+            coercion_ctx=CoercionContext.ARG)
+
+    def _analyze_and_pack_varargs(self, expr: TpyCall | TpyMethodCall, func: FunctionInfo) -> None:
         """Analyze call with variadic params: type-check fixed args, pack trailing args."""
         # Find variadic param index and count keyword-only params after it
         va_idx = next(i for i, p in enumerate(func.params) if p.is_variadic)
@@ -3955,16 +3973,7 @@ class CallAnalyzer:
 
         # Type-check fixed positional args
         for i, ((pname, ptype), arg) in enumerate(zip(func.params[:va_idx], fixed_args)):
-            arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
-            arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
-            if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType):
-                arg_type = arg_type.wrapped
-            self.check_own_param(arg, arg_type, pname, ptype)
-            if not (is_char_type(ptype) and is_any_str_type(arg_type) and
-                    isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
-                coerced_arg = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
-                                                       coercion_ctx=CoercionContext.ARG)
-                fixed_args[i] = coerced_arg
+            fixed_args[i] = self._typecheck_and_coerce_arg(arg, pname, ptype, func.is_readonly)
 
         # Type-check each variadic arg against element type T
         for i, arg in enumerate(vararg_exprs):
@@ -3989,11 +3998,10 @@ class CallAnalyzer:
                 coercion_ctx=CoercionContext.ARG)
             vararg_exprs[i] = coerced_arg
 
-        # Type-check keyword-only args (defaults already filled by resolve_kwargs)
+        # Type-check keyword-only args (resolve_kwargs has filled all slots)
         kwonly_params = [p for p in func.params if p.keyword_only]
         for i, (p, arg) in enumerate(zip(kwonly_params, kwonly_args)):
-            if arg is not None:
-                arg_type = self.expr.analyze_expr_with_hint(arg, p.type)
+            kwonly_args[i] = self._typecheck_and_coerce_arg(arg, p.name, p.type, func.is_readonly)
 
         # Build pack node and reconstruct args list:
         # [fixed_args..., vararg_pack, kwonly_args...]
