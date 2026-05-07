@@ -11,5 +11,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+using ::tpyapp::pkg::consumer::compute;
+
 void __tpy_init();
 } // namespace tpyapp::main

@@ -1229,12 +1229,21 @@ class MethodAnalyzer:
             expr.resolved_function_info = temp_call.resolved_function_info
             return result
 
-        # Check for call-site macro (e.g. dataclasses.asdict(...))
+        # Check for call-site macro (e.g. dataclasses.asdict(...)).
+        # Walks the re-export chain so macros re-exported through plain
+        # modules (Phase 6) resolve to the macro registry's canonical
+        # (ultimate_module, name) key.
         if self.ctx.macro_registry:
             macro_fn = self.ctx.macro_registry.get_call_macro(module_name, expr.method)
+            ult_mod, ult_name = module_name, expr.method
+            if macro_fn is None:
+                chain = self.calls._resolve_call_macro_chain(module_name, expr.method)
+                if chain is not None:
+                    ult_mod, ult_name = chain
+                    macro_fn = self.ctx.macro_registry.get_call_macro(ult_mod, ult_name)
             if macro_fn is not None:
                 return self.calls._expand_call_macro_from_method(
-                    expr, macro_fn, module_name, expr.method)
+                    expr, macro_fn, ult_mod, ult_name)
 
         raise self.ctx.error(f"Module '{module_name}' has no function '{expr.method}'", expr)
 

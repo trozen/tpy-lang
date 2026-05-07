@@ -33,6 +33,7 @@ from ..parse import (
 from ..modules import extract_type_params
 from ..namespace import BindingKind
 from ..coercions import CoercionContext, VALUE_TO_PTR
+from ..symbol_binding import SymbolKind, is_kind, walk_attribute_chain
 from .context import PENDING_CONTAINER_TYPES, addr_taken_roots
 from ..diagnostics import SemanticError
 from .overloads import (
@@ -835,11 +836,21 @@ class CallAnalyzer:
                     return self._analyze_record_constructor(expr, binding.record_info)
                 elif binding.kind == BindingKind.IMPORTED_NAME:
                     module_name, func_name = binding.import_source
-                    # Check for call-site macro before other handling
+                    # Check for call-site macro before other handling.
+                    # Walks the re-export chain via the attribute table so
+                    # `from utils import asdict` (where utils re-exports
+                    # from dataclasses) resolves to the macro registered
+                    # under the ultimate macro module's key.
                     if self.ctx.macro_registry:
                         macro_fn = self.ctx.macro_registry.get_call_macro(module_name, func_name)
+                        ult_mod, ult_name = module_name, func_name
+                        if macro_fn is None:
+                            chain = self._resolve_call_macro_chain(module_name, func_name)
+                            if chain is not None:
+                                ult_mod, ult_name = chain
+                                macro_fn = self.ctx.macro_registry.get_call_macro(ult_mod, ult_name)
                         if macro_fn is not None:
-                            return self._expand_call_macro(expr, macro_fn, module_name, func_name)
+                            return self._expand_call_macro(expr, macro_fn, ult_mod, ult_name)
                     qname = f"{module_name}.{func_name}"
                     # Special handling for functions with custom sema
                     if qname == "tpy.copy":
@@ -4731,6 +4742,22 @@ class CallAnalyzer:
             # dotted-module chain in _try_resolve_dotted_module.
             root = dep_mod.split(".")[0]
             self.ctx.macro_ns.bind_module(dep_mod, alias=root)
+
+    def _resolve_call_macro_chain(
+        self, module_name: str, name: str,
+    ) -> tuple[str, str] | None:
+        """Walk the binding chain to find the ultimate call-macro
+        source for `(module_name, name)`. Returns None when no hop
+        lands on a CALL_MACRO binding.
+        """
+        if self.ctx.macro_registry is None:
+            return None
+        result = walk_attribute_chain(
+            self.ctx.registry, module_name, name, is_kind(SymbolKind.CALL_MACRO))
+        if result is None:
+            return None
+        ult_mod, ult_name, _bd = result
+        return (ult_mod, ult_name)
 
     def _expand_call_macro(
         self, expr: TpyCall, macro_fn: Callable,

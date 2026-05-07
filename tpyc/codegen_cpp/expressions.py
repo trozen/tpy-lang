@@ -29,6 +29,7 @@ from ..type_def_registry import (
     is_enum_type, is_int_enum_type, enum_info_of,
     protocol_info_of,
 )
+from ..symbol_binding import lookup_qualified
 
 
 _CMP_HELPER: Final = {
@@ -2403,8 +2404,21 @@ class ExpressionGenerator:
                 # the caller's scope (class method, namespace-member, ADL).
                 func_cpp_name = qualify_native_name(func_info.native_name or func_info.name)
             elif expr.func_name in self.ctx.user_imported_functions:
-                source_module, original_name = self.ctx.user_imported_functions[expr.func_name]
-                func_cpp_name = qualified_cpp_name(source_module, mangled if is_literal_mangled else original_name)
+                # Cross-module call: qualify via the attribute table when
+                # available (ad-hoc analyzer in tests / REPL falls back
+                # to direct FunctionInfo attribution).
+                analyzer_ctx = self.ctx.analyzer.ctx
+                qual = lookup_qualified(
+                    analyzer_ctx.module_attributes,
+                    expr.func_name, analyzer_ctx.module_name)
+                if qual is not None:
+                    source_module, qual_name = qual
+                else:
+                    immediate, original_name = self.ctx.user_imported_functions[expr.func_name]
+                    source_module = func_info.originating_module or immediate
+                    qual_name = func_info.name
+                emit_name = mangled if is_literal_mangled else qual_name
+                func_cpp_name = qualified_cpp_name(source_module, emit_name)
             elif expr.func_name in self.ctx.analyzer.imported_names:
                 # Implicit builtin-module function (e.g. pure-TPy helper in
                 # tpystd::builtins). Only qualify when the resolved function
@@ -2761,11 +2775,26 @@ class ExpressionGenerator:
                 # @native(binding="C") / @export: extern "C" declaration lives in the
                 # module namespace, use module-qualified path
                 return f"{qualified_cpp_name(expr.user_module_call, func_name)}({args})"
+            # Cross-module dotted call: same path as the bare-call case
+            # above. The binding's defining_module already encodes the
+            # chain-flattened ultimate definer; cycle-aware codegen in
+            # peers' .hpp may have suppressed the `using` for
+            # `expr.user_module_call`, so we cannot rely on it.
+            analyzer_ctx = self.ctx.analyzer.ctx
+            qual = lookup_qualified(
+                analyzer_ctx.module_attributes,
+                expr.method, analyzer_ctx.module_name)
+            if qual is not None:
+                qual_module, qual_name = qual
+            else:
+                qual_module = (fi.originating_module if fi and fi.originating_module
+                               else expr.user_module_call)
+                qual_name = fi.name if fi else expr.method
             # Emit explicit template args for generic user-module calls
             if fi and fi.is_generic() and expr.inferred_type_args:
                 type_args_str = ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in expr.inferred_type_args)
-                return f"{qualified_cpp_name(expr.user_module_call, expr.method)}<{type_args_str}>({args})"
-            return f"{qualified_cpp_name(expr.user_module_call, expr.method)}({args})"
+                return f"{qualified_cpp_name(qual_module, qual_name)}<{type_args_str}>({args})"
+            return f"{qualified_cpp_name(qual_module, qual_name)}({args})"
 
         # Handle builtin module function/type calls (e.g., time.time() or t.Int32() with import tpy as t)
         if expr.builtin_module_call is not None:

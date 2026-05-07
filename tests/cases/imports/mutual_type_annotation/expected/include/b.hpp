@@ -12,5 +12,7 @@ inline constexpr std::string_view __name__ = "b";
 
 int32_t H(const ::tpyapp::a::A& x);
 
+using ::tpyapp::a::A;
+
 void __tpy_init();
 } // namespace tpyapp::b

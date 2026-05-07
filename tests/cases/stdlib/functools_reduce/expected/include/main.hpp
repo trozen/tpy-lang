@@ -13,5 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t add(int32_t a, int32_t b);
 void main();
 
+using ::tpystd::functools::reduce;
+
 void __tpy_init();
 } // namespace tpyapp::main

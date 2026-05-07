@@ -1,0 +1,4 @@
+CPython hits a circular-import error on the a <-> b shape. TPy
+compiles and runs the cycle correctly via the second pre-pop pass
+that flattens cycle re-export bindings before any module's
+bind_imports runs.

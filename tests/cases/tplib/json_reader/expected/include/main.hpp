@@ -23,5 +23,10 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_raw_methods()
 void test_describe();
 void main();
 
+using ::tpystd::tplib::json::parser::JsonError;
+using ::tpystd::tplib::json::parser::JsonReader;
+
+using ::tpystd::tplib::json::parser::JsonToken;
+
 void __tpy_init();
 } // namespace tpyapp::main

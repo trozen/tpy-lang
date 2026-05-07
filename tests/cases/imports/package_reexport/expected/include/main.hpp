@@ -5,12 +5,17 @@
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
 #include "mypackage.hpp"
+#include "mypackage/utils.hpp"
 
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t main();
+
+using ::tpyapp::mypackage::utils::add;
+
+inline auto& VERSION = ::tpyapp::mypackage::VERSION;
 
 void __tpy_init();
 } // namespace tpyapp::main

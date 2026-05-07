@@ -57,5 +57,7 @@ void process(::tpystd::tplib::box::Box<T>& box) {
     item.mutate();
 }
 
+using ::tpystd::tplib::box::Box;
+
 void __tpy_init();
 } // namespace tpyapp::main

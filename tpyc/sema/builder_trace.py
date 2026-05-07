@@ -34,6 +34,7 @@ from ..typesys import (
     make_list,
 )
 from ..diagnostics import SemanticError
+from ..symbol_binding import SymbolKind, is_kind, walk_attribute_chain
 from ..macro_api import (
     MacroArg, MacroArgs, BuilderContext, TypeInfo, MacroError,
 )
@@ -342,13 +343,24 @@ class BuilderTraceExpander:
         """Return the @builder_macro state class targeted by this call,
         or None. Works for both ``Builder()`` (TpyCall after
         ``from mod import Builder``) and ``mod.Builder()`` (TpyMethodCall
-        after ``import mod``); both carry ``resolved_import``.
+        after ``import mod``); both carry ``resolved_import`` (immediate
+        import source). The chain walk recovers the registry's canonical
+        (ultimate_module, name) key for re-exports through plain modules.
         """
         macro_reg = self.ctx.macro_registry
         if macro_reg is None or call.resolved_import is None:
             return None
         mod_name, obj_name = call.resolved_import
-        return macro_reg.get_builder_macro(mod_name, obj_name)
+        macro_cls = macro_reg.get_builder_macro(mod_name, obj_name)
+        if macro_cls is not None:
+            return macro_cls
+        result = walk_attribute_chain(
+            self.ctx.registry, mod_name, obj_name,
+            is_kind(SymbolKind.BUILDER_MACRO))
+        if result is None:
+            return None
+        ult_mod, ult_name, _bd = result
+        return macro_reg.get_builder_macro(ult_mod, ult_name)
 
     def _handle_ctor(
         self, var_name: str, call: TpyCall, macro_cls: type,

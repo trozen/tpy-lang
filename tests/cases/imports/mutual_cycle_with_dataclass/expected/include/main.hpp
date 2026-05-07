@@ -13,5 +13,11 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
+using ::tpyapp::a::add_pair;
+using ::tpyapp::b::make_pair_sum;
+using ::tpyapp::b::sum_pair;
+
+using ::tpyapp::a::Pair;
+
 void __tpy_init();
 } // namespace tpyapp::main

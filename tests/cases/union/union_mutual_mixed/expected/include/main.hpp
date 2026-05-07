@@ -47,5 +47,7 @@ struct Value {
     }
 };
 
+using ::tpystd::tplib::box::Box;
+
 void __tpy_init();
 } // namespace tpyapp::main

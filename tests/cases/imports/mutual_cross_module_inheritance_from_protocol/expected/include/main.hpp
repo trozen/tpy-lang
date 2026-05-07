@@ -22,5 +22,7 @@ std::string use_proto(T_g& g) {
     return g.hello();
 }
 
+using ::tpyapp::a::Counter;
+
 void __tpy_init();
 } // namespace tpyapp::main

@@ -15,5 +15,11 @@ int32_t uses_pkg_a(const ::tpyapp::pkg_a::Foo& x);
 std::string describe(const std::variant<::tpyapp::pkg_b::Bar*, ::tpyapp::pkg_a::Foo*> u);
 void main();
 
+inline auto& name_a = ::tpyapp::pkg_a::name_of;
+using ::tpyapp::pkg_b::name_of_b;
+
+using ::tpyapp::pkg_b::Bar;
+using ::tpyapp::pkg_a::Foo;
+
 void __tpy_init();
 } // namespace tpyapp::main

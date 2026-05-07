@@ -12,5 +12,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
+using ::tpystd::hashlib::sha256;
+
 void __tpy_init();
 } // namespace tpyapp::main

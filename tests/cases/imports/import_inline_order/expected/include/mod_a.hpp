@@ -12,5 +12,7 @@ inline constexpr std::string_view __name__ = "mod_a";
 
 void func_a();
 
+inline auto& shared_value = ::tpyapp::mod_c::shared_value;
+
 void __tpy_init();
 } // namespace tpyapp::mod_a

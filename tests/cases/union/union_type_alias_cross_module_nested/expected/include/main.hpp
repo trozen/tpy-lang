@@ -14,5 +14,8 @@ using ::tpyapp::shapes::Shape;
 
 void main();
 
+using ::tpyapp::shapes::Circle;
+using ::tpyapp::shapes::Rect;
+
 void __tpy_init();
 } // namespace tpyapp::main

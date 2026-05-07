@@ -13,5 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 std::expected<::tpy::BigInt, ::tpyapp::errors_impl::ParseError> parse_pair(std::string_view a, std::string_view b);
 void main();
 
+using ::tpyapp::errors_impl::parse_int;
+
+using ::tpyapp::errors_impl::ParseError;
+
 void __tpy_init();
 } // namespace tpyapp::main

@@ -15,5 +15,7 @@ int32_t sum_span(std::span<int32_t> values);
 ::tpy::BigInt sum_span_bigint(std::span<::tpy::BigInt> values);
 void main();
 
+using ::tpystd::tplib::array_list::ArrayList;
+
 void __tpy_init();
 } // namespace tpyapp::main

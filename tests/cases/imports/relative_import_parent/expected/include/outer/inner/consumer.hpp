@@ -13,5 +13,7 @@ inline constexpr std::string_view __name__ = "outer.inner.consumer";
 
 int32_t compute();
 
+using ::tpyapp::outer::utils::add;
+
 void __tpy_init();
 } // namespace tpyapp::outer::inner::consumer

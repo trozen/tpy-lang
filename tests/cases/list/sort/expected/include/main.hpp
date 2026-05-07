@@ -58,5 +58,7 @@ inline std::string Pair::__repr__() const {
     // return str(self.key) + ":" + str(self.tag)
     return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(this->key), ":")), ::tpy::fixed_to_str<int32_t>(this->tag)));
 }
+using ::tpystd::tplib::array_list::ArrayList;
+
 void __tpy_init();
 } // namespace tpyapp::main

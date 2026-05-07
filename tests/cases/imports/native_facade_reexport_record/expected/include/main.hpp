@@ -13,5 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t use(const ::repro_rec::pkg::types::Counter& c);
 void main();
 
+using ::repro_rec::pkg::types::Counter;
+
 void __tpy_init();
 } // namespace tpyapp::main

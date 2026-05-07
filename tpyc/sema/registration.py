@@ -59,6 +59,9 @@ from .method_expansion import expand_methods_for_record
 from .macros import run_macro_phase_for_record
 from .operators import DUNDER_CPP_TEMPLATES
 from ..macro_api import expr_to_cpp_default
+from ..symbol_binding import (
+    SymbolKind, install_binding, protocol_kind_for,
+)
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -308,6 +311,10 @@ class TypeRegistrar:
         enum_type = NominalType(name=enum.name, type_args=(), _module_qname=qname)
         self.ctx.registry.register_enum(enum_type)
         self.ctx.global_ns.bind_enum(enum_type)
+        install_binding(
+            self.ctx.module_attributes, enum.name,
+            SymbolKind.ENUM, enum_type,
+        )
         attach_dynamic_type_def(
             qname,
             TypeCategory.ENUM,
@@ -1391,6 +1398,15 @@ class TypeRegistrar:
                 info = _adopt_skeleton(existing_skeleton, info)
         self.ctx.registry.register_record(info)
         self.ctx.global_ns.bind_record(info)
+        # Per-module attribute table (Phase 1). Local definition: no
+        # defining_module override, so binding is "owned by this module".
+        # Skips builtin records (Int32, list, ...) -- those are
+        # attached to TypeDef and don't surface as module attributes.
+        if not record.builtin_type_key:
+            install_binding(
+                self.ctx.module_attributes, record.name,
+                SymbolKind.RECORD, info,
+            )
         # Attach RecordInfo to the TypeDef registry under a stable qname:
         # - @builtin_type stubs (list, dict, Array, ...) attach onto the
         #   pre-existing static TypeDef by its builtin_type_key; the static
@@ -2144,6 +2160,10 @@ class TypeRegistrar:
             if existing_skeleton is not None:
                 info = _adopt_skeleton(existing_skeleton, info)
         self.ctx.registry.register_protocol(info)
+        install_binding(
+            self.ctx.module_attributes, protocol.name,
+            protocol_kind_for(protocol.is_dynamic), info,
+        )
         # Attach ProtocolInfo to the TypeDef registry under a stable qname.
         # User protocols in entry-point modules fall back to `__main__.<name>`,
         # mirroring the record/enum convention.
@@ -2459,6 +2479,15 @@ class TypeRegistrar:
         self.ctx.global_ns.bind_function(info)
         # Local definition shadows any `from X import name` import
         self.ctx.user_imported_functions.pop(info.name, None)
+        # Per-module attribute table (Phase 1). Use the registry's list
+        # so binding.info shares identity with the freshly-registered
+        # one (which `_extract_declaration_exports` will copy into
+        # `compiled.exports.functions`).
+        install_binding(
+            self.ctx.module_attributes, info.name,
+            SymbolKind.FUNCTION,
+            self.ctx.registry.get_function(info.name),
+        )
 
         # Propagate resolved types back to AST (matches register_record and
         # register_overload_group). For non-stub functions, _analyze_function
@@ -2556,6 +2585,11 @@ class TypeRegistrar:
                 name=infos[0].name,
                 func_infos=infos,
             ))
+            install_binding(
+                self.ctx.module_attributes, infos[0].name,
+                SymbolKind.FUNCTION,
+                self.ctx.registry.get_function(infos[0].name),
+            )
 
     def _reject_same_param_overloads(
         self,
@@ -2625,6 +2659,10 @@ class TypeRegistrar:
                     self.ctx.final_globals.add(stmt.name)
                 self.ctx.global_scope.define(stmt.name, actual_type)
                 self.ctx.global_ns.bind_variable(stmt.name, actual_type)
+                install_binding(
+                    self.ctx.module_attributes, stmt.name,
+                    SymbolKind.VARIABLE, actual_type,
+                )
                 # Track with line number for order-aware codegen (earliest line wins)
                 decl_line = stmt.loc.line if stmt.loc else 0
                 if stmt.name not in self.ctx.top_level_decls:

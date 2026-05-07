@@ -9,7 +9,7 @@ int32_t main() {
     // print(VERSION)
     std::cout << ::tpyapp::mypackage::VERSION << "\n";
     // result: Int32 = add(Int32(5), Int32(7))
-    int32_t result = ::tpyapp::mypackage::add(5, 7);
+    int32_t result = ::tpyapp::mypackage::utils::add(5, 7);
     // print(result)
     std::cout << result << "\n";
     // return Int32(0)

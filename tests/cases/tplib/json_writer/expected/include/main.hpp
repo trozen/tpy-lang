@@ -23,5 +23,7 @@ void test_pretty_empty();
 void test_pretty_4space();
 void test_pretty_array();
 
+using ::tpystd::tplib::json::writer::JsonWriter;
+
 void __tpy_init();
 } // namespace tpyapp::main

@@ -12,5 +12,23 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
+using ::tpystd::re::compile;
+using ::tpystd::re::findall;
+using ::tpystd::re::fullmatch;
+using ::tpystd::re::match;
+using ::tpystd::re::search;
+using ::tpystd::re::split;
+using ::tpystd::re::sub;
+
+using ::tpystd::re::Match;
+using ::tpystd::re::Pattern;
+using ::tpystd::re::error;
+
+inline auto& ASCII = ::tpystd::re::ASCII;
+inline auto& DOTALL = ::tpystd::re::DOTALL;
+inline auto& IGNORECASE = ::tpystd::re::IGNORECASE;
+inline auto& MULTILINE = ::tpystd::re::MULTILINE;
+inline auto& VERBOSE = ::tpystd::re::VERBOSE;
+
 void __tpy_init();
 } // namespace tpyapp::main

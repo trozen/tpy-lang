@@ -125,6 +125,27 @@ def compute_reached_symbols(
     for mod_name in module.user_module_imports:
         add_module(mod_name)
 
+    # Function re-export reach: when this module imports a function from
+    # an intermediate that itself re-exports it from another module,
+    # consumer codegen qualifies to the ultimate defining module
+    # (`func_info.originating_module`) -- so that module must be in the
+    # include set too. Critical for cycle re-exports where the
+    # intermediate's `<peer>.hpp` suppresses the `using` line that
+    # would otherwise route the call back through it.
+    for src_mod, names in (module.imports or {}).items():
+        if not isinstance(names, set):
+            continue
+        src_info = registry.get_module(src_mod)
+        if src_info is None:
+            continue
+        for original_name, _local in names:
+            finfos = src_info.functions.get(original_name)
+            if not finfos:
+                continue
+            ult = finfos[0].originating_module
+            if ult and ult != src_mod:
+                add_module(ult)
+
     for r in module.all_records():
         visit_record(r)
     for p in module.protocols:

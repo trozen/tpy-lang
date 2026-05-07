@@ -13,5 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 void modify(::tpyapp::shapes::Vec2 v);
 void main();
 
+using ::tpyapp::shapes::Vec2;
+
 void __tpy_init();
 } // namespace tpyapp::main

@@ -1,0 +1,3 @@
+CPython hits a circular-import error on the a <-> b shape. TPy
+compiles and runs the cycle correctly via Phase 5's cycle-aware
+`using` suppression.

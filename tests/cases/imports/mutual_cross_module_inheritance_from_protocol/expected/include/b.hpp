@@ -18,5 +18,7 @@ inline constexpr std::string_view __name__ = "b";
 
 ::tpy::BigInt counter_zero();
 
+using ::tpyapp::a::Counter;
+
 void __tpy_init();
 } // namespace tpyapp::b

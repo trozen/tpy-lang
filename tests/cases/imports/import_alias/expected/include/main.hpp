@@ -12,5 +12,11 @@ inline constexpr std::string_view __name__ = "__main__";
 
 int32_t main();
 
+inline auto& sum_nums = ::tpyapp::utils::add;
+
+using Pt = ::tpyapp::utils::Point;
+
+inline auto& MAX = ::tpyapp::utils::MAX_VALUE;
+
 void __tpy_init();
 } // namespace tpyapp::main

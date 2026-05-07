@@ -13,5 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
+using ::mypkg::utils::add;
+
 void __tpy_init();
 } // namespace myapp

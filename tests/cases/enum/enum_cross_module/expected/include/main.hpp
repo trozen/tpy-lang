@@ -12,5 +12,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
+using ::tpyapp::colors::color_value;
+
+using ::tpyapp::colors::Color;
+
 void __tpy_init();
 } // namespace tpyapp::main

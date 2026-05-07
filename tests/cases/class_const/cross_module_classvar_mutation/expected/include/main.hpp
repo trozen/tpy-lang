@@ -12,5 +12,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
+using ::tpyapp::counters::bump_from_other_module;
+
+using ::tpyapp::counters::Counters;
+
 void __tpy_init();
 } // namespace tpyapp::main

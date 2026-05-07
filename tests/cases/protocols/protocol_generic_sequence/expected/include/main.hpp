@@ -42,5 +42,7 @@ int32_t sum_all(const T_items& items) {
     return total;
 }
 
+using ::tpystd::tplib::array_list::ArrayList;
+
 void __tpy_init();
 } // namespace tpyapp::main

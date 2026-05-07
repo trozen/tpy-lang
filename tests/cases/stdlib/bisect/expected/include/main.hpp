@@ -12,5 +12,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
+using ::tpystd::bisect::bisect;
+using ::tpystd::bisect::bisect_left;
+using ::tpystd::bisect::bisect_right;
+using ::tpystd::bisect::insort;
+using ::tpystd::bisect::insort_left;
+using ::tpystd::bisect::insort_right;
+
 void __tpy_init();
 } // namespace tpyapp::main

@@ -23,5 +23,7 @@ void test_reverse();
 void test_sort();
 void main();
 
+using ::tpystd::tplib::array_list::ArrayList;
+
 void __tpy_init();
 } // namespace tpyapp::main

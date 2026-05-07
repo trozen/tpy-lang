@@ -16,5 +16,7 @@ void test_comparisons();
 void test_hash();
 void main();
 
+using ::tpystd::tplib::box::Box;
+
 void __tpy_init();
 } // namespace tpyapp::main

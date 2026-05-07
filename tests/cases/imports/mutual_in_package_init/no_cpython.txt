@@ -1,0 +1,4 @@
+CPython raises ImportError on this exact circular-import shape
+(pkg/__init__.py imports from pkg.helper, which imports from pkg).
+TPy compiles and runs it correctly via cycle-aware `using`
+suppression and ordered __tpy_init derivation.

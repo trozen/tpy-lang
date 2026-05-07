@@ -12,5 +12,18 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
+using ::tpystd::base64::b16decode;
+using ::tpystd::base64::b16encode;
+using ::tpystd::base64::b32decode;
+using ::tpystd::base64::b32encode;
+using ::tpystd::base64::b64decode;
+using ::tpystd::base64::b64encode;
+using ::tpystd::base64::decodebytes;
+using ::tpystd::base64::encodebytes;
+using ::tpystd::base64::standard_b64decode;
+using ::tpystd::base64::standard_b64encode;
+using ::tpystd::base64::urlsafe_b64decode;
+using ::tpystd::base64::urlsafe_b64encode;
+
 void __tpy_init();
 } // namespace tpyapp::main

@@ -14,5 +14,7 @@ std::string describe(::tpyapp::colors::Color c);
 ::tpyapp::colors::Color default_color();
 void main();
 
+using ::tpyapp::colors::Color;
+
 void __tpy_init();
 } // namespace tpyapp::main

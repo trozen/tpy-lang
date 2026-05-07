@@ -16,5 +16,7 @@ void test_arraylist_aug_assign();
 void test_negative_index_aug_assign();
 void test_array_aug_assign();
 
+using ::tpystd::tplib::array_list::ArrayList;
+
 void __tpy_init();
 } // namespace tpyapp::main

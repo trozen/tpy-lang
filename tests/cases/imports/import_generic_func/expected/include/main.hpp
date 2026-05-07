@@ -12,5 +12,8 @@ extern std::vector<int32_t>* nums;
 extern std::vector<std::string>* words;
 inline constexpr std::string_view __name__ = "__main__";
 
+using ::tpyapp::helpers::first;
+using ::tpyapp::helpers::length;
+
 void __tpy_init();
 } // namespace tpyapp::main

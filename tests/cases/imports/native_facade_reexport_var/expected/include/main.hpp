@@ -12,5 +12,8 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
+inline auto& LIMIT = ::repro::pkg::constants::LIMIT;
+inline auto& VERSION = ::repro::pkg::constants::VERSION;
+
 void __tpy_init();
 } // namespace tpyapp::main

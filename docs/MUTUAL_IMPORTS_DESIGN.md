@@ -875,6 +875,606 @@ Under v2 the diagnostics for symmetric cases should additionally
 name *both* ends of the offending SCC edge, so the user sees
 which other peer's position pairs with theirs.
 
+### Universal re-export via per-module attribute table
+
+**Status: shipped.** Phases 1-8 of the plan landed; the original v1
+gap below is closed. See "Implementation log" at the bottom of this
+section for what was built, what diverged from this plan, and the
+follow-ups still open.
+
+**Why this is a v1 gap.** Today's `_extract_exports`
+(`tpyc/compiler.py:2552-2725`) gates re-export extraction on
+`can_reexport = (is_package_init or native_module or implicit_stdlib)`.
+A regular flat module that does `from c import Cls` registers
+`Cls` locally for its own use but does not surface it in
+`exports.records`. Downstream `from b import Cls` then fails with
+`'Cls' not found in module 'b'`. CPython's universal "every
+imported name is a module attribute" semantics do not hold.
+
+The deeper architectural issue is that the current code
+*reverse-engineers* exports by iterating
+`analyzer.registry.{records,enums}` and filtering by
+`imported_record_qualification`, plus walking
+`analyzer.ctx.user_imported_{functions,variables,protocols}` to
+synthesize `reexported_*` side dicts. The gate keeps the
+reverse-engineering scope narrow; lifting it without
+restructuring leaks transitive imports, implicit stdlib names,
+nested helper registrations, and alias-duplicate entries as
+fake exports.
+
+The cycle path inherits the restriction via the cycle-facade
+reject gate at `compiler.py:2019-2031`. The gate exists because
+re-export `using` declarations injected into a cycle peer's
+`.hpp` reach for things only the full peer header declares
+(function and variable forward decls aren't in
+`<peer>_fwd.hpp`). The premise -- that consumer codegen
+depends on re-export `using` chains -- is a self-imposed
+artifact: defining-qname rendering already exists for records,
+but functions / variables / protocols still go through the
+immediate-import-source qname.
+
+**Symptoms it closes.**
+- `from b import Y` failing when `b` did `from c import Y` --
+  the headline issue.
+- `b.Y` qualified access through a non-facade `b` -- same root
+  cause, dotted form.
+- `__all__ = ["Y"]` in `b` having no semantic effect.
+- Cycle members cannot be re-export facades. A package
+  `__init__.py` that participates in a cycle is rejected even
+  when the underlying re-exports would compile.
+- Reach analysis (`compute_reached_symbols`) doesn't follow
+  defining-module chains for functions / variables / protocols
+  -- today's `using` chains mask this; once consumer codegen
+  qualifies directly to the defining module, the importing
+  module needs the defining module in its include set.
+
+**Plan.** Adopt a sema-level **per-module attribute table** as
+the central design object; every downstream concern reads from
+it instead of reverse-engineering exports from registries.
+
+```python
+@dataclass(frozen=True)
+class SymbolBinding:
+    """One name in a module's attribute table. Frozen identity:
+    the binding object is immutable once resolved. Cycle-time
+    placeholder semantics live on `BindingCell` below; payload
+    mutation happens through `info`."""
+    local_name: str
+    kind: SymbolKind          # FUNCTION | RECORD
+                              # | PROTOCOL_STATIC | PROTOCOL_DYNAMIC
+                              # | ENUM | VARIABLE | TYPE_ALIAS
+                              # | MODULE | SUBMODULE
+                              # | CLASS_MACRO | CALL_MACRO | BUILDER_MACRO
+                              # | PARSER_KEYWORD | OPAQUE
+    info: object              # canonical Info object, shared identity
+    defining_module: str | None
+    canonical_name: str
+    # Capability flags -- orthogonal to kind. A name in the
+    # module namespace doesn't always contribute to codegen,
+    # init order, or include reach. Macros are namespace
+    # entries with no runtime storage; parser keywords are
+    # syntactic; submodules are namespace-only.
+    can_explicit_import: bool   # `from M import X` finds it
+    can_star_import: bool       # included in `from M import *`;
+                                # gated by `__all__` if defined
+    has_runtime_storage: bool   # contributes to C++ codegen
+    has_cpp_alias_surface: bool # emit `using` in interop header
+    requires_init: bool         # contributes to `__tpy_init` chain
+    requires_include: bool      # contributes to reach analysis
+
+@dataclass
+class BindingCell:
+    """Mutable indirection used during cycle pre-population.
+    Cells are the stable references peers capture during
+    `bind_imports`; the cell starts in PLACEHOLDER state with
+    a stub binding (kind / target / terminal-module unknown)
+    and transitions to RESOLVED once the source module's sema
+    completes. The frozen-binding-via-mutable-cell pattern lets
+    a peer's view of a name's binding identity refine without
+    breaking captured references."""
+    state: Literal["PLACEHOLDER", "RESOLVED"]
+    binding: SymbolBinding
+```
+
+**Lifetime and ownership.** Cells live on
+`CompiledModule.module_attributes` (the canonical store).
+That field is populated as early as
+`_pre_populate_decl_exports` so cycle PLACEHOLDER cells exist
+before type resolution and parser canonicalization run --
+both of which need to look names up. `SemanticAnalyzerCtx.module_attributes`
+is a reference back to the compiler-level dict so per-module
+sema writes through to the same store; downstream consumers
+(`ModuleExports`, codegen contexts) likewise read the same
+dict. Cell identity is stable across the PLACEHOLDER ->
+RESOLVED transition; readers always consult `cell.binding`.
+
+Concrete shifts:
+
+1. **`module_attributes` is the source of truth for name
+   binding.** Populated incrementally during
+   `_pre_populate_decl_exports` (PLACEHOLDER cells for cycle
+   imports), `bind_imports`, `register_records_and_protocols`,
+   `register_signatures`, `register_globals`, type-alias
+   registration, and macro registration (class macros, call
+   macros, builder macros). Each binding carries a kind plus
+   orthogonal capability flags; the kind drives codegen
+   dispatch while the capability flags filter which
+   subsystems each binding contributes to.
+
+   **Source-order conflict resolution.** Bindings populate in
+   source order at module top level. When the same name is
+   bound twice in a module (e.g. `class X: ...` followed by
+   `from c import X` later in the same file), the later
+   binding overwrites. This matches CPython's "last
+   module-scope binding wins" semantics, not today's TPy rule
+   of "local declaration always wins." Document this shift
+   explicitly in `LANGUAGE_FEATURES.md`; cover both directions
+   (local-then-import, import-then-local) with tests.
+
+2. **Per-kind dicts become derived compat shims, not
+   deletions.** Today's
+   `user_imported_{functions,variables,protocols}`,
+   `imported_names`, and `reexported_*` side dicts continue
+   to exist as cached views computed from the table. Readers
+   migrate one subsystem at a time -- parser canonicalization,
+   sema name resolution, codegen, reach analysis, init-order
+   computation -- across multiple phases. The risk in this
+   work isn't introducing the table; it's flipping every
+   reader at once. Compat shims keep the blast radius small
+   and let each subsystem's migration be independently
+   verified before the next.
+
+3. **Sema reads the table.** Dotted-access annotation
+   (`expr.user_module_call`, `module_var_access`), qualified
+   type refs, statement-level `IMPORTED_NAME` lookups, and
+   parser-level type-resolver canonicalization
+   (`_canonicalize_import_sources`) all resolve against
+   `module_attributes`. Parser canonicalization is part of
+   this migration: today it consults `ModuleInfo` views
+   directly; under the table it consults the binding's
+   `defining_module` + `canonical_name`.
+
+4. **TPy's own use-site codegen reads the table.** Bare-name
+   and dotted-access references at every site go through one
+   helper:
+   ```python
+   def qualify_imported(self, b: SymbolBinding) -> str:
+       if b.defining_module is None:
+           return qualified_cpp_name(self.module_name, b.canonical_name)
+       return qualified_cpp_name(b.defining_module, b.canonical_name)
+   ```
+   Records already work this way via
+   `RecordInfo.defining_module` /
+   `imported_record_qualification`; functions, variables,
+   protocols, enums, type aliases, and macro-expansion
+   binding lookups all join the same path.
+
+5. **Reach analysis follows `binding.defining_module`** for
+   every emitted reference where `binding.requires_include`
+   is true, adding the defining module to the reached set.
+   With consumer codegen qualifying directly to the defining
+   module, the importing module's include graph reaches that
+   module rather than relying on the intermediate's
+   `using`-induced include.
+
+6. **`using` emissions in `.hpp` become the C++ interop API
+   surface, decoupled from TPy correctness.** Driven by
+   iterating `module_attributes` for entries with
+   `has_cpp_alias_surface=True`. They make `tpyapp::b::Cls`
+   reachable for users calling TPy from C++, but TPy's own
+   codegen never depends on them. See "`using`-emission spec"
+   below for the per-kind contract and known partial-coverage
+   cases.
+
+7. **Cycle peers suppress `using` emission** for re-exports
+   whose terminal `binding.defining_module` is in the same
+   import SCC AND whose kind is **not** declared in
+   `<peer>_fwd.hpp`. Records and dynamic protocol structs are
+   forward-declared; static protocols (concepts), free
+   functions, and variables are not -- those skip emission
+   with a comment. Consumer codegen always lands at the
+   defining module so this is a pure interop-surface
+   degradation, not a TPy correctness issue.
+
+8. **`__tpy_init` chain preserves source order.** Init
+   dependencies are derived from import statements
+   (preserving the order in which the source module wrote
+   them), not from a set-based attribute snapshot. Each
+   binding contributes its `requires_init` +
+   `defining_module` pair into the consumer's init list at
+   the source-line position of the import that introduced it.
+   This preserves today's facade-re-export behavior where
+   re-exported variable init flows through the facade in
+   declaration order.
+
+9. **Cycle re-export pre-population.** Extend
+   `_pre_populate_decl_exports` to mint PLACEHOLDER
+   `BindingCell`s for each `from X import Y` in cycle
+   members' parsed AST, before any peer's sema runs. Peer
+   `bind_imports` captures the cell reference; the cell
+   transitions to RESOLVED once the source module's sema
+   completes. The cell's mutability lets `kind`, `info`,
+   `defining_module`, and `canonical_name` all refine during
+   the transition -- today's `_adopt_skeleton` only mutates
+   payload objects (RecordInfo / FunctionInfo fields), not
+   binding identity, so it can't carry the resolution alone.
+
+10. **Drop the cycle-facade reject gate at
+    compiler.py:2019-2031.** With (4) consumers never
+    traverse cycle peers at codegen time; with (7) cycle
+    peers' `.hpp` no longer contains broken `using` lines;
+    with (9) re-export bindings inside an SCC are
+    order-independent. The adjacent gate at compiler.py:2032
+    ("no executable code at top level in cycle members") is
+    independent and stays.
+
+11. **(Separable follow-up.) Honor `__all__` as a star-import
+    filter.** Set `binding.can_star_import` from `__all__`
+    (or default rule when absent). Explicit `from M import X`
+    and `M.X` access continue to work for any name in the
+    table regardless of `__all__`. `__all__` is a visibility
+    filter for `import *`, not a module-attribute
+    restriction.
+
+**`using`-emission spec.** The C++ interop surface in `b.hpp`
+for re-exported names from `c`:
+
+| Symbol kind | Same-name | Aliased | Cycle peer |
+|---|---|---|---|
+| Record | `using ::ns::Rec;` | `using Rec = ::ns::Rec;` | emit (fwd OK) |
+| Enum | `using ::ns::E;` | `using E = ::ns::E;` | emit (fwd OK) |
+| Free function | `using ::ns::f;` (covers all overloads) | `inline auto& alt = ::ns::f;` (single overload only) | **skip** |
+| Variable | `inline auto& V = ::ns::V;` (or `extern T V` for native_global) | same | **skip** |
+| Protocol (static / concept) | `using ::ns::P;` (concept; header-only) | `using P = ::ns::P;` | **skip** (concepts aren't fwd-declarable) |
+| Protocol (dynamic / struct adapter) | `using ::ns::P;` | `using P = ::ns::P;` | emit (fwd OK -- adapter struct is fwd-declared) |
+| Type alias | `using A = ::ns::A;` | same | emit when target is ref-only; skip otherwise |
+| Module (submodule binding) | (no emission; namespace is implicit) | `namespace alt = ::ns;` | n/a |
+| Class macro / call macro / builder macro | (no C++ emission; macros are compile-time only) | same | n/a |
+
+Known partial-coverage cases that stay limitations: aliased
+overloaded functions can't be expressed as `inline auto& alt =
+...`; `@native` / `cpp_template` / `is_extern_c` functions skip
+using emission and are declared via existing extern-C / template
+mechanisms; native-globals use their `var_info.native_cpp_name`
+directly.
+
+**Why it's the right shape.**
+- Matches the Phase 0 / Phase 1 decision (defining-qname
+  rendering for TPy's own codegen) carried through to all
+  symbol kinds. Today's partial application is the
+  inconsistency this closes.
+- Single source of truth removes a category of subtle bugs:
+  registry-iteration leaks, dotted-access annotations going
+  stale, reach analysis missing defining modules, `__all__`
+  not aligning with explicit imports, macro identity not
+  propagating through re-exports.
+- Capability flags decouple "namespace attribute" from
+  "runtime/codegen symbol," so macros / parser keywords /
+  submodules / native facade pseudo-symbols can live in the
+  table without polluting codegen, init, or reach surfaces.
+- Subsumes the cycle-facade restriction (non-goal v1, line
+  176) via (7) + (9) + (10).
+- Compat-shim migration keeps each subsystem's flip
+  independently verifiable instead of forcing a big-bang
+  cutover.
+- Matches CPython semantics; removes a category of "TPy is
+  more restrictive than Python" papercuts.
+
+**Interaction with `_normalize_function_info_refs` (line
+674).** Use-site qualification reads `binding.defining_module`
+(a string) and `binding.canonical_name`, not `make_ref`-wrapped
+`params` / `return_type`. The latent stale-wrapping issue does
+not graduate to a real bug under this work; the tighter
+follow-up (workspace-subphase split, documented below) is still
+needed for richer first-class function support / LSP
+introspection.
+
+**Cost estimate.** ~11-13 days, single contributor. Phase
+breakdown:
+
+1. Introduce `SymbolBinding`, `BindingCell`, and
+   `module_attributes` (population only, no readers; debug
+   assertions cross-checking against existing per-kind
+   dicts) -- 2d.
+2. Migrate sema name-resolution paths -- including parser
+   canonicalization (`_canonicalize_import_sources` and the
+   parser type-resolver) -- to read the table -- 2-2.5d.
+3. Migrate codegen to read the table; reach analysis follows
+   `defining_module` -- 2-2.5d.
+4. Drop `can_reexport`; cycle-aware `using` suppression;
+   ordered `__tpy_init` derivation; per-kind dicts and
+   `reexported_*` continue to exist as derived views -- 1d.
+5. Cycle re-export pre-population (PLACEHOLDER cells) and
+   placeholder-resolution machinery; drop cycle-facade reject
+   gate; flip `error_mutual_in_package_init` -- 1.5d.
+6. Macro re-export support: thread macros through the table,
+   add macro `SymbolKind` variants, **add a parse-time
+   resolution hook** (`MacroRegistry.resolve_export`, or
+   equivalent attribute-table lookup that follows
+   `BindingCell` chains) so the parser can resolve
+   `@total_ordering` / class-macro decorators through
+   re-exports before sema runs, verify
+   `functools.total_ordering`-style cases work -- 1d.
+7. `__all__` star-import filter -- 0.5d.
+8. New tests -- 1d.
+9. Doc updates + cleanup (per-kind compat shims removed only
+   once every reader has migrated, possibly a separate later
+   PR) -- 0.5d.
+
+Phases 1-2 are pure refactors with byte-identical output;
+Phase 3 produces snapshot diffs only on facade re-export tests
+(~5-10) where consumer qname flips to defining-module form;
+Phase 4 produces ~100-150 snapshot diffs as universal `using`
+interop emission appears in regular modules' `.hpp`s.
+
+**Stop-points.** Each phase is independently shippable.
+
+- After Phase 2: pure refactor, table-as-shadow with all
+  readers still on per-kind dicts. Revertable.
+- After Phase 4: universal re-export works for non-cycle
+  modules **including dotted access and qualified type
+  annotations** -- requires Phase 2's parser/sema migration
+  to have completed first; before that the headline issue
+  only partly closes.
+- After Phase 5: cycle re-export works (function / record /
+  variable / protocol re-export through cycle members).
+- After Phase 6: macro re-export works (`functools.total_ordering`
+  unblocks).
+- After Phase 7: `__all__` honored.
+
+**Test re-classification when this lands.**
+- `tests/cases/imports/error_mutual_in_package_init` ->
+  `mutual_in_package_init` (passes; runtime output asserted).
+- ~100-150 snapshot tests regenerate (mechanical) -- new
+  `using` / `inline auto&` lines appear in regular modules'
+  `.hpp`s.
+
+New tests:
+- `mutual_flat_reexport/` -- the headline `a -> b -> c` repro.
+- `mutual_cycle_function_reexport/` -- cycle peer re-exporting
+  another cycle peer's function; downstream consumes through
+  the intermediate. Validates (7)+(9)+(10).
+- `mutual_cycle_record_reexport/` -- same with records.
+- `aliased_flat_reexport/` -- `from c import Cls as MyCls`
+  through non-facade.
+- `mutual_flat_alias_reexport/` -- type alias re-export.
+- `package_init_cycle_reexport/` -- package `__init__.py` in a
+  cycle re-exporting a peer variable with runtime init; verify
+  `__tpy_init` ordering matches CPython.
+- `flat_underscore_reexport/` -- explicit `from M import _x`
+  works.
+- `source_order_local_then_import/` -- `class X: ...; from c
+  import X` -- imported X wins (CPython-faithful).
+- `source_order_import_then_local/` -- `from c import X;
+  class X: ...` -- local X wins.
+- `star_import_all_filter/` -- `__all__` filters star, explicit
+  unaffected.
+- `multi_hop_variable_reexport/` -- 3-module variable re-export
+  chain, transitive `cpp_expr` resolution.
+- `macro_reexport/` -- `from utils import dataclass` (or a
+  user-defined `@class_macro`) re-exported through a non-facade
+  module; verify the macro identity propagates and the
+  decorator works at the consumer site. Closes the
+  `functools.total_ordering` blocker referenced in
+  `STDLIB_ROADMAP.md`.
+
+#### Implementation log (shipped)
+
+The work landed across 8 commits, one per phase of the plan:
+
+1. **Phase 1 -- per-module attribute table.** New
+   `tpyc/symbol_binding.py` with `SymbolKind`, frozen
+   `SymbolBinding`, mutable `BindingCell`, and a default-capability
+   table keyed by kind. Adds `CompiledModule.module_attributes`
+   (canonical store) and `SemanticContext.module_attributes`
+   (per-analyzer alias). Population happens at
+   `_pre_populate_decl_exports`, `_register_user_module_import`,
+   `register_globals`, and the type-alias / @builtin_decorator
+   registration paths; backfill runs at the end of
+   `_extract_body_exports`. Cross-check assertion verifies
+   identity match against `compiled.exports`.
+
+2. **Phase 2 -- parser canonicalization reads the table.**
+   `ModuleInfo.module_attributes` now points at
+   `CompiledModule.module_attributes` for cross-module sema
+   readers. `Compiler.lookup_attribute` and `_lookup_in_module`'s
+   local-definition check consult the table. The import path's
+   binding attribution flips to ultimate-definer for records and
+   enums (matches `record_info.defining_module` /
+   `EnumInfo.module_name`); functions / variables / protocols /
+   type aliases keep immediate-source attribution. Backfill
+   becomes skip-if-present so imports aren't clobbered by the
+   reexport-tracker-based attribution.
+
+3. **Phase 3 -- `qualify_imported` helper.** Adds the
+   `qualify_imported(binding, current_module)` helper that
+   future codegen consumers will use to render cross-module
+   references. Reach analysis already follows defining-module
+   attribution via `NominalType._module_qname`; explicit
+   call-site migration deferred (most consumers already use
+   info-derived attribution).
+
+4. **Phase 4 -- universal re-export for non-cycle modules.**
+   `can_reexport` becomes True for every non-cycle module, so
+   `from b import X` works regardless of `b`'s facade status.
+   `_extract_body_exports` flattens the variable re-export chain
+   via `_flatten_var_reexport` so the consumer's `using` lands at
+   the ultimate definer. Codegen `using` emission skips
+   variables sourced from native_modules and skips nested types
+   (`Container.Inner`) which can't be re-exported via `using` at
+   namespace scope. ~143 .hpp snapshots gained new `using`
+   declarations for re-exported imports.
+
+5. **Phase 5 -- cycle re-export.** Drops the `not in_cycle`
+   guard so cycle peers re-export too. Drops the cycle-facade
+   reject gate (`Cyclic import involves a {kind}` diagnostic)
+   at `_reject_cyclic_facades`; the executable-top-level-code
+   gate stays. Codegen suppresses `using` emissions for
+   functions and variables sourced from cycle peers, since
+   those aren't declared in `<peer>_fwd.hpp`. Test
+   `error_mutual_in_package_init` flips to
+   `mutual_in_package_init` (compiles + runs; `no_cpython.txt`
+   for the genuine CPython circular-import error on this exact
+   `pkg/__init__.py + helper.py` shape).
+
+6. **Phase 6 -- macro re-export through plain modules.**
+   `Compiler._lookup_in_module` recognizes macro modules so
+   parser canonicalization rewrites the decorator's source to
+   the ultimate macro definer. Sema's
+   `_register_user_module_import` installs CLASS_MACRO /
+   CALL_MACRO / BUILDER_MACRO bindings (including when the
+   source isn't a registered ModuleInfo -- macro modules live
+   only in `MacroRegistry`). `_apply_class_macros` walks the
+   binding chain when the parser-emitted qname misses in
+   `MacroRegistry`. `from utils import dataclass` now works
+   when `utils` re-exports from `dataclasses`, with arbitrary
+   chain depth.
+
+7. **Phase 7 -- `__all__` refines `binding.can_star_import`.**
+   Adds `TpyModule.module_all` (the parsed literal, or None)
+   and uses it to refine the binding flag after extraction.
+   No reader consults `can_star_import` yet -- the parser-side
+   star filter still uses `scan_star_exports` directly -- but
+   the table is now the source of truth for any future
+   consumer.
+
+8. **Phase 8 -- new tests.** Seven cases under
+   `tests/cases/imports/`: `mutual_flat_reexport`,
+   `aliased_flat_reexport`, `multi_hop_variable_reexport`,
+   `macro_reexport`, `mutual_cycle_record_reexport`,
+   `flat_underscore_reexport`, `star_import_all_filter`.
+   Source-order conflict resolution tests
+   (`source_order_local_then_import`,
+   `source_order_import_then_local`),
+   `mutual_flat_alias_reexport`, and
+   `package_init_cycle_reexport` were skipped: they depend on
+   semantic shifts (CPython "last binding wins") or sema
+   features still in the deferred set below.
+
+9. **Post-review fixes (Codex /co-validate).** A staff-engineer
+   pass after Phase 8 caught two correctness regressions the
+   implementation log glossed over:
+   - **Cycle peer function re-export** -- Phase 5's `using`
+     suppression dropped `using ::ns::peer::f` from the cycle
+     peer's .hpp, so consumer codegen emitting
+     `::tpyapp::peer::f()` against the immediate import source
+     linked against an undeclared symbol. Fixed by flattening
+     `exports.reexported_functions`, `module_attributes`
+     bindings, and the function-call codegen sites
+     (bare and dotted) to use `FunctionInfo.originating_module`
+     (the ultimate definer). Reach analysis follows the same
+     chain so consumers' .hpp pulls in the definer's header.
+     Test: `mutual_cycle_function_reexport`.
+   - **Call macros and builder macros didn't honor re-export
+     chains.** The Phase 6 chain-walk only fired in
+     `_apply_class_macros`. `calls.py:840`,
+     `methods.py:1234`, and `builder_trace.py`'s
+     `_lookup_builder_macro` looked up macros under the
+     immediate source. Fixed: same chain-walk fallback added
+     to all three sites, plus `_populate_macro_deps` walks
+     chains so a re-exported builder macro pulls its
+     MACRO_DEPS into the consumer's macro_ns. Tests:
+     `call_macro_reexport`, `builder_macro_reexport`.
+
+10. **Architectural wire-up + cycle re-export pre-population.**
+    A second post-review pass (after the first round of fixes
+    landed) addressed the architectural gap Codex flagged: the
+    table was a parallel shadow, not the source of truth. Three
+    coordinated changes:
+    - Function-call codegen (bare and dotted) now goes through
+      `qualify_imported(cell.binding, current_module)` instead
+      of reading `FunctionInfo.originating_module` directly.
+      Same answer (the binding's `defining_module` carries the
+      ultimate definer), but the helper is finally load-bearing.
+    - `_exports_to_module_info`'s variable cpp_expr consults
+      `compiled.module_attributes` via `qualify_imported`.
+    - Second pre-pop pass `_pre_populate_reexport_bindings`
+      fixpoint-resolves cycle re-export bindings BEFORE any
+      module's bind_imports runs. Closes the
+      `from b import X` shape where `b` is a cycle peer that
+      re-exports `X` from another module (cycle-internal or
+      external). `_register_user_module_import` gains a
+      fallback that dispatches on the source's
+      attribute-table binding kind when the per-kind dicts
+      miss. Test: `mutual_cycle_through_plain_reexport`.
+    - Trimmed dead infrastructure no longer needed: the
+      `state` field on `BindingCell` (PLACEHOLDER never
+      constructed -- the fixpoint approach made it
+      unnecessary), the five capability flags (`can_explicit_import`,
+      `can_star_import`, `has_runtime_storage`,
+      `has_cpp_alias_surface`, `requires_init`,
+      `requires_include`) -- no readers existed and the
+      future-reader contract was unclear, and Phase 7's
+      `TpyModule.module_all` field plus
+      `_refine_star_import_flags` pass which fed only the
+      now-removed `can_star_import` flag.
+
+#### Deviations from the plan above
+
+- Phase 3's call-site migration (codegen reading
+  `qualify_imported`) was deferred. Reach analysis already
+  routes via defining-module attribution; the rest depends on
+  Phase 4-5 chain-flattening that wasn't yet load-bearing on
+  any consumer when Phase 3 landed. The helper exists as
+  infrastructure for future migrators. (Post-review note:
+  the function-call codegen sites *were* migrated to ultimate
+  definers in the post-review fix above; full migration of
+  every cross-module reference to `qualify_imported` is still
+  outstanding.) The wire-up commits migrate the function-call
+  codegen sites and `_exports_to_module_info`'s variable
+  cpp_expr to call `qualify_imported(cell.binding, ...)`; the
+  helper is now load-bearing rather than aspirational.
+- PLACEHOLDER `BindingCell` state was specced for cycle
+  re-export of names defined later in topo order, but the
+  shipped solution went through a second pre-pop pass
+  (`_pre_populate_reexport_bindings`) that fixpoint-resolves
+  re-export bindings before any module's bind_imports runs.
+  The fixpoint converges with RESOLVED cells only -- no
+  PLACEHOLDER step needed -- so the state field was trimmed
+  from `BindingCell`. If a future shape requires
+  binding-identity refinement *after* sema runs, re-introduce
+  the field then; the cell already holds a mutable `.binding`
+  slot, so the additive change is localized.
+- Per-kind dict cleanup (per Phase 4's "Drop the can_reexport
+  gate; per-kind dicts and reexported_* continue to exist as
+  derived views") is not yet done. The `reexported_*` dicts
+  on `ModuleExports` and the `user_imported_*` dicts on
+  `SemanticContext` remain authoritative for codegen; the
+  attribute table is a parallel structure. Removing them is a
+  separable follow-up that requires migrating every reader off
+  the per-kind path.
+- `reexported_protocols` is still missing -- protocols flow
+  through `exports.protocols` directly (with the source's
+  ProtocolInfo by reference) and the binding's defining_module
+  carries the immediate import source. The cross-check
+  tolerates this; codegen for protocol re-exports doesn't emit
+  separate `using` lines today.
+- `_normalize_function_info_refs` order-dependence (the
+  "Workspace-subphase-by-subphase declaration pipeline"
+  follow-up) was not addressed. Still latent.
+
+#### Known remaining gaps
+
+- **Source-order conflict resolution.** TPy still applies
+  "local declaration wins" (register_function pops
+  user_imported_functions on local definition, etc.). The
+  doc's "last module-scope binding wins" semantics is a
+  separable Python-faithfulness change requiring per-statement
+  binding-population order tracking, not just per-kind
+  precedence rules. Affected tests
+  (`source_order_local_then_import`,
+  `source_order_import_then_local`) deferred.
+- **Star imports of typed globals through user modules.**
+  Pre-existing bug, surfaced by trying to write
+  `star_import_all_filter` against a typed global: `from lib
+  import *` where `lib` defines `X: Int32 = ...` produces "X
+  is not a variable" at consumer use sites. Test rewritten to
+  use class re-exports instead. Filed for separate fix.
+- **`functools.total_ordering`.** Mentioned as the headline
+  Phase 6 use case. The macro re-export mechanism is in place;
+  implementing `total_ordering` in `lib/tpy/functools.py` is
+  unblocked but not done.
+
 ### Workspace-subphase-by-subphase declaration pipeline
 
 Closes the `_normalize_function_info_refs` order-dependence

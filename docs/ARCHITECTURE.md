@@ -28,19 +28,26 @@ compilation; per-module short-name bindings (records / functions /
 protocols / enums / type aliases) stay per-analyzer.
 
 Cyclic imports between user modules are detected via Tarjan SCC over
-the import graph. Cycle members must be import + declaration only
-at top level; package `__init__.py` and `# tpy: native_module`
-re-export facades cannot participate. All `from b import X` shapes
-(record, function, protocol, enum) work: skeletal
-`RecordInfo` / `FunctionInfo` / `ProtocolInfo` are minted from
-parsed ASTs before any module's full sema runs (so peer
-`bind_imports` finds stable references), and the registration paths
-adopt the skeletons via in-place mutation so peer registries that
-captured a reference see the freshly-finalized fields. Protocols
-also pre-attach a `TypeDef.protocol` entry under the canonical
-qname so the parser-level type resolver detects cycle-peer protocol
-references as `is_protocol=True` even before the defining module's
-`register_protocol` runs.
+the import graph. Cycle members must be import + declaration only at
+top level (no executable statements); package `__init__.py` and
+`# tpy: native_module` re-export facades may participate as of the
+per-module attribute table refactor. All `from b import X` shapes
+(record, function, protocol, enum, plus re-exports through cycle
+peers) work: skeletal `RecordInfo` / `FunctionInfo` / `ProtocolInfo`
+are minted from parsed ASTs before any module's full sema runs (so
+peer `bind_imports` finds stable references), and the registration
+paths adopt the skeletons via in-place mutation so peer registries
+that captured a reference see the freshly-finalized fields.
+Protocols also pre-attach a `TypeDef.protocol` entry under the
+canonical qname so the parser-level type resolver detects cycle-peer
+protocol references as `is_protocol=True` even before the defining
+module's `register_protocol` runs. A second pre-pop pass
+(`_pre_populate_reexport_bindings`) fixpoint-resolves cycle re-export
+bindings on the per-module attribute table so a cycle peer's
+`bind_imports` finds names re-exported from another peer (whose own
+`bind_imports` may not have run yet). Variable and type alias
+re-export *from* a cycle peer is the one remaining gap (BUGS.md
+entries) -- their bodies aren't TpyType-resolved at pre-pop time.
 
 The C++ back-end emits `<mod>_fwd.hpp` per cycle member with
 forward declarations of the module's records / enums / `@dynamic`
@@ -95,11 +102,20 @@ imports to canonicalize without a topological order. Runs before
 
 Re-export chains work because `Compiler._extract_exports` share-
 points the `RecordInfo` / `ProtocolInfo` / enum `NominalType` object
-through every facade (`exports.records[local_name] =
-module_info.records[original_name]`). The shared ref always carries
-the ultimate `defining_module`, so canonicalization produces the
-same tuple no matter which alias surfaced the type -- no transitive
-chain walk needed.
+through every re-exporting module
+(`exports.records[local_name] = module_info.records[original_name]`).
+The shared ref always carries the ultimate `defining_module`, so
+canonicalization produces the same tuple no matter how many
+intermediates surfaced the type -- no transitive chain walk needed.
+Functions and variables flatten to the ultimate definer at extract
+time (via `originating_module` and `_flatten_var_reexport`) so
+consumer codegen and `using` emissions land at the definer's
+namespace directly. The per-module attribute table
+(`CompiledModule.module_attributes`) stores the same flattened
+bindings under one entry per local name; codegen, parser
+canonicalization, macro chain resolution, and the cycle re-export
+pre-pop all read it via `lookup_qualified` / `walk_attribute_chain`
+helpers in `tpyc/symbol_binding.py`.
 
 Only types backed by a real `TypeDef` entry (records, enums,
 protocols, type-factory-backed generics) are canonicalized. Type

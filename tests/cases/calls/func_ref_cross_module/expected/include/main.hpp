@@ -28,5 +28,8 @@ int32_t apply(__F0&& f, int32_t x) {
     return f(x);
 }
 
+using ::tpyapp::helper::shout;
+using ::tpyapp::helper::triple;
+
 void __tpy_init();
 } // namespace tpyapp::main

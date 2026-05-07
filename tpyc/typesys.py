@@ -3543,6 +3543,23 @@ class ModuleInfo:
     # module `# tpy: include(...)` directives transitively across native-to-
     # native chains (which have no .hpp to chain through).
     reached: set[str] = field(default_factory=set)
+    # Per-module attribute table reference (Phase 2). Aliases the dict
+    # owned by `CompiledModule.module_attributes`, so cross-module
+    # sema readers can look names up via `module_info.lookup_attribute`.
+    # None for builtin/synthetic ModuleInfo objects that have no
+    # CompiledModule (e.g. the `sys` module, ad-hoc test fixtures).
+    module_attributes: 'dict | None' = None
+
+    def lookup_attribute(self, name: str) -> 'object | None':
+        """Return the `BindingCell` for `name` or None if not bound.
+
+        Phase 2 reader entry point. Returns the cell, not the binding,
+        so cycle PLACEHOLDER cells (Phase 5) are visible to callers
+        that want to follow the chain.
+        """
+        if self.module_attributes is None:
+            return None
+        return self.module_attributes.get(name)
 
     def has_export(self, name: str) -> bool:
         """Check if a name is exported by this module."""

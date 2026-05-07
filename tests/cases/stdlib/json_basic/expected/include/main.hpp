@@ -13,5 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 std::string roundtrip(std::string_view s);
 void main();
 
+using ::tpystd::json::JSONDecodeError;
+
 void __tpy_init();
 } // namespace tpyapp::main

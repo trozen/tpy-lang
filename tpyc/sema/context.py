@@ -586,6 +586,14 @@ class SemanticContext:
     # post-hoc resync. None when no pre-populated exports are
     # attached (e.g. ad-hoc analyzer construction in tests / REPL).
     module_decl_exports: 'object | None' = None
+    # Reference to the current module's per-module attribute table
+    # (`CompiledModule.module_attributes`). Phase 1 of the per-module
+    # attribute table refactor: registration paths install bindings
+    # here as they mint/adopt records, functions, protocols, enums,
+    # variables, type aliases, and imports. None when no compiler-
+    # provided table is attached (ad-hoc analyzer in tests / REPL),
+    # in which case `install_binding` no-ops.
+    module_attributes: 'dict | None' = None
     user_imported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_protocols: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)

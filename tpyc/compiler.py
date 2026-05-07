@@ -42,6 +42,9 @@ from .typesys import (
 from .type_def_registry import protocol_info_of
 from .module_names import public_module_name
 from .macro_loader import MacroRegistry, is_macro_module_source
+from .symbol_binding import (
+    BindingCell, SymbolKind, install_binding, protocol_kind_for,
+)
 
 if TYPE_CHECKING:
     from .typesys import ModuleInfo, ModuleVarInfo
@@ -900,6 +903,14 @@ class CompiledModule:
     is_entry_point: bool
     is_package_init: bool = False
     analyzer: SemanticAnalyzer | None = None
+    # Per-module attribute table: short local name -> BindingCell.
+    # Phase 1 of the per-module attribute table refactor. Populated
+    # incrementally during _pre_populate_decl_exports (locals),
+    # _register_user_module_import (imports), register_globals
+    # (variables), and type-alias / re-export extraction. No readers
+    # in Phase 1; debug assertions cross-check against the per-kind
+    # dicts on `exports`. See docs/MUTUAL_IMPORTS_DESIGN.md.
+    module_attributes: dict[str, BindingCell] = field(default_factory=dict)
 
 
 class CompileError(Exception):
@@ -1060,6 +1071,13 @@ class Compiler:
             # module; then bodies per module.
             for name in self.compile_order:
                 self._pre_populate_decl_exports(self.modules[name])
+            # Second pre-pop pass: install re-export bindings (PLACEHOLDER
+            # cells refined to RESOLVED via chain walk against peers'
+            # already-pre-populated locals). Required for cycle members
+            # whose bind_imports runs before a peer's bind_imports has
+            # had a chance to materialize re-exported names. Iterate
+            # to a fixpoint so SCC-internal chains converge.
+            self._pre_populate_reexport_bindings()
             for name in self.compile_order:
                 compiled = self.modules[name]
                 self._resolve_types_for_module(compiled)
@@ -1109,6 +1127,10 @@ class Compiler:
         # parser-level so it does not depend on order.
         for module_name in self.compile_order:
             self._pre_populate_decl_exports(self.modules[module_name])
+        # Second pre-pop pass: install re-export bindings so cycle peers'
+        # bind_imports finds names re-exported from other peers (whose
+        # own bind_imports may not have run yet).
+        self._pre_populate_reexport_bindings()
         for module_name in self.compile_order:
             compiled = self.modules[module_name]
             self._resolve_types_for_module(compiled)
@@ -2009,26 +2031,13 @@ class Compiler:
         # Self-loop ('a' imports 'a'): degenerate; the parser should
         # already prevent this, but treat defensively.
         members = sorted(component)
-        # Category 3: re-export facades cannot be cycle members in v1.
-        implicit = self._implicit_stdlib_set()
-        for name in members:
-            compiled = self.modules.get(name)
-            if compiled is None:
-                continue
-            is_native = bool(compiled.ast.directives.native_module)
-            if compiled.is_package_init or is_native or name in implicit:
-                cycle_repr = " <-> ".join(members)
-                kind = ("package __init__" if compiled.is_package_init
-                        else "native_module facade" if is_native
-                        else "implicit stdlib facade")
-                lineno_n = self._first_cycle_import_line(compiled, members)
-                raise CompileError(
-                    f"Cyclic import involves a {kind} ('{name}'): "
-                    f"{cycle_repr}. Re-export facades cannot participate "
-                    f"in a cyclic import. Move the cyclic types out of "
-                    f"the facade or break the cycle with explicit imports.",
-                    name, compiled.path, lineno=lineno_n,
-                )
+        # Category 3 (re-export facades cannot be cycle members) was
+        # dropped in Phase 5 of the per-module attribute table refactor.
+        # Universal re-export plus cycle-aware `using` suppression in
+        # codegen lets package __init__ / native_module / implicit
+        # stdlib facades sit inside cycles without breaking the C++
+        # build. The order-independent body sema invariant is
+        # protected by Category 1 below (no executable top-level code).
         # Category 1: top-level statements not in the allowlist.
         # Allowed: TpyImport, TpyVarDecl with init=None whose codegen is
         # inert (declarations only). The synthetic `__name__` Final[str]
@@ -2089,7 +2098,7 @@ class Compiler:
                 continue
             if record.name in compiled.exports.records:
                 continue
-            compiled.exports.records[record.name] = RecordInfo(
+            skel = RecordInfo(
                 name=record.name,
                 fields=[],
                 module=public,
@@ -2097,6 +2106,11 @@ class Compiler:
                 type_params=list(record.type_params) if record.type_params else [],
                 type_param_kinds=(list(record.type_param_kinds)
                                   if record.type_param_kinds else []),
+            )
+            compiled.exports.records[record.name] = skel
+            install_binding(
+                compiled.module_attributes, record.name,
+                SymbolKind.RECORD, skel,
             )
         # Protocols: skeleton carries identity. `register_protocol`
         # adopts it via `_adopt_skeleton` so peers' references see the
@@ -2125,6 +2139,10 @@ class Compiler:
                 TypeCategory.PROTOCOL,
                 protocol=skel,
             )
+            install_binding(
+                compiled.module_attributes, protocol.name,
+                protocol_kind_for(protocol.is_dynamic), skel,
+            )
         # Enums: pre-mint a NominalType (enum-kind) so peers can find
         # the enum by name during bind_imports. The qname matches what
         # `register_enum` will emit so the TypeDef-registry lookup
@@ -2137,9 +2155,14 @@ class Compiler:
         for enum in ast.all_enums():
             if enum.name in compiled.exports.enums:
                 continue
-            compiled.exports.enums[enum.name] = NominalType(
+            enum_nominal = NominalType(
                 enum.name, type_args=(),
                 _module_qname=f"{public}.{enum.name}",
+            )
+            compiled.exports.enums[enum.name] = enum_nominal
+            install_binding(
+                compiled.module_attributes, enum.name,
+                SymbolKind.ENUM, enum_nominal,
             )
         # Functions: skeletons carry just `name` + a placeholder return
         # type; sub-phase 3 mutates in place. The empty params list is
@@ -2155,13 +2178,19 @@ class Compiler:
                 continue
             if func.name in compiled.exports.functions:
                 continue
-            compiled.exports.functions[func.name] = [FunctionInfo(
+            fi_skel = FunctionInfo(
                 name=func.name,
                 params=[],
                 return_type=VOID,
                 qualified_name=f"{module_name}.{func.name}",
                 originating_module=module_name,
-            )]
+            )
+            fi_list = [fi_skel]
+            compiled.exports.functions[func.name] = fi_list
+            install_binding(
+                compiled.module_attributes, func.name,
+                SymbolKind.FUNCTION, fi_list,
+            )
 
     def _canonicalize_import_sources(self, compiled: CompiledModule) -> None:
         """Rewrite the module's parser import table to defining modules.
@@ -2263,6 +2292,25 @@ class Compiler:
                 cache.setdefault(public, []).append(raw_name)
         return cache
 
+    def lookup_attribute(self, module_qname: str, name: str) -> 'BindingCell | None':
+        """Compiler-level entry point for module-attribute lookups.
+
+        Returns the `BindingCell` for `name` in module `module_qname`,
+        or None if either the module is unknown or the name has no
+        binding. Pre-population guarantees local definitions are
+        visible after `_pre_populate_decl_exports` runs; cross-module
+        imports / re-exports populate during the dep's
+        `_finalize_declarations` (and via Phase 5 cycle pre-population
+        for cycle peers).
+
+        Reader entry point added in Phase 2 of the per-module attribute
+        table refactor.
+        """
+        compiled = self.modules.get(module_qname)
+        if compiled is None:
+            return None
+        return compiled.module_attributes.get(name)
+
     def _lookup_in_module(
         self, module_name: str, name: str,
         _seen: set[str] | None = None,
@@ -2270,12 +2318,12 @@ class Compiler:
         """Parser-level (defining_module, canonical_name) lookup for
         record / enum / protocol type names.
 
-        Walks each module's parsed AST -- records / enums / protocols
-        for *local* definitions, and `ast.imports` for re-exports --
-        so the lookup does NOT require dep sema to have completed.
-        Required for cycle-member canonicalization: with workspace-
-        wide two-pass sema, no peer's exports are guaranteed to be
-        populated when canonicalize runs for the cycle's first edge.
+        Local definitions are read from `compiled.module_attributes`,
+        populated by `_pre_populate_decl_exports` before any module's
+        canonicalization runs. Re-export chains still follow
+        `ast.imports` recursively because dep sema (which would
+        materialize re-export bindings into the table) hasn't
+        completed when canonicalize runs for the cycle's first edge.
 
         Type aliases / functions / globals are excluded by design --
         only canonical *type* names mint a `_module_qname` in
@@ -2284,8 +2332,7 @@ class Compiler:
         downstream resolution (e.g. Float64-the-alias would gain a
         spurious qname before its alias body is resolved).
 
-        Re-export chains follow `ast.imports` recursively. The
-        `_seen` set guards against rare re-export-chain cycles.
+        The `_seen` set guards against rare re-export-chain cycles.
         """
         if _seen is None:
             _seen = set()
@@ -2301,15 +2348,26 @@ class Compiler:
             module_name, ast.directives.cpp_namespace,
         ) or module_name
         # Local definitions take precedence over any same-named import.
-        for record in ast.all_records():
-            if record.name == name:
+        # Pre-populated bindings cover records, enums, and protocols
+        # locally defined in `module_name`.
+        cell = compiled.module_attributes.get(name)
+        if cell is not None and cell.binding.defining_module is None:
+            kind = cell.binding.kind
+            if kind in (SymbolKind.RECORD, SymbolKind.ENUM,
+                        SymbolKind.PROTOCOL_STATIC,
+                        SymbolKind.PROTOCOL_DYNAMIC):
                 return (public_name, name)
-        for enum in ast.all_enums():
-            if enum.name == name:
-                return (public_name, name)
-        for protocol in ast.protocols:
-            if protocol.name == name:
-                return (public_name, name)
+        # If `module_name` is a macro module that registers a class /
+        # call / builder macro under `name`, treat the macro as locally
+        # defined here. Lets the re-export chase canonicalize a chain
+        # through plain modules to the ultimate macro module so
+        # consumer parsers / sema look up the macro under the right key.
+        if self._macro_registry is not None and (
+            self._macro_registry.get_macro(module_name, name) is not None
+            or self._macro_registry.get_call_macro(module_name, name) is not None
+            or self._macro_registry.get_builder_macro(module_name, name) is not None
+        ):
+            return (module_name, name)
         # Re-export chase: scan `ast.imports` for an entry whose local
         # name matches `name`, then recurse into the source module.
         if ast.imports:
@@ -2377,6 +2435,11 @@ class Compiler:
         # shared dict instead of allocating new ones (see
         # `_pre_populate_decl_exports`).
         analyzer.ctx.module_decl_exports = compiled.exports
+        # Per-module attribute table (Phase 1). Aliased into the ctx so
+        # registration paths and `_register_user_module_import` can
+        # install bindings as they run; the canonical store lives on
+        # the CompiledModule. See docs/MUTUAL_IMPORTS_DESIGN.md.
+        analyzer.ctx.module_attributes = compiled.module_attributes
 
         # Register already-analyzed user modules in this analyzer's registry
         # This must happen before analyze() so _register_user_module_import can find them
@@ -2550,16 +2613,12 @@ class Compiler:
         Body-level export state lives in `_extract_body_exports`.
         """
         exports = compiled.exports
-        # Package inits, implicit stdlib facade modules, and any
-        # `# tpy: native_module` facade can re-export imported symbols
-        # (functions, records, protocols, enums, variables) from other
-        # modules. native_module facades have no .hpp of their own, so codegen
-        # at consumer sites chases ModuleInfo.reexported_* chains directly --
-        # see CodeGenerator._follow_reexport_chain.
-        is_native = compiled.ast.directives.native_module if compiled else False
-        can_reexport = (compiled.is_package_init
-                        or is_native
-                        or compiled.name in self._implicit_stdlib_set())
+        # Universal re-export: every module exposes its imports as
+        # module attributes, matching CPython semantics. Cycle peers
+        # also re-export; codegen emits cycle-aware suppression for
+        # `using` lines whose target sits in the same SCC and isn't
+        # forward-declarable in `<peer>_fwd.hpp`.
+        can_reexport = True
 
         # Export all user-defined functions
         exported_funcs: set[str] = set()
@@ -2579,21 +2638,38 @@ class Compiler:
                     exports.functions[func.name] = func_infos
                     exported_funcs.add(func.name)
 
-        # Re-export imported functions from user modules
+        # Re-export imported functions from user modules. Skip
+        # special_handling stubs (native_global etc.) -- they're
+        # compiler directives, not real functions. Track re-export
+        # source as the ultimate defining module so consumer
+        # `using` emissions land at the function's actual namespace,
+        # not at an intermediate that may have suppressed its own
+        # `using` line under cycle-aware codegen.
         if can_reexport:
             for local_name, (source_module, original_name) in analyzer.ctx.user_imported_functions.items():
-                if local_name not in exports.functions:
-                    # Get the function info from the source module
-                    module_info = analyzer.registry.get_module(source_module)
-                    if module_info and original_name in module_info.functions:
-                        func_infos = module_info.functions[original_name]
-                        if func_infos:
-                            exports.functions[local_name] = func_infos
-                            # Track re-export source for codegen (skip special_handling
-                            # functions like native_global -- they're compiler directives,
-                            # not real functions that need C++ declarations)
-                            if not func_infos[0].special_handling:
-                                exports.reexported_functions[local_name] = (source_module, original_name)
+                if local_name in exports.functions:
+                    continue
+                module_info = analyzer.registry.get_module(source_module)
+                func_infos = None
+                if module_info and original_name in module_info.functions:
+                    func_infos = module_info.functions[original_name]
+                elif module_info and module_info.module_attributes:
+                    # Cycle re-export fallback: the source's per-kind
+                    # functions dict may still be empty (its
+                    # _extract_declaration_exports hasn't run yet),
+                    # but the attribute table was populated by
+                    # `_pre_populate_reexport_bindings`.
+                    cell = module_info.module_attributes.get(original_name)
+                    if (cell is not None
+                            and cell.binding.kind is SymbolKind.FUNCTION
+                            and isinstance(cell.binding.info, list)):
+                        func_infos = cell.binding.info
+                if func_infos:
+                    exports.functions[local_name] = func_infos
+                    if not func_infos[0].special_handling:
+                        ult_mod = func_infos[0].originating_module or source_module
+                        ult_name = func_infos[0].name
+                        exports.reexported_functions[local_name] = (ult_mod, ult_name)
 
         # Export all user-defined records (including nested)
         for record in compiled.ast.all_records():
@@ -2632,14 +2708,27 @@ class Compiler:
             if protocol_info:
                 exports.protocols[protocol.name] = protocol_info
 
-        # Re-export imported protocols from user modules
+        # Re-export imported protocols from user modules. Falls back
+        # to the source's `module_attributes` for the cycle-peer case
+        # where the per-kind dict on `module_info.protocols` is still
+        # empty when our extract runs (the source's
+        # `_extract_declaration_exports` hasn't run yet).
         if can_reexport:
             for local_name, (source_module, original_name) in analyzer.ctx.user_imported_protocols.items():
-                if local_name not in exports.protocols:
-                    # Get the protocol info from the source module
-                    module_info = analyzer.registry.get_module(source_module)
-                    if module_info and original_name in module_info.protocols:
-                        exports.protocols[local_name] = module_info.protocols[original_name]
+                if local_name in exports.protocols:
+                    continue
+                module_info = analyzer.registry.get_module(source_module)
+                pinfo = None
+                if module_info and original_name in module_info.protocols:
+                    pinfo = module_info.protocols[original_name]
+                elif module_info and module_info.module_attributes:
+                    cell = module_info.module_attributes.get(original_name)
+                    if (cell is not None and cell.binding.kind in (
+                            SymbolKind.PROTOCOL_STATIC,
+                            SymbolKind.PROTOCOL_DYNAMIC)):
+                        pinfo = cell.binding.info
+                if pinfo is not None:
+                    exports.protocols[local_name] = pinfo
 
         # Export all user-defined enums (including nested)
         for enum in compiled.ast.all_enums():
@@ -2688,10 +2777,8 @@ class Compiler:
         pass would otherwise have nothing left to extract.
         """
         exports = compiled.exports
-        is_native = compiled.ast.directives.native_module if compiled else False
-        can_reexport = (compiled.is_package_init
-                        or is_native
-                        or compiled.name in self._implicit_stdlib_set())
+        # Mirrors `_extract_declaration_exports`: universal re-export.
+        can_reexport = True
 
         # Export global variables (from top-level statements)
         # These are tracked in the global scope, but we must exclude imported variables
@@ -2709,8 +2796,17 @@ class Compiler:
             if is_reexport:
                 if not can_reexport:
                     continue
-                # Track re-export source for codegen
-                source_module, original_name = analyzer.ctx.user_imported_variables[name]
+                # Track re-export source for codegen. Flatten through
+                # any intervening re-exports so the recorded source is
+                # the *ultimate* defining module -- matches the
+                # `record_info.defining_module` / `EnumInfo.module_name`
+                # pattern records and enums use, and lets the .hpp
+                # `using` emission render the definer's qname directly
+                # (critical when the immediate source is a native_module
+                # facade with no .hpp).
+                imm_source, imm_orig = analyzer.ctx.user_imported_variables[name]
+                source_module, original_name = self._flatten_var_reexport(
+                    imm_source, imm_orig)
                 exports.reexported_variables[name] = (source_module, original_name)
             exports.variables[name] = var_type
             if name in analyzer.ctx.final_globals:
@@ -2723,6 +2819,267 @@ class Compiler:
                 src_var = src_info.variables.get(original_name) if src_info else None
                 if src_var is not None and src_var.is_final:
                     exports.final_variables.add(name)
+
+        # Per-module attribute table: backfill any entries the
+        # registration paths missed (e.g. macro-emitted records, untyped
+        # globals registered during body sema), then assert consistency
+        # between the table and `compiled.exports`. No-op when assertions
+        # are disabled (-O builds).
+        self._backfill_module_attributes(compiled)
+        if __debug__:
+            self._assert_module_attributes_consistent(compiled)
+
+    def _pre_populate_reexport_bindings(self) -> None:
+        """Second pre-pop pass: walk each module's parsed `ast.imports`
+        and install bindings for re-exported names by chaining through
+        peers' already-pre-populated tables. Required for cycle peers,
+        where a member's `bind_imports` may run before another peer has
+        had a chance to materialize a re-exported name -- without these
+        bindings, the consumer hits "X not found in module Y".
+
+        Iterates to a fixpoint so SCC-internal chains converge.
+        """
+        from .symbol_binding import install_binding
+        # Precompute the per-module work list once -- (own_table, src_table,
+        # name pairs) for each `from src_module import ...` whose
+        # src_module is a known compiled module. External modules
+        # (tpy/builtins/typing) are filtered out here; bind_imports
+        # handles them via its own machinery.
+        work: list[tuple[dict, dict, set[tuple[str, str]], str]] = []
+        for compiled in self.modules.values():
+            ast = compiled.ast
+            if ast is None or not ast.imports:
+                continue
+            for src_module, names in ast.imports.items():
+                if not isinstance(names, set):
+                    continue
+                src_compiled = self.modules.get(src_module)
+                if src_compiled is None:
+                    continue
+                work.append((compiled.module_attributes,
+                             src_compiled.module_attributes, names, src_module))
+        progress = True
+        # Fixpoint bound: SCC-internal chains converge in O(longest-chain)
+        # iterations, and pathological cases stop at len(modules) + 2.
+        max_iters = len(self.modules) + 2
+        while progress and max_iters > 0:
+            progress = False
+            max_iters -= 1
+            for table, src_table, names, src_module in work:
+                for original_name, local_name in names:
+                    if local_name in table:
+                        continue
+                    src_cell = src_table.get(original_name)
+                    if src_cell is None:
+                        continue
+                    src_bd = src_cell.binding
+                    install_binding(
+                        table, local_name, src_bd.kind, src_bd.info,
+                        defining_module=src_bd.defining_module or src_module,
+                        canonical_name=src_bd.canonical_name,
+                    )
+                    progress = True
+
+    def _flatten_var_reexport(self, source_module: str,
+                               original_name: str) -> tuple[str, str]:
+        """Walk `source_module.exports.reexported_variables` until reaching
+        the ultimate defining module. Returns the (definer_module,
+        definer_name) tuple. Idempotent across cycles (returns the last
+        seen tuple if a chain loops). Used by `_extract_body_exports`
+        to flatten variable re-export chains so the consumer's .hpp
+        renders the definer's qname directly -- mirrors what records
+        do via `record_info.defining_module`.
+        """
+        visited: set[tuple[str, str]] = set()
+        cur_mod, cur_name = source_module, original_name
+        while True:
+            key = (cur_mod, cur_name)
+            if key in visited:
+                return (cur_mod, cur_name)
+            visited.add(key)
+            cur_compiled = self.modules.get(cur_mod)
+            if cur_compiled is None:
+                return (cur_mod, cur_name)
+            next_step = cur_compiled.exports.reexported_variables.get(cur_name)
+            if next_step is None:
+                return (cur_mod, cur_name)
+            cur_mod, cur_name = next_step
+
+    def _backfill_module_attributes(self, compiled: CompiledModule) -> None:
+        """Install bindings for every entry in `compiled.exports.{records,
+        functions,protocols,enums,variables,type_aliases}` that doesn't
+        already have one. Skip-if-present so the registration paths'
+        bindings (which know the immediate import source for re-exports)
+        are not clobbered by the more-naive "is it in
+        reexported_records?" attribution this backfill computes.
+
+        The incremental population in `_pre_populate_decl_exports`,
+        `_register_user_module_import`, and the registration helpers
+        covers the common case; this backfill catches the corners
+        (untyped globals registered during body sema, macro-emitted
+        records, builtin records, facade re-exports of protocols
+        which have no `reexported_protocols` tracker). Future phases
+        push more population upstream and shrink this method.
+        """
+        table = compiled.module_attributes
+        exports = compiled.exports
+        for name, info in exports.records.items():
+            if name in table:
+                continue
+            reexport = exports.reexported_records.get(name)
+            install_binding(
+                table, name, SymbolKind.RECORD, info,
+                defining_module=(reexport[0] if reexport else None),
+                canonical_name=(reexport[1] if reexport else None),
+            )
+        for name, fi_list in exports.functions.items():
+            if name in table:
+                continue
+            reexport = exports.reexported_functions.get(name)
+            install_binding(
+                table, name, SymbolKind.FUNCTION, fi_list,
+                defining_module=(reexport[0] if reexport else None),
+                canonical_name=(reexport[1] if reexport else None),
+            )
+        for name, pinfo in exports.protocols.items():
+            if name in table:
+                continue
+            kind = protocol_kind_for(pinfo.is_dynamic)
+            install_binding(
+                table, name, kind, pinfo,
+            )
+        for name, etype in exports.enums.items():
+            if name in table:
+                continue
+            reexport = exports.reexported_enums.get(name)
+            install_binding(
+                table, name, SymbolKind.ENUM, etype,
+                defining_module=(reexport[0] if reexport else None),
+                canonical_name=(reexport[1] if reexport else None),
+            )
+        for name, vtype in exports.variables.items():
+            if name in table:
+                continue
+            reexport = exports.reexported_variables.get(name)
+            install_binding(
+                table, name, SymbolKind.VARIABLE, vtype,
+                defining_module=(reexport[0] if reexport else None),
+                canonical_name=(reexport[1] if reexport else None),
+            )
+        for name, alias_type in exports.type_aliases.items():
+            if name in table:
+                continue
+            install_binding(
+                table, name, SymbolKind.TYPE_ALIAS, alias_type,
+            )
+
+    def _assert_module_attributes_consistent(self, compiled: CompiledModule) -> None:
+        """Cross-check `compiled.module_attributes` against
+        `compiled.exports`. Forward direction only (every export has a
+        matching cell); the table may carry extra entries for imports
+        that this module doesn't re-export.
+
+        Identity check on `binding.info`. The `defining_module`
+        attribution can come from one of two sources -- the
+        `reexported_*` tracker dict (for records/enums/functions/
+        variables on facade modules) or the import-path's
+        `_register_user_module_import` install (for protocols, which
+        have no `reexported_protocols` tracker). The check verifies
+        consistency with whichever source has the entry, and accepts
+        either None (locally defined) or the immediate import source
+        (re-export) when neither tracker is authoritative.
+        """
+        table = compiled.module_attributes
+        exports = compiled.exports
+        analyzer = compiled.analyzer
+        ctx_user_funcs = analyzer.ctx.user_imported_functions if analyzer else {}
+        ctx_user_protos = analyzer.ctx.user_imported_protocols if analyzer else {}
+        ctx_user_vars = analyzer.ctx.user_imported_variables if analyzer else {}
+        kind_map = (
+            (SymbolKind.RECORD, exports.records, exports.reexported_records, None),
+            (SymbolKind.FUNCTION, exports.functions, exports.reexported_functions, ctx_user_funcs),
+            (SymbolKind.ENUM, exports.enums, exports.reexported_enums, None),
+            (SymbolKind.VARIABLE, exports.variables, exports.reexported_variables, ctx_user_vars),
+        )
+        for expected_kind, exports_dict, reexport_dict, ctx_dict in kind_map:
+            for name, info in exports_dict.items():
+                cell = table.get(name)
+                assert cell is not None, (
+                    f"{compiled.name}: missing module_attributes entry "
+                    f"for {expected_kind.name} '{name}'"
+                )
+                # Source-order conflict resolution may have replaced an
+                # earlier kind with a later one (CPython "last
+                # module-scope binding wins"). Phase 1 doesn't enforce
+                # the kind alignment in that case -- accept any.
+                bd = cell.binding
+                if bd.kind != expected_kind:
+                    continue
+                assert bd.info is info, (
+                    f"{compiled.name}: module_attributes['{name}'].info "
+                    f"identity mismatch with exports.{expected_kind.name.lower()}s"
+                )
+                self._assert_binding_attribution(
+                    compiled.name, name, bd, reexport_dict, ctx_dict,
+                )
+        # Protocols: identity check + attribution from
+        # user_imported_protocols (no reexported_protocols tracker).
+        for name, pinfo in exports.protocols.items():
+            cell = table.get(name)
+            assert cell is not None, (
+                f"{compiled.name}: missing module_attributes entry "
+                f"for protocol '{name}'"
+            )
+            bd = cell.binding
+            if bd.kind not in (SymbolKind.PROTOCOL_STATIC,
+                               SymbolKind.PROTOCOL_DYNAMIC):
+                continue
+            assert bd.info is pinfo, (
+                f"{compiled.name}: protocol '{name}' info identity mismatch"
+            )
+            self._assert_binding_attribution(
+                compiled.name, name, bd, {}, ctx_user_protos,
+            )
+
+    def _assert_binding_attribution(
+        self, mod_name: str, name: str, bd, reexport_dict: dict, ctx_dict: 'dict | None',
+    ) -> None:
+        """Verify (defining_module, canonical_name) on `bd` against
+        whichever attribution source is authoritative for this name.
+
+        - If `reexport_dict[name]` exists: binding must match exactly.
+        - Else if binding claims a defining_module AND `ctx_dict[name]`
+          exists: binding must match the import tuple.
+        - Else: no attribution constraint (local definitions and
+          source-order shadows both have defining_module=None and a
+          ctx_dict entry that may be stale).
+
+        Phase 2 cross-check; Phase 4 (universal re-export) tightens
+        this once `reexported_protocols` and per-kind dict cleanup
+        on local-shadow give us a single authoritative source.
+        """
+        reexport = reexport_dict.get(name)
+        if reexport is not None:
+            src, orig = reexport
+            assert bd.defining_module == src, (
+                f"{mod_name}: '{name}' defining_module "
+                f"{bd.defining_module!r} != reexport src {src!r}"
+            )
+            assert bd.canonical_name == orig, (
+                f"{mod_name}: '{name}' canonical_name "
+                f"{bd.canonical_name!r} != reexport orig {orig!r}"
+            )
+            return
+        if bd.defining_module is not None and ctx_dict is not None and name in ctx_dict:
+            src, orig = ctx_dict[name]
+            assert bd.defining_module == src, (
+                f"{mod_name}: '{name}' defining_module "
+                f"{bd.defining_module!r} != imported src {src!r}"
+            )
+            assert bd.canonical_name == orig, (
+                f"{mod_name}: '{name}' canonical_name "
+                f"{bd.canonical_name!r} != imported orig {orig!r}"
+            )
 
     def _exports_to_module_info(self, name: str, exports: ModuleExports,
                                compiled: 'CompiledModule | None' = None) -> 'ModuleInfo':
@@ -2750,15 +3107,20 @@ class Compiler:
                     cpp_name = stmt.native_name or stmt.name
                     native_globals_by_name[stmt.name] = f"::{cpp_name}"
 
-        # Create ModuleVarInfo with generated cpp_expr.
-        # cpp_expr is the cross-module use-site form, so always absolute
-        # (`::tpyapp::...`); re-exported variables resolve to their defining
-        # module's namespace.
+        # cpp_expr is the cross-module use-site form, always absolute
+        # (`::tpyapp::...`). Re-exported variables resolve to their
+        # ultimate defining module via the attribute-table binding;
+        # falls back to exports.reexported_variables for ad-hoc
+        # ModuleInfo (no CompiledModule attached).
+        from .symbol_binding import lookup_qualified
+        attrs = compiled.module_attributes if compiled is not None else None
         variables = {}
         for k, v in exports.variables.items():
-            if k in exports.reexported_variables:
-                source_module, original_name = exports.reexported_variables[k]
-                cpp_expr = qualified_cpp_name(source_module, original_name)
+            qual = lookup_qualified(attrs, k, name)
+            if qual is not None:
+                cpp_expr = qualified_cpp_name(*qual)
+            elif k in exports.reexported_variables:
+                cpp_expr = qualified_cpp_name(*exports.reexported_variables[k])
             else:
                 cpp_expr = qualified_cpp_name(name, k)
             # Non-Final non-value-type globals are stored as T* pointers in C++;
@@ -2792,6 +3154,7 @@ class Compiler:
             enums=exports.enums,
             reexported_variables=dict(exports.reexported_variables),
             reached=set(exports.reached),
+            module_attributes=(compiled.module_attributes if compiled else None),
         )
 
     def _index_builtin_type_records(self, module_info: 'ModuleInfo',

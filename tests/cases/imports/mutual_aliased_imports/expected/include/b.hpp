@@ -33,5 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Helper& obj) {
     return os;
 }
 
+using Other = ::tpyapp::a::A;
+
 void __tpy_init();
 } // namespace tpyapp::b

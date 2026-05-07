@@ -37,5 +37,7 @@ int32_t sum_span(const T_c& c) {
     return total;
 }
 
+using ::tpystd::tplib::array_list::ArrayList;
+
 void __tpy_init();
 } // namespace tpyapp::main

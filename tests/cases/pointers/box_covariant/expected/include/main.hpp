@@ -99,5 +99,7 @@ inline double Square::area() {
     // return self._s * self._s
     return ((this->_s) * (this->_s));
 }
+using ::tpystd::tplib::box::Box;
+
 void __tpy_init();
 } // namespace tpyapp::main

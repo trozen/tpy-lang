@@ -11,6 +11,7 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 extern "C" void app_init();
+
 extern "C" int32_t abs(int32_t x);
 extern "C" int32_t tpy_clock();
 

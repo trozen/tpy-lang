@@ -169,5 +169,13 @@ inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_l
     // from tplib.json.model import model
     return User::try_from_json(__data);
 }
+using ::tpystd::tplib::json::writer::_hex_byte;
+
+using ::tpystd::tplib::json::parser::JsonError;
+using ::tpystd::tplib::json::parser::JsonReader;
+using ::tpystd::tplib::json::writer::JsonWriter;
+
+using ::tpystd::tplib::json::parser::JsonToken;
+
 void __tpy_init();
 } // namespace tpyapp::main

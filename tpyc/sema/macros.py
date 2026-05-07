@@ -28,6 +28,23 @@ from ..parse.resolve_refs import resolve_method_body_refs, promote_bare_nominals
 from ..macro_api import ClassInfo
 from ..macro_loader import validate_and_call_macro, call_macro_field_function
 from ..diagnostics import SemanticError
+from ..symbol_binding import is_macro_kind, walk_attribute_chain
+
+
+def _resolve_macro_through_attributes(
+    ctx: 'SemanticContext', module_name: str, name: str,
+) -> tuple[str, str] | None:
+    """Walk the binding chain to find the ultimate macro source for
+    `(module_name, name)`. Returns None when no hop lands on a macro
+    binding -- recovers the macro registry's canonical key when the
+    macro flows through re-export chains (the parser stores the
+    *immediate* source on `record.pending_macros`).
+    """
+    result = walk_attribute_chain(ctx.registry, module_name, name, is_macro_kind)
+    if result is None:
+        return None
+    ult_mod, ult_name, _bd = result
+    return (ult_mod, ult_name)
 
 if TYPE_CHECKING:
     from ..parse.nodes import TpyRecord
@@ -61,6 +78,19 @@ def _apply_class_macros(record: 'TpyRecord', ctx: 'SemanticContext') -> None:
             raise SemanticError(f"Invalid macro name '{qname}'", record.loc)
         mod_name, func_name = parts
         macro_fn = registry.get_macro(mod_name, func_name) if registry else None
+        if macro_fn is None:
+            # Phase 6: re-export chain. The parser may have resolved
+            # the decorator's source module to an intermediate that
+            # itself imports the macro (e.g. `utils` re-exporting
+            # `dataclass` from `dataclasses`). Walk the binding chain
+            # in `ctx.module_attributes` to find the ultimate macro
+            # source.
+            ult = _resolve_macro_through_attributes(ctx, mod_name, func_name)
+            if ult is not None:
+                ult_mod, ult_name = ult
+                macro_fn = registry.get_macro(ult_mod, ult_name) if registry else None
+                if macro_fn is not None:
+                    qname = f"{ult_mod}.{ult_name}"
         if macro_fn is None:
             raise SemanticError(f"Unknown macro '{qname}'", record.loc)
         cls_info = ClassInfo(record, ctx)

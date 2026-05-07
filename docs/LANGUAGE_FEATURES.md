@@ -4525,7 +4525,7 @@ s = repr([1, 2, 3])          # → "[1, 2, 3]" (same as str for containers)
 - **Working**: User-defined modules (multi-file projects)
 - **Working**: Package support (dotted imports, `__init__.py`, namespace packages)
 - **Working**: Relative imports (`from . import sibling`, `from ..pkg import func`)
-- **Working**: Re-exports through `__init__.py` and flat `# tpy: native_module` facades (functions, records, protocols, variables; runtime init chained for non-native source modules)
+- **Working**: Universal re-export -- every module exposes its imports as module attributes, so `from b import X` works when `b` itself does `from c import X`, regardless of whether `b` is a `__init__.py` / `# tpy: native_module` / implicit-stdlib facade. Records, enums, protocols, functions, variables, and macros (class / call / builder) all flow through arbitrary chain depths. The consumer's `using` declarations land at the ultimate definer's namespace. Cycle peers re-export too, with cycle-aware `using` suppression in codegen for kinds that aren't forward-declared in `<peer>_fwd.hpp` (functions, variables, static-protocol concepts).
 - **Working**: Shadowing detection -- local definitions (def, class, assignment) that shadow imported names are detected. Parser-resolved names (type annotations, decorators, base classes like `Enum`/`Protocol`/`TypedDict`, `auto()`) correctly respect shadowing. Warnings are emitted for `typing` and `enum` module names (e.g., `class Sized` after `from typing import Sized`, or `def auto()` after `from enum import auto`)
 - **Working**: Standard library infrastructure (`tplib`, `stdlib`) with `-L` search paths
 - **Working**: `tplib.Box[T]` -- heap-allocated owning container (via `from tplib import Box`)
@@ -4598,7 +4598,7 @@ print("after import")   # runs last
 
 Each module initializes only once (double-init guard prevents diamond dependency issues).
 
-**Circular imports:** Cyclic imports between user modules are accepted, including the `from b import bar` / `from b import B` / `from b import P` (protocol) / `from b import E` (enum) shapes where cycle members directly bind names from each other. Workspace-wide skeletal pre-registration mints `RecordInfo` / `FunctionInfo` / `ProtocolInfo` shells (and matching enum `NominalType` + `TypeDef.protocol` entries) from each module's parsed AST before any module's full sema runs; peer `bind_imports` finds stable references that the registration paths later mutate in place. Class macros (`@dataclass`, etc.) on cycle members work. The C++ back-end emits a per-module `<mod>_fwd.hpp` for cycle members; `<peer>.hpp` includes of cycle peers in the `.hpp` are swapped for the fwd version (the `.cpp` pulls in the full header for body-sema completeness), and cycle-member method bodies always emit out-of-line in `.cpp` so trivial inline-in-header bodies don't reach into a peer's complete type. Cycle members must contain only imports and bare type declarations at top level (no executable statements); package `__init__.py` and `# tpy: native_module` re-export facades cannot participate in a cycle. By-value cross-module references between cycle peers (concrete inheritance from a peer record, by-value field of peer record, peer record inside a container / tuple / value-variant union) get a structured sema diagnostic naming the offending field and the workaround (`Ptr[T]` or moving the value-stored field out of the cycle).
+**Circular imports:** Cyclic imports between user modules are accepted, including the `from b import bar` / `from b import B` / `from b import P` (protocol) / `from b import E` (enum) shapes where cycle members directly bind names from each other. Workspace-wide skeletal pre-registration mints `RecordInfo` / `FunctionInfo` / `ProtocolInfo` shells (and matching enum `NominalType` + `TypeDef.protocol` entries) from each module's parsed AST before any module's full sema runs; peer `bind_imports` finds stable references that the registration paths later mutate in place. Class macros (`@dataclass`, etc.) on cycle members work. The C++ back-end emits a per-module `<mod>_fwd.hpp` for cycle members; `<peer>.hpp` includes of cycle peers in the `.hpp` are swapped for the fwd version (the `.cpp` pulls in the full header for body-sema completeness), and cycle-member method bodies always emit out-of-line in `.cpp` so trivial inline-in-header bodies don't reach into a peer's complete type. Cycle members must contain only imports and bare type declarations at top level (no executable statements). Package `__init__.py` and `# tpy: native_module` re-export facades may now participate in cycles too (the cycle-facade reject gate was lifted by the per-module attribute table refactor); cycle-aware `using` suppression in codegen drops re-export `using` lines for symbols not forward-declared in `<peer>_fwd.hpp` (functions, variables, static-protocol concepts). By-value cross-module references between cycle peers (concrete inheritance from a peer record, by-value field of peer record, peer record inside a container / tuple / value-variant union) get a structured sema diagnostic naming the offending field and the workaround (`Ptr[T]` or moving the value-stored field out of the cycle).
 
 **Shadowing builtin modules:** User modules can shadow builtin modules (none currently -- `math`, `time`, `sys` moved to lib/tpy/). If you create `math.py` in your project, `from math import ...` will use your module instead of the builtin. A warning is emitted:
 ```
@@ -4682,51 +4682,53 @@ from ...outside import X  # ERROR: Relative import beyond top-level package
 
 **TurboPython extension:** Unlike CPython, TurboPython allows relative imports that reach root level when the compiler has full visibility of the module structure. For example, `from .. import utils` in `pkg/mod.py` can import a root-level `utils.py` module. This may not work when running the same file with CPython directly.
 
-### Re-exports through facade modules (Working)
+### Re-exports (Working)
 
-Package `__init__.py` files **and** flat `# tpy: native_module` facade modules can re-export items from other modules, making them available at the facade's surface:
+Every module exposes its imports as module attributes -- there is no facade vs. plain distinction. `from b import X` works whenever `b` itself has `X` in scope, regardless of how `b` got it (local definition, `from c import X`, star import, etc.). Records, enums, protocols, functions, variables, type aliases, and macros (class / call / builder) all flow through arbitrary chain depths. Mirrors CPython's "every imported name is a module attribute" semantics.
 
 ```python
-# mypackage/__init__.py
+# utils.py - regular flat module, no special directive
 from tpy import Int32
-from .utils import add, Point    # Re-export from submodule
-
-VERSION: Int32 = Int32(42)       # Package-level variable
+from .helpers import add, Point   # plain re-export
 ```
 
 ```python
-# main.py - import from package level
-from mypackage import add, Point, VERSION
+# main.py
+from utils import add, Point      # works the same as importing from .helpers directly
 
-result = add(1, 2)     # Uses mypackage.utils.add via re-export
-p = Point(10, 20)      # Uses mypackage.utils.Point via re-export
-print(VERSION)         # Package variable
+result = add(1, 2)
+p = Point(10, 20)
 ```
+
+**Package `__init__.py` files** and **`# tpy: native_module` facades** are the same code path -- they just happen to be the most common re-export shape. The C++ output is the same.
 
 **What can be re-exported:**
 - Functions
 - Records (classes)
-- Protocols
-- Variables
+- Protocols (static / `@dynamic`)
+- Enums
+- Variables (Final and non-Final)
+- Type aliases
+- Macros (`@class_macro`, `@call_macro`, `@builder_macro`)
 
-**C++ implementation:** Re-exported items use `using` declarations and reference aliases when the facade has its own `.hpp`:
+**C++ implementation.** The consumer's `using` declarations land at the *ultimate* defining module's namespace, not at the intermediate. `using ::tpystd::stdlib::dataclasses::dataclass;` rather than chaining through every intermediate. For records / enums / dynamic protocols the consumer's reach analysis pulls the definer's full header into the include set; for static protocols (concepts) the same holds because they're emitted in the same .hpp as the protocol's definition.
+
 ```cpp
-// mypackage.hpp (generated)
-namespace tpyapp::mypackage {
-  using tpyapp::mypackage::utils::add;    // Re-exported function
-  using tpyapp::mypackage::utils::Point;  // Re-exported record
-  inline auto& counter = tpyapp::mypackage::utils::counter;  // Re-exported variable
-  extern int32_t VERSION;                    // Package's own variable
+// utils.hpp emits the surface namespace
+namespace tpyapp::utils {
+  using ::tpyapp::helpers::add;     // function -- single using declaration
+  using ::tpyapp::helpers::Point;   // record -- single using declaration
+  inline auto& counter = ::tpyapp::helpers::counter;  // variable
 }
 ```
 
-**Aliased re-exports:** When using import aliases (`from .utils import func as f`), different C++ constructs are used:
-```cpp
-inline auto& f = tpyapp::mypackage::utils::func;    // Function alias
-using Pt = tpyapp::mypackage::utils::Point;         // Record alias
-```
+**Aliased re-exports** (`from .helpers import func as f`): functions use `inline auto&` aliases; records / enums / type aliases use `using NewName = ...;`.
 
-**Native-module facades:** When the facade is `# tpy: native_module` (no `.hpp` is generated), consumer codegen chases the re-export chain at the use site and emits a direct reference to the defining module. The facade's `__tpy_init()` is also synthesized at the consumer side: when a re-exported variable's source has runtime initialization, the consumer's `__tpy_init()` calls the source module's `__tpy_init()` directly.
+**Native-module facades** (`# tpy: native_module`, no `.hpp` generated): consumer codegen routes around the missing facade and qualifies directly to the ultimate defining module. The facade's `__tpy_init()` is synthesized at the consumer side; re-exported variable initialization chains through correctly.
+
+**Cycle peers** also re-export, with one codegen wrinkle: cycle peers' headers include `<peer>_fwd.hpp` rather than `<peer>.hpp`, so cycle-aware suppression drops `using` lines whose target isn't forward-declarable in `_fwd.hpp` (functions, variables, static-protocol concepts). Consumer codegen still works because it qualifies directly to the ultimate definer rather than relying on the intermediate's `using`. The cycle-facade reject gate that used to prohibit `__init__.py` / `native_module` / implicit-stdlib facades inside cycles was lifted.
+
+**Known limitations** (see `BUGS.md`): variable and type alias re-export *from* a cycle peer (where the consumer's bind_imports runs before the cycle peer's) currently hits "X not found in module Y". Workaround: define the variable / alias outside the cycle.
 
 ### Standard Library Infrastructure (Working)
 

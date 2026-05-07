@@ -920,6 +920,14 @@ class CodeGenerator:
         if self.ctx.reexported_functions:
             any_written = False
             for local_name, (source_module, original_name) in sorted(self.ctx.reexported_functions.items()):
+                # Cycle suppression (Phase 5): functions are not
+                # forward-declared in `<peer>_fwd.hpp`, so a `using`
+                # for a cycle peer's function would reach into the
+                # peer's full header. Consumer codegen lands at the
+                # defining module directly, so this is a pure
+                # interop-surface degradation.
+                if source_module in self.ctx.cycle_peers:
+                    continue
                 # For C-linkage functions, emit an extern "C" re-declaration.
                 # Using/alias re-exports don't work because the C++ name may
                 # differ from the Python name (e.g., @native("SDL_GetTicks", binding="C") def get_ticks).
@@ -943,10 +951,16 @@ class CodeGenerator:
             if any_written:
                 hpp.write("\n")
 
-        # Re-exported records (skip native records and @builtin_type stubs)
+        # Re-exported records (skip native records and @builtin_type stubs).
+        # Nested types (`Container.Inner`) are accessible through the
+        # outer record's `using` -- emitting a separate
+        # `using ::ns::Container::Inner;` at namespace scope is illegal
+        # C++ (using-declaration for member at non-class scope).
         if self.ctx.reexported_records:
             any_written = False
             for local_name, (source_module, original_name) in sorted(self.ctx.reexported_records.items()):
+                if "." in local_name or "." in original_name:
+                    continue
                 record_info = self.analyzer.registry.get_record(original_name)
                 if record_info and (record_info.is_native or record_info.is_keyword_stub):
                     continue
@@ -959,22 +973,42 @@ class CodeGenerator:
             if any_written:
                 hpp.write("\n")
 
-        # Re-exported enums
+        # Re-exported enums (skip nested enums for the same reason as
+        # nested records above).
         if self.ctx.reexported_enums:
+            any_written = False
             for local_name, (source_module, original_name) in sorted(self.ctx.reexported_enums.items()):
+                if "." in local_name or "." in original_name:
+                    continue
                 qualified = qualified_cpp_name(source_module, original_name)
                 if local_name == original_name:
                     hpp.write(f"using {qualified};\n")
                 else:
                     hpp.write(f"using {local_name} = {qualified};\n")
-            hpp.write("\n")
+                any_written = True
+            if any_written:
+                hpp.write("\n")
 
-        # Re-exported variables
+        # Re-exported variables. Skip:
+        #   - variables whose ultimate source is a native_module (no
+        #     namespace path; their use sites resolve via
+        #     ModuleVarInfo.native_cpp_name);
+        #   - variables sourced from a cycle peer (variables aren't
+        #     declared in `<peer>_fwd.hpp`, so a `using` would reach
+        #     into the peer's full header).
         if self.ctx.reexported_variables:
+            any_written = False
             for local_name, (source_module, original_name) in sorted(self.ctx.reexported_variables.items()):
+                if source_module in self.ctx.cycle_peers:
+                    continue
+                src_info = self.analyzer.registry.get_module(source_module)
+                if src_info is not None and src_info.is_native_module:
+                    continue
                 qualified = qualified_cpp_name(source_module, original_name)
                 hpp.write(f"inline auto& {local_name} = {qualified};\n")
-            hpp.write("\n")
+                any_written = True
+            if any_written:
+                hpp.write("\n")
 
 
     def _gen_recursive_union_struct(self, out: TextIO, name: str, typ: UnionType) -> None:

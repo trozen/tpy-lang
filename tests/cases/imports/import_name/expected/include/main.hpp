@@ -12,5 +12,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 int32_t main();
 
+using ::tpyapp::utils::get_name;
+
 void __tpy_init();
 } // namespace tpyapp::main

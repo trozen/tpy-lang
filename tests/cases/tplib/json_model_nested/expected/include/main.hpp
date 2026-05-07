@@ -384,5 +384,13 @@ inline std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile:
     return Profile::try_from_json(__data);
     // # dict[str, list[T]].
 }
+using ::tpystd::tplib::json::writer::_hex_byte;
+
+using ::tpystd::tplib::json::parser::JsonError;
+using ::tpystd::tplib::json::parser::JsonReader;
+using ::tpystd::tplib::json::writer::JsonWriter;
+
+using ::tpystd::tplib::json::parser::JsonToken;
+
 void __tpy_init();
 } // namespace tpyapp::main
