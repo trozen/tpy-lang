@@ -13,7 +13,7 @@ std::string describe(const std::variant<Cat*, Dog*> p) {
         return "dog";
     }
     // assert isinstance(p, Cat)
-    if (!(true)) ::tpy::assert_failed();
+    if (!(true)) ::tpy::raise_assertion_error();
     auto& __p = *std::get<Cat*>(p);
     // return "cat"
     return "cat";

@@ -24,7 +24,7 @@ EnumUtil<::tpyapp::main::SmallEnum>::members = {
         case 0: return ::tpyapp::main::SmallEnum::A;
         case 1: return ::tpyapp::main::SmallEnum::B;
         case 127: return ::tpyapp::main::SmallEnum::C;
-        default: tpy_panic("invalid value for enum 'SmallEnum'");
+        default: raise<ValueError>("{} is not a valid SmallEnum", __v);
     }
 }
 
@@ -37,7 +37,7 @@ std::optional<::tpyapp::main::SmallEnum> EnumUtil<::tpyapp::main::SmallEnum>::tr
 
 ::tpyapp::main::SmallEnum EnumUtil<::tpyapp::main::SmallEnum>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
-    if (!__result.has_value()) tpy_panic("invalid name for enum 'SmallEnum'");
+    if (!__result.has_value()) raise<KeyError>("{}", __name);
     return *__result;
 }
 

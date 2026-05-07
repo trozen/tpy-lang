@@ -1,0 +1,3 @@
+CPython raises io.UnsupportedOperation (diamond OSError+ValueError) with terse
+messages "not readable"/"not writable"; TPy routes to OSError with longer
+diagnostic messages -- documented divergence in EXCEPTION_DESIGN.md.

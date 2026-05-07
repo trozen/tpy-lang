@@ -2,7 +2,7 @@
  * TurboPython Runtime - Range
  *
  * Python-style range() as an immutable, reusable container with begin/end.
- * Depends on: core.hpp (tpy_panic), fixed_int.hpp
+ * Depends on: core.hpp (raise<E>), fixed_int.hpp
  */
 
 #pragma once
@@ -40,7 +40,7 @@ void range_check_overflow(T start, T stop, T step) {
         U overshoot = ustep - rem;
         U room = static_cast<U>(std::numeric_limits<T>::max()) - static_cast<U>(stop);
         if (overshoot > room) {
-            tpy_panic("range() would overflow on iteration");
+            raise_fixedint_overflow("range() would overflow on iteration");
         }
     } else if constexpr (std::is_signed_v<T>) {
         if (step < T{0}) {
@@ -53,10 +53,18 @@ void range_check_overflow(T start, T stop, T step) {
             U overshoot = abs_step - rem;
             U room = static_cast<U>(stop) - static_cast<U>(std::numeric_limits<T>::min());
             if (overshoot > room) {
-                tpy_panic("range() would overflow on iteration");
+                raise_fixedint_overflow("range() would overflow on iteration");
             }
         }
     }
+}
+
+// Raises ValueError when `step == 0`. Shared by Range<T>::Range(T,T,T)
+// and the codegen-emitted inline range loops in statements.py / expressions.py
+// so the message lives in one place.
+template<typename T>
+inline void range_check_step_nonzero(T step) {
+    if (step == T{}) raise<ValueError>("range() arg 3 must not be zero");
 }
 
 template<typename T>
@@ -69,7 +77,7 @@ public:
     Range(T end) : start_{}, end_(std::move(end)), step_(1) {}
     Range(T start, T end) : start_(start), end_(std::move(end)), step_(1) {}
     Range(T start, T end, T step) : start_(start), end_(std::move(end)), step_(std::move(step)) {
-        if (step_ == T{}) tpy_panic("range() arg 3 must not be zero");
+        range_check_step_nonzero(step_);
         if constexpr (std::is_integral_v<T> && sizeof(T) <= 8)
             range_check_overflow<T>(start_, end_, step_);
     }

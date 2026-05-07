@@ -24,7 +24,7 @@ EnumUtil<::tpyapp::main::Message::Kind>::members = {
         case 1: return ::tpyapp::main::Message::Kind::TEXT;
         case 2: return ::tpyapp::main::Message::Kind::IMAGE;
         case 3: return ::tpyapp::main::Message::Kind::VIDEO;
-        default: tpy_panic("invalid value for enum 'Message.Kind'");
+        default: raise<ValueError>("{} is not a valid Message.Kind", __v);
     }
 }
 
@@ -37,7 +37,7 @@ std::optional<::tpyapp::main::Message::Kind> EnumUtil<::tpyapp::main::Message::K
 
 ::tpyapp::main::Message::Kind EnumUtil<::tpyapp::main::Message::Kind>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
-    if (!__result.has_value()) tpy_panic("invalid name for enum 'Message.Kind'");
+    if (!__result.has_value()) raise<KeyError>("{}", __name);
     return *__result;
 }
 

@@ -10,9 +10,9 @@ int32_t main() {
     std::vector<std::string> __tmp_1 = {"--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
     // assert args.tag is not None
-    if (!((args.tag.has_value()))) ::tpy::assert_failed();
+    if (!((args.tag.has_value()))) ::tpy::raise_assertion_error();
     // assert args.num is not None
-    if (!((args.num.has_value()))) ::tpy::assert_failed();
+    if (!((args.num.has_value()))) ::tpy::raise_assertion_error();
     // print(args.tag[0])
     std::cout << ::tpy::__getitem__((*args.tag), 0) << "\n";
     // print(args.tag[1])

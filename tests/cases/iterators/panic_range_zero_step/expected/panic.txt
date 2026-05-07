@@ -1,1 +1,1 @@
-TurboPython panic: range() arg 3 must not be zero
+TurboPython panic: uncaught tpy::ValueError: range() arg 3 must not be zero

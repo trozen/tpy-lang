@@ -1,0 +1,2 @@
+CPython's typing.cast is identity at runtime; TPy adds a runtime type guard
+that raises TypeError. This divergence is intentional (TPy safety feature).

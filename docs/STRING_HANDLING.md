@@ -51,7 +51,7 @@ Methods available on `str`, `String`, and `StrView` types. All methods are `is_r
 | `s.replace(old, new)` | Working | Replace all occurrences |
 | `s.find(sub)` | Working | Returns index or -1 |
 | `s.rfind(sub)` | Working | Reverse find, returns index or -1 |
-| `s.index(sub)` | Working | Like find but panics on miss |
+| `s.index(sub)` | Working | Like `find` but raises `ValueError("substring not found")` on miss (catchable) |
 | `s.startswith(prefix)` | Working | Returns `bool` |
 | `s.endswith(suffix)` | Working | Returns `bool` |
 | `s.upper()` | Working | ASCII uppercase |
@@ -68,7 +68,7 @@ Methods available on `str`, `String`, and `StrView` types. All methods are `is_r
 | `s.swapcase()` | Working | Swap upper/lower |
 | `s.removeprefix(p)` | Working | Remove prefix, returns `StrView` |
 | `s.removesuffix(s)` | Working | Remove suffix, returns `StrView` |
-| `s.rindex(sub)` | Working | Like `rfind` but panics on miss |
+| `s.rindex(sub)` | Working | Like `rfind` but raises `ValueError("substring not found")` on miss (catchable) |
 | `s.splitlines()` | Working | Split on `\n`/`\r\n`, returns `list[str]` |
 | `s[i:j]` (slicing) | Working | Returns `StrView`, Python clamping semantics |
 | `s[i:j:k]` (slice step) | Working | Returns owned `str`, Python semantics |

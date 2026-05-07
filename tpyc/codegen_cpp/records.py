@@ -1370,7 +1370,7 @@ class RecordGenerator:
         elif is_signed:
             out.write(f"\n{INDENT}size_t size() const {{\n")
             out.write(f"{INDENT}{INDENT}auto len = __len__();\n")
-            out.write(f"{INDENT}{INDENT}if (len < 0) ::tpy::tpy_panic(\"__len__ returned negative value\");\n")
+            out.write(f"{INDENT}{INDENT}if (len < 0) ::tpy::raise<::tpy::ValueError>(\"__len__() should return >= 0\");\n")
             out.write(f"{INDENT}{INDENT}return static_cast<size_t>(len);\n")
             out.write(f"{INDENT}}}\n")
         else:

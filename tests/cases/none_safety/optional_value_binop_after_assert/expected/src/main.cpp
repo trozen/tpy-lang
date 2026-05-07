@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def add_one(x: Int32 | None) -> Int32:
 int32_t add_one(std::optional<int32_t> x) {
     // assert x is not None
-    if (!((x.has_value()))) ::tpy::assert_failed();
+    if (!((x.has_value()))) ::tpy::raise_assertion_error();
     // return x + 1
     return (::tpy::add_check<int32_t>((*x), 1));
 }

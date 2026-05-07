@@ -234,7 +234,7 @@ public:
     // Shift operators (Python semantics: arbitrary precision)
     BigInt operator<<(int32_t shift) const {
         if (shift < 0) {
-            tpy_panic("Negative shift count");
+            raise<ValueError>("negative shift count");
         }
         if (shift == 0 || signum() == 0) {
             return *this;
@@ -245,7 +245,7 @@ public:
 
     BigInt operator>>(int32_t shift) const {
         if (shift < 0) {
-            tpy_panic("Negative shift count");
+            raise<ValueError>("negative shift count");
         }
         if (shift == 0 || signum() == 0) {
             return *this;
@@ -286,12 +286,16 @@ public:
     // Power operator (Python semantics: negative exponent not supported)
     BigInt pow(const BigInt& exp) const {
         if (exp.signum() < 0) {
+            // TPy-specific limitation: int**neg returns float in CPython, but
+            // our return type is BigInt. Stays panic -- a sema/codegen fix
+            // would dispatch to a float-pow helper instead of routing the
+            // panic through any catchable type.
             tpy_panic("Negative exponent not supported (would require float)");
         }
 
         uint64_t e = 0;
         if (!exp.to_uint64_checked(e)) {
-            tpy_panic("Exponent too large");
+            raise<OverflowError>("exponent too large");
         }
 
         BigInt base = *this;
@@ -340,14 +344,14 @@ public:
                     return static_cast<T>(v);
                 }
             }
-            std::string msg = std::string(tpy::fixed_int_name<T>()) + " overflow: value out of range";
-            tpy_panic(msg.c_str());
+            raise_fixedint_overflow("{} overflow: value out of range",
+                                    tpy::fixed_int_name<T>());
         }
 
         const HeapBig* p = heap_ptr();
         if (p->len > 1) {
-            std::string msg = std::string(tpy::fixed_int_name<T>()) + " overflow: value out of range";
-            tpy_panic(msg.c_str());
+            raise_fixedint_overflow("{} overflow: value out of range",
+                                    tpy::fixed_int_name<T>());
         }
 
         uint64_t mag = (p->len == 0) ? 0 : p->limbs[0];
@@ -366,8 +370,8 @@ public:
             }
         }
 
-        std::string msg = std::string(tpy::fixed_int_name<T>()) + " overflow: value out of range";
-        tpy_panic(msg.c_str());
+        raise_fixedint_overflow("{} overflow: value out of range",
+                                tpy::fixed_int_name<T>());
     }
 
     // Truncating conversion to any fixed-width integer type (modular reduction, never panics)
@@ -557,10 +561,10 @@ public:
     // Static factory methods for conversions
     static BigInt from_float(double v) {
         if (std::isnan(v)) {
-            tpy_panic("cannot convert float NaN to integer");
+            raise<ValueError>("cannot convert float NaN to integer");
         }
         if (std::isinf(v)) {
-            tpy_panic("cannot convert float infinity to integer");
+            raise<OverflowError>("cannot convert float infinity to integer");
         }
         if (v == 0.0) {
             return BigInt(0);
@@ -603,10 +607,6 @@ public:
     static BigInt from_ceil(double v) { return from_float(std::ceil(v)); }
 
     static BigInt from_str(std::string_view s) {
-        auto make_error = [&s]() -> std::string {
-            return std::string("invalid literal for int() with base 10: '") + std::string(s) + "'";
-        };
-
         // Skip leading whitespace.
         size_t start = 0;
         while (start < s.size() && std::isspace(static_cast<unsigned char>(s[start]))) {
@@ -618,7 +618,7 @@ public:
             --end;
         }
         if (start >= end) {
-            tpy_panic(make_error().c_str());
+            raise<ValueError>("invalid literal for int() with base 10: '{}'", s);
         }
 
         std::string_view trimmed = s.substr(start, end - start);
@@ -633,14 +633,14 @@ public:
         }
 
         if (idx >= trimmed.size()) {
-            tpy_panic(make_error().c_str());
+            raise<ValueError>("invalid literal for int() with base 10: '{}'", s);
         }
 
         std::vector<uint64_t> mag;
         for (size_t i = idx; i < trimmed.size(); ++i) {
             unsigned char ch = static_cast<unsigned char>(trimmed[i]);
             if (!std::isdigit(ch)) {
-                tpy_panic(make_error().c_str());
+                raise<ValueError>("invalid literal for int() with base 10: '{}'", s);
             }
             mul_small_inplace(mag, 10);
             add_small_inplace(mag, static_cast<uint32_t>(ch - '0'));
@@ -651,7 +651,7 @@ public:
 
     std::tuple<BigInt, BigInt> floor_divmod(const BigInt& rhs) const {
         if (rhs.signum() == 0) {
-            tpy_panic("Division by zero");
+            raise<ZeroDivisionError>("integer division or modulo by zero");
         }
         if (signum() == 0) {
             return {BigInt(0), BigInt(0)};
@@ -1079,8 +1079,10 @@ private:
         std::vector<uint64_t>& q,
         std::vector<uint64_t>& r
     ) {
+        // Internal invariant: public callers (floor_div / floor_mod /
+        // floor_divmod) throw ZeroDivisionError before reaching this helper.
         if (den.empty()) {
-            tpy_panic("Division by zero");
+            tpy_panic("BigInt::divmod_mag called with empty divisor");
         }
         if (num.empty()) {
             q.clear();
@@ -1253,7 +1255,7 @@ private:
 
     BigInt floor_div(const BigInt& rhs) const {
         if (rhs.signum() == 0) {
-            tpy_panic("Division by zero");
+            raise<ZeroDivisionError>("integer division or modulo by zero");
         }
         if (signum() == 0) {
             return BigInt(0);
@@ -1283,7 +1285,7 @@ private:
 
     BigInt floor_mod(const BigInt& rhs) const {
         if (rhs.signum() == 0) {
-            tpy_panic("Division by zero");
+            raise<ZeroDivisionError>("integer modulo by zero");
         }
         if (signum() == 0) {
             return BigInt(0);

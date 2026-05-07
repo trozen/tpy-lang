@@ -1,0 +1,3 @@
+caught: cannot convert float infinity to integer
+caught: cannot convert float infinity to integer
+via ArithmeticError: cannot convert float infinity to integer

@@ -8,7 +8,7 @@
 | **Phase 2** | Runtime: `tpy::Any` wrapper around `std::any` + per-type `AnyOps` table | Done |
 | **Phase 3** | Codegen: into-Any conversion, `AnyOps` instantiation per stored type, copyable-only enforcement | Done |
 | **Phase 4** | Universal ops: `print`, `str`, `repr`, f-string, `bool`, `==`/`!=`, `hash`, `x is None` | Done |
-| **Phase 5** | `typing.cast(T, x)` runtime semantics on `Any`: checked extraction, panic on mismatch | Done |
+| **Phase 5** | `typing.cast(T, x)` runtime semantics on `Any`: checked extraction; mismatch raises `TypeError` (catchable) | Done |
 | **Phase 6** | `isinstance(x, T)` non-consuming borrow narrowing on `Any` | Done |
 | **Phase 7** | Auto-coerce in known-target contexts (assignment, args, return, container insert) | Done |
 | **Phase 8** | Narrow-required diagnostics, `set[Any]` / `dict[Any, V]` runtime hash check (`@noalloc` rejection deferred until broader `@noalloc` enforcement lands) | Done |
@@ -28,7 +28,7 @@
 | Stdlib stubs returning `Any` (`json.loads`, `pickle`, etc.) | Exercised after v1 lands. Most are better served by typed alternatives (recursive ADTs, macros) -- only add `Any`-typed stubs when no alternative fits. |
 | Pickling / serialization | Out of scope. |
 | Cross-type numeric equality on `Any` (`Any(1) == Any(1.0)` -> True) | Would need a "category" tag on `AnyOps` and cross-promotion logic in the equals slot. Cost on every `==`; CPython compat win is real but rarely matters in the dict[str, Any] use case. Defer; users extract first. |
-| Unmangled type names in `cast`/`hash` panic messages | Current panics show `typeid::name()` which is the platform mangled form (e.g. `N3tpy6BigIntE` for `tpy::BigInt`, `NSt7__cxx1112basic_stringI...E` for `std::string`). User-facing TPy names would be friendlier. Options: GCC `__cxa_demangle` (libstdc++-only, allocates), or a TPy-side typeid -> friendly-name registry seeded by `any_ops_for<T>` instantiations. Low priority; the mangled form is unambiguous if ugly. |
+| TPy-friendly type names in `cast`/`hash` exception messages | Messages now go through `tpy::demangle_type_name(typeid::name())` (see `core.hpp`), so users see `tpy::BigInt` and `std::__cxx1112basic_string<...>` instead of the mangled form. The standard-library types are still verbose; a TPy-side typeid -> friendly-name registry seeded by `any_ops_for<T>` instantiations would render `str` instead of `std::__cxx11::basic_string<...>`. Defer until the verbose names cause real friction. |
 
 ## Vision
 
@@ -289,12 +289,13 @@ These work on raw `Any` without narrowing:
 | `f"{x}"` | reuses `print` / `str` slot |
 | `bool(x)`, `if x:`, `not x` | `x.ops->to_bool(x.value)` |
 | `x == y`, `x != y` | `tpy::any_eq(x, y)` -- type mismatch / null slot -> False |
-| `hash(x)` | `tpy::any_hash(x)` -- panics if `ops->hash == nullptr` |
+| `hash(x)` | `tpy::any_hash(x)` -- raises `TypeError("unhashable type: '<demangled>'")` if `ops->hash == nullptr` (catchable) |
 | `x is None`, `x is not None` | `x.value.has_value() && x.value.type() == typeid(NoneType)` |
 
 `Any` automatically satisfies the `Hashable` and `Eq` concepts at the
-*type system* level, but *runtime* hash/eq may panic if the contained
-concrete type doesn't support the operation. This is the trade-off for
+*type system* level, but *runtime* hash may raise `TypeError` (catchable)
+if the contained concrete type doesn't support the operation. `==` for
+mismatched types returns False (no exception). This is the trade-off for
 allowing storage of arbitrary types.
 
 **`==` semantics**: `tpy::any_eq` checks `a.value.type() == b.value.type()`
@@ -305,7 +306,7 @@ honest answer when T has no notion of equality).
 **Divergence from CPython**: typeid-based equality means `Any(1) == Any(1.0)`
 is **False** in TPy, where CPython returns True. Same for `Any(True) == Any(1)`
 and `hash(Any(1)) != hash(Any(1.0))`. This is consistent with the auto-coerce
-divergence (`n: int = any_var` panics in TPy where CPython silently assigns) --
+divergence (`n: int = any_var` raises `TypeError` in TPy where CPython silently assigns) --
 TPy treats stored typeid as part of the equality and hash identity. Cross-type
 numeric equality requires extracting first (`cast(float, x) == 1.0`).
 A regression test pins this behavior so it isn't accidentally "fixed" toward
@@ -319,7 +320,8 @@ Worded diagnostic: `is is only supported with None on Any -- did you mean
 ### Auto-coerce (deduced target type)
 
 When the target type is statically known, the compiler inserts the same
-runtime extract used by explicit `typing.cast` and panics on mismatch.
+runtime extract used by explicit `typing.cast` and raises `TypeError` on
+mismatch (catchable).
 
 ```python
 host: str = cfg["host"]                 # cast(str, cfg["host"])
@@ -453,9 +455,9 @@ on both sides and don't have to think about it.
 
 | Mechanism | Static check | Runtime check |
 |---|---|---|
-| Auto-coerce (annotated LHS, etc.) | Target type is concrete and unambiguous | `value.type() == typeid(T)`; panic on miss |
-| `typing.cast(T, x)` | `T` must be a concrete type | Same; panic on miss |
-| `isinstance(x, T)` narrowing | `T` concrete; inside the true branch, `x` is `T` (borrow) | `value.type() == typeid(T)`; non-panicking false branch |
+| Auto-coerce (annotated LHS, etc.) | Target type is concrete and unambiguous | `value.type() == typeid(T)`; raises `TypeError` (catchable) on miss |
+| `typing.cast(T, x)` | `T` must be a concrete type | Same; raises `TypeError` on miss |
+| `isinstance(x, T)` narrowing | `T` concrete; inside the true branch, `x` is `T` (borrow) | `value.type() == typeid(T)`; false branch never raises |
 
 ### `typing.cast(T, x)` semantics
 
@@ -464,19 +466,26 @@ Codegen:
 ```cpp
 template <typename T>
 T any_cast_or_panic(const Any& a) {
-    if (!a.value.has_value()) tpy::panic("use of empty/moved-from Any");
-    if (a.value.type() != typeid(T))
-        tpy::panic("Any: expected {}, got {}", typeid(T).name(), a.value.type().name());
+    if (a.empty()) tpy_panic("use of empty/moved-from Any");
+    if (a.value.type() != typeid(T)) {
+        raise<TypeError>("Any holds {}, cannot cast to {}",
+                         demangle_type_name(a.value.type().name()),
+                         demangle_type_name(typeid(T).name()));
+    }
     return std::any_cast<T>(a.value);  // copy
 }
 
 template <typename T>
 T any_cast_or_panic(Any&& a) {
-    if (!a.value.has_value()) tpy::panic(...);
-    if (a.value.type() != typeid(T)) tpy::panic(...);
+    if (a.empty()) tpy_panic(...);
+    if (a.value.type() != typeid(T)) raise<TypeError>(...);
     return std::any_cast<T>(std::move(a.value));  // move-out
 }
 ```
+
+The empty/moved-from check stays as `tpy_panic` (use-after-move is an
+internal lifetime invariant, not a Python exception). The type-mismatch
+check raises `TypeError` -- catchable by user code.
 
 The const-ref overload **copies** the contents -- auto-coerce paths and
 explicit `typing.cast` always emit this form in v1. The rvalue overload
@@ -616,11 +625,12 @@ Standard generic instantiation. Element / value type is `tpy::Any`.
 ### `set[Any]`, `dict[Any, V]`
 
 Allowed. Hash is required for keys. Strategy: at insert time, check
-`value.ops->hash != nullptr`; if null, panic with:
+`value.ops->hash != nullptr`; if null, raise `TypeError` (catchable):
 
-> `panic: cannot use Any holding {type} as hash key -- {type} is not Hashable`
+> `unhashable type: '{demangled-type}'`
 
-Empty `Any` is not a valid key (panic).
+Empty `Any` panics on insert (`use of empty/moved-from Any`) -- internal
+lifetime invariant, not a Python exception.
 
 ### `Any` field in user records
 
@@ -636,7 +646,8 @@ Fields work normally. Records containing `Any` remain copyable (since
 ### `Any` and protocols
 
 `Any` automatically satisfies `Hashable + Eq` at the type system level
-(operations may runtime-panic, but the compiler sees them as available).
+(`hash` may raise `TypeError` at runtime if the contained type isn't
+Hashable; `==` returns False rather than raising on mismatch).
 
 `Any` does **not** satisfy `Iterable[T]`, `Sized`, etc. -- those require
 narrowing.
@@ -659,7 +670,7 @@ phrasing is a future cosmetic refinement and is not blocking.
 | `len(any_var)` | `No matching overload for len(Any)` |
 | `any_var + x` (any binop) | `Invalid operand types for '+': Any and {other}` |
 | `any_var is x` for `x != None` | `'is' / 'is not' can only compare Optional/Ptr/union types with None, got Any and {other}` |
-| `cast(T, x)` runtime mismatch | `panic: Any: expected {T}, got {actual}` |
+| `cast(T, x)` runtime mismatch | `TypeError: Any holds {actual}, cannot cast to {T}` (catchable) |
 | Storing a non-copyable contents type in Any (`@nocopy`, `__del__`, also through `Own[T]`) | `cannot store move-only type 'T' in Any (v1 supports copyable contents only)` |
 | `Any \| None`, `Optional[Any]` | `Any \| None is redundant -- Any already accepts None` |
 | `Any \| T` for other T | `Any \| T is redundant -- Any is the universal supertype` |

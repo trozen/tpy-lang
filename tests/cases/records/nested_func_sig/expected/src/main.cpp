@@ -21,7 +21,7 @@ EnumUtil<::tpyapp::main::Container::Kind>::members = {
     switch (__v) {
         case 1: return ::tpyapp::main::Container::Kind::A;
         case 2: return ::tpyapp::main::Container::Kind::B;
-        default: tpy_panic("invalid value for enum 'Container.Kind'");
+        default: raise<ValueError>("{} is not a valid Container.Kind", __v);
     }
 }
 
@@ -33,7 +33,7 @@ std::optional<::tpyapp::main::Container::Kind> EnumUtil<::tpyapp::main::Containe
 
 ::tpyapp::main::Container::Kind EnumUtil<::tpyapp::main::Container::Kind>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
-    if (!__result.has_value()) tpy_panic("invalid name for enum 'Container.Kind'");
+    if (!__result.has_value()) raise<KeyError>("{}", __name);
     return *__result;
 }
 

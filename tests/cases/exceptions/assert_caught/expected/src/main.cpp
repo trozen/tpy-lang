@@ -9,7 +9,7 @@ namespace tpyapp::main {
 // def positive(n: int) -> int:
 ::tpy::BigInt positive(const ::tpy::BigInt& n) {
     // assert n > 0, "must be positive"
-    if (!((n > 0))) ::tpy::assert_failed("must be positive");
+    if (!((n > 0))) ::tpy::raise_assertion_error("must be positive");
     // return n
     return n;
 }
@@ -34,7 +34,7 @@ void main() {
             // x = 0
             int32_t x = 0;
             // assert x, "x is falsy"
-            if (!(x)) ::tpy::assert_failed("x is falsy");
+            if (!(x)) ::tpy::raise_assertion_error("x is falsy");
         } catch (const ::tpy::AssertionError& e) {
             // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";

@@ -14,7 +14,7 @@ Handle extract() {
     // h.value = Int32(88)
     h->value = 88;
     // assert h is not None
-    if (!((h != nullptr))) ::tpy::assert_failed();
+    if (!((h != nullptr))) ::tpy::raise_assertion_error();
     // return h  # tpyc: ok
     return std::move((*h));
 }

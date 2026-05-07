@@ -11,6 +11,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <initializer_list>
 #include <ranges>
 #include <span>
@@ -47,7 +48,7 @@ std::size_t normalize_index(const Container& c, int32_t index, const char* conte
         i += static_cast<std::ptrdiff_t>(c.size());
     }
     if (i < 0 || static_cast<std::size_t>(i) >= c.size()) {
-        throw IndexError(context);
+        raise<IndexError>(context);
     }
     return static_cast<std::size_t>(i);
 }
@@ -60,7 +61,7 @@ std::size_t normalize_index(const Container& c, int32_t index, const char* conte
 template <typename T>
 T pop_back(std::vector<T>& v) {
     if (v.empty()) {
-        throw IndexError("pop from empty list");
+        raise<IndexError>("pop from empty list");
     }
     T result = std::move(v.back());
     v.pop_back();
@@ -176,7 +177,7 @@ struct SteppedSliceBounds {
 inline SteppedSliceBounds resolve_stepped_bounds(
         int32_t raw_start, int32_t raw_stop, int32_t raw_step,
         std::ptrdiff_t len) {
-    if (raw_step == 0) tpy_panic("slice step cannot be zero");
+    if (raw_step == 0) raise<ValueError>("slice step cannot be zero");
     auto step = static_cast<std::ptrdiff_t>(raw_step);
     std::ptrdiff_t start, stop;
     if (raw_start == SLICE_NONE) {
@@ -282,8 +283,8 @@ void list_set_stepped_slice(std::vector<T>& vec, int32_t start, int32_t stop, in
     // Collect values first to validate length before mutating vec
     std::vector<T> vals(std::ranges::begin(values), std::ranges::end(values));
     if (vals.size() != indices.size()) {
-        tpy_panic("attempt to assign sequence of size " + std::to_string(vals.size())
-                  + " to extended slice of size " + std::to_string(indices.size()));
+        raise<ValueError>("attempt to assign sequence of size {} to extended slice of size {}",
+                          vals.size(), indices.size());
     }
     // Self-aliasing guard: vals is already a copy, so safe to assign
     for (std::size_t idx = 0; idx < indices.size(); ++idx) {
@@ -333,7 +334,7 @@ template<typename T>
 void list_remove(std::vector<T>& v, const T& value) {
     auto it = std::find(v.begin(), v.end(), value);
     if (it == v.end()) {
-        tpy_panic("list.remove(x): x not in list");
+        raise<ValueError>("list.remove(x): x not in list");
     }
     v.erase(it);
 }
@@ -392,7 +393,7 @@ template<typename T>
 int32_t list_index(const std::vector<T>& v, const T& value) {
     auto it = std::find(v.begin(), v.end(), value);
     if (it == v.end()) {
-        tpy_panic("list.index(x): x not in list");
+        raise<ValueError>("list.index(x): x not in list");
     }
     return static_cast<int32_t>(it - v.begin());
 }

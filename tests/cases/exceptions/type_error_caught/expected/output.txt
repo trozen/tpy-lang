@@ -1,0 +1,2 @@
+caught: ord() expected a character, but string of length 2 found
+caught: ord() expected a character, but string of length 0 found

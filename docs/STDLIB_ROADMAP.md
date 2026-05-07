@@ -120,7 +120,7 @@ Examples of the policy in action:
 
 | Module | Priority | Status | % | Approach | Blockers / Notes |
 |---|---|---|---|---|---|
-| [`builtins`](#builtins) | P0 | Partial | ~70% | mixed | Implicit import. Core types + most common functions + key exceptions present. Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, remaining specialized exceptions (`TypeError`, `OverflowError`, `ZeroDivisionError`, etc. -- currently panic), `callable`, `id`, `type(x)` runtime. `IndexError` / `KeyError` shipped catchable; D16 dyn-attrs (`getattr`/`setattr`/`delattr`/`hasattr` for both literal and runtime names) fully shipped. See [builtins](#builtins) for per-item status |
+| [`builtins`](#builtins) | P0 | Partial | ~75% | mixed | Implicit import. Core types + most common functions + most exception types present and catchable (`Index/Key/Value/Type/Attribute/Assertion/OS/FileNotFound/ZeroDivision/Overflow/Arithmetic/Runtime/NotImplemented/Memory/StopIteration`); fixed-int arithmetic overflow stays panic by design (future policy switch). Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, `callable`, `id`, `type(x)` runtime. D16 dyn-attrs (`getattr`/`setattr`/`delattr`/`hasattr` for both literal and runtime names) fully shipped. See [builtins](#builtins) for per-item status |
 | [`math`](#math) | P0 | Done | ~99% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for fsum/sumprod/dist; `prod` has Int32 / int (BigInt) / float overloads). Remaining gap: tuple as iterable (blocked on tuple-iteration bundle) |
 | [`time`](#time) | P0 | Partial | ~50% | mixed | Thin clock/sleep syscalls. `time`, `sleep`, `perf_counter`, `monotonic`, `time_ns`, `perf_counter_ns`, `monotonic_ns`, `process_time` all done. Missing `struct_time`/`strftime`/`gmtime`/`localtime`/timezone constants |
 | [`sys`](#sys) | P0 | Stub | ~15% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr` done; needs `stdin`/`exit`/`path`/`version_info` |
@@ -300,33 +300,37 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 
 **Exceptions**
 
-Exception hierarchy support. Many built-in exception types are raised
-implicitly by runtime checks (bounds, overflow, etc.) but don't yet exist
-as user-catchable TPy types -- the current behavior is a panic. Moving
-each to a proper catchable exception is tracked per-site.
+Exception hierarchy support. Most built-in exception types raised by
+runtime checks are now user-catchable TPy types. Sites that remain panics
+are deliberate (internal invariants, OOM, fixed-int arithmetic overflow);
+see `docs/EXCEPTION_DESIGN.md` for the per-type migration table and the
+helper-API surface.
 
 | Item | Status | Notes |
 |---|---|---|
 | `BaseException`, `Exception` | Done | Two-tier exception model |
-| `ValueError` | Partial | Type defined and catchable; raised by `math.factorial`, `math.isqrt`, user code. Still panicked (not thrown) by `list.remove`/`list.index` on missing item, `str.index`/`bytes.index` on missing substring, and a few other container/string ops |
-| `OSError`, `FileNotFoundError` | Done | |
+| `ValueError` | Done | Catchable. Migrated runtime sites: `list.remove`/`list.index`, `bytearray.remove`, `bytes` value/`negative count`, `str.split`/`bytes.split` empty separator, `str.index`/`str.rindex` substring not found, `float()`/`int()`/`Int*()` parse errors, `slice` step==0, extended-slice assignment size mismatch, `range()` arg-3 zero, `time.sleep` negative, fixed-int + BigInt negative shift, `int(float('nan'))`, `open()` invalid mode, `from_range` size mismatch, codegen-side `__len__()` negative + enum `from_value` invalid value |
+| `OSError`, `FileNotFoundError` | Done | `OSError` also raised by `read()`/`write()`/`flush()`/`readline()`/`readlines()` when the file is opened in the wrong mode. CPython's `io.UnsupportedOperation` (diamond OSError+ValueError) is not reproducible since TPy MI doesn't support diamonds; one-sided divergence (`except OSError` works, `except ValueError` doesn't) |
 | `StopIteration` | Done | |
 | `IndexError` | Done | Catchable. List/array/span/string/bytes/bytearray out-of-range indexing, list/bytearray `pop` empty all throw `IndexError`. Messages match CPython ("list index out of range" etc.) |
-| `KeyError` | Partial | Catchable. Dict `__getitem__` / `__delitem__` / `pop`-no-default missing key, set `remove`-missing / `pop`-empty, TypedDict `total=False` field access on absent value all throw `KeyError`. CPython's `str(KeyError(k))` reprs the key (`'missing'`); TPy currently returns the catchall message verbatim -- alignment is a v2 follow-up |
-| `TypeError` | Missing | Static type errors are compile-time, but runtime `TypeError` has some use cases |
+| `KeyError` | Partial | Catchable. Dict `__getitem__` / `__delitem__` / `pop`-no-default missing key, set `remove`-missing / `pop`-empty, TypedDict `total=False` field access on absent value, enum `from_name` (`Color["unknown"]`) all throw `KeyError`. CPython's `str(KeyError(k))` reprs the key (`'missing'`); TPy currently returns the catchall message verbatim -- alignment is a v2 follow-up |
+| `TypeError` | Done | Catchable. `ord(s)`/`Char(s)` length-1 violation, `cast(T, any_val)` typeid mismatch (with demangled type names), `hash(any_val)` on an unhashable contained type. User code can `raise TypeError(...)` anywhere |
 | `AttributeError` | Done | Catchable throw-tier type; raised by user `__getattr__` / `__setattr__` / `__delattr__` bodies. `hasattr` and 3-arg `getattr` wrap the dunder call in try/catch |
-| `OverflowError` | Missing | Fixed-int overflow currently panics |
-| `ZeroDivisionError` | Missing | Div-by-zero currently panics |
+| `ArithmeticError` | Done | Base class of `ZeroDivisionError` and `OverflowError`, matching CPython's hierarchy. `except ArithmeticError` catches either subtype |
+| `ZeroDivisionError` | Done | Catchable. Float `/`/`//`/`%`, fixed-int `//`/`%`, BigInt `//`/`%`, `divmod`. Messages match CPython per operation (`float division by zero`, `integer modulo by zero`, etc.) |
+| `OverflowError` | Done (catchable) + fixed-int overflow stays panic | Catchable: `int(float('inf'))`, BigInt `2 ** huge_value`, user `raise OverflowError`. Fixed-int arithmetic overflow (Int8..Int64, UInt8..UInt64 add/sub/mul/neg/shift/pow/cast/divmod/round) routes through `raise_fixedint_overflow` -- currently panics, future build/module/function-scope policy switch (`action=none/panic/throw`) plugs in without rewriting call sites |
 | `AssertionError` | Done | `assert` failure throws `AssertionError(msg)`; catchable via `try/except` |
-| `ArithmeticError`, `FloatingPointError` | Missing | |
-| `RuntimeError`, `NotImplementedError`, `RecursionError` | Missing | |
-| `LookupError` | Missing | Base of IndexError/KeyError |
-| `NameError`, `UnboundLocalError` | Missing | Static scope; would only fire for compile-time-detected cases |
-| `ImportError`, `ModuleNotFoundError` | Missing | Import failures are compile-time today |
-| `UnicodeError` and subtypes | Missing | |
-| `SystemExit`, `KeyboardInterrupt`, `GeneratorExit` | Missing | Control-flow exceptions; need runtime support |
-| `MemoryError`, `SystemError` | Missing | |
-| `EOFError`, `PermissionError`, `TimeoutError` | Missing | I/O error hierarchy |
+| `RuntimeError` | Done (class-only) | Class exposed for `raise RuntimeError(...)` in user code; no runtime panic sites migrated |
+| `NotImplementedError` | Done (class-only) | Class exposed for `raise NotImplementedError(...)` |
+| `MemoryError` | Done (class-only) | Class exposed; the BigInt OOM panic deliberately stays panic (catching MemoryError is fragile) |
+| `FloatingPointError`, `RecursionError` | Missing | Niche; not currently raised by TPy runtime |
+| `LookupError` | Missing | Base of IndexError/KeyError; not yet exposed |
+| `NameError`, `UnboundLocalError` | Not applicable | Compile-time concerns |
+| `ImportError`, `ModuleNotFoundError` | Not applicable | Import failures are compile-time today |
+| `UnicodeError` and subtypes | Missing | TPy has few encoding-panic sites today |
+| `SystemExit`, `KeyboardInterrupt`, `GeneratorExit` | Missing | Control-flow exceptions; need signal/runtime support |
+| `SystemError` | Missing | Internal-interpreter notion not directly applicable |
+| `EOFError`, `PermissionError`, `TimeoutError` | Missing | I/O error hierarchy follow-ups |
 
 **Sentinels**
 

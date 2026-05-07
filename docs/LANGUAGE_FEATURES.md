@@ -312,8 +312,8 @@ print(UInt8.trunc(2**100 + 42))  # 42 (low 8 bits)
 | `float + int` | `float` | Float is wider than int |
 | `int + float` | `float` | Float is wider than int |
 | `float + Int32` | `float` | Float is wider than Int32 |
-| `int / int` | `float` | True division always returns float (panics on zero divisor) |
-| `Int32 / Int32` | `float` | Fixed-width true division: operands cast to double (panics on zero divisor) |
+| `int / int` | `float` | True division always returns float (raises `ZeroDivisionError` on zero divisor) |
+| `Int32 / Int32` | `float` | Fixed-width true division: operands cast to double (raises `ZeroDivisionError` on zero divisor) |
 
 For augmented assignment (`+=`, `-=`, `*=`, `/=`, etc.), behavior depends on whether the variable has an explicit type annotation:
 
@@ -3042,7 +3042,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   `hash`, `x is None` / `x is not None`. `==` is typeid-checked: same-typeid
   contents compare via the underlying `==`; mismatched typeid returns False
   (`Any(1) == Any(1.0)` is False -- documented divergence from CPython).
-  `hash` panics if the contained type isn't Hashable.
+  `hash` raises `TypeError("unhashable type: '<demangled>'")` (catchable) if the contained type isn't Hashable.
 - **`isinstance(x, T)` narrowing**: non-consuming borrow into the cell.
   Inside the true branch the variable is a `const T&` aliasing the contents;
   the outer `Any` survives. Single concrete `T` only (no `Optional`, no
@@ -3051,9 +3051,10 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   single-typed extraction). Works on both function locals and module
   globals. Cast is exact-typeid only -- no inheritance walk in v1.
 - **`typing.cast(T, x)`**: runtime checked extraction. Concrete `T`; typeid
-  mismatch panics with "Any: expected ..., got ...". For non-`Any` sources,
-  `cast` is a static no-op (matches CPython). `cast(Any, x)` rejected at
-  compile time (including aliased imports like `from typing import Any as A`).
+  mismatch raises `TypeError("Any holds <actual>, cannot cast to <expected>")`
+  (catchable; type names demangled). For non-`Any` sources, `cast` is a static
+  no-op (matches CPython). `cast(Any, x)` rejected at compile time (including
+  aliased imports like `from typing import Any as A`).
 - **Auto-coerce out**: `n: int = any_var` and other annotated-target sites
   (function arg, return, container insert) emit the same runtime check as
   `cast(T, x)`. Union / Optional / generic-type-param targets are rejected
@@ -3071,7 +3072,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   the reject list once broader `@noalloc` enforcement lands -- `std::any`
   may heap-allocate for non-trivial contents.
 - **`set[Any]` / `dict[Any, V]`**: allowed; runtime hash via the cell's
-  hash slot. Inserting an Any holding a non-Hashable value panics.
+  hash slot. Inserting an Any holding a non-Hashable value raises `TypeError("unhashable type: '<demangled>'")` (catchable).
 
 ---
 
@@ -4315,7 +4316,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `__iadd__`, `__isub__`, `__imul__`, etc. → in-place mutation (`+=`, `-=`, `*=`, etc.). Must return `self` (like Python). Generates C++ `T&` return with `return *this`. Params are `const` (rvalue-safe).
 - **Working**: `__contains__` → `in` / `not in` operator (user-defined membership test)
 - **Working**: `__hash__` → `std::hash<T>` specialization (enables use as dict key, in sets)
-- **Working**: `__len__` → `__len__()` method (used by `len()`). Auto-generates `size_t size() const` for STL compatibility (with negative value panic). Warns if user-defined `size` field/method shadows auto-generated `size()`.
+- **Working**: `__len__` → `__len__()` method (used by `len()`). Auto-generates `size_t size() const` for STL compatibility; raises `ValueError("__len__() should return >= 0")` -- catchable -- on a negative return value. Warns if user-defined `size` field/method shadows auto-generated `size()`.
 - **Working**: `__getitem__` → `operator[]` (for `Sequence` conformance)
 - **Working**: `__del__` -- maps to C++ destructor `~ClassName()`. Parent destructors are called automatically after child body (no `super().__del__()` needed). If `super().__del__()` is written (Python style), it must be the last statement and is silently dropped in codegen. A warning is emitted when parent has `__del__` but child omits the call, since C++ always calls parent dtors automatically while Python requires an explicit call. Non-virtual; virtual dispatch is a separate feature. Classes with `__del__` get a hidden `__tpy_owned_` drop flag and custom move constructor/assignment to prevent double-drop after move -- the moved-from object's destructor skips its body.
 - **Working**: `__str__` -> `str(obj)`, `print(obj)`, `f"{obj}"` (via `Stringable` protocol / `tpy::__str__`). `Stringable` is also satisfied by any type with only `__repr__` -- mirrors Python's default `object.__str__` -> `__repr__` fallback; the C++ runtime picks whichever dunder is defined.
@@ -4352,7 +4353,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: Negative indexing for list, Array, Span: `items[-1]` (last element)
 - **Working**: `hash(x)` → `UInt64` hash value. Works on all `Hashable` types (str, int, fixed ints, float, bool, Char, Enum). Uses `tpy::__hash__()` free function dispatch.
 - **Working**: `abs()`, `min()`, `max()`, `pow()`, `round()`, `divmod()` for numeric types
-- **Working**: `ord(c)` accepts `Char` (zero-cost) and `str` (runtime length-1 check, panics like Python's `TypeError`)
+- **Working**: `ord(c)` accepts `Char` (zero-cost) and `str` (runtime length-1 check; raises `TypeError` -- catchable -- with CPython-aligned `expected a character, but string of length N found`)
   - `round(x)` uses banker's rounding (round half to even, matching Python)
   - `round[T](x)` is generic: return type defaults to `default_int`, can be inferred from context
   - `divmod(a, b)` returns `tuple[T, T]` with Python floor-division semantics
@@ -4365,13 +4366,13 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `isinstance(x, Protocol)` → compile-time protocol check on protocol-typed template params (`if constexpr (Concept<T_x>)`)
 - **Open**: `type()` → compile-time type info
 - **Working**: `list()` → empty list constructor (requires type annotation), `list(iterable)` from Iterable containers, `list(range(...))`, `list(iterator)` from Iterator
-- **Working**: `int(float)` → truncates toward zero, panics on NaN/infinity
+- **Working**: `int(float)` → truncates toward zero; raises `ValueError` on NaN, `OverflowError` on infinity (both catchable; messages match CPython)
 - **Working**: `float(int)`, `float(Int32)` → converts to float
 - **Working**: `str()` → string conversions for scalars, containers, and any type with `__str__` or `__repr__` (see below)
 - **Working**: `int(str)` → string-to-int parsing (via `BigInt::from_str`)
 - **Working**: `iter(x)` → calls `x.__iter__()`, returns `Iterator[T]`
 - **Working**: `make_default[T]()` / `make_default()` → default-constructs `T` (maps to `T{}` in C++). Requires `T: Default`. Type can be explicit or inferred from context. Portable alternative to `T()`.
-- **Working**: `open(path)`, `open(path, mode)` -> `TextIO` or `BinaryIO` file handle. Text modes (`"r"`, `"w"`, `"a"`, `"x"` and variants) return `TextIO` with methods: `read()`, `write()`, `readline()`, `readlines()`, `close()`. Binary modes (`"rb"`, `"wb"`, `"ab"`, `"xb"` and variants) return `BinaryIO` with methods: `read()`, `readline()`, `readlines()`, `write()`, `close()`. Mode dispatch uses `Literal` string overloads -- binary vs text is resolved at compile time. Context manager (`with open(...) as f:`). Variable (non-literal) mode falls back to `TextIO`. Raises `FileNotFoundError` (catchable via `try/except`) when the file cannot be opened (all I/O errors currently map to `FileNotFoundError`; `PermissionError` distinction not yet implemented). Panics on unsupported mode strings. `readline()`/`readlines()` preserve trailing newlines (Python compat). TPy-specific alternatives: `open_text(path)` / `open_text(path, mode)` -> `TextIO` and `open_binary(path)` / `open_binary(path, mode)` -> `BinaryIO` -- explicit, non-overloaded functions that don't rely on Literal dispatch (`from tpy import open_text, open_binary`).
+- **Working**: `open(path)`, `open(path, mode)` -> `TextIO` or `BinaryIO` file handle. Text modes (`"r"`, `"w"`, `"a"`, `"x"` and variants) return `TextIO` with methods: `read()`, `write()`, `readline()`, `readlines()`, `close()`. Binary modes (`"rb"`, `"wb"`, `"ab"`, `"xb"` and variants) return `BinaryIO` with methods: `read()`, `readline()`, `readlines()`, `write()`, `close()`. Mode dispatch uses `Literal` string overloads -- binary vs text is resolved at compile time. Context manager (`with open(...) as f:`). Variable (non-literal) mode falls back to `TextIO`. Raises `FileNotFoundError` (catchable) when the file cannot be opened (all I/O errors currently map to `FileNotFoundError`; `PermissionError` distinction not yet implemented), `ValueError` (catchable) on an unsupported mode string, and `OSError` (catchable) when an operation does not match the file's mode (e.g. `f.read()` on a write-only handle; CPython raises `io.UnsupportedOperation`, which is `OSError + ValueError` via diamond MI -- TPy routes to `OSError` alone since diamond inheritance is not supported). `readline()`/`readlines()` preserve trailing newlines (Python compat). TPy-specific alternatives: `open_text(path)` / `open_text(path, mode)` -> `TextIO` and `open_binary(path)` / `open_binary(path, mode)` -> `BinaryIO` -- explicit, non-overloaded functions that don't rely on Literal dispatch (`from tpy import open_text, open_binary`).
 - **Working**: `enumerate(iterable)`, `enumerate(iterable, start)` → `Iterator[tuple[Int32, T]]`. Supports lvalue and rvalue iterables (owning iterator prevents dangling).
 - **Working**: `zip(iter1, iter2, ...)` → `Iterator[tuple[T1, T2, ...]]`. Overloads for 2-5 iterables. Stops at shortest. Supports lvalue and rvalue iterables. Combinator composition: `zip(map(...), map(...))` works -- owning variant stores iterators by value to prevent dangling references.
 - **Working**: `map(fn, iterable, ...)` → `Iterator[U]`. Single and multi-iterable (up to 5). Accepts named functions, lambdas, generic functions, and `Callable`-typed variables. Lazy evaluation. Supports lvalue and rvalue iterables. Reference preservation: when `fn` returns by reference, `map` yields `val_or_ref<T>` so mutations propagate to the original container. Mixed `Ref`/`Own` params forwarded correctly via `fn_param_t` traits. Combinator composition: `enumerate(map(...))`, `filter(map(...))`, `map(filter(...))` work.
@@ -4424,14 +4425,14 @@ auto z = tpy::construct<std::vector<int32_t>>(Counter(5));
 x = int(3.14)     # → 3 (truncates toward zero)
 y = int(-2.7)     # → -2 (truncates toward zero)
 z = int(1e100)    # → large BigInt (works correctly)
-# int(float("nan"))  # panics: cannot convert float NaN to integer
-# int(float("inf"))  # panics: cannot convert float infinity to integer
+# int(float("nan"))  # raises ValueError: cannot convert float NaN to integer
+# int(float("inf"))  # raises OverflowError: cannot convert float infinity to integer
 
 # From string
 a = int("42")     # → 42
 b = int("-123")   # → -123
 c = int("  99  ") # → 99 (whitespace trimmed)
-# int("abc")      # panics: invalid literal for int()
+# int("abc")      # raises ValueError: invalid literal for int() with base 10: 'abc'
 ```
 
 **`float()` (Working)**:
@@ -5294,7 +5295,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - `@error_return(E)` requires E to be a `ReturnException` type: `class MyError(Exception, ReturnException): pass`
   - `ReturnException` is a marker protocol that splits exception types into return (zero-cost) vs throw (C++ exceptions) categories
   - `StopIteration` is a built-in `ReturnException` type; user-defined types opt in via `ReturnException` marker
-  - `BaseException`/`Exception`/`ValueError`/`OSError`/`FileNotFoundError`/`AttributeError`/`AssertionError` are throw-tier; `StopIteration` is `ReturnException` (return-tier, used via `std::expected<T, E>`). All defined as `@native` classes in `lib/tpy/builtins/`, mapping to `::tpy::` runtime structs (inherit from `std::exception`)
+  - `BaseException`/`Exception`/`ValueError`/`OSError`/`FileNotFoundError`/`AttributeError`/`AssertionError`/`IndexError`/`KeyError`/`TypeError`/`NotImplementedError`/`ArithmeticError`/`ZeroDivisionError`/`OverflowError`/`RuntimeError`/`MemoryError` are throw-tier; `StopIteration` is `ReturnException` (return-tier, used via `std::expected<T, E>`). All defined as `@native` classes in `lib/tpy/_builtins/_exceptions.py`, mapping to `::tpy::` runtime structs (inherit from `std::exception`). `ArithmeticError` is the parent of `ZeroDivisionError` and `OverflowError`, matching CPython's hierarchy
   - Decorator on functions: `raise E` compiles to `return std::unexpected(E{})`; `raise E(args)` passes constructor arguments
   - Callers must use `try/except E` or be `@error_return(E)` themselves (auto-propagation)
   - `try/except/else` supported; `except E as e` binds the error value for field access

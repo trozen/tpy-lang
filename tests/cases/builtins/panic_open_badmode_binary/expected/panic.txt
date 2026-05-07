@@ -1,1 +1,1 @@
-TurboPython panic: open(): unsupported binary mode 'zb'
+TurboPython panic: uncaught tpy::ValueError: invalid mode: 'zb'

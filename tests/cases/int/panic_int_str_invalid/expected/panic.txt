@@ -1,1 +1,1 @@
-TurboPython panic: invalid literal for int() with base 10: 'abc'
+TurboPython panic: uncaught tpy::ValueError: invalid literal for int() with base 10: 'abc'

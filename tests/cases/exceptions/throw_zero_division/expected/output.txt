@@ -1,0 +1,2 @@
+5
+caught: custom: cannot divide by zero

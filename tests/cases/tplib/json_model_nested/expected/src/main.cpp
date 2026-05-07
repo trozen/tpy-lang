@@ -24,7 +24,7 @@ EnumUtil<::tpyapp::main::Role>::members = {
         case 0: return ::tpyapp::main::Role::Admin;
         case 1: return ::tpyapp::main::Role::User;
         case 2: return ::tpyapp::main::Role::Guest;
-        default: tpy_panic("invalid value for enum 'Role'");
+        default: raise<ValueError>("{} is not a valid Role", __v);
     }
 }
 
@@ -37,7 +37,7 @@ std::optional<::tpyapp::main::Role> EnumUtil<::tpyapp::main::Role>::try_parse(st
 
 ::tpyapp::main::Role EnumUtil<::tpyapp::main::Role>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
-    if (!__result.has_value()) tpy_panic("invalid name for enum 'Role'");
+    if (!__result.has_value()) raise<KeyError>("{}", __name);
     return *__result;
 }
 

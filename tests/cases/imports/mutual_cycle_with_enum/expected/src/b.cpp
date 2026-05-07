@@ -22,7 +22,7 @@ EnumUtil<::tpyapp::b::Color>::members = {
     switch (__v) {
         case 1: return ::tpyapp::b::Color::RED;
         case 2: return ::tpyapp::b::Color::BLUE;
-        default: tpy_panic("invalid value for enum 'Color'");
+        default: raise<ValueError>("{} is not a valid Color", __v);
     }
 }
 
@@ -34,7 +34,7 @@ std::optional<::tpyapp::b::Color> EnumUtil<::tpyapp::b::Color>::try_parse(std::s
 
 ::tpyapp::b::Color EnumUtil<::tpyapp::b::Color>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
-    if (!__result.has_value()) tpy_panic("invalid name for enum 'Color'");
+    if (!__result.has_value()) raise<KeyError>("{}", __name);
     return *__result;
 }
 

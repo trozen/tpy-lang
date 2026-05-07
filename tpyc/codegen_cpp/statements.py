@@ -2931,8 +2931,7 @@ class StatementGenerator:
             step_lit = self._extract_int_literal(range_call.args[2])
             out.write(f"{indent}{step_raw} = static_cast<{cpp_elem}>({gen_args[2]});\n")
             if step_lit is None:
-                out.write(f'{indent}if ({step} == 0) '
-                          f'::tpy::tpy_panic("range() arg 3 must not be zero");\n')
+                out.write(f'{indent}::tpy::range_check_step_nonzero({step});\n')
             if is_big_int_type(elem_type):
                 pass  # BigInt uses += directly
             else:
@@ -3094,13 +3093,13 @@ class StatementGenerator:
     def _gen_assert_throw(self, out: TextIO, stmt: TpyAssert, indent: str) -> str:
         """Generate the assertion-failure call for an assert statement."""
         if stmt.message is None:
-            return '::tpy::assert_failed()'
+            return '::tpy::raise_assertion_error()'
         if isinstance(stmt.message, TpyStrLiteral):
             msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
-            return f'::tpy::assert_failed("{msg}")'
+            return f'::tpy::raise_assertion_error("{msg}")'
         msg_expr = self.expressions.gen_expr(stmt.message)
         self.ctx.temps.flush(out, indent)
-        return f'::tpy::assert_failed({msg_expr})'
+        return f'::tpy::raise_assertion_error({msg_expr})'
 
     def _gen_assert(self, out: TextIO, stmt: TpyAssert, indent: str) -> None:
         """Generate an assert statement with optional isinstance union narrowing."""
@@ -4028,7 +4027,7 @@ class StatementGenerator:
             step_temp = f"__step_{n}"
             out.write(f"{indent}{cpp_elem} {step_temp} = {step_cpp};\n")
             step_cpp = step_temp
-            out.write(f'{indent}if ({step_cpp} == 0) ::tpy::tpy_panic("range() arg 3 must not be zero");\n')
+            out.write(f'{indent}::tpy::range_check_step_nonzero({step_cpp});\n')
             self._gen_range_overflow_check(out, indent, start_expr, stop_expr, step_cpp, elem_type)
             out.write(f"{indent}for ({var_decl} = {start_expr}; "
                       f"{step_cpp} > 0 ? {counter} < {stop_expr} : {counter} > {stop_expr}; "

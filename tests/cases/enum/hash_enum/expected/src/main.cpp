@@ -24,7 +24,7 @@ EnumUtil<::tpyapp::main::Color>::members = {
         case 0: return ::tpyapp::main::Color::Red;
         case 1: return ::tpyapp::main::Color::Green;
         case 2: return ::tpyapp::main::Color::Blue;
-        default: tpy_panic("invalid value for enum 'Color'");
+        default: raise<ValueError>("{} is not a valid Color", __v);
     }
 }
 
@@ -37,7 +37,7 @@ std::optional<::tpyapp::main::Color> EnumUtil<::tpyapp::main::Color>::try_parse(
 
 ::tpyapp::main::Color EnumUtil<::tpyapp::main::Color>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
-    if (!__result.has_value()) tpy_panic("invalid name for enum 'Color'");
+    if (!__result.has_value()) raise<KeyError>("{}", __name);
     return *__result;
 }
 
@@ -59,7 +59,7 @@ EnumUtil<::tpyapp::main::Priority>::members = {
     switch (__v) {
         case 1: return ::tpyapp::main::Priority::Low;
         case 2: return ::tpyapp::main::Priority::High;
-        default: tpy_panic("invalid value for enum 'Priority'");
+        default: raise<ValueError>("{} is not a valid Priority", __v);
     }
 }
 
@@ -71,7 +71,7 @@ std::optional<::tpyapp::main::Priority> EnumUtil<::tpyapp::main::Priority>::try_
 
 ::tpyapp::main::Priority EnumUtil<::tpyapp::main::Priority>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
-    if (!__result.has_value()) tpy_panic("invalid name for enum 'Priority'");
+    if (!__result.has_value()) raise<KeyError>("{}", __name);
     return *__result;
 }
 

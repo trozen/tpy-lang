@@ -10,7 +10,7 @@ void __tpy_init() {
     initialized = true;
 
     // assert None
-    ::tpy::assert_failed();
+    ::tpy::raise_assertion_error();
 }
 
 } // namespace tpyapp::main

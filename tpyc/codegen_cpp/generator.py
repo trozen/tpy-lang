@@ -1107,6 +1107,10 @@ class CodeGenerator:
             out.write(f"    switch (__e) {{\n")
             for member_name, _, _ in enum.members:
                 out.write(f"        case {qualified}::{member_name}: return \"{member_name}\";\n")
+            # Internal invariant: TPy enum values are always one of the declared
+            # cases, so the default is unreachable from well-typed code. Stays
+            # panic (not raise<ValueError>) -- the from_value path below already
+            # raises ValueError for user-supplied invalid values.
             out.write(f"        default: tpy_panic(\"invalid enum value\");\n")
             out.write(f"    }}\n")
             out.write(f"}}\n\n")
@@ -1123,7 +1127,7 @@ class CodeGenerator:
             out.write(f"    switch (__v) {{\n")
             for member_name, value, _ in enum.members:
                 out.write(f"        case {value}: return {qualified}::{member_name};\n")
-            out.write(f"        default: tpy_panic(\"invalid value for enum '{enum.name}'\");\n")
+            out.write(f"        default: raise<ValueError>(\"{{}} is not a valid {enum.name}\", __v);\n")
             out.write(f"    }}\n")
             out.write(f"}}\n\n")
 
@@ -1141,7 +1145,7 @@ class CodeGenerator:
             # from_name() delegates to try_parse()
             out.write(f"{qualified} EnumUtil<{qualified}>::from_name(std::string_view __name) {{\n")
             out.write(f"    auto __result = try_parse(__name);\n")
-            out.write(f"    if (!__result.has_value()) tpy_panic(\"invalid name for enum '{enum.name}'\");\n")
+            out.write(f"    if (!__result.has_value()) raise<KeyError>(\"{{}}\", __name);\n")
             out.write(f"    return *__result;\n")
             out.write(f"}}\n\n")
 

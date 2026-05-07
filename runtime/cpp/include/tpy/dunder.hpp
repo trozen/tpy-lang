@@ -163,14 +163,14 @@ inline char __getitem__(std::string_view x, int32_t i) {
 template<typename K, typename V, typename KeyArg>
 const V& __getitem__(const ordered_map<K, V>& m, const KeyArg& key) {
     auto it = m.find(K(key));
-    if (it == m.items_end()) throw KeyError("KeyError");
+    if (it == m.items_end()) raise<KeyError>("KeyError");
     return (*it).second;
 }
 
 template<typename K, typename V, typename KeyArg>
 V& __getitem__(ordered_map<K, V>& m, const KeyArg& key) {
     auto it = m.find(K(key));
-    if (it == m.items_end()) throw KeyError("KeyError");
+    if (it == m.items_end()) raise<KeyError>("KeyError");
     return (*it).second;
 }
 
@@ -240,7 +240,7 @@ void __delitem__(std::vector<T>& x, int32_t i) {
 template<typename K, typename V, typename KeyArg>
 void __delitem__(ordered_map<K, V>& m, const KeyArg& key) {
     if (!m.erase(K(key))) {
-        throw KeyError("KeyError");
+        raise<KeyError>("KeyError");
     }
 }
 

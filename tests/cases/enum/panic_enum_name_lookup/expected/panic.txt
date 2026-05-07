@@ -1,1 +1,1 @@
-TurboPython panic: invalid name for enum 'Color'
+TurboPython panic: uncaught tpy::KeyError: Purple

@@ -138,10 +138,10 @@ Container from_range(R&& range) {
         Container result{};
         std::size_t i = 0;
         for (auto&& elem : range) {
-            if (i >= N) { tpy_panic("from_range: range size exceeds array capacity"); }
+            if (i >= N) { raise<ValueError>("from_range: range size exceeds array capacity"); }
             result[i++] = std::move(elem);
         }
-        if (i != N) { tpy_panic("from_range: range size does not match array size"); }
+        if (i != N) { raise<ValueError>("from_range: range size does not match array size"); }
         return result;
     } else if constexpr (requires(Container& c) { c.reserve(std::size_t{}); } &&
                   std::ranges::sized_range<R>) {

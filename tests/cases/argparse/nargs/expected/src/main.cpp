@@ -19,9 +19,9 @@ int32_t main() {
     std::vector<std::string> __tmp_2 = {"--coord", "10", "20", "--tag", "x", "y", "--tag", "z"};
     __tpy_builder_argparse_args_2 a2 = __tpy_builder_argparse_parse_2(__tmp_2);
     // assert a2.coord is not None
-    if (!((a2.coord.has_value()))) ::tpy::assert_failed();
+    if (!((a2.coord.has_value()))) ::tpy::raise_assertion_error();
     // assert a2.tag is not None
-    if (!((a2.tag.has_value()))) ::tpy::assert_failed();
+    if (!((a2.tag.has_value()))) ::tpy::raise_assertion_error();
     // print(a2.coord[0])
     std::cout << ::tpy::__getitem__((*a2.coord), 0) << "\n";
     // print(a2.coord[1])

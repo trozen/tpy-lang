@@ -1,0 +1,14 @@
+caught: list.remove(x): x not in list
+caught: value not found in bytearray
+caught: bytes must be in range(0, 256)
+caught: empty separator
+caught: substring not found
+caught: substring not found
+caught: range() arg 3 must not be zero
+caught: slice step cannot be zero
+caught: invalid mode: 'z'
+caught: could not convert string to float: 'not_a_number'
+caught: invalid literal for int() with base 10: 'not_a_number'
+caught: sleep length must be non-negative
+caught: negative shift count
+caught: negative shift count

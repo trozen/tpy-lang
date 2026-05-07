@@ -67,7 +67,7 @@ ordered_set<T> set_copy(const ordered_set<T>& s) {
 template<typename T>
 void set_remove(ordered_set<T>& s, const T& value) {
     if (!s.erase(value)) {
-        throw KeyError("KeyError");
+        raise<KeyError>("KeyError");
     }
 }
 
@@ -75,7 +75,7 @@ void set_remove(ordered_set<T>& s, const T& value) {
 template<typename T>
 T set_pop(ordered_set<T>& s) {
     if (s.empty()) {
-        throw KeyError("pop from an empty set");
+        raise<KeyError>("pop from an empty set");
     }
     T result = s.front();
     s.pop_front();

@@ -8,9 +8,9 @@ namespace tpyapp::main {
 void main() {
     // # String version is non-empty and starts with a digit.
     // assert len(__version__) > 0
-    if (!((::tpy::__len__(::tpystd::tpy::version::__version__) > 0))) ::tpy::assert_failed();
+    if (!((::tpy::__len__(::tpystd::tpy::version::__version__) > 0))) ::tpy::raise_assertion_error();
     // assert __version__[0] >= "0" and __version__[0] <= "9"
-    if (!(((::tpy::__getitem__(::tpystd::tpy::version::__version__, 0) >= '0') && (::tpy::__getitem__(::tpystd::tpy::version::__version__, 0) <= '9')))) ::tpy::assert_failed();
+    if (!(((::tpy::__getitem__(::tpystd::tpy::version::__version__, 0) >= '0') && (::tpy::__getitem__(::tpystd::tpy::version::__version__, 0) <= '9')))) ::tpy::raise_assertion_error();
     // # Tuple has the CPython-style shape; components are non-negative
     // # and the releaselevel is one of the documented values.
     // major, minor, micro, level, serial = version_info
@@ -21,15 +21,15 @@ void main() {
     std::string_view level = std::get<3>(__tup_1);
     int32_t serial = std::get<4>(__tup_1);
     // assert major >= 0
-    if (!((major >= 0))) ::tpy::assert_failed();
+    if (!((major >= 0))) ::tpy::raise_assertion_error();
     // assert minor >= 0
-    if (!((minor >= 0))) ::tpy::assert_failed();
+    if (!((minor >= 0))) ::tpy::raise_assertion_error();
     // assert micro >= 0
-    if (!((micro >= 0))) ::tpy::assert_failed();
+    if (!((micro >= 0))) ::tpy::raise_assertion_error();
     // assert (level == "alpha" or level == "beta" or level == "candidate"
-    if (!((((((level == "alpha") || (level == "beta")) || (level == "candidate")) || (level == "final")) || (level == "dev")))) ::tpy::assert_failed();
+    if (!((((((level == "alpha") || (level == "beta")) || (level == "candidate")) || (level == "final")) || (level == "dev")))) ::tpy::raise_assertion_error();
     // assert serial >= 0
-    if (!((serial >= 0))) ::tpy::assert_failed();
+    if (!((serial >= 0))) ::tpy::raise_assertion_error();
     // # Exercise is_compiled as a bool. Exact value differs across runtimes
     // # by design; both branches must be type-correct so the mode selector
     // # works for downstream dual-target code.

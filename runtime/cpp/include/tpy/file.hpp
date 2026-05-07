@@ -43,7 +43,7 @@ struct FileFlags {
             return {std::ios::out | std::ios::trunc | std::ios::noreplace, false, true};
         if (mode == "x+" || mode == "x+t" || mode == "xt+")
             return {std::ios::in | std::ios::out | std::ios::trunc | std::ios::noreplace, true, true};
-        tpy_panic(("open(): unsupported mode '" + std::string(mode) + "'").c_str());
+        raise<ValueError>("invalid mode: '{}'", mode);
     }
 
     static FileFlags parse_binary(std::string_view mode) {
@@ -64,7 +64,7 @@ struct FileFlags {
             return {base | std::ios::out | std::ios::trunc | std::ios::noreplace, false, true};
         if (mode == "x+b" || mode == "xb+")
             return {base | std::ios::in | std::ios::out | std::ios::trunc | std::ios::noreplace, true, true};
-        tpy_panic(("open(): unsupported binary mode '" + std::string(mode) + "'").c_str());
+        raise<ValueError>("invalid mode: '{}'", mode);
     }
 };
 
@@ -81,7 +81,7 @@ public:
     TextFile(std::string_view path, FileFlags flags) : path_(path), flags_(flags) {
         fs_.open(path_, flags_.mode);
         if (!fs_.is_open()) {
-            throw ::tpy::FileNotFoundError("open(): cannot open '" + std::string(path) + "'");
+            raise<::tpy::FileNotFoundError>("open(): cannot open '{}'", path);
         }
     }
 
@@ -91,27 +91,27 @@ public:
     TextFile& operator=(const TextFile&) = delete;
 
     std::string read() {
-        if (!flags_.readable) tpy_panic("read(): file not opened for reading");
+        if (!flags_.readable) raise<OSError>("read(): file not opened for reading");
         std::ostringstream ss;
         ss << fs_.rdbuf();
         return ss.str();
     }
 
     int32_t write(std::string_view text) {
-        if (!flags_.writable) tpy_panic("write(): file not opened for writing");
+        if (!flags_.writable) raise<OSError>("write(): file not opened for writing");
         fs_ << text;
         return static_cast<int32_t>(text.size());
     }
 
     void flush() {
-        if (!flags_.writable) tpy_panic("flush(): file not opened for writing");
+        if (!flags_.writable) raise<OSError>("flush(): file not opened for writing");
         fs_.flush();
     }
 
     std::ostream& sink() { return fs_; }
 
     std::string readline() {
-        if (!flags_.readable) tpy_panic("readline(): file not opened for reading");
+        if (!flags_.readable) raise<OSError>("readline(): file not opened for reading");
         std::string line;
         if (!std::getline(fs_, line)) {
             return "";
@@ -125,7 +125,7 @@ public:
     }
 
     std::vector<std::string> readlines() {
-        if (!flags_.readable) tpy_panic("readlines(): file not opened for reading");
+        if (!flags_.readable) raise<OSError>("readlines(): file not opened for reading");
         std::vector<std::string> lines;
         std::string line;
         while (std::getline(fs_, line)) {
@@ -162,7 +162,7 @@ public:
     BinaryFile(std::string_view path, FileFlags flags) : path_(path), flags_(flags) {
         fs_.open(path_, flags_.mode);
         if (!fs_.is_open()) {
-            throw ::tpy::FileNotFoundError("open(): cannot open '" + std::string(path) + "'");
+            raise<::tpy::FileNotFoundError>("open(): cannot open '{}'", path);
         }
     }
 
@@ -172,7 +172,7 @@ public:
     BinaryFile& operator=(const BinaryFile&) = delete;
 
     std::vector<uint8_t> read() {
-        if (!flags_.readable) tpy_panic("read(): file not opened for reading");
+        if (!flags_.readable) raise<OSError>("read(): file not opened for reading");
         return std::vector<uint8_t>(
             std::istreambuf_iterator<char>(fs_),
             std::istreambuf_iterator<char>()
@@ -180,7 +180,7 @@ public:
     }
 
     std::vector<uint8_t> readline() {
-        if (!flags_.readable) tpy_panic("readline(): file not opened for reading");
+        if (!flags_.readable) raise<OSError>("readline(): file not opened for reading");
         std::string line;
         if (!std::getline(fs_, line)) {
             return {};
@@ -193,7 +193,7 @@ public:
     }
 
     std::vector<std::vector<uint8_t>> readlines() {
-        if (!flags_.readable) tpy_panic("readlines(): file not opened for reading");
+        if (!flags_.readable) raise<OSError>("readlines(): file not opened for reading");
         std::vector<std::vector<uint8_t>> lines;
         std::string line;
         while (std::getline(fs_, line)) {
@@ -205,7 +205,7 @@ public:
     }
 
     int32_t write(std::span<const uint8_t> data) {
-        if (!flags_.writable) tpy_panic("write(): file not opened for writing");
+        if (!flags_.writable) raise<OSError>("write(): file not opened for writing");
         fs_.write(reinterpret_cast<const char*>(data.data()),
                   static_cast<std::streamsize>(data.size()));
         return static_cast<int32_t>(data.size());

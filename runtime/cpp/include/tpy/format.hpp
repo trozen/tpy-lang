@@ -209,7 +209,7 @@ inline std::string str_concat(std::string_view a, std::string_view b) {
 
 inline std::vector<std::string> str_split(std::string_view s, std::string_view sep) {
     if (sep.empty()) {
-        tpy_panic("empty separator");
+        raise<ValueError>("empty separator");
     }
     std::vector<std::string> result;
     size_t start = 0;
@@ -227,7 +227,7 @@ inline std::vector<std::string> str_split(std::string_view s, std::string_view s
 
 inline std::vector<std::string> str_split(std::string_view s, std::string_view sep, int32_t maxsplit) {
     if (sep.empty()) {
-        tpy_panic("empty separator");
+        raise<ValueError>("empty separator");
     }
     if (maxsplit < 0) {
         return str_split(s, sep);
@@ -382,7 +382,7 @@ inline int32_t str_rfind(std::string_view s, std::string_view sub) {
 inline int32_t str_index(std::string_view s, std::string_view sub) {
     auto pos = s.find(sub);
     if (pos == std::string_view::npos) {
-        tpy_panic("substring not found");
+        raise<ValueError>("substring not found");
     }
     return static_cast<int32_t>(pos);
 }
@@ -540,7 +540,7 @@ inline std::string_view str_removesuffix(std::string_view s, std::string_view su
 inline int32_t str_rindex(std::string_view s, std::string_view sub) {
     auto pos = s.rfind(sub);
     if (pos == std::string_view::npos) {
-        tpy_panic("substring not found");
+        raise<ValueError>("substring not found");
     }
     return static_cast<int32_t>(pos);
 }
@@ -633,8 +633,7 @@ inline double float_from_str(std::string_view s) {
     while (end > start && std::isspace(static_cast<unsigned char>(s[end - 1]))) --end;
 
     if (start >= end) {
-        std::string msg = "could not convert string to float: '" + std::string(s) + "'";
-        tpy_panic(msg.c_str());
+        raise<ValueError>("could not convert string to float: '{}'", s);
     }
 
     std::string trimmed(s.substr(start, end - start));
@@ -642,8 +641,7 @@ inline double float_from_str(std::string_view s) {
     double result = std::strtod(trimmed.c_str(), &endptr);
 
     if (endptr != trimmed.c_str() + trimmed.size()) {
-        std::string msg = "could not convert string to float: '" + std::string(s) + "'";
-        tpy_panic(msg.c_str());
+        raise<ValueError>("could not convert string to float: '{}'", s);
     }
 
     return result;

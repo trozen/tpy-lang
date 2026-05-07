@@ -33,7 +33,7 @@ EnumUtil<::tpyapp::main::Direction>::members = {
         case 3: return ::tpyapp::main::Direction::West;
         case 4: return ::tpyapp::main::Direction::Up;
         case 5: return ::tpyapp::main::Direction::Down;
-        default: tpy_panic("invalid value for enum 'Direction'");
+        default: raise<ValueError>("{} is not a valid Direction", __v);
     }
 }
 
@@ -71,7 +71,7 @@ std::optional<::tpyapp::main::Direction> EnumUtil<::tpyapp::main::Direction>::tr
 
 ::tpyapp::main::Direction EnumUtil<::tpyapp::main::Direction>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
-    if (!__result.has_value()) tpy_panic("invalid name for enum 'Direction'");
+    if (!__result.has_value()) raise<KeyError>("{}", __name);
     return *__result;
 }
 

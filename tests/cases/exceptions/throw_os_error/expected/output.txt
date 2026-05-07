@@ -1,0 +1,1 @@
+caught: custom: simulated I/O failure

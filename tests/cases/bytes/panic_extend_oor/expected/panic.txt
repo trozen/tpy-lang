@@ -1,1 +1,1 @@
-TurboPython panic: bytes value out of range (0-255)
+TurboPython panic: uncaught tpy::ValueError: bytes must be in range(0, 256)

@@ -1,1 +1,1 @@
-TurboPython panic: ord() expected a string of length 1
+TurboPython panic: uncaught tpy::TypeError: ord() expected a character, but string of length 5 found

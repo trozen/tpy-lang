@@ -6,11 +6,12 @@
  *
  * The checked-arith helpers are marked constexpr so that `Final[IntN]`
  * initializers that reference other Finals can be constant-evaluated. The
- * overflow/divide-by-zero panic branches construct a std::string and call
- * tpy_panic (neither constexpr); this is permitted under C++23 P2448 as long
- * as those branches are not reached during constant evaluation. When they are
- * reached (e.g. `Final[Int32] = -INT32_MIN`), the compiler rejects the call,
- * turning a would-be runtime panic into a compile-time error.
+ * overflow / divide-by-zero error branches route through non-constexpr
+ * helpers (`raise_fixedint_overflow`, `raise<ZeroDivisionError>`,
+ * `raise<ValueError>`); this is permitted under C++23 P2448 as long as those
+ * branches are not reached during constant evaluation. When they are reached
+ * (e.g. `Final[Int32] = -INT32_MIN`), the compiler rejects the call, turning
+ * a would-be runtime panic into a compile-time error.
  */
 
 #pragma once
@@ -72,8 +73,7 @@ template<typename T>
 constexpr T add_check(T a, T b) {
     T result;
     if (__builtin_add_overflow(a, b, &result)) {
-        std::string msg = std::string(fixed_int_name<T>()) + " overflow in addition";
-        tpy_panic(msg.c_str());
+        raise_fixedint_overflow("{} overflow in addition", fixed_int_name<T>());
     }
     return result;
 }
@@ -82,8 +82,7 @@ template<typename T>
 constexpr T sub_check(T a, T b) {
     T result;
     if (__builtin_sub_overflow(a, b, &result)) {
-        std::string msg = std::string(fixed_int_name<T>()) + " overflow in subtraction";
-        tpy_panic(msg.c_str());
+        raise_fixedint_overflow("{} overflow in subtraction", fixed_int_name<T>());
     }
     return result;
 }
@@ -92,8 +91,7 @@ template<typename T>
 constexpr T mul_check(T a, T b) {
     T result;
     if (__builtin_mul_overflow(a, b, &result)) {
-        std::string msg = std::string(fixed_int_name<T>()) + " overflow in multiplication";
-        tpy_panic(msg.c_str());
+        raise_fixedint_overflow("{} overflow in multiplication", fixed_int_name<T>());
     }
     return result;
 }
@@ -104,7 +102,7 @@ template<typename T>
 constexpr T div_floor(T a, T b) {
     if constexpr (std::is_signed_v<T>) {
         if (a == std::numeric_limits<T>::min() && b == static_cast<T>(-1)) [[unlikely]] {
-            tpy_panic("integer overflow in division");
+            raise_fixedint_overflow("integer overflow in division");
         }
         T q = a / b;
         T r = a % b;
@@ -139,7 +137,7 @@ constexpr T mod_floor(T a, T b) {
 template<typename T>
 constexpr T div_check(T a, T b) {
     if (b == 0) [[unlikely]] {
-        tpy_panic("Division by zero");
+        raise<ZeroDivisionError>("integer division or modulo by zero");
     }
     return div_floor(a, b);
 }
@@ -147,7 +145,7 @@ constexpr T div_check(T a, T b) {
 template<typename T>
 constexpr T mod_check(T a, T b) {
     if (b == 0) [[unlikely]] {
-        tpy_panic("Division by zero");
+        raise<ZeroDivisionError>("integer modulo by zero");
     }
     return mod_floor(a, b);
 }
@@ -156,8 +154,7 @@ template<typename T>
 constexpr T neg_check(T a) {
     static_assert(std::is_signed_v<T>, "Negation only supported on signed types");
     if (a == std::numeric_limits<T>::min()) {
-        std::string msg = std::string(fixed_int_name<T>()) + " overflow in negation";
-        tpy_panic(msg.c_str());
+        raise_fixedint_overflow("{} overflow in negation", fixed_int_name<T>());
     }
     return -a;
 }
@@ -166,19 +163,17 @@ template<typename T>
 constexpr T lshift_check(T a, T b) {
     if constexpr (std::is_signed_v<T>) {
         if (b < 0) {
-            tpy_panic("Negative shift count");
+            raise<ValueError>("negative shift count");
         }
     }
     constexpr int bits = sizeof(T) * 8;
     if (b >= static_cast<T>(bits)) {
-        std::string msg = std::string(fixed_int_name<T>()) + " overflow in left shift";
-        tpy_panic(msg.c_str());
+        raise_fixedint_overflow("{} overflow in left shift", fixed_int_name<T>());
     }
     using U = std::make_unsigned_t<T>;
     T result = static_cast<T>(static_cast<U>(a) << static_cast<U>(b));
     if ((result >> b) != a) {
-        std::string msg = std::string(fixed_int_name<T>()) + " overflow in left shift";
-        tpy_panic(msg.c_str());
+        raise_fixedint_overflow("{} overflow in left shift", fixed_int_name<T>());
     }
     return result;
 }
@@ -187,13 +182,12 @@ template<typename T>
 constexpr T rshift_check(T a, T b) {
     if constexpr (std::is_signed_v<T>) {
         if (b < 0) {
-            tpy_panic("Negative shift count");
+            raise<ValueError>("negative shift count");
         }
     }
     constexpr int bits = sizeof(T) * 8;
     if (b >= static_cast<T>(bits)) {
-        std::string msg = std::string(fixed_int_name<T>()) + " shift count too large";
-        tpy_panic(msg.c_str());
+        raise_fixedint_overflow("{} shift count too large", fixed_int_name<T>());
     }
     return a >> b;
 }
@@ -202,13 +196,16 @@ template<typename T>
 constexpr T pow_check(T base, T exp) {
     if constexpr (std::is_signed_v<T>) {
         if (exp < 0) {
+            // TPy-specific limitation: int**neg returns float in CPython, but
+            // our static return type is T. Stays panic (not raise_fixedint_overflow)
+            // because it's a language-shape issue, not a numeric overflow -- the
+            // future fixed-int policy switch can never make this branch "none".
             tpy_panic("Negative exponent not supported (would require float)");
         }
     }
     T result;
     if (!try_pow(base, exp, result)) {
-        std::string msg = std::string(fixed_int_name<T>()) + " overflow in power";
-        tpy_panic(msg.c_str());
+        raise_fixedint_overflow("{} overflow in power", fixed_int_name<T>());
     }
     return result;
 }
@@ -219,19 +216,16 @@ template<typename To, typename From>
 constexpr To int_cast_check(From v) {
     if constexpr (std::is_signed_v<From> && std::is_unsigned_v<To>) {
         if (v < 0 || static_cast<std::make_unsigned_t<From>>(v) > std::numeric_limits<To>::max()) {
-            std::string msg = std::string(fixed_int_name<To>()) + " overflow: value out of range";
-            tpy_panic(msg.c_str());
+            raise_fixedint_overflow("{} overflow: value out of range", fixed_int_name<To>());
         }
     } else if constexpr (std::is_unsigned_v<From> && std::is_signed_v<To>) {
         if (v > static_cast<std::make_unsigned_t<To>>(std::numeric_limits<To>::max())) {
-            std::string msg = std::string(fixed_int_name<To>()) + " overflow: value out of range";
-            tpy_panic(msg.c_str());
+            raise_fixedint_overflow("{} overflow: value out of range", fixed_int_name<To>());
         }
     } else if constexpr (sizeof(From) > sizeof(To)) {
         if (v < static_cast<From>(std::numeric_limits<To>::min()) ||
             v > static_cast<From>(std::numeric_limits<To>::max())) {
-            std::string msg = std::string(fixed_int_name<To>()) + " overflow: value out of range";
-            tpy_panic(msg.c_str());
+            raise_fixedint_overflow("{} overflow: value out of range", fixed_int_name<To>());
         }
     }
     return static_cast<To>(v);
@@ -242,10 +236,10 @@ constexpr To int_cast_check(From v) {
 template<typename T>
 T from_float_check(double v) {
     if (std::isnan(v)) {
-        tpy_panic("cannot convert float NaN to integer");
+        raise<ValueError>("cannot convert float NaN to integer");
     }
     if (std::isinf(v)) {
-        tpy_panic("cannot convert float infinity to integer");
+        raise<OverflowError>("cannot convert float infinity to integer");
     }
     v = std::trunc(v);
     if constexpr (sizeof(T) <= 4) {
@@ -253,8 +247,8 @@ T from_float_check(double v) {
         constexpr auto lo = static_cast<double>(std::numeric_limits<T>::min());
         constexpr auto hi = static_cast<double>(std::numeric_limits<T>::max());
         if (v < lo || v > hi) {
-            std::string msg = std::string(fixed_int_name<T>()) + " overflow: float value out of range";
-            tpy_panic(msg.c_str());
+            raise_fixedint_overflow("{} overflow: float value out of range",
+                                    fixed_int_name<T>());
         }
     } else if constexpr (std::is_signed_v<T>) {
         // int64_t range [-2^63, 2^63-1]: use exact power-of-2 bounds
@@ -262,15 +256,15 @@ T from_float_check(double v) {
         constexpr double lo = -9223372036854775808.0;  // -2^63, exact
         constexpr double hi = 9223372036854775808.0;   //  2^63, exact
         if (v < lo || v >= hi) {
-            std::string msg = std::string(fixed_int_name<T>()) + " overflow: float value out of range";
-            tpy_panic(msg.c_str());
+            raise_fixedint_overflow("{} overflow: float value out of range",
+                                    fixed_int_name<T>());
         }
     } else {
         // uint64_t range [0, 2^64-1]: 2^64 is exact in double
         constexpr double hi = 18446744073709551616.0;  // 2^64, exact
         if (v < 0.0 || v >= hi) {
-            std::string msg = std::string(fixed_int_name<T>()) + " overflow: float value out of range";
-            tpy_panic(msg.c_str());
+            raise_fixedint_overflow("{} overflow: float value out of range",
+                                    fixed_int_name<T>());
         }
     }
     return static_cast<T>(v);
@@ -283,11 +277,10 @@ T from_str_check(std::string_view s) {
     size_t end = s.size();
     while (end > start && std::isspace(static_cast<unsigned char>(s[end - 1]))) --end;
 
-    std::string type_name = fixed_int_name<T>();
+    auto type_name = fixed_int_name<T>();
 
     if (start >= end) {
-        std::string msg = "invalid literal for " + type_name + "() with base 10: '" + std::string(s) + "'";
-        tpy_panic(msg.c_str());
+        raise<ValueError>("invalid literal for {}() with base 10: '{}'", type_name, s);
     }
 
     std::string trimmed(s.substr(start, end - start));
@@ -297,29 +290,25 @@ T from_str_check(std::string_view s) {
     if constexpr (std::is_signed_v<T>) {
         long long result = std::strtoll(trimmed.c_str(), &endptr, 10);
         if (endptr != trimmed.c_str() + trimmed.size()) {
-            std::string msg = "invalid literal for " + type_name + "() with base 10: '" + std::string(s) + "'";
-            tpy_panic(msg.c_str());
+            raise<ValueError>("invalid literal for {}() with base 10: '{}'", type_name, s);
         }
         if (errno == ERANGE || result < static_cast<long long>(std::numeric_limits<T>::min())
                             || result > static_cast<long long>(std::numeric_limits<T>::max())) {
-            std::string msg = type_name + " overflow: value out of range for '" + std::string(s) + "'";
-            tpy_panic(msg.c_str());
+            raise_fixedint_overflow("{} overflow: value out of range for '{}'", type_name, s);
         }
         return static_cast<T>(result);
     } else {
         // Check for negative sign on unsigned types
         if (trimmed[0] == '-') {
-            std::string msg = type_name + " overflow: negative value for unsigned type '" + std::string(s) + "'";
-            tpy_panic(msg.c_str());
+            raise_fixedint_overflow("{} overflow: negative value for unsigned type '{}'",
+                                    type_name, s);
         }
         unsigned long long result = std::strtoull(trimmed.c_str(), &endptr, 10);
         if (endptr != trimmed.c_str() + trimmed.size()) {
-            std::string msg = "invalid literal for " + type_name + "() with base 10: '" + std::string(s) + "'";
-            tpy_panic(msg.c_str());
+            raise<ValueError>("invalid literal for {}() with base 10: '{}'", type_name, s);
         }
         if (errno == ERANGE || result > static_cast<unsigned long long>(std::numeric_limits<T>::max())) {
-            std::string msg = type_name + " overflow: value out of range for '" + std::string(s) + "'";
-            tpy_panic(msg.c_str());
+            raise_fixedint_overflow("{} overflow: value out of range for '{}'", type_name, s);
         }
         return static_cast<T>(result);
     }

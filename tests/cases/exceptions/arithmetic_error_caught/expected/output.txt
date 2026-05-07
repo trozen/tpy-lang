@@ -1,0 +1,2 @@
+caught arithmetic: float division by zero
+caught arithmetic: cannot convert float infinity to integer

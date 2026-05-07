@@ -1,1 +1,1 @@
-TurboPython panic: Any: type mismatch
+TurboPython panic: uncaught tpy::TypeError: Any holds tpyapp::main::Dog, cannot cast to tpyapp::main::Animal

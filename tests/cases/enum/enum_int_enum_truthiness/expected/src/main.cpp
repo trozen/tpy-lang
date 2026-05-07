@@ -24,7 +24,7 @@ EnumUtil<::tpyapp::main::Status>::members = {
         case 0: return ::tpyapp::main::Status::Off;
         case 1: return ::tpyapp::main::Status::On;
         case 2: return ::tpyapp::main::Status::Standby;
-        default: tpy_panic("invalid value for enum 'Status'");
+        default: raise<ValueError>("{} is not a valid Status", __v);
     }
 }
 
@@ -37,7 +37,7 @@ std::optional<::tpyapp::main::Status> EnumUtil<::tpyapp::main::Status>::try_pars
 
 ::tpyapp::main::Status EnumUtil<::tpyapp::main::Status>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
-    if (!__result.has_value()) tpy_panic("invalid name for enum 'Status'");
+    if (!__result.has_value()) raise<KeyError>("{}", __name);
     return *__result;
 }
 

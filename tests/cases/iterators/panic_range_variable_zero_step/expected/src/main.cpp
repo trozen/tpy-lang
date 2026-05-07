@@ -17,7 +17,7 @@ void __tpy_init() {
     step = 0;
     // for i in range(1, 5, step):
     int32_t __step_0 = step;
-    if (__step_0 == 0) ::tpy::tpy_panic("range() arg 3 must not be zero");
+    ::tpy::range_check_step_nonzero(__step_0);
     ::tpy::range_check_overflow<int32_t>(1, 5, __step_0);
     for (int32_t i = 1; __step_0 > 0 ? i < 5 : i > 5; i += __step_0) {
         // print(i)

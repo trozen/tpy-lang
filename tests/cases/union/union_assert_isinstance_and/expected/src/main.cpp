@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def get_positive_radius(s: Circle | Rect) -> Int32:
 int32_t get_positive_radius(const std::variant<Circle*, Rect*> s) {
     // assert isinstance(s, Circle) and s.radius > Int32(0)
-    if (!((std::holds_alternative<Circle*>(s) && ((*std::get<Circle*>(s)).radius > 0)))) ::tpy::assert_failed();
+    if (!((std::holds_alternative<Circle*>(s) && ((*std::get<Circle*>(s)).radius > 0)))) ::tpy::raise_assertion_error();
     auto& __s = *std::get<Circle*>(s);
     // return s.radius
     return __s.radius;

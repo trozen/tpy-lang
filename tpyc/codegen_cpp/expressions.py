@@ -4081,7 +4081,7 @@ class ExpressionGenerator:
             buf.write(f"{ind2}while (__i < __stop) {{\n")
             buf.write(f"{ind3}{cpp_iter} {cpp_var} = __i++;\n")
         else:
-            buf.write(f'{ind2}if (__step == 0) ::tpy::tpy_panic("range() arg 3 must not be zero");\n')
+            buf.write(f'{ind2}::tpy::range_check_step_nonzero(__step);\n')
             if is_fixed_int_type(elem_type):
                 buf.write(f"{ind2}::tpy::range_check_overflow<{cpp_iter}>(__i, __stop, __step);\n")
             buf.write(f"{ind2}while ((__step > 0) ? (__i < __stop) : (__i > __stop)) {{\n")

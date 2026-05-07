@@ -1,0 +1,3 @@
+read on write-only: read(): file not opened for reading
+write on read-only: write(): file not opened for writing
+readline on write-only: readline(): file not opened for reading

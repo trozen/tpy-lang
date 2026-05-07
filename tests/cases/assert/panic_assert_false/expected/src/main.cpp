@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def fail_now() -> None:
 void fail_now() {
     // assert False, "boom"
-    ::tpy::assert_failed("boom");
+    ::tpy::raise_assertion_error("boom");
 }
 
 void __tpy_init() {

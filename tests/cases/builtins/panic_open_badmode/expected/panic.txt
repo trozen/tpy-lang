@@ -1,1 +1,1 @@
-TurboPython panic: open(): unsupported mode 'z'
+TurboPython panic: uncaught tpy::ValueError: invalid mode: 'z'

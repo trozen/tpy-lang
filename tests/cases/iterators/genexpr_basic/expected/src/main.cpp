@@ -65,7 +65,7 @@ void main() {
     // print(sum_items(x for x in range(0, 10, 2)))
     auto __tmp_5 = ::tpy::make_generator<int32_t>(
         [__i = static_cast<int32_t>(0), __stop = static_cast<int32_t>(10), __step = static_cast<int32_t>(2)]() mutable -> std::optional<int32_t> {
-            if (__step == 0) ::tpy::tpy_panic("range() arg 3 must not be zero");
+            ::tpy::range_check_step_nonzero(__step);
             ::tpy::range_check_overflow<int32_t>(__i, __stop, __step);
             while ((__step > 0) ? (__i < __stop) : (__i > __stop)) {
                 int32_t x = __i;
@@ -80,7 +80,7 @@ void main() {
     // print(sum_items(x for x in range(10, 0, -2)))
     auto __tmp_6 = ::tpy::make_generator<int32_t>(
         [__i = static_cast<int32_t>(10), __stop = static_cast<int32_t>(0), __step = static_cast<int32_t>(-2)]() mutable -> std::optional<int32_t> {
-            if (__step == 0) ::tpy::tpy_panic("range() arg 3 must not be zero");
+            ::tpy::range_check_step_nonzero(__step);
             ::tpy::range_check_overflow<int32_t>(__i, __stop, __step);
             while ((__step > 0) ? (__i < __stop) : (__i > __stop)) {
                 int32_t x = __i;

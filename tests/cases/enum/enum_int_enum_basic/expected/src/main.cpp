@@ -24,7 +24,7 @@ EnumUtil<::tpyapp::main::Priority>::members = {
         case 0: return ::tpyapp::main::Priority::Low;
         case 1: return ::tpyapp::main::Priority::Medium;
         case 2: return ::tpyapp::main::Priority::High;
-        default: tpy_panic("invalid value for enum 'Priority'");
+        default: raise<ValueError>("{} is not a valid Priority", __v);
     }
 }
 
@@ -37,7 +37,7 @@ std::optional<::tpyapp::main::Priority> EnumUtil<::tpyapp::main::Priority>::try_
 
 ::tpyapp::main::Priority EnumUtil<::tpyapp::main::Priority>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
-    if (!__result.has_value()) tpy_panic("invalid name for enum 'Priority'");
+    if (!__result.has_value()) raise<KeyError>("{}", __name);
     return *__result;
 }
 

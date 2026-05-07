@@ -9,11 +9,11 @@ int32_t pick(bool flag, std::optional<int32_t> a, std::optional<int32_t> b) {
     // if flag:
     if (flag) {
         // assert a is not None
-        if (!((a.has_value()))) ::tpy::assert_failed();
+        if (!((a.has_value()))) ::tpy::raise_assertion_error();
     // else:
     } else {
         // assert b is not None
-        if (!((b.has_value()))) ::tpy::assert_failed();
+        if (!((b.has_value()))) ::tpy::raise_assertion_error();
     }
     // return a + 1  # tpyc: warning(/Potential None access/)
     return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(a), 1));

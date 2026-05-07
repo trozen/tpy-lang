@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def check(n: int) -> int:
 ::tpy::BigInt check(const ::tpy::BigInt& n) {
     // assert n > 0, "n must be positive"
-    if (!((n > 0))) ::tpy::assert_failed("n must be positive");
+    if (!((n > 0))) ::tpy::raise_assertion_error("n must be positive");
     // return n * 2
     return ((n) * (::tpy::BigInt(2)));
 }

@@ -187,11 +187,11 @@ inline Event Event::from_json(std::string_view __s) {
         __except_2:;
         {
             auto& __e = *__err_opt_2;
-            ::tpy::assert_failed(__e.message);
+            ::tpy::raise_assertion_error(__e.message);
         }
         __after_try_2:;
     }
-    if (!((__result.has_value()))) ::tpy::assert_failed("json: unreachable");
+    if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
     return (*__result);
 }
 
@@ -296,11 +296,11 @@ inline Schedule Schedule::from_json(std::string_view __s) {
         __except_9:;
         {
             auto& __e = *__err_opt_9;
-            ::tpy::assert_failed(__e.message);
+            ::tpy::raise_assertion_error(__e.message);
         }
         __after_try_9:;
     }
-    if (!((__result.has_value()))) ::tpy::assert_failed("json: unreachable");
+    if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
     return (*__result);
 }
 

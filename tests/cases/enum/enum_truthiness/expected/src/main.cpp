@@ -21,7 +21,7 @@ EnumUtil<::tpyapp::main::Signal>::members = {
     switch (__v) {
         case 0: return ::tpyapp::main::Signal::Off;
         case 1: return ::tpyapp::main::Signal::On;
-        default: tpy_panic("invalid value for enum 'Signal'");
+        default: raise<ValueError>("{} is not a valid Signal", __v);
     }
 }
 
@@ -33,7 +33,7 @@ std::optional<::tpyapp::main::Signal> EnumUtil<::tpyapp::main::Signal>::try_pars
 
 ::tpyapp::main::Signal EnumUtil<::tpyapp::main::Signal>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
-    if (!__result.has_value()) tpy_panic("invalid name for enum 'Signal'");
+    if (!__result.has_value()) raise<KeyError>("{}", __name);
     return *__result;
 }
 

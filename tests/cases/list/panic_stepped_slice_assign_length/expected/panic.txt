@@ -1,1 +1,1 @@
-TurboPython panic: attempt to assign sequence of size 2 to extended slice of size 3
+TurboPython panic: uncaught tpy::ValueError: attempt to assign sequence of size 2 to extended slice of size 3

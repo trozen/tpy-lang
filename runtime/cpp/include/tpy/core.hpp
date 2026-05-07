@@ -7,17 +7,20 @@
 #pragma once
 
 #include <cmath>
+#include <concepts>
 #include <cstdio>
 #include <cstdlib>
 #include <cxxabi.h>
 #include <exception>
 #include <expected>
+#include <format>
 #include <optional>
 #include <ostream>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <typeinfo>
+#include <utility>
 #include <variant>
 
 namespace tpy {
@@ -43,12 +46,74 @@ struct AttributeError : Exception { using Exception::Exception; };
 struct AssertionError : Exception { using Exception::Exception; };
 struct IndexError : Exception { using Exception::Exception; };
 struct KeyError : Exception { using Exception::Exception; };
+struct ArithmeticError : Exception { using Exception::Exception; };
+struct ZeroDivisionError : ArithmeticError { using ArithmeticError::ArithmeticError; };
+struct OverflowError : ArithmeticError { using ArithmeticError::ArithmeticError; };
+struct TypeError : Exception { using Exception::Exception; };
+struct NotImplementedError : Exception { using Exception::Exception; };
+struct RuntimeError : Exception { using Exception::Exception; };
+struct MemoryError : Exception { using Exception::Exception; };
 struct StopIteration : Exception {};
 
-// `assert cond[, msg]` failure path. Mirrors tpy_panic's call-site shape
-// but throws AssertionError so user code can catch it.
-[[noreturn]] inline void assert_failed(std::string_view msg = "assertion failed") {
-    throw AssertionError(msg);
+// Forward decl: raise_fixedint_overflow (below) calls tpy_panic, whose
+// definition lives later in this header.
+[[noreturn]] inline void tpy_panic(std::string_view msg);
+
+// raise<E>(msg) / raise<E>(fmt, args...) -- throw a Python-shaped exception.
+//
+// Every runtime site that surfaces a catchable error goes through this so
+// the underlying policy (currently always `throw`) can be swapped at compile
+// time later (e.g. abort-on-error builds, or routing to `tpy_panic` in
+// `@noalloc` regions) without rewriting call sites.
+//
+// Two forms:
+//   raise<E>(msg)          -- pre-built std::string_view message
+//   raise<E>(fmt, args...) -- std::format-style; format string validated
+//                             against the arg types at compile time. Single
+//                             trailing arg disambiguates against the
+//                             string_view overload.
+//
+// Not constexpr; calling from a constexpr function is permitted under
+// C++23 P2448 as long as the call is never reached during constant
+// evaluation.
+template<typename E>
+    requires std::derived_from<E, BaseException>
+[[noreturn]] inline void raise(std::string_view msg) {
+    throw E(msg);
+}
+template<typename E, typename T, typename... Rest>
+    requires std::derived_from<E, BaseException>
+[[noreturn]] inline void raise(std::format_string<T, Rest...> fmt, T&& arg,
+                               Rest&&... rest) {
+    throw E(std::format(fmt, std::forward<T>(arg), std::forward<Rest>(rest)...));
+}
+
+// `assert cond[, msg]` failure path. Thin wrapper around `raise<AssertionError>`
+// that supplies the no-message default `"assertion failed"`. Codegen emits
+// `raise_assertion_error()` for `assert cond` (no message) and
+// `raise_assertion_error(<msg-expr>)` for `assert cond, msg`.
+[[noreturn]] inline void raise_assertion_error(std::string_view msg = "assertion failed") {
+    raise<AssertionError>(msg);
+}
+template<typename T, typename... Rest>
+[[noreturn]] inline void raise_assertion_error(std::format_string<T, Rest...> fmt, T&& arg,
+                                               Rest&&... rest) {
+    raise<AssertionError>(fmt, std::forward<T>(arg), std::forward<Rest>(rest)...);
+}
+
+// Fixed-width integer arithmetic overflow. CPython promotes to unbounded
+// BigInt and never overflows; TPy uses fixed-width storage (Int8..Int64,
+// UInt8..UInt64) and panics on overflow by default. Routed through this
+// helper so the policy can be made switchable later (per build / module /
+// function: none / panic / throw OverflowError) without rewriting the call
+// sites. Currently always panics.
+[[noreturn]] inline void raise_fixedint_overflow(std::string_view msg) {
+    tpy_panic(msg);
+}
+template<typename T, typename... Rest>
+[[noreturn]] inline void raise_fixedint_overflow(std::format_string<T, Rest...> fmt,
+                                                 T&& arg, Rest&&... rest) {
+    tpy_panic(std::format(fmt, std::forward<T>(arg), std::forward<Rest>(rest)...));
 }
 
 // Portable replacement for std::unexpected(). Some libc++ versions (e.g. zig's
@@ -77,6 +142,19 @@ Unexpected<std::remove_cvref_t<E>> make_unexpected(E&& e) {
 template<typename Iter>
 auto next(Iter& it) -> decltype(it.__next__()) {
     return it.__next__();
+}
+
+// Demangle a std::type_info::name() result to a human-readable form
+// (e.g. "tpy::BigInt" instead of "N3tpy6BigIntE"). Used by exception
+// messages that name the offending C++ type. Falls back to the mangled
+// name if demangling fails (typeid name is null-terminated, so the
+// fallback is always usable).
+inline std::string demangle_type_name(const char* mangled) {
+    int status = 0;
+    char* d = abi::__cxa_demangle(mangled, nullptr, nullptr, &status);
+    std::string result = (status == 0 && d) ? std::string(d) : std::string(mangled);
+    std::free(d);
+    return result;
 }
 
 /**
@@ -181,7 +259,7 @@ const T& deref_optional_check(const std::optional<T>& opt) {
 template <typename T>
 T& typed_dict_field_check(std::optional<T>& opt) {
     if (!opt.has_value()) {
-        throw KeyError("KeyError");
+        raise<KeyError>("KeyError");
     }
     return *opt;
 }
@@ -189,7 +267,7 @@ T& typed_dict_field_check(std::optional<T>& opt) {
 template <typename T>
 const T& typed_dict_field_check(const std::optional<T>& opt) {
     if (!opt.has_value()) {
-        throw KeyError("KeyError");
+        raise<KeyError>("KeyError");
     }
     return *opt;
 }
@@ -224,11 +302,11 @@ void destroy_at(T* p) {
 }
 
 /**
- * Checked true division for floats -- panics on zero divisor
- * to match Python's ZeroDivisionError semantics.
+ * Checked true division for floats -- throws ZeroDivisionError on a
+ * zero divisor to match Python semantics.
  */
 inline constexpr double truediv(double a, double b) {
-    if (b == 0.0) tpy_panic("Division by zero");
+    if (b == 0.0) raise<ZeroDivisionError>("float division by zero");
     return a / b;
 }
 
@@ -247,7 +325,7 @@ inline constexpr double truediv(double a, double b) {
 #endif
 
 inline constexpr double floordiv(double a, double b) {
-    if (b == 0.0) tpy_panic("Division by zero");
+    if (b == 0.0) raise<ZeroDivisionError>("float floor division by zero");
 #if TPY_CMATH_CONSTEXPR
     return std::floor(a / b);
 #else
@@ -262,7 +340,7 @@ inline constexpr double floordiv(double a, double b) {
 }
 
 inline constexpr double fmod(double a, double b) {
-    if (b == 0.0) tpy_panic("Division by zero");
+    if (b == 0.0) raise<ZeroDivisionError>("float modulo");
     // Python's `%` uses floor semantics (sign-of-divisor) where C's std::fmod
     // uses truncation (sign-of-dividend). Compute the truncated remainder,
     // shift toward the divisor when the signs disagree, and on zero results
@@ -288,12 +366,12 @@ inline constexpr double fmod(double a, double b) {
 
 // Float32 arithmetic helpers
 inline constexpr float truediv_f32(float a, float b) {
-    if (b == 0.0f) tpy_panic("Division by zero");
+    if (b == 0.0f) raise<ZeroDivisionError>("float division by zero");
     return a / b;
 }
 
 inline constexpr float floordiv_f32(float a, float b) {
-    if (b == 0.0f) tpy_panic("Division by zero");
+    if (b == 0.0f) raise<ZeroDivisionError>("float floor division by zero");
 #if TPY_CMATH_CONSTEXPR
     return std::floor(a / b);
 #else
@@ -308,7 +386,7 @@ inline constexpr float floordiv_f32(float a, float b) {
 }
 
 inline constexpr float fmod_f32(float a, float b) {
-    if (b == 0.0f) tpy_panic("Division by zero");
+    if (b == 0.0f) raise<ZeroDivisionError>("float modulo");
     // Python's `%` uses floor semantics (sign-of-divisor); see fmod above.
 #if TPY_CMATH_CONSTEXPR
     float m = std::fmod(a, b);

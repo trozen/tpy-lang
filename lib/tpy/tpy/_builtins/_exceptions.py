@@ -48,5 +48,33 @@ class IndexError(Exception):
 class KeyError(Exception):
     def __init__(self, message: str = "") -> None: ...
 
+@native("tpy::ArithmeticError")
+class ArithmeticError(Exception):
+    def __init__(self, message: str = "") -> None: ...
+
+@native("tpy::ZeroDivisionError")
+class ZeroDivisionError(ArithmeticError):
+    def __init__(self, message: str = "") -> None: ...
+
+@native("tpy::OverflowError")
+class OverflowError(ArithmeticError):
+    def __init__(self, message: str = "") -> None: ...
+
+@native("tpy::TypeError")
+class TypeError(Exception):
+    def __init__(self, message: str = "") -> None: ...
+
+@native("tpy::NotImplementedError")
+class NotImplementedError(Exception):
+    def __init__(self, message: str = "") -> None: ...
+
+@native("tpy::RuntimeError")
+class RuntimeError(Exception):
+    def __init__(self, message: str = "") -> None: ...
+
+@native("tpy::MemoryError")
+class MemoryError(Exception):
+    def __init__(self, message: str = "") -> None: ...
+
 @native("tpy::StopIteration")
 class StopIteration(Exception, ReturnException): ...

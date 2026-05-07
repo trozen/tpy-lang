@@ -13,7 +13,7 @@ std::string describe(const std::variant<Circle*, Rect*> s) {
         return "circle";
     }
     // assert isinstance(s, Rect)
-    if (!(true)) ::tpy::assert_failed();
+    if (!(true)) ::tpy::raise_assertion_error();
     auto& __s = *std::get<Rect*>(s);
     // return "rect"
     return "rect";

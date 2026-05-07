@@ -37,7 +37,7 @@ struct CachingContainer {
 
     size_t size() const {
         auto len = __len__();
-        if (len < 0) ::tpy::tpy_panic("__len__ returned negative value");
+        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
         return static_cast<size_t>(len);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.CachingContainer";

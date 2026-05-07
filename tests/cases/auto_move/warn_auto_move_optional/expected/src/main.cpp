@@ -15,7 +15,7 @@ int32_t test(Point* a) {
     // q: Point | None = a
     Point* q = a;
     // assert q is not None
-    if (!((q != nullptr))) ::tpy::assert_failed();
+    if (!((q != nullptr))) ::tpy::raise_assertion_error();
     // return consume(q)  # tpyc: warning(/copies.*into owned storage/)
     auto __tmp_1 = (*q);
     return consume(std::move(__tmp_1));

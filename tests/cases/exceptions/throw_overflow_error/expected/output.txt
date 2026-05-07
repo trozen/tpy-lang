@@ -1,0 +1,2 @@
+caught OverflowError: custom: value too large
+caught via ArithmeticError: custom: value too large

@@ -11,6 +11,7 @@
 #include <charconv>
 #include <cmath>
 #include <cstdint>
+#include <format>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -21,18 +22,20 @@ namespace tpy {
 
 // -- ord/Char helpers --
 
-// ord(s: str) -- panics if len(s) != 1, like Python's TypeError
+// ord(s: str) -- throws TypeError if len(s) != 1, matching CPython.
 inline int32_t ord_str(std::string_view s) {
     if (s.size() != 1) {
-        tpy_panic("ord() expected a string of length 1");
+        raise<TypeError>("ord() expected a character, but string of length {} found",
+                         s.size());
     }
     return static_cast<int32_t>(static_cast<unsigned char>(s[0]));
 }
 
-// Char(s: str) -- extract single character, panics if len(s) != 1
+// Char(s: str) -- extract single character, throws TypeError if len(s) != 1.
 inline char char_from_str(std::string_view s) {
     if (s.size() != 1) {
-        tpy_panic("Char() expected a string of length 1");
+        raise<TypeError>("Char() expected a character, but string of length {} found",
+                         s.size());
     }
     return s[0];
 }
@@ -79,7 +82,7 @@ T round_fixed(T x, int32_t ndigits) {
     if (rem > half) {
         T res;
         if (__builtin_add_overflow(base, factor, &res)) {
-            tpy_panic((std::string(fixed_int_name<T>()) + " overflow in round").c_str());
+            raise_fixedint_overflow("{} overflow in round", fixed_int_name<T>());
         }
         return res;
     } else if (rem == half) {
@@ -87,7 +90,7 @@ T round_fixed(T x, int32_t ndigits) {
         if (unit % 2 != 0) {
             T res;
             if (__builtin_add_overflow(base, factor, &res)) {
-                tpy_panic((std::string(fixed_int_name<T>()) + " overflow in round").c_str());
+                raise_fixedint_overflow("{} overflow in round", fixed_int_name<T>());
             }
             return res;
         }
@@ -124,7 +127,7 @@ inline BigInt round_bigint(const BigInt& x, int32_t ndigits) {
 
 // divmod(float, float) -> tuple[float, float]  (Python semantics)
 inline std::tuple<double, double> divmod_float(double a, double b) {
-    if (b == 0.0) tpy_panic("Division by zero");
+    if (b == 0.0) raise<ZeroDivisionError>("float divmod()");
     double q = std::floor(a / b);
     double r = a - q * b;
     return {q, r};
@@ -133,10 +136,10 @@ inline std::tuple<double, double> divmod_float(double a, double b) {
 // divmod(fixed_int, fixed_int) -> tuple[T, T]  (Python floor division + mod)
 template<typename T>
 std::tuple<T, T> divmod_fixed(T a, T b) {
-    if (b == 0) tpy_panic("Division by zero");
+    if (b == 0) raise<ZeroDivisionError>("integer division or modulo by zero");
     if constexpr (std::is_signed_v<T>) {
         if (a == std::numeric_limits<T>::min() && b == static_cast<T>(-1)) {
-            tpy_panic((std::string(fixed_int_name<T>()) + " overflow in division").c_str());
+            raise_fixedint_overflow("{} overflow in division", fixed_int_name<T>());
         }
         T q = a / b;
         T r = a % b;

@@ -1,1 +1,1 @@
-TurboPython panic: invalid value for enum 'Color'
+TurboPython panic: uncaught tpy::ValueError: 99 is not a valid Color

@@ -23,13 +23,21 @@ panics until they fire (matches `std::vector::at()`).
 | Type | Status | Notes |
 |------|--------|-------|
 | `AttributeError` | Done -- throw-tier | Catchable. Raised by user `__getattr__` / `__setattr__` / `__delattr__` bodies; propagates as a normal C++ throw. `hasattr` and 3-arg `getattr` wrap the dunder call in a try/catch lambda IIFE |
-| `AssertionError` | Done -- throw-tier | `assert` failure throws `AssertionError(msg)` via `::tpy::assert_failed(...)` helper |
+| `AssertionError` | Done -- throw-tier | `assert` failure throws `AssertionError(msg)` via `::tpy::raise_assertion_error(...)` helper |
 | `KeyError` | Done -- throw-tier | Dict `__getitem__` / `__delitem__` / `pop`-no-default missing key, set `remove`-missing / `pop`-empty, TypedDict `total=False` field access on absent value all `throw KeyError(...)`. CPython-divergent `str(KeyError(k))` repr-of-key formatting is a v2 follow-up |
 | `IndexError` | Done -- throw-tier | List/array/span/string/bytes/bytearray out-of-range indexing and list/bytearray `pop`-empty all `throw IndexError(...)`. Messages match CPython ("list index out of range", "list assignment index out of range" for `__setitem__`/`__delitem__`, "pop index out of range" for indexed pop, etc.) |
-| `ZeroDivisionError` | Pending | Division by zero across fixed-int / BigInt / float |
-| `ValueError` panic migrations | Pending | Type already catchable; ~10 panic sites for `list.index`, `str.index`, `bytearray.remove`, etc. |
-| `OverflowError` | **Stays panic** | TPy divergence: Python uses BigInt and never overflows, so catchable form doesn't help port CPython code |
-| Internal invariants (uninit slot bookkeeping, OOM, "should not happen") | Stays panic | Not Python-exception-shaped |
+| `ZeroDivisionError` | Done -- throw-tier | Catchable. Routed through `::tpy::raise<ZeroDivisionError>(...)` from the constexpr arithmetic helpers (`truediv`/`floordiv`/`fmod` and Float32 variants in `core.hpp`, `div_check`/`mod_check` in `fixed_int.hpp`, `divmod_float`/`divmod_fixed` in `builtins.hpp`, `BigInt::floor_div`/`floor_mod`/`floor_divmod`). Messages match CPython per operation: `float division by zero`, `float floor division by zero`, `float modulo`, `float divmod()`, `integer division or modulo by zero` (for `//` and `divmod`), `integer modulo by zero` (for `%`). One documented divergence: `int / 0` reports `float division by zero` (TPy converts int operands to float before dispatching `/`), where CPython prints `division by zero`; reachable only via the legacy `int`-true-div path covered by `tests/cases/int/panic_int_truediv_zero` |
+| `ValueError` panic migrations | Done -- throw-tier | Catchable. Routed through `::tpy::raise<ValueError>(...)`. Migrated runtime sites: `list.remove`/`list.index` missing element; `bytearray.remove` missing value (CPython-aligned `value not found in bytearray`); `bytes()` constructor `negative count` and `bytes must be in range(0, 256)`; `str.split`/`bytes.split` `empty separator`; `str.index`/`str.rindex` `substring not found`; `float()` parse errors; `int()` (BigInt) parse errors; `slice` `step cannot be zero`; extended-slice assignment `attempt to assign sequence of size N to extended slice of size M`; `range()` `arg 3 must not be zero`; `time.sleep` `length must be non-negative`; fixed-int and BigInt `<<` / `>>` `negative shift count`; `open()` `invalid mode: '...'`. Migrated codegen-side panic emitters: range-step-zero check (3 sites in `statements.py` / `expressions.py`); `__len__()` returning a negative value (`__len__() should return >= 0`); enum `from_value` invalid-value (formats the offending value). Enum `from_name` unknown name routes to `KeyError` to match CPython's `EnumMeta.__getitem__`. Also covered: `int(float('nan'))` -> `cannot convert float NaN to integer` (TypeError-shape sister case `int(float('inf'))` lives under OverflowError); `Int*()` parse errors; `from_range` size mismatch (defensive runtime check on container materialization). Out of scope: `pow` negative exponent (TPy-specific limitation: TPy panics where CPython returns float -- proper fix is sema/codegen, not runtime migration). `list.index` "x not in list" still uses literal "x" instead of CPython's `<repr(x)> is not in list` -- v2, requires runtime value-formatting machinery |
+| `TypeError` | Done -- throw-tier | Catchable. Routed through `::tpy::raise<TypeError>(...)`. Migrated runtime sites: `ord(s)` and `Char(s)` when `len(s) != 1` (CPython-aligned `expected a character, but string of length N found` formatting); `cast(T, any_val)` when the stored typeid does not match `T` (`Any holds <demangled-actual>, cannot cast to <demangled-expected>`); `hash(any_val)` when the stored type is not Hashable (`unhashable type: '<demangled>'`). User code can `raise TypeError("...")` anywhere |
+| `OSError` (file I/O) | Done -- throw-tier | Catchable. Routed through `::tpy::raise<OSError>(...)` from `file.hpp` for nine read-on-write-only / write-on-read-only / flush-on-read-only sites across both text and binary file paths. CPython raises `io.UnsupportedOperation` (a diamond subclass of `OSError + ValueError`); TPy MI does not support diamonds, so we route to `OSError` alone -- `except OSError` catches; `except ValueError` does not (one-sided divergence). Messages keep TPy's longer `read(): file not opened for reading`-style wording (more diagnostic than CPython's terse `not readable`); a future tightening could shorten them once `io.UnsupportedOperation` parity is in scope |
+| `NotImplementedError` | Class-only | No runtime panic sites migrated; class added so `raise NotImplementedError("...")` works in user code (catchable as a plain `Exception` subclass) |
+| `ArithmeticError` | Done -- class | Base class of `ZeroDivisionError` and `OverflowError`, matching CPython's hierarchy. `except ArithmeticError` catches either subtype |
+| `OverflowError` (float-to-int) | Done -- throw-tier | Catchable. Routed through `::tpy::raise<OverflowError>(...)` from `bigint.hpp` and `fixed_int.hpp` `from_float` paths when the source is `+inf` or `-inf`. Pairs with `int(float('nan'))` -> `ValueError` (deferred from PR2, also migrated here). Messages match CPython (`cannot convert float infinity to integer`) |
+| `OverflowError` (fixed-int arithmetic) | Routed through `raise_fixedint_overflow` (currently panics) | Fixed-width integer overflow (Int8..Int64, UInt8..UInt64) on add/sub/mul/neg/shift/pow/cast/divmod/round and BigInt-to-fixed-int conversion. Unlike CPython (which promotes to unbounded BigInt), TPy panics by default -- but call sites now go through `::tpy::raise_fixedint_overflow(...)` so a future build/module/function-scope policy switch (action=none / panic / throw) can plug in without rewriting them. Helper currently calls `tpy_panic`; behavior unchanged |
+| `OverflowError` (BigInt exponent) | Done -- throw-tier | `2 ** huge_value` where `huge_value > 2^64` raises `OverflowError("exponent too large")`. Other BigInt resource limits (OOM, internal invariants) stay panic |
+| `RuntimeError` | Class-only | Generic catchall enabling `raise RuntimeError("...")` in user code. No runtime panic sites migrated -- this is a user-facing escape hatch for "this shouldn't happen" runtime conditions |
+| `MemoryError` | Class-only | Class exposed for `raise MemoryError("...")` in user code. The single OOM panic site (`bigint.hpp` allocation failure) deliberately stays as `tpy_panic`: catching `MemoryError` is fragile because the handler may itself allocate |
+| Internal invariants (uninit slot bookkeeping, "should not happen") | Stays panic | Not Python-exception-shaped |
 
 `@noalloc` does not yet enforce "no may-throw expressions" on hot
 paths -- the marker is parsed and threaded through registration but no
@@ -40,6 +48,49 @@ compiler can statically prove it's safe (value-range elision, key
 narrowing, etc.). Until then, hot paths that need to avoid throw should
 use the explicit no-throw APIs (`d.get(k, default)`, in-bounds indexing
 proven by value-range, etc.).
+
+### Runtime helper API (`raise<E>` family)
+
+The runtime exposes a single function template `tpy::raise<E>(...)` plus
+two specialized helpers (`raise_assertion_error`, `raise_fixedint_overflow`).
+All sites that surface a Python exception go through these instead of
+`throw E(...)` directly, so the underlying policy can be swapped at compile
+time later without rewriting call sites.
+
+`raise<E>` has two overloads -- a `std::string_view` form and a
+`std::format_string<Args...>` form (compile-time format-string validation):
+
+```cpp
+template<typename E>
+[[noreturn]] inline void raise(std::string_view msg);
+template<typename E, typename T, typename... Rest>
+[[noreturn]] inline void raise(std::format_string<T, Rest...> fmt,
+                               T&& arg, Rest&&... rest);
+```
+
+The call-site shape disambiguates: 1 arg goes to the `string_view` overload,
+2+ args to the format-string overload. The format string must be a literal
+(consteval); for runtime-built strings, pass a pre-built `std::string` to
+the `string_view` overload (or wrap with `std::format("{}", s)`).
+
+Call sites: `raise<ValueError>("msg")`, `raise<TypeError>("{} bad", x)`, etc.
+The catchable exception classes (`ValueError`, `TypeError`, `KeyError`,
+`IndexError`, `AttributeError`, `OSError`, `FileNotFoundError`,
+`ZeroDivisionError`, `OverflowError`, `ArithmeticError`, `RuntimeError`,
+`NotImplementedError`, `MemoryError`, `AssertionError`, `StopIteration`)
+are all defined in `core.hpp`.
+
+Two specialized helpers stay separate:
+
+| Helper | Behavior | Defined in |
+|--------|----------|------------|
+| `raise_assertion_error(msg = "assertion failed")` | Throws `AssertionError`; supplies the no-message default for `assert cond` codegen | `core.hpp` |
+| `raise_fixedint_overflow(msg, ...)` | Currently calls `tpy_panic`; designed for a future policy switch (none/panic/throw) on fixed-int arithmetic overflow | `core.hpp` |
+
+For demangled C++ type names in messages (e.g. `tpy::BigInt` instead of
+`N3tpy6BigIntE`), `core.hpp` exposes
+`std::string demangle_type_name(const char* mangled)` -- used by the
+`Any` cast/hash messages.
 
 ### Future Extensions
 

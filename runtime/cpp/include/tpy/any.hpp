@@ -12,7 +12,7 @@
  * See docs/ANY_TYPE_DESIGN.md for the full design.
  *
  * Depends on: dunder.hpp (__str__, __repr__, __hash__), builtins.hpp
- * (to_bool), core.hpp (tpy_panic).
+ * (to_bool), core.hpp (raise<E>, tpy_panic, demangle_type_name).
  */
 
 #pragma once
@@ -264,7 +264,9 @@ T any_cast_or_panic(const Any& a) {
         ::tpy::tpy_panic("use of empty/moved-from Any");
     }
     if (a.value.type() != typeid(T)) {
-        ::tpy::tpy_panic("Any: type mismatch");
+        ::tpy::raise<TypeError>("Any holds {}, cannot cast to {}",
+                                ::tpy::demangle_type_name(a.value.type().name()),
+                                ::tpy::demangle_type_name(typeid(T).name()));
     }
     return std::any_cast<T>(a.value);
 }
@@ -275,7 +277,9 @@ T any_cast_or_panic(Any&& a) {
         ::tpy::tpy_panic("use of empty/moved-from Any");
     }
     if (a.value.type() != typeid(T)) {
-        ::tpy::tpy_panic("Any: type mismatch");
+        ::tpy::raise<TypeError>("Any holds {}, cannot cast to {}",
+                                ::tpy::demangle_type_name(a.value.type().name()),
+                                ::tpy::demangle_type_name(typeid(T).name()));
     }
     T moved = std::any_cast<T>(std::move(a.value));
     // Clear the source so the documented "use of empty/moved-from Any"
@@ -323,9 +327,8 @@ inline std::uint64_t any_hash(const Any& a) {
         ::tpy::tpy_panic("use of empty/moved-from Any");
     }
     if (a.ops == nullptr || a.ops->hash == nullptr) {
-        ::tpy::tpy_panic(std::format(
-            "cannot hash Any holding {} -- type is not Hashable",
-            a.value.type().name()));
+        ::tpy::raise<TypeError>("unhashable type: '{}'",
+                                ::tpy::demangle_type_name(a.value.type().name()));
     }
     return a.ops->hash(a.value);
 }
