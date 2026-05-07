@@ -15,7 +15,7 @@ import shutil
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Iterable, TYPE_CHECKING
+from typing import Any, Callable, Iterable, NamedTuple, TYPE_CHECKING
 
 from .parse import Parser, ParseError, TpyModule, TpyImport, TpyVarDecl, RelativeImportKey, SourceLocation, scan_star_exports
 from .parse.imports import (
@@ -893,6 +893,18 @@ class ModuleExports:
     reached: set[str] = field(default_factory=set)
 
 
+class _SkeletonSnapshot(NamedTuple):
+    """Identity snapshot of a module's pre-populated skeleton sema
+    objects. Recorded by `_pre_populate_decl_exports`, consumed and
+    then cleared by `_verify_skeleton_adoption` at the end of
+    `_finalize_declarations`. See `Compiler._verify_skeleton_adoption`
+    for the invariant being checked.
+    """
+    records: dict[str, int]               # name -> id(RecordInfo)
+    protocols: dict[str, int]             # name -> id(ProtocolInfo)
+    functions: dict[str, tuple[int, int]] # name -> (id(list), id(list[0]))
+
+
 @dataclass
 class CompiledModule:
     """A compiled module with its AST and exports."""
@@ -911,6 +923,11 @@ class CompiledModule:
     # in Phase 1; debug assertions cross-check against the per-kind
     # dicts on `exports`. See docs/MUTUAL_IMPORTS_DESIGN.md.
     module_attributes: dict[str, BindingCell] = field(default_factory=dict)
+    # Set by `_pre_populate_decl_exports`, cleared by
+    # `_verify_skeleton_adoption` once finalization completes; lives
+    # on the module only for the brief sema-phase window between the
+    # two calls.
+    _skeleton_ids: _SkeletonSnapshot | None = None
 
 
 class CompileError(Exception):
@@ -2176,6 +2193,12 @@ class Compiler:
                 # `register_function_group`; don't pre-populate
                 # individually -- the group is created together.
                 continue
+            if func.builtin_decorator_key:
+                # `@builtin_decorator` markers register a fresh
+                # FunctionInfo by design (decorator-key lookup, not
+                # call resolution). They have no cross-module call
+                # sites that would capture a skeleton at bind_imports.
+                continue
             if func.name in compiled.exports.functions:
                 continue
             fi_skel = FunctionInfo(
@@ -2191,6 +2214,35 @@ class Compiler:
                 compiled.module_attributes, func.name,
                 SymbolKind.FUNCTION, fi_list,
             )
+
+        # Snapshot identity of every skeleton we just minted, so
+        # `_verify_skeleton_adoption` (called after the module's
+        # declaration sub-phases finish) can confirm each registration
+        # entrypoint adopted its skeleton in place via
+        # `_adopt_skeleton`. Catches future drift if a new entrypoint
+        # builds a fresh sema object instead of mutating the skeleton --
+        # peer registries that captured the skeleton at bind_imports
+        # time would otherwise see stale data.
+        #
+        # Enums are intentionally excluded: enum semantics route
+        # through the qname-keyed TypeDef registry rather than
+        # NominalType identity, so the skeleton NominalType is just
+        # a name carrier and `register_enum` is free to allocate a
+        # fresh instance.
+        compiled._skeleton_ids = _SkeletonSnapshot(
+            records={n: id(o) for n, o
+                     in compiled.exports.records.items()},
+            protocols={n: id(o) for n, o
+                       in compiled.exports.protocols.items()},
+            # Record both the list and inner FI identity: register_overload_group
+            # mutates the skeleton list in place (list identity preserved);
+            # register_function builds a new list but adopts the inner FI
+            # (inner FI identity preserved). Either is a valid adoption shape.
+            functions={
+                n: (id(lst), id(lst[0])) if lst else (0, 0)
+                for n, lst in compiled.exports.functions.items()
+            },
+        )
 
     def _canonicalize_import_sources(self, compiled: CompiledModule) -> None:
         """Rewrite the module's parser import table to defining modules.
@@ -2515,7 +2567,94 @@ class Compiler:
         # set and refreshes the workspace ModuleInfo entry.
         self._extract_declaration_exports(compiled, analyzer)
         self._extract_body_exports(compiled, analyzer)
+        self._verify_skeleton_adoption(compiled)
         return analyzer
+
+    @staticmethod
+    def _verify_skeleton_adoption(compiled: CompiledModule) -> None:
+        """Assert that every pre-populated skeleton in
+        `compiled.exports` was adopted in place by its registration
+        entrypoint. Bug-prevention check for the
+        `_adopt_skeleton(skeleton, full)` invariant: peer registries
+        that captured a skeleton reference during `bind_imports` will
+        only see freshly-finalized data if the registration site
+        mutated the skeleton in place rather than allocating a fresh
+        sema object. Catches future drift when a new registration
+        path is added.
+
+        Identity rules per entry kind:
+
+        * Records / protocols: object identity is preserved
+          (`register_record` / `register_protocol` adopt the skeleton
+          object directly).
+        * Functions: `register_overload_group` mutates the skeleton
+          *list* in place (list identity preserved), while
+          `register_function` builds a fresh list but adopts the
+          skeleton's inner `FunctionInfo` (inner FI identity
+          preserved). Either shape is valid.
+
+        Enums are excluded: enum semantics route through the
+        qname-keyed TypeDef registry rather than NominalType
+        identity, so the skeleton NominalType is just a name carrier
+        and `register_enum` is free to allocate a fresh instance.
+        """
+        snap = compiled._skeleton_ids
+        if snap is None:
+            return
+        mod = compiled.name
+        # Records and protocols share the same identity rule: the
+        # skeleton object is mutated in place by `_adopt_skeleton`,
+        # so the export entry must remain the same object. Walk both
+        # against `compiled.exports.records` / `.protocols`.
+        for kind, skeleton_ids, exports_dict in (
+            ("record", snap.records, compiled.exports.records),
+            ("protocol", snap.protocols, compiled.exports.protocols),
+        ):
+            for name, skel_id in skeleton_ids.items():
+                cur = exports_dict.get(name)
+                if cur is None:
+                    continue  # name was deleted (e.g. macro removed it)
+                assert id(cur) == skel_id, (
+                    f"skeleton-adoption invariant violated: {kind} "
+                    f"'{name}' in module '{mod}' has a fresh "
+                    f"identity. `register_{kind}` must adopt the "
+                    f"pre-populated skeleton via `_adopt_skeleton`; "
+                    f"otherwise peer registries that bound the "
+                    f"skeleton at bind_imports time will see stale "
+                    f"placeholder data."
+                )
+        # Functions accept either valid adoption shape: list mutated
+        # in place (overload-group path) or inner FI preserved
+        # (register_function path). Note this is a coarse check --
+        # if a regression swapped the list for an unrelated list
+        # whose [0] happens to be the original FI identity by
+        # coincidence, this would still pass. Low-risk in practice.
+        for name, (skel_list_id, skel_fi_id) in snap.functions.items():
+            cur = compiled.exports.functions.get(name)
+            # `(0, 0)` is the sentinel for an empty skeleton list,
+            # which the snapshot type admits but pre-populate never
+            # produces (every minted skeleton is `[FunctionInfo(...)]`).
+            # Defensive skip; unreachable in practice today.
+            if cur is None or skel_list_id == 0:
+                continue
+            if id(cur) == skel_list_id:
+                continue
+            if cur and id(cur[0]) == skel_fi_id:
+                continue
+            raise AssertionError(
+                f"skeleton-adoption invariant violated: function "
+                f"'{name}' in module '{mod}' has neither the "
+                f"pre-populated list identity nor the pre-populated "
+                f"inner FunctionInfo identity. Either `register_function` "
+                f"failed to adopt the skeleton FI via `_adopt_skeleton`, "
+                f"or `register_overload_group` failed to mutate the "
+                f"skeleton list in place. Peer registries that bound "
+                f"the skeleton at bind_imports time will see stale "
+                f"placeholder params / VOID return."
+            )
+        # Snapshot served its purpose; clear so the dict doesn't
+        # outlive the sema-phase window.
+        compiled._skeleton_ids = None
 
     def _analyze_bodies(self, compiled: CompiledModule) -> None:
         """Run sub-phase 4 (analyze_bodies) and sub-phase 5

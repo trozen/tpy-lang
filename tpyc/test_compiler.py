@@ -409,3 +409,141 @@ class TestGenerateCmake:
         content = cmake_path.read_text()
         assert "${CMAKE_CURRENT_LIST_DIR}/runtime/include" in content
         assert (layout.root_dir / "runtime" / "include" / "tpy" / "tpy.hpp").is_file()
+
+
+def _make_skeleton_module(records=(), protocols=(), functions=(), enums=()):
+    """Build a minimal CompiledModule with given exports populated
+    and a matching `_skeleton_ids` snapshot, as if pre-populate had
+    just run on it. No sema needed -- the verifier only consults the
+    snapshot and the exports.
+    """
+    from .compiler import CompiledModule, ModuleExports, _SkeletonSnapshot
+    from .parse import TpyModule
+    from .parse.nodes import ModuleDirectives
+
+    ast = TpyModule(
+        records=[], functions=[], protocols=[], enums=[],
+        top_level_stmts=[], source_lines=[], imports={},
+        tpy_star_import=False, star_imports=set(), user_module_imports={},
+        module_aliases={}, bare_module_imports=set(), type_aliases={},
+        directives=ModuleDirectives(),
+    )
+    exports = ModuleExports()
+    for r in records:
+        exports.records[r.name] = r
+    for p in protocols:
+        exports.protocols[p.name] = p
+    for name, fi_list in functions:
+        exports.functions[name] = list(fi_list)
+    for name, nominal in enums:
+        exports.enums[name] = nominal
+
+    snap = _SkeletonSnapshot(
+        records={n: id(o) for n, o in exports.records.items()},
+        protocols={n: id(o) for n, o in exports.protocols.items()},
+        functions={n: (id(lst), id(lst[0])) if lst else (0, 0)
+                   for n, lst in exports.functions.items()},
+    )
+    return CompiledModule(
+        name="m", path=Path("<test>"), ast=ast, exports=exports,
+        is_entry_point=True, _skeleton_ids=snap,
+    )
+
+
+class TestSkeletonAdoptionAssertion:
+    """Pins the `_verify_skeleton_adoption` invariant: every
+    pre-populated skeleton object/list must be adopted in place by
+    its registration entrypoint, so peer registries that captured a
+    reference at bind_imports time see freshly-finalized data.
+
+    Five of these tests use `_make_skeleton_module` to hand-build a
+    minimal CompiledModule + matching snapshot and exercise the
+    verifier directly, with no sema involved. The first test does a
+    full real compile to confirm the production path passes the
+    assertion in normal use (no false positives).
+    """
+
+    def test_correctly_adopted_real_compile(self):
+        """A normal compile passes the assertion (smoke-test against
+        false positives in the production pipeline)."""
+        source = (
+            "class A:\n"
+            "    val: int\n"
+            "    def __init__(self, v: int) -> None:\n"
+            "        self.val = v\n"
+            "def helper() -> int:\n"
+            "    return 42\n"
+        )
+        Compiler.from_source(source).compile()  # raises if violated
+
+    def test_record_identity_mismatch_fires(self):
+        from .typesys import RecordInfo
+        rec = RecordInfo(name="A", fields=[], module="m", defining_module="m")
+        compiled = _make_skeleton_module(records=[rec])
+        compiled.exports.records["A"] = RecordInfo(
+            name="A", fields=[], module="m", defining_module="m",
+        )
+        with pytest.raises(AssertionError, match=r"record 'A'"):
+            Compiler._verify_skeleton_adoption(compiled)
+
+    def test_protocol_identity_mismatch_fires(self):
+        from .typesys import ProtocolInfo
+        proto = ProtocolInfo(name="P", methods=[], type_params=[],
+                             module="m", is_dynamic=False)
+        compiled = _make_skeleton_module(protocols=[proto])
+        compiled.exports.protocols["P"] = ProtocolInfo(
+            name="P", methods=[], type_params=[],
+            module="m", is_dynamic=False,
+        )
+        with pytest.raises(AssertionError, match=r"protocol 'P'"):
+            Compiler._verify_skeleton_adoption(compiled)
+
+    def test_function_with_neither_list_nor_fi_identity_fires(self):
+        from .typesys import FunctionInfo, VOID
+        original = FunctionInfo(name="f", params=[], return_type=VOID,
+                                qualified_name="m.f", originating_module="m")
+        compiled = _make_skeleton_module(functions=[("f", [original])])
+        compiled.exports.functions["f"] = [
+            FunctionInfo(name="f", params=[], return_type=VOID,
+                         qualified_name="m.f", originating_module="m"),
+        ]
+        with pytest.raises(AssertionError, match=r"function 'f'"):
+            Compiler._verify_skeleton_adoption(compiled)
+
+    def test_function_inner_fi_preserved_passes(self):
+        # register_function adoption shape: fresh list, skeleton FI inside.
+        from .typesys import FunctionInfo, VOID
+        original = FunctionInfo(name="f", params=[], return_type=VOID,
+                                qualified_name="m.f", originating_module="m")
+        compiled = _make_skeleton_module(functions=[("f", [original])])
+        compiled.exports.functions["f"] = [original]
+        Compiler._verify_skeleton_adoption(compiled)
+
+    def test_function_list_mutated_in_place_passes(self):
+        # register_overload_group adoption shape: skeleton list cleared
+        # and re-extended with fresh FIs; list identity preserved even
+        # though the inner FI identity is gone.
+        from .typesys import FunctionInfo, VOID
+        original = FunctionInfo(name="g", params=[], return_type=VOID,
+                                qualified_name="m.g", originating_module="m")
+        compiled = _make_skeleton_module(functions=[("g", [original])])
+        skeleton_list = compiled.exports.functions["g"]
+        skeleton_list.clear()
+        skeleton_list.extend([
+            FunctionInfo(name="g", params=[], return_type=VOID,
+                         qualified_name="m.g", originating_module="m"),
+            FunctionInfo(name="g", params=[], return_type=VOID,
+                         qualified_name="m.g", originating_module="m"),
+        ])
+        Compiler._verify_skeleton_adoption(compiled)
+
+    def test_enum_not_checked(self):
+        from .typesys import NominalType
+        compiled = _make_skeleton_module(
+            enums=[("Color", NominalType(name="Color", type_args=(),
+                                         _module_qname="m.Color"))],
+        )
+        compiled.exports.enums["Color"] = NominalType(
+            name="Color", type_args=(), _module_qname="m.Color",
+        )
+        Compiler._verify_skeleton_adoption(compiled)
