@@ -2294,18 +2294,13 @@ class TupleType(TpyType):
         )
 
     def _element_to_cpp_param(self, t: 'TpyType', const: bool) -> str:
-        """C++ type for a tuple element in param context.
+        """C++ type for a tuple element in param/return context.
 
-        For Optional elements, uses to_cpp() (std::optional<T>) instead of
-        to_cpp_return (T*) so the param type matches the field storage type.
-        Tuples are passed as const&, so pointer repr inside makes no sense.
+        Mirrors the top-level convention: OptionalType of a non-value type
+        lowers to T* (or const T*) in tuple param/return positions. The
+        std::optional<T> form is reserved for field/storage contexts and is
+        reached via to_cpp() / to_cpp_stored().
         """
-        unwrapped = t.wrapped if isinstance(t, RefType) else t
-        if isinstance(unwrapped, OptionalType) and unwrapped.uses_pointer_repr():
-            # Use std::optional<T> (field repr) not T* (param/return repr)
-            ref_prefix = "const " if const and isinstance(t, RefType) else ""
-            suffix = "&" if isinstance(t, RefType) else ""
-            return f"{ref_prefix}{unwrapped.to_cpp()}{suffix}"
         return t.to_cpp_return_const() if const else t.to_cpp_return()
 
     def to_cpp_param_type(self) -> str:

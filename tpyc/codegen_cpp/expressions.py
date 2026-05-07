@@ -743,6 +743,21 @@ class ExpressionGenerator:
                     return "std::span<const uint8_t>{}"
                 return cpp_bytes_literal_span(bytes_lit_arg.value)
         gen_arg = self.gen_expr_deref(arg, ptype if target_type is _UNSET else target_type)
+        # Pointer-form tuple param: storage-form sources (field, subscript,
+        # global) need element-wise lift via tuple_to_pointer. Other sources
+        # (literals, function returns, locals from those) are already in
+        # pointer form. Loop variables iterating storage containers are
+        # storage form and currently not detected here -- workaround is to
+        # destructure inside the loop or pass via a wrapping function.
+        if (ptype is not None
+                and (isinstance(arg, (TpyFieldAccess, TpySubscript))
+                     or self.ctx.is_global_name(arg))):
+            ptype_for_tuple = unwrap_readonly(unwrap_ref_type(ptype))
+            if (isinstance(ptype_for_tuple, TupleType)
+                    and any(isinstance(et, OptionalType) and et.uses_pointer_repr()
+                            for et in ptype_for_tuple.element_types)):
+                ptype_cpp = ptype_for_tuple.to_cpp_return()
+                gen_arg = f"::tpy::tuple_to_pointer<{ptype_cpp}>({gen_arg})"
         if ptype is not None:
             # Auto-consuming iteration: Iterable[Own[T]] param with last-use arg
             # that has consuming __iter__. Generate consuming call instead of copy.
@@ -3032,12 +3047,16 @@ class ExpressionGenerator:
                                 # target_type controls gen_expr_deref hints:
                                 # - None literals need it for nullptr vs std::nullopt
                                 # - Narrowed value-optionals need it for (*x) unwrap
+                                # - Tuple literals need it for per-slot capture mode
+                                #   (especially pointer-form Optional slots)
                                 # - Other args: None to avoid unwanted literal coercion
                                 if isinstance(arg, TpyNoneLiteral):
                                     arg_target = rptype
                                 elif (rptype is not None
                                         and not isinstance(rptype, OptionalType)
                                         and self._is_narrowed_value_optional(arg)):
+                                    arg_target = rptype
+                                elif isinstance(arg, TpyTupleLiteral):
                                     arg_target = rptype
                                 else:
                                     arg_target = None
@@ -4351,7 +4370,7 @@ class ExpressionGenerator:
     def _wrap_for_owned_slot(self, code: str, resolved: TpyType, slot_type: TpyType | None) -> str:
         """Wrap a value expression to fit a container's element slot type.
 
-        Two cases handled:
+        Three cases handled:
 
         1. **str slot, view source.** A string_view ending up in an owned-str
            slot (list[str], dict[K, str], tuple str element) is copied to
@@ -4363,6 +4382,11 @@ class ExpressionGenerator:
            into-Any wrapping (typeid + ops table instantiation, owning
            upgrade for views) is emitted here. Note: directly nested Any
            values bypass the wrap -- they're already cells.
+
+        3. **Tuple-of-pointer-Optional slot.** Container elements store the
+           tuple in storage form (std::optional<T>); the source expression
+           may be in pointer form (T*). Lift via tuple_to_storage so the
+           container holds owning optionals.
         """
         if is_str_view_type(resolved):
             if is_str_type(slot_type):
@@ -4372,6 +4396,10 @@ class ExpressionGenerator:
         if isinstance(slot_type, AnyType) and not isinstance(resolved, AnyType):
             from ..coercions import wrap_into_any, CoercionContext
             return wrap_into_any(code, resolved, CoercionContext.INIT)
+        if (isinstance(slot_type, TupleType)
+                and any(isinstance(et, OptionalType) and et.uses_pointer_repr()
+                        for et in slot_type.element_types)):
+            return f"::tpy::tuple_to_storage<{slot_type.to_cpp()}>({code})"
         return code
 
     def _gen_tuple_literal(self, expr: TpyTupleLiteral, target_type: TpyType | None) -> str:
@@ -4401,13 +4429,25 @@ class ExpressionGenerator:
                         resolved = IntLiteralType()
                     elif isinstance(elem, TpyFloatLiteral):
                         resolved = FloatLiteralType()
-                elem_str = self._wrap_for_owned_slot(self.gen_expr_deref(elem, elem_target), resolved, elem_target)
+                elem_capture = (expr.elem_capture[i]
+                                if i < len(expr.elem_capture) else None)
+                # VALUE capture is the storage form (sema annotates VALUE for
+                # field-context tuples). Other modes use the slot's borrow
+                # form: T* for pointer-repr Optional.
+                want_pointer_form = (
+                    isinstance(elem_target, OptionalType)
+                    and elem_target.uses_pointer_repr()
+                    and elem_capture != TupleElemCapture.VALUE
+                )
+                if want_pointer_form:
+                    elem_str = self._optional_pointer_form_value(elem, elem_target)
+                else:
+                    elem_str = self._wrap_for_owned_slot(self.gen_expr_deref(elem, elem_target), resolved, elem_target)
                 # Matches the auto-move sema rule for `return x` of an Own var.
                 # Sema annotates VALUE for any slot that takes the element by
                 # value (Own[T], Own[Tuple], or field-context tuple element);
                 # we mirror that universal signal to drive _maybe_move.
-                captured_by_value = (i < len(expr.elem_capture)
-                                     and expr.elem_capture[i] == TupleElemCapture.VALUE)
+                captured_by_value = elem_capture == TupleElemCapture.VALUE
                 slot_owned = (isinstance(elem_target, OwnType)
                               or outer_own_tuple or captured_by_value)
                 slot_inner = elem_target.wrapped if isinstance(elem_target, OwnType) else elem_target
@@ -4447,6 +4487,12 @@ class ExpressionGenerator:
             base = self.types.type_to_cpp(et)
             if i < len(expr.elem_capture):
                 mode = expr.elem_capture[i]
+            elif (isinstance(et, OptionalType) and et.uses_pointer_repr()):
+                # Force REF so all elements end up with the same slot shape.
+                # Without this, an lvalue (REF) + None (VALUE) mix yields
+                # std::tuple<T*, std::optional<T>>, which won't bind to a
+                # uniformly pointer-form param.
+                mode = TupleElemCapture.REF
             elif not et.is_value_type() and not isinstance(et, OwnType):
                 # No sema annotation (e.g. tuple in list literal or call arg).
                 # Use REF only for simple lvalues (variables, field access).
@@ -4461,6 +4507,16 @@ class ExpressionGenerator:
                     mode = TupleElemCapture.VALUE
             else:
                 mode = TupleElemCapture.VALUE
+            # VALUE capture is the storage form (sema annotates VALUE for
+            # field-context tuples). Other modes follow the slot's return
+            # form: T* / const T* for pointer-repr Optional.
+            if (isinstance(et, OptionalType) and et.uses_pointer_repr()
+                    and mode != TupleElemCapture.VALUE):
+                if mode == TupleElemCapture.CONST_REF:
+                    cpp_parts.append(et.to_cpp_return_const())
+                else:
+                    cpp_parts.append(et.to_cpp_return())
+                continue
             if isinstance(et, TypeParamRef):
                 # Defer value-vs-ref to C++ instantiation time.
                 # T may be val_or_ref<U> when Ref[U] is the type arg,
@@ -4476,6 +4532,30 @@ class ExpressionGenerator:
             else:
                 cpp_parts.append(base)
         return f"std::tuple<{', '.join(cpp_parts)}>"
+
+    def _optional_pointer_form_value(self, elem: TpyExpr,
+                                      elem_target: 'OptionalType') -> str:
+        """Render `elem` as a T* (pointer-form Optional) expression.
+
+        Used wherever a slot expects T* and the source might be any of:
+        a None literal, an already-pointer indirect name or ternary, a
+        std::optional<T> field requiring optional_to_ptr, or a plain
+        lvalue requiring &(...). Shared between return-statement codegen
+        and tuple-literal elements with pointer-form-Optional targets.
+        """
+        if isinstance(elem, TpyNoneLiteral):
+            return "nullptr"
+        ret_expr = self.gen_expr(elem, elem_target)
+        if self.ctx.is_indirect_name(elem):
+            return ret_expr
+        if isinstance(elem, TpyIfExpr):
+            return ret_expr
+        if isinstance(elem, TpyFieldAccess):
+            val_type = self.ctx.get_expr_type(elem)
+            if (isinstance(val_type, OptionalType)
+                    and val_type.uses_pointer_repr()):
+                return f"::tpy::optional_to_ptr({ret_expr})"
+        return f"&({ret_expr})"
 
     def _gen_subscript(self, expr: TpySubscript) -> str:
         """Generate subscript code."""

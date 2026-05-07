@@ -739,6 +739,62 @@ const T* optional_to_ptr(const std::optional<T>& opt) {
     return nullptr;
 }
 
+namespace detail {
+
+// Per-element conversion overloads used by tuple_to_storage / tuple_to_pointer.
+// Plain elements pass through; T*/std::optional<T> elements convert.
+
+template<typename E>
+inline E to_optional_form(E&& e) { return std::forward<E>(e); }
+
+template<typename T>
+inline std::optional<T> to_optional_form(T* p) { return ptr_to_optional(p); }
+
+template<typename T>
+inline std::optional<T> to_optional_form(const T* p) { return ptr_to_optional(p); }
+
+template<typename E>
+inline E to_pointer_form(E&& e) { return std::forward<E>(e); }
+
+template<typename T>
+inline T* to_pointer_form(std::optional<T>& opt) { return optional_to_ptr(opt); }
+
+template<typename T>
+inline const T* to_pointer_form(const std::optional<T>& opt) { return optional_to_ptr(opt); }
+
+}  // namespace detail
+
+template<typename ToTuple, typename FromTuple, std::size_t... I>
+inline ToTuple tuple_to_storage_impl(FromTuple&& t, std::index_sequence<I...>) {
+    return ToTuple(detail::to_optional_form(std::get<I>(std::forward<FromTuple>(t)))...);
+}
+
+// Lift a pointer-form tuple (T*, ..., U) to storage-form (std::optional<T>, ..., U).
+// Plain elements pass through unchanged. Used at field-write boundaries where
+// the field stores std::tuple<std::optional<...>, ...> but the source is a
+// borrow-form tuple from a function return / param / local.
+template<typename ToTuple, typename FromTuple>
+inline ToTuple tuple_to_storage(FromTuple&& t) {
+    using F = std::remove_reference_t<FromTuple>;
+    return tuple_to_storage_impl<ToTuple>(std::forward<FromTuple>(t),
+                                          std::make_index_sequence<std::tuple_size_v<F>>{});
+}
+
+template<typename ToTuple, typename FromTuple, std::size_t... I>
+inline ToTuple tuple_to_pointer_impl(FromTuple&& t, std::index_sequence<I...>) {
+    return ToTuple(detail::to_pointer_form(std::get<I>(std::forward<FromTuple>(t)))...);
+}
+
+// Lower a storage-form tuple (std::optional<T>, ..., U) to pointer-form
+// (T*, ..., U). Plain elements pass through unchanged. Used at field-read
+// boundaries where the consumer is a pointer-form tuple param.
+template<typename ToTuple, typename FromTuple>
+inline ToTuple tuple_to_pointer(FromTuple&& t) {
+    using F = std::remove_reference_t<FromTuple>;
+    return tuple_to_pointer_impl<ToTuple>(std::forward<FromTuple>(t),
+                                          std::make_index_sequence<std::tuple_size_v<F>>{});
+}
+
 // Default repr for records without __repr__/__str__: "<ClassName object at 0xADDR>"
 template<typename T>
 inline std::ostream& print_object_default(std::ostream& os, std::string_view class_name, const T& obj) {

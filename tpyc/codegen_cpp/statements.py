@@ -395,28 +395,12 @@ class StatementGenerator:
                     return self._make_return(indent, ret_expr)
                 if isinstance(ret_type, OptionalType):
                     if not ret_type.uses_pointer_repr():
-                        # Value-type Optional: return std::nullopt or plain value
                         if isinstance(ret_value, TpyNoneLiteral):
                             return self._make_return(indent, "std::nullopt")
                         ret_expr = self.expressions.gen_expr_deref(ret_value, ret_type)
                         return self._make_return(indent, ret_expr)
-                    # Non-value Optional: return pointer (not dereferenced)
-                    if isinstance(ret_value, TpyNoneLiteral):
-                        return self._make_return(indent, "nullptr")
-                    ret_expr = self.expressions.gen_expr(ret_value, ret_type)
-                    if self.ctx.is_indirect_name(ret_value):
-                        # Already a pointer -- return as-is
-                        return self._make_return(indent, ret_expr)
-                    if isinstance(ret_value, TpyIfExpr):
-                        # Ternary produces T* in non-container context
-                        return self._make_return(indent, ret_expr)
-                    # Field access produces std::optional<T>, convert to T*
-                    if isinstance(ret_value, TpyFieldAccess):
-                        val_type = self.ctx.get_expr_type(ret_value)
-                        if isinstance(val_type, OptionalType) and val_type.uses_pointer_repr():
-                            return self._make_return(indent, f"::tpy::optional_to_ptr({ret_expr})")
-                    # Take address of lvalue
-                    return self._make_return(indent, f"&({ret_expr})")
+                    ret_expr = self.expressions._optional_pointer_form_value(ret_value, ret_type)
+                    return self._make_return(indent, ret_expr)
                 # Recursive union wrapper struct: `return None` constructs the
                 # monostate variant (NoneType is one of the wrapper's members).
                 if isinstance(ret_value, TpyNoneLiteral):
@@ -1242,6 +1226,44 @@ class StatementGenerator:
         pv_cpp = self.types.type_to_cpp_ptr_variant(target_type)
         return f"{indent}{cpp_name} = {pv_cpp}{{&({init_expr})}};\n"
 
+    def _maybe_wrap_storage_tuple_source(self, stmt: 'TpyTupleUnpack', value_expr: str) -> str:
+        """If unpacking a storage-form tuple into pointer-form Optional locals,
+        wrap the source with tuple_to_pointer so std::get<I> yields T*.
+
+        Storage-form sources are field accesses, subscripts, globals, and
+        loop variables iterating storage-form containers. The check on the
+        target_types catches "any pointer-form Optional element"; the source
+        check (TpyFieldAccess / TpySubscript / global) flags the storage form.
+        """
+        has_ptr_optional = any(
+            isinstance(t, OptionalType) and t.uses_pointer_repr()
+            for t in stmt.target_types
+        )
+        if not has_ptr_optional:
+            return value_expr
+        if not (isinstance(stmt.value, (TpyFieldAccess, TpySubscript))
+                or self.ctx.is_global_name(stmt.value)):
+            return value_expr
+        ptr_form = TupleType(tuple(stmt.target_types))
+        return f"::tpy::tuple_to_pointer<{ptr_form.to_cpp_return()}>({value_expr})"
+
+    def _maybe_wrap_tuple_to_storage(self, expr: str, target_type: TpyType | None) -> str:
+        """Wrap a pointer-form tuple expression with tuple_to_storage if the
+        target's storage is std::tuple<std::optional<T>, ...>.
+
+        Returns expr unchanged when target isn't a tuple containing pointer-repr
+        Optional elements.
+        """
+        if target_type is None:
+            return expr
+        unwrapped = unwrap_readonly(unwrap_ref_type(target_type))
+        if not isinstance(unwrapped, TupleType):
+            return expr
+        if not any(isinstance(et, OptionalType) and et.uses_pointer_repr()
+                   for et in unwrapped.element_types):
+            return expr
+        return f"::tpy::tuple_to_storage<{unwrapped.to_cpp()}>({expr})"
+
     def _gen_var_decl_code(self, stmt: TpyVarDecl, indent: str) -> str | None:
         """Generate code for a variable declaration. Returns code to write or None."""
         from ..parse.nodes import VarLinkage
@@ -1269,6 +1291,7 @@ class StatementGenerator:
                 return None
             var_type = self.ctx.get_expr_type(stmt.init)
             init_expr = self.expressions.gen_expr(stmt.init, var_type)
+            init_expr = self._maybe_wrap_tuple_to_storage(init_expr, var_type)
             target_name = self.ctx.native_global_names.get(stmt.name, stmt.name)
             return f"{indent}{target_name} = {init_expr};\n"
 
@@ -1305,6 +1328,7 @@ class StatementGenerator:
                 if result := self._try_str_inplace_append(stmt.name, cpp_name, stmt.init, var_type, indent):
                     return result
                 init_expr = self.expressions.gen_expr(stmt.init, var_type)
+                init_expr = self._maybe_wrap_tuple_to_storage(init_expr, var_type)
                 return f"{indent}{cpp_name} = {init_expr};\n"
             return None
 
@@ -1501,6 +1525,17 @@ class StatementGenerator:
         # Field assignment: boundary conversions for optional/union pointer repr
         if isinstance(stmt.target, TpyFieldAccess):
             target_type = self.ctx.get_expr_type(stmt.target)
+            # Tuple-of-pointer-Optional field: lift pointer-form source via
+            # tuple_to_storage. Field-access source is already storage form.
+            if (isinstance(target_type, TupleType)
+                    and any(isinstance(et, OptionalType) and et.uses_pointer_repr()
+                            for et in target_type.element_types)):
+                source = self.ctx.unwrap_copy(stmt.value)
+                if not isinstance(source, TpyFieldAccess):
+                    target = self.expressions.gen_expr(stmt.target)
+                    value = self.expressions.gen_expr(stmt.value, target_type)
+                    storage_cpp = target_type.to_cpp()
+                    return f"{indent}{target} = ::tpy::tuple_to_storage<{storage_cpp}>({value});\n"
             # Optional field: std::optional<T> storage needs boundary conversion
             if isinstance(target_type, OptionalType) and target_type.uses_pointer_repr():
                 target = self.expressions.gen_expr(stmt.target)
@@ -1940,6 +1975,10 @@ class StatementGenerator:
         else:
             value_expr = self.expressions.gen_expr(stmt.value)
             self.ctx.temps.flush(out, indent)
+            # Storage-form tuple source (field, subscript, global, loop var)
+            # being unpacked into pointer-form Optional locals: lift via
+            # tuple_to_pointer so std::get<I> returns T* per slot.
+            value_expr = self._maybe_wrap_storage_tuple_source(stmt, value_expr)
 
         self.ctx.unpack_counter += 1
         tmp = f"__tup_{self.ctx.unpack_counter}"
@@ -1968,6 +2007,22 @@ class StatementGenerator:
             cpp_type = self.types.type_to_cpp(target_type)
             cpp_name = escape_cpp_name(name)
             get_expr = f"std::get<{i}>({tmp})"
+            # Pointer-repr Optional element: slot is T*, register the local
+            # in pointer_locals so subsequent reads know to deref.
+            is_ptr_optional = (isinstance(target_type, OptionalType)
+                               and target_type.uses_pointer_repr())
+            if is_ptr_optional and stmt.is_new[i]:
+                self.ctx.declared_vars.add(name)
+                self.ctx.local_scope_names.add(name)
+                self.ctx.var_types[name] = target_type
+                self.ctx.pointer_locals.add(name)
+                is_const = (stmt.is_const_ref
+                            and i < len(stmt.is_const_ref)
+                            and stmt.is_const_ref[i])
+                ptr_cpp = (target_type.to_cpp_return_const() if is_const
+                           else target_type.to_cpp_return())
+                out.write(f"{indent}{ptr_cpp} {cpp_name} = {get_expr};\n")
+                continue
             if stmt.is_ref[i]:
                 # Unwrap val_or_ref<T> from iterator-composed tuples
                 # (e.g. enumerate(map(f, xs)) yields tuple<int, val_or_ref<T>>).

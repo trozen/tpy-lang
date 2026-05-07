@@ -6,12 +6,14 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // h1 = Holder((Point(1, 2), 42))
-    Holder h1 = Holder(std::tuple<std::optional<Point>, int32_t>{Point(1, 2), 42});
+    // p = Point(1, 2)
+    Point p = Point(1, 2);
+    // h1 = Holder((p, 42))
+    Holder h1 = Holder(std::tuple<Point*, int32_t>{&(p), 42});
     // print(h1.pair)
     std::cout << ::tpy::TuplePrinter(h1.pair) << "\n";
     // h2 = Holder((None, 99))
-    Holder h2 = Holder(std::tuple<std::optional<Point>, int32_t>{std::nullopt, 99});
+    Holder h2 = Holder(std::tuple<Point*, int32_t>{nullptr, 99});
     // print(h2.pair)
     std::cout << ::tpy::TuplePrinter(h2.pair) << "\n";
 }

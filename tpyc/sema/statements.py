@@ -34,6 +34,7 @@ from ..parse import (
     TpyCall, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyDictLiteral, TpyCoerce,
     TpySubscript, TpySlice, TpyStrLiteral, TpyName, TpyTupleLiteral,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
+    TpyNoneLiteral,
     TpyFieldAccess, TpyFunction, TupleElemCapture,
     TpyMatch, TpyBinOp, TpyIfExpr,
 )
@@ -528,6 +529,27 @@ class StatementAnalyzer:
 
             # Local context: is_const_ref_source handles ReadonlyType
             # (including constructor params which are typed as ReadonlyType)
+            # Pointer-form Optional: force REF for all sources (including
+            # non-lvalue None) so the tuple has a uniform slot shape. A
+            # mixed `(t, None)` would otherwise yield std::tuple<T*,
+            # std::optional<T>> and not match a uniformly pointer-form
+            # downstream type.
+            if isinstance(et, OptionalType) and et.uses_pointer_repr():
+                if (not isinstance(elem, TpyNoneLiteral)
+                        and not self.compat.is_lvalue(elem)
+                        and self.ctx.is_type_non_copyable(et.inner)):
+                    raise self.ctx.error(
+                        f"cannot bind tuple element {i} of non-copyable type "
+                        f"'{et.inner}' from rvalue. Bind to a local first, or "
+                        f"place the literal directly at its consumer"
+                        f"{NOCOPY_REMEDIATION_HINT}",
+                        elem,
+                    )
+                if is_readonly or self.compat.is_const_ref_source(elem):
+                    literal.elem_capture.append(CR)
+                else:
+                    literal.elem_capture.append(R)
+                continue
             if not self.compat.is_lvalue(elem):
                 literal.elem_capture.append(V)
             else:

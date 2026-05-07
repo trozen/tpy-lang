@@ -198,8 +198,10 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `StrView` | `std::string_view` |
 | `Char` | `char` |
 | `None` | `void` (return type) |
-| `Optional[T]` | `std::optional<T>` |
-| `tuple[T1, T2, ...]` | `std::tuple<T1, T2, ...>` |
+| `T \| None` (T value type) | `std::optional<T>` |
+| `T \| None` (T non-value, params/returns/locals) | `T*` (pointer form) |
+| `T \| None` (T non-value, fields/containers) | `std::optional<T>` (storage form) |
+| `tuple[T1, T2, ...]` | `std::tuple<T1, T2, ...>` (per-element rules apply; see Tuples below) |
 | `dict[K, V]` | `tpy::ordered_map<K, V>` |
 | `set[T]` | `tpy::ordered_set<T>` |
 | `list[T]` | `std::vector<T>` |
@@ -538,6 +540,9 @@ process(b"hello")      # zero-alloc: static span passed directly
 - **Working**: `Span[readonly[T]]` - non-owning read-only view into contiguous memory → `std::span<const T>`
 - **Working**: `SpanIter[T]` - lightweight iterator over a contiguous span → `tpy::SpanIter<T>`. Constructed from `Span[T]` or `Span[readonly[T]]`. Implements `NativeIterable[T]`, `Iterable[T]`, `Iterator[T]`. Used as the return type of `__iter__()` on span-backed user types (e.g. `ArrayList`).
 - **Working**: `tuple[T1, T2, ...]` - fixed-length typed tuple -> `std::tuple<T1, T2, ...>`
+  - Element lowering follows the same per-type rules as scalar values: a non-value `T` element becomes `T&` in params/returns/locals (so `tuple[T, U]` returns `std::tuple<T&, U&>`) and `T` in fields/containers. A `T | None` element of a non-value `T` becomes `T*` in params/returns/locals (`tuple[T | None, T | None]` returns `std::tuple<T*, T*>`) and `std::optional<T>` in fields/containers.
+  - Boundaries between borrow form and storage form (field-init, field-write, global init, container-element init, destructuring of a storage-form source) lower to element-wise conversions via `tpy::tuple_to_storage<...>` / `tpy::tuple_to_pointer<...>`. The pass-through case (return value of one function flowing into the param of another, both in pointer form) needs no conversion.
+  - Rvalue tuple elements of reference type (e.g. `f((Point(1,2), 42))` where the slot expects a borrow) trigger the same C++ "address of rvalue" limitation as the analogous non-Optional case; bind to a local first. Tracked in BUGS.md.
 - **Working**: `dict[K, V]` - ordered hash map → `tpy::ordered_map<K, V>` (insertion-order preserving)
   - Literals `{k: v, ...}`, subscript `d[k]`/`d[k] = v`, `del d[k]`, `len(d)`, `k in d`, `for k in d`
   - Constructor: `dict(iterable)` from any iterable of `tuple[K, V]` (list of tuples, `.items()` view, etc.)
@@ -2955,6 +2960,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
     - CPython compatible: mode (a) stubs are no-ops in CPython, implementation runs with isinstance checks. Mode (b) uses a runtime dispatch shim (`lib/cpy/typing.py`) that dispatches by arity and `isinstance` on type annotations. Tests using `@native` stubs mixed with mode (b) skip the CPython phase since `@native` has no CPython implementation.
 - **Working**: `T | None` for non-value types (records, lists, arrays) → nullable pointer (`T*`)
   - Locals, parameters, returns: `T*` (nullable pointer)
+  - Class fields and container elements: `std::optional<T>` (storage form). Boundary conversions emitted via `tpy::ptr_to_optional` / `tpy::optional_to_ptr`.
   - `x is None` / `x is not None` for null checks
   - Field/method/subscript access on unproven optional values emits a warning and inserts a runtime null check
   - Guarded paths (`if x is not None`) and `assert x is not None` narrow `x` to `T`
@@ -2964,6 +2970,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Field truthiness narrowing: `if obj.field:` narrows optional fields (with value-truthiness warning for value types)
   - Field narrowing facts are invalidated when the root object is passed by mutable reference to a function call
   - Functions returning `T | None` return `T*` in C++
+  - Inside a tuple: same rule applies per element. `tuple[T | None, ...]` returns / params / locals lower to `std::tuple<T*, ...>`; fields and container elements lower to `std::tuple<std::optional<T>, ...>`. Element-wise conversion at boundaries via `tpy::tuple_to_storage<...>` / `tpy::tuple_to_pointer<...>`. See the Tuples entry under Containers.
 - **Working**: `Optional[T]` from `typing` is equivalent to `T | None` at parse time
   - `from typing import Optional` then `Optional[Int32]` produces the same type as `Int32 | None`
   - Works in all positions: parameters, returns, local annotations, class fields

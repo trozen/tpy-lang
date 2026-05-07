@@ -41,7 +41,7 @@ struct Holder {
 
     // def __init__(self, pair: tuple[Optional[Point], Int32]) -> None:
     Holder() = default;
-    explicit Holder(const std::tuple<std::optional<Point>, int32_t>& pair) : pair(pair) {}
+    explicit Holder(const std::tuple<const Point*, int32_t>& pair) : pair(::tpy::tuple_to_storage<std::tuple<std::optional<Point>, int32_t>>(pair)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 

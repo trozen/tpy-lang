@@ -41,6 +41,13 @@ if TYPE_CHECKING:
     from .protocols import ProtocolGenerator
 
 
+def _tuple_has_ptr_optional(t: TupleType) -> bool:
+    return any(
+        isinstance(et, OptionalType) and et.uses_pointer_repr()
+        for et in t.element_types
+    )
+
+
 class RecordGenerator:
     """Generates C++ structs from TurboPython records."""
 
@@ -1049,7 +1056,6 @@ class RecordGenerator:
                                     # Check if the source param is Own[Optional[T]] -- then the C++ param
                                     # is std::optional<T>&& and no ptr_to_optional is needed.
                                     source_is_own_optional = False
-                                    source = self.ctx.unwrap_copy(stmt.value)
                                     if isinstance(source, TpyName):
                                         for pname, ptype in init_method.params:
                                             if pname == source.name and isinstance(ptype, OwnType):
@@ -1061,6 +1067,14 @@ class RecordGenerator:
                                         if isinstance(val_type, OptionalType):
                                             if not (isinstance(val_type.inner, OwnType)):
                                                 value = f"::tpy::ptr_to_optional({value})"
+                                # Tuple field stores std::optional<T>; the param is T*.
+                                # Lift element-wise. Field-access source is already
+                                # storage form, so it doesn't need the conversion.
+                                if (isinstance(fld_type, TupleType)
+                                        and _tuple_has_ptr_optional(fld_type)
+                                        and not isinstance(source, TpyFieldAccess)):
+                                    fld_cpp = self.types.type_to_cpp(fld_type)
+                                    value = f"::tpy::tuple_to_storage<{fld_cpp}>({value})"
                                 # Pointer-variant param -> value-variant field: deref+copy.
                                 # The param is variant<T*...> but the field stores variant<T...>.
                                 if self.ctx.is_ptr_variant_union(fld_type):

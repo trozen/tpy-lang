@@ -17,7 +17,8 @@ class Holder:
         self.pair = pair
 
 def main() -> None:
-    h1 = Holder((Point(1, 2), 42))
+    p = Point(1, 2)
+    h1 = Holder((p, 42))
     print(h1.pair)
 
     h2 = Holder((None, 99))
