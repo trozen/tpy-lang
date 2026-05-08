@@ -15,7 +15,8 @@ void main() {
     // print(p.LIMIT)
     std::cout << ::tpyapp::pkg::state::LIMIT << "\n";
     // print(use(p.Counter(Int32(7))))
-    std::cout << use(::tpyapp::pkg::state::Counter(7)) << "\n";
+    ::tpyapp::pkg::state::Counter __tmp_1 = ::tpyapp::pkg::state::Counter(7);
+    std::cout << use(__tmp_1) << "\n";
 }
 
 void __tpy_init() {

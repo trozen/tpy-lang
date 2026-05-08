@@ -127,7 +127,7 @@ Examples of the policy in action:
 | [`os`](#os) | P0 | Missing | 0% | -- | Needs filesystem wrapper + path handling |
 | [`os.path`](#ospath) | P0 | Missing | 0% | -- | Independent of `os`; candidate for pure TPy over C++ `<filesystem>` |
 | [`pathlib`](#pathlib) | P0 | Missing | 0% | -- | Class-heavy; depends on filesystem bindings |
-| [`io`](#io) | P0 | Missing | 0% | -- | Protocol design needed; unlocks json/csv/pickle/configparser |
+| [`io`](#io) | P0 | Partial | ~30% | pure | `StringIO` / `BytesIO` (chunked storage, write/read/readline/seek/tell/truncate/iter/context-manager). `Readable` / `Writable` / `BinaryReadable` / `BinaryWritable` protocols on tpy core, re-exported from `io`. Missing: `IOBase` ABC hierarchy (deliberately deferred -- protocols cover the static-dispatch use case), `TextIOWrapper`, `io.SEEK_SET/CUR/END` constants (collide with `<cstdio>` macros), encoding/newline/errors kwargs, `read(size=-1)` arg |
 | [`json`](#json) | P0 | Partial | ~70% | pure | `loads` / `dumps` + `JSONDecodeError` done over a recursive union `JsonValue`. CPython byte-compatible across cpy phase. Missing: `load(fp)` / `dump(obj, fp)` (needs `io`), `JSONEncoder` / `JSONDecoder`, most `dumps`/`loads` kwargs |
 | [`re`](#re) | P0 | Partial | ~50% | pure | Pure-TPy facade over `_bindings.pcre2` raw bindings. PCRE2 vendored under `runtime/cpp/third_party/pcre2/` (5MB) and built bundled by default; `--pcre2={bundled,system,auto}` selects backend. compile/search/match/fullmatch/findall/sub/split + Pattern/Match classes + IGNORECASE/MULTILINE/DOTALL/VERBOSE/ASCII flags + `re.error`. Missing: named-group accessors, `count` arg on sub, true generator finditer, bytes input, compile cache |
 | [`collections`](#collections) | P0 | Missing | 0% | -- | OrderedDict trivial (have ordered_map); deque needs C++ struct; Counter/defaultdict/namedtuple need macros |
@@ -477,20 +477,44 @@ would cover most of it.
 
 ### io
 
-**Missing.** Foundational -- unlocks json (stdlib), csv, configparser, pickle, logging handlers.
+**Partial.** v1 ships `io.StringIO` + `io.BytesIO` plus six IO protocols
+(`Readable`/`Writable`/`BinaryReadable`/`BinaryWritable`/`Seekable`/`Closable`)
+that consumer code parameterizes over (`def f(fp: Writable)`). Both buffer
+types explicitly inherit the relevant protocols (`StringIO(Writable, Readable,
+Seekable, Closable)`), so conformance is documented at the class header.
 
-Design question: can we reuse the existing `TextIO`/`BinaryIO` from `tpy._builtins._io`
-as the protocol backbone, or do we need `IOBase`-style abstract bases with
-`readable()`, `writable()`, `seekable()`?
+Storage strategy: `list[str]`/`list[bytes]` chunks. The fast path
+(append-at-end, dominant for the "build payload then `getvalue()`" pattern) is
+O(1) per write and never joins; mid-buffer overwrites collapse the chunks to
+a single contiguous buffer first. `getvalue()` joins lazily and does not
+materialize state.
+
+Design choice: no `IOBase` ABC hierarchy. TPy's static dispatch makes the
+runtime introspection that `IOBase` exists for in CPython (e.g. `isinstance(fp,
+IOBase)`) unnecessary; the protocols give zero-overhead dispatch and cleanly
+split text/binary + seek/close concerns. Adding the `IOBase` family later as a
+combined protocol layer (`class IOBase(Closable, Seekable, Protocol): ...`)
+remains an option without breaking the existing granular surface.
 
 | Item | Status | Notes |
 |---|---|---|
-| `IOBase` protocol | Missing | Needs protocol with optional methods |
-| `RawIOBase`, `BufferedIOBase`, `TextIOBase` | Missing | Protocol hierarchy |
-| `StringIO` | Missing | In-memory text buffer (wrap `std::stringstream` or `std::string` + cursor) |
-| `BytesIO` | Missing | In-memory bytes buffer |
-| `TextIOWrapper` | Missing | Wraps binary stream with encoding |
+| `StringIO(initial="")` | Done | Chunked write/read; `read`/`readline`/`readlines`/`seek`/`tell`/`truncate`/`getvalue`/`flush`/`close`/`__iter__`/`__enter__`/`__exit__` |
+| `BytesIO(initial=None)` | Done | Same surface as `StringIO`, returning `bytes` |
+| `Writable` / `Readable` / `BinaryWritable` / `BinaryReadable` | Done | Protocols on `tpy._core._types`, re-exported from `tpy/__init__.py` and from `io` |
+| `Seekable` / `Closable` | Done | Same; `Seekable` is `seek(pos, whence=0)` + `tell()`; `Closable` is `close()` only (the `closed` property is left out of the protocol but available on the concrete classes) |
+| `seek(pos, whence=0)` | Partial | `whence=0/1/2` accepted as integer literals. `io.SEEK_SET/CUR/END` constants not yet exposed -- the names collide with `<cstdio>` macros; needs `#undef` shim from codegen or namespacing |
+| `seek` past end | Diverges | v1 clamps to `_total`; CPython back-fills with NUL/0. Revisit with a real consumer |
+| `__iter__` (line-by-line) | Done | Generator method yielding `readline()` results until empty |
+| `read(size=-1)` | Missing | v1 reads all remaining; CPython supports `size` arg |
+| `IOBase` / `RawIOBase` / `BufferedIOBase` / `TextIOBase` | Missing (deferred) | Not planned -- protocols cover the static-dispatch use case |
+| `TextIOWrapper` | Missing | Encoding + newline translation; defer until a consumer demands it |
+| `encoding=` / `newline=` / `errors=` kwargs | Missing | v1 doesn't translate text |
+| `UnsupportedOperation` | Missing | Defer until a method needs to raise it (e.g. seek on a non-seekable wrapper) |
 | `open()` | Done | In `builtins` (not in `io`); exposes `TextIO`/`BinaryIO` |
+
+Tests: `cases/stdlib/io_stringio_basic`, `cases/stdlib/io_bytesio_basic`,
+`cases/stdlib/io_protocols` (consumer functions parameterized over the four
+protocols, both `StringIO`/`BytesIO` and pass-through wiring).
 
 ### json
 

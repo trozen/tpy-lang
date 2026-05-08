@@ -2142,6 +2142,9 @@ class TypeRegistrar:
                 params=resolved_params,
                 return_type=resolved_return,
                 is_readonly=resolved_readonly,
+                readonly_opt_out=msig.readonly_opt_out,
+                cpp_template=msig.cpp_template,
+                param_defaults=msig.param_defaults,
             ))
         info = ProtocolInfo(
             name=protocol.name,

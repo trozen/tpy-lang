@@ -57,6 +57,40 @@ class Writable(Protocol):
     def flush(self) -> None: ...
 
 
+class Readable(Protocol):
+    def read(self) -> str: ...
+
+    def readline(self) -> str: ...
+
+
+class BinaryWritable(Protocol):
+    def write(self, data: bytes) -> Int32: ...
+
+    def flush(self) -> None: ...
+
+
+class BinaryReadable(Protocol):
+    def read(self) -> bytes: ...
+
+    def readline(self) -> bytes: ...
+
+
+class Seekable(Protocol):
+    def seek(self, pos: Int32, whence: Int32 = 0) -> Int32: ...
+
+    def tell(self) -> Int32: ...
+
+
+class Closable(Protocol):
+    def close(self) -> None: ...
+    # TODO: add `@property closed -> bool` once Protocol+@property is exercised
+    # elsewhere in the codebase. CPython's IOBase exposes both close() and a
+    # readable `closed` flag; we ship close() only for v1 to keep the protocol
+    # on the verified path. Concrete implementations (StringIO/BytesIO) carry
+    # the property today, so users still get `obj.closed` -- just not
+    # through a `Closable`-typed parameter.
+
+
 # --- Marker protocols (no methods, map to runtime C++ concepts) ---
 
 @native("tpy::NativeIterable")

@@ -1271,6 +1271,13 @@ class CodeGenContext:
         """
         if fi is None or fi.is_native_import:
             return False
+        # Record constructors return rvalue temporaries, never C++ T&. The
+        # bare `fi.return_type is the record class` test below would otherwise
+        # mis-classify a constructor for a non-value-type class as returning
+        # by reference -- triggering `T& var = T()` indirection at the call
+        # site, which fails to bind. Set in _set_record_constructor_info.
+        if fi.is_constructor:
+            return False
         if obj is not None:
             # Methods on @native records have unknown C++ return convention.
             raw_obj_type = self.analyzer.get_expr_type(obj)

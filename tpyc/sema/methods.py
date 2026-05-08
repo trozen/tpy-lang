@@ -1833,9 +1833,16 @@ class MethodAnalyzer:
     def _build_protocol_method_info(self, protocol_name: str, method_name: str,
                                      raw_params: list[tuple[str, TpyType]],
                                      return_type: TpyType,
-                                     cpp_template: str | None = None) -> FunctionInfo:
+                                     cpp_template: str | None = None,
+                                     param_defaults: list | None = None) -> FunctionInfo:
         """Build a FunctionInfo for a protocol method signature."""
-        params = [ParamInfo(n, t) for n, t in raw_params]
+        # param_defaults is parallel to raw_params (None for required, TpyExpr for optional);
+        # empty list means no defaults declared at protocol method level.
+        defaults = param_defaults if param_defaults else [None] * len(raw_params)
+        params = [
+            ParamInfo(n, t, default_expr=default)
+            for (n, t), default in zip(raw_params, defaults)
+        ]
         # __next__ on Iterator protocol has implicit @error_return(StopIteration)
         error_return_type = None
         if method_name == "__next__":
@@ -1854,8 +1861,9 @@ class MethodAnalyzer:
             method_sig = self.protocols.get_protocol_method_signature(obj_type, expr.method)
             if method_sig is None:
                 raise self.ctx.error(f"Protocol '{obj_type.name}' has no method '{expr.method}'", expr)
-            raw_params, return_type, cpp_template = method_sig
-            fi = self._build_protocol_method_info(obj_type.name, expr.method, raw_params, return_type, cpp_template)
+            raw_params, return_type, cpp_template, param_defaults = method_sig
+            fi = self._build_protocol_method_info(
+                obj_type.name, expr.method, raw_params, return_type, cpp_template, param_defaults)
             return self._resolve_and_check_args(expr, [fi], {})
 
         if isinstance(obj_type, TypeParamRef):
@@ -1864,8 +1872,9 @@ class MethodAnalyzer:
                 method_sig = self.protocols.get_protocol_method_signature(bound, expr.method, self_type=obj_type)
                 if method_sig is None:
                     raise self.ctx.error(f"Protocol '{bound.name}' has no method '{expr.method}'", expr)
-                raw_params, return_type, cpp_template = method_sig
-                fi = self._build_protocol_method_info(bound.name, expr.method, raw_params, return_type, cpp_template)
+                raw_params, return_type, cpp_template, param_defaults = method_sig
+                fi = self._build_protocol_method_info(
+                    bound.name, expr.method, raw_params, return_type, cpp_template, param_defaults)
                 return self._resolve_and_check_args(expr, [fi], {})
 
         return None

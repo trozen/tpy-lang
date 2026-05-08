@@ -73,6 +73,7 @@ def _substitute_method_signature(
         is_readonly=method.is_readonly,
         readonly_opt_out=method.readonly_opt_out,
         cpp_template=method.cpp_template,
+        param_defaults=method.param_defaults,
     )
 
 
@@ -746,11 +747,14 @@ class ProtocolChecker:
         protocol: NominalType,
         method_name: str,
         self_type: TpyType | None = None,
-    ) -> tuple[list[tuple[str, TpyType]], TpyType, str | None] | None:
+    ) -> tuple[list[tuple[str, TpyType]], TpyType, str | None, list] | None:
         """Get a method's signature from a protocol.
 
-        Returns (params, return_type, cpp_template) with Self substituted, or None if not found.
-        Searches the protocol and all its parent protocols.
+        Returns (params, return_type, cpp_template, param_defaults) with Self
+        substituted, or None if not found. Searches the protocol and all its
+        parent protocols. `param_defaults` is the parallel default list (None
+        per required param, TpyExpr per optional param); empty when no defaults
+        were declared.
 
         Args:
             protocol: The protocol to look up the method in
@@ -785,7 +789,7 @@ class ProtocolChecker:
                 # .py protocols don't have cpp templates; use dunder map
                 if cpp_template is None:
                     cpp_template = get_dunder_cpp_template(method_name)
-                return (params, return_type, cpp_template)
+                return (params, return_type, cpp_template, method_sig.param_defaults)
 
         return None
 

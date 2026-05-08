@@ -1,0 +1,34 @@
+wrote: 11
+getvalue: hello world
+tell: 11
+---
+initial pos: 0
+initial getvalue: hello
+after-overwrite getvalue: HEllo
+after-overwrite pos: 2
+after-extend getvalue: HELLO WORLD
+---
+read-from-3: defgh
+read-all: abcdefgh
+---
+readline-1: line1
+
+readline-2: line2
+
+readline-3: line3-no-newline
+readline-4 (eof): 
+---
+iter-line: a
+
+iter-line: b
+
+iter-line: c
+
+---
+inside-ctxmgr: ctxmgr
+---
+closed: True
+got ValueError on read: I/O operation on closed file
+---
+truncate-default: abc
+truncate-explicit: ab

@@ -692,6 +692,7 @@ class CallAnalyzer:
                 params=resolved_ctor.params,
                 return_type=return_type,
                 is_readonly=False,
+                is_constructor=True,
                 canonical_fi=ctor.root,
             )
             self._check_borrow_arg_conflicts(expr)
@@ -705,6 +706,7 @@ class CallAnalyzer:
             params=[],
             return_type=return_type,
             is_readonly=False,
+            is_constructor=True,
         )
 
     def analyze_call(self, expr: TpyCall) -> TpyType:

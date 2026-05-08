@@ -643,6 +643,47 @@ class Hashable(_Protocol):
 
 
 @_runtime_checkable
+class Writable(_Protocol):
+    """Text sink: write(str) -> int + flush()."""
+    def write(self, text: str) -> int: ...
+    def flush(self) -> None: ...
+
+
+@_runtime_checkable
+class Readable(_Protocol):
+    """Text source: read() / readline() returning str."""
+    def read(self) -> str: ...
+    def readline(self) -> str: ...
+
+
+@_runtime_checkable
+class BinaryWritable(_Protocol):
+    """Binary sink: write(bytes) -> int + flush()."""
+    def write(self, data: bytes) -> int: ...
+    def flush(self) -> None: ...
+
+
+@_runtime_checkable
+class BinaryReadable(_Protocol):
+    """Binary source: read() / readline() returning bytes."""
+    def read(self) -> bytes: ...
+    def readline(self) -> bytes: ...
+
+
+@_runtime_checkable
+class Seekable(_Protocol):
+    """Seekable stream: seek(pos, whence=0) / tell()."""
+    def seek(self, pos: int, whence: int = 0) -> int: ...
+    def tell(self) -> int: ...
+
+
+@_runtime_checkable
+class Closable(_Protocol):
+    """Closable resource: close()."""
+    def close(self) -> None: ...
+
+
+@_runtime_checkable
 class Spannable(_Protocol[T]):
     """Protocol for types exposing contiguous storage via __span__() (readonly).
 

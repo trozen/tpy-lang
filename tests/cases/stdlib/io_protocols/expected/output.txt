@@ -1,0 +1,12 @@
+sink-text: alpha
+beta
+gamma
+
+src-text: first
+second
+
+bsink-bytes: b'abcdef'
+bsrc-bytes: b'xyz123'
+rewind-from: 9
+after-rewind read: seek-test
+closed-after-protocol: True

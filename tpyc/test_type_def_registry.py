@@ -1318,6 +1318,41 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
         type_params=(), parent_protocols=(),
         methods=("flush", "write"),
     ),
+    "tpy.Readable": dict(
+        name="Readable", module="tpy",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=(), parent_protocols=(),
+        methods=("read", "readline"),
+    ),
+    "tpy.BinaryWritable": dict(
+        name="BinaryWritable", module="tpy",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=(), parent_protocols=(),
+        methods=("flush", "write"),
+    ),
+    "tpy.BinaryReadable": dict(
+        name="BinaryReadable", module="tpy",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=(), parent_protocols=(),
+        methods=("read", "readline"),
+    ),
+    "tpy.Seekable": dict(
+        name="Seekable", module="tpy",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=(), parent_protocols=(),
+        methods=("seek", "tell"),
+    ),
+    "tpy.Closable": dict(
+        name="Closable", module="tpy",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=(), parent_protocols=(),
+        methods=("close",),
+    ),
     # tpy.* @native marker / concept-backed protocols
     "tpy.NativeIterable": dict(
         name="NativeIterable", module="tpy",
@@ -1413,7 +1448,8 @@ _PROTOCOL_SNAPSHOT_SOURCE = """\
 from typing import Sized, Iterable, Iterator, Sequence, MutableSequence
 from tpy import (
     Truthy, Stringable, Representable, Hashable, Comparable, Equatable,
-    Deref, Spannable, Writable,
+    Deref, Spannable, Writable, Readable, BinaryWritable, BinaryReadable,
+    Seekable, Closable,
     NativeIterable, NativeRangeConstructible, ValueType, Send, Sync,
     Default, ReturnException, Covariant,
     AnyFixedInt, AnyFixedSigned, AnyFixedUnsigned,

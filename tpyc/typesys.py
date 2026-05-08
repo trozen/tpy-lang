@@ -3290,6 +3290,9 @@ class FunctionInfo:
     cpp_template: Optional[str] = None  # For builtins: "{self}.push_back({0})"
     value_ptr_coercion: bool = False  # @value_ptr_coercion: Ptr[T] params accept T values
     is_builtin_function: bool = False  # True for global builtins (len, chr, etc.)
+    is_constructor: bool = False  # True for synthetic record-constructor FunctionInfo
+    # (return_type is the record itself, the call is an rvalue; distinguishes
+    # from a regular function declared to return that type which would emit T&).
     special_handling: bool = False  # True if sema/codegen handle specially
     error_return_type: Optional[str] = None  # @error_return(E) exception type name
     builtin_decorator_key: Optional[str] = None  # e.g. "tpy.readonly" -- links .py function to decorator semantics
@@ -3470,6 +3473,14 @@ class MethodSignature:
     `TpyType`.  All readers post-pre-pass see TpyType.  `return_type`
     may also be None when no annotation was provided -- sema
     substitutes VOID during the pre-pass.
+
+    `param_defaults`, when non-empty, holds a parallel list with one
+    entry per param (None for required params, a TpyExpr for those
+    with defaults). Empty list means no param carries a default --
+    the common case for marker / dunder protocols. Used by protocol
+    method dispatch to populate `ParamInfo.default_expr` so that
+    `def f(fp: Seekable): fp.seek(0)` can drop the trailing
+    `whence=0` default like a direct method call would.
     """
     name: str
     params: list[tuple[str, 'TpyType | TypeRefNode']]
@@ -3477,6 +3488,7 @@ class MethodSignature:
     is_readonly: bool = False
     readonly_opt_out: bool = False
     cpp_template: str | None = None
+    param_defaults: list = field(default_factory=list)  # list[TpyExpr | None]
 
 
 @dataclass

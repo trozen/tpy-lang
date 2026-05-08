@@ -1712,12 +1712,21 @@ class Parser:
                 if item.returns:
                     return_type = self._parse_type_ref(item.returns)
 
+                # Capture default values for protocol method params so
+                # that callers through a protocol-typed receiver can drop
+                # trailing defaults (e.g. `fp.seek(0)` for `Seekable`).
+                # _parse_param_defaults skips self via skip_self=True.
+                param_defaults = self._parse_param_defaults(
+                    item, params, skip_self=True,
+                )
+
                 methods.append(MethodSignature(
                     name=item.name,
                     params=params,
                     return_type=return_type,
                     is_readonly=is_readonly,
                     readonly_opt_out=readonly_opt_out,
+                    param_defaults=param_defaults,
                 ))
             elif isinstance(item, ast.AnnAssign):
                 # Field declaration: name: Type

@@ -1,0 +1,19 @@
+wrote: 11
+getvalue: b'hello world'
+tell: 11
+---
+initial pos: 0
+after-overwrite: b'HEllo'
+after-extend: b'HELLO WORLD'
+---
+read-from-3: b'defgh'
+read-all: b'abcdefgh'
+---
+readline-1: b'line1\n'
+readline-2: b'line2\n'
+readline-3: b'line3'
+readline-4-eof-len: 0
+---
+inside: b'ctx'
+closed: True
+got ValueError on write: I/O operation on closed file.
