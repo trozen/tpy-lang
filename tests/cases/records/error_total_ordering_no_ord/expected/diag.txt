@@ -1,0 +1,1 @@
+main.py:7: error: @total_ordering requires 'OnlyEq' to define one of __lt__, __le__, __gt__, __ge__

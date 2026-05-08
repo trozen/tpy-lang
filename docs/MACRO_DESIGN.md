@@ -80,7 +80,14 @@ below.
 7. The macro receives a `ClassInfo` wrapper, inspects `default_obj` on fields,
    adds methods, sets flags
 8. `ClassInfo.apply_to_record()` writes mutations back to the `TpyRecord`
-9. Registration and codegen proceed normally
+9. Macros that depend on the *final* method set (e.g. `@total_ordering`
+   choosing an anchor among ordering ops a peer macro may have added)
+   call `cls.defer_until_macros_complete(callback)` from their eager
+   handler. After all eager macros have run, `_apply_deferred_class_macros()`
+   invokes those callbacks with a fresh `ClassInfo`, lets them mutate
+   the record, and writes the results back -- so decorator order
+   doesn't matter for composition with peer macros like `@dataclass`
+10. Registration and codegen proceed normally
 
 ### How Call-Site Macros Work (Phase 2)
 

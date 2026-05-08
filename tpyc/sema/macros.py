@@ -59,6 +59,7 @@ def run_macro_phase_for_record(record: 'TpyRecord', ctx: 'SemanticContext') -> N
     TypeRefNodes in its method bodies; safe to call unconditionally.
     """
     _apply_class_macros(record, ctx)
+    _apply_deferred_class_macros(record, ctx)
     _resolve_macro_added_method_bodies(record, ctx)
 
 
@@ -72,7 +73,8 @@ def _apply_class_macros(record: 'TpyRecord', ctx: 'SemanticContext') -> None:
     if not record.pending_macros:
         return
     registry = ctx.macro_registry
-    for qname, kwargs in record.pending_macros:
+    # Reverse so innermost decorator runs first (`outer(inner(C))` semantics).
+    for qname, kwargs in reversed(record.pending_macros):
         parts = qname.rsplit(".", 1)
         if len(parts) != 2:
             raise SemanticError(f"Invalid macro name '{qname}'", record.loc)
@@ -104,6 +106,35 @@ def _apply_class_macros(record: 'TpyRecord', ctx: 'SemanticContext') -> None:
         validate_and_call_macro(macro_fn, cls_info, kwargs, qname, record.loc)
         cls_info.apply_to_record()
         record._macro_cls_info = cls_info  # type: ignore[attr-defined]
+
+
+def _apply_deferred_class_macros(
+    record: 'TpyRecord', ctx: 'SemanticContext',
+) -> None:
+    """Run callbacks registered via `ClassInfo.defer_until_macros_complete`.
+
+    Drains the list before iterating so a deferred callback that
+    re-registers (rare; would imply a self-recursive macro) raises
+    rather than silently looping. Callbacks see the fully-composed
+    method set produced by the eager pass.
+    """
+    if not record.pending_deferred_macros:
+        return
+    from ..macro_api import MacroError
+    callbacks = list(record.pending_deferred_macros)
+    record.pending_deferred_macros.clear()
+    for callback in callbacks:
+        cls_info = ClassInfo(record, ctx)
+        try:
+            callback(cls_info)
+        except MacroError as e:
+            raise SemanticError(str(e), e.loc or record.loc) from e
+        cls_info.apply_to_record()
+        if record.pending_deferred_macros:
+            raise SemanticError(
+                "deferred class macro registered another deferred callback "
+                "(not supported)", record.loc,
+            )
 
 
 def _resolve_macro_added_method_bodies(record: 'TpyRecord', ctx: 'SemanticContext') -> None:

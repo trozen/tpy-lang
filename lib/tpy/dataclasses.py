@@ -10,7 +10,9 @@ from tpyc.macro_api import (
     class_macro, call_macro,
     expr_to_cpp_default, ast, types, Expr, Stmt, Function, Type,
 )
-from _macro_helpers import build_init, build_eq, build_repr, build_hash, build_order
+from _macro_helpers import (
+    ORDER_DUNDERS, build_init, build_eq, build_repr, build_hash, build_order,
+)
 
 _MISSING = object()
 
@@ -159,8 +161,7 @@ def _synthesize_order_methods(
     cls: ClassInfo, all_fields: list[FieldInfo], has_parent: bool,
 ) -> None:
     """Add ordering methods for @dataclass(order=True)."""
-    order_dunders = ("__lt__", "__le__", "__gt__", "__ge__")
-    for dunder in order_dunders:
+    for dunder in ORDER_DUNDERS:
         if cls.has_method(dunder):
             raise MacroError(
                 f"@dataclass(order=True) cannot overwrite '{dunder}' "

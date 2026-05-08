@@ -1255,6 +1255,11 @@ class TpyRecord:
     is_total_false: bool = False  # TypedDict(total=False): all fields Optional
     builtin_type_key: str | None = None
     pending_macros: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
+    # Callbacks registered via `ClassInfo.defer_until_macros_complete()`.
+    # Run after the eager macro pass so a macro can inspect the final
+    # method set produced by composition (e.g. @total_ordering picking
+    # an anchor among ordering ops other macros may add).
+    pending_deferred_macros: list[Any] = field(default_factory=list)
     nested_records: list[TpyRecord] = field(default_factory=list)
     nested_enums: list[TpyEnum] = field(default_factory=list)
     loc: SourceLocation | None = None

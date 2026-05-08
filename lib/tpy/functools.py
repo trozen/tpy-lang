@@ -2,21 +2,17 @@
 #
 # Surface compared to CPython:
 #   - reduce(func, a, initial): 3-arg form on Iterable[T].
-#   - reduce(func, a): 2-arg form on list[T] (uses a[0] as seed; raises
-#     on empty). Restricted to list rather than arbitrary Iterable
-#     because TPy doesn't have CPython's iter/next + StopIteration
-#     pattern; indexing a[0] needs random access.
+#   - reduce(func, a): 2-arg form on list[T] only (random access; raises
+#     on empty). TPy lacks CPython's iter/next + StopIteration, so the
+#     2-arg form can't accept arbitrary Iterable[T].
+#   - total_ordering: re-exported from `_functools_macros` (sibling
+#     macro module).
 #
-# Gaps vs. CPython (tracked in STDLIB_ROADMAP.md):
-#   - 2-arg reduce accepts list, not arbitrary Iterable.
-#   - total_ordering / wraps / partial / lru_cache / singledispatch /
-#     cached_property / partialmethod not yet available. total_ordering
-#     and wraps are blocked on the macro/runtime module split (this
-#     file hosts the runtime `reduce` and TPy modules can't mix macros
-#     with runtime functions); see STDLIB_ROADMAP.md for the lift path.
+# Gaps tracked in STDLIB_ROADMAP.md.
 # tpy: cpp_namespace("tpystd::functools")
 from typing import Iterable, overload
 from tpy import Fn, Own, copy
+from _functools_macros import total_ordering
 
 
 @overload

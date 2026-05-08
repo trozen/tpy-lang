@@ -76,7 +76,9 @@ from tpyc.macro_api import (
     expr_to_cpp_default,
     ast, types, Expr, Stmt, Function, Type,
 )
-from _macro_helpers import build_init, build_eq, build_repr, build_hash, build_order
+from _macro_helpers import (
+    ORDER_DUNDERS, build_init, build_eq, build_repr, build_hash, build_order,
+)
 
 macro_deps(
     "tplib.json.parser",
@@ -793,7 +795,7 @@ def model(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> None:
 
     # Generate ordering methods
     if order and all_fields:
-        for dunder in ("__lt__", "__le__", "__gt__", "__ge__"):
+        for dunder in ORDER_DUNDERS:
             if cls.has_method(dunder):
                 raise MacroError(
                     f"@model(order=True) cannot overwrite '{dunder}' "

@@ -11,6 +11,14 @@ from tpyc.macro_api import (
 )
 
 
+# Rich-comparison dunders in CPython's documented anchor-priority
+# order, paired with the corresponding binary operator. Used by
+# `build_order` (synthesize all four for `@dataclass(order=True)`)
+# and `@total_ordering` (pick the first defined op as anchor).
+ORDER_DUNDERS = ("__lt__", "__le__", "__gt__", "__ge__")
+ORDER_DUNDER_OPS = ("<", "<=", ">", ">=")
+
+
 def build_init(
     cls: ClassInfo,
     parent_fields: list[FieldInfo],
@@ -132,8 +140,7 @@ def build_order(cls: ClassInfo, all_fields: list[FieldInfo]) -> list[Function]:
     """
     other_type = types.named(cls.name)
     results: list[Function] = []
-    for dunder, op in [("__lt__", "<"), ("__le__", "<="),
-                       ("__gt__", ">"), ("__ge__", ">=")]:
+    for dunder, op in zip(ORDER_DUNDERS, ORDER_DUNDER_OPS):
         body: list[Stmt] = []
         for fld in all_fields[:-1]:
             sf = ast.field_access(ast.name("self"), fld.name)

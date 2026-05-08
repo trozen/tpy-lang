@@ -63,7 +63,9 @@ ComprehensionGenerator = TpyComprehensionGenerator
 from . import __version__, VERSION_INFO
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from .sema.context import SemanticContext
+    from .typesys import RecordInfo
 
 
 _FIXED_INT_NAMES: frozenset[str] = frozenset(str(t) for t in ALL_FIXED_INTS)
@@ -1141,12 +1143,50 @@ class ClassInfo:
         return result
 
     def has_method(self, name: str) -> bool:
-        """Check if the class has a method with the given name."""
+        """Check if the class declares (or has had a macro add) a
+        method with the given name. Self-only; inherited methods do
+        not count -- mirrors CPython's `name in cls.__dict__` check
+        that decorators like `@dataclass` use to decide whether to
+        synthesize a method (overriding a parent's is intentional).
+        Macros that want CPython's MRO semantics use
+        `has_method_or_inherited` instead.
+        """
         for m in self._record.methods:
             if m.name == name:
                 return True
         for m in self._added_methods:
             if m.name == name:
+                return True
+        return False
+
+    def _iter_parent_records(self) -> Iterator[RecordInfo]:
+        """Yield each base RecordInfo registered in the registry, in
+        declaration order. Skips non-NominalType bases and NominalType
+        bases that resolve to protocols or non-record types (builtin
+        markers, primitives) -- those don't appear in `registry.records`.
+        Walks self._record.bases directly because at macro-application
+        time the self RecordInfo's `mro_ancestors` is still empty
+        (populated post-macro-phase).
+        """
+        registry = self._ctx.registry
+        for base in self._record.bases:
+            if not isinstance(base, NominalType):
+                continue
+            parent_info = registry.get_record(base.name)
+            if parent_info is not None:
+                yield parent_info
+
+    def has_method_or_inherited(self, name: str) -> bool:
+        """Like `has_method`, but also walks parent records via the
+        registry. Use when CPython's MRO-based `hasattr` semantics
+        are the right model -- e.g. `@total_ordering` accepting
+        `__lt__` defined on a base class as the anchor.
+        """
+        if self.has_method(name):
+            return True
+        registry = self._ctx.registry
+        for parent_info in self._iter_parent_records():
+            if registry.get_method_overloads_with_parents(parent_info, name):
                 return True
         return False
 
@@ -1157,13 +1197,9 @@ class ClassInfo:
         or empty list if no record parent. The caller decides whether
         to use these based on its own eligibility checks.
         """
-        for base in self._record.bases:
-            if not isinstance(base, NominalType):
-                continue
-            parent_info = self._ctx.registry.get_record(base.name)
-            if parent_info is not None:
-                all_parent = self._ctx.registry.get_all_fields(parent_info)
-                return [FieldInfo.from_internal(f) for f in all_parent]
+        for parent_info in self._iter_parent_records():
+            all_parent = self._ctx.registry.get_all_fields(parent_info)
+            return [FieldInfo.from_internal(f) for f in all_parent]
         return []
 
     # -- Mutation methods --
@@ -1178,6 +1214,20 @@ class ClassInfo:
         Equivalent to ``self.add_method(ast.quote_fun(source))``.
         """
         self.add_method(ast.quote_fun(source))
+
+    def defer_until_macros_complete(
+        self, callback: Callable[['ClassInfo'], None],
+    ) -> None:
+        """Register a callback to run after all eager class macros on
+        this record have applied. Use when the macro's behavior depends
+        on the final method set produced by composition -- e.g.
+        ``@total_ordering`` picks an ordering anchor among the four
+        rich-comparison dunders, some of which a peer macro
+        (``@dataclass(order=True)``) may add. The callback receives a
+        fresh ClassInfo bound to the same record; mutations are written
+        back via the deferred-pass runner.
+        """
+        self._record.pending_deferred_macros.append(callback)
 
     # TODO: property getter+setter emission from macros.
     # FragmentParser parses fragments one at a time, so the setter's
@@ -1200,12 +1250,8 @@ class ClassInfo:
 
         Returns (is_frozen, parent_name) or None if no record parent.
         """
-        for base in self._record.bases:
-            if not isinstance(base, NominalType):
-                continue
-            parent_info = self._ctx.registry.get_record(base.name)
-            if parent_info is not None:
-                return (parent_info.is_frozen, base.name)
+        for parent_info in self._iter_parent_records():
+            return (parent_info.is_frozen, parent_info.name)
         return None
 
     def get_method_loc(self, name: str) -> Any:

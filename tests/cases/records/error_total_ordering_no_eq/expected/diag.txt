@@ -1,0 +1,1 @@
+main.py:7: error: @total_ordering requires 'NoEq' to define __eq__
