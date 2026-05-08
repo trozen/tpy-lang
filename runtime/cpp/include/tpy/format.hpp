@@ -741,32 +741,44 @@ const T* optional_to_ptr(const std::optional<T>& opt) {
 
 namespace detail {
 
-// Per-element conversion overloads used by tuple_to_storage / tuple_to_pointer.
-// Plain elements pass through; T*/std::optional<T> elements convert.
+// Per-element conversion used by tuple_to_storage / tuple_to_pointer.
+// Dispatch on the destination slot type so mixed tuples (e.g. Ptr[T] +
+// Optional[U]) convert only the slots that need it -- a Src-typed overload
+// set would lift every T*/const T* slot to std::optional regardless of the
+// Dest shape.
 
-template<typename E>
-inline E to_optional_form(E&& e) { return std::forward<E>(e); }
+template<typename Dest, typename Src>
+inline Dest to_optional_form(Src&& s) {
+    using SrcD = std::remove_cvref_t<Src>;
+    using DestD = std::remove_cvref_t<Dest>;
+    if constexpr (std::is_same_v<SrcD, DestD>) {
+        return std::forward<Src>(s);
+    } else if constexpr (std::is_pointer_v<SrcD>) {
+        return ptr_to_optional(s);
+    } else {
+        return std::forward<Src>(s);
+    }
+}
 
-template<typename T>
-inline std::optional<T> to_optional_form(T* p) { return ptr_to_optional(p); }
-
-template<typename T>
-inline std::optional<T> to_optional_form(const T* p) { return ptr_to_optional(p); }
-
-template<typename E>
-inline E to_pointer_form(E&& e) { return std::forward<E>(e); }
-
-template<typename T>
-inline T* to_pointer_form(std::optional<T>& opt) { return optional_to_ptr(opt); }
-
-template<typename T>
-inline const T* to_pointer_form(const std::optional<T>& opt) { return optional_to_ptr(opt); }
+template<typename Dest, typename Src>
+inline Dest to_pointer_form(Src&& s) {
+    using SrcD = std::remove_cvref_t<Src>;
+    using DestD = std::remove_cvref_t<Dest>;
+    if constexpr (std::is_same_v<SrcD, DestD>) {
+        return std::forward<Src>(s);
+    } else if constexpr (std::is_pointer_v<DestD>) {
+        return optional_to_ptr(s);
+    } else {
+        return std::forward<Src>(s);
+    }
+}
 
 }  // namespace detail
 
 template<typename ToTuple, typename FromTuple, std::size_t... I>
 inline ToTuple tuple_to_storage_impl(FromTuple&& t, std::index_sequence<I...>) {
-    return ToTuple(detail::to_optional_form(std::get<I>(std::forward<FromTuple>(t)))...);
+    return ToTuple(detail::to_optional_form<std::tuple_element_t<I, ToTuple>>(
+        std::get<I>(std::forward<FromTuple>(t)))...);
 }
 
 // Lift a pointer-form tuple (T*, ..., U) to storage-form (std::optional<T>, ..., U).
@@ -782,7 +794,8 @@ inline ToTuple tuple_to_storage(FromTuple&& t) {
 
 template<typename ToTuple, typename FromTuple, std::size_t... I>
 inline ToTuple tuple_to_pointer_impl(FromTuple&& t, std::index_sequence<I...>) {
-    return ToTuple(detail::to_pointer_form(std::get<I>(std::forward<FromTuple>(t)))...);
+    return ToTuple(detail::to_pointer_form<std::tuple_element_t<I, ToTuple>>(
+        std::get<I>(std::forward<FromTuple>(t)))...);
 }
 
 // Lower a storage-form tuple (std::optional<T>, ..., U) to pointer-form
@@ -793,6 +806,57 @@ inline ToTuple tuple_to_pointer(FromTuple&& t) {
     using F = std::remove_reference_t<FromTuple>;
     return tuple_to_pointer_impl<ToTuple>(std::forward<FromTuple>(t),
                                           std::make_index_sequence<std::tuple_size_v<F>>{});
+}
+
+namespace detail {
+
+// Per-element conversion from a value-form source slot to the corresponding
+// borrow-form destination slot. `s` is always an lvalue ref to a slot in
+// the source value tuple, so taking addresses / binding refs is safe -- the
+// caller's tuple temp lives for the whole full-expression.
+//
+// Source slots may already be in borrow form when codegen mixes rvalue and
+// lvalue elements at the same site (e.g. (T(1), &local) -> std::tuple<T,
+// T*>): same-shape Src/Dest pass through; only Src=value + Dest=pointer
+// takes the address.
+template<typename Dest, typename Src>
+inline Dest borrow_value_elem(Src& s) {
+    using DestNoRef = std::remove_reference_t<Dest>;
+    using SrcD = std::remove_cv_t<Src>;
+    using DestNoRefCV = std::remove_cv_t<DestNoRef>;
+    if constexpr (std::is_same_v<SrcD, DestNoRefCV>) {
+        return s;
+    } else if constexpr (std::is_pointer_v<DestNoRef>
+                          && !std::is_pointer_v<SrcD>) {
+        return &s;
+    } else {
+        return s;
+    }
+}
+
+}  // namespace detail
+
+template<typename ToTuple, typename FromTuple, std::size_t... I>
+inline ToTuple tuple_value_to_borrow_impl(FromTuple& t, std::index_sequence<I...>) {
+    return ToTuple(detail::borrow_value_elem<std::tuple_element_t<I, ToTuple>>(
+        std::get<I>(t))...);
+}
+
+// Convert a value-form source tuple (rvalue or lvalue) to a borrow-form
+// destination tuple (T*, T&, or const T*-form slots). Used at tuple-literal
+// sites whose target tuple has borrow-form slots and at least one literal
+// element is an rvalue (e.g. `f((Point(1), 42))` where `f` takes a
+// `tuple[Point | None, Int32]` or `tuple[Point, Int32]`).
+//
+// The caller materializes the source tuple as a temporary -- C++ extends
+// its lifetime to the end of the surrounding full-expression, so the
+// addresses / refs in the returned tuple stay valid through the call.
+template<typename ToTuple, typename FromTuple>
+inline ToTuple tuple_value_to_borrow(FromTuple&& t) {
+    using F = std::remove_reference_t<FromTuple>;
+    F& lref = t;
+    return tuple_value_to_borrow_impl<ToTuple>(
+        lref, std::make_index_sequence<std::tuple_size_v<F>>{});
 }
 
 // Default repr for records without __repr__/__str__: "<ClassName object at 0xADDR>"

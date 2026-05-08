@@ -25,12 +25,12 @@ void main() {
     })}})) << "\n";
     // # asdict: tuple with DC element
     // t = TupleOfDC((Point(Int32(1), Int32(2)), Int32(42)))
-    TupleOfDC t = TupleOfDC(std::tuple<Point, int32_t>{Point(1, 2), 42});
+    TupleOfDC t = TupleOfDC(::tpy::tuple_value_to_borrow<std::tuple<Point&, int32_t>>(std::tuple<Point, int32_t>{Point(1, 2), 42}));
     // print(asdict(t))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>>({{"pair", std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(t.pair).x}, {"y", std::get<0>(t.pair).y}}), std::get<1>(t.pair)}}})) << "\n";
     // # asdict: tuple with all DC elements
     // t2 = TupleAllDC((Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))))
-    TupleAllDC t2 = TupleAllDC(std::tuple<Point, Point>{Point(1, 2), Point(3, 4)});
+    TupleAllDC t2 = TupleAllDC(::tpy::tuple_value_to_borrow<std::tuple<Point&, Point&>>(std::tuple<Point, Point>{Point(1, 2), Point(3, 4)}));
     // print(asdict(t2))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>>({{"pair", std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(t2.pair).x}, {"y", std::get<0>(t2.pair).y}}), ::tpy::ordered_map<std::string, int32_t>({{"x", std::get<1>(t2.pair).x}, {"y", std::get<1>(t2.pair).y}})}}})) << "\n";
     // # astuple: dict values recursed into tuples
@@ -52,7 +52,7 @@ void main() {
     }))) << "\n";
     // # astuple: tuple with DC element
     // t3 = TupleOfDC((Point(Int32(1), Int32(2)), Int32(42)))
-    TupleOfDC t3 = TupleOfDC(std::tuple<Point, int32_t>{Point(1, 2), 42});
+    TupleOfDC t3 = TupleOfDC(::tpy::tuple_value_to_borrow<std::tuple<Point&, int32_t>>(std::tuple<Point, int32_t>{Point(1, 2), 42}));
     // print(astuple(t3))
     std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<std::tuple<int32_t, int32_t>, int32_t>>(std::tuple<std::tuple<int32_t, int32_t>, int32_t>{std::tuple<int32_t, int32_t>{std::get<0>(t3.pair).x, std::get<0>(t3.pair).y}, std::get<1>(t3.pair)})) << "\n";
 }

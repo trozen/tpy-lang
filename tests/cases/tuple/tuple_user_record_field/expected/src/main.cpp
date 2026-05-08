@@ -19,7 +19,7 @@ void main() {
     // print(h.pair[1].y)
     std::cout << std::get<1>(h.pair).y << "\n";
     // print(h == PairHolder((Point(1, 2), Point(3, 4))))
-    std::cout << ::tpy::print_bool(((h) == (PairHolder(std::tuple<Point, Point>{Point(1, 2), Point(3, 4)})))) << "\n";
+    std::cout << ::tpy::print_bool(((h) == (PairHolder(::tpy::tuple_value_to_borrow<std::tuple<Point&, Point&>>(std::tuple<Point, Point>{Point(1, 2), Point(3, 4)}))))) << "\n";
 }
 
 void __tpy_init() {

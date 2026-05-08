@@ -4408,23 +4408,62 @@ class ExpressionGenerator:
         if outer_own_tuple:
             target_type = target_type.wrapped
         target_tuple = target_type if isinstance(target_type, TupleType) else None
-        resolved_elem_types = []
-        elem_strs = []
+        # Captured before entering the inner with-block (which always sets
+        # the flag True). Storage contexts (list/dict/set element) want
+        # value-form slots; borrow contexts (unannotated call args) want
+        # T&/T*, with the rvalue path routed through tuple_value_to_borrow.
+        in_storage_context = self.ctx.in_container_element
+        # First pass: resolve per-element target / resolved types so the
+        # second pass can see the final slot mode (storage vs borrow
+        # fallback) when deciding whether each element is rvalue-into-
+        # borrow and needs the helper.
+        per_elem_targets: list[TpyType | None] = []
+        per_elem_resolved: list[TpyType] = []
+        for i, elem in enumerate(expr.elements):
+            elem_target = target_tuple.element_types[i] if target_tuple and i < len(target_tuple.element_types) else None
+            if isinstance(elem_target, RefType):
+                elem_target = elem_target.wrapped
+            resolved = self.types.get_resolved_type(elem, elem_target)
+            if isinstance(elem_target, AnyType):
+                if isinstance(elem, TpyIntLiteral):
+                    resolved = IntLiteralType()
+                elif isinstance(elem, TpyFloatLiteral):
+                    resolved = FloatLiteralType()
+            per_elem_targets.append(elem_target)
+            per_elem_resolved.append(resolved)
+        resolved_elem_types: list[TpyType] = [
+            t if t is not None else r
+            for t, r in zip(per_elem_targets, per_elem_resolved)
+        ]
+        has_ref_elements = any(
+            (i < len(expr.elem_capture) and expr.elem_capture[i] != TupleElemCapture.VALUE)
+            or isinstance(resolved_elem_types[i], TypeParamRef)
+            or (not expr.elem_capture and not resolved_elem_types[i].is_value_type()
+                and not isinstance(resolved_elem_types[i], OwnType))
+            for i in range(len(resolved_elem_types))
+        )
+        if has_ref_elements:
+            slot_info = self._tuple_literal_slot_info(
+                resolved_elem_types, expr,
+                in_storage_context=in_storage_context,
+                target_provided=target_tuple is not None)
+            cpp_type = f"std::tuple<{', '.join(p for _, p in slot_info)}>"
+        else:
+            slot_info = None
+            cpp_type = self.types.type_to_cpp(TupleType(tuple(resolved_elem_types)))
+        # Second pass: render each element and record rvalue-into-borrow
+        # slots so the helper-tuple wrap downstream sees them.
+        elem_strs: list[str] = []
+        elem_value_strs: list[str] = []
+        elem_value_cpps: list[str] = []
+        elem_rv_borrow: list[bool] = []
         with self._container_element_context():
             for i, elem in enumerate(expr.elements):
-                elem_target = target_tuple.element_types[i] if target_tuple and i < len(target_tuple.element_types) else None
-                # Ref in target means the element is borrowed -- unwrap for codegen
-                # since tuple literal capture mode handles ref/value distinction.
-                if isinstance(elem_target, RefType):
-                    elem_target = elem_target.wrapped
-                resolved = self.types.get_resolved_type(elem, elem_target)
-                if isinstance(elem_target, AnyType):
-                    if isinstance(elem, TpyIntLiteral):
-                        resolved = IntLiteralType()
-                    elif isinstance(elem, TpyFloatLiteral):
-                        resolved = FloatLiteralType()
+                elem_target = per_elem_targets[i]
+                resolved = per_elem_resolved[i]
                 elem_capture = (expr.elem_capture[i]
                                 if i < len(expr.elem_capture) else None)
+                slot_mode = slot_info[i][0] if slot_info is not None else None
                 # VALUE capture is the storage form (sema annotates VALUE for
                 # field-context tuples). Other modes use the slot's borrow
                 # form: T* for pointer-repr Optional.
@@ -4448,35 +4487,87 @@ class ExpressionGenerator:
                 if (slot_owned and slot_inner is not None
                         and not slot_inner.is_value_type()):
                     elem_str = self._maybe_move(elem, elem_str)
-                # Use elem_target for the tuple type when a target was given: the code was
-                # generated with that target in mind, so the C++ expression's type is elem_target.
-                effective_type = elem_target if elem_target is not None else resolved
-                resolved_elem_types.append(effective_type)
                 elem_strs.append(elem_str)
-        has_ref_elements = any(
-            (i < len(expr.elem_capture) and expr.elem_capture[i] != TupleElemCapture.VALUE)
-            or isinstance(resolved_elem_types[i], TypeParamRef)
-            or (not expr.elem_capture and not resolved_elem_types[i].is_value_type()
-                and not isinstance(resolved_elem_types[i], OwnType))
-            for i in range(len(resolved_elem_types))
-        )
-        if has_ref_elements:
-            cpp_type = self._tuple_literal_cpp_type(resolved_elem_types, expr)
-        else:
-            cpp_type = self.types.type_to_cpp(TupleType(tuple(resolved_elem_types)))
+                # Detect rvalue + borrow-form combinations that need the
+                # helper-tuple path. None literals at pointer-form-Optional
+                # slots are already handled by emitting nullptr -- they pass
+                # through the helper as-is, no value-form rewrite needed.
+                # The helper requires a known value-form slot type, which we
+                # only have when the consumer supplied a target_tuple (so
+                # elem_target / resolved are concrete, not a synthetic
+                # placeholder).
+                is_borrow_slot = (
+                    want_pointer_form
+                    or slot_mode in (TupleElemCapture.REF, TupleElemCapture.CONST_REF)
+                )
+                is_rv_borrow = (
+                    is_borrow_slot
+                    and not isinstance(elem, TpyNoneLiteral)
+                    and self.ctx.is_rvalue_source(elem)
+                    and elem_target is not None
+                )
+                elem_rv_borrow.append(is_rv_borrow)
+                if is_rv_borrow:
+                    # Value-form: render as the pointee value (no &-of, no
+                    # nullptr-lift). Source slot type is the bare value type.
+                    if isinstance(elem_target, OptionalType):
+                        value_target = elem_target.inner
+                    else:
+                        value_target = elem_target
+                    elem_value_strs.append(self.gen_expr_deref(elem, value_target))
+                    elem_value_cpps.append(self.types.type_to_cpp(value_target))
+                else:
+                    elem_value_strs.append(elem_str)
+                    elem_value_cpps.append("")
+        if any(elem_rv_borrow):
+            # Helper path: build a value-form source tuple and let
+            # tuple_value_to_borrow take addresses / bind references inside.
+            # The source tuple's lifetime extends to the end of the
+            # surrounding full-expression (C++ rule), keeping those
+            # addresses / refs valid through the consuming call.
+            assert slot_info is not None  # is_borrow_slot implies has_ref_elements
+            src_parts = [
+                elem_value_cpps[i] if elem_rv_borrow[i] else slot_info[i][1]
+                for i in range(len(elem_value_strs))
+            ]
+            src_type = f"std::tuple<{', '.join(src_parts)}>"
+            if len(elem_value_strs) == 1:
+                src_init = f"{src_type}({elem_value_strs[0]})"
+            else:
+                src_init = f"{src_type}{{{', '.join(elem_value_strs)}}}"
+            return f"::tpy::tuple_value_to_borrow<{cpp_type}>({src_init})"
         # Single-element tuples use parenthesized init to avoid GCC brace-init
         # ambiguity with std::tuple constructors in C++23.
         if len(elem_strs) == 1:
             return f"{cpp_type}({elem_strs[0]})"
         return f"{cpp_type}{{{', '.join(elem_strs)}}}"
 
-    def _tuple_literal_cpp_type(
+    def _tuple_literal_slot_info(
         self,
         resolved_elem_types: list[TpyType],
         expr: TpyTupleLiteral,
-    ) -> str:
-        """Build C++ tuple type for a literal, using sema-annotated elem_capture."""
-        cpp_parts: list[str] = []
+        in_storage_context: bool = False,
+        target_provided: bool = False,
+    ) -> list[tuple['TupleElemCapture', str]]:
+        """Per-slot (mode, dest_cpp_part) for a tuple literal.
+
+        Mode is the resolved TupleElemCapture (REF/CONST_REF/VALUE) and
+        dest_cpp_part is the C++ slot type for the destination tuple
+        (T*/const T* for pointer-repr Optional, T&/const T& for REF,
+        base for VALUE, val_or_ref_t<T> for TypeParamRef under REF).
+
+        in_storage_context distinguishes the two unannotated callers: list/
+        dict/set element generation (storage; rvalues stay VALUE so the
+        slot matches the container's value-form element) vs call args /
+        loose contexts (borrow; rvalues become REF and codegen routes
+        through tuple_value_to_borrow to bind addresses safely).
+        target_provided is True when the consumer supplied a TupleType
+        target. Without one we don't know whether the slot should be value
+        or borrow form, so we keep the old rvalue-fallback (VALUE) -- the
+        helper-tuple wrap relies on a known slot type and would otherwise
+        bind a T& to an rvalue source.
+        """
+        info: list[tuple[TupleElemCapture, str]] = []
         for i, et in enumerate(resolved_elem_types):
             base = self.types.type_to_cpp(et)
             if i < len(expr.elem_capture):
@@ -4489,16 +4580,21 @@ class ExpressionGenerator:
                 mode = TupleElemCapture.REF
             elif not et.is_value_type() and not isinstance(et, OwnType):
                 # No sema annotation (e.g. tuple in list literal or call arg).
-                # Use REF only for simple lvalues (variables, field access).
-                # Rvalues and subscripts get VALUE to avoid binding issues
-                # (e.g. Span[readonly[T]] subscript returns const ref).
+                # Lvalues with non-value types pick REF / CONST_REF based on
+                # readonly. For rvalues we split: storage contexts want
+                # VALUE so the slot matches the container's element type,
+                # but borrow contexts (call args) need REF -- the literal
+                # itself can't bind a T& to an rvalue, so codegen wraps it
+                # in tuple_value_to_borrow.
                 if _is_simple_lvalue(expr.elements[i]):
                     sema_type = self.ctx.analyzer.get_expr_type(expr.elements[i])
                     mode = (TupleElemCapture.CONST_REF
                             if isinstance(sema_type, ReadonlyType)
                             else TupleElemCapture.REF)
-                else:
+                elif in_storage_context or not target_provided:
                     mode = TupleElemCapture.VALUE
+                else:
+                    mode = TupleElemCapture.REF
             else:
                 mode = TupleElemCapture.VALUE
             # VALUE capture is the storage form (sema annotates VALUE for
@@ -4507,25 +4603,25 @@ class ExpressionGenerator:
             if (isinstance(et, OptionalType) and et.uses_pointer_repr()
                     and mode != TupleElemCapture.VALUE):
                 if mode == TupleElemCapture.CONST_REF:
-                    cpp_parts.append(et.to_cpp_return_const())
+                    info.append((mode, et.to_cpp_return_const()))
                 else:
-                    cpp_parts.append(et.to_cpp_return())
+                    info.append((mode, et.to_cpp_return()))
                 continue
             if isinstance(et, TypeParamRef):
                 # Defer value-vs-ref to C++ instantiation time.
                 # T may be val_or_ref<U> when Ref[U] is the type arg,
                 # so T& would be val_or_ref<U>& -- wrong. Use the trait.
                 if mode == TupleElemCapture.CONST_REF:
-                    cpp_parts.append(f"::tpy::val_or_cref_t<{base}>")
+                    info.append((mode, f"::tpy::val_or_cref_t<{base}>"))
                 else:
-                    cpp_parts.append(f"::tpy::val_or_ref_t<{base}>")
+                    info.append((mode, f"::tpy::val_or_ref_t<{base}>"))
             elif mode == TupleElemCapture.REF:
-                cpp_parts.append(f"{base}&")
+                info.append((mode, f"{base}&"))
             elif mode == TupleElemCapture.CONST_REF:
-                cpp_parts.append(f"const {base}&")
+                info.append((mode, f"const {base}&"))
             else:
-                cpp_parts.append(base)
-        return f"std::tuple<{', '.join(cpp_parts)}>"
+                info.append((mode, base))
+        return info
 
     def _optional_pointer_form_value(self, elem: TpyExpr,
                                       elem_target: 'OptionalType') -> str:
