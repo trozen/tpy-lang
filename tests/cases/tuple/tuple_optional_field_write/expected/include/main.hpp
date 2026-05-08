@@ -9,7 +9,11 @@ namespace tpyapp::main {
 
 struct T;
 struct Holder;
+struct GlobalCopier;
+struct SubscriptCtor;
 
+extern T* g_anchor;
+extern std::tuple<std::optional<T>, std::optional<T>> g_pair;
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
@@ -40,6 +44,12 @@ struct Holder {
 
     // def update(self, p: tuple[T | None, T | None]) -> None:
     void update(const std::tuple<T*, T*>& p);
+
+    // def copy_from_subscript(self, items: list[tuple[T | None, T | None]]) -> None:
+    void copy_from_subscript(const std::vector<std::tuple<std::optional<T>, std::optional<T>>>& items);
+
+    // def copy_from_field(self, other: 'Holder') -> None:
+    void copy_from_field(const Holder& other);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -48,11 +58,61 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+// class GlobalCopier:
+struct GlobalCopier {
+    // pair: tuple[T | None, T | None]
+    std::tuple<std::optional<T>, std::optional<T>> pair;
+
+    // def __init__(self) -> None:
+    GlobalCopier() {
+        // # Source is a value global -- already storage-form, direct copy.
+        // self.pair = g_pair
+        this->pair = g_pair;
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.GlobalCopier";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const GlobalCopier& obj) {
+    ::tpy::print_object_default(os, "GlobalCopier", obj);
+    return os;
+}
+
+// class SubscriptCtor:
+struct SubscriptCtor {
+    // pair: tuple[T | None, T | None]
+    std::tuple<std::optional<T>, std::optional<T>> pair;
+
+    // def __init__(self, items: list[tuple[T | None, T | None]]) -> None:
+    SubscriptCtor() = default;
+    explicit SubscriptCtor(const std::vector<std::tuple<std::optional<T>, std::optional<T>>>& items) : pair(::tpy::__getitem__(items, 0)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.SubscriptCtor";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const SubscriptCtor& obj) {
+    ::tpy::print_object_default(os, "SubscriptCtor", obj);
+    return os;
+}
+
 
 // def update(self, p: tuple[T | None, T | None]) -> None:
 inline void Holder::update(const std::tuple<T*, T*>& p) {
     // self.pair = p
     this->pair = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(p);
+}
+
+// def copy_from_subscript(self, items: list[tuple[T | None, T | None]]) -> None:
+inline void Holder::copy_from_subscript(const std::vector<std::tuple<std::optional<T>, std::optional<T>>>& items) {
+    // # Source is a subscript -- already storage-form, so the field-write
+    // # is a direct copy (no redundant tuple_to_storage wrap).
+    // self.pair = items[0]
+    this->pair = ::tpy::__getitem__(items, 0);
+}
+
+// def copy_from_field(self, other: 'Holder') -> None:
+inline void Holder::copy_from_field(const Holder& other) {
+    // # Source is a field -- already storage-form, direct copy.
+    // self.pair = other.pair
+    this->pair = other.pair;
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -1237,18 +1237,23 @@ class StatementGenerator:
             return value_expr
         return f"::tpy::tuple_to_pointer<{ptr_form.to_cpp_return()}>({value_expr})"
 
-    def _maybe_wrap_tuple_to_storage(self, expr: str, target_type: TpyType | None) -> str:
+    def _maybe_wrap_tuple_to_storage(self, expr: str, target_type: TpyType | None,
+                                       source: TpyExpr | None = None) -> str:
         """Wrap a pointer-form tuple expression with tuple_to_storage if the
         target's storage is std::tuple<std::optional<T>, ...>.
 
-        Returns expr unchanged when target isn't a tuple containing pointer-repr
-        Optional elements.
+        Returns expr unchanged when target isn't a tuple containing pointer-
+        repr Optional elements, or when `source` is itself a storage-form
+        location (field, subscript, global, storage-form local) -- those
+        already match the target's slot shape and need no conversion.
         """
         if target_type is None:
             return expr
         unwrapped = unwrap_readonly(unwrap_ref_type(target_type))
         if not (isinstance(unwrapped, TupleType)
                 and unwrapped.has_pointer_repr_optional_element()):
+            return expr
+        if source is not None and self.ctx.is_storage_form_source(source):
             return expr
         return f"::tpy::tuple_to_storage<{unwrapped.to_cpp()}>({expr})"
 
@@ -1279,7 +1284,7 @@ class StatementGenerator:
                 return None
             var_type = self.ctx.get_expr_type(stmt.init)
             init_expr = self.expressions.gen_expr(stmt.init, var_type)
-            init_expr = self._maybe_wrap_tuple_to_storage(init_expr, var_type)
+            init_expr = self._maybe_wrap_tuple_to_storage(init_expr, var_type, stmt.init)
             target_name = self.ctx.native_global_names.get(stmt.name, stmt.name)
             return f"{indent}{target_name} = {init_expr};\n"
 
@@ -1316,7 +1321,7 @@ class StatementGenerator:
                 if result := self._try_str_inplace_append(stmt.name, cpp_name, stmt.init, var_type, indent):
                     return result
                 init_expr = self.expressions.gen_expr(stmt.init, var_type)
-                init_expr = self._maybe_wrap_tuple_to_storage(init_expr, var_type)
+                init_expr = self._maybe_wrap_tuple_to_storage(init_expr, var_type, stmt.init)
                 return f"{indent}{cpp_name} = {init_expr};\n"
             return None
 
@@ -1518,16 +1523,13 @@ class StatementGenerator:
         # Field assignment: boundary conversions for optional/union pointer repr
         if isinstance(stmt.target, TpyFieldAccess):
             target_type = self.ctx.get_expr_type(stmt.target)
-            # Tuple-of-pointer-Optional field: lift pointer-form source via
-            # tuple_to_storage. Field-access source is already storage form.
             if (isinstance(target_type, TupleType)
                     and target_type.has_pointer_repr_optional_element()):
                 source = self.ctx.unwrap_copy(stmt.value)
-                if not isinstance(source, TpyFieldAccess):
-                    target = self.expressions.gen_expr(stmt.target)
-                    value = self.expressions.gen_expr(stmt.value, target_type)
-                    storage_cpp = target_type.to_cpp()
-                    return f"{indent}{target} = ::tpy::tuple_to_storage<{storage_cpp}>({value});\n"
+                target = self.expressions.gen_expr(stmt.target)
+                value = self.expressions.gen_expr(stmt.value, target_type)
+                value = self._maybe_wrap_tuple_to_storage(value, target_type, source)
+                return f"{indent}{target} = {value};\n"
             # Optional field: std::optional<T> storage needs boundary conversion
             if isinstance(target_type, OptionalType) and target_type.uses_pointer_repr():
                 target = self.expressions.gen_expr(stmt.target)

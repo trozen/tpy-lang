@@ -1061,11 +1061,12 @@ class RecordGenerator:
                                             if not (isinstance(val_type.inner, OwnType)):
                                                 value = f"::tpy::ptr_to_optional({value})"
                                 # Tuple field stores std::optional<T>; the param is T*.
-                                # Lift element-wise. Field-access source is already
-                                # storage form, so it doesn't need the conversion.
+                                # Lift element-wise. Storage-form sources (field,
+                                # subscript, global, storage-form local) already
+                                # match the field shape and skip the wrap.
                                 if (isinstance(fld_type, TupleType)
                                         and fld_type.has_pointer_repr_optional_element()
-                                        and not isinstance(source, TpyFieldAccess)):
+                                        and not self.ctx.is_storage_form_source(source)):
                                     fld_cpp = self.types.type_to_cpp(fld_type)
                                     value = f"::tpy::tuple_to_storage<{fld_cpp}>({value})"
                                 # Pointer-variant param -> value-variant field: deref+copy.
