@@ -35,7 +35,7 @@ from ..parse import (
     TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression, TpyComprehensionGenerator,
     TpySlice, TpySubscript, TpyCoerce,
-    TpyIfExpr, TpyNamedExpr,
+    TpyIfExpr, TpyNamedExpr, TpyAwait,
     TpyLambda,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyForEach, TpyWith,
     TpyNestedDef,
@@ -259,6 +259,8 @@ class ExpressionAnalyzer:
             typ = self._analyze_if_expr(expr)
         elif isinstance(expr, TpyNamedExpr):
             typ = self._analyze_named_expr(expr)
+        elif isinstance(expr, TpyAwait):
+            typ = self._analyze_await(expr)
         elif isinstance(expr, TpyLambda):
             typ = self._analyze_lambda(expr)
         elif isinstance(expr, TpyCoerce):
@@ -2050,6 +2052,132 @@ class ExpressionAnalyzer:
         raise self.ctx.error(
             f"Type '{key_type}' cannot be used as a dict key (not hashable)", expr,
         )
+
+    # -- await -----------------------------------------------------------
+
+    def _analyze_await(self, expr: TpyAwait) -> TpyType:
+        """Analyze `await x`.
+
+        v1 (Commit 3 of PR 3) supports statically-resolvable awaits only:
+        the operand must be a direct call to a known async def. Type-erased
+        awaits (Awaitable[T] params, Task[T], unions) lower via
+        AsyncFrameBase<T> in PR 4.
+
+        The await expression's type is the awaited async def's declared
+        return type. The compiler tags the TpyAwait node with
+        `awaited_async_func` so codegen can resolve the sub-coroutine
+        struct and emit the in-frame `std::optional<__SubCoro>` field.
+        """
+        cur = self.ctx.func.current_function
+        if not (isinstance(cur, TpyFunction) and cur.is_async):
+            raise self.ctx.error(
+                "'await' is only allowed inside an `async def` function body; "
+                "use asyncio.run(coro) at the top level to drive a coroutine",
+                expr)
+        # Two supported v1 shapes:
+        # 1. Inline: operand is a direct call to a known async def.
+        # 2. Erased: operand has type Task[T] (heap-allocated frame).
+        operand = expr.value
+        async_fi = self._resolve_call_to_async_def(operand)
+        if async_fi is not None:
+            # Recursively analyze the operand call (validates arg types).
+            self.analyze_expr(operand)
+            from ..typesys import unwrap_ref_type
+            expr.awaited_async_func_name = async_fi.name
+            return unwrap_ref_type(async_fi.return_type)
+
+        # Type-erased path: analyze operand. Supported v1 erased forms:
+        #   - tpy.Task[T]            (heap-erased coroutine frame)
+        #   - asyncio.Future[T]      (manual-completion awaitable)
+        #   - any record type with `poll(self, w: Waker) -> Poll[T]`
+        #     (structural Awaitable -- supports user-written awaitables
+        #     alongside hand-written awaiter types).
+        operand_type = self.analyze_expr(operand)
+        from ..typesys import unwrap_ref_type, NominalType
+        unwrapped = unwrap_ref_type(operand_type)
+        if isinstance(unwrapped, NominalType):
+            inner = self._extract_awaitable_inner(unwrapped)
+            if inner is not None:
+                from ..typesys import TpyType as _TpyType
+                if isinstance(inner, _TpyType):
+                    expr.awaited_task_inner = inner
+                    return inner
+        raise self.ctx.error(
+            "await operand must be a direct call to an async def, a "
+            "Task[T] / Future[T], or a value of a type with a "
+            "`poll(self, waker: Waker) -> Poll[T]` method",
+            expr)
+
+    def _extract_awaitable_inner(self, typ) -> 'TpyType | None':
+        """Return the awaited type T if `typ` conforms to Awaitable[T],
+        else None.
+
+        Handles the v1 known awaitable shapes:
+          - tpy.Task[T]                 -> T
+          - tpy.* generic with type_args, qname starting with `asyncio.`
+            and a `poll(Waker) -> Poll[T]` method on its record.
+          - Any user record with a `poll(self, waker: Waker) -> Poll[T]`
+            method (structural Awaitable conformance).
+        """
+        from ..typesys import NominalType, TpyType as _TpyType
+        # Direct Task[T] match.
+        if (typ._module_qname == "tpy.Task"
+                and len(typ.type_args) == 1
+                and isinstance(typ.type_args[0], _TpyType)):
+            return typ.type_args[0]
+        # Structural: look up the record and check for a poll method
+        # whose signature matches Awaitable[T].
+        record_info = self.ctx.registry.get_record_for_type(typ)
+        if record_info is None:
+            return None
+        poll_overloads = record_info.get_method_overloads("poll")
+        if not poll_overloads:
+            return None
+        # Pick the first overload whose return type is Poll[T] for some T.
+        # Substitute the record's class-level type params with typ.type_args
+        # so `Future[Int32]` returns Int32, not the type-var T.
+        from ..typesys import unwrap_ref_type, TypeParamRef
+        type_subst: dict[str, _TpyType] = {}
+        if record_info.type_params and len(typ.type_args) == len(record_info.type_params):
+            for tp, arg in zip(record_info.type_params, typ.type_args):
+                if isinstance(arg, _TpyType):
+                    type_subst[tp] = arg
+        for fi in poll_overloads:
+            ret = fi.return_type
+            if ret is None:
+                continue
+            ret = unwrap_ref_type(ret)
+            if (isinstance(ret, NominalType)
+                    and ret._module_qname == "tpy.Poll"
+                    and len(ret.type_args) == 1):
+                inner = ret.type_args[0]
+                # Substitute T -> typ.type_args[i] when inner is a TypeParamRef.
+                if isinstance(inner, TypeParamRef) and inner.name in type_subst:
+                    return type_subst[inner.name]
+                return inner
+        return None
+
+    def _resolve_call_to_async_def(self, operand) -> 'FunctionInfo | None':
+        """If operand is a direct TpyCall whose target is a known async def,
+        return its FunctionInfo. Otherwise return None.
+
+        Free-function calls only for v1 (method calls land when async methods
+        do, in v3+). Looks up via the analyzer's registry.
+        """
+        from ..parse.nodes import TpyCall
+        if not isinstance(operand, TpyCall):
+            return None
+        func_name = getattr(operand, "func_name", None)
+        if not func_name:
+            return None
+        overloads = self.ctx.registry.get_function(func_name)
+        if not overloads:
+            return None
+        # Async defs do not participate in @overload, so a single match is OK.
+        for fi in overloads:
+            if fi.is_async:
+                return fi
+        return None
 
     # -- Ternary expression analysis ------------------------------------------
 

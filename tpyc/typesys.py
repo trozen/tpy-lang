@@ -2514,6 +2514,28 @@ def make_own_iter(element_type: 'TpyType') -> 'NominalType':
                        _module_qname="tpy.OwnIter")
 
 
+def make_task(awaited_type: 'TpyType') -> 'NominalType':
+    """Factory for Task[T]. Plain NominalType with qname tpy.Task;
+    behavior (is_value_type=False since it owns a heap allocation,
+    cpp_formatter -> ::tpy::Task<T>) comes from the TypeDef registry."""
+    return NominalType(name="Task", type_args=(awaited_type,),
+                       _module_qname="tpy.Task")
+
+
+def make_poll(awaited_type: 'TpyType') -> 'NominalType':
+    """Factory for Poll[T]. Plain NominalType with qname tpy.Poll;
+    behavior (is_value_type=True POD-like, cpp_formatter ->
+    ::tpy::Poll<T>) comes from the TypeDef registry."""
+    return NominalType(name="Poll", type_args=(awaited_type,),
+                       _module_qname="tpy.Poll")
+
+
+# Singleton for the non-generic Waker type. Registered as a value-type
+# nominal so user code can declare `def poll(self, w: Waker) -> Poll[T]`.
+WAKER = NominalType(name="Waker", type_args=(),
+                    _module_qname="tpy.Waker")
+
+
 def make_range(element_type: 'TpyType') -> 'NominalType':
     """Factory for Range[T]. Plain NominalType with qname builtins.Range;
     behavior (is_value_type=True, cpp_formatter -> ::tpy::Range<T>) comes
@@ -3271,6 +3293,7 @@ class FunctionInfo:
     is_consuming: bool = False
     is_method: bool = False
     is_staticmethod: bool = False
+    is_async: bool = False  # `async def` -- factory returns a coroutine struct
     is_property_getter: bool = False
     is_property_setter: bool = False
     property_name: Optional[str] = None  # for setter: which property it belongs to

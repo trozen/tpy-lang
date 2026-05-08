@@ -126,7 +126,8 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| G1 | async/await or alternative | XL | Not started | [IX](#asyncawait-or-alternative-model) |
+| G1 | async/await + minimal asyncio | XL | v1 shipped -- see [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md); design in [`docs/ASYNC_DESIGN.md`](ASYNC_DESIGN.md) | [IX](#asyncawait-or-alternative-model) |
+| G1.5 | asyncio runtime port C++ -> TPy | M | Phase 0 done (SleepFuture); Phases 1-4 + blockers tracked in [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md#v1x-milestone-asyncio-runtime-tpy-port-must-precede-v15). **Must precede v1.5 work** so `gather`/`wait_for`/`async with` are written as TPy on a TPy executor. | [IX](#asyncawait-or-alternative-model) |
 | G2 | Channels | L | Not started | [IX](#channels) |
 
 Phases are not strictly sequential -- items from different phases can be interleaved
@@ -2984,8 +2985,14 @@ without triggering cascading errors. Expressions involving `Invalid` silently pr
 
 ### async/await or Alternative Model
 
-**Design space**: C++20 coroutines, green threads, actor model, or structured concurrency
-(Kotlin/Swift style).
+Full design in [`docs/ASYNC_DESIGN.md`](ASYNC_DESIGN.md). Summary:
+
+- **Lowering**: state-machine struct with `poll(waker) -> Poll[T]` (Rust-shaped). New shared "resumable-frame" abstraction in codegen, not C++20 coroutines (preserves a future LLVM backend) and not an extension of generator codegen (separate codegen track; future work migrates generators onto it).
+- **Awaitable protocol**: structural, like `Iterator[T]` -- type is awaitable iff it has `poll(self, waker: Waker) -> Poll[T]`.
+- **Cancellation**: exception-based via `cancel_pending` flag + `CancelledError` thrown at the next suspension; per-case try/except/finally re-establishment in codegen.
+- **Executor**: single-threaded for v1; multi-threaded executor and `Send`/`Sync` constraints are v3+.
+- **Task[T]**: purpose-built type-erased poll-box (~50 LOC C++ template), independent of `@dynamic` infrastructure.
+- **Milestones**: v1 = `async def`/`await`/`run`/`sleep`/`create_task`/`Task`/`Future`/`cancel`. v1.5 = `async with`/`async for`/`gather`/`wait_for` + sync `with` upgrade for `__exit__` exc args. v2 = sync primitives + first I/O reactor (epoll). v3+ = multi-threaded, async generators, `@error_return` async, `__await__` adaptation, etc.
 
 ### Channels
 

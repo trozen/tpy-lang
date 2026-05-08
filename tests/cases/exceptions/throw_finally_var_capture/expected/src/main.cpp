@@ -36,7 +36,6 @@ void main() {
             std::cout << x << "\n";
             throw;
         }
-        __finally_1:;
         // print(x)
         std::cout << x << "\n";
     }
@@ -52,7 +51,6 @@ void main() {
             std::cout << s << "\n";
             throw;
         }
-        __finally_2:;
         // print(s)
         std::cout << s << "\n";
     }
@@ -68,7 +66,6 @@ void main() {
             std::cout << ::tpy::__len__((*items)) << "\n";
             throw;
         }
-        __finally_3:;
         // print(len(items))
         std::cout << ::tpy::__len__((*items)) << "\n";
     }

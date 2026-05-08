@@ -56,7 +56,6 @@ void main() {
         __ctx_1.__exit__();
         throw;
     }
-    __finally_1:;
     __ctx_1.__exit__();
     // # Append mode
     // a = open(path, "a")
@@ -75,7 +74,6 @@ void main() {
         __ctx_2.__exit__();
         throw;
     }
-    __finally_2:;
     __ctx_2.__exit__();
 }
 

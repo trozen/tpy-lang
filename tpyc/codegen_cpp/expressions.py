@@ -2281,6 +2281,16 @@ class ExpressionGenerator:
                 # own_iter(x) - move container into OwnIter for consuming iteration
                 if module_name == "tpy" and func_name == "own_iter":
                     return self._gen_own_iter_expr(expr.args[0])
+                # asyncio.create_task(coro) -> ::tpy::make_user_task<T>(coro)
+                # (the helper runs the "no running event loop" guard).
+                if module_name == "asyncio" and func_name == "create_task":
+                    inner_T_cpp = getattr(expr, "async_create_task_inner_T_cpp", None)
+                    if inner_T_cpp is None:
+                        from .context import CodeGenError
+                        raise CodeGenError(
+                            "asyncio.create_task: missing inner-T cpp", loc=None)
+                    arg_cpp = self.gen_expr(expr.args[0])
+                    return f"::tpy::make_user_task<{inner_T_cpp}>({arg_cpp})"
                 # Check for module function
                 module_info = self.ctx.analyzer.registry.get_module(module_name)
                 if module_info and func_name in module_info.functions:
@@ -2825,6 +2835,15 @@ class ExpressionGenerator:
             # own_iter() - move container into OwnIter
             if module_name == "tpy" and expr.method == "own_iter":
                 return self._gen_own_iter_expr(expr.args[0])
+            # asyncio.create_task(coro) -> ::tpy::make_user_task<T>(coro)
+            if module_name == "asyncio" and expr.method == "create_task":
+                inner_T_cpp = getattr(expr, "async_create_task_inner_T_cpp", None)
+                if inner_T_cpp is None:
+                    from .context import CodeGenError
+                    raise CodeGenError(
+                        "asyncio.create_task: missing inner-T cpp", loc=None)
+                arg_cpp = self.gen_expr(expr.args[0])
+                return f"::tpy::make_user_task<{inner_T_cpp}>({arg_cpp})"
             # Special-handling functions with cpp_template resolved by sema
             fi = expr.resolved_function_info
             if fi and fi.special_handling and fi.cpp_template:
@@ -2873,7 +2892,9 @@ class ExpressionGenerator:
                 if expr.is_static_call and method_info.cpp_template:
                     gen_args = [self.builtins._gen_expr_deref(arg, ptype)
                                 for arg, (_, ptype) in zip(expr.args, method_info.params)]
-                    return self.builtins.gen_call_from_fi(method_info, None, gen_args)
+                    return self.builtins.gen_call_from_fi(
+                        method_info, None, gen_args,
+                        type_args=expr.inferred_type_args)
                 return self.builtins.gen_method_from_function_info(receiver, expr.args, method_info)
 
         # Build explicit template args for generic method calls
@@ -2899,11 +2920,15 @@ class ExpressionGenerator:
             return f"this->{parent_cpp}::{template_kw}{expr.method}{method_targs}({args})"
         # Handle ClassName.staticmethod() -> ClassName::staticmethod()
         if expr.is_static_call and isinstance(expr.obj, TpyName):
-            # @cpp_template on static methods: expand the template directly
+            # @cpp_template on static methods: expand the template directly.
+            # Pass inferred_type_args so {T}-style placeholders get resolved
+            # for generic static methods (e.g. Poll.ready[T] / Poll.pending[T]).
             fi = expr.resolved_function_info
             if fi and fi.cpp_template:
                 gen_args = [self.gen_expr(arg) for arg in expr.args]
-                return self.builtins.gen_call_from_fi(fi, None, gen_args)
+                return self.builtins.gen_call_from_fi(
+                    fi, None, gen_args,
+                    type_args=expr.inferred_type_args)
             # For native records, use the C++ class and method names. The
             # class qname is always set on is_native records (see registration);
             # method names only have a `native_name` when explicitly renamed.

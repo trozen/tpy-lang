@@ -495,6 +495,7 @@ class FunctionTrackingState:
     # --- Consumed variable tracking ---
     consumed_vars: set[str] = field(default_factory=set)
 
+
     # --- Variable declaration tracking (per-function) ---
     var_decl_by_name: dict[str, 'TpyVarDecl'] = field(default_factory=dict)
 

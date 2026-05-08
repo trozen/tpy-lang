@@ -1,0 +1,1 @@
+main.py:5: error: async def + @noalloc is not yet supported on 'f'

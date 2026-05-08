@@ -26,7 +26,6 @@ void main() {
         __ctx_1.__exit__();
         throw;
     }
-    __finally_1:;
     __ctx_1.__exit__();
     // # File opened write-only; read() should raise OSError.
     // with open(path, "w") as f:
@@ -47,7 +46,6 @@ void main() {
         __ctx_2.__exit__();
         throw;
     }
-    __finally_2:;
     __ctx_2.__exit__();
     // # File opened read-only; write() should raise OSError.
     // with open(path, "r") as f:
@@ -68,7 +66,6 @@ void main() {
         __ctx_3.__exit__();
         throw;
     }
-    __finally_3:;
     __ctx_3.__exit__();
     // # readline() on write-only file.
     // with open(path, "w") as f:
@@ -89,7 +86,6 @@ void main() {
         __ctx_4.__exit__();
         throw;
     }
-    __finally_4:;
     __ctx_4.__exit__();
 }
 

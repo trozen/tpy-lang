@@ -43,24 +43,24 @@ void test_try_load() {
     // try:
     std::optional<Item> c;
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_8;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_3;
         // c = Item.try_load_json("/tmp/_tpy_test_json_io3.json")
         {
-            auto __try_tmp_9 = Item::try_load_json("/tmp/_tpy_test_json_io3.json");
-            if (!__try_tmp_9.has_value()) { __err_opt_8 = std::move(__try_tmp_9.error()); goto __except_8; }
-            c = ::tpy::unwrap_ref(*__try_tmp_9);
+            auto __try_tmp_4 = Item::try_load_json("/tmp/_tpy_test_json_io3.json");
+            if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
+            c = ::tpy::unwrap_ref(*__try_tmp_4);
         }
         // print(c.name)
         std::cout << c->name << "\n";
-        goto __after_try_8;
+        goto __after_try_3;
         // except JsonError:
-        __except_8:;
+        __except_3:;
         {
-            auto& e = *__err_opt_8;
+            auto& e = *__err_opt_3;
             // print("error: " + e.message)
             std::cout << (::tpy::str_concat("error: ", e.message)) << "\n";
         }
-        __after_try_8:;
+        __after_try_3:;
     }
 }
 
@@ -76,37 +76,36 @@ void test_try_load_bad() {
         __ctx_4.__exit__();
         throw;
     }
-    __finally_10:;
     __ctx_4.__exit__();
     // try:
     std::optional<Item> c;
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_11;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_5;
         // c = Item.try_load_json("/tmp/_tpy_test_json_io_bad.json")
         {
-            auto __try_tmp_12 = Item::try_load_json("/tmp/_tpy_test_json_io_bad.json");
-            if (!__try_tmp_12.has_value()) { __err_opt_11 = std::move(__try_tmp_12.error()); goto __except_11; }
-            c = ::tpy::unwrap_ref(*__try_tmp_12);
+            auto __try_tmp_6 = Item::try_load_json("/tmp/_tpy_test_json_io_bad.json");
+            if (!__try_tmp_6.has_value()) { __err_opt_5 = std::move(__try_tmp_6.error()); goto __except_5; }
+            c = ::tpy::unwrap_ref(*__try_tmp_6);
         }
         // print(c.name)
         std::cout << c->name << "\n";
-        goto __after_try_11;
+        goto __after_try_5;
         // except JsonError:
-        __except_11:;
+        __except_5:;
         {
-            auto& e = *__err_opt_11;
+            auto& e = *__err_opt_5;
             // print("caught: " + e.message)
             std::cout << (::tpy::str_concat("caught: ", e.message)) << "\n";
         }
-        __after_try_11:;
+        __after_try_5:;
     }
 }
 
 
 std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
     {
-        auto __try_tmp_13 = __reader.read_object_start();
-        if (!__try_tmp_13.has_value()) return ::tpy::make_unexpected(__try_tmp_13.error());
+        auto __try_tmp_7 = __reader.read_object_start();
+        if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(__try_tmp_7.error());
     }
     std::string name = "";
     int32_t count = 0;
@@ -114,46 +113,46 @@ std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::__json_decod
     while (__reader.has_next()) {
         std::string_view __key;
         {
-            auto __try_tmp_14 = __reader.read_key_raw();
-            if (!__try_tmp_14.has_value()) return ::tpy::make_unexpected(__try_tmp_14.error());
-            __key = ::tpy::unwrap_ref(*__try_tmp_14);
+            auto __try_tmp_8 = __reader.read_key_raw();
+            if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(__try_tmp_8.error());
+            __key = ::tpy::unwrap_ref(*__try_tmp_8);
         }
         auto& __match_subject = __key;
         if (__match_subject == "name") {
             std::string __name_1;
             {
-                auto __try_tmp_15 = __reader.read_str();
-                if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(__try_tmp_15.error());
-                __name_1 = ::tpy::unwrap_ref(*__try_tmp_15);
+                auto __try_tmp_9 = __reader.read_str();
+                if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
+                __name_1 = ::tpy::unwrap_ref(*__try_tmp_9);
             }
             name = __name_1;
         } else if (__match_subject == "count") {
             int64_t __raw_3;
             {
-                auto __try_tmp_16 = __reader.read_int();
-                if (!__try_tmp_16.has_value()) return ::tpy::make_unexpected(__try_tmp_16.error());
-                __raw_3 = ::tpy::unwrap_ref(*__try_tmp_16);
+                auto __try_tmp_10 = __reader.read_int();
+                if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
+                __raw_3 = ::tpy::unwrap_ref(*__try_tmp_10);
             }
             int32_t __count_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
             count = __count_2;
         } else if (__match_subject == "active") {
             bool __active_4;
             {
-                auto __try_tmp_17 = __reader.read_bool();
-                if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
-                __active_4 = ::tpy::unwrap_ref(*__try_tmp_17);
+                auto __try_tmp_11 = __reader.read_bool();
+                if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
+                __active_4 = ::tpy::unwrap_ref(*__try_tmp_11);
             }
             active = __active_4;
         } else {
             {
-                auto __try_tmp_18 = __reader.skip_value();
-                if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
+                auto __try_tmp_12 = __reader.skip_value();
+                if (!__try_tmp_12.has_value()) return ::tpy::make_unexpected(__try_tmp_12.error());
             }
         }
     }
     {
-        auto __try_tmp_19 = __reader.read_object_end();
-        if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
+        auto __try_tmp_13 = __reader.read_object_end();
+        if (!__try_tmp_13.has_value()) return ::tpy::make_unexpected(__try_tmp_13.error());
     }
     return Item(name, count, active);
 }

@@ -16,7 +16,6 @@ void test_basic() {
         __ctx_1.__exit__();
         throw;
     }
-    __finally_1:;
     __ctx_1.__exit__();
     // print("after with")
     std::cout << "after with" << "\n";
@@ -34,7 +33,6 @@ void test_no_as() {
         __ctx_2.__exit__();
         throw;
     }
-    __finally_2:;
     __ctx_2.__exit__();
     // print("after B")
     std::cout << "after B" << "\n";
@@ -52,7 +50,6 @@ void test_enter_returns_different_type() {
         __ctx_3.__exit__();
         throw;
     }
-    __finally_3:;
     __ctx_3.__exit__();
     // print("after connection")
     std::cout << "after connection" << "\n";
@@ -75,13 +72,11 @@ void test_multiple_ctx_managers() {
             __ctx_5.__exit__();
             throw;
         }
-        __finally_5:;
         __ctx_5.__exit__();
     } catch (...) {
         __ctx_4.__exit__();
         throw;
     }
-    __finally_4:;
     __ctx_4.__exit__();
     // print("after both")
     std::cout << "after both" << "\n";
@@ -99,7 +94,6 @@ void test_variable_visible_after() {
         __ctx_6.__exit__();
         throw;
     }
-    __finally_6:;
     __ctx_6.__exit__();
     // v.log("after")
     v.log("after");
@@ -110,20 +104,16 @@ std::string early_return_helper() {
     // with Logger("R") as r:
     auto __ctx_7 = Logger("R");
     auto& r = __ctx_7.__enter__();
-    std::optional<std::string> __retval_8;
     try {
         // r.log("before return")
         r.log("before return");
         // return "result"
-        __retval_8 = "result";
-        goto __finally_7;
+        __ctx_7.__exit__();
+        return "result";
     } catch (...) {
         __ctx_7.__exit__();
         throw;
     }
-    __finally_7:;
-    __ctx_7.__exit__();
-    return (*__retval_8);
 }
 
 // def test_early_return() -> None:
@@ -140,7 +130,6 @@ std::string nested_with_all_return(bool flag) {
     std::optional<Logger> nw_inner;
     auto __ctx_8 = Logger("OUT");
     auto& nw_outer = __ctx_8.__enter__();
-    std::optional<std::string> __retval_10;
     try {
         // with Logger("IN") as nw_inner:
         auto __ctx_9 = Logger("IN");
@@ -153,26 +142,22 @@ std::string nested_with_all_return(bool flag) {
             // if flag:
             if (flag) {
                 // return "yes"
-                __retval_10 = "yes";
-                goto __finally_11;
+                __ctx_9.__exit__();
+                __ctx_8.__exit__();
+                return "yes";
             }
             // return "no"
-            __retval_10 = "no";
-            goto __finally_11;
+            __ctx_9.__exit__();
+            __ctx_8.__exit__();
+            return "no";
         } catch (...) {
             __ctx_9.__exit__();
             throw;
         }
-        __finally_11:;
-        __ctx_9.__exit__();
-        goto __finally_9;
     } catch (...) {
         __ctx_8.__exit__();
         throw;
     }
-    __finally_9:;
-    __ctx_8.__exit__();
-    return (*__retval_10);
 }
 
 // def test_nested_with_all_return() -> None:
@@ -199,7 +184,6 @@ void test_body_var_survives_scope() {
         __ctx_10.__exit__();
         throw;
     }
-    __finally_12:;
     __ctx_10.__exit__();
     // print(x)
     std::cout << x << "\n";
@@ -222,7 +206,6 @@ void test_body_record_var_survives_scope() {
         __ctx_11.__exit__();
         throw;
     }
-    __finally_13:;
     __ctx_11.__exit__();
     // inner.log("after")
     inner->log("after");
@@ -240,7 +223,6 @@ void test_reuse_with_var_name() {
         __ctx_12.__exit__();
         throw;
     }
-    __finally_14:;
     __ctx_12.__exit__();
     // with Logger("V2") as v:
     auto __ctx_13 = Logger("V2");
@@ -252,7 +234,6 @@ void test_reuse_with_var_name() {
         __ctx_13.__exit__();
         throw;
     }
-    __finally_15:;
     __ctx_13.__exit__();
     // v.log("after reuse")
     v->log("after reuse");
@@ -275,8 +256,6 @@ void test_exception_in_body() {
                 __ctx_14.__exit__();
                 throw;
             }
-            __finally_16:;
-            __ctx_14.__exit__();
         } catch (const ::tpy::ValueError&) {
             // print("caught")
             std::cout << "caught" << "\n";
@@ -304,14 +283,10 @@ void test_exception_multi() {
                     __ctx_16.__exit__();
                     throw;
                 }
-                __finally_18:;
-                __ctx_16.__exit__();
             } catch (...) {
                 __ctx_15.__exit__();
                 throw;
             }
-            __finally_17:;
-            __ctx_15.__exit__();
         } catch (const ::tpy::ValueError&) {
             // print("caught multi")
             std::cout << "caught multi" << "\n";
@@ -334,14 +309,12 @@ void test_with_in_try_finally() {
                 __ctx_17.__exit__();
                 throw;
             }
-            __finally_20:;
             __ctx_17.__exit__();
         } catch (...) {
             // print("outer finally")
             std::cout << "outer finally" << "\n";
             throw;
         }
-        __finally_19:;
         // print("outer finally")
         std::cout << "outer finally" << "\n";
     }
@@ -358,7 +331,8 @@ void test_break_in_with() {
             // if i == 2:
             if ((i == 2)) {
                 // break
-                goto __finally_break_21;
+                __ctx_18.__exit__();
+                break;
             }
             // print(i)
             std::cout << i << "\n";
@@ -366,13 +340,7 @@ void test_break_in_with() {
             __ctx_18.__exit__();
             throw;
         }
-        __finally_21:;
         __ctx_18.__exit__();
-        goto __after_finally_22;
-        __finally_break_21:;
-        __ctx_18.__exit__();
-        break;
-        __after_finally_22:;
     }
     // print("after break loop")
     std::cout << "after break loop" << "\n";
@@ -389,7 +357,8 @@ void test_continue_in_with() {
             // if i == 2:
             if ((i == 2)) {
                 // continue
-                goto __finally_continue_23;
+                __ctx_19.__exit__();
+                continue;
             }
             // print(i)
             std::cout << i << "\n";
@@ -397,13 +366,7 @@ void test_continue_in_with() {
             __ctx_19.__exit__();
             throw;
         }
-        __finally_23:;
         __ctx_19.__exit__();
-        goto __after_finally_24;
-        __finally_continue_23:;
-        __ctx_19.__exit__();
-        continue;
-        __after_finally_24:;
     }
     // print("after continue loop")
     std::cout << "after continue loop" << "\n";

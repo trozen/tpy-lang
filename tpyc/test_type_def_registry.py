@@ -75,6 +75,9 @@ def _canonical_instances() -> dict[str, ts.TpyType]:
         "tpy.CopyIter": ts.make_copy_iter(I32),
         "tpy.OwnIter":  ts.make_own_iter(I32),
         "tpy.Ptr":      ts.PtrType(I32),
+        "tpy.Task":     ts.make_task(I32),
+        "tpy.Poll":     ts.make_poll(I32),
+        "tpy.Waker":    ts.WAKER,
     }
     return cases
 
@@ -1051,6 +1054,9 @@ FACTORY_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "tpy.Array":            ("TYPE", "INT"),
     "tpy.Span":             ("TYPE",),
     "tpy.SpanIter":         ("TYPE",),
+    "tpy.Task":             ("TYPE",),
+    "tpy.Poll":             ("TYPE",),
+    "tpy.Waker":            (),
     # Structural wrapper
     "tpy.Ptr":              ("TYPE",),
     # Primitive singletons
@@ -1118,6 +1124,8 @@ def test_factory_produces_same_instance_as_registry():
         "tpy.Span":             (I32,),
         "tpy.SpanIter":         (I32,),
         "tpy.Ptr":              (I32,),
+        "tpy.Task":             (I32,),
+        "tpy.Poll":             (I32,),
     }
     for qname, args in canonical_args.items():
         td = get_type_def(qname)
@@ -1255,6 +1263,13 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
         methods=("__iter__",),
     ),
     # tpy.* structural protocols (tpy._core._types)
+    "tpy.coro.Awaitable": dict(
+        name="Awaitable", module="tpy.coro",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=("T",), parent_protocols=(),
+        methods=("poll",),
+    ),
     "tpy.Truthy": dict(
         name="Truthy", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
@@ -1454,6 +1469,7 @@ from tpy import (
     Default, ReturnException, Covariant,
     AnyFixedInt, AnyFixedSigned, AnyFixedUnsigned,
 )
+from tpy.coro import Awaitable
 """
 
 

@@ -72,32 +72,103 @@ void test_optional() {
 
 std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
     {
-        auto __try_tmp_16 = __reader.read_object_start();
-        if (!__try_tmp_16.has_value()) return ::tpy::make_unexpected(__try_tmp_16.error());
+        auto __try_tmp_6 = __reader.read_object_start();
+        if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
     }
     std::string name = "";
     std::optional<Seconds> when = std::nullopt;
     while (__reader.has_next()) {
         std::string_view __key;
         {
-            auto __try_tmp_17 = __reader.read_key_raw();
-            if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
-            __key = ::tpy::unwrap_ref(*__try_tmp_17);
+            auto __try_tmp_7 = __reader.read_key_raw();
+            if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(__try_tmp_7.error());
+            __key = ::tpy::unwrap_ref(*__try_tmp_7);
         }
         auto& __match_subject = __key;
         if (__match_subject == "name") {
             std::string __name_1;
             {
-                auto __try_tmp_18 = __reader.read_str();
-                if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
-                __name_1 = ::tpy::unwrap_ref(*__try_tmp_18);
+                auto __try_tmp_8 = __reader.read_str();
+                if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(__try_tmp_8.error());
+                __name_1 = ::tpy::unwrap_ref(*__try_tmp_8);
             }
             name = __name_1;
         } else if (__match_subject == "when") {
             {
-                auto __try_tmp_19 = Seconds::__json_decode__(__reader);
-                if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
-                when = ::tpy::unwrap_ref(*__try_tmp_19);
+                auto __try_tmp_9 = Seconds::__json_decode__(__reader);
+                if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
+                when = ::tpy::unwrap_ref(*__try_tmp_9);
+            }
+        } else {
+            {
+                auto __try_tmp_10 = __reader.skip_value();
+                if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
+            }
+        }
+    }
+    {
+        auto __try_tmp_11 = __reader.read_object_end();
+        if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
+    }
+    if ((!when.has_value())) {
+        return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'when'"));
+    }
+    auto __tmp_1 = (*when);
+    return Event(name, std::move(__tmp_1));
+}
+
+std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
+    {
+        auto __try_tmp_12 = __reader.read_object_start();
+        if (!__try_tmp_12.has_value()) return ::tpy::make_unexpected(__try_tmp_12.error());
+    }
+    std::vector<Event> events = std::vector<Event>{};
+    std::optional<Seconds> default_duration = std::nullopt;
+    std::optional<Seconds> deadline = std::nullopt;
+    while (__reader.has_next()) {
+        std::string_view __key;
+        {
+            auto __try_tmp_13 = __reader.read_key_raw();
+            if (!__try_tmp_13.has_value()) return ::tpy::make_unexpected(__try_tmp_13.error());
+            __key = ::tpy::unwrap_ref(*__try_tmp_13);
+        }
+        auto& __match_subject = __key;
+        if (__match_subject == "events") {
+            {
+                auto __try_tmp_14 = __reader.read_array_start();
+                if (!__try_tmp_14.has_value()) return ::tpy::make_unexpected(__try_tmp_14.error());
+            }
+            while (__reader.has_next()) {
+                Event __elem_1;
+                {
+                    auto __try_tmp_15 = Event::__json_decode__(__reader);
+                    if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(__try_tmp_15.error());
+                    __elem_1 = ::tpy::unwrap_ref(*__try_tmp_15);
+                }
+                events.push_back(__elem_1);
+            }
+            {
+                auto __try_tmp_16 = __reader.read_array_end();
+                if (!__try_tmp_16.has_value()) return ::tpy::make_unexpected(__try_tmp_16.error());
+            }
+        } else if (__match_subject == "default_duration") {
+            {
+                auto __try_tmp_17 = Seconds::__json_decode__(__reader);
+                if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
+                default_duration = ::tpy::unwrap_ref(*__try_tmp_17);
+            }
+        } else if (__match_subject == "deadline") {
+            if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
+                {
+                    auto __try_tmp_18 = __reader.read_null();
+                    if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
+                }
+            } else {
+                {
+                    auto __try_tmp_19 = Seconds::__json_decode__(__reader);
+                    if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
+                    deadline = ::tpy::unwrap_ref(*__try_tmp_19);
+                }
             }
         } else {
             {
@@ -109,77 +180,6 @@ std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::__json_dec
     {
         auto __try_tmp_21 = __reader.read_object_end();
         if (!__try_tmp_21.has_value()) return ::tpy::make_unexpected(__try_tmp_21.error());
-    }
-    if ((!when.has_value())) {
-        return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'when'"));
-    }
-    auto __tmp_1 = (*when);
-    return Event(name, std::move(__tmp_1));
-}
-
-std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
-    {
-        auto __try_tmp_22 = __reader.read_object_start();
-        if (!__try_tmp_22.has_value()) return ::tpy::make_unexpected(__try_tmp_22.error());
-    }
-    std::vector<Event> events = std::vector<Event>{};
-    std::optional<Seconds> default_duration = std::nullopt;
-    std::optional<Seconds> deadline = std::nullopt;
-    while (__reader.has_next()) {
-        std::string_view __key;
-        {
-            auto __try_tmp_23 = __reader.read_key_raw();
-            if (!__try_tmp_23.has_value()) return ::tpy::make_unexpected(__try_tmp_23.error());
-            __key = ::tpy::unwrap_ref(*__try_tmp_23);
-        }
-        auto& __match_subject = __key;
-        if (__match_subject == "events") {
-            {
-                auto __try_tmp_24 = __reader.read_array_start();
-                if (!__try_tmp_24.has_value()) return ::tpy::make_unexpected(__try_tmp_24.error());
-            }
-            while (__reader.has_next()) {
-                Event __elem_1;
-                {
-                    auto __try_tmp_25 = Event::__json_decode__(__reader);
-                    if (!__try_tmp_25.has_value()) return ::tpy::make_unexpected(__try_tmp_25.error());
-                    __elem_1 = ::tpy::unwrap_ref(*__try_tmp_25);
-                }
-                events.push_back(__elem_1);
-            }
-            {
-                auto __try_tmp_26 = __reader.read_array_end();
-                if (!__try_tmp_26.has_value()) return ::tpy::make_unexpected(__try_tmp_26.error());
-            }
-        } else if (__match_subject == "default_duration") {
-            {
-                auto __try_tmp_27 = Seconds::__json_decode__(__reader);
-                if (!__try_tmp_27.has_value()) return ::tpy::make_unexpected(__try_tmp_27.error());
-                default_duration = ::tpy::unwrap_ref(*__try_tmp_27);
-            }
-        } else if (__match_subject == "deadline") {
-            if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
-                {
-                    auto __try_tmp_28 = __reader.read_null();
-                    if (!__try_tmp_28.has_value()) return ::tpy::make_unexpected(__try_tmp_28.error());
-                }
-            } else {
-                {
-                    auto __try_tmp_29 = Seconds::__json_decode__(__reader);
-                    if (!__try_tmp_29.has_value()) return ::tpy::make_unexpected(__try_tmp_29.error());
-                    deadline = ::tpy::unwrap_ref(*__try_tmp_29);
-                }
-            }
-        } else {
-            {
-                auto __try_tmp_30 = __reader.skip_value();
-                if (!__try_tmp_30.has_value()) return ::tpy::make_unexpected(__try_tmp_30.error());
-            }
-        }
-    }
-    {
-        auto __try_tmp_31 = __reader.read_object_end();
-        if (!__try_tmp_31.has_value()) return ::tpy::make_unexpected(__try_tmp_31.error());
     }
     if ((!default_duration.has_value())) {
         return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'default_duration'"));

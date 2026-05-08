@@ -39,7 +39,7 @@ from .nodes import (
     TpyFieldAccess, TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyComprehensionGenerator, TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression,
     TpySlice, TpySubscript, TpyCoerce,
-    TpyIfExpr, TpyNamedExpr, TpyLambda,
+    TpyIfExpr, TpyNamedExpr, TpyAwait, TpyLambda,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyDelAttr, TpyExprStmt, TpyReturn, TpyYield,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyNonlocal, TpyRaise, TpyExceptHandler, TpyTry, TpyWithItem, TpyWith,
@@ -770,7 +770,7 @@ class Parser:
         # being misresolved when shadowed by a local name.
         local_defs: set[str] = set()
         for node in tree.body:
-            if isinstance(node, (ast.ClassDef, ast.FunctionDef)):
+            if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
                 if not any(self._decorator_raw_name(d) in _BUILTIN_DEC_NAMES
                            for d in node.decorator_list):
                     local_defs.add(node.name)
@@ -853,7 +853,7 @@ class Parser:
                     # Prefix nested type names with parent chain and register
                     self._prefix_nested_names(result, result.name)
                     self._register_nested_types(result)
-            elif isinstance(node, ast.FunctionDef):
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 seen_non_import = True
                 # Warn if function shadows an imported parser keyword name
                 # (skip for @builtin_function/builtin_decorator -- shadow is intentional)
@@ -1437,9 +1437,13 @@ class Parser:
                 fields.append(FieldInfo(field_name, field_type, default_val,
                                         default_expr=default_expr,
                                         loc=self._loc(item)))
-            elif isinstance(item, ast.FunctionDef):
+            elif isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 if is_typed_dict:
                     raise ParseError(f"Methods are not allowed on TypedDict '{node.name}'", item)
+                if isinstance(item, ast.AsyncFunctionDef):
+                    raise ParseError(
+                        f"async methods are not yet supported "
+                        f"(method '{item.name}' on '{node.name}')", item)
                 parsed = self._parse_method(item, node.name, type_param_scope, property_names)
                 if parsed.is_property_getter:
                     property_names.add(parsed.name)
@@ -1681,6 +1685,10 @@ class Parser:
         fields = []
 
         for item in node.body:
+            if isinstance(item, ast.AsyncFunctionDef):
+                raise ParseError(
+                    f"async methods are not allowed in protocols "
+                    f"(method '{item.name}' on protocol '{node.name}')", item)
             if isinstance(item, ast.FunctionDef):
                 # Parse @readonly decorator
                 is_readonly = False
@@ -2153,8 +2161,13 @@ class Parser:
         FunctionLinkage.EXPORT_C: "export",
     }
 
-    def _parse_function(self, node: ast.FunctionDef) -> TpyFunction:
-        """Parse a function definition."""
+    def _parse_function(self, node: 'ast.FunctionDef | ast.AsyncFunctionDef') -> TpyFunction:
+        """Parse a function definition (sync or async).
+
+        async def f() lowers to a state-machine struct conforming to
+        Awaitable[T] in PR 3 (codegen). v1 sema rejects async + @error_return,
+        async + @noalloc, async + yield (async generators), and user
+        __await__ methods -- each as 'not yet supported'."""
         is_noalloc = False
         is_inline = False
         is_readonly = False
@@ -2389,6 +2402,31 @@ class Parser:
             # Validate: no 'return value' inside generator
             _check_no_return_value_in_generator(body, node.name)
 
+        is_async = isinstance(node, ast.AsyncFunctionDef)
+        if is_async:
+            # v1 exclusion rules: each is "not yet supported", not "forbidden
+            # forever". The async-generator case (yield in async def) and
+            # @error_return / @noalloc combinations are deferred to v3+ per
+            # docs/ASYNC_DESIGN.md ("Mutually exclusive with @error_return /
+            # @noalloc / yield in v1").
+            if is_generator:
+                raise ParseError(
+                    f"async generators (async def + yield) are not yet supported "
+                    f"on async function '{node.name}'", node)
+            if error_return is not None:
+                raise ParseError(
+                    f"async def + @error_return is not yet supported on '{node.name}'",
+                    node)
+            if is_noalloc:
+                raise ParseError(
+                    f"async def + @noalloc is not yet supported on '{node.name}'",
+                    node)
+            if linkage != FunctionLinkage.DEFAULT:
+                display = self._LINKAGE_DISPLAY_NAMES.get(linkage, linkage.value)
+                raise ParseError(
+                    f"async def + @{display} is not yet supported on '{node.name}'",
+                    node)
+
         return TpyFunction(
             name=node.name,
             params=params,
@@ -2420,6 +2458,7 @@ class Parser:
             builtin_decorator_key=builtin_decorator_key,
             builtin_function_key=builtin_function_key,
             is_generator=is_generator,
+            is_async=is_async,
             loc=self._loc(node)
         )
 
@@ -2954,6 +2993,11 @@ class Parser:
         elif isinstance(node, ast.FunctionDef):
             return self._parse_nested_def(node, loc)
 
+        elif isinstance(node, ast.AsyncFunctionDef):
+            raise ParseError(
+                f"nested async def is not yet supported (function '{node.name}'); "
+                f"async def is only allowed at module level", node)
+
         else:
             raise ParseError(f"Unsupported statement: {type(node).__name__}", node)
 
@@ -3485,6 +3529,13 @@ class Parser:
         elif isinstance(node, ast.YieldFrom):
             raise ParseError(
                 "'yield from' is not yet supported in TurboPython", node)
+
+        elif isinstance(node, ast.Await):
+            # Sema rejects await outside an async def body. v1 codegen for
+            # await lowers to a poll-and-park sequence on the operand's
+            # Awaitable[T] conformance (PR 3).
+            value = self._parse_expr(node.value)
+            return TpyAwait(value=value, loc=loc)
 
         else:
             raise ParseError(f"Unsupported expression: {type(node).__name__}", node)

@@ -38,7 +38,6 @@ void main() {
         __ctx_1.__exit__();
         throw;
     }
-    __finally_1:;
     __ctx_1.__exit__();
     // # Context manager read
     // with open(path, "rb") as f2:
@@ -52,7 +51,6 @@ void main() {
         __ctx_2.__exit__();
         throw;
     }
-    __finally_2:;
     __ctx_2.__exit__();
     // print(len(data2))
     std::cout << ::tpy::__len__(data2) << "\n";
@@ -67,7 +65,6 @@ void main() {
         __ctx_3.__exit__();
         throw;
     }
-    __finally_3:;
     __ctx_3.__exit__();
     // with open(path, "rb") as f4:
     std::vector<uint8_t> data3;
@@ -80,7 +77,6 @@ void main() {
         __ctx_4.__exit__();
         throw;
     }
-    __finally_4:;
     __ctx_4.__exit__();
     // print(len(data3))
     std::cout << ::tpy::__len__(data3) << "\n";
@@ -95,7 +91,6 @@ void main() {
         __ctx_5.__exit__();
         throw;
     }
-    __finally_5:;
     __ctx_5.__exit__();
     // r2 = open(path, "rb")
     ::tpy::BinaryFile r2 = ::tpy::builtin_open_binary(path, "rb");

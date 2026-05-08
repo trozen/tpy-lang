@@ -612,6 +612,35 @@ class TpyNamedExpr(TpyExpr):
 
 
 @dataclass
+class TpyAwait(TpyExpr):
+    """`await x` expression. Lowered by PR 3 (resumable-frame codegen)
+    to a poll-and-park sequence on the operand's Awaitable[T] conformance.
+    Sema rejects awaits outside an async def body.
+
+    Sema attaches one of two resolution shapes:
+    - `awaited_async_func_name`: inline mode -- the operand is a direct
+      call to a known async def. Codegen emits the sub-coroutine struct
+      as a frame field via `std::optional<__<name>Coro>` and constructs
+      it in place from the call's args.
+    - `awaited_task_inner`: erased mode -- the operand has type
+      `Task[T]`. Codegen emits the sub-future field as
+      `std::optional<::tpy::Task<T>>` and moves the operand value in.
+    Exactly one is set on a successfully-analyzed TpyAwait.
+
+    `suspension_index` is the ordinal (in source order) within the
+    enclosing async def, used to name __sub_<i> fields and
+    S_AFTER_AWAIT_<i> states.
+    """
+    value: TpyExpr
+    awaited_async_func_name: str | None = field(default=None, kw_only=True)
+    awaited_task_inner: 'TpyType | None' = field(default=None, kw_only=True)
+    suspension_index: int | None = field(default=None, kw_only=True)
+
+    def children(self) -> list[TpyExpr]:
+        return [self.value]
+
+
+@dataclass
 class TpyStmt:
     """Base class for statements."""
     loc: SourceLocation | None = field(default=None, kw_only=True)
@@ -1177,6 +1206,8 @@ class TpyFunction:
     is_generator: bool = False  # Set by parser: body contains yield
     generator_yield_type: 'TpyType | None' = None  # Set by sema: T from Iterator[T]
     generator_locals: 'list[tuple[str, TpyType]] | None' = None  # Set by sema: local vars for struct fields
+    is_async: bool = False  # Set by parser: `async def`. Lowered to a state-machine
+                            # struct conforming to Awaitable[T] in PR 3 (codegen).
     skip_codegen: bool = False  # Set by sema: @inline function, body inlined at call sites
     # Preserves the self annotation for methods (e.g. OwnType(SelfType),
     # AutoOwnType(SelfType), AutoReadonlyType(SelfType)).  Between parse

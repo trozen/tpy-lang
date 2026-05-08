@@ -1,0 +1,1 @@
+main.py:4: error: user-defined '__await__' is not yet supported (method on 'CustomAwaitable'); v1 only supports the structural Awaitable protocol via `poll(self, waker: Waker) -> Poll[T]`

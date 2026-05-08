@@ -221,7 +221,6 @@ inline void Address::save_json(std::string_view __path, int32_t indent) const {
         __ctx_1.__exit__();
         throw;
     }
-    __finally_3:;
     __ctx_1.__exit__();
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
@@ -233,7 +232,6 @@ inline Address Address::load_json(std::string_view __path) {
     std::string __data;
     auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_2.__enter__();
-    std::optional<Address> __retval_5;
     try {
         // # Test @model macro: all type combos, nesting, and round-trip.
         // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
@@ -242,9 +240,7 @@ inline Address Address::load_json(std::string_view __path) {
         __ctx_2.__exit__();
         throw;
     }
-    __finally_4:;
     __ctx_2.__exit__();
-    if (__retval_5) return (*__retval_5);
     // # Test @model macro: all type combos, nesting, and round-trip.
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
@@ -257,7 +253,6 @@ inline std::expected<Address, ::tpystd::tplib::json::parser::JsonError> Address:
     std::string __data;
     auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_3.__enter__();
-    std::optional<std::expected<Address, ::tpystd::tplib::json::parser::JsonError>> __retval_7;
     try {
         // # Test @model macro: all type combos, nesting, and round-trip.
         // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
@@ -266,9 +261,7 @@ inline std::expected<Address, ::tpystd::tplib::json::parser::JsonError> Address:
         __ctx_3.__exit__();
         throw;
     }
-    __finally_6:;
     __ctx_3.__exit__();
-    if (__retval_7) return (*__retval_7);
     // # Test @model macro: all type combos, nesting, and round-trip.
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
@@ -288,20 +281,20 @@ inline Profile Profile::from_json(std::string_view __s) {
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     std::optional<Profile> __result = std::nullopt;
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_8;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_3;
         {
-            auto __try_tmp_9 = Profile::__json_decode__(__reader);
-            if (!__try_tmp_9.has_value()) { __err_opt_8 = std::move(__try_tmp_9.error()); goto __except_8; }
-            __result = ::tpy::unwrap_ref(*__try_tmp_9);
+            auto __try_tmp_4 = Profile::__json_decode__(__reader);
+            if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_4);
         }
-        goto __after_try_8;
+        goto __after_try_3;
         // except tplib.json.parser.JsonError:
-        __except_8:;
+        __except_3:;
         {
-            auto& __e = *__err_opt_8;
+            auto& __e = *__err_opt_3;
             ::tpy::raise_assertion_error(__e.message);
         }
-        __after_try_8:;
+        __after_try_3:;
     }
     if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
     return (*__result);
@@ -330,7 +323,6 @@ inline void Profile::save_json(std::string_view __path, int32_t indent) const {
         __ctx_4.__exit__();
         throw;
     }
-    __finally_10:;
     __ctx_4.__exit__();
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
@@ -342,7 +334,6 @@ inline Profile Profile::load_json(std::string_view __path) {
     std::string __data;
     auto __ctx_5 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_5.__enter__();
-    std::optional<Profile> __retval_12;
     try {
         // # Test @model macro: all type combos, nesting, and round-trip.
         // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
@@ -351,9 +342,7 @@ inline Profile Profile::load_json(std::string_view __path) {
         __ctx_5.__exit__();
         throw;
     }
-    __finally_11:;
     __ctx_5.__exit__();
-    if (__retval_12) return (*__retval_12);
     // # Test @model macro: all type combos, nesting, and round-trip.
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
@@ -366,7 +355,6 @@ inline std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile:
     std::string __data;
     auto __ctx_6 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_6.__enter__();
-    std::optional<std::expected<Profile, ::tpystd::tplib::json::parser::JsonError>> __retval_14;
     try {
         // # Test @model macro: all type combos, nesting, and round-trip.
         // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
@@ -375,9 +363,7 @@ inline std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile:
         __ctx_6.__exit__();
         throw;
     }
-    __finally_13:;
     __ctx_6.__exit__();
-    if (__retval_14) return (*__retval_14);
     // # Test @model macro: all type combos, nesting, and round-trip.
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],

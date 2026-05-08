@@ -110,6 +110,11 @@ class CodeGenerator:
             self.ctx, self.types, self.expressions, self.statements, self.functions)
         self.records.gen_generators = self.gen_generators
 
+        # Async coroutine codegen (state-machine struct + Poll<T> poll())
+        from .gen_async import AsyncCoroCodegen
+        self.gen_async = AsyncCoroCodegen(
+            self.ctx, self.types, self.expressions, self.statements, self.functions)
+
     def generate(self, module: TpyModule, module_name: str = "generated",
                  is_entry_point: bool = True,
                  actual_user_modules: set[str] | None = None,
@@ -369,6 +374,19 @@ class CodeGenerator:
                     self.gen_generators.gen_generator_factory(cpp, func)
                     cpp.write("\n")
                 # Simple generators are defined inline in the header
+                continue
+            if func.is_async:
+                # Templates are emitted inline in the header (same rule as
+                # template functions). For non-template async coros, emit
+                # poll() body, optional __finally_top(), and the factory
+                # function in the .cpp.
+                if not func.type_params:
+                    self.gen_async.gen_coro_poll_def(cpp, func)
+                    cpp.write("\n")
+                    self.gen_async.gen_coro_finally_top_def(cpp, func)
+                    cpp.write("\n")
+                    self.gen_async.gen_factory(cpp, func)
+                    cpp.write("\n")
                 continue
             if self.functions.is_template_function(func):
                 continue
@@ -734,6 +752,9 @@ class CodeGenerator:
             if func.is_generator and not self.gen_generators.is_simple_generator(func):
                 self.gen_generators.gen_generator_forward_decl(hpp, func)
                 emitted_gen_fwd = True
+            if func.is_async:
+                self.gen_async.gen_coro_forward_decl(hpp, func)
+                emitted_gen_fwd = True
         # Method generator struct forward declarations (before records)
         for record in module.all_records():
             for method in record.methods:
@@ -757,6 +778,9 @@ class CodeGenerator:
                 if self.gen_generators.is_simple_generator(func):
                     continue  # Simple generators are inline -- no forward decl
                 if self.gen_generators.gen_generator_factory_forward_decl(hpp, func):
+                    emitted_fwd_func = True
+            elif func.is_async:
+                if self.gen_async.gen_factory_forward_decl(hpp, func):
                     emitted_fwd_func = True
             elif _func_uses_nested_type(func):
                 deferred_fwd_funcs.append(func)
@@ -801,6 +825,17 @@ class CodeGenerator:
                 continue
             if func.is_generator and not self.gen_generators.is_simple_generator(func):
                 self.gen_generators.gen_generator_struct(hpp, func)
+                hpp.write("\n")
+            if func.is_async:
+                self.gen_async.gen_coro_struct(hpp, func)
+                # Templates: poll() body must be inline-in-header. Emit it
+                # right after the struct so it sees fully-defined fields.
+                if func.type_params:
+                    self.gen_async.gen_coro_poll_def(hpp, func)
+                    hpp.write("\n")
+                    self.gen_async.gen_coro_finally_top_def(hpp, func)
+                    hpp.write("\n")
+                    self.gen_async.gen_factory(hpp, func)
                 hpp.write("\n")
         # Method generator struct definitions + out-of-line factory methods
         for record in module.all_records():

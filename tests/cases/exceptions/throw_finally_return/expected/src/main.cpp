@@ -8,20 +8,16 @@ namespace tpyapp::main {
 int32_t return_from_try() {
     // try:
     {
-        std::optional<int32_t> __retval_2;
         try {
             // return 42
-            __retval_2 = 42;
-            goto __finally_1;
+            // print("finally 1")
+            std::cout << "finally 1" << "\n";
+            return 42;
         } catch (...) {
             // print("finally 1")
             std::cout << "finally 1" << "\n";
             throw;
         }
-        __finally_1:;
-        // print("finally 1")
-        std::cout << "finally 1" << "\n";
-        return (*__retval_2);
     }
 }
 
@@ -29,25 +25,21 @@ int32_t return_from_try() {
 int32_t return_from_except() {
     // try:
     {
-        std::optional<int32_t> __retval_4;
         try {
             try {
                 // raise ValueError("err")
                 throw ::tpy::ValueError("err");
             } catch (const ::tpy::ValueError&) {
                 // return 99
-                __retval_4 = 99;
-                goto __finally_3;
+                // print("finally 2")
+                std::cout << "finally 2" << "\n";
+                return 99;
             }
         } catch (...) {
             // print("finally 2")
             std::cout << "finally 2" << "\n";
             throw;
         }
-        __finally_3:;
-        // print("finally 2")
-        std::cout << "finally 2" << "\n";
-        return (*__retval_4);
     }
 }
 
@@ -55,35 +47,33 @@ int32_t return_from_except() {
 std::string return_from_multiple_paths(bool flag) {
     // try:
     {
-        std::optional<std::string> __retval_6;
         try {
             // if flag:
             if (flag) {
                 // return "yes"
-                __retval_6 = "yes";
-                goto __finally_5;
+                // print("finally 3")
+                std::cout << "finally 3" << "\n";
+                return "yes";
             }
             // for i in range(3):
             for (int32_t i = 0; i < 3; ++i) {
                 // if i == 1:
                 if ((i == 1)) {
                     // return "loop"
-                    __retval_6 = "loop";
-                    goto __finally_5;
+                    // print("finally 3")
+                    std::cout << "finally 3" << "\n";
+                    return "loop";
                 }
             }
             // return "default"
-            __retval_6 = "default";
-            goto __finally_5;
+            // print("finally 3")
+            std::cout << "finally 3" << "\n";
+            return "default";
         } catch (...) {
             // print("finally 3")
             std::cout << "finally 3" << "\n";
             throw;
         }
-        __finally_5:;
-        // print("finally 3")
-        std::cout << "finally 3" << "\n";
-        return (*__retval_6);
     }
 }
 
@@ -91,26 +81,23 @@ std::string return_from_multiple_paths(bool flag) {
 std::optional<int32_t> return_optional(bool flag) {
     // try:
     {
-        std::optional<std::optional<int32_t>> __retval_8;
         try {
             // if flag:
             if (flag) {
                 // return Int32(7)
-                __retval_8 = 7;
-                goto __finally_7;
+                // print("finally 4")
+                std::cout << "finally 4" << "\n";
+                return 7;
             }
             // return None
-            __retval_8.emplace();
-            goto __finally_7;
+            // print("finally 4")
+            std::cout << "finally 4" << "\n";
+            return std::nullopt;
         } catch (...) {
             // print("finally 4")
             std::cout << "finally 4" << "\n";
             throw;
         }
-        __finally_7:;
-        // print("finally 4")
-        std::cout << "finally 4" << "\n";
-        return (*__retval_8);
     }
 }
 

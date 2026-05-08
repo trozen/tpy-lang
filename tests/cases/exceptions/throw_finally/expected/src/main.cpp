@@ -31,7 +31,6 @@ void main() {
             std::cout << "finally 1" << "\n";
             throw;
         }
-        __finally_1:;
         // print("finally 1")
         std::cout << "finally 1" << "\n";
     }
@@ -51,7 +50,6 @@ void main() {
             std::cout << "finally 2" << "\n";
             throw;
         }
-        __finally_2:;
         // print("finally 2")
         std::cout << "finally 2" << "\n";
     }
@@ -66,7 +64,6 @@ void main() {
             std::cout << "finally 3" << "\n";
             throw;
         }
-        __finally_3:;
         // print("finally 3")
         std::cout << "finally 3" << "\n";
     }

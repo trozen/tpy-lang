@@ -238,7 +238,6 @@ inline void User::save_json(std::string_view __path, int32_t indent) const {
         __ctx_1.__exit__();
         throw;
     }
-    __finally_3:;
     __ctx_1.__exit__();
 }
 
@@ -247,7 +246,6 @@ inline User User::load_json(std::string_view __path) {
     std::string __data;
     auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_2.__enter__();
-    std::optional<User> __retval_5;
     try {
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
@@ -256,9 +254,7 @@ inline User User::load_json(std::string_view __path) {
         __ctx_2.__exit__();
         throw;
     }
-    __finally_4:;
     __ctx_2.__exit__();
-    if (__retval_5) return (*__retval_5);
     // from typing import Optional
     return User::from_json(__data);
 }
@@ -268,7 +264,6 @@ inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_l
     std::string __data;
     auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_3.__enter__();
-    std::optional<std::expected<User, ::tpystd::tplib::json::parser::JsonError>> __retval_7;
     try {
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
@@ -277,9 +272,7 @@ inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_l
         __ctx_3.__exit__();
         throw;
     }
-    __finally_6:;
     __ctx_3.__exit__();
-    if (__retval_7) return (*__retval_7);
     // from typing import Optional
     return User::try_from_json(__data);
 }
@@ -296,20 +289,20 @@ inline WithDefault WithDefault::from_json(std::string_view __s) {
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     std::optional<WithDefault> __result = std::nullopt;
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_8;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_3;
         {
-            auto __try_tmp_9 = WithDefault::__json_decode__(__reader);
-            if (!__try_tmp_9.has_value()) { __err_opt_8 = std::move(__try_tmp_9.error()); goto __except_8; }
-            __result = ::tpy::unwrap_ref(*__try_tmp_9);
+            auto __try_tmp_4 = WithDefault::__json_decode__(__reader);
+            if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_4);
         }
-        goto __after_try_8;
+        goto __after_try_3;
         // except tplib.json.parser.JsonError:
-        __except_8:;
+        __except_3:;
         {
-            auto& __e = *__err_opt_8;
+            auto& __e = *__err_opt_3;
             ::tpy::raise_assertion_error(__e.message);
         }
-        __after_try_8:;
+        __after_try_3:;
     }
     if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
     return (*__result);
@@ -338,7 +331,6 @@ inline void WithDefault::save_json(std::string_view __path, int32_t indent) cons
         __ctx_4.__exit__();
         throw;
     }
-    __finally_10:;
     __ctx_4.__exit__();
 }
 
@@ -347,7 +339,6 @@ inline WithDefault WithDefault::load_json(std::string_view __path) {
     std::string __data;
     auto __ctx_5 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_5.__enter__();
-    std::optional<WithDefault> __retval_12;
     try {
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
@@ -356,9 +347,7 @@ inline WithDefault WithDefault::load_json(std::string_view __path) {
         __ctx_5.__exit__();
         throw;
     }
-    __finally_11:;
     __ctx_5.__exit__();
-    if (__retval_12) return (*__retval_12);
     // from typing import Optional
     return WithDefault::from_json(__data);
 }
@@ -368,7 +357,6 @@ inline std::expected<WithDefault, ::tpystd::tplib::json::parser::JsonError> With
     std::string __data;
     auto __ctx_6 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_6.__enter__();
-    std::optional<std::expected<WithDefault, ::tpystd::tplib::json::parser::JsonError>> __retval_14;
     try {
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
@@ -377,9 +365,7 @@ inline std::expected<WithDefault, ::tpystd::tplib::json::parser::JsonError> With
         __ctx_6.__exit__();
         throw;
     }
-    __finally_13:;
     __ctx_6.__exit__();
-    if (__retval_14) return (*__retval_14);
     // from typing import Optional
     return WithDefault::try_from_json(__data);
 }
@@ -396,20 +382,20 @@ inline Base Base::from_json(std::string_view __s) {
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     std::optional<Base> __result = std::nullopt;
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_15;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_5;
         {
-            auto __try_tmp_16 = Base::__json_decode__(__reader);
-            if (!__try_tmp_16.has_value()) { __err_opt_15 = std::move(__try_tmp_16.error()); goto __except_15; }
-            __result = ::tpy::unwrap_ref(*__try_tmp_16);
+            auto __try_tmp_6 = Base::__json_decode__(__reader);
+            if (!__try_tmp_6.has_value()) { __err_opt_5 = std::move(__try_tmp_6.error()); goto __except_5; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_6);
         }
-        goto __after_try_15;
+        goto __after_try_5;
         // except tplib.json.parser.JsonError:
-        __except_15:;
+        __except_5:;
         {
-            auto& __e = *__err_opt_15;
+            auto& __e = *__err_opt_5;
             ::tpy::raise_assertion_error(__e.message);
         }
-        __after_try_15:;
+        __after_try_5:;
     }
     if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
     return (*__result);
@@ -445,7 +431,6 @@ inline void Base::save_json(std::string_view __path, int32_t indent) const {
         __ctx_7.__exit__();
         throw;
     }
-    __finally_17:;
     __ctx_7.__exit__();
 }
 
@@ -454,7 +439,6 @@ inline Base Base::load_json(std::string_view __path) {
     std::string __data;
     auto __ctx_8 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_8.__enter__();
-    std::optional<Base> __retval_19;
     try {
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
@@ -463,9 +447,7 @@ inline Base Base::load_json(std::string_view __path) {
         __ctx_8.__exit__();
         throw;
     }
-    __finally_18:;
     __ctx_8.__exit__();
-    if (__retval_19) return (*__retval_19);
     // from typing import Optional
     return Base::from_json(__data);
 }
@@ -475,7 +457,6 @@ inline std::expected<Base, ::tpystd::tplib::json::parser::JsonError> Base::try_l
     std::string __data;
     auto __ctx_9 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_9.__enter__();
-    std::optional<std::expected<Base, ::tpystd::tplib::json::parser::JsonError>> __retval_21;
     try {
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
@@ -484,9 +465,7 @@ inline std::expected<Base, ::tpystd::tplib::json::parser::JsonError> Base::try_l
         __ctx_9.__exit__();
         throw;
     }
-    __finally_20:;
     __ctx_9.__exit__();
-    if (__retval_21) return (*__retval_21);
     // from typing import Optional
     return Base::try_from_json(__data);
 }
@@ -503,20 +482,20 @@ inline Extended Extended::from_json(std::string_view __s) {
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     std::optional<Extended> __result = std::nullopt;
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_22;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_7;
         {
-            auto __try_tmp_23 = Extended::__json_decode__(__reader);
-            if (!__try_tmp_23.has_value()) { __err_opt_22 = std::move(__try_tmp_23.error()); goto __except_22; }
-            __result = ::tpy::unwrap_ref(*__try_tmp_23);
+            auto __try_tmp_8 = Extended::__json_decode__(__reader);
+            if (!__try_tmp_8.has_value()) { __err_opt_7 = std::move(__try_tmp_8.error()); goto __except_7; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_8);
         }
-        goto __after_try_22;
+        goto __after_try_7;
         // except tplib.json.parser.JsonError:
-        __except_22:;
+        __except_7:;
         {
-            auto& __e = *__err_opt_22;
+            auto& __e = *__err_opt_7;
             ::tpy::raise_assertion_error(__e.message);
         }
-        __after_try_22:;
+        __after_try_7:;
     }
     if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
     return (*__result);
@@ -554,7 +533,6 @@ inline void Extended::save_json(std::string_view __path, int32_t indent) const {
         __ctx_10.__exit__();
         throw;
     }
-    __finally_24:;
     __ctx_10.__exit__();
 }
 
@@ -563,7 +541,6 @@ inline Extended Extended::load_json(std::string_view __path) {
     std::string __data;
     auto __ctx_11 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_11.__enter__();
-    std::optional<Extended> __retval_26;
     try {
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
@@ -572,9 +549,7 @@ inline Extended Extended::load_json(std::string_view __path) {
         __ctx_11.__exit__();
         throw;
     }
-    __finally_25:;
     __ctx_11.__exit__();
-    if (__retval_26) return (*__retval_26);
     // from typing import Optional
     return Extended::from_json(__data);
 }
@@ -584,7 +559,6 @@ inline std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> Extende
     std::string __data;
     auto __ctx_12 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_12.__enter__();
-    std::optional<std::expected<Extended, ::tpystd::tplib::json::parser::JsonError>> __retval_28;
     try {
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
@@ -593,9 +567,7 @@ inline std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> Extende
         __ctx_12.__exit__();
         throw;
     }
-    __finally_27:;
     __ctx_12.__exit__();
-    if (__retval_28) return (*__retval_28);
     // from typing import Optional
     return Extended::try_from_json(__data);
 }

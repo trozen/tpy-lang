@@ -48,21 +48,21 @@ void test_missing_field() {
     std::string_view data = "{\"name\": \"x\"}";
     // try:
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_8;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_3;
         // Item.try_from_json(data)
         {
-            auto __try_tmp_9 = Item::try_from_json(data);
-            if (!__try_tmp_9.has_value()) { __err_opt_8 = std::move(__try_tmp_9.error()); goto __except_8; }
+            auto __try_tmp_4 = Item::try_from_json(data);
+            if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
         }
-        goto __after_try_8;
+        goto __after_try_3;
         // except JsonError:
-        __except_8:;
+        __except_3:;
         {
-            auto& e = *__err_opt_8;
+            auto& e = *__err_opt_3;
             // print(e.message)
             std::cout << e.message << "\n";
         }
-        __after_try_8:;
+        __after_try_3:;
     }
 }
 
@@ -72,21 +72,21 @@ void test_invalid_enum() {
     std::string_view data = "{\"name\": \"x\", \"color\": \"Purple\"}";
     // try:
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_10;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_5;
         // Item.try_from_json(data)
         {
-            auto __try_tmp_11 = Item::try_from_json(data);
-            if (!__try_tmp_11.has_value()) { __err_opt_10 = std::move(__try_tmp_11.error()); goto __except_10; }
+            auto __try_tmp_6 = Item::try_from_json(data);
+            if (!__try_tmp_6.has_value()) { __err_opt_5 = std::move(__try_tmp_6.error()); goto __except_5; }
         }
-        goto __after_try_10;
+        goto __after_try_5;
         // except JsonError:
-        __except_10:;
+        __except_5:;
         {
-            auto& e = *__err_opt_10;
+            auto& e = *__err_opt_5;
             // print(e.message)
             std::cout << e.message << "\n";
         }
-        __after_try_10:;
+        __after_try_5:;
     }
 }
 
@@ -96,21 +96,21 @@ void test_malformed_with_describe() {
     std::string_view data = "{\"name\": \"x\", \"color\"  123}";
     // try:
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_12;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_7;
         // Item.try_from_json(data)
         {
-            auto __try_tmp_13 = Item::try_from_json(data);
-            if (!__try_tmp_13.has_value()) { __err_opt_12 = std::move(__try_tmp_13.error()); goto __except_12; }
+            auto __try_tmp_8 = Item::try_from_json(data);
+            if (!__try_tmp_8.has_value()) { __err_opt_7 = std::move(__try_tmp_8.error()); goto __except_7; }
         }
-        goto __after_try_12;
+        goto __after_try_7;
         // except JsonError:
-        __except_12:;
+        __except_7:;
         {
-            auto& e = *__err_opt_12;
+            auto& e = *__err_opt_7;
             // print(e.describe(data))
             std::cout << e.describe(data) << "\n";
         }
-        __after_try_12:;
+        __after_try_7:;
     }
 }
 
@@ -127,33 +127,33 @@ void main() {
 
 std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
     {
-        auto __try_tmp_14 = __reader.read_object_start();
-        if (!__try_tmp_14.has_value()) return ::tpy::make_unexpected(__try_tmp_14.error());
+        auto __try_tmp_9 = __reader.read_object_start();
+        if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
     }
     std::string name = "";
     std::optional<Color> color = std::nullopt;
     while (__reader.has_next()) {
         std::string_view __key;
         {
-            auto __try_tmp_15 = __reader.read_key_raw();
-            if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(__try_tmp_15.error());
-            __key = ::tpy::unwrap_ref(*__try_tmp_15);
+            auto __try_tmp_10 = __reader.read_key_raw();
+            if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
+            __key = ::tpy::unwrap_ref(*__try_tmp_10);
         }
         auto& __match_subject = __key;
         if (__match_subject == "name") {
             std::string __name_1;
             {
-                auto __try_tmp_16 = __reader.read_str();
-                if (!__try_tmp_16.has_value()) return ::tpy::make_unexpected(__try_tmp_16.error());
-                __name_1 = ::tpy::unwrap_ref(*__try_tmp_16);
+                auto __try_tmp_11 = __reader.read_str();
+                if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
+                __name_1 = ::tpy::unwrap_ref(*__try_tmp_11);
             }
             name = __name_1;
         } else if (__match_subject == "color") {
             std::string_view __estr_3;
             {
-                auto __try_tmp_17 = __reader.read_str_raw();
-                if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
-                __estr_3 = ::tpy::unwrap_ref(*__try_tmp_17);
+                auto __try_tmp_12 = __reader.read_str_raw();
+                if (!__try_tmp_12.has_value()) return ::tpy::make_unexpected(__try_tmp_12.error());
+                __estr_3 = ::tpy::unwrap_ref(*__try_tmp_12);
             }
             std::optional<Color> __parsed_4 = ::tpy::EnumUtil<Color>::try_parse(__estr_3);
             if ((!__parsed_4.has_value())) {
@@ -163,14 +163,14 @@ std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::__json_decod
             color = __color_2;
         } else {
             {
-                auto __try_tmp_18 = __reader.skip_value();
-                if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
+                auto __try_tmp_13 = __reader.skip_value();
+                if (!__try_tmp_13.has_value()) return ::tpy::make_unexpected(__try_tmp_13.error());
             }
         }
     }
     {
-        auto __try_tmp_19 = __reader.read_object_end();
-        if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
+        auto __try_tmp_14 = __reader.read_object_end();
+        if (!__try_tmp_14.has_value()) return ::tpy::make_unexpected(__try_tmp_14.error());
     }
     if ((!color.has_value())) {
         return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'color'"));

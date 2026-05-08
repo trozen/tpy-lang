@@ -127,6 +127,63 @@ class AnyFixedSigned(Protocol): ...
 @native("tpy::AnyFixedUnsigned")
 class AnyFixedUnsigned(Protocol): ...
 
+# Compiler hardcodes the qnames `tpy.Task` / `tpy.Waker` / `tpy.Poll`
+# (see `tpyc/type_def_registry.py`, `tpyc/typesys.py`,
+# `tpyc/sema/expressions.py`); registration goes through the implicit
+# `tpy -> _core` import chain so they're available without every
+# consumer pulling `tpystd/coro.hpp`.
+
+@builtin_type("tpy.Task")
+@native("::tpy::Task")
+@nocopy
+class Task[T]:
+    """Type-erased async task. Owns a heap-allocated coroutine frame."""
+
+    @cpp_template("{self}.cancel()")
+    def cancel(self) -> None: ...
+
+
+@builtin_type("tpy.Waker")
+@native("::tpy::Waker")
+class Waker:
+    """Handle that lets a parked task be re-scheduled.
+
+    Awaitables that haven't yet produced a value store the Waker passed
+    to their poll() method; when the underlying event fires, they call
+    waker.wake() to signal the executor that the parked task is runnable.
+
+    POD value type. Late wakes (from a task that completed before wake()
+    fires) are silent no-ops via a generation check.
+    """
+    @cpp_template("::tpy::Waker{{}}")
+    def __init__(self) -> None: ...
+
+    @cpp_template("{self}.wake()")
+    @readonly
+    def wake(self) -> None: ...
+
+
+@builtin_type("tpy.Poll")
+@native("::tpy::Poll")
+class Poll[T]:
+    """Result of polling an Awaitable: Pending or Ready[T].
+
+    Single-use: value() consumes the contained value, leaving the Poll
+    empty. Construct via the module-level `poll_pending[T]()` and
+    `poll_ready[T](value)` helpers in `tpy.coro`.
+    """
+    @cpp_template("{self}.is_ready()")
+    @readonly
+    def is_ready(self) -> bool: ...
+
+    @cpp_template("{self}.is_pending()")
+    @readonly
+    def is_pending(self) -> bool: ...
+
+    @cpp_template("std::move({self}).value()")
+    def value(self) -> T: ...
+
+
 # --- Primitive type stubs (methods for builtin types) ---
 
 @builtin_type("tpy.Float32")

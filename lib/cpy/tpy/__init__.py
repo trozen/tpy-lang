@@ -740,3 +740,81 @@ Fn = Callable
 # In TPy, basic_slice and slice are distinct types. In CPython, both map to
 # the built-in slice type so isinstance checks work correctly.
 basic_slice = slice
+
+
+# Aliased to CPython's `asyncio.CancelledError` so `raise tpy.
+# CancelledError()` and `except asyncio.CancelledError:` resolve to the
+# same class under cpy.
+import asyncio as _asyncio
+CancelledError = _asyncio.CancelledError
+
+
+class Waker:
+    """POD value type. Exec/task_id/generation kept for parity; no-op
+    wake() under CPython since there's no executor wired."""
+    def __init__(self, exec_=None, task_id: int = 0, generation: int = 0):
+        self.exec = exec_
+        self.task_id = task_id
+        self.generation = generation
+
+    def wake(self) -> None:
+        pass
+
+
+class _PollMeta(type):
+    def __getitem__(cls, t):
+        return cls
+
+
+class Poll(metaclass=_PollMeta):
+    """Pending or Ready[T] tagged value. Single-use: value() empties the slot."""
+    __slots__ = ("_ready", "_value")
+
+    def __init__(self):
+        self._ready = False
+        self._value = None
+
+    @staticmethod
+    def pending() -> "Poll":
+        return Poll()
+
+    @staticmethod
+    def ready(value) -> "Poll":
+        p = Poll()
+        p._ready = True
+        p._value = value
+        return p
+
+    def is_ready(self) -> bool:
+        return self._ready
+
+    def is_pending(self) -> bool:
+        return not self._ready
+
+    def value(self):
+        if not self._ready:
+            raise RuntimeError("Poll.value() called on Pending")
+        v = self._value
+        self._value = None
+        self._ready = False
+        return v
+
+
+class _TaskMeta(type):
+    """Metaclass for Task[T] subscript syntax (no behavior change in CPython)."""
+    def __getitem__(cls, t):
+        return cls
+
+
+class Task(metaclass=_TaskMeta):
+    """Type-erased async task (CPython stub: minimal runtime)."""
+    __slots__ = ("_awaitable", "_cancelled")
+
+    def __init__(self, awaitable):
+        self._awaitable = awaitable
+        self._cancelled = False
+
+    def cancel(self) -> None:
+        self._cancelled = True
+        if self._awaitable is not None:
+            setattr(self._awaitable, "__cancel_pending", True)

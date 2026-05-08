@@ -1,0 +1,1 @@
+main.py:3: error: nested async def is not yet supported (function 'inner'); async def is only allowed at module level

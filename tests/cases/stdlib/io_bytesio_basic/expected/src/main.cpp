@@ -76,7 +76,6 @@ void context_manager_and_close() {
         __ctx_1.__exit__();
         throw;
     }
-    __finally_1:;
     __ctx_1.__exit__();
     // b2 = io.BytesIO(b"x")
     ::tpystd::io::BytesIO b2 = ::tpystd::io::BytesIO(std::vector<uint8_t>{0x78});

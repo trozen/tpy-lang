@@ -124,7 +124,6 @@ inline void User::save_json(std::string_view __path, int32_t indent) const {
         __ctx_1.__exit__();
         throw;
     }
-    __finally_3:;
     __ctx_1.__exit__();
 }
 
@@ -133,7 +132,6 @@ inline User User::load_json(std::string_view __path) {
     std::string __data;
     auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_2.__enter__();
-    std::optional<User> __retval_5;
     try {
         // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
         // from tpy import Int32
@@ -142,9 +140,7 @@ inline User User::load_json(std::string_view __path) {
         __ctx_2.__exit__();
         throw;
     }
-    __finally_4:;
     __ctx_2.__exit__();
-    if (__retval_5) return (*__retval_5);
     // from tplib.json.model import model
     return User::from_json(__data);
 }
@@ -154,7 +150,6 @@ inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_l
     std::string __data;
     auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_3.__enter__();
-    std::optional<std::expected<User, ::tpystd::tplib::json::parser::JsonError>> __retval_7;
     try {
         // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
         // from tpy import Int32
@@ -163,9 +158,7 @@ inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_l
         __ctx_3.__exit__();
         throw;
     }
-    __finally_6:;
     __ctx_3.__exit__();
-    if (__retval_7) return (*__retval_7);
     // from tplib.json.model import model
     return User::try_from_json(__data);
 }

@@ -227,7 +227,6 @@ inline void Event::save_json(std::string_view __path, int32_t indent) const {
         __ctx_1.__exit__();
         throw;
     }
-    __finally_4:;
     __ctx_1.__exit__();
 }
 
@@ -236,7 +235,6 @@ inline Event Event::load_json(std::string_view __path) {
     std::string __data;
     auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_2.__enter__();
-    std::optional<Event> __retval_6;
     try {
         // # User-defined types as @model fields via __json_encode__/__json_decode__.
         // from __future__ import annotations
@@ -245,9 +243,7 @@ inline Event Event::load_json(std::string_view __path) {
         __ctx_2.__exit__();
         throw;
     }
-    __finally_5:;
     __ctx_2.__exit__();
-    if (__retval_6) return (*__retval_6);
     // from typing import Optional
     return Event::from_json(__data);
 }
@@ -257,7 +253,6 @@ inline std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::try
     std::string __data;
     auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_3.__enter__();
-    std::optional<std::expected<Event, ::tpystd::tplib::json::parser::JsonError>> __retval_8;
     try {
         // # User-defined types as @model fields via __json_encode__/__json_decode__.
         // from __future__ import annotations
@@ -266,9 +261,7 @@ inline std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::try
         __ctx_3.__exit__();
         throw;
     }
-    __finally_7:;
     __ctx_3.__exit__();
-    if (__retval_8) return (*__retval_8);
     // from typing import Optional
     return Event::try_from_json(__data);
 }
@@ -285,20 +278,20 @@ inline Schedule Schedule::from_json(std::string_view __s) {
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     std::optional<Schedule> __result = std::nullopt;
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_9;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_4;
         {
-            auto __try_tmp_10 = Schedule::__json_decode__(__reader);
-            if (!__try_tmp_10.has_value()) { __err_opt_9 = std::move(__try_tmp_10.error()); goto __except_9; }
-            __result = ::tpy::unwrap_ref(*__try_tmp_10);
+            auto __try_tmp_5 = Schedule::__json_decode__(__reader);
+            if (!__try_tmp_5.has_value()) { __err_opt_4 = std::move(__try_tmp_5.error()); goto __except_4; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_5);
         }
-        goto __after_try_9;
+        goto __after_try_4;
         // except tplib.json.parser.JsonError:
-        __except_9:;
+        __except_4:;
         {
-            auto& __e = *__err_opt_9;
+            auto& __e = *__err_opt_4;
             ::tpy::raise_assertion_error(__e.message);
         }
-        __after_try_9:;
+        __after_try_4:;
     }
     if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
     return (*__result);
@@ -327,7 +320,6 @@ inline void Schedule::save_json(std::string_view __path, int32_t indent) const {
         __ctx_4.__exit__();
         throw;
     }
-    __finally_11:;
     __ctx_4.__exit__();
 }
 
@@ -336,7 +328,6 @@ inline Schedule Schedule::load_json(std::string_view __path) {
     std::string __data;
     auto __ctx_5 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_5.__enter__();
-    std::optional<Schedule> __retval_13;
     try {
         // # User-defined types as @model fields via __json_encode__/__json_decode__.
         // from __future__ import annotations
@@ -345,9 +336,7 @@ inline Schedule Schedule::load_json(std::string_view __path) {
         __ctx_5.__exit__();
         throw;
     }
-    __finally_12:;
     __ctx_5.__exit__();
-    if (__retval_13) return (*__retval_13);
     // from typing import Optional
     return Schedule::from_json(__data);
 }
@@ -357,7 +346,6 @@ inline std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedul
     std::string __data;
     auto __ctx_6 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_6.__enter__();
-    std::optional<std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError>> __retval_15;
     try {
         // # User-defined types as @model fields via __json_encode__/__json_decode__.
         // from __future__ import annotations
@@ -366,9 +354,7 @@ inline std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedul
         __ctx_6.__exit__();
         throw;
     }
-    __finally_14:;
     __ctx_6.__exit__();
-    if (__retval_15) return (*__retval_15);
     // from typing import Optional
     return Schedule::try_from_json(__data);
 }

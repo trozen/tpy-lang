@@ -493,19 +493,31 @@ class LocalScopeSnap:
 
 @dataclass
 class FinallyContext:
-    """Tracks an active try/finally block for goto-based finally codegen.
+    """Tracks an active try/finally (or with) block.
 
-    Non-void return uses the shared __retval variable + goto finally_label.
-    Void return, break, and continue use dedicated labels with their own
-    finally body copies (needs_*_copy set during try body codegen).
+    The finally body is emitted inline at each exit site: before any
+    fall-through, return, break, or continue out of the try block, and
+    inside the catch(...) wrapper for the throw path. The unified pattern
+    is `try { body } catch (...) { <finally>; throw; } <finally>;` with
+    explicit `<finally>;` calls inserted before any non-throw exit while
+    the frame is on the stack.
+
+    The same shape is used by the resumable-frame async codegen, where
+    each suspension's case body re-establishes the active try/finally
+    structure -- making the lowering shared across sync and async.
     """
-    finally_label: str                    # normal-path label (__finally_N)
-    return_label: str = ""                # void-return path (__finally_return_N)
-    break_label: str = ""                 # break path (__finally_break_N)
-    continue_label: str = ""              # continue path (__finally_continue_N)
-    needs_return_copy: bool = False       # set when void return generated in try body
-    needs_break_copy: bool = False        # set when break generated in try body
-    needs_continue_copy: bool = False     # set when continue generated in try body
+    emit_finally: Callable[[TextIO, str], None]
+    """Emit the finally body inline at the given (out, indent)."""
+
+    terminates: bool
+    """True if the finally body's last reachable statement is raise/return.
+    When set, callers must suppress any trailing `throw;` / `return ...;`
+    after invoking emit_finally, since the body itself transferred control."""
+
+    loop_depth: int
+    """len(loop_else_labels) at frame push time. break/continue walk
+    finally frames whose loop_depth >= current loop count, since those
+    are the frames pushed inside the innermost active loop."""
 
 
 @dataclass
@@ -650,15 +662,12 @@ class CodeGenContext:
     try_except_err_opt: str | None = None
     in_except_tier: Literal["return", "throw"] | None = None
 
-    # --- finally (catch-all + goto pattern) ---
-    # Stack of active try/finally blocks for goto-based control flow transformation.
-    # When non-empty, return/break/continue must goto the innermost finally label
-    # instead of emitting direct C++ return/break/continue.
+    # --- finally (inline emit pattern) ---
+    # Stack of active try/finally (and with) blocks. Codegen invokes
+    # frame.emit_finally inline before each non-throw exit (return/break/
+    # continue/fall-through) and inside each try block's catch(...) wrapper.
+    # No goto labels, no shared __retval variable.
     finally_stack: list[FinallyContext] = field(default_factory=list)
-    # Shared return value variable for the outermost try/finally level.
-    # Set once when the first finally context is pushed in a function.
-    finally_retval_var: str | None = None
-    finally_retval_declared: bool = False
 
     # --- with statement ---
     with_counter: int = 0
@@ -678,6 +687,16 @@ class CodeGenContext:
     generator_for_loop_info: dict[int, object] = field(default_factory=dict)
     # When generating a generator method's __next__() body, self -> __self
     generator_self_ref: str | None = None
+
+    # --- Async coroutine function codegen ---
+    # When generating an `async def` body inside its struct's poll() method,
+    # `return v` is rewritten to `__state = <done>; return Poll<T>::ready(v);`.
+    # The flag piggybacks on in_generator_body for the field-rewrite path
+    # (locals -> this->field) -- both share the resumable-frame shape -- but
+    # has its own return-rewrite handling in statements.py.
+    in_async_coro_body: bool = False
+    async_coro_return_cpp: str | None = None  # C++ return type for Poll<T>::ready
+    async_coro_done_state: str | None = None  # name of the DONE state enumerator
 
     # --- for/else, while/else label stack ---
     # When generating a loop with an else clause, the goto label name is
@@ -885,8 +904,6 @@ class CodeGenContext:
         self.loop_else_labels = []
         self.loop_hoisted_vars = set()
         self.finally_stack = []
-        self.finally_retval_var = None
-        self.finally_retval_declared = False
 
     def indent(self) -> str:
         """Get current indentation string."""

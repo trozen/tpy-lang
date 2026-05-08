@@ -1,0 +1,1 @@
+main.py:2: error: async generators (async def + yield) are not yet supported on async function 'gen'

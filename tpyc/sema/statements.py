@@ -317,6 +317,51 @@ class StatementAnalyzer:
                 node
             )
 
+    def _check_no_bare_async_call(self, stmt: TpyStmt) -> None:
+        """Sema rule: a call to an async def whose result is dropped or
+        bound to a non-consuming local is rejected. The caller must
+        consume the coroutine via `await`, `asyncio.run`, `create_task`,
+        or pass it as an arg to a function that does.
+
+        Rejected (caught at TpyStmt analysis time):
+          c = f()        (TpyVarDecl / TpyAssign whose RHS is a bare async call)
+          f()            (TpyExprStmt whose expr is a bare async call)
+          return f()     (TpyReturn whose value is a bare async call)
+        Allowed:
+          await f()              -- TpyAwait, not TpyCall
+          x = await f()          -- RHS is TpyAwait
+          asyncio.run(f())       -- f() is an arg of another call
+          asyncio.create_task(f())
+        """
+        target_expr: TpyExpr | None = None
+        if isinstance(stmt, TpyVarDecl):
+            target_expr = stmt.init
+        elif isinstance(stmt, TpyAssign):
+            target_expr = stmt.value
+        elif isinstance(stmt, TpyExprStmt):
+            target_expr = stmt.expr
+        elif isinstance(stmt, TpyReturn):
+            target_expr = stmt.value
+        if not isinstance(target_expr, TpyCall):
+            return
+        # Method calls / expression callees / generic calls don't have
+        # a func_name set (the parser only sets it for Name callees).
+        try:
+            func_name = target_expr.func_name
+        except (AssertionError, AttributeError):
+            return
+        if not func_name:
+            return
+        overloads = self.ctx.registry.get_function(func_name)
+        if not any(getattr(fi, "is_async", False) for fi in (overloads or ())):
+            return
+        raise self.ctx.error(
+            f"Coroutine value from async def '{func_name}' must be consumed: "
+            f"use `await {func_name}(...)` inside an async def, or "
+            f"`asyncio.run({func_name}(...))` at top level. "
+            f"Coroutines are single-use, must-use values.",
+            stmt)
+
     def _warn_unnecessary_return_copy(self, value: TpyExpr) -> None:
         """Warn when return copy(x) is used but x is at last use (auto-move suffices)."""
         if not (isinstance(value, TpyCall) and len(value.args) == 1
@@ -807,6 +852,19 @@ class StatementAnalyzer:
                 pending.clear()
 
     def _analyze_stmt_dispatch(self, stmt: TpyStmt) -> None:
+        # Coroutine[T] single-use: a bare call to an async def whose
+        # result is dropped/stored without consumption is a sema error.
+        # See docs/ASYNC_DESIGN.md "Coroutine value model". Allowed:
+        #   await f()  (TpyAwait wraps the call)
+        #   x = await f()
+        #   asyncio.run(f()), asyncio.create_task(f()), Task wrap (the
+        #     coro is the arg of another call, which consumes it)
+        # Rejected:
+        #   c = f()    (drops the coro into a non-consuming local)
+        #   f()        (statement-level call, no consumption)
+        #   return f() (returns the coro instead of awaiting)
+        self._check_no_bare_async_call(stmt)
+
         if isinstance(stmt, TpyVarDecl):
             self._analyze_var_decl(stmt)
         elif isinstance(stmt, TpyTupleUnpack):

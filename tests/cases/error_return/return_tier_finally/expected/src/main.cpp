@@ -25,9 +25,9 @@ void main() {
         try {
             // v = lookup("x")
             {
-                auto __try_tmp_3 = lookup("x");
-                if (!__try_tmp_3.has_value()) goto __except_1;
-                v = ::tpy::unwrap_ref(*__try_tmp_3);
+                auto __try_tmp_2 = lookup("x");
+                if (!__try_tmp_2.has_value()) goto __except_1;
+                v = ::tpy::unwrap_ref(*__try_tmp_2);
             }
             // else:
             // print(v)
@@ -43,7 +43,6 @@ void main() {
             std::cout << "finally 1" << "\n";
             throw;
         }
-        __finally_2:;
         // print("finally 1")
         std::cout << "finally 1" << "\n";
     }
@@ -54,25 +53,24 @@ void main() {
         try {
             // v2 = lookup("y")
             {
-                auto __try_tmp_6 = lookup("y");
-                if (!__try_tmp_6.has_value()) goto __except_4;
-                v2 = ::tpy::unwrap_ref(*__try_tmp_6);
+                auto __try_tmp_4 = lookup("y");
+                if (!__try_tmp_4.has_value()) goto __except_3;
+                v2 = ::tpy::unwrap_ref(*__try_tmp_4);
             }
             // else:
             // print(v2)
             std::cout << v2 << "\n";
-            goto __after_try_4;
+            goto __after_try_3;
             // except NotFound:
-            __except_4:;
+            __except_3:;
             // print("not found")
             std::cout << "not found" << "\n";
-            __after_try_4:;
+            __after_try_3:;
         } catch (...) {
             // print("finally 2")
             std::cout << "finally 2" << "\n";
             throw;
         }
-        __finally_5:;
         // print("finally 2")
         std::cout << "finally 2" << "\n";
     }

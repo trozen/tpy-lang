@@ -742,6 +742,19 @@ class TypeRegistrar:
                     loc=fld.loc
                 )
 
+        # __await__ on user types: rejected as "not yet supported" per
+        # docs/ASYNC_DESIGN.md's v1 sema exclusions. v3+ may support
+        # user-defined __await__ adaptation for CPython interop.
+        for m in record.methods:
+            if m.name == "__await__":
+                raise SemanticError(
+                    f"user-defined '__await__' is not yet supported "
+                    f"(method on '{record.name}'); v1 only supports the "
+                    f"structural Awaitable protocol via `poll(self, "
+                    f"waker: Waker) -> Poll[T]`",
+                    m.loc or record.loc,
+                )
+
         del_method = record.del_method
         if del_method:
             if del_method.params:
@@ -2403,6 +2416,7 @@ class TypeRegistrar:
             is_readonly=func.is_readonly or func.is_pure,
             is_pure=func.is_pure,
             is_inline=func.is_inline,
+            is_async=func.is_async,
             linkage=fi_linkage,
             native_name=func.native_name,
             native_cpp_return_type=func.native_cpp_return_type,

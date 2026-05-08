@@ -369,7 +369,6 @@ inline void Base::save_json(std::string_view __path, int32_t indent) const {
         __ctx_1.__exit__();
         throw;
     }
-    __finally_3:;
     __ctx_1.__exit__();
 }
 
@@ -378,7 +377,6 @@ inline Base Base::load_json(std::string_view __path) {
     std::string __data;
     auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_2.__enter__();
-    std::optional<Base> __retval_5;
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
         // from tpy import Int32
@@ -387,9 +385,7 @@ inline Base Base::load_json(std::string_view __path) {
         __ctx_2.__exit__();
         throw;
     }
-    __finally_4:;
     __ctx_2.__exit__();
-    if (__retval_5) return (*__retval_5);
     // from tplib.json.model import model
     return Base::from_json(__data);
 }
@@ -399,7 +395,6 @@ inline std::expected<Base, ::tpystd::tplib::json::parser::JsonError> Base::try_l
     std::string __data;
     auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_3.__enter__();
-    std::optional<std::expected<Base, ::tpystd::tplib::json::parser::JsonError>> __retval_7;
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
         // from tpy import Int32
@@ -408,9 +403,7 @@ inline std::expected<Base, ::tpystd::tplib::json::parser::JsonError> Base::try_l
         __ctx_3.__exit__();
         throw;
     }
-    __finally_6:;
     __ctx_3.__exit__();
-    if (__retval_7) return (*__retval_7);
     // from tplib.json.model import model
     return Base::try_from_json(__data);
 }
@@ -427,20 +420,20 @@ inline WithDefaults WithDefaults::from_json(std::string_view __s) {
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     std::optional<WithDefaults> __result = std::nullopt;
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_8;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_3;
         {
-            auto __try_tmp_9 = WithDefaults::__json_decode__(__reader);
-            if (!__try_tmp_9.has_value()) { __err_opt_8 = std::move(__try_tmp_9.error()); goto __except_8; }
-            __result = ::tpy::unwrap_ref(*__try_tmp_9);
+            auto __try_tmp_4 = WithDefaults::__json_decode__(__reader);
+            if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_4);
         }
-        goto __after_try_8;
+        goto __after_try_3;
         // except tplib.json.parser.JsonError:
-        __except_8:;
+        __except_3:;
         {
-            auto& __e = *__err_opt_8;
+            auto& __e = *__err_opt_3;
             ::tpy::raise_assertion_error(__e.message);
         }
-        __after_try_8:;
+        __after_try_3:;
     }
     if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
     return (*__result);
@@ -478,7 +471,6 @@ inline void WithDefaults::save_json(std::string_view __path, int32_t indent) con
         __ctx_4.__exit__();
         throw;
     }
-    __finally_10:;
     __ctx_4.__exit__();
 }
 
@@ -487,7 +479,6 @@ inline WithDefaults WithDefaults::load_json(std::string_view __path) {
     std::string __data;
     auto __ctx_5 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_5.__enter__();
-    std::optional<WithDefaults> __retval_12;
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
         // from tpy import Int32
@@ -496,9 +487,7 @@ inline WithDefaults WithDefaults::load_json(std::string_view __path) {
         __ctx_5.__exit__();
         throw;
     }
-    __finally_11:;
     __ctx_5.__exit__();
-    if (__retval_12) return (*__retval_12);
     // from tplib.json.model import model
     return WithDefaults::from_json(__data);
 }
@@ -508,7 +497,6 @@ inline std::expected<WithDefaults, ::tpystd::tplib::json::parser::JsonError> Wit
     std::string __data;
     auto __ctx_6 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_6.__enter__();
-    std::optional<std::expected<WithDefaults, ::tpystd::tplib::json::parser::JsonError>> __retval_14;
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
         // from tpy import Int32
@@ -517,9 +505,7 @@ inline std::expected<WithDefaults, ::tpystd::tplib::json::parser::JsonError> Wit
         __ctx_6.__exit__();
         throw;
     }
-    __finally_13:;
     __ctx_6.__exit__();
-    if (__retval_14) return (*__retval_14);
     // from tplib.json.model import model
     return WithDefaults::try_from_json(__data);
 }
@@ -536,20 +522,20 @@ inline Tagged Tagged::from_json(std::string_view __s) {
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     std::optional<Tagged> __result = std::nullopt;
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_15;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_5;
         {
-            auto __try_tmp_16 = Tagged::__json_decode__(__reader);
-            if (!__try_tmp_16.has_value()) { __err_opt_15 = std::move(__try_tmp_16.error()); goto __except_15; }
-            __result = ::tpy::unwrap_ref(*__try_tmp_16);
+            auto __try_tmp_6 = Tagged::__json_decode__(__reader);
+            if (!__try_tmp_6.has_value()) { __err_opt_5 = std::move(__try_tmp_6.error()); goto __except_5; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_6);
         }
-        goto __after_try_15;
+        goto __after_try_5;
         // except tplib.json.parser.JsonError:
-        __except_15:;
+        __except_5:;
         {
-            auto& __e = *__err_opt_15;
+            auto& __e = *__err_opt_5;
             ::tpy::raise_assertion_error(__e.message);
         }
-        __after_try_15:;
+        __after_try_5:;
     }
     if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
     return (*__result);
@@ -578,7 +564,6 @@ inline void Tagged::save_json(std::string_view __path, int32_t indent) const {
         __ctx_7.__exit__();
         throw;
     }
-    __finally_17:;
     __ctx_7.__exit__();
 }
 
@@ -587,7 +572,6 @@ inline Tagged Tagged::load_json(std::string_view __path) {
     std::string __data;
     auto __ctx_8 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_8.__enter__();
-    std::optional<Tagged> __retval_19;
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
         // from tpy import Int32
@@ -596,9 +580,7 @@ inline Tagged Tagged::load_json(std::string_view __path) {
         __ctx_8.__exit__();
         throw;
     }
-    __finally_18:;
     __ctx_8.__exit__();
-    if (__retval_19) return (*__retval_19);
     // from tplib.json.model import model
     return Tagged::from_json(__data);
 }
@@ -608,7 +590,6 @@ inline std::expected<Tagged, ::tpystd::tplib::json::parser::JsonError> Tagged::t
     std::string __data;
     auto __ctx_9 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_9.__enter__();
-    std::optional<std::expected<Tagged, ::tpystd::tplib::json::parser::JsonError>> __retval_21;
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
         // from tpy import Int32
@@ -617,9 +598,7 @@ inline std::expected<Tagged, ::tpystd::tplib::json::parser::JsonError> Tagged::t
         __ctx_9.__exit__();
         throw;
     }
-    __finally_20:;
     __ctx_9.__exit__();
-    if (__retval_21) return (*__retval_21);
     // from tplib.json.model import model
     return Tagged::try_from_json(__data);
 }
@@ -636,20 +615,20 @@ inline User User::from_json(std::string_view __s) {
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     std::optional<User> __result = std::nullopt;
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_22;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_7;
         {
-            auto __try_tmp_23 = User::__json_decode__(__reader);
-            if (!__try_tmp_23.has_value()) { __err_opt_22 = std::move(__try_tmp_23.error()); goto __except_22; }
-            __result = ::tpy::unwrap_ref(*__try_tmp_23);
+            auto __try_tmp_8 = User::__json_decode__(__reader);
+            if (!__try_tmp_8.has_value()) { __err_opt_7 = std::move(__try_tmp_8.error()); goto __except_7; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_8);
         }
-        goto __after_try_22;
+        goto __after_try_7;
         // except tplib.json.parser.JsonError:
-        __except_22:;
+        __except_7:;
         {
-            auto& __e = *__err_opt_22;
+            auto& __e = *__err_opt_7;
             ::tpy::raise_assertion_error(__e.message);
         }
-        __after_try_22:;
+        __after_try_7:;
     }
     if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
     return (*__result);
@@ -678,7 +657,6 @@ inline void User::save_json(std::string_view __path, int32_t indent) const {
         __ctx_10.__exit__();
         throw;
     }
-    __finally_24:;
     __ctx_10.__exit__();
 }
 
@@ -687,7 +665,6 @@ inline User User::load_json(std::string_view __path) {
     std::string __data;
     auto __ctx_11 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_11.__enter__();
-    std::optional<User> __retval_26;
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
         // from tpy import Int32
@@ -696,9 +673,7 @@ inline User User::load_json(std::string_view __path) {
         __ctx_11.__exit__();
         throw;
     }
-    __finally_25:;
     __ctx_11.__exit__();
-    if (__retval_26) return (*__retval_26);
     // from tplib.json.model import model
     return User::from_json(__data);
 }
@@ -708,7 +683,6 @@ inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_l
     std::string __data;
     auto __ctx_12 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_12.__enter__();
-    std::optional<std::expected<User, ::tpystd::tplib::json::parser::JsonError>> __retval_28;
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
         // from tpy import Int32
@@ -717,9 +691,7 @@ inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_l
         __ctx_12.__exit__();
         throw;
     }
-    __finally_27:;
     __ctx_12.__exit__();
-    if (__retval_28) return (*__retval_28);
     // from tplib.json.model import model
     return User::try_from_json(__data);
 }
@@ -736,20 +708,20 @@ inline Extended Extended::from_json(std::string_view __s) {
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     std::optional<Extended> __result = std::nullopt;
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_29;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_9;
         {
-            auto __try_tmp_30 = Extended::__json_decode__(__reader);
-            if (!__try_tmp_30.has_value()) { __err_opt_29 = std::move(__try_tmp_30.error()); goto __except_29; }
-            __result = ::tpy::unwrap_ref(*__try_tmp_30);
+            auto __try_tmp_10 = Extended::__json_decode__(__reader);
+            if (!__try_tmp_10.has_value()) { __err_opt_9 = std::move(__try_tmp_10.error()); goto __except_9; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_10);
         }
-        goto __after_try_29;
+        goto __after_try_9;
         // except tplib.json.parser.JsonError:
-        __except_29:;
+        __except_9:;
         {
-            auto& __e = *__err_opt_29;
+            auto& __e = *__err_opt_9;
             ::tpy::raise_assertion_error(__e.message);
         }
-        __after_try_29:;
+        __after_try_9:;
     }
     if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
     return (*__result);
@@ -778,7 +750,6 @@ inline void Extended::save_json(std::string_view __path, int32_t indent) const {
         __ctx_13.__exit__();
         throw;
     }
-    __finally_31:;
     __ctx_13.__exit__();
 }
 
@@ -787,7 +758,6 @@ inline Extended Extended::load_json(std::string_view __path) {
     std::string __data;
     auto __ctx_14 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_14.__enter__();
-    std::optional<Extended> __retval_33;
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
         // from tpy import Int32
@@ -796,9 +766,7 @@ inline Extended Extended::load_json(std::string_view __path) {
         __ctx_14.__exit__();
         throw;
     }
-    __finally_32:;
     __ctx_14.__exit__();
-    if (__retval_33) return (*__retval_33);
     // from tplib.json.model import model
     return Extended::from_json(__data);
 }
@@ -808,7 +776,6 @@ inline std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> Extende
     std::string __data;
     auto __ctx_15 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_15.__enter__();
-    std::optional<std::expected<Extended, ::tpystd::tplib::json::parser::JsonError>> __retval_35;
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
         // from tpy import Int32
@@ -817,9 +784,7 @@ inline std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> Extende
         __ctx_15.__exit__();
         throw;
     }
-    __finally_34:;
     __ctx_15.__exit__();
-    if (__retval_35) return (*__retval_35);
     // from tplib.json.model import model
     return Extended::try_from_json(__data);
 }
@@ -836,20 +801,20 @@ inline Scored Scored::from_json(std::string_view __s) {
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     std::optional<Scored> __result = std::nullopt;
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_36;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_11;
         {
-            auto __try_tmp_37 = Scored::__json_decode__(__reader);
-            if (!__try_tmp_37.has_value()) { __err_opt_36 = std::move(__try_tmp_37.error()); goto __except_36; }
-            __result = ::tpy::unwrap_ref(*__try_tmp_37);
+            auto __try_tmp_12 = Scored::__json_decode__(__reader);
+            if (!__try_tmp_12.has_value()) { __err_opt_11 = std::move(__try_tmp_12.error()); goto __except_11; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_12);
         }
-        goto __after_try_36;
+        goto __after_try_11;
         // except tplib.json.parser.JsonError:
-        __except_36:;
+        __except_11:;
         {
-            auto& __e = *__err_opt_36;
+            auto& __e = *__err_opt_11;
             ::tpy::raise_assertion_error(__e.message);
         }
-        __after_try_36:;
+        __after_try_11:;
     }
     if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
     return (*__result);
@@ -878,7 +843,6 @@ inline void Scored::save_json(std::string_view __path, int32_t indent) const {
         __ctx_16.__exit__();
         throw;
     }
-    __finally_38:;
     __ctx_16.__exit__();
 }
 
@@ -887,7 +851,6 @@ inline Scored Scored::load_json(std::string_view __path) {
     std::string __data;
     auto __ctx_17 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_17.__enter__();
-    std::optional<Scored> __retval_40;
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
         // from tpy import Int32
@@ -896,9 +859,7 @@ inline Scored Scored::load_json(std::string_view __path) {
         __ctx_17.__exit__();
         throw;
     }
-    __finally_39:;
     __ctx_17.__exit__();
-    if (__retval_40) return (*__retval_40);
     // from tplib.json.model import model
     return Scored::from_json(__data);
 }
@@ -908,7 +869,6 @@ inline std::expected<Scored, ::tpystd::tplib::json::parser::JsonError> Scored::t
     std::string __data;
     auto __ctx_18 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_18.__enter__();
-    std::optional<std::expected<Scored, ::tpystd::tplib::json::parser::JsonError>> __retval_42;
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
         // from tpy import Int32
@@ -917,9 +877,7 @@ inline std::expected<Scored, ::tpystd::tplib::json::parser::JsonError> Scored::t
         __ctx_18.__exit__();
         throw;
     }
-    __finally_41:;
     __ctx_18.__exit__();
-    if (__retval_42) return (*__retval_42);
     // from tplib.json.model import model
     return Scored::try_from_json(__data);
 }
@@ -936,20 +894,20 @@ inline Admin Admin::from_json(std::string_view __s) {
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     std::optional<Admin> __result = std::nullopt;
     {
-        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_43;
+        std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_13;
         {
-            auto __try_tmp_44 = Admin::__json_decode__(__reader);
-            if (!__try_tmp_44.has_value()) { __err_opt_43 = std::move(__try_tmp_44.error()); goto __except_43; }
-            __result = ::tpy::unwrap_ref(*__try_tmp_44);
+            auto __try_tmp_14 = Admin::__json_decode__(__reader);
+            if (!__try_tmp_14.has_value()) { __err_opt_13 = std::move(__try_tmp_14.error()); goto __except_13; }
+            __result = ::tpy::unwrap_ref(*__try_tmp_14);
         }
-        goto __after_try_43;
+        goto __after_try_13;
         // except tplib.json.parser.JsonError:
-        __except_43:;
+        __except_13:;
         {
-            auto& __e = *__err_opt_43;
+            auto& __e = *__err_opt_13;
             ::tpy::raise_assertion_error(__e.message);
         }
-        __after_try_43:;
+        __after_try_13:;
     }
     if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
     return (*__result);
@@ -978,7 +936,6 @@ inline void Admin::save_json(std::string_view __path, int32_t indent) const {
         __ctx_19.__exit__();
         throw;
     }
-    __finally_45:;
     __ctx_19.__exit__();
 }
 
@@ -987,7 +944,6 @@ inline Admin Admin::load_json(std::string_view __path) {
     std::string __data;
     auto __ctx_20 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_20.__enter__();
-    std::optional<Admin> __retval_47;
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
         // from tpy import Int32
@@ -996,9 +952,7 @@ inline Admin Admin::load_json(std::string_view __path) {
         __ctx_20.__exit__();
         throw;
     }
-    __finally_46:;
     __ctx_20.__exit__();
-    if (__retval_47) return (*__retval_47);
     // from tplib.json.model import model
     return Admin::from_json(__data);
 }
@@ -1008,7 +962,6 @@ inline std::expected<Admin, ::tpystd::tplib::json::parser::JsonError> Admin::try
     std::string __data;
     auto __ctx_21 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_21.__enter__();
-    std::optional<std::expected<Admin, ::tpystd::tplib::json::parser::JsonError>> __retval_49;
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
         // from tpy import Int32
@@ -1017,9 +970,7 @@ inline std::expected<Admin, ::tpystd::tplib::json::parser::JsonError> Admin::try
         __ctx_21.__exit__();
         throw;
     }
-    __finally_48:;
     __ctx_21.__exit__();
-    if (__retval_49) return (*__retval_49);
     // from tplib.json.model import model
     return Admin::try_from_json(__data);
 }

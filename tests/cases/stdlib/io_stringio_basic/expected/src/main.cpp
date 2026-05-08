@@ -96,7 +96,6 @@ void context_manager() {
         __ctx_1.__exit__();
         throw;
     }
-    __finally_1:;
     __ctx_1.__exit__();
 }
 

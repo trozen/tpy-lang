@@ -29,6 +29,10 @@ from ._core import (
     span, deref, take_ptr, make_default,
     copy, copy_iter, own_iter, try_parse,
 )
+# `Task` / `Waker` / `Poll` / `Awaitable` / `poll_*` are not re-exported
+# here -- importing from `tpy` would force every consumer to include
+# `tpystd/coro.hpp` transitively. Use `from tpy.coro import ...`.
+from ._builtins._exceptions import CancelledError
 from ._builtins._types import basic_slice
 from ._builtins._io import BinaryIO, open_text, open_binary
 
@@ -68,6 +72,7 @@ __all__ = [
     # Functions
     "span", "deref", "take_ptr", "make_default",
     "copy", "copy_iter", "own_iter", "try_parse",
+    "CancelledError",
     # I/O
     "BinaryIO", "open_text", "open_binary",
 ]

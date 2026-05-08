@@ -1,0 +1,1 @@
+main.py:6: error: 'await' is only allowed inside an `async def` function body; use asyncio.run(coro) at the top level to drive a coroutine

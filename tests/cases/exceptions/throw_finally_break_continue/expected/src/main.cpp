@@ -14,7 +14,9 @@ void test_break() {
                 // if i == 2:
                 if ((i == 2)) {
                     // break
-                    goto __finally_break_1;
+                    // print("cleanup", i)
+                    std::cout << "cleanup" << " " << i << "\n";
+                    break;
                 }
                 // print(i)
                 std::cout << i << "\n";
@@ -23,15 +25,8 @@ void test_break() {
                 std::cout << "cleanup" << " " << i << "\n";
                 throw;
             }
-            __finally_1:;
             // print("cleanup", i)
             std::cout << "cleanup" << " " << i << "\n";
-            goto __after_finally_2;
-            __finally_break_1:;
-            // print("cleanup", i)
-            std::cout << "cleanup" << " " << i << "\n";
-            break;
-            __after_finally_2:;
         }
     }
 }
@@ -46,7 +41,9 @@ void test_continue() {
                 // if i == 2:
                 if ((i == 2)) {
                     // continue
-                    goto __finally_continue_3;
+                    // print("cleanup", i)
+                    std::cout << "cleanup" << " " << i << "\n";
+                    continue;
                 }
                 // print(i)
                 std::cout << i << "\n";
@@ -55,15 +52,8 @@ void test_continue() {
                 std::cout << "cleanup" << " " << i << "\n";
                 throw;
             }
-            __finally_3:;
             // print("cleanup", i)
             std::cout << "cleanup" << " " << i << "\n";
-            goto __after_finally_4;
-            __finally_continue_3:;
-            // print("cleanup", i)
-            std::cout << "cleanup" << " " << i << "\n";
-            continue;
-            __after_finally_4:;
         }
     }
 }
@@ -78,7 +68,9 @@ void test_break_for_else() {
                 // if i == 2:
                 if ((i == 2)) {
                     // break
-                    goto __finally_break_5;
+                    // print("cleanup", i)
+                    std::cout << "cleanup" << " " << i << "\n";
+                    goto __after_else_0;
                 }
                 // print(i)
                 std::cout << i << "\n";
@@ -87,15 +79,8 @@ void test_break_for_else() {
                 std::cout << "cleanup" << " " << i << "\n";
                 throw;
             }
-            __finally_5:;
             // print("cleanup", i)
             std::cout << "cleanup" << " " << i << "\n";
-            goto __after_finally_6;
-            __finally_break_5:;
-            // print("cleanup", i)
-            std::cout << "cleanup" << " " << i << "\n";
-            goto __after_else_0;
-            __after_finally_6:;
         }
     }
     // else:

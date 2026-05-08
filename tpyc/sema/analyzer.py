@@ -952,6 +952,10 @@ class SemanticAnalyzer:
         self.ctx.func.current_function = func
         if func.is_generator:
             self.ctx._yield_counter = 0
+        # Async def bodies are analyzed normally. The await-expression
+        # analyzer (sema/expressions.py:_analyze_await) handles the supported
+        # v1 forms (direct call to async def, Task[T], Future[T], structural
+        # awaitable) and rejects unsupported shapes with a clear diagnostic.
         # Resolve return type (sets is_protocol for cross-module imports)
         func.return_type = make_ref(self.type_ops.resolve_type(func.return_type))
         scope = Scope(parent=self.ctx.global_scope)
@@ -1008,10 +1012,13 @@ class SemanticAnalyzer:
         scan = self.stmts._prescan_and_analyze_body(func, resolved_params, scope, local_ns)
         self.deduction.resolve_all()
 
-        # Collect generator local variables for struct field generation.
-        # Include both function-level locals and pending loop vars (for-loop
-        # variables and body-declared vars that weren't used after the loop).
-        if func.is_generator:
+        # Collect generator/async local variables for struct field generation.
+        # Same hoisting policy: every function-level local becomes a struct
+        # field. Async coros use the same `func.generator_locals` slot; the
+        # field-rewrite path in expressions/statements is shared via the
+        # in_generator_body flag (the `in_async_coro_body` flag steers only
+        # the return-statement rewrite).
+        if func.is_generator or func.is_async:
             param_names = {pname for pname, _ in func.params}
             locals_dict: dict[str, 'TpyType'] = {}
             for name, binding in local_ns.all_bindings().items():

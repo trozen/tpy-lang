@@ -5365,7 +5365,38 @@ Send/Sync rules for built-in types:
 | `readonly[T]` | Same as T | Yes (if T Send or Sync) | Immutable wrapper |
 | `tuple[T1, T2, ...]` | Yes (if all Ti Send) | Yes (if all Ti Sync) | Composite |
 
-- **Open**: `async`/`await` → coroutines or state machines
+- **Working (v1)**: `async`/`await` -> resumable-frame state machines.
+  `async def f() -> T:` lowers to a struct with `poll(Waker) -> Poll<T>`.
+  `await <call-to-async-def>` inlines the sub-coroutine struct in the
+  parent's frame; `await <Task[T]>` / `await <Future[T]>` / `await
+  <user awaitable>` use structural dispatch on a `poll(Waker) -> Poll[T]`
+  method. Value-type awaitables are moved into the frame; reference-type
+  awaitables are stored as borrowed frame pointers so object identity is
+  preserved across a suspension. Awaits in non-statement positions (call
+  args, BinOps, conditions) are lifted to preceding `__await_lift_<n>`
+  vardecls.
+  `try`/`finally` wrapping the entire async body is supported. A narrow
+  `try: <single top-level await>; except E: ...` shape is supported for
+  throw-tier exceptions, including catching `CancelledError`.
+  `Task.cancel()` flips a flag that the next poll checks and throws
+  `CancelledError`. `asyncio.run(coro)` drives a thread-local
+  runnable-queue + timer-min-heap executor; `Waker.wake()` schedules the
+  parked task by slot id/generation; `asyncio.sleep(s)` is a real
+  wall-clock sleep; `asyncio.create_task(coro)` registers the task with
+  the executor for concurrent scheduling and returns a `Task[T]` handle
+  (T inferred from the async def's return type) that shares state with
+  the executor; `asyncio.Future[T]` provides manual completion via
+  `set_result` / `set_exception`. Sema rejects
+  user-defined `__await__` and bare-coroutine drops. See
+  `docs/ASYNC_DESIGN.md` and `docs/ASYNC_PROGRESS.md`.
+  At `asyncio.run` exit, remaining spawned tasks are cancelled and
+  drained so wrapper-try `finally` blocks run for fire-and-forget
+  tasks.
+- **Open (v1.5+)**: `async with`, `async for`, `gather`, `wait_for`,
+  awaits inside if/while/for/with sub-bodies and general try bodies,
+  partial or nested try-around-await, general `except` handlers around
+  arbitrary await regions, executor slot reuse, and reporting when
+  bounded cancellation drain leaves tasks pending.
 
 ---
 

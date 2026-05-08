@@ -19,9 +19,6 @@ void test_raise_in_finally() {
                     // raise ValueError("replacement")
                     throw ::tpy::ValueError("replacement");
                 }
-                __finally_1:;
-                // raise ValueError("replacement")
-                throw ::tpy::ValueError("replacement");
             }
         } catch (const ::tpy::ValueError&) {
             // print("caught replacement")
@@ -44,7 +41,6 @@ void test_raise_in_finally_no_exception() {
                     // raise ValueError("from finally")
                     throw ::tpy::ValueError("from finally");
                 }
-                __finally_2:;
                 // raise ValueError("from finally")
                 throw ::tpy::ValueError("from finally");
             }

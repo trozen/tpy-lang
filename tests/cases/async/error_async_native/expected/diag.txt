@@ -1,0 +1,1 @@
+main.py:6: error: async def + @native is not yet supported on 'f'

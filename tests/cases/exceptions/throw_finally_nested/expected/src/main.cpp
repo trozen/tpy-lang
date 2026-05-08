@@ -8,33 +8,27 @@ namespace tpyapp::main {
 int32_t nested_return() {
     // try:
     {
-        std::optional<int32_t> __retval_2;
         try {
             // try:
             {
                 try {
                     // return 10
-                    __retval_2 = 10;
-                    goto __finally_3;
+                    // print("inner")
+                    std::cout << "inner" << "\n";
+                    // print("outer")
+                    std::cout << "outer" << "\n";
+                    return 10;
                 } catch (...) {
                     // print("inner")
                     std::cout << "inner" << "\n";
                     throw;
                 }
-                __finally_3:;
-                // print("inner")
-                std::cout << "inner" << "\n";
-                goto __finally_1;
             }
         } catch (...) {
             // print("outer")
             std::cout << "outer" << "\n";
             throw;
         }
-        __finally_1:;
-        // print("outer")
-        std::cout << "outer" << "\n";
-        return (*__retval_2);
     }
 }
 
@@ -56,18 +50,12 @@ void nested_raise() {
                             std::cout << "innermost" << "\n";
                             throw;
                         }
-                        __finally_5:;
-                        // print("innermost")
-                        std::cout << "innermost" << "\n";
                     }
                 } catch (...) {
                     // print("middle")
                     std::cout << "middle" << "\n";
                     throw;
                 }
-                __finally_4:;
-                // print("middle")
-                std::cout << "middle" << "\n";
             }
         } catch (const ::tpy::ValueError&) {
             // print("caught")

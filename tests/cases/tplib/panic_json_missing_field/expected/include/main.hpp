@@ -143,7 +143,6 @@ inline void Item::save_json(std::string_view __path, int32_t indent) const {
         __ctx_1.__exit__();
         throw;
     }
-    __finally_3:;
     __ctx_1.__exit__();
 }
 
@@ -152,7 +151,6 @@ inline Item Item::load_json(std::string_view __path) {
     std::string __data;
     auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_2.__enter__();
-    std::optional<Item> __retval_5;
     try {
         // # Test panic on missing required field in @model deserialization.
         // from tpy import Int32, try_parse
@@ -161,9 +159,7 @@ inline Item Item::load_json(std::string_view __path) {
         __ctx_2.__exit__();
         throw;
     }
-    __finally_4:;
     __ctx_2.__exit__();
-    if (__retval_5) return (*__retval_5);
     // from enum import Enum
     return Item::from_json(__data);
 }
@@ -173,7 +169,6 @@ inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_l
     std::string __data;
     auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_3.__enter__();
-    std::optional<std::expected<Item, ::tpystd::tplib::json::parser::JsonError>> __retval_7;
     try {
         // # Test panic on missing required field in @model deserialization.
         // from tpy import Int32, try_parse
@@ -182,9 +177,7 @@ inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_l
         __ctx_3.__exit__();
         throw;
     }
-    __finally_6:;
     __ctx_3.__exit__();
-    if (__retval_7) return (*__retval_7);
     // from enum import Enum
     return Item::try_from_json(__data);
 }
