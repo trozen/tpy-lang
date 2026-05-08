@@ -743,19 +743,14 @@ class ExpressionGenerator:
                     return "std::span<const uint8_t>{}"
                 return cpp_bytes_literal_span(bytes_lit_arg.value)
         gen_arg = self.gen_expr_deref(arg, ptype if target_type is _UNSET else target_type)
-        # Pointer-form tuple param: storage-form sources (field, subscript,
-        # global) need element-wise lift via tuple_to_pointer. Other sources
-        # (literals, function returns, locals from those) are already in
-        # pointer form. Loop variables iterating storage containers are
-        # storage form and currently not detected here -- workaround is to
-        # destructure inside the loop or pass via a wrapping function.
-        if (ptype is not None
-                and (isinstance(arg, (TpyFieldAccess, TpySubscript))
-                     or self.ctx.is_global_name(arg))):
+        # Pointer-form tuple param: storage-form sources need element-wise
+        # lift via tuple_to_pointer. Pointer-form sources (literals,
+        # function returns, pointer-form locals) already match the slot
+        # shape and pass through unchanged.
+        if ptype is not None and self.ctx.is_storage_form_source(arg):
             ptype_for_tuple = unwrap_readonly(unwrap_ref_type(ptype))
             if (isinstance(ptype_for_tuple, TupleType)
-                    and any(isinstance(et, OptionalType) and et.uses_pointer_repr()
-                            for et in ptype_for_tuple.element_types)):
+                    and ptype_for_tuple.has_pointer_repr_optional_element()):
                 ptype_cpp = ptype_for_tuple.to_cpp_return()
                 gen_arg = f"::tpy::tuple_to_pointer<{ptype_cpp}>({gen_arg})"
         if ptype is not None:
@@ -4397,8 +4392,7 @@ class ExpressionGenerator:
             from ..coercions import wrap_into_any, CoercionContext
             return wrap_into_any(code, resolved, CoercionContext.INIT)
         if (isinstance(slot_type, TupleType)
-                and any(isinstance(et, OptionalType) and et.uses_pointer_repr()
-                        for et in slot_type.element_types)):
+                and slot_type.has_pointer_repr_optional_element()):
             return f"::tpy::tuple_to_storage<{slot_type.to_cpp()}>({code})"
         return code
 

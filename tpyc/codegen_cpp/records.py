@@ -41,13 +41,6 @@ if TYPE_CHECKING:
     from .protocols import ProtocolGenerator
 
 
-def _tuple_has_ptr_optional(t: TupleType) -> bool:
-    return any(
-        isinstance(et, OptionalType) and et.uses_pointer_repr()
-        for et in t.element_types
-    )
-
-
 class RecordGenerator:
     """Generates C++ structs from TurboPython records."""
 
@@ -1071,7 +1064,7 @@ class RecordGenerator:
                                 # Lift element-wise. Field-access source is already
                                 # storage form, so it doesn't need the conversion.
                                 if (isinstance(fld_type, TupleType)
-                                        and _tuple_has_ptr_optional(fld_type)
+                                        and fld_type.has_pointer_repr_optional_element()
                                         and not isinstance(source, TpyFieldAccess)):
                                     fld_cpp = self.types.type_to_cpp(fld_type)
                                     value = f"::tpy::tuple_to_storage<{fld_cpp}>({value})"

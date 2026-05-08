@@ -2293,6 +2293,19 @@ class TupleType(TpyType):
             for et in self.element_types
         )
 
+    def has_pointer_repr_optional_element(self) -> bool:
+        """True if any element is a pointer-repr OptionalType.
+
+        Marks tuples that have distinct borrow form (`std::tuple<T*, ...>`)
+        and storage form (`std::tuple<std::optional<T>, ...>`); element-wise
+        conversion at boundaries between the two reps goes through
+        `tpy::tuple_to_pointer` / `tpy::tuple_to_storage`.
+        """
+        return any(
+            isinstance(et, OptionalType) and et.uses_pointer_repr()
+            for et in self.element_types
+        )
+
     def _element_to_cpp_param(self, t: 'TpyType', const: bool) -> str:
         """C++ type for a tuple element in param/return context.
 

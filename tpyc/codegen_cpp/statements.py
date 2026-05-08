@@ -1229,22 +1229,12 @@ class StatementGenerator:
     def _maybe_wrap_storage_tuple_source(self, stmt: 'TpyTupleUnpack', value_expr: str) -> str:
         """If unpacking a storage-form tuple into pointer-form Optional locals,
         wrap the source with tuple_to_pointer so std::get<I> yields T*.
-
-        Storage-form sources are field accesses, subscripts, globals, and
-        loop variables iterating storage-form containers. The check on the
-        target_types catches "any pointer-form Optional element"; the source
-        check (TpyFieldAccess / TpySubscript / global) flags the storage form.
         """
-        has_ptr_optional = any(
-            isinstance(t, OptionalType) and t.uses_pointer_repr()
-            for t in stmt.target_types
-        )
-        if not has_ptr_optional:
-            return value_expr
-        if not (isinstance(stmt.value, (TpyFieldAccess, TpySubscript))
-                or self.ctx.is_global_name(stmt.value)):
-            return value_expr
         ptr_form = TupleType(tuple(stmt.target_types))
+        if not ptr_form.has_pointer_repr_optional_element():
+            return value_expr
+        if not self.ctx.is_storage_form_source(stmt.value):
+            return value_expr
         return f"::tpy::tuple_to_pointer<{ptr_form.to_cpp_return()}>({value_expr})"
 
     def _maybe_wrap_tuple_to_storage(self, expr: str, target_type: TpyType | None) -> str:
@@ -1257,10 +1247,8 @@ class StatementGenerator:
         if target_type is None:
             return expr
         unwrapped = unwrap_readonly(unwrap_ref_type(target_type))
-        if not isinstance(unwrapped, TupleType):
-            return expr
-        if not any(isinstance(et, OptionalType) and et.uses_pointer_repr()
-                   for et in unwrapped.element_types):
+        if not (isinstance(unwrapped, TupleType)
+                and unwrapped.has_pointer_repr_optional_element()):
             return expr
         return f"::tpy::tuple_to_storage<{unwrapped.to_cpp()}>({expr})"
 
@@ -1341,6 +1329,11 @@ class StatementGenerator:
         self.ctx.var_types[stmt.name] = target_type
         if self.ctx.current_ns and target_type:
             self.ctx.current_ns.bind_variable(stmt.name, target_type)
+        if (stmt.init is not None
+                and isinstance(target_type, TupleType)
+                and target_type.has_pointer_repr_optional_element()
+                and self.ctx.is_storage_form_source(stmt.init)):
+            self.ctx.storage_form_tuple_locals.add(stmt.name)
 
         cpp_type = self._resolve_cpp_type(stmt)
 
@@ -1528,8 +1521,7 @@ class StatementGenerator:
             # Tuple-of-pointer-Optional field: lift pointer-form source via
             # tuple_to_storage. Field-access source is already storage form.
             if (isinstance(target_type, TupleType)
-                    and any(isinstance(et, OptionalType) and et.uses_pointer_repr()
-                            for et in target_type.element_types)):
+                    and target_type.has_pointer_repr_optional_element()):
                 source = self.ctx.unwrap_copy(stmt.value)
                 if not isinstance(source, TpyFieldAccess):
                     target = self.expressions.gen_expr(stmt.target)
@@ -1970,15 +1962,15 @@ class StatementGenerator:
         else:
             unwrapped_tmp = None
 
+        wrapped_to_pointer = False
         if unwrapped_tmp:
             value_expr = unwrapped_tmp
         else:
             value_expr = self.expressions.gen_expr(stmt.value)
             self.ctx.temps.flush(out, indent)
-            # Storage-form tuple source (field, subscript, global, loop var)
-            # being unpacked into pointer-form Optional locals: lift via
-            # tuple_to_pointer so std::get<I> returns T* per slot.
-            value_expr = self._maybe_wrap_storage_tuple_source(stmt, value_expr)
+            wrapped = self._maybe_wrap_storage_tuple_source(stmt, value_expr)
+            wrapped_to_pointer = wrapped is not value_expr
+            value_expr = wrapped
 
         self.ctx.unpack_counter += 1
         tmp = f"__tup_{self.ctx.unpack_counter}"
@@ -1990,7 +1982,9 @@ class StatementGenerator:
         # std::get on a const tuple returns const T& which can't bind
         # to T&.  Existing is_const_ref elements are unaffected -- const T&
         # binds fine from a non-const tuple.
-        if not unwrapped_tmp and isinstance(stmt.value, TpyName) and not any(stmt.is_owned):
+        # tuple_to_pointer wrap returns a prvalue: bind by value, not by ref.
+        if (not unwrapped_tmp and not wrapped_to_pointer
+                and isinstance(stmt.value, TpyName) and not any(stmt.is_owned)):
             const_kw = "" if any(stmt.is_ref) else "const "
             out.write(f"{indent}{const_kw}auto& {tmp} = {value_expr};\n")
         else:
@@ -3110,7 +3104,11 @@ class StatementGenerator:
         self.ctx.declared_vars.add(stmt.var)
         self.ctx.local_scope_names.add(stmt.var)
         if stmt.elem_type:
-            self.ctx.var_types[stmt.var] = unwrap_ref_type(stmt.elem_type)
+            elem_type = unwrap_ref_type(stmt.elem_type)
+            self.ctx.var_types[stmt.var] = elem_type
+            if (isinstance(elem_type, TupleType)
+                    and elem_type.has_pointer_repr_optional_element()):
+                self.ctx.storage_form_tuple_locals.add(stmt.var)
 
         old_ns = self.ctx.current_ns
         if self.ctx.current_ns and stmt.elem_type:
@@ -3755,6 +3753,9 @@ class StatementGenerator:
         self.ctx.declared_vars.add(stmt.var)
         if elem_type:
             self.ctx.var_types[stmt.var] = elem_type
+        if (isinstance(elem_type, TupleType)
+                and elem_type.has_pointer_repr_optional_element()):
+            self.ctx.storage_form_tuple_locals.add(stmt.var)
         # Consuming loop: the loop variable is bound via auto&& into owned
         # storage (OwnIter), so it can be std::move'd at last use.
         # Also applies when sema resolved the element type as Own[T] (e.g.
@@ -3778,6 +3779,11 @@ class StatementGenerator:
         self.ctx.local_scope_names.discard(stmt.var)
         if is_consuming and not stmt.hoist_loop_var:
             self.ctx.movable_locals.discard(stmt.var)
+        # Only undo the loop's flag-add when the var was loop-scoped: hoisted
+        # vars survive past the body, and pre-existing vars came in flagged
+        # by an earlier site (var-decl) so the flag must persist.
+        if not stmt.hoist_loop_var and not was_declared:
+            self.ctx.storage_form_tuple_locals.discard(stmt.var)
         self.ctx.current_ns = old_ns
 
         out.write(f"{indent}}}\n")

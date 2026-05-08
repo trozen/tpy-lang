@@ -359,6 +359,9 @@ class GeneratorCodegen:
                 out.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = *__beg++;\n")
             else:
                 out.write(f"{I(4)}auto&& {cpp_var} = *__beg++;\n")
+            if (isinstance(iter_elem, TupleType)
+                    and iter_elem.has_pointer_repr_optional_element()):
+                self.ctx.storage_form_tuple_locals.add(for_stmt.var)
 
             for stmt in pre_yield:
                 self.statements.gen_stmt(out, stmt)

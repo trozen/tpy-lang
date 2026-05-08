@@ -47,6 +47,43 @@ void main() {
         // print(a.x)
         std::cout << a->x << "\n";
     }
+    // # for-loop over a storage-form container: the loop var binds to the
+    // # storage-form element, but flows through tuple_to_pointer at the call.
+    // for it in items:
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& it = *__beg_0;
+        // consume(it)
+        consume(::tpy::tuple_to_pointer<std::tuple<T*, T*>>(it));
+    }
+    // # Local initialised from a storage-form source: same conversion at
+    // # the boundary as if the source were used directly.
+    // snap = items[0]
+    auto snap = ::tpy::__getitem__(items, 0);
+    // consume(snap)
+    consume(::tpy::tuple_to_pointer<std::tuple<T*, T*>>(snap));
+    // # for-loop with destructuring directly: the synthetic loop tuple is
+    // # storage-form, the destructure target slots are pointer-form.
+    // for x, y in items:
+    auto& __obj_1 = items;
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        auto&& __for_tup_0 = *__beg_1;
+        // # for-loop with destructuring directly: the synthetic loop tuple is
+        // # storage-form, the destructure target slots are pointer-form.
+        // for x, y in items:
+        auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(__for_tup_0);
+        T* x = std::get<0>(__tup_2);
+        T* y = std::get<1>(__tup_2);
+        // if x is not None:
+        if ((x != nullptr)) {
+            // print(x.x)
+            std::cout << x->x << "\n";
+        }
+    }
 }
 
 void __tpy_init() {

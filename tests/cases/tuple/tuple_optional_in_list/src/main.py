@@ -35,5 +35,21 @@ def main() -> None:
     if a is not None:
         print(a.x)
 
+    # for-loop over a storage-form container: the loop var binds to the
+    # storage-form element, but flows through tuple_to_pointer at the call.
+    for it in items:
+        consume(it)
+
+    # Local initialised from a storage-form source: same conversion at
+    # the boundary as if the source were used directly.
+    snap = items[0]
+    consume(snap)
+
+    # for-loop with destructuring directly: the synthetic loop tuple is
+    # storage-form, the destructure target slots are pointer-form.
+    for x, y in items:
+        if x is not None:
+            print(x.x)
+
 
 main()

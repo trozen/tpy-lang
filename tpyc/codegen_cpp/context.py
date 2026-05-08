@@ -483,6 +483,7 @@ class LocalScopeSnap:
     optional_locals: set[str]
     ptr_variant_locals: set[str]
     const_indirect_locals: set[str]
+    storage_form_tuple_locals: set[str]
     movable_locals: set[str]
     ref_bound_locals: set[str]
     rebind_slots: dict[str, str]
@@ -554,6 +555,13 @@ class CodeGenContext:
     # Also in pointer_locals for dereference ((*name) works for both T* and optional<T>).
     optional_locals: set[str] = field(default_factory=set)
     const_indirect_locals: set[str] = field(default_factory=set)
+    # Locals whose tuple type contains pointer-repr Optional but whose C++
+    # representation is the storage form (std::tuple<std::optional<T>, ...>):
+    # for-loop variables iterating storage-form containers, and locals
+    # initialized from a storage-form source (field, subscript, global).
+    # Read sites need a tuple_to_pointer wrap to flow into pointer-form
+    # tuple params/destructure targets.
+    storage_form_tuple_locals: set[str] = field(default_factory=set)
 
     # --- Pointer-variant locals (non-value union variables) ---
     # Variables that are std::variant<T*...> instead of std::variant<T...>.
@@ -838,6 +846,7 @@ class CodeGenContext:
         self.optional_locals = set()
         self.ptr_variant_locals = set()
         self.const_indirect_locals = set()
+        self.storage_form_tuple_locals = set()
         self.slots.reset()
         self.rebind_slots = {}
         self.plain_rebind_slots = set()
@@ -893,6 +902,7 @@ class CodeGenContext:
             optional_locals=self.optional_locals.copy(),
             ptr_variant_locals=self.ptr_variant_locals.copy(),
             const_indirect_locals=self.const_indirect_locals.copy(),
+            storage_form_tuple_locals=self.storage_form_tuple_locals.copy(),
             movable_locals=self.movable_locals.copy(),
             ref_bound_locals=self.ref_bound_locals.copy(),
             rebind_slots=dict(self.rebind_slots),
@@ -909,6 +919,7 @@ class CodeGenContext:
         self.optional_locals = snap.optional_locals.copy()
         self.ptr_variant_locals = snap.ptr_variant_locals.copy()
         self.const_indirect_locals = snap.const_indirect_locals.copy()
+        self.storage_form_tuple_locals = snap.storage_form_tuple_locals.copy()
         self.movable_locals = snap.movable_locals.copy()
         self.ref_bound_locals = snap.ref_bound_locals.copy()
         self.rebind_slots = dict(snap.rebind_slots)
@@ -1181,6 +1192,25 @@ class CodeGenContext:
         if not isinstance(expr, TpyName):
             return False
         return expr.name in self.pointer_globals and self.is_global_name(expr)
+
+    def is_storage_form_source(self, expr: TpyExpr) -> bool:
+        """True when `expr` reads a value from a storage location.
+
+        Storage locations are fields, container subscripts, globals, and
+        locals flagged as storage-form (loop vars iterating storage
+        containers, locals initialized from another storage-form source).
+        Used by tuple-of-pointer-Optional callers to decide whether to
+        emit an element-wise tuple_to_pointer wrap; the value's actual
+        type / shape is the caller's responsibility to validate.
+        """
+        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+            return True
+        if isinstance(expr, TpyName):
+            if expr.name in self.storage_form_tuple_locals:
+                return True
+            if self.is_global_name(expr):
+                return True
+        return False
 
     def is_indirect_name(self, expr: TpyExpr) -> bool:
         """Check if expression needs indirect access (-> / deref).
