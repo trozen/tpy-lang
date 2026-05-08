@@ -344,12 +344,7 @@ class StatementAnalyzer:
             target_expr = stmt.value
         if not isinstance(target_expr, TpyCall):
             return
-        # Method calls / expression callees / generic calls don't have
-        # a func_name set (the parser only sets it for Name callees).
-        try:
-            func_name = target_expr.func_name
-        except (AssertionError, AttributeError):
-            return
+        func_name = target_expr.maybe_func_name
         if not func_name:
             return
         overloads = self.ctx.registry.get_function(func_name)

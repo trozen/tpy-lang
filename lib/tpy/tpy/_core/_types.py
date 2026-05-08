@@ -134,17 +134,22 @@ class AnyFixedUnsigned(Protocol): ...
 # consumer pulling `tpystd/coro.hpp`.
 
 @builtin_type("tpy.Task")
-@native("::tpy::Task")
+@native("tpy::Task")
 @nocopy
 class Task[T]:
     """Type-erased async task. Owns a heap-allocated coroutine frame."""
 
-    @cpp_template("{self}.cancel()")
     def cancel(self) -> None: ...
+
+    # Structural Awaitable[T] conformance. The C++ side has the method;
+    # the declaration here lets TPy code call it (and lets sema match
+    # `Task[T]` against `Awaitable[T]` parameters from inside generic
+    # bodies without falling back on structural inference).
+    def __poll__(self, waker: 'Waker') -> 'Poll[T]': ...
 
 
 @builtin_type("tpy.Waker")
-@native("::tpy::Waker")
+@native("tpy::Waker")
 class Waker:
     """Handle that lets a parked task be re-scheduled.
 
@@ -155,16 +160,14 @@ class Waker:
     POD value type. Late wakes (from a task that completed before wake()
     fires) are silent no-ops via a generation check.
     """
-    @cpp_template("::tpy::Waker{{}}")
     def __init__(self) -> None: ...
 
-    @cpp_template("{self}.wake()")
     @readonly
     def wake(self) -> None: ...
 
 
 @builtin_type("tpy.Poll")
-@native("::tpy::Poll")
+@native("tpy::Poll")
 class Poll[T]:
     """Result of polling an Awaitable: Pending or Ready[T].
 
@@ -172,14 +175,13 @@ class Poll[T]:
     empty. Construct via the module-level `poll_pending[T]()` and
     `poll_ready[T](value)` helpers in `tpy.coro`.
     """
-    @cpp_template("{self}.is_ready()")
     @readonly
     def is_ready(self) -> bool: ...
 
-    @cpp_template("{self}.is_pending()")
     @readonly
     def is_pending(self) -> bool: ...
 
+    # TODO: replace with native?
     @cpp_template("std::move({self}).value()")
     def value(self) -> T: ...
 

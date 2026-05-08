@@ -729,10 +729,15 @@ class TypeOperations:
                 type_subst = {tp: extracted[tp] for tp in record.type_params if tp in extracted}
 
         def _substitute(t: TpyType) -> TpyType:
+            # Propagate the record's class type params into nested
+            # positions: e.g. for Future[Int32].poll's return type
+            # `Poll[T]`, we want `Poll[Int32]`. Recursing here matters
+            # for any generic record whose protocol-conforming method
+            # returns or accepts a compound type wrapping the class T.
             t = unwrap_ref_type(t)
-            if isinstance(t, TypeParamRef) and t.name in type_subst:
-                return type_subst[t.name]
-            return t
+            if not type_subst:
+                return t
+            return self.substitute_types(t, type_subst)
 
         inferred: dict[str, TpyType] = {}
         for method_sig in protocol_info.methods:

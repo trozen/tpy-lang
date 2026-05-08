@@ -31,7 +31,7 @@ struct __coro_inner {
     __coro_inner()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<void> poll(::tpy::Waker waker);
+    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_inner&) {
         return os << "<coroutine inner>";
@@ -51,7 +51,7 @@ struct __coro_outer {
     __coro_outer()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<void> poll(::tpy::Waker waker);
+    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_outer&) {
         return os << "<coroutine outer>";

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def sub() -> Int32:
-::tpy::Poll<int32_t> __coro_sub::poll(::tpy::Waker waker) {
+::tpy::Poll<int32_t> __coro_sub::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -25,10 +25,10 @@ __coro_sub sub() {
 }
 
 // async def caller() -> Int32:
-::tpy::Poll<int32_t> __coro_caller::poll(::tpy::Waker waker) {
+::tpy::Poll<int32_t> __coro_caller::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
-            // t = task_from_sub(sub())
+            // t = task_from_coro(sub())
             t = ::tpy::Task<int32_t>::from_coro(sub());
             // return await t
             __sub_0.emplace(std::move(t));
@@ -37,7 +37,7 @@ __coro_sub sub() {
         [[fallthrough]];
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->poll(waker);
+            auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<int32_t>::pending();
             auto __ret0 = std::move(__r0).value();
             __sub_0.reset();
@@ -57,7 +57,7 @@ __coro_caller caller() {
 }
 
 // async def main_coro() -> None:
-::tpy::Poll<void> __coro_main_coro::poll(::tpy::Waker waker) {
+::tpy::Poll<void> __coro_main_coro::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // result = await caller()
@@ -67,7 +67,7 @@ __coro_caller caller() {
         [[fallthrough]];
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->poll(waker);
+            auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<void>::pending();
             result = std::move(__r0).value();
             __sub_0.reset();
@@ -98,11 +98,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # `await task` -- type-erased await via Task[T]. The Task is constructed
-    // # via the runtime's Task<T>::from_coro factory, exposed here as a
-    // # cpp_template helper since asyncio.create_task lands later.
-    // from tpy.extern import cpp_template
-    // from tpy.coro import Task
+    // from tpy.coro import Task, task_from_coro
     ::tpystd::tpy::__tpy_init();
     ::tpystd::coro::__tpy_init();
     // import asyncio

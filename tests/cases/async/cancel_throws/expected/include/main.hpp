@@ -31,12 +31,15 @@ struct __coro_yield_once {
     __coro_yield_once()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<int32_t> poll(::tpy::Waker waker);
+    ::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_yield_once&) {
         return os << "<coroutine yield_once>";
     }
 };
+
+using ::tpystd::coro::poll_once;
+using ::tpystd::coro::task_poll_cancelled;
 
 void __tpy_init();
 } // namespace tpyapp::main

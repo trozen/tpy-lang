@@ -5366,11 +5366,11 @@ Send/Sync rules for built-in types:
 | `tuple[T1, T2, ...]` | Yes (if all Ti Send) | Yes (if all Ti Sync) | Composite |
 
 - **Working (v1)**: `async`/`await` -> resumable-frame state machines.
-  `async def f() -> T:` lowers to a struct with `poll(Waker) -> Poll<T>`.
+  `async def f() -> T:` lowers to a struct with `__poll__(Waker) -> Poll[T]`.
   `await <call-to-async-def>` inlines the sub-coroutine struct in the
   parent's frame; `await <Task[T]>` / `await <Future[T]>` / `await
-  <user awaitable>` use structural dispatch on a `poll(Waker) -> Poll[T]`
-  method. Value-type awaitables are moved into the frame; reference-type
+  <user awaitable>` use structural dispatch on a `__poll__(Waker) -> Poll[T]`
+  method (dunder name matches `__iter__` / `__hash__` / etc.). Value-type awaitables are moved into the frame; reference-type
   awaitables are stored as borrowed frame pointers so object identity is
   preserved across a suspension. Awaits in non-statement positions (call
   args, BinOps, conditions) are lifted to preceding `__await_lift_<n>`
@@ -5385,9 +5385,17 @@ Send/Sync rules for built-in types:
   wall-clock sleep; `asyncio.create_task(coro)` registers the task with
   the executor for concurrent scheduling and returns a `Task[T]` handle
   (T inferred from the async def's return type) that shares state with
-  the executor; `asyncio.Future[T]` provides manual completion via
-  `set_result` / `set_exception`. Sema rejects
-  user-defined `__await__` and bare-coroutine drops. See
+  the executor; both `asyncio.run` and `asyncio.create_task` require a
+  direct call to a known `async def` in v1 (other awaitables such as
+  `Future` need a coroutine wrapper -- v1.5).
+  `asyncio.Future[T]` provides manual completion via
+  `set_result` / `set_exception`.
+  `tpy.coro.poll_once(aw)` is a synchronous one-step driver useful for
+  tests and non-asyncio contexts; sema-types `f()` (for `async def f`)
+  as `Awaitable[T]` so generic helpers expecting `Awaitable[T]` accept
+  coroutine calls directly (mirrors how generators surface as
+  `Iterator[T]`).
+  Sema rejects user-defined `__await__` and bare-coroutine drops. See
   `docs/ASYNC_DESIGN.md` and `docs/ASYNC_PROGRESS.md`.
   At `asyncio.run` exit, remaining spawned tasks are cancelled and
   drained so wrapper-try `finally` blocks run for fire-and-forget

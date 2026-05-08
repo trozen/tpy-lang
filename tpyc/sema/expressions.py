@@ -2082,9 +2082,17 @@ class ExpressionAnalyzer:
         if async_fi is not None:
             # Recursively analyze the operand call (validates arg types).
             self.analyze_expr(operand)
-            from ..typesys import unwrap_ref_type
+            from ..typesys import unwrap_ref_type, NominalType
             expr.awaited_async_func_name = async_fi.name
-            return unwrap_ref_type(async_fi.return_type)
+            # async_fi.return_type is Awaitable[T]; the user-visible await
+            # result is T (the protocol's type arg).
+            from .. import qnames
+            ret = unwrap_ref_type(async_fi.return_type)
+            if (isinstance(ret, NominalType)
+                    and ret.qualified_name() == qnames.AWAITABLE
+                    and len(ret.type_args) == 1):
+                return ret.type_args[0]
+            return ret
 
         # Type-erased path: analyze operand. Supported v1 erased forms:
         #   - tpy.Task[T]            (heap-erased coroutine frame)
@@ -2105,7 +2113,7 @@ class ExpressionAnalyzer:
         raise self.ctx.error(
             "await operand must be a direct call to an async def, a "
             "Task[T] / Future[T], or a value of a type with a "
-            "`poll(self, waker: Waker) -> Poll[T]` method",
+            "`__poll__(self, waker: Waker) -> Poll[T]` method",
             expr)
 
     def _extract_awaitable_inner(self, typ) -> 'TpyType | None':
@@ -2115,9 +2123,9 @@ class ExpressionAnalyzer:
         Handles the v1 known awaitable shapes:
           - tpy.Task[T]                 -> T
           - tpy.* generic with type_args, qname starting with `asyncio.`
-            and a `poll(Waker) -> Poll[T]` method on its record.
-          - Any user record with a `poll(self, waker: Waker) -> Poll[T]`
-            method (structural Awaitable conformance).
+            and a `__poll__(Waker) -> Poll[T]` method on its record.
+          - Any user record with `__poll__(self, waker: Waker) -> Poll[T]`
+            (structural Awaitable conformance).
         """
         from ..typesys import NominalType, TpyType as _TpyType
         # Direct Task[T] match.
@@ -2125,12 +2133,12 @@ class ExpressionAnalyzer:
                 and len(typ.type_args) == 1
                 and isinstance(typ.type_args[0], _TpyType)):
             return typ.type_args[0]
-        # Structural: look up the record and check for a poll method
+        # Structural: look up the record and check for a __poll__ method
         # whose signature matches Awaitable[T].
         record_info = self.ctx.registry.get_record_for_type(typ)
         if record_info is None:
             return None
-        poll_overloads = record_info.get_method_overloads("poll")
+        poll_overloads = record_info.get_method_overloads("__poll__")
         if not poll_overloads:
             return None
         # Pick the first overload whose return type is Poll[T] for some T.
@@ -2167,7 +2175,7 @@ class ExpressionAnalyzer:
         from ..parse.nodes import TpyCall
         if not isinstance(operand, TpyCall):
             return None
-        func_name = getattr(operand, "func_name", None)
+        func_name = operand.maybe_func_name
         if not func_name:
             return None
         overloads = self.ctx.registry.get_function(func_name)

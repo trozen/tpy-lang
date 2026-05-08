@@ -2530,6 +2530,18 @@ def make_poll(awaited_type: 'TpyType') -> 'NominalType':
                        _module_qname="tpy.Poll")
 
 
+def make_awaitable(awaited_type: 'TpyType') -> 'NominalType':
+    """Factory for the structural protocol Awaitable[T] (tpy.coro.Awaitable).
+    Used as the sema-visible return type of `async def f() -> T` so that
+    callers expecting `Awaitable[T]` can match the call result; codegen
+    still emits a concrete `__coro_<funcname>` struct (mirrors generator
+    `Iterator[T]` return + concrete `__gen_<funcname>` factory)."""
+    from tpyc import qnames
+    return NominalType(name="Awaitable", type_args=(awaited_type,),
+                       is_protocol=True,
+                       _module_qname=qnames.AWAITABLE)
+
+
 # Singleton for the non-generic Waker type. Registered as a value-type
 # nominal so user code can declare `def poll(self, w: Waker) -> Poll[T]`.
 WAKER = NominalType(name="Waker", type_args=(),

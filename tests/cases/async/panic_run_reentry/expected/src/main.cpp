@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def inner() -> None:
-::tpy::Poll<void> __coro_inner::poll(::tpy::Waker waker) {
+::tpy::Poll<void> __coro_inner::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -26,7 +26,7 @@ __coro_inner inner() {
 }
 
 // async def outer() -> None:
-::tpy::Poll<void> __coro_outer::poll(::tpy::Waker waker) {
+::tpy::Poll<void> __coro_outer::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {

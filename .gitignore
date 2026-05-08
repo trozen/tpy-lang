@@ -19,3 +19,4 @@ __tpyc__/
 
 /tmp
 *.gch
+.gitr/

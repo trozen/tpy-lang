@@ -346,6 +346,15 @@ class TpyCall(TpyExpr):
         assert isinstance(self.func, TpyName), f"func_name on non-Name callee: {type(self.func).__name__}"
         return self.func.name
 
+    @property
+    def maybe_func_name(self) -> str | None:
+        """Name of the callee, or None if the callee isn't a TpyName
+        (subscript-callee `arr[0]()`, expression callee `(get())()` etc.).
+        Use when probing whether a TpyCall targets a known free function
+        without first narrowing the callee shape.
+        """
+        return self.func.name if isinstance(self.func, TpyName) else None
+
     def children(self) -> list[TpyExpr]:
         if self.macro_expansion is not None:
             return [self.macro_expansion]

@@ -1198,6 +1198,10 @@ class MethodAnalyzer:
                                     type_args=expr.type_args,
                                     type_args_parse_error=expr.type_args_parse_error,
                                     loc=expr.loc)
+                from .. import qnames
+                _qname = f"{module_name}.{expr.method}"
+                if _qname in (qnames.ASYNCIO_RUN, qnames.ASYNCIO_CREATE_TASK):
+                    self.calls._require_async_def_call_arg(temp_call, _qname)
                 if overloads[0].special_handling:
                     result = self.calls._analyze_special_builtin(temp_call, overloads)
                 else:
@@ -1263,28 +1267,6 @@ class MethodAnalyzer:
             if macro_fn is not None:
                 return self.calls._expand_call_macro_from_method(
                     expr, macro_fn, ult_mod, ult_name)
-
-        # Special-case asyncio.create_task (no module-function stub since
-        # it requires custom inference -- see _analyze_asyncio_create_task).
-        if module_name == "asyncio" and expr.method == "create_task":
-            expr.builtin_module_call = module_name
-            temp_call = TpyCall(
-                func=TpyName(expr.method, loc=expr.loc),
-                args=expr.args, kwargs=expr.kwargs,
-                type_args=expr.type_args,
-                type_args_parse_error=expr.type_args_parse_error,
-                loc=expr.loc)
-            result = self.calls._analyze_asyncio_create_task(temp_call)
-            expr.args = temp_call.args
-            expr.kwargs = temp_call.kwargs
-            expr.resolved_function_info = temp_call.resolved_function_info
-            # Propagate the special markers used by codegen.
-            for attr in ("async_create_task_inner_func",
-                         "async_create_task_inner_T_cpp"):
-                v = getattr(temp_call, attr, None)
-                if v is not None:
-                    setattr(expr, attr, v)
-            return result
 
         raise self.ctx.error(f"Module '{module_name}' has no function '{expr.method}'", expr)
 

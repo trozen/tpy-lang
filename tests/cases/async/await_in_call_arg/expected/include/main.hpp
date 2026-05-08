@@ -31,7 +31,7 @@ struct __coro_get_val {
     __coro_get_val()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<int32_t> poll(::tpy::Waker waker);
+    ::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_get_val&) {
         return os << "<coroutine get_val>";
@@ -57,7 +57,7 @@ struct __coro_main_coro {
     __coro_main_coro()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<void> poll(::tpy::Waker waker);
+    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {
         return os << "<coroutine main_coro>";

@@ -31,7 +31,7 @@ struct __coro_compute {
     __coro_compute()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<::tpy::BigInt> poll(::tpy::Waker waker);
+    ::tpy::Poll<::tpy::BigInt> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_compute&) {
         return os << "<coroutine compute>";

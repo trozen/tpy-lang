@@ -566,27 +566,22 @@ binding work:
   `Future[T]` / `InvalidStateError`). Fix: order the builtin
   registration before sub-module compilation, or expose copy-like
   builtins via a path that's resolvable from sub-modules.
-- **`tpy.coro.poll_once` adoption in tests**. The helper is shipped in
-  `lib/tpy/tpy/coro/__init__.py` (real-body TPy + a CPython stub at
-  `lib/cpy/tpy/coro/__init__.py` that drives via `.send(None)`), but
-  tests can't yet replace their `cpp_template("...caller().poll(
-  Waker{}).value()")` boilerplate with `poll_once(caller())` because
-  of two stacked sema/codegen gaps:
-  1. `f()` for `async def f() -> T` is sema-typed as `T` (the eventual
-     await result), not the coroutine struct. So when `poll_once`
-     expects `Awaitable[T]`, the arg type doesn't conform. Fix: sema
-     should give async-def calls the coroutine-struct type for
-     non-await contexts, with the existing consume-tracker enforcing
-     single-use.
-  2. Protocol-monomorphization of `poll_once[T](aw: Awaitable[T])`
-     emits a two-template-parameter C++ signature (T + a deducible
-     T_aw). With explicit T (`poll_once[Int32](a)`) the call site
-     provides only one explicit argument, which gcc rejects ("wrong
-     number of template arguments"). Fix: codegen the call-site to
-     omit T (deduce from arg's poll return type) or pass both
-     explicitly.
-  Until both fix, tests stay on the cpp_template pattern;
-  `tpy.coro.poll_once` is shipped API surface waiting for adoption.
+- **`tpy.coro.poll_once`** -- shipped. Real TPy body
+  `def poll_once[T](aw: Awaitable[T]) -> Poll[T]: return aw.poll(Waker())`
+  in `lib/tpy/tpy/coro/__init__.py`, plus a CPython stub at
+  `lib/cpy/tpy/coro/__init__.py` that drives CPython coroutines via
+  `.send(None) -> StopIteration` and delegates to `aw.poll(Waker())`
+  for hand-rolled awaitables. Adopted in `no_await_async`,
+  `await_assign`, and `handwritten_awaitable` test cases (replaced
+  `cpp_template` boilerplate). Two compiler gaps that had blocked it
+  are now fixed:
+  - `f()` for `async def f() -> T` sema-types as `Awaitable[T]`
+    (mirrors `Iterator[T]` for generators), so structural matching
+    against an `Awaitable[T]` parameter works without per-call
+    special-cases.
+  - Implicit T inference for protocol-typed args recurses substitution
+    into compound positions
+    (`_infer_protocol_type_arg_structurally`).
 
 ## Decisions taken
 

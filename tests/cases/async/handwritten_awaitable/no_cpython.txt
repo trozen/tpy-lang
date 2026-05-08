@@ -1,1 +1,0 @@
-Hand-written awaitable uses cpp_template to drive; no CPython equivalent without poll_once monomorphization fix.

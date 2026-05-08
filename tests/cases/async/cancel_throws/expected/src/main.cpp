@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def yield_once() -> Int32:
-::tpy::Poll<int32_t> __coro_yield_once::poll(::tpy::Waker waker) {
+::tpy::Poll<int32_t> __coro_yield_once::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // await asyncio.sleep(60.0)
@@ -15,7 +15,7 @@ namespace tpyapp::main {
         [[fallthrough]];
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->poll(waker);
+            auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<int32_t>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
@@ -34,22 +34,19 @@ __coro_yield_once yield_once() {
     return __coro_yield_once();
 }
 
-
-
-
 // def main() -> None:
 void main() {
-    // t: Task[Int32] = make_task(yield_once())
+    // t: Task[Int32] = task_from_coro(yield_once())
     ::tpy::Task<int32_t> t = ::tpy::Task<int32_t>::from_coro(yield_once());
-    // if poll_pending(t):
-    if ((t).poll(::tpy::Waker{}).is_pending()) {
+    // if poll_once(t).is_pending():
+    if (::tpystd::coro::poll_once<int32_t>(t).is_pending()) {
         // print("first-poll-pending")
         std::cout << "first-poll-pending" << "\n";
     }
-    // cancel_task(t)
-    (t).cancel();
-    // if poll_expecting_cancel(t):
-    if (::tpy::task_poll_cancelled(t)) {
+    // t.cancel()
+    t.cancel();
+    // if task_poll_cancelled(t):
+    if (::tpystd::coro::task_poll_cancelled<int32_t>(t)) {
         // print("got-cancelled")
         std::cout << "got-cancelled" << "\n";
     }
@@ -62,8 +59,7 @@ void __tpy_init() {
 
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tpy.extern import cpp_template
-    // from tpy.coro import Task
+    // from tpy.coro import Task, task_from_coro, task_poll_cancelled, poll_once
     ::tpystd::tpy::__tpy_init();
     ::tpystd::coro::__tpy_init();
     // main()

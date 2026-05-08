@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def sub() -> Int32:
-::tpy::Poll<int32_t> __coro_sub::poll(::tpy::Waker waker) {
+::tpy::Poll<int32_t> __coro_sub::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -25,7 +25,7 @@ __coro_sub sub() {
 }
 
 // async def caller() -> Int32:
-::tpy::Poll<int32_t> __coro_caller::poll(::tpy::Waker waker) {
+::tpy::Poll<int32_t> __coro_caller::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // return await sub()
@@ -35,7 +35,7 @@ __coro_sub sub() {
         [[fallthrough]];
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->poll(waker);
+            auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<int32_t>::pending();
             auto __ret0 = std::move(__r0).value();
             __sub_0.reset();
@@ -54,11 +54,11 @@ __coro_caller caller() {
     return __coro_caller();
 }
 
-
 // def main() -> None:
 void main() {
-    // print(drive_caller())
-    std::cout << std::move(::tpyapp::main::caller().poll(::tpy::Waker{})).value() << "\n";
+    // print(poll_once(caller()).value())
+    auto __tmp_1 = caller();
+    std::cout << std::move(::tpystd::coro::poll_once<int32_t>(__tmp_1)).value() << "\n";
 }
 
 void __tpy_init() {
@@ -66,8 +66,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # `return await sub()` -- the await result returns directly without binding.
-    // from tpy.extern import cpp_template
+    // from tpy.coro import poll_once
+    ::tpystd::tpy::__tpy_init();
+    ::tpystd::coro::__tpy_init();
     // main()
     main();
 }

@@ -77,7 +77,7 @@ class AwaitTransition:
         [[fallthrough]];
     at the end of region i, and:
         if (__cancel_pending) ...;
-        auto __r = __sub_<i>->poll(waker);
+        auto __r = __sub_<i>->__poll__(waker);
         if (__r.is_pending()) return Poll<T>::pending();
         <bind step from kind>
         __sub_<i>.reset();
@@ -714,8 +714,9 @@ class AsyncCoroCodegen:
         out.write(f"{INDENT}{struct_name}({ctor_param_list})\n")
         out.write(f"{INDENT}{INDENT}: {', '.join(init_parts)} {{}}\n\n")
 
-        # poll() forward declaration.
-        out.write(f"{INDENT}{self._poll_ret_cpp(func)} poll(::tpy::Waker waker);\n")
+        # __poll__() forward declaration -- the structural-Awaitable
+        # method (matches `tpy.coro.Awaitable.__poll__`).
+        out.write(f"{INDENT}{self._poll_ret_cpp(func)} __poll__(::tpy::Waker waker);\n")
 
         # __finally_top() forward declaration -- v1's wrapper-try-finally
         # support emits the source-level `finally:` body as a private
@@ -807,7 +808,7 @@ class AsyncCoroCodegen:
 
         self.ctx.emit_source_comment(out, func.loc)
         self._emit_template_header(out, func)
-        out.write(f"{self._poll_ret_cpp(func)} {struct_name}::poll(::tpy::Waker waker) {{\n")
+        out.write(f"{self._poll_ret_cpp(func)} {struct_name}::__poll__(::tpy::Waker waker) {{\n")
         if not transitions:
             # No awaits: waker unused. Generators emit (void)waker for the
             # same reason; reuse the pattern.
@@ -1025,7 +1026,7 @@ class AsyncCoroCodegen:
         out.write(f"{indent}if (__cancel_pending) {{ "
                   f"__cancel_pending = false; "
                   f"throw ::tpy::CancelledError(); }}\n")
-        out.write(f"{indent}auto __r{t.suspension_index} = {sub}->poll(waker);\n")
+        out.write(f"{indent}auto __r{t.suspension_index} = {sub}->__poll__(waker);\n")
         out.write(f"{indent}if (__r{t.suspension_index}.is_pending()) "
                   f"return {ret_cpp}::pending();\n")
         # Bind result based on the kind.

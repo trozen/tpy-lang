@@ -4,6 +4,7 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
 
 namespace tpyapp::main {
 
@@ -29,7 +30,7 @@ struct __coro_sub {
     __coro_sub()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<int32_t> poll(::tpy::Waker waker);
+    ::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_sub&) {
         return os << "<coroutine sub>";
@@ -51,12 +52,14 @@ struct __coro_caller {
     __coro_caller()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<int32_t> poll(::tpy::Waker waker);
+    ::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_caller&) {
         return os << "<coroutine caller>";
     }
 };
+
+using ::tpystd::coro::poll_once;
 
 void __tpy_init();
 } // namespace tpyapp::main

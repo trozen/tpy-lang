@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def grandchild() -> Int32:
-::tpy::Poll<int32_t> __coro_grandchild::poll(::tpy::Waker waker) {
+::tpy::Poll<int32_t> __coro_grandchild::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // await asyncio.sleep(0.001)
@@ -15,7 +15,7 @@ namespace tpyapp::main {
         [[fallthrough]];
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->poll(waker);
+            auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<int32_t>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
@@ -35,7 +35,7 @@ __coro_grandchild grandchild() {
 }
 
 // async def child() -> Int32:
-::tpy::Poll<int32_t> __coro_child::poll(::tpy::Waker waker) {
+::tpy::Poll<int32_t> __coro_child::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // g: Task[Int32] = asyncio.create_task(grandchild())
@@ -47,7 +47,7 @@ __coro_grandchild grandchild() {
         [[fallthrough]];
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->poll(waker);
+            auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<int32_t>::pending();
             __await_lift_0 = std::move(__r0).value();
             __sub_0.reset();
@@ -67,7 +67,7 @@ __coro_child child() {
 }
 
 // async def main_coro() -> None:
-::tpy::Poll<void> __coro_main_coro::poll(::tpy::Waker waker) {
+::tpy::Poll<void> __coro_main_coro::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // c: Task[Int32] = asyncio.create_task(child())
@@ -79,7 +79,7 @@ __coro_child child() {
         [[fallthrough]];
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->poll(waker);
+            auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<void>::pending();
             __await_lift_0 = std::move(__r0).value();
             __sub_0.reset();

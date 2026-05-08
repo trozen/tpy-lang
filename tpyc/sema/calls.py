@@ -863,8 +863,9 @@ class CallAnalyzer:
                         return self._analyze_tpy_own_iter(expr)
                     if qname == "tpy.try_parse":
                         return self._analyze_tpy_try_parse(expr)
-                    if qname == "asyncio.create_task":
-                        return self._analyze_asyncio_create_task(expr)
+                    if qname in (qnames.ASYNCIO_CREATE_TASK, qnames.ASYNCIO_RUN):
+                        self._require_async_def_call_arg(expr, qname)
+                        # falls through to normal cpp_template lowering
                     if qname == "builtins.isinstance":
                         return self._analyze_isinstance(expr)
                     if qname == "builtins.super":
@@ -1380,59 +1381,24 @@ class CallAnalyzer:
             return module_info.functions[func_name]
         return None
 
-    def _analyze_asyncio_create_task(self, expr: TpyCall) -> TpyType:
-        """Analyze asyncio.create_task(coro) -> Task[T].
-
-        v1 inferred form: the arg must be a direct call to a known async
-        def, and T is the async def's declared return type. The arg
-        consumes the coroutine value (passes ownership to the Task).
-        Codegen emits ::tpy::Task<T>::from_coro(coro) via a special
-        cpp_template path.
-
-        TODO(remove ASAP): this special-case exists only because
-        `async def f() -> T` makes `f()` sema-typed as `T` rather than
-        the generated coroutine struct (see BUGS.md "async def f()
-        ... makes f() sema-typed as T"). Once that sema bug is fixed,
-        `asyncio.create_task` collapses to a one-line `@cpp_template`
-        stub and this method (plus the corresponding
-        `methods.py:1267` special-case) goes away.
+    def _require_async_def_call_arg(self, expr: TpyCall, qname: str) -> None:
+        """v1: `asyncio.run` / `asyncio.create_task` accept only a direct
+        call to a known async def. Other Awaitables (Future, Task, custom)
+        match the cpp_template's `Awaitable[T]` parameter at sema, but the
+        C++ helpers assume a coroutine struct (touch `__cancel_pending` /
+        emit a Poll-deducing `decltype` of the awaited value). Reject at
+        sema with a clear diagnostic instead of letting the C++ build
+        fail with a template error.
         """
-        self._reject_kwargs_for_builtin(expr, "create_task")
         if len(expr.args) != 1:
-            raise self.ctx.error(
-                "asyncio.create_task() takes exactly 1 argument", expr)
-        arg = expr.args[0]
-        # Resolve the inner async def call.
-        async_fi = self.expr._resolve_call_to_async_def(arg)
-        if async_fi is None:
-            raise self.ctx.error(
-                "asyncio.create_task() requires a direct call to an async "
-                "def in v1; pass `f(...)` where `f` is `async def f(...) -> T`",
-                expr)
-        # Analyze the arg call (validates arg types). The bare async-call
-        # check at statement analysis would normally reject this, but we
-        # only reach this path because the call is wrapped in
-        # asyncio.create_task(...) -- the receiver consumes the coroutine.
-        self.expr.analyze_expr(arg)
-        from ..typesys import unwrap_ref_type, make_task
-        ret_t = unwrap_ref_type(async_fi.return_type)
-        task_type = make_task(ret_t)
-        expr.resolved_function_info = FunctionInfo(
-            name="create_task",
-            params=[ParamInfo("coro", ret_t)],  # illustrative
-            return_type=task_type,
-            is_readonly=False,
-            is_builtin_function=True,
-            qualified_name="asyncio.create_task",
-            special_handling=True,
-        )
-        # Mark the arg call so codegen emits the right cpp expression.
-        # We piggyback on the existing inline-await machinery -- the
-        # async-def call's args feed the sub-coro struct's ctor; codegen
-        # for create_task wraps that in Task<T>::from_coro.
-        expr.async_create_task_inner_func = async_fi.name
-        expr.async_create_task_inner_T_cpp = ret_t.to_cpp()
-        return task_type
+            return  # arity error will be reported by normal resolution
+        if self.expr._resolve_call_to_async_def(expr.args[0]) is not None:
+            return
+        short_name = qname.split(".", 1)[1]
+        raise self.ctx.error(
+            f"asyncio.{short_name}() requires a direct call to an async "
+            f"def in v1; pass `f(...)` where `f` is `async def f(...) -> T`",
+            expr)
 
     def _analyze_tpy_copy(self, expr: TpyCall) -> TpyType:
         """Analyze a call to tpy.copy() - explicit copy for ownership transfer.

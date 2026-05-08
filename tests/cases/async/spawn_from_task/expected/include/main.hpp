@@ -35,7 +35,7 @@ struct __coro_grandchild {
     __coro_grandchild()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<int32_t> poll(::tpy::Waker waker);
+    ::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_grandchild&) {
         return os << "<coroutine grandchild>";
@@ -59,7 +59,7 @@ struct __coro_child {
     __coro_child()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<int32_t> poll(::tpy::Waker waker);
+    ::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_child&) {
         return os << "<coroutine child>";
@@ -83,7 +83,7 @@ struct __coro_main_coro {
     __coro_main_coro()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<void> poll(::tpy::Waker waker);
+    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {
         return os << "<coroutine main_coro>";

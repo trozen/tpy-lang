@@ -2408,10 +2408,21 @@ class TypeRegistrar:
                             )
             param_infos.append(ParamInfo(func.kwarg_name, resolved_kwarg_type))
 
+        # async def f() -> T: callers see Awaitable[T] (mirrors how
+        # generators surface as Iterator[T]). The user's T stays on the
+        # AST node (`func.return_type` at line 2531 below) so codegen and
+        # the body-return checker keep seeing T; the FunctionInfo carries
+        # Awaitable[T] so structural matching at call sites (poll_once(f()),
+        # `await f()`, etc.) works through the protocol machinery.
+        if func.is_async:
+            from ..typesys import make_awaitable
+            fi_return_type = make_awaitable(resolved_return)
+        else:
+            fi_return_type = resolved_return
         info = FunctionInfo(
             name=func.name,
             params=param_infos,
-            return_type=resolved_return,
+            return_type=fi_return_type,
             is_noalloc=func.is_noalloc,
             is_readonly=func.is_readonly or func.is_pure,
             is_pure=func.is_pure,

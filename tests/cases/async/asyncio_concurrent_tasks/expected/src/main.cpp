@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def doubler(n: Int32, label: str) -> Int32:
-::tpy::Poll<int32_t> __coro_doubler::poll(::tpy::Waker waker) {
+::tpy::Poll<int32_t> __coro_doubler::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // print(label, "pre")
@@ -17,7 +17,7 @@ namespace tpyapp::main {
         [[fallthrough]];
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->poll(waker);
+            auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<int32_t>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
@@ -39,7 +39,7 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
 }
 
 // async def main_coro() -> None:
-::tpy::Poll<void> __coro_main_coro::poll(::tpy::Waker waker) {
+::tpy::Poll<void> __coro_main_coro::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // t1: Task[Int32] = asyncio.create_task(doubler(Int32(5), "t1"))
@@ -53,7 +53,7 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
         [[fallthrough]];
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->poll(waker);
+            auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<void>::pending();
             a = std::move(__r0).value();
             __sub_0.reset();
@@ -64,7 +64,7 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
         [[fallthrough]];
     case S_AFTER_AWAIT_1: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r1 = __sub_1->poll(waker);
+            auto __r1 = __sub_1->__poll__(waker);
             if (__r1.is_pending()) return ::tpy::Poll<void>::pending();
             b = std::move(__r1).value();
             __sub_1.reset();

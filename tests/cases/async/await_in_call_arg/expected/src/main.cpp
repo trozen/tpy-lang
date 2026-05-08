@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def get_val() -> Int32:
-::tpy::Poll<int32_t> __coro_get_val::poll(::tpy::Waker waker) {
+::tpy::Poll<int32_t> __coro_get_val::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -25,7 +25,7 @@ __coro_get_val get_val() {
 }
 
 // async def main_coro() -> None:
-::tpy::Poll<void> __coro_main_coro::poll(::tpy::Waker waker) {
+::tpy::Poll<void> __coro_main_coro::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // print(await get_val())  # await in argument position
@@ -35,7 +35,7 @@ __coro_get_val get_val() {
         [[fallthrough]];
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->poll(waker);
+            auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<void>::pending();
             __await_lift_0 = std::move(__r0).value();
             __sub_0.reset();
@@ -48,7 +48,7 @@ __coro_get_val get_val() {
         [[fallthrough]];
     case S_AFTER_AWAIT_1: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r1 = __sub_1->poll(waker);
+            auto __r1 = __sub_1->__poll__(waker);
             if (__r1.is_pending()) return ::tpy::Poll<void>::pending();
             __await_lift_1 = std::move(__r1).value();
             __sub_1.reset();

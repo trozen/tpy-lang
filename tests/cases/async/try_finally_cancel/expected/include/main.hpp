@@ -31,13 +31,16 @@ struct __coro_coro {
     __coro_coro()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<int32_t> poll(::tpy::Waker waker);
+    ::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
     void __finally_top();
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_coro&) {
         return os << "<coroutine coro>";
     }
 };
+
+using ::tpystd::coro::poll_once;
+using ::tpystd::coro::task_poll_cancelled;
 
 void __tpy_init();
 } // namespace tpyapp::main

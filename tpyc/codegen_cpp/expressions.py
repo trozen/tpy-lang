@@ -2281,16 +2281,6 @@ class ExpressionGenerator:
                 # own_iter(x) - move container into OwnIter for consuming iteration
                 if module_name == "tpy" and func_name == "own_iter":
                     return self._gen_own_iter_expr(expr.args[0])
-                # asyncio.create_task(coro) -> ::tpy::make_user_task<T>(coro)
-                # (the helper runs the "no running event loop" guard).
-                if module_name == "asyncio" and func_name == "create_task":
-                    inner_T_cpp = getattr(expr, "async_create_task_inner_T_cpp", None)
-                    if inner_T_cpp is None:
-                        from .context import CodeGenError
-                        raise CodeGenError(
-                            "asyncio.create_task: missing inner-T cpp", loc=None)
-                    arg_cpp = self.gen_expr(expr.args[0])
-                    return f"::tpy::make_user_task<{inner_T_cpp}>({arg_cpp})"
                 # Check for module function
                 module_info = self.ctx.analyzer.registry.get_module(module_name)
                 if module_info and func_name in module_info.functions:
@@ -2835,15 +2825,6 @@ class ExpressionGenerator:
             # own_iter() - move container into OwnIter
             if module_name == "tpy" and expr.method == "own_iter":
                 return self._gen_own_iter_expr(expr.args[0])
-            # asyncio.create_task(coro) -> ::tpy::make_user_task<T>(coro)
-            if module_name == "asyncio" and expr.method == "create_task":
-                inner_T_cpp = getattr(expr, "async_create_task_inner_T_cpp", None)
-                if inner_T_cpp is None:
-                    from .context import CodeGenError
-                    raise CodeGenError(
-                        "asyncio.create_task: missing inner-T cpp", loc=None)
-                arg_cpp = self.gen_expr(expr.args[0])
-                return f"::tpy::make_user_task<{inner_T_cpp}>({arg_cpp})"
             # Special-handling functions with cpp_template resolved by sema
             fi = expr.resolved_function_info
             if fi and fi.special_handling and fi.cpp_template:

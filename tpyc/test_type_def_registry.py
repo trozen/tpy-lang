@@ -1268,7 +1268,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
         is_dynamic=False, is_marker=False, is_readonly=False,
         cpp_concept=None,
         type_params=("T",), parent_protocols=(),
-        methods=("poll",),
+        methods=("__poll__",),
     ),
     "tpy.Truthy": dict(
         name="Truthy", module="tpy",

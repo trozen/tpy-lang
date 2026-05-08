@@ -10,14 +10,17 @@ Provides:
   * `asyncio.Future[T]` -- single-awaiter manual-completion awaitable.
 
 The CPython phase falls through to CPython's own `asyncio` module (this
-file is not under `lib/cpy/`); on the TPy compile path the cpp_template
-functions lower to helpers in `runtime/cpp/include/tpy/async.hpp`.
+file is not under `lib/cpy/`); on the TPy compile path the bindings
+lower to helpers in `runtime/cpp/include/tpy/async.hpp`. `@native` is
+used for non-template bridges; `@cpp_template` only where the C++ side
+is a function template that needs per-call-site instantiation
+(`async_run`, `Task<void>::from_coro`, `make_user_task`).
 """
 from builtins import BaseException, Exception
-from tpy.extern import cpp_template
+from tpy.extern import cpp_template, native
 from tpy import Own, CancelledError
 from tpy.coro import (
-    Task, Waker, Poll,
+    Task, Waker, Poll, Awaitable,
     poll_ready, poll_pending, poll_ready_none,
 )
 from tpy.mem import UninitArrayStorage
@@ -25,14 +28,15 @@ from time import monotonic
 
 
 # Run a coroutine to completion. Drives the executor's timer heap.
+# TODO: replace with native?
 @cpp_template("::tpy::async_run({0})")
-def run[T](coro: T) -> T: ...
+def run[T](coro: Awaitable[T]) -> T: ...
 
 
 # Bridge: register a steady-clock-seconds deadline with the running
 # executor. No-op if no executor is running (so hand-rolled awaitables
 # polled from a test harness without `asyncio.run` don't crash).
-@cpp_template("::tpy::executor_register_timer_seconds({0}, {1})")
+@native("tpy::executor_register_timer_seconds")
 def _register_timer_at(deadline_seconds: float, waker: Waker) -> None: ...
 
 
@@ -59,7 +63,7 @@ class SleepFuture:
         self.registered = False
         self.__cancel_pending = False
 
-    def poll(self, waker: Waker) -> Poll[None]:
+    def __poll__(self, waker: Waker) -> Poll[None]:
         if self.__cancel_pending:
             self.__cancel_pending = False
             raise CancelledError()
@@ -78,13 +82,10 @@ def sleep(seconds: float) -> Task[None]:
     return _task_void_from_coro(SleepFuture(seconds))
 
 
-# `asyncio.create_task(coro())` is recognized as a builtin by sema
-# (`tpyc/sema/calls.py:_analyze_asyncio_create_task`) -- the inner
-# async-def call is consumed and the result is `Task[T]` with T
-# inferred from the async def's return type. Codegen lowers it to
-# `::tpy::make_user_task<T>(coro)`, which registers the task with the
-# current executor for concurrent scheduling and returns a Task<T>
-# sharing the same TaskState.
+# Spawn `coro` on the current executor and return a Task[T] handle.
+# The C++ helper (`make_user_task`) panics if no event loop is running.
+@cpp_template("::tpy::make_user_task<{T}>({0})")
+def create_task[T](coro: Awaitable[T]) -> Task[T]: ...
 
 
 class InvalidStateError(Exception):
@@ -151,7 +152,7 @@ class Future[T]:
             self._waiter.wake()
             self._has_waiter = False
 
-    def poll(self, waker: Waker) -> Poll[T]:
+    def __poll__(self, waker: Waker) -> Poll[T]:
         if self._done:
             if self._exception is not None:
                 raise self._exception

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def background() -> None:
-::tpy::Poll<void> __coro_background::poll(::tpy::Waker waker) {
+::tpy::Poll<void> __coro_background::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             try {
@@ -22,7 +22,7 @@ namespace tpyapp::main {
     case S_AFTER_AWAIT_0: {
             try {
                 if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-                auto __r0 = __sub_0->poll(waker);
+                auto __r0 = __sub_0->__poll__(waker);
                 if (__r0.is_pending()) return ::tpy::Poll<void>::pending();
                 (void)std::move(__r0).value();
                 __sub_0.reset();
@@ -53,7 +53,7 @@ __coro_background background() {
 }
 
 // async def main_coro() -> None:
-::tpy::Poll<void> __coro_main_coro::poll(::tpy::Waker waker) {
+::tpy::Poll<void> __coro_main_coro::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {

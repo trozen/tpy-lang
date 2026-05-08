@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def f() -> Int32:
-::tpy::Poll<int32_t> __coro_f::poll(::tpy::Waker waker) {
+::tpy::Poll<int32_t> __coro_f::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -24,11 +24,11 @@ __coro_f f() {
     return __coro_f();
 }
 
-
 // def main() -> None:
 void main() {
-    // print(drive_f())
-    std::cout << std::move(::tpyapp::main::f().poll(::tpy::Waker{})).value() << "\n";
+    // print(poll_once(f()).value())
+    auto __tmp_1 = f();
+    std::cout << std::move(::tpystd::coro::poll_once<int32_t>(__tmp_1)).value() << "\n";
 }
 
 void __tpy_init() {
@@ -36,9 +36,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Smallest async def: no awaits, single state. Compiles to a struct with
-    // # poll() that sets state to DONE on first call and returns Poll::ready(value).
-    // from tpy.extern import cpp_template
+    // from tpy.coro import poll_once
+    ::tpystd::tpy::__tpy_init();
+    ::tpystd::coro::__tpy_init();
     // main()
     main();
 }

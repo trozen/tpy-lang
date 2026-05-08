@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def background(done: Future[Int32]) -> None:
-::tpy::Poll<void> __coro_background::poll(::tpy::Waker waker) {
+::tpy::Poll<void> __coro_background::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -28,7 +28,7 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
 }
 
 // async def main_coro() -> None:
-::tpy::Poll<void> __coro_main_coro::poll(::tpy::Waker waker) {
+::tpy::Poll<void> __coro_main_coro::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // done: Future[Int32] = Future[Int32]()
@@ -45,7 +45,7 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
         [[fallthrough]];
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->poll(waker);
+            auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<void>::pending();
             _ = std::move(__r0).value();
             __sub_0 = nullptr;

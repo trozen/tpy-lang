@@ -6,10 +6,13 @@
  * handled), so it is not defined here.
  *
  * The `Awaitable` contract: a type T is awaitable iff it has a method
- *   tpy::Poll<U> poll(tpy::Waker w);
- * for some U. `await x` lowers to a sequence of poll calls; each call
+ *   tpy::Poll<U> __poll__(tpy::Waker w);
+ * for some U. `await x` lowers to a sequence of __poll__ calls; each call
  * returns either Poll::pending() (the awaiting frame parks) or
- * Poll::ready(value) (the value is consumed).
+ * Poll::ready(value) (the value is consumed). The dunder name matches
+ * how other TPy/typing structural protocols spell their required
+ * methods (`__iter__`, `__hash__`, `__lt__`, ...) and signals "runtime
+ * protocol method -- prefer `await` / `poll_once` to direct calls".
  *
  * Cancellation flows through the standard C++ exception path:
  * Task::cancel() flags the frame; the next poll throws CancelledError
@@ -165,6 +168,34 @@ public:
     }
 };
 
+// Stream insertion for the user-facing async types -- enables
+// print(x) / REPL auto-echo. Without these, any expression-statement
+// in the REPL whose value is a Poll / Waker / Task fails C++ build at
+// the implicit `std::cout << result` site.
+
+// Poll: render as `Poll.ready(<value>)` / `Poll.pending()` /
+// `Poll.ready()` (void) to match the `poll_ready` / `poll_pending`
+// constructor names users see.
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const Poll<T>& p) {
+    if (p.is_pending()) return os << "Poll.pending()";
+    if constexpr (requires(std::ostream& s, const T& v) { s << v; }) {
+        return os << "Poll.ready(" << p.value() << ")";
+    } else {
+        return os << "Poll.ready(...)";
+    }
+}
+
+inline std::ostream& operator<<(std::ostream& os, const Poll<void>& p) {
+    return os << (p.is_pending() ? "Poll.pending()" : "Poll.ready()");
+}
+
+// Waker: POD with no user-meaningful state; a bare `Waker()` repr is
+// enough for print/REPL.
+inline std::ostream& operator<<(std::ostream& os, const Waker&) {
+    return os << "Waker()";
+}
+
 namespace detail {
 
 // Empty placeholder for TaskState<T>::result_ when T is void; selected
@@ -197,11 +228,11 @@ struct AnyTask {
  *
  * The executor drives the frame via `poll_any()`, which caches the
  * value (storing it for a later awaiter). The user's `await` path
- * drives via `poll()`, which either drives once and returns the fresh
- * value, or returns the cached value if already completed by the
- * executor.
+ * drives via `__poll__()`, which either drives once and returns the
+ * fresh value, or returns the cached value if already completed by
+ * the executor.
  *
- * Single-awaiter for v1: a second `poll()` after `Ready` panics.
+ * Single-awaiter for v1: a second `__poll__()` after `Ready` panics.
  *
  * Type-erased over the concrete coroutine struct via virtual frame
  * methods; the concrete CoroT lives inline in TaskStateImpl<T, CoroT>
@@ -234,13 +265,13 @@ struct TaskState : AnyTask {
     // User-facing poll: drives the frame if not yet done, returning the
     // freshly-produced value. If the frame already completed via the
     // executor, returns the cached value (or rethrows the cached exc).
-    Poll<T> poll(Waker w) {
+    Poll<T> __poll__(Waker w) {
         if (done) {
             if (has_exc) {
                 std::rethrow_exception(exc);
             }
             if (!has_result) {
-                tpy_panic("Task::poll after Ready was already consumed");
+                tpy_panic("Task::__poll__ after Ready was already consumed");
             }
             has_result = false;
             if constexpr (std::is_void_v<T>) {
@@ -312,7 +343,7 @@ struct TaskState : AnyTask {
  * TaskStateImpl<T, CoroT> -- concrete TaskState carrying the coroutine
  * frame inline. `CoroT` is the generated coroutine struct
  * (`__coro_<funcname>`) for an `async def` returning T; it must conform
- * to Awaitable<T> (a `poll(Waker) -> Poll<T>` member and a
+ * to Awaitable<T> (a `__poll__(Waker) -> Poll<T>` member and a
  * `__cancel_pending` field). std::optional gives us early frame
  * release after Ready/throw without a separate heap allocation.
  */
@@ -322,7 +353,7 @@ struct TaskStateImpl : TaskState<T> {
 
     explicit TaskStateImpl(CoroT&& c) : coro(std::move(c)) {}
 
-    Poll<T> poll_frame(Waker w) override { return coro->poll(w); }
+    Poll<T> poll_frame(Waker w) override { return coro->__poll__(w); }
     void cancel_frame() override { coro->__cancel_pending = true; }
     bool frame_alive() const override { return coro.has_value(); }
     void release_frame() override { coro.reset(); }
@@ -371,9 +402,19 @@ public:
     Task(const Task&) = delete;
     Task& operator=(const Task&) = delete;
 
-    Poll<T> poll(Waker w) {
-        if (!state_) tpy_panic("Task::poll on empty Task");
-        return state_->poll(w);
+    // print(task) / REPL auto-echo. Renders task status; we deliberately
+    // don't expose result value here -- consuming the result must go
+    // through `await`/poll, not a print side-effect.
+    friend std::ostream& operator<<(std::ostream& os, const Task<T>& t) {
+        if (!t.state_) return os << "Task(empty)";
+        if (!t.state_->done) return os << "Task.pending()";
+        if (t.state_->has_exc) return os << "Task.failed()";
+        return os << "Task.done()";
+    }
+
+    Poll<T> __poll__(Waker w) {
+        if (!state_) tpy_panic("Task::__poll__ on empty Task");
+        return state_->__poll__(w);
     }
 
     void cancel() noexcept {
@@ -590,7 +631,7 @@ inline Task<T> make_user_task(CoroT&& coro) {
 template <typename T>
 inline bool task_poll_cancelled(Task<T>& t) {
     try {
-        (void)t.poll(Waker{});
+        (void)t.__poll__(Waker{});
         return false;
     } catch (const CancelledError&) {
         return true;
@@ -612,8 +653,8 @@ inline bool task_poll_cancelled(Task<T>& t) {
  */
 template <typename CoroT>
 inline auto async_run(CoroT&& coro)
-    -> decltype(std::declval<CoroT&>().poll(std::declval<Waker>()).value()) {
-    using ResultT = decltype(std::declval<CoroT&>().poll(std::declval<Waker>()).value());
+    -> decltype(std::declval<CoroT&>().__poll__(std::declval<Waker>()).value()) {
+    using ResultT = decltype(std::declval<CoroT&>().__poll__(std::declval<Waker>()).value());
     using CoroValT = std::remove_cvref_t<CoroT>;
     // Per docs/ASYNC_DESIGN.md ("Context propagation"): asyncio.run
     // cannot be re-entered. Matches CPython's "asyncio.run() cannot be

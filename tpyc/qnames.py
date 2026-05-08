@@ -85,6 +85,11 @@ ITERABLE = "typing.Iterable"
 SIZED = "typing.Sized"
 SEQUENCE = "typing.Sequence"
 
+# -- tpy.coro / asyncio --
+AWAITABLE = "tpy.coro.Awaitable"
+ASYNCIO_RUN = "asyncio.run"
+ASYNCIO_CREATE_TASK = "asyncio.create_task"
+
 # -- tpy protocols --
 NATIVE_ITERABLE = "tpy.NativeIterable"
 NATIVE_RANGE_CONSTRUCTIBLE = "tpy.NativeRangeConstructible"

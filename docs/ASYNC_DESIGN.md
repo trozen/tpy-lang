@@ -202,7 +202,7 @@ template <typename T, typename CoroT>
 struct AsyncFrameImpl : AsyncFrameBase<T> {
     CoroT coro;
     explicit AsyncFrameImpl(CoroT&& c) : coro(std::move(c)) {}
-    Poll<T> poll(Waker w) override { return coro.poll(w); }
+    Poll<T> poll(Waker w) override { return coro.__poll__(w); }
     void cancel() override { coro.__cancel_pending = true; }
 };
 
@@ -467,7 +467,7 @@ Public Waker shape stays minimal so a future multi-threaded executor doesn't cha
 Single-threaded v1 uses a thread-local "current executor" pointer:
 
 - `asyncio.run(coro)` sets the thread-local on entry and clears on exit.
-- `create_task`, `sleep`, `Future.poll` (for waker registration) read the thread-local.
+- `create_task`, `sleep`, `Future.__poll__` (for waker registration) read the thread-local.
 - Calling `create_task` outside `asyncio.run()` raises `RuntimeError("no running event loop")`.
 - Calling `asyncio.run()` while one is already running (recursive) raises `RuntimeError("asyncio.run() cannot be called from a running event loop")`. Matches CPython.
 
@@ -518,7 +518,7 @@ class Future[T]:
 
 - **`UninitStorage[T]`** rather than `T | None`: avoids the "T can be None" ambiguity, supports non-default-constructible T.
 - **Single-awaiter for v1.** A second waiter is an explicit `RuntimeError`, not silent replacement. CPython allows multiple awaiters; we treat this as a TPy v1 limitation. Multi-awaiter `Future[T]` is a v2 extension if it turns out to matter.
-- **Result ownership: `Future.poll` consumes.** `_result.take()` moves the stored value out. After it's been polled to Ready once, the Future is empty -- a subsequent poll raises (also matches the single-awaiter model). CPython allows repeated `Future.result()` after done; v1 diverges intentionally to keep ownership simple. Multi-awaiter v2 will need to address this (probably via reference return or by caching the result).
+- **Result ownership: `Future.__poll__` consumes.** `_result.take()` moves the stored value out. After it's been polled to Ready once, the Future is empty -- a subsequent poll raises (also matches the single-awaiter model). CPython allows repeated `Future.result()` after done; v1 diverges intentionally to keep ownership simple. Multi-awaiter v2 will need to address this (probably via reference return or by caching the result).
 
 ### Cancellation interaction
 
@@ -592,7 +592,7 @@ The v1 executor drives tasks against a runnable deque + timer min-heap. Public s
 loop:
     while runnable not empty:
         task_id = runnable.pop()
-        try { Poll<T> p = task.poll(Waker{exec, task_id, gen}); }
+        try { Poll<T> p = task.__poll__(Waker{exec, task_id, gen}); }
         catch (...) {
             tasks[task_id].state = Failed;
             tasks[task_id].exception = std::current_exception();   // exception_ptr

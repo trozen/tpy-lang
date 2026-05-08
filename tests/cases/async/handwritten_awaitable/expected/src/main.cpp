@@ -4,13 +4,12 @@
 namespace tpyapp::main {
 
 
-
 // def main() -> None:
 void main() {
     // a = ReadyAwaitable(Int32(123))
     ReadyAwaitable a = ReadyAwaitable(123);
-    // print(drive(a))
-    std::cout << std::move((a).poll(::tpy::Waker{})).value() << "\n";
+    // print(poll_once(a).value())
+    std::cout << std::move(::tpystd::coro::poll_once<int32_t>(a)).value() << "\n";
 }
 
 void __tpy_init() {
@@ -18,19 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Hand-written awaitable using Poll/Waker -- verifies the user-facing
-    // # async types are wired correctly. The class declares conformance to
-    // # `Awaitable[Int32]` explicitly (the protocol is structural, so this
-    // # is documentation; the compiler validates the `poll` method signature
-    // # against the protocol).
-    // #
-    // # Note: tests with statically-resolved awaited types use
-    // # `tpy.coro.poll_once` directly once the protocol-param + explicit-T
-    // # template-arg inference path is fixed (tracked in
-    // # `docs/ASYNC_PROGRESS.md`); hand-written awaitables drive via a
-    // # local cpp_template helper until then.
-    // from tpy.extern import cpp_template
-    // from tpy.coro import Poll, Waker, Awaitable, poll_ready
+    // from tpy.coro import Poll, Waker, Awaitable, poll_ready, poll_once
     ::tpystd::tpy::__tpy_init();
     ::tpystd::coro::__tpy_init();
     // main()

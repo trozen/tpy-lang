@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def producer(f: Future[Int32]) -> None:
-::tpy::Poll<void> __coro_producer::poll(::tpy::Waker waker) {
+::tpy::Poll<void> __coro_producer::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // await asyncio.sleep(0.001)
@@ -15,7 +15,7 @@ namespace tpyapp::main {
         [[fallthrough]];
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->poll(waker);
+            auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<void>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
@@ -36,7 +36,7 @@ __coro_producer producer(::tpystd::asyncio::Future<int32_t>& f) {
 }
 
 // async def main_coro() -> None:
-::tpy::Poll<void> __coro_main_coro::poll(::tpy::Waker waker) {
+::tpy::Poll<void> __coro_main_coro::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // f: Future[Int32] = Future[Int32]()
@@ -50,7 +50,7 @@ __coro_producer producer(::tpystd::asyncio::Future<int32_t>& f) {
         [[fallthrough]];
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->poll(waker);
+            auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<void>::pending();
             result = std::move(__r0).value();
             __sub_0 = nullptr;

@@ -72,7 +72,7 @@ struct __coro_waiter {
     __coro_waiter(::tpystd::asyncio::Future<Tracked>& f)
         : __state(S_INITIAL), __cancel_pending(false), f(f) {}
 
-    ::tpy::Poll<Tracked> poll(::tpy::Waker waker);
+    ::tpy::Poll<Tracked> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_waiter&) {
         return os << "<coroutine waiter>";
@@ -96,7 +96,7 @@ struct __coro_main_coro {
     __coro_main_coro()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<void> poll(::tpy::Waker waker);
+    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {
         return os << "<coroutine main_coro>";

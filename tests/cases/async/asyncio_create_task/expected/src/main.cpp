@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def sub() -> Int32:
-::tpy::Poll<int32_t> __coro_sub::poll(::tpy::Waker waker) {
+::tpy::Poll<int32_t> __coro_sub::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -25,7 +25,7 @@ __coro_sub sub() {
 }
 
 // async def main_coro() -> None:
-::tpy::Poll<void> __coro_main_coro::poll(::tpy::Waker waker) {
+::tpy::Poll<void> __coro_main_coro::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // t: Task[Int32] = asyncio.create_task(sub())
@@ -37,7 +37,7 @@ __coro_sub sub() {
         [[fallthrough]];
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->poll(waker);
+            auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<void>::pending();
             val = std::move(__r0).value();
             __sub_0.reset();
