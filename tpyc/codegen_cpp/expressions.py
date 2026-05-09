@@ -546,16 +546,20 @@ class ExpressionGenerator:
 
         When sema has proven a std::optional<T> variable holds a value,
         the C++ variable is still optional -- dereference it with (*obj).
-        Handles both simple names and field access expressions.
+        Handles simple names, field accesses, and generator-promoted
+        Optional locals (whose rendered `obj` is already the inner
+        storage-form Optional after the outer init-tracking deref).
         """
         if needs_deref:
             return obj
         cpp_decl = self._get_cpp_declared_type(expr_obj)
         analyzed = self.ctx.get_expr_type(expr_obj)
         is_comp_var = isinstance(expr_obj, TpyName) and expr_obj.name in self.ctx.comp_local_names
+        is_storage_optional = self.ctx.is_storage_form_optional_source(expr_obj)
         if (cpp_decl is not None
                 and isinstance(cpp_decl, OptionalType)
                 and (isinstance(expr_obj, TpyFieldAccess) or is_comp_var
+                     or is_storage_optional
                      or not cpp_decl.uses_pointer_repr())
                 and not isinstance(analyzed, OptionalType)):
             return f"(*{obj})"
@@ -3108,6 +3112,7 @@ class ExpressionGenerator:
             cpp_decl = self._get_cpp_declared_type(expr.obj)
             if isinstance(cpp_decl, OptionalType) and (
                 isinstance(expr.obj, TpyFieldAccess) or is_comp_var
+                or self.ctx.is_storage_form_optional_source(expr.obj)
                 or not cpp_decl.uses_pointer_repr()
             ):
                 obj = f"(*{obj})"
@@ -3482,6 +3487,7 @@ class ExpressionGenerator:
             cpp_decl = self._get_cpp_declared_type(expr.obj)
             if isinstance(cpp_decl, OptionalType) and (
                 isinstance(expr.obj, TpyFieldAccess) or is_comp_var
+                or self.ctx.is_storage_form_optional_source(expr.obj)
                 or not cpp_decl.uses_pointer_repr()
             ):
                 obj = f"(*{obj})"
@@ -4663,9 +4669,10 @@ class ExpressionGenerator:
 
         Used wherever a slot expects T* and the source might be any of:
         a None literal, an already-pointer indirect name or ternary, a
-        std::optional<T> field requiring optional_to_ptr, or a plain
-        lvalue requiring &(...). Shared between return-statement codegen
-        and tuple-literal elements with pointer-form-Optional targets.
+        storage-form Optional source (record field or generator-promoted
+        local) requiring optional_to_ptr, or a plain lvalue requiring
+        &(...). Shared between return-statement codegen and tuple-literal
+        elements with pointer-form-Optional targets.
         """
         if isinstance(elem, TpyNoneLiteral):
             return "nullptr"
@@ -4674,11 +4681,8 @@ class ExpressionGenerator:
             return ret_expr
         if isinstance(elem, TpyIfExpr):
             return ret_expr
-        if isinstance(elem, TpyFieldAccess):
-            val_type = self.ctx.get_expr_type(elem)
-            if (isinstance(val_type, OptionalType)
-                    and val_type.uses_pointer_repr()):
-                return f"::tpy::optional_to_ptr({ret_expr})"
+        if self.ctx.is_storage_form_optional_source(elem):
+            return f"::tpy::optional_to_ptr({ret_expr})"
         return f"&({ret_expr})"
 
     def _gen_subscript(self, expr: TpySubscript) -> str:

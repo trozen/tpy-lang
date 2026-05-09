@@ -174,6 +174,13 @@ class StatementGenerator:
                     and not isinstance(ptype, ReadonlyType)
                     and actual.inner.is_expensive_copy()):
                 self.ctx.movable_locals.add(pname)
+        # Generator-promoted locals are struct fields; pre-seed var_types
+        # so codegen sites that consult it (e.g. address-of for tuple
+        # slots) see the original TPy type rather than the synthetic
+        # outer-optional wrapper used for init tracking.
+        if func.generator_locals:
+            for lname, ltype in func.generator_locals:
+                self.ctx.var_types[lname] = ltype
         self.ctx.current_ns = local_ns
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type
@@ -1026,15 +1033,20 @@ class StatementGenerator:
         # Optional non-value field on lvalue -> optional_to_ptr directly
         # Optional non-value non-field source -> T* pass-through
         # Optional non-value field on rvalue -> falls through to rvalue path
+        is_storage_opt_lvalue = (
+            self.ctx.is_storage_form_optional_source(init)
+            and not self.ctx.is_rvalue_source(init))
         is_opt_field = (isinstance(init_type, OptionalType)
                         and init_type.uses_pointer_repr()
-                        and isinstance(init, TpyFieldAccess))
+                        and (isinstance(init, TpyFieldAccess)
+                             or is_storage_opt_lvalue))
         if isinstance(init_type, OptionalType) and init_type.uses_pointer_repr():
+            if is_storage_opt_lvalue:
+                init_expr = self.expressions.gen_expr(init, target_type)
+                return f"{indent}{cpp_name} = ::tpy::optional_to_ptr({init_expr});\n"
             if isinstance(init, TpyFieldAccess):
-                if not self.ctx.is_rvalue_source(init):
-                    init_expr = self.expressions.gen_expr(init, target_type)
-                    return f"{indent}{cpp_name} = ::tpy::optional_to_ptr({init_expr});\n"
                 # rvalue field: fall through to rvalue path
+                pass
             else:
                 init_expr = self.expressions.gen_expr(init, target_type)
                 return f"{indent}{cpp_name} = {init_expr};\n"
@@ -1292,6 +1304,19 @@ class StatementGenerator:
             self.ctx.local_scope_names.add(stmt.name)
             if stmt.init:
                 cpp_name = escape_cpp_name(stmt.name)
+                # Generator Optional[T] field stores std::optional<std::optional<T>>:
+                # outer = init-tracking, inner = the T | None storage form. A None
+                # init must engage the outer with a default-constructed (nullopt)
+                # inner -- assigning bare `nullptr` would be a type error and
+                # `std::nullopt` would set the outer to nullopt instead of
+                # engaging it.
+                if (stmt.name in self.ctx.generator_optional_fields
+                        and isinstance(stmt.init, TpyNoneLiteral)):
+                    var_type = self.ctx.var_types.get(stmt.name)
+                    if (isinstance(var_type, OptionalType)
+                            and var_type.uses_pointer_repr()):
+                        inner_cpp = var_type.to_cpp()
+                        return f"{indent}{cpp_name} = {inner_cpp}{{}};\n"
                 init_expr = self.expressions.gen_expr(stmt.init)
                 return f"{indent}{cpp_name} = {init_expr};\n"
             return None
@@ -1562,7 +1587,9 @@ class StatementGenerator:
                 raw_val_type = self.ctx.get_expr_type(stmt.value)
                 val_type = raw_val_type.wrapped if isinstance(raw_val_type, OwnType) else raw_val_type
                 source = self.ctx.unwrap_copy(stmt.value)
-                if isinstance(val_type, OptionalType) and not isinstance(source, TpyFieldAccess):
+                if (isinstance(val_type, OptionalType)
+                        and not isinstance(source, TpyFieldAccess)
+                        and not self.ctx.is_storage_form_optional_source(source)):
                     # Own[T] | None returns std::optional<T> -- direct assign
                     # T | None returns T* -- needs ptr_to_optional wrapping
                     is_owned_optional = (isinstance(val_type, OptionalType)

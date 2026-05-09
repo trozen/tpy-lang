@@ -1219,6 +1219,39 @@ class CodeGenContext:
             return False
         return expr.name in self.pointer_locals
 
+    def is_storage_form_optional_source(self, expr: TpyExpr) -> bool:
+        """True when expr renders as a storage-form Optional[T] lvalue
+        (`std::optional<T>&` for a non-value T) -- i.e. needs the same
+        downstream handling at consumer sites as a record's storage-form
+        Optional field: `optional_to_ptr` at borrow sites, double-deref
+        at narrowing sites, `ptr_to_optional` at assignments.
+
+        Covers two source shapes that produce the same C++ shape:
+
+          * TpyFieldAccess on a storage-form Optional[T] field of a
+            record (`obj.maybe_p` where the field is stored as
+            `std::optional<T>`).
+          * TpyName referring to a generator-promoted Optional[T] local
+            (state-machine field declared as
+            `std::optional<std::optional<T>>`; gen_expr's TpyName handler
+            already emits `(*prev)` to deref the outer init-tracking
+            optional, leaving the inner storage form as the rendered
+            lvalue).
+        """
+        from ..parse import TpyFieldAccess, TpyName
+        if isinstance(expr, TpyFieldAccess):
+            from ..typesys import OptionalType
+            val_type = self.get_expr_type(expr)
+            return (isinstance(val_type, OptionalType)
+                    and val_type.uses_pointer_repr())
+        if (isinstance(expr, TpyName) and self.in_generator_body
+                and expr.name in self.generator_optional_fields):
+            from ..typesys import OptionalType
+            var_type = self.var_types.get(expr.name)
+            return (isinstance(var_type, OptionalType)
+                    and var_type.uses_pointer_repr())
+        return False
+
     def _is_pointer_global(self, expr: TpyExpr) -> bool:
         """Check if expression is a reference to a non-value-type global (T*)."""
         if not isinstance(expr, TpyName):
