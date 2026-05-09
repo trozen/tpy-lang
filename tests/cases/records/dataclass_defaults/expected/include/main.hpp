@@ -35,6 +35,7 @@ struct Color {
     friend bool operator==(const Color& lhs, const Color& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Color";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Color& obj) {

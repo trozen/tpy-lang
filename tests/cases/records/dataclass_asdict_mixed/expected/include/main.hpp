@@ -34,6 +34,7 @@ struct Point {
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -59,6 +60,7 @@ struct Person {
     friend bool operator==(const Person& lhs, const Person& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Person";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
@@ -84,6 +86,7 @@ struct NamedPoint {
     friend bool operator==(const NamedPoint& lhs, const NamedPoint& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.NamedPoint";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NamedPoint& obj) {
@@ -109,6 +112,7 @@ struct Group {
     friend bool operator==(const Group& lhs, const Group& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Group";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Group& obj) {

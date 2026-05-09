@@ -57,6 +57,7 @@ struct Base {
     friend bool operator==(const Base& lhs, const Base& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -99,6 +100,7 @@ struct WithDefaults {
     friend bool operator==(const WithDefaults& lhs, const WithDefaults& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.WithDefaults";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WithDefaults& obj) {
@@ -141,6 +143,7 @@ struct Tagged {
     friend bool operator==(const Tagged& lhs, const Tagged& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
@@ -180,6 +183,7 @@ struct User : Base {
     friend bool operator==(const User& lhs, const User& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.User";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const User& obj) {
@@ -219,6 +223,7 @@ struct Extended : WithDefaults {
     friend bool operator==(const Extended& lhs, const Extended& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Extended";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Extended& obj) {
@@ -258,6 +263,7 @@ struct Scored : Tagged {
     friend bool operator==(const Scored& lhs, const Scored& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Scored";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Scored& obj) {
@@ -298,6 +304,7 @@ struct Admin : User {
     friend bool operator==(const Admin& lhs, const Admin& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Admin";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Admin& obj) {

@@ -32,6 +32,7 @@ struct Tag {
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tag";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {

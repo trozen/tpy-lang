@@ -33,6 +33,7 @@ struct Counter {
     friend bool operator==(const Counter& lhs, const Counter& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {

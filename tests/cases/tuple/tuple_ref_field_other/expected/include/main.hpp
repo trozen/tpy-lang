@@ -44,6 +44,7 @@ struct Holder {
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {

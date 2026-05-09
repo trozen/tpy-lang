@@ -32,6 +32,7 @@ struct Pair {
     friend bool operator==(const Pair& lhs, const Pair& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "a.Pair";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {

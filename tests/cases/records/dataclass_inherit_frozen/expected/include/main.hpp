@@ -34,6 +34,7 @@ struct Vec2 {
     friend bool operator==(const Vec2& lhs, const Vec2& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Vec2";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
@@ -69,6 +70,7 @@ struct Vec3 : Vec2 {
     friend bool operator==(const Vec3& lhs, const Vec3& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Vec3";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec3& obj) {

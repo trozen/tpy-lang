@@ -490,24 +490,26 @@ class RecordGenerator:
         # Generate unary operators from dunder methods
         self._gen_unary_operators(out, record)
 
-        # Tag consumed by the default-repr runtime template in dunder.hpp.
-        # Records that already have __repr__ skip the tag; the runtime
-        # template's `requires t.__repr__()` branch handles them. The
-        # stored name is module-qualified (e.g. `__main__.Animal`,
-        # `mypkg.mymod.Outer.Inner`) so the rendered repr matches
-        # CPython's `<module.qualname object at 0x...>` form. Module is
-        # taken from the analyzer's `module_name` (which is `"__main__"`
-        # for the entry point, matching `__name__`) rather than codegen's
-        # which uses the file basename.
+        # Tag consumed by:
+        #   * the default-repr runtime template in dunder.hpp (only fires
+        #     when T has no __repr__; SFINAE-guards on its own);
+        #   * the tpy::type_name<T>() registry in type_name.hpp (used by
+        #     Any cast / unhashable panic messages).
+        # Emit unconditionally so panics on records that *do* define
+        # __repr__ still report the TPy-friendly module-qualified name
+        # (`__main__.Animal`, `mypkg.mymod.Outer.Inner`) rather than the
+        # demangled C++ form. Module is taken from the analyzer's
+        # `module_name` (which is `"__main__"` for the entry point,
+        # matching `__name__`) rather than codegen's which uses the file
+        # basename.
         record_info = self.ctx.analyzer.registry.get_record(record.name)
         has_str_repr = self._record_has_str_repr(record_info)
-        if not has_str_repr[1]:
-            python_module = self.ctx.analyzer.ctx.module_name
-            qualified_name = f"{python_module}.{record.name}"
-            out.write(
-                f'{INDENT}static constexpr std::string_view '
-                f'__tpy_class_name__ = "{qualified_name}";\n'
-            )
+        python_module = self.ctx.analyzer.ctx.module_name
+        qualified_name = f"{python_module}.{record.name}"
+        out.write(
+            f'{INDENT}static constexpr std::string_view '
+            f'__tpy_class_name__ = "{qualified_name}";\n'
+        )
 
         out.write("};\n")
         # operator<< and nested ostream operators must be at namespace scope,

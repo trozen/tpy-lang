@@ -31,6 +31,7 @@ struct Circle {
     friend bool operator==(const Circle& lhs, const Circle& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Circle";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
@@ -56,6 +57,7 @@ struct Rect {
     friend bool operator==(const Rect& lhs, const Rect& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Rect";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {

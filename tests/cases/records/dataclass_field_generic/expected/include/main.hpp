@@ -61,6 +61,7 @@ struct Wrapper {
     friend bool operator==(const Wrapper& lhs, const Wrapper& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {

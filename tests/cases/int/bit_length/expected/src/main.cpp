@@ -30,7 +30,7 @@ void main() {
     // print(int(-128).bit_length())
     std::cout << (::tpy::BigInt(-128)).bit_length() << "\n";
     // print(int(-2147483648).bit_length())  # 32 bits
-    std::cout << (::tpy::BigInt(-2147483648)).bit_length() << "\n";
+    std::cout << (::tpy::BigInt(static_cast<int64_t>(-2147483648LL))).bit_length() << "\n";
     // # Big values beyond 64 bits.
     // print((int(1) << 64).bit_length())   # 65
     std::cout << (((::tpy::BigInt(1)) << (::tpy::BigInt(64)))).bit_length() << "\n";

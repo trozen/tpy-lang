@@ -2024,7 +2024,14 @@ class ExpressionGenerator:
     def _gen_int_literal_value(self, v: int, target_type: TpyType | None) -> str:
         """Emit an integer literal, wrapping in BigInt constructor if needed."""
         if is_big_int_type(target_type):
-            if -2**31 <= v <= 2**31 - 1:
+            # INT32_MIN is excluded from the bare-literal range: the C++
+            # parser sees `-2147483648` as `-(2147483648)`, and the positive
+            # `2147483648` exceeds INT_MAX so its type is `long` -- which is
+            # distinct from `int64_t` on macOS arm64 (`int64_t == long long`)
+            # and triggers an ambiguous-overload error against BigInt's
+            # int32_t / int64_t / uint64_t constructors. Anything outside
+            # [-INT_MAX, INT_MAX] falls through to the explicit int64_t cast.
+            if -(2**31 - 1) <= v <= 2**31 - 1:
                 return f"::tpy::BigInt({v})"
             if -2**63 <= v <= 2**63 - 1:
                 return f"::tpy::BigInt(static_cast<int64_t>({v}LL))"

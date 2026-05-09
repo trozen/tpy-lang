@@ -32,6 +32,7 @@ struct Both {
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Both";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Both& obj) {
@@ -69,6 +70,7 @@ struct ReprOnly {
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ReprOnly";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ReprOnly& obj) {
@@ -96,6 +98,7 @@ inline std::ostream& operator<<(std::ostream& os, const Neither& obj) {
 struct ChildOfRepr : ReprOnly {
 
     using ReprOnly::ReprOnly;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ChildOfRepr";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ChildOfRepr& obj) {

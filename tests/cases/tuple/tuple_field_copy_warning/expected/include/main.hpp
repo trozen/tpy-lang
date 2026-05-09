@@ -44,6 +44,7 @@ struct Container {
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -62,6 +63,7 @@ struct ContainerOk {
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ContainerOk";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ContainerOk& obj) {

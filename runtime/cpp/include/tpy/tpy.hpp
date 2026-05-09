@@ -107,7 +107,11 @@
 // File I/O: TextFile for open() builtin (depends on core)
 #include "file.hpp"
 
-// Any: type-erased value cell (depends on dunder, builtins, core)
+// User-facing TPy type names (depends on core, plus every type it
+// specializes for -- so it must come after the type headers above)
+#include "type_name.hpp"
+
+// Any: type-erased value cell (depends on dunder, builtins, core, type_name)
 #include "any.hpp"
 
 // Output-sink dispatch for print(file=...) (depends on system, file)

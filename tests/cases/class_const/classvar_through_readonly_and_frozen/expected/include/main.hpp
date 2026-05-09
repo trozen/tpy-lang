@@ -52,6 +52,7 @@ struct FrozenCounter {
     friend bool operator==(const FrozenCounter& lhs, const FrozenCounter& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.FrozenCounter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const FrozenCounter& obj) {

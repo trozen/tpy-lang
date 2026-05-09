@@ -30,6 +30,7 @@ struct Foo {
     friend bool operator==(const Foo& lhs, const Foo& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Foo";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {

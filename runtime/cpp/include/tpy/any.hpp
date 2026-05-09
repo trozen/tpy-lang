@@ -12,7 +12,8 @@
  * See docs/ANY_TYPE_DESIGN.md for the full design.
  *
  * Depends on: dunder.hpp (__str__, __repr__, __hash__), builtins.hpp
- * (to_bool), core.hpp (raise<E>, tpy_panic, demangle_type_name).
+ * (to_bool), core.hpp (raise<E>, tpy_panic, demangle_type_name),
+ * type_name.hpp (user-facing TPy type names).
  */
 
 #pragma once
@@ -72,6 +73,9 @@ struct AnyOps {
     bool (*to_bool)(const std::any&);
     bool (*equals)(const std::any&, const std::any&);   // null if T not Eq
     std::uint64_t (*hash)(const std::any&);             // null if T not Hashable
+    // User-facing TPy type name of the cell's T (e.g. "int", "str",
+    // "module.MyClass"). Cold-path; only consulted by panic messages.
+    std::string (*type_name)();
 };
 
 // ---------------------------------------------------------------------
@@ -214,6 +218,11 @@ constexpr std::uint64_t (*hash_slot_for() noexcept)(const std::any&) {
     }
 }
 
+template <typename T>
+constexpr std::string (*type_name_slot_for() noexcept)() {
+    return +[]() -> std::string { return ::tpy::type_name<T>(); };
+}
+
 }  // namespace detail
 
 // `inline constexpr` template variables guarantee a single instance per
@@ -233,6 +242,7 @@ inline constexpr AnyOps any_ops_for = {
     /*to_bool=*/detail::to_bool_slot_for<T>(),
     /*equals=*/detail::equals_slot_for<T>(),
     /*hash=*/detail::hash_slot_for<T>(),
+    /*type_name=*/detail::type_name_slot_for<T>(),
 };
 
 // ---------------------------------------------------------------------
@@ -258,29 +268,31 @@ inline Any make_any(T value) {
 // const-ref overload copies the contents out (auto-coerce paths use
 // this). The rvalue overload moves out at last use.
 
+namespace detail {
+
 template <typename T>
-T any_cast_or_panic(const Any& a) {
+inline void check_any_cast(const Any& a) {
     if (a.empty()) {
         ::tpy::tpy_panic("use of empty/moved-from Any");
     }
     if (a.value.type() != typeid(T)) {
         ::tpy::raise<TypeError>("Any holds {}, cannot cast to {}",
-                                ::tpy::demangle_type_name(a.value.type().name()),
-                                ::tpy::demangle_type_name(typeid(T).name()));
+                                a.ops->type_name(),
+                                ::tpy::type_name<T>());
     }
+}
+
+}  // namespace detail
+
+template <typename T>
+T any_cast_or_panic(const Any& a) {
+    detail::check_any_cast<T>(a);
     return std::any_cast<T>(a.value);
 }
 
 template <typename T>
 T any_cast_or_panic(Any&& a) {
-    if (a.empty()) {
-        ::tpy::tpy_panic("use of empty/moved-from Any");
-    }
-    if (a.value.type() != typeid(T)) {
-        ::tpy::raise<TypeError>("Any holds {}, cannot cast to {}",
-                                ::tpy::demangle_type_name(a.value.type().name()),
-                                ::tpy::demangle_type_name(typeid(T).name()));
-    }
+    detail::check_any_cast<T>(a);
     T moved = std::any_cast<T>(std::move(a.value));
     // Clear the source so the documented "use of empty/moved-from Any"
     // panic fires on subsequent access. std::any_cast<T>(rvalue) does
@@ -327,8 +339,10 @@ inline std::uint64_t any_hash(const Any& a) {
         ::tpy::tpy_panic("use of empty/moved-from Any");
     }
     if (a.ops == nullptr || a.ops->hash == nullptr) {
-        ::tpy::raise<TypeError>("unhashable type: '{}'",
-                                ::tpy::demangle_type_name(a.value.type().name()));
+        std::string name = (a.ops != nullptr)
+            ? a.ops->type_name()
+            : ::tpy::demangle_type_name(a.value.type().name());
+        ::tpy::raise<TypeError>("unhashable type: '{}'", name);
     }
     return a.ops->hash(a.value);
 }

@@ -47,6 +47,7 @@ struct Container {
         // return None
         return std::nullopt;
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>

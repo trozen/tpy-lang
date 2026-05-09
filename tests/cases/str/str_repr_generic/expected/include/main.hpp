@@ -56,6 +56,7 @@ struct Wrapper {
         // return f"Wrapper(value={self.value})"
         return std::format("Wrapper(value={})", ::tpy::__str__(this->value));
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 template<typename T>

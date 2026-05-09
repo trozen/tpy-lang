@@ -32,6 +32,7 @@ struct Base {
     friend bool operator==(const Base& lhs, const Base& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -55,6 +56,7 @@ struct Child : Base {
     friend bool operator==(const Child& lhs, const Child& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {

@@ -30,7 +30,7 @@ from tpyc.codegen_cpp import CodeGenOptions, CodeGenError
 from tpyc.parse import Parser, ParseError
 from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from tpyc.compiler import (
-    Compiler, CompileError, BuildLayout, CppCompilerConfig, STRICT_WARN_FLAGS,
+    Compiler, CompileError, BuildLayout, CppCompilerConfig, strict_warn_flags,
     get_or_build_pch,
 )
 from tpyc.build.third_party import resolve_build_plan
@@ -42,9 +42,10 @@ TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True, comment_line_nu
 # Tests run with the strict warning set so regressions in generated code or
 # runtime headers fail the build instead of slipping through. End-user CLI
 # builds (`tpy`, `tpyc`) keep an empty default -- consumers opt in via their
-# own toolchain flags. See STRICT_WARN_FLAGS for the rationale per flag.
+# own toolchain flags. See _COMMON_WARN_FLAGS / _GCC_ONLY_WARN_FLAGS /
+# _CLANG_ONLY_WARN_FLAGS in tpyc/compiler.py for the per-flag rationale.
 CPP_CONFIG = CppCompilerConfig.from_env()
-CPP_CONFIG.warn_flags = list(STRICT_WARN_FLAGS)
+CPP_CONFIG.warn_flags = strict_warn_flags(CPP_CONFIG.compiler)
 
 # Paths
 TESTS_DIR = Path(__file__).parent

@@ -24,6 +24,7 @@ struct Point {
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
+    static constexpr std::string_view __tpy_class_name__ = "pkg.sub.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {

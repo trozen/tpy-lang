@@ -24,6 +24,7 @@ struct Foo {
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Foo";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {

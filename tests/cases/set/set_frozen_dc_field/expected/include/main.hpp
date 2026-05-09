@@ -35,6 +35,7 @@ struct Tag {
     friend bool operator==(const Tag& lhs, const Tag& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tag";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
@@ -70,6 +71,7 @@ struct SetItem {
     friend bool operator==(const SetItem& lhs, const SetItem& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.SetItem";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SetItem& obj) {
@@ -93,6 +95,7 @@ struct DictItem {
     friend bool operator==(const DictItem& lhs, const DictItem& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.DictItem";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DictItem& obj) {

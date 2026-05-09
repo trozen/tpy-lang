@@ -144,6 +144,24 @@ auto next(Iter& it) -> decltype(it.__next__()) {
     return it.__next__();
 }
 
+// Strip the inline-namespace tokens libc++ and libstdc++ inject into
+// demangled std:: type names (`std::__1::basic_string` /
+// `std::__cxx11::basic_string`) and collapse the libstdc++ "> >" template
+// closer to ">>". Without this the panic snapshots would diverge by
+// host standard library.
+inline void normalize_stdlib_typename(std::string& s) {
+    auto strip = [&s](std::string_view marker) {
+        for (size_t pos = 0; (pos = s.find(marker, pos)) != std::string::npos; ) {
+            s.erase(pos, marker.size());
+        }
+    };
+    strip("__1::");
+    strip("__cxx11::");
+    for (size_t pos = 0; (pos = s.find("> >", pos)) != std::string::npos; ) {
+        s.erase(pos + 1, 1);
+    }
+}
+
 // Demangle a std::type_info::name() result to a human-readable form
 // (e.g. "tpy::BigInt" instead of "N3tpy6BigIntE"). Used by exception
 // messages that name the offending C++ type. Falls back to the mangled
@@ -154,6 +172,7 @@ inline std::string demangle_type_name(const char* mangled) {
     char* d = abi::__cxa_demangle(mangled, nullptr, nullptr, &status);
     std::string result = (status == 0 && d) ? std::string(d) : std::string(mangled);
     std::free(d);
+    normalize_stdlib_typename(result);
     return result;
 }
 
@@ -171,9 +190,8 @@ inline std::string demangle_type_name(const char* mangled) {
 // codegen-emitted main() via std::set_terminate; not installed when codegen
 // runs in --no-main mode, so host applications keep their own terminate handler.
 [[noreturn]] inline void tpy_terminate_handler() noexcept {
-    const char* type_name = "unknown";
+    std::string type_name = "unknown";
     const char* what_msg = nullptr;
-    char* demangled = nullptr;
 
     // Hold ex across the print: what_msg points into the exception object,
     // which is only guaranteed to outlive any active exception_ptr owning it.
@@ -182,23 +200,20 @@ inline std::string demangle_type_name(const char* mangled) {
         try {
             std::rethrow_exception(ex);
         } catch (const std::exception& e) {
-            int status = 0;
-            demangled = abi::__cxa_demangle(typeid(e).name(), nullptr, nullptr, &status);
-            type_name = (status == 0 && demangled) ? demangled : typeid(e).name();
+            type_name = demangle_type_name(typeid(e).name());
             what_msg = e.what();
         } catch (...) {
         }
     }
 
     std::fputs("TurboPython panic: uncaught ", stderr);
-    std::fputs(type_name, stderr);
+    std::fwrite(type_name.data(), 1, type_name.size(), stderr);
     if (what_msg && *what_msg) {
         std::fputs(": ", stderr);
         std::fputs(what_msg, stderr);
     }
     std::fputc('\n', stderr);
 
-    std::free(demangled);
     std::_Exit(1);
 }
 

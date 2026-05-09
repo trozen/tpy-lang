@@ -31,6 +31,7 @@ struct TaggedItem {
     friend bool operator==(const TaggedItem& lhs, const TaggedItem& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.TaggedItem";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TaggedItem& obj) {

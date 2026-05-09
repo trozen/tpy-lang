@@ -44,6 +44,7 @@ struct Point {
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -70,6 +71,7 @@ struct Person {
     friend bool operator==(const Person& lhs, const Person& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Person";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
@@ -96,6 +98,7 @@ struct Line {
     friend bool operator==(const Line& lhs, const Line& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Line";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Line& obj) {
@@ -122,6 +125,7 @@ struct NamedPoint {
     friend bool operator==(const NamedPoint& lhs, const NamedPoint& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.NamedPoint";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NamedPoint& obj) {
@@ -146,6 +150,7 @@ struct Polygon {
     friend bool operator==(const Polygon& lhs, const Polygon& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Polygon";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Polygon& obj) {
@@ -172,6 +177,7 @@ struct Drawing {
     friend bool operator==(const Drawing& lhs, const Drawing& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Drawing";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Drawing& obj) {
@@ -196,6 +202,7 @@ struct Wrapper {
     friend bool operator==(const Wrapper& lhs, const Wrapper& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
@@ -222,6 +229,7 @@ struct MaybeNamed {
     friend bool operator==(const MaybeNamed& lhs, const MaybeNamed& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MaybeNamed";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MaybeNamed& obj) {
@@ -246,6 +254,7 @@ struct Container {
     friend bool operator==(const Container& lhs, const Container& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
@@ -272,6 +281,7 @@ struct MultiList {
     friend bool operator==(const MultiList& lhs, const MultiList& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MultiList";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MultiList& obj) {
@@ -296,6 +306,7 @@ struct DictOfDC {
     friend bool operator==(const DictOfDC& lhs, const DictOfDC& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.DictOfDC";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DictOfDC& obj) {
@@ -320,6 +331,7 @@ struct TupleMixed {
     friend bool operator==(const TupleMixed& lhs, const TupleMixed& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.TupleMixed";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TupleMixed& obj) {
@@ -344,6 +356,7 @@ struct TupleAllDC {
     friend bool operator==(const TupleAllDC& lhs, const TupleAllDC& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.TupleAllDC";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TupleAllDC& obj) {

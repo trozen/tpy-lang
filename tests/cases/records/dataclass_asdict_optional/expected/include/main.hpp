@@ -37,6 +37,7 @@ struct Point {
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -63,6 +64,7 @@ struct MaybePoint {
     friend bool operator==(const MaybePoint& lhs, const MaybePoint& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MaybePoint";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MaybePoint& obj) {
@@ -87,6 +89,7 @@ struct PointList {
     friend bool operator==(const PointList& lhs, const PointList& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.PointList";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PointList& obj) {
@@ -113,6 +116,7 @@ struct Line {
     friend bool operator==(const Line& lhs, const Line& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Line";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Line& obj) {
@@ -136,6 +140,7 @@ struct MaybeLine {
     friend bool operator==(const MaybeLine& lhs, const MaybeLine& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MaybeLine";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MaybeLine& obj) {
@@ -164,6 +169,7 @@ struct Mixed {
     friend bool operator==(const Mixed& lhs, const Mixed& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Mixed";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mixed& obj) {
@@ -188,6 +194,7 @@ struct LabeledPoints {
     friend bool operator==(const LabeledPoints& lhs, const LabeledPoints& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.LabeledPoints";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const LabeledPoints& obj) {

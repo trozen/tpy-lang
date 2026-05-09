@@ -59,6 +59,7 @@ struct Outer {
     friend bool operator>=(const Outer& lhs, const Outer& other) {
         return lhs.__ge__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
@@ -108,6 +109,7 @@ struct Inner {
     friend bool operator>=(const Inner& lhs, const Inner& other) {
         return lhs.__ge__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {

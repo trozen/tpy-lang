@@ -5,8 +5,19 @@ Resolves module names to file paths, supporting both flat modules and packages.
 """
 
 from __future__ import annotations
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
+
+
+# Path.exists() is case-insensitive on macOS APFS and Windows, so a lookup
+# for `tplib/Box.py` succeeds when only `tplib/box.py` exists. We list the
+# parent directory and check the requested name with case-sensitive `in`.
+def _listdir(parent: Path) -> set[str]:
+    try:
+        return set(os.listdir(parent))
+    except OSError:
+        return set()
 
 
 @dataclass
@@ -73,32 +84,32 @@ class ModuleResolver:
         """
         parts = module_path.split('.')
 
-        # Navigate directories for parent packages (namespace package semantics)
+        # Navigate parent packages with case-sensitive checks, so that on
+        # case-insensitive filesystems (macOS APFS, Windows) `from pkg import
+        # Foo` does NOT match a submodule `pkg/foo.py`.
         current = base
         for part in parts[:-1]:
-            current = current / part
-            if not current.is_dir():
+            if part not in _listdir(current) or not (current / part).is_dir():
                 return None
+            current = current / part
 
-        # Final component: try as module file first, then as package directory
         final = parts[-1]
         package_name = '.'.join(parts[:-1]) if len(parts) > 1 else None
+        entries = _listdir(current)
 
-        candidate = current / f"{final}.py"
-        if candidate.exists():
+        py_name = f"{final}.py"
+        if py_name in entries and (current / py_name).is_file():
             return ResolvedModule(
-                path=candidate,
+                path=current / py_name,
                 canonical_name=module_path,
                 package_name=package_name
             )
 
-        # Try as package with __init__
-        pkg_dir = current / final
-        if pkg_dir.is_dir():
-            init = pkg_dir / "__init__.py"
-            if init.exists():
+        if final in entries and (current / final).is_dir():
+            pkg_dir = current / final
+            if "__init__.py" in _listdir(pkg_dir) and (pkg_dir / "__init__.py").is_file():
                 return ResolvedModule(
-                    path=init,
+                    path=pkg_dir / "__init__.py",
                     canonical_name=module_path,
                     package_name=module_path,
                     is_package_init=True

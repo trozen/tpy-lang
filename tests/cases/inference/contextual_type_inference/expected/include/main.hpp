@@ -31,6 +31,7 @@ struct Container {
         // return f"Container(val={self.val!r})"
         return std::format("Container(val={})", ::tpy::repr_of(this->val));
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
 template<typename T>
@@ -56,6 +57,7 @@ struct Pair {
         // return f"Pair(first={self.first!r}, second={self.second!r})"
         return std::format("Pair(first={}, second={})", ::tpy::repr_of(this->first), ::tpy::repr_of(this->second));
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
 template<typename A, typename B>

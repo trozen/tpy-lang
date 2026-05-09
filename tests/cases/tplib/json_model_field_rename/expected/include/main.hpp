@@ -56,6 +56,7 @@ struct User {
     friend bool operator==(const User& lhs, const User& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.User";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const User& obj) {
@@ -98,6 +99,7 @@ struct WithDefault {
     friend bool operator==(const WithDefault& lhs, const WithDefault& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.WithDefault";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WithDefault& obj) {
@@ -137,6 +139,7 @@ struct Base {
     friend bool operator==(const Base& lhs, const Base& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -176,6 +179,7 @@ struct Extended : Base {
     friend bool operator==(const Extended& lhs, const Extended& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Extended";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Extended& obj) {

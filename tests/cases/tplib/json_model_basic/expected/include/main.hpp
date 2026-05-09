@@ -62,6 +62,7 @@ struct User {
     friend bool operator==(const User& lhs, const User& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.User";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const User& obj) {

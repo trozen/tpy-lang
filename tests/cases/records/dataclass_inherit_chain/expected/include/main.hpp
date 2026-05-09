@@ -31,6 +31,7 @@ struct A {
     friend bool operator==(const A& lhs, const A& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
@@ -54,6 +55,7 @@ struct B : A {
     friend bool operator==(const B& lhs, const B& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
@@ -77,6 +79,7 @@ struct C : B {
     friend bool operator==(const C& lhs, const C& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {

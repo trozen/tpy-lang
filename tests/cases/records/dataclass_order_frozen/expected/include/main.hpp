@@ -59,6 +59,7 @@ struct Version {
     friend bool operator>=(const Version& lhs, const Version& other) {
         return lhs.__ge__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Version";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Version& obj) {

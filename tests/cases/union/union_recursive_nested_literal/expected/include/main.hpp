@@ -38,6 +38,7 @@ struct Leaf {
     friend bool operator==(const Leaf& lhs, const Leaf& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Leaf";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {

@@ -34,6 +34,7 @@ struct Settings {
     friend bool operator==(const Settings& lhs, const Settings& other) {
         return lhs.__eq__(other);
     }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Settings";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Settings& obj) {
