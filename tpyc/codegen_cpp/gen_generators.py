@@ -201,7 +201,9 @@ class GeneratorCodegen:
 
         for stmt in pre_yield:
             self.statements.gen_stmt(out, stmt)
-        yield_expr = self.expressions.gen_expr(yield_stmt.value)
+        yield_expr = self.expressions.gen_expr(yield_stmt.value, elem_type)
+        yield_expr = self.statements._maybe_wrap_tuple_to_storage(
+            yield_expr, elem_type, self.ctx.unwrap_copy(yield_stmt.value))
         out.write(f"{INDENT * (4 + extra)}{val_binding} __val = {yield_expr};\n")
         for stmt in post_yield:
             self.statements.gen_stmt(out, stmt)
@@ -310,7 +312,9 @@ class GeneratorCodegen:
             out.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = __i++;\n")
             for stmt in pre_yield:
                 self.statements.gen_stmt(out, stmt)
-            yield_expr = self.expressions.gen_expr(yield_stmt.value)
+            yield_expr = self.expressions.gen_expr(yield_stmt.value, elem_type)
+            yield_expr = self.statements._maybe_wrap_tuple_to_storage(
+                yield_expr, elem_type, self.ctx.unwrap_copy(yield_stmt.value))
             out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
             for stmt in post_yield:
                 self.statements.gen_stmt(out, stmt)
@@ -334,7 +338,8 @@ class GeneratorCodegen:
 
             self._gen_simple_for_yield_body(
                 out, for_stmt, pre_yield, post_yield, yield_stmt,
-                iter_elem, cpp_iter_elem, cpp_var, cpp_elem, val_binding, I, extra)
+                iter_elem, cpp_iter_elem, cpp_var, cpp_elem, val_binding, I, extra,
+                yield_type=elem_type)
         elif self._is_builtin_native_iterable(for_stmt):
             # Built-in NativeIterable (list, dict, set, Span, etc.):
             # begin/end peephole for efficiency.
@@ -365,7 +370,7 @@ class GeneratorCodegen:
 
             for stmt in pre_yield:
                 self.statements.gen_stmt(out, stmt)
-            yield_expr = self.expressions.gen_expr(yield_stmt.value)
+            yield_expr = self.expressions.gen_expr(yield_stmt.value, elem_type)
             out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
             for stmt in post_yield:
                 self.statements.gen_stmt(out, stmt)
@@ -396,7 +401,8 @@ class GeneratorCodegen:
 
             self._gen_simple_for_yield_body(
                 out, for_stmt, pre_yield, post_yield, yield_stmt,
-                iter_elem, cpp_iter_elem, cpp_var, cpp_elem, val_binding, I, extra)
+                iter_elem, cpp_iter_elem, cpp_var, cpp_elem, val_binding, I, extra,
+                yield_type=elem_type)
 
         self.ctx.indent_level = old_indent
         self.ctx.generator_self_ref = old_self_ref
@@ -432,6 +438,7 @@ class GeneratorCodegen:
         pre_yield: list[TpyStmt], post_yield: list[TpyStmt], yield_stmt: TpyYield,
         iter_elem: 'TpyType | None', cpp_iter_elem: str, cpp_var: str,
         cpp_elem: str, val_binding: str, I: 'Callable[[int], str]', extra: int,
+        yield_type: 'TpyType | None' = None,
     ) -> None:
         """Emit the shared yield body for __iter__+__next__ simple generator branches."""
         self.ctx.indent_level = 3 + extra
@@ -444,7 +451,9 @@ class GeneratorCodegen:
 
         for stmt in pre_yield:
             self.statements.gen_stmt(out, stmt)
-        yield_expr = self.expressions.gen_expr(yield_stmt.value)
+        yield_expr = self.expressions.gen_expr(yield_stmt.value, yield_type)
+        yield_expr = self.statements._maybe_wrap_tuple_to_storage(
+            yield_expr, yield_type, self.ctx.unwrap_copy(yield_stmt.value))
         out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
         for stmt in post_yield:
             self.statements.gen_stmt(out, stmt)

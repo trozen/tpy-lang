@@ -43,7 +43,7 @@ namespace tpyapp::main {
 
 
 // def check_point(p: Optional[Point]) -> str:
-std::string check_point(Point* p) {
+std::string check_point(const Point* p) {
     // match p:
     auto& __match_subject = p;
     // case None:

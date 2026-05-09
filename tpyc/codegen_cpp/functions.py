@@ -40,6 +40,7 @@ from ..parse.nodes import (
 )
 from ..namespace import Namespace
 from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span
+from .param_const import decide_param_const, ParamConstDecision
 from .type_resolution import resolve_stmt_type_cascade
 
 if TYPE_CHECKING:
@@ -366,39 +367,20 @@ class FunctionGenerator:
                     and ptype.param_needs_copy_for_reassign()):
                 # Rename param so the body can declare a mutable local with the original name
                 part = ptype.to_cpp_param(f"__param_{cpp_pname}")
-            elif const_params:
-                if (mutated_params is not None and i in mutated_params) or i in addr_escapes_params:
-                    # Param directly mutated (method call, field write) or its
-                    # address escapes into a mutable Ptr[T] field -- keep
-                    # non-const even in const methods / constructors.
-                    part = ptype.to_cpp_param(cpp_pname)
-                elif (use_readonly_params
-                        and self.ctx.is_ptr_variant_union(own)):
-                    part = f"{own.to_cpp_const_ptr_variant()} {cpp_pname}"
-                else:
-                    part = ptype.to_cpp_const_param(cpp_pname)
-            elif (mutated_params is not None and i not in mutated_params
-                    and i not in addr_escapes_params
-                    and (ptype.is_ref_param()
-                         or self.ctx.is_ptr_variant_union(own))
-                    and not isinstance(unwrap_ref_type(ptype), TypeParamRef)
-                    and not (reassigned_params and pname in reassigned_params)):
-                # Param is provably not mutated and not rebound -- safe to use const.
-                # For ref params: T& -> const T&.
-                # For pointer-variant unions: shallow const (const variant<T*...>)
-                # to avoid conversion issues at call sites. Deep const
-                # (variant<const T*...>) is used only for @readonly params
-                # where call-site codegen generates the const variant type.
-                if self.ctx.is_ptr_variant_union(own):
-                    if use_readonly_params:
-                        part = f"{own.to_cpp_const_ptr_variant()} {cpp_pname}"
-                    else:
-                        cpp = own.to_cpp_ptr_variant()
-                        part = f"const {cpp} {cpp_pname}"
-                else:
-                    part = ptype.to_cpp_const_param(cpp_pname)
             else:
-                part = ptype.to_cpp_param(cpp_pname)
+                is_pvu = self.ctx.is_ptr_variant_union(own)
+                decision = decide_param_const(
+                    ptype,
+                    index=i,
+                    pname=pname,
+                    mutated_params=mutated_params,
+                    addr_escapes_params=addr_escapes_params,
+                    reassigned_params=reassigned_params,
+                    is_ptr_variant_union=is_pvu,
+                    const_params=const_params,
+                    use_readonly_params=use_readonly_params,
+                )
+                part = self._emit_param_with_decision(decision, is_pvu, own, ptype, cpp_pname)
             # Own[T] where T is a class-level type param: std::type_identity_t is
             # redundant (T is already bound, T&& is a plain rvalue ref, not forwarding).
             # Only function-level type params need the deduction guard.
@@ -497,14 +479,18 @@ class FunctionGenerator:
                             part = f"{cpp_type}&& {cpp_pname}"
                         else:
                             part = f"const {cpp_type}& {cpp_pname}"
-                    elif const_params and mutated_params is not None and i in mutated_params:
-                        part = ptype.to_cpp_param(cpp_pname)
-                    elif const_params and use_readonly_params and self.ctx.is_ptr_variant_union(own):
-                        part = f"{own.to_cpp_const_ptr_variant()} {cpp_pname}"
-                    elif const_params:
-                        part = ptype.to_cpp_const_param(cpp_pname)
                     else:
-                        part = ptype.to_cpp_param(cpp_pname)
+                        is_pvu = self.ctx.is_ptr_variant_union(own)
+                        decision = decide_param_const(
+                            ptype,
+                            index=i,
+                            pname=pname,
+                            mutated_params=mutated_params,
+                            is_ptr_variant_union=is_pvu,
+                            const_params=const_params,
+                            use_readonly_params=use_readonly_params,
+                        )
+                        part = self._emit_param_with_decision(decision, is_pvu, own, ptype, cpp_pname)
             if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
                 part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
             result.append(part)
@@ -572,45 +558,68 @@ class FunctionGenerator:
             return f"std::expected<{inner}, {cpp_error}>"
         return ret
 
-    def _build_const_ref_params(
+    @staticmethod
+    def _emit_param_with_decision(
+        decision: ParamConstDecision,
+        is_pvu: bool,
+        own: 'TpyType',
+        ptype: 'TpyType',
+        cpp_pname: str,
+    ) -> str:
+        """Emit the C++ spelling of a param given its const decision.
+
+        Pointer-variant unions split shallow (`const variant<T*...>`) vs
+        deep (`variant<const T*...>`) const based on `deep_borrow_const`;
+        all other types use `to_cpp_const_param` / `to_cpp_param`.
+        """
+        if not decision.signature_const:
+            return ptype.to_cpp_param(cpp_pname)
+        if is_pvu:
+            if decision.deep_borrow_const:
+                return f"{own.to_cpp_const_ptr_variant()} {cpp_pname}"
+            return f"const {own.to_cpp_ptr_variant()} {cpp_pname}"
+        return ptype.to_cpp_const_param(cpp_pname)
+
+    def _build_param_const_sets(
         self,
         params: list[tuple[str, 'TpyType']],
         mutated_params: 'frozenset[int] | None',
         reassigned_params: 'set[str] | None' = None,
         use_const_params: bool = False,
         addr_escapes_params: 'frozenset[int]' = frozenset(),
-    ) -> set[str]:
-        """Return the set of param names that will be emitted as const T& in C++.
+    ) -> tuple[set[str], set[str]]:
+        """Compute (const_ref_params, deep_const_borrow_params) in one pass.
 
-        Mirrors the constness logic in gen_params() so that statement codegen
-        can emit explicit const T& / T& for element-borrow locals instead of auto&.
+        - const_ref_params: param names emitted as `const T&` in C++. Body
+          codegen uses this to emit explicit `const T&` / `T&` for
+          element-borrow locals instead of `auto&`. Tracks ordinary
+          T&-shaped params and ptr-variant unions; Optional and Tuple
+          surfaces have their own semantics in deep_const_borrow_params.
+        - deep_const_borrow_params: param names whose inner spelling is
+          const everywhere it surfaces (Optional `const T*`, tuple slots
+          `const T*` / `const T&`). Read by body codegen for unpacked
+          locals, alias propagation, and call-site lowering.
         """
-        from ..typesys import TypeParamRef
-        result: set[str] = set()
-        if use_const_params:
-            for i, (pname, ptype) in enumerate(params):
-                if mutated_params is not None and i in mutated_params:
-                    continue
-                if i in addr_escapes_params:
-                    continue
-                unwrapped = unwrap_readonly(unwrap_ref_type(ptype))
-                if ((unwrapped.is_ref_param()
-                     or self.ctx.is_ptr_variant_union(unwrapped))
-                        and not isinstance(unwrapped, TypeParamRef)):
-                    result.add(pname)
-            return result
-        if mutated_params is None:
-            return result
+        const_ref: set[str] = set()
+        deep: set[str] = set()
         for i, (pname, ptype) in enumerate(params):
-            inner = unwrap_ref_type(ptype)
-            if (i not in mutated_params
-                    and i not in addr_escapes_params
-                    and (inner.is_ref_param()
-                         or self.ctx.is_ptr_variant_union(inner))
-                    and not isinstance(inner, TypeParamRef)
-                    and not (reassigned_params and pname in reassigned_params)):
-                result.add(pname)
-        return result
+            inner = unwrap_readonly(unwrap_ref_type(ptype))
+            decision = decide_param_const(
+                ptype,
+                index=i,
+                pname=pname,
+                mutated_params=mutated_params,
+                addr_escapes_params=addr_escapes_params,
+                reassigned_params=reassigned_params,
+                is_ptr_variant_union=self.ctx.is_ptr_variant_union(inner),
+                const_params=use_const_params,
+            )
+            if decision.signature_const and (
+                    inner.is_ref_param() or self.ctx.is_ptr_variant_union(inner)):
+                const_ref.add(pname)
+            if decision.deep_borrow_const:
+                deep.add(pname)
+        return const_ref, deep
 
     def _get_reassigned_params(self, func: TpyFunction) -> set[str] | None:
         """Get the set of param names reassigned in the function body, or None."""
@@ -981,12 +990,13 @@ class FunctionGenerator:
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         for pname, ptype in func.params:
             local_ns.bind_variable(pname, ptype)
-        crp = self._build_const_ref_params(
+        crp, dcbp = self._build_param_const_sets(
             func.params, mp, rp, use_const_params=func.is_readonly,
             addr_escapes_params=ae)
         self.statements.gen_body(out, func.body, func.params, func.return_type,
                                  func, local_ns,
-                                 const_ref_params=crp)
+                                 const_ref_params=crp,
+                                 deep_const_borrow_params=dcbp)
 
         out.write("}\n")
 
@@ -1048,11 +1058,13 @@ class FunctionGenerator:
             if isinstance(stub_ptype, LiteralType):
                 self.ctx.literal_overload_facts[pname] = stub_ptype
 
+        crp, dcbp = self._build_param_const_sets(
+            impl.params, mp, rp, use_const_params=impl.is_readonly)
         try:
             self.statements.gen_body(out, impl.body, impl.params, stub.return_type,
                                      impl, local_ns,
-                                     const_ref_params=self._build_const_ref_params(
-                                         impl.params, mp, rp, use_const_params=impl.is_readonly))
+                                     const_ref_params=crp,
+                                     deep_const_borrow_params=dcbp)
         finally:
             self.ctx.literal_overload_facts = {}
 
@@ -1121,11 +1133,13 @@ class FunctionGenerator:
         # equality-based dead-branch elim (if count == 0:) works alongside
         # isinstance-based elim (if x is None:).
         self._inject_literal_overload_facts(overload_types)
+        crp, dcbp = self._build_param_const_sets(
+            stub.params, mp, rp, use_const_params=stub.is_readonly)
         try:
             self.statements.gen_body(out, impl.body, stub.params, stub.return_type,
                                      impl, local_ns,
-                                     const_ref_params=self._build_const_ref_params(
-                                         stub.params, mp, rp, use_const_params=stub.is_readonly))
+                                     const_ref_params=crp,
+                                     deep_const_borrow_params=dcbp)
         finally:
             self.ctx.overload_param_types = {}
             self.ctx.overload_missing_param_locals = []
@@ -1581,7 +1595,7 @@ class FunctionGenerator:
 
         prev_consuming = self.ctx.in_consuming_method
         self.ctx.in_consuming_method = method.is_consuming
-        method_crp = self._build_const_ref_params(
+        method_crp, method_dcbp = self._build_param_const_sets(
             method.params, mp, rp, use_const_params,
             addr_escapes_params=ae)
         # ``self`` is const in any const method, including the
@@ -1592,7 +1606,8 @@ class FunctionGenerator:
         self.statements.gen_body(out, method.body, method.params, method.return_type,
                                  method, local_ns, indent_level=body_indent_level, is_method=True,
                                  record_type_param_bounds=record_type_param_bounds,
-                                 const_ref_params=method_crp)
+                                 const_ref_params=method_crp,
+                                 deep_const_borrow_params=method_dcbp)
         self.ctx.in_consuming_method = prev_consuming
 
         out.write(f"{sig_indent}}}\n")

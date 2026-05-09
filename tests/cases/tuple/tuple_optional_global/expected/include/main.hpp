@@ -15,7 +15,7 @@ extern std::tuple<std::optional<T>, std::optional<T>> g;
 extern std::tuple<std::optional<T>, std::optional<T>> g_partial;
 inline constexpr std::string_view __name__ = "__main__";
 
-void consume(const std::tuple<T*, T*>& p);
+void consume(const std::tuple<const T*, const T*>& p);
 void main();
 
 // class T:

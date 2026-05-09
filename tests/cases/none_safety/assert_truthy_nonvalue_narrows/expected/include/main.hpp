@@ -12,7 +12,7 @@ struct Point;
 extern Point* pt;
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t get_x(Point* p);
+int32_t get_x(const Point* p);
 
 // class Point:
 struct Point {

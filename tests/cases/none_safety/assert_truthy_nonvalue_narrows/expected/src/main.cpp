@@ -7,7 +7,7 @@ namespace tpyapp::main {
 Point* pt{};
 
 // def get_x(p: Point | None) -> Int32:
-int32_t get_x(Point* p) {
+int32_t get_x(const Point* p) {
     // assert p  # tpyc: ok
     if (!(p)) ::tpy::raise_assertion_error();
     // return p.x  # tpyc: ok

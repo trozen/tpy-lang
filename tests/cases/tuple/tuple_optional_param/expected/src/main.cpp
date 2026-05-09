@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // def show(p: tuple[T | None, T | None]) -> None:
-void show(const std::tuple<T*, T*>& p) {
+void show(const std::tuple<const T*, const T*>& p) {
     // a, b = p
     auto& __tup_1 = p;
-    T* a = std::get<0>(__tup_1);
-    T* b = std::get<1>(__tup_1);
+    const T* a = std::get<0>(__tup_1);
+    const T* b = std::get<1>(__tup_1);
     // if a is not None:
     if ((a != nullptr)) {
         // print(a.x)

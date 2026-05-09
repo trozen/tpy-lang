@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 Point* get_or_none(bool flag, Point& p);
 Point* pick(bool flag, Point* a, Point* b);
-::tpy::BigInt narrowed_field(Point* p);
+::tpy::BigInt narrowed_field(const Point* p);
 void main();
 
 // class Point:

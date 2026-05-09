@@ -1472,6 +1472,57 @@ def is_ref_type(t: 'TpyType') -> bool:
     return isinstance(t, RefType)
 
 
+def param_has_mutable_borrow_surface(t: 'TpyType') -> bool:
+    """True when the param's C++ shape contains a non-const borrowed surface
+    that mutation can flow through.
+
+    Used by Phase-2 mutation propagation (`sema/calls.py`) to decide whether
+    a callee param participates in call-edge recording, and by const-inference
+    gating to decide whether a param is a candidate for the const spelling.
+
+    Includes: ordinary non-value borrowed params (`T&`), pointer-repr
+    `Optional[T]` (`T*`), and `tuple[...]` whose elements recursively expose
+    a mutable borrow surface.
+
+    Excludes: `ReadonlyType`, `Own[T]`, value-only tuples, and tuple slots
+    containing `TypeParamRef` -- the last because mutation through a generic
+    slot can't be statically determined and must default to mutable. Explicit
+    `readonly[]` annotation remains the opt-in path for those.
+    """
+    if isinstance(t, ReadonlyType):
+        return False
+    if isinstance(t, OwnType):
+        return False
+    if isinstance(t, RefType):
+        return param_has_mutable_borrow_surface(t.wrapped)
+    if isinstance(t, OptionalType):
+        return t.uses_pointer_repr()
+    if isinstance(t, TupleType):
+        for et in t.element_types:
+            # Look through Ref/Readonly wrapping to see the slot's effective
+            # shape -- tuple element types are often Ref[T] in non-value
+            # contexts, and we need to detect generic-slot TypeParamRefs
+            # regardless of that wrapping.
+            et_inner = unwrap_readonly(unwrap_ref_type(et))
+            if isinstance(et_inner, TypeParamRef):
+                # Generic slot: can't reason about mutation statically.
+                return False
+            if param_has_mutable_borrow_surface(et):
+                return True
+            if not et.is_value_type() and not isinstance(et, OwnType):
+                # Plain non-value borrow slot (T&) is mutable by default.
+                return True
+        return False
+    # Top-level TypeParamRef: defer to is_value_type. Unbounded T behaves
+    # as a borrow surface (call-edge recording must still happen so
+    # return_borrows_from propagates through generic forwarders).
+    # `is_ref_param` covers types that are technically value types but
+    # are still passed by mutable reference (e.g. bytearray) -- the old
+    # `is_ref_param()` const-inference gate matched these and the helper
+    # has to keep matching them.
+    return not t.is_value_type() or t.is_ref_param()
+
+
 @dataclass(frozen=True)
 class AutoReadonlyType(TpyType):
     """Type annotation for auto_readonly methods.
@@ -3385,6 +3436,14 @@ class FunctionInfo:
     # ad-hoc FunctionInfos minted in sema for virtual calls / partial
     # application) -- readers must tolerate None as "unknown owner".
     originating_module: str | None = None
+    # Codegen ABI facts: param indices whose emitted spelling and inner
+    # surface should be const, computed by `param_const.populate_const_borrow_params`
+    # AFTER Phase-2 mutation propagation finalizes mutated_params /
+    # addr_escapes_params. None = not yet computed (consumers fall back to
+    # mutable spellings). Distinguished from sema facts (mutated_params,
+    # return_borrows_from): these never feed back into mutation analysis.
+    const_borrow_params: Optional[frozenset[int]] = None
+    deep_const_borrow_params: Optional[frozenset[int]] = None
 
     @property
     def root(self) -> 'FunctionInfo':

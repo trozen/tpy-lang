@@ -12,7 +12,7 @@ struct T;
 inline constexpr std::string_view __name__ = "__main__";
 
 std::tuple<T*, T*> make_pair(T& a, T& b);
-int32_t consume(const std::tuple<T*, T*>& p);
+int32_t consume(const std::tuple<const T*, const T*>& p);
 void main();
 
 // class T:

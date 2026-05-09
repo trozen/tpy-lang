@@ -12,7 +12,7 @@ struct Point;
 extern Point* pt;
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t score(Point* p);
+int32_t score(const Point* p);
 
 // class Point:
 struct Point {

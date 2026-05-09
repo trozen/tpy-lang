@@ -43,7 +43,7 @@ struct Holder {
     Holder() : pair(::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<std::optional<T>, std::optional<T>>{std::nullopt, std::nullopt})) {}
 
     // def update(self, p: tuple[T | None, T | None]) -> None:
-    void update(const std::tuple<T*, T*>& p);
+    void update(const std::tuple<const T*, const T*>& p);
 
     // def copy_from_subscript(self, items: list[tuple[T | None, T | None]]) -> None:
     void copy_from_subscript(const std::vector<std::tuple<std::optional<T>, std::optional<T>>>& items);
@@ -95,7 +95,7 @@ inline std::ostream& operator<<(std::ostream& os, const SubscriptCtor& obj) {
 
 
 // def update(self, p: tuple[T | None, T | None]) -> None:
-inline void Holder::update(const std::tuple<T*, T*>& p) {
+inline void Holder::update(const std::tuple<const T*, const T*>& p) {
     // self.pair = p
     this->pair = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(p);
 }

@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // def consume(p: tuple[T | None, T | None]) -> None:
-void consume(const std::tuple<T*, T*>& p) {
+void consume(const std::tuple<const T*, const T*>& p) {
     // a, b = p
     auto& __tup_1 = p;
-    T* a = std::get<0>(__tup_1);
-    T* b = std::get<1>(__tup_1);
+    const T* a = std::get<0>(__tup_1);
+    const T* b = std::get<1>(__tup_1);
     // if a is not None:
     if ((a != nullptr)) {
         // print(a.x)
@@ -32,11 +32,11 @@ void main() {
     // # Subscript read from a list of storage-form tuples flows through
     // # tuple_to_pointer to match the pointer-form param of consume().
     // consume(items[0])
-    consume(::tpy::tuple_to_pointer<std::tuple<T*, T*>>(::tpy::__getitem__(items, 0)));
+    consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(::tpy::__getitem__(items, 0)));
     // consume(items[1])
-    consume(::tpy::tuple_to_pointer<std::tuple<T*, T*>>(::tpy::__getitem__(items, 1)));
+    consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(::tpy::__getitem__(items, 1)));
     // consume(items[2])
-    consume(::tpy::tuple_to_pointer<std::tuple<T*, T*>>(::tpy::__getitem__(items, 2)));
+    consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(::tpy::__getitem__(items, 2)));
     // # Destructuring directly from a subscript also works.
     // a, b = items[0]
     auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(::tpy::__getitem__(items, 0));
@@ -56,14 +56,14 @@ void main() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& it = *__beg_0;
         // consume(it)
-        consume(::tpy::tuple_to_pointer<std::tuple<T*, T*>>(it));
+        consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(it));
     }
     // # Local initialised from a storage-form source: same conversion at
     // # the boundary as if the source were used directly.
     // snap = items[0]
     auto snap = ::tpy::__getitem__(items, 0);
     // consume(snap)
-    consume(::tpy::tuple_to_pointer<std::tuple<T*, T*>>(snap));
+    consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(snap));
     // # for-loop with destructuring directly: the synthetic loop tuple is
     // # storage-form, the destructure target slots are pointer-form.
     // for x, y in items:

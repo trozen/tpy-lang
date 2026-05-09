@@ -111,7 +111,8 @@ class StatementGenerator:
                  func: TpyFunction, local_ns: Namespace,
                  indent_level: int = 1, is_method: bool = False,
                  record_type_param_bounds: dict[str, TpyType] | None = None,
-                 const_ref_params: set[str] | None = None) -> None:
+                 const_ref_params: set[str] | None = None,
+                 deep_const_borrow_params: set[str] | None = None) -> None:
         """Generate the body of a function or method.
 
         Handles scope setup, body buffering, hoist-decl prepending, and cleanup.
@@ -123,6 +124,7 @@ class StatementGenerator:
         if self.ctx.literal_overload_facts:
             self.ctx.literal_facts.update(self.ctx.literal_overload_facts)
         self.ctx.const_ref_params = const_ref_params if const_ref_params is not None else set()
+        self.ctx.deep_const_borrow_params = deep_const_borrow_params if deep_const_borrow_params is not None else set()
         self.ctx.declared_vars = {pname for pname, _ in params}
         self.ctx.var_types = {pname: unwrap_ref_type(ptype) for pname, ptype in params}
         self.ctx.local_scope_names = {pname for pname, _ in params}
@@ -1220,13 +1222,40 @@ class StatementGenerator:
     def _maybe_wrap_storage_tuple_source(self, stmt: 'TpyTupleUnpack', value_expr: str) -> str:
         """If unpacking a storage-form tuple into pointer-form Optional locals,
         wrap the source with tuple_to_pointer so std::get<I> yields T*.
+
+        When the source binding is const (loop var iterating a const list /
+        dict.values() / self.field in a readonly method), the inner pointers
+        derived via optional_to_ptr come out as `const T*`, so the converted
+        tuple type must use `to_cpp_return_const()` to match.
         """
         ptr_form = TupleType(tuple(stmt.target_types))
         if not ptr_form.has_pointer_repr_optional_element():
             return value_expr
         if not self.ctx.is_storage_form_source(stmt.value):
             return value_expr
-        return f"::tpy::tuple_to_pointer<{ptr_form.to_cpp_return()}>({value_expr})"
+        is_const_source = (isinstance(stmt.value, TpyName)
+                           and stmt.value.name in self.ctx.const_storage_form_tuple_locals)
+        cpp = (ptr_form.to_cpp_return_const() if is_const_source
+               else ptr_form.to_cpp_return())
+        return f"::tpy::tuple_to_pointer<{cpp}>({value_expr})"
+
+    def _iteration_yields_const(self, iterable: TpyExpr) -> bool:
+        """True when iterating `iterable` binds the loop var as const.
+
+        Detects const-source iteration patterns where the resulting tuple
+        elements come out as const optional<T>& -- so the storage->pointer
+        wrap must use to_cpp_return_const() to match optional_to_ptr's
+        const T* output.
+        """
+        # field-of-self in a readonly method: self is const, field is const ref
+        if isinstance(iterable, TpyFieldAccess) and isinstance(iterable.obj, TpyName):
+            if iterable.obj.name == "self" and "self" in self.ctx.const_ref_params:
+                return True
+        # const-inferred param or alias of one
+        if isinstance(iterable, TpyName):
+            return (iterable.name in self.ctx.const_indirect_locals
+                    or iterable.name in self.ctx.const_ref_params)
+        return False
 
     def _maybe_wrap_tuple_to_storage(self, expr: str, target_type: TpyType | None,
                                        source: TpyExpr | None = None) -> str:
@@ -1466,6 +1495,8 @@ class StatementGenerator:
             target_type = self.ctx.get_expr_type(stmt.target)
             value = self.expressions.gen_expr(stmt.value, target_type)
             value = self.expressions._maybe_move(stmt.value, value)
+            value = self._maybe_wrap_tuple_to_storage(
+                value, target_type, self.ctx.unwrap_copy(stmt.value))
             obj_type = self.ctx.get_expr_type(stmt.target.obj)
             index_type = self.ctx.analyzer.get_expr_type(stmt.target.index)
             # Dereference globals for subscript access
@@ -1937,6 +1968,22 @@ class StatementGenerator:
         return saved
 
 
+    def _unpack_source_has_const_slots(self, stmt: TpyTupleUnpack) -> bool:
+        """True when the unpack source has const-typed borrow slots.
+
+        Triggered when the source is a name referring to either:
+        - a const-inferred param (deep_const_borrow_params), or
+        - a synthesized for-loop tuple iterating a const-bound source
+          (const_storage_form_tuple_locals).
+        Drives the unpack codegen to emit `const T*` / `const T&` for
+        unpacked locals rather than `T*` / `T&` (which would fail to bind
+        from the const slot).
+        """
+        if not isinstance(stmt.value, TpyName):
+            return False
+        return (stmt.value.name in self.ctx.deep_const_borrow_params
+                or stmt.value.name in self.ctx.const_storage_form_tuple_locals)
+
     def _gen_tuple_unpack(self, out: TextIO, stmt: TpyTupleUnpack, indent: str) -> None:
         """Generate tuple unpacking: auto __tup_N = expr; T a = std::get<0>(...); ..."""
         # Inside try/except: intercept error_return calls with goto dispatch
@@ -1983,6 +2030,7 @@ class StatementGenerator:
         else:
             out.write(f"{indent}auto {tmp} = {value_expr};\n")
 
+        source_has_const_slots = self._unpack_source_has_const_slots(stmt)
         for i, name in enumerate(stmt.targets):
             if name is None:
                 continue
@@ -2003,9 +2051,12 @@ class StatementGenerator:
                 self.ctx.local_scope_names.add(name)
                 self.ctx.var_types[name] = target_type
                 self.ctx.pointer_locals.add(name)
-                is_const = (stmt.is_const_ref
-                            and i < len(stmt.is_const_ref)
-                            and stmt.is_const_ref[i])
+                is_const = source_has_const_slots or (
+                    stmt.is_const_ref
+                    and i < len(stmt.is_const_ref)
+                    and stmt.is_const_ref[i])
+                if is_const:
+                    self.ctx.const_indirect_locals.add(name)
                 ptr_cpp = (target_type.to_cpp_return_const() if is_const
                            else target_type.to_cpp_return())
                 out.write(f"{indent}{ptr_cpp} {cpp_name} = {get_expr};\n")
@@ -2030,10 +2081,14 @@ class StatementGenerator:
                 elif stmt.is_ref[i]:
                     if name in self.ctx.reassigned_vars or name in self.ctx.hoisted_vars:
                         self.ctx.pointer_locals.add(name)
-                        out.write(f"{indent}{cpp_type}* {cpp_name} = "
+                        cv = "const " if source_has_const_slots else ""
+                        if source_has_const_slots:
+                            self.ctx.const_indirect_locals.add(name)
+                        out.write(f"{indent}{cv}{cpp_type}* {cpp_name} = "
                                   f"&{get_expr};\n")
                     else:
-                        out.write(f"{indent}{cpp_type}& {cpp_name} = "
+                        cv = "const " if source_has_const_slots else ""
+                        out.write(f"{indent}{cv}{cpp_type}& {cpp_name} = "
                                   f"{get_expr};\n")
                 elif (stmt.is_const_ref and i < len(stmt.is_const_ref)
                         and stmt.is_const_ref[i]):
@@ -2899,7 +2954,10 @@ class StatementGenerator:
     def _gen_yield(self, out: TextIO, stmt: TpyYield, indent: str) -> None:
         """Generate a yield statement in a generator function body."""
         state_num = self.ctx.analyzer.ctx.generator_yield_states[id(stmt)]
-        yield_expr = self.expressions.gen_expr(stmt.value)
+        yield_type = self.ctx.current_return_type
+        yield_expr = self.expressions.gen_expr(stmt.value, yield_type)
+        yield_expr = self._maybe_wrap_tuple_to_storage(
+            yield_expr, yield_type, self.ctx.unwrap_copy(stmt.value))
         out.write(f"{indent}__state = {state_num};\n")
         out.write(f"{indent}return {yield_expr};\n")
         out.write(f"{indent}__resume_{state_num}:;\n")
@@ -3739,6 +3797,8 @@ class StatementGenerator:
         if (isinstance(elem_type, TupleType)
                 and elem_type.has_pointer_repr_optional_element()):
             self.ctx.storage_form_tuple_locals.add(stmt.var)
+            if self._iteration_yields_const(stmt.iterable):
+                self.ctx.const_storage_form_tuple_locals.add(stmt.var)
         # Consuming loop: the loop variable is bound via auto&& into owned
         # storage (OwnIter), so it can be std::move'd at last use.
         # Also applies when sema resolved the element type as Own[T] (e.g.
@@ -3767,6 +3827,7 @@ class StatementGenerator:
         # by an earlier site (var-decl) so the flag must persist.
         if not stmt.hoist_loop_var and not was_declared:
             self.ctx.storage_form_tuple_locals.discard(stmt.var)
+            self.ctx.const_storage_form_tuple_locals.discard(stmt.var)
         self.ctx.current_ns = old_ns
 
         out.write(f"{indent}}}\n")

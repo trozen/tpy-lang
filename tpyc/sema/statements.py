@@ -20,7 +20,7 @@ from ..typesys import (
     is_final_allowed_inner, FINAL_INNER_TYPE_ERROR,
     qualify_exception_name, is_return_exception, is_exception_type, error_return_matches,
     FunctionInfo, ParamInfo, RecordInfo,
-    make_ref, unwrap_ref_type, RefType,
+    make_ref, unwrap_ref_type, RefType, param_has_mutable_borrow_surface,
     is_integer_type, is_any_int_type, is_numeric_type, is_readonly_span,
     is_float_type, is_any_float_type,
     resolve_int_literals,
@@ -3231,6 +3231,36 @@ class StatementAnalyzer:
             if stmt.loc:
                 display_type = unwrap_own(elem_type) if elem_type else elem_type
                 self.ctx.declared_var_types[(stmt.loc.line, name)] = display_type
+
+        # Register element-borrow edges so a later mutation through an
+        # unpacked target (a, b = p; a.x = ...) traces back to the source
+        # tuple's storage. Mirrors the deferred-element-ref pattern used for
+        # `a = items[0]`. Two source shapes:
+        #   - name source `a, b = p`     -> edges p -> a, p -> b
+        #   - tuple-literal source `a, b = (x, y)` -> edges x -> a, y -> b
+        # Only register for slots whose unpacked type exposes a mutable
+        # borrow surface; value-only elements never need the edge.
+        if not self.ctx.is_top_level:
+            bt = self.ctx.func.borrow_tracker
+            literal_src = stmt.value if isinstance(stmt.value, TpyTupleLiteral) else None
+            name_src_root = (_root_name_of_expr(stmt.value)
+                             if literal_src is None else None)
+            for i, name in enumerate(stmt.targets):
+                if name is None or not stmt.is_ref[i]:
+                    continue
+                # Skip value-type elements (BigInt, str, ...) bound by
+                # const-ref for copy avoidance: they have no borrow surface
+                # the call-edge gate would care about, and registering an
+                # edge here just bloats the borrow tracker.
+                if not param_has_mutable_borrow_surface(stmt.target_types[i]):
+                    continue
+                if literal_src is not None and i < len(literal_src.elements):
+                    src_root = _root_name_of_expr(literal_src.elements[i])
+                else:
+                    src_root = name_src_root
+                if src_root is None or src_root == name:
+                    continue
+                bt.add_borrow(src_root, name, BorrowKind.ELEMENT)
 
         # Determine const-ref eligibility per element for expensive value types.
         # Safe because tuples are immutable -- no in-place mutation possible.

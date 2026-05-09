@@ -7,7 +7,7 @@ namespace tpyapp::main {
 Point* q{};
 
 // def get_x(p: Point | None) -> Int32:
-int32_t get_x(Point* p) {
+int32_t get_x(const Point* p) {
     // assert p is not None
     if (!((p != nullptr))) ::tpy::raise_assertion_error();
     // return p.x

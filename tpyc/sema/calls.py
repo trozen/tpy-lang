@@ -22,7 +22,8 @@ from ..typesys import (
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     CallableType, is_fn_type, unwrap_ref_type,
     is_integer_type, is_any_int_type,
-    is_callable_type, is_float_type, is_readonly_span, unwrap_qualifiers)
+    is_callable_type, is_float_type, is_readonly_span, unwrap_qualifiers,
+    param_has_mutable_borrow_surface)
 from ..parse import (
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
@@ -2489,7 +2490,12 @@ class CallAnalyzer:
                 break
             if isinstance(callee_param.type, ReadonlyType):
                 continue
-            if unwrap_readonly(callee_param.type).is_value_type():
+            # Skip params with no mutable borrow surface. This catches plain
+            # value types and also opts out of Own[T], TypeParamRef, and
+            # generic-slot tuples. Tuples and pointer-repr Optionals with
+            # non-readonly elements DO need edges so transitive mutation
+            # through them propagates.
+            if not param_has_mutable_borrow_surface(callee_param.type):
                 continue
             arg = expr.args[i]
             arg_root = _root_name_of_expr(arg)

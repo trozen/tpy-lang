@@ -11,12 +11,12 @@ std::tuple<T*, int32_t, T*> f(T& a, T& b) {
 }
 
 // def show(p: tuple[T | None, Int32, T | None]) -> None:
-void show(const std::tuple<T*, int32_t, T*>& p) {
+void show(const std::tuple<const T*, int32_t, const T*>& p) {
     // a, n, b = p
     auto& __tup_1 = p;
-    T* a = std::get<0>(__tup_1);
+    const T* a = std::get<0>(__tup_1);
     int32_t n = std::get<1>(__tup_1);
-    T* b = std::get<2>(__tup_1);
+    const T* b = std::get<2>(__tup_1);
     // if a is not None:
     if ((a != nullptr)) {
         // print(a.x)

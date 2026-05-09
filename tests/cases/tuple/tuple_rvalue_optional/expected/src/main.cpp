@@ -5,10 +5,10 @@ namespace tpyapp::main {
 
 
 // def show(p: tuple[Point | None, Int32]) -> None:
-void show(const std::tuple<Point*, int32_t>& p) {
+void show(const std::tuple<const Point*, int32_t>& p) {
     // a, n = p
     auto& __tup_1 = p;
-    Point* a = std::get<0>(__tup_1);
+    const Point* a = std::get<0>(__tup_1);
     int32_t n = std::get<1>(__tup_1);
     // if a is not None:
     if ((a != nullptr)) {
@@ -24,11 +24,11 @@ void show(const std::tuple<Point*, int32_t>& p) {
 }
 
 // def show2(p: tuple[Point | None, Point | None]) -> None:
-void show2(const std::tuple<Point*, Point*>& p) {
+void show2(const std::tuple<const Point*, const Point*>& p) {
     // a, b = p
     auto& __tup_1 = p;
-    Point* a = std::get<0>(__tup_1);
-    Point* b = std::get<1>(__tup_1);
+    const Point* a = std::get<0>(__tup_1);
+    const Point* b = std::get<1>(__tup_1);
     // if a is not None:
     if ((a != nullptr)) {
         // print(a.x)

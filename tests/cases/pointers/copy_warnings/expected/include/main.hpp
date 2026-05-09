@@ -102,7 +102,7 @@ struct OptHolder {
     OptHolder() : value(std::nullopt) {}
 
     // def set_value(self, p: Point | None) -> None:
-    void set_value(Point* p);
+    void set_value(const Point* p);
     static constexpr std::string_view __tpy_class_name__ = "__main__.OptHolder";
 };
 
@@ -139,7 +139,7 @@ inline void Container::set_items(const std::vector<int32_t>& data) {
 }
 
 // def set_value(self, p: Point | None) -> None:
-inline void OptHolder::set_value(Point* p) {
+inline void OptHolder::set_value(const Point* p) {
     // self.value = p            # tpyc: warning(/copies Point | None into field/)
     this->value = ::tpy::ptr_to_optional(p);
     // self.value = copy(p)      # tpyc: ok

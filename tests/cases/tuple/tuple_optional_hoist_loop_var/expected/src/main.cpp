@@ -5,10 +5,10 @@ namespace tpyapp::main {
 
 
 // def consume(p: tuple[T | None, T | None]) -> None:
-void consume(const std::tuple<T*, T*>& p) {
+void consume(const std::tuple<const T*, const T*>& p) {
     // a, _ = p
     auto& __tup_1 = p;
-    T* a = std::get<0>(__tup_1);
+    const T* a = std::get<0>(__tup_1);
     // if a is not None:
     if ((a != nullptr)) {
         // print(a.x)
@@ -37,7 +37,7 @@ void main() {
         // pass
     }
     // consume(last)
-    consume(::tpy::tuple_to_pointer<std::tuple<T*, T*>>(last));
+    consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(last));
 }
 
 void __tpy_init() {

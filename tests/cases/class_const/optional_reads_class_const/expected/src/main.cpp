@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def use(c: Optional[C]) -> None:
-void use(C* c) {
+void use(const C* c) {
     // print(c.LIMIT)  # tpyc: warning(/Potential None access/)
     std::cout << ({ ::tpy::deref_check(c); C::LIMIT; }) << "\n";
     // if c is not None:

@@ -711,7 +711,8 @@ class ExpressionGenerator:
 
     def gen_call_arg(self, arg: TpyExpr, ptype: TpyType | None,
                      target_type: TpyType | None | _Unset = _UNSET,
-                     inline_template: bool = False) -> str:
+                     inline_template: bool = False,
+                     target_const_borrow: bool = False) -> str:
         """Generate a call argument with auto-move at last use for Own[T] params.
 
         target_type overrides ptype as the hint passed to gen_expr_deref.
@@ -723,6 +724,11 @@ class ExpressionGenerator:
         (e.g. push_back), not a real C++ function with T&& param. The callee
         natively accepts lvalues, so the copy-into-temp + move is unnecessary
         for plain names and literals.
+
+        target_const_borrow: when True, the callee param is deep-const-inferred
+        (its slots/inner pointers are const). Storage->pointer conversion
+        helpers must produce const-pointer slots so const-source iteration
+        flows match the param's expected shape.
         """
         # Bytes literal targeting a span-storage slot: pin to static storage
         # via bytes_literal() so the stored span doesn't borrow a temporary
@@ -751,8 +757,20 @@ class ExpressionGenerator:
             ptype_for_tuple = unwrap_readonly(unwrap_ref_type(ptype))
             if (isinstance(ptype_for_tuple, TupleType)
                     and ptype_for_tuple.has_pointer_repr_optional_element()):
-                ptype_cpp = ptype_for_tuple.to_cpp_return()
+                ptype_cpp = (ptype_for_tuple.to_cpp_return_const() if target_const_borrow
+                             else ptype_for_tuple.to_cpp_return())
                 gen_arg = f"::tpy::tuple_to_pointer<{ptype_cpp}>({gen_arg})"
+        # Storage-form tuple param (Own[tuple[T | None, ...]]): pointer-form
+        # sources need element-wise lift via tuple_to_storage. Hits container
+        # insertion methods (list.append, dict.__setitem__) whose value param
+        # is Own[T] -- the C++ slot stores the storage-form tuple.
+        if ptype is not None and not self.ctx.is_storage_form_source(arg):
+            ptype_inner = unwrap_readonly(unwrap_ref_type(ptype))
+            if isinstance(ptype_inner, OwnType):
+                ptype_inner = unwrap_readonly(unwrap_ref_type(ptype_inner.wrapped))
+                if (isinstance(ptype_inner, TupleType)
+                        and ptype_inner.has_pointer_repr_optional_element()):
+                    gen_arg = f"::tpy::tuple_to_storage<{ptype_inner.to_cpp()}>({gen_arg})"
         if ptype is not None:
             # Auto-consuming iteration: Iterable[Own[T]] param with last-use arg
             # that has consuming __iter__. Generate consuming call instead of copy.
@@ -2322,6 +2340,7 @@ class ExpressionGenerator:
                     fi=expr.resolved_function_info, type_args=expr.inferred_type_args)
 
             gen_args = []
+            dcbp = func_info.deep_const_borrow_params
             for arg, (pname, ptype) in zip(expr.args, func_info.params):
                 # Strip Ref wrapper -- Ref is a sema annotation; codegen handles
                 # reference semantics through is_value_type() / type traits.
@@ -2384,7 +2403,10 @@ class ExpressionGenerator:
                                                         is_readonly_target=func_info.is_readonly)) is not None:
                     gen_args.append(union_arg)
                 else:
-                    gen_args.append(self.gen_call_arg(arg, resolved_ptype))
+                    arg_idx = len(gen_args)
+                    tcb = dcbp is not None and arg_idx in dcbp
+                    gen_args.append(self.gen_call_arg(arg, resolved_ptype,
+                                                      target_const_borrow=tcb))
 
             # Determine function name
             # Literal overload flattening: use mangled name for literal stubs
@@ -2717,6 +2739,7 @@ class ExpressionGenerator:
         if not _skip_first_pass and _fi:
             params = expr.resolved_function_info.params
             gen_args = []
+            dcbp = _fi.deep_const_borrow_params
             for i, arg in enumerate(expr.args):
                 ptype = params[i].type if i < len(params) else None
                 if isinstance(arg, TpyTypeParamConstruct):
@@ -2761,8 +2784,10 @@ class ExpressionGenerator:
                         temp_name = self.ctx.temps.create(ptype, init_expr)
                         gen_args.append(temp_name)
                         continue
+                    tcb = dcbp is not None and i in dcbp
                     gen_args.append(self.gen_call_arg(arg, ptype,
-                                                      inline_template=_is_native_stub))
+                                                      inline_template=_is_native_stub,
+                                                      target_const_borrow=tcb))
             args = ", ".join(gen_args)
         else:
             args = ", ".join(self.gen_expr_deref(a) for a in expr.args)
@@ -3005,6 +3030,7 @@ class ExpressionGenerator:
                         ):
                             type_subst[tp] = ta
                     gen_args = []
+                    method_dcbp = method_info.deep_const_borrow_params
                     resolved_params = expr.resolved_function_info.params if expr.resolved_function_info else []
                     # Prefer method_info.params (which keeps TypeParamRef for
                     # generic methods) to preserve the temp-for-TypeParamRef
@@ -3063,8 +3089,10 @@ class ExpressionGenerator:
                                     arg_target = None
                                 # @native stub methods: skip redundant copy-then-move
                                 is_native_stub = bool(method_info.native_name or method_info.cpp_template)
+                                tcb = method_dcbp is not None and i in method_dcbp
                                 gen_args.append(self.gen_call_arg(arg, rptype, target_type=arg_target,
-                                                                  inline_template=is_native_stub))
+                                                                  inline_template=is_native_stub,
+                                                                  target_const_borrow=tcb))
                     args = ", ".join(gen_args)
 
         # Use -> for pointer-locals/globals (T*) and pointer-typed expressions
