@@ -12,7 +12,7 @@ template<typename T> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void accept_opt(Point* p);
+void accept_opt(const Point* p);
 void main();
 
 // class Point:

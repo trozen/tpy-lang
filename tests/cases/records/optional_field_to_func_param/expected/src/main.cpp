@@ -7,7 +7,7 @@ namespace tpyapp::main {
 Holder* h{};
 
 // def describe(p: Point | None) -> None:
-void describe(Point* p) {
+void describe(const Point* p) {
     // if p is not None:
     if ((p != nullptr)) {
         // print(p.x)

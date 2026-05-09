@@ -11,11 +11,11 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 template<::tpystd::tpy::Writable T_fp>
-void emit_text(T_fp& fp, std::vector<std::string>& items);
+void emit_text(T_fp& fp, const std::vector<std::string>& items);
 template<::tpystd::tpy::Readable T_fp>
 std::string consume_text(T_fp& fp);
 template<::tpystd::tpy::BinaryWritable T_fp>
-void emit_bytes(T_fp& fp, std::vector<std::vector<uint8_t>>& chunks);
+void emit_bytes(T_fp& fp, const std::vector<std::vector<uint8_t>>& chunks);
 template<::tpystd::tpy::BinaryReadable T_fp>
 std::vector<uint8_t> consume_bytes(T_fp& fp);
 template<::tpystd::tpy::Seekable T_fp>
@@ -26,7 +26,7 @@ void main();
 
 // def emit_text(fp: Writable, items: list[str]) -> None:
 template<::tpystd::tpy::Writable T_fp>
-void emit_text(T_fp& fp, std::vector<std::string>& items) {
+void emit_text(T_fp& fp, const std::vector<std::string>& items) {
     // for s in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
@@ -47,7 +47,7 @@ std::string consume_text(T_fp& fp) {
 }
 // def emit_bytes(fp: BinaryWritable, chunks: list[bytes]) -> None:
 template<::tpystd::tpy::BinaryWritable T_fp>
-void emit_bytes(T_fp& fp, std::vector<std::vector<uint8_t>>& chunks) {
+void emit_bytes(T_fp& fp, const std::vector<std::vector<uint8_t>>& chunks) {
     // for b in chunks:
     auto& __obj_0 = chunks;
     auto __beg_0 = __obj_0.begin();

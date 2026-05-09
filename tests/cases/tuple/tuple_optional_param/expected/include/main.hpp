@@ -11,7 +11,7 @@ struct T;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void show(const std::tuple<T*, T*>& p);
+void show(const std::tuple<const T*, const T*>& p);
 void main();
 
 // class T:

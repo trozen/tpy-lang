@@ -37,7 +37,7 @@ namespace tpyapp::main {
 }
 
 // def maybe_depth(t: Tree | None) -> int:
-::tpy::BigInt maybe_depth(Tree* t) {
+::tpy::BigInt maybe_depth(const Tree* t) {
     // if t is None:
     if ((t == nullptr)) {
         // return -1
@@ -48,7 +48,7 @@ namespace tpyapp::main {
 }
 
 // def show(t: Tree | None) -> None:
-void show(Tree* t) {
+void show(const Tree* t) {
     // if t is not None:
     if ((t != nullptr)) {
         // print(depth(t))
@@ -72,7 +72,7 @@ Tree* first_or_none(std::vector<Tree>& items) {
 }
 
 // def get_depth_or_default(t: Tree | None, default: int) -> int:
-::tpy::BigInt get_depth_or_default(Tree* t, const ::tpy::BigInt& default_) {
+::tpy::BigInt get_depth_or_default(const Tree* t, const ::tpy::BigInt& default_) {
     // if t is None:
     if ((t == nullptr)) {
         // return default
@@ -85,7 +85,7 @@ Tree* first_or_none(std::vector<Tree>& items) {
 }
 
 // def describe(t: Tree | None) -> str:
-std::string describe(Tree* t) {
+std::string describe(const Tree* t) {
     // if t is None:
     if ((t == nullptr)) {
         // return "nothing"

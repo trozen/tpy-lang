@@ -12,7 +12,7 @@ struct T;
 inline constexpr std::string_view __name__ = "__main__";
 
 std::tuple<T*, int32_t, T*> f(T& a, T& b);
-void show(const std::tuple<T*, int32_t, T*>& p);
+void show(const std::tuple<const T*, int32_t, const T*>& p);
 void main();
 
 // class T:

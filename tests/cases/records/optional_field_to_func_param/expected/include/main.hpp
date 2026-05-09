@@ -13,7 +13,7 @@ struct Holder;
 extern Holder* h;
 inline constexpr std::string_view __name__ = "__main__";
 
-void describe(Point* p);
+void describe(const Point* p);
 
 // class Point:
 struct Point {

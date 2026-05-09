@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // def show(p: tuple[T, T]) -> None:
-void show(const std::tuple<T&, T&>& p) {
+void show(const std::tuple<const T&, const T&>& p) {
     // a, b = p
     auto& __tup_1 = p;
-    T& a = ::tpy::unwrap_ref(std::get<0>(__tup_1));
-    T& b = ::tpy::unwrap_ref(std::get<1>(__tup_1));
+    const T& a = ::tpy::unwrap_ref(std::get<0>(__tup_1));
+    const T& b = ::tpy::unwrap_ref(std::get<1>(__tup_1));
     // print(a.x)
     std::cout << a.x << "\n";
     // print(b.x)

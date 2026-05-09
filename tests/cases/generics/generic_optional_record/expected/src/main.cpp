@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def accept_opt(p: Point | None) -> None:
-void accept_opt(Point* p) {
+void accept_opt(const Point* p) {
     // if p is not None:
     if ((p != nullptr)) {
         // print(p.x)

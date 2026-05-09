@@ -7,7 +7,7 @@ namespace tpyapp::main {
 Point* pt{};
 
 // def score(p: Point | None) -> Int32:
-int32_t score(Point* p) {
+int32_t score(const Point* p) {
     // if p:  # tpyc: ok
     if (p) {
         // return p.x + 1  # tpyc: ok

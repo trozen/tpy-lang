@@ -17,7 +17,7 @@ struct BoolHolder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string opt_wrapper(Wrapper* w);
+std::string opt_wrapper(const Wrapper* w);
 std::string or_nested(const std::variant<Tag*, Wrapper*> x);
 std::string deep3(const std::variant<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::string>>>*> x);
 std::string positional_nested(const std::variant<Box<int32_t>*, Box<std::string>*> x);

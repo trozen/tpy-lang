@@ -11,7 +11,7 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void use(C* c);
+void use(const C* c);
 void main();
 
 // class C:

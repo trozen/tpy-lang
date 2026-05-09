@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // # --- Optional subject with union field guard ---
 // def opt_wrapper(w: Wrapper | None) -> str:
-std::string opt_wrapper(Wrapper* w) {
+std::string opt_wrapper(const Wrapper* w) {
     // match w:
     auto& __match_subject = w;
     // case None:

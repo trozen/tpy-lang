@@ -484,6 +484,7 @@ class LocalScopeSnap:
     ptr_variant_locals: set[str]
     const_indirect_locals: set[str]
     storage_form_tuple_locals: set[str]
+    const_storage_form_tuple_locals: set[str]
     movable_locals: set[str]
     ref_bound_locals: set[str]
     rebind_slots: dict[str, str]
@@ -554,6 +555,12 @@ class CodeGenContext:
     current_func_params: dict[str, TpyType] = field(default_factory=dict)
     current_type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
     const_ref_params: set[str] = field(default_factory=set)
+    # Param names whose declared const-inferred surface goes deep -- inner
+    # tuple slots, pointer-form Optional inner, etc. Drives body codegen
+    # decisions for tuple unpack, alias propagation, call-site lowering.
+    # Subset of const_ref_params for ordinary T& params; also includes
+    # Optional/Tuple param names that const_ref_params doesn't track.
+    deep_const_borrow_params: set[str] = field(default_factory=set)
 
     # --- Temporary variable management ---
     temps: TempState = field(default_factory=TempState)
@@ -574,6 +581,11 @@ class CodeGenContext:
     # Read sites need a tuple_to_pointer wrap to flow into pointer-form
     # tuple params/destructure targets.
     storage_form_tuple_locals: set[str] = field(default_factory=set)
+    # Subset of storage_form_tuple_locals: locals iterated from a const-bound
+    # source (const list&, dict.values(), self.field in readonly method, ...).
+    # When unpacking these, the storage->pointer wrap must produce const slots
+    # because optional_to_ptr returns `const T*` from a const optional<T>&.
+    const_storage_form_tuple_locals: set[str] = field(default_factory=set)
 
     # --- Pointer-variant locals (non-value union variables) ---
     # Variables that are std::variant<T*...> instead of std::variant<T...>.
@@ -866,6 +878,7 @@ class CodeGenContext:
         self.ptr_variant_locals = set()
         self.const_indirect_locals = set()
         self.storage_form_tuple_locals = set()
+        self.const_storage_form_tuple_locals = set()
         self.slots.reset()
         self.rebind_slots = {}
         self.plain_rebind_slots = set()
@@ -920,6 +933,7 @@ class CodeGenContext:
             ptr_variant_locals=self.ptr_variant_locals.copy(),
             const_indirect_locals=self.const_indirect_locals.copy(),
             storage_form_tuple_locals=self.storage_form_tuple_locals.copy(),
+            const_storage_form_tuple_locals=self.const_storage_form_tuple_locals.copy(),
             movable_locals=self.movable_locals.copy(),
             ref_bound_locals=self.ref_bound_locals.copy(),
             rebind_slots=dict(self.rebind_slots),
@@ -937,6 +951,7 @@ class CodeGenContext:
         self.ptr_variant_locals = snap.ptr_variant_locals.copy()
         self.const_indirect_locals = snap.const_indirect_locals.copy()
         self.storage_form_tuple_locals = snap.storage_form_tuple_locals.copy()
+        self.const_storage_form_tuple_locals = snap.const_storage_form_tuple_locals.copy()
         self.movable_locals = snap.movable_locals.copy()
         self.ref_bound_locals = snap.ref_bound_locals.copy()
         self.rebind_slots = dict(snap.rebind_slots)

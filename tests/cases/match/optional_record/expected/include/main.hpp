@@ -33,7 +33,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string check_point(Point* p);
+std::string check_point(const Point* p);
 std::string check_color(std::optional<Color> c);
 void main();
 

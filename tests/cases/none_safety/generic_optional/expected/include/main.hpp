@@ -31,7 +31,7 @@ struct Container {
     }
 
     // def set(self, val: T | None) -> None:
-    void set(T* val) {
+    void set(const T* val) {
         // self._val = val
         this->_val = ::tpy::ptr_to_optional(val);
     }

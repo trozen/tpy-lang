@@ -19,7 +19,7 @@ Point* pick(bool flag, Point* a, Point* b) {
 }
 
 // def narrowed_field(p: Optional[Point]) -> int:
-::tpy::BigInt narrowed_field(Point* p) {
+::tpy::BigInt narrowed_field(const Point* p) {
     // # is not None narrowing on pointer-repr Optional, then access field
     // return p.x if p is not None else 0
     return (((p != nullptr)) ? (p->x) : (::tpy::BigInt(0)));
