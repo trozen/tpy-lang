@@ -766,6 +766,14 @@ inline Dest to_pointer_form(Src&& s) {
     using DestD = std::remove_cvref_t<Dest>;
     if constexpr (std::is_same_v<SrcD, DestD>) {
         return std::forward<Src>(s);
+    } else if constexpr (std::is_pointer_v<SrcD> && std::is_pointer_v<DestD>) {
+        // Pointer-form source already; allow implicit qualification adjustment
+        // (P* -> const P*) without round-tripping through optional_to_ptr.
+        // Removing const would require const_cast and is not a valid use case.
+        static_assert(std::is_const_v<std::remove_pointer_t<DestD>>
+                   || !std::is_const_v<std::remove_pointer_t<SrcD>>,
+                   "to_pointer_form: cannot remove const from pointer");
+        return s;
     } else if constexpr (std::is_pointer_v<DestD>) {
         return optional_to_ptr(s);
     } else {

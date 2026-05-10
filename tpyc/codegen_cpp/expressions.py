@@ -753,27 +753,23 @@ class ExpressionGenerator:
                     return "std::span<const uint8_t>{}"
                 return cpp_bytes_literal_span(bytes_lit_arg.value)
         gen_arg = self.gen_expr_deref(arg, ptype if target_type is _UNSET else target_type)
-        # Pointer-form tuple param: storage-form sources need element-wise
-        # lift via tuple_to_pointer. Pointer-form sources (literals,
-        # function returns, pointer-form locals) already match the slot
-        # shape and pass through unchanged.
-        if ptype is not None and self.ctx.is_storage_form_source(arg):
-            ptype_for_tuple = unwrap_readonly(unwrap_ref_type(ptype))
-            if (isinstance(ptype_for_tuple, TupleType)
-                    and ptype_for_tuple.has_pointer_repr_optional_element()):
-                ptype_cpp = (ptype_for_tuple.to_cpp_return_const() if target_const_borrow
-                             else ptype_for_tuple.to_cpp_return())
-                gen_arg = f"::tpy::tuple_to_pointer<{ptype_cpp}>({gen_arg})"
-        # Storage-form tuple param (Own[tuple[T | None, ...]]): pointer-form
-        # sources need element-wise lift via tuple_to_storage. Hits container
-        # insertion methods (list.append, dict.__setitem__) whose value param
-        # is Own[T] -- the C++ slot stores the storage-form tuple.
-        if ptype is not None and not self.ctx.is_storage_form_source(arg):
+        # Tuple-of-pointer-repr-Optional param: bridge between borrow form
+        # (std::tuple<T*, ...>, bare tuple param) and storage form
+        # (std::tuple<std::optional<T>, ...>, Own[tuple] param). Source/slot
+        # mismatch on either side needs an element-wise converter.
+        if ptype is not None:
             ptype_inner = unwrap_readonly(unwrap_ref_type(ptype))
-            if isinstance(ptype_inner, OwnType):
+            slot_is_storage = isinstance(ptype_inner, OwnType)
+            if slot_is_storage:
                 ptype_inner = unwrap_readonly(unwrap_ref_type(ptype_inner.wrapped))
-                if (isinstance(ptype_inner, TupleType)
-                        and ptype_inner.has_pointer_repr_optional_element()):
+            if (isinstance(ptype_inner, TupleType)
+                    and ptype_inner.has_pointer_repr_optional_element()):
+                arg_is_storage = self.ctx.is_storage_form_source(arg)
+                if arg_is_storage and not slot_is_storage:
+                    ptype_cpp = (ptype_inner.to_cpp_return_const() if target_const_borrow
+                                 else ptype_inner.to_cpp_return())
+                    gen_arg = f"::tpy::tuple_to_pointer<{ptype_cpp}>({gen_arg})"
+                elif not arg_is_storage and slot_is_storage:
                     gen_arg = f"::tpy::tuple_to_storage<{ptype_inner.to_cpp()}>({gen_arg})"
         if ptype is not None:
             # Auto-consuming iteration: Iterable[Own[T]] param with last-use arg
@@ -4739,15 +4735,24 @@ class ExpressionGenerator:
             if not isinstance(analyzed, OptionalType):
                 obj_type = obj_type.inner
 
-        # Tuple subscript: std::get<N>(obj)
-        if isinstance(unwrap_readonly(obj_type), TupleType):
+        # Tuple subscript: std::get<N>(obj). Strip Own/Readonly/Ref so
+        # Own[tuple[...]] params and similar wrapped tuple shapes hit
+        # this fast-path instead of falling through to container __getitem__.
+        if isinstance(unwrap_qualifiers(obj_type), TupleType):
             subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
             idx = self._extract_compile_time_index(expr.index)
-            tuple_type = unwrap_readonly(obj_type)
+            tuple_type = unwrap_qualifiers(obj_type)
             n = len(tuple_type.element_types)
             if idx < 0:
                 idx += n
-            return f"std::get<{idx}>({subscript_obj})"
+            result = f"std::get<{idx}>({subscript_obj})"
+            # Storage-form tuple sources return std::optional<T> from std::get;
+            # consumers expect T*, so lift via optional_to_ptr.
+            elem_type = tuple_type.element_types[idx]
+            if (isinstance(elem_type, OptionalType) and elem_type.uses_pointer_repr()
+                    and self.ctx.is_storage_form_source(expr.obj)):
+                result = f"::tpy::optional_to_ptr({result})"
+            return result
 
         index_type = self.ctx.analyzer.get_expr_type(expr.index)
         # Dereference globals for subscript access

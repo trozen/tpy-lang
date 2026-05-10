@@ -282,6 +282,27 @@ When range optimization can't apply (e.g., zero step detected at codegen time), 
 
 ---
 
+## Generator Yield Slot Shape
+
+Iterator yields hand out references like function returns -- mutations through the yielded value flow back to the iterable, matching CPython semantics. The iterator slot type for a generator is therefore the **borrow form** of the yield type, computed via `elem_type.to_cpp_return()` for tuple yields:
+
+| Python yield type | C++ iterator slot |
+|---|---|
+| `tuple[Int32, Point]` | `std::tuple<int32_t, Point&>` |
+| `tuple[P \| None, P \| None]` | `std::tuple<P*, P*>` |
+| `tuple[Int32, Int32]` | `std::tuple<int32_t, int32_t>` (value form -- borrow=value for primitives) |
+| `T` (bare) | `T` (value form -- `T&` directly would make `std::optional<T&>` ill-formed pre-C++26) |
+
+The single decision point is `_iter_slot_for_yield(elem_type, cpp_elem)` in `tpyc/codegen_cpp/gen_generators.py`. All four simple-for branches (NativeIterable peephole, range, direct-iterator, universal-default), the simple-while branch, and state-machine generators (`__next__()`'s return type) route through it.
+
+When the yielded expression's natural form doesn't match the slot (e.g. `yield self.field` where the field is stored in storage form), `gen_yield_value` in `codegen_cpp/statements.py` bridges via `tuple_to_pointer`. Pointer-form sources (rvalue tuple literals, pointer-form locals) pass through unchanged.
+
+The asymmetry with field/container slots is by design: fields and containers own their data (storage form, `std::optional<P>`); iterators borrow into the iterable (borrow form, `P*`). The conversion happens at the boundary.
+
+**Lifetime caveat:** the yielded tuple holds references into the iterable's backing storage. Structural mutation of the iterable between `__next__` calls (`items.append(...)`, `dict[k] = ...` triggering rehash) dangles already-yielded references. The borrow checker doesn't track iterator-captured containers today; see BUGS.md.
+
+---
+
 ## NativeIterable (C++ Containers)
 
 `NativeIterable[T]` is a **marker protocol** for types with C++ `begin()`/`end()`. It generates standard C++ range-based for loops:

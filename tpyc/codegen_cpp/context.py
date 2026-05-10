@@ -550,6 +550,11 @@ class CodeGenContext:
     in_consuming_method: bool = False
     in_property_getter: bool = False
     current_return_type: TpyType | None = None
+    # Generator yield type. Set at generator-body entry points (state-machine
+    # __next__, simple-for/simple-while inline lambdas) and read by all yield
+    # emission sites so they share one source of truth instead of threading
+    # the type through call signatures.
+    current_yield_type: TpyType | None = None
     current_error_return: str | None = None
     error_return_stmt_handled: bool = False
     current_func_params: dict[str, TpyType] = field(default_factory=dict)
@@ -897,6 +902,7 @@ class CodeGenContext:
         self.current_ns = None
         self.indent_level = 0
         self.current_return_type = None
+        self.current_yield_type = None
         self.current_error_return = None
         self.error_return_stmt_handled = False
         self.current_func_params = {}

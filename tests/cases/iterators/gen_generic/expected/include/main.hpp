@@ -32,8 +32,8 @@ template<typename T, ::tpystd::typing::Iterable<T> T_iterable>
 inline auto enumerate(T_iterable& iterable) {
     // i: Int32 = 0
     int32_t i = 0;
-    return ::tpy::make_generator<std::tuple<int32_t, T>>(
-        [&iterable, i, __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(iterable))>>()]() mutable -> std::optional<std::tuple<int32_t, T>> {
+    return ::tpy::make_generator<std::tuple<int32_t, ::tpy::val_or_ref_t<T>>>(
+        [&iterable, i, __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(iterable))>>()]() mutable -> std::optional<std::tuple<int32_t, ::tpy::val_or_ref_t<T>>> {
             if (!__iter) { __iter.emplace(::tpy::__iter__(iterable)); }
             auto __r = (*__iter).__next__();
             if (!__r.has_value()) return std::nullopt;
@@ -42,7 +42,7 @@ inline auto enumerate(T_iterable& iterable) {
                 auto __val = std::tuple<int32_t, ::tpy::val_or_ref_t<T>>{i, item};
                 // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<std::tuple<int32_t, T>>(__val);
+                return std::optional<std::tuple<int32_t, ::tpy::val_or_ref_t<T>>>(__val);
             }
         }
     );

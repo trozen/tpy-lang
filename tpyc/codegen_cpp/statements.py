@@ -167,6 +167,13 @@ class StatementGenerator:
             own_actual = unwrap_optional_own(actual)
             if own_actual is not None and not own_actual.wrapped.is_value_type():
                 self.ctx.movable_locals.add(pname)
+            # Own[tuple[T | None, ...]] params are stored in storage form
+            # (std::tuple<std::optional<T>, ...>); same C++ shape as the
+            # storage-form locals registered for storage-form tuple iteration.
+            if isinstance(actual, OwnType):
+                inner = unwrap_readonly(actual.wrapped)
+                if isinstance(inner, TupleType) and inner.has_pointer_repr_optional_element():
+                    self.ctx.storage_form_tuple_locals.add(pname)
             # Value-optional params (std::optional<T> by value) are movable when
             # the inner type has an expensive copy (String, BigInt, etc.).
             # readonly params are excluded to respect the no-mutation contract.
@@ -184,6 +191,12 @@ class StatementGenerator:
         self.ctx.current_ns = local_ns
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type
+        # Set current_yield_type for generator bodies so yield-emission sites
+        # don't need it threaded through their call signatures. Skipped for
+        # sema-errored generators (no resolved yield type) -- leaves the
+        # field at its reset_scope() default rather than crashing later.
+        if func.is_generator and func.generator_yield_type is not None:
+            self.ctx.current_yield_type = func.generator_yield_type
         raw_error_return = getattr(func, 'error_return', None)
         self.ctx.current_error_return = error_return_to_cpp(raw_error_return, self.ctx.analyzer.ctx.module_name, self.ctx.analyzer.registry) if raw_error_return else None
         self.ctx.current_func_params = {pname: ptype for pname, ptype in params}
@@ -1268,6 +1281,37 @@ class StatementGenerator:
             return (iterable.name in self.ctx.const_indirect_locals
                     or iterable.name in self.ctx.const_ref_params)
         return False
+
+    def gen_yield_value(self, yield_stmt: TpyYield) -> str:
+        """Emit yield value, bridging storage->pointer when the source is a
+        storage location and the iterator slot is borrow form.
+
+        Iterator yields hand out references like function returns: the slot
+        for `tuple[T | None, ...]` is `std::tuple<T*, ...>` (borrow form), so
+        a storage-form source (field, subscript, etc.) needs `tuple_to_pointer`
+        to bridge. Pointer-form sources (rvalue tuple literals, pointer-form
+        locals) already match the slot and pass through unchanged.
+        """
+        yield_type = self.ctx.current_yield_type
+        expr = self.expressions.gen_expr(yield_stmt.value, yield_type)
+        return self._maybe_wrap_tuple_to_pointer(
+            expr, yield_type, self.ctx.unwrap_copy(yield_stmt.value))
+
+    def _maybe_wrap_tuple_to_pointer(self, expr: str, target_type: TpyType | None,
+                                      source: TpyExpr | None = None) -> str:
+        """Wrap a storage-form tuple expression with tuple_to_pointer if the
+        target slot is std::tuple<T*, ...> (borrow form) and the source reads
+        from a storage location. Mirror of `_maybe_wrap_tuple_to_storage`.
+        """
+        if target_type is None:
+            return expr
+        unwrapped = unwrap_readonly(unwrap_ref_type(target_type))
+        if not (isinstance(unwrapped, TupleType)
+                and unwrapped.has_pointer_repr_optional_element()):
+            return expr
+        if source is None or not self.ctx.is_storage_form_source(source):
+            return expr
+        return f"::tpy::tuple_to_pointer<{unwrapped.to_cpp_return()}>({expr})"
 
     def _maybe_wrap_tuple_to_storage(self, expr: str, target_type: TpyType | None,
                                        source: TpyExpr | None = None) -> str:
@@ -2981,10 +3025,7 @@ class StatementGenerator:
     def _gen_yield(self, out: TextIO, stmt: TpyYield, indent: str) -> None:
         """Generate a yield statement in a generator function body."""
         state_num = self.ctx.analyzer.ctx.generator_yield_states[id(stmt)]
-        yield_type = self.ctx.current_return_type
-        yield_expr = self.expressions.gen_expr(stmt.value, yield_type)
-        yield_expr = self._maybe_wrap_tuple_to_storage(
-            yield_expr, yield_type, self.ctx.unwrap_copy(stmt.value))
+        yield_expr = self.gen_yield_value(stmt)
         out.write(f"{indent}__state = {state_num};\n")
         out.write(f"{indent}return {yield_expr};\n")
         out.write(f"{indent}__resume_{state_num}:;\n")

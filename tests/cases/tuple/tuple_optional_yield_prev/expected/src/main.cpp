@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-std::expected<std::tuple<std::optional<P>, std::optional<P>>, ::tpy::StopIteration> __gen_gen::__next__() {
+std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen::__next__() {
     switch (__state) {
         case 0: break;
         case 1: goto __resume_1;
@@ -20,7 +20,7 @@ std::expected<std::tuple<std::optional<P>, std::optional<P>>, ::tpy::StopIterati
         it = *(*__for_it_0)++;
         // yield (prev, it)
         __state = 1;
-        return ::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{::tpy::optional_to_ptr((*prev)), &((*it))});
+        return std::tuple<P*, P*>{::tpy::optional_to_ptr((*prev)), &((*it))};
         __resume_1:;
         // # Sentinel: x == 0 means "reset prev"; otherwise carry forward.
         // if it.x == Int32(0):
@@ -35,7 +35,7 @@ std::expected<std::tuple<std::optional<P>, std::optional<P>>, ::tpy::StopIterati
     }
     // yield (prev, None)
     __state = 2;
-    return ::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{::tpy::optional_to_ptr((*prev)), nullptr});
+    return std::tuple<P*, P*>{::tpy::optional_to_ptr((*prev)), nullptr};
     __resume_2:;
     __done:
     __state = -1;

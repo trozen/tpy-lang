@@ -46,7 +46,7 @@ struct __gen_gen {
         : __state(0), items(items) {}
 
     __gen_gen& __iter__() { return *this; }
-    std::expected<std::tuple<std::optional<P>, std::optional<P>>, ::tpy::StopIteration> __next__();
+    std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __next__();
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gen&) {
         return os << "<generator gen>";

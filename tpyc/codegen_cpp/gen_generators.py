@@ -9,7 +9,7 @@ from ..parse.nodes import (
     TpyFunction, TpyYield, TpyStmt, TpyWhile, TpyForEach, TpyReturn, TpyVarDecl,
     TpyCall, TpyName, TpyExpr,
 )
-from ..typesys import TypeParamRef, is_protocol_type, unwrap_ref_type
+from ..typesys import IntLiteralType, TypeParamRef, TupleType, is_protocol_type, unwrap_ref_type
 from ..type_def_registry import is_str_type
 from tpyc import modules as builtin_modules
 from .context import INDENT, escape_cpp_name
@@ -148,6 +148,7 @@ class GeneratorCodegen:
         elem_type = func.generator_yield_type
         assert elem_type is not None
         cpp_elem = self.types.type_to_cpp(elem_type)
+        cpp_iter_slot = self._iter_slot_for_yield(elem_type, cpp_elem)
 
         while_stmt = func.body[-1]
         assert isinstance(while_stmt, TpyWhile)
@@ -190,8 +191,8 @@ class GeneratorCodegen:
         if record_name:
             self_capture = "this"
             captures = f"{self_capture}, {captures}" if captures else self_capture
-        out.write(f"{INDENT * (1 + extra)}return ::tpy::make_generator<{cpp_elem}>(\n")
-        out.write(f"{INDENT * (2 + extra)}[{captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
+        out.write(f"{INDENT * (1 + extra)}return ::tpy::make_generator<{cpp_iter_slot}>(\n")
+        out.write(f"{INDENT * (2 + extra)}[{captures}]() mutable -> std::optional<{cpp_iter_slot}> {{\n")
 
         old_indent = self.ctx.indent_level
         self.ctx.indent_level = 3 + extra
@@ -201,14 +202,12 @@ class GeneratorCodegen:
 
         for stmt in pre_yield:
             self.statements.gen_stmt(out, stmt)
-        yield_expr = self.expressions.gen_expr(yield_stmt.value, elem_type)
-        yield_expr = self.statements._maybe_wrap_tuple_to_storage(
-            yield_expr, elem_type, self.ctx.unwrap_copy(yield_stmt.value))
+        yield_expr = self.statements.gen_yield_value(yield_stmt)
         out.write(f"{INDENT * (4 + extra)}{val_binding} __val = {yield_expr};\n")
         for stmt in post_yield:
             self.statements.gen_stmt(out, stmt)
 
-        out.write(f"{INDENT * (4 + extra)}return std::optional<{cpp_elem}>(__val);\n")
+        out.write(f"{INDENT * (4 + extra)}return std::optional<{cpp_iter_slot}>(__val);\n")
         out.write(f"{INDENT * (3 + extra)}}}\n")
         out.write(f"{INDENT * (3 + extra)}return std::nullopt;\n")
         out.write(f"{INDENT * (2 + extra)}}}\n")
@@ -221,14 +220,11 @@ class GeneratorCodegen:
                                    record_name: str | None = None) -> None:
         """Lambda codegen for: [init] for x in iterable: ... yield expr ..."""
         from .context import is_lvalue_iterable
-        from ..typesys import IntLiteralType, TupleType
 
         elem_type = func.generator_yield_type
         assert elem_type is not None
         cpp_elem = self.types.type_to_cpp(elem_type)
-        # Return-type form: non-value tuple elements become references
-        # (e.g. tuple[Int32, T] -> std::tuple<int32_t, T&>).
-        cpp_elem_ref = elem_type.to_cpp_return()
+        cpp_iter_slot = self._iter_slot_for_yield(elem_type, cpp_elem)
 
         for_stmt = func.body[-1]
         assert isinstance(for_stmt, TpyForEach)
@@ -304,21 +300,19 @@ class GeneratorCodegen:
             all_captures = f"{base_captures}, {extra_captures}" if base_captures else extra_captures
             all_captures = _add_self_capture(all_captures)
 
-            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_elem}>(\n")
-            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
+            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_iter_slot}>(\n")
+            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_iter_slot}> {{\n")
             out.write(f"{I(3)}while (__i < __stop) {{\n")
 
             self.ctx.indent_level = 4 + extra
             out.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = __i++;\n")
             for stmt in pre_yield:
                 self.statements.gen_stmt(out, stmt)
-            yield_expr = self.expressions.gen_expr(yield_stmt.value, elem_type)
-            yield_expr = self.statements._maybe_wrap_tuple_to_storage(
-                yield_expr, elem_type, self.ctx.unwrap_copy(yield_stmt.value))
+            yield_expr = self.statements.gen_yield_value(yield_stmt)
             out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
             for stmt in post_yield:
                 self.statements.gen_stmt(out, stmt)
-            out.write(f"{I(4)}return std::optional<{cpp_elem}>(__val);\n")
+            out.write(f"{I(4)}return std::optional<{cpp_iter_slot}>(__val);\n")
             out.write(f"{I(3)}}}\n")
             out.write(f"{I(3)}return std::nullopt;\n")
             out.write(f"{I(2)}}}\n")
@@ -331,15 +325,14 @@ class GeneratorCodegen:
             base_captures = self._build_capture_list(func.params, init_stmts)
             all_captures = _add_self_capture(base_captures)
 
-            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_elem}>(\n")
-            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
+            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_iter_slot}>(\n")
+            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_iter_slot}> {{\n")
             out.write(f"{I(3)}auto __r = ({iterable_code}).__next__();\n")
             out.write(f"{I(3)}if (!__r.has_value()) return std::nullopt;\n")
 
             self._gen_simple_for_yield_body(
                 out, for_stmt, pre_yield, post_yield, yield_stmt,
-                iter_elem, cpp_iter_elem, cpp_var, cpp_elem, val_binding, I, extra,
-                yield_type=elem_type)
+                iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot, val_binding, I, extra)
         elif self._is_builtin_native_iterable(for_stmt):
             # Built-in NativeIterable (list, dict, set, Span, etc.):
             # begin/end peephole for efficiency.
@@ -354,8 +347,8 @@ class GeneratorCodegen:
             all_captures = ", ".join(parts)
             all_captures = _add_self_capture(all_captures)
 
-            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_elem_ref}>(\n")
-            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_elem_ref}> {{\n")
+            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_iter_slot}>(\n")
+            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_iter_slot}> {{\n")
             out.write(f"{I(3)}if (!__init) {{ __beg = ({iterable_code}).begin(); __end = ({iterable_code}).end(); __init = true; }}\n")
             out.write(f"{I(3)}if (__beg != __end) {{\n")
 
@@ -370,11 +363,11 @@ class GeneratorCodegen:
 
             for stmt in pre_yield:
                 self.statements.gen_stmt(out, stmt)
-            yield_expr = self.expressions.gen_expr(yield_stmt.value, elem_type)
+            yield_expr = self.statements.gen_yield_value(yield_stmt)
             out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
             for stmt in post_yield:
                 self.statements.gen_stmt(out, stmt)
-            out.write(f"{I(4)}return std::optional<{cpp_elem_ref}>(__val);\n")
+            out.write(f"{I(4)}return std::optional<{cpp_iter_slot}>(__val);\n")
             out.write(f"{I(3)}}}\n")
             out.write(f"{I(3)}return std::nullopt;\n")
             out.write(f"{I(2)}}}\n")
@@ -393,16 +386,15 @@ class GeneratorCodegen:
             all_captures = ", ".join(parts)
             all_captures = _add_self_capture(all_captures)
 
-            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_elem}>(\n")
-            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
+            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_iter_slot}>(\n")
+            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_iter_slot}> {{\n")
             out.write(f"{I(3)}if (!__iter) {{ __iter.emplace(::tpy::__iter__({iterable_code})); }}\n")
             out.write(f"{I(3)}auto __r = (*__iter).__next__();\n")
             out.write(f"{I(3)}if (!__r.has_value()) return std::nullopt;\n")
 
             self._gen_simple_for_yield_body(
                 out, for_stmt, pre_yield, post_yield, yield_stmt,
-                iter_elem, cpp_iter_elem, cpp_var, cpp_elem, val_binding, I, extra,
-                yield_type=elem_type)
+                iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot, val_binding, I, extra)
 
         self.ctx.indent_level = old_indent
         self.ctx.generator_self_ref = old_self_ref
@@ -437,31 +429,55 @@ class GeneratorCodegen:
         self, out: 'TextIO', for_stmt: TpyForEach,
         pre_yield: list[TpyStmt], post_yield: list[TpyStmt], yield_stmt: TpyYield,
         iter_elem: 'TpyType | None', cpp_iter_elem: str, cpp_var: str,
-        cpp_elem: str, val_binding: str, I: 'Callable[[int], str]', extra: int,
-        yield_type: 'TpyType | None' = None,
+        cpp_iter_slot: str, val_binding: str, I: 'Callable[[int], str]', extra: int,
     ) -> None:
         """Emit the shared yield body for __iter__+__next__ simple generator branches."""
         self.ctx.indent_level = 3 + extra
         out.write(f"{I(3)}{{\n")
         self.ctx.indent_level = 4 + extra
-        if iter_elem and iter_elem.is_value_type():
+        # tuple[T | None, ...] has two distinct C++ shapes (storage vs borrow);
+        # the inner iterator's __next__() returns borrow form for generators and
+        # storage form for NativeIterables. `auto&&` binds to either without the
+        # codegen having to know which.
+        iter_elem_unwrapped = unwrap_ref_type(iter_elem) if iter_elem else None
+        is_pointer_repr_tuple = (isinstance(iter_elem_unwrapped, TupleType)
+                                 and iter_elem_unwrapped.has_pointer_repr_optional_element())
+        if iter_elem and iter_elem.is_value_type() and not is_pointer_repr_tuple:
             out.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = ::tpy::unwrap_ref(*__r);\n")
         else:
             out.write(f"{I(4)}auto&& {cpp_var} = ::tpy::unwrap_ref(*__r);\n")
 
         for stmt in pre_yield:
             self.statements.gen_stmt(out, stmt)
-        yield_expr = self.expressions.gen_expr(yield_stmt.value, yield_type)
-        yield_expr = self.statements._maybe_wrap_tuple_to_storage(
-            yield_expr, yield_type, self.ctx.unwrap_copy(yield_stmt.value))
+        yield_expr = self.statements.gen_yield_value(yield_stmt)
         out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
         for stmt in post_yield:
             self.statements.gen_stmt(out, stmt)
-        out.write(f"{I(4)}return std::optional<{cpp_elem}>(__val);\n")
+        out.write(f"{I(4)}return std::optional<{cpp_iter_slot}>(__val);\n")
         out.write(f"{I(3)}}}\n")
         out.write(f"{I(2)}}}\n")
         out.write(f"{I(1)});\n")
         out.write(f"{I(0)}}}\n")
+
+    @staticmethod
+    def _iter_slot_for_yield(elem_type: 'TpyType', cpp_elem: str) -> str:
+        """Pick the make_generator iterator slot type for a simple-generator yield.
+
+        Iterator yields hand out references like function returns (CPython
+        semantics), so borrow form is the default for tuple yields:
+        `tuple[Int32, Point]` -> `std::tuple<int32_t, Point&>`,
+        `tuple[P | None, P | None]` -> `std::tuple<P*, P*>`. The outer tuple
+        is a value type that std::optional can hold, with reference-bearing
+        inner elements preserved through the yield boundary.
+
+        Non-tuple yields stay value form because `to_cpp_return()` on a bare
+        non-value type expands to `T&` directly, and std::optional<T&> is
+        ill-formed pre-C++26.
+        """
+        unwrapped = unwrap_ref_type(elem_type)
+        if not isinstance(unwrapped, TupleType):
+            return cpp_elem
+        return elem_type.to_cpp_return()
 
     @staticmethod
     def _split_at_yield(body: list[TpyStmt]) -> tuple[TpyYield, list[TpyStmt], list[TpyStmt]]:
@@ -507,7 +523,6 @@ class GeneratorCodegen:
     def _analyze_for_strategy(self, stmt: TpyForEach, uid: int) -> GeneratorForInfo | None:
         """Determine the iteration strategy and struct fields for a for-loop with yield."""
         from tpyc.modules import get_error_return_next_element_type
-        from ..typesys import IntLiteralType
 
         elem_type = stmt.elem_type
         if elem_type and isinstance(elem_type, IntLiteralType):
@@ -641,6 +656,7 @@ class GeneratorCodegen:
         elem_type = func.generator_yield_type
         assert elem_type is not None
         cpp_elem = self.types.type_to_cpp(elem_type)
+        cpp_iter_slot = self._iter_slot_for_yield(elem_type, cpp_elem)
 
         # Collect yield state numbers for THIS function
         yield_states = self.ctx.analyzer.ctx.generator_yield_states
@@ -721,7 +737,7 @@ class GeneratorCodegen:
         # __iter__() method (inline -- trivial)
         out.write(f"{INDENT}{struct_name}& __iter__() {{ return *this; }}\n")
         # __next__() declaration (body in .cpp)
-        out.write(f"{INDENT}std::expected<{cpp_elem}, ::tpy::StopIteration> __next__();\n\n")
+        out.write(f"{INDENT}std::expected<{cpp_iter_slot}, ::tpy::StopIteration> __next__();\n\n")
 
         # operator<< for printing
         out.write(f"{INDENT}friend std::ostream& operator<<(std::ostream& os, const {struct_name}&) {{\n")
@@ -737,6 +753,7 @@ class GeneratorCodegen:
         elem_type = func.generator_yield_type
         assert elem_type is not None
         cpp_elem = self.types.type_to_cpp(elem_type)
+        cpp_iter_slot = self._iter_slot_for_yield(elem_type, cpp_elem)
 
         # Re-run prescan (needed for body codegen context)
         for_loop_info = self._prescan_for_loops(func)
@@ -750,7 +767,7 @@ class GeneratorCodegen:
         tpl_header = self._gen_template_header(func)
         if tpl_header:
             out.write(tpl_header)
-        out.write(f"std::expected<{cpp_elem}, ::tpy::StopIteration> {struct_name}::__next__() {{\n")
+        out.write(f"std::expected<{cpp_iter_slot}, ::tpy::StopIteration> {struct_name}::__next__() {{\n")
         inner = INDENT
 
         # Switch dispatch

@@ -44,12 +44,12 @@ inline auto gen_for(std::vector<P>& items) {
 }
 
 inline auto gen_range(std::vector<P>& items) {
-    return ::tpy::make_generator<std::tuple<std::optional<P>, std::optional<P>>>(
-        [&items, __i = int32_t(0), __stop = static_cast<int32_t>(::tpy::__len__(items))]() mutable -> std::optional<std::tuple<std::optional<P>, std::optional<P>>> {
+    return ::tpy::make_generator<std::tuple<P*, P*>>(
+        [&items, __i = int32_t(0), __stop = static_cast<int32_t>(::tpy::__len__(items))]() mutable -> std::optional<std::tuple<P*, P*>> {
             while (__i < __stop) {
                 int32_t i = __i++;
-                auto __val = ::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{&(items[static_cast<std::size_t>(i)]), nullptr});
-                return std::optional<std::tuple<std::optional<P>, std::optional<P>>>(__val);
+                auto __val = std::tuple<P*, P*>{&(items[static_cast<std::size_t>(i)]), nullptr};
+                return std::optional<std::tuple<P*, P*>>(__val);
             }
             return std::nullopt;
         }
@@ -59,13 +59,13 @@ inline auto gen_range(std::vector<P>& items) {
 inline auto gen_while(std::vector<P>& items, int32_t n) {
     // i = Int32(0)
     int32_t i = 0;
-    return ::tpy::make_generator<std::tuple<std::optional<P>, std::optional<P>>>(
-        [&items, n, i]() mutable -> std::optional<std::tuple<std::optional<P>, std::optional<P>>> {
+    return ::tpy::make_generator<std::tuple<P*, P*>>(
+        [&items, n, i]() mutable -> std::optional<std::tuple<P*, P*>> {
             while ((i < n)) {
-                auto __val = ::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{&(::tpy::__getitem__(items, i)), nullptr});
+                auto __val = std::tuple<P*, P*>{&(::tpy::__getitem__(items, i)), nullptr};
                 // i = i + 1
                 i = (::tpy::add_check<int32_t>(i, 1));
-                return std::optional<std::tuple<std::optional<P>, std::optional<P>>>(__val);
+                return std::optional<std::tuple<P*, P*>>(__val);
             }
             return std::nullopt;
         }
