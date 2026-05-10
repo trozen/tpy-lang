@@ -30,6 +30,8 @@ It ships two CLIs that share the same argument grammar, differing only in their 
 
 **Report pre-existing bugs** discovered during implementation. Do not silently ignore bugs in adjacent code just because your change didn't cause them. Check `BUGS.md` first -- if the issue is already tracked, reference the entry; otherwise add a new entry there (not in `TODO.md`).
 
+**Bug-fix discipline.** The compiler is tightly coupled; narrow patches at the symptom site routinely leave the underlying invariant violation in place and produce new symptoms in adjacent features (e.g. a fix for `Optional` that doesn't consider `Union`, a fix for functions that doesn't consider methods/constructors, a fix for generators that doesn't consider async/context-managers). For any bug-fix work, invoke `/tpy-fix-bug` to walk through the analysis procedure before proposing code changes. The skill starts with an impact assessment (trivial / localized / architectural) and gates the depth of analysis accordingly. The user must see and approve the analysis before any code change beyond trivial fixes. When time pressure pushes you to skip analysis, push back once -- the cost of one extra round is much lower than the cost of a wrong fix that surfaces later as new bugs.
+
 ### Common commands
 
 ```bash
