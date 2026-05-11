@@ -528,9 +528,10 @@ binding work:
   for the TPy executor to spawn.
 - `Task<T>::from_coro<CoroT>` -- generic factory; stays C++.
 - `AsyncFrameBase<T>` virtual base + `AsyncFrameImpl<T, CoroT>` -- the
-  generic-over-T type-erasure machinery. Would simplify dramatically
-  if `@dynamic` gained generic-protocol support
-  (`@dynamic class Awaitable[T]`).
+  generic-over-T type-erasure machinery. Generic `@dynamic` protocols
+  now exist (see `docs/DYNAMIC_PROTOCOL_DESIGN.md` step 12), so this
+  C++ scaffolding can be replaced with a `@dynamic Awaitable[T]` +
+  `Adapter[Awaitable[T], CoroT]` pair from TPy. Port not yet wired.
 - `TaskState<T>` -- could move with a `SharedTaskState[T]` `@native`
   wrapper around `shared_ptr<TaskState<T>>`, but TPy currently models
   only unique ownership (`Box[T]`); shared-ownership exposure is a
@@ -544,11 +545,11 @@ binding work:
 
 ### Compiler gaps that, when closed, expand what's portable
 
-- **Generic `@dynamic` protocols**. `@dynamic class Awaitable[T]: def
-  poll(self, w: Waker) -> Poll[T]` would obsolete `AsyncFrameBase` /
-  `AsyncFrameImpl`. Adapter codegen would build a per-T-instantiation
-  vtable (each `Adapter[Awaitable[Int32]]` a distinct runtime type).
-  Largest single unblocker.
+- **Generic `@dynamic` protocols** -- shipped (see
+  `docs/DYNAMIC_PROTOCOL_DESIGN.md` step 12). Adapter codegen emits a
+  per-T-instantiation vtable; each `Adapter[Awaitable[Int32]]` is a
+  distinct runtime type. Now usable to replace `AsyncFrameBase` /
+  `AsyncFrameImpl`; port not yet wired.
 - **Shared-ownership smart pointer in TPy**. `Rc[T]` / `Arc[T]`
   (refcounted) or just `SharedBox[T]` -- currently only `Box[T]` for
   unique ownership. Would let `TaskState` move to TPy.

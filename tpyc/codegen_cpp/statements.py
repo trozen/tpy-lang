@@ -726,8 +726,7 @@ class StatementGenerator:
         Uses brace init to avoid C++ most-vexing-parse with constructor calls.
         """
         concrete_type = self.ctx.get_expr_type(init)
-        proto_name = target_type.name
-        base_type = self.protocols.get_dynamic_base_name(proto_name)
+        base_type = self.protocols.get_dynamic_base_name(target_type)
 
         if is_protocol_type(concrete_type):
             # Already erased -- copy the pointer
@@ -738,12 +737,12 @@ class StatementGenerator:
         init_slot = self.ctx.slots.next_slot()
         init_expr = self.expressions.gen_expr(init, concrete_type)
 
-        if self.protocols.directly_implements_dynamic(concrete_type, proto_name):
+        if self.protocols.directly_implements_dynamic(concrete_type, target_type):
             # Direct inheritance -- plain concrete slot, implicit upcast
             slot_type = concrete_cpp
         else:
             # Structural conformance -- adapter wrapping
-            slot_type = self.protocols.get_dynamic_adapter_type(proto_name, concrete_cpp)
+            slot_type = self.protocols.get_dynamic_adapter_type(target_type, concrete_cpp)
 
         return (f"{indent}{slot_type} {init_slot}{{{init_expr}}};\n"
                 f"{indent}{base_type}* {name} = &{init_slot};\n")
@@ -756,7 +755,6 @@ class StatementGenerator:
         survive block scopes (if/else branches, loops).
         """
         concrete_type = self.ctx.get_expr_type(init)
-        proto_name = target_type.name
 
         if is_protocol_type(concrete_type):
             # Already erased -- rebind pointer to same object
@@ -767,10 +765,10 @@ class StatementGenerator:
         rebind_slot = self.ctx.slots.next_slot()
         init_expr = self.expressions.gen_expr(init, concrete_type)
 
-        if self.protocols.directly_implements_dynamic(concrete_type, proto_name):
+        if self.protocols.directly_implements_dynamic(concrete_type, target_type):
             slot_type = concrete_cpp
         else:
-            slot_type = self.protocols.get_dynamic_adapter_type(proto_name, concrete_cpp)
+            slot_type = self.protocols.get_dynamic_adapter_type(target_type, concrete_cpp)
 
         # Hoist slot to function scope (survives block scopes).
         # Global scope (__tpy_init) needs 'static' so slots outlive the function.
@@ -3836,7 +3834,7 @@ class StatementGenerator:
                 # @dynamic protocol branch-declared vars: just pre-declare Base* pointer.
                 # Per-assignment slots are created by rebind (hoisted to function scope).
                 if self._is_dynamic_protocol_type(var_type):
-                    base_type = self.protocols.get_dynamic_base_name(var_type.name)
+                    base_type = self.protocols.get_dynamic_base_name(var_type)
                     out.write(f"{indent}{base_type}* {name};\n")
                     self.ctx.pointer_locals.add(name)
                     self.ctx.declared_vars.add(name)

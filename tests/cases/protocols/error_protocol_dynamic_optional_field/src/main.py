@@ -1,0 +1,18 @@
+# Optional[@dynamic protocol] as a record field is rejected (same rule
+# as for params and locals). Closes a pass-order gap: register_record
+# validates fields before protocols register, so the check has to run
+# in a second pass.
+from typing import Protocol, Optional
+from tpy import Int32, dynamic
+
+
+@dynamic
+class Pet(Protocol):
+    def name(self) -> str: ...
+
+
+class Holder:
+    x: Optional[Pet]  # tpyc: error(/Optional\[Pet\] is not supported/)
+
+    def __init__(self) -> None:
+        self.x = None

@@ -18,7 +18,7 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 9 | Protocol field access through erased type | Future |
 | 10 | Cross-module `@dynamic` protocols | Done |
 | 11 | `@dynamic` extending `@dynamic` (base class inheritance chain) | Done |
-| 12 | Generic `@dynamic` protocols | Future |
+| 12 | Generic `@dynamic` protocols | Done |
 | 13 | `Box[P]` integration (heap-allocated dynamic values) | Future |
 | 14 | Record fields typed as `@dynamic` protocol (needs `Box[P]`) | Future |
 | 15 | `list[Box[P]]` heterogeneous containers | Future |
@@ -320,16 +320,76 @@ since it's internal. Adapters live in the `tpy::` namespace as partial specializ
 of `tpy::Adapter<Base, T>` and `tpy::RefAdapter<Base, T>`, following the same pattern
 as `tpy::EnumUtil<E>`.
 
+### Generic `@dynamic` protocols
+
+When the protocol carries type parameters (e.g. `@dynamic class Awaitable[T]`),
+the four artifacts above become class templates parameterized on the protocol's
+own type params. tpyc emits the template once; the C++ compiler does
+per-instantiation monomorphization.
+
+```cpp
+// Concept: protocol-T maps to _T0 (the checked type is T, then the protocol's args)
+template<typename T, typename _T0>
+concept __Awaitable_Concept__ = requires(T& t) {
+    { t.__poll__(std::declval<Waker>()) } -> std::convertible_to<Poll<_T0>>;
+};
+
+// Base class: bare names of protocol type params become C++ template params
+template<typename T>
+struct Awaitable {
+    virtual Poll<T> __poll__(Waker waker) = 0;
+    virtual ~Awaitable() = default;
+};
+
+// Owning + ref adapters: extra template params for the protocol's args; the
+// concept abbreviated form `__Awaitable_Concept__<T> __tpy_Impl` desugars to
+// `requires __Awaitable_Concept__<__tpy_Impl, T>`. The impl-param uses the
+// reserved `__tpy_` prefix so it cannot collide with a user-chosen
+// protocol type param.
+template<typename T, __Awaitable_Concept__<T> __tpy_Impl>
+struct tpy::Adapter<Awaitable<T>, __tpy_Impl> : Awaitable<T> { /* ... */ };
+template<typename T, __Awaitable_Concept__<T> __tpy_Impl>
+struct tpy::RefAdapter<Awaitable<T>, __tpy_Impl> : Awaitable<T> { /* ... */ };
+```
+
+Each used `Awaitable[Int32]` resolves to `Awaitable<int32_t>`, and the adapter
+partial-spec selects on `tpy::Adapter<Awaitable<int32_t>, ConcreteImpl>`.
+`Awaitable[Int32]` and `Awaitable[str]` therefore have independent vtables.
+Direct C++ inheritance threads the parameterized form through to derived
+records (`class IntBox(Awaitable[Int32])` -> `struct IntBox : Awaitable<int32_t>`).
+A generic @dynamic protocol extending another generic @dynamic protocol
+preserves the type param in the base clause (`struct Counter<T> : Source<T>`).
+
+Covariant return wrapping (e.g. `inner.foo()` -> `std::string(inner.foo())`
+for protocol returns `str`) fires per the concrete return type, so a method
+returning a generic `T` is not auto-wrapped: users should spell `StrView`
+consistently if the instantiation is `T = str`.
+
 ## Object Safety
 
 Not all protocols can be `@dynamic`. The compiler validates at definition site:
 
-- All methods must have concrete (non-generic) signatures
+- Method signatures must be concrete after substituting the protocol's own type
+  params (a generic protocol may use its own `T`; it may not introduce a fresh
+  per-method type param)
 - No `Self` type (deferred -- `Self` support may be added later with restrictions)
 - No static methods (no receiver to dispatch on)
 - Marker protocols cannot be `@dynamic` (no methods to dispatch)
+- The type-parameter name `__tpy_Impl` is reserved for the adapter codegen and
+  cannot be used by user protocols (rejected at codegen time)
 
 A non-object-safe protocol with `@dynamic` is a compile error.
+
+### Generic `@dynamic` + direct inheritance restriction
+
+When a record explicitly inherits a generic `@dynamic` protocol (`class IntSink(Sink[Int32])`),
+the override must match the base virtual's `::tpy::param_val_or_ref_t<T>` shape. For methods
+whose `T` appears only in the return position, this works -- the direct-inheritance codegen
+emits the correct override. For methods with `T` in *parameter* position, the override
+currently emits the concrete type without the trait wrap, producing a signature mismatch
+that leaves the derived class abstract. As an interim guard, sema rejects this combination
+with a diagnostic pointing users at the structural-conformance (adapter) path, which
+handles parameterized parameters correctly. The codegen fix is tracked in `BUGS.md`.
 
 ## Conformance
 
@@ -366,8 +426,6 @@ Compiler infrastructure issues (not blocked on `Box[P]`):
 - **`Rc[P]`** -- shared-ownership dynamic value for reference-counted sharing.
 - **`Self` type in `@dynamic`** -- may be supported with restrictions (e.g., `Self` in
   return position only, behind `Box`).
-- **Generic `@dynamic` protocols** -- e.g., `@dynamic class Comparable(Protocol): def __lt__(self, other: Self) -> bool: ...`
-  Requires Self support first.
 - **Multiple protocol conformance** -- `pet: Pet & Drawable` for intersection types.
 - **`list[Box[P]]`** -- heterogeneous containers with heap-owned dynamic values.
   Requires `Box[P]` first.
@@ -376,7 +434,7 @@ Compiler infrastructure issues (not blocked on `Box[P]`):
 
 1. **`@dynamic` decorator** (done) -- parser recognizes `@dynamic` on protocol classes,
    sema stores `is_dynamic` flag on ProtocolInfo, object-safety validation at definition
-   site (no marker protocols, no generic protocols, no Self type)
+   site (no marker protocols, no Self type; generic `@dynamic` is supported -- see step 12)
 2. **Abstract base + adapter codegen** (done) -- generate base class (e.g., `struct Pet`),
    `tpy::Adapter<Pet, T>`, and `tpy::RefAdapter<Pet, T>` for each `@dynamic` protocol.
    Base class in user namespace; adapters as partial specializations at global scope.

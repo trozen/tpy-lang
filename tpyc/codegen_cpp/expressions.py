@@ -711,7 +711,7 @@ class ExpressionGenerator:
         arg_type = self.ctx.get_expr_type(arg)
         if is_protocol_type(arg_type):
             return self.gen_expr_deref(arg, ptype)
-        elif self.protocols.directly_implements_dynamic(arg_type, unwrapped_ptype.name):
+        elif self.protocols.directly_implements_dynamic(arg_type, unwrapped_ptype):
             if self.ctx.is_temporary_expr(arg):
                 concrete_cpp = self.types.type_to_cpp(arg_type)
                 arg_expr = self.gen_expr(arg, arg_type)
@@ -720,12 +720,11 @@ class ExpressionGenerator:
                 return self.gen_call_arg(arg, ptype)
         else:
             concrete_cpp = self.types.type_to_cpp(arg_type)
-            proto_name = unwrapped_ptype.name
             arg_expr = self.gen_expr_deref(arg, arg_type)
             if self.ctx.is_temporary_expr(arg):
-                adapter_type = self.protocols.get_dynamic_adapter_type(proto_name, concrete_cpp)
+                adapter_type = self.protocols.get_dynamic_adapter_type(unwrapped_ptype, concrete_cpp)
             else:
-                adapter_type = self.protocols.get_dynamic_ref_adapter_type(proto_name, concrete_cpp)
+                adapter_type = self.protocols.get_dynamic_ref_adapter_type(unwrapped_ptype, concrete_cpp)
             return self.ctx.temps.create_typed(adapter_type, arg_expr, brace_init=True)
 
     def _gen_covariant_arg(self, arg: TpyExpr, ptype: TpyType) -> str | None:
@@ -2951,14 +2950,14 @@ class ExpressionGenerator:
             parent_cpp = expr.super_parent_type.to_cpp()
             # C++ requires 'template' keyword before dependent template names
             template_kw = "template " if method_targs else ""
-            return f"this->{parent_cpp}::{template_kw}{expr.method}{method_targs}({args})"
+            return f"this->{parent_cpp}::{template_kw}{escape_cpp_name(expr.method)}{method_targs}({args})"
         # Handle unbound-self dispatch: BaseN.method(self, args) -> this->BaseN::method(args).
         # sema stripped `self` from expr.args so the arg shape matches the
         # resolved FunctionInfo; the explicit receiver matches the super() form.
         if expr.unbound_self_parent_type is not None:
             parent_cpp = expr.unbound_self_parent_type.to_cpp()
             template_kw = "template " if method_targs else ""
-            return f"this->{parent_cpp}::{template_kw}{expr.method}{method_targs}({args})"
+            return f"this->{parent_cpp}::{template_kw}{escape_cpp_name(expr.method)}{method_targs}({args})"
         # Handle ClassName.staticmethod() -> ClassName::staticmethod()
         if expr.is_static_call and isinstance(expr.obj, TpyName):
             # @cpp_template on static methods: expand the template directly.
@@ -2976,7 +2975,7 @@ class ExpressionGenerator:
             record_info = self.ctx.analyzer.registry.get_record(expr.obj.name)
             if record_info and record_info.is_native:
                 cpp_class = record_info.native_name
-                cpp_method = fi.native_name if fi and fi.native_name else expr.method
+                cpp_method = fi.native_name if fi and fi.native_name else escape_cpp_name(expr.method)
                 return f"{cpp_class}::{cpp_method}({args})"
             class_name = expr.obj.name
             static_method_targs = ""
@@ -2990,7 +2989,7 @@ class ExpressionGenerator:
                     class_name = f"{class_name}<{type_args_str}>"
                 if method_args:
                     static_method_targs = "<" + ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in method_args) + ">"
-            return f"{class_name}::{expr.method}{static_method_targs}({args})"
+            return f"{class_name}::{escape_cpp_name(expr.method)}{static_method_targs}({args})"
         # Handle module.function() (import X -> X.func())
         # Only if the name isn't shadowed by a variable, user-defined function, or record
         if isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.analyzer.imports:
@@ -3158,7 +3157,7 @@ class ExpressionGenerator:
               and self._is_overloaded_method(expr)):
             cpp_method = literal_mangled_name(expr.method, expr.resolved_function_info)
         else:
-            cpp_method = expr.method
+            cpp_method = escape_cpp_name(expr.method)
         deref_chain = ".__deref__()" * expr.deref_depth
         # Optional with runtime null check -- must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:
@@ -3181,7 +3180,7 @@ class ExpressionGenerator:
         use_arrow = ((self.ctx.is_indirect_name(expr.obj) and not is_narrowed and not is_consuming)
                      or is_optional_ptr)
         accessor = "->" if use_arrow else "."
-        return f"{obj}{accessor}{escape_cpp_name(cpp_method)}{method_targs}({args})"
+        return f"{obj}{accessor}{cpp_method}{method_targs}({args})"
 
     def _gen_dyn_hasattr_block(self, synth: 'TpyMethodCall') -> str:
         """Stmt-expr that yields true if __getattr__ succeeds, false on AttributeError."""

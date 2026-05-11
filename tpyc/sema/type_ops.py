@@ -203,7 +203,7 @@ class TypeOperations:
                 self.validate_type(elem_type, allow_type_param_ref, loc)
                 if is_protocol_type(elem_type):
                     raise SemanticError(
-                        f"Protocol type '{elem_type.name}' cannot be used as a container element type",
+                        f"Protocol type '{elem_type}' cannot be used as a container element type",
                         loc,
                     )
         elif isinstance(typ, OptionalType):
@@ -212,7 +212,7 @@ class TypeOperations:
                 proto_def = protocol_info_of(typ.inner)
                 if proto_def and proto_def.is_dynamic:
                     raise SemanticError(
-                        f"Optional[{typ.inner.name}] is not supported for @dynamic protocols. "
+                        f"Optional[{typ.inner}] is not supported for @dynamic protocols. "
                         f"Use a sentinel value or separate 'has' flag instead",
                         loc,
                     )
@@ -221,7 +221,7 @@ class TypeOperations:
             protocols = [m for m in non_none if is_protocol_type(m)]
             concrete = [m for m in non_none if not is_protocol_type(m)]
             if protocols and concrete:
-                proto_names = ", ".join(f"'{m.name}'" for m in protocols)
+                proto_names = ", ".join(f"'{m}'" for m in protocols)
                 raise SemanticError(
                     f"Cannot mix protocol types ({proto_names}) with concrete types in a union",
                     loc,
@@ -231,7 +231,7 @@ class TypeOperations:
                     proto_def = protocol_info_of(p)
                     if proto_def and proto_def.is_dynamic:
                         raise SemanticError(
-                            f"@dynamic protocol '{p.name}' cannot be used in a protocol union; "
+                            f"@dynamic protocol '{p}' cannot be used in a protocol union; "
                             f"only static protocols are supported",
                             loc,
                         )
@@ -245,14 +245,14 @@ class TypeOperations:
             self.validate_type(typ.pointee, allow_type_param_ref, loc)
             if is_protocol_type(typ.pointee):
                 raise SemanticError(
-                    f"Protocol type '{typ.pointee.name}' cannot be used as a pointer element type",
+                    f"Protocol type '{typ.pointee}' cannot be used as a pointer element type",
                     loc,
                 )
         elif (elem_type := typ.get_element_type()) is not None:
             self.validate_type(elem_type, allow_type_param_ref, loc)
             if is_protocol_type(elem_type):
                 raise SemanticError(
-                    f"Protocol type '{elem_type.name}' cannot be used as a container element type",
+                    f"Protocol type '{elem_type}' cannot be used as a container element type",
                     loc,
                 )
 

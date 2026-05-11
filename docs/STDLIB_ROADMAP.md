@@ -1074,7 +1074,7 @@ Pending (v1.5): `async with`, `async for`, `gather`, `wait_for`, `asyncio.Event`
 
 Pending (v2+): I/O reactor (epoll on Linux, kqueue on BSD/macOS, IOCP on Windows), `asyncio.Queue`, async generators, `@error_return` async, `__await__` adaptation, multi-thread executor.
 
-Pending runtime port (v1.5 prerequisite, milestone G1.5): port executor + `Task` + `Future` from `runtime/cpp/include/tpy/async.hpp` to TPy-source under `lib/tpy/asyncio/`. Blocked on generic `@dynamic` protocols, shared-ownership smart pointer (`Rc[T]` / `Arc[T]`), and `thread_local` storage in TPy. See `TODO.md` and [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md#v1x-milestone-asyncio-runtime-tpy-port-must-precede-v15).
+Pending runtime port (v1.5 prerequisite, milestone G1.5): port executor + `Task` + `Future` from `runtime/cpp/include/tpy/async.hpp` to TPy-source under `lib/tpy/asyncio/`. Blocked on shared-ownership smart pointer (`Rc[T]` / `Arc[T]`) and `thread_local` storage in TPy. (Generic `@dynamic` protocols -- the third historical blocker -- shipped; see `docs/DYNAMIC_PROTOCOL_DESIGN.md` step 12.) See `TODO.md` and [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md#v1x-milestone-asyncio-runtime-tpy-port-must-precede-v15).
 
 ### threading
 

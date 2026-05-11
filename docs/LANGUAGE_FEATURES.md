@@ -2317,8 +2317,15 @@ This generates:
 
 **Object safety rules** -- `@dynamic` protocols must be:
 - **Non-empty**: at least one method required (no marker protocols)
-- **Non-generic**: type parameters not supported (e.g., `class Container[T](Protocol)`)
 - **Self-free**: no `Self` type in method params or return types
+
+Generic `@dynamic` protocols are supported (e.g., `@dynamic class Container[T](Protocol)`). Each instantiation `Container[Int32]`, `Container[str]` has an independent vtable; the concept, base class, and adapter partial specializations are emitted once as C++ class templates. See `docs/DYNAMIC_PROTOCOL_DESIGN.md` for the codegen shape.
+
+Two additional constraints apply to generic `@dynamic` protocols:
+- **Reserved type-parameter name `__tpy_Impl`**: the adapter codegen uses `__tpy_Impl` as the concrete-impl template parameter on its partial specializations. A user-declared protocol type param of the same name is rejected at codegen time. The `__tpy_` prefix is the project's reserved namespace; users should not pick names that start with it.
+- **Direct inheritance + `T` in method-parameter position**: a class that explicitly inherits a generic `@dynamic` protocol whose methods take a parameter typed as the protocol's type parameter (e.g. `def put(self, val: T) -> None`) is rejected at sema. Use structural conformance instead (drop the explicit base; the adapter path handles parameterized parameters correctly). This is an interim guard while a codegen fix is pending; see `BUGS.md`.
+
+**Per-method type parameters** -- protocol methods cannot declare their own type parameters (`def method[U](self, ...)`). This applies to all protocols, not only `@dynamic`. Type parameters belong on the protocol class. The current diagnostic for an attempted per-method type param surfaces as "Unknown type" on the parameter name.
 
 Static dispatch (`T: Pet`) works identically for both `@dynamic` and regular protocols:
 
@@ -2405,7 +2412,7 @@ def bad() -> Pet:
     return Dog()           # ERROR: local adapter destroyed on return
 ```
 
-**`Optional[Pet]` rejection** -- `Optional` of a `@dynamic` protocol is a sema error (until `Box[P]` exists for heap-owned dynamic values).
+**`Optional[Pet]` rejection** -- `Optional` of a `@dynamic` protocol is a sema error in params, locals, and record fields (until `Box[P]` exists for heap-owned dynamic values).
 
 **Cross-module** -- `@dynamic` protocols can be defined in one module and imported in another. The compiler generates fully qualified C++ names (e.g., `::tpyapp::pets::Pet`).
 

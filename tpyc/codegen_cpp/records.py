@@ -170,7 +170,7 @@ class RecordGenerator:
             for proto in record_info.implemented_protocols:
                 proto_info = protocol_info_of(proto)
                 if proto_info and proto_info.is_dynamic:
-                    bases.append(self.protocols.get_dynamic_base_name(proto.name))
+                    bases.append(self.protocols.get_dynamic_base_name(proto))
         # Use short name for nested types (e.g., "Inner" not "Outer.Inner")
         short_name = bare_name(record.name)
         cpp_rec_name = escape_cpp_name(short_name)

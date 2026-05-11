@@ -465,7 +465,7 @@ class FunctionGenerator:
                 if (is_protocol_type(resolved)
                         and (pi := protocol_info_of(resolved))
                         and pi.is_dynamic):
-                    base_type = self.protocols.get_dynamic_base_name(resolved.name)
+                    base_type = self.protocols.get_dynamic_base_name(resolved)
                     if (isinstance(ptype, ReadonlyType)
                             or (mutated_params is not None and i not in mutated_params)):
                         part = f"const {base_type}& {cpp_pname}"
@@ -522,7 +522,7 @@ class FunctionGenerator:
         if is_protocol_type(unwrapped) and isinstance(unwrapped, NominalType):
             pi = protocol_info_of(unwrapped)
             if pi and pi.is_dynamic:
-                base = self.protocols.get_dynamic_base_name(unwrapped.name)
+                base = self.protocols.get_dynamic_base_name(unwrapped)
                 if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
                     ret = f"const {base}&"
                 else:
@@ -1378,7 +1378,9 @@ class FunctionGenerator:
         """Generate a method definition for a record. ``mode`` is
         forwarded to ``_gen_method_overload``.
         """
-        cpp_name = method.name
+        # escape_cpp_name handles names that collide with C++ keywords
+        # (e.g. `def double` -> `double_`); call sites apply the same escape.
+        cpp_name = escape_cpp_name(method.name)
         cpp_return_type = method.return_type
 
         # Property setter: rename to set_<name> in C++
@@ -1644,7 +1646,7 @@ class FunctionGenerator:
         if is_protocol_type(var_type) and isinstance(var_type, NominalType):
             pi = protocol_info_of(var_type)
             if pi and pi.is_dynamic:
-                return self.protocols.get_dynamic_base_name(var_type.name)
+                return self.protocols.get_dynamic_base_name(var_type)
             # Structural protocol: use decltype(init_expr) to let C++ deduce
             if stmt and stmt.init:
                 dt = self._build_decltype_expr(stmt.init)

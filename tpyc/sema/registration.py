@@ -95,6 +95,13 @@ def _contains_self_type(typ: TpyType) -> bool:
     return any(_contains_self_type(inner) for inner in typ.inner_types())
 
 
+def _contains_type_param_ref(typ: TpyType) -> bool:
+    """Check if a type contains TypeParamRef anywhere in its structure."""
+    if isinstance(typ, TypeParamRef):
+        return True
+    return any(_contains_type_param_ref(inner) for inner in typ.inner_types())
+
+
 
 
 def _validate_const_field_default(expr: TpyExpr, loc: object) -> None:
@@ -740,7 +747,7 @@ class TypeRegistrar:
             fld.type = resolved_fld_type
             if is_protocol_type(resolved_fld_type):
                 raise SemanticError(
-                    f"Protocol type '{fld.type.name}' cannot be used as a field type in '{record.name}'. "
+                    f"Protocol type '{fld.type}' cannot be used as a field type in '{record.name}'. "
                     f"Protocols are only valid as function and method parameters",
                     loc=fld.loc
                 )
@@ -1603,6 +1610,30 @@ class TypeRegistrar:
         record_info.parents = parents_collected
         record_info.implemented_protocols = implemented_protocols
 
+        # Direct C++ inheritance of a generic @dynamic protocol whose methods
+        # have TypeParamRef in parameter position would emit overrides that
+        # don't match the base virtual's `::tpy::param_val_or_ref_t<T>` shape
+        # (see BUGS.md). Reject with a clean diagnostic until codegen handles
+        # it; the structural-conformance (adapter) path works.
+        for proto in implemented_protocols:
+            if not isinstance(proto, NominalType) or not proto.is_dynamic_protocol:
+                continue
+            proto_info = self.ctx.registry.scan_by_short_name(proto.name)
+            if proto_info is None or not proto_info.type_params:
+                continue
+            for method_sig in proto_info.methods:
+                for pname, ptype in method_sig.params:
+                    if _contains_type_param_ref(ptype):
+                        raise SemanticError(
+                            f"Class '{record.name}' cannot directly inherit generic "
+                            f"@dynamic protocol '{proto}': method '{method_sig.name}' "
+                            f"has type parameter '{ptype}' in parameter position, which "
+                            f"the direct-inheritance codegen does not yet support. Use "
+                            f"structural conformance instead (remove the explicit base; "
+                            f"the adapter path handles parameterized params correctly).",
+                            record.loc,
+                        )
+
         # Reject circular inheritance across any ancestor chain before C3 runs
         # (C3 would fail as "inconsistent ordering" but the message would be less targeted).
         for p in record_info.parents:
@@ -1779,6 +1810,20 @@ class TypeRegistrar:
                     f"@error_return requires a ReturnException exception",
                     method.loc
                 )
+
+    def validate_record_field_protocols(self, record: TpyRecord) -> None:
+        """Re-validate record field types now that all protocols are registered.
+
+        register_record validates fields before protocols register, so checks
+        that depend on protocol_info_of (e.g. Optional[@dynamic protocol]
+        rejection) silently pass. This second pass re-runs validate_type on
+        each field so those checks fire correctly.
+        """
+        is_generic = bool(record.type_params)
+        for fld in record.fields:
+            if fld.type is None:
+                continue
+            self.type_ops.validate_type(fld.type, allow_type_param_ref=is_generic, loc=fld.loc)
 
     def validate_value_type_fields(self, record: TpyRecord) -> None:
         """Validate that all fields of a ValueType record are themselves value types,
@@ -2210,15 +2255,6 @@ class TypeRegistrar:
             TypeCategory.PROTOCOL,
             protocol=info,
         )
-
-        if protocol.is_dynamic:
-            # Generic check can run immediately (doesn't need parent info)
-            if protocol.type_params:
-                raise SemanticError(
-                    f"@dynamic protocol '{protocol.name}' cannot be generic. "
-                    f"Generic @dynamic protocols are not yet supported",
-                    protocol.loc
-                )
 
     def validate_protocol_parents(self, protocol: TpyProtocol) -> None:
         """Validate that all parent protocols are actual protocols.

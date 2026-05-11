@@ -1,0 +1,1 @@
+main.py:21: error: Cannot return local or temporary as 'Container[Int32]'. Dynamic protocol return requires a value that outlives the caller (parameter or global).

@@ -1,0 +1,1 @@
+main.py:12: error: @dynamic protocol 'Container' cannot declare a type parameter named '__tpy_Impl' (reserved by the @dynamic adapter codegen). Rename the type parameter (e.g. 'T').
