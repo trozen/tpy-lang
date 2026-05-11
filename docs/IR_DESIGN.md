@@ -1436,14 +1436,19 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    `tuple_value_to_borrow`, `to_optional_form`, `to_pointer_form`). The implicit
    boundary is the source of a
    recurring bug class: nested tuples where outer/inner forms disagree (BUGS.md
-   `[MED] nested tuple literal of records`), loop variables binding storage-form
-   container elements consumed by borrow-form params (BUGS.md `[LOW] loop variable
-   iterating storage-form tuples`), rvalue tuple-of-records into ref/pointer-form
-   slots (BUGS.md `[LOW] tuple literal rvalue address-of`), and
+   `[MED] nested tuple literal of records`), rvalue tuple-of-records into
+   ref/pointer-form slots (BUGS.md `[LOW] tuple literal rvalue address-of`), and
    `Own[tuple[T_ref,...]]` param silently copying elements (BUGS.md `[IMM]
    Own[tuple] silent copy`, addressable pre-IR via lowering
-   `Own[tuple[T,...]]` -> `tuple[Own[T_ref],...]`). THIR should make form an
-   explicit type fact (either two distinct tuple types, or a form tag on one), so
-   conversion sites become visible in the IR rather than reconstructed in codegen.
+   `Own[tuple[T,...]]` -> `tuple[Own[T_ref],...]`). Several entries in this
+   class were closed pre-IR by extending the expression-level
+   `is_storage_form_optional_source` predicate to cover loop-var / unpack-var
+   bindings (comprehension tuple-unpack, list/dict-of-Optional element access,
+   loop-var-tuple-into-borrow-param) -- the pattern works but each new
+   boundary case still requires touching a consumer-side dispatch site, which
+   the IR fact would replace with structural conversion nodes. THIR should
+   make form an explicit type fact (either two distinct tuple types, or a
+   form tag on one), so conversion sites become visible in the IR rather
+   than reconstructed in codegen.
    Recommendation: form tag on `THIRTupleType` with conversions emitted as explicit
    THIR nodes during lowering -- analogous to how borrows are explicit in MIR.

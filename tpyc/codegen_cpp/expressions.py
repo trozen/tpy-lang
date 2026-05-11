@@ -294,13 +294,13 @@ class ExpressionGenerator:
         # pointer_locals (for arrow field access).
         if isinstance(arg, TpyName) and self.ctx.needs_optional_to_ptr_lift(arg.name):
             return f"::tpy::optional_to_ptr({self.gen_expr(arg, ptype)})"
+        if self.ctx.is_storage_form_optional_source(arg):
+            return f"::tpy::optional_to_ptr({self.gen_expr(arg, ptype)})"
         if self.ctx.is_indirect_name(arg):
             return self.gen_expr(arg, ptype)
         arg_type = self.ctx.get_expr_type(arg)
         if isinstance(arg_type, OptionalType):
             arg_gen = self.gen_expr(arg, ptype)
-            if isinstance(arg, TpyFieldAccess):
-                return f"::tpy::optional_to_ptr({arg_gen})"
             # std::optional<T> -> T* conversion (generic return passed to concrete param)
             if not arg_type.uses_pointer_repr():
                 return f"::tpy::optional_to_ptr({arg_gen})"
@@ -3534,7 +3534,12 @@ class ExpressionGenerator:
         deref_chain = ".__deref__()" * expr.deref_depth
         # Optional with runtime null check -- must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:
-            if isinstance(expr.obj, TpyFieldAccess):
+            # Storage-form Optional source (field, container subscript,
+            # storage_form_optional_locals name): the C++ shape is
+            # std::optional<T>, not T*. Use deref_optional_check which
+            # understands the storage shape -- raw deref_check requires
+            # __deref__() and would reject std::optional<T>.
+            if self.ctx.is_storage_form_optional_source(expr.obj):
                 return f"::tpy::deref_optional_check({obj}){deref_chain}.{cpp_field}"
             ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
             return f"::tpy::deref_check({ptr_expr}){deref_chain}.{cpp_field}"
@@ -4104,20 +4109,8 @@ class ExpressionGenerator:
             buf.write(f"{ind2i}while (__beg != __end) {{\n")
 
             if gen.unpack_vars is not None:
-                assert isinstance(sema_elem, TupleType)
-                self.ctx.unpack_counter += 1
-                tmp = f"__tup_{self.ctx.unpack_counter}"
-                buf.write(f"{ind3i}const auto& {tmp} = *__beg++;\n")
-                for i, uvar in enumerate(gen.unpack_vars):
-                    if uvar is None:
-                        continue
-                    utype = sema_elem.element_types[i]
-                    cpp_utype = self.types.type_to_cpp(utype)
-                    cpp_name = escape_cpp_name(uvar)
-                    if utype.is_value_type():
-                        buf.write(f"{ind3i}{cpp_utype} {cpp_name} = std::get<{i}>({tmp});\n")
-                    else:
-                        buf.write(f"{ind3i}const auto& {cpp_name} = std::get<{i}>({tmp});\n")
+                self._emit_inline_tuple_unpack(
+                    buf, gen, sema_elem, ind3i, source_expr="*__beg++")
             elif sema_elem.is_value_type():
                 cpp_iter_elem = sema_elem.to_cpp()
                 buf.write(f"{ind3i}{cpp_iter_elem} {cpp_var} = *__beg++;\n")
@@ -4290,11 +4283,24 @@ class ExpressionGenerator:
     def _gen_comp_tuple_unpack(self, buf: io.StringIO, gen: TpyComprehensionGenerator,
                                 elem_type: TpyType, ind: str, iter_n: int) -> None:
         """Generate tuple unpacking bindings inside comprehension loop body."""
+        self._emit_inline_tuple_unpack(
+            buf, gen, elem_type, ind, source_expr=f"*__beg_{iter_n}")
+
+    def _emit_inline_tuple_unpack(self, buf: io.StringIO,
+                                   gen: TpyComprehensionGenerator,
+                                   elem_type: TpyType, ind: str,
+                                   source_expr: str) -> None:
+        """Emit a tuple-unpack into the comprehension/genexpr body.
+
+        Shared by `_gen_comp_tuple_unpack` (list/dict/set comprehensions)
+        and the inlined genexpr emitter in `_gen_genexpr_iter_loop` so the
+        two paths can't drift.
+        """
         assert gen.unpack_vars is not None
         assert isinstance(elem_type, TupleType)
         self.ctx.unpack_counter += 1
         tmp = f"__tup_{self.ctx.unpack_counter}"
-        buf.write(f"{ind}const auto& {tmp} = *__beg_{iter_n};\n")
+        buf.write(f"{ind}const auto& {tmp} = {source_expr};\n")
         for i, uvar in enumerate(gen.unpack_vars):
             if uvar is None:
                 continue
@@ -4377,12 +4383,36 @@ class ExpressionGenerator:
             elem = builtin_modules.get_iterable_element_type(iterable_type, registry=self.ctx.analyzer.registry)
             if elem is not None:
                 self.ctx.var_types[gen.var] = elem
+                # Peel ReadonlyType so const-source iteration (readonly
+                # self.field, const param) still hits the storage-form
+                # classification; const-ness is tracked separately via
+                # iteration_yields_const.
+                elem_peeled = unwrap_readonly(elem)
+                # Must register at comp-scope entry: the element-expression
+                # codegen runs before the body, so the predicate must already
+                # see the loop var when the consumer dispatches.
+                if isinstance(elem_peeled, OptionalType) and elem_peeled.uses_pointer_repr():
+                    self.ctx.storage_form_optional_locals.add(gen.var)
+                    if self.ctx.iteration_yields_const(gen.iterable):
+                        self.ctx.const_storage_form_optional_locals.add(gen.var)
                 # Also register unpack var types (e.g. dict comprehension
                 # `for k, v in d.items()` where v is Optional[T]).
-                if gen.unpack_vars and isinstance(elem, TupleType):
+                if gen.unpack_vars and isinstance(elem_peeled, TupleType):
+                    is_storage_tuple = elem_peeled.has_pointer_repr_optional_element()
+                    is_const_source = (is_storage_tuple
+                                       and self.ctx.iteration_yields_const(gen.iterable))
                     for i, uvar in enumerate(gen.unpack_vars):
-                        if uvar is not None and i < len(elem.element_types):
-                            self.ctx.var_types[uvar] = elem.element_types[i]
+                        if uvar is None or i >= len(elem_peeled.element_types):
+                            continue
+                        utype = elem_peeled.element_types[i]
+                        self.ctx.var_types[uvar] = utype
+                        utype_peeled = unwrap_readonly(utype)
+                        if (is_storage_tuple
+                                and isinstance(utype_peeled, OptionalType)
+                                and utype_peeled.uses_pointer_repr()):
+                            self.ctx.storage_form_optional_locals.add(uvar)
+                            if is_const_source:
+                                self.ctx.const_storage_form_optional_locals.add(uvar)
         return names
 
     def _exit_comp_scope(self, names: set[str]) -> None:
@@ -4391,6 +4421,8 @@ class ExpressionGenerator:
         self.ctx.comp_local_names -= names
         for n in names:
             self.ctx.var_types.pop(n, None)
+            self.ctx.storage_form_optional_locals.discard(n)
+            self.ctx.const_storage_form_optional_locals.discard(n)
 
     def _comp_is_lvalue(self, expr: TpyExpr) -> bool:
         """Check if an iterable expression is a C++ lvalue."""
@@ -4791,6 +4823,10 @@ class ExpressionGenerator:
             result = f"std::get<{idx}>({subscript_obj})"
             # Storage-form tuple sources return std::optional<T> from std::get;
             # consumers expect T*, so lift via optional_to_ptr.
+            # NOTE: `is_storage_form_optional_source` (context.py) deliberately
+            # excludes TpySubscript when obj is TupleType because this branch
+            # pre-lifts -- removing the lift here without updating that
+            # predicate causes consumers to silently miss the lift.
             elem_type = tuple_type.element_types[idx]
             if (isinstance(elem_type, OptionalType) and elem_type.uses_pointer_repr()
                     and self.ctx.is_storage_form_source(expr.obj)):

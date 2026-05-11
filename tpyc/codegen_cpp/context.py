@@ -13,8 +13,8 @@ from typing import Callable, Iterator, Literal, TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NominalType, SelfType,
     IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo, ModuleInfo,
-    is_protocol_type, unwrap_readonly, ensure_qualified, unwrap_ref_type, is_union_or_optional_type,
-    is_own_pointer_repr_optional,
+    is_protocol_type, unwrap_readonly, unwrap_qualifiers, ensure_qualified, unwrap_ref_type,
+    is_union_or_optional_type, is_own_pointer_repr_optional,
 
 )
 from ..parse import (
@@ -560,6 +560,8 @@ class LocalScopeSnap:
     const_indirect_locals: set[str]
     storage_form_tuple_locals: set[str]
     const_storage_form_tuple_locals: set[str]
+    storage_form_optional_locals: set[str]
+    const_storage_form_optional_locals: set[str]
     movable_locals: set[str]
     ref_bound_locals: set[str]
     rebind_slots: dict[str, str]
@@ -675,6 +677,19 @@ class CodeGenContext:
     # When unpacking these, the storage->pointer wrap must produce const slots
     # because optional_to_ptr returns `const T*` from a const optional<T>&.
     const_storage_form_tuple_locals: set[str] = field(default_factory=set)
+    # Locals whose C++ shape is `std::optional<T>` (storage form) because they
+    # bind a pointer-repr-Optional element of a storage-form source:
+    #   * for-loop variable iterating `list[P|None]` / `dict[K, P|None]`
+    #   * comprehension/genexpr unpack variable whose tuple slot is
+    #     pointer-repr-Optional from a storage-form source
+    # `is_storage_form_optional_source(TpyName(...))` returns True for these;
+    # consumer sites needing `P*` insert `optional_to_ptr` based on it.
+    # Disjoint from `optional_locals` (which tracks Own[Opt[T_ref]] params).
+    storage_form_optional_locals: set[str] = field(default_factory=set)
+    # Subset of storage_form_optional_locals: locals bound from a const-bound
+    # source (mirror of const_storage_form_tuple_locals -- when the producing
+    # iteration yields const optional<T>&, the lift must produce const T*).
+    const_storage_form_optional_locals: set[str] = field(default_factory=set)
 
     # --- Pointer-variant locals (non-value union variables) ---
     # Variables that are std::variant<T*...> instead of std::variant<T...>.
@@ -968,6 +983,8 @@ class CodeGenContext:
         self.const_indirect_locals = set()
         self.storage_form_tuple_locals = set()
         self.const_storage_form_tuple_locals = set()
+        self.storage_form_optional_locals = set()
+        self.const_storage_form_optional_locals = set()
         self.slots.reset()
         self.rebind_slots = {}
         self.plain_rebind_slots = set()
@@ -1024,6 +1041,8 @@ class CodeGenContext:
             const_indirect_locals=self.const_indirect_locals.copy(),
             storage_form_tuple_locals=self.storage_form_tuple_locals.copy(),
             const_storage_form_tuple_locals=self.const_storage_form_tuple_locals.copy(),
+            storage_form_optional_locals=self.storage_form_optional_locals.copy(),
+            const_storage_form_optional_locals=self.const_storage_form_optional_locals.copy(),
             movable_locals=self.movable_locals.copy(),
             ref_bound_locals=self.ref_bound_locals.copy(),
             rebind_slots=dict(self.rebind_slots),
@@ -1042,6 +1061,8 @@ class CodeGenContext:
         self.const_indirect_locals = snap.const_indirect_locals.copy()
         self.storage_form_tuple_locals = snap.storage_form_tuple_locals.copy()
         self.const_storage_form_tuple_locals = snap.const_storage_form_tuple_locals.copy()
+        self.storage_form_optional_locals = snap.storage_form_optional_locals.copy()
+        self.const_storage_form_optional_locals = snap.const_storage_form_optional_locals.copy()
         self.movable_locals = snap.movable_locals.copy()
         self.ref_bound_locals = snap.ref_bound_locals.copy()
         self.rebind_slots = dict(snap.rebind_slots)
@@ -1316,11 +1337,19 @@ class CodeGenContext:
         Optional field: `optional_to_ptr` at borrow sites, double-deref
         at narrowing sites, `ptr_to_optional` at assignments.
 
-        Covers two source shapes that produce the same C++ shape:
+        Covers four source shapes that produce the same C++ shape:
 
           * TpyFieldAccess on a storage-form Optional[T] field of a
             record (`obj.maybe_p` where the field is stored as
             `std::optional<T>`).
+          * TpySubscript yielding a pointer-repr Optional element of a
+            storage-form container (`pairs[i]` where
+            `pairs: list[P|None]`, `d[k]` where `d: dict[K, P|None]`).
+            `__getitem__` returns `std::optional<P>` (storage form).
+          * TpyName in `storage_form_optional_locals` -- a for-loop
+            variable iterating such a container, or a comprehension/
+            genexpr unpack variable bound from a storage-form-tuple
+            slot whose element type is pointer-repr Optional.
           * TpyName referring to a generator-promoted Optional[T] local
             (state-machine field declared as
             `std::optional<std::optional<T>>`; gen_expr's TpyName handler
@@ -1337,18 +1366,31 @@ class CodeGenContext:
         pointer-form, pointer-local rebind) check `optional_locals`
         directly.
         """
-        from ..parse import TpyFieldAccess, TpyName
         if isinstance(expr, TpyFieldAccess):
-            from ..typesys import OptionalType
             val_type = self.get_expr_type(expr)
             return (isinstance(val_type, OptionalType)
                     and val_type.uses_pointer_repr())
-        if (isinstance(expr, TpyName) and self.in_generator_body
-                and expr.name in self.generator_optional_fields):
-            from ..typesys import OptionalType
-            var_type = self.var_types.get(expr.name)
-            return (isinstance(var_type, OptionalType)
-                    and var_type.uses_pointer_repr())
+        if isinstance(expr, TpySubscript):
+            val_type = self.get_expr_type(expr)
+            if not (isinstance(val_type, OptionalType)
+                    and val_type.uses_pointer_repr()):
+                return False
+            # Tuple-subscript codegen pre-lifts via `optional_to_ptr` (see
+            # `_gen_subscript` tuple branch) when the object is a storage-form
+            # tuple source. The rendered expression is already `T*`, so
+            # consumers must NOT lift again.
+            obj_type = self.get_expr_type(expr.obj)
+            if obj_type is not None and isinstance(unwrap_qualifiers(obj_type), TupleType):
+                return False
+            return True
+        if isinstance(expr, TpyName):
+            if expr.name in self.storage_form_optional_locals:
+                return True
+            if (self.in_generator_body
+                    and expr.name in self.generator_optional_fields):
+                var_type = self.var_types.get(expr.name)
+                return (isinstance(var_type, OptionalType)
+                        and var_type.uses_pointer_repr())
         return False
 
     def _is_pointer_global(self, expr: TpyExpr) -> bool:
@@ -1444,6 +1486,24 @@ class CodeGenContext:
         if name in self.pointer_locals:
             return LocalCppForm.POINTER
         return LocalCppForm.VALUE
+
+    def iteration_yields_const(self, iterable: TpyExpr) -> bool:
+        """True when iterating `iterable` binds the loop var as const.
+
+        Detects const-source iteration patterns where the resulting tuple
+        elements come out as `const optional<T>&` -- so the storage->pointer
+        wrap must use `to_cpp_return_const()` to match optional_to_ptr's
+        `const T*` output.
+        """
+        # field-of-self in a readonly method: self is const, field is const ref
+        if isinstance(iterable, TpyFieldAccess) and isinstance(iterable.obj, TpyName):
+            if iterable.obj.name == "self" and "self" in self.const_ref_params:
+                return True
+        # const-inferred param or alias of one
+        if isinstance(iterable, TpyName):
+            return (iterable.name in self.const_indirect_locals
+                    or iterable.name in self.const_ref_params)
+        return False
 
     def needs_optional_to_ptr_lift(self, name: str) -> bool:
         """True when `name` is in `OPTIONAL_STORAGE` form -- an

@@ -220,7 +220,13 @@ per-element auto-move + copy-required rules as field assignments.
 
 You almost never write or think about this distinction directly --
 the compiler picks the right form per slot and emits the conversions
-silently. It matters when:
+silently. This auto-lift runs at any pointer-form consumer site
+(call args, returns, var-decl from storage source, narrowed
+field/method access) regardless of source shape -- record field,
+container subscript (`pairs[i]` where `pairs: list[P | None]`),
+for-loop variable iterating a storage container, or comprehension/
+genexpr unpack variable bound from a storage-form tuple slot. It
+matters when:
 - You see a copy warning mentioning "borrowed Optional/Union" -- that
   source is in borrow form and the slot wants storage form.
 - You're writing `@native` interop and need to match the C++ ABI shape
