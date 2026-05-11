@@ -2803,15 +2803,15 @@ cooperative chaining is tracked in "Future Extensions".
 class Tree:
     class Node:
         value: Int32
-        left: Optional[Ptr[Tree.Node]]
-        right: Optional[Ptr[Tree.Node]]
+        left: Ptr[Tree.Node]
+        right: Ptr[Tree.Node]
 
         def __init__(self, value: Int32) -> None:
             self.value = value
             self.left = None
             self.right = None
 
-    root: Optional[Ptr[Tree.Node]]
+    root: Ptr[Tree.Node]
 ```
 
 Class definitions inside another class body. Standard Python feature.

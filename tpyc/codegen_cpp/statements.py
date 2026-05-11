@@ -9,7 +9,7 @@ import io
 from typing import Callable, TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, IntLiteralType, FloatLiteralType,
+    TpyType, IntLiteralType, FloatLiteralType, PtrType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
     NoneType, NominalType, AnyType, STR, BYTES, TupleType, VoidType,
     INT32, BIGINT, FLOAT, is_protocol_type, ALL_FIXED_INTS,
@@ -1733,6 +1733,19 @@ class StatementGenerator:
                 else:
                     value = self.expressions._maybe_move(stmt.value, value)
                 return f"{indent}{target} = {value};\n"
+            # Ptr[T] field: storage-form Optional source needs optional_to_ptr
+            # lift to mirror the storage-form-to-borrow-form bridge already
+            # done for OptionalType destinations above.
+            if isinstance(target_type, PtrType):
+                source = self.ctx.unwrap_copy(stmt.value)
+                raw_val_type = self.ctx.get_expr_type(stmt.value)
+                val_type = raw_val_type.wrapped if isinstance(raw_val_type, OwnType) else raw_val_type
+                if (isinstance(val_type, OptionalType)
+                        and val_type.uses_pointer_repr()
+                        and self.ctx.is_storage_form_optional_source(source)):
+                    target = self.expressions.gen_expr(stmt.target)
+                    value = self.expressions.gen_expr(stmt.value, target_type)
+                    return f"{indent}{target} = ::tpy::optional_to_ptr({value});\n"
 
         # Class-constant write: emit any receiver-side effects as a leading
         # statement so the qualified `<owner>::<member>` appears as a real

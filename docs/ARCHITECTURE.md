@@ -237,6 +237,18 @@ invariants: `PRIMITIVE_SNAPSHOT`, `ENUM_SNAPSHOT`, `FACTORY_SNAPSHOT`,
    `isinstance(t, NominalType)` guards. Use `_is_concrete_cat` when
    adding new predicates for qnames that have Pending counterparts.
 
+8. **`OptionalType(...)` may return a non-`OptionalType`** due to a
+   construction-time collapse: `OptionalType(PtrType(T))` and
+   `OptionalType(ReadonlyType(PtrType(T)))` are replaced by their
+   inner Ptr (or `ReadonlyType(Ptr)`) directly. `Ptr[T]` is already
+   nullable; the wrapper would be redundant (would lower to
+   `std::optional<T*>`) and split one C++ shape into two distinct
+   TPy types. Callers that act on the returned object must
+   `isinstance`-check before reading `.inner` / `.force_pointer_repr`
+   / `.uses_pointer_repr()`. The parser emits a warning at the
+   user's spelling site (`Ptr[T] | None`, `Optional[Ptr[T]]`, etc.)
+   so the redundant form doesn't drift back in.
+
 ## Design decisions
 
 - **Nominal vs. structural** is the real axis, not "named vs.

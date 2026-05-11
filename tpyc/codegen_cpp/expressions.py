@@ -265,17 +265,17 @@ class ExpressionGenerator:
         if info.has_none:
             if isinstance(arg, TpyNoneLiteral):
                 return "static_cast<std::nullptr_t*>(nullptr)"
-            if self.ctx.is_indirect_name(arg):
+            if self.ctx.is_already_pointer_source(arg):
                 return self.gen_expr(arg, ptype)
-            if isinstance(self.ctx.get_expr_type(arg), OptionalType):
+            arg_expr_type = self.ctx.get_expr_type(arg)
+            if isinstance(arg_expr_type, OptionalType):
                 arg_gen = self.gen_expr(arg, ptype)
                 if isinstance(arg, TpyFieldAccess):
                     return f"::tpy::optional_to_ptr({arg_gen})"
                 return arg_gen
             gen = self.gen_expr(arg, ptype)
             if self.ctx.is_temporary_expr(arg):
-                arg_type = self.ctx.get_expr_type(arg)
-                tmp = self.ctx.temps.create(arg_type, gen) if arg_type else self.ctx.temps.create_typed("auto", gen)
+                tmp = self.ctx.temps.create(arg_expr_type, gen) if arg_expr_type else self.ctx.temps.create_typed("auto", gen)
                 return f"&({tmp})"
             return f"&({gen})"
         # Required multi-protocol union: pass by reference, template deduction works.
@@ -296,7 +296,7 @@ class ExpressionGenerator:
             return f"::tpy::optional_to_ptr({self.gen_expr(arg, ptype)})"
         if self.ctx.is_storage_form_optional_source(arg):
             return f"::tpy::optional_to_ptr({self.gen_expr(arg, ptype)})"
-        if self.ctx.is_indirect_name(arg):
+        if self.ctx.is_already_pointer_source(arg):
             return self.gen_expr(arg, ptype)
         arg_type = self.ctx.get_expr_type(arg)
         if isinstance(arg_type, OptionalType):
@@ -788,6 +788,18 @@ class ExpressionGenerator:
                     return "std::span<const uint8_t>{}"
                 return cpp_bytes_literal_span(bytes_lit_arg.value)
         gen_arg = self.gen_expr_deref(arg, ptype if target_type is _UNSET else target_type)
+        # Storage-form Optional source -> Ptr[T] param: source is
+        # `std::optional<T>` (lvalue field/subscript), slot wants T*. Mirror
+        # of the existing storage-form-to-borrow-form lift performed for
+        # OptionalType destinations in `_gen_optional_ptr_arg`.
+        if ptype is not None:
+            ptype_inner = unwrap_readonly(unwrap_ref_type(ptype))
+            if isinstance(ptype_inner, PtrType):
+                arg_type = self.ctx.get_expr_type(arg)
+                if (isinstance(arg_type, OptionalType)
+                        and arg_type.uses_pointer_repr()
+                        and self.ctx.is_storage_form_optional_source(arg)):
+                    gen_arg = f"::tpy::optional_to_ptr({gen_arg})"
         # Tuple-of-pointer-repr-Optional param: bridge between borrow form
         # (std::tuple<T*, ...>, bare tuple param) and storage form
         # (std::tuple<std::optional<T>, ...>, Own[tuple] param). Source/slot
@@ -4755,7 +4767,7 @@ class ExpressionGenerator:
         # pointer_locals (for arrow field access) but here we need P*.
         if isinstance(elem, TpyName) and self.ctx.needs_optional_to_ptr_lift(elem.name):
             return f"::tpy::optional_to_ptr({ret_expr})"
-        if self.ctx.is_indirect_name(elem):
+        if self.ctx.is_already_pointer_source(elem):
             return ret_expr
         if isinstance(elem, TpyIfExpr):
             return ret_expr

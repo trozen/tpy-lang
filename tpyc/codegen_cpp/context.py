@@ -1549,6 +1549,20 @@ class CodeGenContext:
                 return module_info.variables[original_name].is_pointer
         return False
 
+    def is_already_pointer_source(self, expr: TpyExpr) -> bool:
+        """True when `expr` renders as a `T*` value with no further lifting.
+
+        Composes `is_indirect_name` (pointer locals/globals/self/imports --
+        names whose rendering is already `T*`) with the `Ptr[T]` source
+        case (any expression whose sema type is `PtrType`). Used by the
+        codegen sites that lift other source shapes via `&(...)` or
+        `optional_to_ptr`: when this returns True, the bare rendering is
+        already in the right shape and the lift is a bug (`T**` / wrong type).
+        """
+        if self.is_indirect_name(expr):
+            return True
+        return isinstance(self.get_expr_type(expr), PtrType)
+
     def get_expr_type(self, expr: TpyExpr) -> TpyType | None:
         """Get the sema-analyzed type of an expression, unwrapping ReadonlyType.
 

@@ -999,6 +999,8 @@ Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref_
 - `None` can be assigned to `Ptr[T]` and `Ptr[readonly[T]]` (represents `nullptr`)
 - `p is None` / `p is not None` work for `Ptr[T]` and `Ptr[readonly[T]]`
 - `p == None` / `p != None` are rejected; use identity checks (`is` / `is not`)
+- `Ptr[T] | None` is normalized to `Ptr[T]` at type construction (and the readonly variant likewise). The two spellings describe the same already-nullable `T*`. Equivalent spellings (`Optional[Ptr[T]]`, `None | Ptr[T]`, `Ptr[readonly[T]] | None`, etc.) are also collapsed. The compiler emits a warning at the redundant spelling site suggesting the plain form.
+- `T | None` (for non-value `T`) and `Ptr[T]` interconvert at coercion boundaries (call args, returns, locals, field assignment) because both lower to `T*` at borrow positions. The two remain distinct types (semantically: `T | None` is "nullable T" with optional storage-form lifting; `Ptr[T]` is "explicit pointer to T" always in pointer form). Storage-form Optional sources -- field reads or subscripts of an `Optional[T]` field/container -- are lifted automatically via `tpy::optional_to_ptr` when flowing into a `Ptr[T]` slot (same machinery used for storage-form sources flowing into pointer-form Optional slots). The mutable-source -> readonly-destination inner-narrowing direction is allowed; the reverse (readonly -> mutable) is rejected.
 
 **Null-safety:** Auto-deref through `Ptr[T]`/`Ptr[readonly[T]]` is null-checked at runtime via `tpy::deref_check()`. A null pointer access panics with "null pointer dereference" instead of causing undefined behavior. Pointers with known non-null provenance skip the null check and use direct `->` access. Non-null provenance is established by:
 

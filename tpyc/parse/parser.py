@@ -497,6 +497,14 @@ class Parser:
         loc = self._loc(node) if node else None
         self._warnings.append(ParseWarning(message, loc))
 
+    def _warn_at_loc(self, message: str, loc: SourceLocation | None) -> None:
+        """Record a parser warning at an already-resolved source location.
+
+        Used by callers (e.g. `type_resolver.py`) that hold a `SourceLocation`
+        directly rather than an `ast.AST` node.
+        """
+        self._warnings.append(ParseWarning(message, loc))
+
     @staticmethod
     def _qualify(resolved: tuple[str, str]) -> str:
         """Join a (module, name) resolution to a qualified name string."""

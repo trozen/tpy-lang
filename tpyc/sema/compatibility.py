@@ -107,6 +107,27 @@ def _contains_semantic_ref(t: TpyType) -> bool:
     return any(_contains_semantic_ref(inner) for inner in t.inner_types())
 
 
+def _inner_compat_with_ro_widening(source_inner: TpyType, dest_inner: TpyType) -> bool:
+    """True when `source_inner` is compatible with `dest_inner` at a Ptr <-> Optional
+    pointer-repr boundary, allowing mutable->readonly inner widening only.
+
+    Used for both `Ptr[T] -> T | None` (source_inner = ptr pointee, dest_inner =
+    optional inner) and `T | None -> Ptr[T]` (source_inner = optional inner,
+    dest_inner = ptr pointee). The two directions are complementary: in each,
+    `source_inner` is on the source side and `dest_inner` is on the destination
+    side, regardless of which side is the Ptr.
+
+    - Same inner: always allowed.
+    - Mutable source -> readonly destination: allowed (adding const is safe).
+    - Readonly source -> mutable destination: rejected (dropping const is unsafe).
+    """
+    if source_inner == dest_inner:
+        return True
+    if isinstance(dest_inner, ReadonlyType) and not isinstance(source_inner, ReadonlyType):
+        return dest_inner.wrapped == source_inner
+    return False
+
+
 def _is_natural_union_member(actual: TpyType, a_info, member: TpyType) -> bool:
     """True if `member` is the natural target for `actual` in a union match,
     i.e. selecting it does not require a category-crossing widening.
@@ -464,6 +485,12 @@ class TypeCompatibility:
                     and not actual_inner.is_value_type()
                     and not isinstance(actual_inner, (OptionalType, PtrType, NoneType))):
                 self._mark_addr_taken(source_expr)
+            # Ptr[T] -> T | None (pointer-repr): byte-identical T* at C++ level.
+            # Per-context idiom: Ptr[T] for storage, T | None for nullable returns.
+            if (isinstance(actual_inner, PtrType)
+                    and expected.uses_pointer_repr()
+                    and _inner_compat_with_ro_widening(actual_inner.pointee, expected.inner)):
+                return None
             # Optional[A] -> Optional[B] via a whole-Optional coercion rule
             # (e.g. str <-> StrView at arg position, where both lower to
             # `std::optional<std::string_view>`). Try before stripping to the
@@ -486,6 +513,18 @@ class TypeCompatibility:
 
         # Optional[T] -> Optional[T] already handled by == check above
         # Optional[T] -> T: error (cannot implicitly unwrap)
+
+        # T | None (pointer-repr) -> Ptr[T]: byte-identical T* at C++ level.
+        # Per-context idiom: T | None for nullable returns, Ptr[T] for storage.
+        # Storage-form Optional sources (field access, container element) need
+        # an `optional_to_ptr` lift at codegen, mirroring the existing
+        # storage-form-to-borrow-form lift for OptionalType destinations.
+        if isinstance(expected, PtrType):
+            actual_for_opt = unwrap_own(actual)
+            if (isinstance(actual_for_opt, OptionalType)
+                    and actual_for_opt.uses_pointer_repr()
+                    and _inner_compat_with_ro_widening(actual_for_opt.inner, expected.pointee)):
+                return None
 
         # NominalType with Own[T] in type args signals copy semantics -- applies to both
         # protocols (Iterable[Own[T]]) and concrete containers (dict[K, Own[V]]).

@@ -2012,6 +2012,25 @@ class OptionalType(TpyType):
     For non-value inner types, maps to T* (nullable pointer) in locals/params/returns.
     The canonical storage form (std::optional<T>) is reserved for future class members.
 
+    Pointer-inner collapse
+    ----------------------
+    `OptionalType(PtrType(T))` collapses to `PtrType(T)` at construction time
+    (and `OptionalType(ReadonlyType(PtrType(T)))` to `ReadonlyType(PtrType(T))`).
+    Both spellings already lower to `T*` / `const T*` in C++, both are nullable,
+    and `is None` narrowing handles `Ptr[T]` directly (`sema/narrowing.py`'s
+    `condition_ptr_null_facts`). Representing them as two distinct TPy types
+    forced every boundary (assignment, call, generic substitution, container
+    element) to bridge the duplication with its own coercion rule. The
+    collapse makes `Ptr[T] | None` unrepresentable: there is one type for one
+    C++ shape.
+
+    Consequence: `OptionalType(...)` may return a `PtrType` instead of an
+    `OptionalType`. Any post-construction code that dot-accesses `.inner`,
+    `.force_pointer_repr`, or calls `.uses_pointer_repr()` on the result
+    without an `isinstance(t, OptionalType)` guard will crash or misbehave
+    when the collapse fires. This includes callers in sema substitution,
+    codegen helpers, and tests.
+
     force_pointer_repr invariants
     -----------------------------
     The flag locks codegen to T* even when the concrete inner is a value type.
@@ -2028,7 +2047,14 @@ class OptionalType(TpyType):
     dropping the flag during any structural transform miscompiles any
     `v = container.get()` pattern.
 
-    Three rules for constructing OptionalType, to keep the invariant sound:
+    When the inner is already pointer-shaped (PtrType or ReadonlyType(PtrType)),
+    the collapse rule takes precedence: the returned PtrType is intrinsically
+    T*-shaped, so `force_pointer_repr` is redundant and silently dropped
+    (calling `OptionalType(PtrType(T), force_pointer_repr=True)` returns
+    `PtrType(T)` with no record of the flag).
+
+    Three rules for constructing OptionalType (when the inner is not pointer-
+    shaped, otherwise see the collapse rule above):
 
     1. Fresh construction (no pre-existing Optional on the input side):
        plain `OptionalType(inner)`. Flag defaults to False.
@@ -2046,6 +2072,19 @@ class OptionalType(TpyType):
     inner: TpyType
     # Excluded from eq/hash: codegen concern only; see class docstring.
     force_pointer_repr: bool = field(default=False, compare=False, hash=False)
+
+    def __new__(cls, inner: 'TpyType | None' = None, force_pointer_repr: bool = False):
+        # Collapse: Ptr[T] is already T* and nullable, so an extra Optional
+        # wrapper would yield std::optional<T*> (redundant) and split one C++
+        # shape into two distinct TPy types. See class docstring for context.
+        # `inner=None` default supports copy.deepcopy / pickle reconstruction
+        # via __newobj__(cls) -- the state is populated separately afterward.
+        if inner is not None:
+            if isinstance(inner, PtrType):
+                return inner
+            if isinstance(inner, ReadonlyType) and isinstance(inner.wrapped, PtrType):
+                return inner
+        return super().__new__(cls)
 
     def to_cpp(self) -> str:
         return f"std::optional<{self.inner.to_cpp()}>"
@@ -2123,12 +2162,17 @@ class OptionalType(TpyType):
     def inner_types(self) -> tuple['TpyType', ...]:
         return (self.inner,)
 
-    def with_inner(self, new_inner: 'TpyType') -> 'OptionalType':
+    def with_inner(self, new_inner: 'TpyType') -> 'TpyType':
         """Return a new OptionalType with the same repr commitment and a different inner.
 
         Use this for any structural transform (resolve, substitute, rewrap) of an
         existing Optional. Preserves force_pointer_repr mechanically so callers
         cannot accidentally drop it.
+
+        Returns `TpyType` (not `OptionalType`) because the pointer-inner collapse
+        in `OptionalType.__new__` may return a `PtrType` when `new_inner` is
+        pointer-shaped. Callers that need to act on `OptionalType` specifically
+        must isinstance-check.
         """
         return OptionalType(new_inner, force_pointer_repr=self.force_pointer_repr)
 
@@ -2439,7 +2483,9 @@ def make_union(*types: TpyType) -> TpyType:
     - Flattens nested UnionType/OptionalType members
     - Deduplicates by structural equality
     - Single type collapses to itself
-    - Single type + None -> OptionalType(T)
+    - Single type + None -> OptionalType(T) (and OptionalType.__new__ may
+      further collapse to PtrType when T is pointer-shaped; see that class
+      for the pointer-inner collapse rule)
     - Multiple types +/- None -> UnionType(sorted..., [NoneType])
     """
     # Flatten nested unions and optionals

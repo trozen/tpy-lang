@@ -1,0 +1,5 @@
+main.py:17: warning: `Ptr[Node] | None` is redundant -- `Ptr[Node]` is already nullable; drop the `| None`
+main.py:18: warning: `Ptr[Node] | None` is redundant -- `Ptr[Node]` is already nullable; drop the `| None`
+main.py:24: warning: `Ptr[readonly[Node]] | None` is redundant -- `Ptr[readonly[Node]]` is already nullable; drop the `| None`
+main.py:25: warning: `Ptr[readonly[Node]] | None` is redundant -- `Ptr[readonly[Node]]` is already nullable; drop the `| None`
+main.py:71: warning: copies Node into field; use copy() to make this explicit

@@ -86,7 +86,11 @@ When to reach for each:
   Use `Array[T, N]` for fixed-size stack-allocated arrays, `Span[T]` for
   non-owning views into contiguous data.
 - **`Optional[T]`** for "maybe-a-value" slots. `Ptr[T]` is already nullable,
-  so don't write `Ptr[T] | None`.
+  so don't write `Ptr[T] | None` (the compiler warns and collapses it to
+  `Ptr[T]`). `T | None` for non-value `T` and `Ptr[T]` interconvert at
+  coercion boundaries (call args, returns, locals, field assignment) --
+  both lower to `T*` at borrow positions, and storage-form Optional
+  sources are lifted automatically when flowing into `Ptr[T]` slots.
 
 ---
 

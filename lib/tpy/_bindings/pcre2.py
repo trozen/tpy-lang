@@ -39,9 +39,9 @@ class MatchData: ...
 @native("::pcre2_match_context_8")
 class MatchContext: ...
 
-# Context types we never construct -- passed as `Ptr[...] | None = None`
-# to the PCRE2 functions that accept an optional context override. Caller
-# always passes `None` (= default contexts).
+# Context types we never construct -- passed as bare `Ptr[...]` to the
+# PCRE2 functions that accept an optional context override. Caller always
+# passes `None` (= default contexts; `Ptr[T]` is already nullable).
 @native("::pcre2_compile_context_8")
 class CompileContext: ...
 
@@ -90,8 +90,7 @@ PCRE2_UNSET:                        Final[UInt64] = 0xFFFFFFFFFFFFFFFF
 # Every binding below is a pure `@native` 1:1 mirror of PCRE2's C ABI.
 # Arguments match pcre2.h exactly. Context-pointer args
 # (pcre2_compile_context*, pcre2_general_context*, etc.) are typed as
-# bare `Ptr[X]`; callers pass `None` (codegens to `nullptr`). Typing them
-# as `Ptr[X] | None` would codegen `std::optional<X*>` and break the C ABI.
+# bare `Ptr[X]`; callers pass `None` (codegens to `nullptr`).
 
 @native("::pcre2_compile_8")
 def compile(pattern_data: Ptr[readonly[UInt8]], pattern_len: UInt64,

@@ -49,6 +49,19 @@ if TYPE_CHECKING:
 _FIXED_INT_MAP: dict[str, TpyType] = {str(t): t for t in ALL_FIXED_INTS}
 
 
+def _is_ptr_shaped(t: TpyType) -> bool:
+    """True when `t` already lowers to `T*` -- a `Ptr[T]` or a readonly-wrapped
+    `Ptr[T]`. Wrapping such a type in `Optional[...]` / `| None` is redundant
+    because `Ptr[T]` is already nullable. Used by the resolver to warn at the
+    user's spelling site, before `OptionalType.__new__` collapses the wrapper.
+    """
+    if isinstance(t, PtrType):
+        return True
+    if isinstance(t, ReadonlyType) and isinstance(t.wrapped, PtrType):
+        return True
+    return False
+
+
 class TypeResolver:
     """Resolves TypeRefNode -> TpyType using live parser state.
 
@@ -222,6 +235,17 @@ class TypeResolver:
                     "Cannot mix readonly and non-readonly types in a union",
                     loc=ref.loc,
                 )
+            # Redundant `Ptr[T] | None` (upstream #17). `Ptr[T]` is already
+            # nullable and the collapse rule erases the wrapper; warn at the
+            # user's spelling site so the redundant form doesn't drift back in.
+            if non_none_count == 1 and any(isinstance(t, VoidType) for t in parsed):
+                non_none = next(t for t in parsed if not isinstance(t, VoidType))
+                if _is_ptr_shaped(non_none):
+                    parser._warn_at_loc(
+                        f"`{non_none} | None` is redundant -- `{non_none}` is "
+                        f"already nullable; drop the `| None`",
+                        ref.loc,
+                    )
             if readonly_count > 0:
                 unwrapped = [
                     t.wrapped if isinstance(t, ReadonlyType) else t for t in parsed
@@ -289,6 +313,12 @@ class TypeResolver:
                     raise ParseError(
                         "Optional[Any] is redundant -- Any already accepts None",
                         loc=ref.loc,
+                    )
+                if _is_ptr_shaped(inner):
+                    parser._warn_at_loc(
+                        f"`Optional[{inner}]` is redundant -- `{inner}` is "
+                        f"already nullable; use `{inner}` directly",
+                        ref.loc,
                     )
                 return OptionalType(inner)
             if name == "typing:Final":

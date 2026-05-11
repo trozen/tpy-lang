@@ -184,7 +184,12 @@ class TestSendSync:
 
     def test_optional_delegates(self):
         assert OptionalType(INT32).is_send()
-        assert not OptionalType(PtrType(INT32)).is_send()
+        # OptionalType inner = NominalType (non-Send record) -- delegates through.
+        # We can't use OptionalType(PtrType(...)) here because the __new__ collapse
+        # would return a bare PtrType (Ptr[T] is already nullable), so the test
+        # would exercise PtrType, not OptionalType's delegation.
+        record = NominalType("R", (), _module_qname="__main__.R")
+        assert not OptionalType(record).is_send()
 
     # -- Union: all members --
 
