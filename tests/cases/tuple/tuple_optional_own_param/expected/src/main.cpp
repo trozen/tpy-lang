@@ -37,28 +37,84 @@ int32_t take_subscript(std::tuple<std::optional<P>, std::optional<P>> t) {
     return 0;
 }
 
-// def main() -> None:
-void main() {
+// def test_all_last_use() -> None:
+void test_all_last_use() {
+    // # a, b are at last use; both moved into the storage-form param.
     // a = P(1)
     P a = P(1);
     // b = P(2)
     P b = P(2);
     // print(take((a, b)))
-    std::cout << take(::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{&(a), &(b)})) << "\n";
-    // print(take((a, None)))
-    std::cout << take(::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{&(a), nullptr})) << "\n";
+    std::cout << take(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{std::move(&(a)), std::move(&(b))})) << "\n";
+}
+
+// def test_mixed_last_use_and_explicit_copy() -> None:
+void test_mixed_last_use_and_explicit_copy() {
+    // # c at last use, d copied explicitly, then d at its true last use.
+    // # All elements are movable into the storage form (copy() returns Own[P]).
+    // c = P(3)
+    P c = P(3);
+    // d = P(4)
+    P d = P(4);
+    // print(take((c, copy(d))))
+    std::cout << take(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P*, P>{std::move(&(c)), P(d)}))) << "\n";
+    // print(take((d, None)))
+    std::cout << take(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{std::move(&(d)), nullptr})) << "\n";
+}
+
+// def test_fresh_constructor_literals() -> None:
+void test_fresh_constructor_literals() {
+    // # Rvalue elements, naturally movable.
+    // print(take((P(5), P(6))))
+    std::cout << take(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(5), P(6)}))) << "\n";
+}
+
+// def test_none_only() -> None:
+void test_none_only() {
     // print(take((None, None)))
-    std::cout << take(::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{nullptr, nullptr})) << "\n";
-    // pairs: list[tuple[P | None, P | None]] = [(a, b)]
-    std::vector<std::tuple<std::optional<P>, std::optional<P>>> pairs = {::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{&(a), &(b)})};
+    std::cout << take(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{nullptr, nullptr})) << "\n";
+}
+
+// def test_storage_form_source() -> None:
+void test_storage_form_source() {
+    // # pairs[0] is a storage-form source -- tuple_to_pointer lift, no
+    // # per-element move because the list still owns its elements.
+    // p1 = P(7)
+    P p1 = P(7);
+    // p2 = P(8)
+    P p2 = P(8);
+    // pairs: list[tuple[P | None, P | None]] = [(p1, p2)]
+    std::vector<std::tuple<std::optional<P>, std::optional<P>>> pairs = {::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{&(p1), &(p2)})};
     // print(take(pairs[0]))
     std::cout << take(::tpy::__getitem__(pairs, 0)) << "\n";
-    // print(take_subscript((a, b)))
-    std::cout << take_subscript(::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{std::move(&(a)), &(b)})) << "\n";
-    // print(take_subscript((None, b)))
-    std::cout << take_subscript(::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{nullptr, &(b)})) << "\n";
-    // print(take((None, b)))
-    std::cout << take(::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{nullptr, std::move(&(b))})) << "\n";
+}
+
+// def test_subscript_access_in_body() -> None:
+void test_subscript_access_in_body() {
+    // # Confirms t[0] reads the storage-form slot correctly when the param
+    // # was constructed via tuple_to_storage_move.
+    // e = P(9)
+    P e = P(9);
+    // f = P(10)
+    P f = P(10);
+    // print(take_subscript((e, f)))
+    std::cout << take_subscript(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{std::move(&(e)), std::move(&(f))})) << "\n";
+}
+
+// def main() -> None:
+void main() {
+    // test_all_last_use()
+    test_all_last_use();
+    // test_mixed_last_use_and_explicit_copy()
+    test_mixed_last_use_and_explicit_copy();
+    // test_fresh_constructor_literals()
+    test_fresh_constructor_literals();
+    // test_none_only()
+    test_none_only();
+    // test_storage_form_source()
+    test_storage_form_source();
+    // test_subscript_access_in_body()
+    test_subscript_access_in_body();
 }
 
 void __tpy_init() {

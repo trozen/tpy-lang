@@ -14,6 +14,7 @@ from ..typesys import (
     NoneType, NominalType, AnyType, STR, BYTES, TupleType, VoidType,
     INT32, BIGINT, FLOAT, is_protocol_type, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType,
+    is_own_pointer_repr_optional,
     resolve_int_literals,
     error_return_to_cpp, qualify_exception_name, is_return_exception,
     unwrap_ref_type, RefType, unwrap_qualifiers,
@@ -158,6 +159,22 @@ class StatementGenerator:
                 self.ctx.pointer_locals.add(pname)
                 if isinstance(ptype, ReadonlyType):
                     self.ctx.const_indirect_locals.add(pname)
+            # Own[OptionalType[P_ref]]: param renders as `std::optional<P>&&`
+            # (storage form), but body access patterns are the same as a
+            # storage-form Optional local: arrow for member access (uses
+            # optional<P>::operator->), .has_value() for null check, direct
+            # std::move into another storage slot. Register as both
+            # pointer_local (for arrow access) and optional_local (so the
+            # null-check dispatch picks has_value over `!= nullptr`). Rebind
+            # the namespace to the bare Optional so type-aware codegen sites
+            # match the sibling pointer-repr Optional handling. movable_locals
+            # is set below via the generic `unwrap_optional_own + non-value`
+            # pass.
+            elif is_own_pointer_repr_optional(actual):
+                self.ctx.pointer_locals.add(pname)
+                self.ctx.optional_locals.add(pname)
+                self.ctx.var_types[pname] = actual.wrapped
+                local_ns.bind_variable(pname, actual.wrapped)
             # Non-value union params are pointer variants (variant<T*...>)
             elif self.ctx.is_ptr_variant_union(actual):
                 self.ctx.ptr_variant_locals.add(pname)
@@ -442,6 +459,16 @@ class StatementGenerator:
                     if self._is_ptr_variant_source(ret_value) and not is_narrowed:
                         ret_expr = self.expressions.gen_expr(ret_value, ret_type)
                         return self._make_return(indent, ret_expr)
+                    # Own[A|B] param returning into a pointer-variant return:
+                    # lift via to_ptr_variant. The Own param's C++ shape is
+                    # value-variant; without the lift codegen would take the
+                    # address of the storage and produce variant<A,B>* rather
+                    # than variant<A*,B*>.
+                    if (isinstance(ret_value, TpyName) and not is_narrowed
+                            and self.ctx.is_own_ptr_variant_param(ret_value.name)):
+                        ret_expr = self.expressions.gen_expr(ret_value, ret_type)
+                        return self._make_return(
+                            indent, f"::tpy::to_ptr_variant({ret_expr})")
                     # Narrowed variable or concrete lvalue: take address for implicit
                     # variant<T*...> construction
                     ret_expr = self.expressions.gen_expr(ret_value, ret_type)
@@ -454,8 +481,17 @@ class StatementGenerator:
                     return self._make_return(indent, ret_expr)
                 ret_expr = self.expressions.gen_expr(
                     ret_value, ret_type)
+                # Storage-form Optional locals (Own[OptionalType[P_ref]] params)
+                # are rendered as std::optional<P>, not P*. When the return type
+                # is the same Own[Optional[P_ref]] shape, std::move the whole
+                # optional rather than dereffing -- (*x) is UB on a nullopt and
+                # would also lose the None case.
+                if (isinstance(ret_value, TpyName)
+                        and ret_value.name in self.ctx.optional_locals
+                        and is_own_pointer_repr_optional(ret_type)):
+                    ret_expr = self.expressions._maybe_move(ret_value, ret_expr)
                 # Dereference pointer-locals/pointer-globals on return (T* -> T&)
-                if self.ctx.is_indirect_name(ret_value):
+                elif self.ctx.is_indirect_name(ret_value):
                     ret_expr = f"(*{ret_expr})"
                     ret_expr = self.expressions._maybe_move(ret_value, ret_expr)
                 # Unwrap value-optional expressions when return type is non-Optional.
@@ -923,6 +959,19 @@ class StatementGenerator:
             return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = nullptr;\n"
 
         init_type = self.ctx.get_expr_type(init)
+        # Own[OptionalType[T_ref]] rvalue (function return) into a pointer-form
+        # Optional local: the function returns std::optional<T> (storage form)
+        # but the local is T*. Materialize a slot to hold the optional, then
+        # lift to a pointer that aliases the slot's storage. Parallel to the
+        # to_ptr_variant rvalue path for non-value Unions. Rebinds
+        # (`x = make(...)`) reassign the slot and re-lift via rebind_slots[name].
+        if self.ctx.callee_returns_own_ptr_optional(init):
+            init_expr = self.expressions.gen_expr(init, target_type)
+            static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
+            slot = self.ctx.slots.next_slot()
+            self.ctx.rebind_slots[name] = slot
+            return (f"{indent}{static_kw}std::optional<{cpp_type}> {slot} = {init_expr};\n"
+                    f"{indent}{const_pfx}{cpp_type}* {name} = ::tpy::optional_to_ptr({slot});\n")
         is_opt_field = (isinstance(init_type, OptionalType)
                         and init_type.uses_pointer_repr()
                         and isinstance(init, TpyFieldAccess))
@@ -937,6 +986,13 @@ class StatementGenerator:
                     init_expr = self.expressions.gen_expr(init, target_type)
                     return f"{indent}{const_pfx}{cpp_type}* {name} = ::tpy::optional_to_ptr({init_expr});\n"
                 # rvalue field: fall through to rvalue path
+            elif (isinstance(init, TpyName)
+                    and init.name in self.ctx.optional_locals):
+                # Own[OptionalType[P_ref]] source param: C++ shape is
+                # std::optional<P>, declaration target is P*. Same lift as
+                # the TpyFieldAccess lvalue branch above.
+                init_expr = self.expressions.gen_expr(init, target_type)
+                return f"{indent}{const_pfx}{cpp_type}* {name} = ::tpy::optional_to_ptr({init_expr});\n"
             else:
                 init_expr = self.expressions.gen_expr(init, target_type)
                 return f"{indent}{const_pfx}{cpp_type}* {name} = {init_expr};\n"
@@ -1042,6 +1098,17 @@ class StatementGenerator:
                 return f"{indent}(*{cpp_name}) = std::monostate{{}};\n"
             return f"{indent}{cpp_name} = nullptr;\n"
 
+        # Own[OptionalType[P_ref]] function-return rebind: source is the
+        # storage-form optional<P>, slot was declared as std::optional<P>
+        # at init time. Reassign via slot + optional_to_ptr lift; same shape
+        # as the init path in _gen_pointer_local_init.
+        if self.ctx.callee_returns_own_ptr_optional(init):
+            rebind_slot = self.ctx.rebind_slots.get(name)
+            if rebind_slot is not None:
+                init_expr = self.expressions.gen_expr(init, target_type)
+                return (f"{indent}{rebind_slot} = {init_expr};\n"
+                        f"{indent}{cpp_name} = ::tpy::optional_to_ptr({rebind_slot});\n")
+
         init_type = self.ctx.get_expr_type(init)
         # Optional non-value field on lvalue -> optional_to_ptr directly
         # Optional non-value non-field source -> T* pass-through
@@ -1060,6 +1127,15 @@ class StatementGenerator:
             if isinstance(init, TpyFieldAccess):
                 # rvalue field: fall through to rvalue path
                 pass
+            elif (isinstance(init, TpyName)
+                    and init.name in self.ctx.optional_locals):
+                # Own[OptionalType[P_ref]] param: C++ shape is std::optional<P>,
+                # rebind target wants P*. Same lift as the storage-form lvalue
+                # path above; not gated on is_storage_form_optional_source
+                # because that predicate excludes optional_locals (they need
+                # different downstream handling at the field-access dispatch).
+                init_expr = self.expressions.gen_expr(init, target_type)
+                return f"{indent}{cpp_name} = ::tpy::optional_to_ptr({init_expr});\n"
             else:
                 init_expr = self.expressions.gen_expr(init, target_type)
                 return f"{indent}{cpp_name} = {init_expr};\n"
@@ -1624,6 +1700,13 @@ class StatementGenerator:
             # Optional field: std::optional<T> storage needs boundary conversion
             if isinstance(target_type, OptionalType) and target_type.uses_pointer_repr():
                 target = self.expressions.gen_expr(stmt.target)
+                # Storage-form Optional source (Own[OptionalType[T_ref]] param):
+                # already optional<T>, direct std::move into the field.
+                if (isinstance(stmt.value, TpyName)
+                        and stmt.value.name in self.ctx.optional_locals):
+                    value = self.expressions.gen_expr(stmt.value)
+                    value = self.expressions._maybe_move(stmt.value, value)
+                    return f"{indent}{target} = {value};\n"
                 # Value source is T* (pointer-local, function returning Optional) -> wrap
                 if self.ctx.is_indirect_name(stmt.value):
                     value = self.expressions.gen_expr(stmt.value)
@@ -2131,6 +2214,23 @@ class StatementGenerator:
                 ptr_cpp = (target_type.to_cpp_return_const() if is_const
                            else target_type.to_cpp_return())
                 out.write(f"{indent}{ptr_cpp} {cpp_name} = {get_expr};\n")
+                continue
+            # Pointer-variant Union element: declare as variant<T*,...> via
+            # to_ptr_variant lift. Without this the local is value-variant
+            # (variant<A, B>) and subsequent uses that expect pointer-variant
+            # (call args, returns) fail to convert. Mirror of the pointer-repr
+            # Optional branch above.
+            is_ptr_variant = self.ctx.is_ptr_variant_union(target_type)
+            if is_ptr_variant and stmt.is_new[i]:
+                self.ctx.declared_vars.add(name)
+                self.ctx.local_scope_names.add(name)
+                self.ctx.var_types[name] = target_type
+                self.ctx.ptr_variant_locals.add(name)
+                pv_cpp = self.types.type_to_cpp_ptr_variant(target_type)
+                out.write(
+                    f"{indent}{pv_cpp} {cpp_name} = "
+                    f"::tpy::to_ptr_variant({get_expr});\n"
+                )
                 continue
             if stmt.is_ref[i]:
                 # Unwrap val_or_ref<T> from iterator-composed tuples

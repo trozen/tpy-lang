@@ -123,6 +123,15 @@ This single change (storage owns values) is the root of every ownership
 rule below. Value types (`Int32`, `bool`, `float`, `str`, `Char`, ...) are
 unaffected: they copy silently and never need `Own`.
 
+The compiler internally distinguishes two C++ shapes for non-value types:
+**storage form** at owned slots (fields, container elements, `Own[T]`
+params, returns) and **borrow form** at non-owning slots (regular params,
+locals, iterator yields). You rarely think about this directly --
+ownership annotations like `Own[T]` and the copy warnings below are the
+user-facing surface. The terms appear in compiler diagnostics ("borrowed
+Optional/Union", "storage-form source"); `TPY_LANGUAGE_FEATURES.md` has
+the full definition if you need it.
+
 ### 5.2 Plain `T` is the default -- use it almost everywhere
 
 - **Parameters**: `def f(x: MyRecord) -> ...` -- passed by reference.

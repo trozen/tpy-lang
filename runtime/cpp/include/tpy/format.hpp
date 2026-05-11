@@ -721,6 +721,21 @@ std::optional<T> ptr_to_optional(const T* ptr) {
 }
 
 /**
+ * ptr_to_optional_move - Move a pointee value into a fresh std::optional<T>.
+ *
+ * nullptr -> std::nullopt; otherwise constructs the optional from std::move
+ * of the pointee. Used by Own[tuple[T_ref|None,...]] call sites where sema
+ * has cleared each element as movable (last-use lvalue, fresh rvalue, or
+ * explicit copy()). Caller is giving up ownership of the pointee; moving
+ * lifts to the storage form without copying.
+ */
+template<typename T>
+std::optional<T> ptr_to_optional_move(T* ptr) {
+    if (ptr) return std::optional<T>{std::move(*ptr)};
+    return std::nullopt;
+}
+
+/**
  * optional_to_ptr - Convert std::optional<T>& to T* (mutable).
  *
  * Empty optional → nullptr, otherwise pointer to stored value.
@@ -755,6 +770,21 @@ inline Dest to_optional_form(Src&& s) {
         return std::forward<Src>(s);
     } else if constexpr (std::is_pointer_v<SrcD>) {
         return ptr_to_optional(s);
+    } else {
+        return std::forward<Src>(s);
+    }
+}
+
+// Per-element conversion for tuple_to_storage_move: pointer-form sources
+// move the pointee into the optional; same-shape sources pass through.
+template<typename Dest, typename Src>
+inline Dest to_optional_form_move(Src&& s) {
+    using SrcD = std::remove_cvref_t<Src>;
+    using DestD = std::remove_cvref_t<Dest>;
+    if constexpr (std::is_same_v<SrcD, DestD>) {
+        return std::forward<Src>(s);
+    } else if constexpr (std::is_pointer_v<SrcD>) {
+        return ptr_to_optional_move(s);
     } else {
         return std::forward<Src>(s);
     }
@@ -798,6 +828,25 @@ inline ToTuple tuple_to_storage(FromTuple&& t) {
     using F = std::remove_reference_t<FromTuple>;
     return tuple_to_storage_impl<ToTuple>(std::forward<FromTuple>(t),
                                           std::make_index_sequence<std::tuple_size_v<F>>{});
+}
+
+template<typename ToTuple, typename FromTuple, std::size_t... I>
+inline ToTuple tuple_to_storage_move_impl(FromTuple&& t, std::index_sequence<I...>) {
+    return ToTuple(detail::to_optional_form_move<std::tuple_element_t<I, ToTuple>>(
+        std::get<I>(std::forward<FromTuple>(t)))...);
+}
+
+// Move-variant of tuple_to_storage: each pointer-form element's pointee is
+// moved into the destination optional. Emitted at Own[tuple[T_ref|None,...]]
+// call sites where sema has cleared every element as movable (last-use
+// lvalue, fresh rvalue, or explicit copy() rvalue). Required for the
+// move-at-last-use semantic that distinguishes Own[tuple] from a bare-tuple
+// borrow boundary.
+template<typename ToTuple, typename FromTuple>
+inline ToTuple tuple_to_storage_move(FromTuple&& t) {
+    using F = std::remove_reference_t<FromTuple>;
+    return tuple_to_storage_move_impl<ToTuple>(std::forward<FromTuple>(t),
+                                               std::make_index_sequence<std::tuple_size_v<F>>{});
 }
 
 template<typename ToTuple, typename FromTuple, std::size_t... I>

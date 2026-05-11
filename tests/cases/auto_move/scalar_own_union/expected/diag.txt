@@ -1,0 +1,4 @@
+main.py:27: warning: Own[A | B] param 'u' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:49: warning: Own[A | B] param 'u' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:55: warning: Own[A | B] param 'u' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:83: warning: Result borrows from temporary argument 'u'; the temporary is destroyed at end-of-statement

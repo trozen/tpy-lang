@@ -1901,6 +1901,19 @@ def unwrap_optional_own(t: 'TpyType') -> 'OwnType | None':
     return None
 
 
+def is_own_pointer_repr_optional(t: 'TpyType') -> bool:
+    """True for `Own[OptionalType[T_ref]]` where the inner Optional uses
+    pointer representation (`T*` at borrow boundaries, `optional<T>` at
+    storage). Used by codegen sites that need to bridge between the
+    storage-form ABI of an Own-Optional param and the pointer-form local
+    consumers expect. Peels `ReadonlyType` first.
+    """
+    inner = unwrap_readonly(t)
+    return (isinstance(inner, OwnType)
+            and isinstance(inner.wrapped, OptionalType)
+            and inner.wrapped.uses_pointer_repr())
+
+
 def own_tuple_target(expected: 'TpyType') -> 'TupleType | None':
     """Return the elem-capture-shaped TupleType for a tuple-target type.
 

@@ -13,6 +13,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 int32_t take(std::tuple<std::optional<P>, std::optional<P>> t);
 int32_t take_subscript(std::tuple<std::optional<P>, std::optional<P>> t);
+void test_all_last_use();
+void test_mixed_last_use_and_explicit_copy();
+void test_fresh_constructor_literals();
+void test_none_only();
+void test_storage_form_source();
+void test_subscript_access_in_body();
 void main();
 
 // class P:

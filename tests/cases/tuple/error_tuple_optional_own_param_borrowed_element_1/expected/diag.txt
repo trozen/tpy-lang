@@ -1,0 +1,1 @@
+main.py:23: error: Cannot pass borrowed value as argument 't' tuple element 1 Own[P | None] without explicit copy(). The source is borrowed (parameter, attribute, or non-last-use variable); use 'copy(...)' to make an owned copy.

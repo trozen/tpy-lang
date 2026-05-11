@@ -176,6 +176,62 @@ def mutate_point(p: Point) -> None:
     p.x = 99    # Point& p in C++ (field write detected)
 ```
 
+### Borrow Form vs Storage Form
+
+A non-value type has two C++ representations depending on whether a slot
+*owns* its data or *borrows* it from somewhere else. The compiler picks
+the form per slot context and inserts conversions at the boundary; this
+section is what those terms mean.
+
+- **Storage form** -- the slot owns its data: class fields, container
+  elements (`list[T]` / `dict[K, V]` / `set[T]` / `tuple` slot in a
+  field or container), `Own[T]` parameters, function return values.
+  Self-contained values: `T`, `std::optional<T>`, `std::variant<A, B>`,
+  `std::tuple<...>`, `std::vector<T>`, `std::string`.
+
+- **Borrow form** -- the slot is borrowed from storage that lives
+  elsewhere: regular function parameters, locals bound from a borrowed
+  source, iterator yields, generator `__next__()` returns. Indirect
+  references into existing storage: `T&` (for records), `T*` (for
+  pointer-repr `T | None`), `std::variant<A*, B*>` (pointer-variant
+  Union for non-value `A | B`), `std::tuple<T*, U&, ...>` (per-element
+  borrow inside a tuple), `std::string_view`, `std::span<T>`.
+
+For value types (`Int32`, `bool`, `Char`, etc.) the two forms coincide
+-- they're cheaply copyable, so the value form serves both roles.
+
+For non-value types, the codegen inserts conversions at boundaries
+between the two forms. The common helpers:
+
+| Boundary | Storage form | Borrow form | Lift / lower |
+|----------|--------------|-------------|--------------|
+| pointer-repr `T \| None` | `std::optional<T>` | `T*` | `tpy::ptr_to_optional` / `tpy::optional_to_ptr` |
+| pointer-variant `A \| B` (non-value) | `std::variant<A, B>` | `std::variant<A*, B*>` | `tpy::to_ptr_variant` / inverse |
+| `tuple` element-wise | `std::tuple<std::optional<T>, ...>` | `std::tuple<T*, ...>` | `tpy::tuple_to_storage` / `tpy::tuple_to_pointer` |
+| `str` | `std::string` | `std::string_view` | implicit C++ conversion |
+| `bytes` | `std::vector<uint8_t>` | `std::span<const uint8_t>` | implicit C++ conversion |
+
+`Own[T]` is the explicit user-facing marker that forces *storage form*
+at a parameter or return slot, transferring ownership at the call
+boundary. At a `Own[tuple[T, ...]]` slot, the storage-form rule is
+applied per element (`tuple[Own[T_ref], T_value, ...]`); the
+move/copy decision at the call site is then made per the same
+per-element auto-move + copy-required rules as field assignments.
+
+You almost never write or think about this distinction directly --
+the compiler picks the right form per slot and emits the conversions
+silently. It matters when:
+- You see a copy warning mentioning "borrowed Optional/Union" -- that
+  source is in borrow form and the slot wants storage form.
+- You're writing `@native` interop and need to match the C++ ABI shape
+  of a TPy type.
+- You're reading `--dump-code` output and a `tuple_to_storage` /
+  `optional_to_ptr` helper appears -- that's the boundary conversion.
+
+The borrow/storage-form duality is implicit in today's sema -- one
+`TpyType` per value, the form is decided per context at codegen. The
+THIR migration aims to make form a first-class type fact; see
+`IR_DESIGN.md` Open Questions item 9.
 
 ---
 
@@ -199,7 +255,7 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `Char` | `char` |
 | `None` | `void` (return type) |
 | `T \| None` (T value type) | `std::optional<T>` |
-| `T \| None` (T non-value, params/returns/locals) | `T*` (pointer form) |
+| `T \| None` (T non-value, params/returns/locals) | `T*` (borrow form -- pointer-repr Optional) |
 | `T \| None` (T non-value, fields/containers) | `std::optional<T>` (storage form) |
 | `tuple[T1, T2, ...]` | `std::tuple<T1, T2, ...>` (per-element rules apply; see Tuples below) |
 | `dict[K, V]` | `tpy::ordered_map<K, V>` |
@@ -210,8 +266,8 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `Span[readonly[T]]` | `std::span<const T>` |
 | `SpanIter[T]` | `tpy::SpanIter<T>` |
 | `A \| B` (value types) | `std::variant<A, B>` |
-| `A \| B` (non-value, params/returns/locals) | `std::variant<A*, B*>` (pointer variant) |
-| `A \| B` (non-value, fields/containers) | `std::variant<A, B>` (value variant) |
+| `A \| B` (non-value, params/returns/locals) | `std::variant<A*, B*>` (borrow form -- pointer-variant) |
+| `A \| B` (non-value, fields/containers) | `std::variant<A, B>` (storage form -- value-variant) |
 | `Ptr[T]` | `T*` |
 | `Ptr[readonly[T]]` | `const T*` |
 | `Own[T]` | `T` (by value, for returns/params) |

@@ -3,7 +3,11 @@
 # tuple_to_pointer<tuple<T*, T*>> rejected the const T* derived from
 # iterating a const-bound source. The fix: const-inference on consume's
 # tuple param, plus matching const slots through the conversion helper.
-from tpy import Int32
+#
+# list.append takes per-element ownership (Own[T] with T = tuple), so each
+# literal element is moved at last use -- explicit copy() preserves the
+# source for further appends.
+from tpy import Int32, copy
 
 
 class T:
@@ -39,7 +43,7 @@ def main() -> None:
     t1 = T(1)
     t2 = T(2)
     h = Holder()
-    h.pairs.append((t1, t2))
+    h.pairs.append((copy(t1), copy(t2)))
     h.pairs.append((t1, None))
     h.pairs.append((None, None))
     h.show_all_iter()

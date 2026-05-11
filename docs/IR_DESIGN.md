@@ -1424,3 +1424,26 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    optimization), the recommended target is codegen monomorphization. That work
    does *not* require THIR/MIR to land first but probably benefits from being
    done concurrently with the THIR codegen migration to avoid double-churn.
+
+9. **Tuple form as a first-class type fact.** Today `TupleType` is a single sema type
+   whose C++ representation depends on context -- borrow form (`tuple<T*,...>`,
+   `tuple<T&,...>`) at param/return/local boundaries, storage form
+   (`tuple<optional<T>,...>`, `tuple<T,...>`) at field/container boundaries. (See
+   `LANGUAGE_FEATURES.md` "Borrow Form vs Storage Form" for the canonical definition
+   of these forms; this item is specifically about elevating the distinction to a
+   first-class IR fact.) Codegen reconstructs which form is needed at each site and
+   inserts conversions (`tuple_to_storage`, `tuple_to_pointer`,
+   `tuple_value_to_borrow`, `to_optional_form`, `to_pointer_form`). The implicit
+   boundary is the source of a
+   recurring bug class: nested tuples where outer/inner forms disagree (BUGS.md
+   `[MED] nested tuple literal of records`), loop variables binding storage-form
+   container elements consumed by borrow-form params (BUGS.md `[LOW] loop variable
+   iterating storage-form tuples`), rvalue tuple-of-records into ref/pointer-form
+   slots (BUGS.md `[LOW] tuple literal rvalue address-of`), and
+   `Own[tuple[T_ref,...]]` param silently copying elements (BUGS.md `[IMM]
+   Own[tuple] silent copy`, addressable pre-IR via lowering
+   `Own[tuple[T,...]]` -> `tuple[Own[T_ref],...]`). THIR should make form an
+   explicit type fact (either two distinct tuple types, or a form tag on one), so
+   conversion sites become visible in the IR rather than reconstructed in codegen.
+   Recommendation: form tag on `THIRTupleType` with conversions emitted as explicit
+   THIR nodes during lowering -- analogous to how borrows are explicit in MIR.

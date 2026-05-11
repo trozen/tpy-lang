@@ -10,7 +10,7 @@ from dataclasses import dataclass, replace as dc_replace
 from typing import Callable, NoReturn, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NominalType, OwnType, OptionalType, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
+    TpyType, NominalType, OwnType, OptionalType, TupleType, own_tuple_target, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
     IntLiteralType, resolve_int_literals,
     LiteralType, LiteralValue, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, ParamInfo, ReadonlyType,
@@ -2151,8 +2151,29 @@ class CallAnalyzer:
         Call this for every parameter that might be ownership-taking.
         Non-nocopy implicit copies are warned by the coercion path.
         """
+        # tuple[Own[T_ref], ...] with a literal source: per-element ownership
+        # check. Two shapes reach this -- `Own[tuple[T,...]]` (unwrapped to
+        # the inner tuple below) and the canonical per-element form
+        # `tuple[Own[T], ...]` which users may write directly. Dispatch
+        # before unwrap_optional_own because the second shape has no outer
+        # Own to unwrap.
+        peeled_ptype = unwrap_readonly(ptype)
+        if (isinstance(peeled_ptype, TupleType)
+                and isinstance(arg, TpyTupleLiteral)
+                and any(isinstance(et, OwnType) for et in peeled_ptype.element_types)):
+            self._check_own_tuple_literal_arg(arg, peeled_ptype, pname)
+            self._warn_unnecessary_copy(arg)
+            return
         own_ptype = unwrap_optional_own(ptype)
         if own_ptype is None:
+            return
+        # Own[tuple[T,...]] with a literal source: same per-element check via
+        # own_tuple_target's synthesis (lvalue-tuple sources keep today's
+        # silent-copy behaviour; the check applies to literal sources only).
+        if (isinstance(own_ptype.wrapped, TupleType)
+                and isinstance(arg, TpyTupleLiteral)):
+            self._check_own_tuple_literal_arg(arg, own_ptype, pname)
+            self._warn_unnecessary_copy(arg)
             return
         # Unwrap OwnType from name lookup (implicit owned local) for the check.
         # Explicit OwnType (from function return, not a name) means ownership
@@ -2172,6 +2193,38 @@ class CallAnalyzer:
         if isinstance(arg_type, OwnType):
             self.compat.check_own_consumption(arg)
         self._warn_unnecessary_copy(arg)
+
+    def _check_own_tuple_literal_arg(
+        self, literal: 'TpyTupleLiteral',
+        ptype: 'OwnType | TupleType', pname: str,
+    ) -> None:
+        """Per-element Own check for a tuple literal passed to a param with
+        per-element Own slots.
+
+        Accepts either form of the param type:
+          * `Own[tuple[T, ...]]` -- own_tuple_target synthesizes the
+            per-element Own wrap for non-value elements.
+          * `tuple[Own[T], T_value, ...]` -- the canonical per-element form
+            (also what sema lowers Own[tuple[...]] to internally). Passed
+            through unchanged by own_tuple_target.
+
+        Each Own-wrapped element must be at last use, an explicit copy(),
+        a fresh rvalue (literal/constructor), or None. Mirrors the
+        per-element check the return path applies via own_tuple_target.
+        """
+        target = own_tuple_target(ptype)
+        if target is None:
+            return
+        for i, et in enumerate(target.element_types):
+            if not isinstance(et, OwnType):
+                continue
+            if i >= len(literal.elements):
+                continue
+            elem = literal.elements[i]
+            self.compat.check_own_lvalue_into_own(
+                et, elem, f"argument '{pname}' tuple element {i}",
+                action="pass",
+            )
 
     def _derive_ctor_arg_hints(self, expr: TpyCall) -> list[TpyType | None]:
         """Derive per-argument type hints from __init__ param types.

@@ -402,68 +402,8 @@ class StatementAnalyzer:
         )
 
     def _check_own_lvalue_return(self, own_type: OwnType, expr: TpyExpr, context: str) -> None:
-        """Check that an lvalue returned as Own[T] has explicit copy() or is auto-moved.
-
-        Args:
-            own_type: The Own[T] type being returned into.
-            expr: The expression being returned.
-            context: Description for error messages, e.g. "return type" or "tuple element 1".
-        """
-        if self.compat.is_copy_call(expr):
-            self.compat.check_own_consumption(expr)
-            return
-        if not self.compat.is_lvalue(expr):
-            return
-        # Value types are always safe to return as Own -- they're copied, not
-        # aliased. Expressions already typed as Own (e.g. stepped slice
-        # returning Own[list[T]]) produce owned values regardless.
-        # Unwrap TpyCoerce to get the source type (coerce records the target).
-        inner = expr
-        while isinstance(inner, TpyCoerce):
-            inner = inner.expr
-        raw_type = self.ctx.get_raw_expr_type(inner)
-        if raw_type is not None:
-            unwrapped = unwrap_ref_type(raw_type)
-            if isinstance(unwrapped, OwnType) or unwrapped.is_value_type():
-                return
-        # In a consuming method, self.field is owned (ownership propagation)
-        # and can be moved out of the struct. The codegen wraps in std::move.
-        if (self.ctx.in_consuming_method
-                and isinstance(expr, TpyFieldAccess)
-                and isinstance(expr.obj, TpyName) and expr.obj.name == "self"):
-            return
-        is_auto_moved = (isinstance(expr, TpyName)
-                         and id(expr) in self.ctx.all_last_uses
-                         and self.compat._is_owned_var(expr.name))
-        if is_auto_moved:
-            self.compat.check_own_consumption(expr)
-            return
-        expr_type = self.ctx.get_expr_type(expr)
-        is_nocopy = expr_type is not None and self.ctx.is_type_nocopy(expr_type)
-        if is_nocopy:
-            reason = self.ctx.nocopy_reason(expr_type)
-            is_movable = (isinstance(expr, TpyName)
-                          and self.compat._is_owned_var(expr.name))
-            if is_movable:
-                raise self.ctx.error(
-                    f"{reason} is used after this point "
-                    f"and cannot be moved into {context} Own[{own_type.wrapped}]. "
-                    f"Remove later uses or restructure the code.",
-                    expr
-                )
-            raise self.ctx.error(
-                f"{reason} cannot be returned as "
-                f"{context} Own[{own_type.wrapped}]. "
-                f"Only the original owner can be moved at its last use.",
-                expr
-            )
-        raise self.ctx.error(
-            f"Cannot return borrowed value as {context} Own[{own_type.wrapped}] "
-            f"without explicit copy(). The source is borrowed (parameter, "
-            f"attribute, or non-last-use variable); use 'copy(...)' to make "
-            f"an owned copy.",
-            expr
-        )
+        """Check that an lvalue returned as Own[T] has explicit copy() or is auto-moved."""
+        self.compat.check_own_lvalue_into_own(own_type, expr, context, action="return")
 
     def _is_in_constructor(self) -> bool:
         """Check if currently analyzing an __init__ method body."""
@@ -1425,9 +1365,17 @@ class StatementAnalyzer:
         Protocol facts (e.g. Iterable[T] -> NativeIterable[T] via isinstance)
         feed protocol_narrowings so downstream dispatch sees the refined type.
         """
+        def _peel(t: TpyType) -> TpyType:
+            # Strip Own / readonly so Own[A|B] params surface as UnionType
+            # for the union-fact check; mirrors _isinstance_unwrap in
+            # calls.py.
+            t = unwrap_readonly(t)
+            if isinstance(t, OwnType):
+                t = unwrap_readonly(t.wrapped)
+            return t
         return {
             name: ty for name, ty in facts.items()
-            if (isinstance(unwrap_readonly(self.narrowing.declared_type_for_name(name)), (UnionType, AnyType))
+            if (isinstance(_peel(self.narrowing.declared_type_for_name(name)), (UnionType, AnyType))
                 or isinstance(ty, LiteralType)
                 or is_protocol_type(ty))
         }

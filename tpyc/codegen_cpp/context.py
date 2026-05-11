@@ -13,6 +13,7 @@ from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NominalType, SelfType,
     IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo, ModuleInfo,
     is_protocol_type, unwrap_readonly, ensure_qualified, unwrap_ref_type, is_union_or_optional_type,
+    is_own_pointer_repr_optional,
 
 )
 from ..parse import (
@@ -575,8 +576,17 @@ class CodeGenContext:
 
     # --- Pointer-local tracking ---
     pointer_locals: set[str] = field(default_factory=set)
-    # Non-value hoisted vars that are not reassigned: std::optional<T> instead of T*+slot.
-    # Also in pointer_locals for dereference ((*name) works for both T* and optional<T>).
+    # Locals whose C++ shape is std::optional<T> (storage form) rather than
+    # T* (pointer form). Two populations:
+    #   - Non-value hoisted vars not reassigned (branch-emitted as
+    #     std::optional<T> to avoid a separate T*+slot pair).
+    #   - Own[OptionalType[P_ref]] params (rendered as std::optional<P>&&).
+    # Both also live in pointer_locals so the field-access dispatch routes
+    # via optional<T>::operator-> (correct arrow). The is_storage_form_-
+    # optional_source predicate deliberately excludes them; consumer sites
+    # that need an optional_to_ptr lift to feed a T* slot check
+    # optional_locals directly (_optional_pointer_form_value,
+    # _gen_optional_ptr_arg, the var-decl and rebind paths in statements.py).
     optional_locals: set[str] = field(default_factory=set)
     const_indirect_locals: set[str] = field(default_factory=set)
     # Locals whose tuple type contains pointer-repr Optional but whose C++
@@ -1243,6 +1253,15 @@ class CodeGenContext:
             already emits `(*prev)` to deref the outer init-tracking
             optional, leaving the inner storage form as the rendered
             lvalue).
+
+        Note: `optional_locals` names (`Own[OptionalType[P_ref]]` params
+        rendered as `std::optional<P>&&`) are NOT included. They share
+        the storage-form C++ shape but are also in `pointer_locals`,
+        and the downstream field-access dispatch already routes via
+        `optional<T>::operator->`. The consumer sites that DO need a
+        `optional_to_ptr` lift for these names (call-arg, return into
+        pointer-form, pointer-local rebind) check `optional_locals`
+        directly.
         """
         from ..parse import TpyFieldAccess, TpyName
         if isinstance(expr, TpyFieldAccess):
@@ -1267,12 +1286,14 @@ class CodeGenContext:
     def is_storage_form_source(self, expr: TpyExpr) -> bool:
         """True when `expr` reads a value from a storage location.
 
-        Storage locations are fields, container subscripts, globals, and
+        Storage locations are fields, container subscripts, globals,
         locals flagged as storage-form (loop vars iterating storage
-        containers, locals initialized from another storage-form source).
-        Used by tuple-of-pointer-Optional callers to decide whether to
-        emit an element-wise tuple_to_pointer wrap; the value's actual
-        type / shape is the caller's responsibility to validate.
+        containers, locals initialized from another storage-form source),
+        and function calls whose return type is `Own[tuple[T_ref,...]]`
+        (the storage form is the function's return ABI). Used by
+        tuple-of-pointer-Optional callers to decide whether to emit an
+        element-wise tuple_to_pointer wrap; the value's actual type /
+        shape is the caller's responsibility to validate.
         """
         if isinstance(expr, (TpyFieldAccess, TpySubscript)):
             return True
@@ -1281,7 +1302,49 @@ class CodeGenContext:
                 return True
             if self.is_global_name(expr):
                 return True
+        if isinstance(expr, (TpyCall, TpyMethodCall)):
+            fi = expr.resolved_function_info
+            if fi is not None:
+                rt = unwrap_readonly(fi.return_type)
+                # Two shapes both produce a storage-form tuple return:
+                #   * Own[tuple[T,...]] (pre-lowering form, may persist in
+                #     some call paths).
+                #   * tuple[Own[T_ref], T_value, ...] (post-own_tuple_target
+                #     synthesis -- the per-element Own pushes storage form
+                #     into each ref-typed slot).
+                if isinstance(rt, OwnType) and isinstance(rt.wrapped, TupleType):
+                    return True
+                if isinstance(rt, TupleType) and any(
+                        isinstance(et, OwnType) for et in rt.element_types):
+                    return True
         return False
+
+    def callee_returns_own_ptr_optional(self, init: 'TpyExpr') -> bool:
+        """True when `init` is a function call returning
+        `Own[OptionalType[T_ref]]` (storage form). Codegen sites bridging
+        the function's `std::optional<T>` return into a pointer-form local
+        check this to know they need the `optional_to_ptr` lift.
+        """
+        if not isinstance(init, (TpyCall, TpyMethodCall)):
+            return False
+        fi = init.resolved_function_info
+        if fi is None:
+            return False
+        return is_own_pointer_repr_optional(fi.return_type)
+
+    def is_own_ptr_variant_param(self, name: str) -> bool:
+        """True when `name` is a function parameter typed
+        `Own[UnionType non-value]` (pointer-variant Union, storage form
+        at the param ABI). Mirror of `optional_locals` for unions;
+        consumers needing the `to_ptr_variant` lift check this.
+        """
+        ptype = self.current_func_params.get(name)
+        if ptype is None:
+            return False
+        peeled = unwrap_readonly(ptype)
+        return (isinstance(peeled, OwnType)
+                and isinstance(peeled.wrapped, UnionType)
+                and self.is_ptr_variant_union(peeled.wrapped))
 
     def is_indirect_name(self, expr: TpyExpr) -> bool:
         """Check if expression needs indirect access (-> / deref).

@@ -284,7 +284,7 @@ When range optimization can't apply (e.g., zero step detected at codegen time), 
 
 ## Generator Yield Slot Shape
 
-Iterator yields hand out references like function returns -- mutations through the yielded value flow back to the iterable, matching CPython semantics. The iterator slot type for a generator is therefore the **borrow form** of the yield type, computed via `elem_type.to_cpp_return()` for tuple yields:
+Iterator yields hand out references like function returns -- mutations through the yielded value flow back to the iterable, matching CPython semantics. The iterator slot type for a generator is therefore the **borrow form** of the yield type (see `LANGUAGE_FEATURES.md` "Borrow Form vs Storage Form" for the canonical definition), computed via `elem_type.to_cpp_return()` for tuple yields:
 
 | Python yield type | C++ iterator slot |
 |---|---|

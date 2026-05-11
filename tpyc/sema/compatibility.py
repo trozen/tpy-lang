@@ -1199,6 +1199,92 @@ class TypeCompatibility:
             if isinstance(inner, TpyName):
                 self.ctx.mark_own_param_consumed(inner.name)
 
+    def check_own_lvalue_into_own(
+        self, own_type: OwnType, expr: TpyExpr, context: str,
+        *, action: str = "return",
+    ) -> None:
+        """Check that an lvalue feeding an Own[T] slot is movable, an explicit
+        copy(), or otherwise safe to consume.
+
+        Used by:
+        - return-statement Own[T] / per-element Own[tuple[T,...]] checks
+          (action="return"); error message says "Cannot return borrowed
+          value as ...".
+        - call-arg Own[tuple[T,...]] per-element check (action="pass");
+          error message says "Cannot pass borrowed value as ...".
+
+        Args:
+            own_type: The Own[T] slot type.
+            expr: The source expression occupying the slot.
+            context: Slot description for error messages, e.g. "return type",
+                "tuple element 1", "argument 'pname' element 0".
+            action: "return" or "pass" -- selects the verb in error messages.
+        """
+        if self.is_copy_call(expr):
+            self.check_own_consumption(expr)
+            return
+        if not self.is_lvalue(expr):
+            return
+        # Value types are always safe -- copied, not aliased. OwnType.is_value_type
+        # returns True (Own represents a moved value), so we have to peel Own
+        # first to see whether the underlying T is genuinely a value type.
+        inner = expr
+        while isinstance(inner, TpyCoerce):
+            inner = inner.expr
+        raw_type = self.ctx.get_raw_expr_type(inner)
+        if raw_type is not None:
+            unwrapped = unwrap_ref_type(raw_type)
+            inner_after_own = unwrapped.wrapped if isinstance(unwrapped, OwnType) else unwrapped
+            if inner_after_own.is_value_type():
+                return
+            # action="return": Own-typed lvalues at non-last-use are tolerated
+            # (codegen falls back to copy, paired with the coercion-path warning).
+            # action="pass": enforce last-use even for Own locals -- the
+            # per-element check exists precisely because the user opted in to
+            # ownership semantics by writing Own[tuple[...]] and the silent copy
+            # is the bug being fixed.
+            if action == "return" and isinstance(unwrapped, OwnType):
+                return
+        # Consuming method: self.field is owned and movable out of the struct.
+        if (self.ctx.in_consuming_method
+                and isinstance(expr, TpyFieldAccess)
+                and isinstance(expr.obj, TpyName) and expr.obj.name == "self"):
+            return
+        is_auto_moved = (isinstance(expr, TpyName)
+                         and id(expr) in self.ctx.all_last_uses
+                         and self._is_owned_var(expr.name))
+        if is_auto_moved:
+            self.check_own_consumption(expr)
+            return
+        expr_type = self.ctx.get_expr_type(expr)
+        is_nocopy = expr_type is not None and self.ctx.is_type_nocopy(expr_type)
+        if is_nocopy:
+            reason = self.ctx.nocopy_reason(expr_type)
+            is_movable = (isinstance(expr, TpyName)
+                          and self._is_owned_var(expr.name))
+            if is_movable:
+                raise self.ctx.error(
+                    f"{reason} is used after this point "
+                    f"and cannot be moved into {context} Own[{own_type.wrapped}]. "
+                    f"Remove later uses or restructure the code.",
+                    expr
+                )
+            verb = "returned" if action == "return" else "passed"
+            raise self.ctx.error(
+                f"{reason} cannot be {verb} as "
+                f"{context} Own[{own_type.wrapped}]. "
+                f"Only the original owner can be moved at its last use.",
+                expr
+            )
+        verb = "return" if action == "return" else "pass"
+        raise self.ctx.error(
+            f"Cannot {verb} borrowed value as {context} Own[{own_type.wrapped}] "
+            f"without explicit copy(). The source is borrowed (parameter, "
+            f"attribute, or non-last-use variable); use 'copy(...)' to make "
+            f"an owned copy.",
+            expr
+        )
+
     def _is_value_type_param(self, typ: TpyType) -> bool:
         """Check if a TypeParamRef has a ValueType bound in the current context."""
         if not isinstance(typ, TypeParamRef):
