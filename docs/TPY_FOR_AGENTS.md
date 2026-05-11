@@ -158,6 +158,20 @@ def load_config(path: str) -> Own[Config]:
     return Config(...)
 ```
 
+The same applies element-wise inside a returned tuple: a function
+typed `-> tuple[str, Point]` is rejected (the `Point` element looks
+like return-by-reference and the constructor temporary doesn't
+outlive the return). Spell it `-> tuple[str, Own[Point]]` -- the
+`Own[T]` rule applies per slot:
+
+```python
+def find(p: Point) -> tuple[str, Own[Point]]:
+    return ("found", Point(p.x + 1, p.y))
+```
+
+This is the most common stumbling block when porting Python code that
+returns multiple results bundled in a tuple.
+
 **(b) A parameter that consumes its argument.** Use `Own[T]` for a
 parameter when the function takes ownership of the value -- typically when
 storing it into a long-lived container.
