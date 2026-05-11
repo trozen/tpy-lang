@@ -169,8 +169,9 @@ class ProtocolChecker:
           expects __add__(Int32) -> Int32
 
         Returns EXPLICIT for compiler-intrinsic matches (e.g. Enum<->Hashable,
-        GenExpr<->Iterable, Tuple<->Hashable, bounded-TypeParamRef shortcuts)
-        and for declared ``extends`` / protocol-to-protocol inheritance.
+        GenExpr<->Iterable, Tuple<->Hashable/Comparable/Equatable,
+        bounded-TypeParamRef shortcuts) and for declared ``extends`` /
+        protocol-to-protocol inheritance.
         Returns STRUCTURAL only when the method/field walk at the tail is the
         sole path that succeeded. Returns None when actual does not conform.
         """
@@ -241,12 +242,17 @@ class ProtocolChecker:
             ):
                 return ProtocolConformanceKind.EXPLICIT
 
-        # Tuple: hashable if all element types are hashable. Tuple<->Hashable
-        # is compiler-intrinsic; downgrade to STRUCTURAL if any element only
-        # structurally conforms, so the weakest link shows through in
-        # specificity ranking.
+        # Tuple: element-wise compiler-intrinsic conformance for Hashable,
+        # Comparable, and Equatable. C++ std::tuple supplies the matching
+        # operators (hash via element hashers, lexicographic < and ==), so
+        # codegen needs no special path here -- the conformance check just
+        # has to reflect what the operators already support. Downgrade to
+        # STRUCTURAL if any element only structurally conforms, so the
+        # weakest link shows through in specificity ranking.
         if isinstance(actual, TupleType):
-            if protocol.qualified_name() == qnames.HASHABLE:
+            if protocol.qualified_name() in (
+                qnames.HASHABLE, qnames.COMPARABLE, qnames.EQUATABLE,
+            ):
                 kind = ProtocolConformanceKind.EXPLICIT
                 for et in actual.element_types:
                     elem_kind = self.classify_protocol_conformance(et, protocol)

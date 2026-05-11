@@ -13,11 +13,6 @@
 #     variadic) plus a generator-driven n-way iterator-heads heap.
 #
 # Language-level blockers that limit heapq coverage:
-#   - tuple[T1, T2, ...] does not satisfy Comparable even when all Ti are
-#     Comparable (built-in < works, but no __lt__ method). Blocks the
-#     canonical `list[tuple[priority, payload]]` priority-queue pattern.
-#     TODO in the compiler: lift tuple's built-in ordering into Comparable
-#     protocol conformance.
 #   - Generic list[T].pop() produces invalid C++ when T is a reference type
 #     (val_or_ref_t<T> = T& can't bind to pop_back's rvalue return). Blocks
 #     ref-type heaps; also affects the existing generic_stack test when

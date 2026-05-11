@@ -121,9 +121,9 @@ void __tpy_init() {
     initialized = true;
 
     // # heapq: core min-heap ops, nsmallest/nlargest, int and str element types.
-    // # Reference-type heaps and tuple-of-(Int32, str) priority-queue pattern are
-    // # both blocked on language gaps (tuple !satisfies Comparable; generic
-    // # list.pop() for ref types); see lib/tpy/heapq.py header for details.
+    // # Tuple priority queue covered separately in cases/tuple/tuple_priority_queue.
+    // # Reference-type heaps still blocked on generic list.pop() for ref types;
+    // # see lib/tpy/heapq.py header for details.
     // from heapq import heappush, heappop, heapify, heappushpop, heapreplace, nsmallest, nlargest
     ::tpystd::heapq::__tpy_init();
     // main()

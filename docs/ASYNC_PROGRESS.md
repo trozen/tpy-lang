@@ -471,10 +471,10 @@ require new compiler features.
   `unique_ptr<AnyTask>`. TPy code stores `list[AnyTaskBox]` in the
   executor's slot table; methods (`poll_any`, `cancel_any`, `empty`,
   `reset`) are `@cpp_template` shims.
-- `Timer` -- TPy class with `deadline: float`, `waker: Waker`, and
-  `__lt__` returning `self.deadline < other.deadline`. Workaround for
-  the documented `tuple[T1, T2, ...]` Comparable gap (see
-  `lib/tpy/heapq.py:16-20`).
+- Timer slot type: plain `tuple[float, Waker]`, sorted via
+  `heapq.heappush` / `heappop` on `list[tuple[float, Waker]]`. (The
+  tuple<->Comparable conformance gap has been closed; no dedicated
+  Timer class needed.)
 - `task_poll_cancelled[T](t: Task[T]) -> bool` -- TPy generic function
   replacing the C++ template. Test-only utility; converting it
   validates the binding plumbing on something safe.
@@ -490,7 +490,8 @@ below). The TPy executor:
   `AnyTaskBox`, `generation: UInt32`, `runnable: bool`.
 - `runnable_q: list[UInt32]` used as a deque (or a proper deque type
   if one lands).
-- `timer_heap: list[Timer]` driven via `heapq.heappush` / `heappop`.
+- `timer_heap: list[tuple[float, Waker]]` driven via `heapq.heappush` /
+  `heappop`.
 - Methods: `spawn`, `mark_runnable`, `poll_slot`, `drain_runnable`,
   `slot_done`, `has_live_tasks`, `wait_for_event`, `run_until`,
   `drain_spawned_with_cancel`. All pure TPy logic plus calls into the
@@ -550,10 +551,6 @@ binding work:
 - **Shared-ownership smart pointer in TPy**. `Rc[T]` / `Arc[T]`
   (refcounted) or just `SharedBox[T]` -- currently only `Box[T]` for
   unique ownership. Would let `TaskState` move to TPy.
-- **Tuple `Comparable` conformance**. Would let `Timer` be a plain
-  `tuple[float, Waker]` instead of a custom class. Also unblocks
-  the canonical `list[tuple[priority, payload]]` priority-queue
-  pattern more broadly (already noted in `lib/tpy/heapq.py`).
 - **`thread_local` storage in TPy**. Would let the executor's
   `current_executor` move out of C++ entirely. Low priority since the
   v1 executor is single-threaded.

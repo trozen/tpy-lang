@@ -183,7 +183,6 @@ unblock.
 | Socket primitives | socket, http.client, smtplib, ftplib, urllib.request | L |
 | Runtime type info / reflection for `get_type_hints`, `type(x)`, `isinstance` on concrete | typing runtime, inspect, pickle | L |
 | Closure capture for `partial`/`lru_cache` | functools | S-M (may already work via Callable) |
-| `tuple[T1, T2, ...]` satisfying `Comparable` when all `Ti` are Comparable (built-in `<` works; protocol conformance missing) | heapq/bisect/sort on tuples, `list[tuple[priority, payload]]` priority queues, `sorted(list[tuple])` | S |
 | Generic `list[T].pop()` (and similar move-out returns) for reference-type T -- currently emits `val_or_ref_t<T> = T&` bound to rvalue | Reference-type heaps/stacks/queues in stdlib and user code; blocks `generic_stack` example with class elements | S-M (codegen) |
 
 ### Existing BUGS.md entries that gate pure-TPy stdlib work

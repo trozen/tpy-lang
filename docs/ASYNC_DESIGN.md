@@ -30,8 +30,8 @@ Phased; each phase is independently shippable. Detailed plan + per-phase scope +
 | Phase | Item | Description |
 |-------|------|-------------|
 | 0 (DONE) | `SleepFuture` -> TPy | Validates the shape: TPy class with `__cancel_pending` field works as a `Task<void>::from_coro` `CoroT`. C++ keeps a single bridge helper `executor_register_timer_seconds`. |
-| 1 | Compiler bindings | `time.sleep_until_steady`, `current_executor` get/set/clear, `AnyTaskBox` `@native` wrapper around `unique_ptr<AnyTask>`, `Timer` TPy class with `__lt__`, `task_poll_cancelled` test util as TPy generic function. No new compiler features required. |
-| 2 | `Executor` body to TPy | Slot table (`list[Slot]`), runnable deque, timer min-heap (via `heapq` + the Phase-1 `Timer` class), all methods (`spawn`, `mark_runnable`, `poll_slot`, `drain_runnable`, `wait_for_event`, `run_until`, `drain_spawned_with_cancel`). |
+| 1 | Compiler bindings | `time.sleep_until_steady`, `current_executor` get/set/clear, `AnyTaskBox` `@native` wrapper around `unique_ptr<AnyTask>`, `task_poll_cancelled` test util as TPy generic function. No new compiler features required. |
+| 2 | `Executor` body to TPy | Slot table (`list[Slot]`), runnable deque, timer min-heap (via `heapq` over `list[tuple[float, Waker]]`), all methods (`spawn`, `mark_runnable`, `poll_slot`, `drain_runnable`, `wait_for_event`, `run_until`, `drain_spawned_with_cancel`). |
 | 3 | `async_run` to TPy | Setup/teardown via a `_ExecutorScope` class with `__del__` (RAII for `current_executor` save/restore on any exit, including exception path). Main-coro spawn closure stays C++ (templated over `ResultT`). |
 | 4 | Cleanup | Remove dead C++: `tpy::Executor` struct, `tpy::async_run` template, `tpy::FunctionTask` (and `AnyTaskImpl` if no longer referenced). |
 
@@ -43,7 +43,6 @@ Phased; each phase is independently shippable. Detailed plan + per-phase scope +
 |---------|------------------|
 | Generic `@dynamic` protocols (`@dynamic class Awaitable[T]`) | Largest single unblocker. Obsoletes `AsyncFrameBase<T>` / `AsyncFrameImpl<T, CoroT>` in favor of `Adapter[Awaitable[T]]`. |
 | Shared-ownership smart pointer (`Rc[T]` / `Arc[T]` / `SharedBox[T]`) | Lets `TaskState<T>` move to TPy. Currently only `Box[T]` (unique). |
-| Tuple `Comparable` conformance | Lets `Timer` be a plain `tuple[float, Waker]` instead of a custom class; also unblocks the canonical `list[tuple[priority, payload]]` priority-queue pattern more broadly (already noted in `lib/tpy/heapq.py`). |
 | `thread_local` storage in TPy | Lets `current_executor` move out of C++ entirely. Low priority -- v1 executor is single-threaded anyway. |
 
 ### v1.5 -- composability surface
