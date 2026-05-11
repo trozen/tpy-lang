@@ -288,12 +288,11 @@ class ExpressionGenerator:
             return None
         if isinstance(arg, TpyNoneLiteral):
             return self._nullptr_for_optional(ptype)
-        # Own[OptionalType[P_ref]] param (optional_locals): C++ shape is
+        # OPTIONAL_STORAGE arg (Own[Opt[P_ref]] param): C++ shape is
         # std::optional<P>&&, the slot wants const P*. Lift before the
         # is_indirect_name short-circuit -- the param is also in
         # pointer_locals (for arrow field access).
-        if (isinstance(arg, TpyName)
-                and arg.name in self.ctx.optional_locals):
+        if isinstance(arg, TpyName) and self.ctx.needs_optional_to_ptr_lift(arg.name):
             return f"::tpy::optional_to_ptr({self.gen_expr(arg, ptype)})"
         if self.ctx.is_indirect_name(arg):
             return self.gen_expr(arg, ptype)
@@ -353,13 +352,12 @@ class ExpressionGenerator:
                     temp = self.ctx.temps.create(arg_type, arg_expr)
                     return f"{pv_cpp}{{&{temp}}}"
                 return f"{pv_cpp}{{&({arg_expr})}}"
-            # Own[A|B] source (value-variant param) passed to a pointer-variant
+            # VALUE_VARIANT source (Own[A|B] param) passed to a pointer-variant
             # slot: lift via to_ptr_variant. The Own wrapper makes the source
             # C++ shape value-variant; the slot wants pointer-variant. Mirror
             # of the Own[Optional] -> optional_to_ptr lift at
             # _gen_optional_ptr_arg.
-            if (isinstance(arg, TpyName)
-                    and self.ctx.is_own_ptr_variant_param(arg.name)):
+            if isinstance(arg, TpyName) and self.ctx.needs_to_ptr_variant_lift(arg.name):
                 return f"::tpy::to_ptr_variant({self.gen_expr_deref(arg)})"
             # Mutable ptr-variant arg -> const ptr-variant param: explicit conversion
             if is_readonly_param and already_union:
@@ -1446,13 +1444,13 @@ class ExpressionGenerator:
                     cpp_op = "==" if expr.op == "is" else "!="
                     return f"({val} {cpp_op} nullptr)"
                 # Indirect names (T* pointer-locals/globals) use pointer comparison.
-                # Storage-form Optional locals (optional_locals) are also indirect
-                # but compare via .has_value() -- nullptr comparison isn't defined
-                # for std::optional<T>.
+                # OPTIONAL_STORAGE names are also indirect but compare via
+                # .has_value() -- nullptr comparison isn't defined for
+                # std::optional<T>.
                 if self.ctx.is_indirect_name(opt_expr):
                     val = self.gen_expr(opt_expr)
                     if (isinstance(opt_expr, TpyName)
-                            and opt_expr.name in self.ctx.optional_locals):
+                            and self.ctx.needs_optional_to_ptr_lift(opt_expr.name)):
                         if expr.op == "is":
                             return f"(!{val}.has_value())"
                         return f"({val}.has_value())"
@@ -4720,12 +4718,11 @@ class ExpressionGenerator:
         if isinstance(elem, TpyNoneLiteral):
             return "nullptr"
         ret_expr = self.gen_expr(elem, elem_target)
-        # Own[OptionalType[P_ref]] param (optional_locals): C++ shape is
+        # OPTIONAL_STORAGE name (Own[Opt[P_ref]] param): C++ shape is
         # std::optional<P>&&, the slot wants T*. Lift before the
         # is_indirect_name short-circuit -- the param is also in
         # pointer_locals (for arrow field access) but here we need P*.
-        if (isinstance(elem, TpyName)
-                and elem.name in self.ctx.optional_locals):
+        if isinstance(elem, TpyName) and self.ctx.needs_optional_to_ptr_lift(elem.name):
             return f"::tpy::optional_to_ptr({ret_expr})"
         if self.ctx.is_indirect_name(elem):
             return ret_expr

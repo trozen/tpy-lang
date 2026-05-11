@@ -36,7 +36,7 @@ from ..sema.context import PENDING_CONTAINER_TYPES
 from ..diagnostics import SemanticError
 from ..liveness import stmts_terminate
 
-from .context import INDENT, CodeGenError, FinallyContext, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable, view_key_target
+from .context import INDENT, CodeGenError, FinallyContext, LocalCppForm, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable, view_key_target
 from ..type_def_registry import (
     is_list,
     is_fixed_int_type, is_big_int_type, is_bytes_type, is_str_type,
@@ -459,13 +459,13 @@ class StatementGenerator:
                     if self._is_ptr_variant_source(ret_value) and not is_narrowed:
                         ret_expr = self.expressions.gen_expr(ret_value, ret_type)
                         return self._make_return(indent, ret_expr)
-                    # Own[A|B] param returning into a pointer-variant return:
-                    # lift via to_ptr_variant. The Own param's C++ shape is
-                    # value-variant; without the lift codegen would take the
-                    # address of the storage and produce variant<A,B>* rather
-                    # than variant<A*,B*>.
+                    # VALUE_VARIANT source (Own[A|B] param) returning into a
+                    # pointer-variant return: lift via to_ptr_variant. The
+                    # Own param's C++ shape is value-variant; without the lift
+                    # codegen would take the address of the storage and produce
+                    # variant<A,B>* rather than variant<A*,B*>.
                     if (isinstance(ret_value, TpyName) and not is_narrowed
-                            and self.ctx.is_own_ptr_variant_param(ret_value.name)):
+                            and self.ctx.needs_to_ptr_variant_lift(ret_value.name)):
                         ret_expr = self.expressions.gen_expr(ret_value, ret_type)
                         return self._make_return(
                             indent, f"::tpy::to_ptr_variant({ret_expr})")
@@ -481,13 +481,13 @@ class StatementGenerator:
                     return self._make_return(indent, ret_expr)
                 ret_expr = self.expressions.gen_expr(
                     ret_value, ret_type)
-                # Storage-form Optional locals (Own[OptionalType[P_ref]] params)
-                # are rendered as std::optional<P>, not P*. When the return type
-                # is the same Own[Optional[P_ref]] shape, std::move the whole
-                # optional rather than dereffing -- (*x) is UB on a nullopt and
-                # would also lose the None case.
+                # OPTIONAL_STORAGE source names (Own[Opt[P_ref]] params)
+                # are rendered as std::optional<P>, not P*. When the return
+                # type is the same Own[Optional[P_ref]] shape, std::move the
+                # whole optional rather than dereffing -- (*x) is UB on a
+                # nullopt and would also lose the None case.
                 if (isinstance(ret_value, TpyName)
-                        and ret_value.name in self.ctx.optional_locals
+                        and self.ctx.needs_optional_to_ptr_lift(ret_value.name)
                         and is_own_pointer_repr_optional(ret_type)):
                     ret_expr = self.expressions._maybe_move(ret_value, ret_expr)
                 # Dereference pointer-locals/pointer-globals on return (T* -> T&)
@@ -986,11 +986,10 @@ class StatementGenerator:
                     init_expr = self.expressions.gen_expr(init, target_type)
                     return f"{indent}{const_pfx}{cpp_type}* {name} = ::tpy::optional_to_ptr({init_expr});\n"
                 # rvalue field: fall through to rvalue path
-            elif (isinstance(init, TpyName)
-                    and init.name in self.ctx.optional_locals):
-                # Own[OptionalType[P_ref]] source param: C++ shape is
-                # std::optional<P>, declaration target is P*. Same lift as
-                # the TpyFieldAccess lvalue branch above.
+            elif isinstance(init, TpyName) and self.ctx.needs_optional_to_ptr_lift(init.name):
+                # OPTIONAL_STORAGE source name (Own[Opt[P_ref]] param): C++
+                # shape is std::optional<P>, declaration target is P*.
+                # Same lift as the TpyFieldAccess lvalue branch above.
                 init_expr = self.expressions.gen_expr(init, target_type)
                 return f"{indent}{const_pfx}{cpp_type}* {name} = ::tpy::optional_to_ptr({init_expr});\n"
             else:
@@ -1127,13 +1126,13 @@ class StatementGenerator:
             if isinstance(init, TpyFieldAccess):
                 # rvalue field: fall through to rvalue path
                 pass
-            elif (isinstance(init, TpyName)
-                    and init.name in self.ctx.optional_locals):
-                # Own[OptionalType[P_ref]] param: C++ shape is std::optional<P>,
-                # rebind target wants P*. Same lift as the storage-form lvalue
-                # path above; not gated on is_storage_form_optional_source
-                # because that predicate excludes optional_locals (they need
-                # different downstream handling at the field-access dispatch).
+            elif isinstance(init, TpyName) and self.ctx.needs_optional_to_ptr_lift(init.name):
+                # OPTIONAL_STORAGE source name (Own[Opt[P_ref]] param):
+                # C++ shape is std::optional<P>, rebind target wants P*.
+                # Same lift as the storage-form lvalue path above; not
+                # gated on is_storage_form_optional_source because that
+                # predicate excludes optional_locals (they need different
+                # downstream handling at the field-access dispatch).
                 init_expr = self.expressions.gen_expr(init, target_type)
                 return f"{indent}{cpp_name} = ::tpy::optional_to_ptr({init_expr});\n"
             else:
@@ -1457,12 +1456,12 @@ class StatementGenerator:
         if stmt.name in self.ctx.declared_vars:
             if stmt.init:
                 var_type = self.ctx.var_types.get(stmt.name)
-                # Optional-local (hoisted, not reassigned): move-assign into optional
-                if stmt.name in self.ctx.optional_locals:
+                form = self.ctx.local_cpp_form(stmt.name)
+                if form is LocalCppForm.OPTIONAL_STORAGE:
+                    # Hoisted optional<T>: move-assign into the slot.
                     init_expr = self.expressions.gen_expr(stmt.init, var_type)
                     return f"{indent}{cpp_name} = {init_expr};\n"
-                # Pointer-local reassignment
-                if stmt.name in self.ctx.pointer_locals:
+                if form is LocalCppForm.POINTER:
                     # @dynamic protocol reassignment: new adapter slot + rebind
                     if self._is_dynamic_protocol_type(var_type):
                         return self._gen_dynamic_protocol_rebind(stmt.name, var_type, stmt.init, indent)
@@ -1479,8 +1478,7 @@ class StatementGenerator:
                             and resolve_type.is_protocol and not resolve_type.is_dynamic_protocol):
                         cpp_type = "auto"
                     return self._gen_pointer_local_rebind(stmt.name, cpp_type, stmt.init, var_type, indent)
-                # Pointer-variant union reassignment
-                if stmt.name in self.ctx.ptr_variant_locals:
+                if form is LocalCppForm.PTR_VARIANT:
                     return self._gen_ptr_variant_local_reassign(stmt, var_type, cpp_name, indent)
                 # String x = x + y -> x += y for buffer reuse
                 if result := self._try_str_inplace_append(stmt.name, cpp_name, stmt.init, var_type, indent):
@@ -1700,10 +1698,10 @@ class StatementGenerator:
             # Optional field: std::optional<T> storage needs boundary conversion
             if isinstance(target_type, OptionalType) and target_type.uses_pointer_repr():
                 target = self.expressions.gen_expr(stmt.target)
-                # Storage-form Optional source (Own[OptionalType[T_ref]] param):
-                # already optional<T>, direct std::move into the field.
+                # OPTIONAL_STORAGE source (Own[Opt[T_ref]] param): already
+                # optional<T>, direct std::move into the field.
                 if (isinstance(stmt.value, TpyName)
-                        and stmt.value.name in self.ctx.optional_locals):
+                        and self.ctx.needs_optional_to_ptr_lift(stmt.value.name)):
                     value = self.expressions.gen_expr(stmt.value)
                     value = self.expressions._maybe_move(stmt.value, value)
                     return f"{indent}{target} = {value};\n"

@@ -7,6 +7,7 @@ Shared state and utilities for C++ code generation.
 from __future__ import annotations
 import re
 from dataclasses import dataclass, field
+from enum import Enum, auto
 from typing import Callable, Iterator, Literal, TextIO, TYPE_CHECKING
 
 from ..typesys import (
@@ -486,6 +487,45 @@ class CodeGenOptions:
     emit_source_comments: bool = False  # Embed Python source as comments in generated C++
     comment_line_numbers: bool = True   # Include .py line numbers in source comments
     no_main: bool = False               # Skip main() generation, emit __tpy_main() only
+
+
+class LocalCppForm(Enum):
+    """Coarse C++ representation of a local/param name.
+
+    The codegen tracks several parallel `set[str]` fields (`pointer_locals`,
+    `optional_locals`, `ptr_variant_locals`, `storage_form_tuple_locals`)
+    plus a `current_func_params` lookup for `Own[Union]` params. Every
+    boundary-handling site (call arg, return, var-decl init, rebind,
+    tuple-unpack, etc.) needs to ask "what shape is this name?" and route
+    to the right lift / wrap helper. `local_cpp_form` is the single
+    classifier those sites consult.
+
+    Variants:
+      * `POINTER` -- `T*` / `const T*`. Pointer-form Optional or hoisted
+        non-value local. Membership in `pointer_locals` minus
+        `optional_locals`.
+      * `OPTIONAL_STORAGE` -- `std::optional<T>` storage form. `Own[Opt[T_ref]]`
+        params (also in `pointer_locals` for arrow field access). Lifts via
+        `tpy::optional_to_ptr` when consumed as a `T*` slot.
+      * `VALUE_VARIANT` -- `std::variant<A, B>` storage form. `Own[Union nonvalue]`
+        params at the ABI. Lifts via `tpy::to_ptr_variant` when consumed
+        as a pointer-variant slot.
+      * `PTR_VARIANT` -- `std::variant<T*, ...>` borrow form. Non-value
+        union local already in pointer-variant shape; no lift needed.
+      * `STORAGE_TUPLE` -- `std::tuple<std::optional<T>, ...>` storage form.
+        For-loop variables iterating storage containers, locals initialized
+        from another storage-form source, `Own[tuple[T|None, ...]]` params.
+        Wraps via `tpy::tuple_to_pointer` when feeding pointer-form tuple
+        params/destructure targets.
+      * `VALUE` -- everything else (value types, T& ref-bound locals,
+        plain non-value locals rendered via T&).
+    """
+    POINTER = auto()
+    OPTIONAL_STORAGE = auto()
+    VALUE_VARIANT = auto()
+    PTR_VARIANT = auto()
+    STORAGE_TUPLE = auto()
+    VALUE = auto()
 
 
 @dataclass(frozen=True)
@@ -1379,6 +1419,51 @@ class CodeGenContext:
         return (isinstance(peeled, OwnType)
                 and isinstance(peeled.wrapped, UnionType)
                 and self.is_ptr_variant_union(peeled.wrapped))
+
+    def local_cpp_form(self, name: str) -> LocalCppForm:
+        """Classify a name's C++ representation -- see `LocalCppForm`.
+
+        Priority order matters: `optional_locals` is a subset of
+        `pointer_locals` (Own[Opt[T_ref]] params live in both for arrow
+        access vs. lift dispatch), so OPTIONAL_STORAGE must take
+        precedence over POINTER. VALUE_VARIANT (Own[Union] param) is
+        looked up via `current_func_params`, not a set; it precedes
+        PTR_VARIANT because a single name cannot match both.
+
+        For arrow-vs-deref field access use `is_pointer_local(expr)`
+        instead -- it covers both POINTER and OPTIONAL_STORAGE.
+        """
+        if name in self.optional_locals:
+            return LocalCppForm.OPTIONAL_STORAGE
+        if self.is_own_ptr_variant_param(name):
+            return LocalCppForm.VALUE_VARIANT
+        if name in self.ptr_variant_locals:
+            return LocalCppForm.PTR_VARIANT
+        if name in self.storage_form_tuple_locals:
+            return LocalCppForm.STORAGE_TUPLE
+        if name in self.pointer_locals:
+            return LocalCppForm.POINTER
+        return LocalCppForm.VALUE
+
+    def needs_optional_to_ptr_lift(self, name: str) -> bool:
+        """True when `name` is in `OPTIONAL_STORAGE` form -- an
+        `Own[Opt[T_ref]]` param whose C++ shape is `std::optional<T>`
+        and must be lifted via `tpy::optional_to_ptr` to feed a `T*`
+        slot.
+
+        For call-expression sources (function returning `Own[Opt[T_ref]]`),
+        use `callee_returns_own_ptr_optional` instead -- those paths
+        also allocate a slot to hold the rvalue and aren't a pure lift.
+        """
+        return self.local_cpp_form(name) is LocalCppForm.OPTIONAL_STORAGE
+
+    def needs_to_ptr_variant_lift(self, name: str) -> bool:
+        """True when `name` is in `VALUE_VARIANT` form -- an
+        `Own[Union nonvalue]` param whose C++ shape is `std::variant<A, B>`
+        and must be lifted via `tpy::to_ptr_variant` to feed a
+        `std::variant<A*, B*>` slot.
+        """
+        return self.local_cpp_form(name) is LocalCppForm.VALUE_VARIANT
 
     def is_indirect_name(self, expr: TpyExpr) -> bool:
         """Check if expression needs indirect access (-> / deref).
