@@ -74,18 +74,24 @@ Out of scope:
 
 ## Output format
 
+Be terse. One bullet per finding, a single short sentence. Do NOT include code excerpts or a separate "Fix:" line -- the user will ask if they want details or a suggested fix. Include `file:line` only when the issue is anchored to a specific location the user needs to find; generic findings have no line reference.
+
+Severity maps to action:
+- **Critical** = must fix before commit (broken ownership / borrow / readonly invariant, missing safety diagnostic)
+- **Warning** = should fix or file follow-up (model honored but in a fragile / cryptic way)
+- **Suggestion** = track or skip (invariant the code could honor more directly)
+
 ```
 ## safety-model findings
 
 ### Critical
-- **<location>** -- <one-line issue>
-  Fix: <concrete suggestion>
+- **location** -- short description
 
 ### Warning
-- ...
+- short description (location if specific)
 
 ### Suggestion
-- ...
+- short description
 ```
 
 Omit empty sections. If nothing to report: `## safety-model findings: clean`.

@@ -76,18 +76,24 @@ The orchestrator passes you a base ref and the changed-file list in your scope.
 
 ## Output format
 
+Be terse. One bullet per finding, a single short sentence. Do NOT include code excerpts or a separate "Fix:" line -- the user will ask if they want details or a suggested fix. Include `file:line` only when the issue is anchored to a specific location the user needs to find; generic findings have no line reference.
+
+Severity maps to action:
+- **Critical** = must fix before commit (broken phase boundary, broken invariant other code relies on)
+- **Warning** = should fix or file follow-up (duplication, misplaced logic, perf cliff)
+- **Suggestion** = track or skip (reuse opportunity that's not a defect)
+
 ```
 ## architecture-fit findings
 
 ### Critical
-- **<file>:<line>** -- <one-line issue>
-  Fix: <concrete suggestion>
+- **file:line** -- short description
 
 ### Warning
-- ...
+- short description (file:line if specific)
 
 ### Suggestion
-- ...
+- short description
 ```
 
 Omit empty sections. If nothing to report: `## architecture-fit findings: clean`.

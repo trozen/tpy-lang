@@ -66,19 +66,24 @@ You may NOT run `uv run pytest` or `tests/update_snapshots.py`. Surface concerns
 
 ## Output format
 
+Be terse. One bullet per finding, a single short sentence. Do NOT include code excerpts or a separate "Fix:" line -- the user will ask if they want details or a suggested fix. Include `file:line` only when the issue is anchored to a specific location the user needs to find; generic findings have no line reference.
+
+Severity maps to action:
+- **Critical** = must fix before commit (UB, semantic break, hidden costs in hot paths)
+- **Warning** = should fix or file follow-up (real issue but not blocking; track if you skip it)
+- **Suggestion** = track or skip (improvement that's not a defect)
+
 ```
 ## codegen-correctness findings
 
 ### Critical
-- **<file>:<line>** -- <one-line issue>
-  <optional 1-3 line code excerpt>
-  Fix: <concrete suggestion>
+- **file:line** -- short description
 
 ### Warning
-- ...
+- short description (file:line if specific)
 
 ### Suggestion
-- ...
+- short description
 ```
 
 Omit empty sections. If nothing to report: `## codegen-correctness findings: clean`.

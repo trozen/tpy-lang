@@ -63,18 +63,24 @@ You may NOT run `uv run pytest`. Surface coverage concerns as findings.
 
 ## Output format
 
+Be terse. One bullet per finding, a single short sentence. Do NOT include code excerpts or a separate "Fix:" line -- the user will ask if they want details or a suggested fix. Include the location only when the issue is anchored to a specific case the user needs to find; generic findings have no location.
+
+Severity maps to action:
+- **Critical** = must fix before commit (behavior change without a test, missing error_* / panic_* for new diagnostic paths)
+- **Warning** = should fix or file follow-up (edge case uncovered, convention violation)
+- **Suggestion** = track or skip (a specific missing test the user could add)
+
 ```
 ## test-coverage findings
 
 ### Critical
-- **<location>** -- <one-line issue>
-  Fix: <concrete suggestion>
+- **location** -- short description
 
 ### Warning
-- ...
+- short description (location if specific)
 
 ### Suggestion
-- ...
+- short description
 ```
 
 Omit empty sections. If nothing to report: `## test-coverage findings: clean`.

@@ -174,6 +174,26 @@ parallel code path the proper fix has to remove) is not.
 ## Phase 7: Present and wait
 
 Write the analysis (compressed for localized bugs) and present it.
+**Start with a short summary of the bug** (1-3 sentences) -- the
+user must be able to confirm scope ("yes, that's the bug we're
+talking about") in a few seconds, before reading any analysis. The
+summary names the visible symptom and the affected feature; it is
+not the root cause.
+
+**Keep the analysis itself terse.** Convey the most important info
+in short bullets; the user will ask follow-up questions for
+anything they want to dig into. Aim for the whole report to be
+readable in under a minute. Cover (each in one line or two):
+
+- Classification (trivial / localized / architectural)
+- Root cause (architectural-level, one sentence)
+- Proposed fix (which files / phases, shape of the change)
+- Patch alternative (only if Phase 6 produced one)
+- Adjacent issues surfaced during analysis (brief)
+
+Do NOT paste large code excerpts, full file lists, or reproduce the
+Phase 2 trace. The user will ask if they want depth.
+
 **Do not start coding.** The user picks the path:
 
 - (a) architectural fix

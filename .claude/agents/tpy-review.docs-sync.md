@@ -58,18 +58,24 @@ The orchestrator passes you a base ref and the changed-file list.
 
 ## Output format
 
+Be terse. One bullet per finding, a single short sentence. Do NOT include code excerpts or a separate "Fix:" line -- the user will ask if they want details or a suggested fix. Include `file:line` or section only when the issue is anchored to a specific location the user needs to find; generic findings have no line reference.
+
+Severity maps to action:
+- **Critical** = must fix before commit (LANGUAGE_FEATURES.md drift on a behavior change, BUGS.md entry needed for a discovered defect)
+- **Warning** = should fix or file follow-up (stale comment, missed doc update on a borderline change)
+- **Suggestion** = track or skip (doc improvement that names what is missing)
+
 ```
 ## docs-sync findings
 
 ### Critical
-- **<file>:<line or section>** -- <one-line issue>
-  Fix: <concrete suggestion>
+- **file:line-or-section** -- short description
 
 ### Warning
-- ...
+- short description (location if specific)
 
 ### Suggestion
-- ...
+- short description
 ```
 
 Omit empty sections. If nothing to report: `## docs-sync findings: clean`.

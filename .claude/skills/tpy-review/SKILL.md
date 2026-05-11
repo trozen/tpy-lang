@@ -79,35 +79,39 @@ Follow your documented process and output format. Do NOT run pytest or update_sn
 
 ### 5. Aggregate
 
-Once all specialists return, synthesize a unified report:
+Once all specialists return, synthesize a unified report. Be terse -- one bullet per finding, a single short sentence. NO code excerpts, NO "Fix:" sub-bullets. The user will ask for details on any finding they want to drill into; surfacing every detail up front is noise.
 
-- **Dedupe**: when multiple specialists flag the same `file:line` with related issues, merge into one entry that credits both specialists and combines the fix suggestions.
+- **Dedupe**: when multiple specialists flag the same `file:line` with related issues, merge into one entry crediting all contributing specialists.
 - **Group by severity**: Critical first, then Warning, then Suggestion.
-- **Filter noise**: if Suggestions total > 10 across all specialists, drop the lowest-signal ones (vague, no concrete fix, or duplicative of a Warning at the same location).
-- **Note clean specialists**: list them explicitly so the user sees what was checked and came back clean.
+- **Filter noise**: if Suggestions total > 10 across all specialists, drop the lowest-signal ones (vague, duplicative of a Warning at the same location).
+- **Note clean specialists**: list them explicitly so the user sees what was checked.
+- **Minimize code references**: include `file:line` only when the user needs it to find the issue. Generic findings don't need a line reference.
 
 ### 6. Present the unified report
+
+Severity carries the action. Make it explicit in the section headers so the user can triage at a glance:
+
+- **Must fix** (Critical) -- blocker; resolve before commit.
+- **Should fix** (Warning) -- address before commit if cheap; otherwise file a follow-up in `BUGS.md` (defect) or `TODO.md` (gap) so it doesn't get lost.
+- **Track or skip** (Suggestion) -- not a defect. File in `TODO.md` if worth remembering; else skip.
 
 ```
 # /tpy-review report
 
-Base: <SHA> (<ref>)
-Diff stat: <git diff --stat one-liner>
-Dispatched: <list of specialists>
-Clean: <list of specialists that returned no findings>
+Base: <SHA> | <diff --stat one-liner>
+Dispatched: <list> | Clean: <list>
 
-## Critical (<N>)
-- **<file>:<line>** [<specialist(s)>] -- <issue>
-  Fix: <suggestion>
+## Must fix (Critical, <N>)
+- short description [<specialist>] (file:line if specific)
 
-## Warning (<N>)
-- ...
+## Should fix (Warning, <N>)
+- short description [<specialist>]
 
-## Suggestion (<N>)
-- ...
+## Track or skip (Suggestion, <N>)
+- short description [<specialist>]
 ```
 
-If everything is clean: `# /tpy-review report: all dispatched specialists clean`.
+Omit empty severity sections. If everything is clean: `# /tpy-review report: all dispatched specialists clean`.
 
 ## Important
 
